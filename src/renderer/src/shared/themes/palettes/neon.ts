@@ -36,6 +36,10 @@ export const neon: ThemeDefinition = {
 		accent: "#00EFFF",
 		accentHover: "#66F7FF",
 		accentActive: "#00B8D9",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.0 from `accent` and 15.58:1 on surface, where the accent
+		// itself is 12.83:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#B0FAFF",
 		// The cyan at a faint tint. The theme's own hover fills used the same cyan
 		// at 10 to 15 percent, so this is the value it was already reaching for.
 		accentWash: "#072734",

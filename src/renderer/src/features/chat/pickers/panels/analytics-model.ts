@@ -19,6 +19,12 @@ import {
  * bucket slot). One computed local day now derives all three of the op's
  * arguments, and the chart filters to the same first day, so the header, the
  * axis and the aggregate cannot describe three different windows.
+ *
+ * Both tables carry the aggregate's cache hit rate as a COLUMN, which is the
+ * form the terminal prints it in (`analytics_panel.py:1856`,
+ * `f"{format_percent(agg.cache_hit_rate):>4} cache"`): a per-provider and
+ * per-session rate belongs beside the row it describes, where a reader comparing
+ * two providers can see it. The stat card alone cannot say whose rate it is.
  */
 
 export type AnalyticsData = {
@@ -123,12 +129,57 @@ export function windowTitle(days: number): string {
 export const totalTokens = (aggregate: DesktopUsageAggregate): number =>
 	aggregate.context_tokens + aggregate.output_tokens;
 
-/** `cache_read_tokens / context_tokens`, or `null` when there is no denominator. */
+/**
+ * ONE name for one measure, used by the tile and by both tables' column.
+ *
+ * Review round 1 (D3) caught the tile saying `Cache read` above a column saying
+ * `Cache hit` with nothing in the frame to say they are the same number from the
+ * same function. The name is the backend's own (`cache_hit_rate`, the property
+ * the terminal prints), which is also the one that cannot be misread as
+ * read/(read+written) — the reading the tile's note used to imply (D5b).
+ *
+ * A constant rather than two literals because the two surfaces have to agree by
+ * construction: a rename that missed one of them is the defect the review round
+ * found, and a single export cannot drift.
+ */
+export const CACHE_HIT_LABEL = "Cache hit rate";
+
+/**
+ * What that number is, and what `—` means, in one sentence.
+ *
+ * Rendered as a visible line under both tables AND folded into each table's own
+ * accessible name, because the `title` attribute this replaced (review round 1,
+ * D4) is reachable by neither a keyboard nor a touch reader and appears in no
+ * captured frame — so neither the denominator nor the difference between `0%`
+ * and `—` was ever stated anywhere a reader could find it.
+ */
+export const CACHE_HIT_MEANING =
+	"Cache reads as a share of read context tokens; — means no call reported a context total.";
+
+/**
+ * `cache_read_tokens / context_tokens`, or `null` when there is no denominator.
+ *
+ * The ONE definition of the cache hit rate on this side, read by the "Cache
+ * read" stat card and by the `Cache hit` column of both tables, so a card and a
+ * column cannot disagree about one aggregate.
+ *
+ * CLAMPED at 1, which is the model layer's own rule
+ * (`min(1.0, cache_read / context)`, `analytics/model.py:485-496`). A rate above
+ * 100% is not a rate: on an aggregate the numerator and the denominator are
+ * summed over different calls, so a provider that reads a cache it did not write
+ * into `context_tokens` carries the ratio past 1, and the unclamped arithmetic
+ * prints `137%` beside rows reading `99%`.
+ *
+ * `session-report-model.ts`'s `cacheHitRate` is the same function under another
+ * name (the `/session` panel's port of the same model property) and already
+ * carried the clamp; folding the two into one export would cross the two panel
+ * models, so it is recorded rather than done here.
+ */
 export function cacheReadFraction(
 	aggregate: DesktopUsageAggregate,
 ): number | null {
 	if (!aggregate.context_tokens) return null;
-	return aggregate.cache_read_tokens / aggregate.context_tokens;
+	return Math.min(1, aggregate.cache_read_tokens / aggregate.context_tokens);
 }
 
 /** The priced share of the window: the cost card's own bar. */
@@ -240,6 +291,8 @@ export type ProviderRow = {
 	tokens: number;
 	cost: string;
 	fraction: number;
+	/** The provider's OWN cache hit rate, `null` when it has no denominator. */
+	cacheHit: number | null;
 };
 
 /**
@@ -269,6 +322,7 @@ export function providerRows(
 				aggregate.calls,
 			),
 			fraction: total > 0 ? metricValue(aggregate, metric) / total : 0,
+			cacheHit: cacheReadFraction(aggregate),
 		}))
 		.sort((a, b) => b.fraction - a.fraction || a.key.localeCompare(b.key));
 }
@@ -284,6 +338,8 @@ export type SessionRow = {
 	tokens: number;
 	cost: string;
 	fraction: number;
+	/** The session's OWN rate; the totals beside it include subagents. */
+	cacheHit: number | null;
 };
 
 /**
@@ -329,6 +385,7 @@ export function sessionRows(
 				aggregate.calls,
 			),
 			fraction: total > 0 ? metricValue(aggregate, metric) / total : 0,
+			cacheHit: cacheReadFraction(aggregate),
 		};
 	});
 	return { rows, hidden: Math.max(0, ranked.length - rows.length) };

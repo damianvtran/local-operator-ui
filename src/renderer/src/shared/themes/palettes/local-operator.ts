@@ -64,6 +64,10 @@ export const localOperatorDark: ThemeDefinition = {
 		accent: "#38c96a",
 		accentHover: "#5ad584",
 		accentActive: "#2bb25c",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.0 from `accent` and 10.70:1 on surface, where the accent
+		// itself is 8.02:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#85DEA3",
 		accentWash: "#16281d",
 		onAccent: "#16130e",
 
@@ -183,6 +187,10 @@ export const localOperatorLight: ThemeDefinition = {
 		accent: "#147842",
 		accentHover: "#116036",
 		accentActive: "#0c4b2a",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.0 from `accent` and 7.82:1 on surface, where the accent
+		// itself is 5.21:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#0F5A31",
 		accentWash: "#e7f1e8",
 		onAccent: "#F6FAF8",
 

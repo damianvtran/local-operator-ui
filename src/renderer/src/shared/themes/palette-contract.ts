@@ -113,6 +113,29 @@ export type ThemePalette = {
 	accentWash: string;
 	/** Ink that sits on the accent fill. Floor: 4.5:1 on `accent`. */
 	onAccent: string;
+	/**
+	 * The chart mark under the pointer.
+	 *
+	 * A first-class role rather than a reuse of `accentHover`, because the two
+	 * answer different questions. `accentHover` is a step on the ACCENT RAMP: it
+	 * is the primary button's own fill as the pointer crosses it, authored to be
+	 * separable from `accent` (ΔE00 >= 2.0) with no promise about the surface
+	 * behind it. That is fine for a button, whose shape and position say what it
+	 * is, and wrong for a chart mark the reader has to FIND among its siblings.
+	 * Obsidian is where it showed: its accent is the palette's brightest value, so
+	 * its ramp can only walk downwards, and the hovered bar receded toward the
+	 * ground instead of standing out (16.97:1 at rest, 13.96:1 under the pointer).
+	 *
+	 * Both properties below are asserted per palette by `check-themes`
+	 * (`scripts/contrast-contract.mjs`, the "chart bar (hover)" block): at least
+	 * ΔE00 10 from `accent`, and never closer to the plot ground than `accent` is.
+	 * The 10 is the contract's own separation floor for this role, sitting between
+	 * the syntax tokens' 8 and the semantics' 15 — read that block for the argument
+	 * and for the names of the two constants, and re-measure before changing a value
+	 * here; obsidian's window is narrow by construction, and tokyoNight's sits two
+	 * thousandths above the floor.
+	 */
+	chartBarHover: string;
 
 	/* ---- semantic: each with a wash and a border ------------------------ */
 
