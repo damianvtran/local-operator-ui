@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useEffect, useState } from "react";
 import { updateCheckVerdict } from "../../../../../main/update-check-verdict";
+import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
 import { CheckForUpdatesButton } from "./check-for-updates-button";
 import { FloatingAlert } from "./floating-alert";
 
@@ -171,11 +172,16 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
-		onBackendUpdateError: (callback: (message: string) => void) => {
+		onBackendUpdateError: (
+			callback: (report: BackendUpdateErrorReport) => void,
+		) => {
 			// For stories that need to trigger this callback
 			if (window.triggerBackendUpdateError) {
 				// Immediately trigger the callback
-				callback("The server update failed to install.");
+				callback({
+					message: "The server update failed to install.",
+					phase: "update",
+				});
 			}
 			return () => {};
 		},

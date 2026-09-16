@@ -518,14 +518,14 @@ export const UpdateNotification = ({
 	 * (rewritten when the button is pressed) so a late event from an earlier
 	 * attempt cannot silence, or double-report, the one in flight.
 	 *
-	 * `inFlight` is what keeps `backend-update-error` honest, because that channel
-	 * is ALSO the check channel: `checkForBackendUpdates` sends on it from three
-	 * branches ("Unable to determine backend version." and two siblings) whenever
-	 * the check is not silent - and a check the user pressed is not silent. Only an
-	 * event that answers an attempt this panel started may clear the in-flight
-	 * flags or claim the attempt is over, so a plain check's error can no longer
-	 * end "Checking for updates" early or mark an idle attempt terminal (review
-	 * R1-2). A check-time message still reaches the user: it takes the toast.
+	 * `inFlight` no longer decides WHICH surface a report lands on - the phase on the
+	 * report does that (see the listener below) - but it still gates the failure
+	 * panel, because a report about an attempt this panel did not start belongs to
+	 * the surface that did. What the flag keeps honest is the ENDING: only an event
+	 * that answers this panel's own attempt may clear the in-flight flags or claim
+	 * the attempt is over, so a check's failure can no longer end "Checking for
+	 * updates" early or mark an idle attempt terminal (review R1-2). A check-time
+	 * message still reaches the user: it takes the toast.
 	 */
 	const backendUpdateAttemptRef = useRef<{
 		terminal: boolean;
@@ -967,8 +967,10 @@ export const UpdateNotification = ({
 					 * panel that carries **Update server** takes the slot back. Without
 					 * this, one failed attempt hid the offer for the rest of the session -
 					 * including a fresh check's own offer, which painted nothing (UX U1).
-					 * The failure itself is not lost: the reason is in the log and in
-					 * Settings, under Application updates.
+					 * The failure itself is not lost: the main process wrote it, with pip's
+					 * output, to the update service log. It is NOT kept anywhere a renderer
+					 * surface can read back - which is why the failure panel names no record
+					 * rather than pointing at one that does not exist (UX U5).
 					 */
 					setBackendUpdateFailure(null);
 					setSnackbarOpen(true);
@@ -1043,7 +1045,7 @@ export const UpdateNotification = ({
 		 * surfaces. The failing branches of `UpdateService.updateBackend` report here -
 		 * pip's output, the unreadable venv and the "version did not change" verdict all
 		 * used to be written to a channel with no reader, and the in-flight panel had no
-		 * way to learn the update was over. So do three branches of
+		 * way to learn the update was over. So do the failing branches of
 		 * `checkForBackendUpdates` ("Unable to determine backend version."), which is
 		 * the CHECK the user may have pressed: those are not update outcomes, and
 		 * treating them as ones ended "Checking for updates" early and marked an idle
@@ -1052,16 +1054,24 @@ export const UpdateNotification = ({
 		 * So the attempt in flight decides the surface: an attempt this panel started
 		 * gets the standing failure panel and its flags cleared, and anything else is
 		 * the check the user asked for and takes the toast it has always taken.
+		 *
+		 * The PRODUCER decides that, not the timing: the report carries the phase it
+		 * was written in, so a check the user pressed on another surface - which can
+		 * fail minutes into a server update, both surfaces being live - can no longer
+		 * paint itself as the attempt's reason while the attempt's own sentence
+		 * arrived as a toast that dismissed itself six seconds later (review R2-1,
+		 * QA Q2). The attempt flag still gates the panel, because a report about an
+		 * attempt this panel did not start belongs to whichever surface did.
 		 */
 		const removeBackendUpdateErrorListener =
-			window.api.updater.onBackendUpdateError((message) => {
-				if (answerBackendUpdateAttempt()) {
-					setBackendUpdateFailure(message);
+			window.api.updater.onBackendUpdateError((report) => {
+				if (report.phase === "update" && answerBackendUpdateAttempt()) {
+					setBackendUpdateFailure(report.message);
 					setChecking(false);
 					setUpdatingBackend(false);
 					return;
 				}
-				setError(message);
+				setError(report.message);
 				setSnackbarOpen(true);
 			});
 
@@ -1093,9 +1103,18 @@ export const UpdateNotification = ({
 		shouldShowUpdate,
 	]);
 
-	// Handle snackbar close
+	/**
+	 * Close the toast in the pinned box, and forget its message.
+	 *
+	 * Closing has to clear the error as well as hide it, because the error is the
+	 * half that WINS that box (see `withErrorToast`): an error left set after its
+	 * toast was dismissed would paint again the next time this component raised a
+	 * message, so a reader would be shown something they had already read instead
+	 * of the news they had not.
+	 */
 	const handleSnackbarClose = () => {
 		setSnackbarOpen(false);
+		setError(null);
 	};
 
 	/**
@@ -1113,11 +1132,21 @@ export const UpdateNotification = ({
 	 * again - which is the property, not the particular error that exposed it. The
 	 * panel leads in the DOM and the toast is announced independently, so the order
 	 * is an implementation detail rather than a reading order.
+	 *
+	 * ONE MESSAGE IN THE BOX, and the error is the one that takes it. A branch whose
+	 * panel carries its own notice passes it here rather than rendering it beside
+	 * this toast: `FloatingAlert` is pinned to `right-4 bottom-4 z-50`, so two of
+	 * them at once is one painted over the other, and which wins is DOM order
+	 * (UX U6). The notice is the half that yields because it is the half the panel
+	 * already says - and because the thing that must never be hidden is the
+	 * failure, which is why every panel branch was routed through here in the first
+	 * place. `handleSnackbarClose` clears the error, so the box is free again the
+	 * moment the reader has dismissed it.
 	 */
-	const withErrorToast = (panel: ReactNode) => (
+	const withErrorToast = (panel: ReactNode, notice?: ReactNode) => (
 		<>
 			{panel}
-			{error !== null && (
+			{error !== null ? (
 				<FloatingAlert
 					open={snackbarOpen}
 					autoHideDuration={6000}
@@ -1126,6 +1155,8 @@ export const UpdateNotification = ({
 				>
 					{error}
 				</FloatingAlert>
+			) : (
+				notice
 			)}
 		</>
 	);
@@ -1254,9 +1285,13 @@ export const UpdateNotification = ({
 				<h2 className="mb-3 text-heading text-ink">
 					{updatingBackend ? "Updating server" : "Checking for updates"}
 				</h2>
+				{/* No cancel control, and the panel has to say so: the copy half of
+				    UX U2, whose other half - a real cancel - is deferred, because
+				    stopping a live pip install and guaranteeing the server comes back
+				    up is its own change. Without this a mis-press reads as a dead end. */}
 				<p className="mb-2 text-body text-ink-muted">
 					{updatingBackend
-						? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update."
+						? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
 						: "Please wait while we check for available updates..."}
 				</p>
 				<ProgressContainer>
@@ -1405,171 +1440,165 @@ export const UpdateNotification = ({
 	// If an update is available but not downloaded yet
 	if (updateAvailable && !updateDownloaded && updateInfo) {
 		return withErrorToast(
-			<>
-				<UpdateContainer>
-					<h2 className="mb-3 text-heading text-ink">Update available</h2>
-					<p className="mb-2 text-body text-ink-muted">
-						Version {updateInfo.version} is available. You are currently using
-						version {appVersion}.
-					</p>
-					{updateInfo.releaseNotes && (
-						// A div rather than a paragraph: GitHub's release notes arrive as
-						// HTML and routinely contain block elements, which a <p> cannot
-						// legally hold.
-						//
-						// The prose utilities are not decoration. Preflight resets
-						// h1-h6 to inherited size and weight and strips list markers,
-						// indent and margins, and this is the one place in the app
-						// that injects third-party HTML - so without them a release
-						// note, which is headings and bullets essentially always,
-						// renders as a wall of identical lines. The markdown editor
-						// carries the same set for the same reason.
-						<div
-							className={cn(
-								"mt-2 text-body text-ink-muted",
-								RELEASE_NOTES_PROSE,
-							)}
-						>
-							Release notes:{" "}
-							{typeof updateInfo.releaseNotes === "string" ? (
-								<>
-									{parse(truncateText(updateInfo.releaseNotes, 400))}
-									{updateInfo.releaseNotes.length > 400 && (
-										<a
-											href={getReleaseUrl(updateInfo)}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="ml-2"
-										>
-											View full release notes
-										</a>
-									)}
-								</>
-							) : (
-								<a
-									href={getReleaseUrl(updateInfo)}
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									See release notes on GitHub
-								</a>
-							)}
-						</div>
-					)}
-
-					{downloading && downloadProgress && (
-						<ProgressContainer>
-							<p className="text-body-sm text-ink-muted">
-								Downloading: {Math.round(downloadProgress.percent)}%
-							</p>
-							<Progress value={downloadProgress.percent} className="mt-2" />
-							<p className="mt-1 text-mono-sm text-ink-dim">
-								{Math.round(downloadProgress.transferred / 1024)} KB of{" "}
-								{Math.round(downloadProgress.total / 1024)} KB
-							</p>
-						</ProgressContainer>
-					)}
-
-					<UpdateActions>
-						{!downloading && (
+			<UpdateContainer>
+				<h2 className="mb-3 text-heading text-ink">Update available</h2>
+				<p className="mb-2 text-body text-ink-muted">
+					Version {updateInfo.version} is available. You are currently using
+					version {appVersion}.
+				</p>
+				{updateInfo.releaseNotes && (
+					// A div rather than a paragraph: GitHub's release notes arrive as
+					// HTML and routinely contain block elements, which a <p> cannot
+					// legally hold.
+					//
+					// The prose utilities are not decoration. Preflight resets
+					// h1-h6 to inherited size and weight and strips list markers,
+					// indent and margins, and this is the one place in the app
+					// that injects third-party HTML - so without them a release
+					// note, which is headings and bullets essentially always,
+					// renders as a wall of identical lines. The markdown editor
+					// carries the same set for the same reason.
+					<div
+						className={cn("mt-2 text-body text-ink-muted", RELEASE_NOTES_PROSE)}
+					>
+						Release notes:{" "}
+						{typeof updateInfo.releaseNotes === "string" ? (
 							<>
-								{/* Dismiss first, commit last - the order every other
+								{parse(truncateText(updateInfo.releaseNotes, 400))}
+								{updateInfo.releaseNotes.length > 400 && (
+									<a
+										href={getReleaseUrl(updateInfo)}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="ml-2"
+									>
+										View full release notes
+									</a>
+								)}
+							</>
+						) : (
+							<a
+								href={getReleaseUrl(updateInfo)}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								See release notes on GitHub
+							</a>
+						)}
+					</div>
+				)}
+
+				{downloading && downloadProgress && (
+					<ProgressContainer>
+						<p className="text-body-sm text-ink-muted">
+							Downloading: {Math.round(downloadProgress.percent)}%
+						</p>
+						<Progress value={downloadProgress.percent} className="mt-2" />
+						<p className="mt-1 text-mono-sm text-ink-dim">
+							{Math.round(downloadProgress.transferred / 1024)} KB of{" "}
+							{Math.round(downloadProgress.total / 1024)} KB
+						</p>
+					</ProgressContainer>
+				)}
+
+				<UpdateActions>
+					{!downloading && (
+						<>
+							{/* Dismiss first, commit last - the order every other
 								    footer in the release uses, and the one a user's
 								    hand learns. This component put the committing
 								    button first in all three of its footers. */}
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={handleDeferUpdate}
-									disabled={downloading}
-								>
-									Update later
-								</Button>
-								<Button
-									variant="primary"
-									size="sm"
-									onClick={downloadUpdate}
-									disabled={downloading}
-								>
-									Download update
-								</Button>
-							</>
-						)}
-					</UpdateActions>
-				</UpdateContainer>
-
-				<FloatingAlert
-					open={snackbarOpen}
-					autoHideDuration={6000}
-					onClose={handleSnackbarClose}
-					variant="info"
-				>
-					A new update is available: v{updateInfo.version}
-				</FloatingAlert>
-			</>,
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleDeferUpdate}
+								disabled={downloading}
+							>
+								Update later
+							</Button>
+							<Button
+								variant="primary"
+								size="sm"
+								onClick={downloadUpdate}
+								disabled={downloading}
+							>
+								Download update
+							</Button>
+						</>
+					)}
+				</UpdateActions>
+			</UpdateContainer>,
+			/*
+			 * The offer's own notice, in the wrapper's notice slot rather than beside
+			 * the error toast: the two share one pinned box, and the wrapper is where
+			 * that box is decided (UX U6).
+			 */
+			<FloatingAlert
+				open={snackbarOpen}
+				autoHideDuration={6000}
+				onClose={handleSnackbarClose}
+				variant="info"
+			>
+				A new update is available: v{updateInfo.version}
+			</FloatingAlert>,
 		);
 	}
 
 	// If an update has been downloaded
 	if (updateDownloaded && updateInfo) {
 		return withErrorToast(
-			<>
-				<UpdateContainer>
-					<h2 className="mb-3 text-heading text-ink">
-						Update ready to install
-					</h2>
-					{/* "has been downloaded", not "is available": this is the state
+			<UpdateContainer>
+				<h2 className="mb-3 text-heading text-ink">Update ready to install</h2>
+				{/* "has been downloaded", not "is available": this is the state
 					    AFTER the download, and reusing the available state's
 					    sentence told the user nothing had happened. The version
 					    they are on stays, because that is the comparison the
 					    heading does not make. */}
-					<p className="mb-2 text-body text-ink-muted">
-						Version {updateInfo.version} has been downloaded. You are currently
-						using version {appVersion}.
-					</p>
-					{/* `text-body`, not a step down: this sentence is the whole
+				<p className="mb-2 text-body text-ink-muted">
+					Version {updateInfo.version} has been downloaded. You are currently
+					using version {appVersion}.
+				</p>
+				{/* `text-body`, not a step down: this sentence is the whole
 					    user-facing mitigation for the cancelled install, and it was the
 					    least prominent text in the panel - a footnote under a line
 					    carrying less consequence (review D2). Three sentences, not one
 					    run-on whose payload trails a spliced clause (review D5). */}
-					<p className="mt-2 text-body text-ink-muted">
-						Installing closes the app for a few minutes while the update is
-						verified and put in place. Don't reopen it until it starts by
-						itself. Opening it while the update is installing cancels the
-						install.
-					</p>
+				<p className="mt-2 text-body text-ink-muted">
+					Installing closes the app for a few minutes while the update is
+					verified and put in place. Don't reopen it until it starts by itself.
+					Opening it while the update is installing cancels the install.
+				</p>
 
-					<UpdateActions>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={handleDeferUpdate}
-							disabled={installing}
-						>
-							Update later
-						</Button>
-						{/* One click, then a panel that says it heard: the pre-flight behind this
+				<UpdateActions>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleDeferUpdate}
+						disabled={installing}
+					>
+						Update later
+					</Button>
+					{/* One click, then a panel that says it heard: the pre-flight behind this
 						    button can take seconds over a 1 GiB bundle. */}
-						<Button
-							variant="primary"
-							size="sm"
-							onClick={() => void installUpdate()}
-							disabled={installing}
-						>
-							{installing ? "Preparing to install..." : "Install now"}
-						</Button>
-					</UpdateActions>
-				</UpdateContainer>
-
-				<FloatingAlert
-					open={snackbarOpen}
-					autoHideDuration={6000}
-					onClose={handleSnackbarClose}
-					variant="success"
-				>
-					Update downloaded and ready to install
-				</FloatingAlert>
-			</>,
+					<Button
+						variant="primary"
+						size="sm"
+						onClick={() => void installUpdate()}
+						disabled={installing}
+					>
+						{installing ? "Preparing to install..." : "Install now"}
+					</Button>
+				</UpdateActions>
+			</UpdateContainer>,
+			/* The download's own confirmation, in the wrapper's notice slot (UX U6). */
+			<FloatingAlert
+				open={snackbarOpen}
+				autoHideDuration={6000}
+				onClose={handleSnackbarClose}
+				variant="success"
+			>
+				Update downloaded and ready to install
+			</FloatingAlert>,
 		);
 	}
 
@@ -1587,6 +1616,19 @@ export const UpdateNotification = ({
 	 * both are set - the offer is still available and the failure explains why it is
 	 * still worth taking. A check that finds the release again clears the failure, so
 	 * the offer takes the slot back rather than being hidden for the session.
+	 *
+	 * WHAT IT DELIBERATELY DOES NOT SAY: it names no durable record of the failure,
+	 * because for a server update there is none. The Settings card's only failure
+	 * record comes from `get-last-install-attempt` -> `readLastInstallAttempt`, which
+	 * is written by the APP-install paths - `writePendingInstallMarker` inside the
+	 * `quit-and-install` handler and the marker-recovery path - and `updateBackend`
+	 * writes nothing there. The sentence this panel used to carry ("This is also
+	 * recorded in Settings, under Application updates.") was true on the install
+	 * panel above and false here, so following it landed the reader on an empty card
+	 * - the exact nothing-to-go-on this panel exists to end (UX U5). The other
+	 * pointer it could offer, the update service log, is a file no renderer surface
+	 * can open (design D3/D6). A pointer is worth adding when a record exists to
+	 * point at, and that is its own change.
 	 */
 	if (backendUpdateFailure) {
 		return withErrorToast(
@@ -1595,13 +1637,6 @@ export const UpdateNotification = ({
 					The server update didn't finish
 				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">{backendUpdateFailure}</p>
-				{/* What survives the dismiss, and where to find it - the sentence the
-				    install panel above uses, because the record is the same record. The
-				    fallback copy used to name "the update service log", which nothing in
-				    this app can open (design D3). */}
-				<p className="mt-1 text-body-sm text-ink-muted">
-					This is also recorded in Settings, under Application updates.
-				</p>
 				<UpdateActions>
 					<Button
 						variant="outline"
@@ -1625,21 +1660,57 @@ export const UpdateNotification = ({
 	// If a backend update is available
 	if (backendUpdateAvailable && backendUpdateInfo) {
 		return withErrorToast(
-			<>
-				<UpdateContainer>
-					<h2 className="mb-3 text-heading text-ink">
-						Server update available
-					</h2>
-					<p className="mb-2 text-body text-ink-muted">
-						Server version {backendUpdateInfo.latestVersion} is available. You
-						are currently using version {backendUpdateInfo.currentVersion}.
-					</p>
-					<p className="mt-2 text-body-sm text-ink-muted">
-						Updating the server will improve AI functionality, improve security,
-						and fix bugs.
-					</p>
+			<UpdateContainer>
+				<h2 className="mb-3 text-heading text-ink">Server update available</h2>
+				<p className="mb-2 text-body text-ink-muted">
+					Server version {backendUpdateInfo.latestVersion} is available. You are
+					currently using version {backendUpdateInfo.currentVersion}.
+				</p>
+				<p className="mt-2 text-body-sm text-ink-muted">
+					Updating the server will improve AI functionality, improve security,
+					and fix bugs.
+				</p>
 
-					{backendUpdateInfo.canManageUpdate ? (
+				{backendUpdateInfo.canManageUpdate ? (
+					<UpdateActions>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleDeferBackendUpdate}
+							disabled={checking}
+						>
+							Update later
+						</Button>
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={updateBackend}
+							disabled={checking}
+						>
+							{checking ? "Updating..." : "Update server"}
+						</Button>
+					</UpdateActions>
+				) : (
+					<>
+						{/* The same treatment as the manual-required panel's sentence - one
+							    weight, no hue swap. It used to be `text-warning` here and 13px
+							    `text-ink-muted` there, for the same sentence, so the only thing
+							    marking "this one needs you" was a colour (review D5). */}
+						<p className="mt-4 text-body text-ink">
+							{backendUpdateInfo.remedy ??
+								"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip:"}
+						</p>
+						{backendUpdateInfo.updateCommand && (
+							<CommandBlock command={backendUpdateInfo.updateCommand} />
+						)}
+						{/* The same closing sentence and the same details line as the other
+							    producer of this state: a user who reached it from a version check
+							    used to get the command with no explanation of what was classified,
+							    and no hint that the button below re-reads the server (review U15). */}
+						<ManualRemedyNote
+							command={Boolean(backendUpdateInfo.updateCommand)}
+							sourceBuild={backendUpdateInfo.sourceBuild === true}
+						/>
 						<UpdateActions>
 							<Button
 								variant="outline"
@@ -1652,81 +1723,49 @@ export const UpdateNotification = ({
 							<Button
 								variant="primary"
 								size="sm"
-								onClick={updateBackend}
+								onClick={() => void checkForAllUpdates()}
 								disabled={checking}
 							>
-								{checking ? "Updating..." : "Update server"}
+								{checking ? "Checking..." : "Check for updates"}
 							</Button>
 						</UpdateActions>
-					) : (
-						<>
-							{/* The same treatment as the manual-required panel's sentence - one
-							    weight, no hue swap. It used to be `text-warning` here and 13px
-							    `text-ink-muted` there, for the same sentence, so the only thing
-							    marking "this one needs you" was a colour (review D5). */}
-							<p className="mt-4 text-body text-ink">
-								{backendUpdateInfo.remedy ??
-									"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip:"}
-							</p>
-							{backendUpdateInfo.updateCommand && (
-								<CommandBlock command={backendUpdateInfo.updateCommand} />
-							)}
-							{/* The same closing sentence and the same details line as the other
-							    producer of this state: a user who reached it from a version check
-							    used to get the command with no explanation of what was classified,
-							    and no hint that the button below re-reads the server (review U15). */}
-							<ManualRemedyNote
-								command={Boolean(backendUpdateInfo.updateCommand)}
-								sourceBuild={backendUpdateInfo.sourceBuild === true}
-							/>
-							<UpdateActions>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={handleDeferBackendUpdate}
-									disabled={checking}
-								>
-									Update later
-								</Button>
-								<Button
-									variant="primary"
-									size="sm"
-									onClick={() => void checkForAllUpdates()}
-									disabled={checking}
-								>
-									{checking ? "Checking..." : "Check for updates"}
-								</Button>
-							</UpdateActions>
-							{backendUpdateInfo.detail && (
-								<PanelDetails detail={backendUpdateInfo.detail} />
-							)}
-						</>
-					)}
-				</UpdateContainer>
-
-				{/*
-				 * The panel IS the notification here, so the toast that used to sit in the
-				 * opposite corner saying the same sentence is gone - and it is gone for the
-				 * state that never raised one, rather than being raised twice or not at
-				 * all depending on the branch (review D8).
-				 */}
-				{backendUpdateInfo.canManageUpdate && (
-					<FloatingAlert
-						open={snackbarOpen}
-						autoHideDuration={6000}
-						onClose={handleSnackbarClose}
-						variant="info"
-					>
-						A new server update is available: v{backendUpdateInfo.latestVersion}
-					</FloatingAlert>
+						{backendUpdateInfo.detail && (
+							<PanelDetails detail={backendUpdateInfo.detail} />
+						)}
+					</>
 				)}
-			</>,
+			</UpdateContainer>,
+			/*
+			 * The panel IS the notification here, so the toast that used to sit in the
+			 * opposite corner saying the same sentence is gone - and it is gone for the
+			 * state that never raised one, rather than being raised twice or not at
+			 * all depending on the branch (review D8).
+			 *
+			 * It is the wrapper's notice slot rather than a sibling of the error toast,
+			 * because the two share one pinned box (UX U6).
+			 */
+			backendUpdateInfo.canManageUpdate && (
+				<FloatingAlert
+					open={snackbarOpen}
+					autoHideDuration={6000}
+					onClose={handleSnackbarClose}
+					variant="info"
+				>
+					A new server update is available: v{backendUpdateInfo.latestVersion}
+				</FloatingAlert>
+			),
 		);
 	}
 
 	// If a backend update has been completed
 	if (backendUpdateCompleted) {
 		return withErrorToast(
+			null,
+			/*
+			 * A completion is the one branch with no panel to carry it, so it takes the
+			 * notice slot: it is a notice, and the box holds one message - the error's,
+			 * if there is one (UX U6).
+			 */
 			<FloatingAlert
 				open={true}
 				autoHideDuration={6000}

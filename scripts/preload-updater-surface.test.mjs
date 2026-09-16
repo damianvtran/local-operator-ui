@@ -198,8 +198,8 @@ test("the preload exposes the whole updater surface, method by method", () => {
 
 test("backend-update-error reaches the callback and the unsubscribe removes it", () => {
 	const seen = [];
-	const unsubscribe = api.updater.onBackendUpdateError((message) =>
-		seen.push(message),
+	const unsubscribe = api.updater.onBackendUpdateError((report) =>
+		seen.push(report),
 	);
 
 	// The channel name is the contract with the main process, so it is asserted
@@ -214,8 +214,17 @@ test("backend-update-error reaches the callback and the unsubscribe removes it",
 		"the subscription must return its own unsubscribe, which every caller uses on unmount",
 	);
 
-	deliver("backend-update-error", "The server update failed to install.");
-	assert.deepEqual(seen, ["The server update failed to install."]);
+	/*
+	 * The payload is forwarded whole, phase included: the renderer reads the phase
+	 * to decide the surface, so a bridge that unwrapped the message would put every
+	 * report back to being judged by timing (review R2-1).
+	 */
+	const report = {
+		message: "The server update failed to install.",
+		phase: "update",
+	};
+	deliver("backend-update-error", report);
+	assert.deepEqual(seen, [report]);
 
 	const [entry] = registered.filter(
 		({ channel }) => channel === "backend-update-error",
@@ -232,10 +241,13 @@ test("backend-update-error reaches the callback and the unsubscribe removes it",
 		"the handler removed must be the one that was registered",
 	);
 
-	deliver("backend-update-error", "A second failure nobody is listening for");
+	deliver("backend-update-error", {
+		message: "A second failure nobody is listening for",
+		phase: "update",
+	});
 	assert.deepEqual(
 		seen,
-		["The server update failed to install."],
+		[report],
 		"a removed listener must not be called again",
 	);
 });

@@ -291,6 +291,12 @@ const bundle = await build({
 			* hang lived in.
 			*/
 			export { UpdateNotification } from "./src/renderer/src/shared/components/common/update-notification";
+			/*
+			 * The failure panel's own container, so the sentence UNDER TEST is read from
+			 * the panel rather than from whatever else on screen happens to say it -
+			 * which surface holds it is the whole attribution question (R2-1, QA Q2).
+			 */
+			export { UpdateContainer } from "./src/renderer/src/shared/components/common/update-notification";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -510,8 +516,13 @@ globalThis.window = {
  * imports is created at module scope: it must find the `window` a renderer has
  * rather than the bare global a test process starts with.
  */
-const { CheckForUpdatesButton, FloatingAlert, Button, UpdateNotification } =
-	await import(bundlePath.href);
+const {
+	CheckForUpdatesButton,
+	FloatingAlert,
+	Button,
+	UpdateContainer,
+	UpdateNotification,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 /*
@@ -957,6 +968,31 @@ function dangerToasts(handle) {
 	return visible(handle).filter((alert) => alert.variant === "danger");
 }
 
+/**
+ * The sentence the FAILURE PANEL is carrying, or null when none is up.
+ *
+ * Read from inside the failed container rather than from the tree at large,
+ * because the same sentence can also be a toast's - and which of the two holds
+ * it is the whole of the attribution question (review R2-1, QA Q2).
+ */
+function failurePanelReason(handle) {
+	const failed = walk(handle.tree).find(
+		(node) => node.type === UpdateContainer && node.props?.tone === "failed",
+	);
+	if (!failed) return null;
+	const paragraph = walk(failed.props.children).find(
+		(node) => node.type === "p" && typeof node.props?.children === "string",
+	);
+	return paragraph?.props.children ?? null;
+}
+
+/** The toast the pinned box is showing right now, if any. */
+function pinnedToast(handle) {
+	return walk(handle.tree).find(
+		(node) => node.type === FloatingAlert && node.props?.open === true,
+	);
+}
+
 /** The panel's control for a given label, found in the tree it rendered. */
 function control(handle, label) {
 	const found = walk(handle.tree).find(
@@ -965,6 +1001,16 @@ function control(handle, label) {
 	assert.ok(found, `the panel must render a "${label}" control`);
 	return found;
 }
+
+/*
+ * A report as the main process writes it: the sentence, and the PHASE that
+ * produced it. The phase is what the renderer reads to decide the surface - an
+ * attempt's reason belongs on the failure panel, a check's on the toast - so
+ * these helpers name the producer rather than leaning on whether an attempt
+ * happens to be running (review R2-1, QA Q2).
+ */
+const updateReport = (message) => ({ message, phase: "update" });
+const checkReport = (message) => ({ message, phase: "check" });
 
 /** The server offer the main process sends before it will run pip. */
 const SERVER_UPDATE_OFFER = {
@@ -1017,7 +1063,7 @@ test("backend-update-error takes the in-flight panel down and says why", () => {
 	// pip exited 0 having installed nothing, which is the operator's own log line.
 	const reason =
 		"The server update ran but the installed version did not change (still 0.55.9), so it is reported as failed.";
-	updater.emit("backend-update-error", reason);
+	updater.emit("backend-update-error", updateReport(reason));
 	handle.render();
 
 	assert.equal(
@@ -1084,7 +1130,10 @@ test("a resolved false with no event still leaves the panel and says something",
 test("a later offer supersedes the failure and repaints the offer panel", () => {
 	const handle = mountNotification();
 	startServerUpdate(handle);
-	updater.emit("backend-update-error", "The server update failed to install.");
+	updater.emit(
+		"backend-update-error",
+		updateReport("The server update failed to install."),
+	);
 	handle.render();
 	assert.ok(showsText(handle, "The server update didn't finish"));
 
@@ -1114,7 +1163,10 @@ test("a later offer supersedes the failure and repaints the offer panel", () => 
 test("Try again starts a second attempt and clears the failure", () => {
 	const handle = mountNotification();
 	startServerUpdate(handle);
-	updater.emit("backend-update-error", "The server update failed to install.");
+	updater.emit(
+		"backend-update-error",
+		updateReport("The server update failed to install."),
+	);
 	handle.render();
 
 	control(handle, "Try again").props.onClick();
@@ -1164,7 +1216,10 @@ test("a check-time failure does not end the check or claim an attempt", () => {
 	handle.render();
 	assert.ok(showsText(handle, "Checking for updates"));
 
-	updater.emit("backend-update-error", "Unable to determine backend version.");
+	updater.emit(
+		"backend-update-error",
+		checkReport("Unable to determine backend version."),
+	);
 	handle.render();
 
 	assert.ok(
@@ -1175,6 +1230,54 @@ test("a check-time failure does not end the check or claim an attempt", () => {
 	const toasts = dangerToasts(handle);
 	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
 	assert.match(toasts[0].text, /Unable to determine backend version/);
+});
+
+/**
+ * A check's failure cannot become the attempt's reason (review R2-1, QA Q2).
+ *
+ * A server update takes minutes and the sibling surfaces stay live, so a check
+ * the user pressed elsewhere can fail inside one. Both reports arrive on the same
+ * channel, and until the phase travelled with them the panel decided by asking
+ * whether an attempt was in flight - which is true of the check as well - so the
+ * check's "Unable to determine backend version." stood as the update's failure
+ * while the update's own reason went to the toast. QA measured that this did not
+ * self-correct: the wrong sentence stood until a later offer replaced the panel.
+ */
+test("a check's failure during an attempt cannot own the failure panel", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	assert.ok(showsText(handle, "Updating server"));
+
+	const checkFailure = "Unable to determine backend version.";
+	updater.emit("backend-update-error", checkReport(checkFailure));
+	handle.render();
+
+	// The attempt is untouched, and the check's sentence is where a check's
+	// failure has always gone.
+	assert.ok(
+		showsText(handle, "Updating server"),
+		"a check's failure must not end the attempt",
+	);
+	assert.equal(
+		failurePanelReason(handle),
+		null,
+		"a check's sentence must not stand as the update's failure",
+	);
+	const toasts = dangerToasts(handle);
+	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
+	assert.match(toasts[0].text, /Unable to determine backend version/);
+
+	// The attempt's own reason arrives, and THAT is what the panel carries.
+	const attemptReason = "The server update ran but installed nothing.";
+	updater.emit("backend-update-error", updateReport(attemptReason));
+	handle.render();
+
+	assert.equal(
+		failurePanelReason(handle),
+		attemptReason,
+		"the panel must carry the attempt's own sentence",
+	);
+	assert.notEqual(failurePanelReason(handle), checkFailure);
 });
 
 test("a message with no panel to sit beside still renders the toast", () => {
@@ -1189,13 +1292,77 @@ test("a message with no panel to sit beside still renders the toast", () => {
 	 * failed background check leaves the panel in.
 	 */
 	const handle = mountNotification();
-	updater.emit("backend-update-error", "Unable to determine backend version.");
+	updater.emit(
+		"backend-update-error",
+		checkReport("Unable to determine backend version."),
+	);
 	handle.render();
 
 	const toasts = dangerToasts(handle);
 	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
 	assert.match(toasts[0].text, /Unable to determine backend version/);
 	assert.equal(showsText(handle, "The server update didn't finish"), false);
+});
+
+/**
+ * One message in the pinned box, and the error is the half that takes it (UX U6).
+ *
+ * The offer panel carries its own `FloatingAlert`, and a failed check carries
+ * another. Both are pinned to `right-4 bottom-4 z-50`, so the pair was one painted
+ * over the other and which of them a reader saw came down to DOM order. The
+ * precedence is now stated: while an error is set the box holds the error and the
+ * branch's own notice is not rendered beside it (the notice repeats what the panel
+ * already says), and closing the error clears it, so the box is free for the next
+ * message rather than being held by one the reader has already dismissed.
+ *
+ * UX read the collision from the classes and the DOM and had no browser to see it
+ * with, so this case is the driven one: it mounts the shipped panel and counts
+ * what is pinned in that corner.
+ */
+test("the pinned box holds one message, and the error takes it", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-available", SERVER_UPDATE_OFFER);
+	handle.render();
+	const offered = visible(handle);
+	assert.equal(offered.length, 1, JSON.stringify(offered));
+	assert.equal(offered[0].variant, "info");
+	assert.match(offered[0].text, /A new server update is available/);
+
+	// UX U6's own repro: a check the user pressed fails while the offer stands.
+	updater.emit(
+		"backend-update-error",
+		checkReport(
+			"Error checking for updates: getaddrinfo ENOTFOUND api.github.com",
+		),
+	);
+	handle.render();
+
+	const shown = visible(handle);
+	assert.equal(
+		shown.length,
+		1,
+		`the box holds one message: ${JSON.stringify(shown)}`,
+	);
+	assert.equal(shown[0].variant, "danger");
+	assert.match(shown[0].text, /getaddrinfo ENOTFOUND/);
+	// The offer is a panel, not a toast: the box yielding its duplicate leaves the
+	// offer itself on screen behind the message.
+	assert.ok(showsText(handle, "Server update available"));
+
+	// The error wins while it is UP, not for ever: closing it empties the box.
+	pinnedToast(handle).props.onClose();
+	handle.render();
+	assert.equal(visible(handle).length, 0, "closing must free the box");
+
+	updater.emit("backend-update-available", {
+		...SERVER_UPDATE_OFFER,
+		latestVersion: "0.55.11",
+	});
+	handle.render();
+	const again = visible(handle);
+	assert.equal(again.length, 1, JSON.stringify(again));
+	assert.equal(again[0].variant, "info");
+	assert.match(again[0].text, /0.55.11/);
 });
 
 test("the by-hand panel replaces the in-flight one without a second message", async () => {

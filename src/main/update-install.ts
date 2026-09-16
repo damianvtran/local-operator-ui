@@ -2756,13 +2756,18 @@ export function isPinnableVersion(
  * loudly, exit 1; pin plus `--no-cache-dir` installs 0.55.10, exit 0.
  *
  * `--no-cache-dir` covers ONE of the two stale sources, and it is worth keeping
- * anyway: without it, pip still builds a CONDITIONAL request from its cached entry
- * and serves the cached body on a 304 (`pip/_internal/index/collector.py` sends
- * `max-age=0` on every `/simple/` request, and `pip/_vendor/cachecontrol/adapter.py`
- * still revalidates and reuses), so the cache can keep feeding the resolver a page
- * older than the release. What it does NOT cover is a stale page served by the CDN
- * in front of PyPI, which the pin does. It also bypasses the wheel cache, so the
- * honest price is a fresh index read AND re-downloading the artifact - not the
+ * anyway: without it, pip answers a `/simple/` request out of its own HTTP cache
+ * while that entry is fresh, so the cache can keep feeding the resolver a page
+ * older than the release. WHICH path that takes depends on the pip, and both were
+ * measured: on the pip this app bundles (26.2.1) it is a plainly FRESH hit - no
+ * request to PyPI at all, `The response is "fresh", returning cached response` -
+ * and on the older pip 25.0.1 the same reconstructed entry is revalidated and its
+ * stale body served on a 304 (`pip/_internal/index/collector.py` sends `max-age=0`
+ * on every `/simple/` request, and `pip/_vendor/cachecontrol/adapter.py` still
+ * revalidates and reuses). Two pips, two paths, one outcome, and the outcome is
+ * what this flag is here for. What it does NOT cover is a stale page served by the
+ * CDN in front of PyPI, which the pin does. It also bypasses the wheel cache, so
+ * the honest price is a fresh index read AND re-downloading the artifact - not the
  * index alone. A server update is a rare, explicitly requested, network-bound
  * operation, so that is the intended trade.
  *

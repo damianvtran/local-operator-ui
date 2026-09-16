@@ -5,6 +5,7 @@ import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { updateCheckVerdict } from "../../../../../main/update-check-verdict";
+import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
 import { FloatingAlert } from "./floating-alert";
 import {
 	ProgressContainer,
@@ -99,7 +100,9 @@ const SERVER_UPDATE_FAILURE_MESSAGE =
  * survives it - a registry rebuilt per install would leave an event fired at a
  * stale set of listeners with nothing to deliver to.
  */
-const backendUpdateErrorListeners: Array<(message: string) => void> = [];
+const backendUpdateErrorListeners: Array<
+	(report: BackendUpdateErrorReport) => void
+> = [];
 
 /**
  * Mock implementation of the window.api.updater methods
@@ -132,7 +135,7 @@ const mockUpdaterApi = () => {
 			}
 			if (window.triggerBackendUpdateError) {
 				for (const listener of [...backendUpdateErrorListeners]) {
-					listener(SERVER_UPDATE_FAILURE_MESSAGE);
+					listener({ message: SERVER_UPDATE_FAILURE_MESSAGE, phase: "update" });
 				}
 				return false;
 			}
@@ -236,14 +239,17 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
-		onBackendUpdateError: (callback: (message: string) => void) => {
+		onBackendUpdateError: (
+			callback: (report: BackendUpdateErrorReport) => void,
+		) => {
 			/*
 			 * Registered rather than fired at subscribe time, unlike the other triggers
 			 * here: this channel reports the outcome of an ATTEMPT, and the panel only
 			 * treats it as one while an attempt is in flight - which is the property the
 			 * shipped listener has to have, because `checkForBackendUpdates` sends the
-			 * same channel for the check's own failures. So the event is delivered by
-			 * `updateBackend` above, where the main process delivers it.
+			 * same channel for the check's own failures, tagged `phase: "check"`. So the
+			 * event is delivered by `updateBackend` above, where the main process
+			 * delivers it.
 			 */
 			backendUpdateErrorListeners.push(callback);
 			return () => {
