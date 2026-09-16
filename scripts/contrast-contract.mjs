@@ -823,6 +823,130 @@ const STRUCTURAL_CALL_SITES = [
 		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
 		why: "PERCEPTIBLE measures hairline against sunken; nothing otherwise proves the component renders those two roles, and one token here reproduces D7 behind a green gate",
 	},
+	{
+		/*
+		 * The chat sidebar's CURRENT-ROW ground, and the operator's own report:
+		 * "the sidebar doesn't visibly highlight the selected conversation".
+		 *
+		 * Every row in that panel is drawn on `surface`, and the ground every
+		 * current-row state used was `accent-wash` — ΔE00 1.05 against it in
+		 * tokyoNight (#262B3F on #24283B), which is no mark at all, while the
+		 * hover step the same rows carry (`elevated`) measures 4.58 there. The
+		 * pointer therefore read as the current row and the current row did not.
+		 * Contrast is equally useless as an instrument here: the two colours
+		 * differ in hue rather than luminance, so the pair reads 1.04:1.
+		 *
+		 * WHY A CALL SITE AND NOT A PALETTE ROW. `accent-wash` is not invisible
+		 * everywhere: the app rail paints it on `sunken`, where it measures 9.6 in
+		 * tokyoNight, and the settings rail is the OTHER `surface` panel and is
+		 * fixed with this one (the pin below). Strengthening the role would make
+		 * every hover tint in the app louder to fix the two panels that draw it on
+		 * `surface`. The replacement is `sunken`, which the field-floor loop at the
+		 * bottom of this file already asserts as a perceptible step from `surface`
+		 * AND from `elevated` in all twelve palettes — BOTH pairs pre-date this
+		 * change; only the call-site pins are new — with a worst case of ΔE00 3.75
+		 * against the 2.0 field floor. What no palette assertion can see is the
+		 * CLASS on the row, which is how this shipped: every row in this file stayed
+		 * green while painting a ground the user could not see. Reverting this line
+		 * to a wash fails here and nowhere else in THIS file
+		 * (`scripts/chat-sidebar-selection.test.mjs` catches it too, by resolving the
+		 * row's own class expression through the shipped `cn`); a palette edit that
+		 * collapsed `surface` against `sunken` fails the `["surface", "sunken"]`
+		 * pair in that loop.
+		 *
+		 * The `hover:` half is part of the ground, not decoration: `rowStyle`
+		 * carries `hover:bg-elevated`, and the hover variant outranks a bare
+		 * background in the cascade, so without it the pointer REPLACED the
+		 * selection ground on the row the user is on — in obsidian those two
+		 * grounds are ΔE00 0.77 apart, so hovering the current row erased it.
+		 * The class is one shared constant for all four current-row states in
+		 * this panel (the selected conversation, the All chats filter, the New
+		 * chat row and the entity row staging a draft), so pinning the
+		 * declaration is what holds all four.
+		 */
+		what: "chat sidebar current-row ground",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: 'const rowCurrent = "bg-sunken text-ink hover:bg-sunken";',
+		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05), and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the invisible selection",
+	},
+	{
+		/*
+		 * The row the operator reported, pinned as the EXPRESSION rather than the
+		 * ground: a later reader can leave the shared constant intact and still
+		 * un-mark the conversation — by dropping the reference, or by weakening
+		 * the predicate so the row never reaches it. Both are this substring.
+		 *
+		 * `!activeDraftKey` is in the pin because it is the same term the row's
+		 * `aria-current` reads: the row may not paint a ground the accessibility
+		 * tree does not claim, and it may not claim one it does not paint.
+		 */
+		what: "chat session row current-row mark",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: "selectedConversation === row.session_id &&\n\t\t\t\t\t\t!activeDraftKey &&\n\t\t\t\t\t\trowCurrent,",
+		why: "this is the mark the operator reported missing; the predicate and the ground have to stay on the row together, which is what `aria-current` on the same two terms asserts to a screen reader",
+	},
+	{
+		/*
+		 * The ENTITY row's name button, and the reason it needs its own pin rather
+		 * than a share of the constant's: this element carries `rowStyle`, so its
+		 * `hover:bg-elevated` painted over the wrapper's ground and the pointer
+		 * replaced the mark across the row (round 1, the MAJOR the entity row was
+		 * changed for). The ground therefore appears TWICE on that row — on the
+		 * wrapper, which fills the gaps and corners, and on this button, where the
+		 * `hover:` half is the only thing that beats the step it inherits — and a
+		 * reader who deletes either one leaves a row that still looks marked in the
+		 * source and is not. The pin is the button's own expression.
+		 */
+		what: "entity row current-row ground",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: 'className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}',
+		why: "the element the pointer lands on has to carry the ground as well as the wrapper: a child's background paints over its parent's, so without this the current entity row is repainted `elevated` by the pointer and is indistinguishable from a hovered one",
+	},
+	{
+		/*
+		 * The settings rail's current row, which was the same defect on the same
+		 * ground: the rail's root is `bg-surface` (`settings-sidebar.tsx`) and it
+		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
+		 * (`#262B3F` on `#24283B`), a row with no ground at all, identifiable only by
+		 * its accent glyph and weight. It is here rather than in a set of its own
+		 * because it is one class for one role decision (round 1, design D2).
+		 * Every citation of this pair in this file and in the two panels' sources
+		 * uses that palette pair; the frames' own bytes render about one step off it
+		 * in both values, which `docs/evidence/chat-sidebar-selection/README.md`
+		 * states where it gives the frame readings.
+		 */
+		what: "settings rail current-row ground",
+		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		must: '"bg-sunken font-medium text-ink hover:bg-sunken"',
+		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer",
+	},
+	{
+		/*
+		 * The transcript's quote toolkit, and why this is a PIN rather than a row
+		 * in `CONTROLS`.
+		 *
+		 * `CONTROLS` asserts `ink` on the control's fill AND an edge — fill or
+		 * border — clearing 3:1 against the ground behind it. The toolkit is a
+		 * floating surface, not a bounded control, and it fails the second term in
+		 * all twelve palettes by measurement: `elevated` is 1.13-1.40:1 against
+		 * `canvas` and `hairline` is 1.25-1.79:1, because § 2 caps a hairline below
+		 * 2:1 by design. A row here would therefore either fail the gate or be a
+		 * lie about which ground the object is read against. The ink half IS
+		 * already asserted — `inkDim` on `elevated` is one of the INKS x GROUNDS
+		 * pairs, 4.51-6.20:1 across the twelve — and the icons are the whole
+		 * affordance, so what is left unguarded is the call site: repaint the
+		 * floating shell `bg-canvas` and it stops being a floating object at all
+		 * while every palette assertion stays green.
+		 *
+		 * The same roles are pinned on the legacy `message-controls.tsx` strip by
+		 * that component's own comment rather than by a row here, which is the
+		 * gap this entry closes for the canonical transcript.
+		 */
+		what: "transcript quote toolkit floating shell",
+		file: "src/renderer/src/features/chat/canonical/quote-toolkit.tsx",
+		must: "z-10 flex h-8 items-center rounded-md border border-hairline bg-elevated px-1",
+		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
+	},
 ];
 
 /** Roles that must clear the structural 3:1 floor on all four grounds. */
@@ -1027,6 +1151,7 @@ const REQUIRED_ROLES = [
 	"accentActive",
 	"accentWash",
 	"onAccent",
+	"chartBarHover",
 	"success",
 	"successWash",
 	"successBorder",
@@ -1132,6 +1257,45 @@ const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
  */
 const FIELD_SEPARATION_FLOOR = 2.0;
 const LINE_SEPARATION_FLOOR = 4.0;
+
+/*
+ * The chart's hover mark, and why it is TWO assertions rather than one.
+ *
+ * Separation from `accent` is what makes the mark findable at all, and the floor
+ * is **10 ΔE00**. The field floor above (2.0) is argued for a control compared
+ * with ITSELF across two states in the same place; here the reader is finding ONE
+ * bar among six to thirty-one by comparing it with its neighbours in SPACE, with
+ * the tooltip's own box often covering the bar beside it — so the distance has to
+ * carry on its own, with no state change to compare against. The role this
+ * replaced measured 2.8 in monokai, 3.7 in neon and 4.3 in localOperatorDark
+ * against the mark it was supposed to pick out, i.e. it sat at or under the
+ * adjacent-FIELD floor that this file uses for two large planes.
+ *
+ * WHERE 10 COMES FROM, stated because it is not inherited from another constant:
+ * the neighbouring floors measure different things. The four SEMANTIC roles take
+ * `SEPARATION_FLOOR` (15) from each other, and the syntax tokens take
+ * `SYNTAX_COMMENT_FLOOR` (8, used as a ΔE00 separation inside the syntax block).
+ * 10 sits deliberately between them: a hovering bar is larger than a token and
+ * has to be found faster, and unlike a semantic it does not have to be
+ * unmistakable from every other semantic in the palette.
+ *
+ * The twelve authored values clear it, measured with this file's own `deltaE`:
+ * 10.0 to 18.7, and the tightest is tokyoNight at 10.002 — a margin of two
+ * thousandths, recorded here rather than left for the next editor to discover.
+ * That pair is therefore the one a palette change must re-measure; the gate will
+ * fail rather than let it slide, which is what a floor is for.
+ *
+ * Distance from the plot ground is what makes it a highlight rather than a
+ * demotion, and it is the half no floor saw. `accentHover` — the role this used
+ * to borrow — moves TOWARD the ground in obsidian (16.97:1 at rest, 13.96:1
+ * hovered, the only palette of the twelve that does), so the pointed-at bar reads
+ * as receding. Every palette's `chartBarHover` is authored to be at least as far
+ * from the ground the chart is drawn on as `accent` is: a brighter step on a dark
+ * ground, a darker one on a light ground, and — in obsidian, whose accent is
+ * already its brightest value — a chroma step at the same lightness instead.
+ */
+const CHART_HOVER_SEPARATION_FLOOR = 10;
+const CHART_HOVER_GROUND = "surface";
 
 /*
  * And the other end. A hairline that clears the line floor by enough stops
@@ -1481,6 +1645,30 @@ for (const { id, palette: p } of palettes) {
 		if (got < FIELD_SEPARATION_FLOOR) {
 			fail(
 				`${id}: adjacent \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need ${FIELD_SEPARATION_FLOOR}) — a step the eye cannot see is not a step`,
+			);
+		}
+	}
+
+	/* The chart's hover mark: findable among its siblings, and never closer to the
+	   plot ground than the resting mark. */
+	if (
+		isHex(p.chartBarHover) &&
+		isHex(p.accent) &&
+		isHex(p[CHART_HOVER_GROUND])
+	) {
+		assertions++;
+		const separation = deltaE(p.chartBarHover, p.accent);
+		if (separation < CHART_HOVER_SEPARATION_FLOOR) {
+			fail(
+				`${id}: \`chartBarHover\` ${p.chartBarHover} is ΔE00 ${r2(separation)} from \`accent\` ${p.accent}, need ${CHART_HOVER_SEPARATION_FLOOR} — a mark the reader has to find among its SIBLINGS is compared with them, not with itself across two states`,
+			);
+		}
+		assertions++;
+		const hovered = ratio(p.chartBarHover, p[CHART_HOVER_GROUND]);
+		const resting = ratio(p.accent, p[CHART_HOVER_GROUND]);
+		if (hovered < resting) {
+			fail(
+				`${id}: \`chartBarHover\` is ${r2(hovered)}:1 on ${CHART_HOVER_GROUND} where \`accent\` is ${r2(resting)}:1 — the hovered mark must not recede toward the ground it is drawn on`,
 			);
 		}
 	}

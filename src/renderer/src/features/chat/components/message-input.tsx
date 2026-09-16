@@ -64,7 +64,10 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
-import { COMPOSER_TEXTAREA_SELECTOR } from "../composer-field";
+import {
+	COMPOSER_TEXTAREA_SELECTOR,
+	registerComposerFocus,
+} from "../composer-field";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -87,6 +90,7 @@ import {
 	CREDENTIAL_ARMED_NOTICE,
 	CREDENTIAL_STORE_TIMEOUT_MS,
 	CREDENTIAL_TYPING_NOTICE,
+	type CancelledToken,
 	type Capture,
 	type CredentialPayload,
 	IDLE_CAPTURE,
@@ -96,6 +100,9 @@ import {
 	cancelTypedCredential,
 	capturePasted,
 	citedPayloads,
+	credentialNamesFrom,
+	holdsCancelledToken,
+	isArmed,
 	isTyping,
 	mintTypedCredential,
 	storedNotice,
@@ -105,6 +112,15 @@ import {
 	unredactedNotice,
 	unstoredNotice,
 } from "./credential-capture";
+
+/**
+ * The id the capture's notice carries, so the field it describes can name it.
+ *
+ * One composer per pane and one notice per composer, so a constant is enough;
+ * it is a constant rather than a prop because the relationship is between two
+ * elements of THIS component and nothing outside it should need to know.
+ */
+const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 import {
 	DirectoryIndicator,
@@ -122,7 +138,13 @@ import {
 	handleSlashKeyDown,
 	useSlashCompletion,
 } from "./slash-commands";
-import { pointerPickRuns } from "./slash-contract";
+/*
+ * `extensionFor` comes from the CONTRACT module rather than from the popup
+ * component: the ambiguous Enter's splice is a pure function of the draft, the
+ * caret and the word span, and living there is what lets
+ * `scripts/slash-contract.test.mjs` bundle and execute the shipped function.
+ */
+import { extensionFor, pointerPickRuns } from "./slash-contract";
 /*
  * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
  * spliced command line to the page's dispatcher and must know whether it ran to
@@ -242,6 +264,15 @@ type MessageInputProps = {
 		 * resolver to parse a prefix format it would then have to track forever.
 		 */
 		typed?: string,
+		/**
+		 * Called once the session the send is about to use EXISTS and before the
+		 * message is admitted, and the only window in which the credential capture
+		 * can store into a conversation that send is creating. See
+		 * `admitChatDraft`'s `beforeAdmission` for the whole argument; a host that
+		 * cannot offer the window simply ignores it, and the composer then keeps
+		 * the pre-seam behaviour (an honest not-stored citation).
+		 */
+		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
 	) => SendOutcome | Promise<SendOutcome>;
 	isLoading: boolean;
 	/**
@@ -575,6 +606,16 @@ const composerBox = (): HTMLTextAreaElement | null =>
 	document.querySelector<HTMLTextAreaElement>(COMPOSER_TEXTAREA_SELECTOR);
 
 /**
+ * A staged quote's own remove control, as the removal's focus hand-off finds it.
+ *
+ * The accessible name is the handle rather than a `data-` attribute, because it
+ * is the same one `reply-preview.tsx` labels the control with and the same one a
+ * screen reader announces - a second name for the same button is how the
+ * control and its selector stop meaning the same thing.
+ */
+const REPLY_CHIP_REMOVE_SELECTOR = '[aria-label="Remove reply"]';
+
+/**
  * Whether the user has POINTED at the composer since it was last handed focus.
  *
  * A press on an option hands focus here (`chat-page.tsx`), which makes "the
@@ -895,6 +936,31 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const nextIndexRef = useRef(1);
 		const [unredacted, setUnredacted] = useState<string | null>(null);
 		/*
+		 * The buffer the CAPTURE itself last wrote, so a whole-buffer replacement can
+		 * be told apart from the capture's own edit (see the teardown effect below).
+		 * A ref rather than a derivation: the two writers land in one React commit,
+		 * and the question is only ever "did the capture put this text here?".
+		 */
+		const captureOwnedBuffer = useRef<string | null>(null);
+		/*
+		 * The token an Esc cancel just left inert in the buffer (§5).
+		 *
+		 * It is what keeps the SUBMIT seam from re-reading the restored plaintext as
+		 * the `/credential` COMMAND: the notice promices "Enter will expose them",
+		 * and the dispatcher used to take the leading token instead — opening the
+		 * picker and stripping the very characters the sentence was about (QA round
+		 * 1, Q2). Held as the cancel's own arrival offset and text, so it stops
+		 * applying the instant an edit moves the token (`holdsCancelledToken`).
+		 */
+		const cancelledToken = useRef<CancelledToken | null>(null);
+		/*
+		 * Set when a submit has succeeded, so the payload map is retired with the
+		 * BUFFER rather than ahead of it. Clearing the map first left a window in
+		 * which the raw `[Credential #1, 19 chars]` painted un-pilled and an Enter
+		 * sent a citation nothing backed any more (code review round 1, MINOR-5).
+		 */
+		const retirePayloads = useRef(false);
+		/*
 		 * The names the session's store already holds, for the key guard (§8).
 		 *
 		 * Fetched when the capture ARMS and cached, because the desktop contract is
@@ -935,6 +1001,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const storeCitedCredentials = useCallback(
 			async (
 				text: string,
+				/*
+				 * The session to store into, defaulting to the pane's own. The argument
+				 * exists for ONE caller — the send that is creating the session — which
+				 * has the id only inside the seam (`beforeAdmission`) because the create
+				 * happens between the composer and the transport (UX round 1, U2).
+				 */
+				sessionId: string | undefined = credentialSessionId,
 			): Promise<{ text: string; stored: string[]; refused: string[] }> => {
 				const payloads = payloadsRef.current;
 				const cited = citedPayloads(text, payloads.values());
@@ -942,9 +1015,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				const refused = new Map<number, UnstoredReason>();
 				const stored: string[] = [];
 				for (const payload of cited) {
-					if (!credentialSessionId) {
-						// No session to reach (a draft pane), which is the TUI's `null`
-						// answer: the round-trip could not be made at all.
+					if (!sessionId) {
+						// No session to reach (a draft pane with no seam), which is the TUI's
+						// `null` answer: the round-trip could not be made at all.
 						refused.set(payload.index, "unreachable");
 						continue;
 					}
@@ -952,7 +1025,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						const answer = await withTimeout(
 							desktopResult<{ data?: { ok?: boolean; reason?: string } }>({
 								op: "sessions.credential",
-								sessionId: credentialSessionId,
+								sessionId,
 								action: "store",
 								key: payload.key,
 								value: payload.value,
@@ -1015,7 +1088,38 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// string on the reply path too. Building the prefix inline here put it
 				// downstream of every comparison and deadlocked Restore - see
 				// `buildSendPayload`.
-				const carried = await storeCitedCredentials(message);
+				/*
+				 * A DRAFT PANE IS THE ONE PLACE THE STORE CANNOT RUN YET, and the most
+				 * likely first use of this feature is exactly that pane (UX round 1, U2).
+				 * `credentialSessionId` is undefined until a session exists, the session is
+				 * created INSIDE the send, and the whole point of §9 is that the value is
+				 * in the session's tool environment BEFORE the message citing it leaves.
+				 * So when there is no session to reach, the store defers to the host's own
+				 * `beforeAdmission` seam - the one window between `sessions.create`
+				 * answering and `sessions.message` going out - and the payload it sends is
+				 * the UNSUBSTITUTED text, so the seam still gets to write the citation
+				 * after it has stored. `settled` carries the answer back out of the seam
+				 * for the toasts, which cannot be raised before the send on this path
+				 * because there is nothing to raise them about until it lands.
+				 */
+				let settled:
+					| { text: string; stored: string[]; refused: string[] }
+					| undefined;
+				const seam =
+					credentialSessionId
+						? undefined
+						: async (sessionId: string) => {
+								settled = await storeCitedCredentials(message, sessionId);
+								return settled.text;
+							};
+				// Assembled by the same function the composer compares against, so the
+				// string sent, stored, guarded and reasoned about by the copy is one
+				// string on the reply path too. Building the prefix inline here put it
+				// downstream of every comparison and deadlocked Restore - see
+				// `buildSendPayload`.
+				const carried = seam
+					? { text: message, stored: [], refused: [] }
+					: await storeCitedCredentials(message);
 				if (carried.stored.length > 0)
 					showSuccessToast(storedNotice(carried.stored));
 				/*
@@ -1029,6 +1133,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (carried.refused.length > 0)
 					showWarningToast(unstoredNotice(carried.refused));
 				const accepted = await onSendMessage(
+					// With the seam the payload travels with its MARKERS: the seam stores
+					// first, substitutes second, and what leaves is the substituted text.
 					buildSendPayload(carried.text, replies),
 					attachments.map((a) => a.path),
 					onEchoPainted,
@@ -1036,7 +1142,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// resolves an option ordinal against THIS, never against the string
 					// the reply prefix produced.
 					message,
+					seam,
 				);
+				// The deferred store's own receipts, raised now that they exist.
+				if (accepted !== false && accepted !== SEND_HELD && settled) {
+					if (settled.stored.length > 0)
+						showSuccessToast(storedNotice(settled.stored));
+					if (settled.refused.length > 0)
+						showWarningToast(unstoredNotice(settled.refused));
+				}
 				/*
 				 * Both failure answers leave the composer's own payload exactly as it is,
 				 * replies and attachments included.
@@ -1061,13 +1175,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * same case — the message may be on the owner and its own retry lives on
 				 * the store's claim, so the value has to stay until that resolves.
 				 */
-				payloadsRef.current.clear();
-				nextIndexRef.current = 1;
+				/*
+				 * THE MAP IS RETIRED ONCE THE STORE HOLDS THE VALUES (§9.5) AND THE BUFFER
+				 * HAS STOPPED CITING THEM - the order matters, and getting it wrong was a
+				 * real window: clearing the map first left the raw
+				 * `[Credential #1, 19 chars]` on screen with nothing to paint it as a pill,
+				 * and an Enter inside that window sent a citation no map entry backed any
+				 * more (code review round 1, MINOR-5). `retirePayloads` is the request; the
+				 * effect below performs it in the commit that empties the box, so the two
+				 * cannot be seen apart. A REFUSED send keeps the map, because the
+				 * operator's unsent draft must not lose the value behind a pill they can
+				 * still see. `SEND_HELD` is the same case — the message may be on the owner
+				 * and its own retry lives on the store's claim, so the value has to stay
+				 * until that resolves.
+				 */
+				retirePayloads.current = true;
 				setUnredacted(null);
 				if (conversationId) {
 					clearReplies(conversationId);
 					clearAttachments(conversationId);
 				}
+				return accepted;
 			},
 			[
 				onSendMessage,
@@ -1128,8 +1256,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * keystroke would land in the middle of the completed word.
 		 */
 		const pendingCaret = useRef<number | null>(null);
+		/*
+		 * The last buffer React committed, so `applyCapture` can tell a write that
+		 * MOVED the box from one that only re-affirmed it. Read by the caret rule
+		 * below, which is the whole of the empty-span Escape fix.
+		 */
+		const bufferNow = useRef(newMessage);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: the value is the trigger, the ref is what is written
 		useLayoutEffect(() => {
+			bufferNow.current = newMessage;
 			const field = textareaRef.current;
 			const at = pendingCaret.current;
 			if (!field || at === null) return;
@@ -1160,6 +1295,45 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/**
+		 * §6's other half: the MARKER text reaches the persisted draft.
+		 *
+		 * The rule §6 states is that the marker text IS persisted — it holds no
+		 * secret — while the draft is not written WHILE the masked capture is open.
+		 * Only the first half was implemented: the write was gated on
+		 * `draftHeld: isTyping(capture)` as derived at RENDER time, and the mint
+		 * writes the new buffer through the same setter in the same tick, while the
+		 * mask is still open. So the post-mint value was skipped and no later write
+		 * followed: `localStorage` kept the PRE-capture `/credential `, and a remount
+		 * restored a token with no pill — contradicting §6 and losing the operator's
+		 * citation (QA round 1, Q1).
+		 *
+		 * Called from the capture's OWN writes, which is where that half of the rule
+		 * belongs: `handleChange` cannot see them, because the capture's edits never
+		 * went through the textarea. A masked state writes nothing — the whole point
+		 * of `draftHeld` — and every state the capture ENDS in does, which is what
+		 * makes the persisted draft agree with the box at the moments the box changes
+		 * for a reason the operator did not type.
+		 *
+		 * THE ESC-RESTORED PLAINTEXT IS PERSISTED TOO, deliberately (UX round 1,
+		 * U4). Leaving it out kept a secret off disk, which is defensible — but the
+		 * draft then held the inert `/credential ` the operator had just cancelled,
+		 * so a crash or a quit came back holding a token that looks like a capture
+		 * and is not one, with their line gone. The module's own words for that state
+		 * are the answer: after the unredact "it is their prose, not a credential",
+		 * and the composer persists prose.
+		 */
+		const persistDraft = useCallback(
+			(capture: Capture, buffer: string) => {
+				if (!conversationId) return;
+				if (isTyping(capture)) return;
+				useConversationInputStore
+					.getState()
+					.setCurrentInput(conversationId, buffer);
+			},
+			[conversationId],
+		);
+
+		/**
 		 * Write one settled credential state into the composer.
 		 *
 		 * The value map and the buffer are written together and never apart: a
@@ -1181,13 +1355,122 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						payload.index + 1,
 					);
 				}
+				/*
+				 * THE CARET IS ONLY MOVED WHEN THE BUFFER MOVED WITH IT (design §5; UX
+				 * round 1, U1). The two are one write in every state but one, and that
+				 * one is the EMPTY-SPAN ESCAPE: with nothing masked there is nothing to
+				 * restore, so `cancelTypedCredential` answers the buffer it was given —
+				 * React bails out of the identical `setNewMessage`, the effect above
+				 * never runs, and the position parked here was therefore never consumed.
+				 * It stayed armed for the operator's NEXT character, which landed at the
+				 * old offset with the caret snapped back one behind it — measured as
+				 * "/credential ", Esc, "hello there" -> "/credential ello thereh", every
+				 * character inserted before the previous one. The reference closes this
+				 * by suspending the cancel's own edit from the sync
+				 * (`_cancel_credential_typing`'s `_suspend_credential_sync`,
+				 * `editor.py:6452`); the port has no sync on that path at all, so the
+				 * equivalent is to not post a caret the buffer never asked for.
+				 */
+				if (next.buffer !== bufferNow.current) {
+					pendingCaret.current = next.caret;
+					setCaret(next.caret);
+				}
+				/*
+				 * The capture's own write, so the teardown effect below can tell it apart
+				 * from a whole-buffer replacement somebody else made.
+				 */
+				captureOwnedBuffer.current = next.buffer;
+				// An armed capture is a NEW gesture: whatever the operator cancelled
+				// before, this is not it any more.
+				if (next.capture.arm) cancelledToken.current = null;
 				setCapture(next.capture);
 				setNewMessage(next.buffer);
-				pendingCaret.current = next.caret;
-				setCaret(next.caret);
+				persistDraft(next.capture, next.buffer);
 			},
-			[setCapture, setNewMessage],
+			[persistDraft, setCapture, setNewMessage],
 		);
+
+		/*
+		 * A WHOLE-BUFFER REPLACEMENT ENDS A LIVE CAPTURE, and this is the teardown
+		 * the reference states twice over (`Editor.load_text`, `editor.py:7033-7099`:
+		 * `_abandon_credential_typing("gone")` + `_disarm_credential("gone")`,
+		 * naming "a history recall, a restored draft, a `/reload` hand-back, a
+		 * sidebar session switch").
+		 *
+		 * What it looked like without it, reproduced against the real module (code
+		 * review round 1, BLOCKER 1): with a masked capture open, an ArrowUp recalled
+		 * a prompt into the box, the capture went on reporting TYPING, the operator's
+		 * next characters were masked into the STALE value, and Enter minted
+		 * `[Credential #1, 7 chars]` over the recalled prompt — deleting their text —
+		 * with the stale secret then stored into whichever conversation was current.
+		 * The buffer, the mask and the value had stopped describing the same thing,
+		 * silently, in the one direction this feature must never fail.
+		 *
+		 * DROPPED RATHER THAN RE-SYNCED, which is the conservative half the reference
+		 * chose: routing this through `syncCapture(..., "arrival")` re-anchors the arm
+		 * onto whatever `/credential` the arriving text happens to contain, so a
+		 * recalled prompt that merely MENTIONED the command swallowed the next
+		 * ordinary paste as a secret, unrecoverably (review round 2, R6b/R6c; QA
+		 * round 2, Q4). Failing toward "not armed" costs one retype; failing the
+		 * other way cannot be undone.
+		 *
+		 * `captureOwnedBuffer` is what makes this an EXTERNAL write rather than every
+		 * write: `applyCapture` stamps the buffer it wrote and the mirrored DOM change
+		 * stamps the buffer it produced, so anything that arrives here without a
+		 * stamp came from a history recall, a draft restore, a session switch, a
+		 * transcription, a slash plan or a submit's clear — the four triggers the
+		 * reference names plus the two this composer adds.
+		 *
+		 * A layout effect rather than a passive one, so the drop lands in the same
+		 * commit as the text: no frame exists in which the buffer says one thing and
+		 * the capture another, and no keystroke can arrive in between.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the TEXT is the event; the capture is read through a ref so the effect cannot be rebuilt mid-gesture
+		useLayoutEffect(() => {
+			if (captureOwnedBuffer.current === newMessage) return;
+			captureOwnedBuffer.current = newMessage;
+			if (!isArmed(captureRef.current)) return;
+			setCapture(IDLE_CAPTURE);
+			setUnredacted(null);
+		}, [newMessage, setCapture]);
+
+		/*
+		 * A CONVERSATION SWITCH RETIRES BOTH HALVES, the payload map included.
+		 *
+		 * The teardown above drops the capture, which is what stops a stale value
+		 * being stored; the map is the other half, and it belongs to the buffer that
+		 * is going away. Kept, a payload minted in conversation A can be cited by
+		 * conversation B's restored draft the moment the two happen to contain the
+		 * same marker text — and it would be stored into B, which is precisely the
+		 * "stale value stored into whichever session is current" failure.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the conversation id is the event; the refs are what is written
+		useEffect(() => {
+			captureRef.current = IDLE_CAPTURE;
+			setCapture(IDLE_CAPTURE);
+			payloadsRef.current.clear();
+			nextIndexRef.current = 1;
+			retirePayloads.current = false;
+			cancelledToken.current = null;
+			setUnredacted(null);
+		}, [conversationId, setCapture]);
+
+		/*
+		 * The map is retired with the BUFFER, never ahead of it (code review round
+		 * 1, MINOR-5). `retirePayloads` is the submit's request; this is the commit
+		 * that honours it, once nothing in the box still cites a payload — so the box
+		 * can never paint a raw marker no map entry backs, and an Enter in that
+		 * window can never send a dangling citation.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the buffer is the event
+		useEffect(() => {
+			if (!retirePayloads.current) return;
+			if (citedPayloads(newMessage, payloadsRef.current.values()).length > 0)
+				return;
+			payloadsRef.current.clear();
+			nextIndexRef.current = 1;
+			retirePayloads.current = false;
+		}, [newMessage]);
 
 		/*
 		 * The session's stored names, fetched when the capture ARMS (§7.2).
@@ -1203,18 +1486,66 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (capture.arm === null || !credentialSessionId) return;
 			if (fetchedNamesFor.current === credentialSessionId) return;
 			fetchedNamesFor.current = credentialSessionId;
-			void desktopResult<{ data?: { credentials?: string[] } }>({
+			void desktopResult<unknown>({
 				op: "sessions.credential",
 				sessionId: credentialSessionId,
 				action: "list",
 			})
 				.then((answer) => {
-					sessionNamesRef.current = answer?.data?.credentials ?? [];
+					sessionNamesRef.current = credentialNamesFrom(answer);
 				})
 				.catch(() => {
 					/* Keep whatever is cached; see the comment above. */
 				});
 		}, [capture.arm, credentialSessionId]);
+
+		/**
+		 * The capture's answer to a SUBMIT — the ONE rule the key and the button
+		 * share (design round 1, D1; QA round 1, Q4).
+		 *
+		 * The composer already states this invariant about its own planning
+		 * ("the SAME planner the Enter key consults, so the Send button and the key
+		 * cannot disagree"), and on this one state they did: `planFor` knows about
+		 * slash commands and nothing about the capture, so Enter minted the pill and
+		 * the Send button submitted the MASK CELLS as the message — the operator's
+		 * secret unreachable, a citation the model cannot use, and the notice still
+		 * claiming to mask a box that was now empty. Traced in the design round from
+		 * the button's own DOM press.
+		 *
+		 * Three outcomes, and every one of them is one the operator can see:
+		 *
+		 * - a NON-EMPTY span mints, exactly as Enter does, and the send does not
+		 *   happen (the pill is one keystroke from leaving, and the notice has been
+		 *   saying what the gesture is);
+		 * - an EMPTY span answers `false`, which falls through to the same planner
+		 *   Enter falls through to, so `/credential ` + Send reaches the picker —
+		 *   the door §1 keeps open for the store, the list and the forget verbs;
+		 * - nothing open answers `false` and the send is an ordinary send.
+		 *
+		 * What is NOT an outcome any more: submitting mask cells, submitting a
+		 * half-captured secret, or doing nothing at all with no explanation. The
+		 * empty-span case used to be the quiet one — `/credential ` + Send reached
+		 * `planFor`, which dispatched `/credential` with the mask cells as its
+		 * arguments and let the dispatcher refuse it, leaving the box, the store and
+		 * the screen exactly as they were.
+		 */
+		const submitCapture = useCallback((): boolean => {
+			const current = captureRef.current;
+			if (!isTyping(current)) return false;
+			const minted = mintTypedCredential({
+				capture: current,
+				buffer: newMessage,
+				caret: textareaRef.current?.selectionEnd ?? newMessage.length,
+				index: nextIndexRef.current,
+				taken: takenCredentialNames(),
+			});
+			// An empty span mints NOTHING and leaves the capture open, so this
+			// submit is the ordinary one (§4).
+			if (!minted.minted) return false;
+			applyCapture(minted);
+			setUnredacted(null);
+			return true;
+		}, [applyCapture, newMessage, takenCredentialNames]);
 
 		/*
 		 * `true` when this keypress belonged to the capture.
@@ -1239,24 +1570,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					!event.shiftKey &&
 					!event.nativeEvent.isComposing
 				) {
-					const minted = mintTypedCredential({
-						capture: current,
-						buffer: newMessage,
-						caret: selection.end,
-						index: nextIndexRef.current,
-						taken: takenCredentialNames(),
-					});
-					// An empty span mints NOTHING and leaves the capture open, so this
-					// Enter is the ordinary one (§4).
-					if (!minted.minted) return false;
-					applyCapture(minted);
-					setUnredacted(null);
-					return true;
+					return submitCapture();
 				}
 
 				if (event.key === "Escape") {
 					const cancelled = cancelTypedCredential(current, newMessage);
 					if (!cancelled.cancelled) return false;
+					/*
+					 * THE TOKEN THIS CANCEL LEAVES INERT, remembered so the SUBMIT seam can
+					 * keep the promise the notice below makes (QA round 1, Q2). Enter on
+					 * the restored draft used to reach the dispatcher, which read the
+					 * leading `/credential` as the COMMAND: it opened the picker and
+					 * stripped the restored characters out of the operator's sentence, so
+					 * the text they were told they were about to expose was destroyed
+					 * instead. Recorded at the cancel because the cancel is the only place
+					 * that knows which token was the gesture. `null` for an empty-span
+					 * cancel, which owes the promise to nobody and must still reach the
+					 * picker.
+					 */
+					cancelledToken.current = cancelled.token;
 					applyCapture(cancelled);
 					/*
 					 * THE ONE DISCLOSURE THE APP ANNOUNCES, because the frame cannot
@@ -1487,6 +1819,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/**
+		 * The planner, with §5's one exception in front of it.
+		 *
+		 * AFTER AN ESC CANCEL THE TEXT THE OPERATOR SEES IS WHAT GETS SENT (QA round
+		 * 1, Q2). The notice the composer itself raises for that state promises
+		 * "Enter will expose them", and Enter did the opposite: the restored draft
+		 * still begins with `/credential`, so the planner read it as a COMMAND — the
+		 * picker opened, nothing was sent or stored, and mid-prose the dispatcher
+		 * stripped the restored characters out of the operator's sentence. The
+		 * characters they were just told they were about to expose were destroyed.
+		 *
+		 * Scoped to the token the composer KNOWS it just cancelled, which is why the
+		 * predicate is `holdsCancelledToken` rather than a flag: it matches the exact
+		 * run at the exact arrival offset, so any edit that moves it ends the
+		 * exception and the token is the dispatcher's again. That leaves today's
+		 * behaviour for the case it exists for — `/credential <args>` submitted with
+		 * no capture still routes through the dispatcher, which refuses the
+		 * arguments, so a secret can never land in command text.
+		 *
+		 * And it does not touch the EMPTY-span cancel, which reports no token at all:
+		 * `/credential ` + Enter must still open the credential picker, the door §1
+		 * keeps open for the store, the list and the forget verbs.
+		 */
+		const planForDraft = useCallback(
+			(draft: string, at: number): SlashSubmissionPlan =>
+				holdsCancelledToken(draft, cancelledToken.current)
+					? { kind: "send" }
+					: planFor(draft, at),
+			[planFor],
+		);
+
+		/**
 		 * Carry out a plan that is not a plain send, and decide what the box holds
 		 * afterwards.
 		 *
@@ -1589,9 +1952,36 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				);
 				if (!completion) return;
 				slash.close();
-				pendingCaret.current = completion.caret;
-				setNewMessage(completion.text);
-				setCaret(completion.caret);
+				/*
+				 * THE SECOND ARMING DOOR (§1), and it has to be a SYNC rather than a plain
+				 * write. Accepting `/credential` from the list inserts `/credential `, and
+				 * that trailing space opens the capture — "the TUI gets this from
+				 * `_apply_command`, so a hand-typed space and a picker-accepted space are
+				 * one rule". Writing the text alone left the capture idle, so the paste
+				 * that follows fell past the armed gate and landed VERBATIM in the
+				 * document, the draft, the transcript and the prompt — the exact failure
+				 * this feature exists to close, on the one route a user actually
+				 * discovers, with nothing on screen to contradict it (code review round
+				 * 1, MAJOR 2).
+				 *
+				 * `"completion"` is the origin that carries the arming power for it, and
+				 * the module is where the two are one rule: a completion that is not the
+				 * token's trailing space answers `IDLE` (or drops a live arm), a
+				 * completion that is opens the span, and `/credential <key>` reached this
+				 * way is masked rather than run. The stamp this write leaves is what the
+				 * whole-buffer teardown reads: the capture performed this write, so it is
+				 * not an arrival and the arm survives it.
+				 */
+				applyCapture({
+					capture: syncCapture(
+						captureRef.current,
+						completion.text,
+						completion.caret,
+						"completion",
+					),
+					buffer: completion.text,
+					caret: completion.caret,
+				});
 				/*
 				 * RUN, when the pick named a row that runs and the gate let it through.
 				 * The ambiguity gate is applied by `handleSlashKeyDown` for the keyboard
@@ -1604,9 +1994,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * declares it (`slash.inline.runs`: `/model` runs its choice, `/team` and
 				 * `/theme` never do). A COMMAND row's DESTINATION declares it
 				 * (`pointerPickRuns`), which is the rule that lets a click open a panel
-				 * instead of only completing the word. The keyboard never runs a command
-				 * row - `handleSlashKeyDown` hands every one of them `run: false` - so
-				 * that half is the pointer path only.
+				 * instead of only completing the word.
+				 *
+				 * That destination rule is the ONE predicate both gestures read, and it is
+				 * read HERE rather than at either caller so a click and an unambiguous
+				 * Enter cannot disagree about whether `/model` runs: the keyboard's own
+				 * answer is the ambiguity gate alone, and a destination with an inline
+				 * list refuses a run on both paths. It is also why `window.close`,
+				 * `transcript.clear` and `session.compact` keep their TWO-Enter path — a
+				 * single keystroke never detaches the app or clears the transcript view,
+				 * which is the behaviour they already had.
 				 */
 				const shouldRun =
 					disposition.run &&
@@ -1629,11 +2026,42 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				newMessage,
 				caret,
 				slash,
+				applyCapture,
 				setNewMessage,
 				onSlashCommand,
 				planFor,
 				applyPlan,
 			],
+		);
+		/*
+		 * The AMBIGUOUS Enter's half of the pick path: grow the typed command word
+		 * to the matches' common prefix and leave the popup open.
+		 *
+		 * A second entry point rather than a flag on `handleSlashPick`, because the
+		 * two are genuinely different gestures: a pick APPLIES a row, closes the
+		 * list and may run a command, while this one writes part of the word, keeps
+		 * the list up and never acts on a row. Sharing one callback would mean a
+		 * disposition that means "do not act" (`_extend_to_common_prefix`,
+		 * `editor.py:8326-8345`).
+		 *
+		 * The caret is placed at the new END OF THE WORD rather than at the end of
+		 * the draft, so a user narrowing a command in front of a written message
+		 * keeps typing where they were.
+		 */
+		const handleSlashExtend = useCallback(
+			(prefix: string) => {
+				const extension = extensionFor(
+					newMessage,
+					caret,
+					prefix,
+					slash.commandNames,
+				);
+				if (!extension) return;
+				pendingCaret.current = extension.caret;
+				setNewMessage(extension.text);
+				setCaret(extension.caret);
+			},
+			[newMessage, caret, slash.commandNames, setNewMessage],
 		);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
@@ -1647,7 +2075,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					event.preventDefault();
 					return;
 				}
-				if (handleSlashKeyDown(event, slash, handleSlashPick)) {
+				if (
+					handleSlashKeyDown(event, slash, handleSlashPick, handleSlashExtend)
+				) {
 					event.preventDefault();
 					return;
 				}
@@ -1692,7 +2122,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					!event.shiftKey &&
 					!event.nativeEvent.isComposing
 				) {
-					const plan = planFor(newMessage, caret);
+					const plan = planForDraft(newMessage, caret);
 					if (plan.kind !== "send") {
 						event.preventDefault();
 						void applyPlan(plan, newMessage, caret);
@@ -1704,9 +2134,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			[
 				slash,
 				handleSlashPick,
+				handleSlashExtend,
 				handleKeyDown,
 				handleCredentialKeyDown,
-				planFor,
+				planForDraft,
 				applyPlan,
 				newMessage,
 				caret,
@@ -1725,20 +2156,35 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const cwdChipRef = useRef<DirectoryIndicatorHandle>(null);
 
+		/*
+		 * The one place focus is given to this box, and the reason it is one place:
+		 * handing focus over is the moment the box becomes ours again, so a pointer
+		 * interaction from BEFORE the call stops counting as the user's and the ask
+		 * gate may hand focus here again. Both the imperative handle and the
+		 * handler registry below (see `composer-field.ts`) publish THIS function
+		 * rather than a copy, so a new call site cannot forget the reset.
+		 */
+		const focusInput = useCallback(() => {
+			composerPointerTouched = false;
+			textareaRef.current?.focus();
+		}, [textareaRef]);
+
 		useImperativeHandle(ref, () => ({
-			focusInput: () => {
-				/*
-				 * Handing focus over is the moment the box becomes ours again, so a
-				 * pointer interaction from BEFORE this call stops counting as the
-				 * user's. See `composerPointerTouched`.
-				 */
-				composerPointerTouched = false;
-				textareaRef.current?.focus();
-			},
+			focusInput,
 			openWorkingDirectoryMenu: () => {
 				cwdChipRef.current?.openMenu();
 			},
 		}));
+
+		/*
+		 * The composer's focus hand-off, published to the surfaces that are not
+		 * handed this component's handle - today the transcript's Quote toolkit,
+		 * which stages a quote and then wants the caret in the box (design round 1,
+		 * D2; UX round 1, U1). Registered here rather than rebuilt there so that
+		 * `focusInput` stays the single place focus is given, flag reset included;
+		 * see `composer-field.ts`.
+		 */
+		useEffect(() => registerComposerFocus(focusInput), [focusInput]);
 
 		/*
 		 * Two reasons a composer refuses input, kept apart (design review round
@@ -1944,13 +2390,22 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			e.preventDefault();
 			if (!newMessage.trim() && attachments.length === 0) return;
 			/*
+			 * THE CAPTURE IS ASKED FIRST, exactly as the key handler asks it, so the
+			 * button and the key cannot disagree about an open masked span (design
+			 * round 1, D1; QA round 1, Q4). `submitCapture` mints a non-empty span
+			 * and returns `true`; it returns `false` for an empty one, which then
+			 * takes the planner below to the picker — the same two outcomes Enter
+			 * has, by construction, because it is the same function.
+			 */
+			if (submitCapture()) return;
+			/*
 			 * The SAME planner the Enter key consults, so the Send button and the
 			 * key cannot disagree about whether a draft is a command — and every
 			 * non-`send` verdict is applied here, so the message path below is only
 			 * ever reached for prose. It does not re-examine the text: that is what
 			 * turned `/usage` on line 1 into a command that claimed line 2.
 			 */
-			const plan = planFor(newMessage, caret);
+			const plan = planForDraft(newMessage, caret);
 			if (plan.kind !== "send") {
 				void applyPlan(plan, newMessage, caret);
 				return;
@@ -2101,11 +2556,45 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			return "Ctrl+Shift+S";
 		}, [platform]);
 
+		/*
+		 * WHERE FOCUS GOES WHEN A STAGED QUOTE IS REMOVED (UX round 1, U2).
+		 *
+		 * `removeReply` unmounts the chip whose own remove control held focus, and the
+		 * browser then drops focus to `document.body` - no ring anywhere on the page,
+		 * measured after both a pointer press and a keyboard Enter. The reader's next
+		 * act is either removing the next quote or writing, so focus goes to the chip
+		 * that takes the removed one's place (the list closes upward, so that is the
+		 * next chip, or the last one when the removed chip was last) and to the
+		 * composer once nothing is staged.
+		 *
+		 * The index is recorded HERE and the focus applied in an effect below, because
+		 * the button that should take focus does not exist until the store change has
+		 * rendered: `removeReply` is synchronous and the DOM is not. Reaching for the
+		 * next chip by index is what makes repeated removals one Tab apart, which is
+		 * the thing the reader is doing when they hit this.
+		 */
+		const pendingChipFocus = useRef<number | null>(null);
+
 		const handleRemoveReply = (replyId: string) => {
-			if (conversationId) {
-				removeReply(conversationId, replyId);
-			}
+			if (!conversationId) return;
+			pendingChipFocus.current = replies.findIndex(
+				(reply) => reply.id === replyId,
+			);
+			removeReply(conversationId, replyId);
 		};
+
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `replies` is the TRIGGER, not a value the body reads - the effect runs once per list change and reads the index the removal recorded, so listing the chips themselves would only re-run it against an already-cleared intent.
+		useEffect(() => {
+			const at = pendingChipFocus.current;
+			if (at === null) return;
+			pendingChipFocus.current = null;
+			const chips = document.querySelectorAll<HTMLElement>(
+				REPLY_CHIP_REMOVE_SELECTOR,
+			);
+			const next = chips[Math.min(at, chips.length - 1)];
+			if (next) next.focus();
+			else focusInput();
+		}, [replies, focusInput]);
 
 		/*
 		 * What the alert should actually say and offer, given what is in the box.
@@ -2684,20 +3173,40 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * It sits INSIDE the box because it is about what the box is doing
 					 * with the next keystroke, and its horizontal padding matches the
 					 * textarea's own so the two lines share a text edge.
+					 *
+					 * IT TAKES ITS SPACE WHETHER OR NOT IT HAS A SENTENCE (design round 1,
+					 * D3). Mounted conditionally, the sentence arriving pushed the typed
+					 * line, the caret and the whole attach/send row down by 35.5px in the
+					 * middle of a word — and the mint pushed them back, so the pill the
+					 * operator had just made jumped 36px while they were looking at it.
+					 * Reserving one line box keeps the textarea's own `y` identical in all
+					 * four states: idle, armed, masked and minted. The value is spelled as
+					 * the type step it reserves rather than as the measured total, so it
+					 * cannot drift from the font: `--text-body-sm` is 13px at line-height
+					 * 1.5, i.e. this 19.5px line box, and `pb-1` adds the 4px the design
+					 * round measured on top of it. Every sentence this slot can hold fits
+					 * one line at the composer's own floor width, which is what makes one
+					 * line the right reservation.
+					 *
+					 * AND IT IS DESCRIBED TO THE FIELD (UX round 1, U7). `role="status"`
+					 * announces every CHANGE, which serves an operator who types through
+					 * the state and does nothing for one who arrives at an already-masked
+					 * composer: the field's value reads out as bullets and nothing says
+					 * why. `aria-describedby` is set only while there is a sentence, so an
+					 * idle composer is not described by an empty element.
 					 */}
-					{credentialNotice && (
-						<output
-							className={cn(
-								"block text-body-sm",
-								isSmallView ? "px-1.5 pb-1" : "px-2 pb-1",
-								// The unredact is the one state where the next Enter discloses a
-								// secret, so it takes the warning role rather than muted ink.
-								unredacted ? "text-warning" : "text-ink-muted",
-							)}
-						>
-							{credentialNotice}
-						</output>
-					)}
+					<output
+						id={CREDENTIAL_NOTICE_ID}
+						className={cn(
+							"block text-body-sm min-h-[19.5px]",
+							isSmallView ? "px-1.5 pb-1" : "px-2 pb-1",
+							// The unredact is the one state where the next Enter discloses a
+							// secret, so it takes the warning role rather than muted ink.
+							unredacted ? "text-warning" : "text-ink-muted",
+						)}
+					>
+						{credentialNotice}
+					</output>
 					{isRecording ? (
 						<AudioRecordingIndicator isRecording={isRecording} />
 					) : isTranscribing ? (
@@ -2806,6 +3315,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									// consumer's latch should not be asked to absorb a
 									// per-character call it can only discard.
 									if (!newMessage && applied.buffer) onComposerInput?.();
+										/*
+										 * The capture's own write, stamped so the whole-buffer teardown can
+										 * tell it from a replacement some other writer made. A DOM change
+										 * reaches here without passing `applyCapture`, which is exactly why
+										 * the stamp is not optional: without it, the operator's own
+										 * keystroke would read as an external write and end the gesture it
+										 * is in the middle of.
+										 */
+									captureOwnedBuffer.current = applied.buffer;
+									// An abandoned capture (the drop and IME routes) settles the box
+									// here rather than through `applyCapture`, so the §6 write has to
+									// be asked for here too.
+									persistDraft(applied.capture, applied.buffer);
 									setNewMessage(applied.buffer);
 									// Editing the text answers the alert. Leaving it up over a
 									// draft the user has since changed is the defect this whole
@@ -2822,6 +3344,35 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								}}
 								onSelect={(e) => {
 									const field = e.target as HTMLTextAreaElement;
+									/*
+									 * A CARET REPORT THAT ARRIVES BEFORE THE COMPOSER'S OWN
+									 * CARET WRITE LANDS IS A REPORT ABOUT THE CARET IT REPLACED.
+									 *
+									 * `applyCapture` parks the caret it is about to set in
+									 * `pendingCaret` and the layout effect applies it with the
+									 * buffer. A `select`/`selectionchange` still in flight from the
+									 * PREVIOUS edit therefore reaches this handler between the state
+									 * write and its commit, carrying the older buffer (the render
+									 * closure has not moved yet) and the older offset — a pair that
+									 * is internally consistent and describes a state the composer
+									 * has already left. Re-syncing on it is how accepting the
+									 * `/credential` row closed the span that completion had just
+									 * opened: the report said "the caret is at 5, inside the token"
+									 * while the capture was already open at 6, so `syncCapture` read
+									 * a caret move out of the span.
+									 *
+									 * Skipping it is not a caret move being ignored: the offset that
+									 * arrives is the one this write is replacing, and the pending
+									 * value is applied by the layout effect either way. If the DOM
+									 * already agrees — a report about the caret we just set — the
+									 * marker is retired here so the guard cannot outlive its write.
+									 */
+									const pending = pendingCaret.current;
+									if (pending !== null) {
+										if (field.selectionStart === pending)
+											pendingCaret.current = null;
+										return;
+									}
 									setCaret(field.selectionStart);
 									/*
 									 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
@@ -2860,6 +3411,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								disabled={isInputDisabled}
 								aria-label="Message"
 								role="combobox"
+								aria-describedby={
+									credentialNotice ? CREDENTIAL_NOTICE_ID : undefined
+								}
 								aria-expanded={slash.open}
 								aria-controls={slash.open ? slash.listId : undefined}
 								aria-activedescendant={slash.activeDescendantId ?? undefined}

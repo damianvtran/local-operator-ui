@@ -25,6 +25,7 @@
 	--lo-accent: #BD93F9;
 	--lo-accent-hover: #D1AEFF;
 	--lo-accent-active: #A884DE;
+	--lo-chart-bar-hover: #D3B8FB;
 	--lo-accent-wash: #3A374D;
 	--lo-on-accent: #282A36;
 	--lo-success: #50FA7B;
@@ -57,6 +58,7 @@
 	--lo-accent: #FF8C38;
 	--lo-accent-hover: #FFA75C;
 	--lo-accent-active: #E67016;
+	--lo-chart-bar-hover: #FFB27A;
 	--lo-accent-wash: #2C1C10;
 	--lo-on-accent: #0F0D0B;
 	--lo-success: #A3C46B;
@@ -89,6 +91,7 @@
 	--lo-accent: #2D539E;
 	--lo-accent-hover: #1E3A7D;
 	--lo-accent-active: #162E63;
+	--lo-chart-bar-hover: #1F396C;
 	--lo-accent-wash: #D5DAE4;
 	--lo-on-accent: #F2F5F9;
 	--lo-success: #4C692D;
@@ -121,6 +124,7 @@
 	--lo-accent: #38c96a;
 	--lo-accent-hover: #5ad584;
 	--lo-accent-active: #2bb25c;
+	--lo-chart-bar-hover: #85DEA3;
 	--lo-accent-wash: #16281d;
 	--lo-on-accent: #16130e;
 	--lo-success: #57c785;
@@ -153,6 +157,7 @@
 	--lo-accent: #147842;
 	--lo-accent-hover: #116036;
 	--lo-accent-active: #0c4b2a;
+	--lo-chart-bar-hover: #0F5A31;
 	--lo-accent-wash: #e7f1e8;
 	--lo-on-accent: #F6FAF8;
 	--lo-success: #1A774A;
@@ -185,6 +190,7 @@
 	--lo-accent: #A6E22E;
 	--lo-accent-hover: #B6E94E;
 	--lo-accent-active: #8BC220;
+	--lo-chart-bar-hover: #D0F090;
 	--lo-accent-wash: #363E23;
 	--lo-on-accent: #272822;
 	--lo-success: #A6E22E;
@@ -217,6 +223,7 @@
 	--lo-accent: #00EFFF;
 	--lo-accent-hover: #66F7FF;
 	--lo-accent-active: #00B8D9;
+	--lo-chart-bar-hover: #B0FAFF;
 	--lo-accent-wash: #072734;
 	--lo-on-accent: #000E0F;
 	--lo-success: #2BFF88;
@@ -249,6 +256,7 @@
 	--lo-accent: #FAFAFA;
 	--lo-accent-hover: #E4E4E7;
 	--lo-accent-active: #D4D4D8;
+	--lo-chart-bar-hover: #FCFCE4;
 	--lo-accent-wash: #262628;
 	--lo-on-accent: #09090B;
 	--lo-success: #86BFA1;
@@ -281,6 +289,7 @@
 	--lo-accent: #91B7E9;
 	--lo-accent-hover: #BDF0FD;
 	--lo-accent-active: #6E9AD4;
+	--lo-chart-bar-hover: #C1D7F3;
 	--lo-accent-wash: #1F2835;
 	--lo-on-accent: #10151C;
 	--lo-success: #63D2A0;
@@ -313,6 +322,7 @@
 	--lo-accent: #476E49;
 	--lo-accent-hover: #35563A;
 	--lo-accent-active: #294229;
+	--lo-chart-bar-hover: #345035;
 	--lo-accent-wash: #E6E9D8;
 	--lo-on-accent: #F4F6F4;
 	--lo-success: #446F26;
@@ -345,6 +355,7 @@
 	--lo-accent: #FF4081;
 	--lo-accent-hover: #FF79B0;
 	--lo-accent-active: #F50057;
+	--lo-chart-bar-hover: #FF7BA8;
 	--lo-accent-wash: #2E0E2C;
 	--lo-on-accent: #120720;
 	--lo-success: #4DE8A8;
@@ -377,6 +388,7 @@
 	--lo-accent: #7AA2F7;
 	--lo-accent-hover: #9EBCFF;
 	--lo-accent-active: #6D8FDA;
+	--lo-chart-bar-hover: #AAC3FA;
 	--lo-accent-wash: #262B3F;
 	--lo-on-accent: #1A1B26;
 	--lo-success: #9ECE6A;
@@ -413,6 +425,7 @@
 	--color-accent-active: var(--lo-accent-active);
 	--color-accent-wash: var(--lo-accent-wash);
 	--color-on-accent: var(--lo-on-accent);
+	--color-chart-bar-hover: var(--lo-chart-bar-hover);
 	--color-success: var(--lo-success);
 	--color-success-wash: var(--lo-success-wash);
 	--color-success-border: var(--lo-success-border);

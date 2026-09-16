@@ -102,6 +102,29 @@ export type CredentialPayload = {
  *   lands in plaintext.
  *
  * `"arrival"` has neither power. That is the whole of §2's negative case.
+ *
+ * WHICH POWERS ARE ACTUALLY WIRED, because a docstring that describes four
+ * origins reads as four mechanisms and only three have a production call site:
+ *
+ * - `"typing"` — the textarea's `onChange` mirror in `message-input.tsx`, the
+ *   belt for edits the keyboard gate cannot see (Backspace, Delete, a
+ *   selection, a drop, an IME commit, a paste that fell through).
+ * - `"caret"` — the same file's `onSelect`, which may re-anchor an arm and
+ *   re-open a span the caret has returned to, and may never arm.
+ * - `"completion"` — `handleSlashPick`, on the buffer a slash row wrote. It is
+ *   the second ARMING door (§1: the row inserts `/credential `, and the
+ *   trailing space opens the capture, so a hand-typed space and a
+ *   picker-accepted one are one rule).
+ * - `"arrival"` — NO production call site, deliberately. A whole-buffer
+ *   replacement does not arrive INTO the capture; it ENDS it. It is passed by
+ *   nothing but the tests that pin that negative case, and the composer's
+ *   teardown ({@link IDLE_CAPTURE} on an external write) is where the reference
+ *   puts `_abandon_credential_typing("gone")` + `_disarm_credential("gone")`
+ *   — `editor.py:7033-7099`. Re-syncing here instead was tried and removed:
+ *   it let a latched arm re-anchor onto whatever `/credential` the arriving
+ *   text happened to contain, so a recalled prompt that merely MENTIONED the
+ *   command swallowed the next ordinary paste as a secret, unrecoverably
+ *   (review round 2, R6b/R6c; QA round 2, Q4).
  */
 export type Arrival = "typing" | "completion" | "caret" | "arrival";
 
@@ -147,8 +170,40 @@ export const CREDENTIAL_ARM = /(?:^|(?<=\s))\/(?:credential|cred)[ \t]*$/i;
 export const CREDENTIAL_TOKEN = /(?:^|(?<=\s))\/(?:credential|cred)(?!\S)/gi;
 
 /**
+ * The word at the anchor, for the arm's TYPED-THROUGH rule
+ * (`CREDENTIAL_TOKEN_WORD`, `editor.py:603`).
+ *
+ * Matched at the latched offset ONLY, and that is the whole containment
+ * argument: this is not an arming rule, so it can never arm a token that merely
+ * arrived in the buffer. It cannot widen the armed set sideways either, because
+ * the test {@link relocateArm} applies to it is PREFIX-OF the token:
+ * `/credentials` starts with the token but is not a prefix of it, so it fails
+ * here exactly as it fails {@link CREDENTIAL_TOKEN}.
+ */
+const CREDENTIAL_TOKEN_WORD = /^\/[A-Za-z]*/;
+
+/**
+ * The shortest spelling that still reads as the token (`CREDENTIAL_TOKEN_FLOOR`,
+ * `editor.py:606`). Below it the word at the anchor is a deletion rather than a
+ * gesture in progress: shortening past `/cred` is the operator visibly
+ * withdrawing the gesture.
+ */
+const CREDENTIAL_TOKEN_FLOOR = "/cred";
+
+/** The full spelling the typed-through window walks toward (`editor.py:610`). */
+const CREDENTIAL_TOKEN_FULL = "/credential";
+
+/**
  * What DISARMS a latched capture: a flag-shaped argument on the token's own
- * line (`editor.py:132`).
+ * line (`editor.py:630`).
+ *
+ * The reference matches it with `re.match`, i.e. ANCHORED AT THE START of that
+ * tail (`editor.py:5916`), and the anchor is the rule rather than an
+ * implementation detail: the flag has to be the FIRST thing after the token's
+ * blanks to be the command. Unanchored, a `-` anywhere later in the tail
+ * (`/credential the prod-key name`, a prose mention) disarmed the gesture, and
+ * the operator's next paste then landed in the document — the false-negative
+ * direction, which no keystroke undoes.
  *
  * `CREDENTIAL_ARGUMENT = re.compile(r"[ \t]+-")`, matched against the text
  * between the token's end and the end of that line. A LEADING `-` is the one
@@ -159,7 +214,7 @@ export const CREDENTIAL_TOKEN = /(?:^|(?<=\s))\/(?:credential|cred)(?!\S)/gi;
  * `/credential --forget-all` stays the command it looks like, while
  * `deploy with /credential the prod key` stays armed.
  */
-export const CREDENTIAL_ARGUMENT = /[ \t]+-/;
+export const CREDENTIAL_ARGUMENT = /^[ \t]+-/;
 
 /** The character that opens a masked span, and is NOT part of the secret. */
 export const CREDENTIAL_OPEN_SPACE = " ";
@@ -192,11 +247,11 @@ export const CREDENTIAL_MARKER = /\[Credential #(\d+), (\d+) chars\]/g;
  * One run of the buffer the overlay paints, and how it paints it.
  *
  * `"pill"` is a marker the buffer cites, `"mask"` is the masked span while it is
- * open, and `"plain"` is everything else — the text the textarea paints and the
- * overlay must not.
+ * open, `"armed"` is the token the capture is latched to, and `"plain"` is
+ * everything else — the text the textarea paints and the overlay must not.
  */
 export type PaintSegment = {
-	kind: "plain" | "pill" | "mask";
+	kind: "plain" | "pill" | "mask" | "armed";
 	text: string;
 };
 
@@ -213,24 +268,40 @@ export type PaintSegment = {
  * role, one meaning — this region is a credential — and the notice line carries
  * which of the three states it is in, exactly as the TUI's notice row does.
  *
+ * THE ARMED TOKEN IS PAINTED TOO, and it is the port's second channel for a
+ * state that otherwise had only a sentence (design round 1, D2). The TUI marks
+ * it twice over (`local_operator.tui.local_operator.tcss:624`: the amber token
+ * run AND the chevron glyph swap, because "the glyph is the one that survives
+ * `NO_COLOR`"), and the port can carry neither of those two: a textarea has no
+ * per-run colour and no glyph to swap. What it does have is this mirror, so the
+ * token the capture is latched to gets the warning wash under it — the same
+ * technique the pill uses, on the same element, with no layout of its own. It
+ * is painted for the whole LATCH (armed and masked alike), because that is what
+ * the arm means: the token is still the one the next space or paste lands in.
+ *
  * Overlapping citations cannot happen (indices are unique and markers are
  * distinct), but a span that overlapped would be skipped rather than painted
- * twice; the walk is monotonic by construction.
+ * twice; the walk is monotonic by construction. The arm is the one run that CAN
+ * overlap — `arm.end` is the token's end and the masked span starts there —
+ * which is why the mask wins that boundary: the mask is pushed after the arm and
+ * the walk's `span.start < at` skip drops the overlap.
  */
 export function paintPlan(
 	buffer: string,
 	payloads: Iterable<CredentialPayload>,
 	capture: Capture = IDLE_CAPTURE,
 ): PaintSegment[] {
-	const ranges: { span: Span; kind: "pill" | "mask" }[] = [];
+	const ranges: { span: Span; kind: "pill" | "mask" | "armed" }[] = [];
 	for (const payload of payloads) {
 		const span = citationSpan(buffer, payload);
 		if (span) ranges.push({ span, kind: "pill" });
 	}
+	if (capture.arm && capture.arm.end > capture.arm.start)
+		ranges.push({ span: capture.arm, kind: "armed" });
 	const masked = maskSpan(capture);
 	if (masked && masked.end > masked.start)
 		ranges.push({ span: masked, kind: "mask" });
-	ranges.sort((a, b) => a.span.start - b.span.start);
+	ranges.sort((a, b) => a.span.start - b.span.start || a.span.end - b.span.end);
 
 	const out: PaintSegment[] = [];
 	let at = 0;
@@ -290,6 +361,46 @@ export const CREDENTIAL_KEY_PREFIX = "LOP_SECRET_";
 export const CREDENTIAL_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export const CREDENTIAL_KEY_MAX_LENGTH = 128;
 
+/**
+ * The names a `sessions.credential` `action: "list"` answer holds.
+ *
+ * ONE reading of that payload, because it is read in two places that must agree
+ * and disagreed once: the mint's collision guard (§8, which needs the names) and
+ * `CredentialPicker` (which renders them). The runtime answers
+ * `{"ok": true, "credentials": [{"key": "LOP_SECRET_…", "source": "command"}]}`
+ * (`local_operator/session/credential_ops.py:59-64`), and reading it as
+ * `string[]` cost both halves: the picker rendered an OBJECT as a React child
+ * and crashed the renderer (React #31), and the guard's `taken` set could never
+ * contain a name the session already held, so the collision guard was inert
+ * while §8 claimed it was "consulted rather than trusted to probability"
+ * (QA round 1, Q3).
+ *
+ * A bare string row is still honoured. The object shape is what the runtime
+ * sends and what this pins; accepting the older spelling too means an older
+ * runtime narrows the guard rather than crashing a panel, which is the same
+ * trade the caller makes when the list cannot be fetched at all.
+ *
+ * Deliberately total: `unknown` in, strings out, nothing thrown. This runs on a
+ * desktop-bridge answer, which is untrusted by construction (the previous
+ * reading's type assertion is what made the crash a render-time error instead
+ * of an empty list).
+ */
+export function credentialNamesFrom(answer: unknown): string[] {
+	const rows = (answer as { data?: { credentials?: unknown } } | null | undefined)
+		?.data?.credentials;
+	if (!Array.isArray(rows)) return [];
+	const names: string[] = [];
+	for (const row of rows) {
+		if (typeof row === "string") {
+			if (row) names.push(row);
+			continue;
+		}
+		const key = (row as { key?: unknown } | null | undefined)?.key;
+		if (typeof key === "string" && key) names.push(key);
+	}
+	return names;
+}
+
 /** How many characters one string holds, counted as code points. */
 export const charsOf = (value: string): string[] => Array.from(value);
 
@@ -343,20 +454,50 @@ export function tokenSpans(buffer: string): Span[] {
 }
 
 /**
+ * The word at the latched offset when it is this token MID-TYPING
+ * (`_token_being_typed_at`, `editor.py:6013`), else `null`.
+ *
+ * Asked by {@link relocateArm} BEFORE any tie-break, and the reason is a
+ * one-way migration the round that added it measured (UX round 2, U6): while
+ * the operator types the token out — `/cred` → `/crede` → … → `/credential` —
+ * the middle spellings match neither {@link CREDENTIAL_TOKEN} nor
+ * {@link CREDENTIAL_ARM}, so the latched arm found nothing at its own anchor
+ * and the nearest-match tie-break below moved it onto a DIFFERENT token
+ * earlier in the line. That migration is one-way: the anchor travelled with
+ * it, so "nearest" kept choosing the earlier token and the arm never came home
+ * — and the operator's next secret was typed into the document in plaintext.
+ */
+function tokenBeingTypedAt(buffer: string, anchor: number): Span | null {
+	// The reference's own lookbehind, restated for a slice: a word starts a
+	// token run only at the buffer's start or after whitespace.
+	if (anchor > 0 && !/\s/.test(buffer[anchor - 1] ?? " ")) return null;
+	const match = CREDENTIAL_TOKEN_WORD.exec(buffer.slice(anchor));
+	if (match === null) return null;
+	const word = match[0].toLowerCase();
+	if (word.length < CREDENTIAL_TOKEN_FLOOR.length) return null;
+	if (!CREDENTIAL_TOKEN_FULL.startsWith(word)) return null;
+	return { start: anchor, end: anchor + match[0].length };
+}
+
+/**
  * Where the token that armed is NOW, or `null` if it is gone.
  *
- * Rule 1 is the anchor's own word, which is the answer in every ordinary
- * keystroke. Rule 2 is the single-match case: when the buffer holds exactly one
- * token there is no ambiguity — it is the token that armed, however far the
- * text before it moved — and returning it regardless of distance is what keeps
- * a block edit above the token from silently disarming. Rule 3 is a TIE-BREAK
- * among two or more tokens, never a distance test: a distance bound of any size
- * has a cliff, and past that cliff the token reads as "gone" and the arm is
- * dropped, which fails in the one direction that cannot be undone — the next
- * paste lands in plaintext (`editor.py:5930-5985`: measured at exactly N=64 on
- * the line above, N=63 still capturing).
+ * Rule 0 is the TYPED-THROUGH case: the operator's own word at the latched
+ * offset, when it is a prefix of the token and at or above the `/cred` floor,
+ * wins before any tie-break runs. Rule 1 is the anchor's own word, which is the
+ * answer in every ordinary keystroke. Rule 2 is the single-match case: when the
+ * buffer holds exactly one token there is no ambiguity — it is the token that
+ * armed, however far the text before it moved — and returning it regardless of
+ * distance is what keeps a block edit above the token from silently disarming.
+ * Rule 3 is a TIE-BREAK among two or more tokens, never a distance test: a
+ * distance bound of any size has a cliff, and past that cliff the token reads
+ * as "gone" and the arm is dropped, which fails in the one direction that
+ * cannot be undone — the next paste lands in plaintext (`editor.py:5930-5985`:
+ * measured at exactly N=64 on the line above, N=63 still capturing).
  */
 export function relocateArm(buffer: string, arm: Span): Span | null {
+	const typedThrough = tokenBeingTypedAt(buffer, arm.start);
+	if (typedThrough) return typedThrough;
 	const spans = tokenSpans(buffer);
 	const atAnchor = spans.find((span) => span.start === arm.start);
 	if (atAnchor) return atAnchor;
@@ -728,6 +869,31 @@ export function spliceBetween(
  *
  * `origin` is passed through to {@link syncCapture}, so a change the operator
  * did not type never arms the gesture (§2).
+ *
+ * TEXT ARRIVING INTO AN OPEN SPAN IS REFUSED, not mirrored, and that is the
+ * reference's own rule (`editor.py:6312-6323`: "Text arriving into an open span
+ * that is NOT a mask cell … leave the value untouched rather than silently
+ * corrupting it"). Dropping a filename or a snippet onto the composer mid-capture
+ * used to be appended to the held value, so the pill's count changed and the
+ * secret was wrong — silently, and in the one place the operator cannot read it
+ * back to notice. `editor.py` can state the rule as a guard rather than a case
+ * because every printable key is masked and every exit closes the capture first;
+ * here the DOM route genuinely carries text (a drop, an IME commit, a
+ * spellchecker replacement, an autofill), so this is a live case rather than a
+ * defensive one.
+ *
+ * The capture ENDS rather than the value staying put, which is a deliberate
+ * divergence in mechanism with the same intent. The reference's `return None`
+ * leaves the held value alone and lets `super().edit()` put the real characters
+ * in the buffer — safe there only because no route can reach it. Here the
+ * document would then hold literal text among the bullets, which is precisely
+ * the desynchronised cell run {@link maskEdit} exists to prevent, so the port
+ * takes the answer it already takes for the blank-paste-inside-the-span case
+ * ({@link pastePassthrough}, which cites this same reference): the capture ends,
+ * the arriving text lands as ordinary text the operator can see and redo.
+ *
+ * Deletions are NOT refused — `inserted === ""` is the operator's own Backspace,
+ * Delete or selection, which is what the positional mirror is for.
  */
 export function applyDomEdit(
 	capture: Capture,
@@ -737,16 +903,26 @@ export function applyDomEdit(
 	origin: Arrival,
 ): MaskedEdit {
 	const edit = spliceBetween(prev, next);
+	const span = maskSpan(capture);
 	let out: MaskedEdit = { capture, buffer: next, caret };
-	const masked = maskEdit(capture, next, caret, edit);
-	if (masked) {
-		out = masked;
-	} else if (isTyping(capture) && edit.inserted.includes("\n")) {
-		// The same newline rule as the typed route, for the routes that reach the
-		// document without a keystroke (an IME commit, a drop of multi-line text):
-		// a newline inside the contiguous cell run desynchronises the mint's
-		// splice, so the capture ends and the text lands as ordinary text.
+	if (
+		edit.inserted !== "" &&
+		span !== null &&
+		edit.top <= span.end &&
+		edit.bottom >= span.start
+	) {
 		out = { capture: abandonTyping(capture), buffer: next, caret };
+	} else {
+		const masked = maskEdit(capture, next, caret, edit);
+		if (masked) {
+			out = masked;
+		} else if (isTyping(capture) && edit.inserted.includes("\n")) {
+			// The same newline rule as the typed route, for the routes that reach the
+			// document without a keystroke (an IME commit, a drop of multi-line text):
+			// a newline inside the contiguous cell run desynchronises the mint's
+			// splice, so the capture ends and the text lands as ordinary text.
+			out = { capture: abandonTyping(capture), buffer: next, caret };
+		}
 	}
 	return {
 		...out,
@@ -833,6 +1009,15 @@ export function mintTypedCredential(args: {
 	};
 }
 
+/**
+ * A token the composer knows it has just cancelled: the exact run, and where it
+ * sat when the cancel produced it (`cancelTypedCredential`).
+ *
+ * The span is the ARRIVAL position, not a live one — see
+ * {@link holdsCancelledToken}, which is the only thing that reads it.
+ */
+export type CancelledToken = { span: Span; text: string };
+
 /** What an Escape cancel produced: the plaintext back, and nothing else. */
 export type CancelResult = {
 	cancelled: boolean;
@@ -841,6 +1026,20 @@ export type CancelResult = {
 	caret: number;
 	/** How many characters were restored, for the announcement. Never the value. */
 	restored: number;
+	/**
+	 * The inert token run the cancel left in the buffer, or `null` when nothing
+	 * was restored.
+	 *
+	 * Reported only for a cancel that RESTORED characters, and that scoping is
+	 * the whole point of it. An empty-span cancel owes no promise — its notice is
+	 * suppressed — so `/credential ` + Enter must still reach the dispatcher and
+	 * open the picker, which is the route §1 keeps open to the store, the list
+	 * and the forget verbs. A cancel that restored characters is the one the
+	 * composer has just told the operator "Enter will expose them" about, and
+	 * that promise is what a `/credential`-shaped leading token would otherwise
+	 * break (QA round 1, Q2).
+	 */
+	token: CancelledToken | null;
 };
 
 /**
@@ -877,18 +1076,57 @@ export function cancelTypedCredential(
 ): CancelResult {
 	const span = maskSpan(capture);
 	if (span === null) {
-		return { cancelled: false, capture, buffer, caret: 0, restored: 0 };
+		return {
+			cancelled: false,
+			capture,
+			buffer,
+			caret: 0,
+			restored: 0,
+			token: null,
+		};
 	}
 	const restoredText = capture.value;
 	const next =
 		buffer.slice(0, span.start) + restoredText + buffer.slice(span.end);
+	const tokenStart = capture.arm === null ? span.start : capture.arm.start;
 	return {
 		cancelled: true,
 		capture: IDLE_CAPTURE,
 		buffer: next,
 		caret: span.start + restoredText.length,
 		restored: charCount(restoredText),
+		token:
+			restoredText.length > 0 && span.start > tokenStart
+				? {
+						span: { start: tokenStart, end: span.start },
+						text: buffer.slice(tokenStart, span.start),
+					}
+				: null,
 	};
+}
+
+/**
+ * Whether the buffer still holds the token a cancel just left inert, at the
+ * offset the cancel left it at.
+ *
+ * THE SUBMISSION SEAM'S HALF OF THE CANCEL, and the reason it is a predicate over
+ * the ARRIVAL offset rather than a flag the composer toggles: "cleared by any
+ * edit that moves it" is exactly `buffer.slice(start, start + text.length) ===
+ * text`. An edit that inserts before the token shifts it and this answers
+ * `false`, so the token is ordinary text again and the dispatcher may have it; an
+ * edit elsewhere in the line — the operator writing the rest of their sentence
+ * around the restored characters — leaves it `true`, which is the case that
+ * matters, because that is the draft the notice promised Enter would expose.
+ *
+ * Nothing else has to be cleared by hand, and nothing can go stale: a held
+ * offset is only ever read against the buffer it was measured in.
+ */
+export function holdsCancelledToken(
+	buffer: string,
+	token: CancelledToken | null,
+): boolean {
+	if (token === null || token.text.length === 0) return false;
+	return buffer.slice(token.span.start, token.span.start + token.text.length) === token.text;
 }
 
 /** What a captured paste produced. */
@@ -1066,6 +1304,16 @@ export function markerIndex(marker: string): number | null {
  * case that can differ from a recorded marker at all — is prose, because
  * nothing in the buffer then says the secret is behind it.
  *
+ * THE INDEX HALF IS ASKED FIRST, and it is asked of the PAYLOAD rather than of
+ * the buffer. It used to run after the buffer's `indexOf` had already found the
+ * marker, which made it dead code for every payload this composer can build —
+ * `credentialMarker` writes both halves from one index — so deleting it left the
+ * suite green while §4's "index AND marker text" was enforced by the text half
+ * alone (code review round 1, MINOR-1). The halves are separable only for a
+ * payload whose two fields disagree, which nothing in production builds; the
+ * predicate is therefore reachable by the test that builds one by hand, and the
+ * two halves stay an AND in the reading order that costs least.
+ *
  * HOW THIS DIFFERS FROM THE TUI, deliberately. `cite` (`editor.py:995-1018`)
  * prefers the exact marker text and then FALLS BACK to the first citation of
  * the same NUMBER when no exact match survives, so a credential whose tail the
@@ -1079,9 +1327,9 @@ export function citationSpan(
 	text: string,
 	payload: CredentialPayload,
 ): Span | null {
+	if (markerIndex(payload.marker) !== payload.index) return null;
 	const at = text.indexOf(payload.marker);
 	if (at === -1) return null;
-	if (markerIndex(payload.marker) !== payload.index) return null;
 	return { start: at, end: at + payload.marker.length };
 }
 
@@ -1248,9 +1496,19 @@ export const CREDENTIAL_ARMED_NOTICE =
  * alarming rather than reassuring unless something says it is deliberate AND
  * says how it ends. So it names the mask, the key that finishes the entry and
  * the key that backs out — the three facts that cannot be read off the frame.
+ *
+ * ONE WORD DIVERGES FROM THE TUI'S COPY, and it is `pill` rather than `chip`
+ * (UX round 1, U5). The TUI's "chip" has no competitor in its own box; this
+ * composer already has a chip in it — the bordered working-directory control
+ * with its own menu (`cwdChipRef`) — so "Enter turns it into a chip" pointed at
+ * the wrong object in the one sentence whose job is telling the operator what
+ * Enter does. `pill` is what the design record and this module call the marker
+ * everywhere else, so the copy and the code now use one word for one thing.
+ * The substitution is five characters shorter than the rung it replaces, so the
+ * overflow behaviour the comment below describes cannot regress on it.
  */
 export const CREDENTIAL_TYPING_NOTICE =
-	"masked as you type — Enter turns it into a chip, Esc cancels";
+	"masked as you type — Enter turns it into a pill, Esc cancels";
 
 /**
  * Said after Esc unredacts a typed secret back into the composer as plaintext

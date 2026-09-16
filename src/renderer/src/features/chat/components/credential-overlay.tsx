@@ -65,6 +65,25 @@ export const CREDENTIAL_PILL_ROLE = cn(
 );
 
 /**
+ * The ARMED token's treatment: the warning wash, and no edge.
+ *
+ * Design round 1, D2. The armed state had one cue — a muted sentence — while the
+ * TUI marks the same state twice (`local_operator.tui.local_operator.tcss:624`:
+ * the amber token run and the chevron glyph swap, "the glyph is the one that
+ * survives `NO_COLOR`, a monochrome terminal and red-green colour vision
+ * deficiency"). A `<textarea>` carries neither of those: no per-run colour and
+ * no glyph to swap. What it has is this mirror, so the token the capture is
+ * latched to takes the wash — the same technique the pill uses, on the same
+ * element, at no layout cost.
+ *
+ * No edge, deliberately, where the pill has one. The pill's outline is the
+ * boundary of a thing the operator is being handed (a citation, with a label);
+ * the armed token is the ordinary word they just typed, marked. Adding a second
+ * outlined box beside the pill would read as a second credential.
+ */
+export const CREDENTIAL_ARMED_ROLE = cn("rounded-xs bg-warning-wash");
+
+/**
  * The composer's text box model, shared by the textarea and the mirror.
  *
  * ONE definition because the two MUST agree: the pill is painted at the offsets
@@ -94,10 +113,11 @@ type CredentialOverlayProps = {
 	isSmallView: boolean;
 };
 
-const pillClassName = (kind: PaintSegment["kind"]) =>
-	kind === "plain"
-		? "text-transparent"
-		: cn("text-transparent", CREDENTIAL_PILL_ROLE);
+const pillClassName = (kind: PaintSegment["kind"]) => {
+	if (kind === "plain") return "text-transparent";
+	if (kind === "armed") return cn("text-transparent", CREDENTIAL_ARMED_ROLE);
+	return cn("text-transparent", CREDENTIAL_PILL_ROLE);
+};
 
 export const CredentialOverlay = ({
 	text,

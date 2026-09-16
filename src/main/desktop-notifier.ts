@@ -62,7 +62,7 @@ import type {
 	PendingDesktopGate,
 } from "../shared/desktop-session-contract";
 import type { WindowShow } from "./window-mode";
-import { raiseWindow } from "./window-raise";
+import { type RaiseReport, raiseWindow } from "./window-raise";
 
 const NOTIFY_TTL_MS = 10 * 60 * 1000;
 const MAX_DEDUPE_KEYS = 2048;
@@ -382,6 +382,13 @@ export class DesktopNotifier {
 		private readonly windowRaise: WindowShow = "focus",
 		/** Window state the notifier cannot see from here. See the type. */
 		private readonly host: DesktopNotifierHost = SILENT_HOST,
+		/**
+		 * Where the click's raise reports itself, threaded in rather than imported so
+		 * this module keeps its one dependency on Electron (`Notification`) and the
+		 * desktop suite keeps bundling it without a logger. Omitted means silent,
+		 * which is what a caller with no log sink wants and never "unordered".
+		 */
+		private readonly raiseReport?: RaiseReport,
 	) {}
 
 	get canNotify(): boolean {
@@ -1199,7 +1206,10 @@ export class DesktopNotifier {
 			 * rule the backend's own click client states.
 			 */
 			target.webContents.send("desktop-open-conversation", { sessionId });
-			raiseWindow(target, this.windowRaise);
+			raiseWindow(target, this.windowRaise, {
+				trigger: "banner-click",
+				report: this.raiseReport,
+			});
 		});
 		notification.show();
 	}

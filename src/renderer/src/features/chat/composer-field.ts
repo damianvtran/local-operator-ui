@@ -23,3 +23,44 @@
  * `aria-label="Message"` is the same handle the answer options are found by.
  */
 export const COMPOSER_TEXTAREA_SELECTOR = 'textarea[aria-label="Message"]';
+
+/*
+ * The composer's own focus hand-off, as surfaces OUTSIDE the composer reach it.
+ *
+ * The transcript's Quote toolkit needs this: a press stages a quote, and the
+ * reader's next act is writing the message that quote belongs to, so the press
+ * has to leave the caret in the box. It cannot reach `MessageInput`'s imperative
+ * handle - the toolkit is rendered by `canonical-transcript.tsx`, several
+ * component boundaries away from the composer, and neither the transcript nor
+ * the rows in it are given that handle - so the hand-off is registered here, in
+ * the module that already exists to name this one element for the surfaces that
+ * must find it without being handed it (see `composerHoldsFocusUntouched`).
+ *
+ * The registration carries the composer's OWN `focusInput` rather than
+ * reimplementing it, because that function is the single place focus is given:
+ * it also clears the "the user took the box" flag the ask gate reads. A second
+ * implementation here that focused the textarea directly would leave that flag
+ * set and make the next automatic hand-off think the user had moved on.
+ *
+ * ONE SLOT, because there is one composer: the app mounts `MessageInput` once
+ * (`chat-content.tsx`), and a story mounts one of its own. Unregistering is
+ * scoped to the function that registered, so a remount cannot leave a stale
+ * composer's node behind for the next press to focus. `focusComposer` is a
+ * no-op when nothing is registered - the composer unmounted while a
+ * transcript was still on screen - which is the honest outcome rather than
+ * throwing into an event handler.
+ */
+let giveComposerFocus: (() => void) | null = null;
+
+/** Register the composer's focus hand-off; returns the unregister. */
+export function registerComposerFocus(give: () => void): () => void {
+	giveComposerFocus = give;
+	return () => {
+		if (giveComposerFocus === give) giveComposerFocus = null;
+	};
+}
+
+/** Ask the mounted composer to take focus, if there is one. */
+export function focusComposer(): void {
+	giveComposerFocus?.();
+}
