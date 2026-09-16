@@ -2430,11 +2430,18 @@ test("a refused pass paints the runtime's own row, in the tier it derives", () =
 	 * bookkeeping. With the dialog gone, that silence was the surface the dialog
 	 * used to occupy.
 	 */
-	const refused = (detail) =>
+	/*
+	 * The claim's start is stamped (`compactingSince`), so a realistic row is one
+	 * written AFTER the pass began: this pins the retirement rule rather than
+	 * exploiting a fixed epoch. `NOW` is passed explicitly so the case does not
+	 * depend on the wall clock it runs at.
+	 */
+	const NOW = 1_700_000_000_000;
+	const refused = (detail, ts = NOW / 1000 + 2) =>
 		applyHistoryPage(
-			applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }),
+			applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, NOW),
 			pageOf([
-				messageEntry("m1", 10, {
+				messageEntry("m1", ts, {
 					kind: "custom",
 					custom_type: "compaction_refused",
 					details: { detail },
@@ -2449,7 +2456,7 @@ test("a refused pass paints the runtime's own row, in the tier it derives", () =
 	assert.equal(row.id, "m1");
 	assert.equal(
 		row.text,
-		"Compaction did not run: nothing to compact: the whole conversation is ~8 tokens and the most recent 20,000 are kept verbatim",
+		"Compaction did not run — nothing to compact: the whole conversation is ~8 tokens and the most recent 20,000 are kept verbatim",
 	);
 	assert.equal(
 		row.level,
@@ -2528,5 +2535,115 @@ test("a replayed outcome cannot retire a claim made after the pass it carries", 
 		replayed.compacting,
 		true,
 		"the outcome is already painted, so it retires nothing",
+	);
+});
+
+test("an outcome older than the pass does not retire it", () => {
+	/*
+	 * Review round 2, NEW-1. The retirement used to ask "has this reader painted
+	 * this entry", which is a fact about the INDEX: `load older` merges a page of
+	 * history this reader has never seen, and any compaction outcome on it flipped
+	 * the claim off mid-pass — silencing the rung and the composer's hint
+	 * together, which is the "appears to do nothing" state this change exists to
+	 * remove. The rule is now the pass's own start (`compactingSince`): an outcome
+	 * older than the claim belongs to an earlier pass.
+	 */
+	const NOW = 1_700_000_000_000;
+	const OLD = NOW / 1000 - 600; // ten minutes before the claim
+	const running = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "compaction_start" },
+		NOW,
+	);
+	assert.equal(running.compacting, true);
+	assert.equal(running.compactingSince, NOW);
+
+	// A previous pass's settled row, arriving on an older page nobody has loaded.
+	const older = applyHistoryPage(
+		running,
+		pageOf([
+			{ id: "msg_old_compaction", ts: OLD, type: "compaction", payload: {} },
+		]),
+	);
+	assert.equal(
+		older.compacting,
+		true,
+		"an old page's outcome is not this pass's outcome",
+	);
+	assert.equal(older.records.length, 1, "and it still paints its row");
+
+	// The same page's refusal: same old timestamp, same answer.
+	const olderRefusal = applyHistoryPage(
+		running,
+		pageOf([
+			messageEntry("msg_old_refusal", OLD, {
+				kind: "custom",
+				custom_type: "compaction_refused",
+				details: { detail: "nothing to compact" },
+			}),
+		]),
+	);
+	assert.equal(olderRefusal.compacting, true);
+
+	// And this pass's OWN outcome still retires it, which is what U1 needed.
+	const own = applyHistoryPage(
+		running,
+		pageOf([
+			messageEntry("msg_own", NOW / 1000 + 1, {
+				kind: "custom",
+				custom_type: "compaction_refused",
+				details: { detail: "nothing to compact" },
+			}),
+		]),
+	);
+	assert.equal(own.compacting, false);
+	assert.equal(own.compactingSince, 0);
+});
+
+test("a history re-read does not double a settled pass", () => {
+	/*
+	 * UX round 2, U7: the live end painted a notice keyed by generation carrying
+	 * the figures, and the durable row every later read brings back was keyed by
+	 * its own entry id and said the same thing WITHOUT them, so neither retired
+	 * the other — a switch away and back showed one pass as two lines.
+	 */
+	const NOW = 1_700_000_000_000;
+	const live = applyEvent(
+		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, NOW),
+		{
+			type: "compaction_end",
+			success: true,
+			tokens_before: 1_800,
+			tokens_after: 1_800,
+		},
+		NOW + 400,
+	);
+	assert.equal(live.records.length, 1);
+	assert.equal(live.records[0].text, "Context compacted to 1.8k tokens");
+
+	const after = applyHistoryPage(
+		live,
+		pageOf([
+			{
+				id: "msg_durable_compaction",
+				ts: NOW / 1000 + 1,
+				type: "compaction",
+				payload: {},
+			},
+		]),
+	);
+	const rows = after.records.filter(
+		(row) => row.kind === "compaction" || row.kind === "notice",
+	);
+	assert.equal(rows.length, 1, "one pass, one row");
+	assert.equal(
+		rows[0].id,
+		"msg_durable_compaction",
+		"the durable id survives, because it is what the next read matches",
+	);
+	assert.equal(
+		rows[0].text,
+		"Context compacted to 1.8k tokens",
+		"and it keeps the figures the live line carried",
 	);
 });

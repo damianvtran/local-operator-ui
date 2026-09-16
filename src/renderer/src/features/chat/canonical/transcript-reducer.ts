@@ -301,6 +301,21 @@ export type TranscriptState = {
 	 * mutation runs cover every transition above.
 	 */
 	compacting: boolean;
+	/**
+	 * When the standing claim began, on this reader's clock, or 0 when there is
+	 * none.
+	 *
+	 * WHY IT IS STAMPED RATHER THAN INFERRED. A durable outcome row retires the
+	 * claim, and "has this reader painted the row" is a fact about the INDEX
+	 * rather than about the pass: an older page merged by `load older` carries a
+	 * compaction outcome the reader has never painted, and retired a pass that
+	 * was still running — killing both the rung and the composer's hint mid-pass
+	 * (review round 2, NEW-1). The stamp is the pass's own start, so an outcome
+	 * OLDER than it is somebody else's pass and retires nothing. Both clocks are
+	 * this machine's: the runtime is local, and its `ts` is the same wall clock
+	 * the frame arrived on.
+	 */
+	compactingSince: number;
 	/** Oldest durable id painted; the cursor for `sessions.history` paging. */
 	oldestId: string | null;
 	hasMore: boolean;
@@ -346,6 +361,7 @@ export const EMPTY_TRANSCRIPT: TranscriptState = {
 	index: new Map(),
 	generation: 0,
 	compacting: false,
+	compactingSince: 0,
 	oldestId: null,
 	hasMore: false,
 	argsByCall: new Map(),
@@ -696,8 +712,15 @@ function compactionOutcome(detail: string): {
 	level: "info" | "warning" | "error";
 } {
 	const sentence = detail.trim() || "compaction did not run";
+	/*
+	 * The separator yields to the backend's own punctuation: its common detail
+	 * already carries a colon ("nothing to compact: the whole conversation is ~8
+	 * tokens …"), and the app opening with one too read as two nested claims
+	 * (design round 2, N1). An em dash is the join, because the sentence after it
+	 * is the runtime's and not this renderer's to rewrite.
+	 */
 	return {
-		text: `Compaction did not run: ${sentence}`,
+		text: `Compaction did not run${sentence.includes(":") ? " — " : ": "}${sentence}`,
 		level: sentence.startsWith("compaction failed") ? "error" : "warning",
 	};
 }
@@ -705,19 +728,33 @@ function compactionOutcome(detail: string): {
 /**
  * The settled line's copy, for a pass that RAN.
  *
+ * Exported for the story that photographs it: a frame whose text is typed by
+ * hand cannot detect a regression in this rule (design round 2, D4), so the
+ * story asks this function for the sentence it renders.
+ *
  * The two figures are printed only when they differ: a pass whose reduction
  * rounds to the same step printed `Context compacted, 52.7k to 52.7k tokens`,
  * which reads as "compacted and changed nothing" (UX round 1, U4 — measured on
  * three consecutive passes). One figure when they are the same number, the pair
  * when they are not.
  */
-function compactionSettled(before: number, after: number): string {
+export function compactionSettled(before: number, after: number): string {
 	const from = formatTokens(before);
 	const to = formatTokens(after);
 	return from === to
 		? `Context compacted to ${to} tokens`
 		: `Context compacted, ${from} to ${to} tokens`;
 }
+
+/**
+ * How far apart a pass's live line and its durable row may be and still be the
+ * same pass, for the collapse below.
+ *
+ * Generous on purpose: it only has to be shorter than the gap between two
+ * passes a user could run by hand, and both timestamps are this machine's
+ * clock (the runtime is local, and the durable `ts` is the entry's own).
+ */
+const COMPACTION_PAIR_WINDOW_MS = 120_000;
 
 /**
  * The two custom types that are receipts rather than conversation.
@@ -1357,6 +1394,34 @@ export function applyHistoryPage(
 			intent: typeof args?.i === "string" ? args.i : null,
 		};
 	}
+	/*
+	 * ONE PASS, ONE LINE (UX round 2, U7). The live `compaction_end` paints a
+	 * notice keyed `compaction:<gen>:<before>:<after>` carrying the figures; the
+	 * DURABLE row that a later read brings back is keyed by its own entry id and
+	 * carries the bare sentence — so neither retires the other and a switch away
+	 * and back showed the same pass twice, once with numbers and once without.
+	 *
+	 * They are paired on the only thing the two share, the pass's own instant, and
+	 * the live row's sentence is carried onto the durable one, whose id is what the
+	 * NEXT read will match: the row a user sees after a reload is then the same row
+	 * they watched settle, figures included.
+	 */
+	const absorbedLive: string[] = [];
+	for (let i = 0; i < incoming.length; i++) {
+		const record = incoming[i];
+		if (record.kind !== "compaction") continue;
+		const live = state.records.find(
+			(painted) =>
+				(painted.kind === "compaction" || painted.kind === "notice") &&
+				painted.id.startsWith("compaction:") &&
+				Math.abs(painted.ts - record.ts) <= COMPACTION_PAIR_WINDOW_MS,
+		);
+		if (!live || (live.kind !== "compaction" && live.kind !== "notice"))
+			continue;
+		absorbedLive.push(live.id);
+		incoming[i] = { ...record, text: live.text };
+	}
+
 	// A page that taught us new arguments can complete rows painted EARLIER —
 	// the reconnect case, where the row settled before its arguments arrived.
 	// Only rows still missing args are touched, so an unchanged row keeps its
@@ -1417,20 +1482,36 @@ export function applyHistoryPage(
 		}
 	}
 	/*
-	 * Whether this page carries a compaction outcome THIS reader has not painted
-	 * yet — the pass's own durable row, or the refusal that corrects an optimistic
-	 * receipt. Ids already in the index are not new, so a page refresh that
-	 * replays an OLD pass's row cannot retire a claim made since; see the
-	 * `compacting` field's own note for the sequence this closes.
+	 * Whether this page carries the pass's OWN outcome — the row that says how
+	 * THIS pass ended. Three conjuncts, and the middle one is the round-2 fix:
+	 *
+	 * - the entry is a compaction outcome at all (the pass's durable row, or the
+	 *   refusal that corrects an optimistic receipt);
+	 * - it is NOT OLDER than the standing claim (`compactingSince`), which is what
+	 *   separates the pass being watched from a previous pass's row arriving on a
+	 *   page this reader had never loaded. "Not yet painted" alone retired a live
+	 *   pass from any `load older` merge, from the mentioned-files scanner's
+	 *   paging, and from a first history read that landed after a live start
+	 *   (NEW-1) — and the cost was both surfaces of the change going quiet
+	 *   mid-pass;
+	 * - it is not already painted, so a refresh replaying the same outcome is not
+	 *   a second event.
 	 */
-	const retiresPass = page.entries.some((entry) => {
-		if (state.index.has(entry.id)) return false;
-		return (
-			entry.type === "compaction" ||
-			(entry.type === "message" &&
-				entry.payload?.custom_type === "compaction_refused")
-		);
-	});
+	const retiresPass =
+		state.compacting &&
+		page.entries.some((entry) => {
+			if (state.index.has(entry.id)) return false;
+			if (Math.round((entry.ts ?? 0) * 1000) < state.compactingSince)
+				return false;
+			return (
+				entry.type === "compaction" ||
+				(entry.type === "message" &&
+					entry.payload?.custom_type === "compaction_refused")
+			);
+		});
+	for (const id of absorbedLive) {
+		if (byId.delete(id)) changed = true;
+	}
 	if (!changed && state.hasMore === page.has_more && !retiresPass) return state;
 
 	// Durable rows first, then this page's new rows, in TIME order with ties
@@ -1471,6 +1552,7 @@ export function applyHistoryPage(
 		 * it.
 		 */
 		compacting: retiresPass ? false : state.compacting,
+		compactingSince: retiresPass ? 0 : state.compactingSince,
 	};
 }
 
@@ -1499,11 +1581,13 @@ export function applyEvent(
 			 * and retiring it here is what keeps a lost `compaction_end` from
 			 * outliving the pass it described.
 			 */
-			return { ...state, generation, compacting: false };
+			return { ...state, generation, compacting: false, compactingSince: 0 };
 		}
 		case "compaction_start": {
+			// The FIRST start of a pass owns the stamp; a replay of it is the same pass
+			// and must not move the boundary forward under a row that is already old.
 			if (state.compacting) return state;
-			return { ...state, compacting: true };
+			return { ...state, compacting: true, compactingSince: now };
 		}
 		case "agent_end": {
 			const generation = Number(event.generation ?? state.generation);
@@ -1883,7 +1967,7 @@ export function applyEvent(
 			// the clear, applied BEFORE the idempotence guard: a replayed end must
 			// still retire a claim it has already painted a record for.
 			const settled = state.compacting
-				? { ...state, compacting: false }
+				? { ...state, compacting: false, compactingSince: 0 }
 				: state;
 			if (settled.index.has(id)) return settled;
 			/*
@@ -2091,7 +2175,8 @@ export function applyLiveSeed(
 	 * paints its line when it arrives. Nothing here depends on the replay; the
 	 * loop keeps it so a seed that ever does carry the event lands correctly.
 	 */
-	if (next.compacting) next = { ...next, compacting: false };
+	if (next.compacting)
+		next = { ...next, compacting: false, compactingSince: 0 };
 	const inFlight = frontend.streaming === true;
 	/* A row was placed at a time the seed itself stated, so order by time. */
 	let placed = false;
@@ -2241,6 +2326,7 @@ export function clearTranscript(state: TranscriptState): TranscriptState {
 		// does not stop a compaction, so the claim is carried rather than dropped —
 		// which is also what the empty-transcript early return above already does.
 		compacting: state.compacting,
+		compactingSince: state.compactingSince,
 		argsByCall: state.argsByCall,
 	};
 }
@@ -2251,10 +2337,14 @@ export function dropLiveRecords(state: TranscriptState): TranscriptState {
 	 * The in-flight pass claim is LIVE-ONLY for the same reason those records are:
 	 * a receipt gap means the app cannot see whether the pass is still running,
 	 * and a reconnect must not inherit a claim from before the gap. Withheld
-	 * rather than guessed, and restored for free if the pass really is still in
-	 * flight — the snapshot's live seed replays its own `compaction_start`.
+	 * rather than guessed — and NOT restored by the seed, which carries no
+	 * `compaction_start` at all (review round 1, R4: `frontend_state.py::
+	 * _fold_live_event` folds agent/message/tool kinds only), so a gap during a
+	 * pass drops the rung while the pass runs on.
 	 */
-	const base = state.compacting ? { ...state, compacting: false } : state;
+	const base = state.compacting
+		? { ...state, compacting: false, compactingSince: 0 }
+		: state;
 	return removeMatching(
 		base,
 		(record) =>

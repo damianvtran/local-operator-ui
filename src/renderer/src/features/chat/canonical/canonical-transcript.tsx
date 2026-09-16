@@ -1330,6 +1330,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					// latched in this view: one source for the rung and the composer's
 					// hint (see `transcript-reducer`'s `compacting`).
 					compacting: transcript.compacting,
+					// The phase's own start, so the clock times the PASS rather than this
+					// component's mount - and so the frame is a picture of the state
+					// instead of the shutter's timing (design round 2, D3).
+					compactingSince: transcript.compactingSince,
 					starting,
 					startingAfterId,
 					gate,
@@ -1354,6 +1358,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		[
 			waiting,
 			transcript.compacting,
+			// The phase's own start, read by the builder above: without it a pass
+			// whose stamp changed while the claim did not would keep the old anchor.
+			transcript.compactingSince,
 			starting,
 			startingAfterId,
 			gate,
@@ -1674,7 +1681,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								!isSmallView && AGENT_GUTTER,
 							)}
 						>
-							<WorkingLine activity={working.activity} phase={working.phase} />
+							<WorkingLine
+								activity={working.activity}
+								phase={working.phase}
+								startedAt={working.startedAt}
+							/>
 						</div>
 					)}
 
