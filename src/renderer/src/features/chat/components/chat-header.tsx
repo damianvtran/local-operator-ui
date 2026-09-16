@@ -160,6 +160,27 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		previouslyOpen.current = isCanvasOpen;
 	}, [isCanvasOpen]);
 
+	/*
+	 * The same four lines for the browser pane, which had none of them (UX round 1,
+	 * U2): its two neighbours put the caret back on their own trigger when they
+	 * close, and the third occupant of the slot left it on `<body>` - so `Enter` on
+	 * the Globe was a one-way trip to the top of the document's tab order for a
+	 * keyboard user. `run-details-trigger.tsx` carries the identical refocus for the
+	 * identical reason, and the guard is the same one: only when focus was actually
+	 * lost, and never on first mount.
+	 */
+	const browserButtonRef = useRef<HTMLButtonElement | null>(null);
+	const browserPaneWasOpen = useRef(isBrowserPaneOpen);
+	useEffect(() => {
+		if (
+			browserPaneWasOpen.current &&
+			!isBrowserPaneOpen &&
+			document.activeElement === document.body
+		)
+			browserButtonRef.current?.focus();
+		browserPaneWasOpen.current = isBrowserPaneOpen;
+	}, [isBrowserPaneOpen]);
+
 	return (
 		<div
 			/*
@@ -269,6 +290,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						side="top"
 					>
 						<Button
+							ref={browserButtonRef}
 							variant="ghost"
 							size="icon"
 							onClick={onOpenBrowser}
