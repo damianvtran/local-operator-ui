@@ -161,7 +161,7 @@ export function serverBannerCopy(
 		case "wedged":
 			return {
 				title:
-					"A Local Operator server is running on this machine and this app is not attached to it. Nothing was started over it.",
+					"A Local Operator server is running on this machine and this app is not attached to it.",
 				detail,
 			};
 		case "detached":

@@ -42,8 +42,8 @@ content, and the longest banner (two sentences) is what made the difference.
 | `no-spawn` | the same sentence + "A local daemon may still be running, but could not be attached. Waiting without starting a duplicate." | warning |
 | `unclaimed` | the same sentence + "A daemon is running at http://127.0.0.1:1111, but it refused this app's credential for its desktop plane. The daemon is running." | warning |
 | `stopped` | "The Local Operator server stopped. The app keeps looking for one and attaches to it when it appears." + "The daemon's process is gone." | danger |
-| `wedged` | "A Local Operator server is running on this machine and this app is not attached to it. Nothing was started over it." + main's pid sentence | danger |
-| `unattachable` | the same sentence + main's spawn-gate detail: the daemon's address, its pid and version, that no serve record this app can read describes it, that nothing was started over it, and which recovery is actually reachable | danger |
+| `wedged` | "A Local Operator server is running on this machine and this app is not attached to it." + main's own sentence about the path taken | warning |
+| `unattachable` | the same sentence + main's spawn-gate detail: the path taken (this app was not given the key to that server), that no second daemon was started, and that it keeps probing for one it can open | warning |
 | `no-bridge` | "Not connected to a Local Operator server." | danger |
 
 Three things the table is measuring, each of which was a finding in round 1:

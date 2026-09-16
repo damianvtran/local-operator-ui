@@ -323,7 +323,7 @@ export const Wedged: Story = {
 		),
 	],
 	play: waitForCopy(
-		/A Local Operator server is running on this machine and this app is not attached to it\. Nothing was started over it\./,
+		/A Local Operator server is running on this machine and this app is not attached to it\./,
 	),
 };
 
@@ -351,9 +351,9 @@ export const Unattachable: Story = {
 				desktopAvailable: false,
 				failures: 0,
 				detail:
-					"A Local Operator daemon is running at http://127.0.0.1:1111 (pid 42411, v0.55.6) and no serve record this app can read describes that address, so this app holds no credential for it. Nothing was started on that port: a new daemon there would fail to bind while that answer stands. This app keeps probing and starts a daemon there as soon as the address is free; attaching to the daemon already there needs a serve record describing it, which only that daemon can publish.",
+					"This app was not given the key to that server, so it did not start a second one. It keeps probing for a server it can open.",
 			}),
 		),
 	],
-	play: waitForCopy(/pid 42411/),
+	play: waitForCopy(/It keeps probing for a server it can open/),
 };
