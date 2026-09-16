@@ -23,7 +23,6 @@ import {
 	liveQueue,
 	newEntry,
 	receiptFor,
-	receiptForRequester,
 	resultKey,
 } from "./vendor/driver/access-queue";
 import {
@@ -273,17 +272,17 @@ export class ApprovalStore {
 		url: URL,
 		requester: string,
 	): { allowed: boolean; viaOnceGrant: boolean } {
-		if (this.originAllowed(url)) return { allowed: true, viaOnceGrant: false };
-		const grant = consumableGrant(
-			this.onceGrants,
-			url.origin,
-			requester,
-			this.now(),
-		);
-		if (grant) {
-			delete this.onceGrants[url.origin];
-			this.persistIfChanged();
-			return { allowed: true, viaOnceGrant: true };
+		const authority = this.liveAuthority(url, requester);
+		if (authority) {
+			// Consumed ONCE, here and nowhere else — re-consulting the grant map later in
+			// the same command would let the once-grant TTL lapse between entry and
+			// navigation, turning a granted navigation back into a prompt the agent
+			// thinks it already passed (the extension's round-1 M1).
+			if (authority.viaOnceGrant) {
+				delete this.onceGrants[url.origin];
+				this.persistIfChanged();
+			}
+			return { allowed: true, viaOnceGrant: authority.viaOnceGrant };
 		}
 		throw new BrowserHostError(
 			"origin_not_allowed",
@@ -294,6 +293,39 @@ export class ApprovalStore {
 				reason: this.refusalReason(url),
 			},
 		);
+	}
+
+	/**
+	 * The live authority for one origin and requester, WITHOUT consuming it.
+	 *
+	 * THE SINGLE SOURCE OF TRUTH, and the fix for a shipped consent defect: the
+	 * gate and `request_access` used to answer from two different places —
+	 * `ensureTopLevelAccess` from the grant, `requestAccess` from a resolved
+	 * RECEIPT — and a receipt outlives the grant it was written for (its 15-minute
+	 * `ACCESS_RESULT_TTL_MS` against the 10-minute once-grant TTL), so
+	 * `request_access` answered `allowed` for a navigation the very next `open`
+	 * refused with `origin_not_allowed`, and raised no band while doing it: the
+	 * request was dropped without ever being put back to the user. Same pair
+	 * after a revocation, where the receipt outlives the grant by however long it
+	 * had left to run.
+	 *
+	 * `originAllowed` is the durable verdict plus the session grants; the second
+	 * term is an UNSPENT `once` grant bound to this requester, which the gate
+	 * consumes and this does not. Everything else is not authority: a spent grant,
+	 * a revoked one, a receipt for either.
+	 */
+	private liveAuthority(
+		url: URL,
+		requester: string,
+	): { viaOnceGrant: boolean } | null {
+		if (this.originAllowed(url)) return { viaOnceGrant: false };
+		const grant = consumableGrant(
+			this.onceGrants,
+			url.origin,
+			requester,
+			this.now(),
+		);
+		return grant ? { viaOnceGrant: true } : null;
 	}
 
 	/** Admission is captured once, but revocation remains authoritative while an
@@ -391,8 +423,10 @@ export class ApprovalStore {
 	 * The rules are `vendor/driver/access-flow.ts`'s, applied to the queue: a repeat
 	 * request for the same origin by the same requester is idempotent with its
 	 * original TTL, a request for a different origin REPLACES the live one (with
-	 * a tombstone for the displaced requester), and a live deny receipt answers
-	 * "denied" without re-prompting until its cool-down expires.
+	 * a tombstone for the displaced requester), and a DURABLE denial answers
+	 * "denied" without re-prompting, because that is what the button promises —
+	 * "Don't allow" says the agent stops asking about this site until the denial is
+	 * revoked.
 	 */
 	requestAccess(
 		rawUrl: unknown,
@@ -402,8 +436,27 @@ export class ApprovalStore {
 	): Record<string, unknown> {
 		const url = safeHttpUrl(rawUrl);
 		const now = this.now();
-		if (this.originAllowed(url)) {
+		/*
+		 * THE ANSWER COMES FROM LIVE AUTHORITY, and from nothing else. This replaces
+		 * two reads: an `originAllowed` early return, and a receipt branch that
+		 * answered from a resolved decision. That receipt branch was the shipped
+		 * defect — a receipt is a COPY of a decision with its own 15-minute TTL, so it
+		 * answered `allowed` while the grant it stood for had been spent, revoked or
+		 * forgotten, and the gate, reading the grant, refused. One predicate answers
+		 * both questions now (`liveAuthority`, which the gate itself calls), which is
+		 * why the next `open` cannot disagree with this answer.
+		 */
+		if (this.liveAuthority(url, requester)) {
 			return { origin: url.origin, state: "allowed" satisfies AccessState };
+		}
+		/*
+		 * A DURABLE DENIAL IS READ FROM THE VERDICT, not from the receipt written when
+		 * it was made — the same bug in the opposite direction. Reading it from a
+		 * receipt re-prompted the user 15 minutes later for a site they had already
+		 * refused, which is the nag the deny decision exists to stop.
+		 */
+		if (this.refusalReason(url) === "denied") {
+			return { origin: url.origin, state: "denied" satisfies AccessState };
 		}
 		const existing = findPending(this.queue, url.origin, requester, kind, now);
 		if (existing) {
@@ -411,20 +464,6 @@ export class ApprovalStore {
 			// kept. Resetting the TTL would let a polling agent extend the window
 			// indefinitely.
 			return this.entryResponse(existing, "pending");
-		}
-		const receipt = receiptForRequester(
-			this.results,
-			url.origin,
-			requester,
-			now,
-		);
-		if (receipt && receipt.state !== "superseded") {
-			// A resolved record only answers ITS OWN requester, and a fresh deny is a
-			// cool-down rather than a nag: re-raising the prompt on every retry is how
-			// the user learns to click Allow to make it stop.
-			const state: AccessState =
-				receipt.state === "denied" ? "denied" : "allowed";
-			return { origin: url.origin, state, entry_id: receipt.entryId };
 		}
 		this.sweep(now);
 		if (liveQueue(this.queue, now).length >= ACCESS_QUEUE_CAP) {
@@ -490,9 +529,20 @@ export class ApprovalStore {
 						requester: entry.requester,
 						requestedAt: entry.requestedAt,
 						expiresAt: entry.expiresAt,
-						...(this.decisionFor(entry)
-							? { decision: this.decisionFor(entry) }
-							: {}),
+						/*
+						 * NO `decision` TERM, and the removal is the point. The vendored
+						 * `accessState()` takes an optional decision so that a LIVE record can read
+						 * `allowed`/`denied` before the grant lands, and this host fed it from the
+						 * decision receipts — but every arm that writes a receipt removes its entry
+						 * from the queue FIRST (`respond` filters, `cancelAccess` splices), entry ids
+						 * are minted per entry and nothing here is restored from disk, so a record
+						 * with a decision can never be the record this reads. It was unreachable code
+						 * carrying the residue of the defect this fix closes, and a reader would
+						 * reasonably infer from it that a receipt can still answer. It cannot:
+						 * `requestAccess` answers from `liveAuthority` and from a durable verdict, and
+						 * the receipts are the store's record of what was decided (swept by TTL)
+						 * rather than a reader's source.
+						 */
 					}
 				: undefined,
 			this.tombstones,
@@ -502,6 +552,18 @@ export class ApprovalStore {
 			requester,
 			now,
 		);
+		/*
+		 * THE SYMMETRY WITH THE ALLOW PATH: an allow is readable from live state once
+		 * its entry is gone — the grant is still in force — and a deny has to be too.
+		 * Without this the same flow read `allowed` for a yes and `none` for a no, and
+		 * `none` is the word for "no request exists for you", which an agent narrates to
+		 * the user as "the user has not answered" while the user has in fact refused.
+		 * `superseded` is left alone: it is an explicit verdict about this requester's
+		 * own request.
+		 */
+		if (state === "none" && this.refusalReason(url) === "denied") {
+			return { origin: url.origin, state: "denied" satisfies AccessState };
+		}
 		return {
 			origin: url.origin,
 			state,
@@ -801,14 +863,6 @@ export class ApprovalStore {
 	}
 
 	// ---- internals -----------------------------------------------------------
-
-	private decisionFor(entry: AccessQueueEntry): OriginDecision | undefined {
-		const receipt = this.results[resultKey(entry.entryId, entry.requester)];
-		if (!receipt) return undefined;
-		if (receipt.state === "denied") return "deny";
-		if (receipt.state === "allowed") return "site";
-		return undefined;
-	}
 
 	/** Replace-don't-queue: the live entry for another origin (or another
 	 * requester) is displaced, and its requester gets a tombstone so its next poll
