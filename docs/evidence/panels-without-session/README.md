@@ -42,7 +42,10 @@ Two details of the frames are load-bearing rather than incidental:
 
 - **The description tells you which half you are looking at.** The before frames
   read "…and the conversation in front of you." and the after frames read "…and
-  the sessions running on it." — the conditioned copy, in pixels.
+  the sessions running on it." — the conditioned copy, in pixels. (Round 1's
+  remediation changed that clause to "…and the sessions on this machine." and
+  could not re-take these frames: see "Three frames carry the pre-remediation
+  copy" below.)
 - **The browser frame's suppression is readable, not inferred.** A CDP
   screenshot cannot capture a native `WebContentsView`, so the frame cannot show
   the view going away; what it shows is the panel drawn over the browser route
@@ -67,6 +70,29 @@ here: the palette stayed open with its row painted and "Open ↵" on it through
 every variant of the event. The gesture photographed is therefore a real CDP
 mouse press and release on the row the query painted first, not a synthesised
 `element.click()`.
+
+## Three frames carry the pre-remediation copy, on the record
+
+`draft-info`, `palette-settings` and `palette-browser` each present the same
+`/info` panel the Storybook set does, and none of them was re-taken after round
+1's design fix that changed the panel's third description clause from "…and the
+sessions running on it." to "…and the sessions on this machine."
+(`../panels-info/session-free`).
+
+The reason is the ADDRESS, and it is the rig's own constraint rather than an
+oversight: the renderer inlines the backend URL at build time and
+`src/renderer/index.html`'s CSP names only `1111` and `8080`, so a run cannot
+move — and for the whole remediation window both of those were held by OTHER
+sessions' processes (8080 by an agent's `local_test_doubles.py`, 1111 by a
+packaged `local-operator serve`). The port check added to the rig in the same
+remediation is what refused the run rather than quietly photographing someone
+else's daemon, which is why this is written down instead of being invisible.
+
+So, precisely: **the three frames are current in every respect except that one
+clause, which they spell the old way.** The new copy is shown at twelve themes,
+in the same component, by `../panels-info/session-free` — re-captured by that
+remediation, and the section whose promise the clause makes. The re-take is owed
+to the next window in which 8080 is free.
 
 ## Rig revision, and why two hashes appear
 

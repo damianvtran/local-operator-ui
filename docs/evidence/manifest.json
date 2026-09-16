@@ -2419,7 +2419,8 @@
       "themes": 1,
       "source": "scripts/panels-without-session-evidence.mjs (rig sha256 78b708c3 (the committed rig is that revision reformatted; the set README shows the whole diff)) against the BUILT app in headless mode with an isolated backend on 127.0.0.1:8080, at the branch head; `run-after.json` beside the frames carries the rig's own hash and every scene's DOM reads.",
       "why": "/info and /analytics now run with no open conversation and a panel is viewable from any page, so what a story fixture cannot show is the shipped app answering four gestures: the two typed commands on a sessionless pane, and the palette row from /settings and from /browser. Each frame has its partner in `panels-without-session-baseline/`, captured by the same rig bytes on unmodified origin/main.",
-      "capturedAt": "2026-09-16T17:02:58Z"
+      "capturedAt": "2026-09-16T17:02:58Z",
+      "staleFrames": "`draft-info`, `palette-settings` and `palette-browser` present the `/info` panel and still spell its third description clause the pre-remediation way (\"…and the sessions running on it.\"), because the re-take could not run: the rig's backend address is inlined at build time and the renderer's CSP names only 1111 and 8080, and other sessions' processes held BOTH for the whole remediation window. The new copy is shown at twelve themes by `panels-info/session-free`; the README of this set states the gap in full. Recorded here so a reader who compares pixels to source finds the reason in the record rather than concluding the frames are current."
     },
     {
       "path": "panels-without-session-baseline",
