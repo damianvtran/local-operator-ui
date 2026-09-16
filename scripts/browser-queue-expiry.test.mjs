@@ -14,8 +14,11 @@ globalThis.requestAnimationFrame = (callback) =>
 const { createRoot } = await import("react-dom/client");
 after(() => {
 	bootstrapDOM.window.close();
-	delete globalThis.window;
-	delete globalThis.document;
+	// `Reflect.deleteProperty` rather than `delete`, which the lint contract forbids:
+	// the property has to be genuinely gone, not set to `undefined`, so a later
+	// import in the same process does not inherit this file's document.
+	Reflect.deleteProperty(globalThis, "window");
+	Reflect.deleteProperty(globalThis, "document");
 });
 
 /*
@@ -152,7 +155,14 @@ test("a live request is never reported as resolved, however often the tick runs"
 test("the reconcile's rule is unchanged for a departure: withdrawal stays a withdrawal", () => {
 	const now = Date.now();
 	const withdrawn = request({ expiresAt: now + 60_000 });
-	const rows = reconcileResolved([withdrawn], [], [], new Set(), new Set(), now);
+	const rows = reconcileResolved(
+		[withdrawn],
+		[],
+		[],
+		new Set(),
+		new Set(),
+		now,
+	);
 	assert.equal(rows.length, 1);
 	assert.equal(rows[0].kind, "withdrawn");
 });
@@ -202,7 +212,9 @@ test("a stale entry is resolved once, not again every retention window", async (
 				expiresAt: startedAt + 60 * 60_000,
 			}),
 		];
-		const Probe = renderQueueProbe(requests, [], (model) => reports.push(model));
+		const Probe = renderQueueProbe(requests, [], (model) =>
+			reports.push(model),
+		);
 		await act(async () => {
 			root.render(createElement(Probe));
 		});
@@ -256,8 +268,7 @@ test("a stale entry is resolved once, not again every retention window", async (
 			root.unmount();
 		});
 		host.remove();
-	}
-	finally {
+	} finally {
 		Date.now = realNow;
 	}
 });

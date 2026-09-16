@@ -1012,14 +1012,23 @@ test("a second session's request is queued behind the first, not displacing it",
 		["https://a.example", "https://b.example"],
 		"both requests are live, in the order they arrived",
 	);
-	assert.equal(store.accessStateFor("https://a.example/", "session:a").state, "pending");
-	assert.equal(store.accessStateFor("https://b.example/", "session:b").state, "pending");
+	assert.equal(
+		store.accessStateFor("https://a.example/", "session:a").state,
+		"pending",
+	);
+	assert.equal(
+		store.accessStateFor("https://b.example/", "session:b").state,
+		"pending",
+	);
 	// Each is answered independently, and answering the newer one leaves the older
 	// one waiting — the property a single slot could not have.
 	assert.equal(store.respond(second.entry_id, "site").scope, "origin");
 	assert.equal(store.pendingEntries().length, 1);
 	assert.equal(store.pendingEntries()[0].entryId, first.entry_id);
-	assert.equal(store.accessStateFor("https://a.example/", "session:a").state, "pending");
+	assert.equal(
+		store.accessStateFor("https://a.example/", "session:a").state,
+		"pending",
+	);
 	assert.equal(store.originAllowed(safeHttpUrl("https://b.example/")), true);
 	assert.equal(
 		store.originAllowed(safeHttpUrl("https://a.example/")),
@@ -1052,7 +1061,11 @@ test("at the cap the oldest request is displaced, and the newest requester is no
 	// on, raised at the agent that did nothing wrong, in a state the displaced
 	// requester already handles.
 	assert.equal(extra.state, "pending", "the newest requester is never refused");
-	assert.equal(store.pendingEntries().length, ACCESS_QUEUE_CAP, "the queue holds its cap");
+	assert.equal(
+		store.pendingEntries().length,
+		ACCESS_QUEUE_CAP,
+		"the queue holds its cap",
+	);
 	assert.equal(
 		store.pendingEntries()[0].entryId,
 		entries[1].entry_id,
@@ -1086,12 +1099,14 @@ test("a decision on a request that has expired is refused, and grants nothing", 
 	// click is therefore the moment the bound has to hold: nothing fires at expiry,
 	// so a decision arriving a second late is the case this closes.
 	clock += ACCESS_REQUEST_TTL_MS + 1;
-	assert.equal(store.pendingEntries().length, 0, "the projection drops it at the TTL");
+	assert.equal(
+		store.pendingEntries().length,
+		0,
+		"the projection drops it at the TTL",
+	);
 	assert.throws(
 		() => store.respond(entry.entry_id, "site"),
-		(error) =>
-			error.code === "internal" &&
-			/expired/.test(error.message),
+		(error) => error.code === "internal" && /expired/.test(error.message),
 		"an expired request cannot be granted",
 	);
 	assert.equal(
@@ -1142,7 +1157,9 @@ test("a spent once-grant does not answer `allowed`: the request is raised again,
 });
 
 test("a revoked site re-asks in the SAME conversation: the receipt does not outlive the grant", () => {
-	const store = new ApprovalStore({ dir: join(root, "approvals-revoke-reask") });
+	const store = new ApprovalStore({
+		dir: join(root, "approvals-revoke-reask"),
+	});
 	const url = safeHttpUrl("https://revoked.example/");
 	const first = store.requestAccess(url.href, "session:a", "async", "req-1");
 	store.respond(first.entry_id, "site");
@@ -1161,7 +1178,11 @@ test("a revoked site re-asks in the SAME conversation: the receipt does not outl
 		"pending",
 		"withdrawing the grant has to be authoritative in the conversation that earned it",
 	);
-	assert.equal(store.pendingEntries().length, 1, "and the band is raised there too");
+	assert.equal(
+		store.pendingEntries().length,
+		1,
+		"and the band is raised there too",
+	);
 	// THE CONTRAST that shows the mechanism was per-conversation receipt state:
 	// a conversation that never held the receipt re-asks as well, so both read the
 	// same thing now instead of one being told a grant was live.
@@ -1172,7 +1193,9 @@ test("a revoked site re-asks in the SAME conversation: the receipt does not outl
 });
 
 test("a deny reads `denied` on await_access, the way an allow reads `allowed`", () => {
-	const store = new ApprovalStore({ dir: join(root, "approvals-deny-symmetry") });
+	const store = new ApprovalStore({
+		dir: join(root, "approvals-deny-symmetry"),
+	});
 	const denied = safeHttpUrl("https://deny-symmetry.example/");
 	const entry = store.requestAccess(denied.href, "session:a", "async", "req-1");
 	store.respond(entry.entry_id, "deny");
@@ -1207,15 +1230,25 @@ test("the positive direction still holds: a live grant short-circuits the band, 
 		[once, "once"],
 		[session, "session"],
 	]) {
-		const entry = store.requestAccess(url.href, "session:a", "async", `open-${url.origin}`);
+		const entry = store.requestAccess(
+			url.href,
+			"session:a",
+			"async",
+			`open-${url.origin}`,
+		);
 		store.respond(entry.entry_id, decision);
 		assert.equal(
-			store.requestAccess(url.href, "session:a", "async", `re-${url.origin}`).state,
+			store.requestAccess(url.href, "session:a", "async", `re-${url.origin}`)
+				.state,
 			"allowed",
 			`a ${decision} decision is live authority for its own requester`,
 		);
 	}
-	assert.equal(store.pendingEntries().length, 0, "and none of them raised a band");
+	assert.equal(
+		store.pendingEntries().length,
+		0,
+		"and none of them raised a band",
+	);
 	assert.equal(
 		store.requestAccess(once.href, "session:b", "async", "other").state,
 		"pending",
@@ -1223,17 +1256,14 @@ test("the positive direction still holds: a live grant short-circuits the band, 
 	);
 });
 
-test("two requests for different origins coexist, and the queue is answered oldest first", () => {	const store = new ApprovalStore({ dir: join(root, "approvals-coexist") });
+test("two requests for different origins coexist, and the queue is answered oldest first", () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-coexist") });
 	store.requestAccess("https://one.example/", "session:a", "async", "req-1");
 	store.requestAccess("https://two.example/", "session:b", "async", "req-2");
 	store.requestAccess("https://three.example/", "session:c", "async", "req-3");
 	assert.deepEqual(
 		store.pendingEntries().map((entry) => entry.origin),
-		[
-			"https://one.example",
-			"https://two.example",
-			"https://three.example",
-		],
+		["https://one.example", "https://two.example", "https://three.example"],
 		"FIFO by sequence, which is the order the renderer numbers them in",
 	);
 });
@@ -1264,7 +1294,11 @@ test("one banner per count change, not one per pending request", () => {
 		"one pending names the origin, because that is the thing being asked about",
 	);
 	notifier.announce(pending(3));
-	assert.equal(raised.length, 2, "one banner for the count change, not one per entry");
+	assert.equal(
+		raised.length,
+		2,
+		"one banner for the count change, not one per entry",
+	);
 	assert.match(raised[1].body, /^3 site approvals are waiting\./);
 	// A re-announce at the same count is not a change.
 	notifier.announce(pending(3));

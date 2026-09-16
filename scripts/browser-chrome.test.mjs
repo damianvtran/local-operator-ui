@@ -23,9 +23,9 @@ import {
 	statSync,
 	writeFileSync,
 } from "node:fs";
+import { unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { unlink, writeFile } from "node:fs/promises";
 import { before, test } from "node:test";
 import { build } from "esbuild";
 
@@ -234,7 +234,9 @@ before(() => {
 class FakeWebContents {
 	constructor(history) {
 		this.destroyed = false;
-		this.historyEntries = history ?? [{ url: "https://example.com/", title: "Example" }];
+		this.historyEntries = history ?? [
+			{ url: "https://example.com/", title: "Example" },
+		];
 		this.activeIndex = this.historyEntries.length - 1;
 		this.restored = [];
 		this.loaded = [];
@@ -270,7 +272,10 @@ class FakeWebContents {
 			},
 			length: () => this.historyEntries.length,
 			getAllEntries: () =>
-				this.historyEntries.map((entry) => ({ ...entry, pageState: "c3RhdGU=" })),
+				this.historyEntries.map((entry) => ({
+					...entry,
+					pageState: "c3RhdGU=",
+				})),
 			getActiveIndex: () => this.activeIndex,
 			// The real signature returns a promise; the ORDER is what these tests are
 			// about, so the fake records the call and repopulates the stack the way
@@ -329,7 +334,11 @@ test("the session file is written 0600 under a 0700 directory, as a staged renam
 	]);
 	store.flush();
 	const mode = statSync(store.filePath).mode & 0o777;
-	assert.equal(mode, SESSION_FILE_MODE, "the file mode is the one this module intends");
+	assert.equal(
+		mode,
+		SESSION_FILE_MODE,
+		"the file mode is the one this module intends",
+	);
 	assert.equal(
 		statSync(dir).mode & 0o777,
 		SESSION_DIR_MODE,
@@ -357,8 +366,14 @@ test("a snapshot never carries a nonce or a hand-over, whatever the tab's owner 
 	// cannot be re-read out of `userData` and re-granted to whoever wrote the file
 	// (design 7.3).
 	assert.ok(!raw.includes("nonce"), "no nonce is persisted, in any casing");
-	assert.ok(!raw.includes("handedTo"), "a hand-over does not survive a restart either");
-	assert.ok(raw.includes('"owner": "agent"'), "the owner is recorded for the diagnostics");
+	assert.ok(
+		!raw.includes("handedTo"),
+		"a hand-over does not survive a restart either",
+	);
+	assert.ok(
+		raw.includes('"owner": "agent"'),
+		"the owner is recorded for the diagnostics",
+	);
 });
 
 test("a restored tab comes back user-owned, with a fresh id and no capability", () => {
@@ -409,10 +424,17 @@ test("a corrupt or future-versioned session file opens one blank tab, not a cras
 	const path = join(dir, SESSION_FILENAME);
 	writeFileSync(path, "{ this is not json");
 	const logged = [];
-	assert.deepEqual(readSession(path, (line) => logged.push(line)), []);
+	assert.deepEqual(
+		readSession(path, (line) => logged.push(line)),
+		[],
+	);
 
 	writeFileSync(path, JSON.stringify({ version: 99, tabs: [{ entries: [] }] }));
-	assert.deepEqual(readSession(path), [], "a version this build does not write is refused");
+	assert.deepEqual(
+		readSession(path),
+		[],
+		"a version this build does not write is refused",
+	);
 
 	// A tab whose only entries are non-http(s) is dropped rather than restored into
 	// a navigation the view's own `will-navigate` would then refuse.
@@ -421,8 +443,18 @@ test("a corrupt or future-versioned session file opens one blank tab, not a cras
 		JSON.stringify({
 			version: 1,
 			tabs: [
-				{ owner: "user", active: true, entries: [{ url: "file:///etc/passwd" }], activeIndex: 0 },
-				{ owner: "user", active: false, entries: [{ url: "https://ok.example/" }], activeIndex: 0 },
+				{
+					owner: "user",
+					active: true,
+					entries: [{ url: "file:///etc/passwd" }],
+					activeIndex: 0,
+				},
+				{
+					owner: "user",
+					active: false,
+					entries: [{ url: "https://ok.example/" }],
+					activeIndex: 0,
+				},
 			],
 		}),
 	);
@@ -546,10 +578,10 @@ test("the moment a restored tab has history of its own, the live stack replaces 
 	contents.activeIndex = 1;
 
 	const captured = captureTabs(registry.list(), record.tabId);
-	assert.deepEqual(captured[0].entries.map((entry) => entry.url), [
-		"https://restored.example/page",
-		"https://live.example/after",
-	]);
+	assert.deepEqual(
+		captured[0].entries.map((entry) => entry.url),
+		["https://restored.example/page", "https://live.example/after"],
+	);
 	assert.equal(
 		captured[0].activeIndex,
 		1,
@@ -623,7 +655,11 @@ test("a refused quit-time capture - shorter than the durable record - is not wri
 	const store = new BrowserSessionStore({ dir, debounceMs: 20 });
 	store.record(sessionRows(3));
 	store.flush();
-	assert.equal(readSession(store.filePath).length, 3, "three rows durable first");
+	assert.equal(
+		readSession(store.filePath).length,
+		3,
+		"three rows durable first",
+	);
 
 	// The teardown ordering: the views are already gone when `stop()` runs, so their
 	// `destroyed` handlers staged a one-row capture BEFORE the stop path read
@@ -783,7 +819,12 @@ test("a denial clears a session grant, and a per-origin revoke removes it", () =
 
 	const third = storeIn("approvals-session-revoke");
 	const other = safeHttpUrl("https://revoke.example/");
-	const pending = third.requestAccess(other.href, "session:a", "async", "req-1");
+	const pending = third.requestAccess(
+		other.href,
+		"session:a",
+		"async",
+		"req-1",
+	);
 	third.respond(pending.entry_id, "session");
 	assert.equal(third.revokeOrigin(other.origin) > 0, true);
 	assert.equal(third.originAllowed(other), false);
@@ -826,7 +867,12 @@ test("a per-origin revoke takes the unspent once grant, its receipts and any in-
 	 * epoch moves and the closure compares that.
 	 */
 	const inflight = storeIn("approvals-revoke-inflight");
-	const askedOnce = inflight.requestAccess(url.href, "session:a", "async", "req-1");
+	const askedOnce = inflight.requestAccess(
+		url.href,
+		"session:a",
+		"async",
+		"req-1",
+	);
 	inflight.respond(askedOnce.entry_id, "once");
 	const admission = inflight.admit(url, "session:a");
 	assert.equal(
@@ -860,7 +906,10 @@ test("a per-origin revoke takes the unspent once grant, its receipts and any in-
 		7,
 		receipts.admit(privateUrl, "session:a").approved,
 	);
-	assert.equal(receipts.documentAllowed(token, privateUrl, "session:a", 7), true);
+	assert.equal(
+		receipts.documentAllowed(token, privateUrl, "session:a", 7),
+		true,
+	);
 	receipts.revokeOrigin(privateUrl.origin);
 	assert.equal(receipts.originAllowed(privateUrl), false);
 	assert.equal(
@@ -916,7 +965,12 @@ test("'revoke all' clears the durable set and the session set in one action", ()
 	const held = store.requestAccess(durable.href, "session:a", "async", "req-1");
 	store.respond(held.entry_id, "site");
 	const session = safeHttpUrl("https://sessiononly.example/");
-	const pending = store.requestAccess(session.href, "session:a", "async", "req-2");
+	const pending = store.requestAccess(
+		session.href,
+		"session:a",
+		"async",
+		"req-2",
+	);
 	store.respond(pending.entry_id, "session");
 	assert.equal(store.grants().length, 2);
 
@@ -927,14 +981,20 @@ test("'revoke all' clears the durable set and the session set in one action", ()
 	assert.equal(store.originAllowed(session), false);
 	// Revoking is not a logout: the call touches no cookie and no cache, which is
 	// why the sheet's copy says so.
-	assert.equal(existsSync(join(root, "approvals-revoke-all", "session.json")), false);
+	assert.equal(
+		existsSync(join(root, "approvals-revoke-all", "session.json")),
+		false,
+	);
 });
 
 test("revoking one origin takes the broad grant that admitted it, too", () => {
 	const store = storeIn("approvals-broad");
 	const url = safeHttpUrl("https://sub.gominerva.com/page");
 	const pending = store.requestAccess(url.href, "session:a", "async", "req-1");
-	assert.ok(pending.broad, "a broad option is offered when public-suffix data exists");
+	assert.ok(
+		pending.broad,
+		"a broad option is offered when public-suffix data exists",
+	);
 	store.respond(pending.entry_id, "domain");
 	assert.equal(store.originAllowed(url), true);
 	assert.equal(store.revokeOrigin(url.origin) >= 1, true);
@@ -1007,7 +1067,9 @@ test("a restore allocates a bounded number of tabs, and keeps the tab the user w
 	const tabs = Array.from({ length: 256 }, (_unused, index) =>
 		persistedTab(1, {
 			active: false,
-			entries: [{ url: `https://example.com/tab-${index}`, title: `Tab ${index}` }],
+			entries: [
+				{ url: `https://example.com/tab-${index}`, title: `Tab ${index}` },
+			],
 			activeIndex: 0,
 		}),
 	);
@@ -1047,11 +1109,15 @@ test("a restored stack is bounded around the entry the tab was showing", () => {
 		"one tab's history depth is bounded too: a stack is memory the user never asked to spend twice",
 	);
 	assert.ok(
-		read[0].entries.some((entry) => entry.url === "https://example.com/page-300"),
+		read[0].entries.some(
+			(entry) => entry.url === "https://example.com/page-300",
+		),
 		"the entry the tab was showing survives the bound: keeping only the newest would delete the page the user left off on",
 	);
 	assert.ok(
-		read[0].entries.some((entry) => entry.url === "https://example.com/page-299"),
+		read[0].entries.some(
+			(entry) => entry.url === "https://example.com/page-299",
+		),
 		"and so does the entry before it, because a restored stack is restored so that Back still works",
 	);
 	const active = read[0].entries[read[0].activeIndex];
@@ -1072,7 +1138,11 @@ test("a restored stack is bounded around the entry the tab was showing", () => {
 		persistedTab(400, { active: true, activeIndex: 2 }),
 	]).read;
 	assert.equal(early[0].entries.length, MAX_RESTORED_ENTRIES);
-	assert.equal(early[0].activeIndex, 2, "an index inside the window is not moved");
+	assert.equal(
+		early[0].activeIndex,
+		2,
+		"an index inside the window is not moved",
+	);
 	assert.equal(early[0].entries[2].url, "https://example.com/page-2");
 });
 
@@ -1084,7 +1154,11 @@ test("an oversized page state is dropped whole, and its entry kept", () => {
 			active: true,
 			entries: [
 				{ url: "https://example.com/big", title: "Big", pageState: huge },
-				{ url: "https://example.com/small", title: "Small", pageState: "c3RhdGU=" },
+				{
+					url: "https://example.com/small",
+					title: "Small",
+					pageState: "c3RhdGU=",
+				},
 			],
 			activeIndex: 1,
 		},
@@ -1117,7 +1191,11 @@ test("a session file past the size budget is refused before it is parsed", () =>
 	);
 	const lines = [];
 	const read = readSession(path, (message) => lines.push(message));
-	assert.deepEqual(read, [], "an oversized file restores nothing rather than restoring slowly");
+	assert.deepEqual(
+		read,
+		[],
+		"an oversized file restores nothing rather than restoring slowly",
+	);
 	assert.ok(
 		lines.some((line) => line.includes(String(MAX_SESSION_FILE_BYTES))),
 		`the refusal names the budget: ${JSON.stringify(lines)}`,
@@ -1146,7 +1224,11 @@ test("an unusable entry is filtered before anything is allocated, and a long URL
 		["https://example.com/kept"],
 		"the scheme rule and the length rule both apply one layer before the host allocates a view",
 	);
-	assert.equal(read[0].activeIndex, 0, "the index is re-derived against what survived");
+	assert.equal(
+		read[0].activeIndex,
+		0,
+		"the index is re-derived against what survived",
+	);
 });
 
 // ---- the terminal rectangle (review round 1, R4) ---------------------------
@@ -1236,9 +1318,7 @@ test("the null rect is delivered on the spot, and it cancels a pending frame", (
 /** The shipped source with comments stripped, for the rules a render cannot see. */
 function shippedSource(relativePath) {
 	const source = readFileSync(join(process.cwd(), relativePath), "utf8");
-	return source
-		.replace(/\/\*[\s\S]*?\*\//g, "")
-		.replace(/^\s*\/\/.*$/gm, "");
+	return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
 test("an action's refusal is not erased by the state read that follows it (R6)", () => {
@@ -1253,7 +1333,9 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 		"there is no single error slot left for a refresh to clear",
 	);
 	assert.ok(
-		/setActionError\(messageOf\(caught\)\)[\s\S]*?await refresh\(\)/.test(source),
+		/setActionError\(messageOf\(caught\)\)[\s\S]*?await refresh\(\)/.test(
+			source,
+		),
 		"`run` records the action's refusal BEFORE it re-reads the projection",
 	);
 	const refresh = source.slice(
@@ -1278,13 +1360,23 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 
 test("the attention names one request, and a stale clear cannot drop a newer one", () => {
 	const seen = [];
-	const unsubscribe = subscribeConsentAttention(() => seen.push(consentAttentionSnapshot()));
-	assert.equal(consentAttentionSnapshot(), null, "nothing is attended to by default");
+	const unsubscribe = subscribeConsentAttention(() =>
+		seen.push(consentAttentionSnapshot()),
+	);
+	assert.equal(
+		consentAttentionSnapshot(),
+		null,
+		"nothing is attended to by default",
+	);
 
 	noteConsentAttention("entry-a");
 	assert.equal(consentAttentionSnapshot(), "entry-a");
 	noteConsentAttention("entry-a");
-	assert.equal(seen.length, 1, "naming the same request twice is not a second wake-up");
+	assert.equal(
+		seen.length,
+		1,
+		"naming the same request twice is not a second wake-up",
+	);
 
 	// The request the user was answering is gone, and a NEWER one has arrived: a
 	// late clear for the old entry must not take the new one with it.
@@ -1299,7 +1391,11 @@ test("the attention names one request, and a stale clear cannot drop a newer one
 	clearConsentAttention("entry-b");
 	assert.equal(consentAttentionSnapshot(), null);
 	clearConsentAttention();
-	assert.equal(consentAttentionSnapshot(), null, "clearing nothing is not an event");
+	assert.equal(
+		consentAttentionSnapshot(),
+		null,
+		"clearing nothing is not an event",
+	);
 	unsubscribe();
 });
 
@@ -1362,7 +1458,10 @@ test("the consent bar names the conversation that is asking (D2)", () => {
 	);
 
 	const markup = render(
-		el(BrowserConsentBar, trayProps([{ ...PENDING, requesterSessionId: null }])),
+		el(
+			BrowserConsentBar,
+			trayProps([{ ...PENDING, requesterSessionId: null }]),
+		),
 	);
 	// The markup escapes the apostrophe, so the assertion is on the words rather
 	// than on the exact punctuation.
@@ -1377,7 +1476,8 @@ test("the consent bar names the conversation that is asking (D2)", () => {
 	// ONE PENDING REQUEST HAS NO HEADER ROW (spec §4.1): there is nothing to
 	// disambiguate, so the band is the card, which is the band the user knows.
 	assert.ok(
-		!markup.includes("approval waiting") && !markup.includes("approvals waiting"),
+		!markup.includes("approval waiting") &&
+			!markup.includes("approvals waiting"),
 		"one request renders no count and no chips",
 	);
 });
@@ -1409,7 +1509,9 @@ test("the consent bar states each choice's own lifetime, and that the profile is
 		"the session grant says it is not per-conversation, which its own button could not say",
 	);
 	assert.ok(
-		markup.includes("kept until you revoke it, and shared with every conversation"),
+		markup.includes(
+			"kept until you revoke it, and shared with every conversation",
+		),
 		"a persistent grant names both its lifetime and its audience",
 	);
 	assert.ok(
@@ -1494,7 +1596,10 @@ test("the ordinal is a position in the live list, and answering one renumbers th
 	// Answering the first is exactly what the host does: the entry leaves the
 	// projection and every later request moves up, the way a numbered list does.
 	assert.deepEqual(
-		approvalRows(requests.slice(1), now).map((row) => [row.ordinal, row.request.entryId]),
+		approvalRows(requests.slice(1), now).map((row) => [
+			row.ordinal,
+			row.request.entryId,
+		]),
 		[
 			[1, "two"],
 			[2, "three"],
@@ -1519,7 +1624,11 @@ test("the remaining time is stated in words, and stops counting below a minute",
 test("a request that leaves the list is remembered as expired or withdrawn, and an answered one is not", () => {
 	const now = 4_000_000;
 	const expired = { ...PENDING, entryId: "expired", expiresAt: now - 1 };
-	const withdrawn = { ...PENDING, entryId: "withdrawn", expiresAt: now + 60_000 };
+	const withdrawn = {
+		...PENDING,
+		entryId: "withdrawn",
+		expiresAt: now + 60_000,
+	};
 	const answered = { ...PENDING, entryId: "answered", expiresAt: now + 60_000 };
 	const resolved = reconcileResolved(
 		[expired, withdrawn, answered],
@@ -1556,14 +1665,44 @@ test("a request that leaves the list is remembered as expired or withdrawn, and 
 		"the memory is bounded",
 	);
 	assert.deepEqual(
-		reconcileResolved([], [], [{ key: "stale", kind: "expired", origin: "https://a.example", authority: "a.example", at: now - 5 * 60_000 }], new Set(), new Set(), now),
+		reconcileResolved(
+			[],
+			[],
+			[
+				{
+					key: "stale",
+					kind: "expired",
+					origin: "https://a.example",
+					authority: "a.example",
+					at: now - 5 * 60_000,
+				},
+			],
+			new Set(),
+			new Set(),
+			now,
+		),
 		[],
 		"and drops a row five minutes after the fact",
 	);
 	// A request that arrives in the same refresh a row was remembered for is not a
 	// second row: the retention is keyed on the entry the host minted.
 	assert.equal(
-		reconcileResolved([], [], [{ key: "expired", kind: "expired", origin: "https://a.example", authority: "a.example", at: now }], new Set(), new Set(), now + 1000).length,
+		reconcileResolved(
+			[],
+			[],
+			[
+				{
+					key: "expired",
+					kind: "expired",
+					origin: "https://a.example",
+					authority: "a.example",
+					at: now,
+				},
+			],
+			new Set(),
+			new Set(),
+			now + 1000,
+		).length,
 		1,
 	);
 });
@@ -1572,8 +1711,18 @@ test("a parked tab's Waiting chip carries the ordinal of the request its origin 
 	const now = 5_000_000;
 	const rows = approvalRows(
 		[
-			{ ...PENDING, entryId: "one", origin: "https://docs.example.org", expiresAt: now + 60_000 },
-			{ ...PENDING, entryId: "two", origin: "https://login.example.com", expiresAt: now + 120_000 },
+			{
+				...PENDING,
+				entryId: "one",
+				origin: "https://docs.example.org",
+				expiresAt: now + 60_000,
+			},
+			{
+				...PENDING,
+				entryId: "two",
+				origin: "https://login.example.com",
+				expiresAt: now + 120_000,
+			},
 		],
 		now,
 	);
@@ -1597,7 +1746,11 @@ test("a parked tab's Waiting chip carries the ordinal of the request its origin 
 		null,
 		"`new URL('about:blank').origin` is the STRING \"null\", which is truthy",
 	);
-	assert.equal(originOfUrl("file:///tmp/x"), null, "and a non-http scheme is not an origin the gate knows");
+	assert.equal(
+		originOfUrl("file:///tmp/x"),
+		null,
+		"and a non-http scheme is not an origin the gate knows",
+	);
 });
 
 test("a conversation's scope keeps a tab with no attribution out of its list", () => {
@@ -1652,11 +1805,13 @@ test("a failed navigation names the reason in the app's own chrome, and offers a
 		"the sentence is the reason, not a generic apology",
 	);
 	assert.ok(
-		markup.includes("ERR_EMPTY_RESPONSE") && markup.includes("http://127.0.0.1:9/"),
+		markup.includes("ERR_EMPTY_RESPONSE") &&
+			markup.includes("http://127.0.0.1:9/"),
 		"and the raw refusal and the attempted address are on screen for a bug report",
 	);
 	assert.ok(
-		markup.includes("browser-load-failure-retry") && markup.includes("Try again"),
+		markup.includes("browser-load-failure-retry") &&
+			markup.includes("Try again"),
 		"a recovery path is offered, because the panel is the only thing the user can act on",
 	);
 	assert.equal(retried.length, 0, "the retry is not fired by rendering");
