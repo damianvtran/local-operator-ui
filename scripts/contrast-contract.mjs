@@ -920,7 +920,16 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "New chat row cap edge while current",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "Boolean(activeDraftKey) && !draft?.target && capEdge,",
+		/*
+		 * The WHOLE attribute, not the condition alone, and for the reason the
+		 * neighbouring row pin gives: a reader can leave the class declared and the
+		 * predicate intact and still stop passing either to the element - delete the
+		 * `className` prop, or drop `capEdge` from the `cn` call - and a pin over the
+		 * bare expression would still find its substring in the file. This names the
+		 * prop, the `cn` call, the condition and the class together, so the element
+		 * either carries the edge or fails the gate.
+		 */
+		must: "className={cn(\n\t\t\t\t\t\t\t\t\tBoolean(activeDraftKey) && !draft?.target && capEdge,\n\t\t\t\t\t\t\t\t)}",
 		why: "the caps are the visible half of the chord, and the state the chord itself creates is the one state where their fill equals the row's ground; without this the edge never appears and the caps are glyphs there and only there",
 	},
 	{
@@ -930,7 +939,7 @@ const STRUCTURAL_CALL_SITES = [
 		 * the caps 1px per side in one state only, which is the same shift this row
 		 * retires `border-control` on the row itself for. `outline-control` against
 		 * `sunken` is 3.13-5.91:1 across the twelve palettes (worst: iceberg 3.13),
-		 * clearing `docs/branding.md` § 4's 3:1 structural floor in every one, and it
+		 * clearing `docs/branding.md` § 3's 3:1 structural floor in every one, and it
 		 * is the idiom the picker row already uses for a structural edge.
 		 */
 		what: "New chat row cap edge class",
