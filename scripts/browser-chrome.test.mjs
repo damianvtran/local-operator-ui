@@ -2109,6 +2109,140 @@ test("the pane's scope switch is the pane's own, and the conversation side needs
 	}
 });
 
+/* ---------------------------------------------------------------- */
+/* Two scopes, one surface: the switch moves the tabs only           */
+/* (QA round 1, Q1; UX round 1, U1, U3 and U4; QA round 1, Q2)        */
+/* ---------------------------------------------------------------- */
+
+test("the surface feeds the requests the requester's scope and the tabs the switch's", () => {
+	const surface = shippedSource(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	// THE DEFECT, PINNED BOTH WAYS. One `scope` prop fed both filters, so on the
+	// pane's All-tabs side the tray widened to every conversation's requests and,
+	// worse, an entry left the queue model's input while still pending - which the
+	// model resolves as `Withdrawn by the agent`. The line below is the fix; the
+	// assertion above it is the shape a revert has to argue with.
+	assert.ok(
+		surface.includes("requestsInScope(requests ?? [], stableRequestScope)"),
+		"the requests are filtered by the scope whose own key is the requester",
+	);
+	assert.ok(
+		!surface.includes("requestsInScope(requests ?? [], stableScope)"),
+		"and never by the tabs' scope, which is the switch's",
+	);
+	assert.ok(
+		surface.includes("tabsInScope(allTabs ?? [], stableScope)"),
+		"while the tabs keep the scope the host's switch moves",
+	);
+	// Both are props, because a host that had only one could not express the two
+	// questions a pane asks (spec 7.2).
+	assert.ok(
+		surface.includes("tabScope,") && surface.includes("requestScope,"),
+		"and the host chooses both",
+	);
+});
+
+test("the pane's request scope is the conversation, and never the switch", () => {
+	const pane = shippedSource(
+		"src/renderer/src/features/browser/components/browser-pane.tsx",
+	);
+	// The request scope's own derivation, read out of the file rather than guessed
+	// at: `scoped` is the switch's term, and it must not appear here at all.
+	const requests = pane.slice(
+		pane.indexOf("const requestScope"),
+		pane.indexOf("const switchValue"),
+	);
+	assert.ok(
+		requests.includes('sessionId !== null ? { sessionId } : "all"'),
+		"the requests follow the session",
+	);
+	assert.ok(
+		!requests.includes("scoped"),
+		"and nothing the user presses on the switch reaches them",
+	);
+	// A draft has no conversation to name, so the tray must not name one (U4): the
+	// conversation's sentence is passed only WITH a conversation.
+	assert.ok(
+		pane.includes("sessionId !== null ? paneApprovalHeaderLabel : undefined"),
+		"the tray's sentence is conditional on there being a conversation to name",
+	);
+	// THE LENS IS THE SLOT'S, NOT THE PANE'S (U3). The pane is remounted by a
+	// conversation switch, so a `useState` here forgot the choice on every switch
+	// while the pane itself stayed open at the width the user had dragged. Its
+	// absence is the pin, because the absence is the fix.
+	assert.ok(
+		!pane.includes("useState"),
+		"the pane holds no local state for the switch to be forgotten in",
+	);
+});
+
+test("the scope the user chose outlives the pane, because the pane does not", () => {
+	const store = useUiPreferencesStore;
+	const pane = shippedSource(
+		"src/renderer/src/features/browser/components/browser-pane.tsx",
+	);
+	// THE CHOICE IS THE STORE'S, and the read is what pins it: a fresh mount (which
+	// is what a conversation switch produces) has to find the lens where the last
+	// one left it, and the pane's own header comment claimed exactly that for a
+	// round while the state was local (U3).
+	assert.ok(
+		pane.includes("useUiPreferencesStore((s) => s.browserPaneScope)"),
+		"the pane reads the lens out of the window's slot state",
+	);
+	assert.ok(
+		pane.includes("useUiPreferencesStore((s) => s.setBrowserPaneScope)"),
+		"and writes it back there",
+	);
+	store.setState({ browserPaneScope: "conversation" });
+	store.getState().setBrowserPaneScope("all");
+	assert.equal(
+		store.getState().browserPaneScope,
+		"all",
+		"the store keeps the choice",
+	);
+	store.setState({ browserPaneScope: "conversation" });
+	/*
+	 * WHY THIS IS A SOURCE PIN RATHER THAN A RENDER: a static render cannot see a
+	 * store at all. The store's hook passes `getServerSnapshot`, which is zustand's
+	 * own contract for SSR and returns the INITIAL state, so a rendered pane shows
+	 * the switch's default whatever the store holds - the same limit that makes
+	 * `render` capture the surface before its first projection read. The behavioural
+	 * half is driven in the app by `renderer-driver.mjs --scene browser-pane`, which
+	 * presses the switch, switches conversation and back, and reads the active side.
+	 */
+});
+
+test("the pinned strip control appears only when a tab is off screen, and counts them", () => {
+	const strip = shippedSource(
+		"src/renderer/src/features/browser/components/browser-tab-strip.tsx",
+	);
+	// QA round 1 (Q2): the control was drawn whenever the strip held two tabs, on
+	// the route's own 1160px strip where nothing overflows, with an empty own text
+	// and a label reading `All tabs` - so its presence said nothing and its content
+	// said less. The measurement decides both now.
+	assert.ok(
+		strip.includes("{tabsOffScreen > 0 && ("),
+		"the control's presence is the measurement",
+	);
+	assert.ok(
+		!strip.includes("{tabs.length > 1 && ("),
+		"and not the tab count, which is what it was for a round",
+	);
+	assert.ok(
+		strip.includes("+{tabsOffScreen}"),
+		"the count of tabs that are not shown is the control's own text",
+	);
+	assert.ok(
+		strip.includes("aria-label={`All tabs, ${tabsOffScreen} not shown`}"),
+		"and it is in the accessible name, not only in the tooltip",
+	);
+	assert.ok(
+		strip.includes('querySelectorAll("[data-tab-id]")'),
+		"the count is measured from the rows' own boxes",
+	);
+});
+
 // ---- a failed navigation says so (design round 1, D1) ----------------------
 
 test("a failed navigation names the reason in the app's own chrome, and offers a retry", () => {
