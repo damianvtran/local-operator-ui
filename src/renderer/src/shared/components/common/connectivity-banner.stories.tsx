@@ -88,15 +88,25 @@ const PageGround = () => (
  *
  * Installed during render rather than in an effect, because the banner's first
  * query is issued on mount (the row stories learned the same lesson).
+ *
+ * `config` answers the one config read the banner makes, and only because the
+ * internet sentence NAMES the hosting provider: with the read failing - which is
+ * what a Storybook origin gets, there being no daemon to ask - the frame renders
+ * "Your configured hosting provider () requires an internet connection", which
+ * is a fact about the fixture and not about the app. The value is the provider
+ * id the app itself uses (`hosting.model-select` builds its list from the same
+ * one), so the sentence is the sentence a configured machine reads.
  */
 const Bridge = ({
 	status,
+	config = null,
 	children,
 }: {
 	status: DaemonStatusSnapshot | null;
+	config?: { values: { hosting: string } } | null;
 	children: React.ReactNode;
 }) => {
-	const api = window.api as unknown as { backend?: unknown };
+	const api = window.api as unknown as { backend?: unknown; desktop?: unknown };
 	api.backend =
 		status === null
 			? undefined
@@ -107,17 +117,34 @@ const Bridge = ({
 					reconnect: async () => status,
 					onStatusChange: () => () => {},
 				};
+	api.desktop = config
+		? {
+				request: async (request: { op?: string }) =>
+					request?.op === "config.get"
+						? { status: 200, body: { result: config } }
+						: { status: 404, body: { message: "not stubbed in this story" } },
+			}
+		: undefined;
 	useLayoutEffect(() => {
 		return () => {
-			(window.api as unknown as { backend?: unknown }).backend = undefined;
+			const bridge = window.api as unknown as {
+				backend?: unknown;
+				desktop?: unknown;
+			};
+			bridge.backend = undefined;
+			bridge.desktop = undefined;
 		};
 	}, []);
 	return <>{children}</>;
 };
 
 const withBridge =
-	(status: DaemonStatusSnapshot | null) => (Story: React.FC) => (
-		<Bridge status={status}>
+	(
+		status: DaemonStatusSnapshot | null,
+		config?: { values: { hosting: string } } | null,
+	) =>
+	(Story: React.FC) => (
+		<Bridge status={status} config={config}>
 			<div className="min-h-screen bg-canvas text-ink">
 				<Story />
 				<PageGround />
@@ -380,4 +407,119 @@ export const Unattachable: Story = {
 		),
 	],
 	play: waitForCopy(/It keeps probing for a server it can open/),
+};
+
+/**
+ * The machine is offline, CONFIRMED: the same answer from a reading taken after
+ * the grace.
+ *
+ * WHY THIS STORY EXISTS. The internet banner had no frame anywhere either, and
+ * the defect it produced was the mirror image of the server one: Chromium fires
+ * `offline` on any connectivity TRANSITION - a Wi-Fi roam, a wake, a resolver
+ * switch - while traffic is still flowing, and the component painted the banner
+ * straight from that one event. The operator's own update log holds 90 such
+ * transport failures over four days, each followed five minutes later by a check
+ * that succeeded, on a machine that was online throughout.
+ *
+ * So the reading here is negative from the first paint, and the frame is only
+ * reached because the COMPONENT asked again after the grace and got the same
+ * answer: the play waits for the sentence, which no single reading can produce
+ * (`@shared/utils/offline-confirmation`, and its cases in
+ * `scripts/update-robustness.test.mjs`).
+ *
+ * There is deliberately no companion frame of the unconfirmed reading. A still
+ * of an absent banner is indistinguishable from a story that never mounted -
+ * the trap this file's own `attached` story documents - so the rule that a
+ * negative reading is not evidence on its own is pinned by its cases rather than
+ * photographed. What IS photographed is the state the rule exists to reach.
+ */
+const withOfflineNetwork = (Story: React.FC) => {
+	/*
+	 * An own property shadows `Navigator.prototype.onLine`, which is exactly what
+	 * the app reads; removing it in the layout effect's teardown puts the real
+	 * accessor back, the same discipline `Bridge` uses for `window.api`.
+	 */
+	Object.defineProperty(window.navigator, "onLine", {
+		configurable: true,
+		get: () => false,
+	});
+	useLayoutEffect(() => {
+		return () => {
+			Reflect.deleteProperty(window.navigator, "onLine");
+		};
+	}, []);
+	return <Story />;
+};
+
+/**
+ * The sentence the confirmation produces, read from the component's own copy:
+ * the story asserts it is on screen before the shutter, so a frame cannot
+ * photograph the state BEFORE the grace and read as the state after it.
+ */
+const OFFLINE_SENTENCE = "You are offline.";
+
+/**
+ * The banner, and the shutter held until its sentence is up.
+ *
+ * WHY THE RIG HAS TO BE TOLD. Its readiness probe asks whether the story has
+ * DRAWN - an element floor, the loader gone, fonts settled - and a page whose
+ * banner arrives five seconds later has drawn long before that. Left to the
+ * probe, this story photographed the page ground and no banner at all, which is
+ * a frame of the defect rather than of the fix (measured: the first capture of
+ * this story, `internet-offline-confirmed/localOperatorDark.webp`, was 9,140
+ * bytes of plain ground). `capturePending` is the rig's own way of being told
+ * to wait, and the wait is the story's claim rather than a sleep: it polls for
+ * the text the CONFIRMATION produces.
+ */
+const ConfirmedOfflineFrame: React.FC = () => {
+	useLayoutEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		let cancelled = false;
+		const settle = async () => {
+			for (let i = 0; i < 300; i++) {
+				if ((document.body.textContent ?? "").includes(OFFLINE_SENTENCE)) {
+					break;
+				}
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+			// Two frames, so the paint that put the banner up is committed before
+			// the shutter - the same pair the press stories wait on.
+			await new Promise((resolve) =>
+				requestAnimationFrame(() => resolve(null)),
+			);
+			await new Promise((resolve) =>
+				requestAnimationFrame(() => resolve(null)),
+			);
+			if (!cancelled) {
+				delete document.documentElement.dataset.capturePending;
+			}
+		};
+		void settle();
+		return () => {
+			cancelled = true;
+			delete document.documentElement.dataset.capturePending;
+		};
+	}, []);
+	return <ConnectivityBanner autoCheck={false} />;
+};
+
+export const InternetOfflineConfirmed: Story = {
+	decorators: [
+		withBridge(snapshot({}), { values: { hosting: "radient" } }),
+		withOfflineNetwork,
+	],
+	render: () => <ConfirmedOfflineFrame />,
+	play: async () => {
+		/*
+		 * The banner cannot appear from the first reading: it takes the grace and
+		 * a second negative answer, so this wait is what makes the story a claim
+		 * about the CONFIRMATION rather than about the poll.
+		 */
+		await waitFor(
+			() => {
+				expect(document.body.textContent ?? "").toContain(OFFLINE_SENTENCE);
+			},
+			{ timeout: 20_000 },
+		);
+	},
 };
