@@ -305,6 +305,7 @@ const bundle = await build({
 			 * in one place, so the app and the story cannot drift.
 			 */
 			export { UpdateErrorAlert } from "./src/renderer/src/shared/components/common/update-error-alert";
+			export { PanelDetails } from "./src/renderer/src/shared/components/common/panel-details";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -528,6 +529,7 @@ const {
 	CheckForUpdatesButton,
 	FloatingAlert,
 	UpdateErrorAlert,
+	PanelDetails,
 	Button,
 	UpdateContainer,
 	UpdateNotification,
@@ -606,6 +608,16 @@ function walk(node, out = []) {
 		walk(node.type(node.props ?? {}), out);
 		return out;
 	}
+	/*
+	 * `PanelDetails` is expanded for the same reason: since review round 1 (D4)
+	 * the machine's words are rendered through the SAME labelled, copyable line
+	 * the by-hand and install panels use, and a case that treated the wrapper as
+	 * opaque would read a failure's detail as an empty string.
+	 */
+	if (node.type === PanelDetails) {
+		walk(node.type(node.props ?? {}), out);
+		return out;
+	}
 	out.push(node);
 	if (node.props) walk(node.props.children, out);
 	return out;
@@ -623,6 +635,13 @@ function linesOf(value) {
 	if (Array.isArray(value)) return value.flatMap(linesOf);
 	if (typeof value === "string") return [value];
 	if (typeof value === "object" && value.props) {
+		/*
+		 * The machine line carries its words as a PROP rather than as children -
+		 * `PanelDetails` is the labelled, copyable line the panels already use
+		 * (review round 1, D4) - so a case about which line says what reads it from
+		 * there.
+		 */
+		if (value.type === PanelDetails) return [String(value.props.detail ?? "")];
 		return [textOf(value.props.children)];
 	}
 	return [];
@@ -1535,7 +1554,7 @@ test("the pinned box holds one message, and the error takes it", () => {
 	 * line, because the code is the part a bug report needs: `ENOTFOUND` is the
 	 * finding, and the sentence is the account of what it means.
 	 */
-	assert.deepEqual(rest, ["ENOTFOUND"]);
+	assert.deepEqual(rest, ["getaddrinfo ENOTFOUND api.github.com"]);
 	// The offer is a panel, not a toast: the box yielding its duplicate leaves the
 	// offer itself on screen behind the message.
 	assert.ok(showsText(handle, "Server update available"));
@@ -1664,4 +1683,84 @@ test("a rejected invoke leaves the in-flight panel too", async () => {
 		JSON.stringify(visible(handle)),
 	);
 	assert.equal(dangerToasts(handle).length, 0);
+});
+
+/**
+ * The alert a check the user ASKED FOR fails with, held and given an owner for
+ * the retry its copy names (design round 1, D2/D3; UX U1/U3).
+ *
+ * Two defects in one surface, and a still could not show either: the alert had
+ * `autoHideDuration={6000}` - written for the one-line machine string it used to
+ * carry - and `closeSnackbar` clears the `error` with the box, so a failure the
+ * user had asked for was gone with no trace; and its sentence says "then try
+ * again" while the only control on it was the X.
+ */
+test("a failure the user asked for is held, and its retry is a button", () => {
+	const handle = mountNotification();
+	updater.emit("update-error", "net::ERR_CONNECTION_REFUSED");
+	handle.render();
+
+	const alert = pinnedToast(handle);
+	assert.ok(alert, JSON.stringify(visible(handle)));
+	assert.equal(
+		alert.props.autoHideDuration,
+		undefined,
+		"nothing may take this off the screen on a timer",
+	);
+	assert.equal(alert.props.variant, "danger");
+
+	const [sentence] = linesOf(alert.props.children);
+	assert.match(sentence, /could not reach the update server/i);
+	assert.equal(sentence.includes("net::ERR"), false, sentence);
+
+	// The retry the sentence names, as a control rather than a promise.
+	const retry = alert.props.action;
+	assert.ok(retry, "the alert must offer the action its copy asks for");
+	assert.equal(retry.props.children, "Try again");
+	const before = updater.checks.length;
+	retry.props.onClick();
+	assert.equal(updater.checks.length, before + 1, "it runs a check");
+	assert.equal(
+		updater.checks.at(-1).options?.manual,
+		true,
+		"and it is a check the user asked for, so its failure would be reported",
+	);
+
+	// The machine's own words are still there, subordinate and labelled.
+	assert.deepEqual(linesOf(alert.props.children).slice(1), [
+		"net::ERR_CONNECTION_REFUSED",
+	]);
+});
+
+/**
+ * The other half of the operator's rule (QA round 1, Q1): the check the app runs
+ * for itself reports nothing when it fails. The mount effect's check sends no
+ * `manual`, so neither its rejection nor an error event may paint.
+ */
+test("the app's own start-up check reports nothing when it fails", async () => {
+	const handle = mountNotification({ autoCheck: true });
+	const pending = updater.checks.shift();
+	assert.ok(pending, "the mount must have started the app's own check");
+	assert.equal(
+		pending.options,
+		undefined,
+		"and it is not one the user asked for",
+	);
+
+	pending.resolve(
+		Promise.reject(
+			new Error(
+				"Error invoking remote method 'check-for-updates': Error: net::ERR_INTERNET_DISCONNECTED",
+			),
+		),
+	);
+	await new Promise((resolve) => realSetTimeout(resolve, 0));
+	await new Promise((resolve) => realSetTimeout(resolve, 0));
+	handle.render();
+
+	assert.deepEqual(
+		visible(handle),
+		[],
+		"a start-up check's failure is logged, never painted",
+	);
 });

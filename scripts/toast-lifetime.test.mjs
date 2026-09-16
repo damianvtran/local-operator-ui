@@ -372,6 +372,46 @@ test("an authored prefix survives; only the transport fragment is replaced", () 
 	);
 });
 
+test("a prefixed transport failure keeps every character it should show", () => {
+	const f = fixture(undefined);
+	const sentence =
+		"Could not reach the server. Check that it is running, then try again.";
+
+	/*
+	 * The regression review round 1 found (R1): the shared classifier returns
+	 * offsets into the STRIPPED message and the toast path sliced the RAW one, so
+	 * the sentence was spliced in at the wrong place and the tail of the code was
+	 * left on a person's screen. These are the exact measurements from that
+	 * report, kept as cases so the corruption cannot come back.
+	 */
+	assert.equal(sentenceFor(f, "Error: net::ERR_TIMED_OUT"), sentence);
+	assert.equal(
+		sentenceFor(f, "Error: Error: net::ERR_NETWORK_CHANGED"),
+		sentence,
+	);
+	assert.equal(
+		sentenceFor(
+			f,
+			"Error invoking remote method 'check-for-updates': Error: net::ERR_TIMED_OUT",
+		),
+		`Error invoking remote method 'check-for-updates': ${sentence}`,
+	);
+	/*
+	 * The other half of the same mistake, asserted directly: an offset error is
+	 * only visible as a FRAGMENT of the code left behind, so the cases above also
+	 * say what must not appear.
+	 */
+	for (const message of [
+		"Error: net::ERR_TIMED_OUT",
+		"Error: Error: net::ERR_NETWORK_CHANGED",
+	]) {
+		const shown = sentenceFor(f, message);
+		assert.equal(shown.includes("MED_OUT"), false, shown);
+		assert.equal(shown.includes("ETWORK_CHANGED"), false, shown);
+		assert.equal(shown.includes("Error:"), false, shown);
+	}
+});
+
 test("dedup still keys off what the caller passed", () => {
 	const f = fixture(undefined);
 

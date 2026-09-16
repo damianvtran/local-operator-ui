@@ -4815,6 +4815,30 @@ const loadUpdateServiceModule = async () => {
 								export const nativeTheme = { shouldUseDarkColors: false, on: () => {} };
 								export const Menu = { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) };
 								export const session = { defaultSession: { webRequest: { onHeadersReceived: () => {} } } };
+								/*
+								 * net.isOnline() is the pre-flight gate's reading (this machine
+								 * believes it has no network), and it is answerable from a case
+								 * through the same global the rest of the fixture uses: an ABSENT
+								 * global means the stub does not answer, which the service reads as
+								 * reachable, so every case that says nothing keeps the behaviour it
+								 * had before the gate. No backticks in this comment: it lives inside
+								 * a template literal, and one would end it here.
+								 */
+								export const net = {
+									isOnline: () => globalThis.__loTestNetIsOnline ?? true,
+								};
+								/*
+								 * powerMonitor RECORDS its listeners rather than dropping them:
+								 * the wake-armed check is registered in the constructor, and a case
+								 * that cannot fire the event could only assert that a line of source
+								 * exists.
+								 */
+								export const powerMonitor = {
+									on: (event, handler) => {
+										(globalThis.__loPowerMonitorHandlers ??= {})[event] = handler;
+										return powerMonitor;
+									},
+								};
 							`);
 						}
 						if (args.path === "electron-updater") {
@@ -5172,6 +5196,12 @@ const loAggregateCheck = async ({
 	 */
 	retryDelaysMs = [5, 5],
 	/*
+	 * What the machine's own network reading says, for the pre-flight gate.
+	 * `null` leaves the stub answering `true`, which is every case from before
+	 * the gate existed.
+	 */
+	netIsOnline = null,
+	/*
 	 * Drive the scheduled check instead of the aggregate one - the five-minute
 	 * `checkForUpdates(true)` the operator's log opens with. This is the path
 	 * whose silence the double report defeated.
@@ -5203,6 +5233,7 @@ const loAggregateCheck = async ({
 	const sent = [];
 	let interval = null;
 	let health = null;
+	if (netIsOnline !== null) globalThis.__loTestNetIsOnline = netIsOnline;
 	try {
 		health = createServer((request, response) => {
 			if (!request.url?.startsWith("/health")) {
@@ -5272,7 +5303,17 @@ const loAggregateCheck = async ({
 		if (probe) {
 			probeResult = await probe(updateService, sent);
 		}
-		return { verdict, sent, probeResult };
+		/*
+		 * Any wake-armed timer a probe left behind is cleared here: it is unref'd,
+		 * but a case that fires the `resume` listener leaves a 20 s handle behind,
+		 * and a suite whose timers outlive it is a suite whose teardown cannot be
+		 * trusted.
+		 */
+		if (updateService.postWakeCheckTimer) {
+			clearTimeout(updateService.postWakeCheckTimer);
+			updateService.postWakeCheckTimer = null;
+		}
+		return { verdict, sent, probeResult, service: updateService };
 	} finally {
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestAppCheck;
@@ -5283,6 +5324,8 @@ const loAggregateCheck = async ({
 			health.closeAllConnections();
 			health.close();
 		}
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestNetIsOnline;
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
@@ -6163,34 +6206,94 @@ test("an update failure says what happened, and keeps the machine's words subord
 		assert.equal(prefixed.sentence.includes("net::"), false, prefixed.sentence);
 		assert.equal(prefixed.detail, "net::ERR_TIMED_OUT");
 
-		// The wrapped shape: classified through both wrappers and both prefixes.
+		/*
+		 * The wrapped shape, which is where the surviving prefix turned out to be
+		 * the defect (design round 1, D1; UX U2). electron-updater builds 200
+		 * characters of parse narration around the code - a URL and an instruction
+		 * for the release owner among them - and keeping it welded a paragraph to
+		 * the front of a sentence written for a person.
+		 */
 		const wrapped = copy.updateErrorCopy(
 			`Error invoking remote method 'check-for-updates': ${LO_WRAPPED_FEED_FAILURE}`,
 		);
-		assert.match(wrapped.sentence, /^Error invoking remote method/);
-		assert.equal(wrapped.detail, "net::ERR_NETWORK_CHANGED");
-
-		// An errno form, the shape the server channel really carries.
-		const errno = copy.updateErrorCopy("getaddrinfo ENOTFOUND pypi.org");
-		assert.equal(errno.sentence.includes("ENOTFOUND"), false, errno.sentence);
-		assert.equal(errno.detail, "ENOTFOUND");
-
-		// A message that is not a transport failure is shown as it stands, with
-		// no invented cause - and without the nesting the wrapper brought.
-		const other = copy.updateErrorCopy(
-			"Error: Unable to determine backend version.",
+		assert.equal(
+			wrapped.sentence,
+			"The app could not reach the update server. Check this machine's connection, then try again.",
+			"the sentence stands alone: nothing the machine wrapped it in survives",
 		);
-		assert.equal(other.sentence, "Unable to determine backend version.");
-		assert.equal(other.detail, null);
+		assert.equal(wrapped.sentence.includes("github.com"), false);
+		assert.equal(wrapped.detail, "net::ERR_NETWORK_CHANGED");
+		assert.equal(
+			wrapped.action,
+			"check",
+			'and its "then try again" has an owner',
+		);
 
 		/*
-		 * ONE verdict per message, on either channel: the fatal wording the
-		 * by-hand panel owns, the release-artifact wording that is a known
-		 * non-failure, and everything else.
+		 * An errno form, the shape the server channel really carries. The machine
+		 * line keeps the phrase the token came from: a bare `ENOTFOUND` has no
+		 * subject, and `Failed to fetch` says what the sentence above already said
+		 * (design round 1, D8).
+		 */
+		const errno = copy.updateErrorCopy("getaddrinfo ENOTFOUND pypi.org");
+		assert.equal(errno.sentence.includes("ENOTFOUND"), false, errno.sentence);
+		assert.equal(errno.detail, "getaddrinfo ENOTFOUND pypi.org");
+		assert.equal(
+			copy.updateErrorCopy("Failed to fetch").detail,
+			null,
+			"an engine phrase the sentence has already said leaves no machine line",
+		);
+
+		/*
+		 * A failure the classifier does not know still says what happened and what
+		 * to do (review U4): a feed that answers 404 is not a transport failure, and
+		 * it used to be painted as the developer's own string with no next step.
+		 */
+		const answered = copy.updateErrorCopy(
+			"HttpError: 404 Not Found (latest-mac.yml)",
+		);
+		assert.equal(
+			answered.sentence.includes("HttpError"),
+			false,
+			answered.sentence,
+		);
+		assert.match(answered.sentence, /could not check for updates/i);
+		assert.equal(answered.detail, "HttpError: 404 Not Found (latest-mac.yml)");
+		// A certificate the machine refuses is not transient, and it is not the
+		// connection either - but it is still a check that failed, and it is still
+		// shown as one.
+		const certificate = copy.updateErrorCopy("net::ERR_CERT_DATE_INVALID");
+		assert.match(certificate.sentence, /could not check for updates/i);
+		assert.equal(certificate.detail, "net::ERR_CERT_DATE_INVALID");
+
+		/*
+		 * A message the app WROTE for a person is already the sentence - no
+		 * invented cause, and no machine line under it - and it arrives without
+		 * the nesting the wrapper brought.
+		 */
+		const other = copy.updateErrorCopy(
+			"Error: The installed server version could not be determined, so no update was offered. Restart the app to try again.",
+		);
+		assert.match(other.sentence, /^The installed server version/);
+		assert.equal(other.detail, null);
+		// A download failure is not answered by another check, so the copy offers
+		// no action for it: the panel behind still carries its own control.
+		assert.equal(
+			copy.updateErrorCopy("Error downloading update: net::ERR_TIMED_OUT")
+				.action,
+			null,
+		);
+
+		/*
+		 * ONE verdict per message, on either channel: the release-artifact wording
+		 * that is a known non-failure, and everything else. The `by-hand` route on
+		 * the substring "manually" is gone (review R4): main's only producer of that
+		 * wording was replaced by the structured `backend-update-manual-required`
+		 * event, so the route could not match anything and read as a live rule.
 		 */
 		assert.equal(
 			copy.updateMessageFate("Please update manually with pip"),
-			"by-hand",
+			"show",
 		);
 		assert.equal(
 			copy.updateMessageFate(
@@ -6527,6 +6630,159 @@ test("a failure that is not transient is not retried", async () => {
 		sent.filter(({ channel }) => channel === "update-error").length,
 		1,
 		"and it is still reported",
+	);
+});
+
+/**
+ * The same silence on the OTHER half, which review round 1 (R-2) found: a
+ * background check reports nothing even when the failure is one no retry can
+ * fix. That is the operator's rule rather than an accident of the gate - "if
+ * updates can't be checked then that should be an error that only pops up if
+ * clicking the button to check for updates" - and this case exists because the
+ * gate's own comment used to claim the opposite ("if the retries are exhausted
+ * its own path says so once"), which is true for a click and false here.
+ */
+test("a background check reports nothing even when the failure is not transient", async () => {
+	const attempts = [];
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: () => {
+			attempts.push(1);
+			// Not a transport failure at all: a credential the release feed
+			// refuses. Nothing about this changes five minutes later.
+			throw new Error("Error: Invalid API key");
+		},
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		silentAppCheck: true,
+	});
+
+	assert.equal(
+		attempts.length,
+		1,
+		"the retry rule is unchanged: nothing a retry cannot fix is retried",
+	);
+	assert.deepEqual(
+		sent.map(({ channel }) => channel),
+		[],
+		"an app-initiated check reports nothing, transient or not",
+	);
+	assert.equal(verdict, "unavailable", "and it still may not claim anything");
+});
+
+/**
+ * The root cause, at the surface it was found on: the tick that lands during a
+ * dark wake, before Wi-Fi is back. `net.isOnline()` answers "this machine
+ * believes it has no network", and the check spends NO request and reports
+ * nothing - leaving the verdict where a check that did not run belongs.
+ *
+ * Why this is the fix rather than three more retries: the operator's log has the
+ * wake reason (`smc.sysState.Wake(0x70070000) wifibt`) in the same second as
+ * `net::ERR_INTERNET_DISCONNECTED`, with the machine's own resolver answering
+ * `getaddrinfo ENOTFOUND pypi.org` at that instant - a request made then cannot
+ * succeed, and retrying it twice more only spends three failures.
+ */
+test("a check the machine has no network for spends no request", async () => {
+	const attempts = [];
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: loFailingFeed("net::ERR_INTERNET_DISCONNECTED", attempts),
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		netIsOnline: false,
+	});
+
+	assert.equal(
+		attempts.length,
+		0,
+		"the gate answers before the fetch, so not even the first attempt happens",
+	);
+	assert.deepEqual(
+		sent.map(({ channel }) => channel),
+		[],
+		"nothing a person could read, on either channel",
+	);
+	assert.equal(
+		verdict.app,
+		"unavailable",
+		"a check that did not run never reports nothing-newer (or current)",
+	);
+	assert.equal(
+		verdict.server,
+		"unavailable",
+		"and neither does the server channel",
+	);
+	assert.equal(verdict.affirmation, null, "and it affirms nothing");
+});
+
+/**
+ * The cost QA measured on a down network (round 1, Q-2): the renderer's mount
+ * check and this process's own launch check both run at start-up, and with the
+ * retries applied per check that was six fetches in 6.6 s where the base made
+ * two. The fetch is the same request for the same feed, so the second check
+ * rides the first one's attempt sequence.
+ */
+test("two overlapping checks share one attempt sequence", async () => {
+	let fetches = 0;
+	const { probeResult } = await loAggregateCheck({
+		appCheck: async () => {
+			fetches += 1;
+			// Long enough that the second check is genuinely concurrent.
+			await new Promise((resolve) => setTimeout(resolve, 25));
+			return null;
+		},
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		silentAppCheck: true,
+		probe: async (service) => {
+			const before = fetches;
+			await Promise.all([
+				service.checkForUpdates(true),
+				service.checkForUpdates(true),
+			]);
+			return fetches - before;
+		},
+	});
+
+	assert.equal(
+		probeResult,
+		1,
+		"two concurrent checks made ONE fetch between them, not one each",
+	);
+});
+
+/**
+ * The wake half of the root cause: a resume arms ONE check a moment later, so
+ * the tick that lands before the network is back is not the only one this
+ * machine gets. What is pinned here is the bound - a night of maintenance wakes
+ * cannot accumulate timers, which is the difference between arming a check and
+ * building a storm.
+ */
+test("a resume arms one check, and a second resume adds no timer", async () => {
+	const { probeResult } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		probe: async (service) => {
+			const handlers = globalThis.__loPowerMonitorHandlers;
+			assert.equal(
+				typeof handlers?.resume,
+				"function",
+				"the service must listen for this machine resuming",
+			);
+			handlers.resume();
+			const first = service.postWakeCheckTimer;
+			handlers.resume();
+			return {
+				armed: Boolean(first),
+				sameTimer: service.postWakeCheckTimer === first,
+			};
+		},
+	});
+
+	assert.equal(probeResult.armed, true, "a resume arms a check");
+	assert.equal(
+		probeResult.sameTimer,
+		true,
+		"a second resume leaves that one timer alone rather than arming another",
 	);
 });
 

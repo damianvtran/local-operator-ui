@@ -31,8 +31,10 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { Alert, AlertDescription, Button } from "@shared/components/ui";
-import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
-import { updateErrorMessage } from "@shared/utils/update-error-copy";
+import {
+	updateErrorMessage,
+	updateMessageOf,
+} from "@shared/utils/update-error-copy";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 
@@ -100,8 +102,11 @@ export const BackendCompatibilityBanner = () => {
 			retry();
 		} catch (error) {
 			setUpdateError(
+				// The machine's own words, cleaned: this panel's own copy says what
+				// failed, and a sentence from `updateErrorCopy` here would describe a
+				// check rather than the update the user pressed.
 				error instanceof Error
-					? updateErrorMessage(unwrapIpcErrorMessage(error))
+					? updateMessageOf(error)
 					: BACKEND_UPDATE_UNEXPLAINED,
 			);
 		} finally {

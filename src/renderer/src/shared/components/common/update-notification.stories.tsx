@@ -928,10 +928,76 @@ export const ErrorState: Story = {
 				open
 				message="net::ERR_INTERNET_DISCONNECTED"
 				onClose={() => {}}
+				/*
+				 * The retry the sentence names, exactly as the app passes it: a
+				 * still of the failure without it would photograph a state no user
+				 * reaches (design round 1, D3 - the copy said "then try again" and
+				 * the only control was the X).
+				 */
+				onRetry={() => {}}
 			/>
 		</div>
 	),
 };
+
+/**
+ * The same alert for the failure the PR's own log holds, which is the one the
+ * copy's prefix rule is about (design round 1, D1; UX U2).
+ *
+ * WHY THIS FRAME IS THE POINT OF THE RULE. electron-updater wraps a failed feed
+ * fetch in 200 characters of its own parse narration - "Cannot parse releases
+ * feed: Unable to find latest version on GitHub (https://...), please ensure a
+ * production release exists: net::ERR_NETWORK_CHANGED" - and keeping that as the
+ * sentence's prefix produced a six-line run-on with a URL in it, addressed to
+ * the release owner rather than to the person reading it. The message below is
+ * the string as the app receives it, and the frame is what the rule produces:
+ * the sentence alone, the machine's words subordinate.
+ */
+export const ErrorStateWrapped: Story = {
+	args: {
+		autoCheck: false,
+	},
+	render: () => (
+		<div className="min-h-screen bg-canvas">
+			<div className="flex h-full flex-col gap-3 p-6">
+				<h1 className="font-medium text-body text-ink">Conversations</h1>
+				<ul className="flex max-w-xl flex-col gap-2">
+					{[
+						"Deploy the staging cluster",
+						"Review the paging change",
+						"Triage the support queue",
+					].map((row) => (
+						<li
+							key={row}
+							className="flex items-center justify-between rounded-md border border-hairline bg-surface px-3 py-2"
+						>
+							<span className="text-body-sm text-ink">{row}</span>
+							<span className="text-meta text-ink-dim">idle</span>
+						</li>
+					))}
+				</ul>
+			</div>
+			<UpdateErrorAlert
+				open
+				message={WRAPPED_FEED_FAILURE}
+				onClose={() => {}}
+				onRetry={() => {}}
+			/>
+		</div>
+	),
+};
+
+/**
+ * The wrapped shape the log actually holds, as the app receives it.
+ *
+ * Kept beside the story rather than imported from the test harness: a fixture
+ * that reads the failure out of a test file is a fixture that can drift from
+ * what main sends, and this string is a transcription of
+ * `docs/evidence/update-robustness/transient-transport-log-excerpts.txt` section
+ * 4 (2026-09-15 21:52).
+ */
+const WRAPPED_FEED_FAILURE =
+	"Cannot parse releases feed: Unable to find latest version on GitHub (https://github.com/damianvtran/local-operator-ui/releases/latest), please ensure a production release exists: net::ERR_NETWORK_CHANGED";
 
 type UpdaterTriggerFlag =
 	| "triggerUpdateDownloaded"

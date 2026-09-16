@@ -511,8 +511,17 @@ export const InternetOfflineConfirmed: Story = {
 	render: () => <ConfirmedOfflineFrame />,
 	play: async () => {
 		/*
-		 * The banner cannot appear from the first reading: it takes the grace and
-		 * a second negative answer, so this wait is what makes the story a claim
+		 * THE FIRST UNCONFIRMED SAMPLE PAINTS NOTHING (review round 1, R3). The
+		 * check is the window before the grace, measured from the story's own
+		 * start: the rule requires OFFLINE_CONFIRMATION_GRACE_MS of negative
+		 * readings before the banner may report, the bridge here answers
+		 * `navigator.onLine === false` from the first poll, and a component that
+		 * painted from the raw reading would fail this line rather than pass it.
+		 */
+		expect(document.body.textContent ?? "").not.toContain(OFFLINE_SENTENCE);
+		/*
+		 * And then the confirmation itself: the banner takes the grace and a
+		 * second negative answer, so this wait is what makes the story a claim
 		 * about the CONFIRMATION rather than about the poll.
 		 */
 		await waitFor(
