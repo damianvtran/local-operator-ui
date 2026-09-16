@@ -44,8 +44,6 @@ const ROOT = process.cwd();
  */
 const RE_TANSTACK_REACT_QUERY = /^@tanstack\/react-query$/;
 const RE_REACT_QUERY = /^react-query$/;
-const RE_CANNOT_USE_THE_BACKEND_S_DESKTOP =
-	/cannot use the backend's desktop controls/;
 const RE_SHOWING_THE_LAST_CHATS_AND_TEAMS =
 	/Showing the last chats and teams that loaded\./;
 const RE_UPDATE_THE_BACKEND = /Update the backend/;
@@ -66,6 +64,27 @@ const gateBundle = await build({
 });
 const { catalogueGate } = await import(
 	`data:text/javascript;base64,${Buffer.from(gateBundle.outputFiles[0].text).toString("base64")}`
+);
+
+/*
+ * The predicate the call site reads for the banner (`chat-sidebar.tsx` passes
+ * `compatibilityBannerShown(capabilities.data)`), bundled from the same shipped
+ * module rather than re-implemented: the coupling asserted below is only worth
+ * anything if it is this function's answer, not this test's idea of it.
+ */
+const bannerBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/shared/api/local-operator/backend-error";',
+		resolveDir: ROOT,
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const { compatibilityBannerShown } = await import(
+	`data:text/javascript;base64,${Buffer.from(bannerBundle.outputFiles[0].text).toString("base64")}`
 );
 
 /** Records what `useDesktopCapabilities` asks React Query for. */
@@ -114,9 +133,10 @@ const {
 );
 
 /**
- * The inputs, one per fact, with a healthy default. `planeAvailable` is what the
- * answer advertised (`desktop_available`), `storeFailed` is the store's own read
- * having failed, and `rows` is what the canonical store holds right now.
+ * The inputs, one per fact, with a healthy default. `storeFailed` is the store's
+ * own read having failed, and `rows` is what the canonical store holds right now.
+ * `coveredByCompatibilityBanner` is the banner's own condition, read through the
+ * predicate the call site uses.
  */
 const inputs = (over = {}) => ({
 	ready: true,
@@ -125,7 +145,6 @@ const inputs = (over = {}) => ({
 	wasReady: true,
 	rows: 12,
 	storeFailed: false,
-	planeAvailable: true,
 	coveredByCompatibilityBanner: false,
 	...over,
 });
@@ -145,7 +164,7 @@ test("an answer that WITHDRAWS the gate keeps the list mounted, marked stale", (
 	// Before the withdrawn case existed this produced `showList: false`, and every
 	// block in the sidebar - agents, teams, chats - unmounted at once with no
 	// `role="alert"` anywhere.
-	const gate = catalogueGate(inputs({ ready: false, planeAvailable: false }));
+	const gate = catalogueGate(inputs({ ready: false }));
 	assert.equal(gate.withdrawn, true);
 	assert.equal(gate.stale, true);
 	assert.equal(gate.showList, true, "the list must never disappear silently");
@@ -162,7 +181,6 @@ test("one statement per condition: the banner's condition silences the gate's", 
 	const covered = catalogueGate(
 		inputs({
 			ready: false,
-			planeAvailable: false,
 			coveredByCompatibilityBanner: true,
 		}),
 	);
@@ -173,21 +191,45 @@ test("one statement per condition: the banner's condition silences the gate's", 
 	);
 	assert.equal(covered.notice, null, "the banner is already saying this");
 
-	// And the sentence itself, for a condition the banner is NOT carrying: a
-	// backend that advertises every required feature but not the catalogue.
+	// And the sentence itself, for the condition the banner is NOT carrying: a
+	// backend that advertises the catalogue among its features but not the plane.
+	// The inputs below are the ones the call site can produce - it is the same
+	// predicate that silences the notice, so an uncovered withdrawal is one whose
+	// answer still claims `desktop_available` (review round 3, MINOR-2).
 	const uncovered = catalogueGate(
-		inputs({
-			ready: false,
-			planeAvailable: false,
-			coveredByCompatibilityBanner: false,
-		}),
+		inputs({ ready: false, coveredByCompatibilityBanner: false }),
 	);
 	assert.match(
 		uncovered.notice ?? "",
-		RE_CANNOT_USE_THE_BACKEND_S_DESKTOP,
-		"a plane that is unavailable is not a backend to update",
+		RE_UPDATE_THE_BACKEND_TO_USE_CANONICAL,
+		"the remedy that exists is the one the notice names",
 	);
 	assert.match(uncovered.notice ?? "", RE_SHOWING_THE_LAST_CHATS_AND_TEAMS);
+});
+
+test("the plane the notice cannot name is always covered by the banner", () => {
+	// Why this module has one sentence rather than two arms: a backend that does not
+	// claim `desktop_available` is exactly a backend the compatibility banner is
+	// showing for, so the withdrawn notice is always suppressed in that state. The
+	// pairing is asserted through the shipped predicate - the same call the sidebar
+	// makes - rather than through this test's own reading of it (review round 3,
+	// MINOR-2: the arm and its two cases are gone, and this is what replaced them).
+	assert.equal(
+		compatibilityBannerShown({ desktop_available: false, features: {} }),
+		true,
+		"a plane that is unavailable is a backend the banner already speaks for",
+	);
+	const gate = catalogueGate(
+		inputs({
+			ready: false,
+			coveredByCompatibilityBanner: compatibilityBannerShown({
+				desktop_available: false,
+				features: {},
+			}),
+		}),
+	);
+	assert.equal(gate.showList, true, "the rows stay; only the sentence is covered");
+	assert.equal(gate.notice, null, "the banner is the one that speaks");
 });
 
 test("the error arm behaves exactly as it did", () => {
@@ -218,16 +260,20 @@ test("a first load that never opened the gate is not stale, and names the update
 	);
 });
 
-test("a first load that cannot use the plane says so instead of naming an update", () => {
-	// The same path with `desktop_available: false`: nothing here would be fixed by
-	// updating the backend, so the sentence must not promise that (review round 1,
-	// F-3's class, one state over).
+test("a first load with nothing to show neither claims rows nor names a remedy", () => {
+	// The F-3 requirement held one state over, and it is the same rule the sentence
+	// above obeys: with nothing in the store there is nothing to keep, so the list
+	// stays unmounted and the notice claims no last-known rows. The remedy it names
+	// is the banner's job whenever the plane is the thing that is wrong - asserted
+	// by the coupling case above rather than by an input pairing the call site
+	// cannot produce (review round 3, MINOR-2).
 	const gate = catalogueGate(
-		inputs({ ready: false, wasReady: false, rows: 0, planeAvailable: false }),
+		inputs({ ready: false, wasReady: false, rows: 0, coveredByCompatibilityBanner: false }),
 	);
 	assert.equal(gate.showList, false);
-	assert.match(gate.notice ?? "", RE_CANNOT_USE_THE_BACKEND_S_DESKTOP);
-	assert.doesNotMatch(gate.notice ?? "", RE_UPDATE_THE_BACKEND);
+	assert.equal(gate.stale, false);
+	assert.match(gate.notice ?? "", RE_UPDATE_THE_BACKEND_TO_USE_CANONICAL);
+	assert.doesNotMatch(gate.notice ?? "", RE_LAST_CHATS_AND_TEAMS_THAT_LOADED);
 });
 
 test("a store that genuinely emptied still reads as empty", () => {
@@ -253,7 +299,7 @@ test("a mount that lost its own memory keeps the rows the store still holds", ()
 	// the same fact: a row exists only because a `sessions.list` through an OPEN
 	// gate put it there, and `sessions` is not persisted.
 	const gate = catalogueGate(
-		inputs({ ready: false, wasReady: false, rows: 12, planeAvailable: false }),
+		inputs({ ready: false, wasReady: false, rows: 12 }),
 	);
 	assert.equal(gate.stale, true);
 	assert.equal(
@@ -270,7 +316,7 @@ test("the store's own failure suppresses the gate sentence (the D9 rule)", () =>
 	// backend - the operator's reported condition - must not stack a warning about
 	// the gate above a danger about the read. The gate keeps its list either way.
 	const gate = catalogueGate(
-		inputs({ ready: false, storeFailed: true, planeAvailable: false }),
+		inputs({ ready: false, storeFailed: true }),
 	);
 	assert.equal(gate.showList, true);
 	assert.equal(gate.stale, true);
@@ -284,7 +330,7 @@ test("the store's own failure suppresses the gate sentence (the D9 rule)", () =>
 test("the version half keeps the remedy that exists", () => {
 	// A plane that IS available and merely does not advertise the catalogue is a
 	// backend to update, and that is the one place "Update the backend" is true.
-	const gate = catalogueGate(inputs({ ready: false, planeAvailable: true }));
+	const gate = catalogueGate(inputs({ ready: false }));
 	assert.match(gate.notice ?? "", RE_UPDATE_THE_BACKEND_TO_USE_CANONICAL);
 });
 

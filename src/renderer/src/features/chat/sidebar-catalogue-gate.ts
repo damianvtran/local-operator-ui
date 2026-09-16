@@ -59,7 +59,6 @@ export type CatalogueGateInput = {
 	 * plane that is not available is this app not being able to use the backend's
 	 * desktop controls at all.
 	 */
-	planeAvailable: boolean;
 	/**
 	 * Whether a statement about this same condition is ALREADY on screen, in a
 	 * stronger register than this one.
@@ -114,7 +113,6 @@ export function catalogueGate({
 	wasReady,
 	rows,
 	storeFailed,
-	planeAvailable,
 	coveredByCompatibilityBanner,
 }: CatalogueGateInput): CatalogueGate {
 	const withdrawn = answered && !failed && !ready;
@@ -128,8 +126,16 @@ export function catalogueGate({
 	 * round 2, MINOR-3). `rows > 0` is the same fact held where a remount cannot lose
 	 * it, and it is sound rather than merely convenient: `sessions` is NOT persisted
 	 * (`canonical-sessions-store.ts`'s `partialize` carries drafts, `cwd` and the
-	 * active id), so a row exists only because a `sessions.list` through an OPEN gate
-	 * put it there.
+	 * active id), so a row is one this session's own store took from a
+	 * `sessions.list` that answered.
+	 *
+	 * WHAT IT DOES NOT CLAIM (review round 3, NIT-1). It is not true that every row
+	 * arrived through an open gate: `browser-hand-over-dialog.tsx` calls the store's
+	 * `fetchSessions` when its dialog opens, with no gate in front of it, so a row
+	 * can exist while this gate has never been ready. That does not weaken the
+	 * soundness argument above - the row is still a row the store holds and the list
+	 * may keep showing it - it just means `rows > 0` is evidence of "the store has
+	 * something to show", not of "the gate was open once".
 	 */
 	const memo = wasReady || rows > 0;
 	const stale = memo && (failed || withdrawn);
@@ -139,9 +145,23 @@ export function catalogueGate({
 		stale,
 		showList: ready || stale,
 		lastKnownRows,
+		/*
+		 * ONE sentence, not two arms. The withdrawn state used to pick between "update
+		 * the backend" and a second sentence for a backend whose `desktop_available` is
+		 * false - and that second arm was unreachable at the only call site, which read
+		 * `planeAvailable` from `capabilities.desktop_available === true` and
+		 * `coveredByCompatibilityBanner` from `compatibilityBannerShown(...)`, a
+		 * predicate that is true for exactly that same input (`desktop_available !==
+		 * true`). The band is always up in that state and this notice is suppressed
+		 * under it, so the arm could not paint and the two tests that pinned it were
+		 * asserting an input pairing the call site cannot produce (review round 3,
+		 * MINOR-2). Removed rather than kept as a fallback: a sentence no state can
+		 * reach is a claim about the app that is not true, and the state it described
+		 * is already spoken for by the banner, which carries the remedy that exists.
+		 */
 		notice:
 			withdrawn && !storeFailed && !coveredByCompatibilityBanner
-				? `${planeAvailable ? "Update the backend to use canonical chats. Existing histories are unchanged." : "Chats and teams are not updating: this app cannot use the backend's desktop controls."}${lastKnownRows ? " Showing the last chats and teams that loaded." : ""}`
+				? `Update the backend to use canonical chats. Existing histories are unchanged.${lastKnownRows ? " Showing the last chats and teams that loaded." : ""}`
 				: null,
 	};
 }
