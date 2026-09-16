@@ -1,4 +1,8 @@
 import { ChatHeader } from "@features/chat/components/chat-header";
+import { deriveRunDetails } from "@features/chat/components/run-details/run-detail-model";
+import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import type { FC, ReactElement, ReactNode } from "react";
@@ -246,9 +250,134 @@ const withPane =
 		return frame(
 			width,
 			height,
-			<BrowserPane sessionId={THIS_CONVERSATION} onClose={() => {}} />,
+			<SessionTitles>
+				<BrowserPane sessionId={THIS_CONVERSATION} onClose={() => {}} />
+			</SessionTitles>,
 		);
 	};
+
+/**
+ * THE CONVERSATION'S OWN TITLE, so the tray's sentence is the one the app renders
+ * (design round 1, N4). `requesterLabel` falls back to the raw session id when the
+ * session store holds no title for it - and the fixture held none, so `with-approval`
+ * photographed the pane's most prominent sentence as "The agent in conversation
+ * session-1f4c", a form the app shows only for a conversation it cannot name. The
+ * seeding is the same call `browser-consent-bar.stories.tsx` makes for the same
+ * reason.
+ */
+const SessionTitles: FC<{ children: ReactNode }> = ({ children }) => {
+	useEffect(() => {
+		useCanonicalSessionsStore.setState({
+			sessions: [
+				{ session_id: THIS_CONVERSATION, title: "Quarterly reporting" },
+				{ session_id: OTHER_CONVERSATION, title: "Data quality sweep" },
+			],
+		});
+	}, []);
+	return <>{children}</>;
+};
+
+/** A bridge that never answers: what the surface looks like before its first read
+ * lands, which is the pane's loading state (spec 7.4). */
+function installPendingBridge(): void {
+	installBridge(projection([]));
+	const browser = (
+		window as unknown as { api: { browser: Record<string, unknown> } }
+	).api.browser;
+	browser.state = () => new Promise(() => {});
+}
+
+/**
+ * THE COMPOSED STATE, which is the one thing the per-host stories cannot show
+ * (design round 1, D6; review round 1, F1): the pane IN the chat column, with the
+ * seam, the divider, the width the conversation keeps, and the header's trigger in
+ * its real cluster.
+ *
+ * WHY THE COLUMN IS HAND-BUILT HERE, and it is the same limit `SwapGround` states
+ * for the canvas and the run panel (`run-details.stories.tsx`): the real
+ * `ChatContent` needs a whole conversation - a session in the catalogue, a
+ * transcript, a composer wired to a backend - and a story that leaves any of it
+ * unseeded hangs before it paints. What this frame is a claim about is the SLOT:
+ * that the pane takes the right slot, that the conversation narrows rather than
+ * being covered, that the divider is the pane's own 480..1200 drag, and that the
+ * trigger cluster carries all three controls with the badge in place. The pane, the
+ * divider and the store are the product's; the two blocks and the bar to their
+ * left are the frame's stand-in for a conversation.
+ *
+ * `isBrowserPaneOpen` is set in the STORE rather than passed as a prop, exactly as
+ * `chat-page.tsx` does it, so the frame is the real wiring: the header's trigger
+ * reads the same field the slot does.
+ */
+const CompositionGround: FC<{
+	paneOpen: boolean;
+	state: BrowserChromeState;
+	count: number;
+	panelWidth?: number;
+}> = ({ paneOpen, state, count, panelWidth = 640 }) => {
+	/*
+	 * INSTALLED IN THE RENDER BODY, like `withPane` below, and that is load-bearing
+	 * rather than a shortcut: `useBrowserProjection` reads the bridge when its first
+	 * subscriber arrives (during the first render), so a bridge installed by an
+	 * EFFECT is one the first read never sees and the frame shows the pane's loading
+	 * state - measured, with `reported content rect: none` under the caption.
+	 */
+	installBridge(state);
+	const details = deriveRunDetails({ jobs: [], todos: [] });
+	useEffect(() => {
+		useUiPreferencesStore.setState({
+			isBrowserPaneOpen: paneOpen,
+			isCanvasOpen: false,
+			isRunPanelOpen: false,
+			browserPanelWidth: panelWidth,
+		});
+	}, [paneOpen, panelWidth]);
+	return (
+		<SessionTitles>
+			<div className="flex h-full min-h-0 overflow-hidden bg-canvas">
+				<div className="flex min-w-0 flex-1 flex-col">
+					<ChatHeader
+						agentName="Reports agent"
+						description="Quarterly reporting · on this machine"
+						onOpenOptions={() => undefined}
+						onOpenBrowser={() => undefined}
+						browserAttentionCount={count}
+						/* The run trigger, so the cluster really does carry all three of
+						   the right slot's choices (design round 1, D6): the badge's corner
+						   and its `mr-1` are about the neighbours it sits between. */
+						runDetails={details}
+					/>
+					<div className="flex min-h-0 grow flex-col gap-3 p-4">
+						<div className="h-16 rounded-frame bg-surface" />
+						<div className="h-16 w-3/4 rounded-frame bg-surface" />
+						<div className="mt-auto h-10 rounded-frame bg-surface" />
+					</div>
+				</div>
+				{paneOpen && (
+					<>
+						<ResizableDivider
+							sidebarWidth={panelWidth}
+							onSidebarWidthChange={() => undefined}
+							minWidth={480}
+							maxWidth={1200}
+							side="left"
+							label="Resize browser"
+						/>
+						<div
+							data-tour-tag="browser-pane-slot"
+							style={{ width: panelWidth }}
+							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+						>
+							<BrowserPane
+								sessionId={THIS_CONVERSATION}
+								onClose={() => undefined}
+							/>
+						</div>
+					</>
+				)}
+			</div>
+		</SessionTitles>
+	);
+};
 
 const meta = {
 	title: "Browser/Pane",
@@ -391,5 +520,127 @@ export const TriggerOneApproval: Story = {
 
 export const TriggerThreeApprovals: Story = {
 	render: () => <HeaderStory count={3} />,
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+
+/**
+ * The composed frame, pane open — the "after" half of the feature's own pair (D6,
+ * F1). The same ground with the pane closed is `ComposedTriggerOnly`, and the pair
+ * is what shows the conversation NARROWING rather than being covered.
+ */
+export const ComposedWithPane: Story = {
+	render: () =>
+		frame(
+			1380,
+			900,
+			<CompositionGround
+				paneOpen
+				count={3}
+				state={projection([AGENT_TAB, HANDED_TAB], [REQUESTS[0], REQUESTS[2]])}
+			/>,
+		),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+
+/** The "before": the same ground with the pane closed, which is the chat surface
+ * the feature adds itself to. The trigger is present, unpressed, in its cluster. */
+export const ComposedTriggerOnly: Story = {
+	render: () =>
+		frame(
+			1380,
+			900,
+			<CompositionGround
+				paneOpen={false}
+				count={3}
+				state={projection([AGENT_TAB, HANDED_TAB], [REQUESTS[0], REQUESTS[2]])}
+			/>,
+		),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+
+/**
+ * The pane's dock OPEN at the pane's own width, which is the only state that paints
+ * the tray's header row and so the only frame in which "2 approvals for this
+ * conversation" exists (design round 1, D6; review round 1, F2). The dock is opened
+ * by pressing the URL bar's own Approvals control, the way a user does.
+ */
+export const PaneDockOpen: Story = {
+	render: withPane(
+		projection([AGENT_TAB, HANDED_TAB], [REQUESTS[0], REQUESTS[2]]),
+		640,
+		720,
+	),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const approvals = await canvas.findByRole("button", {
+			name: /^Approvals/,
+		});
+		await userEvent.click(approvals);
+	},
+};
+
+/** The same dock at the pane's 480 floor, where the dock's own width and the page
+ * area have to be reconciled (design round 1, D7). */
+export const PaneDockNarrow: Story = {
+	render: withPane(
+		projection([AGENT_TAB, HANDED_TAB], [REQUESTS[0], REQUESTS[2]]),
+		480,
+		720,
+	),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const approvals = await canvas.findByRole("button", {
+			name: /^Approvals/,
+		});
+		await userEvent.click(approvals);
+	},
+};
+
+/** The floor WITH tabs, which is the state `NarrowMinimum` cannot answer: it has no
+ * tabs, so it never reaches the width policy at all (design round 1, D7 and D1). */
+export const NarrowWithTabs: Story = {
+	render: withPane(projection([AGENT_TAB, HANDED_TAB]), 480, 460),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+
+/** A draft conversation: no session yet, so `This conversation` is disabled rather
+ * than silently meaning All tabs (spec 7.2). This is the frame the switch's own
+ * disabled treatment has to be judged in (design round 1, D3). */
+export const DraftConversation: Story = {
+	render: () => {
+		installBridge(projection([AGENT_TAB, OTHER_TAB]));
+		return frame(
+			640,
+			460,
+			<SessionTitles>
+				<BrowserPane sessionId={null} onClose={() => {}} />
+			</SessionTitles>,
+		);
+	},
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+
+/** The pane before its first read lands (spec 7.4): the same `Spinner` the route
+ * shows, in the surface, at the pane's width. */
+export const PaneLoading: Story = {
+	render: () => {
+		installPendingBridge();
+		return frame(
+			640,
+			460,
+			<SessionTitles>
+				<BrowserPane sessionId={THIS_CONVERSATION} onClose={() => {}} />
+			</SessionTitles>,
+		);
+	},
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+
+/** The badge at the cap (design round 1, D5): ten or more requests read `9+` in a
+ * 16px glyph that cannot grow, while the tooltip keeps the exact number. */
+export const TriggerAtCap: Story = {
+	render: () => <HeaderStory count={12} />,
 	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 };
