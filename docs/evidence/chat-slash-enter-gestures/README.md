@@ -26,6 +26,13 @@ mounting a picker).
 | `ambiguous-enter-grows-the-prefix` | Enter after `/l` | `draft: "/login "`, list **closed** — the highlighted row was completed and run-ready | `draft: "/lo"`, list still open on **Commands**, `ran: none` |
 | `ambiguous-enter-keeps-the-written-message` | Enter after `/l hello` | `draft: "/login hello"` — `origin/main` completes to the highlighted row, and carries its own trailing space | `draft: "/lo hello"`, caret after the word |
 | `click-runs-analytics` | click on the `/analytics` row after `/ana` | `ran: /analytics` | unchanged |
+| `ambiguous-enter-at-bare-slash` | Enter on the popup's first state (`/`) | (derived: no growth path existed, so the word completed to the highlighted row — `/analytics `) | `draft: "/"`, list still up, `ran: none`, line: *Enter needs a row you pick: ↓ then Enter · Tab completes this row.* |
+| `ambiguous-enter-at-the-shared-prefix` | Enter after `/lo`, the state `/l` + Enter grows into | (derived: same — `/login `) | `draft: "/lo"`, list still up, `ran: none`, the same line |
+| `enter-completes-and-the-next-enter-runs` | Enter after `/clear` | (derived: completes to `/clear `) | `draft: "/clear "`, list closed, `ran: none` — its line (*Enter completes /clear; Enter again runs it.*) is in the frame's BEFORE half |
+
+The last three are UX round 1's remediation (see the section below): they are the
+states where Enter is deliberately inert, so what they evidence is the COPY rather
+than the outcome, and two of them the round measured as silently dead.
 
 So the pointer arm was **already working** (last row: identical on both trees),
 and the keyboard arm was the one that needed two Enters — which is what the fix
@@ -48,6 +55,33 @@ produced `/loghello` — measured, not read, and fixed in this round. So the fra
 is the regression test for a defect this branch introduced and this branch
 closes, and the `origin/main` cell is what that gesture did before the feature
 existed.
+
+## The copy half: what the strip says in the states where Enter does nothing
+
+UX round 1 (U1/U2) measured the defect this set now covers: in the popup's first
+state and in the state `/l` + Enter grows into, the primary key was inert, and what
+the strip said about it was the MATCHER's reason ("these commands share no prefix") rather than what to press. The RULE was not changed — an ambiguous Enter still
+narrows where there is somewhere to narrow to, and stays inert rather than
+completing to whichever candidate ranked first — so the remedy is the sentence.
+
+The probe reads that sentence back verbatim (`enterNote`, the strip's first
+paragraph), so a frame cannot be re-shot carrying copy the key does not honour
+while the run still passes. What the real component rendered at this head:
+
+| state | the line, as the component rendered it |
+| --- | --- |
+| `/` (first state) and `/lo` (the shared prefix) | `Enter needs a row you pick: ↓ then Enter · Tab completes this row.` |
+| `/clear`, an unambiguous row that completes and closes the list | `Enter completes /clear; Enter again runs it.` |
+| `/analytics`, an unambiguous row that runs | `Enter runs /analytics.` |
+| `/model`, an unambiguous row that opens a list | `Enter completes /model.` |
+| `/l` (a word that can grow) | `Enter completes to lo.` |
+
+Every clause is checkable against the keys and is checked in
+`scripts/slash-contract.test.mjs`, which drives `slashKeyIntent` and `enterFooter`
+from the same state and asserts the sentence matches the intent; the destinations'
+own answers come from `picker-registry.tsx` through the same helpers the pick
+cases read, so a table edit turns the copy red rather than leaving it describing a
+table that moved.
 
 ## Reproducing it
 
@@ -73,18 +107,21 @@ after DOM state, the expectation and the verdict.
 
 ## The two halves were not captured in the same sitting, and that is stated rather than implied
 
-The BRANCH half is the review-round-1 fixture and the six cases above: the `l`
+The BRANCH half is the review-round-1 fixture and the nine cases above: the `l`
 family the real registry has (`login`, `logout`, `loop`), so `/l` grows to `lo`,
 plus the `ambiguous-enter-keeps-the-written-message` case that the round's F1 was
-measured on.
+measured on, and the three copy cases that round 1 of the UX review asked for.
 
 The `origin-main/` half was taken in the same way (same driver, same story file,
 a read-only worktree at `origin/main` with only the harness copied in) but EARLIER,
-before the fixture gained `loop`. Two consequences, visible in those frames and
+before the fixture gained `loop`. Three consequences, visible in those frames and
 stated here rather than left for a reader to reconcile: their `l` family is
-`login`/`logout`, so their ambiguous cell reads `log`, and they carry five cases
-rather than six — the fifth case is about a code path (`extensionFor`) that does
-not exist on `origin/main` at all, and the row five cell above already says so.
+`login`/`logout`, so their ambiguous cell reads `log`; they carry five cases
+rather than nine; and they predate the gesture strip entirely, so the copy the UX
+round measured and this round fixed appears in no frame on that side. Their three
+new rows above are DERIVED from the base tree's known behaviour (no growth path
+existed there: an ambiguous Enter completed to the highlighted row) rather than
+measured, and are marked as such in the table.
 
 Nothing in that half is invalidated by the difference: what it evidences is what
 the two gestures DID on `origin/main`, and both of the reported symptoms (Enter on
