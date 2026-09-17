@@ -211,11 +211,23 @@ block carries the derivation.
 twelve**, and the row's hex is the palette's `highlight` exactly — which is the
 claim the frames exist to support: the row really is painted with that role.
 **The committed q88 file does not, and the table above is what it actually does**:
-0.00–0.19 on eight palettes and up to 1.55 on the near-white ones. **The cause is the
-encoder, not the compositor**: re-encoding a lossless capture of this same story at
-the same quality reproduces the committed readings digit for digit, and the lossless
-reading of the same frame is the contract's own number. So the committed frames are
-evidence about the ROW — which role it paints, that the mark's box is 32 rows, that
+0.00–0.19 on eight palettes, and higher on four — `monokai` 0.37 and `obsidian`
+1.03, both DARK palettes, then `localOperatorLight` 0.73 and `iceberg` 1.55 on the
+two light grounds. The deviation is the encoder's treatment of a low-contrast pair
+rather than anything about a light or dark panel. **Two of those readings also fall
+BELOW the 4.0 band this change introduces** — `monokai` 3.70 and `synth` 3.98 — and
+that is the framing rather than a palette: the authored value is what the contract
+holds (`monokai` 4.07, `synth` 4.14, both clearing the floor on the lossless
+capture), and a reading taken off a committed frame can sit below the floor without
+the palette being below it, because the file is the encoder's version of the paint.
+Read the band off the contract and the row off the frame; where the two disagree,
+the table says which is which.
+
+**The cause is the encoder, not the compositor**: re-encoding a lossless capture of
+this same story at the same quality reproduces the committed readings digit for
+digit, and the lossless reading of the same frame is the contract's own number. So
+the committed frames are evidence about the ROW — which role it paints, that the
+mark's box is 32 rows, that
 nothing moves — while the band is the contract's own numbers, and a reader who wants
 the band should read those rather than the q88 column.
 

@@ -113,10 +113,23 @@ ink floors on `highlight` cap how far it can climb (the caps and the `· lopdev`
 binding inside a current row are drawn in `ink-dim`), while the hover step the
 rows around it carry is `elevated`, which is also every menu, popover and tooltip
 ground in the app — so on **eight of the twelve** palettes it is still the LARGER
-step off `surface` (up to 6.25 on radient, against a mark of 4.01–4.15). The
-current row therefore carries the ground plus **`font-medium`**: the weight the
-settings rail's active row already carried and the app rail's active item
-carries, so the app has one "you are here" idiom rather than two.
+step off `surface` (up to 6.25 on radient, against a mark of 4.01–4.15).
+
+**That ordering is the rule, not a shortfall of this role.** A current row's mark
+is the ground plus **`font-medium`** — the weight the settings rail's active row
+already carried and the app rail's active item carries, so the app has one "you are
+here" idiom rather than two — and it is NOT required to out-step the hover of the
+row beside it: the pointer is a transient state on a neighbour and the mark is the
+persistent one, and that is the trade the two roles make deliberately. What the
+rule does not answer is the arrangement the operator's own screenshot is taken in —
+the pointer beside the selection, the two bands one above the other, with the louder
+of them the transient one. That needs a role this contract does not have: a
+**row-hover ground** that steps less than `highlight` on the dark palettes, with
+`elevated` left to the menu, popover and tooltip job it also holds. On a dark
+palette those two jobs want different magnitudes and today they are one role. Adding
+it is a twelve-palette change with its own assertions and belongs to its own change
+rather than to a remediation round of this one; until it exists, the ordering above
+is stated here rather than left to be discovered in a frame.
 
 **There is no boundary on a current row, and that is a decision with a
 measurement behind it.** An earlier round drew a 1px `outline-control` ring
