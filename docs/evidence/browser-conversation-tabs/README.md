@@ -19,6 +19,31 @@ rather than swept:
 
 ## What this set does NOT show, stated rather than implied
 
+**THE BAND'S HEADING ROW IS RENDERED BUT NOT VISIBLE IN `live/19b-pinned-control-open.png`,
+and the readout beside it is why** (review round 1, D5, resolved after the round). The
+design reviewer measured no ink where the band's own heading (`All tabs, N not shown`,
+`browser-tab-strip.tsx`'s first child of `browser-tab-overflow-list`) belongs, and could
+not tell whether the run had driven a stale bundle, whether a clip hid it, or whether the
+row was missing. It is none of those: this run's app has **no daemon to talk to**, so its
+own reconnect banner ("No Local Operator daemon was found and this app is configured not
+to start one.") is painted across the top of the window, and the band's first 24 CSS px
+sit under it. Measured in the same run, from the DOM rather than from the pixels:
+
+```
+heading {"text":"All tabs, 16 not shown","top":49,"bottom":77,"left":220,"right":1380,
+         "height":28,"display":"flex","visibility":"visible","overflow":"visible"}
+        inside the band box {"top":44,"bottom":225,"left":220,"right":1380,"height":181}
+```
+
+The proof now RECORDS that reading and CHECKS it ("the band paints the heading row the
+source renders, inside the band's own box"), so the frame's silence about the heading is
+answered by a measurement taken at the same moment rather than by inference — and the
+band's own height (181 = the 8px of padding + the 28px heading + the 144px scroller) is
+the second witness that the row is in the box it is drawn in. A frame with no banner in it
+would show the row; the harness deliberately has no daemon reachable (that is the
+"scratch backend port is dead" check at the top of its own transcript), so that frame
+cannot be taken from this harness.
+
 There is no before half for `live/19b-pinned-control-open.png`, and it cannot be produced:
 the scene is added by this change, and the control it photographs no longer exists on the
 base — a menu inside the band, which `browser-view-policy.ts` paints into the content rect
