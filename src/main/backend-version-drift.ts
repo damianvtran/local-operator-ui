@@ -21,9 +21,12 @@
  * The honest signal is the daemon's own startup record -
  * `~/.local-operator/run/serve/<pid>.json`, written by `server/registry.py` when
  * the process starts and never re-read afterwards - so its `version` is the build
- * the running process actually loaded. `serveRecordVersion` below is that read, and
- * the drift test pins the wiring so a future reader cannot reach for the wrong
- * field first.
+ * the running process actually loaded. `serveRecord` below is that read, and the
+ * trap is pinned BEHAVIOURALLY rather than by source text: the update fixture
+ * scripts the daemon's `/health` to report the NEWER on-disk version while its
+ * record reports the one it booted with, so its drift case passes only while the
+ * running reading comes from the record (`scripts/update-robustness.test.mjs`,
+ * "a server that booted from an older build is restarted onto the install").
  *
  * Pure by construction (no Electron import), so `scripts/*.test.mjs` can bundle
  * the shipped TypeScript and call these decisions directly.
