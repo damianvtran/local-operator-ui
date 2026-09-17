@@ -436,9 +436,13 @@ equally important**, and the interface must not present them as though they are.
   the whole row content box — prose and the ledger together, i.e. the shared
   `CHAT_MEASURE` container — never `max-width` on `.lo-markdown` alone.**
   Narrowing prose by itself re-creates the two rails this rule removes. The
-  cost of not having one is recorded rather than hidden: measured 98.1
-  characters a line, which is the ceiling and not a slope, because the column
-  is capped at 900px and so reads the same at 1920 as at 1024.
+  cost of not having one is recorded rather than hidden: 98.1 `ch` at the body
+  step — an INHERITED figure, quoted as the arithmetic that argued the original
+  removal rather than re-derived here; the same column carries 131 real
+  characters on an 832.6px line — which is the ceiling and not a slope, because
+  the content measure is capped at 900px and so reads the same at 1920 as at
+  1024. The `ch`/character distinction is not pedantry: it is a 2.6× difference
+  in what the number describes.
 - A security notice is **retrospective** — it records that a risk was reviewed
   and averted. It must not be styled as a prompt, because nothing consumes a
   response to it.

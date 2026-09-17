@@ -310,18 +310,22 @@
  *
  * Losing the cap costs line length, and the numbers are recorded rather than
  * argued again next round — in the TWO quantities this repo now keeps apart.
- * The first is the figure this file has carried: at the 14px body step (design
- * review round 1, D2) the answer's column runs 98.1 `ch` at 1024, 1440 AND 1920,
- * and 66.6 `ch` at 700, above the 45-75 the typographic guidance cites. Those
- * are `ch` units, NOT characters, and a reader counting characters sees a longer
- * line: counted from the rendered breaks, the same column carries 131 characters
- * on an 832.6px line (measured at 1024 on
- * `chat-older-history-slot--in-transcript-idle`). The 98.1 being a CEILING
- * rather than a slope is what makes the trade acceptable: the content measure is
- * capped at 900px by `CHAT_MEASURE` (`chat-measure.ts`) - the measure, not the
- * column, which is why the `p-4` above sits outside the number rather than
- * inside it - so the line length stops growing with the window and 1920 reads
- * exactly as 1024 does. The failure a
+ * The first is the figure this file has carried since #106 and re-quoted by
+ * design review round 1 (D2): at the 14px body step the answer's column runs
+ * 98.1 `ch` at 1024, 1440 AND 1920, and 66.6 `ch` at 700, above the 45-75 the
+ * typographic guidance cites. Those are `ch` units, NOT characters, and they are
+ * INHERITED rather than re-derived from the 860px answer box this comment now
+ * states — at this font's 8.8186px `ch` that box is 97.5 `ch`, so figure and box
+ * differ by the box each was taken against, and it is quoted as the arithmetic
+ * that argued the original removal rather than as a fresh measurement. What IS
+ * taken off the stated boxes is the character count: counted from the rendered
+ * breaks, the same column carries 131 characters on an 832.6px line (measured at
+ * 1024 on `chat-older-history-slot--in-transcript-idle`). That the figure is a
+ * CEILING rather than a slope is what makes the trade acceptable: the content
+ * measure is capped at 900px by `CHAT_MEASURE` (`chat-measure.ts`) - the
+ * measure, not the column, which is why the `p-4` above sits outside the number
+ * rather than inside it - so the line length stops growing with the window and
+ * 1920 reads exactly as 1024 does. The failure a
  * reading cap exists to prevent — prose stretching across a wide display —
  * cannot happen on this surface.
  *
@@ -362,7 +366,9 @@
  * padding comes off. `max-w-[75%]` puts the card at 675px, whose content box is
  * 641px inside the card's `px-4` and its 1px border — the box the prose now
  * fills (measured 304..945, `max-width: none`, margins 0, 0px of slack, against
- * 351.1..897.9 = 546.738px = 62ch with 48.1px of slack on each side before).
+ * 351.1..897.9 = 546.738px = 62ch with 47.1px of slack on each side before —
+ * the gutters read off that same 641px content box; a border-inclusive rig read
+ * of the same pair gives 48.1).
  * The agent's answer resolves against 860px of the same measure, losing the 40px
  * avatar gutter, and the ledger row fills 102..962. On line length, the user's
  * own longest rendered line in that fixture is ~99-101 characters on 627.6px

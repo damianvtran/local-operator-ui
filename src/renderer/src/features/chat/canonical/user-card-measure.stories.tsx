@@ -26,7 +26,8 @@
  *
  * THE BEFORE HALF, from the same read: with the retired cap in place the prose
  * was 351.1..897.9, i.e. 546.738px = 62ch, with `margin-inline` 47.125 and
- * 47.1406 - 48.1px of slack on EACH side of a 675px card. After it, the prose is
+ * 47.1406 - 47.1px of slack on EACH side of the card's 641px content box (a
+ * border-inclusive rig read of the same pair gives 48.1). After it, the prose is
  * 304..945: the whole 641px content box, `max-width: none`, margins 0, slack 0.
  * That pair is the claim, and the frames are its pixels.
  *
@@ -53,10 +54,16 @@
  * THE THREE FIXTURES are the three routes to a wide card, one story each: a
  * reply quote (the reported shape), an attachment wider than the prose, and a
  * long text-only turn. The third is here because it is the MAJORITY shape and
- * the round that fixed this photographed only the first two: with the cap gone
- * a text-only card widens from 580.7px (546.738 + 32 + 2) to 675px on any column
- * wider than about 806px, which is a change a reviewer should accept or reject
- * on pixels rather than on the contract's word.
+ * the round that fixed this photographed only the first two - and because its
+ * width is what the retirement MOVES. The card is `0.75 ×` the row content box
+ * and CLIMBS with it, so the retired cap's onset - a row content box of 774px,
+ * i.e. a column of about 806px - is where the widening BEGINS rather than where
+ * it stops. Measured on the live DOM: box 774 → card 580.5 (the onset), 806 →
+ * 604.5, 836 → 627, 900 → 675. The 675 is therefore the value at the CAPPED
+ * measure, a column of 932px or more, which is the widest a user card ever
+ * gets; the pre-fix card was pinned at 580.7 wherever the prose was longer than
+ * the 62ch cap. It is a change a reviewer should accept or reject on pixels
+ * rather than on the contract's word.
  *
  * No `play` function: all three are resting states, and the evidence rig takes
  * them.
@@ -162,9 +169,10 @@ const ATTACHED: TranscriptRecord[] = [
  *
  * No quote and no attachment: nothing here is wider than a 62ch column, so this
  * card's width is decided by the prose alone - which is exactly the case whose
- * width the retirement CHANGES, from 580.7px to 675px. A reviewer's question on
- * this frame is not "does the fix hold?" but "is the wider card the right card?",
- * and it can only be answered from a picture.
+ * width the retirement CHANGES, from 580.7px to 675px at this 1024 pane (the
+ * card climbs with the row content box; see the header's ladder). A reviewer's
+ * question on this frame is not "does the fix hold?" but "is the wider card the
+ * right card?", and it can only be answered from a picture.
  */
 const LONG_TEXT: TranscriptRecord[] = [
 	record(
