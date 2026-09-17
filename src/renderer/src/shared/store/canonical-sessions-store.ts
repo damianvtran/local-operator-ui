@@ -1518,8 +1518,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * and the read's latency (up to its 30 s deadline) is the only thing that
 				 * closes it. That window refuses sends and reports why, which is a refusal
 				 * the user cannot act on, for a switch that moves nothing: the view, the
-				 * draft and the URL are already at the target, so `true` is the answer a
-				 * `select` navigates on.
+				 * draft and the URL are already at the target, so `true` - the answer that
+				 * says the switch stands - is the right one.
 				 *
 				 * `activeDraftKey` is part of the condition rather than decoration: a
 				 * staged draft is a different view of the same session (the sidebar does
@@ -1599,12 +1599,15 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * A newer intent owns the view by the time this read answers, so this
 					 * call reports `false`.
 					 *
-					 * The return value is what routes: `select` navigates to
-					 * `/chat/<id>` only for a `true`, and without this guard a slow first
-					 * read would rewrite the URL back to the session the user has already
-					 * left. The commit above was latest-wins by construction - an older
-					 * read cannot re-commit an older target - so this is the URL half of
-					 * the same rule, not a second one.
+					 * The return value is what a caller acts on. `select` writes the URL at
+					 * the click and uses a `false` from HERE to put it back where the store
+					 * rolled back to; the command palette and `rebind` still navigate on a
+					 * `true`. Reporting `true` for a superseded read would navigate the user
+					 * to the session they have already left, and reporting `false` for a
+					 * successful one would put the address bar back behind the view. The
+					 * commit above was latest-wins by construction - an older read cannot
+					 * re-commit an older target - so this is the same rule read outwards,
+					 * not a second one.
 					 */
 					if (generation !== navigationGeneration) return false;
 					// The read answered for THIS intent, so the target is no longer
@@ -1647,12 +1650,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							 * `finishDraft`/`discardDraft` so a stale rollback cannot win - is
 							 * wrong for every caller of this guard, not merely this one. That
 							 * counter means "a newer navigation owns the view", and it is ALSO
-							 * what suppresses the URL rewrite on success (`select` navigates
-							 * only on a `true`). A send landing mid-read would therefore make a
-							 * successful switch report `false` and leave `/chat/<old>` in the
-							 * address bar while the panel showed the new chat; and on failure it
-							 * would skip this rollback entirely, leaving the user on a target
-							 * the read has just proved is gone. Re-validating the write is the
+							 * what tells a caller the switch was superseded - the `false` that
+							 * `select` answers by putting the URL back where the store is. A send
+							 * landing mid-read would therefore make a successful switch report
+							 * `false` and hand that caller a restore it does not owe; and on
+							 * failure it would skip this rollback entirely, leaving the user on a
+							 * target the read has just proved is gone. Re-validating the write is the
 							 * fix that is correct for every caller.
 							 *
 							 * Deliberately NOT done: rebinding to whatever session the finished

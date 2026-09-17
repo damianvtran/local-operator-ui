@@ -1,3 +1,5 @@
+import { openConversation } from "@features/chat/open-conversation";
+import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import {
@@ -12,7 +14,7 @@ import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { useChatPanelRequestStore } from "@shared/store/chat-panel-request-store";
+import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Search as LucideSearch, X } from "lucide-react";
 import {
@@ -130,7 +132,7 @@ export const CommandPalette: FC = () => {
 	const isCreateAgentDialogOpen = useUiPreferencesStore(
 		(state) => state.isCreateAgentDialogOpen,
 	);
-	const requestPanel = useChatPanelRequestStore((state) => state.requestPanel);
+	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
 
 	const { agentId: currentAgentIdFromRoute } = useAgentRouteParam();
 	const getLastAgentId = useAgentSelectionStore(
@@ -284,6 +286,30 @@ export const CommandPalette: FC = () => {
 		],
 	);
 
+	/*
+	 * Where focus goes when the palette closes, and where it goes when a row that
+	 * opens a PANEL closes it (see the `panel` arm below — the same node both
+	 * times, so the two exits agree).
+	 *
+	 * Captured as the palette OPENS rather than read at close time: by then the
+	 * focused element is the palette's own field. Three answers, in order, and
+	 * the third is why this exists at all — Radix's modal dialog ends by focusing
+	 * its trigger, and this surface has no trigger (it is opened from a keyboard
+	 * gesture or the sidebar's button), so `triggerRef.current` is null and focus
+	 * used to land on the document body. A user who pressed Escape had to click
+	 * before the keyboard worked again.
+	 *
+	 * The sidebar button is the fallback rather than `body` because that is where
+	 * the user's hand is: it is the palette's one visible door, it is on screen on
+	 * every route, and focusing it means the next Tab or Enter continues from
+	 * somewhere real.
+	 *
+	 * Declared ABOVE the row runners because a row that opens a panel hands this
+	 * node to the host that presents it, and the capture effect below fills it on
+	 * open.
+	 */
+	const returnFocusTo = useRef<HTMLElement | null>(null);
+
 	const runItem = useCallback(
 		(item: PaletteItem) => {
 			switch (item.target.type) {
@@ -293,20 +319,15 @@ export const CommandPalette: FC = () => {
 					return;
 				case "session": {
 					/*
-					 * Committed first, then validated: the same order the sidebar's
-					 * rows use, so a conversation opens over the transcript that is
-					 * already on screen instead of freezing the panel until the
-					 * store's read answers. A read that refuses leaves the user where
-					 * they were, and the store's own navigation sentence says so.
+					 * The palette's finger on the switch: `openConversation` owns the
+					 * rule (URL written with the commit rather than behind the guard
+					 * read) for all three entrances, and this one was a second copy of
+					 * the deferral the sidebar's rows had - the same race, reached by
+					 * typing instead of clicking.
 					 */
 					const { sessionId } = item.target;
 					closeCommandPalette();
-					useCanonicalSessionsStore
-						.getState()
-						.openSession(sessionId)
-						.then((opened) => {
-							if (opened) navigate(`/chat/${sessionId}`);
-						});
+					void openConversation(navigate, sessionId);
 					return;
 				}
 				case "command":
@@ -314,20 +335,33 @@ export const CommandPalette: FC = () => {
 					return;
 				case "panel": {
 					/*
-					 * A panel is presented BY THE CHAT PANE, so the request is written
-					 * first and the route is moved second: the pane consumes it as it mounts,
-					 * and a request written after the navigation would race the consumer's
-					 * own mount.
+					 * A panel is presented by a HOST, and which one depends on the
+					 * destination: a session-scoped panel is the chat pane's (its adapters
+					 * need the pane's canonical handle) and a machine panel has a shell host
+					 * too (`panel-outlet.tsx`). So the request is written first either way —
+					 * the pane consumes it as it mounts, and a request written after the
+					 * navigation would race the consumer's own mount — and the route moves
+					 * only for the destinations that need a pane to be presented at all.
 					 *
-					 * Navigating only when we are not already there matters for the rows a
-					 * session pane offers: `/chat` on its own keeps the store's active session,
-					 * so re-routing an already-open conversation is a no-op the user did not
-					 * ask for, while re-routing from Settings is the whole point of the row.
+					 * That single condition is requirement R2: choosing Analytics while
+					 * reading Settings used to throw the user back to chat to show them a page
+					 * about the machine they were already looking at.
+					 *
+					 * The invoker rides along because the row is about to close with the
+					 * palette: the panel that opens is modal, so the last focused control the
+					 * user touched is the palette's own search field, which unmounts in that
+					 * same commit — and the host that restores focus after the panel cannot
+					 * reach a node that no longer exists (UX round 1, U1). This is the same
+					 * node Escape returns to, which is what keeps the two exits agreeing.
 					 */
 					const { destination } = item.target;
-					requestPanel(destination);
+					requestPanel(destination, returnFocusTo.current);
 					closeCommandPalette();
-					if (!location.pathname.startsWith("/chat")) navigate("/chat");
+					if (
+						destinationNeedsSession(destination) &&
+						!location.pathname.startsWith("/chat")
+					)
+						navigate("/chat");
 					return;
 				}
 			}
@@ -343,23 +377,6 @@ export const CommandPalette: FC = () => {
 
 	/* ------------------------------------------------------------------ focus */
 
-	/*
-	 * Where focus goes when the palette closes.
-	 *
-	 * Captured as the palette OPENS rather than read at close time: by then the
-	 * focused element is the palette's own field. Three answers, in order, and
-	 * the third is why this exists at all — Radix's modal dialog ends by
-	 * focusing its trigger, and this surface has no trigger (it is opened from a
-	 * keyboard gesture or the sidebar's button), so `triggerRef.current` is null
-	 * and focus used to land on the document body. A user who pressed Escape had
-	 * to click before the keyboard worked again.
-	 *
-	 * The sidebar button is the fallback rather than `body` because that is
-	 * where the user's hand is: it is the palette's one visible door, it is on
-	 * screen on every route, and focusing it means the next Tab or Enter
-	 * continues from somewhere real.
-	 */
-	const returnFocusTo = useRef<HTMLElement | null>(null);
 	useEffect(() => {
 		if (!isCommandPaletteOpen) return;
 		const active = document.activeElement;

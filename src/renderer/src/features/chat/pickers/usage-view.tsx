@@ -30,8 +30,8 @@ import { Skeleton } from "@shared/components/ui/skeleton";
 import { cn } from "@shared/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
-import type { PickerContext } from "./destination-pickers";
 import { PickerHost } from "./picker-host";
+import type { MachinePanelContext } from "./picker-registry";
 import {
 	type LimitRow,
 	NOT_REPORTED,
@@ -774,7 +774,7 @@ export const usageQueryOptions = (
  * react-query's store, and the provider scope comes from the slash line's
  * argument.
  */
-export const UsageView: FC<PickerContext> = ({ onClose, action }) => {
+export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	const [live, setLive] = useState(false);
 	const provider = action.args.trim() || undefined;
 	const usage = useQuery(usageQueryOptions(provider, live));

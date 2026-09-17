@@ -6,6 +6,7 @@ import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
 import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
+import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
 import { OnboardingModal } from "@features/onboarding";
@@ -295,6 +296,16 @@ const App: FC = () => {
 			 */}
 			<div className="relative flex h-screen overflow-hidden">
 				{isCommandPaletteOpen && <CommandPalette />}
+
+				{/*
+				 * The shell's presenter for the machine panels, so `/info`, `/usage` and
+				 * `/analytics` are readable from any page: the chat pane presents them
+				 * whenever it is mounted (it is the claimant), and this is the host for
+				 * every route the pane does not own. Mounted here rather than inside the
+				 * chat route because that is the whole point — a panel that needs no
+				 * conversation must not need a pane either.
+				 */}
+				<PanelOutlet />
 
 				<ModelsInitializer />
 

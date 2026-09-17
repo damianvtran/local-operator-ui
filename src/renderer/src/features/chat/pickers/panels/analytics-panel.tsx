@@ -12,8 +12,8 @@ import {
 } from "react";
 import { Bar, BarChart } from "recharts";
 import { clearSearch } from "../../clear-search";
-import type { PickerContext } from "../destination-pickers";
 import { PickerCheck, PickerHost, PickerSegment } from "../picker-host";
+import type { MachinePanelContext } from "../picker-registry";
 import { errorText } from "../use-picker-backend";
 import {
 	type AnalyticsData,
@@ -86,6 +86,20 @@ export type AnalyticsPanelProps = {
 	windowDays: number;
 	metric: AnalyticsMetric;
 	thisSessionOnly: boolean;
+	/**
+	 * Whether a conversation is in front of the user, and so whether the scope
+	 * control may exist at all.
+	 *
+	 * The same rule the info panel's conversation section follows, for the same
+	 * reason: `This session only` with no session paints a control whose label
+	 * names nothing on screen, and the query already drops a falsy `sessionId` — so
+	 * the check would change the query KEY and nothing else, which is the dead
+	 * affordance the palette's own contract forbids. `thisSessionOnly` stays false
+	 * in that state, so the scope reads `all sessions`, which is the honest answer
+	 * and becomes information rather than redundancy once the panel is reachable
+	 * with no conversation at all.
+	 */
+	canScopeToSession: boolean;
 	data: AnalyticsData | null;
 	loading: boolean;
 	/** A refetch is in flight over data that is already on screen. */
@@ -576,6 +590,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 	windowDays,
 	metric,
 	thisSessionOnly,
+	canScopeToSession,
 	data,
 	loading,
 	refreshing,
@@ -625,13 +640,15 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 							{ value: "spend", label: "Spend" },
 						]}
 					/>
-					<PickerCheck
-						checked={thisSessionOnly}
-						onCheckedChange={onThisSessionChange}
-						tone="muted"
-					>
-						This session only
-					</PickerCheck>
+					{canScopeToSession ? (
+						<PickerCheck
+							checked={thisSessionOnly}
+							onCheckedChange={onThisSessionChange}
+							tone="muted"
+						>
+							This session only
+						</PickerCheck>
+					) : null}
 					{refreshing ? (
 						<p className={cn("ml-auto text-ink-dim text-meta")}>Refreshing</p>
 					) : null}
@@ -766,7 +783,10 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 };
 
 /** The adapter the registry mounts: owns the read and the presentation state. */
-export const AnalyticsView: FC<PickerContext> = ({ sessionId, onClose }) => {
+export const AnalyticsView: FC<MachinePanelContext> = ({
+	sessionId,
+	onClose,
+}) => {
 	const [windowDays, setWindowDays] = useState(7);
 	const [metric, setMetric] = useState<AnalyticsMetric>("tokens");
 	const [thisSessionOnly, setThisSessionOnly] = useState(false);
@@ -789,6 +809,7 @@ export const AnalyticsView: FC<PickerContext> = ({ sessionId, onClose }) => {
 			windowDays={windowDays}
 			metric={metric}
 			thisSessionOnly={thisSessionOnly}
+			canScopeToSession={sessionId !== ""}
 			data={query.data?.data ?? null}
 			loading={query.isLoading}
 			refreshing={query.isFetching && !query.isLoading}
