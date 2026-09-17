@@ -46,9 +46,9 @@ claim):
 
 **THIS BLOCK IS THE PRE-RULING RUN, AND TWO OF ITS LINES NO LONGER DESCRIBE THE
 STRIP THIS SET SHIPS** (review round 2, D13). The transcript was taken before
-`73c983072` raised the narrow ladder's rungs and before `c01106900` took the plus
+`4ac08e9e5` raised the narrow ladder's rungs and before `fc5ff5c54` took the plus
 out of the count chip; the frames committed beside it were RE-TAKEN on this head
-(`7540094de`). On this head the pane's four-tab state OVERFLOWS — the state D1
+(`a5f600821`). On this head the pane's four-tab state OVERFLOWS — the state D1
 filed is reachable at the pane's own width — and the control carries its bare
 number rather than the `+N` this block prints. The run that took the committed
 frames measured it and the reading is the one to use for this head: a 640px
