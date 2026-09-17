@@ -520,7 +520,7 @@ test("the dialog's refusals are inline, named, and independent", () => {
 	assert.equal(
 		validateScheduledTask({ ...quiet, repeatIntervalNotWhole: true })
 			.repeatInterval,
-		"Every needs a whole number — how many minutes, hours, days or weeks between runs.",
+		"Every needs a positive whole number — how many minutes, hours, days or weeks between runs.",
 	);
 	assert.equal(
 		validateScheduledTask({ ...quiet, repeatIntervalNotWhole: true }).invalid,

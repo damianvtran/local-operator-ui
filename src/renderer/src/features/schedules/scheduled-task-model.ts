@@ -347,12 +347,20 @@ export type ScheduledTaskInput = {
 	 * wake silently becoming a single fire whose row then leaves the page (QA round
 	 * 1, Q1).
 	 *
-	 * The sentence it produces says what the field wants; a whole number that is
-	 * merely too small (`0`, a negative) is still a number the floor can judge, and
-	 * keeps the floor's sentence. The two are complements, so a user never reads
-	 * both and never reads neither - and the parse behind this field is the same one
-	 * the request bodies read, which is what stops the form claiming a repeat while
-	 * the request arms a one-shot (QA round 1 Q1, review round 5 R5-M1).
+	 * The sentence it produces says what the field wants, and the wording is
+	 * "a positive whole number" because that is exactly what the parser admits:
+	 * digits with an optional `+`. So a NEGATIVE is not a number the parser produced
+	 * at all and takes this sentence, while `0` - the one non-positive it does
+	 * admit - keeps the floor's, because there is a number for the floor to judge.
+	 * The two are complements, so a user never reads both and never reads neither;
+	 * and "how many ... between runs" is the part of this sentence that stays true
+	 * of every form it rejects, including exponent notation (`1e3`) and a count past
+	 * the safe-integer range (both whole numbers in value, neither a count the field
+	 * can hold - review round 6, R6-M1).
+	 *
+	 * The parse behind this field is the same one the request bodies read, which is
+	 * what stops the form claiming a repeat while the request arms a one-shot (QA
+	 * round 1 Q1, review round 5 R5-M1).
 	 */
 	repeatIntervalNotWhole: boolean;
 	/** `null` when the form is not naming a repeat. */
@@ -405,7 +413,7 @@ export const validateScheduledTask = (
 	 * an unarmable count produces no interval for the floor to judge.
 	 */
 	const repeatInterval = input.repeatIntervalNotWhole
-		? "Every needs a whole number — how many minutes, hours, days or weeks between runs."
+		? "Every needs a positive whole number — how many minutes, hours, days or weeks between runs."
 		: "";
 	const repeat =
 		input.repeatMs !== null && input.repeatMs < MIN_WAKE_INTERVAL_MS
@@ -708,8 +716,9 @@ export const parseRepeatCount = (text: string): number | null => {
  * submitted" while a different expression decided "what is sent" (Q1), and the
  * count being admitted before anything judged whether the model could express it
  * (R5-M1). A whole number that is not positive is refused too (`min={1}` is a hint
- * the DOM does not enforce); the sentence the user reads for that case is the
- * floor's, since the parser did produce a number for the floor to judge.
+ * the DOM does not enforce), and WHICH SENTENCE it meets is decided by what the
+ * parser did: `0` is a number the parser produced, so the floor judges it; a
+ * negative never leaves `parseRepeatCount`, so it takes the interval's sentence.
  */
 export const isRepeatCountArmable = (count: number | null): boolean =>
 	count !== null && count > 0;
