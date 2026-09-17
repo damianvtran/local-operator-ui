@@ -18,10 +18,14 @@ import { homedir } from "node:os";
 import * as path from "node:path";
 import { basename, join } from "node:path";
 import { promisify } from "node:util";
-import { type BrowserWindow, app, ipcMain } from "electron";
+import { net, type BrowserWindow, app, ipcMain, powerMonitor } from "electron";
 import { type UpdateInfo, autoUpdater } from "electron-updater";
 import type { BackendServiceManager } from "./backend/backend-service";
 
+import {
+	stripErrorPrefixes,
+	transientTransportCode,
+} from "../shared/transport-failure";
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
@@ -129,11 +133,57 @@ const SEAL_PROBE_TIMEOUT_MS = 45_000;
  */
 const STARTUP_SEAL_PROBE_DELAY_MS = 15_000;
 
+/**
+ * How long after this machine resumes the wake-armed check runs, in ms.
+ *
+ * WHY A WAKE ARMS A CHECK AT ALL, and why it waits. The operator's own
+ * `update-service.log` and `pmset -g log` pin the reported failure to a DARK
+ * WAKE: `2026-09-16 09:03:12 DarkWake from Deep Idle [CDN] : due to
+ * smc.sysState.Wake(0x70070000) wifibt ...`, with the feed fetch failing
+ * `net::ERR_INTERNET_DISCONNECTED` in the same second, the machine's resolver
+ * answering `getaddrinfo ENOTFOUND pypi.org` at the same instant, and airportd
+ * reporting `hasAssocToWiFi1 = 0` twelve seconds later - the wake reason itself
+ * names the Wi-Fi stack coming back up. The five-minute tick that lands on that
+ * instant is a tick that cannot succeed, so the fix is to give the network a
+ * moment and then ask once: twenty seconds is past the association the log shows
+ * (about twelve) and far inside the next tick.
+ *
+ * ONE TIMER, never a storm: a second resume while one is armed leaves the
+ * existing timer alone, so a night of maintenance wakes cannot accumulate
+ * checks - and the check this arms is the ordinary scheduled one, which is
+ * silent, so it can never report anything by itself.
+ */
+const POST_WAKE_CHECK_DELAY_MS = 20_000;
+
 /** ` to version X`, or nothing when the version is unknown. */
 function versionSuffix(version: string | null | undefined): string {
 	return version ? ` to version ${version}` : "";
 }
 
+/**
+ * The failure the network gate hands its caller when the machine never had a network.
+ *
+ * WHY IT CARRIES A CHROMIUM CODE. This is not an invented error: it is the exact
+ * failure a fetch attempted in that state produces - the operator's own log has
+ * `net::ERR_INTERNET_DISCONNECTED` at the dark-wake second, from the updater's own
+ * executor - so the renderer classifies it with the same shared classifier and
+ * paints the same sentence it would paint for the real one. The alternative
+ * (inventing a message in the app's own voice) would be a second spelling of one
+ * failure, in the module whose whole purpose is having one.
+ */
+function offlineTransportError(): Error {
+	/*
+	 * THE MESSAGE NAMES THE GATE, not a failed fetch (review round 3, R3-3). A grep
+	 * for this code in the log would otherwise find a line that reads like a request
+	 * that went out and came back refused, and a reader chasing it would look for a
+	 * dropped connection that never existed. The code stays, because the renderer
+	 * classifies and describes it with the shared table; the parenthetical is what
+	 * says the check never left the machine.
+	 */
+	return new Error(
+		"net::ERR_INTERNET_DISCONNECTED - the machine reported no network, so no request was made",
+	);
+}
 /**
  * Run a command and report its exit code rather than throwing on failure.
  *
@@ -338,6 +388,53 @@ export class UpdateService {
 	 */
 	private updateStage: "idle" | "downloading" | "installing" = "idle";
 
+	/**
+	 * How many app-channel checks are in flight right now.
+	 *
+	 * ONE OWNER PER FAILURE. The `autoUpdater` `error` event and the check that
+	 * caused it are two producers of the same user-facing message, and they used
+	 * to carry two different suppression rules: `checkForUpdates` refuses to send
+	 * for a silent check and the event handler sent regardless, so one transient
+	 * failure was reported twice and a background check was reported at all. A
+	 * check in flight owns its own failure report, so the handler stands down
+	 * while this is above zero. It is a DEPTH rather than a boolean because the
+	 * scheduled check and a click can overlap.
+	 */
+	private appChecksInFlight = 0;
+
+	/**
+	 * The attempt sequence in flight in the app channel, so a second check rides
+	 * it instead of doubling it.
+	 *
+	 * WHY THIS EXISTS, measured. Two checks are started at launch by different
+	 * owners - the renderer's mount effect and this process's own delayed check -
+	 * and QA round 1 measured the cost of letting them run independently while
+	 * the feed is down: six fetches in 6.6 s where the base made two
+	 * (`Q-2`), three per check because of the retries. The fetch is the same
+	 * request for the same feed, so the second caller awaits the first one's
+	 * sequence and the result is shared; `appChecksInFlight` stays at 1 for the
+	 * pair, which is also what keeps the `error` events of that one sequence owned
+	 * by the check that started it.
+	 */
+	private appFeedFetchInFlight: Promise<
+		Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>
+	> | null = null;
+
+	/**
+	 * The wake-armed check, held so a second wake cannot arm a second one.
+	 */
+	private postWakeCheckTimer: NodeJS.Timeout | null = null;
+
+	/**
+	 * The backoff between attempts at one app-channel feed fetch, in ms.
+	 *
+	 * Two retries, so three attempts, which is the bound a transient Wi-Fi roam
+	 * or resolver blip needs and short enough that a check the user is waiting on
+	 * still answers in seconds. A test overrides it rather than waiting 4 s per
+	 * case; nothing else does.
+	 */
+	public appFeedRetryDelaysMs: readonly number[] = [1_000, 3_000];
+
 	/** The last update the updater told us about, for its file metadata. */
 	private lastUpdateInfo: UpdateInfo | null = null;
 
@@ -512,6 +609,33 @@ export class UpdateService {
 
 		// Start periodic update checks (every 5 minutes)
 		this.startPeriodicUpdateChecks();
+
+		/*
+		 * A resume arms ONE check a moment later, for the failure this change's
+		 * root cause turned out to be: see `POST_WAKE_CHECK_DELAY_MS`. The listener
+		 * is registered here rather than in `startPeriodicUpdateChecks` because it
+		 * is about the machine's state, not about the schedule.
+		 */
+		powerMonitor.on("resume", () => this.armPostWakeCheck());
+	}
+
+	/**
+	 * Arm the single check that follows a resume, or leave the armed one alone.
+	 *
+	 * `unref`'d like the seal probe: a quit before it fires loses nothing, because
+	 * the next launch checks and the five-minute tick is still there.
+	 */
+	private armPostWakeCheck(): void {
+		if (this.postWakeCheckTimer) return;
+		this.postWakeCheckTimer = setTimeout(() => {
+			this.postWakeCheckTimer = null;
+			logger.info(
+				"Running the update check this machine's wake armed",
+				LogFileType.UPDATE_SERVICE,
+			);
+			void this.checkForAllUpdates(true);
+		}, POST_WAKE_CHECK_DELAY_MS);
+		this.postWakeCheckTimer.unref();
 	}
 
 	/**
@@ -1815,6 +1939,128 @@ export class UpdateService {
 	/**
 	 * Set up event handlers for the autoUpdater
 	 */
+	/**
+	 * One app-channel feed fetch, with its retries, as the owner of its failures.
+	 *
+	 * WHY A RETRY AND NOT A BETTER ERROR MESSAGE. The failures in the operator's
+	 * log are transients: a Wi-Fi change, a wake, a resolver blip. Every one of
+	 * them was followed by a check five minutes later that answered normally, so
+	 * the honest response to the first is to ask again rather than to tell the
+	 * user their network is down. Only a TRANSIENT failure is retried
+	 * (`transientTransportCode`), so a 404, a refused credential or a certificate
+	 * verdict still fails immediately and is not swallowed by a backoff.
+	 *
+	 * WHAT A CHECK CONCLUDES IS UNCHANGED, deliberately: a feed that never
+	 * arrived still reaches the caller as a rejected promise, and a check that
+	 * could not find out stays `unavailable` in the verdict. Retrying must not
+	 * turn "could not find out" into "nothing newer" - that conflation is this
+	 * repository's documented defect class, and it is why this is a retry rather
+	 * than an extra entry in `shouldFilterUpdateError` (whose filtered branch
+	 * emits `update-not-available`).
+	 *
+	 * The in-flight depth is held across the whole attempt sequence, so the
+	 * `error` events each attempt raises are owned by this call rather than
+	 * reported beside it.
+	 */
+	private async runAppFeedCheck(
+		fetchFeed: () => Promise<
+			Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>
+		>,
+	): Promise<Awaited<ReturnType<typeof autoUpdater.checkForUpdates>> | null> {
+		/*
+		 * The gate that decides whether a REQUEST is worth spending lives inside the
+		 * attempt ladder (`runAppFeedAttempts`), not here: a skip has to leave the
+		 * caller's own failure path intact, and what that path does depends on who
+		 * asked. See the note there.
+		 *
+		 * The second caller rides the sequence already in flight rather than
+		 * starting another one; see `appFeedFetchInFlight`.
+		 */
+		if (this.appFeedFetchInFlight) return this.appFeedFetchInFlight;
+		const sequence = this.runAppFeedAttempts(fetchFeed);
+		this.appFeedFetchInFlight = sequence;
+		try {
+			return await sequence;
+		} finally {
+			this.appFeedFetchInFlight = null;
+		}
+	}
+
+	/**
+	 * Whether Electron believes this machine has a network at all.
+	 *
+	 * The `typeof` guard is a constraint rather than defensiveness: this module is
+	 * bundled with Electron STUBBED by its own contract harness
+	 * (`scripts/update-robustness.test.mjs`), and a stub that does not answer this
+	 * question must not turn every check into a skip. A missing reading is read as
+	 * "reachable", which is the behaviour that existed before the gate.
+	 */
+	private networkIsReachable(): boolean {
+		return typeof net?.isOnline === "function" ? net.isOnline() : true;
+	}
+
+	/**
+	 * The attempt sequence itself: the retries, and the depth that owns them.
+	 */
+	private async runAppFeedAttempts(
+		fetchFeed: () => Promise<
+			Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>
+		>,
+	): Promise<Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>> {
+		this.appChecksInFlight += 1;
+		try {
+			const delays = this.appFeedRetryDelaysMs;
+			for (let attempt = 0; ; attempt += 1) {
+				try {
+					/*
+					 * THE GATE IS AN ATTEMPT, NOT AN EXIT. A machine that reports no network
+					 * spends no request - but the ladder still runs, because whether a check
+					 * FAILS is the caller's question and its answer depends on WHO ASKED:
+					 * an app-initiated check is silent, and a check the user clicked has to
+					 * be answered with the sentence the copy already has (review round 2,
+					 * R2-1). Returning early here made a clicked check resolve `null`, and a
+					 * resolved invoke is not a failure - so the click the operator's rule
+					 * exists for was the one path that said nothing at all.
+					 *
+					 * Waiting between gate readings rather than between requests is also
+					 * what a wake needs: the network can come back inside the ladder's four
+					 * seconds, and an attempt that never left the machine costs nothing to
+					 * repeat.
+					 */
+					if (!this.networkIsReachable()) {
+						logger.info(
+							`The machine reports no network (net.isOnline() is false); not spending a request on the update feed${attempt < delays.length ? `, asking again in ${delays[attempt]}ms (attempt ${attempt + 2} of ${delays.length + 1})` : ""}.`,
+							LogFileType.UPDATE_SERVICE,
+						);
+						if (attempt >= delays.length) throw offlineTransportError();
+						await new Promise((resolve) =>
+							setTimeout(resolve, delays[attempt]),
+						);
+						continue;
+					}
+					return await fetchFeed();
+				} catch (error) {
+					const code = transientTransportCode(error);
+					if (code === null || attempt >= delays.length) throw error;
+					const delay = delays[attempt];
+					/*
+					 * Logged per attempt, because a retry that succeeds leaves no trace
+					 * for the user and this line is the only record that the app papered
+					 * over a real network blip. It is also what tells a later reader that
+					 * an intermittent failure is happening often rather than once.
+					 */
+					logger.warn(
+						`Transient transport failure during the update check (${code}); retrying in ${delay}ms (attempt ${attempt + 2} of ${delays.length + 1})`,
+						LogFileType.UPDATE_SERVICE,
+					);
+					await new Promise((resolve) => setTimeout(resolve, delay));
+				}
+			}
+		} finally {
+			this.appChecksInFlight -= 1;
+		}
+	}
+
 	private setupUpdateEvents(): void {
 		// When an update is available
 		autoUpdater.on("update-available", (info) => {
@@ -1870,6 +2116,40 @@ export class UpdateService {
 			// A download or an install that dies is not an availability problem:
 			// the user asked for something and it failed, so it has to be shown.
 			const actionable = this.updateStage !== "idle";
+			/*
+			 * ONE OWNER PER FAILURE. This handler and the check that provoked the
+			 * error are two producers of one message, and until this gate existed
+			 * they disagreed about when it may be sent: a scheduled check is silent
+			 * and its `checkForUpdates` catch sends nothing, while this handler sent
+			 * the same string regardless - so the log holds each transient failure
+			 * twice and the silent background check was the surface the operator
+			 * actually saw an alert from. While a check is in flight the check owns
+			 * the report, and what that check does with it depends on WHO ASKED FOR
+			 * IT (the operator's rule of 2026-09-16): a check the user clicked a
+			 * button for reports its own failure once, after the retries are
+			 * exhausted (`checkForUpdates(..., silent)`'s `!silent` catch), and an
+			 * APP-INITIATED check - the five-minute tick, the launch check, the
+			 * wake-armed one - reports nothing at all, transient or not, because
+			 * nobody asked for it. This handler therefore never reports during a
+			 * check; the sentence above is true for the click and silent for the
+			 * rest, which is the whole rule.
+			 *
+			 * A stage failure still reports through here even during a check, which
+			 * is why `actionable` is tested first: a download that dies while an
+			 * availability check happens to be running is still a failure the user
+			 * asked for.
+			 */
+			if (!actionable && this.appChecksInFlight > 0) {
+				logger.info(
+					// The rule, at the point it is implemented: a check in flight owns
+					// its own failure report, and an app-initiated check's owner is a
+					// silent one - so this is the log line that replaces the alert the
+					// operator saw, not a swallowed error.
+					"Update error during an availability check: the check reports its own failure",
+					LogFileType.UPDATE_SERVICE,
+				);
+				return;
+			}
 			const shouldFilter = !actionable && this.shouldFilterUpdateError(err);
 
 			if (shouldFilter) {
@@ -1881,8 +2161,17 @@ export class UpdateService {
 					version: app.getVersion(),
 				});
 			} else {
-				// Only send the error to the renderer if it shouldn't be filtered
-				this.sendToRenderer("update-error", err.message);
+				/*
+				 * Only send the error to the renderer if it shouldn't be filtered.
+				 *
+				 * The message is the machine's own words, cleaned of the nested
+				 * `Error: ` prefixes a wrapped failure carries; the sentence a person
+				 * reads is the renderer's (it classifies the same code with the same
+				 * shared module), so a raw `net::ERR_*` string can no longer BE the
+				 * message. Cleaning it here rather than only at the paint is what
+				 * keeps the machine-voice detail on the alert readable.
+				 */
+				this.sendToRenderer("update-error", stripErrorPrefixes(err.message));
 			}
 		});
 
@@ -1966,12 +2255,30 @@ export class UpdateService {
 			async (_event, options?: { manual?: boolean }) => {
 				logger.info("Checking for UI updates...", LogFileType.UPDATE_SERVICE);
 				this.onCheckRequested(options);
+				/*
+				 * WHO ASKED decides whether a failure of this check may be reported; see
+				 * `checkForUpdates`'s `reportFailure`. The renderer's mount check is the
+				 * app's own startup check and says nothing here, while every button that
+				 * proceeds an explicit check sends `manual: true`.
+				 */
+				const reportFailure = options?.manual === true;
 				try {
-					return await autoUpdater.checkForUpdates();
+					/*
+					 * The same fetch with the same retries as the scheduled check
+					 * (`runAppFeedCheck`): a Wi-Fi roam that lands mid-click is the same
+					 * transient failure, and the person who pressed the button is the one
+					 * least served by being told their network is down.
+					 */
+					return await this.runAppFeedCheck(() =>
+						autoUpdater.checkForUpdates(),
+					);
 				} catch (error) {
 					logger.error(
 						"Error checking for UI updates:",
 						LogFileType.UPDATE_SERVICE,
+						// The failure is logged here whatever the caller is, because the log
+						// is where an app-initiated check's failure belongs once it is not
+						// reported.
 						error,
 					);
 
@@ -1995,7 +2302,32 @@ export class UpdateService {
 						};
 					}
 
-					// Only throw the error if it shouldn't be filtered
+					/*
+					 * AN APP-INITIATED CHECK RESOLVES RATHER THAN REJECTING. Rejecting was how
+					 * this failure reached the renderer, and the renderer painted it - the
+					 * mount check's `Error checking for updates: Error invoking remote method
+					 * 'check-for-updates': Error: net::ERR_...` was the second of the two
+					 * producers of the operator's alert, on a check nobody asked for (QA
+					 * round 1, Q1). `null` is the shape the updater itself uses for "this
+					 * check did not produce a result" and the verdict already reads it as
+					 * `unavailable`, so the silence costs no information.
+					 */
+					if (!reportFailure) {
+						logger.info(
+							"An app-initiated check could not read the update feed; the failure is logged and not shown (only a check the user asked for is reported).",
+							LogFileType.UPDATE_SERVICE,
+						);
+						return null;
+					}
+
+					/*
+					 * THE RULE AT THE RETHROW SITE: this rejection carries the MACHINE's own
+					 * string, so a consumer that paints it must map it first - the shared
+					 * classifier plus `updateErrorCopy` on the renderer side produce the
+					 * sentence and the subordinate code line, and painting the rejection raw
+					 * is how `net::ERR_INTERNET_DISCONNECTED` became a message a person read.
+					 * Every consumer in this tree goes through that path; a new one must too.
+					 */
 					throw error;
 				}
 			},
@@ -2050,7 +2382,15 @@ export class UpdateService {
 				 */
 				const silent = options?.silent === true;
 				try {
-					return await this.checkForAllUpdates(silent);
+					/*
+					 * The same `who asked` fact as `check-for-updates`: a check the user
+					 * pressed a button for reports its own failures, and any other caller -
+					 * the launch check, the schedule, the wake - reports nothing.
+					 */
+					return await this.checkForAllUpdates(
+						silent,
+						options?.manual === true,
+					);
 				} catch (error) {
 					logger.error(
 						"Error checking for all updates:",
@@ -2293,7 +2633,27 @@ export class UpdateService {
 	 *   says it with `unavailable` rather than by omission. `checkForAllUpdates`
 	 *   is what turns the pair into the one sentence a user reads.
 	 */
-	public async checkForUpdates(silent = false): Promise<UpdateChannelStatus> {
+	public async checkForUpdates(
+		silent = false,
+		/*
+		 * WHETHER A FAILURE HERE MAY REACH THE USER, which is not the same question as
+		 * `silent` - and that is the point.
+		 *
+		 * The operator's rule of 2026-09-16: "if updates can't be checked then that
+		 * should be an error that only pops up if clicking the button to check for
+		 * updates". So the fact that decides reporting is WHO ASKED, not which events
+		 * the check emits: `silent` is about the per-channel `*-not-available` events,
+		 * which clear stale state in the renderer and gate the npx registry read, and
+		 * an APP-INITIATED check - the five-minute tick, the launch check, the
+		 * wake-armed one - can report nothing while still emitting those exactly as it
+		 * does today. Making one flag do both jobs would have silenced the stale-state
+		 * clearing to buy the silence we actually want.
+		 *
+		 * The default keeps every existing caller's behaviour (`!silent` is what the
+		 * gate was), and the IPC handlers pass the renderer's own `manual` fact in.
+		 */
+		reportFailure = !silent,
+	): Promise<UpdateChannelStatus> {
 		logger.info(
 			`Checking for updates... (silent mode: ${silent})`,
 			LogFileType.UPDATE_SERVICE,
@@ -2464,7 +2824,15 @@ export class UpdateService {
 			 */
 			let result: Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>;
 			try {
-				result = await autoUpdater.checkForUpdates();
+				/*
+				 * The fetch is retried on a TRANSIENT transport failure (`runAppFeedCheck`),
+				 * before the `finally` below puts the not-available listener back: a
+				 * retry is the same fetch, so the listener swap has to hold across the
+				 * whole attempt sequence rather than per attempt.
+				 */
+				result = await this.runAppFeedCheck(() =>
+					autoUpdater.checkForUpdates(),
+				);
 			} finally {
 				if (silent) {
 					autoUpdater.removeAllListeners("update-not-available");
@@ -2519,11 +2887,17 @@ export class UpdateService {
 				!this.mainWindow.isDestroyed() &&
 				this.mainWindow.webContents &&
 				!this.mainWindow.webContents.isDestroyed() &&
-				!silent
+				reportFailure
 			) {
 				this.mainWindow.webContents.send(
 					"update-error",
-					(error as Error).message,
+					/*
+					 * Cleaned of the nested `Error: ` prefixes a wrapped failure carries,
+					 * at the source: this string is shown to a person as the machine's own
+					 * words under the sentence the renderer builds from the same code, and
+					 * `Error: Error: net::...` is a nesting nobody asked for.
+					 */
+					stripErrorPrefixes((error as Error).message),
 				);
 			}
 			// An error is not an answer: a known-spurious no-availability error is
@@ -2920,6 +3294,13 @@ export class UpdateService {
 	 */
 	public async checkForBackendUpdates(
 		silent = false,
+		/*
+		 * The same fact as `checkForUpdates`'s, for the same reason: the three
+		 * `backend-update-error` sends on the check path below are a failure REPORT,
+		 * and a check nobody asked for does not get one. See that parameter's comment
+		 * for the operator's rule.
+		 */
+		reportFailure = !silent,
 	): Promise<BackendCheckReport> {
 		logger.info(
 			`Checking for backend updates... (silent mode: ${silent})`,
@@ -2963,6 +3344,28 @@ export class UpdateService {
 				return { status: "unavailable", info: null };
 			}
 
+			/*
+			 * A MACHINE THAT REPORTS NO NETWORK IS NOT ASKED ANYTHING. Both reads below
+			 * spend a request - one against the local server, one against the published
+			 * release - and the operator's log has this check's own failure beside the
+			 * app channel's at the dark-wake instant (`Error fetching from PyPI: Error:
+			 * getaddrinfo ENOTFOUND pypi.org`, same second). Skipping leaves the status
+			 * `unavailable`, which is what a channel that did not find out reports.
+			 *
+			 * AND THIS CHANNEL DOES NOT REPORT THE STATE, even when the check was the
+			 * user's: the app channel's ladder reaches the same reading first, fails with
+			 * the same code and is what the renderer is answered with, so a report here
+			 * would put a second sentence beside it for one condition (review round 2,
+			 * R2-1's rule, applied to the other channel).
+			 */
+			if (!this.networkIsReachable()) {
+				logger.info(
+					"Skipping the server update check: this machine reports no network right now (net.isOnline() is false). The app channel owns the report; the next scheduled check will try again.",
+					LogFileType.UPDATE_SERVICE,
+				);
+				return { status: "unavailable", info: null };
+			}
+
 			const installedVersion = await this.getInstalledBackendVersion();
 			const latestVersion = await this.getLatestPypiVersion();
 			// Remembered for the by-hand prompt: that event is produced from a click
@@ -2975,7 +3378,7 @@ export class UpdateService {
 					"Unable to determine backend versions.",
 					LogFileType.UPDATE_SERVICE,
 				);
-				if (!silent) {
+				if (reportFailure) {
 					this.sendToRenderer("backend-update-error", {
 						message: "Unable to determine backend version.",
 						phase: "check",
@@ -2992,7 +3395,7 @@ export class UpdateService {
 					"The installed backend version could not be determined from the health endpoint.",
 					LogFileType.UPDATE_SERVICE,
 				);
-				if (!silent) {
+				if (reportFailure) {
 					this.sendToRenderer("backend-update-error", {
 						message:
 							"The installed server version could not be determined, so no update was offered. Restart the app to try again.",
@@ -3032,7 +3435,7 @@ export class UpdateService {
 						)} server version (installed: ${installedVersion}, published: ${latestVersion}); no status is reported rather than comparing an unreadable reading.`,
 					LogFileType.UPDATE_SERVICE,
 				);
-				if (!silent) {
+				if (reportFailure) {
 					this.sendToRenderer("backend-update-error", {
 						message: "Unable to determine backend version.",
 						phase: "check",
@@ -3117,7 +3520,14 @@ export class UpdateService {
 				!this.mainWindow.webContents.isDestroyed()
 			) {
 				this.mainWindow.webContents.send("backend-update-error", {
-					message: (error as Error).message,
+					/*
+					 * Cleaned at the source, the same way the app channel's report is:
+					 * this channel's real strings are Node errno forms, and a wrapped
+					 * one carries the inner `Error: ` prefix into the sentence a person
+					 * reads. The renderer maps what is left to a sentence; this is what
+					 * keeps that sentence's machine line readable.
+					 */
+					message: stripErrorPrefixes((error as Error).message),
 					phase: "check",
 				});
 			}
@@ -3580,7 +3990,9 @@ export class UpdateService {
 				!this.mainWindow.webContents.isDestroyed()
 			) {
 				this.mainWindow.webContents.send("backend-update-error", {
-					message: (error as Error).message,
+					// Cleaned at the source, for the reason written on the check-phase
+					// report above.
+					message: stripErrorPrefixes((error as Error).message),
 					phase: "update",
 				});
 			}
@@ -3601,14 +4013,18 @@ export class UpdateService {
 	 *   carries it - each channel's own events are unchanged, and the verdict
 	 *   crosses the IPC boundary as this call's return value.
 	 */
-	public async checkForAllUpdates(silent = false): Promise<UpdateCheckVerdict> {
+	public async checkForAllUpdates(
+		silent = false,
+		/* Passed to both channels; see `checkForUpdates`'s parameter of the same name. */
+		reportFailure = !silent,
+	): Promise<UpdateCheckVerdict> {
 		// Sequential rather than concurrent: each channel reports through its own
 		// renderer events and completes on its own schedule, and the verdict is
 		// the only thing here that reads both - so running them together would
 		// change nothing a user sees while making the pair's failures harder to
 		// attribute.
-		const app = await this.checkForUpdates(silent);
-		const server = await this.checkForBackendUpdates(silent);
+		const app = await this.checkForUpdates(silent, reportFailure);
+		const server = await this.checkForBackendUpdates(silent, reportFailure);
 		return updateCheckVerdict({ app, server: server.status });
 	}
 

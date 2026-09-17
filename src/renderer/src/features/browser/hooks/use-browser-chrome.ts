@@ -1,3 +1,4 @@
+import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
@@ -251,7 +252,7 @@ export function useBrowserProjection(): BrowserProjection {
 			}
 			return null;
 		} catch (caught) {
-			setReadError(messageOf(caught));
+			setReadError(unwrapIpcErrorMessage(caught));
 			return null;
 		}
 	}, []);
@@ -339,7 +340,7 @@ export function useBrowserChrome(): BrowserChrome {
 				await action();
 				setActionError(null);
 			} catch (caught) {
-				setActionError(messageOf(caught));
+				setActionError(unwrapIpcErrorMessage(caught));
 			}
 			await refresh();
 		},
@@ -470,14 +471,7 @@ export function useBrowserChrome(): BrowserChrome {
 	);
 }
 
-/** The prefix Electron adds to an `ipcRenderer.invoke` rejection. Module scope
- * because a regex literal inside the function is rebuilt on every call and the
- * linter's rule is right about it. */
-const IPC_ERROR_PREFIX = /^Error invoking remote method '[^']+':\s*/;
-
-/** IPC rejections arrive as `Error` with a prefix Electron adds, so the message
- * is unwrapped rather than shown raw. */
-function messageOf(caught: unknown): string {
-	const raw = caught instanceof Error ? caught.message : String(caught);
-	return raw.replace(IPC_ERROR_PREFIX, "").trim();
-}
+/** The prefix Electron adds to an `ipcRenderer.invoke` rejection, and the unwrap
+ * itself, live in `@shared/utils/ipc-error-message` now: the update surfaces
+ * unwrap the same envelope for the same reason, and two spellings of one rule
+ * is how the two answers drift apart. */
