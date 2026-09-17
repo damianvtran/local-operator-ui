@@ -580,18 +580,19 @@ export const CommandPalette: FC = () => {
 					data-tour-tag="command-palette-dialog"
 					showClose={false}
 					/*
-					 * `z-[2300]` clears the app's connection banner (`z-2200`), which is
-					 * `fixed inset-x-0 top-0` and 68px tall. The dialog is centred, so at a
-					 * window under ~638 CSS px tall it passed under the banner and the
-					 * banner painted over the query field: the user typed into a field they
-					 * could not see (UX round 1, U1). A modal owns the screen, and the
-					 * banner's own remedy is waiting behind it either way.
+					 * `z-[2300]`, and the reason is the scrim as much as the panel: a modal
+					 * owns the screen (UX round 2, U7).
 					 *
-					 * The SCRIM clears it too (`overlayClassName`), and that is the other
-					 * half of the same decision: at `z-50` the scrim left the banner's strip
-					 * undimmed between itself and this panel, showing the banner's sentence
-					 * sliced in half by the dialog (UX round 2, U7). Dimming the banner is
-					 * what "the modal owns the screen" looks like.
+					 * WHICH surface it had to clear changed with D9. The two full-bleed bands
+					 * used to be `fixed` strips pinned to the top of the WINDOW (`z-2200` and
+					 * `z-2100`, 68 and 53 CSS px tall), so at a window under ~638 CSS px tall
+					 * the centred dialog passed under the banner and the banner painted over
+					 * the query field: the user typed into a field they could not see (UX
+					 * round 1, U1). They are the shell's first children now, in flow above
+					 * the app's region, so that overlap is impossible by construction and the
+					 * scrim dims a band with everything else. The pairing is held by
+					 * `scripts/palette-contract.test.mjs`: a band declares no stacking level
+					 * of its own, and this does.
 					 */
 					className="z-[2300] w-160 max-w-[90vw] gap-0 overflow-hidden p-0"
 					overlayClassName="z-[2300]"

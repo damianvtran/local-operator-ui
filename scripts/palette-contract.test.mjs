@@ -136,28 +136,45 @@ test("the subscription is torn down, so a remount cannot double-toggle", () => {
  * the committed frames use. Neither needs a browser to assert.
  */
 
-test("the palette paints above the app's connection banner", () => {
+test("the palette owns the screen over the app's full-bleed bands", () => {
 	/*
-	 * The banner is `fixed inset-x-0 top-0` and 68px tall; the dialog is centred.
-	 * At a window under ~638 CSS px the two overlap, and the banner used to paint
-	 * over the query field — the user typing into a field they could not see (UX
-	 * round 1, U1).
+	 * WHAT THIS USED TO BE, and why it is the same invariant in a new shape. The
+	 * band was `fixed inset-x-0 top-0` and 68px tall and the dialog is centred, so
+	 * at a window under ~638 CSS px the two overlapped and the band painted over
+	 * the query field: the user typing into a field they could not see (UX round
+	 * 1, U1). The band is the shell's FIRST CHILD in flow since D9
+	 * (`docs/evidence/band-occlusion/`), so it carries no stacking level at all
+	 * and that overlap is impossible by construction - the assertion is kept
+	 * rather than deleted because the failure it was written for was real and
+	 * invisible at the captured window size, and the property that keeps it
+	 * impossible is a pairing this can still falsify: no band declares a level,
+	 * and the modal declares one.
 	 */
-	const banner = read(
+	const bands = [
 		"src/renderer/src/shared/components/common/connectivity-banner.tsx",
-	);
+		"src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
+	];
+	for (const file of bands) {
+		const source = read(file);
+		/*
+		 * Matched on the ATTRIBUTE rather than on the file: these components carry
+		 * their old spelling in a comment (the change's own record of what moved),
+		 * and a scan of the whole text would read that comment as a live class.
+		 */
+		assert.doesNotMatch(
+			source,
+			/className="[^"]*\bz-(?:\[?\d)/,
+			`${file}: an in-flow band must declare no stacking level of its own`,
+		);
+	}
 	const palette = read(
 		"src/renderer/src/features/command-palette/components/command-palette.tsx",
 	);
-	const bannerZ = banner.match(/z-(?:\[(\d+)\]|(\d+))/);
 	const paletteZ = palette.match(/className="z-\[(\d+)\]/);
-	assert.ok(bannerZ, "the banner declares a stacking level");
-	assert.ok(paletteZ, "the palette must declare one that clears it");
-	const bannerLevel = Number(bannerZ[1] ?? bannerZ[2]);
-	const paletteLevel = Number(paletteZ[1]);
+	assert.ok(paletteZ, "the palette must declare a stacking level of its own");
 	assert.ok(
-		paletteLevel > bannerLevel,
-		`the palette paints at ${paletteLevel} and the banner at ${bannerLevel}: the modal must own the screen`,
+		Number(paletteZ[1]) > 0,
+		`the palette paints at ${paletteZ[1]}: the modal must own the screen`,
 	);
 });
 
