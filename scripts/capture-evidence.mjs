@@ -2075,6 +2075,38 @@ export const STORIES = [
 	 */
 	["settings-app-updates-section--all-current", 900, 460],
 
+	/*
+	 * THE OPERATOR'S OWN MACHINE, and the pair no existing frame covers: an
+	 * app-managed server three releases behind its published release, reported as
+	 * up to date.
+	 *
+	 * `before-the-fix` is the verdict origin/main reached for this machine's state
+	 * (the whole check affirmed, while the same pane's Server version row printed
+	 * the older daemon it was talking to), and `server-behind-serving-install` is
+	 * what the check answers for the same state now: an offer naming the SERVING
+	 * install, no affirmation, and no package-manager command for an install no
+	 * package manager owns.
+	 *
+	 * Both are captured from the SAME production build, because the difference
+	 * between them is the verdict the main process produces rather than anything
+	 * the renderer decides - the story scripts the producer's own answer, and the
+	 * two answers are quoted with their log lines on the pull request. There is
+	 * therefore no pre-fix tree to capture the first one on: the payload is a
+	 * value here, not a function of the tree.
+	 */
+	[
+		"settings-app-updates-section--before-the-fix",
+		900,
+		/*
+		 * Taller than its siblings on this surface, and measured rather than
+		 * guessed: at 460 the pane's own fixed panel clipped the Details block - the
+		 * line that names the install the check judged - and a frame whose subject is
+		 * the copy has to include the copy.
+		 */
+		620,
+	],
+	["settings-app-updates-section--server-behind-serving-install", 900, 620],
+
 	/* Canvas: the second-largest surface, and the one with the data grids. */
 	["canvas-workspace--markdown-document", 1280, 900],
 	["canvas-workspace--markdown-format-menu", 1280, 900],
