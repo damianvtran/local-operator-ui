@@ -204,6 +204,20 @@ a network round trip:
   modal ends by focusing its trigger, this surface has none, and before this the
   gesture left focus on `document.body` — a keyboard user had to click before the
   keyboard worked again.
+- One close is exempt, and it is the one where the row the user picked **moved
+  the view**. Picking another conversation, or the `New chat` row, changes the
+  identity the pane is keyed on (`SessionPanel key={identity}`), so the pane and
+  the composer under it are replaced: the node captured at open is left behind in
+  the pane the user has just left, and there is nothing there to restore to. The
+  destination composer focuses itself as part of mounting, several milliseconds
+  before this restore runs, so the restore **yields to it** rather than falling
+  through to the rail. The rule, and the three orderings of that race, are in
+  `composer-caret.ts`; "the view moved" is asked of the pane's own identity
+  (`panelIdentityOfView`), so every row that switches a conversation is covered
+  without that row having to remember to declare itself.
+- A close during which something else took the caret — a dialog, or another text
+  field the user moved to — moves nothing at all. A close with no composer to
+  hand the caret to still ends on the rail's Search row, never on the body.
 
 ## Adding a row
 

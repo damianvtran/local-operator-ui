@@ -1,3 +1,8 @@
+import {
+	caretIsUntouched,
+	closeTimeFocusOutcome,
+	handCaretToComposer,
+} from "@features/chat/composer-caret";
 import { openConversation } from "@features/chat/open-conversation";
 import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
@@ -13,7 +18,10 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	panelIdentityOfView,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Search as LucideSearch, X } from "lucide-react";
@@ -103,6 +111,24 @@ const QUERY_WRITE_BACK_MS = 200;
  * The list itself is `searchPalette`'s: this component decides how a row is
  * drawn and what running one does, and nothing about which rows a query admits.
  */
+/**
+ * The pane identity the store is showing NOW, by the pane's own rule.
+ *
+ * At module scope rather than inside the component so the two readers below (the
+ * open-time capture and the close-time restore) can name it as a stable
+ * dependency: a function rebuilt every render would make both of them unstable,
+ * and the restore is called from a close whose callback must not be re-created.
+ */
+const currentPanelIdentity = (): string | undefined => {
+	const state = useCanonicalSessionsStore.getState();
+	const draftKey = state.activeDraftKey;
+	return panelIdentityOfView(
+		draftKey,
+		draftKey ? state.drafts[draftKey]?.sessionId : undefined,
+		state.activeSessionId,
+	);
+};
+
 export const CommandPalette: FC = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -310,6 +336,23 @@ export const CommandPalette: FC = () => {
 	 */
 	const returnFocusTo = useRef<HTMLElement | null>(null);
 
+	/*
+	 * The pane identity the store was showing when the palette OPENED, so the
+	 * close can tell whether the flow it just ran moved the view.
+	 *
+	 * A ref beside `returnFocusTo` rather than a piece of state, and filled by the
+	 * same effect: neither is something the palette renders, and a state write
+	 * here would re-render the whole list on a gesture nothing about it changes.
+	 *
+	 * Read through `panelIdentityOfView` - the SAME rule the pane keys its panel
+	 * on - rather than from `activeSessionId` alone. The difference is the
+	 * New-chat row: `stageDraft` stages a fresh draft WITHOUT clearing
+	 * `activeSessionId`, so the session-only reading sees the conversation the
+	 * user is leaving on both sides of the pick and reports that the view never
+	 * moved, on the one door where it moved furthest.
+	 */
+	const identityAtOpen = useRef<string | undefined>(undefined);
+
 	const runItem = useCallback(
 		(item: PaletteItem) => {
 			switch (item.target.type) {
@@ -381,20 +424,59 @@ export const CommandPalette: FC = () => {
 		if (!isCommandPaletteOpen) return;
 		const active = document.activeElement;
 		returnFocusTo.current = active instanceof HTMLElement ? active : null;
+		identityAtOpen.current = currentPanelIdentity();
 	}, [isCommandPaletteOpen]);
 
+	/*
+	 * WHAT THE CLOSE DOES, and why it is no longer one question.
+	 *
+	 * `docs/command-palette.md` states the contract: closing restores focus to
+	 * whatever had it before, falling back to the rail's Search row. That holds
+	 * for every close that did not move the view, and it is kept VERBATIM there -
+	 * including Escape, whose captured node is still mounted and which therefore
+	 * takes the second arm below, unchanged.
+	 *
+	 * The one close it could not cover is the one where the row the user picked
+	 * was a NAVIGATION: the pane is keyed on the identity at open versus now, so
+	 * picking another conversation REPLACES the panel and the composer under it,
+	 * the captured node is left in the pane the user just left, and the old
+	 * `isConnected` question then answered "the captured element is gone" by
+	 * focusing the rail - 8-13 ms after the incoming composer had focused ITSELF,
+	 * which is the reported "I type and nothing happens". A close that moved the
+	 * view yields to the composer that close mounted, and the four outcomes for
+	 * the three orderings of that race are in `composer-caret.ts`.
+	 *
+	 * Note what this does NOT do: it never moves the caret on a background event.
+	 * The rule is consulted only here, from Radix's close-time auto-focus, i.e.
+	 * from a gesture - and `viewMoved` only chooses the DESTINATION of that
+	 * gesture's restore. Nothing watches the store to move the caret.
+	 */
 	const restoreFocus = useCallback(() => {
 		const previous = returnFocusTo.current;
-		/*
-		 * `body` means "nothing was focused when this opened", which is not the
-		 * same as "focus was on a control". Returning focus there is the
-		 * strand-on-body defect wearing a captured element's clothes, and it is
-		 * reachable without any trickery: `Cmd+K` with focus on the document
-		 * (fresh window, after a click on empty space) captures exactly this. The
-		 * rail's button is the fallback for the same reason it is the fallback
-		 * when the captured element has since left the document.
-		 */
-		if (previous?.isConnected && previous !== document.body) {
+		const outcome = closeTimeFocusOutcome({
+			viewMoved: identityAtOpen.current !== currentPanelIdentity(),
+			/*
+			 * `body` means "nothing was focused when this opened", which is not the
+			 * same as "focus was on a control". Returning focus there is the
+			 * strand-on-body defect wearing a captured element's clothes, and it is
+			 * reachable without any trickery: `Cmd+K` with focus on the document
+			 * (fresh window, after a click on empty space) captures exactly this.
+			 * The rail's button is the fallback for the same reason it is the
+			 * fallback when the captured element has since left the document.
+			 */
+			capturedUsable: Boolean(
+				previous?.isConnected && previous !== document.body,
+			),
+			caretUntouched: caretIsUntouched(
+				previous,
+				document.activeElement,
+				document.body,
+			),
+		});
+		/* A view move whose composer is already up keeps the caret. */
+		if (outcome === "composer" && handCaretToComposer()) return;
+		if (outcome === "leave") return;
+		if (outcome === "captured" && previous) {
 			previous.focus();
 			return;
 		}
