@@ -73,23 +73,35 @@ const rowStyle =
  * row itself — the row is the container queried rather than the panel, because
  * the row is what has to fit.
  *
- * 250px is the design round's measured break, read at the right granularity. The
- * measurements are on the PANEL (`chat-layout.tsx` clamps 240/288/360, default
- * 280): the group's own name needs a 235px row with a one-digit section badge and
- * ~249px with a two-digit one — the operator's own "Active chats 38" — because
- * the action is unshrinkable and the name absorbs whatever is left. The header row
- * is 17px narrower than the panel, so a 250px row is a 267px panel: the shed fires
- * below the DEFAULT width but not at it, and the 240px clamp minimum gets the
- * glyph. Above the break the full label fits and nothing truncates.
+ * 253px is the TWO-DIGIT break, and the two-digit case is the binding one: with a
+ * one-digit section badge the group's own name needs a 235px row, with a
+ * two-digit one — the operator's own "Active chats 38" — it needs 253px, and the
+ * action is unshrinkable so the name absorbs whatever is left. Design round 2
+ * swept 240 through 360 on the shipped component and found the band the round-1
+ * break left open: at 267/268/269px panels (250/251/252px rows) the name was
+ * ellipsised while the action's label was still fully spelled, which is the
+ * trade design D1 rejected. Shedding at the width the name actually needs closes
+ * it, so the shed and the truncation can never both be reachable.
  *
- * Below it the glyph keeps the tooltip and the accessible name, which carry the
- * same scope in words.
+ * The header row is 17px narrower than the panel, so 253px of row is a 270px
+ * panel: the shed fires below the DEFAULT (280) but not at it, and the 240px
+ * clamp minimum gets the glyph. Above the break the full label fits and nothing
+ * truncates.
+ *
+ * `sr-only`, NEVER `hidden`. `hidden` is `display: none`, which takes the span out
+ * of the accessibility tree, and the label's words are the only half of the
+ * control's name that identifies it: what would be left is the `sr-only` scope
+ * suffix, so an AT user at the clamp width would hear ", including 4 in Previous
+ * chats" and nothing about the action (review R2-1 / UX U2-1 — the same defect,
+ * one word wide). The `sr-only` yield is this codebase's idiom for exactly this
+ * give (`directory-indicator.tsx:280-289` sheds its chip text the same way and
+ * says why), and the pixels are identical.
  *
  * The shape is `older-history-slot.tsx`'s, which switches two spellings on its
  * own container for the same reason: the row's height is fixed, so a wrapped
  * line is not an option and the sentence is what has to change length.
  */
-const MARK_ALL_READ_LABEL_SHED = "@max-[250px]/chatheading:hidden";
+const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
 
 /**
  * The ground of the row this panel is currently ON — the selected conversation,
@@ -481,7 +493,8 @@ export function ChatSidebar({
 			 * `shrink-0` because the action must not be squashed, and the label's
 			 * `min-w-0 truncate` below is what keeps the group's own name from being the
 			 * thing that gives way — the pair is safe only because the label ALSO sheds
-			 * below the row width where it stops fitting (design D1).
+			 * with `sr-only` below the two-digit row width where it stops fitting (design
+			 * D1, D2-1).
 			 */
 			className="shrink-0 text-ink-dim hover:bg-elevated"
 		>
@@ -500,10 +513,12 @@ export function ChatSidebar({
 				<CheckCheck aria-hidden="true" />
 			)}
 			{/*
-			 * The label NAMES THE NUMBER the request will carry (UX U1), and it sheds
-			 * below the row width where it stops fitting so the group's own name never
-			 * breaks to make room for it (design D1). Below that width the glyph keeps
-			 * the tooltip and the accessible name, which still carry the full scope.
+			 * The label NAMES THE NUMBER the request will carry (UX U1), and it sheds to
+			 * `sr-only` below the two-digit row width so the group's own name never breaks
+			 * to make room for it (design D1/D2-1) WITHOUT leaving the accessibility
+			 * tree: below that width the glyph, the `sr-only` label and the `sr-only`
+			 * scope suffix are the whole name, and the tooltip is the description rather
+			 * than the name (review R2-1 / UX U2-1).
 			 */}
 			<span className={cn("truncate", MARK_ALL_READ_LABEL_SHED)}>
 				{unreadCopy.label}
@@ -1135,7 +1150,15 @@ export function ChatSidebar({
 		<div
 			className={cn(
 				"@container/chatheading flex h-7 items-center gap-1",
-				action && "sticky top-0 z-10 bg-surface",
+				/*
+				 * `-top-2` because the scroll box carries `pt-2`: pinning at `top: 0` pins to
+				 * the CONTENT edge, 9px below the box's own edge (8px of padding plus the
+				 * 1px `border-t`), and padding is not a clip — the row sliding up keeps its
+				 * tail visible in that band, cut mid-glyph at the hairline. The negative
+				 * offset starts the pinned row's own box at the box's edge, so rows go UNDER
+				 * it rather than past it (design D2-2), and the resting layout is unchanged.
+				 */
+				action && "sticky -top-2 z-10 bg-surface",
 			)}
 		>
 			<button
