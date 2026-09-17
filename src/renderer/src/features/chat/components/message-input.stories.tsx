@@ -563,11 +563,23 @@ export const StopControlWhileStreaming: Story = {
  * (`interrupt-slot-grace.ts`), so an idle composer on a capable backend holds
  * nothing and the dictation control sits beside Send with only the row's own gap
  * between them. Captured against the frame above, the pair is the point: the
- * cluster CHANGES between the two states - the dictation control keeps its
- * position and Send is the control that moves - which is why the box is held for
- * the half second a reflex press arrives in rather than for as long as the
- * capability is negotiated. Against `StopControlWithoutCapability` below it shows
- * a backend that cannot interrupt renders the same settled row.
+ * cluster CHANGES between the two states - and it is the DICTATION control that
+ * moves, 32px plus the row's own 4px gap to the right, while **Send keeps its
+ * position**: it is pinned to the composer's right edge in every state (measured
+ * on the live row, default rung: Send's left edge 1307 running, inside the window
+ * and settled; the dictation control 1271 settled and 1235 running). As written
+ * the other way round the pair would argue the weaker case - if the dictation
+ * control never moved there would be nothing to protect from a press in the
+ * Stop's box, and the window would need no justification. Against
+ * `StopControlWithoutCapability` below it shows a backend that cannot interrupt
+ * renders the same settled row.
+ *
+ * One ink difference from `interrupt-live/` beside these frames, stated so the
+ * two sets are not read as one change: this story renders the dictation control
+ * DISABLED (no Radient credential is armed in Storybook) and so in the
+ * `ink-disabled` role, while the live rig arms a placeholder credential and
+ * photographs the same box live and brighter. Both are legitimate states of the
+ * same box, and the ink step is the credential rather than the reservation.
  *
  * The frames cannot show the grace itself: a story mounts a component in one
  * state, and the window opens on a TRANSITION the turn's own end produces (a

@@ -3,16 +3,28 @@
  * settles: the grace that keeps a reflex second press off the dictation control
  * without leaving a standing gap in the idle composer.
  *
- * THE MEASUREMENT THIS NUMBER COMES FROM. UX round 1's U1 and QA's Q1 found the
- * same hazard independently, on a build where the box was not reserved at all:
- * pressing Stop slid the dictation control 36px right - 32px of control plus the
- * row's 4px gap - into the exact centre of the box the press had just landed in,
- * so a second press at the same coordinates started a MICROPHONE RECORDING
- * (`elementFromPoint` there resolved to `button[aria-label="Start recording"]`,
- * and a 120ms double press still hit Stop twice, i.e. whether it hurt depended
- * on how fast the second press landed). Reserving the box permanently removes
- * the hazard and costs the idle composer a one-control gap between dictation and
- * Send, which the operator then reported as a defect of its own.
+ * THE MEASUREMENT THE WINDOW IS SIZED AGAINST. UX round 1's U1 and QA's Q1 found
+ * the same hazard independently, on a build where the box was not reserved at
+ * all: when the Stop leaves the row the dictation control moves into the exact
+ * centre of the box the press had just landed in - 32px of control plus the
+ * row's 4px gap, and it is the DICTATION control that moves rather than Send,
+ * which is pinned to the row's right edge in every state - so a second press at
+ * the same coordinates started a MICROPHONE RECORDING (`elementFromPoint` there
+ * resolved to `button[aria-label="Start recording"]`, and a 120ms double press
+ * still hit Stop twice, i.e. whether it hurt depended on how fast the second
+ * press landed). Reserving the box permanently removes the hazard and costs the
+ * idle composer a one-control gap between dictation and Send, which the operator
+ * then reported as a defect of its own.
+ *
+ * THE REFLEX ITSELF IS 120-210ms, and the window is 500 because it is CHOSEN to
+ * cover that plus the settle latency around it rather than derived from it: U1/Q1
+ * measured a 120ms double press that still hit Stop twice, and this branch's own
+ * record puts the re-press it is sized for at 161-170ms after the composer's own
+ * flip with the release at 1776ms (`docs/evidence/interrupt-live/
+ * interrupt-proof.json`, `slot.repress` and `slot.clusterSettled`). So
+ * 170 < 500 < 1776: the window covers the reflex and a press the user makes
+ * after seeing the turn end, and ends before the row has been still long enough
+ * to read as settled-then-moving again.
  *
  * WHY A GRACE RATHER THAN EITHER EXTREME. The geometry cannot have both: the
  * composer's right cluster is right-justified (`ml-auto`), so the dictation
@@ -28,12 +40,17 @@
  *
  * 500ms is a judgement, and its cost is stated rather than hidden: a second
  * press landing more than 500ms after the turn settles reaches the dictation
- * control, which by then is where it is drawn. It is short enough that a user
- * perceives the row as settled rather than as slow (the row's own layout the
- * eye is tracking settles well inside it), and long enough to cover the reflex
- * press the measurement above is about - the reported trap was a press that
- * followed the first by a fraction of a second, not one that followed it by a
- * second.
+ * control, which by then is where it is drawn. What the frames show about the
+ * window is NOT "the row settles quietly inside it": the boxes do not settle in
+ * the window at all. At 74ms they are still the busy row's (dictation 1235 /
+ * box 1271 / Send 1307) and they become the idle row's (dictation 1271 / Send
+ * 1307) only at the release, 1776ms in. What settles at the flip is the Stop glyph, the copy
+ * and the ledger line - and the window's real cost is that the LAST visible
+ * change is the one 500ms later, alone, after the row has otherwise stopped
+ * moving (the arrival's own trade, in `docs/evidence/interrupt-live/README.md`).
+ * Its length is still the right instrument: the reflex arrives at 161-170ms, so a
+ * window short enough to hide the arrival would be inside the hazard it exists to
+ * cover, while a longer one only moves the same arrival later.
  *
  * WHAT IS DELIBERATELY NOT DONE, because a control that lies is worse than a
  * gap: the recording action is never refused, gated or greyed. The dictation
@@ -42,18 +59,37 @@
  * grace only decides whether the CONTROL's box holds an invisible placeholder
  * beside it.
  *
+ * ONE FRAME OF `active` IS ENOUGH TO RESTART THE WINDOW, and that is deliberate
+ * rather than papered over. QA round 1 (Q1) and UX round 1 (U4) both sampled a
+ * single frame in which the Stop control is re-rendered and the box is gone, a
+ * few milliseconds after a turn settles - and the box and the control are
+ * mutually exclusive by construction, so a transient re-derivation of `active`
+ * shows up exactly that way. The fold below treats it as any other edge: the
+ * pulse drops the live deadline, and its own true -> false edge opens a FRESH
+ * window, so the arrival is bounded at one window after the pulse and the hazard
+ * stays closed throughout (while the pulse is up the point belongs to the Stop,
+ * never to the dictation control). `scripts/interrupt-control.test.mjs` replays
+ * that measured sequence so a change that made the pulse unbounded or silent is
+ * visible there. What is NOT done about it: a debounce or a minimum-hold
+ * heuristic, which would trade a measured, bounded delay for a rule nobody can
+ * check against the tree.
+ *
  * This module is pure and clock-injected so the window can be tested without a
- * browser; the composer owns the timer that re-reads it (`message-input.tsx`).
+ * browser; the composer's timer that re-reads it is the hook beside this file
+ * (`hooks/use-interrupt-slot-hold.ts`), which runs these same rules against a
+ * live tree.
  */
 
 /**
  * The window, in milliseconds, the Stop control's box is held after the turn it
  * belonged to ends.
  *
- * Derived from the hazard it covers rather than chosen: the reflex press U1/Q1
- * measured was a second press a fraction of a second behind the first, which is
- * why this covers half a second and not a few frames. Nothing in the app depends
- * on this being a round number.
+ * CHOSEN, not derived: the reflex press U1/Q1 measured was a second press a
+ * fraction of a second behind the first (120ms in their double-press probe, and
+ * 161-170ms after the flip in this branch's own record), so the window is sized
+ * to cover that plus the settle latency around it rather than read off a
+ * measurement of it. Nothing in the app depends on this being a round number;
+ * the header states what the number covers and what it costs.
  */
 export const INTERRUPT_SLOT_GRACE_MS = 500;
 
