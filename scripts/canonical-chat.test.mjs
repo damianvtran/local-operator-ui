@@ -115,6 +115,7 @@ const {
 	STORE_UNAVAILABLE_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	isRefusedBeforeAdmission,
+	isStoreWriteRefusal,
 	refusedBeforeAdmissionAttachments,
 	refusedBeforeAdmissionText,
 	restoreSubmittedAttachments,
@@ -1135,8 +1136,10 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	assert.equal(draft.submittedText, text);
 	// The composer's generic retry hint is withheld for exactly the refusals a
 	// resend cannot answer, and kept for every other one. `UNCONFIRMED_SEND_CODE`
-	// is the contrast that matters here: its remedy is Restore, not a resend, but
-	// it is not this rule's business either.
+	// joined that list in the round that measured what the operator's own remedy
+	// meets: the unchanged-payload guard refuses the resend BY CONSTRUCTION, so
+	// "Send it again" over it is an instruction the guard answers with the same
+	// sentence - an instruction/refusal loop, measured at 0 requests per press.
 	assert.equal(withholdsRetryHint(draft.errorCode), true);
 	assert.equal(withholdsRetryHint(SESSION_UNVALIDATED_CODE), true);
 	/*
@@ -1153,7 +1156,7 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	 * `sendErrorCode ?? draft.errorCode`).
 	 */
 	assert.equal(withholdsRetryHint(UNREADABLE_ATTACHMENT_CODE), true);
-	assert.equal(withholdsRetryHint(UNCONFIRMED_SEND_CODE), false);
+	assert.equal(withholdsRetryHint(UNCONFIRMED_SEND_CODE), true);
 	assert.equal(withholdsRetryHint("unresolved_attachment"), false);
 	assert.equal(withholdsRetryHint(undefined), false);
 });
@@ -1240,6 +1243,16 @@ test("a failed store is refused with its own code, and the retry hint it cannot 
 		assert.equal(draft.error, message);
 		assert.equal(withholdsRetryHint(draft.errorCode), true);
 		/*
+		 * And the OTHER question these codes answer, which is a different one: the
+		 * held line's register. The shared held sentence says the outcome is "not
+		 * knowable" and conditions the retry on a reply arriving - written for a lost
+		 * response, and false here in the incident's own direction, because a store
+		 * that could not write knows the message was not saved while the transcript
+		 * above shows it painted (UX round 1, U4). One predicate answers it, read off
+		 * the same code the hint is withheld by.
+		 */
+		assert.equal(isStoreWriteRefusal(draft.errorCode), true);
+		/*
 		 * And the outcome stays UNKNOWABLE, deliberately. A store failure is not a
 		 * validation refusal: the write that failed may have been the transcript
 		 * append or the completion row, so the renderer cannot claim the message
@@ -1278,6 +1291,130 @@ test("a failed store is refused with its own code, and the retry hint it cannot 
 	const busyDraft = store.getState().drafts[busyKey];
 	assert.equal(busyDraft.error, busyMessage);
 	assert.equal(withholdsRetryHint(busyDraft.errorCode), false);
+	// Contention is NOT a store write refusal, and the difference is what keeps the
+	// shared held sentence - and the retry hint - correct for it.
+	assert.equal(isStoreWriteRefusal(busyDraft.errorCode), false);
+});
+
+/*
+ * UX round 1's U1/U4, on the sentence the operator is left holding.
+ *
+ * U1: the store sentence's own instruction ("Free up space, then send it again")
+ * is a step the app cannot take while the claim holds the payload - the box is
+ * empty, Enter sends nothing (measured 11 -> 11 requests) - so the sentence has to
+ * name the control that revives it. U4: underneath it, the shared held line says
+ * the outcome is "not knowable" and gates the retry on a reply arriving, which
+ * contradicts the sentence above it for these two codes.
+ *
+ * Both are asserted at the source because both are about WHICH string a state
+ * renders, and the state itself lives one level down in `heldCopy`: the store arm
+ * is selected by the same predicate the tests above execute, and it interpolates
+ * the same constant the button is labelled with. A second copy of either string
+ * would pass a test that only matched the copy - so the assertion here is the
+ * identity of the two readers, not the wording.
+ */
+test("the store refusal's held line states the known fact and names the control its sentence needs", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	const heldCopy = source.slice(
+		source.indexOf("const storeWriteRefused ="),
+		source.indexOf("heldCopy,\n", source.indexOf("const storeWriteRefused =")),
+	);
+	assert.ok(heldCopy.length > 0, "the held line is no longer composed at all");
+	assert.match(
+		heldCopy,
+		/isStoreWriteRefusal\(sendError\?\.code\)/,
+		"the held line no longer consults the store predicate the retry hint is withheld by, so one screen can tell the operator to wait for a reply the code above it says cannot come (UX round 1, U4)",
+	);
+	assert.match(
+		heldCopy,
+		/\$\{RESTORE_LABEL\}/,
+		"the store refusal's sentence no longer names the control, so its own 'send it again' is an instruction the empty box cannot carry out (UX round 1, U1) - and it must be the SAME constant the button is labelled with, not a second copy of the words",
+	);
+	assert.match(
+		source,
+		/>\s*\{RESTORE_LABEL\}/,
+		"the restore button is no longer labelled from the shared constant, so the sentence and the control can drift apart",
+	);
+	// The other arms keep the shared sentence, which is the one thing that must NOT
+	// move: for them the outcome really is unknowable, and `heldCopyOnScreen` still
+	// decides whether it points at a copy of the message.
+	assert.match(
+		heldCopy,
+		/heldCopyOnScreen === true/,
+		"the shared held sentence no longer distinguishes the case where the payload's copy is on screen, which is the branch the point-at-the-transcript clause exists for (UX round 2, U3)",
+	);
+	// Behaviour, executed: the predicate is what the wiring above is selected by.
+	assert.equal(isStoreWriteRefusal(STORE_OUT_OF_SPACE_CODE), true);
+	assert.equal(isStoreWriteRefusal(STORE_UNAVAILABLE_CODE), true);
+	assert.equal(isStoreWriteRefusal("store_busy"), false);
+	assert.equal(isStoreWriteRefusal(UNCONFIRMED_SEND_CODE), false);
+	assert.equal(isStoreWriteRefusal(undefined), false);
+});
+
+/*
+ * UX round 1's U2, and the reason the operator's own working remedy (drop the
+ * image) met a second instruction the app then refused.
+ *
+ * The store's unchanged-payload guard compares text AND attachments AND images;
+ * the composer decided "the held payload is back in the box" from the TEXT alone.
+ * Same text, one fewer image: the composer offered "Send it again", the guard
+ * refused the press, and the copy instructed the loop it was enforcing.
+ */
+test("the composer's held-payload test compares the files the guard compares, not only the text", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	const start = source.indexOf("const boxAttachments =");
+	assert.ok(
+		start > 0,
+		"the composer no longer builds the live chip list to compare against",
+	);
+	const decision = source.slice(start, source.indexOf("retryHint:", start));
+	assert.match(
+		decision,
+		/heldAttachments/,
+		"the held payload's FILES are no longer part of the comparison, so a box holding the text with one chip removed still reads as the held payload and the alert offers a retry the guard refuses (UX round 1, U2)",
+	);
+	assert.match(
+		decision,
+		/attachments\.map\(\(attachment\) => attachment\.path\)/,
+		"the live side of the comparison is no longer built the way the send builds it, so it can disagree with the payload the guard will compare",
+	);
+	const store = readFileSync(
+		"src/renderer/src/shared/store/canonical-sessions-store.ts",
+		"utf8",
+	);
+	// The guard's own terms, stated here so a change to either side of this pair
+	// fails in one place: text, files, images.
+	assert.match(
+		store,
+		/previous\.submittedText !== text/,
+		"the guard no longer compares the text",
+	);
+	assert.match(
+		store,
+		/JSON\.stringify\(previous\.submittedAttachments\) !==\s*JSON\.stringify\(input\.attachments\)/,
+		"the guard no longer compares the files, so the composer's comparison has nothing to agree with",
+	);
+	assert.match(
+		store,
+		/JSON\.stringify\(previous\.submittedImages \?\? \[\]\) !==\s*JSON\.stringify\(input\.images\)/,
+		"the guard no longer compares the images",
+	);
+	// And the files reach the composer from the row, on `chat-page`'s own terms.
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/heldAttachments:\s*\n?\s*heldText !== undefined \? draft\?\.submittedAttachments : undefined/,
+		"the held payload's files no longer travel from the row, so the composer is asked to compare a payload it was never given (and an absent chip set answers 'not the held payload')",
+	);
 });
 
 /*
@@ -1905,7 +2042,7 @@ test("the composer adopts a refused payload through the shipped rules, at the en
  * has an easy wrong answer - raising the cap, which moves the composer's top
  * border and takes Send off screen. The region keeps `CAPPED_BLOCK`.
  */
-test("the alert region renders the failure before the muted context it lands under", () => {
+test("the alert region renders the failure before the muted context, and keeps its remedy out of the capped block", () => {
 	const source = readFileSync(
 		"src/renderer/src/features/chat/components/message-input.tsx",
 		"utf8",
@@ -1922,10 +2059,23 @@ test("the alert region renders the failure before the muted context it lands und
 	// bare-comment check after it deliberately reads the raw slice: stripping
 	// comments first would erase exactly the text node that check exists for.
 	const region = regionRaw.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
-	assert.match(
-		region,
-		/CAPPED_BLOCK/,
-		"the region no longer caps itself, so a long alert over a retained draft pushes the composer and the send control off the bottom of a narrow window (D12's load-bearing half)",
+	/*
+	 * The cap is still here, and it is still load-bearing - it is what keeps the
+	 * composer's top border and the send control on screen, which is why "make the
+	 * failure visible by raising it" is not an answer. What moved (UX round 1, U3)
+	 * is WHICH child carries it: the region holds prose and controls, and only the
+	 * prose scrolls, so the remedy cannot be scrolled out of the window with the
+	 * sentences.
+	 */
+	const cappedAt = region.indexOf("CAPPED_BLOCK");
+	assert.ok(
+		cappedAt >= 0,
+		"the alert no longer caps its prose at all, so a long alert over a retained draft pushes the composer and the send control off the bottom of a narrow window (D12's load-bearing half)",
+	);
+	assert.equal(
+		region.indexOf("CAPPED_BLOCK", cappedAt + 1),
+		-1,
+		"more than one block in the region is capped, so the prose is split across two scroll areas and the cap's whole-line arithmetic no longer describes what the user sees",
 	);
 	/*
 	 * The marker order below is blind to one defect class, and this region has
@@ -1944,7 +2094,6 @@ test("the alert region renders the failure before the muted context it lands und
 	const order = [
 		["the failure sentence", "composerAlert.message"],
 		["the held-claim statement", "composerAlert.showHeld"],
-		["the remedy controls", "composerAlert.actions.length"],
 		["the split notice", "refusedNotice &&"],
 		["the held notice", "heldNotice &&"],
 	];
@@ -1958,6 +2107,55 @@ test("the alert region renders the failure before the muted context it lands und
 		);
 		previous = at;
 	}
+	/*
+	 * And the CONTROLS are outside that block, which is the U3 fix stated as
+	 * structure rather than as a claim about one frame: the cap's window is the
+	 * element it is on, so a control outside it cannot be scrolled away.
+	 *
+	 * Found by counting tags rather than by matching a literal close: the prose
+	 * block is the region's first child and every `<div` inside it is closed inside
+	 * it, so the first `</div>` that brings the depth back to zero is the end of the
+	 * block. `self-`/void elements are irrelevant here (JSX closes them inline) and
+	 * a nested `{cond && (<div .../>)}` is balanced within the slice.
+	 */
+	const proseOpen = region.indexOf(
+		'<div className={cn("flex flex-col gap-1", CAPPED_BLOCK)}',
+	);
+	assert.ok(
+		proseOpen >= 0 && proseOpen < cappedAt + 1,
+		"the capped block is no longer the region's first child, so the failure is no longer the first thing its window shows",
+	);
+	let depth = 0;
+	let blockEnd = -1;
+	for (let i = proseOpen; i < region.length; ) {
+		const nextOpen = region.indexOf("<div", i);
+		const nextClose = region.indexOf("</div>", i);
+		if (nextClose === -1) break;
+		if (nextOpen !== -1 && nextOpen < nextClose) {
+			depth++;
+			i = nextOpen + 4;
+		} else {
+			depth--;
+			i = nextClose + 6;
+			if (depth === 0) {
+				blockEnd = nextClose;
+				break;
+			}
+		}
+	}
+	assert.ok(
+		blockEnd > 0,
+		"the capped prose block never closes, so the region's structure cannot be read",
+	);
+	const controlsAt = region.indexOf("composerAlert.actions.length");
+	assert.ok(
+		controlsAt >= 0,
+		"the remedy controls are no longer rendered in the region at all",
+	);
+	assert.ok(
+		controlsAt > blockEnd,
+		"the remedy controls are inside the capped block, so a long alert scrolls them out of the window at the app's minimum size (UX round 1, U3)",
+	);
 });
 
 /*
