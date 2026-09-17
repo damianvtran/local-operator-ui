@@ -56,7 +56,10 @@ export const cyberpunk: ThemeDefinition = {
 		 * rule's fixed fraction produced, which made it 2.3x the loudest row in the tree
 		 * against `gruvbox` 4.54; design round 3 (D1) measured the band as reachable at 40%
 		 * of that displacement, and this is that point: ΔE00 4.14 from `surface`, 5.74 from
-		 * `elevated`, 5.58 from `sunken`, with `inkDim` at 4.66:1 the ink that binds it.
+		 * `elevated`, 5.58 from `sunken`, with `inkDim` at 4.65:1 the ink that binds it —
+		 * that is the contract's own ratio for this ground, and the raw value is 4.654, so
+		 * the margin it keeps is nothing rather than 0.01: this is the palette whose step
+		 * is at the ink cap by construction, not by slack.
 		 */
 		highlight: "#1E171F",
 

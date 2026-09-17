@@ -1924,6 +1924,24 @@ const HIGHLIGHT_STEP_PINS = [
  *
  * @type {{theme: string, got: number, ceiling: number, why: string}[]}
  */
+/*
+ * Mix `from` toward `to` by `alpha`, in 8-bit channels, the way the palettes'
+ * own casts were authored. The wash pin's ceiling re-derivation walks this
+ * family, so the gate and the authoring move through the same arithmetic.
+ */
+const mixHex = (from, to, alpha) => {
+	const a = [1, 3, 5].map((i) => Number.parseInt(from.slice(i, i + 2), 16));
+	const b = [1, 3, 5].map((i) => Number.parseInt(to.slice(i, i + 2), 16));
+	return `#${a
+		.map((v, i) =>
+			Math.round(v * (1 - alpha) + b[i] * alpha)
+				.toString(16)
+				.padStart(2, "0")
+				.toUpperCase(),
+		)
+		.join("")}`;
+};
+
 const HIGHLIGHT_WASH_PINS = [
 	{
 		theme: "rosePineDawn",
@@ -2212,9 +2230,49 @@ for (const { id, palette: p } of palettes) {
 		if (isHex(p.highlight) && isHex(p.accentWash)) {
 			const got = deltaE(p.highlight, p.accentWash);
 			if (pin) {
-				if (Math.abs(got - pin.got) > 0.05) {
+				/*
+				 * The ceiling is re-derived rather than trusted, for the reason D2
+				 * named for the step pins one round earlier: a hand-measured number
+				 * sitting beside a value is the one number nothing recomputes. The
+				 * sweep below is the claim itself - the best separation from this
+				 * palette's wash that any ground inside the band, the field floors
+				 * and the ink floors can reach, walking the cast from none to 0.6 of
+				 * the way to `accent` at every step the inks allow.
+				 */
+				let ceiling = 0;
+				for (let alpha = 0; alpha <= 0.6001; alpha += 0.005) {
+					const cast = mixHex(p.surface, p.accent, alpha);
+					const [, ca, cb] = toLab(cast);
+					const base = toLab(p.surface)[0];
+					for (let step = 0.25; step <= 4; step += 0.25) {
+						const at = labToHex([
+							base + (p.mode === "dark" ? step : -step),
+							ca,
+							cb,
+						]);
+						if (!at) continue;
+						if (deltaE(at, p.surface) < HIGHLIGHT_SEPARATION_FLOOR) continue;
+						if (
+							deltaE(at, p.elevated) < FIELD_SEPARATION_FLOOR ||
+							deltaE(at, p.sunken) < FIELD_SEPARATION_FLOOR
+						)
+							continue;
+						if (
+							!INKS.every(
+								([role, floor]) =>
+									ratio(p[role], at) >= floor + HIGHLIGHT_INK_MARGIN,
+							)
+						)
+							continue;
+						ceiling = Math.max(ceiling, deltaE(at, p.accentWash));
+					}
+				}
+				if (
+					Math.abs(got - pin.got) > 0.05 ||
+					Math.abs(ceiling - pin.ceiling) > 0.1
+				) {
 					fail(
-						`${id}: the pinned highlight/wash pair moved — recorded ΔE00 ${pin.got} against the ${FIELD_SEPARATION_FLOOR} field floor, measured ${r2(got)}. Re-measure the ceiling and update the pin`,
+						`${id}: the pinned highlight/wash pair moved — recorded ΔE00 ${pin.got} against the ${FIELD_SEPARATION_FLOOR} field floor and a ceiling of ${pin.ceiling}, measured ${r2(got)} with a re-derived ceiling of ${r2(ceiling)}. Re-measure the ceiling and update the pin`,
 					);
 				}
 			} else if (got < FIELD_SEPARATION_FLOOR) {
