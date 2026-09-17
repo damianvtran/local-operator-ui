@@ -2166,19 +2166,44 @@ export function ChatPage() {
 	 */
 	const { summaries: browserSummaries } = useConversationBrowserSummaries();
 	/**
-	 * A press on a conversation's mark. All three effects are in ONE handler so React
-	 * batches them into a single render — select the conversation, scope the pane to it,
-	 * bring the pane up.
+	 * A press on a conversation's mark — and it TOGGLES (design review round 2, U6, ruled).
 	 *
-	 * THE LENS OVERWRITE IS DELIBERATE (design open question 7): the control says "this
-	 * conversation's browser", so what it opens has to BE that one, even if the user last
-	 * left the pane showing All tabs. One click in the pane's own switch takes the lens
-	 * back, and the switch's value is what the pane shows.
+	 * WHY: a second press on the same mark used to be inert — the state before and after
+	 * were identical — which is indistinguishable from a press that did not register. Now a
+	 * press while the pane is ALREADY open on that conversation closes it, and every other
+	 * press selects the conversation, sets the lens to `conversation` and opens, all three
+	 * in ONE handler so React batches them into a single render.
+	 *
+	 * THE THREE CONDITIONS ARE THE WHOLE RULE, and the lens is one of them: a pane left on
+	 * `All tabs` is not "open on this conversation" in the sense the control means, so a
+	 * press there normalises it to `conversation` and leaves it up rather than closing a
+	 * surface the user is looking at for another reason.
+	 *
+	 * THE HEADER GLOBE IS NOT THIS, AND IS DELIBERATELY LEFT ALONE: it renders only while
+	 * the pane is shut (`chat-header.tsx`: `onOpenBrowser && !isBrowserPaneOpen`), so it has
+	 * no second-press state to make inert and it already behaves as a one-way toggle by
+	 * disappearing. The two controls therefore differ — this one dismisses, that one hides
+	 * itself — and the difference is disclosed here rather than widened into the header by
+	 * this change.
+	 *
+	 * THE LENS OVERWRITE ON THE OPENING PATH IS DELIBERATE (design open question 7): the
+	 * control says "this conversation's browser", so what it opens has to BE that one, even
+	 * if the user last left the pane showing All tabs. One click in the pane's own switch
+	 * takes the lens back, and the switch's value is what the pane shows.
 	 */
 	const openConversationBrowser = (sessionId: string) => {
+		const preferences = useUiPreferencesStore.getState();
+		if (
+			preferences.isBrowserPaneOpen &&
+			preferences.browserPaneScope === "conversation" &&
+			active === sessionId
+		) {
+			preferences.setBrowserPaneOpen(false);
+			return;
+		}
 		select(sessionId);
-		useUiPreferencesStore.getState().setBrowserPaneScope("conversation");
-		useUiPreferencesStore.getState().setBrowserPaneOpen(true);
+		preferences.setBrowserPaneScope("conversation");
+		preferences.setBrowserPaneOpen(true);
 	};
 	// Keyed on the SESSION once one exists, so admitting a draft does not unmount
 	// the panel mid-send. The rule and its reasoning live in `panelIdentityFor`;
