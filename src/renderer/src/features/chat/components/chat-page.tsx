@@ -76,6 +76,7 @@ import {
 	sessionMoveEnabled,
 	useSessionMove,
 } from "../move-session";
+import { openConversation } from "../open-conversation";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
 import { unreadableAttachmentRefusal } from "../utils/attachment-read";
@@ -540,12 +541,8 @@ function SessionPanel({
 				: MOVE_UNAVAILABLE_REASON;
 	const navigate = useNavigate();
 	const rebind = (id: string) => {
-		void useCanonicalSessionsStore
-			.getState()
-			.openSession(id)
-			.then((ok) => {
-				if (ok) navigate(`/chat/${id}`);
-			});
+		/* The `/chat` slash finger on the switch; the rule is in `openConversation`. */
+		void openConversation(navigate, id);
 	};
 	/*
 	 * The effort rungs the owner will accept, shared with `EffortPicker`.
@@ -2059,15 +2056,14 @@ export function ChatPage() {
 		navigate("/chat");
 	};
 	const select = (id: string) => {
-		void useCanonicalSessionsStore
-			.getState()
-			.openSession(id)
-			.then((ok) => {
-				if (ok) {
-					setRouteError(null);
-					navigate(`/chat/${id}`);
-				}
-			});
+		/*
+		 * The sidebar's finger on the switch. The rule - why the URL is written with
+		 * the commit rather than behind the guard read, and why all three entrances
+		 * share it - is in `openConversation`; all this one owns is its own screen
+		 * state (the navigation sentence belongs to the route the user is leaving).
+		 */
+		setRouteError(null);
+		void openConversation(navigate, id);
 	};
 	const id = draftKey ? draft?.sessionId : (active ?? undefined);
 	// Keyed on the SESSION once one exists, so admitting a draft does not unmount
