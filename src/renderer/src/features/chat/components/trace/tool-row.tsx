@@ -109,6 +109,20 @@ export type ToolRowOutcome =
 	 * call did not succeed, which is true, and the LABEL is what keeps it apart
 	 * from a failure: the row's summary reads `never sent`, never `failed`, and
 	 * its accessible label is "never ran".
+	 *
+	 * SCOPE OF THAT DISTINCTION, because it is on the LIVE path only. A row read
+	 * back from the durable transcript is the harness's record of a call it did
+	 * send and that came back an error — the never-run verdicts settle a row the
+	 * composing surface announced and leave no mark on the durable row — so such a
+	 * row is not this state and must not be dressed as one: it wears the failure
+	 * treatment identifier-for-identifier against the comparison surface
+	 * (`chat-tool-rows/states`), which is exactly right for a call that really
+	 * failed.
+	 *
+	 * The TURN-DEATH ending also lands here, one glyph away: a row still being
+	 * dictated or waiting to run when the turn ended was never sent either, and
+	 * only a verdict gives it a reason, so a death with no verdict has no body and
+	 * keeps the interrupt's own state instead (see `neverSent`).
 	 */
 	| "not-run";
 

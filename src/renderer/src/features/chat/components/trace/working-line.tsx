@@ -96,6 +96,20 @@ export type WorkingLineProps = {
 	 * now", which is the shape every phase but a compaction has.
 	 */
 	startedAt?: number;
+	/**
+	 * Whether an elapsed number would be TRUE for this phase. Defaults to true.
+	 *
+	 * `false` is the caller stating that it is not — the contract the TUI's band
+	 * carries (`app.py::_current_activity` returns `clock=False` for exactly one
+	 * phase: work whose dictation is over and which nothing has started, because
+	 * the zero such a number would count from is the moment the LABEL changed
+	 * rather than anything the work did). The slot stays RESERVED and empty,
+	 * so the row's geometry does not move and nothing is invented to fill it.
+	 *
+	 * Absent is not "unknown": every other phase's zero is its own start, which
+	 * this component already owns.
+	 */
+	clock?: boolean;
 	className?: string;
 };
 
@@ -103,9 +117,16 @@ export const WorkingLine = ({
 	activity,
 	phase,
 	startedAt,
+	clock,
 	className,
 }: WorkingLineProps) => {
 	const [frame, setFrame] = useState(0);
+	/*
+	 * A phase that WITHHOLDS its clock (see `clock`) renders the slot empty and
+	 * runs no timer: counting from the phase edge would report the age of the
+	 * label, which is the invented number the phase arms exist to avoid.
+	 */
+	const showsClock = clock !== false;
 	/*
 	 * Seeded from the phase's own start when the caller knows it, so the FIRST
 	 * frame shows the age the phase actually has: the clock below is an interval,
@@ -135,15 +156,21 @@ export const WorkingLine = ({
 	useEffect(() => {
 		// The clock runs in both modes: it is the liveness channel that survives
 		// the spinner being frozen, and it changes a number rather than animating.
-		const clock = window.setInterval(
-			() => setElapsed(Math.floor((Date.now() - started.current) / 1000)),
-			CLOCK_MS,
-		);
+		// A phase that withholds its clock has no number to move, so the interval
+		// is not started at all — the spinner below is the liveness channel left.
+		const clock = showsClock
+			? window.setInterval(
+					() => setElapsed(Math.floor((Date.now() - started.current) / 1000)),
+					CLOCK_MS,
+				)
+			: null;
 		if (reduceMotion) {
 			// Hold frame 0 rather than wherever the cycle happened to be when the
 			// preference changed, so the static state is the same glyph every time.
 			setFrame(0);
-			return () => window.clearInterval(clock);
+			return () => {
+				if (clock !== null) window.clearInterval(clock);
+			};
 		}
 		const spin = window.setInterval(
 			() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length),
@@ -151,9 +178,9 @@ export const WorkingLine = ({
 		);
 		return () => {
 			window.clearInterval(spin);
-			window.clearInterval(clock);
+			if (clock !== null) window.clearInterval(clock);
 		};
-	}, [reduceMotion]);
+	}, [reduceMotion, showsClock]);
 
 	return (
 		<div
@@ -193,11 +220,13 @@ export const WorkingLine = ({
 				className={cn(
 					// Reserved slot, so the label beside it does not shift as the
 					// clock grows from `9s` to `1m57s` — the TUI reserves eight cells
-					// for exactly this and the widest string it can hold is six.
+					// for exactly this and the widest string it can hold is six — AND
+					// so a phase that withholds its number keeps the same geometry as
+					// one that shows it.
 					"w-[6ch] shrink-0 font-mono text-ink-dim text-mono-sm tabular-nums",
 				)}
 			>
-				{formatDuration(elapsed)}
+				{showsClock ? formatDuration(elapsed) : ""}
 			</span>
 		</div>
 	);

@@ -125,6 +125,21 @@ export type TranscriptRecord =
 			 * content of the fact and names what stopped it.
 			 */
 			notRunReason: string | null;
+			/**
+			 * The call was never handed to a tool: it was parked with a verdict, or
+			 * the turn died while it was still being dictated or waiting to run.
+			 *
+			 * A fact of its own, and NOT the same one as `notRunReason`: the verdict
+			 * carries the harness's words, and a turn that dies leaves none — the TUI
+			 * settles that row with the `never sent · N composed` record and no error
+			 * text at all (`app.py::_retire_live_tool_cards` retires every live card
+			 * through `ToolCard.mark_interrupted`, which keeps the compose record for a
+			 * card that was still composing or queued). Without the flag the row has
+			 * nothing to say about a call that reached no tool: a clean turn end painted
+			 * it as a SUCCESS with a tick, and an abort as an interrupt of a call that
+			 * had not begun.
+			 */
+			neverSent: boolean;
 			output: string | null;
 			isError: boolean;
 			durationS: number | null;
@@ -1622,6 +1637,7 @@ function durableRecord(
 			// recorded a result for: whatever live verdict it may have carried, the
 			// transcript's own account of the call wins.
 			notRunReason: null,
+			neverSent: false,
 			output: messageText(payload) || null,
 			isError: Boolean(payload.is_error),
 			durationS:
@@ -1941,10 +1957,24 @@ export function applyEvent(
 					});
 				}
 				if (record.kind === "tool" && record.phase !== "done") {
-					// A call still running when the turn ends never reported an
-					// outcome. On an ABORT that is an interrupt, which is its own
-					// state; on a clean end it is a call whose end event was lost, and
-					// claiming success for it would be worse than claiming nothing.
+					/*
+					 * A call still RUNNING when the turn ends never reported an outcome. On
+					 * an ABORT that is an interrupt, which is its own state; on a clean end
+					 * it is a call whose end event was lost, and claiming success for it
+					 * would be worse than claiming nothing.
+					 *
+					 * A row that never STARTED is a different fact, and the turn's verdict
+					 * does not decide it: the call was announced, the turn died, and no tool
+					 * ever received it. The TUI settles exactly these two states this way —
+					 * `_retire_live_tool_cards` retires every live card, and
+					 * `ToolCard.mark_interrupted` keeps the `never sent · N composed` record
+					 * for a card that was still composing or queued. Without it a clean end
+					 * painted a green tick on a call that never ran, and an abort blamed an
+					 * interrupt on a call that had not begun. The compose record is the row's
+					 * whole account of it: no duration, because nothing measured one.
+					 */
+					const unstarted =
+						record.phase === "composing" || record.phase === "queued";
 					next = upsert(next, {
 						...record,
 						phase: "done",
@@ -1952,6 +1982,7 @@ export function applyEvent(
 						// `_end` ever arrived to report a duration.
 						startedAt: null,
 						stopped: Boolean(event.aborted),
+						neverSent: record.neverSent || unstarted,
 					});
 				}
 			}
@@ -2189,6 +2220,10 @@ export function applyEvent(
 				diff: null,
 				stopped: false,
 				notRunReason: notRun,
+				// A verdict is the harness saying the call reached no tool. A call still
+				// being dictated, or waiting to run, has not reached one yet either —
+				// which is a state rather than a settlement, and `phase` carries it.
+				neverSent: notRun !== null,
 			};
 			// The promotion's own case, when the announcement is the ONLY row this
 			// call has: rekey it in place rather than closing it and opening another.
@@ -2263,6 +2298,7 @@ export function applyEvent(
 				// through for the two-calls-one-id case, and the twin's execution is the
 				// fact that retires the verdict).
 				notRunReason: null,
+				neverSent: false,
 				argumentBytes: 0,
 				output: null,
 				isError: false,
@@ -2346,6 +2382,7 @@ export function applyEvent(
 							phase: "done" as const,
 							argumentBytes: 0,
 							notRunReason: null,
+							neverSent: false,
 							output: null,
 							isError: false,
 							durationS: null,
@@ -2388,6 +2425,7 @@ export function applyEvent(
 				// exactly this reason. Leaving it would paint `never sent · N composed`
 				// over a call's real output.
 				notRunReason: null,
+				neverSent: false,
 				output: messageText(result) || null,
 				isError: Boolean(event.is_error ?? result.is_error),
 				durationS:
@@ -2626,21 +2664,25 @@ function seededClock(event: LiveEvent, state: TranscriptState): number | null {
 }
 
 /**
- * Whether a seeded frame carries the harness's verdict that its call never ran.
+ * Whether a seeded frame states that its call's DICTATION is over.
  *
- * A `tool_call_compose` frame with `not_run_reason` set is a TERMINAL statement
- * about a call that will never execute, and it is the whole of what such a call
- * gets: the producer deliberately synthesises no
- * `tool_execution_start`/`_end` for it (the API server pairs tool records by id,
- * so a synthetic start would claim the tool ran). It is therefore the frame the
- * placement rule below has to tell apart from an ordinary announcement.
+ * Both terminal compose endings are this: a verdict (`not_run_reason`, the call
+ * will never run) and a finished dictation (`dictation_complete`, the call waits
+ * to start). Neither is an announcement of something being written right now —
+ * which is the only thing a reader's arrival can honestly date — and neither has
+ * a start or end event, because the producer deliberately synthesises none (the
+ * API server pairs tool records by id, so a synthetic start would claim the tool
+ * ran). They are therefore the frames the placement rule below has to tell apart
+ * from an ordinary announcement, and the ones a read-back must be sized for.
  */
-function terminalComposeFrame(event: LiveEvent): boolean {
-	return (
-		event.type === "tool_call_compose" &&
+function finishedDictationFrame(event: LiveEvent): boolean {
+	if (event.type !== "tool_call_compose") return false;
+	if (
 		typeof event.not_run_reason === "string" &&
 		event.not_run_reason.trim().length > 0
-	);
+	)
+		return true;
+	return event.dictation_complete === true;
 }
 
 /**
@@ -2688,27 +2730,28 @@ function terminalComposeFrame(event: LiveEvent): boolean {
  * earliest work — come back only through the reader's own `load older`. They are
  * not lost (the page stays `has_more`), but this does not promise them at once.
  *
- * AND A TERMINAL COMPOSE FRAME IS REFUSED EVEN WITH A TURN IN FLIGHT, because
- * the in-flight exemption above is a claim about WORK, not about time. A live
- * clockless frame that would create a row is admitted mid-turn because it
- * describes a call being dictated RIGHT NOW: the viewer's arrival is a wrong
- * number but a true ordering, and the alternative is a mid-turn join that shows
- * nothing at all. A `not_run_reason` frame states the opposite — the call is
- * OVER and it never ran — so the only instant left to place it at is the
- * viewer's arrival, which would paint an hours-old verdict at the BOTTOM of the
- * transcript, under a conversation whose real rows are hours old. That is
- * exactly the reported abnormality: one `wait` turn's four never-run calls rode
- * the persisted seed into every conversation switch as live `composing` rows
- * stuck for the whole multi-hour wait. The call's durable row is the authority
- * and the client paints it IN PLACE when the durable read reaches it — with the
- * record's own time, which is the one thing this frame cannot state. That read
- * is the same bounded tail read as above, so a call older than it comes back
- * through the reader's own `load older` rather than at once; refusing here and
- * refusing when no turn is in flight are one rule with one reason — the frame
- * states no time, so the row must wait for a source that does. A frame whose
- * record is ALREADY painted is still folded, whatever the clock and whatever it
- * says: that settles a row the reader can see without moving any row, and it is
- * the path that paints a never-run verdict on the row its own announcement left
+ * AND A FRAME WHOSE DICTATION IS OVER IS REFUSED EVEN WITH A TURN IN FLIGHT,
+ * because the in-flight exemption above is a claim about WORK, not about time. A
+ * live clockless announcement is admitted mid-turn because it describes a call
+ * being dictated RIGHT NOW: the viewer's arrival is a wrong number but a true
+ * ordering, and the alternative is a mid-turn join that shows nothing at all.
+ * Both settled-dictation endings say the opposite — the model has stopped writing
+ * this call, so what happens next (a wait behind a sibling's execution group, a
+ * start elsewhere in the batch, or nothing at all) is not at the reader's
+ * arrival — and the reported abnormality is exactly what dating them there
+ * produced: one `wait` turn's four never-run calls rode the persisted seed into
+ * every conversation switch as live `composing` rows stuck for the whole
+ * multi-hour wait. The call's durable row is the authority and the client paints
+ * it IN PLACE when the durable read reaches it — with the record's own time,
+ * which is the one thing these frames cannot state; that is why a refused frame's
+ * call id is also named by `seedCallsMissingLabels`, so the read is sized to
+ * reach it. The read is a bounded tail read, so a call older than its bound
+ * returns through the reader's own `load older` rather than at once. Refusing
+ * here and refusing when no turn is in flight are one rule with one reason — the
+ * frame states no time, so the row must wait for a source that does. A frame
+ * whose record is ALREADY painted is still folded, whatever the clock and
+ * whatever it says: that settles a row the reader can see without moving any row,
+ * and it is the path that paints a verdict on the row its own announcement left
  * on screen.
  */
 export function applyLiveSeed(
@@ -2752,11 +2795,12 @@ export function applyLiveSeed(
 			if (stated !== null) {
 				clock = stated;
 				placed = true;
-			} else if (terminalComposeFrame(event) || !inFlight) {
+			} else if (finishedDictationFrame(event) || !inFlight) {
 				// No time on the frame, so the only instant left is this viewer's
-				// arrival: refuse it rather than paint a row at a moment that belongs
-				// to the reader. The doctrine above has both reasons — the turn is over,
-				// or the frame is a never-run verdict, which is over for the call.
+				// arrival: refuse it rather than paint a row at a moment that belongs to
+				// the reader. The doctrine above has every reason — the turn is over, or
+				// the frame says the dictation finished, which means the call's execution
+				// (queued, running elsewhere, or never) is not happening here.
 				continue;
 			}
 		}
@@ -2793,6 +2837,17 @@ export function applyLiveSeed(
  *
  * Oldest first, deduplicated, and only ids the seed actually settled: a call
  * still running has its start, which carries its own arguments.
+ *
+ * AND SO ARE THE CALLS A SETTLED-DICTATION FRAME NAMES. A compose frame whose
+ * dictation is over (`finishedDictationFrame`) is the ONE announcement of a call
+ * that has no start and no end — and, after the placement rule above, no seeded
+ * row either: its durable row is the authority and the row must come from a
+ * read. Leaving those ids out of this list made that promise half true: the
+ * durable page the caller sizes from this list would not reach them at all, so a
+ * never-run verdict vanished from the ledger and a queued call appeared only
+ * when its start finally arrived. Naming them costs a page the caller was going
+ * to read anyway, and a call whose row cannot be found spends its own bounded
+ * attempts and is dropped like any other (`labelGapCandidates`).
  */
 export function seedCallsMissingLabels(
 	liveEvents: readonly Record<string, unknown>[] | null | undefined,
@@ -2800,8 +2855,11 @@ export function seedCallsMissingLabels(
 ): string[] {
 	const missing: string[] = [];
 	for (const event of liveEvents ?? []) {
-		if (!event || event.type !== "tool_execution_end") continue;
-		const callId = String(event.tool_call_id ?? "");
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		if (frame.type !== "tool_execution_end" && !finishedDictationFrame(frame))
+			continue;
+		const callId = String(frame.tool_call_id ?? "");
 		if (!callId || missing.includes(callId) || labelled.has(callId)) continue;
 		missing.push(callId);
 	}

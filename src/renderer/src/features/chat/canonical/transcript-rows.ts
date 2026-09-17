@@ -94,8 +94,10 @@ export type Row = {
  * could have described, including composing tool calls, which paint as
  * `composing · N B` on their own tool rows, a call whose dictation has finished
  * and which nothing has started (`queued · N B`), and a call the harness will
- * never run (`never sent · N composed`). So liveness has ONE channel, and a
- * record with nothing in it paints nothing.
+ * never run (`never sent · N composed`) — by the harness's own verdict, or
+ * because the turn ended while the call was still being dictated or waiting to
+ * run, which the TUI settles with the same record. So liveness has ONE channel,
+ * and a record with nothing in it paints nothing.
  *
  * ### The safety net that went with it, and why it is not needed
  *

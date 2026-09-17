@@ -72,6 +72,18 @@ export type WorkingLineState = {
 	 * stamp — so it passes it down and the frame is stable.
 	 */
 	startedAt?: number;
+	/**
+	 * Whether an elapsed number would be TRUE for this rung. Defaults to true.
+	 *
+	 * `false` is this derivation stating that it would not, which is the one case
+	 * the TUI's band also withholds it for (`app.py::_current_activity` returns
+	 * `clock=False` for queued work): the dictation clock ENDED when the model
+	 * stopped writing, the call has no start to count from, and the phase edge is
+	 * the moment the LABEL changed — so any number here is the seat of an age
+	 * nothing did. Measured on a seeded conversation, which is the operator's own
+	 * "switch into a waiting conversation", that number is the mount's age.
+	 */
+	clock?: boolean;
 };
 
 /**
@@ -468,6 +480,12 @@ export function deriveWorkingLine({
 			return {
 				activity: `waiting to run ${queued === 1 ? "a call" : `${queued} calls`}`,
 				phase: "queued",
+				// The TUI's `clock=False` for this arm, and the reason is stated there:
+				// the dictation clock these rows carried has ENDED, the call has no
+				// start, and the only zero left is the phase edge. Withheld rather than
+				// understated — a number counted from the label's own change is the
+				// invented age the phase arms exist to avoid.
+				clock: false,
 			};
 		}
 		const tail = records[records.length - 1];
