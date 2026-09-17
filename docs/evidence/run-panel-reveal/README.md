@@ -13,8 +13,9 @@ to `962f43350` and the branch was rebased onto it, and that diff touches **none*
 of the reveal's own files (`git diff --name-only 5c53e1c75 962f43350` names the MCP
 auth dialog, its evidence set, the manifest, `package.json` and two script tests —
 zero of `chat-content.tsx`, `run-panel.tsx`, `scroll.ts`, `story-scroll.ts`), so
-the readings carry. A re-drive against `962f43350` is owed with the rest of the
-heavy list at the foot of this file.
+the readings carry. It was later re-driven on the branches that followed — see
+*Round 2's verification* below for the readings on this head — so the re-drive
+this sentence once deferred has been done.
 
 What the set is still evidence for, and why it is kept:
 
@@ -254,14 +255,13 @@ trigger — the two controls that open this pane behave alike — and it is the
 honest cost of the chip counting as a third entry point rather than a button that
 happens to open a pane.
 
-**What is still owed here, and why it is written as owed:** this is the one
-measured claim in the set whose reading is not committed beside a frame. The run
-behind the paragraph above was made before readbacks were being kept, and the
-JSON it wrote is gone with its rig; round 2's reviews both flagged that a set
-whose method is committed readbacks should not hold its Escape evidence in prose.
-Committing that readback needs one more app run (a build plus a boot, to press the
-chip and the key once on both ends) — see *What was NOT re-run* at the foot of this
-file for whether it was run or is still owed.
+**And it is now committed rather than described:** this was the one measured claim
+in the set whose reading lived in prose, because the run behind it predated
+readbacks being kept and the JSON it wrote was gone with its rig. It was re-taken
+with the rig's own `--escape-probe` state and is committed as
+`readbacks/escape-1024x673-rail-expanded.json` — see *Round 2's verification*
+below for the reading, and for the base half, which is the reviewers' rather than
+this rig's.
 
 ## The pane's fit, which the same change had to settle
 
@@ -309,8 +309,10 @@ too. `scripts/run-panel-reveal-proof.mjs` now counts both classes
 (`collapsedTextRows`, `outsideRegionRows`, with one example of each per frame),
 reports them in every run's JSON, and **fails** an `--expect=region-only` run on
 the first of them. The `cut rows after: 0` column above is therefore a reading
-from the OLD metric, and the frames it describes were captured with it; the new
-counters' readings are owed on the final head (see the foot of this file).
+from the OLD metric, and the frames it describes were captured with it. The new
+counters' readings ARE committed, from runs on the final head — one readback per
+state under `readbacks/`, tabulated in *Round 2's verification* below, where the
+same four runs also carry the pane's own close control (see the note there).
 
 The cost, stated rather than rounded away: **at the app's own 800x600 floor with
 the rail expanded the pane renders 79px** — a pane no reader can use, and no
@@ -319,10 +321,14 @@ arrangement of the row's own floors fixes it: the rail (220px) plus the chat lis
 before the pane gets anything. That is a chrome decision — which of those three
 gives, and when — and this change deliberately does not make it.
 
-What the pane DOES owe in that state is a row that can still name itself, and the
-first version of this paragraph claimed that without the pixels behind it. Round 2
-measured the opposite (D6): at 800x600 with the rail expanded every row's name box
-was **0px wide** — `scrollWidth` 60-133 against `clientWidth` 0, so the name was
+What the pane DOES owe in that state is an MCP row that can still name itself —
+**the MCP rows, which is what was measured; the To-dos rows are NOT covered by
+this sentence** (design round 3's D14: they are still `min-w-0 flex-1 truncate`
+with no floor, so at 79px a to-do's own label can still collapse; that is
+recorded as deferred rather than claimed fixed here) — and the first version of
+this paragraph claimed it without the pixels behind it. Round 2 measured the
+opposite for the MCP rows (D6): at 800x600 with the rail expanded every MCP row's
+name box was **0px wide** — `scrollWidth` 60-133 against `clientWidth` 0, so the name was
 not elided but GONE, and reachable by no gesture, because there is nothing to
 scroll to — with a trailing value drawn 13px past the window edge and 21px of the
 region's content behind a horizontal scrollbar. The row grammar now answers that:
@@ -332,9 +338,12 @@ the status word last, because that is why a problem row is a problem row — and
 name's floor is capped by what the line actually has left, so at 79px the name is
 small rather than absent and the row no longer overflows the box it was given.
 
-**The numbers for that fix are owed, not claimed** (see the foot of this file):
-they need a frame at 800x600/expanded with the new predicate's counters, and this
-round ran under a machine-wide load hold that forbade app drives.
+**And the numbers for that fix are measured, not owed**: on the final head,
+`collapsedTextRows` is 0 in all four states and `outsideRegionRows` is 0 at
+303/419/251 — the 9 that remain at 79px are the MCP section's own label and its
+eight grant controls, which is the chrome decision the paragraph above states as
+open. The table in *Round 2's verification* is where those readings live, with a
+readback per state committed beside this file.
 
 ### The divider, which used to drag a number the pane did not use
 
@@ -366,8 +375,9 @@ accepts is what the pane renders**:
 
 Shrinking (drag towards the pane's own floor) is untouched: at 1024x673 with the
 rail collapsed the row can host 476, so the range is 320..476 and every value in
-it renders as itself. The reading that measures this is owed with the rest of the
-app drives at the foot of this file.
+it renders as itself. The reading that measures this is committed in *Round 2's
+verification* below — the drag matrix in both rail states, taken with the rig's
+`--drag-probe` state.
 
 ### One asymmetry, recorded rather than fixed
 
@@ -525,8 +535,13 @@ attribute to measure against.
 
 The round's fixes were verified by driving the BUILT app, one run at a time, once
 the machine came out of its hold. Every number below is a reading, not a claim;
-the commands are the rig's own, and the readbacks are in each run's `default.json`
-(and, for the Escape pair, beside this file in `escape-readback/`).
+the commands are the rig's own, and each state's readback is committed under
+`readbacks/` in this set — `press-1024x673-rail-expanded.json`,
+`press-1024x673-rail-collapsed.json`, `press-800x600-rail-collapsed.json` and
+`press-800x600-rail-expanded.json`, the driver's own output verbatim, plus the
+Escape pair as `readbacks/escape-1024x673-rail-expanded.json`. (*This paragraph
+used to name each run's `default.json`, which is the name the driver writes in a
+scratch directory and not a file that exists in the set* — design round 3's D12.)
 
 | state | pane | clipPx | cutRows | collapsedTextRows | outsideRegionRows | gate |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -534,6 +549,22 @@ the commands are the rig's own, and the readbacks are in each run's `default.jso
 | 1024x673 collapsed | 419 | 0 | 0 | 0 | 0 | **pass** |
 | 800x600 collapsed | 251 | 0 | 0 | 0 | 0 | **pass** |
 | 800x600 expanded | 79 | 0 | 0 | 0 | **9** | **FAIL** |
+
+**The close-control column in these readbacks is the pane's own control, and the
+older JSONs in this set are not.** The pane's close control and the header trigger
+that opens the pane share the label "Close run details", and the reading used a
+document-wide query until design round 3 (D16), so it recorded whichever node came
+first in the DOM — on this head the TRIGGER, outside the pane (592..624 at
+800x600, against the bar control's 764..792). The claim the column was cited for
+holds either way (the close control is inside the window and hit-testable; two
+streams measured the real control independently), but the column did not describe
+the node it named. The rig now reads it from `[data-run-panel-pane]`, and the four
+readbacks under `readbacks/` are the corrected generation: **764..792 at 800x600
+and 988..1016 at 1024x673**, inside the viewport and hit-testable in every state.
+The 13 frame-side JSONs committed earlier still carry the trigger's rect for that
+field and are left as they are — re-shooting those frames is not this round's
+work, and the field is superseded by the readbacks above rather than silently
+disagreeing with them.
 
 **The gate is now two-sided, and it fails at the app's window floor** — which is
 the point of gating it, and it is a finding rather than a number to be tuned away.
@@ -589,7 +620,7 @@ Shrinking works, growing works, the 320 floor holds, and the ceiling is now what
 the ROW can host rather than the design's 640 — which is what stops a stored 640
 from rendering as 475 after a rail collapse.
 
-**The Escape pair, committed** (`escape-readback/escape-1024x673-expanded.json`,
+**The Escape pair, committed** (`readbacks/escape-1024x673-rail-expanded.json`,
 `--escape-probe`):
 
 ```json
@@ -618,42 +649,44 @@ port 9431: free
 
 ## What was NOT re-run, and why
 
-The machine these runs came from went into a declared hold (load average 465–635,
-swap 21.7 GB of 22.5 GB used) and it was still in one when round 2's remediation
-landed (load 265–381), so every verification that needs a build, a boot or a
-capture is **owed rather than done**. What ran is listed too, because "deferred"
-is only honest next to "also ran":
+One list, in one voice, because this file used to say in one place that the round-2
+readings were "owed, not claimed" and in another present them measured (design round
+3's D11, the reviewer's R4-4). What is true now: **the app drives ran** on this head
+— the four states, the divider matrix in both rail states, and the Escape pair — and
+what did not run is listed below with its reason.
 
 Owed:
 
-- **re-capturing the frames.** No frame in this set was re-taken for the
-  re-integration or for round 2 — the runs above measured the states with the
-  app's own driver and readbacks rather than re-shooting the `.webp` pairs, so the
-  committed frames still show `8bd51bd03`'s build. The numbers they would now show
-  are the table above. Nothing below is contradicted by them;
-- **the older wording of this list, kept for the record: no frame in this set was re-taken
-  for the re-integration or for round 2. The `after-fix` frames already show the
-  post-fit geometry (they were shot at `8bd51bd03`, which carries the fit change)
-  and the `before-fix` frames are `8f80697c8` by construction, so nothing above is
-  contradicted — but the row-grammar change (D6) and the new predicate counters
-  (D7) both change what these frames would show at 800x600/expanded, and those
-  numbers are owed, not claimed;
-- **the divider's contract** (U6): a drag matrix at 1024x673/expanded and
-  1024x673/collapsed reading the stored preference, the separator's `aria-valuenow`
-  and the pane's rect after each step;
-- **`--reader=first`** (round 2's Q3), which still cannot reach an openable roster
-  on this fixture: the seeded roster only renders cold, and warming the session
-  replaces it. It is recorded as BLOCKED with that wall named rather than faked;
-- **a fresh `--focus-probe` pass** on this head (the M1 reading below was taken on
-  the base build and is carried, not re-taken), and the Escape readback this file
-  now describes as owed;
-- **`pnpm check-evidence`**, which takes a machine-wide lease a peer was holding;
-- **`pnpm test:desktop` in full** (the touched suites were run directly instead).
+- **re-capturing the frames.** No `.webp` in this set was re-taken for the
+  re-integration or for round 2, so the committed frames still show `8bd51bd03`'s
+  build. This is a decision rather than a gap: the readings this head produces are
+  in the readbacks under `readbacks/` and tabulated above, and the frames are kept
+  as the record of what the frames were evidence FOR. Nothing above is contradicted
+  by them — but a reader comparing a frame to a number in the table is comparing
+  two different builds, which is why the table names itself as readbacks and the
+  frame listing names its own provenance;
+- **`--reader=first`** (round 2's Q3, QA round 3's BLOCKED): still cannot reach an
+  openable roster on this fixture — the seeded roster renders only in the cold
+  projection, and warming the session replaces the store it comes from. Recorded as
+  BLOCKED with that wall named rather than faked;
+- **a fresh `--focus-probe` pass** on this head: the M1 reading below is the base
+  build's, carried rather than re-taken, and the fit change removes the geometry it
+  was about;
+- **`pnpm check-evidence`**: takes a machine-wide lease; it exited 75 `DEFERRED` on
+  a peer's sweep here, which is recorded rather than waited on, and the lock file
+  was not touched;
+- **`pnpm test:desktop` in full**: the touched suites were run directly instead.
+  (It has since been run end to end on this branch: one failure, in
+  `scripts/update-robustness.test.mjs`, which asserts the state of the *machine's*
+  `which local-operator` and fails identically in a clean worktree of
+  `origin/main` — the sibling-run evidence is on the PR.)
 
-Ran, on the final head, pasted into the pull request's remediation comment: the
-repository's lint and type gates, the touched node suites through
-`scripts/run-desktop-tests.mjs`, `scripts/test-inventory.test.mjs`, and the
-manifest re-derivation.
+Ran, on this head, with the output pasted into the pull request's comments: one
+build; four app drives with the corrected close-control reading; the divider matrix
+in both rail states; the Escape pair; `pnpm lint`, `pnpm lint:scripts`,
+`pnpm check-types`, `pnpm check-themes`; the touched suites through
+`scripts/run-desktop-tests.mjs`; `scripts/test-inventory.test.mjs`;
+`scripts/evidence-manifest.test.mjs`; and the manifest re-derivations.
 
 ## Provenance and the limits of these frames
 
