@@ -1,11 +1,44 @@
-# The run panel's reveal, before and after the container-scoped scroll
+# The run panel's reveal: the operator's original report, and the pane's fit
 
-Ten frames, one pair per size, of the same gesture: **press the composer's plan
-chip and look at what moves.** They are the evidence for `docs/composer-status-tabs.md`
-§ 5.2 step 3 ("bring the To-dos section into view IN THE PANE'S SCROLL REGION"),
-which the shipped code did not do — it called `scrollIntoView`, whose default
-`container: "all"` walks every scrolling box up to the viewport, `overflow: hidden`
-boxes included.
+**READ THIS FIRST.** The frame shift this set was originally shot to document —
+pressing the composer's plan chip sliding the chat column, the transcript and the
+composer sideways under the sidebar — **does not reproduce on the merge base this
+branch lands on.** `origin/main` landed the same region-scoped reveal itself
+(#228, `c25a0a4e9`), so `shared/lib/scroll.ts` and the
+`scrollRegionToTop(region, target)` assignment are main's now, and this branch
+imports them. Measured on both ends with one rig: `movers: []` on the base at every state
+driven, exactly as on this head — see *Re-derived on the merge base* below for the
+full table. The two ends were driven against `5c53e1c75`; `origin/main` then moved
+to `962f43350` and the branch was rebased onto it, and that diff touches **none**
+of the reveal's own files (`git diff --name-only 5c53e1c75 962f43350` names the MCP
+auth dialog, its evidence set, the manifest, `package.json` and two script tests —
+zero of `chat-content.tsx`, `run-panel.tsx`, `scroll.ts`, `story-scroll.ts`), so
+the readings carry. A re-drive against `962f43350` is owed with the rest of the
+heavy list at the foot of this file.
+
+What the set is still evidence for, and why it is kept:
+
+- **`before-fix` is the record of the operator's original report**, not a
+  reproduction against today's base. It is the BUILT app of `origin/main` at
+  `8f80697c8` — the branch's ORIGINAL base and the v0.24.0 the operator reported
+  the defect from — and the `0 → 108` / `0 → 221` rows in the table below are
+  real measurements of a real defect on that tree. They are kept because that is
+  what was reported and what this branch's history is about, and the frames are
+  the only pictures of it.
+- **`after-fix` is this branch's own build, and the half that still bites.** What
+  it shows on the current merge base is the **pane's fit**: on the base the pane's
+  right 116px (at the operator's 1024x673 with the rail expanded) and 340px (at
+  the app's 800x600 floor) sit outside the window, its close control is off-screen
+  and not hit-testable, and four rows end at a hard screen edge with no ellipsis;
+  on this head all of those are zero. Exact numbers in *The pane's fit* and in the
+  re-derived table below.
+
+Thirteen frames, one pair per size and rail state, of the same gesture: **press the composer's plan
+chip and look at what moves.** They were taken for
+`docs/composer-status-tabs.md` § 5.2 step 3 ("bring the To-dos section into view
+IN THE PANE'S SCROLL REGION"), which the `8f80697c8` code did not do — it called
+`scrollIntoView`, whose default `container: "all"` walks every scrolling box up
+to the viewport, `overflow: hidden` boxes included.
 
 ```
 press-1024x673-before-fix/localOperatorDark.webp    press-1024x673-after-fix/localOperatorDark.webp
@@ -16,11 +49,12 @@ press-1380x900-before-fix/localOperatorDark.webp    press-1380x900-after-fix/loc
 ```
 
 `before-fix` is the BUILT app of unmodified `origin/main` at `8f80697c8` — the
-branch's ORIGINAL base and the v0.24.0 the operator reported the defect from;
-`after-fix` is this branch's own build. The current merge base is `5c53e1c75`,
-which has since landed the same region-scoped reveal from another branch: read
-*Re-derived on the merge base* below before treating the `before-fix` half as
-"the tree this lands on".
+branch's ORIGINAL base and the v0.24.0 the operator reported the defect from, and
+**not the merge base this lands on** (`962f43350`, which already carries the same
+fix from #228). `after-fix` is this branch's own build. Read the box at the top of
+this file and *Re-derived on the merge base* below before treating the
+`before-fix` half as "the tree this lands on": it is the record of the report, not
+a reproduction against today's base.
 
 **The readings are committed with the frames.** Each directory carries the
 `<theme>.json` the driver wrote, byte for byte — every scroll box's
@@ -277,12 +311,13 @@ own `--user-data-dir` under the system temp dir and strips any inherited
 backend is a real `local_operator` server; only its conversation content is
 synthetic.
 
-## Re-derived on the merge base `5c53e1c75`, which is not the tree these frames were shot against
+## Re-derived on the merge base, which is not the tree these frames were shot against
 
 This branch was re-integrated onto `origin/main` at `5c53e1c75` (the 0.25.18
-release, ~14 PRs and 709 commits past `64c3283cb`). **Both ends were rebuilt and
-re-driven: the merge base and this head.** That changed what this set can claim,
-and the change is the important part of this section.
+release, ~14 PRs and 709 commits past `64c3283cb`), and then onto `962f43350`
+(#283, which touches none of the reveal's files). **Both ends were rebuilt and
+re-driven against `5c53e1c75`: the base and this head.** That changed what this
+set can claim, and the change is the important part of this section.
 
 **The frame shift this branch was opened for no longer reproduces on the merge
 base.** `#228`'s composer work (`c25a0a4e9`, "state-aware activity clauses, a
@@ -300,16 +335,16 @@ states driven, exactly as on this head.
 
 | state (1024x673 unless noted) | build | `movers` | pane rect | clip px | close control inside / hit | rows cut at a hard edge | `todosOffsetInRegion` |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| expanded, dark | base `5c53e1c75` | **0** | 721..1140 | **116** | no / no | **4** | n/a |
+| expanded, dark | base `5c53e1c75`\* | **0** | 721..1140 | **116** | no / no | **4** | n/a |
 | expanded, dark | this head | 0 | 721..**1024** | **0** | yes / yes | **0** | 0 |
 | expanded, light | this head | 0 | 721..1024 | 0 | yes / yes | 0 | 0 |
-| collapsed, dark | base `5c53e1c75` | 0 | 605..1024 | 0 | yes / yes | 0 | n/a |
+| collapsed, dark | base `5c53e1c75`\* | 0 | 605..1024 | 0 | yes / yes | 0 | n/a |
 | collapsed, dark | this head | 0 | 605..1024 | 0 | yes / yes | 0 | 0 |
-| 800x600 expanded, dark | base `5c53e1c75` | 0 | 721..1140 | **340** | no / no | **4** | n/a |
+| 800x600 expanded, dark | base `5c53e1c75`\* | 0 | 721..1140 | **340** | no / no | **4** | n/a |
 | 800x600 expanded, dark | this head | 0 | 721..**800** | **0** | yes / yes | **0** | 0 |
 | 800x600 expanded, light | this head | 0 | 721..800 | 0 | yes / yes | 0 | 0 |
 | 800x600 collapsed, dark | this head | 0 | 549..800 | 0 | yes / yes | 0 | 0 |
-| 1380x900 expanded, dark | base `5c53e1c75` | 0 | 961..1380 | 0 | yes / yes | 0 | n/a |
+| 1380x900 expanded, dark | base `5c53e1c75`\* | 0 | 961..1380 | 0 | yes / yes | 0 | n/a |
 | 1380x900 expanded, dark | this head | 0 | 961..1380 | 0 | yes / yes | 0 | 0 |
 
 Every reading in the table above still holds as a reading; what moved is what it
@@ -319,6 +354,8 @@ operator's own size, 340px and four rows at the app's floor, with the pane's own
 close control off-screen and not hit-testable in both — and that is what the
 `after-fix` half of the set now shows. The band's move is unchanged between the
 two ends, row for row.
+
+\* The base rows are `5c53e1c75`, the merge base during the run; main then moved to `962f43350`, whose diff touches none of the reveal's files (see the box above the frame listing).
 
 `todosOffsetInRegion` is `n/a` on the base because the region is NAMED by this
 change (`data-run-panel-region`); the base's own region still lands the section
