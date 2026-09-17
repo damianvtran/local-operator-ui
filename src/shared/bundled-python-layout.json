@@ -5,5 +5,27 @@
 	"checkoutSeedNames": {
 		"arm64": "python_aarch64",
 		"x64": "python"
-	}
+	},
+	"machOMagics": [
+		"cffaedfe",
+		"cefaedfe",
+		"feedfacf",
+		"feedface",
+		"cafebabe",
+		"bebafeca"
+	],
+	"seedStdlibMarker": "lib/python3.12/encodings/__init__.py",
+	"prunedSeedPaths": [
+		"bin/2to3",
+		"bin/2to3-3.12",
+		"bin/idle3",
+		"bin/idle3.12",
+		"bin/pydoc3",
+		"bin/pydoc3.12",
+		"lib/python3.12/idlelib",
+		"lib/python3.12/turtledemo",
+		"lib/python3.12/lib2to3",
+		"lib/python3.12/pydoc_data",
+		"lib/tk8.6/demos"
+	]
 }

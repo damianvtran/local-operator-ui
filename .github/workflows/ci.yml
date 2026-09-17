@@ -235,8 +235,20 @@ jobs:
     # `pnpm-workspace.yaml`; installing explicitly and frozen beforehand means
     # the test step only runs node, and pnpm fails loudly rather than mutating
     # the lockfile if either file is out of date.
+    #
+    # Bounded because nothing else bounds it. `node --test` sets no per-process
+    # timeout and this job declared none, so its default was 360 minutes: a
+    # suite that leaked a handle and never exited presented as six hours of
+    # waiting rather than as a failure, which is the same defect this job's
+    # suite is about, one level up. The job is measured at ~6m17s end to end
+    # (it runs the suite twice, once to collect and once to assert), so 20
+    # leaves ~3x headroom. This bounds a hang the file cannot: the per-test
+    # `timeout` in `scripts/backend-settings-collapse.test.mjs` only covers a
+    # test body that never settles, and is blind to a leak that outlives every
+    # test.
     name: Desktop Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code

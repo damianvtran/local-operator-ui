@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
+import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
-import { writeFile, unlink } from "node:fs/promises";
 import { build } from "esbuild";
 
 /*
@@ -100,7 +100,10 @@ const bundle = await build({
 				 * be reached (the transport handler above matches every path there,
 				 * and the react import would resolve to the transport's contents).
 				 */
-				builder.onResolve({ filter: /^react$/ }, () => ({ path: "react", namespace: "lease-react" }));
+				builder.onResolve({ filter: /^react$/ }, () => ({
+					path: "react",
+					namespace: "lease-react",
+				}));
 				builder.onLoad({ filter: /.*/, namespace: "lease-react" }, () => ({
 					contents: reactStandIn,
 					loader: "js",
@@ -110,7 +113,10 @@ const bundle = await build({
 		},
 	],
 });
-const bundlePath = new URL("./_desktop-watch-lease.bundle.mjs", import.meta.url);
+const bundlePath = new URL(
+	"./_desktop-watch-lease.bundle.mjs",
+	import.meta.url,
+);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const { useDesktopWatchLease } = await import(bundlePath.href);
 // Unlinked as soon as the graph is evaluated, so no build artifact survives a
@@ -157,7 +163,10 @@ function installBridge() {
 	// so the stand-in window and document have to carry the listener pair: a
 	// missing one throws inside the effect and the cleanup (and so the release
 	// this file is about) never runs.
-	const listeners = { addEventListener: () => {}, removeEventListener: () => {} };
+	const listeners = {
+		addEventListener: () => {},
+		removeEventListener: () => {},
+	};
 	globalThis.window = {
 		...listeners,
 		api: {
@@ -182,7 +191,11 @@ after(() => {
 test("the pane withdraws its conversation when it unmounts", () => {
 	const { releases } = installBridge();
 	const unmount = mount(SESSION, SUBSCRIPTION);
-	assert.equal(releases.length, 0, "nothing is withdrawn while the pane is displayed");
+	assert.equal(
+		releases.length,
+		0,
+		"nothing is withdrawn while the pane is displayed",
+	);
 	unmount();
 	assert.deepEqual(
 		releases,

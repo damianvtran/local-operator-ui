@@ -31,6 +31,10 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { Alert, AlertDescription, Button } from "@shared/components/ui";
+import {
+	updateErrorMessage,
+	updateMessageOf,
+} from "@shared/utils/update-error-copy";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 
@@ -76,7 +80,15 @@ export const BackendCompatibilityBanner = () => {
 		let reason: string | null = null;
 		const removeBackendUpdateErrorListener =
 			window.api.updater.onBackendUpdateError((report) => {
-				if (report.phase === "update") reason = report.message;
+				/*
+				 * The machine's own words on this channel are errno forms (the
+				 * operator's log holds `getaddrinfo ENOTFOUND pypi.org`), so the
+				 * sentence comes from the shared update copy rather than from the
+				 * transport.
+				 */
+				if (report.phase === "update") {
+					reason = updateErrorMessage(report.message);
+				}
 			});
 		try {
 			const started = await window.api.updater.updateBackend();
@@ -90,7 +102,12 @@ export const BackendCompatibilityBanner = () => {
 			retry();
 		} catch (error) {
 			setUpdateError(
-				error instanceof Error ? error.message : BACKEND_UPDATE_UNEXPLAINED,
+				// The machine's own words, cleaned: this panel's own copy says what
+				// failed, and a sentence from `updateErrorCopy` here would describe a
+				// check rather than the update the user pressed.
+				error instanceof Error
+					? updateMessageOf(error)
+					: BACKEND_UPDATE_UNEXPLAINED,
 			);
 		} finally {
 			removeBackendUpdateErrorListener();

@@ -446,7 +446,14 @@ const rowsBundle = await build({
 	},
 	write: false,
 });
-const { buildRows, GAP, isTraceLike, ledgerName, paintsSomething, splitFirstLine } = await import(
+const {
+	buildRows,
+	GAP,
+	isTraceLike,
+	ledgerName,
+	paintsSomething,
+	splitFirstLine,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(rowsBundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -501,7 +508,12 @@ test("a receipt row is a ledger row, not prose", () => {
 	// tier rather than prose's air (the operator's "extra space randomly inserted
 	// which doesn't look very uniform" is what a second tier in a run looks like).
 	const peer = { kind: "peer", id: "p1", ts: 2, body: "hi", sender: {} };
-	const wake = { kind: "wake", id: "w1", ts: 3, text: "(alarm) Scheduled wake w-1" };
+	const wake = {
+		kind: "wake",
+		id: "w1",
+		ts: 3,
+		text: "(alarm) Scheduled wake w-1",
+	};
 	assert.equal(isTraceLike(peer), true);
 	assert.equal(isTraceLike(wake), true);
 	assert.equal(paintsSomething(peer), true);
@@ -509,10 +521,7 @@ test("a receipt row is a ledger row, not prose", () => {
 	// expansion is for, so an empty note is a row and not an invisible record.
 	assert.equal(paintsSomething({ ...peer, body: "" }), true);
 
-	const run = buildRows(
-		[toolRecord("t1"), peer, wake, toolRecord("t2")],
-		[],
-	);
+	const run = buildRows([toolRecord("t1"), peer, wake, toolRecord("t2")], []);
 	assert.deepEqual(
 		run.map((row) => row.gap),
 		["first", "trace", "trace", "trace"],
@@ -1321,7 +1330,12 @@ test("a JSON result is structured by the same rules, and anything else is text",
 	// No punctuation here either: this is the same renderer as the input half —
 	// and the invariant covers the EMPTY container's rendering too, which is the
 	// case the earlier claim was false for.
-	for (const raw of ['{"path": "a/b.md", "tags": ["x"]}', "{}", '{"a": {}}', '{"items": []}']) {
+	for (const raw of [
+		'{"path": "a/b.md", "tags": ["x"]}',
+		"{}",
+		'{"a": {}}',
+		'{"items": []}',
+	]) {
 		const structured = detailText(resultLines(raw) ?? []);
 		for (const mark of JSON_MARKS) {
 			assert.ok(!structured.includes(mark), `${raw} -> ${structured}`);
@@ -1401,7 +1415,10 @@ test("a sub-pixel overhang is not a line below the fold", () => {
 	const firstPane = { top: 361.204 - line, height: line };
 	const secondPane = { top: 729.641 - line, height: line };
 	assert.equal(linesBelowFold([firstPane], line, 361.0, SUBPIXEL_TOLERANCE), 0);
-	assert.equal(linesBelowFold([secondPane], line, 729.172, SUBPIXEL_TOLERANCE), 0);
+	assert.equal(
+		linesBelowFold([secondPane], line, 729.172, SUBPIXEL_TOLERANCE),
+		0,
+	);
 	// Without the tolerance those two ARE the defect: one line each, claimed
 	// through every wheel notch, about a line that is on screen.
 	assert.equal(linesBelowFold([firstPane], line, 361.0, 0), 1);
@@ -1436,13 +1453,29 @@ test("the count is line boxes below the fold, and the tolerance is one of them",
 	// A row two line boxes tall is two lines, not one row: the reader counts
 	// lines, and the pitch between rows is a different number (QA round 2, Q-6).
 	assert.equal(
-		linesBelowFold([{ top: boxBottom, height: 2 * line }], line, boxBottom, SUBPIXEL_TOLERANCE),
+		linesBelowFold(
+			[{ top: boxBottom, height: 2 * line }],
+			line,
+			boxBottom,
+			SUBPIXEL_TOLERANCE,
+		),
 		2,
 	);
 	// An element with no box occupies no line, and a section whose line-height
 	// cannot be resolved reports nothing rather than an infinity of lines.
-	assert.equal(linesBelowFold([{ top: boxBottom, height: 0 }], line, boxBottom, SUBPIXEL_TOLERANCE), 0);
-	assert.equal(linesBelowFold([flush], Number.NaN, boxBottom, SUBPIXEL_TOLERANCE), 0);
+	assert.equal(
+		linesBelowFold(
+			[{ top: boxBottom, height: 0 }],
+			line,
+			boxBottom,
+			SUBPIXEL_TOLERANCE,
+		),
+		0,
+	);
+	assert.equal(
+		linesBelowFold([flush], Number.NaN, boxBottom, SUBPIXEL_TOLERANCE),
+		0,
+	);
 	assert.equal(linesBelowFold([], line, boxBottom, SUBPIXEL_TOLERANCE), 0);
 });
 
@@ -1450,10 +1483,22 @@ test("a receipt row never degrades to an unnamed pid", () => {
 	// The ladder: the name the peer chose (quoted, because it IS a name), then
 	// the directory it runs in (with a trailing slash, because it is not), then
 	// an id prefix, then the pid, then the vocabulary `harness/comms.py` uses.
-	assert.equal(peerIdentity(sender({ conversationName: "review-agent" })), '"review-agent"');
-	assert.equal(peerIdentity(sender({ cwd: "/Users/damian/minervaai/" })), "minervaai/");
-	assert.equal(peerIdentity(sender({ cwd: "C:\\work\\admin-api" })), "admin-api/");
-	assert.equal(peerIdentity(sender({ sessionId: "01J8ZQ4K7XABCDEF" })), "01J8ZQ4K");
+	assert.equal(
+		peerIdentity(sender({ conversationName: "review-agent" })),
+		'"review-agent"',
+	);
+	assert.equal(
+		peerIdentity(sender({ cwd: "/Users/damian/minervaai/" })),
+		"minervaai/",
+	);
+	assert.equal(
+		peerIdentity(sender({ cwd: "C:\\work\\admin-api" })),
+		"admin-api/",
+	);
+	assert.equal(
+		peerIdentity(sender({ sessionId: "01J8ZQ4K7XABCDEF" })),
+		"01J8ZQ4K",
+	);
 	assert.equal(peerIdentity(sender({ pid: "92064" })), "pid 92064");
 	assert.equal(peerIdentity(sender()), "another session");
 
@@ -1463,10 +1508,16 @@ test("a receipt row never degrades to an unnamed pid", () => {
 		peerIdentity(sender({ conversationName: "review-agent", cwd: "/work/x" })),
 		'"review-agent"',
 	);
-	assert.equal(peerIdentity(sender({ cwd: "/work/x", sessionId: "01J8ZQ4K7X" })), "x/");
+	assert.equal(
+		peerIdentity(sender({ cwd: "/work/x", sessionId: "01J8ZQ4K7X" })),
+		"x/",
+	);
 	// A cwd of only separators has no basename, so it falls through rather than
 	// printing a lone slash.
-	assert.equal(peerIdentity(sender({ cwd: "/", sessionId: "01J8ZQ4K7X" })), "01J8ZQ4K");
+	assert.equal(
+		peerIdentity(sender({ cwd: "/", sessionId: "01J8ZQ4K7X" })),
+		"01J8ZQ4K",
+	);
 
 	// The expansion's line: name · pid · model, the TUI's order and its shed
 	// order (the model is context, not an address).
@@ -1562,14 +1613,23 @@ test("a peer row offers its disclosure only when it carries a new fact", () => {
 	// With no body, the expansion has to add the pid or the model the one-line
 	// summary has no room for — the TUI's own justification for an
 	// always-expandable peer block.
-	assert.equal(peerHasDetail(sender({ pid: "92064", modelLabel: "sonnet" }), ""), true);
 	assert.equal(
-		peerHasDetail(sender({ conversationName: "review-agent", pid: "92064" }), ""),
+		peerHasDetail(sender({ pid: "92064", modelLabel: "sonnet" }), ""),
+		true,
+	);
+	assert.equal(
+		peerHasDetail(
+			sender({ conversationName: "review-agent", pid: "92064" }),
+			"",
+		),
 		true,
 	);
 	// A name on its own is not one: the summary already leads with it, so the
 	// expansion would print the same words.
-	assert.equal(peerHasDetail(sender({ conversationName: "review-agent" }), ""), false);
+	assert.equal(
+		peerHasDetail(sender({ conversationName: "review-agent" }), ""),
+		false,
+	);
 	// The case this closes: the summary is `pid 92064` and the expansion was
 	// `pid 92064` again, one click for nothing.
 	assert.equal(peerHasDetail(sender({ pid: "92064" }), ""), false);
@@ -1592,7 +1652,10 @@ test("the collapsed peer row leads with the sender, then the message", () => {
 		'"review-agent" · merged, thanks',
 	);
 	// An empty body leaves the identity alone rather than a dangling separator.
-	assert.equal(peerSummary(sender({ conversationName: "review-agent" }), ""), '"review-agent"');
+	assert.equal(
+		peerSummary(sender({ conversationName: "review-agent" }), ""),
+		'"review-agent"',
+	);
 	assert.equal(peerSummary(sender({ pid: "42" }), ""), "pid 42");
 });
 
@@ -1746,8 +1809,14 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 	// function itself rather than retyped from its docstring.
 	const delivery =
 		'(alarm) Scheduled wake w-9 (1, every 6h) — cancel with wake({op:"cancel",id:"w-9"})';
-	assert.equal(wakeReceiptHeadline(`${delivery}\n\ncheck the deploy`), "w-9 (1, every 6h)");
-	assert.equal(wakePromptBody(`${delivery}\n\ncheck the deploy`), "check the deploy");
+	assert.equal(
+		wakeReceiptHeadline(`${delivery}\n\ncheck the deploy`),
+		"w-9 (1, every 6h)",
+	);
+	assert.equal(
+		wakePromptBody(`${delivery}\n\ncheck the deploy`),
+		"check the deploy",
+	);
 	// The cancel how-to is an instruction for the model, and the (alarm) /
 	// `Scheduled wake` markers restate what the row's own clock glyph says.
 	assert.equal(
@@ -1758,7 +1827,9 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 	// "(alarm) (alarm) …" on a human surface, which is the exact defect the
 	// function exists to prevent surviving inside the function that prevents it.
 	assert.equal(
-		wakeReceiptHeadline("(alarm) (alarm) Scheduled wake w-1 (2, at 09:00)\n\nbody"),
+		wakeReceiptHeadline(
+			"(alarm) (alarm) Scheduled wake w-1 (2, at 09:00)\n\nbody",
+		),
 		"w-1 (2, at 09:00)",
 	);
 	// Envelope whitespace collapses before anything else, so a doubled space is
@@ -1770,7 +1841,10 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 		"w-3 (4, every 30m)",
 	);
 	// A delivery with no envelope is its own headline rather than an empty row.
-	assert.equal(wakeReceiptHeadline("plain first paragraph\n\nsecond"), "plain first paragraph");
+	assert.equal(
+		wakeReceiptHeadline("plain first paragraph\n\nsecond"),
+		"plain first paragraph",
+	);
 	// No prompt behind the envelope is an empty disclosure, which the row reads
 	// as "nothing to offer" rather than as a blank line under a label.
 	assert.equal(wakePromptBody("(alarm) Scheduled wake w-1 (1, every 1h)"), "");
@@ -1804,7 +1878,7 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 const workingLineBundle = await build({
 	stdin: {
 		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, COMPACTING_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1815,6 +1889,7 @@ const workingLineBundle = await build({
 const {
 	deriveWorkingLine,
 	ADMITTED_SEND_ACTIVITY,
+	COMPACTING_ACTIVITY,
 	admittedSendFor,
 	ownerAnswered,
 	turnStopped,
@@ -1907,6 +1982,7 @@ const ECHO = "admission-1";
 const admitted = (records, over = {}) =>
 	deriveWorkingLine({
 		waiting: false,
+		compacting: false,
 		starting: true,
 		startingAfterId: ECHO,
 		gate: false,
@@ -1933,6 +2009,7 @@ test("the wait sits on the ladder's own phase, so one wait keeps one clock", () 
 	// wait to the reader.
 	const plainWaiting = deriveWorkingLine({
 		waiting: true,
+		compacting: false,
 		starting: false,
 		gate: false,
 		unavailable: false,
@@ -1950,7 +2027,10 @@ test("a painted answer after the echo ends the wait, wherever it sits", () => {
 	assert.equal(admitted([assistantRow("a1", "Here is the answer")]), null);
 	assert.equal(admitted([runningToolRow("t1")]), null);
 	assert.equal(
-		admitted([assistantRow("a1", "Here is the answer"), assistantRow("a2", "")]),
+		admitted([
+			assistantRow("a1", "Here is the answer"),
+			assistantRow("a2", ""),
+		]),
 		null,
 		"a placeholder after the answer must not bring the rung back",
 	);
@@ -2015,6 +2095,7 @@ test("the rung only shows when nothing the owner drove has taken over", () => {
 	assert.equal(
 		deriveWorkingLine({
 			waiting: false,
+			compacting: false,
 			starting: false,
 			gate: false,
 			unavailable: false,
@@ -2051,7 +2132,10 @@ test("a send is admitted only when the request was actually issued", () => {
 		null,
 	);
 	// A settled or failed send: the request is no longer in flight.
-	assert.equal(admittedSendFor("111111111111", { ...row, pending: false }), null);
+	assert.equal(
+		admittedSendFor("111111111111", { ...row, pending: false }),
+		null,
+	);
 	// No session yet: the New-chat hop, where the create has not returned and
 	// the owner has no conversation to answer on.
 	assert.equal(admittedSendFor(undefined, row), null);
@@ -2080,7 +2164,10 @@ test("the anchored clear is the transcript's own predicate, swept", () => {
 	// `/clear` — the fallback falls back to the tail. `true` here IS the clear
 	// (it is what makes `deriveWorkingLine` return null); what the fallback
 	// withholds is the RUNG, in the case below where nothing paints.
-	assert.equal(ownerAnswered([assistantRow("a1", "hi")], "missing-anchor"), true);
+	assert.equal(
+		ownerAnswered([assistantRow("a1", "hi")], "missing-anchor"),
+		true,
+	);
 	assert.equal(ownerAnswered([userRow("u1", "go")], "missing-anchor"), false);
 });
 
@@ -2093,7 +2180,10 @@ test("the admitted-send copy claims nothing the renderer cannot check", () => {
 	// flight" — would assert something it has no way to check. If a later change
 	// wants a mechanism word here, it has to make it checkable first.
 	assert.equal(ADMITTED_SEND_ACTIVITY, "waiting for the agent");
-	assert.doesNotMatch(ADMITTED_SEND_ACTIVITY, /runtime|model|session|start|think/i);
+	assert.doesNotMatch(
+		ADMITTED_SEND_ACTIVITY,
+		/runtime|model|session|start|think/i,
+	);
 });
 
 test("a turn that dies before it paints retires the wait, and a renderer note does not", () => {
@@ -2117,13 +2207,19 @@ test("a turn that dies before it paints retires the wait, and a renderer note do
 	 * line, a harness recovery notice, a subagent failure - and none of them is
 	 * the turn being over.
 	 */
-	assert.equal(turnStopped([userRow(ECHO, "go"), noticeRow("note-1")], ECHO), false);
+	assert.equal(
+		turnStopped([userRow(ECHO, "go"), noticeRow("note-1")], ECHO),
+		false,
+	);
 	assert.deepEqual(admitted([noticeRow("note-1")]), {
 		activity: ADMITTED_SEND_ACTIVITY,
 		phase: "thinking",
 	});
 	// A marker BEFORE the echo belongs to an earlier turn (the anchor rule).
-	assert.equal(turnStopped([incidentRow("stop-0"), userRow(ECHO, "go")], ECHO), false);
+	assert.equal(
+		turnStopped([incidentRow("stop-0"), userRow(ECHO, "go")], ECHO),
+		false,
+	);
 	// And with no anchor in the list the fallback reads the tail, so a marker
 	// there retires rather than holding a rung over a finished turn.
 	assert.equal(turnStopped([incidentRow("stop-1")], "missing-anchor"), true);
@@ -2142,6 +2238,7 @@ test("the composer's hint is the rung's own derivation, not a second condition",
 	const pane = (over = {}) =>
 		workingLineInputFor({
 			waiting: false,
+			compacting: false,
 			starting: true,
 			startingAfterId: ECHO,
 			gate: false,
@@ -2158,7 +2255,12 @@ test("the composer's hint is the rung's own derivation, not a second condition",
 	// A dead transport: neither.
 	assert.equal(workingLineClaimed(pane({ unavailable: true })), false);
 	// A stopped turn: neither, on the same derivation.
-	assert.equal(workingLineClaimed(pane({ records: [userRow(ECHO, "go"), incidentRow("s1")] })), false);
+	assert.equal(
+		workingLineClaimed(
+			pane({ records: [userRow(ECHO, "go"), incidentRow("s1")] }),
+		),
+		false,
+	);
 	// A painted answer: neither.
 	assert.equal(
 		workingLineClaimed(
@@ -2173,9 +2275,38 @@ test("the composer's hint is the rung's own derivation, not a second condition",
 		workingLineClaimed(pane({ waiting: true, records: [userRow(ECHO, "go")] })),
 		true,
 	);
+	/*
+	 * A compaction pass, which the modal used to speak for. It is the more
+	 * specific fact than `waiting` — a pass is why the session is busy — so the
+	 * label is the pass's and the phase is its own, which is what the clock times.
+	 * The literal is asserted rather than the exported constant: this is the one
+	 * place that pins the COPY, and the copy is the terminal host's own
+	 * (`local_operator/tui/app.py`'s `compacting context` fallback) so a reader who
+	 * learned the phrase there does not learn a second one here.
+	 */
+	const pass = pane({ compacting: true, waiting: true });
+	assert.deepEqual(deriveWorkingLine(pass), {
+		activity: "compacting context",
+		phase: "compacting",
+	});
+	assert.equal(COMPACTING_ACTIVITY, "compacting context");
+	assert.equal(workingLineClaimed(pass), true);
+	// A pending question still outranks it: the user is blocked on a decision.
+	assert.equal(deriveWorkingLine(pane({ compacting: true, gate: true })), null);
+	// And a dead transport suppresses the rung rather than being cleared by it,
+	// so a reconnect cannot resurrect a claim by leaving the flag standing.
+	assert.equal(
+		workingLineClaimed(pane({ compacting: true, unavailable: true })),
+		false,
+	);
+	// With no pass in flight nothing changes: the flag is an addition to the
+	// ladder, not a replacement for it.
+	assert.equal(workingLineClaimed(pane({ compacting: false })), true);
 	// Nothing happening at all: neither.
 	assert.equal(
-		workingLineClaimed(pane({ starting: false, records: [userRow("u1", "go")] })),
+		workingLineClaimed(
+			pane({ starting: false, records: [userRow("u1", "go")] }),
+		),
 		false,
 	);
 });
@@ -2326,7 +2457,9 @@ test("every text a row exposes to a drag carries the marker", () => {
 		}
 		// And the marker is not put on anything that is NOT text: the trigger's
 		// own chrome must stay unmarked, or a press on it stops being a row action.
-		for (const tag of markup.match(/<(span|div|button)[^>]*data-text-surface[^>]*>/g) ?? []) {
+		for (const tag of markup.match(
+			/<(span|div|button)[^>]*data-text-surface[^>]*>/g,
+		) ?? []) {
 			assert.match(tag, /select-text/, `marked but not selectable — ${tag}`);
 		}
 	}

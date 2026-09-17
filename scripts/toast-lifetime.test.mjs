@@ -289,3 +289,140 @@ test("the fixture constructs the app's query policy and states the rig's focus f
 		"React Query's defaults are not the app's policy",
 	);
 });
+
+/*
+ * The transport family, one rung below the lifetime question.
+ *
+ * WHY THIS IS HERE. `showErrorToast` has ~50 call sites and most of them hand
+ * it `error.message` from a failed `fetch`, so the toast is where a raw
+ * transport string used to reach a person. The manager already mapped six
+ * verbatim strings to one connection sentence - and one of those six was
+ * `net::ERR_CONNECTION_REFUSED`, which is a member of a family of ~50 codes
+ * having reached a toast before this. The manager now asks the shared
+ * classifier (`src/shared/transport-failure.ts`, the same module MAIN retries
+ * the update check against) instead of carrying a table only one of these
+ * strings wide.
+ *
+ * The sentences are read from the toasts Sonner actually holds rather than
+ * from a spy, so what is asserted is what the container would render.
+ */
+const titleOf = (api, id) =>
+	api.toast.getToasts().find((entry) => entry.id === id)?.title;
+
+/*
+ * One message, one sentence, with the dedup released first.
+ *
+ * The manager's dedup is a user-facing policy keyed by error GROUP, so two
+ * different messages that both say "Failed to fetch" share a key and the second
+ * is suppressed - correct in the app, where they are the same refusal seen
+ * twice, and noise in a case that is asking what each message WOULD say.
+ */
+const sentenceFor = (f, message) => {
+	f.api.resetToastDedup();
+	return titleOf(f.api, f.api.showErrorToast(message));
+};
+
+test("a raw transport failure is never the sentence on a toast", () => {
+	const f = fixture(undefined);
+
+	// The old table exactly: still mapped, and still mapped to the same words.
+	assert.equal(
+		sentenceFor(f, "Failed to fetch"),
+		"Could not reach the server. Check that it is running, then try again.",
+	);
+
+	/*
+	 * The member of the family the table did NOT hold, and the one the
+	 * operator's update log holds 36 times. It reached a toast as-is before
+	 * this change.
+	 */
+	assert.equal(
+		sentenceFor(f, "net::ERR_NETWORK_CHANGED"),
+		"Could not reach the server. Check that it is running, then try again.",
+	);
+
+	/*
+	 * An errno form embedded in machine vocabulary: the sentence takes the whole
+	 * message rather than being spliced into the middle of "getaddrinfo ...
+	 * pypi.org", which would read worse than the code it replaced.
+	 */
+	assert.equal(
+		sentenceFor(f, "getaddrinfo ENOTFOUND pypi.org"),
+		"Could not reach the server. Check that it is running, then try again.",
+	);
+});
+
+test("an authored prefix survives; only the transport fragment is replaced", () => {
+	const f = fixture(undefined);
+
+	assert.equal(
+		sentenceFor(f, "Failed to post comment: Failed to fetch"),
+		"Failed to post comment: Could not reach the server. Check that it is running, then try again.",
+	);
+
+	/*
+	 * And the counter-case the exact-match rule existed for: this is a sentence
+	 * someone wrote on purpose, where the engine's words are part of what it
+	 * says. A transport string inside prose is not a clause, so the message is
+	 * left exactly as the caller passed it.
+	 */
+	assert.equal(
+		sentenceFor(f, "Failed to fetch conversation messages"),
+		"Failed to fetch conversation messages",
+	);
+});
+
+test("a prefixed transport failure keeps every character it should show", () => {
+	const f = fixture(undefined);
+	const sentence =
+		"Could not reach the server. Check that it is running, then try again.";
+
+	/*
+	 * The regression review round 1 found (R1): the shared classifier returns
+	 * offsets into the STRIPPED message and the toast path sliced the RAW one, so
+	 * the sentence was spliced in at the wrong place and the tail of the code was
+	 * left on a person's screen. These are the exact measurements from that
+	 * report, kept as cases so the corruption cannot come back.
+	 */
+	assert.equal(sentenceFor(f, "Error: net::ERR_TIMED_OUT"), sentence);
+	assert.equal(
+		sentenceFor(f, "Error: Error: net::ERR_NETWORK_CHANGED"),
+		sentence,
+	);
+	assert.equal(
+		sentenceFor(
+			f,
+			"Error invoking remote method 'check-for-updates': Error: net::ERR_TIMED_OUT",
+		),
+		`Error invoking remote method 'check-for-updates': ${sentence}`,
+	);
+	/*
+	 * The other half of the same mistake, asserted directly: an offset error is
+	 * only visible as a FRAGMENT of the code left behind, so the cases above also
+	 * say what must not appear.
+	 */
+	for (const message of [
+		"Error: net::ERR_TIMED_OUT",
+		"Error: Error: net::ERR_NETWORK_CHANGED",
+	]) {
+		const shown = sentenceFor(f, message);
+		assert.equal(shown.includes("MED_OUT"), false, shown);
+		assert.equal(shown.includes("ETWORK_CHANGED"), false, shown);
+		assert.equal(shown.includes("Error:"), false, shown);
+	}
+});
+
+test("dedup still keys off what the caller passed", () => {
+	const f = fixture(undefined);
+
+	const first = f.api.showErrorToast("net::ERR_TIMED_OUT");
+	assert.ok(first);
+	// The same failure inside the cooldown is suppressed, and it is suppressed
+	// under the caller's own string rather than under the sentence.
+	assert.equal(f.api.showErrorToast("net::ERR_TIMED_OUT"), null);
+	// A different code is a different failure and still gets its toast.
+	assert.equal(
+		sentenceFor(f, "net::ERR_CONNECTION_RESET"),
+		"Could not reach the server. Check that it is running, then try again.",
+	);
+});

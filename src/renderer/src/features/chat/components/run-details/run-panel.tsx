@@ -46,6 +46,7 @@ import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
 import type { RunPanelSection } from "@shared/store/ui-preferences-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { updateErrorMessage } from "@shared/utils/update-error-copy";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, PanelRightClose } from "lucide-react";
 import type { RefObject } from "react";
@@ -205,7 +206,15 @@ export const RunPanel = ({
 		let reason: string | null = null;
 		const removeBackendUpdateErrorListener =
 			window.api.updater.onBackendUpdateError((report) => {
-				if (report.phase === "update") reason = report.message;
+				/*
+				 * The machine's own words on this channel are errno forms (the
+				 * operator's log holds `getaddrinfo ENOTFOUND pypi.org`), so the
+				 * sentence comes from the shared update copy rather than from the
+				 * transport.
+				 */
+				if (report.phase === "update") {
+					reason = updateErrorMessage(report.message);
+				}
 			});
 		try {
 			const started = await window.api.updater.updateBackend();
