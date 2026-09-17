@@ -21,6 +21,13 @@ plan's gate), `§ 2.4`/`§ 4.4` (the column floor's real width and the body's ca
 `§ 4.1`/`§ 4.2` (the measured class overrides and the floor's label), `§ 5.1`
 (the count's visible affordance mark) and `§ 9.1` (what was actually captured).
 
+**Status: the clear/stop change, added at the end.** `§ 12` and `§ 13` are the
+dismiss affordance and the sixth chip (the session's loop), added after the row
+shipped; `§ 3.1`, `§ 7`, `§ 8`, `§ 9.1` and `§ 10` carry the amendments they owe
+those two sections, and `§ 14` is the list of what they do not settle. Nothing
+above them was re-argued: where an earlier decision is touched, the section says
+which one and why.
+
 ---
 
 ## 0. The ask, and the reference the operator named
@@ -237,6 +244,7 @@ and `box.y` are four of its keys.
 | present | present | goal chip first, count second | 24px + gap |
 | present, expanded | either | the chips' line, plus the goal's body beneath | up to 160px |
 | any of the above | any | **plus up to three COUNT chips**, after the plan chip: wakes, then subagents and jobs (`docs/composer-wakes.md`, `docs/composer-activity-chips.md`) | see below |
+| any of the above | any | **plus the LOOP chip** when `frontend.loop.status !== "idle"`, and a trailing DISMISS control on the goal and on the loop (§ 12-13) | see below |
 
 The activity chips are the row's second change, and they are the reason the last
 row of that table can no longer be described as "24px + gap" in the general case:
@@ -284,6 +292,14 @@ empty phase is content for it (`run-details-panel.tsx`'s note at that gate).
 At or below 240px of column every one of those rows is the stacked arrangement
 (§ 2.4): 54px collapsed instead of 32px, and the count on the line below the
 goal rather than at the row's right edge.
+
+**The loop chip and the two dismiss controls move the WIDEST state to two lines,
+and the measurement is the frame's own.** At 900px the six chips with both
+dismiss boxes are `58px` tall rather than 32 — the goal item at 868px with its
+89px dismiss plus the loop item plus the count group cannot share one 868px
+content box — while every narrower band still reads `overflowX 0`
+(`docs/evidence/composer-status-clear/`). The row's height has been allowed to
+change since § 3.1 said so; what this change adds is one more reason it does.
 
 - **"Renders nothing" is the state that most needs pinning**, because it is the
   one an editor breaks by accident: an empty row is still 32px of nothing above
@@ -840,6 +856,19 @@ attention dot are all still right and are not part of this change.
 | Pressed / active | none; the **chevron swap** is the state signal (`branding.md` § "Disclosure": *"The chevron swaps, it never rotates"*) | none |
 | Body | § 4.4 | — |
 
+And the three controls this change adds (`§ 12-13`), on the same rules:
+
+| | Goal dismiss | Loop dismiss | Loop chip |
+|---|---|---|---|
+| Element | `button type="button"` | `button type="button"` | a `<span>`, **not** a control |
+| Role | none; **not** a toggle, **not** a tab | none | none — a readout |
+| `aria-expanded` / `aria-controls` | no: it acts on a value, it does not reveal a region | no | no |
+| `aria-pressed` | no | no | no |
+| `aria-label` + tooltip | the one derived string: `Clear goal — <the goal, in full>` | `Stop loop`/`Clear loop — <the clause>` | none: a readout's sentence is its visible text |
+| Keyboard | in the tab order **at every width**, revealed by `group-focus-within` on the chip, and still revealed while it holds focus | same | not focusable; there is nothing to operate |
+| Focus ring | the base layer's `:focus-visible` outline at 1px offset, as the chips' | same | — |
+| Hover | a colour step (`hover:bg-accent-wash hover:text-ink`), and the reveal itself is opacity only | same | none: no hover ground, `cursor-default` |
+
 - **Not a `tablist`.** The operator's word for the surface is *tabs*, and this
   document keeps the word for the surface while refusing the role: one of the two
   controls opens a different region rather than revealing a panel in place, there
@@ -884,6 +913,9 @@ merges it with the list panel beside it and no palette assertion can see it).
 | Chevron | `text-ink-disabled` | The primitive's own role for it (`disclosure.tsx:151`, `:165`); the only ink exempt from a floor (`branding.md` § 2), and it is the idiom's existing chevron weight. Its **shape** carries the state, not its ink. |
 | Goal body | `text-ink-muted` | The brief block's ink for authored prose (`run-child-reader.tsx:220`). |
 | Count | inherits the chip's ink | § 5.4: a coloured count would be a second colour vocabulary for a fact the plan's own section states without colour at all (`docs/run-sidebar.md` § 2.3: the dock band "spends colour on failure and on nothing else", and a to-do waiting on an answer has not failed). |
+| Dismiss mark and word (§ 12) | `text-ink-muted`, the readings' own ink for a control | It is a control, so it takes the control ink rather than `ink-dim`; the role is what makes it "subtly treated", and the hover step to `text-ink` is the same one every other chip on the row takes. |
+| Loop chip, and its mark (§ 13) | `text-ink-dim`, the readings' own ink for an INERT READOUT | It is the row's one readout, not a control, and § 8's distinction is exactly this pair: a control is `ink-muted`, a readout is `ink-dim`. Mark and text share the one role, the same rule the count chips follow. |
+| Nothing destructive | no `danger` anywhere in these three controls | Clearing a goal and stopping a loop remove the session's own standing state, not the user's data, and `danger` on a hover-revealed control that appears under the pointer would be the loudest thing on the composer. The app's danger ink stays where § 8 puts it: the attachment and canvas-tab removals, which delete authored content. |
 
 **`CONTROLS` in `scripts/contrast-contract.mjs`: no new row, and here is the
 condition that would change it.** The rule is a component *"with its own fill and
@@ -897,6 +929,14 @@ every palette (e.g. `local-operator.ts:67`, `:186`), not an alpha composite. So:
 `bg-elevated`, `border-control` — a `CONTROLS` row becomes mandatory in the same
 commit**, because green output about a component nobody listed is not evidence
 about that component (`branding.md` § 3).
+
+**The three controls § 12-13 add take no `CONTROLS` row, on that same condition
+and not by convenience.** Each is the readings' own box, which declares no rest
+fill and no border; their only fill is the hover ground whose one pairing (ink on
+`accentWash`) the `reading button, hovered` row already asserts; and the loop chip
+is the inert form of the same box, which by definition declares neither. The
+condition above therefore stands unmodified: **the day one of them acquires a rest
+fill or a border, the row is owed in the same commit.**
 
 No `STRUCTURAL_CALL_SITES` entry either: that list pins the *role in the source*
 of a boundary (`contrast-contract.mjs:557`), and this component has no
@@ -956,6 +996,38 @@ must have its `frames` and `surfaces` **re-derived from disk**, because
 `surfaces`, `themes`, `source`, `why` and `capturedAt`, and fails when the counts
 disagree with what is on disk.
 
+**The clear/stop change's frames are a SECOND set, and the swept one above is
+declared stale for it** (`docs/evidence/composer-status-clear/`, whose README
+states every command, state and limit). Two reasons, both recorded rather than
+implied:
+
+- **The interaction cannot be a story.** The subject is a press whose result is the
+  WIRE moving — the goal clearing and the row going, the loop settling — so that set
+  carries a harness (`…/harness/`) that mounts the shipped row behind an injected
+  `window.api.desktop` bridge, records the `sessions.command` request each press
+  dispatches, applies that command's effect to the frontend state the row reads, and
+  prints both the wire and the command log into the frame. One of its three frames is
+  a REFUSAL (a 503 from the bridge), because the failure path is the one outcome the
+  row speaks and a story cannot reach it.
+- **The six swept directories under `chat-composer-status-row/` are pictures of the
+  row before this change**, and the row has moved under them: the goal chip's snippet
+  now yields to a held 89px box, and a sixth chip can appear between the goal and the
+  plan. They are left in place — they are where § 2, § 3.1 and § 5.4's numbers were
+  read — and the re-capture is OWED, not quietly skipped: the rig launches a private
+  headless Chromium and this machine's operator policy forbids a screenshot produced
+  by a scripted browser engine, the same policy `manifest.json`'s
+  `chat-run-panel/mcp-grant-confirm` entry records for its own owed pass. The
+  replacement frames come from the operator's own browser, so they are two brand
+  palettes rather than twelve — `branding.md` § 9.9's minimum, and the light one is
+  where a contrast defect would show.
+
+The states it carries, per the claims above: the goal tab at rest and revealed, the
+loop tab at rest and revealed (the loop's own `Stop` and `Clear` states, at 900px and
+at the 240px band where its progress and the dismiss's word both yield), the harness
+at rest, the three performed presses with the wire each moved, and the refusal. Its
+`README.md` names what it is NOT: not a backend proof (the backend half is
+`local-operator`'s), and not a theme sweep.
+
 ### 9.2 Frames: the icon
 
 The icon change moves the header in every frame that has one, so it is a
@@ -992,9 +1064,22 @@ canonical store… The rendered geometry itself is measured in the live frames"*
 - **Source, for the row's layout**: the one-line-above-240 / column-at-or-below
   240 classes; the goal item's `min-w-0`; the count chip's `shrink-0`; the
   `-ml-1.5` on the first chip.
+- **Markup and drives, for the three controls § 12-13 add**: the dismiss renders
+  with one derived name and its word as text; both reveal classes cut across every
+  media state, on both controls; the loop chip is a `<span>` whose item holds exactly
+  one button; the chip's clause and its affordance are asserted as a truth table over
+  the exported derivations (`running`/`judging`/each settled word), including the
+  BOUNDARY (an unreadable status is not claimed to be moving); and a DRIVEN press on
+  each control, in jsdom behind the real bridge seam (`window.api.desktop.request`,
+  stubbed), asserts the request it dispatched — `sessions.command`, the session it is
+  addressed to, the command and the flag — and that the goal's press leaves the
+  disclosure's `aria-expanded` untouched while the disclosure's own press dispatches
+  nothing. A refused call is driven too, and asserted to leave the row as it was.
 - **What no test covers**: the row's height, the alignment and the truncation are
-  geometry, and the frames are their instrument (§ 9.1). A green suite is not
-  visual evidence — the operator's own rule.
+  geometry, and the frames are their instrument (§ 9.1). The REVEAL is browser state
+  that jsdom evaluates in neither direction, so the class strings are pinned in the
+  suite and the pixels are the frames'. A green suite is not visual evidence — the
+  operator's own rule.
 
 ### 9.4 The gates that must stay green
 
@@ -1021,6 +1106,11 @@ the version").
 | I | **Per-app persistence of the expanded state** | Rejected — § 3.3. It would restore an open body on every launch, which is the cost the operator ruled out. |
 | J | **Truncating the count** (`4 to-d…`) | Rejected — § 5.4, and `run-detail-model.ts:1692-1701`'s clause rule, which exists because a count cut mid-segment "states a number and hides what it counts". |
 | K | **`PanelRight` as the trigger icon** | Rejected — § 6.1. It is one small arrow away from the pane's own close glyph, on screen at the same time. |
+| L | **The dismiss's word in the tooltip only** (an `X`-only control at every width) | Rejected for now — the operator asked for the word, and the word is what makes the control legible before the pointer arrives. It is the smaller box and the smaller affordance, and § 14.2 keeps it named as the alternative if the 89px held box is judged too expensive. |
+| M | **A reveal that takes up space** (`hidden`, `w-0`, or a `max-width` transition) | Rejected — § 12.2. It re-truncates the snippet under the pointer, which is motion on hover, and § 7 permits a colour step and nothing else. |
+| N | **Rebuilding the disclosure so the body can be a sibling of the chips' line**, which is what would let the dismiss sit immediately beside the words | Rejected FOR NOW, and named as the remedy rather than silently preferred — § 12.3. `branding.md` permits the rebuild where the markup cannot otherwise resolve (a button nested in a button); here it resolves, and the placement is the only thing at stake, so the trade is a designer's call with the frames in front of them. |
+| O | **The loop chip as a BUTTON** opening `/loop`'s picker | Rejected — § 13.2. The row's "open something" destinations are the pane's sections, the picker is opened by the composer's own slash path rather than from this row, and a chip whose only real action is the dismiss beside it would be a control that mostly does nothing. |
+| P | **A spinning loop mark** | Rejected — § 13.3. The row's one piece of motion is the roster's state mark, whose vocabulary is nine states of delegated work; the loop's state is a word in its clause, and a second spin would say "something is moving" twice. |
 
 ---
 
@@ -1077,3 +1167,274 @@ Recorded rather than hidden, per `branding.md` § 8.
    screenshot of its preview would settle the two things this document inferred
    rather than saw: whether it is one line or two, and whether the count is
    stated or the current step is.
+
+---
+
+## 12. The dismiss affordance: clearing the goal, and stopping or clearing a loop
+
+### 12.0 The ask, verbatim
+
+> on the goal tab there should be an X that appears on hover, with subtly treated
+> text reading "Clear goal", and activating it clears the goal. The same mechanism
+> must exist for the loop: a way to stop/clear the loop.
+
+### 12.1 The shape
+
+One control, on the item it belongs to, at that item's trailing edge: an `X` glyph
+and one word, and behind it one owner command.
+
+| | Value | Why |
+|---|---|---|
+| Box | the readings' own control (`CHIP_CONTROL`, `READING_BUTTON` from `session-status-strip.tsx`) | It is the same species as the chips it sits among: no border and no fill at rest, `h-6`, `rounded-sm`, `px-1.5`, `text-meta`, a hover colour step, the base layer's focus ring at 1px offset. A second box shape on one line is the drift § 5.1's export exists to prevent. |
+| Mark | `X`, `size-3.5`, `aria-hidden` | The app's one "remove this" glyph (`attachments-preview.tsx`, `reply-preview.tsx`, `canvas-tabs.tsx`, `directory-indicator.tsx`). `size-3.5` is the chevron's own size, so the row's marks stay one size. |
+| Word | `Clear goal`, `Stop loop`, `Clear loop` — `text-meta`, one `text-ink-muted` ink for mark and word alike | "Subtly treated" is the operator's phrase and the role states it: `ink-muted` is the readings' ink for a CONTROL, one step quieter than the goal's own hover ink and two steps quieter than the composer. The word is the control's `textContent`, so the thing a person reads and the head of the name assistive tech announces are the same string (WCAG 2.5.3). |
+| Reach | the control's own box, held at rest (`opacity-0` with `pointer-events-none`), revealed by `group-hover` and `group-focus-within` | § 12.2. |
+| Press | `sessions.command` through the pickers' own channel — `goal --clear`, `loop --stop`, `loop --clear` | § 12.4. |
+| Failure | the app's toast channel, in the backend's own words | § 12.4. |
+
+### 12.2 Revealed on hover AND on keyboard focus, with the box held
+
+```ts
+const DISMISS_REVEAL = cn(
+  "pointer-events-none opacity-0",
+  "group-hover:pointer-events-auto group-hover:opacity-100",
+  "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+);
+```
+
+Three properties, each a decision rather than a habit:
+
+- **Held, not hidden.** The control keeps its BOX at rest. `hidden` (or `w-0`) would
+  make the chip's snippet re-truncate the moment the affordance appeared, i.e. the
+  text would move under the pointer on every hover — and § 7's rule is that hover
+  is a colour step and nothing else. The repo already makes this call twice, at a
+  20px scale: `canvas-tabs.tsx` and `directory-indicator.tsx` both hold a trailing
+  dismiss's box and reveal it the same way. This is that pattern, not a new one.
+  What it COSTS is stated in § 12.6 and printed into every frame.
+- **`group-focus-within`, not `group-hover` alone.** Not optional: a hover-only
+  control is unusable by keyboard (WCAG 2.1.1), and taking focus on the chip is what
+  reveals it. The control is consequently in the tab order at every width, including
+  the widths where its word is dropped (§ 12.5).
+- **No transition.** The two existing hover-revealed dismisses reveal instantly, and
+  the row's chips transition `color` and `background-color` only. A fade here would
+  be new motion on this row for nothing (`branding.md` § 5 is why the two are
+  instant; the reduced-motion cap is for motion that exists, and this adds none).
+
+**One consequence of `pointer-events-none` at rest, recorded rather than
+discovered.** A touch user's first tap sets `:hover` and is not delivered to a
+control that is not yet `pointer-events-auto`, so the second tap is the one that
+presses. That is inherent to a hover-revealed affordance and it is the existing
+pattern's behaviour too; the app is a desktop app with a pointer, and the keyboard
+route needs no hover at all.
+
+### 12.3 The structure: a sibling of the trigger, never a child of it
+
+The control is rendered as a SIBLING of the disclosure's trigger, inside a wrapper
+that is the row's flex item:
+
+```tsx
+<div data-status-goal="" className={cn("group flex min-w-[140px] flex-1 items-center", COLUMN_GOAL)}>
+  <Disclosure className={cn("min-w-0 flex-1")} … />          {/* the chip */}
+  <button data-status-goal-dismiss="" … />                    {/* the dismiss */}
+</div>
+```
+
+Two reasons are structural:
+
+1. **A `<button>` inside a `<button>` is invalid markup** and unreachable in some
+   engines. The disclosure's trigger is one.
+2. **The trigger's own press IS the goal's disclosure.** A control that also cleared
+   the goal would be one control with two meanings — the defect § 5.2 refuses the
+   count chip a pressed ground for. Clicking here therefore cannot toggle the
+   disclosure, and there is no `stopPropagation` in this path because there is no
+   ancestor press to stop: the structure is the guarantee, and
+   `scripts/composer-tabs.test.mjs` drives the press to assert that the trigger's
+   `aria-expanded` has not moved while the command has been dispatched.
+
+The wrapper is also what the reveal needs: `group-hover`/`group-focus-within` need a
+common ancestor, and the primitive owns its own root (it renders no children outside
+its trigger). It is the flex ITEM as well — the item the expanded body's width comes
+from (§ 4.4) and the item the row's wrap regime counts — so the chip and its dismiss
+can never be torn onto different lines by the wrap.
+
+**Why the control can be far from the words, and why that is accepted here.** The
+item is `flex-1` (the body's width depends on it) and the trigger inside it is
+`w-fit` (the hover ground must stay chip-sized, § 4.1), so the item's free space
+lives between the chip and the item's trailing edge — which is where the dismiss
+sits. On an ordinary row that is immediately left of the next chip; on a row where
+the goal is the ONLY item, it is the row's right edge, ~700px from the words
+(measured: item 868px, chip 257px, in
+`docs/evidence/composer-status-clear/interaction-rest/`). The alternative that puts
+the control immediately beside the words needs the BODY to be a sibling of the
+chips' line as well — the primitive's markup cannot express that, so it is a rebuilt
+disclosure, which is § 10's option D: named here as the remedy rather than done,
+because it is a bigger change than this one and it trades a placement against the
+body's measured width.
+
+### 12.4 The command, and the one outcome that speaks
+
+Both controls run one owner command through the pickers' own channel —
+`useSessionCommand(frontend.session_id).run(name, flag)` (`use-picker-backend.ts`),
+the same hook the destination pickers submit with, so the request shape, the request
+id and the receipt are the app's own rather than a second way to reach a session
+command. The command NAMES (`goal`, `loop`) and the FLAGS (`--clear`, `--stop`) are
+literals in the row, deliberately not derived from the control's visible word: the
+command surface is the backend's API and the word is copy, so a copy change must not
+be able to move the command it runs.
+
+- **Success needs no announcement.** The wire is the feedback: the goal clears and
+  the whole row goes (`showGoal` is false), or the loop settles and the chip's own
+  word changes. A live region for that is refused by § 7, and a success toast would
+  be the row talking over the agent's own output.
+- **A refusal has no wire to speak for it**, so it goes to the app's toast channel
+  (`showErrorToast`, the same channel the composer's own dictation and attachment
+  failures use) with the hook's own `result.text` — the owner's sentence when it gave
+  one, the transport's when the call never arrived. One source, so the toast cannot
+  paraphrase the backend it reports. The frame:
+  `docs/evidence/composer-status-clear/interaction-refused/`.
+
+### 12.5 The word yields at the stacked band
+
+```ts
+const NARROW_HIDDEN = "@max-[240px]/chatcol:hidden";
+```
+
+At and below 240px the row is a COLUMN (`COLUMN_GOAL`), the goal item takes the
+row's whole 156px content box at the app's floor, and `Clear goal` beside the chip's
+own ~75px of fixed ink leaves the snippet nothing: measured, the dismiss is 89px at
+a 900px column and **26px** at 172px — the `X` alone, which is the affordance's
+irreducible part. The accessible name keeps the word at every width, so the control
+is never described by less than it says at width.
+
+The same constant drops the loop chip's PROGRESS (§ 13.3), which is the other piece
+of copy a 156px column cannot carry. One rule, two users: what yields at the band is
+the part that has a second home, and what stays is the part that identifies the
+control.
+
+### 12.6 What the held box costs, in numbers
+
+Printed into the frames by the story set's own `RowFacts`
+(`docs/evidence/composer-status-clear/goal-tab-rest/`):
+
+| Column | Row | `overflowX` | chips | dismisses | goal chip | snippet |
+|---|---|---|---|---|---|---|
+| 900px, goal + plan | 32px | 0 | 2 | 1 (89px) | 257px | 188/188 (fits) |
+| 900px, a 300-character goal + plan | 32px | 0 | 2 | 1 (89px) | 659px | 589/1956 (truncates) |
+| 172px, the app's floor | 54px | 0 | 2 | 1 (26px) | 130px | 61/1956 |
+
+The cost is the 89px column: at a 900px column a goal chip's snippet now starts
+truncating 89px earlier than it did. That is the price of a hover that moves
+nothing, it is bounded (it does not grow with the row), and the alternative —
+revealing by taking up space — is the re-truncation § 12.2 refuses.
+
+---
+
+## 13. The loop chip
+
+### 13.1 The gate, and the field
+
+`frontend.loop` is the only field on the wire whose value can be `running`, and the
+chip renders whenever its STATUS is not `idle`. Absent and `idle` are the same fact
+here and take the same branch, which is what keeps `Loop: idle` off every composer
+in the app — the count gate's argument (`docs/composer-activity-chips.md` § 5) one
+chip over. The gate is the status rather than the loop's own `goal`, because a count
+loop works the session's STANDING goal (which the goal chip already states) and
+gating on that field would hide the one chip that can stop the loop.
+
+### 13.2 It is the row's one READOUT
+
+Every other chip on this row is a control; this one is not, and that is a decision
+rather than an omission. The loop's standing state is a fact, the only thing this
+row can DO with a loop is stop or clear it, and the alternative — a chip that opens
+something — has no destination this row can name: the row's "open something"
+destinations are the pane's sections, and the loop's detail lives in `/loop`'s own
+picker, which the composer does not open from here.
+
+So it takes the readings' INERT box (`READING_LABEL`, exported beside
+`READING_BUTTON` for exactly this) — `text-ink-dim`, `cursor-default`, no hover
+ground. The difference between a readout and a control on this row is then legible
+without colour: a hover ground and a pointer mean a press does something.
+
+### 13.3 The mark, and the clause
+
+- **The mark is `Repeat`** (`size-3.5`), the one glyph on this row whose meaning is
+  fixed elsewhere and fixed to this fact. The app spends `RotateCw` on retry and
+  reload (browser chrome, the settings reconnect, the error boundary) and `Info` on
+  "this opens the run pane", so neither could mean "loop" without meaning two things.
+  **It does not move**: the row's one piece of motion is the roster's state mark on
+  the activity chips (`composer-activity-chips.md` § 5), a spin here would be a
+  second motion vocabulary for the same question, and the loop's state is already
+  stated in words.
+- **The clause is the wire's own status word**, plus the progress where the wire
+  carries one: `running, 2 of 5 turns` (a count loop's target), `running, 3 turns`
+  (a goal loop's count), `judging` (no figure: the judge is deciding the turn that
+  just ended, so `completed` has already moved and a number beside that word cannot
+  be dated), and the settled states print the word alone (`achieved`, `completed`,
+  `cancelled`, `interrupted`, `failed`). The word is printed AS THE WIRE SPELLS IT
+  because that is the app's one vocabulary for a loop — the `/loop` picker's own
+  status row prints the same token — and a prettier word here would be a second
+  vocabulary for one fact, which is the defect `wakeClause` refuses one surface over.
+- **The progress YIELDS at the stacked band** (`NARROW_HIDDEN`, § 12.5), and the
+  measurement that made it a rule: with the whole clause at the 172px floor the row
+  read `overflowX 44px` — a chip that cannot wrap is a chip that paints past its
+  column. With the progress dropped, `overflowX 0` at every captured width.
+- **What is deliberately NOT here**: the wire's `reason` (why a loop settled) and the
+  loop's own `goal`. Both are prose-length, both are in the `/loop` picker's status
+  panel, and a 24px chip cannot carry either. Recorded as an omission rather than
+  deferred work.
+
+### 13.4 The affordance: Stop while it moves, Clear once it settles
+
+```ts
+loopIsRunning(status)  // "running" | "judging" — the picker's own predicate
+loopAffordance(loop)   // → { text: "Stop loop", flag: "--stop" } | { text: "Clear loop", flag: "--clear" }
+```
+
+One function for the WORD and the FLAG together, so a second derivation cannot print
+`Stop loop` and run `--clear`. The mapping is the ask read back: a loop that is
+moving is stopped; a loop that has settled is cleared.
+
+**An unreadable status is read as SETTLED**, and the boundary is stated rather than
+assumed: the running set is the wire's own two words, and offering `Stop` on a status
+this build cannot read would offer a control whose claim the row cannot check —
+`Clear` is the command that is safe on a state the row does not recognise.
+
+### 13.5 Where it sits: between the goal and the plan
+
+Order: **goal, loop, plan, wakes, subagents, jobs**. The row's rule is standing
+facts before live work (`docs/composer-wakes.md` § 4); the loop is the session's
+MODE rather than a count of rows, and it is paired with the goal for the reason the
+pair exists — a count loop consumes the standing goal, a goal loop carries one of
+its own — and because the two are the row's only controls that TAKE a value away.
+
+The two rejected placements, recorded rather than deleted:
+
+| | Placement | Verdict |
+|---|---|---|
+| A | **Appended after the two activity chips** | Rejected — the wake chip's refused alternative over again: it reads live work before the thing driving it (`2 subagents running 1 loop running`). |
+| B | **After the wakes, immediately before the activity chips** | Rejected: it puts the row's one `running` field behind two counts that describe a plan, i.e. it ranks the plan above the mode that is executing it. |
+
+### 13.6 The first-chip rule, one item further out
+
+The rule is ordinal (§ the `FIRST_CHIP` note), and the loop chip is a second ITEM,
+so the chain gained a term: `loopFirst = !showGoal`, `groupIsFirst = !showGoal &&
+!showLoop`, and the three count chips' own ordinals hang off that. Six chips, five
+items, and the group's leading chip is still decided inside the group.
+
+---
+
+## 14. What this change does NOT settle
+
+1. **The dismiss's distance from the words on a sparse row** (§ 12.3): measured at
+   item 868px against chip 257px, and the remedy is § 10's option D rather than a
+   tweak. The `goal-tab-rest/` frames show the arrangement, including the band where
+   the goal is the row's only item.
+2. **The 89px held box** (§ 12.6) is a real cost on a row whose width budget § 5.4
+   already argues about. It does not grow with the row and it is what buys a hover
+   that moves nothing; a designer may prefer the control's word in the tooltip only,
+   which is a smaller box and a smaller affordance.
+3. **The loop's `reason` is not surfaced anywhere on the composer** (§ 13.3). A loop
+   that failed says `Loop: failed` on the row and why it failed in the pane's own
+   record; if the operator wants the reason above the composer, that is a copy change
+   with a width question of its own.
+4. **Touch's second tap** (§ 12.2) is inherited from the pattern and not solved here.
