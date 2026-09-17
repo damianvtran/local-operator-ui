@@ -1,8 +1,8 @@
+import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 import {
 	desktopResult,
 	isDeadlineExceeded,
 } from "@shared/api/local-operator/desktop-api";
-import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
 import { keepPreviousData } from "@tanstack/react-query";
 import type {

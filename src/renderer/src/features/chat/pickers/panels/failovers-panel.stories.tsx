@@ -13,9 +13,12 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import "../../../../styles/index.css";
+import {
+	desktopRequestDeadlineDetail,
+	desktopRequestDeadlineMs,
+} from "../../../../../../shared/desktop-contract";
 import { FailoversPanel } from "./failovers-panel";
 import type { FailoversData } from "./failovers-panel";
-import { desktopRequestDeadlineDetail, desktopRequestDeadlineMs } from "../../../../../../shared/desktop-contract";
 
 const noop = () => {};
 
