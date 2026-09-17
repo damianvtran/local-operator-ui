@@ -3,22 +3,25 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
-	readdirSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import seedAfterPack from "./after-pack.mjs";
+import {
+	LEGACY_RESOURCE_NAMES,
+	seedResourceDir,
+} from "./bundled-python-layout.mjs";
 import afterPack, {
 	PYTHON_RESOURCE_DIRS,
 	archName,
 	pythonResourcesDir,
 	pruneUnshippedPythonResources,
 } from "./prune-python-resource.mjs";
-import seedAfterPack from "./after-pack.mjs";
-import { LEGACY_RESOURCE_NAMES, seedResourceDir } from "./bundled-python-layout.mjs";
 
 /*
  * Coverage for the `afterPack` step that keeps one bundled interpreter per
@@ -60,14 +63,26 @@ after(() => {
 });
 
 /** A packaged macOS app whose two interpreter trees each hold one real file. */
-function makePackagedApp(dir, { trees = Object.values(PYTHON_RESOURCE_DIRS) } = {}) {
+function makePackagedApp(
+	dir,
+	{ trees = Object.values(PYTHON_RESOURCE_DIRS) } = {},
+) {
 	const appOutDir = join(dir, "mac-arm64");
-	const resources = join(appOutDir, "Local Operator.app", "Contents", "Resources");
+	const resources = join(
+		appOutDir,
+		"Local Operator.app",
+		"Contents",
+		"Resources",
+	);
 	mkdirSync(resources, { recursive: true });
 	for (const name of trees) {
 		mkdirSync(join(resources, name, "lib", "python3.12"), { recursive: true });
 		mkdirSync(join(resources, name, "bin"), { recursive: true });
-		writeFileSync(join(resources, name, "bin", "python3"), "#!/bin/sh\n", "utf8");
+		writeFileSync(
+			join(resources, name, "bin", "python3"),
+			"#!/bin/sh\n",
+			"utf8",
+		);
 		writeFileSync(
 			join(resources, name, "lib", "python3.12", "os.py"),
 			`# ${name}\n`,
@@ -93,9 +108,12 @@ test("an arm64 build ships only the aarch64 interpreter", () => {
 	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 	// The tree that stays is untouched, not rebuilt: the app's own probe reads
 	// this directory at runtime, and pruning must not disturb what it finds.
-	assert.deepEqual(readdirSync(join(resources, "python-runtime-seed/arm64", "lib", "python3.12")), [
-		"os.py",
-	]);
+	assert.deepEqual(
+		readdirSync(
+			join(resources, "python-runtime-seed/arm64", "lib", "python3.12"),
+		),
+		["os.py"],
+	);
 });
 
 test("an x64 build ships only the x86_64 interpreter", () => {
@@ -109,7 +127,9 @@ test("an x64 build ships only the x86_64 interpreter", () => {
 		log: () => {},
 	});
 
-	assert.deepEqual(result.pruned, [join(resources, "python-runtime-seed/arm64")]);
+	assert.deepEqual(result.pruned, [
+		join(resources, "python-runtime-seed/arm64"),
+	]);
 	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), false);
 	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
 });
@@ -279,7 +299,8 @@ test("the builder config stages the mac interpreters into the seed namespace", (
 	// back in through the top-level block instead of the `mac` one.
 	const destinations = [];
 	for (const scope of [config, config.mac]) {
-		for (const entry of scope?.extraResources ?? []) destinations.push(entry.to);
+		for (const entry of scope?.extraResources ?? [])
+			destinations.push(entry.to);
 	}
 	assert.deepEqual(
 		destinations.filter((to) => LEGACY_RESOURCE_NAMES.includes(to)),

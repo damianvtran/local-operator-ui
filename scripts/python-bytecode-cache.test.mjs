@@ -483,7 +483,21 @@ async function loadMainProcess() {
 				export class Notification { static isSupported() { return false; } show() {} }
 				export const Menu = { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) };
 				export const session = { defaultSession: { webRequest: { onHeadersReceived: () => {} } } };
-				globalThis.__loElectronFixture = { app, ipcMain, BrowserWindow, dialog, shell, nativeTheme, screen, systemPreferences, desktopCapturer, safeStorage, Notification, Menu, session };
+				/*
+				 * The update service's pre-flight gate and its wake-armed check read
+				 * these two, and a fixture without them fails the BUNDLE rather than a
+				 * case ("No matching export"). net.isOnline answers reachable unless a
+				 * case says otherwise through the same global the rest of the fixture
+				 * uses; powerMonitor records its listener so nothing is dropped.
+				 */
+				export const net = { isOnline: () => globalThis.__loTestNetIsOnline ?? true };
+				export const powerMonitor = {
+					on: (event, handler) => {
+						(globalThis.__loPowerMonitorHandlers ??= {})[event] = handler;
+						return powerMonitor;
+					},
+				};
+				globalThis.__loElectronFixture = { app, ipcMain, BrowserWindow, dialog, shell, nativeTheme, screen, systemPreferences, desktopCapturer, safeStorage, Notification, Menu, session, net, powerMonitor };
 			`;
 			// The child-process seam. Only `spawn` is replaced: `which
 			// local-operator` and the shell-rc sourcing run for real (or, where the

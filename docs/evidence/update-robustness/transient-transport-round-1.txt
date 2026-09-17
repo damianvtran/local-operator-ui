@@ -1,0 +1,134 @@
+Every gate run for this change, with its real output.
+
+WHAT WAS RUN, AND WHERE. Worktree
+~/local-operator-ui-worktrees/network-warnings on branch
+fix/no-spurious-network-warnings, cut from origin/main (647396910). The gates
+below were run at the two commits before the evidence commit unless stated.
+
+--------------------------------------------------------------------------------
+1. pnpm lint            (biome check src bin scripts/linux-sandbox.test.mjs)
+
+  Checked 642 files in 175ms. No fixes applied.
+  Found 65 warnings.
+
+  65 warnings is main's own count on this tree, not a new one: the baseline was
+  measured by stashing this branch and re-running the same command (0 errors, 65
+  warnings), and the two warnings this change introduced were hoisted away rather
+  than left as noise (the clause-boundary regexes in
+  src/shared/transport-failure.ts).
+
+--------------------------------------------------------------------------------
+2. pnpm lint:scripts    (the gate for scripts/, which pnpm lint leaves out)
+
+  scripts/toast-lifetime.test.mjs
+  scripts/update-affirmation.test.mjs
+  scripts/update-robustness.test.mjs
+  check-scripts-lint: 5 changed file(s) under scripts/ are lint-clean against
+  origin/main (6473969).
+
+  First run FAILED, and the failure is worth recording because it is the gate
+  doing its job: `scripts/update-robustness.test.mjs` carried one error,
+  lint/style/noUnusedTemplateLiteral at line 6397 (a template literal with no
+  interpolation). Fixed, re-run, clean.
+
+--------------------------------------------------------------------------------
+3. pnpm check-types     (tsc --noEmit over tsconfig.node.json and tsconfig.app.json)
+
+  clean, both projects, at every commit in this series.
+
+--------------------------------------------------------------------------------
+4. pnpm build           (electron-vite build, real production build)
+
+  ✓ built in 10.87s
+  > local-operator-ui@0.25.11 postbuild /Users/damian/local-operator-ui-worktrees/network-warnings
+  > chmod +x ./bin/local-operator-ui.js
+
+  Two attempts before that one, both named here because they are a property of a
+  fresh worktree rather than of this change: without a `.env` the build fails at
+  config load with `Error: VITE_GOOGLE_CLIENT_ID is not set`
+  (scripts/vite-plugins/replace-backend-config.ts:18), and this worktree had none.
+  `.env` is gitignored; it was copied from the checkout the other worktrees use,
+  with no value printed.
+
+--------------------------------------------------------------------------------
+5. node --test scripts/update-robustness.test.mjs
+
+  ℹ tests 92
+  ℹ pass 91
+  ℹ fail 1
+  ✖ the operator's own install is classified rather than told to use pip
+
+  THAT FAILURE IS NOT THIS CHANGE, and it is not a flake either: the same case
+  fails identically with this branch's work stashed (`git stash push -u`, run,
+  `git stash pop`), because it reads the operator's OWN install on this machine
+  and expects the uv-tool marker `INSTALLER = uv` while the installed
+  local-operator currently records `pip` (`'pip' !== 'uv'`, update-robustness.test.mjs:2935).
+  It is environment-dependent by construction and this machine's environment
+  answers the other way today.
+
+--------------------------------------------------------------------------------
+6. node scripts/run-desktop-tests.mjs (the repo's own runner, capped concurrency)
+
+  First pass, over every file this change touches:
+  desktop tests: 9 files, concurrency 7 (cpu share 0.5 of 14 cores; 8.5 GB available)
+  ℹ tests 336
+  ℹ pass 335
+  ℹ fail 1
+  ✖ the operator's own install is classified rather than told to use pip   (the above)
+
+  Final pass, after the story and test edits:
+  desktop tests: 4 files, concurrency 7 (cpu share 0.5 of 14 cores; 10.4 GB available)
+  ℹ tests 179
+  ℹ pass 178
+  ℹ fail 1
+  ✖ the operator's own install is classified rather than told to use pip   (the above)
+
+  Files in that final pass: scripts/update-robustness.test.mjs,
+  scripts/update-affirmation.test.mjs, scripts/toast-lifetime.test.mjs,
+  scripts/browser-chrome.test.mjs.
+
+--------------------------------------------------------------------------------
+7. The frames, captured with the repo's own rig
+
+  node node_modules/storybook/bin/index.cjs dev -p 6705 --ci --quiet
+  node scripts/capture-evidence.mjs http://localhost:6705 \
+    --only=common-updatenotification--error-state \
+    --themes=localOperatorDark,localOperatorLight --allow-backend
+  node scripts/capture-evidence.mjs http://localhost:6705 \
+    --only=internet-offline-confirmed \
+    --themes=localOperatorDark,localOperatorLight --allow-backend
+
+  Captured 2 frames into docs/evidence at ea36040f2
+  Captured 2 frames into docs/evidence at ea36040f2
+
+  Declared in `STORIES` (scripts/capture-evidence.mjs) as
+  `common-updatenotification--error-state` 1280x900 and
+  `common-connectivity-banner--internet-offline-confirmed` 1024x420.
+
+  THE FIRST BANNER CAPTURE WAS A FRAME OF THE DEFECT, and it is recorded here
+  because it is the trap this rig documents: the readiness probe asks whether the
+  story has DRAWN, and a page whose banner arrives five seconds later has drawn
+  long before that. `internet-offline-confirmed/localOperatorDark.webp` came back
+  9,140 bytes of plain ground. The story now sets `capturePending` and clears it
+  when the sentence the CONFIRMATION produces is on screen; the recapture is
+  13,588 bytes and shows the banner.
+
+  A second lesson with the same shape, and the reason the story grew a config
+  stub: with no daemon to ask, the banner's sentence rendered "Your configured
+  hosting provider () requires an internet connection" - a fact about the fixture
+  rather than about the app. The story stubs the one config read
+  (`config.get` -> `{values: {hosting: "radient"}}`), which is the provider id the
+  app's own model picker uses.
+
+--------------------------------------------------------------------------------
+8. pnpm check-evidence
+
+  Evidence check DEFERRED: another sweep (or its image child) holds the machine
+  lease; retry after it finishes. No frames checked. Do not delete the lock file.
+
+  exit 75, as the rig's own contract says it may ("one sweep per machine"). The
+  frames in this commit were written by the capture runs above, which stamp
+  `srcTree`/`scriptsTree` from HEAD; the full check was re-attempted and was still
+  deferred while this evidence was written. This half of the gate is therefore
+  OUTSTANDING at the time of writing, and QA or the manager can run
+  `pnpm check-evidence` on a quiet machine.

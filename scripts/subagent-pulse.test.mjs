@@ -19,8 +19,7 @@ import { build } from "esbuild";
 
 const bundle = await build({
 	stdin: {
-		contents:
-			'export * from "./src/renderer/src/shared/hooks/subagent-pulse";',
+		contents: 'export * from "./src/renderer/src/shared/hooks/subagent-pulse";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -39,10 +38,11 @@ const {
 );
 
 test("exactly the three subagent lifecycle events count as a beat", () => {
-	assert.deepEqual(
-		[...SUBAGENT_PULSE_EVENTS].sort(),
-		["subagent_end", "subagent_progress", "subagent_start"],
-	);
+	assert.deepEqual([...SUBAGENT_PULSE_EVENTS].sort(), [
+		"subagent_end",
+		"subagent_progress",
+		"subagent_start",
+	]);
 	// The boundaries are the ones the backend WRITES the child's file at
 	// (`harness/comms.py:1121-1145`). A stream delta is deliberately not one:
 	// the transcript is a file behind a whole-file-scan read, so a per-token

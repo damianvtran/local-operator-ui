@@ -8,6 +8,10 @@
 
 import { toast } from "sonner";
 import type { ExternalToast } from "sonner"; // Using ExternalToast for options type
+import {
+	stripErrorPrefixes,
+	transientTransportFragment,
+} from "../../../../shared/transport-failure";
 
 // Store active toast IDs by message
 const activeToasts = new Map<string, string | number>(); // Sonner IDs can be string or number
@@ -60,6 +64,54 @@ const CONNECTION_FAILURE_COPY =
 	"Could not reach the server. Check that it is running, then try again.";
 
 /**
+ * The sentence a person reads, for one raw transport failure.
+ *
+ * WHY THE CLASSIFIER IS CONSULTED AT ALL, given the table above. That table
+ * held exactly six strings and one of them was `net::ERR_CONNECTION_REFUSED` -
+ * which is one of these having reached a toast before, and evidence that the
+ * next member of the family would too. The table is a list of the spellings
+ * somebody had seen; `isTransientTransportFailure` is the rule, covering the
+ * whole Chromium `net::ERR_*` family and Node's errno forms, and it is the same
+ * module MAIN retries the update check against
+ * (`shared/transport-failure.ts`). ~50 `showErrorToast` call sites cannot each
+ * be fixed by widening a table.
+ *
+ * TWO SHAPES, ONE RULE, and the difference is the authored half:
+ *
+ * - the WHOLE message is a transport string, so the sentence replaces it;
+ * - the message CONTAINS one, so only that fragment is replaced and the
+ *   authored prefix survives: `Failed to post comment: Failed to fetch` reads
+ *   as "Failed to post comment: Could not reach the server...", never as a raw
+ *   fragment and never with the prefix thrown away.
+ *
+ * The sentence is never emitted twice: the replacement is the same text in both
+ * shapes, so a message already carrying it has nothing left for the classifier
+ * to find.
+ *
+ * THE SLICE IS TAKEN FROM THE STRIPPED MESSAGE, because the offsets ARE offsets
+ * into the stripped one (`TransportFragment`): computing a position in the
+ * cleaned text and using it to cut the raw one spliced the sentence in at the
+ * wrong place and left the code's tail on screen - `Error: net::ERR_TIMED_OUT`
+ * rendered as "...then try again.MED_OUT" (review round 1, R1). The prefixes the
+ * stripper removes are exactly the ones a `String(err)`-derived message carries,
+ * so this was reachable from any call site that did not pre-clean.
+ */
+const transportFailureText = (message: string): string => {
+	const trimmed = message.trim();
+	if (Object.prototype.hasOwnProperty.call(RAW_TRANSPORT_ERRORS, trimmed)) {
+		return CONNECTION_FAILURE_COPY;
+	}
+	const cleaned = stripErrorPrefixes(trimmed);
+	const fragment = transientTransportFragment(cleaned);
+	if (fragment === null) return message;
+	// A fragment inside machine vocabulary is replaced along with it - see
+	// `TransportFragment.clause`; one that is a clause of an authored message
+	// leaves the authored half in place.
+	if (!fragment.clause) return CONNECTION_FAILURE_COPY;
+	return `${cleaned.slice(0, fragment.start)}${CONNECTION_FAILURE_COPY}${cleaned.slice(fragment.end)}`;
+};
+
+/**
  * Get the error group for a message
  *
  * @param message - The error message
@@ -91,16 +143,11 @@ export const showErrorToast = (
 
 	/* Dedup still keys off what the caller passed, so two different raw
 	   transport strings collapse the same way they did before. Only what the
-	   person reads changes. `hasOwnProperty.call` rather than a truthiness
-	   check, because a message of "toString" would otherwise find
+	   person reads changes. The `hasOwnProperty` guard inside
+	   `transportFailureText` is why a message of "toString" cannot find
 	   `Object.prototype` and be rewritten; `Object.hasOwn` reads better but
 	   needs an ES2022 lib this tsconfig does not target. */
-	const text = Object.prototype.hasOwnProperty.call(
-		RAW_TRANSPORT_ERRORS,
-		message.trim(),
-	)
-		? CONNECTION_FAILURE_COPY
-		: message;
+	const text = transportFailureText(message);
 
 	const lastShown = lastErrorShownTime.get(key);
 	if (lastShown && now - lastShown < DEFAULT_ERROR_COOLDOWN) {

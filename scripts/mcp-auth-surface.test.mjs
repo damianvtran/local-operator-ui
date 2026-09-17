@@ -53,13 +53,23 @@ const { fetchMcpProbe, parseMcpIntent, resolveMcpServerTarget } = await import(
 const PROBE_OAUTH = {
 	name: "hubspot",
 	transport_oauth_supported: true,
-	secret_refs: [{ id: "HUBSPOT_TOKEN", bindings: [{ field: "headers", key: "Authorization" }] }],
+	secret_refs: [
+		{
+			id: "HUBSPOT_TOKEN",
+			bindings: [{ field: "headers", key: "Authorization" }],
+		},
+	],
 	key_submission_supported: true,
 };
 const PROBE_KEY = {
 	name: "google-workspace",
 	transport_oauth_supported: false,
-	secret_refs: [{ id: "GOOGLE_CLIENT_SECRET", bindings: [{ field: "env", key: "API_KEY" }] }],
+	secret_refs: [
+		{
+			id: "GOOGLE_CLIENT_SECRET",
+			bindings: [{ field: "env", key: "API_KEY" }],
+		},
+	],
 	key_submission_supported: true,
 };
 

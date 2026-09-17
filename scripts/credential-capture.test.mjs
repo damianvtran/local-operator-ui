@@ -43,6 +43,7 @@ const bundle = await build({
 });
 const {
 	CREDENTIAL_ARMED_NOTICE,
+	CREDENTIAL_TOKEN,
 	CREDENTIAL_KEY_ALPHABET,
 	CREDENTIAL_KEY_PATTERN,
 	CREDENTIAL_KEY_PREFIX,
@@ -1862,4 +1863,35 @@ test("maskEdit is a no-op outside an open span", () => {
 		null,
 	);
 	assert.equal(maskSpan(IDLE_CAPTURE), null);
+});
+
+test("the token regex is read with a fresh lastIndex, so two reads agree", () => {
+	/*
+	 * The module's own discipline, stated in its comment block: `CREDENTIAL_TOKEN` is
+	 * a /g regex, so `exec` carries the previous match's position and an unreset
+	 * second call answers `null` for the same string. The composer reads it once per
+	 * pick to decide whether the picker wrote a credential token (review round 10,
+	 * MINOR-2), and a read that depended on how many times it had been called before
+	 * would make that decision a function of history.
+	 */
+	const draft = "please /credential mysecretname";
+	CREDENTIAL_TOKEN.lastIndex = 0;
+	const first = CREDENTIAL_TOKEN.exec(draft);
+	CREDENTIAL_TOKEN.lastIndex = 0;
+	const second = CREDENTIAL_TOKEN.exec(draft);
+	assert.equal(
+		first?.[0],
+		second?.[0],
+		"two reads with a fresh lastIndex agree",
+	);
+	assert.equal(first?.[0], "/credential");
+	// The reset is what buys that: the same two calls without it disagree, which is
+	// why every reader in this module resets first.
+	CREDENTIAL_TOKEN.lastIndex = 0;
+	CREDENTIAL_TOKEN.exec(draft);
+	assert.equal(
+		CREDENTIAL_TOKEN.exec(draft),
+		null,
+		"an unreset second read is the trap the discipline exists for",
+	);
 });

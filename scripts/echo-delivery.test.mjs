@@ -652,9 +652,15 @@ test("U2: a refused send restores the text only into an empty composer", async (
 	// The rule itself, shipped and pure, so a future edit to either transition
 	// is read against the same rule rather than against the call site.
 	assert.equal(clearSubmittedText(input.text, input.text), "");
-	assert.equal(clearSubmittedText(`${input.text} and more`, input.text), `${input.text} and more`);
+	assert.equal(
+		clearSubmittedText(`${input.text} and more`, input.text),
+		`${input.text} and more`,
+	);
 	assert.equal(restoreSubmittedText("", input.text), input.text);
-	assert.equal(restoreSubmittedText("A second message", input.text), "A second message");
+	assert.equal(
+		restoreSubmittedText("A second message", input.text),
+		"A second message",
+	);
 });
 
 test("D1/U5: an unconfirmed send leaves its text to the claim, not to the box", async () => {
@@ -708,14 +714,9 @@ test("a send threads its paint callback through `admitChatDraft`", async () => {
 	const transcript = await mountTranscript(SESSION_ID);
 	globalThis.__echoRequest = async () => ({ status: "admitted" });
 	let painted = 0;
-	await admitChatDraft(
-		`send:${SESSION_ID}`,
-		input,
-		SESSION_ID,
-		() => {
-			painted += 1;
-		},
-	);
+	await admitChatDraft(`send:${SESSION_ID}`, input, SESSION_ID, () => {
+		painted += 1;
+	});
 	assert.deepEqual(transcript.rows(), [input.text]);
 	assert.equal(painted, 1, "the composer is told exactly once, at the paint");
 	transcript.unregister();

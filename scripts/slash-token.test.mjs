@@ -88,7 +88,10 @@ test("a recognised, space-terminated command claims the rest of its line", () =>
 	assert.equal(claimingCommand(draft, VOCAB), 0);
 	const caret = draft.length;
 	assert.equal(slashContext(draft, caret, VOCAB), null);
-	assert.equal(slashArgument(draft, ["team"], caret, VOCAB), "security improve the /team command");
+	assert.equal(
+		slashArgument(draft, ["team"], caret, VOCAB),
+		"security improve the /team command",
+	);
 	// Without the vocabulary there is no claim: the second slash is a token.
 	assert.equal(slashContext("/team a /team", 13, new Set())?.start, 8);
 });
@@ -115,9 +118,21 @@ test("the argument runs to the end of its line, never the end of the buffer", ()
 	// its own line above a multi-line draft. The caret sits on the command's own
 	// line, where the argument is `ops` — the line below is the message.
 	assert.equal(slashArgument("/team ops\nfix this", ["team"], 9, VOCAB), "ops");
-	assert.equal(slashArgument("/team ops ship it", ["team"], 18, VOCAB), "ops ship it");
-	const context = slashArgumentContext("/team ops\nfix this", ["team"], 21, VOCAB);
-	assert.equal(context, null, "a caret on the line below is not in the command");
+	assert.equal(
+		slashArgument("/team ops ship it", ["team"], 18, VOCAB),
+		"ops ship it",
+	);
+	const context = slashArgumentContext(
+		"/team ops\nfix this",
+		["team"],
+		21,
+		VOCAB,
+	);
+	assert.equal(
+		context,
+		null,
+		"a caret on the line below is not in the command",
+	);
 });
 
 test("CRLF yields the same word and argument as LF", () => {
@@ -171,4 +186,34 @@ test("replaceSpan removes exactly one adjoining separator", () => {
 		text: "go /team ",
 		caret: 9,
 	});
+});
+
+test("a mid-draft command word opens no list, because the planner reads it as prose", () => {
+	/*
+	 * Design round 1, D1 = UX U2. The list used to open on the tokenizer alone,
+	 * so `fix this /team` offered a roster whose footer promised the command
+	 * would run, while the planner — rewritten by this change — sends that draft
+	 * to the model as written; the first Enter then completed a word the planner
+	 * refuses, and only the second Enter sent anything. `caretPhase` now asks the
+	 * same positional question the planner asks (`commandWordOpensDraft`), so the
+	 * popup and the submit rule cannot disagree about whether a word is a command.
+	 */
+	assert.equal(
+		caretPhase("fix this /team", 13, VOCAB, ARGUMENT_COMMANDS),
+		null,
+	);
+	assert.equal(
+		caretPhase("hello /compact", 14, VOCAB, ARGUMENT_COMMANDS),
+		null,
+	);
+	assert.equal(
+		caretPhase("fix this /model gpt-5", 20, VOCAB, ARGUMENT_COMMANDS),
+		null,
+	);
+	// The legitimate positions are untouched: the whole draft, and the draft's
+	// opening word with its own argument list.
+	assert.equal(caretPhase("/team", 5, VOCAB, ARGUMENT_COMMANDS), "command");
+	assert.equal(caretPhase("/model ", 7, VOCAB, ARGUMENT_COMMANDS), "argument");
+	// Leading whitespace is still the start of the draft, not a position after it.
+	assert.equal(caretPhase("  /team", 7, VOCAB, ARGUMENT_COMMANDS), "command");
 });

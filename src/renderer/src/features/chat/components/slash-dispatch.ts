@@ -27,10 +27,11 @@
  * request. That request is resolved through `pickers/picker-registry`: a
  * picker adapter mounts in the host, a navigate destination routes to the
  * existing settings surface, and the direct actions run here (`/clear`
- * view-only, `/exit` detach-only, and a bare `/move` focusing the composer's
+ * view-only, `/exit` detach-only, a bare `/move` focusing the composer's
  * own working-directory chip - resolved locally rather than by mounting a
- * dialog, because the control it opens already exists in the composer). An
- * unknown command names the closest matches so the user can fix the typo
+ * dialog, because the control it opens already exists in the composer - and
+ * `/compact`, which asks the owner to start a pass and mounts nothing at all).
+ * An unknown command names the closest matches so the user can fix the typo
  * rather than guess.
  */
 
@@ -66,6 +67,10 @@ import { DESTINATIONS } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
 import { commandBudgetRefusal } from "../utils/message-budget";
+import {
+	isCompactStartNotice,
+	refreshCompactionOutcome,
+} from "./compact-receipt";
 import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashCommandInvocation } from "./slash-submit";
 
@@ -235,11 +240,7 @@ function closestCommands(
 		.map((entry) => `/${entry.name}`);
 }
 
-const PRESENT_DIRECTLY = new Set([
-	"session.goal",
-	"session.context",
-	"session.compact",
-]);
+const PRESENT_DIRECTLY = new Set(["session.goal", "session.context"]);
 
 export function useSlashDispatch({
 	sessionId,
@@ -460,6 +461,121 @@ export function useSlashDispatch({
 			if (entry?.kind === "direct") {
 				if (entry.action === "focus-cwd-chip") {
 					presentCwdChip(spec.name);
+					return "consumed";
+				}
+				if (entry.action === "compact") {
+					/*
+					 * `/compact`: the ONE direct destination that asks the owner to do
+					 * something rather than acting on this surface. It posts the owner
+					 * command the way every non-direct destination does, from here.
+					 *
+					 * WHY THIS CANNOT MOUNT A PICKER, which is the regression this
+					 * change must not have: the destination table says `direct` for
+					 * `session.compact`, so this block answers it and RETURNS — and the
+					 * `setPicker` call site below, the one a `native_action` reaches, is
+					 * never executed for this destination. The branch is keyed on the
+					 * table's own `kind`, so the guarantee is structural rather than a
+					 * second list of names kept in step with it.
+					 */
+					if (!sessionId) {
+						note(
+							`/${spec.name} needs an open conversation. Start one first.`,
+							true,
+						);
+						return "consumed";
+					}
+					try {
+						const receipt = await desktopResult<DesktopCommandReceipt>({
+							op: "sessions.command",
+							sessionId,
+							requestId: uuidv4(),
+							command: spec.name,
+							args,
+						});
+						const result = receipt.result;
+						if (isNativeAction(result)) {
+							// A backend that still presents the pass as a dialog is asking
+							// this surface for a control it no longer has. Reported rather
+							// than mounted, and reported rather than swallowed: a command
+							// that appears to do nothing is the failure mode this branch
+							// exists to avoid.
+							note(
+								`/${spec.name} asked for a dialog this build does not have, so nothing ran. Run it in the terminal with local-operator.`,
+								true,
+							);
+							return "consumed";
+						}
+						/*
+						 * The receipt of a pass that STARTS is the terminal host's own
+						 * optimistic notice (`compacting context…`), and it is deliberately
+						 * NOT ported. The operator asked for the working line while the pass
+						 * runs and the compaction info line when it settles; a note on top of
+						 * both would announce the same thing a third time. A receipt that is
+						 * not that notice IS the command's own answer — a refusal, or a crash
+						 * reported before the canonical events could carry it — so it is
+						 * reported like any other refusal.
+						 *
+						 * THE TEXT IS THE TEST, not the shape (review round 1, R2). Keyed on
+						 * `notice`+`info` this dropped EVERY info-toned receipt for this
+						 * command, including a refusal the runtime answers in that tone — the
+						 * "a command that appears to do nothing" failure this branch exists to
+						 * avoid, reintroduced by the line that was written to avoid it.
+						 */
+						if (isCompactStartNotice(result.text)) {
+							/*
+							 * The pass was ACCEPTED and the receipt says so, so the working
+							 * line and the settled line are the surfaces — but a pass can
+							 * also DECLINE, and a decline emits no events at all: the
+							 * runtime writes a durable `compaction_refused` row and
+							 * publishes no transcript delta, so a pane that never reads
+							 * history again shows an emptied composer and nothing else
+							 * (U6 = Q2, measured on both an empty pane and one with
+							 * history). This is the read that closes it: at most two
+							 * tail reads, stopping as soon as the outcome is on screen
+							 * (`compact-receipt.ts` states the delays and the bound).
+							 *
+							 * Fired without awaiting, deliberately: the command has
+							 * already returned `consumed`, and the transcript is the only
+							 * thing this touches.
+							 *
+							 * THE LAG IS ACCEPTED, and measured rather than assumed
+							 * (U14/U18): the composer empties when the command returns,
+							 * and the refusal's row lands ~1.6-2.5 s later — the runtime
+							 * writes it at ~1.47 s and the first read is at 1.5 s. The
+							 * alternative is the silence this read was written to end, so
+							 * the delay is the honest cost of showing it at all. The pass
+							 * itself is not silent in the meantime: the rung appears on
+							 * `compaction_start` for an accepted pass, and a decline has
+							 * no such frame to show.
+							 */
+							/*
+							 * The pass's own instant, captured HERE rather than read
+							 * later: the schedule's answer has to be about the pass this
+							 * receipt started, and by the time a read lands the claim may
+							 * already be retired. The view's epoch rides along so a
+							 * `/clear` inside the window wins over the read (U11/Q7).
+							 */
+							const since = Date.now();
+							const epoch = canonical.transcript.viewEpoch;
+							void refreshCompactionOutcome(() =>
+								canonical.refreshTail(since, epoch),
+							);
+						} else if (result.text) {
+							note(
+								result.text,
+								result.kind === "error" || result.style === "error",
+							);
+						}
+					} catch (error) {
+						note(
+							`/${spec.name} could not run: ${
+								error instanceof Error
+									? error.message
+									: "the backend refused it"
+							}`,
+							true,
+						);
+					}
 					return "consumed";
 				}
 				if (entry.action === "clear") {

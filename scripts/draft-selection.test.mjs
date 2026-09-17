@@ -521,7 +521,10 @@ test("a model that does not offer it clears the rung AND names the level that wi
 	assert.equal(carry.checked, true);
 	assert.equal(carry.rung, null);
 	const sentence = carry.confirmation("openrouter/meta/llama-4");
-	assert.match(sentence, /This conversation will run openrouter\/meta\/llama-4\./);
+	assert.match(
+		sentence,
+		/This conversation will run openrouter\/meta\/llama-4\./,
+	);
 	/*
 	 * Design round 5 (D21): the sentence names the level in force and claims no
 	 * DIRECTION, which the copy cannot know - a `low` carried onto a model whose
@@ -532,11 +535,19 @@ test("a model that does not offer it clears the rung AND names the level that wi
 		/Its effort is now low/,
 		"the level that will actually run",
 	);
-	assert.match(sentence, /high is not one of that model's levels/, "the level dropped");
+	assert.match(
+		sentence,
+		/high is not one of that model's levels/,
+		"the level dropped",
+	);
 });
 
 test("a pane that never chose a rung is unchanged, and claims no level", () => {
-	const carry = effortCarry("", { ladder: ["low", "medium"], ladderKnown: true, level: "low" });
+	const carry = effortCarry("", {
+		ladder: ["low", "medium"],
+		ladderKnown: true,
+		level: "low",
+	});
 	assert.equal(carry.checked, true);
 	assert.equal(carry.rung, null);
 	assert.equal(
@@ -552,7 +563,11 @@ test("a target that reports no level says so, rather than naming one it does not
 	 * the pane shows no effort reading at all. Saying that no level is set is the
 	 * honest form, and it is still a clearing that is STATED.
 	 */
-	const carry = effortCarry("xhigh", { ladder: ["low"], ladderKnown: true, level: null });
+	const carry = effortCarry("xhigh", {
+		ladder: ["low"],
+		ladderKnown: true,
+		level: null,
+	});
 	assert.equal(carry.rung, null);
 	assert.match(
 		carry.confirmation("openrouter/openai/gpt-5"),
@@ -568,7 +583,11 @@ test("a ladder that was never reported is a check that could not be made, not an
 	 * UX round 3's U12 named). `checked: false` is what makes the caller refuse
 	 * instead of recording a rung-less selection under a claim it cannot support.
 	 */
-	const carry = effortCarry("high", { ladder: [], ladderKnown: false, level: "low" });
+	const carry = effortCarry("high", {
+		ladder: [],
+		ladderKnown: false,
+		level: "low",
+	});
 	assert.equal(carry.checked, false);
 	assert.equal(carry.rung, null);
 	/*
@@ -770,8 +789,11 @@ new Function(
 	pickerModule,
 	...Object.values(pickerDependencies),
 );
-const { EffortPicker: ExecutedEffortPicker, carriedRung, useDraftPick: executedDraftPick } =
-	pickerModule.exports;
+const {
+	EffortPicker: ExecutedEffortPicker,
+	carriedRung,
+	useDraftPick: executedDraftPick,
+} = pickerModule.exports;
 
 function pickerHarness({ initial = null, resolved = frame(SPEC) } = {}) {
 	const instance = {
@@ -1046,8 +1068,14 @@ test("a model pick carries the chosen rung through the shipped hook, and says th
 	const hook = picker.hook();
 	await hook.pick(NEW_MODEL, MODEL_READING);
 	const settled = picker.hook();
-	assert.deepEqual(picker.selections, [{ ...NEW_MODEL, reasoning_effort: "high" }]);
-	assert.equal(picker.requests.length, 2, "carrying costs the probe and the pick");
+	assert.deepEqual(picker.selections, [
+		{ ...NEW_MODEL, reasoning_effort: "high" },
+	]);
+	assert.equal(
+		picker.requests.length,
+		2,
+		"carrying costs the probe and the pick",
+	);
 	assert.notDeepEqual(
 		picker.requests[0],
 		picker.requests[1],
@@ -1078,7 +1106,10 @@ test("a model that does not offer the rung clears it, states the level, and cost
 		"the probe's key is the pick's own key",
 	);
 	assert.match(settled.result.text, /Its effort is now low/);
-	assert.match(settled.result.text, /because high is not one of that model's levels/);
+	assert.match(
+		settled.result.text,
+		/because high is not one of that model's levels/,
+	);
 });
 
 test("F1: a probe that cannot answer REFUSES the pick instead of dropping the rung in silence", async () => {
@@ -1096,7 +1127,11 @@ test("F1: a probe that cannot answer REFUSES the pick instead of dropping the ru
 	await hook.pick(NEW_MODEL, MODEL_READING);
 	const settled = picker.hook();
 	assert.deepEqual(picker.selections, [], "nothing is recorded");
-	assert.equal(picker.requests.length, 1, "the pick's own resolution is not attempted");
+	assert.equal(
+		picker.requests.length,
+		1,
+		"the pick's own resolution is not attempted",
+	);
 	assert.equal(settled.result.tone, "error");
 	/*
 	 * Two refusal paths, and this is the transport's: a probe that THROWS is
@@ -1158,7 +1193,11 @@ test("F2: the busy window covers the probe, so a second click cannot commit behi
 		"busy is set before the probe, and it is the dialog's only guard",
 	);
 	await pending;
-	assert.equal(picker.hook().busy, false, "and it clears when the pick settles");
+	assert.equal(
+		picker.hook().busy,
+		false,
+		"and it clears when the pick settles",
+	);
 });
 
 test("M1: the carry question is the DIALOG's live selection, not the snapshot it opened on", async () => {

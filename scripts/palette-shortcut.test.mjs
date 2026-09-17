@@ -41,7 +41,10 @@ test("Cmd+K and Ctrl+K both open the palette", () => {
 	assert.equal(paletteShortcutIntent(key({ ctrlKey: true })), "toggle");
 	// The letter's case depends on the layout and the modifiers, and the rule
 	// reads it case-insensitively.
-	assert.equal(paletteShortcutIntent(key({ metaKey: true, key: "K" })), "toggle");
+	assert.equal(
+		paletteShortcutIntent(key({ metaKey: true, key: "K" })),
+		"toggle",
+	);
 });
 
 test("the gesture is a chord, not a bare letter", () => {
@@ -62,9 +65,18 @@ test("a surface that claimed the key keeps it", () => {
 });
 
 test("nothing else about the chord is accepted", () => {
-	assert.equal(paletteShortcutIntent(key({ metaKey: true, shiftKey: true })), null);
-	assert.equal(paletteShortcutIntent(key({ metaKey: true, altKey: true })), null);
-	assert.equal(paletteShortcutIntent(key({ metaKey: true, repeat: true })), null);
+	assert.equal(
+		paletteShortcutIntent(key({ metaKey: true, shiftKey: true })),
+		null,
+	);
+	assert.equal(
+		paletteShortcutIntent(key({ metaKey: true, altKey: true })),
+		null,
+	);
+	assert.equal(
+		paletteShortcutIntent(key({ metaKey: true, repeat: true })),
+		null,
+	);
 });
 
 test("Cmd+P is not this module's gesture", () => {

@@ -85,6 +85,16 @@ const ALLOW_BACKEND = ARGS.includes("--allow-backend") && PARTIAL;
 
 const API_URL_LINE = /^VITE_LOCAL_OPERATOR_API_URL=(.+)$/m;
 
+/**
+ * The line Chrome prints on stderr once its debug port is up.
+ *
+ * Hoisted out of the `stderr.on("data")` handler it is used in, which is the
+ * rule `lint/performance/useTopLevelRegex` states: a literal inside a callback
+ * is re-created on every chunk, and this handler is fed every line Chrome
+ * writes during boot.
+ */
+const DEBUG_PORT_LINE = /DevTools listening on (ws:\/\/[^\s]+)/;
+
 /*
  * The backend the app talks to, resolved the way the renderer resolves it:
  * `.env` if present, otherwise the schema's own default. Written out here it
@@ -567,6 +577,22 @@ export const STORIES = [
 	   pixels in the middle are. */
 	["chat-tool-rows--narrow", 560, 276],
 	["chat-tool-rows--working", 1280, 900],
+	/*
+	 * The compaction pass, before and after. The BEFORE frame is the change
+	 * itself: `/compact` used to be answered by a modal dialog, and the pass was
+	 * invisible in the transcript; the rung is now the only liveness statement
+	 * the surface makes about it, and the AFTER frame is what replaces the dialog
+	 * once the pass settles (the reducer's own info line, with the token counts).
+	 * Sized to the two rows and the rung, for the reason `working-labels` is: at
+	 * 900 tall the frame is mostly ground and `check-evidence`'s uniformity
+	 * ceiling rejects it.
+	 */
+	["chat-tool-rows--compacting-rung", 1280, 300],
+	["chat-tool-rows--compacting-settled", 1280, 300],
+	["chat-tool-rows--compacting-settled-unchanged", 1280, 300],
+	/* The third ending, and the one the dialog used to own: a pass that did
+	   NOT run. Added by the round that gave the refusal a row. */
+	["chat-tool-rows--compacting-refused", 1280, 300],
 	["chat-tool-rows--working-labels", 760, 300],
 	/* The `write`/`edit` diff body: the expansion the TUI shows in place of the
 	   arguments. Captured at the height the story declares, because the frame IS
@@ -1656,6 +1682,33 @@ export const STORIES = [
 	["schedules-page--row-actions-revealed", 1280, 900],
 	["schedules-page--row-action-label", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
+	/* The operator's own alert, over the screen they were working on: their
+	   update-service.log holds this exact transport code at 09:03:12 on
+	   2026-09-16, reported from a silent background check on a machine with
+	   continuous internet. The story renders the shipped alert and holds it open
+	   (the app gives it six seconds, which a still cannot catch); the wiring is
+	   scripts/update-affirmation.test.mjs. */
+	["common-updatenotification--error-state", 1280, 900],
+	/*
+	 * The same alert for the WRAPPED feed failure, which is the shape the copy's
+	 * prefix rule is about (design round 1, D1 asked for exactly this frame): the
+	 * sentence must stand alone, with the machine's words subordinate rather than
+	 * welded to the front of it.
+	 */
+	["common-updatenotification--error-state-wrapped", 1280, 900],
+	/*
+	 * The retry IN FLIGHT, which no frame showed: the card used to unmount the moment
+	 * it was pressed, so "a check is running" and "the problem is fixed" looked the
+	 * same for the app's 1 s + 3 s ladder (design round 2, D13; UX U7). The pressed
+	 * control is what says which one it is.
+	 */
+	["common-updatenotification--error-state-retrying", 1280, 900],
+	/*
+	 * A DOWNLOAD-stage failure: the copy names the surface that owns the retry rather
+	 * than the box it is not in, and no control is offered for a stage a check cannot
+	 * answer (design round 2, D9; UX U9).
+	 */
+	["common-updatenotification--error-state-download", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
 	// The state before an install commits: the bundle is downloaded and the footer
 	// that the install fix changed is on screen. It renders the component's own
@@ -1820,7 +1873,13 @@ export const STORIES = [
 	/* The shed order under pressure: numbers dropped, name kept. */
 	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
 	/* A command typed into a sentence, the list above the prose. */
-	["chat-slash-completion--inline-mid-draft", 768, 340],
+	/* The mid-draft state round-1 D1 judged AND the state the fix puts in its
+	   place, as the two cases of one board — the after-picture is absence, and a
+	   lone composer story counts five elements against this rig's floor of nine,
+	   so a board is the only shape that can carry it (round 2, D5). Then the
+	   `/compact` row a reader meets when they type `/comp`. */
+	["chat-slash-completion--inline-mid-draft-pair", 768, 640],
+	["chat-slash-completion--compact-row", 768, 340],
 	/* The state a name pick produces: list closed, caret after the space. */
 	["chat-slash-completion--name-list-completed", 768, 260],
 	/* A long list: the popup keeps its own scroll at its row cap. */
@@ -2076,6 +2135,13 @@ export const STORIES = [
 	["common-connectivity-banner--stopped", 1024, 300],
 	["common-connectivity-banner--wedged", 1024, 300],
 	["common-connectivity-banner--unattachable", 1024, 300],
+	/* The machine-offline claim itself, and the one state the internet banner may
+	   paint: a negative reading that has held across the grace and been confirmed
+	   by a second one. Its companion - the same reading BEFORE the grace, which
+	   paints nothing - has no frame on purpose: a still of an absent banner cannot
+	   be told from a story that never mounted (the trap `attached` documents), so
+	   the rule is pinned by its own cases instead. */
+	["common-connectivity-banner--internet-offline-confirmed", 1024, 420],
 ];
 
 /**
@@ -2431,7 +2497,7 @@ const main = async () => {
 		);
 		chrome.stderr.on("data", (d) => {
 			buf += d.toString();
-			const m = buf.match(/DevTools listening on (ws:\/\/[^\s]+)/);
+			const m = buf.match(DEBUG_PORT_LINE);
 			if (m) {
 				clearTimeout(t);
 				resolve(m[1]);

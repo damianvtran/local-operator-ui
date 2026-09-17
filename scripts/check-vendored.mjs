@@ -44,7 +44,9 @@ export function readProtoVersion(protocolFile) {
 	const source = readFileSync(protocolFile, "utf8");
 	const found = /export const PROTO_VERSION = (\d+)/.exec(source);
 	if (!found) {
-		throw new Error(`${protocolFile} has no \`export const PROTO_VERSION = <n>\``);
+		throw new Error(
+			`${protocolFile} has no \`export const PROTO_VERSION = <n>\``,
+		);
 	}
 	return Number(found[1]);
 }
@@ -56,7 +58,8 @@ function listFiles(dir, prefix = "") {
 	for (const name of readdirSync(dir)) {
 		const path = join(dir, name);
 		const relativePath = prefix ? `${prefix}/${name}` : name;
-		if (statSync(path).isDirectory()) entries.push(...listFiles(path, relativePath));
+		if (statSync(path).isDirectory())
+			entries.push(...listFiles(path, relativePath));
 		else entries.push(relativePath);
 	}
 	return entries;
@@ -72,7 +75,8 @@ function listFiles(dir, prefix = "") {
  */
 export function checkVendored(options = {}) {
 	const root = options.root ?? ROOT;
-	const vendorDir = options.vendorDir ?? join(root, "src", "main", "browser", "vendor");
+	const vendorDir =
+		options.vendorDir ?? join(root, "src", "main", "browser", "vendor");
 	const protocolFile =
 		options.protocolFile ?? join(root, "src", "main", "browser", "protocol.ts");
 	const problems = [];
@@ -112,7 +116,9 @@ export function checkVendored(options = {}) {
 	}
 
 	const listed = Object.keys(provenance.files);
-	const onDisk = listFiles(vendorDir).filter((name) => name !== PROVENANCE_FILENAME);
+	const onDisk = listFiles(vendorDir).filter(
+		(name) => name !== PROVENANCE_FILENAME,
+	);
 
 	for (const name of listed) {
 		let text;
@@ -146,7 +152,9 @@ export function checkVendored(options = {}) {
 
 	for (const patch of provenance.patches ?? []) {
 		if (!listed.includes(patch.file)) {
-			problems.push(`adaptation '${patch.id}' names ${patch.file}, which is not vendored`);
+			problems.push(
+				`adaptation '${patch.id}' names ${patch.file}, which is not vendored`,
+			);
 			continue;
 		}
 		let text = "";
