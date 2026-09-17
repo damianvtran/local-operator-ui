@@ -24,8 +24,8 @@ Storybook story cannot answer any of them:
 | `12-approvals-queue.webp` | the band with a numbered queue: the count, the chips, the selected request's card |
 | `17-tab-actions-in-band.webp` | the tab actions row and the badge in situ (D3, D4) |
 | `18-approvals-dock.webp` | the dock open, the page still visible and narrowed, no suppression (D2, D9) |
-| `19-strip-marked-tab-at-rest.webp` | the strip at rest with a user and an agent-marked row, **and on this head the strip IS in the picture**: re-taken 2026-09-17 on the harness that calls `exposeStrip()` before every frame, the frame carries the strip's own row with the `Agent` chip legible on `Proof page two` beside the unmarked `proof-open 1` row (see the D9 note below for what moved and what the DOM reading says). The no-daemon banner is still painted across the top of the window — the harness has no daemon by design — but the strip now sits BELOW it rather than under it, which is the difference between a frame that shows the subject and one that only shows where it would have been |
-| `20-strip-failed-and-agent-markers.webp` | the same surface with the band OPEN, and the same re-take: the strip's own row carries the pair at once — `Agent` and the `Failed` pill side by side on `127.0.0.1:52792/broken` — with the band's items (`Let an agent use "Proof page one"…`, `Close "Proof page one"`, `Close 1 other tab`, `Copy URL`) below it and the URL bar under those. This is the frame D11/D12 asked for: the closed actions block is gone and the four counted closes are the band's only red |
+| `19-strip-marked-tab-at-rest.webp` | the strip at rest with a user and an agent-marked row, **and on this head the strip IS in the picture**: re-taken 2026-09-17 on the harness that calls `exposeStrip()` before every frame, the frame carries the strip's own row with the `Agent` chip legible on `Proof page two` beside the group label `proof-open 1` and the unmarked row `Proof page one` (see the D9 note below for what moved and what the DOM reading says). The no-daemon banner is still painted across the top of the window — the harness has no daemon by design — but the strip now sits BELOW it rather than under it, which is the difference between a frame that shows the subject and one that only shows where it would have been |
+| `20-strip-failed-and-agent-markers.webp` | the same surface with the band OPEN, and the same re-take: the strip's own row carries the pair at once — `Agent` and the `Failed` pill side by side on `127.0.0.1:52792/broken` — with the band's items (`Let an agent use "Proof page one"…`, `Close "Proof page one"`, `Close 1 other tab`, `Copy URL`) below it and the URL bar under those. This is the frame D11/D12 asked for: the closed actions block is gone and the band carries TWO counted closes, which are the band's only red — `Close "Proof page one"` and `Close 1 other tab` (the four-close count is the batch story's, in `browser-tab-strip/actions-expanded-batch`) |
 
 Source, exactly:
 
@@ -105,21 +105,39 @@ in `20`. Those two files are replaced, not re-captioned.
 
 What the re-take produced, from the run's own assertions rather than from my eye: the
 harness records the geometry at the strip's centre and CHECKS it before it photographs —
-`banner {"top":0,"height":68}, tab strip {"top":121,"height":37}, overlaps false`, and
-`elementFromPoint(800, 140) -> flex min-w-0 grow items-stretch` with `hidden over it: []`.
-So the strip is not merely present in the layout, it is the topmost element at its own
-centre, and nothing had to be hidden to make it so: the app's own chrome changes moved the
-strip's row from CSS 0 to CSS 121, below the banner's 68. Both frames carry the markers —
-`Agent` on `Proof page two` in `19`, `Agent` and `Failed` together on
-`127.0.0.1:52792/broken` in `20` — which is the claim these two names exist to carry.
+`banner {"top":0,"height":121} over 2 notice(s) [{"text":"Not connected to a Local
+Operator server. If one","top":0,"height":68},{"text":"The Local Operator server is not
+answering. Prov","top":68,"height":53}], tab strip {"top":121,"height":37}, overlaps
+false`, and `elementFromPoint(800, 140) -> flex min-w-0 grow items-stretch` with `hidden
+over it: []`. So the strip is not merely present in the layout, it is the topmost element
+at its own centre, and nothing had to be hidden to make it so: the app's own chrome
+changes moved the strip's row from CSS 0 to CSS 121, below the whole 121 px band.
+**THE BANNER HALF OF THAT READING IS THE WHOLE BAND, NOT THE FIRST NOTICE** (review round
+2, D15): the reading used to print `{"top":0,"height":68}`, which is the CONNECTIVITY
+band alone on a window that carries two stacked notices (68 + 53 = 121, the sum `app.tsx`
+itself records), so read on its own it showed ~53 px of headroom where the strip's top
+border in fact begins 1 px below the second band. The reader is the harness's own banner
+finder, and it now collects EVERY matching band and reports their union, with each notice
+named beside it, so a future regression at the strip's top border cannot pass it. Both
+frames carry the markers — `Agent` on `Proof page two` in `19`, `Agent` and `Failed`
+together on `127.0.0.1:52792/broken` in `20` — which is the claim these two names exist to
+carry.
 
-**NOT BANNER-FREE, AND THAT IS THE HONEST STATEMENT.** The banner is still at the top of
-both frames, on purpose: the harness boots the app against no daemon at all (its own
-"scratch backend port is dead" check is what makes the run isolated), so the app's
-reconnect banner is a property of the run, not a defect in the frame. What D9 was about —
-two committed frames named for a strip they did not contain — is answered by the strip
-being in them; a reader who wants a frame with no banner anywhere should read that as a
-frame of a different run rather than a better one.
+**WHY THESE FRAMES CARRY A BANNER, AND WHY THAT IS ABOUT THE MOMENT IN THE RUN RATHER THAN
+ABOUT THE HARNESS** (review round 2, D14). Both frames carry the app's two stacked notices
+at the top because the harness boots the app against no daemon at all (its own "scratch
+backend port is dead" check is what makes the run isolated) and the app's own check
+FAILS A MOMENT AFTER BOOT rather than before it — so a frame taken earlier in the same run
+is banner-free, and this set contains one: `03-surface-populated.webp`'s top-left is the
+app's own ground `(14,12,8)`, uniform through device y 248 (CSS 124), with the strip's
+first rule at device y 8. The neighbouring
+`browser-conversation-tabs/live/19-strip-pooled-20-over-6.png` measures `(15,12,8)` for
+the same reason. Both readings are mine, taken on this head with `sharp`. An earlier
+revision of this paragraph said "no frame it takes is banner-free", which those three
+frames refute; the banner is a property of WHEN the frame was taken, not of the harness,
+and a banner-free re-take of `19`/`20` is available for anyone who needs one. What D9 was
+about — two committed frames named for a strip they did not contain — is answered by the
+strip being in them.
 
 What it took: the harness that carries this file's frames is
 `scripts/browser-chrome-proof.mjs`, and the defect that stopped it completing a run at
