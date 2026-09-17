@@ -1672,10 +1672,7 @@ async function waitForPinned(cdp, label, timeoutMs = 6_000) {
 			String(line).startsWith("All chats"),
 		);
 		const worked =
-			headingAt >= 0 &&
-			rowAt >= 0 &&
-			allChatsAt >= 0 &&
-			headingAt < allChatsAt;
+			headingAt >= 0 && rowAt >= 0 && allChatsAt >= 0 && headingAt < allChatsAt;
 		const waited = Date.now() - started;
 		if (worked || waited > timeoutMs)
 			return { worked, waited, headingAt, rowAt, allChatsAt, sidebar: last };
@@ -1862,11 +1859,10 @@ async function scenePins(cdp) {
 		 * must become visible WITH THE POINTER STILL THERE - which is the whole
 		 * difference between this frame and the one above.
 		 */
-		const hoverRow = require(
-			"the pointer has a second conversation to hover",
-			await rowBox(cdp, 1),
-			"the panel drew fewer than two conversation rows",
-		);
+		const hoverRow = require("the pointer has a second conversation to hover", await rowBox(
+			cdp,
+			1,
+		), "the panel drew fewer than two conversation rows");
 		await movePointer(cdp, hoverRow.x, hoverRow.y);
 		await wait(260);
 		const hovered = await readPins(cdp);
@@ -2003,11 +1999,8 @@ async function scenePins(cdp) {
 			field.focus();
 			return document.activeElement === field;
 		})()`);
-		require(
-			"the caret is in the search field",
-			focused === true,
-			JSON.stringify(focused),
-		);
+		require("the caret is in the search field", focused ===
+			true, JSON.stringify(focused));
 		/*
 		 * The query is the conversation's TITLE as the store holds it, not the row's
 		 * rendered text: a row draws a status word ("Recent", "Not sent yet") ahead of
@@ -2017,11 +2010,9 @@ async function scenePins(cdp) {
 		const pinnedTitle = (await readBackendSessions()).find(
 			(row) => row.pinned,
 		)?.title;
-		const wanted = require(
-			"the pinned conversation's own title was read out of the backend",
-			pinnedTitle ? pinParts(pinnedTitle) : null,
-			JSON.stringify(await readBackendSessions()),
-		);
+		const wanted = require("the pinned conversation's own title was read out of the backend", pinnedTitle
+			? pinParts(pinnedTitle)
+			: null, JSON.stringify(await readBackendSessions()));
 		await cdp.send("Input.insertText", { text: wanted });
 		await wait(600);
 		const filtered = await readPins(cdp);
@@ -2055,7 +2046,11 @@ async function scenePins(cdp) {
 			const box = toggle.getBoundingClientRect();
 			return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
 		})()`);
-		check("the All chats toggle is in the panel", allChats !== null, JSON.stringify(allChats));
+		check(
+			"the All chats toggle is in the panel",
+			allChats !== null,
+			JSON.stringify(allChats),
+		);
 		await pressPointer(cdp, allChats.x, allChats.y);
 		await wait(300);
 		const flat = await waitForPinned(cdp, selectRow.label);
@@ -2099,12 +2094,13 @@ async function scenePins(cdp) {
 		const unpinIndex = pinnedNow.pins.findIndex(
 			(pin) => pin.pressed === "true",
 		);
-		require(
-			"the conversation this pass pinned is still pinned",
-			unpinIndex >= 0,
-			JSON.stringify(pinnedNow.pins),
+		require("the conversation this pass pinned is still pinned", unpinIndex >=
+			0, JSON.stringify(pinnedNow.pins));
+		await pressPointer(
+			cdp,
+			pinnedNow.pins[unpinIndex].x,
+			pinnedNow.pins[unpinIndex].y,
 		);
-		await pressPointer(cdp, pinnedNow.pins[unpinIndex].x, pinnedNow.pins[unpinIndex].y);
 		await wait(400);
 		const unpinned = await readPins(cdp);
 		check(
@@ -2116,7 +2112,6 @@ async function scenePins(cdp) {
 				pins: unpinned.pins.map((pin) => `${pin.pressed}/${pin.opacity}`),
 			}),
 		);
-
 	}
 
 	if (TUI_PYTHON !== null && TUI_CONFIG !== null) {
@@ -2225,16 +2220,15 @@ async function crossSurfacePin(cdp) {
 	 */
 	const catalogue = await readBackendSessions();
 	const chosen = catalogue.find((row) => !row.pinned);
-	require(
-		"the backend has an unpinned conversation for the terminal's own store to pin",
-		chosen,
-		JSON.stringify(catalogue),
-	);
-	require(
-		"that conversation is drawn in this panel",
-		before.rows.some((row) => row.label.includes(chosen.title)),
-		JSON.stringify({ title: chosen.title, rows: before.rows.map((row) => row.label) }),
-	);
+	require("the backend has an unpinned conversation for the terminal's own store to pin", chosen, JSON.stringify(
+		catalogue,
+	));
+	require("that conversation is drawn in this panel", before.rows.some((row) =>
+		row.label.includes(chosen.title),
+	), JSON.stringify({
+		title: chosen.title,
+		rows: before.rows.map((row) => row.label),
+	}));
 	const script = [
 		"import json,sys",
 		"from local_operator.tui.sidebar_pins import read_pins, toggle_pin",
@@ -2243,11 +2237,9 @@ async function crossSurfacePin(cdp) {
 		"toggle_pin(root, session_id)",
 		"print(json.dumps({'pins': read_pins(root)}))",
 	].join("\n");
-	const wrote = spawnSync(
-		TUI_PYTHON,
-		["-c", script, TUI_CONFIG, chosen.id],
-		{ encoding: "utf8" },
-	);
+	const wrote = spawnSync(TUI_PYTHON, ["-c", script, TUI_CONFIG, chosen.id], {
+		encoding: "utf8",
+	});
 	check(
 		"the terminal's own store wrote the pin",
 		wrote.status === 0,
