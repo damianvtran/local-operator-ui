@@ -17,6 +17,7 @@ import React, {
 	type ReactNode,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -384,6 +385,26 @@ const defaultCanvasState = {
  */
 const RUN_PANEL_MIN_PX = 320;
 
+/**
+ * The other end of that contract range: 640 is the widest the pane may ask for
+ * (`docs/run-sidebar.md` § 8). Named here beside the floor because the divider's
+ * range is now built from both, and because the ceiling is what a drag is
+ * refused at once the row cannot host it.
+ */
+const RUN_PANEL_MAX_PX = 640;
+
+/**
+ * The chat column's own floor, in pixels, as a fallback for the measured one.
+ *
+ * The column declares it as `min-w-[220px]` on the element beside the pane, and
+ * the measurement below reads it back from that element's computed style rather
+ * than trusting this number — the floor is what tells the pane's own divider how
+ * much room the ROW can give it, and a constant here that drifted from the class
+ * would silently re-open the divergence the divider fix closes. This is the
+ * fallback for a computed style that cannot be parsed, not a second source.
+ */
+const CHAT_COLUMN_MIN_PX = 220;
+
 export const ChatContent: FC<ChatContentProps> = React.memo(
 	({
 		activeTab,
@@ -637,10 +658,41 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * loop against its own measurement.
 		 */
 		const runPanelRef = useRef<HTMLDivElement | null>(null);
+		const runPanelRowRef = useRef<HTMLDivElement | null>(null);
+		const chatColumnRef = useRef<HTMLDivElement | null>(null);
 		const [renderedRunPanelWidth, setRenderedRunPanelWidth] = useState(
 			effectiveRunPanelWidth,
 		);
-		useEffect(() => {
+		/*
+		 * How wide the pane COULD be drawn, as opposed to how wide it is.
+		 *
+		 * `renderedRunPanelWidth` says what the pane got; this says what the ROW can
+		 * still give it, which is the row's width minus the chat column's own floor.
+		 * The divider needs both, and the reason is round 2's U6: with the wrapper's
+		 * floor gone, the pane's width is `min(preference, this)`, so a preference
+		 * above this renders as this — the separator was announcing and accepting a
+		 * number the pane was not drawn at, and a drag in a row that could not host it
+		 * stored a width that only appeared later, out of context, when the rail or
+		 * the window changed.
+		 *
+		 * The column's floor is READ from the element rather than assumed: it is a
+		 * Tailwind class on the column beside the pane, and the one number this
+		 * component must agree with is the one the browser actually applies.
+		 */
+		const [runPanelCapacity, setRunPanelCapacity] = useState(
+			effectiveRunPanelWidth,
+		);
+		/*
+		 * `useLayoutEffect`, not `useEffect`: the measured width FEEDS the pane's own
+		 * budgets, so a passive effect would let the pane's first commit hand
+		 * `tallyBudget` the 420px preference while the box on screen is 303px or 79px
+		 * — the failure that budget exists to prevent, for one render. A non-discrete
+		 * open (a reveal request consumed in an effect, a pane restored open on a
+		 * session switch) does not get React's pre-paint passive flush, so this is the
+		 * phase the measurement belongs in. `use-scroll-paging.ts` makes the same
+		 * argument for the same reason.
+		 */
+		useLayoutEffect(() => {
 			if (!isRunPanelOpen) return;
 			const element = runPanelRef.current;
 			if (!element) return;
@@ -650,12 +702,52 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				setRenderedRunPanelWidth((current) =>
 					Math.abs(current - width) < 1 ? current : width,
 				);
+				const row = runPanelRowRef.current;
+				const column = chatColumnRef.current;
+				if (!row || !column) return;
+				const columnFloor =
+					Number.parseFloat(getComputedStyle(column).minWidth) ||
+					CHAT_COLUMN_MIN_PX;
+				const capacity = row.getBoundingClientRect().width - columnFloor;
+				setRunPanelCapacity((current) =>
+					Math.abs(current - capacity) < 1 ? current : capacity,
+				);
 			};
 			measure();
 			const observer = new ResizeObserver(measure);
 			observer.observe(element);
+			if (runPanelRowRef.current) observer.observe(runPanelRowRef.current);
+			if (chatColumnRef.current) observer.observe(chatColumnRef.current);
 			return () => observer.disconnect();
 		}, [isRunPanelOpen]);
+		/*
+		 * THE DIVIDER'S CONTRACT, in one place: what the separator announces and
+		 * accepts is what the pane renders.
+		 *
+		 * `runPanelResizable` is false when the row cannot host even the pane's own
+		 * 320px contract floor — at 1024x673 with the rail expanded the row is 524px
+		 * and the column's floor is 220 of them, so no preference the control is
+		 * allowed to store (320..640) could render as itself: every one of them draws
+		 * 304px. Resizing is then not a no-op that lies, it is not offered: the value
+		 * below is the drawn width, the range collapses onto it, and a write is
+		 * refused so the user's stored preference survives intact for a window that
+		 * can honour it. Otherwise the range ends at the capacity, which is what makes
+		 * the stored preference and the drawn width the same number after any drag.
+		 */
+		const runPanelResizable = runPanelCapacity >= RUN_PANEL_MIN_PX;
+		const runPanelDividerValue = runPanelResizable
+			? Math.min(
+					Math.max(renderedRunPanelWidth, RUN_PANEL_MIN_PX),
+					runPanelCapacity,
+				)
+			: renderedRunPanelWidth;
+		const handleRunPanelWidthChange = useCallback(
+			(width: number) => {
+				if (runPanelCapacity < RUN_PANEL_MIN_PX) return;
+				setRunPanelWidth(width);
+			},
+			[runPanelCapacity, setRunPanelWidth],
+		);
 
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
@@ -728,8 +820,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			 * zeroed instead and `flex-1` grows it back from there - the floor
 			 * survives and the content no longer votes on the width.
 			 */
-			<div className="relative flex h-full w-full flex-row overflow-hidden">
-				<div className="relative h-full w-0 min-w-[220px] flex-1">
+			<div
+				ref={runPanelRowRef}
+				className="relative flex h-full w-full flex-row overflow-hidden"
+			>
+				<div
+					ref={chatColumnRef}
+					className="relative h-full w-0 min-w-[220px] flex-1"
+				>
 					{/*
 					 * The working surface takes the PAGE ground, `canvas`, not the panel
 					 * ground.
@@ -1133,10 +1231,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				{isRunPanelOpen && runDetails && (
 					<>
 						<ResizableDivider
-							sidebarWidth={effectiveRunPanelWidth}
-							onSidebarWidthChange={setRunPanelWidth}
-							minWidth={RUN_PANEL_MIN_PX}
-							maxWidth={640}
+							sidebarWidth={runPanelDividerValue}
+							onSidebarWidthChange={handleRunPanelWidthChange}
+							minWidth={
+								runPanelResizable ? RUN_PANEL_MIN_PX : runPanelDividerValue
+							}
+							maxWidth={
+								runPanelResizable
+									? Math.min(RUN_PANEL_MAX_PX, runPanelCapacity)
+									: runPanelDividerValue
+							}
 							side="left"
 							onDoubleClick={restoreDefaultRunPanelWidth}
 							label="Resize run details"
@@ -1161,7 +1265,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * window at 1024x673 with the rail expanded (the close control's
 								 * right edge, off-screen) and 68px at 800x600 with the rail
 								 * collapsed, because the row's other floors - a 220px column and a
-								 * 240px chat list, under a 48px or 220px rail - do not leave 320.
+								 * 280px chat list, under a 48px or 220px rail - do not leave 320.
 								 * With no floor the pane takes exactly the space the row has left,
 								 * and the budgets below follow that measured width, so a narrow
 								 * pane sheds and elides inside its own box instead of being cut by

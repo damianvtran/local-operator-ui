@@ -153,25 +153,64 @@ directions, and its sign depends on the width the column had before the press:
 | window | rail | column before → after | band top | band height |
 | --- | --- | --- | --- | --- |
 | 1024x673 | expanded | 524 → 220 | 483 → 457 (**26 up**) | 158 → 184 |
-| 1024x673 | collapsed | 696 → 276 | 441 → 457 (**16 down**) | 200 → 184 |
+| 1024x673 | collapsed | 696 → 276 | 441 → 483 (**42 down**) | 200 → 158 |
 | 800x600 | expanded | 300 → 220 | 410 → 384 (**26 up**) | 158 → 184 |
 | 800x600 | collapsed | 472 → 220 | 410 → 384 (**26 up**) | 158 → 184 |
 | 1380x900 | expanded | 880 → 460 | 700 → 710 (**10 down**) | 168 → 158 |
 
-The measured band heights are 158px at a 524px and a 460px column, 184px at
+Every cell above is read off the `<theme>.json` committed beside the frame it
+belongs to (design round 1's D3), which is the point of committing them: the
+collapsed row is `press-1024x673-rail-collapsed-{before,after}-fix`, whose
+readbacks carry band `441/200 → 483/158` and column `696 → 276`.
+
+The measured band heights are 158px at a 524px and a 276px column, 184px at
 220px, and 200px at 696px. So "the composer also moves up 26px in both builds"
 was true of one row of that table and false of the others — in the
 rail-collapsed state the operator is in, the band moves the other way. The band's
 move is the pane opening, not the reveal: it is identical on both builds and on
 the header-trigger path, and it is unchanged by this fix.
 
-**Re-derived on the merge base `5c53e1c75` and on this head**, after the pane's
-fit change moved the rows. The first version of this table read `696 → 276 /
-441 → 483 (42 down) / 200 → 158` for the collapsed row and `640 → 460` for the
-1380 column, which were the pre-fit and pre-`5c53e1c75` arithmetic; both are
-corrected against the runs above rather than carried, and the collapsed row now
-agrees with the pane's own fit (the pane takes its full 419px preference there,
-so the column loses 420px and the band's tallest step is 184, not 158).
+**Corrected twice, and the second correction was the wrong one.** Round 1's D2
+found the original sentence and this table's first version; round 2 (R2-1, D9)
+found that the version written to answer it had the collapsed row as
+`441 → 457 (16 down)` / `200 → 184`, which contradicts the readback committed
+beside that very frame. That version took a *later fresh run's* numbers for the
+cell — the run was real, and it measured `441 → 457` / `200 → 184` on a rebased
+head at the same 696 → 276 columns — but a table presented as "read off those
+readbacks" has to be read off those readbacks. The row is the committed JSON's
+again, and the two readings are recorded here rather than one being dropped: they
+agree on every column and differ on the band, because the band's height has a
+second input — its own content — on top of the width this section is about.
+(The 1380x900 column-before cell is 880, which both the committed readback and
+round 2's own drive give; the earlier `640` was the pre-fit figure.)
+
+Everything in this table was re-driven on the merge base and on this head; see
+*Re-derived on the merge base* below for what moved between the two ends.
+
+### The residue the band leaves, and the state it is actually in
+
+Opening the pane narrows the column, and at some widths that is enough to move
+the composer band — so a SECOND press at the same screen point can land on
+something other than the chip it hit a moment earlier. Round 1 recorded that as a
+26px step at 1024x673 with the rail expanded; round 2 could not reproduce it
+THERE, on either build, and found where it really is (U3, corrected):
+
+- at 1024x673 with the rail **expanded** the chip does not move at all —
+  `top 491` before and after on both builds — and a second press at the same point
+  still owns the chip;
+- at 1024x673 with the rail **collapsed** — the state the operator's own
+  screenshot shows, and the one this section's table is about — it reproduces
+  identically on both builds: chip `top 455 → 491`, **+36px** (more than the
+  control's own 24px height), and the second press at the pre-press point lands on
+  a `div` and moves focus **out of the composer into the transcript**.
+
+So the residue is real, it is pre-existing (byte-for-byte the same on the base at
+that state), and its cost is a stolen focus rather than a merely wasted press. It
+is unchanged by this fix and is not this diff's to remove: the band's height is
+width-driven, and the width it responds to is the pane opening. What this change
+does is make the wrong-state reading impossible to publish by accident — the
+flag's two states are now both reachable and the driver records which one it is
+in (`[rail] ... already at Npx, no press needed`).
 
 ## What the fix is
 
@@ -185,14 +224,44 @@ and focus-stays-put behaviours the effect encoded are unchanged. The Escape
 ladder now also accepts a press that came from the composer's plan chip, which is
 the third control that opens this pane and the one this whole flow is reached by.
 
-**The Escape half, measured on both ends** (round 1, U2). One press of the chip
-with focus left on it, then one `Escape`, on the same rig at 1024x673 with the
-rail expanded: on the merge base the pane is still open afterwards (`paneOpen:
-true`, focus still on the chip — the ladder's guard refused it, which is the
-finding); on this head the pane is closed (`paneOpen: false`) and focus is back on
-the chip. The ban is deliberately narrow: the composer's own `Escape` is
-untouched, because the chip is a button in the status row and not the textarea
-that owns that key.
+**The Escape half, measured on both ends** (round 1's U2; corrected by round 2's
+R2-2/U9 and QA's Q4-a). One press of the chip with focus left on it, then one
+`Escape`, on the same rig at 1024x673 with the rail expanded: on **`8f80697c8`**
+(the base this run was taken on, and the tree the operator reported from) the pane
+is still open afterwards — `paneOpen: true`, focus still on the chip — and on
+this head it is closed (`paneOpen: false`) with focus back on the chip.
+
+**Which base that row describes matters, and the first version of this paragraph
+got it wrong.** It said "the merge base", and the merge base does not behave that
+way: `escapeFromAnywhere` landed on `main` in `bcda2ab6a` (before both `5c53e1c75`
+and `962f43350`), so on the tree this lands on an unclaimed `Escape` already
+reaches the pane's ladder and the pane closes from the chip **with or without**
+this clause. Round 2 measured that on both ends, and QA measured it independently.
+
+The clause is therefore still load-bearing, but for a narrower reason, and it is
+the reason the round-2 reviews asked for by name: what the guard decides is a
+press some layer has **CLAIMED** (`event.defaultPrevented && !mine`). The chip's
+own `<Tooltip>` is exactly such a layer — Radix's dismissable layer calls
+`preventDefault` on `Escape` from a capture-phase listener, which this file's own
+comment describes — so with the tooltip open, `mine` being true from the chip is
+what lets the pane's `Escape` win over it. Main's `escapeFromAnywhere` covers the
+unclaimed press; this clause covers the claimed one.
+
+One consequence worth stating rather than discovering: with `mine` true from the
+chip, the `⌘[` / `Ctrl+[` chord now fires from a press whose target is the chip,
+where the earlier guard returned first. That is consistent with the header
+trigger — the two controls that open this pane behave alike — and it is the
+honest cost of the chip counting as a third entry point rather than a button that
+happens to open a pane.
+
+**What is still owed here, and why it is written as owed:** this is the one
+measured claim in the set whose reading is not committed beside a frame. The run
+behind the paragraph above was made before readbacks were being kept, and the
+JSON it wrote is gone with its rig; round 2's reviews both flagged that a set
+whose method is committed readbacks should not hold its Escape evidence in prose.
+Committing that readback needs one more app run (a build plus a boot, to press the
+chip and the key once on both ends) — see *What was NOT re-run* at the foot of this
+file for whether it was run or is still owed.
 
 ## The pane's fit, which the same change had to settle
 
@@ -214,21 +283,101 @@ reaches it. Same rule as the canvas dock one slot up: the preference is the
 | 800x600 | collapsed | 549..968 → 549..800 | **168 → 0** | inside, hit-testable | 0 |
 | 1380x900 | expanded | 961..1380 → 961..1380 | 0 → 0 | inside, hit-testable | 0 |
 
+**Every "before" cell above is the base driven by the HEADER TRIGGER, not by the
+chip press the frames beside this table show** (round 2, D10). The two paths give
+different before-panes on the base because the chip press is the one the reveal
+used to answer with a 108px slide — its own readback says pane `500..919`, clip
+119 — while the trigger opens the pane without the reveal and leaves clip 340 at
+800/expanded and 168 collapsed. The numbers are all real; they are two gestures,
+and the table now says which, so no cell has to be taken on trust. The
+chip-press readings are in the committed frames' own JSON; the 800x600
+rail-collapsed row has no before frame, only its readback, which is why its
+before pane is stated here rather than shown.
+
 "Cut rows" is the count of elements inside the pane whose text is clipped AND
 whose elision point is outside the viewport — the failure the design round
 measured as characters ending at a hard screen edge with no ellipsis. It is 0 in
 every configuration; the rows that are truncated are ellipsised inside the
 window, which is the design working.
 
+**That metric could not see two of the failures on this page** (round 2, D7), and
+the metric has been fixed rather than the sentence: the predicate skipped any box
+with `clientWidth <= 0` — which is exactly a label collapsed to nothing, the
+failure the 79px pane produced — and required `scrollWidth > clientWidth + 1`, so
+a value that overflows its container without being truncated was invisible to it
+too. `scripts/run-panel-reveal-proof.mjs` now counts both classes
+(`collapsedTextRows`, `outsideRegionRows`, with one example of each per frame),
+reports them in every run's JSON, and **fails** an `--expect=region-only` run on
+the first of them. The `cut rows after: 0` column above is therefore a reading
+from the OLD metric, and the frames it describes were captured with it; the new
+counters' readings are owed on the final head (see the foot of this file).
+
 The cost, stated rather than rounded away: **at the app's own 800x600 floor with
-the rail expanded the pane renders 79px.** Nothing is off-screen and everything
-is reachable, but a 79px pane is not usable, and no arrangement of the row's own
-floors can make it usable: the rail (220px) plus the chat list (280px) plus the
-column's own 220px floor already spend 720 of the 800px window before the pane
-gets anything. That is a chrome decision — which of those three gives, and when —
-and this change deliberately does not make it. What the pane owes in that state
-is to stay legible in the width it is given, which is what the budgets below are
-for.
+the rail expanded the pane renders 79px** — a pane no reader can use, and no
+arrangement of the row's own floors fixes it: the rail (220px) plus the chat list
+(280px) plus the column's own 220px floor already spend 720 of the 800px window
+before the pane gets anything. That is a chrome decision — which of those three
+gives, and when — and this change deliberately does not make it.
+
+What the pane DOES owe in that state is a row that can still name itself, and the
+first version of this paragraph claimed that without the pixels behind it. Round 2
+measured the opposite (D6): at 800x600 with the rail expanded every row's name box
+was **0px wide** — `scrollWidth` 60-133 against `clientWidth` 0, so the name was
+not elided but GONE, and reachable by no gesture, because there is nothing to
+scroll to — with a trailing value drawn 13px past the window edge and 21px of the
+region's content behind a horizontal scrollbar. The row grammar now answers that:
+the name keeps a floor (`mcpRowLineGrammar`, `run-detail-mcp.tsx`), the trailing
+values shed from the right until it has one — scope first, then the tool count,
+the status word last, because that is why a problem row is a problem row — and the
+name's floor is capped by what the line actually has left, so at 79px the name is
+small rather than absent and the row no longer overflows the box it was given.
+
+**The numbers for that fix are owed, not claimed** (see the foot of this file):
+they need a frame at 800x600/expanded with the new predicate's counters, and this
+round ran under a machine-wide load hold that forbade app drives.
+
+### The divider, which used to drag a number the pane did not use
+
+The fit change above has a consequence the control beside it did not catch, and
+round 2 measured it (U6). The wrapper takes the preference as its `width` with no
+floor, so the pane renders `min(preference, what the row has left)`; the divider,
+however, was handed the PREFERENCE as its value, which is what it announced
+(`aria-valuenow`) and what its drags were measured from. At 1024x673 with the rail
+expanded and the pane at 303px, seven real drags moved the stored preference
+420 → 360 → 320 → (clamp) → 440 → 640 while the separator's own `left` stayed at
+x=714 and the pane stayed 303px in every sample, and the keyboard path announced
+the same 420 → 436 → … → 640 to a screen reader. On the base the pane's width WAS
+the preference, so the two could not disagree; after the fit they can.
+
+The rule the control now follows is that **what the separator announces and
+accepts is what the pane renders**:
+
+- its value is the MEASURED width (`renderedRunPanelWidth`), not the preference;
+- its range ends at what the row can actually host — the row's width minus the
+  chat column's own floor, read back from the column's computed `min-width`
+  (`runPanelCapacity` in `chat-content.tsx`) — so a range that cannot render as
+  itself is refused rather than stored: a drag that would have stored 640 in a
+  row that can host 476 is now capped at 476, which renders 476;
+- where the row cannot host even the pane's 320px contract floor — the 303px and
+  79px states — the range collapses onto the drawn width, the value is the drawn
+  width, and a write is REFUSED, so the operator's stored preference survives for
+  a window that can honour it instead of being silently rewritten by a drag that
+  could not be seen to do anything.
+
+Shrinking (drag towards the pane's own floor) is untouched: at 1024x673 with the
+rail collapsed the row can host 476, so the range is 320..476 and every value in
+it renders as itself. The reading that measures this is owed with the rest of the
+app drives at the foot of this file.
+
+### One asymmetry, recorded rather than fixed
+
+`Close run details` puts focus on the pane's header trigger, and `Escape` leaves
+it on the plan chip — two different places for one exit from one flow (round 2's
+UX nit, U7's asymmetry). The pane's own rule is documented in its source ("returns
+focus to the trigger") and it is right for the trigger path; the chip is the one of
+the two that keeps the user where they were. Not changed here: picking which
+control a third entry point returns to is a small design call, and this round is
+not the place to make it silently.
 
 ## The width the pane is drawn at
 
@@ -240,6 +389,16 @@ preference: a shrunk pane would shed for a width it does not have and truncate a
 the width it does. It is now handed the measured width of the wrapper
 (`renderedRunPanelWidth`, a `ResizeObserver` on the box the pane is drawn in), so
 one number drives both the box and the budgets.
+
+The MCP section's header was the one section header NOT on that budget (round 2,
+D8): `tallyBudget` is called by To-dos, Subagents and Jobs, and
+`run-detail-mcp.tsx` called it nowhere — so at the 303px this change newly renders
+at, the warm header read `2 of 11 connected · 8 need atte…`, cut mid-word, where
+the same string is complete at 419. Its tally now takes the budget too and sheds
+its attention clause rather than being cut inside one: `2 of 11 connected` where
+the full sentence cannot fit. The COLD header is deliberately left unbudgeted —
+it already has its own full-width line and wraps, which is the fix its own comment
+describes.
 
 ## The reader-first focus path (round 1, M1)
 
@@ -365,18 +524,36 @@ attribute to measure against.
 ## What was NOT re-run, and why
 
 The machine these runs came from went into a declared hold (load average 465–635,
-swap 21.7 GB of 22.5 GB used) after the runs above, so three heavy verifications
-are owed rather than done:
+swap 21.7 GB of 22.5 GB used) and it was still in one when round 2's remediation
+landed (load 265–381), so every verification that needs a build, a boot or a
+capture is **owed rather than done**. What ran is listed too, because "deferred"
+is only honest next to "also ran":
 
-- a fresh `--focus-probe` pass on this head (the M1 reading below was taken on
-the base build and is carried, not re-taken);
-- a fresh `--reader=first` pass (the last one is on `8bd51bd03`);
-- re-capturing the frames. **No frame in this set was re-taken for the
-  re-integration.** The `after-fix` frames already show this head's post-fit
-  geometry (they were shot at `8bd51bd03`, which carries the fit change), and
-  the `before-fix` frames are `8f80697c8` by construction, so nothing in the set
-  is contradicted by the re-derived numbers above — but the two runs that would
-  refresh the readings that are not in this table are owed.
+Owed:
+
+- **re-capturing the frames on the final head.** No frame in this set was re-taken
+  for the re-integration or for round 2. The `after-fix` frames already show the
+  post-fit geometry (they were shot at `8bd51bd03`, which carries the fit change)
+  and the `before-fix` frames are `8f80697c8` by construction, so nothing above is
+  contradicted — but the row-grammar change (D6) and the new predicate counters
+  (D7) both change what these frames would show at 800x600/expanded, and those
+  numbers are owed, not claimed;
+- **the divider's contract** (U6): a drag matrix at 1024x673/expanded and
+  1024x673/collapsed reading the stored preference, the separator's `aria-valuenow`
+  and the pane's rect after each step;
+- **`--reader=first`** (round 2's Q3), which still cannot reach an openable roster
+  on this fixture: the seeded roster only renders cold, and warming the session
+  replaces it. It is recorded as BLOCKED with that wall named rather than faked;
+- **a fresh `--focus-probe` pass** on this head (the M1 reading below was taken on
+  the base build and is carried, not re-taken), and the Escape readback this file
+  now describes as owed;
+- **`pnpm check-evidence`**, which takes a machine-wide lease a peer was holding;
+- **`pnpm test:desktop` in full** (the touched suites were run directly instead).
+
+Ran, on the final head, pasted into the pull request's remediation comment: the
+repository's lint and type gates, the touched node suites through
+`scripts/run-desktop-tests.mjs`, `scripts/test-inventory.test.mjs`, and the
+manifest re-derivation.
 
 ## Provenance and the limits of these frames
 

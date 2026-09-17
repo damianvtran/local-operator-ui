@@ -1686,9 +1686,22 @@ test("the pane's floor is its contract minimum, not the user's preference", () =
 	 * preference is the `width`, the rendered box has NO floor (`minWidth: 0`, which
 	 * is also what lets a flex item shrink below its content minimum), and the 320
 	 * stays where it belongs - as the divider's drag floor.
+	 *
+	 * Round 2 (U6) added the other half of that rule, because a drag floor the pane
+	 * cannot render is a floor that lies: with the wrapper floored at 0, the pane
+	 * renders `min(preference, what the row leaves)`, so a drag in a row that could
+	 * not host the preference moved a stored number while the pane stood still. The
+	 * divider's value is now the MEASURED width and its floor is the 320 only when
+	 * the row can host it - otherwise the range collapses onto the drawn width and a
+	 * write is refused (measured: seven real drags moved the preference 420 -> 360 ->
+	 * 320 -> 440 -> 640 while the pane stayed 303px and the separator never moved).
 	 */
 	assert.match(content, /const RUN_PANEL_MIN_PX = 320;/);
-	assert.match(content, /minWidth=\{RUN_PANEL_MIN_PX\}/);
+	assert.match(
+		content,
+		/minWidth=\{\s*runPanelResizable \? RUN_PANEL_MIN_PX : runPanelDividerValue,?\s*\}/,
+	);
+	assert.match(content, /sidebarWidth=\{runPanelDividerValue\}/);
 	assert.match(content, /minWidth: 0,/);
 	assert.doesNotMatch(content, /minWidth: effectiveRunPanelWidth/);
 	/*
