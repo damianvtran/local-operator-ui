@@ -249,6 +249,47 @@ test("a hit for a session this client does not list is rendered, not dropped", (
 	assert.equal(listed.rows[0].title, "Local title");
 });
 
+test("a synthesized hit carries the pin state when the backend describes it, and not otherwise", () => {
+	/*
+	 * A search hit is asked of the WHOLE store, so a pinned conversation outside the
+	 * client's page arrives as a hit with no local row to compare against. Without
+	 * the pin state, that row lands under `Previous chats` with an unfilled glyph and
+	 * no `Pinned chats` section at all - the panel under-reporting the backend's own
+	 * set, which is the failure the design forbids (QA round 1, Q1).
+	 *
+	 * The absent half is the same rule seen from the other side: a backend that does
+	 * not describe the pin state leaves the field out, and the row must then carry NO
+	 * key rather than `undefined` - "an absent key is not a claim" - because the
+	 * sidebar reads the absence as unknown and withholds the control (review round 1,
+	 * m1). Asserted as the KEY's absence, since `row.pinned === undefined` cannot tell
+	 * the two apart and the sidebar's gate is what reads it.
+	 */
+	const described = searchChats([], "retention", [
+		{
+			...hit("dddddddddddd", SESSION_RANK_BODY, false, "Retention sweep notes"),
+			pinned: true,
+		},
+	]);
+	assert.equal(described.rows[0].pinned, true);
+
+	const unpinned = searchChats([], "retention", [
+		{
+			...hit("eeeeeeeeeeee", SESSION_RANK_BODY, false, "Retention sweep notes"),
+			pinned: false,
+		},
+	]);
+	assert.equal(unpinned.rows[0].pinned, false);
+
+	const undescribed = searchChats([], "retention", [
+		hit("ffffffffffff", SESSION_RANK_BODY, false, "Retention sweep notes"),
+	]);
+	assert.equal(
+		Object.hasOwn(undescribed.rows[0], "pinned"),
+		false,
+		"a hit whose backend does not describe the pin state must not claim one",
+	);
+});
+
 test("a row the query visibly explains is not marked as a conversation match", () => {
 	// The backend suppresses `body_match` for a row its own name answered, and
 	// the marker has to apply the same rule to the LOCAL half: a row admitted

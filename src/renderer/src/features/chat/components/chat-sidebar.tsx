@@ -276,6 +276,114 @@ export function ChatSidebar({
 			return {};
 		}
 	});
+	/*
+	 * THE ROW A PIN JUST MOVED, AND WHERE THE READER LEFT IT (QA round 1, U1/U2/U3).
+	 *
+	 * Pinning moves a conversation out of `Active`/`Previous` and into `Pinned chats`,
+	 * which is a change of DOM POSITION, and three things went wrong with it when the
+	 * move was left to the browser: the region's scroll was re-anchored (275 -> 319,
+	 * with the `Pinned chats` heading 309 px above the visible top), the pointer was
+	 * left over a DIFFERENT conversation's row - a second click opens the wrong chat -
+	 * and the control holding keyboard focus was unmounted with the row, so the next
+	 * Tab started at the top of the panel.
+	 *
+	 * ONE CORRECTION PER KIND OF PRESS, because the two want opposite things and
+	 * pretending otherwise is how the browser's own anchoring got it wrong:
+	 *
+	 *   - a POINTER press anchors the CONTENT: the row the pointer was next to keeps
+	 *     the line it had, so the list does not move under the reader and the pointer
+	 *     is left over the vacated slot - not over a neighbour, and not over a control
+	 *     that would act on a conversation nobody chose. This is measurable and is
+	 *     measured: the neighbour's viewport top is asserted unchanged in the scene.
+	 *   - a KEYBOARD press follows the ROW: the caret went to the row's control, so the
+	 *     row moving away from the caret is the disorienting part. The correction puts
+	 *     it back on its line, or - when that is geometrically impossible, because the
+	 *     section it moved into has less content above it than the reader had scrolled,
+	 *     measured at scrollTop 334 needing a target of -187 - brings it to the
+	 *     region's top edge and hands focus back to the same control on that row.
+	 *
+	 * `event.detail === 0` is what tells them apart: a click synthesised from Enter or
+	 * Space carries no click count, and a real pointer press carries 1.
+	 */
+	const listRef = useRef<HTMLDivElement | null>(null);
+	const movedRef = useRef<{
+		id: string;
+		top: number;
+		follow: boolean;
+		anchorId: string | null;
+		anchorTop: number;
+	} | null>(null);
+	const rememberMovedRow = (sessionId: string, follow: boolean) => {
+		const rows = Array.from(
+			listRef.current?.querySelectorAll<HTMLElement>("[data-session-row]") ??
+				[],
+		);
+		const index = rows.findIndex(
+			(row) => row.getAttribute("data-session-row") === sessionId,
+		);
+		if (index < 0) {
+			movedRef.current = null;
+			return;
+		}
+		// The row the reader can watch: the one below the pressed row, or the one above
+		// when it was last. Either is a row the pointer is NOT on, which is the point.
+		const neighbour = rows[index + 1] ?? rows[index - 1] ?? null;
+		movedRef.current = {
+			id: sessionId,
+			top: rows[index].getBoundingClientRect().top,
+			follow,
+			anchorId: neighbour?.getAttribute("data-session-row") ?? null,
+			anchorTop: neighbour ? neighbour.getBoundingClientRect().top : 0,
+		};
+	};
+	// biome-ignore lint/correctness/useExhaustiveDependencies: this runs after every render and clears itself; the guard IS the state it waits on
+	useEffect(() => {
+		const moved = movedRef.current;
+		const list = listRef.current;
+		if (!moved || !list) return;
+		const row = list.querySelector<HTMLElement>(
+			`[data-session-row="${moved.id}"]`,
+		);
+		if (!row) return;
+		if (moved.follow) {
+			const delta = row.getBoundingClientRect().top - moved.top;
+			if (delta !== 0) list.scrollTop += delta;
+			const listBox = list.getBoundingClientRect();
+			const rowBox = row.getBoundingClientRect();
+			if (rowBox.top < listBox.top) list.scrollTop -= listBox.top - rowBox.top;
+			else if (rowBox.bottom > listBox.bottom)
+				list.scrollTop += rowBox.bottom - listBox.bottom;
+			/*
+			 * `preventScroll`, which is the whole reason the correction above survives: a
+			 * plain `focus()` scrolls the element into view itself - measured as the region
+			 * snapping to 0 and the row landing 202 px above the line it was pressed on.
+			 * The correction is this effect's; focus only says where the caret is.
+			 */
+			row
+				.querySelector<HTMLElement>("[data-session-pin]")
+				?.focus({ preventScroll: true });
+		} else if (moved.anchorId !== null) {
+			setRevealArmed(false);
+			const anchor = list.querySelector<HTMLElement>(
+				`[data-session-row="${moved.anchorId}"]`,
+			);
+			if (anchor) {
+				const delta = anchor.getBoundingClientRect().top - moved.anchorTop;
+				if (delta !== 0) list.scrollTop += delta;
+			}
+		}
+		movedRef.current = null;
+	});
+	/*
+	 * WHETHER THE REVEAL IS ARMED, which is a fact about the pointer rather than about a
+	 * row (QA round 1, U3). A pin press moves a row out of the list; the rows below slide
+	 * up, so the pointer - which has not moved - is left over a DIFFERENT conversation,
+	 * and its pin was revealed under a pointer that never went there. Disarming on a
+	 * pointer press and re-arming on the next movement inside the region makes the
+	 * stationary pointer inert: the row under it cannot be pinned or opened by accident
+	 * until the reader moves, at which point the affordance is exactly where it was.
+	 */
+	const [revealArmed, setRevealArmed] = useState(true);
 	const isOpen = (key: string, initial = false) => expanded[key] ?? initial;
 	const toggle = (key: string, initial = false) =>
 		setExpanded((current) => ({
@@ -512,6 +620,19 @@ export function ChatSidebar({
 		const pinned = row.pinned === true;
 		const label = row.title || "Untitled chat";
 		/*
+		 * THE CURRENT-ROW GROUND IS COMPUTED ONCE AND WORN TWICE, which is the entity
+		 * row's own shape below (`staged && rowCurrent` on its wrapper and on its name
+		 * button). The button's copy is what keeps the ground under the POINTER - it
+		 * carries the `hover:` half of `rowCurrent` - and the WRAPPER's copy is what
+		 * makes the ground span the whole row: the row's box is now wider than the
+		 * button (the 24px pin slot is a sibling, not a child), so a mark painted only
+		 * inside the button stops at the slot's edge and the pin glyph is drawn outside
+		 * the row it says is current (review round 1, M1 - measured on
+		 * `pins-selected-dark.png`: the ground ended at x≈925 while the row ran to
+		 * ≈1000).
+		 */
+		const current = selectedConversation === row.session_id && !activeDraftKey;
+		/*
 		 * The row is TWO SIBLING buttons in a `div.group`, not one button wrapping
 		 * everything. That is the entity row's shape (see `entity` below) and it is the
 		 * reason for it: a `<button>` inside a `<button>` is invalid HTML,
@@ -521,10 +642,10 @@ export function ChatSidebar({
 		 *
 		 * `data-chat-row` stays on the conversation button, so the arrow-key ring
 		 * (`querySelectorAll("[data-chat-row]")` plus `.focus()`) is unchanged, and the
-		 * wrapper is the hover GROUP the pin's reveal hangs off. The wrapper carries no
-		 * ground and no hover step of its own: the conversation button's
-		 * `rowStyle`/`rowCurrent` still paint the row, and a `hover:` on the wrapper
-		 * would put a second ground in the same 32px box.
+		 * wrapper is the hover GROUP the pin's reveal hangs off. The wrapper carries the
+		 * current-row ground (`current && rowCurrent`, the entity row's own shape) and no
+		 * `hover:` step of its own: the ground has to span the pin slot, and a `hover:` on
+		 * the wrapper would put a second ground in the same 32px box.
 		 */
 		const rowButton = (
 			<button
@@ -545,19 +666,13 @@ export function ChatSidebar({
 					// wrong thing about a box that no longer spans the row.
 					"min-w-0 flex-1 text-left",
 					nested && "pl-7",
-					selectedConversation === row.session_id &&
-						!activeDraftKey &&
-						rowCurrent,
+					current && rowCurrent,
 					// m4: the unread mark is NOT here. `font-semibold` on this
 					// `flex-1 truncate` title rewrote the visible string when the
 					// mark arrived, re-truncating text under the reader's cursor;
 					// it lives in the reserved status slot instead (see `Status`).
 				)}
-				aria-current={
-					selectedConversation === row.session_id && !activeDraftKey
-						? "page"
-						: undefined
-				}
+				aria-current={current ? "page" : undefined}
 				/* The tooltip carries the row's binding and its own state — the facts the
 			   row may not be drawing — and deliberately NOT the search mark's words,
 			   which the row announces itself through the `sr-only` span beside it:
@@ -653,7 +768,13 @@ export function ChatSidebar({
 		return (
 			<div
 				key={row.session_id}
-				className="group flex h-8 items-center gap-1 rounded-md"
+				/* The row's own box, and the hook the current-row ground is asserted
+				   through (`chat-sidebar-selection.test.mjs`'s CURRENT table). */
+				data-session-row={row.session_id}
+				className={cn(
+					"group flex h-8 items-center gap-1 rounded-md",
+					current && rowCurrent,
+				)}
 			>
 				{rowButton}
 				{/*
@@ -686,42 +807,64 @@ export function ChatSidebar({
 				 * list carries no `role="alert"` and does not compete with the catalogue
 				 * alert at the foot of this panel.
 				 */}
-				<button
-					type="button"
-					data-session-pin
-					aria-pressed={pinned}
-					/* The action, never the state: `Pin "X"` is what pressing does, and
+				{/*
+				 * WITHHELD WHEN THE ROW'S PIN STATE IS UNKNOWN, which is a different fact
+				 * from the capability. `pinned` is always present on a catalogue row from a
+				 * pins-capable backend, but a row synthesized from a SEARCH HIT whose
+				 * backend does not describe the pin state has no `pinned` at all - and a
+				 * control there could not repair it: the row is rebuilt from the wire hit on
+				 * every render, so a press would be a no-op the user reads as a failure
+				 * (QA round 1, Q1; review round 1, m1). An affordance that cannot act on the
+				 * row it is drawn on is withheld rather than offered broken.
+				 */}
+				{row.pinned !== undefined && (
+					<button
+						type="button"
+						data-session-pin
+						aria-pressed={pinned}
+						/* The action, never the state: `Pin "X"` is what pressing does, and
 						   the pressed state is `aria-pressed`'s to report. */
-					aria-label={`${pinned ? "Unpin" : "Pin"} “${label}”`}
-					/* The same string as the accessible name, matching the entity row's
+						aria-label={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						/* The same string as the accessible name, matching the entity row's
 						   manage control: it is the affordance a pointer user gets, and it
 						   duplicates the name without being announced twice. */
-					title={`${pinned ? "Unpin" : "Pin"} “${label}”`}
-					onClick={() => void setSessionPin(row.session_id, !pinned)}
-					className={cn(
-						"flex size-6 shrink-0 items-center justify-center rounded-md",
-						"transition-opacity duration-base ease-out-quart",
-						// The duration governs the transition INTO the current state, so
-						// the unpinned value is the fade-OUT and the revealed value the
-						// fade-IN: quick to appear, gentler to leave. The reveal is
-						// `opacity` alone - the box, the glyph's size and the row's
-						// height are the same in both states, which is what makes the
-						// reserved slot unable to reflow the row.
-						pinned
-							? "text-ink"
-							: "text-ink-dim opacity-0 group-hover:opacity-100 group-hover:text-ink-muted group-hover:duration-fast group-focus-within:opacity-100 group-focus-within:duration-fast",
-						// Colour step only, and only while this row is NOT the current
-						// one - see the block comment above.
-						!(selectedConversation === row.session_id && !activeDraftKey) &&
-							"hover:bg-elevated",
-					)}
-				>
-					<Pin
-						aria-hidden="true"
-						className="size-4"
-						fill={pinned ? "currentColor" : "none"}
-					/>
-				</button>
+						title={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						onClick={(event) => {
+							// Where the row is NOW, and WHICH PRESS it was: the two get opposite
+							// corrections (see `rememberMovedRow`), and `detail === 0` is the
+							// keyboard (a click synthesised from Enter or Space carries no count).
+							rememberMovedRow(row.session_id, event.detail === 0);
+							void setSessionPin(row.session_id, !pinned);
+						}}
+						className={cn(
+							"flex size-6 shrink-0 items-center justify-center rounded-md",
+							"transition-opacity duration-base ease-out-quart",
+							// The duration governs the transition INTO the current state, so
+							// the unpinned value is the fade-OUT and the revealed value the
+							// fade-IN: quick to appear, gentler to leave. The reveal is
+							// `opacity` alone - the box, the glyph's size and the row's
+							// height are the same in both states, which is what makes the
+							// reserved slot unable to reflow the row.
+							pinned
+								? "text-ink"
+								: cn(
+										"text-ink-dim opacity-0",
+										revealArmed
+											? "group-hover:opacity-100 group-hover:text-ink-muted group-hover:duration-fast group-focus-within:opacity-100 group-focus-within:duration-fast"
+											: /* Disarmed: hidden AND inert, so the pointer cannot reach it. */ "pointer-events-none",
+									),
+							// Colour step only, and only while this row is NOT the current
+							// one - see the block comment above.
+							!current && "hover:bg-elevated",
+						)}
+					>
+						<Pin
+							aria-hidden="true"
+							className="size-4"
+							fill={pinned ? "currentColor" : "none"}
+						/>
+					</button>
+				)}
 			</div>
 		);
 	};
@@ -1247,28 +1390,18 @@ export function ChatSidebar({
 				</p>
 			)}
 			{showList && (
-				<div className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2">
-					{/*
-					 * Pinned chats, at the TOP of this scroll region.
-					 *
-					 * Above the `All chats` row rather than between it and `Active chats`,
-					 * and the stronger half of the reason is the second one: the `All chats`
-					 * and `New chat` rows are NAVIGATION rather than chats, and in flat
-					 * ("All chats") mode there is no `Active chats` anchor for the section
-					 * to sit above at all - a placement that worked only in the split view
-					 * would make pins vanish for anyone using the flat list. This placement
-					 * is still a rendered decision, so the design round may overrule it.
-					 *
-					 * ZERO PINS RENDERS NOTHING - no heading, no empty section - which is
-					 * the TUI's own rule (an empty section contributes no header).
-					 */}
-					{pinned.length > 0 && (
-						<section>
-							{heading("pinned", "Pinned chats", true, pinned.length)}
-							{(query || isOpen("pinned", true)) &&
-								pinned.map((row) => sessionRow(row))}
-						</section>
-					)}
+				<div
+					ref={listRef}
+					/*
+					 * Re-arming is the pointer MOVING, not a timer: a timer would re-arm
+					 * under a pointer that is still parked, which is the state this exists
+					 * to keep inert.
+					 */
+					onPointerMove={() => {
+						if (!revealArmed) setRevealArmed(true);
+					}}
+					className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2"
+				>
 					<section>
 						<button
 							type="button"
@@ -1397,6 +1530,29 @@ export function ChatSidebar({
 							<KeyboardShortcut shortcut={newChatShortcutCap(isMac)} />
 						</button>
 					</section>
+					{/*
+					 * The `All chats` and `New chat` rows first, then Pinned chats.
+					 *
+					 * THIS PLACEMENT IS THE DESIGN ROUND'S (D1, arbitrated), and the reason is
+					 * that those two rows are NAVIGATION rather than chats: navigation names
+					 * the list, so it precedes the sections that fill it. Above them, the
+					 * section sat over the control that names the list it belongs to.
+					 *
+					 * It sits directly above the `Active chats` heading in the split view and
+					 * directly above the flat list in `All chats` mode - the same place on
+					 * both, which is what keeps pins from vanishing for anyone using the flat
+					 * list (there is no `Active chats` anchor there to sit above at all).
+					 *
+					 * ZERO PINS RENDERS NOTHING - no heading, no empty section - which is the
+					 * TUI's own rule (an empty section contributes no header).
+					 */}
+					{pinned.length > 0 && (
+						<section>
+							{heading("pinned", "Pinned chats", true, pinned.length)}
+							{(query || isOpen("pinned", true)) &&
+								pinned.map((row) => sessionRow(row))}
+						</section>
+					)}
 					{all ? (
 						<section>{rest.map((row) => sessionRow(row))}</section>
 					) : (

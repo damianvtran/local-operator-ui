@@ -1262,10 +1262,24 @@ const STRUCTURAL_CALL_SITES = [
 		 * `aria-current` reads: the row may not paint a ground the accessibility
 		 * tree does not claim, and it may not claim one it does not paint.
 		 */
+		/*
+		 * The decision MOVED, from a site inside the row to a name the row's sites read
+		 * (review round 1, M1: the row's box gained a second place that has to carry the
+		 * same decision, because the ground has to span the pin slot). So this pin is the
+		 * declaration AND the reference, in that order, for the same reason the single
+		 * site was pinned before: a reader can drop the reference - un-marking the row -
+		 * or weaken the predicate so no row ever reaches it, and both are this text.
+		 */
+		what: "chat session row current-row decision",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: "const current = selectedConversation === row.session_id && !activeDraftKey;",
+		why: "this is the decision the operator's missing mark is made of; `!activeDraftKey` is half the fact (a staged draft owns the mark instead), and a site that re-derives it with one term dropped is how the ground and the accessibility tree part company",
+	},
+	{
 		what: "chat session row current-row mark",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "selectedConversation === row.session_id &&\n\t\t\t\t\t\t!activeDraftKey &&\n\t\t\t\t\t\trowCurrent,",
-		why: "this is the mark the operator reported missing; the predicate and the ground have to stay on the row together, which is what `aria-current` on the same two terms asserts to a screen reader",
+		must: "current && rowCurrent,",
+		why: "the ground and the predicate have to stay on the row together, which is what `aria-current` on the same decision asserts to a screen reader",
 	},
 	{
 		/*

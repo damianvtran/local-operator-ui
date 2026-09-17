@@ -79,6 +79,22 @@ export type SessionSearchHit = {
 	forked: boolean;
 	rank: number;
 	body_match: boolean;
+	/**
+	 * The row's pin STATE, and OPTIONAL on purpose - which is the exception on this
+	 * shape rather than an oversight, because here the absence is the information.
+	 *
+	 * On a catalogue row `pinned` is always present (both values) so a list read
+	 * settles the client's optimistic flag; a search hit is a different question -
+	 * it is asked of the WHOLE store, so a pinned conversation the client's capped
+	 * page cannot hold arrives as a hit with no local row to compare against. A
+	 * backend that describes the pin state answers it here, and the synthesized row
+	 * carries it, so the conversation lands in `Pinned chats` with a filled glyph
+	 * (QA round 1, Q1). A backend that does NOT describe it leaves the field absent,
+	 * and the row then offers no pin control at all: the row is rebuilt from the wire
+	 * hit on every render, so a control there could not repair it, and an affordance
+	 * that silently does nothing is worse than none (review round 1, m1).
+	 */
+	pinned?: boolean;
 };
 /**
  * The search answer. `query` is ECHOED rather than assumed: keystrokes are
