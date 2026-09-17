@@ -17,7 +17,7 @@ no surface which talks to a backend; the composer here reaches only the three
 channels below), plus one narrowed run for
 `--only=chat-mention-chips--picker-many-rows` when the row-budget entry was added.
 The pass this set ships from ran at
-`5a860966adcbb9a799a7ca6a55e4deb0294b6987`, twelve themes: **288 frames over 24
+`90373bc6030c4ce3ebaa4bbb9b98b3a067bbed5b`, twelve themes: **288 frames over 24
 directories** — the 276 over 23 the reviewed round carried, plus the 12 frames of
 `quoted-mention`, the state review round 2 named as the one frame this surface was
 still missing. The head is cited in the spelling this branch ships, and it is the
@@ -25,6 +25,28 @@ head the frames were TAKEN at rather than the one they ship in: the manifest's o
 ancestry rule requires its `head` to be an ancestor of `HEAD`, and a capture can
 only be stamped from a tree that is already committed, so a set always lands in a
 commit after the tree it photographed.
+
+**And this set was folded onto a moved `main` after that pass, so read the head
+above as the spelling the rebase gave it.** `main` moved 35 commits and 738 files
+under this branch (the 0.26.4 and 0.26.5 windows, the provider/model combobox), 40
+of them under `src/` and 19 under `scripts/`; the manifest's `srcTree`/`scriptsTree`
+describe the tree the frames SHIP in, so the rebase invalidates them whatever the
+branch's own delta is, and both were re-derived on the merged tree. What it does
+NOT invalidate is the pictures, and that was measured rather than argued: this
+set's own narrowed run re-took all **288 frames on the merged tree** and 19 came
+back with different bytes — **0 pixels differing above a 4% fuzz in every one of
+them**, RMSE at most 0.0011, against 1,407 pixels over the threshold at this set's
+smallest redrawn change — so the encoding-level bytes were reverted and the fold's
+diff carries no `.webp` at all. The file-level argument agrees and is why nothing
+was expected to move: none of the files this band renders is among the moved ones
+(`message-input.tsx`, `at-picker.tsx`, `at-mention-overlay.tsx`, `at-token.ts`,
+`at-rank.ts`, `at-contract.ts`, `composer-tip.tsx`, `composer-tips.ts`,
+`chat-page.tsx`, `chat-content.tsx` are untouched), and the two `features/chat`
+files upstream did move — `pickers/destination-pickers.tsx` and
+`components/run-details/run-detail-wakes.tsx` — render in the slash destination and
+run-detail surfaces rather than in this one. The counts in the manifest next to this
+file are the merged tree's own (`frames` 5,722 outside the 74 declared sets,
+`surfaces` 615), re-derived by the same walker `check-evidence.mjs` uses.
 
 **What moved in this pass, measured.** 170 of the 288 frames differ from the
 reviewed set, in three groups and no others: the states a round-2 finding named
