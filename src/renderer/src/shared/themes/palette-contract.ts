@@ -73,8 +73,7 @@ export type ThemePalette = {
 	sunken: string;
 	/**
 	 * The current row's own ground: a step off `surface`, in the direction the
-	 * mode runs (darker on light themes, lighter on dark ones), carrying the
-	 * surface's own hue at more chroma.
+	 * mode runs (darker on light themes, lighter on dark ones).
 	 *
 	 * A selection is not a well. Before this role existed the current row was
 	 * painted `sunken`, which is always RECESSED — a hole in the panel — and
@@ -87,39 +86,54 @@ export type ThemePalette = {
 	 * row could not be quietened by moving that value: the row needed a ground of
 	 * its own.
 	 *
-	 * ## How far the step runs, and why it is chroma rather than lightness
+	 * ## The step is lightness, and its DIRECTION is the half that is asserted
 	 *
 	 * The role was first authored to land at **ΔE00 2.0-2.5 from `surface`**, for
 	 * a selection the operator had asked to be SUBTLE. He has since seen it
 	 * rendered and reported the current row as lost beside a hovered neighbour,
-	 * so the intent is reversed and the step now lands at **ΔE00 4.0-4.4 on
-	 * eleven palettes**; `iceberg` caps at 3.51, because its recessed ground sits
-	 * only 3.75 from `surface` and the two bounds meet there.
+	 * so the intent is reversed and the step now lands at **ΔE00 4.01-4.15 on all
+	 * twelve palettes**. It is a LIGHTNESS step first — the row sits **3.81 to
+	 * 6.62 `L*`** from its panel, in the direction the mode runs — and chroma pays
+	 * only what is left over. Three palettes had reached the band on chroma alone
+	 * (tokyoNight, `localOperatorDark`, `localOperatorLight`), at a `L*` step
+	 * *smaller* than the ΔE00 2.2 value they had already reported as invisible;
+	 * they were re-authored to +5.09, +3.81 and −4.75 `L*` respectively, and
+	 * `scripts/contrast-contract.mjs` now asserts **both the direction and a floor
+	 * on the step**, so no palette can satisfy the band while landing darker on a
+	 * dark theme. That is the trap this doc exists to close: ΔE00 is a budget, and
+	 * a chroma-bought step can spend all of it while moving the wrong way.
 	 *
-	 * The step is bought on the CHROMA axis at the surface's own hue, not with
-	 * more lightness, and that follows `docs/branding.md` § 3: a contrast ratio
-	 * has no chroma term, so separating two grounds by warmth at a fixed `L*`
-	 * spends no ink assertion, while separating them by lightness spends every
-	 * ink measured against them. Measured per palette by
-	 * `scripts/contrast-contract.mjs`'s `highlight` block, which is also where the
-	 * inks on it and the row's structural edge are asserted.
+	 * ## The rule a porting author follows
 	 *
-	 * ## What bounds it from below, and what bounds it from above
+	 * Take the `L*` step first, at the panel's own hue, as far as the ink floors
+	 * allow; buy only the shortfall to the band's floor of ΔE00 4.0 on the chroma
+	 * axis at that same hue. Chroma may pay a remainder; it may not pay the step.
+	 * Some of the twelve still carry a partly chroma-bought step (dracula 1.20x
+	 * the panel's chroma, monokai 1.66x, obsidian 1.90x, iceberg 3.31x, each
+	 * recorded at its own value) and those are the palettes a re-authoring should
+	 * take next.
+	 *
+	 * ## What bounds it
 	 *
 	 * Below: every ink on the ground keeps § 3's floor with headroom — `ink` at
 	 * 7:1, `ink-muted` and `ink-dim` at 4.5:1 — and `ink-dim` is the binder,
 	 * because the caps and the `· lopdev` binding INSIDE a current row are drawn
-	 * in it. That floor, not taste, is what caps the step on the palettes where it
-	 * stops short of 4.4.
+	 * in it. That floor is what caps the step on the palettes where it stops
+	 * short of the band's top, and it is the reason the row's ground cannot simply
+	 * be made louder on those palettes.
 	 *
-	 * Above: a row's `hover:` step is `elevated`, so a hovered row must STILL be a
-	 * different ground from the current one — worst pair ΔE00 2.36 (obsidian),
-	 * asserted at the field floor. `elevated` is ALSO every menu, popover and
-	 * tooltip ground in the app, so it is not a value that can come down to meet
-	 * the selection: on eight of the twelve palettes the hover step remains the
-	 * larger step off `surface`. The current row therefore carries a second,
-	 * structural half — the 1px `outline-control` ring in `rowCurrentEdge` — which
-	 * is asserted against `highlight` here at the 3:1 floor its role carries.
+	 * Beside it: a row's `hover:` step is `elevated`, so a hovered row must STILL
+	 * be a different ground from the current one — worst pair ΔE00 2.25
+	 * (localOperatorDark), asserted at the field floor. `elevated` is ALSO every
+	 * menu, popover and tooltip ground in the app, so it is not a value that can
+	 * come down to meet the selection: on eight of the twelve palettes the hover
+	 * step remains the larger step off `surface` (up to 6.25 on radient), and the
+	 * current row is therefore marked by its ground plus `font-medium`. An earlier
+	 * round drew that second step as a 1px `outline-control` boundary; it is
+	 * retired, because that role is § 2's *sole boundary of a control* and the
+	 * ring rendered as the search field above the list (design round 1, D3). There
+	 * is no role in this contract for a selection boundary — adding one would be
+	 * role inflation for a mark the ground already carries.
 	 *
 	 * `highlight` is the ground the row is painted with; every ink on it is
 	 * asserted at its own floor, so it is a ground for text rather than a tint

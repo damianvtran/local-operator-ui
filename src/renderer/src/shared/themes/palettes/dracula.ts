@@ -28,26 +28,27 @@ export const dracula: ThemeDefinition = {
 		elevated: "#3D4055",
 		sunken: "#21222C",
 		/*
-		 * The current row's own ground: `surface` stepped up its own blue-grey ramp. ΔE00 4.11 from `surface`,
-		 * 2.56 from `elevated` (the same row's hover step, so the pointer cannot
-		 * erase the selection) and 11.03 from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own blue-grey
+		 * ramp 5.17 `L*`, at 1.20x the panel's chroma. ΔE00 4.11 from `surface`,
+		 * 2.56 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 11.03 from `sunken`. The row is 1.189x the panel's relative
+		 * luminance.
 		 *
-		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
-		 * operator first asked to be SUBTLE; he has since seen it rendered and
-		 * reported it as invisible beside a hovered neighbour, so the intent is
-		 * inverted and the role now carries 1.2x the surface's chroma at the same
-		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
-		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
-		 * a fixed L* spends no ink assertion, while separating them by lightness
-		 * spends every one measured against them. A pure lightness step stops at
-		 * ΔE00 2.62 here because `elevated` closes to ΔE00 2.37 of it.
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#36384d)
+		 * stepped 3.16 `L*` off the panel, and this one steps 5.17. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
 		 *
-		 * Ink on this ground: `ink` 10.05:1, `ink-muted` 5.82:1, `ink-dim`
-		 * 4.74:1 — every floor in § 3 cleared with headroom above it, because the
-		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
-		 * and legibility is not what the mark may spend. The structural edge the row
-		 * now carries measures 3.17:1 against it, over the 3:1 that role's floor
-		 * asks for. The hover step here is 4.87 from `surface`, further than any step this palette's inks allow the row to take, which is why the row carries a structural edge rather than a louder ground.
+		 * Ink on this ground: `ink` 10.05:1, `ink-muted` 5.82:1, `ink-dim` 4.74:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 4.74:1. The step here is still partly chroma-bought (1.20x the panel's); the ordering
+		 * above is what a re-authoring of this palette should follow.
 		 */
 		highlight: "#3a3c56",
 
