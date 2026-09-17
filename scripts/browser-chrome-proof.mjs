@@ -3440,10 +3440,37 @@ async function main() {
 				};
 				const rows = [...open.querySelectorAll('[data-tour-tag="browser-tab-overflow-row"], [role="menuitem"]')];
 				const content = document.querySelector('[data-tour-tag="browser-content"]');
+				/*
+				 * THE BAND'S HEADING ROW, read as a fact about the DOM rather than judged
+				 * from a still (review round 1, D5): the frame committed with this step did
+				 * not contain the "All tabs, N not shown" heading the source renders, and a
+				 * still cannot say whether that is a stale bundle, a clip, or a missing row.
+				 * The text, the box and a painted-vs-not reading are recorded beside the
+				 * band's own box, so the next reader gets a measurement instead of an
+				 * argument. Recorded for either shape: the dropdown this replaced has no
+				 * such row.
+				 */
+				const heading = list ? list.firstElementChild : null;
+				const headingStyle = heading ? getComputedStyle(heading) : null;
 				return {
 					shape: list ? "in-band list" : "dropdown menu",
 					box: box(open),
 					content: box(content),
+					heading: heading
+						? {
+								text: heading.innerText.replace(/\\s+/g, ' ').trim(),
+								...box(heading),
+								display: headingStyle.display,
+								visibility: headingStyle.visibility,
+								overflow: headingStyle.overflow,
+							}
+						: null,
+					headingPainted: Boolean(
+						heading &&
+							headingStyle.visibility !== 'hidden' &&
+							headingStyle.display !== 'none' &&
+							heading.getBoundingClientRect().height > 0,
+					),
 					rows: rows.slice(0, 4).map((row) => row.innerText.replace(/\\s+/g, ' ').trim()),
 					rowCount: rows.length,
 					ticked: rows.filter((row) => row.getAttribute('aria-current') === 'true' || row.querySelector('[aria-hidden="false"]')).length,
@@ -3487,6 +3514,23 @@ async function main() {
 			`${pinReading?.shape}: ${pinReading?.rowCount} row(s), box ${JSON.stringify(pinReading?.box)} against the content rect's bottom ${pinReading?.content?.bottom}`,
 		);
 		say(`frame: ${join(OUT_DIR, "19b-pinned-control-open.png")}`);
+		/*
+		 * THE SAME QUESTION AS A CHECK, and shape-aware on purpose: the base tree opens a
+		 * dropdown here (`[role="menu"]`), which has no heading row to have an opinion
+		 * about — so the check is vacuous there and real on the branch, which is what lets
+		 * the one command produce both the before and the after frame (review round 1, D5).
+		 */
+		check(
+			"the band paints the heading row the source renders, inside the band's own box (review round 1, D5)",
+			pinReading !== null &&
+				(pinReading.shape !== "in-band list" ||
+					(pinReading.heading !== null &&
+						pinReading.headingPainted &&
+						pinReading.heading.text.startsWith("All tabs,") &&
+						pinReading.heading.top >= pinReading.box.top &&
+						pinReading.heading.bottom <= pinReading.box.bottom)),
+			`heading ${JSON.stringify(pinReading?.heading ?? null)} inside the band box ${JSON.stringify(pinReading?.box ?? null)}`,
+		);
 
 		/*
 		 * ---- 19c. A BATCH CLOSE IS ONE INTENT AND ONE STATE CHANGE --------------
