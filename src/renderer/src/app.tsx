@@ -100,9 +100,10 @@ const App: FC = () => {
 	 * (`use-browser-chrome`, whose `ResizeObserver` on the content element reports
 	 * it) moves with the region. Hiding the page every time a connectivity banner
 	 * appeared would take the page away for as long as the backend was down, which
-	 * is worse than a banner. The rects either side of that report are in this
-	 * PR's evidence frames (`docs/evidence/band-occlusion/`), so this is a measured
-	 * claim rather than a reasoned one.
+	 * is worse than a banner. The content rect either side of that report is recorded
+	 * on the `/browser` route with no band, with one and with both
+	 * (`docs/evidence/band-occlusion/after/after-browser-*.png` and the rects in
+	 * `after-geometry.json`), so this is a measured claim rather than a reasoned one.
 	 *
 	 * `ModelsInitializer` renders nothing, so it has nothing to register.
 	 */
@@ -287,9 +288,10 @@ const App: FC = () => {
 			 * `perspective`, `backdrop-filter`, `contain` or `will-change` of one of
 			 * those - none of which is added here - so the floating alert, the update
 			 * notification, the dialogs, the sheets and the command palette keep
-			 * covering the window exactly as before. The two bands have LEFT that set:
-			 * their wrapper is a child of this column rather than a `fixed` strip, which
-			 * is the whole point of the change. Measured on the chat route in the
+			 * covering the window exactly as before. The two bands have LEFT that set: each
+			 * one's own root `div` is a child of this column now rather than a `fixed`
+			 * strip, which is the whole point of the change. Measured on the chat route in
+			 * the
 			 * running app (`docs/evidence/band-occlusion/`): two `fixed` elements with
 			 * no band up, four with both bands up before this change - and the two bands
 			 * are the difference. An earlier draft of this comment claimed there was one

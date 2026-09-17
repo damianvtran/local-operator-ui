@@ -146,22 +146,55 @@ NOT proven here, and named rather than implied:
 
 ## Reproducing the pair
 
-The before half is the tree at the commit before the fix (this branch's own rig
-commit), built and driven exactly as above. The after half, once the hold clears:
+The two halves differ in `src/` and in NOTHING else: the same rig, the same stub
+sequence, the same window mode and size, the same dpr, and the first-run wizard
+seeded away on both. **Both halves are built**, one after the other, because
+`out/` is what the rig drives and a `before` run over an `after` build is a frame
+labelled as the wrong tree (review round 1, M4).
 
 ```bash
+FIX=$(git rev-parse <the fix commit>)          # 3ff404632 on this line
+RIG=HEAD                                        # the rig, which arrives AFTER the fix
+
+# BEFORE: the fix's parent's src, with the rig from $RIG, built and driven.
+git checkout "$FIX^" -- src
 pnpm build
-node scripts/band-occlusion-evidence.mjs --out docs/evidence/band-occlusion/after --label after
+node scripts/band-occlusion-evidence.mjs --expect covered \
+  --out docs/evidence/band-occlusion/before --label before
+
+# AFTER: the fixed src again, built, driven, and diffed against the before half's
+# own no-band frame - the designer's "the restructure costs the layout nothing"
+# control, which the run FAILS on if any device row differs.
+git checkout "$RIG" -- src
+pnpm build
+node scripts/band-occlusion-evidence.mjs --expect uncovered \
+  --compare-against docs/evidence/band-occlusion/before/before-none.png \
+  --out docs/evidence/band-occlusion/after --label after
 ```
 
-and the before half again, for a comparable pair:
+The rig is not on the pre-fix commit - it arrived in the commit AFTER the fix, so
+`git worktree add /tmp/band-before <rig commit>` checks out a tree that already
+carries the fix, and the fix's parent carries no rig at all. Taking `src/` from
+`"$FIX^"` and leaving `scripts/` at `$RIG` is what makes the pair a pair.
+
+Two further states, both taken on the fixed tree because both are about the shape
+this change chose:
 
 ```bash
-git stash                     # or: git worktree add /tmp/band-before <rig commit>
-node scripts/band-occlusion-evidence.mjs --out docs/evidence/band-occlusion/before --label before
+# C1: the minimum window (800x600 -> an 800x572 viewport on Electron 44.3.0),
+# two bands up: 121 CSS px of band against a region with no floor.
+node scripts/band-occlusion-evidence.mjs --expect uncovered --only two-bands \
+  --window-size 800x600 --out docs/evidence/band-occlusion/after-min --label after-min
 ```
+
+**Where a frame ends up is in the JSON.** Each state records `frame` as the path
+relative to the repository when the run wrote inside it (and `out` as the
+directory), so a state maps to a committed file without knowing the scratch
+`--out` of the run that produced it; a run that writes outside the repository
+records the absolute path it used (review round 1, N3).
 
 A run leaves nothing behind: each boot is spawned in its own process group, the
-teardown signals the group (the `node_modules/.bin/electron` shim's CHILD is the app,
-so a signal to the shim's pid would orphan it), and a profile-match reap is the
-backstop.
+teardown signals the group (the `node_modules/.bin/electron` shim's CHILD is the
+app, so a signal to the shim's pid would orphan it), and a profile-match reap is
+the backstop. The rig FAILS rather than records when a state breaks an acceptance
+claim, so the exit status is the verdict.

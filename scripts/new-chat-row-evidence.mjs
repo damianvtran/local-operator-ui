@@ -70,8 +70,10 @@ export const ERROR_COPY = Object.freeze([
 /**
  * `connectivity-banner.tsx`'s three copies, which render OUTSIDE the sidebar.
  *
- * The banner is `fixed inset-x-0 top-0` with `role="alert"` and a `Retry`
- * button, so every sidebar-scoped check misses it: on the re-capture that
+ * The banner is the shell's own first child (D9: it was `fixed inset-x-0 top-0`
+ * until then, and the TEXT is what these copies are matched on, not the
+ * positioning) with `role="alert"` and a `Retry` button, so every
+ * sidebar-scoped check misses it: on the re-capture that
  * produced this module's first failure, `nav` had no alert and the counts read
  * their fixture totals while the window-level banner was up, and only the Tab
  * walk (which starts at the banner's own button) noticed. The hook behind it
