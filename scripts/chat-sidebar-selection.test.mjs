@@ -231,25 +231,49 @@ const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
    its row is the current one. */
 const CURRENT = [
 	{
+		/*
+		 * The conversation BUTTON: the row's `flex-1` half, which keeps the ground under
+		 * the pointer. Anchored on its own hook (`data-child`) rather than on the current
+		 * row's predicate, because that predicate is now computed once as `current` and
+		 * worn by three elements - see the `same terms` test below, which is what holds
+		 * that single decision together.
+		 */
 		what: "the selected conversation",
 		file: SIDEBAR,
-		expression: () =>
-			expressionBefore(SIDEBAR, "selectedConversation === row.session_id"),
+		expression: () => expressionAfter(SIDEBAR, "data-child"),
 		stubs: {
+			revealArmed: true,
 			rowStyle,
 			rowCurrent,
 			nested: false,
-			selectedConversation: "s1",
-			row: { session_id: "s1" },
-			activeDraftKey: "",
+			current: true,
 		},
+		ground: true,
+	},
+	{
+		/*
+		 * The row's BOX, added with the split row (review round 1, M1). The ground has
+		 * to be on the container and not only inside the button, because the pin slot is
+		 * a sibling: a mark painted only in the button stops at the slot's edge, and the
+		 * filled pin - which is the state the ground is there to sit behind - is drawn
+		 * outside the row that says it is current. Same shape as the entity row's
+		 * wrapper, which carries `staged && rowCurrent` for the same reason.
+		 */
+		what: "the conversation row's box",
+		file: SIDEBAR,
+		// The JSX attribute rather than the attribute's name: the move-anchoring
+		// effect also SELECTS `[data-session-row="…"]`, and a bare search finds that
+		// mention first.
+		expression: () =>
+			expressionAfter(SIDEBAR, "data-session-row={row.session_id}"),
+		stubs: { revealArmed: true, rowCurrent, current: true },
 		ground: true,
 	},
 	{
 		what: "the All chats filter",
 		file: SIDEBAR,
 		expression: () => expressionBefore(SIDEBAR, ">All chats</span>"),
-		stubs: { rowStyle, rowCurrent, all: true },
+		stubs: { revealArmed: true, rowStyle, rowCurrent, all: true },
 		ground: true,
 	},
 	{
@@ -257,6 +281,7 @@ const CURRENT = [
 		file: SIDEBAR,
 		expression: () => expressionBefore(SIDEBAR, ">New chat</span>"),
 		stubs: {
+			revealArmed: true,
 			rowStyle,
 			rowCurrent,
 			activeDraftKey: "draft-key",
@@ -268,7 +293,7 @@ const CURRENT = [
 		what: "the entity row's wrapper",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity>"),
-		stubs: { rowCurrent, staged: true },
+		stubs: { revealArmed: true, rowCurrent, staged: true },
 		ground: true,
 	},
 	{
@@ -277,25 +302,25 @@ const CURRENT = [
 		what: "the entity row's name button",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity-name"),
-		stubs: { rowStyle, rowCurrent, staged: true },
+		stubs: { revealArmed: true, rowStyle, rowCurrent, staged: true },
 		ground: true,
 	},
 	{
 		what: "the entity row's disclosure control",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-disclosure"),
-		stubs: { staged: true },
+		stubs: { revealArmed: true, staged: true },
 		ground: false,
-		notCurrent: { staged: false },
+		notCurrent: { revealArmed: true, staged: false },
 	},
 	{
 		what: "the entity row's manage control",
 		file: SIDEBAR,
 		expression: () =>
 			expressionBefore(SIDEBAR, "aria-label={`Manage ${name}`}"),
-		stubs: { staged: true },
+		stubs: { revealArmed: true, staged: true },
 		ground: false,
-		notCurrent: { staged: false },
+		notCurrent: { revealArmed: true, staged: false },
 	},
 	{
 		/*
@@ -309,20 +334,13 @@ const CURRENT = [
 		 */
 		what: "the conversation row's pin control",
 		file: SIDEBAR,
-		expression: () => expressionAfter(SIDEBAR, "data-session-pin"),
-		stubs: {
-			pinned: false,
-			selectedConversation: "s1",
-			row: { session_id: "s1" },
-			activeDraftKey: "",
-		},
+		// The JSX attribute, newline-terminated: the panel also SELECTS
+		// `[data-session-pin]` in the effect that restores focus after a pin moves a
+		// row, and a bare search for the name finds that selector first.
+		expression: () => expressionAfter(SIDEBAR, "data-session-pin\n"),
+		stubs: { revealArmed: true, pinned: false, current: true },
 		ground: false,
-		notCurrent: {
-			pinned: false,
-			selectedConversation: "other",
-			row: { session_id: "s1" },
-			activeDraftKey: "",
-		},
+		notCurrent: { revealArmed: true, pinned: false, current: false },
 	},
 	{
 		what: "the settings rail's current section",
@@ -332,9 +350,9 @@ const CURRENT = [
 				SETTINGS_RAIL,
 				'aria-current={isActive ? "page" : undefined}',
 			),
-		stubs: { labelled: true, isActive: true },
+		stubs: { revealArmed: true, labelled: true, isActive: true },
 		ground: true,
-		notCurrent: { labelled: true, isActive: false },
+		notCurrent: { revealArmed: true, labelled: true, isActive: false },
 	},
 ];
 
@@ -545,41 +563,104 @@ test("no current-row class literal in either panel is on the wash", () => {
 
 test("the selected row's mark and its aria-current read the same terms", () => {
 	const source = read(SIDEBAR);
-	const at = source.indexOf("aria-current={");
-	assert.notEqual(at, -1, "the session row has no aria-current");
-	const ariaCurrent = source.slice(
-		at,
-		source.indexOf("}", source.indexOf("?", at)),
-	);
 	/*
-	 * Both halves of the predicate, on both sides of the fact: a row that paints
-	 * a ground the accessibility tree does not claim misreports where the user is
-	 * for a screen reader, and one that claims a ground it does not paint does it
-	 * for everyone else. The two terms are what `!activeDraftKey` is doing here —
-	 * a staged draft owns the current-row mark instead.
+	 * ONE DECISION, FOUR CONSUMERS. The predicate used to be spelled out at each site
+	 * that needed it; it is now computed once as `current`, because the row's box
+	 * gained a second place that must carry the name of the same decision - the ground
+	 * has to span the pin slot (review round 1, M1), and a container wearing a
+	 * re-spelled copy of the predicate is how "the ground and the accessibility tree
+	 * disagree" comes back.
+	 *
+	 * So the assertion is about the DECLARATION and its readers rather than about one
+	 * class expression: a row that paints a ground the accessibility tree does not
+	 * claim misreports where the user is for a screen reader, and one that claims a
+	 * ground it does not paint does it for everyone else. `!activeDraftKey` is the
+	 * second term and it is half the fact: a staged draft owns the current-row mark
+	 * instead.
 	 */
-	const sessionRow = stripComments(
-		argumentsFrom(
-			code.get(SIDEBAR),
-			code
-				.get(SIDEBAR)
-				.lastIndexOf(
-					"className={cn(",
-					code.get(SIDEBAR).indexOf("selectedConversation === row.session_id"),
-				),
-		),
+	const declarationAt = source.indexOf("const current = ");
+	assert.notEqual(
+		declarationAt,
+		-1,
+		"the session row no longer names its current-row decision once, so this file cannot say what its readers read",
+	);
+	const declaration = source.slice(
+		declarationAt,
+		source.indexOf(";", declarationAt),
 	);
 	for (const term of [
 		"selectedConversation === row.session_id",
 		"!activeDraftKey",
 	]) {
 		assert.ok(
-			ariaCurrent.includes(term),
-			`aria-current no longer reads \`${term}\`, so it and the row's ground can disagree:\n${ariaCurrent}`,
+			declaration.includes(term),
+			`the current-row decision no longer reads \`${term}\`, so every site wearing it is making a different claim than the one this file checked:\n${declaration}`,
+		);
+	}
+	/*
+	 * ...and the literal is spelled ONCE. A second copy inside the row is the defect
+	 * this test exists to catch, so the count is asserted rather than each site's text:
+	 * a site that reads `current` cannot drift from the declaration, and a site that
+	 * re-derives the predicate fails here before it can.
+	 */
+	const rowSource = source.slice(
+		source.indexOf("const sessionRow = ("),
+		source.indexOf("const entity = ("),
+	);
+	/*
+	 * ...and every spelling in the row carries the SAME two terms. The count is not the
+	 * property the shape needs any more - a site that reads the declaration cannot drift
+	 * - but a site that RE-DERIVES the predicate with one term dropped is exactly how the
+	 * ground and the accessibility tree part company, so each spelling is read for its
+	 * terms rather than counted.
+	 */
+	const spellings = rowSource
+		.split("selectedConversation === row.session_id")
+		.slice(1);
+	assert.ok(
+		spellings.length >= 1,
+		"the row wears the current-row predicate nowhere, so the mark below is unreachable",
+	);
+	for (const spelling of spellings) {
+		assert.ok(
+			/^\s*&&\s*!activeDraftKey/.test(spelling),
+			`a site spells the current-row predicate with different terms than this file checked:\n${spelling.slice(0, 90)}`,
+		);
+	}
+	const at = source.indexOf("aria-current={");
+	assert.notEqual(at, -1, "the session row has no aria-current");
+	const ariaCurrent = source.slice(
+		at,
+		source.indexOf("}", source.indexOf("?", at)),
+	);
+	assert.ok(
+		ariaCurrent.includes("current"),
+		`aria-current no longer reads the row's own decision, so it and the ground can disagree:\n${ariaCurrent}`,
+	);
+	/*
+	 * Both elements that paint the mark are resolved from the shipped expressions with
+	 * `current` stubbed true and false, which is the property the ground has to have
+	 * after M1: on while the row is current (container and button), off when it is not.
+	 */
+	for (const what of [
+		"the selected conversation",
+		"the conversation row's box",
+	]) {
+		const site = CURRENT.find((entry) => entry.what === what);
+		assert.notEqual(site, undefined, `\`${what}\` left the CURRENT table`);
+		assert.ok(
+			merged(site.file, site.expression(), {
+				...site.stubs,
+				current: true,
+			}).includes("bg-highlight"),
+			`${what} paints no ground while the row is current`,
 		);
 		assert.ok(
-			sessionRow.includes(term),
-			`the session row's ground no longer reads \`${term}\`, so it and aria-current can disagree:\n${sessionRow}`,
+			!merged(site.file, site.expression(), {
+				...site.stubs,
+				current: false,
+			}).includes("bg-highlight"),
+			`${what} paints the current-row ground while the row is NOT current`,
 		);
 	}
 });

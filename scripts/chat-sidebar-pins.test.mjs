@@ -242,8 +242,15 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	 * affordance could mount outside the gate, which is the failure this asserts
 	 * against.
 	 */
+	/*
+	 * `data-session-pin` FOLLOWED BY A NEWLINE, which is the JSX attribute and not
+	 * every mention of its name: the panel also SELECTS the attribute - the
+	 * move-anchoring effect puts focus back on the row's own control after a pin moves
+	 * it - and a bare-string search found that selector first, which is how this file
+	 * came to read the conversation button's classes as the slot's.
+	 */
 	assert.equal(
-		source.split("data-session-pin").length - 1,
+		source.split("data-session-pin\n").length - 1,
 		1,
 		"the sidebar declares one session pin control",
 	);
@@ -277,17 +284,49 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 		!source.slice(withdrawnAt, branchEnd).includes("data-session-pin"),
 		"the withdrawn branch mounts no pin at all",
 	);
-	const slotAt = source.indexOf("data-session-pin");
+	const slotAt = source.indexOf("data-session-pin\n");
 	assert.ok(
 		slotAt > branchEnd,
 		"the pin is mounted only in the branch the capability gate opens",
 	);
-	const wrapperAt = source.indexOf(
-		'className="group flex h-8 items-center gap-1 rounded-md"',
-	);
+	// The JSX attribute, not the name: the move-anchoring effect SELECTS
+	// `[data-session-row="…"]` too, and that mention sits above the gate.
+	const wrapperAt = source.indexOf("data-session-row={row.session_id}");
 	assert.ok(
 		wrapperAt > branchEnd && wrapperAt < slotAt,
 		"the hover wrapper belongs to the enabled branch, and the slot is inside it",
+	);
+	/*
+	 * The wrapper carries the row's current-row ground as well as the hover group -
+	 * the pin slot is a SIBLING of the conversation button, so a ground painted only
+	 * inside the button stops at the slot's edge and leaves the pin outside the row
+	 * it says is current (review round 1, M1). The same string on the wrapper is what
+	 * makes that assertion reachable from here, and `chat-sidebar-selection.test.mjs`
+	 * resolves the expression itself.
+	 */
+	// `{rowButton}` AFTER the wrapper: the withdrawn branch above renders the same
+	// expression, so a search from the top of the file finds that one and slices nothing.
+	const wrapperClasses = source.slice(
+		wrapperAt,
+		source.indexOf("{rowButton}", wrapperAt),
+	);
+	assert.match(
+		wrapperClasses,
+		/current && rowCurrent/,
+		"the row's box wears the current-row ground, so it spans the pin slot",
+	);
+	/*
+	 * AND THE CONTROL IS WITHHELD WHERE IT COULD NOT ACT, which is a different fact
+	 * from the capability: `pinned` is always present on a catalogue row from a
+	 * pins-capable backend, but a row synthesized from a search hit whose backend does
+	 * not describe the pin state has no `pinned` at all - and that row is rebuilt from
+	 * the wire hit on every render, so a press there would be a no-op the user reads as
+	 * a failure. The gate is asserted on the shipped expression, in this file's idiom.
+	 */
+	assert.match(
+		source.slice(slotAt - 300, slotAt),
+		/\{row\.pinned !== undefined && \(/,
+		"the pin control is mounted only on a row whose pin state is known",
 	);
 	/*
 	 * ...and the section that draws the pinned rows is behind the same value: a
@@ -297,9 +336,39 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	assert.match(source, /\{pinned\.length > 0 && \(\s*<section>/);
 });
 
+test("the reveal is DISARMED under a parked pointer, and hidden and inert when it is", () => {
+	const source = read(SIDEBAR);
+	// The JSX attribute, not the name: the panel also SELECTS `[data-session-pin]` in the
+	// move-anchoring effect, and that mention sits far above the slot itself.
+	const at = source.indexOf("data-session-pin\n");
+	const block = source.slice(at, at + 2000);
+	/*
+	 * QA round 1, U3: a pin press moves a row out of the list, the rows below slide up,
+	 * and the pointer - which has not moved - is left over a different conversation whose
+	 * pin was revealed under it. The reveal is therefore conditional on the pointer having
+	 * MOVED since the press, and the disarmed branch is inert as well as hidden: hidden
+	 * alone would leave a control that acts on a conversation nobody chose.
+	 */
+	assert.match(
+		block,
+		/revealArmed\s*\?/,
+		"the slot's reveal must be conditional on the arming flag",
+	);
+	assert.ok(
+		block.includes("pointer-events-none"),
+		"the disarmed slot must be inert as well as hidden",
+	);
+	assert.ok(
+		/onPointerMove/.test(source),
+		"re-arming must be the pointer moving, not a timer",
+	);
+});
+
 test("the reveal is opacity on a reserved box, so it cannot reflow the row", () => {
 	const source = read(SIDEBAR);
-	const anchor = source.indexOf("data-session-pin");
+	// The JSX attribute (newline-terminated), never the effect's selector - see the
+	// note on the count above.
+	const anchor = source.indexOf("data-session-pin\n");
 	const open = source.indexOf("cn(", anchor);
 	const classes = source.slice(open + "cn(".length, source.indexOf(")}", open));
 	const values = [...classes.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)].map(

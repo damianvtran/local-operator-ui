@@ -89,7 +89,10 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|palette|browser-pane|pins|none>  which built-in scene to run (default: states)
+ *   --theme <localOperatorDark|localOperatorLight>  run ONE theme (the scene's default
+ *                is both, which is only safe for a scene whose passes cannot leave
+ *                state behind - the pins scenes run one theme per launch, see THEME)
+ *   --scene <states|new-chat|palette|browser-pane|pins|pins-scroll|none>  which built-in scene
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -276,6 +279,16 @@ const BACKEND_RECORDS = argValue("--backend-records", null);
  * than silently skipping the measurement.
  */
 const TUI_PYTHON = argValue("--tui-python", null);
+/*
+ * WHICH THEME THE SCENE RUNS, and it is a flag rather than a loop for a reason that
+ * is about the frames: a pass that runs both themes in one launch is a pass whose
+ * SECOND theme starts in whatever state the first one left behind - a conversation
+ * opened by the first pass's selection step was still open in the light frames, so
+ * `pins-unpinned-light` was not the state `pins-unpinned-dark` is (design round 1,
+ * D2). One theme per launch gives each theme the state its name claims, and the
+ * harness runs the scene once per theme.
+ */
+const THEME = argValue("--theme", null);
 const TUI_CONFIG = argValue("--tui-config", null);
 /**
  * Seed the profile as an EXISTING user before the scene runs.
@@ -1591,12 +1604,36 @@ async function openSection(cdp, label, timeoutMs = 5_000) {
 		 * version returned early and the scene then read a one-row panel.
 		 */
 		if (at.expanded) return readPins(cdp);
+		/*
+		 * Bring the heading into the REGION's view first. A collapsed section whose
+		 * heading sits below the region's own fold (a long catalogue does this: the
+		 * scroll region is a 45%-height box) has a box the press cannot reach at all -
+		 * `elementFromPoint` at those coordinates answers null, and the press is a
+		 * no-op that looks like a dead control.
+		 */
+		await cdp.evaluate(`(() => {
+			const wanted = ${JSON.stringify(label)};
+			const node = Array.from(document.querySelectorAll("button[data-chat-row]"))
+				.find((row) => row.textContent.replace(/\\s+/g, " ").trim().startsWith(wanted));
+			if (node) node.scrollIntoView({ block: "center" });
+			return true;
+		})()`);
+		await wait(180);
+		const onScreen = await heading();
 		await parkPointer(cdp);
-		await pressPointer(cdp, at.x, at.y);
+		await pressPointer(cdp, onScreen.x, onScreen.y);
 		await parkPointer(cdp);
 		await wait(150);
-		if (Date.now() - started > timeoutMs)
-			throw new Error(`pressing the ${label} heading did not open it`);
+		if (Date.now() - started > timeoutMs) {
+			const why = await heading();
+			const hit = await cdp.evaluate(`(() => {
+				const node = document.elementFromPoint(${why.x}, ${why.y});
+				return { tag: node ? node.tagName.toLowerCase() : null, text: node ? node.textContent.replace(/\\s+/g, " ").trim().slice(0, 40) : null };
+			})()`);
+			throw new Error(
+				`pressing the ${label} heading did not open it: ${JSON.stringify({ heading: why, hit })}`,
+			);
+		}
 	}
 }
 
@@ -1679,8 +1716,20 @@ async function waitForPinned(cdp, label, timeoutMs = 6_000) {
 		const allChatsAt = last.order.findIndex((line) =>
 			String(line).startsWith("All chats"),
 		);
+		/*
+		 * THE ORDER THE DESIGN SETTLED ON (design round 1, D1): the nav rows first, then
+		 * `Pinned chats`, then the pinned conversation. The first version of this waited
+		 * for the section ABOVE `All chats`, which the design round moved: a section at
+		 * the top of the region is a section a reader in flat mode has to scroll past the
+		 * nav to reach, and design round 1 asked for it below them instead.
+		 */
+		const rowLineAt = last.order.findIndex((line) => String(line) === label);
 		const worked =
-			headingAt >= 0 && rowAt >= 0 && allChatsAt >= 0 && headingAt < allChatsAt;
+			headingAt >= 0 &&
+			rowAt >= 0 &&
+			allChatsAt >= 0 &&
+			allChatsAt < headingAt &&
+			rowLineAt > headingAt;
 		const waited = Date.now() - started;
 		if (worked || waited > timeoutMs)
 			return { worked, waited, headingAt, rowAt, allChatsAt, sidebar: last };
@@ -1739,6 +1788,402 @@ async function waitForPinned(cdp, label, timeoutMs = 6_000) {
  * reads is printed. That is the operator's "pinning in the TUI pins in the app and
  * vice versa" as a measurement rather than as a claim about a shared file.
  */
+/**
+ * The panel's list as the SCROLLED state needs it: the region's own metrics, every
+ * row's box, its pin and its button, and what is under a given point.
+ *
+ * WHY THE GEOMETRY AND NOT A COUNT. QA round 1's U1/U2 are about where things are:
+ * a pin moves a row between sections, and what went wrong was the panel's SCROLL
+ * and the POINTER, neither of which a class assertion can see. The region is found
+ * through a row rather than by a selector on the scroll container, so this read
+ * does not depend on a utility class staying in place.
+ *
+ * `point` is optional and answers the one question the pointer case must ask:
+ * `document.elementFromPoint` at the coordinates the press used, which is the
+ * pointer's own hit test rather than an inference from the DOM order.
+ */
+function readList(cdp, point = null) {
+	return cdp.evaluate(`(() => {
+		const rowNodes = Array.from(document.querySelectorAll("[data-session-row]"));
+		if (rowNodes.length === 0) return null;
+		let list = rowNodes[0].parentElement;
+		while (list && !String(list.className).includes("overflow-y-auto")) list = list.parentElement;
+		if (!list) return null;
+		const text = (node) => node ? node.textContent.replace(/\\s+/g, " ").trim() : null;
+		const box = (node) => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height }; };
+		const rows = rowNodes.map((node) => {
+			const pin = node.querySelector("[data-session-pin]");
+			const button = node.querySelector('button[data-tour-tag="chat-session-row"]');
+			return {
+				id: node.getAttribute("data-session-row"),
+				label: text(button),
+				pinned: pin ? pin.getAttribute("aria-pressed") === "true" : null,
+				current: button ? button.getAttribute("aria-current") : null,
+				box: box(node),
+				button: button ? box(button) : null,
+				pin: pin ? box(pin) : null,
+				pinFill: pin && pin.querySelector("svg") ? pin.querySelector("svg").getAttribute("fill") : null,
+				pinOpacity: pin ? getComputedStyle(pin).opacity : null,
+			};
+		});
+		const listBox = box(list);
+		let atPoint = null;
+		if (${point === null ? "false" : "true"}) {
+			const node = document.elementFromPoint(${point === null ? 0 : point.x}, ${point === null ? 0 : point.y});
+			const row = node && node.closest ? node.closest("[data-session-row]") : null;
+			const pin = node && node.closest ? node.closest("[data-session-pin]") : null;
+			// The control is what a press at these coordinates would ACT on: the button the
+			// hit element belongs to, if any. The wrapper between two controls answers null,
+			// which is the difference between being over a row and being over something a
+			// click would fire (QA round 1, U3).
+			const control = node && node.closest ? node.closest("button") : null;
+			atPoint = { row: row ? row.getAttribute("data-session-row") : null, pin: pin !== null, tag: node ? node.tagName.toLowerCase() : null, control: control ? { kind: control.hasAttribute("data-session-pin") ? "pin" : control.getAttribute("data-tour-tag") || control.tagName.toLowerCase() } : null };
+		}
+		return {
+			scrollTop: list.scrollTop,
+			scrollHeight: list.scrollHeight,
+			clientHeight: list.clientHeight,
+			listBox,
+			rows,
+			atPoint,
+			activeElement: (() => {
+				const active = document.activeElement;
+				if (!active) return null;
+				const row = active.closest ? active.closest("[data-session-row]") : null;
+				return { tag: active.tagName.toLowerCase(), row: row ? row.getAttribute("data-session-row") : null, pin: active.hasAttribute ? active.hasAttribute("data-session-pin") : false, label: active.getAttribute ? active.getAttribute("aria-label") : null };
+			})(),
+		};
+	})()`);
+}
+
+/**
+ * Scroll one row into the region's view and put the region where a page-down
+ * lands, so the scene can drive the state QA measured rather than a viewport-
+ * sized list that never scrolls.
+ */
+async function scrollRowIntoView(cdp, id) {
+	await cdp.evaluate(`(() => {
+		const node = document.querySelector('[data-session-row="' + ${JSON.stringify(id)} + '"]');
+		if (node) node.scrollIntoView({ block: "center" });
+		return true;
+	})()`);
+	await wait(200);
+}
+
+/**
+ * The SCROLLED state, and the two interactions QA round 1 found broken by the move.
+ *
+ * WHY THIS IS A SCENE OF ITS OWN. `--scene pins` drives a four-conversation panel
+ * whose whole list fits: nothing scrolls, every row is visible, and the claims its
+ * frames carry are about the section, the reveal and the press. QA's U1/U2 are about
+ * what a pin move does to a panel that does NOT fit - the region's scroll was
+ * re-anchored by the browser (275 -> 319, with the `Pinned chats` heading 309 px above
+ * the visible top), the pointer was left over a DIFFERENT conversation's row (a second
+ * click opens the wrong chat), and the control holding keyboard focus was unmounted
+ * with the row, so the next Tab started at the top of the panel.
+ *
+ *   node scripts/renderer-driver.mjs --scene pins-scroll --backend <url> --out <dir>
+ *
+ * It needs a store with more conversations than the panel's window holds (the seeder
+ * takes `--titles`; a dozen and a half is enough to make the region scroll), and it
+ * ASSERTS the scrollability rather than assuming it, because every claim below is
+ * meaningless in a panel that fits.
+ *
+ * Both themes run the same sequence and each pass unpins everything it pinned at the
+ * end, so the light frames are a picture of the same state as the dark ones.
+ */
+async function scenePinsScrolled(cdp) {
+	const frames = [];
+	const themes =
+		THEME === null ? ["localOperatorDark", "localOperatorLight"] : [THEME];
+	/** Every unpinned row whose box is wholly inside the region, in document order. */
+	const visibleUnpinned = (list) =>
+		list.rows.filter(
+			(row) =>
+				row.pinned === false &&
+				row.pin !== null &&
+				row.box.top >= list.listBox.top - 1 &&
+				row.box.bottom <= list.listBox.bottom + 1,
+		);
+	/** Press one row's pin by id, scrolling it into view first. */
+	const pressPin = async (id) => {
+		await parkPointer(cdp);
+		await scrollRowIntoView(cdp, id);
+		const row = (await readList(cdp)).rows.find((item) => item.id === id);
+		require(`the row ${id} has a pin to press`, row?.pin, JSON.stringify(row));
+		await pressPointer(cdp, row.pin.x, row.pin.y);
+		await wait(360);
+	};
+
+	for (const theme of themes) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", theme);
+		await wait(300);
+		/*
+		 * Both disclosure sections OPEN, through their own headings: a collapsed
+		 * section draws no rows at all, so a scene that read the list first would see
+		 * one row and conclude the store was empty.
+		 */
+		await openSection(cdp, "Previous chats");
+		await openSection(cdp, "Active chats");
+		const start = await readList(cdp);
+		require("the panel's list has more rows than a page", start &&
+			start.rows.length >= 12, JSON.stringify({
+			rows: start ? start.rows.length : null,
+		}));
+		check(
+			"the panel's list scrolls, so a row can be pinned off the top of it",
+			start.scrollHeight > start.clientHeight + 40,
+			JSON.stringify({
+				scrollHeight: start.scrollHeight,
+				clientHeight: start.clientHeight,
+				rows: start.rows.length,
+			}),
+		);
+		/*
+		 * THREE PINS through the daemon's own route, because what this frame is for is
+		 * the STATE - a pinned set taller than the region's window (design round 1, D4)
+		 * - and the section it draws is the app's rendering of the backend's answer. The
+		 * two interactions this scene exists to drive (the pointer case and the keyboard
+		 * case below) press their own pins, through the control, and are the only presses
+		 * the scene has to make land.
+		 */
+		const catalogue = await readBackendSessions();
+		const seeded = catalogue.slice(-3);
+		require("the catalogue has three rows to seed pins on", seeded.length ===
+			3, JSON.stringify(catalogue.map((row) => row.id)));
+		for (const row of seeded) await setBackendPin(row.id, true);
+		const pinnedIds = new Set(seeded.map((row) => row.id));
+		const startedPins = Date.now();
+		let drawn = null;
+		for (;;) {
+			const now = await readList(cdp);
+			if (now.rows.filter((row) => row.pinned === true).length >= 3) {
+				drawn = now;
+				break;
+			}
+			if (Date.now() - startedPins > 8_000) break;
+			await wait(150);
+		}
+		check(
+			"the three pins the daemon holds are drawn as a Pinned set",
+			drawn !== null,
+			JSON.stringify({
+				wanted: [...pinnedIds],
+				rows: (drawn ? drawn.rows : []).map((row) => [row.id, row.pinned]),
+			}),
+		);
+
+		/*
+		 * THE STATE QA MEASURED: the region scrolled away from the top, with a window of
+		 * six rows and the pins above the fold.
+		 */
+		/*
+		 * Scroll so that UNPINNED rows fill the window: at the region's own middle the
+		 * three pins just made are what is on screen, and the assertions below are about
+		 * pressing a row that is not pinned yet.
+		 */
+		const afterSeeding = await readList(cdp);
+		const unpinned = afterSeeding.rows.filter((row) => row.pinned === false);
+		require("the catalogue still has unpinned rows to scroll to", unpinned.length >
+			2, JSON.stringify({
+			rows: afterSeeding.rows.map((row) => [row.label, row.pinned]),
+			order: afterSeeding.rows.length,
+		}));
+		/*
+		 * A MODEST scroll: a quarter of the region's range. That is the reader's state
+		 * the move can be corrected FROM, and the two assertions below say why - a row
+		 * pinned from DEEPER than the `Pinned chats` section is tall cannot be returned
+		 * to the line it was pressed on, because its new home then has less content above
+		 * it than the reader had scrolled. Measured on this panel with the deeper scroll:
+		 * a press from scrollTop 334 into a section 29 px from the content's top needs a
+		 * target of -187, which clamps to 0 and leaves the row at the region's top edge
+		 * instead of on its line. The scene asserts the reachable case and PRINTS both
+		 * numbers, so the clamped case is visible rather than mistaken for the passing one.
+		 */
+		await cdp.evaluate(`(() => {
+			const rows = document.querySelectorAll("[data-session-row]");
+			let list = rows[0].parentElement;
+			while (list && !String(list.className).includes("overflow-y-auto")) {
+				list = list.parentElement;
+			}
+			if (!list) return null;
+			list.scrollTop = Math.round((list.scrollHeight - list.clientHeight) / 4);
+			return list.scrollTop;
+		})()`);
+		await parkPointer(cdp);
+		await wait(240);
+		const scrolled = await readList(cdp);
+		check(
+			"the list is scrolled away from the top before the press",
+			scrolled.scrollTop > 40,
+			JSON.stringify({ scrollTop: scrolled.scrollTop }),
+		);
+		const candidates = visibleUnpinned(scrolled);
+		require("two unpinned rows are visible in the scrolled list", candidates.length >=
+			2, JSON.stringify(candidates.map((row) => row.label)));
+
+		/* ---- CASE A: the POINTER (U1, U3) ------------------------------- */
+		const targetA = candidates[candidates.length - 2];
+		/* The row the pointer will be left beside: the one BELOW the pressed row, which is
+		   the row that slides up into the vacated slot if the correction is not made. */
+		const targetIndex = scrolled.rows.findIndex((row) => row.id === targetA.id);
+		const neighbourA =
+			scrolled.rows[targetIndex + 1] ?? scrolled.rows[targetIndex - 1];
+		require("the pressed row has a neighbour to measure", neighbourA, JSON.stringify(
+			scrolled.rows.map((row) => row.id),
+		));
+		await movePointer(cdp, targetA.pin.x, targetA.pin.y);
+		await wait(240);
+		const beforeA = await readList(cdp, {
+			x: targetA.pin.x,
+			y: targetA.pin.y,
+		});
+		check(
+			"the pointer is over the target row's pin before the press",
+			beforeA.atPoint?.pin === true && beforeA.atPoint?.row === targetA.id,
+			JSON.stringify(beforeA.atPoint),
+		);
+		await pressPointer(cdp, targetA.pin.x, targetA.pin.y);
+		await wait(420);
+		const afterA = await readList(cdp, {
+			x: targetA.pin.x,
+			y: targetA.pin.y,
+		});
+		const movedA = afterA.rows.find((row) => row.id === targetA.id);
+		const wasA = beforeA.rows.find((row) => row.id === targetA.id);
+		check(
+			"the pressed row left its place and is in the Pinned section",
+			afterA.rows.find((row) => row.id === targetA.id)?.pinned === true,
+			JSON.stringify({
+				rows: afterA.rows.slice(0, 3).map((row) => [row.id, row.pinned]),
+			}),
+		);
+		check(
+			"the list did not move under the pointer: the row beside the pressed one keeps its line (U1)",
+			Math.abs(
+				(afterA.rows.find((row) => row.id === neighbourA.id)?.box.top ??
+					Number.NaN) - neighbourA.box.top,
+			) <= 2,
+			JSON.stringify({
+				neighbour: neighbourA.id,
+				top_before: neighbourA.box.top,
+				top_after: afterA.rows.find((row) => row.id === neighbourA.id)?.box.top,
+				scroll_before: beforeA.scrollTop,
+				scroll_after: afterA.scrollTop,
+			}),
+		);
+		check(
+			"no control is left under the stationary pointer, so a second click acts on nothing (U3)",
+			afterA.atPoint?.pin === false && afterA.atPoint?.control === null,
+			JSON.stringify({ atPoint: afterA.atPoint, target: targetA.id }),
+		);
+		const around = (state) =>
+			state.rows
+				.filter(
+					(row) =>
+						row.box.bottom > targetA.pin.y - 70 &&
+						row.box.top < targetA.pin.y + 70,
+				)
+				.map((row) => [
+					row.id,
+					Math.round(row.box.top),
+					Math.round(row.box.bottom),
+					row.pinned,
+				]);
+		say(
+			`  [pins] scrolled pin: press at y=${Math.round(targetA.pin.y)} on ${targetA.id}; scroll ${beforeA.scrollTop} -> ${afterA.scrollTop}; neighbour ${neighbourA.id} top ${Math.round(neighbourA.box.top)} -> ${Math.round(afterA.rows.find((row) => row.id === neighbourA.id)?.box.top ?? Number.NaN)}`,
+		);
+		say(
+			`  [pins] rows at the pointer BEFORE ${JSON.stringify(around(beforeA))}`,
+		);
+		say(
+			`  [pins] rows at the pointer AFTER  ${JSON.stringify(around(afterA))}`,
+		);
+		say(`  [pins] under the pointer: ${JSON.stringify(afterA.atPoint)}`);
+
+		/* ---- CASE B: the KEYBOARD (U2) ---------------------------------- */
+		const forKeyboard = visibleUnpinned(await readList(cdp));
+		require("an unpinned row is visible for the keyboard case", forKeyboard.length >=
+			1, JSON.stringify(forKeyboard.map((row) => row.label)));
+		const targetB = forKeyboard[forKeyboard.length - 1];
+		const focusedOnPin = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-session-row="${targetB.id}"]');
+			const pin = row && row.querySelector("[data-session-pin]");
+			if (!pin) return null;
+			pin.focus();
+			return document.activeElement === pin;
+		})()`);
+		require("the caret can be put on the pin", focusedOnPin ===
+			true, JSON.stringify(focusedOnPin));
+		await pressChord(cdp, { key: " ", code: "Space", virtualKeyCode: 32 });
+		await wait(420);
+		const afterB = await readList(cdp);
+		const movedB = afterB.rows.find((row) => row.id === targetB.id);
+		check(
+			"Space pinned the conversation the caret was on",
+			movedB !== undefined && movedB.pinned === true,
+			JSON.stringify(movedB),
+		);
+		check(
+			"focus follows the moved row: the caret is on the same pin (U2)",
+			afterB.activeElement?.pin === true &&
+				afterB.activeElement?.row === targetB.id,
+			JSON.stringify(afterB.activeElement),
+		);
+		check(
+			"the row the keyboard moved is still inside the list's view",
+			movedB !== undefined &&
+				movedB.box.top >= afterB.listBox.top - 1 &&
+				movedB.box.bottom <= afterB.listBox.bottom + 1,
+			JSON.stringify({ row: movedB?.box, list: afterB.listBox }),
+		);
+		frames.push(await captureSettled(cdp, `pins-scrolled-${suffix}`));
+
+		/* ---- D3: the pointer ON an already-pinned glyph ---------------- */
+		const parked = await readList(cdp);
+		const pinnedTarget = parked.rows.find(
+			(row) => row.pinned === true && row.pin,
+		);
+		require("a pinned row with a pin control is visible", pinnedTarget, JSON.stringify(
+			parked.rows.map((row) => [row.id, row.pinned]),
+		));
+		await movePointer(cdp, pinnedTarget.pin.x, pinnedTarget.pin.y);
+		await wait(280);
+		const onGlyph = await readList(cdp, {
+			x: pinnedTarget.pin.x,
+			y: pinnedTarget.pin.y,
+		});
+		check(
+			"the pointer is on the pinned row's own glyph",
+			onGlyph.atPoint?.pin === true && onGlyph.atPoint?.row === pinnedTarget.id,
+			JSON.stringify(onGlyph.atPoint),
+		);
+		check(
+			"the glyph under the pointer is FILLED, so the state reads without the reveal",
+			onGlyph.rows.find((row) => row.id === pinnedTarget.id)?.pinFill ===
+				"currentColor",
+			JSON.stringify(onGlyph.rows.find((row) => row.id === pinnedTarget.id)),
+		);
+		frames.push(await captureSettled(cdp, `pins-pinned-hover-${suffix}`));
+
+		await parkPointer(cdp);
+		const pinnedNow = await readList(cdp);
+		for (const row of pinnedNow.rows.filter((item) => item.pinned === true)) {
+			await pressPin(row.id);
+		}
+		const cleared = await readList(cdp);
+		check(
+			`${suffix}: the pass leaves no pins behind for the next theme`,
+			cleared.rows.every((row) => row.pinned !== true),
+			JSON.stringify(
+				cleared.rows.filter((row) => row.pinned).map((row) => row.id),
+			),
+		);
+	}
+	return frames;
+}
+
 async function scenePins(cdp) {
 	const hello = await verb(cdp, "hello");
 	check(
@@ -1776,7 +2221,8 @@ async function scenePins(cdp) {
 		JSON.stringify(route),
 	);
 
-	const themes = ["localOperatorDark", "localOperatorLight"];
+	const themes =
+		THEME === null ? ["localOperatorDark", "localOperatorLight"] : [THEME];
 	const frames = [];
 	for (const theme of themes) {
 		const applied = await verb(cdp, "setTheme", theme);
@@ -1794,6 +2240,19 @@ async function scenePins(cdp) {
 		 * is enough.
 		 */
 		const start = await openSection(cdp, "Previous chats");
+		/*
+		 * WHAT THE RESERVED SLOT COSTS A TITLE (design round 1, D5). Measured rather
+		 * than argued: the conversation button's own box against the withdrawn run's,
+		 * where no slot exists. Both numbers are printed by the two runs, so the cost is
+		 * a subtraction in the record rather than a claim in a comment.
+		 */
+		const measured = await readList(cdp);
+		if (measured && measured.rows.length > 0) {
+			const first = measured.rows[0];
+			say(
+				`  [pins] reserved slot: present row ${Math.round(first.box.width)}px, conversation button ${first.button ? Math.round(first.button.width) : "none"}px, pin ${first.pin ? Math.round(first.pin.width) : "none"}px`,
+			);
+		}
 
 		if (start.controls === 0) {
 			/*
@@ -1818,6 +2277,26 @@ async function scenePins(cdp) {
 					),
 				JSON.stringify(start.rows.slice(0, 3)),
 			);
+			/*
+			 * WHAT THE SLOT COSTS, on the side that has none (design round 1, D5): the same
+			 * measurement the capability-present branch prints, so the cost is a
+			 * subtraction between two numbers in this log rather than a claim.
+			 */
+			const withdrawnWidth = await cdp.evaluate(`(() => {
+				const row = document.querySelector('button[data-tour-tag="chat-session-row"]');
+				if (!row) return null;
+				const box = row.getBoundingClientRect();
+				const parent = row.parentElement;
+				return {
+					row: Math.round(parent ? parent.getBoundingClientRect().width : box.width),
+					button: Math.round(box.width),
+				};
+			})()`);
+			if (withdrawnWidth !== null) {
+				say(
+					`  [pins] reserved slot: withdrawn row ${withdrawnWidth.row}px, conversation button ${withdrawnWidth.button}px, pin none`,
+				);
+			}
 			frames.push(await captureSettled(cdp, `pins-withdrawn-${suffix}`));
 			continue;
 		}
@@ -1922,6 +2401,54 @@ async function scenePins(cdp) {
 				"a pin made in this app is in the store the terminal reads",
 				pressed !== undefined && storeRead.pins.includes(pressed.id),
 				JSON.stringify({ pressed, storeRead }),
+			);
+		}
+		{
+			/*
+			 * THE SEARCH-HIT HALF of the same wire: a hit is asked of the whole store, so
+			 * the row a client's page does not list is exactly the row that reaches the
+			 * panel through this route. If its pin state were absent, that row would land
+			 * under `Previous chats` with an unfilled glyph while the backend held it
+			 * pinned - the panel under-reporting its own set.
+			 */
+			const backendRows = await readBackendSessions();
+			const pressedRow = backendRows.find((row) => row.pinned === true);
+			require("the pinned conversation is on the backend's wire to search for", pressedRow, JSON.stringify(
+				backendRows.map((row) => [row.id, row.pinned]),
+			));
+			/*
+			 * The title's own words, longest first, because the route answers per TOKEN and
+			 * this assertion is about the pin state on a hit rather than about which query
+			 * the search accepts: the first token that returns anything is the one whose
+			 * hits are read.
+			 */
+			const tokens = String(pressedRow.title ?? "")
+				.split(/\s+/)
+				.filter((word) => word.length > 3)
+				.sort((a, b) => b.length - a.length);
+			let search = null;
+			let hit = undefined;
+			for (const token of tokens) {
+				const answer = await readBackendSearch(token);
+				if (answer.sessions.length > 0) {
+					search = answer;
+					hit = answer.sessions.find((row) => row.id === pressedRow.id);
+					break;
+				}
+				if (search === null) search = answer;
+			}
+			check(
+				"a search HIT carries the pin state, so a row outside the client's page is drawn pinned",
+				search !== null &&
+					search.sessions.length > 0 &&
+					search.sessions.every((row) => "pinned" in row) &&
+					hit !== undefined &&
+					hit.pinned === true,
+				JSON.stringify({
+					tokens,
+					wanted: pressedRow.id,
+					answer: search,
+				}),
 			);
 		}
 		check(
@@ -2322,6 +2849,59 @@ async function crossSurfacePin(cdp) {
  * and the active session, NOT the catalogue, so `localStorage` answers with no rows
  * at all — a scene that read it would report a live store as empty.
  */
+/**
+ * Pin or unpin through the daemon's own route, for the states a FRAME needs rather
+ * than for the interactions under test: a scrolled frame showing a pinned set larger
+ * than the panel's window is a picture of the app rendering the backend's state, and
+ * seeding it this way keeps the scene's two real presses - the pointer case and the
+ * keyboard case - the only interactions it has to make land.
+ */
+async function setBackendPin(sessionId, pinned) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/sessions/${sessionId}/pin`,
+		{
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+			body: JSON.stringify({ pinned: pinned }),
+		},
+	);
+	if (!response.ok) {
+		throw new Error(
+			`the daemon refused a pin write: ${response.status} ${await response.text()}`,
+		);
+	}
+	return response.json();
+}
+
+/**
+ * The SEARCH answer, which is a different read of the same store: a hit is asked of the
+ * whole store, so a pinned conversation the client's page does not list arrives here and
+ * nowhere else. `pinned` on a hit is what lets the panel draw that row in the right
+ * section instead of under `Previous chats` with an unfilled glyph (backend
+ * `cffdedfbd` carries it on every row; the client still hides the affordance on a hit
+ * that does not describe it, rather than offering a press that cannot be repaired).
+ */
+async function readBackendSearch(query) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/sessions/search?q=${encodeURIComponent(query)}&limit=10`,
+		{
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+		},
+	);
+	if (!response.ok) {
+		throw new Error(
+			`the daemon refused a search: ${response.status} ${await response.text()}`,
+		);
+	}
+	const body = await response.json();
+	return body.result ?? body;
+}
+
 async function readBackendSessions() {
 	const response = await fetch(`${BACKEND}/v1/desktop/sessions?limit=50`, {
 		headers: {
@@ -4079,6 +4659,11 @@ async function main() {
 					"onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one",
 				);
 			}
+			if (SCENE === "pins-scroll" && BACKEND === null) {
+				throw new Error(
+					"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
+				);
+			}
 			if (SCENE === "pins" && (TUI_PYTHON === null) !== (TUI_CONFIG === null)) {
 				throw new Error(
 					"--scene pins takes --tui-python and --tui-config together: the terminal's store and the config root the daemon serves are one measurement, and half of it would look like it ran",
@@ -4089,6 +4674,7 @@ async function main() {
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "pins") await scenePins(cdp);
+			else if (SCENE === "pins-scroll") await scenePinsScrolled(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

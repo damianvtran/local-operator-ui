@@ -158,6 +158,15 @@ export function searchChats(
 			session_id: hit.id,
 			title: hit.name,
 			updated_at: hit.mtime,
+			/*
+			 * The pin state travels with the hit WHEN THE BACKEND DESCRIBES IT, and is
+			 * left ABSENT when it does not. That is the shape's own rule applied to this
+			 * row ("an absent key is not a claim"): `pinned: undefined` would be a claim
+			 * this client cannot make, and the sidebar reads the absence as "unknown" and
+			 * withholds the control rather than mounting one that cannot repair a row it
+			 * rebuilds from the wire on every render (QA round 1, Q1; review round 1, m1).
+			 */
+			...(typeof hit.pinned === "boolean" ? { pinned: hit.pinned } : {}),
 		};
 		if (hit.body_match) conversationMatches.add(hit.id);
 		admitted.push({ row, rank: hit.rank });
