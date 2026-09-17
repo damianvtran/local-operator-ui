@@ -870,11 +870,25 @@ test("no reading measure survives on either surface, by property not by name", (
 	// with a style built from a font size and a line height, so there is nothing in
 	// that file to cap with - and a width added here would land on every markdown
 	// surface at once, which is what made it the sharpest of the three shapes.
+	//
+	// SCOPED LIKE THE TWO SURFACES ABOVE (code review round 3, NIT C): round 2
+	// widened the scope to this file but kept the BROAD `max-w-` token here, so a
+	// legitimate `max-w-full` in it failed a contract that change had not touched -
+	// the same false positive the round-2 fix removed from the other two files. An
+	// ARBITRARY-VALUE cap (`w-[…]`, which `max-w-[62ch]` matches), a centring
+	// utility and a style width still fail, so nothing that put the defect back
+	// live is let through.
+	const renderer = source(
+		"src/renderer/src/features/chat/components/markdown-renderer.tsx",
+	);
+	assert.deepEqual(
+		[...new Set(renderer.match(/\b(?:max-)?w-\[[^\]]+\]/g) ?? [])],
+		[],
+		"markdown-renderer.tsx adds no arbitrary-value width where `.lo-markdown` is rendered",
+	);
 	assert.ok(
-		!CAP_OR_CENTRING.test(
-			source("src/renderer/src/features/chat/components/markdown-renderer.tsx"),
-		),
-		"markdown-renderer.tsx caps nothing where `.lo-markdown` is rendered",
+		!/(?:mx-auto|maxWidth|minWidth|\bwidth\s*[=:])/.test(renderer),
+		"markdown-renderer.tsx caps and centres nothing where `.lo-markdown` is rendered",
 	);
 });
 
