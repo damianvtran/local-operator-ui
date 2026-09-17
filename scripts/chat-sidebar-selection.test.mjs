@@ -675,15 +675,20 @@ test("the file accounts for every hover ground the two panels declare", () => {
 			SIDEBAR,
 			{
 				// `rowStyle` (1), resolved through every expression that carries it; the two
-				// 24px controls' `!staged` guards (2); and the disclosure HEADING row
+				// 24px controls' `!staged` guards (2); the disclosure HEADING row
 				// (1), which is never a current row — it holds a section, and the panel
-				// marks the row the reader is IN, not the heading above it.
-				"hover:bg-elevated": 4,
+				// marks the row the reader is IN, not the heading above it; and the
+				// "Mark all as read" control (1), which is a heading-row sibling too —
+				// a list-level action for a set the store owns, never the row the reader
+				// is in, so no `CURRENT` entry can ever be asked to resolve it.
+				"hover:bg-elevated": 5,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				"hover:bg-highlight": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
-				// expression has to resolve it.
-				"hover:bg-transparent": 1,
+				// expression has to resolve it. The bulk read receipt carries the same
+				// reset for the same reason — in flight it is `disabled`, and a disabled
+				// control must not answer the pointer with a ground it cannot act on.
+				"hover:bg-transparent": 2,
 			},
 		],
 		[
