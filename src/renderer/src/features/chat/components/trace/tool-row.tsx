@@ -48,7 +48,13 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
-import { type ReactNode, useEffect, useState } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	ErrorGlyph,
 	InterruptedGlyph,
@@ -416,21 +422,52 @@ export const ToolRow = ({
 	media,
 }: ToolRowProps) => {
 	/*
-	 * A row that STARTS OPEN reports it, and every row reports its departure.
+	 * The state this row has REPORTED, and the newest callback to report it to.
 	 *
-	 * `onOpenChange` fires from the trigger's own handlers inside `Disclosure`, so a
-	 * row rendered open - `defaultOpen`, which stories and the evidence harnesses
-	 * use to paint an expansion without clicking - paints its stamp and would never
-	 * be counted. The transcript's footer gate asks a membership question, and a
-	 * member that never announces itself is the gap between the rule and its
-	 * implementation (review round 2, R2-1). The unmount report is the other half:
-	 * rows leave the tree as a transcript pages, and a departed id left in the set
-	 * would suppress the footer for a stamp that is no longer on screen.
+	 * Both live in refs because the caller's callback is NOT stable: the transcript
+	 * binds `record.id` into a fresh arrow on every render of a row
+	 * (`canonical-transcript.tsx`), so an effect keyed on the callback's identity runs
+	 * its own cleanup on every re-render of an OPEN row and reports a departure that
+	 * never happened. The set the transcript gates its footer on then answers "no" to
+	 * the membership question, and the footer returns beside the still-open row's own
+	 * stamp - the round-2 defect reached by a different route, and reachable from the
+	 * app's own reducer, which mints a new record object whenever a call changes
+	 * (review round 3, R3-1; QA round 2, Q2-1).
+	 */
+	const reportedOpen = useRef(defaultOpen);
+	const latestOnOpenChange = useRef(onOpenChange);
+
+	/*
+	 * Re-assert the state to a callback that has not been told it yet.
+	 *
+	 * This runs on mount and whenever the caller hands over a new callback identity,
+	 * and it states what the row IS rather than a transition it did not make - so it
+	 * is also the mount report for a `defaultOpen` row, which is why there is no
+	 * separate one. A mount effect keyed on `defaultOpen` would instead report `true`
+	 * from a row whose disclosure never moved, if that prop ever changed, and the set
+	 * would hold a member that paints no stamp (R3-3).
 	 */
 	useEffect(() => {
-		if (defaultOpen) onOpenChange?.(true);
-	}, [defaultOpen, onOpenChange]);
-	useEffect(() => () => onOpenChange?.(false), [onOpenChange]);
+		latestOnOpenChange.current = onOpenChange;
+		onOpenChange?.(reportedOpen.current);
+	}, [onOpenChange]);
+
+	/*
+	 * And a real departure, once, on unmount: keyed on nothing, so that a re-render
+	 * cannot fake one. A row that never reported itself open emits nothing - a closed
+	 * row was never a member of the set.
+	 */
+	useEffect(
+		() => () => {
+			if (reportedOpen.current) latestOnOpenChange.current?.(false);
+		},
+		[],
+	);
+
+	const handleOpenChange = useCallback((open: boolean) => {
+		reportedOpen.current = open;
+		latestOnOpenChange.current?.(open);
+	}, []);
 	const running = outcome === "running";
 	const failed = outcome === "error";
 	const Icon = toolIcon(toolName);
@@ -544,7 +581,7 @@ export const ToolRow = ({
 			summary={row}
 			chevron="leading"
 			defaultOpen={defaultOpen}
-			onOpenChange={onOpenChange}
+			onOpenChange={handleOpenChange}
 			className={cn("@container/toolrow", className)}
 			rowClassName={ROW_HEIGHT}
 			// The whole row is the target, so it takes a row-shaped ground that

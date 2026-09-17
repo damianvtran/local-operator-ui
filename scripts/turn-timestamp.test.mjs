@@ -489,25 +489,30 @@ const mount = (records) => {
 	const container = document.createElement("div");
 	document.body.appendChild(container);
 	const root = createRoot(container);
-	act(() => {
-		root.render(
-			h(CanonicalTranscript, {
-				transcript: transcriptOf(records),
-				gate: null,
-				waiting: false,
-				loadingOlder: false,
-				onLoadOlder: async () => true,
-				containerRef: { current: container },
-				isSmallView: false,
-				status: "live",
-				failure: null,
-				awaitingHydration: false,
-				onReconnect: () => {},
-			}),
-		);
-	});
+	const render = (next) => {
+		act(() => {
+			root.render(
+				h(CanonicalTranscript, {
+					transcript: transcriptOf(next),
+					gate: null,
+					waiting: false,
+					loadingOlder: false,
+					onLoadOlder: async () => true,
+					containerRef: { current: container },
+					isSmallView: false,
+					status: "live",
+					failure: null,
+					awaitingHydration: false,
+					onReconnect: () => {},
+				}),
+			);
+		});
+	};
+	render(records);
 	return {
 		container,
+		/** Re-render with a new transcript, which is what the reducer's routes do. */
+		rerender: render,
 		unmount: () => {
 			act(() => root.unmount());
 			container.remove();
@@ -821,6 +826,57 @@ test("the footer stays away when an EARLIER row is opened after the last one", a
 	unmount();
 });
 
+test("a new record OBJECT for the last open row does not move the footer", async () => {
+	/*
+	 * The route QA reached the round-2 defect by, from the app's own reducer rather
+	 * than from a click: `buildRows`/`upsert` mint a NEW record object whenever a
+	 * call changes (a `tool_execution_end`, a full resync), which is a new prop
+	 * identity for the row AND a new inline callback for it. A re-render of an open
+	 * row is not a departure, and the footer must not come back beside a stamp that
+	 * is still on screen (QA round 2, Q2-1; the same finding as review round 3's
+	 * R3-1, which reached it through the callback's identity).
+	 */
+	const first = toolRecord("tool:first", {
+		args: { command: "pnpm test:desktop" },
+		output: "tests 40\npass 40\n",
+	});
+	const last = toolRecord("tool:last", {
+		args: { command: "pnpm build" },
+		output: "built\n",
+	});
+	const { container, rerender, unmount } = mount([first, last]);
+	await act(async () => {
+		[...container.querySelectorAll("button[aria-expanded]")][1].click();
+	});
+	assert.equal(stamps(container, "turn").length, 1);
+	assert.equal(stamps(container, "footer").length, 0);
+
+	// The call changes: a new record object for the same id, still open.
+	rerender([
+		first,
+		{ ...last, output: "built\n\ndone in 1.2s", durationS: 1.2 },
+	]);
+	assert.equal(
+		stamps(container, "turn").length,
+		1,
+		"the row is still open, so it still paints its stamp",
+	);
+	assert.equal(
+		stamps(container, "footer").length,
+		0,
+		"and a new record object must not bring the footer back",
+	);
+
+	// And a whole-transcript resync, which re-mints every record object at once.
+	rerender([
+		{ ...first },
+		{ ...last, output: "built\n\ndone in 1.2s", durationS: 1.2 },
+	]);
+	assert.equal(stamps(container, "turn").length, 1);
+	assert.equal(stamps(container, "footer").length, 0);
+	unmount();
+});
+
 test("a row that STARTS open reports it, and reports its departure", () => {
 	/*
 	 * `onOpenChange` fires from the trigger's handlers, so a row rendered open - the
@@ -830,34 +886,57 @@ test("a row that STARTS open reports it, and reports its departure", () => {
 	 * start-open path today, which is why this is asserted on the row directly
 	 * rather than through the transcript: the mechanism is meant to be robust to the
 	 * state, not to the one caller that exists now (review round 2, R2-1).
+	 *
+	 * WHAT IS ASSERTED IS THE TRANSITION, not the exact sequence. The real caller
+	 * hands over a NEW callback identity on every render (`canonical-transcript.tsx`
+	 * binds `record.id` into a fresh arrow), and a callback that has not been told
+	 * this row's state must be TOLD it rather than treated as a departure - an
+	 * earlier take keyed its effect on that callback, so an ordinary re-render of an
+	 * open row reported a departure it never made and the footer came back beside the
+	 * row's own stamp (review round 3, R3-1; QA round 2, Q2-1). Hence: no `false`
+	 * between open and unmount, and exactly one `false`, at the unmount.
 	 */
 	const seen = [];
 	const container = document.createElement("div");
 	const root = createRoot(container);
-	act(() => {
-		root.render(
-			h(ToolRow, {
-				toolName: "bash",
-				summary: "pnpm build",
-				outcome: "success",
-				durationS: 0.4,
-				defaultOpen: true,
-				onOpenChange: (open) => seen.push(open),
-				details: h(TurnTimestamp, { timestamp: TS, scope: "turn" }),
-			}),
-		);
-	});
-	assert.deepEqual(seen, [true], "a row rendered open says so on mount");
+	const render = () => {
+		act(() => {
+			root.render(
+				h(ToolRow, {
+					toolName: "bash",
+					summary: "pnpm build",
+					outcome: "success",
+					durationS: 0.4,
+					defaultOpen: true,
+					// A fresh arrow per render, exactly as the transcript builds one.
+					onOpenChange: (open) => seen.push(open),
+					details: h(TurnTimestamp, { timestamp: TS, scope: "turn" }),
+				}),
+			);
+		});
+	};
+	render();
+	assert.equal(seen[0], true, "a row rendered open says so on mount");
 	assert.equal(
 		container.querySelectorAll("time").length,
 		1,
 		"and the stamp inside its open body is painted, which is what the report is for",
 	);
+
+	// Two more renders with a new callback identity each: chatty, but not departures.
+	render();
+	render();
+	assert.ok(
+		!seen.includes(false),
+		`no departure report while the row is mounted and open (saw ${JSON.stringify(seen)})`,
+	);
+
 	act(() => root.unmount());
-	assert.deepEqual(
-		seen,
-		[true, false],
-		"and a row that leaves the tree leaves the set",
+	assert.equal(seen.at(-1), false, "the real unmount is the one departure");
+	assert.equal(
+		seen.filter((open) => open === false).length,
+		1,
+		"and it is reported exactly once",
 	);
 });
 
@@ -912,6 +991,11 @@ test("the day store arms one timer to the next midnight, not a tick", async (t) 
 			`the mount settles in at most two renders (was ${afterMount})`,
 		);
 		const afterMountTimers = scheduled.length;
+		assert.deepEqual(
+			scheduled.filter((ms) => ms > 1_000),
+			[msUntilNextLocalDay(nineAm)],
+			"the armed deadline IS the next local midnight, not merely a long timer",
+		);
 		assert.equal(
 			scheduled.filter((ms) => ms >= 60_000).length,
 			1,
