@@ -22,8 +22,8 @@ import {
 	BACKEND_STATUS_EVENT,
 } from "../shared/backend-status";
 import {
-	type DirectoryListing,
-	MAX_FILE_READ_BYTES,
+	type FileActionOutcome,
+	type DirectoryListing,	MAX_FILE_READ_BYTES,
 	MAX_PROBE_PATHS,
 	type ProbedFile,
 	type ReadFileBytesResponse,
@@ -1772,14 +1772,45 @@ app
 			});
 		}
 
-		// Add IPC handlers for opening files and URLs
-		ipcMain.handle("open-file", async (_, filePath) => {
-			try {
-				await shell.openPath(filePath);
-			} catch (error) {
-				console.error("Error opening file:", error);
-			}
-		});
+		/*
+		 * Opening a file, and revealing one, both go through `resolveUserPath`.
+		 *
+		 * They used to spell the path themselves, which is how a `~/…` target
+		 * failed: `shell.openPath` does not expand a tilde, so every path the
+		 * transcript now renders as a link - and every path the agent writes that
+		 * way, which is most of them - opened nothing at all. `read-file`,
+		 * `save-file` and `file-exists` already routed through the helper; these
+		 * two are the handlers that did not, and the ONE resolution rule is what
+		 * keeps them agreeing with the rest of the app about which file a path
+		 * names.
+		 *
+		 * Both answer with an OUTCOME rather than `void`, because both used to
+		 * discard the half that says whether anything happened: `shell.openPath`
+		 * RETURNS its error string (it does not throw), and `showItemInFolder`
+		 * returns nothing at all - and reveals the parent of a path that does not
+		 * exist without complaint. The transcript's link toolbar renders that
+		 * answer (`No file at …`) instead of a press that looks broken.
+		 */
+		ipcMain.handle(
+			"open-file",
+			async (_, filePath: string): Promise<FileActionOutcome> => {
+				const resolved = resolveUserPath(filePath);
+				try {
+					const failure = await shell.openPath(resolved);
+					if (failure) {
+						return { ok: false, resolved, error: failure };
+					}
+					return { ok: true, resolved };
+				} catch (error) {
+					console.error("Error opening file:", error);
+					return {
+						ok: false,
+						resolved,
+						error: error instanceof Error ? error.message : String(error),
+					};
+				}
+			},
+		);
 
 		ipcMain.handle(
 			"read-file",
@@ -1983,13 +2014,38 @@ app
 			}
 		});
 
-		ipcMain.handle("show-item-in-folder", async (_, filePath) => {
-			try {
-				shell.showItemInFolder(filePath);
-			} catch (error) {
-				console.error("Error showing item in folder:", error);
-			}
-		});
+		ipcMain.handle(
+			"show-item-in-folder",
+			async (_, filePath: string): Promise<FileActionOutcome> => {
+				const resolved = resolveUserPath(filePath);
+				/*
+				 * The existence check is the handler's own, because
+				 * `showItemInFolder` has no answer to give: it returns nothing and
+				 * reveals the parent directory of a path that is not there, so
+				 * without this the reader watches Finder open somewhere they did
+				 * not ask for and reads that as the app being wrong about the path.
+				 *
+				 * `throwIfNoEntry: false` rather than a try/catch around the happy
+				 * path, the same way `directory-exists` does it: a missing path is an
+				 * ordinary `undefined`, and only a genuine fault (permission, a
+				 * broken mount) reaches the catch.
+				 */
+				if (statSync(resolved, { throwIfNoEntry: false }) === undefined) {
+					return { ok: false, resolved, error: `No file at ${resolved}` };
+				}
+				try {
+					shell.showItemInFolder(resolved);
+					return { ok: true, resolved };
+				} catch (error) {
+					console.error("Error showing item in folder:", error);
+					return {
+						ok: false,
+						resolved,
+						error: error instanceof Error ? error.message : String(error),
+					};
+				}
+			},
+		);
 
 		ipcMain.handle(
 			"save-file",

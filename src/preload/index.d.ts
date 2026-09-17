@@ -8,8 +8,8 @@ import type {
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	DesktopAPI,
-	DirectoryListing,
-	ProbedFile,
+	FileActionOutcome,
+	DirectoryListing,	ProbedFile,
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
 import type { DevDriverBridge } from "./dev-driver";
@@ -94,7 +94,13 @@ declare global {
 					callback: (snapshot: DaemonStatusSnapshot) => void,
 				) => () => void;
 			};
-			openFile: (filePath: string) => Promise<void>;
+			/**
+			 * Open a path in the OS's own application. Answers with an outcome rather
+			 * than `void`: `shell.openPath` RETURNS its failure as a string rather
+			 * than throwing, so a caller that ignores the answer cannot tell an
+			 * opened file from one that opened nothing.
+			 */
+			openFile: (filePath: string) => Promise<FileActionOutcome>;
 			readFile: (
 				filePath: string,
 				encoding?: BufferEncoding,
@@ -119,7 +125,12 @@ declare global {
 			 */
 			listDirectory: (dir: string, cwd?: string) => Promise<DirectoryListing>;
 			openExternal: (url: string) => Promise<void>;
-			showItemInFolder: (filePath: string) => Promise<void>;
+			/**
+			 * Reveal a path in the OS file manager. The main process stats the path
+			 * first, because `showItemInFolder` returns nothing and will happily
+			 * reveal the parent of a path that does not exist.
+			 */
+			showItemInFolder: (filePath: string) => Promise<FileActionOutcome>;
 			systemInfo: {
 				getAppVersion: () => Promise<string>;
 				getPlatformInfo: () => Promise<{
