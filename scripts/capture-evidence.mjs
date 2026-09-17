@@ -86,6 +86,21 @@ const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
 const ONLY = flag("only");
 
 /**
+ * `--dirs=a,b` narrows the sweep to the STATES a set writes, by their directory.
+ *
+ * `--only=` matches a story id, and a set's states all live on ONE story - 21
+ * entries of `chat-canonical-links--detected-targets` write 21 different
+ * directories - so a per-state narrowing is not expressible with a prefix. That
+ * matters for a reason beyond tidiness (2026-09-17): a long run on a loaded
+ * machine died silently three times, and a run that is narrowed to one or two
+ * states costs minutes when that happens instead of the whole set. The directory
+ * an entry writes is the one the run itself computes (`entryOptions?.dir ??
+ * <story leaf>`), so this reads the same expression rather than a second opinion
+ * about what an entry is called.
+ */
+const DIR_FILTER = flag("dirs")?.split(",").filter(Boolean) ?? null;
+
+/**
  * The keys this rig can press, and the codes Chromium's bindings require beside
  * the key NAME.
  *
@@ -106,7 +121,7 @@ const KEY_CODES = {
 const IMAGE_EXPAND_PICTURE = 'button[title^="Click to expand"]';
 const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label="File actions"]';
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
-const PARTIAL = Boolean(ONLY || THEME_FILTER);
+const PARTIAL = Boolean(ONLY || THEME_FILTER || DIR_FILTER);
 
 /** Every palette id the registry has, read the one way the gates read them. */
 const PALETTE_IDS = new Set(loadPalettes().map(({ id }) => id));
@@ -3991,8 +4006,32 @@ const main = async () => {
 	 * a fixture filename rather than the story's own title) and this is what
 	 * that cost. Checking the manifest first names the bad id directly.
 	 */
-	const stories = ONLY ? STORIES.filter(([id]) => id.includes(ONLY)) : STORIES;
-	if (stories.length === 0) throw new Error(`--only=${ONLY} matched no story`);
+	/*
+	 * The directory an entry writes, read the same way the manifest's own
+	 * `refreshedStories` list reads it: the entry's `dir`, or the story's leaf.
+	 */
+	const dirOf = ([id, , , entryOptions]) => {
+		const cut = id.indexOf("--");
+		return entryOptions?.dir ?? (cut === -1 ? id : id.slice(cut + 2));
+	};
+	const stories = STORIES.filter(
+		(entry) =>
+			(!ONLY || entry[0].includes(ONLY)) &&
+			(!DIR_FILTER || DIR_FILTER.includes(dirOf(entry))),
+	);
+	if (stories.length === 0) {
+		throw new Error(
+			`--only=${ONLY ?? ""} --dirs=${DIR_FILTER?.join(",") ?? ""} matched no story`,
+		);
+	}
+	const wanted = DIR_FILTER ? new Set(DIR_FILTER) : null;
+	if (wanted) {
+		const matched = new Set(stories.map(dirOf));
+		const missing = [...wanted].filter((dir) => !matched.has(dir));
+		if (missing.length > 0) {
+			throw new Error(`--dirs matched no entry for: ${missing.join(", ")}`);
+		}
+	}
 	/*
 	 * A narrowed run may reach past the sweep's list (see the flag block at the
 	 * top of this file) — and then the ids have to be real ones, because the id
