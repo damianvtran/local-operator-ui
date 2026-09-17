@@ -31,6 +31,8 @@ const EXEMPT = {
 		"`node --test scripts/check-scripts-lint.test.mjs`, its own CI step (ci.yml).",
 	"scripts/release-baseline.test.mjs":
 		"the release-gate suite in ci.yml, run as one node --test invocation.",
+	"scripts/upload-release.test.mjs":
+		"the release-gate step in ci.yml, its own node --test invocation: it drives the attach path against a stub upload endpoint, which the desktop suite has no fixture for.",
 	"scripts/release-candidate.test.mjs":
 		"same release-gate step as release-baseline.",
 	"scripts/entry-point.test.mjs": "same release-gate step as release-baseline.",
