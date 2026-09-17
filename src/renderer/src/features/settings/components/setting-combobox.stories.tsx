@@ -203,6 +203,17 @@ const Driven: FC<{
 		document.documentElement.dataset.capturePending = "1";
 		let cancelled = false;
 		const script = async () => {
+			/*
+			 * Two frames before the script touches anything, and this is not
+			 * padding: the field's own effect sets the text to the current
+			 * selection when that selection changes, and it is a PASSIVE effect —
+			 * so a script that typed in the LAYOUT phase had its keystrokes
+			 * overwritten a moment later, leaving a frame of the untouched field
+			 * under a story that claims the opposite. The settings harness makes
+			 * the same wait for the same reason (`dispatchReadiness`).
+			 */
+			await nextFrame();
+			await nextFrame();
 			const settled = await run();
 			await nextFrame();
 			await nextFrame();
