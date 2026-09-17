@@ -1,0 +1,177 @@
+{
+	"capturedFrom": "GET http://127.0.0.1:1111/v1/desktop/sessions/8f8660fb8e64 (desktop bearer token)",
+	"sessionId": "8f8660fb8e64",
+	"note": "The four never-run frames and the in-flight start are VERBATIM from the snapshot of session 8f8660fb8e64 captured at 1789652393; `page` is a minimal reconstruction of the history window's tail (the pack carries the window's boundary timestamps, not its 100 rows), and `pageWithTwin` re-dates one real durable 'Invalid arguments' tool row from the same session into that window so the settle-in-place case is on screen. `queued` is a synthetic frame shaped from the ToolCallComposeEvent contract: that session emitted no queued frame, because every terminal frame it produced was a never-run verdict.",
+	"historyWindow": {
+		"entries": 100,
+		"firstTs": 1789649171.9548512,
+		"lastTs": 1789652393.498723,
+		"hasMore": true
+	},
+	"page": {
+		"entries": [
+			{
+				"id": "8f8660fbu1",
+				"ts": 1789649167.9548512,
+				"type": "message",
+				"payload": {
+					"kind": "message",
+					"role": "user",
+					"id": "8f8660fbu1",
+					"content": [
+						{
+							"type": "text",
+							"text": "Make the risk assessment email more specific about the affected cohorts."
+						}
+					],
+					"tool_calls": []
+				}
+			},
+			{
+				"id": "8f8660fba1e",
+				"ts": 1789649171.9548512,
+				"type": "message",
+				"payload": {
+					"kind": "message",
+					"role": "assistant",
+					"id": "8f8660fba1e",
+					"content": [
+						{
+							"type": "text",
+							"text": "Both jobs are still running. I will report the moment they settle."
+						}
+					],
+					"tool_calls": []
+				}
+			}
+		]
+	},
+	"pageWithTwin": {
+		"entries": [
+			{
+				"id": "8f8660fbu1",
+				"ts": 1789649167.9548512,
+				"type": "message",
+				"payload": {
+					"kind": "message",
+					"role": "user",
+					"id": "8f8660fbu1",
+					"content": [
+						{
+							"type": "text",
+							"text": "Make the risk assessment email more specific about the affected cohorts."
+						}
+					],
+					"tool_calls": []
+				}
+			},
+			{
+				"id": "8f8660fba1e",
+				"ts": 1789649171.9548512,
+				"type": "message",
+				"payload": {
+					"kind": "message",
+					"role": "assistant",
+					"id": "8f8660fba1e",
+					"content": [
+						{
+							"type": "text",
+							"text": "Both jobs are still running. I will report the moment they settle."
+						}
+					],
+					"tool_calls": []
+				}
+			},
+			{
+				"id": "8f8660fbtwin",
+				"ts": 1789652333.498723,
+				"type": "message",
+				"payload": {
+					"kind": "message",
+					"role": "tool",
+					"id": "8f8660fbtwin",
+					"tool_call_id": "call_00_afo3u0z5uqDNFWXRUYo83358",
+					"tool_name": "hub",
+					"is_error": true,
+					"content": [
+						{
+							"type": "text",
+							"text": "Invalid arguments: arguments are not valid JSON: Expecting ',' delimiter: line 1 column 1978 (char 1977)"
+						}
+					]
+				}
+			}
+		]
+	},
+	"seed": {
+		"generation": "3",
+		"liveEvents": [
+			{
+				"type": "tool_call_compose",
+				"tool_call_id": "call_00_afo3u0z5uqDNFWXRUYo83358",
+				"tool_name": "hub",
+				"argument_bytes": 2004,
+				"intent": null,
+				"supersedes_tool_call_id": null,
+				"dictation_complete": true,
+				"not_run_reason": "Invalid arguments: arguments are not valid JSON: Expecting ',' delimiter: line 1 column 1978 (char 1977)"
+			},
+			{
+				"type": "tool_call_compose",
+				"tool_call_id": "call_00_u1uOXhQ1VplC3n6Mbrus7903",
+				"tool_name": "wait",
+				"argument_bytes": 82,
+				"intent": null,
+				"supersedes_tool_call_id": null,
+				"dictation_complete": true,
+				"not_run_reason": "Invalid arguments: arguments are not valid JSON: Expecting ',' delimiter: line 1 column 51 (char 50)"
+			},
+			{
+				"type": "tool_call_compose",
+				"tool_call_id": "call_00_GCEoSAehx1j89GKe6xEN9555",
+				"tool_name": "wait",
+				"argument_bytes": 77,
+				"intent": null,
+				"supersedes_tool_call_id": null,
+				"dictation_complete": true,
+				"not_run_reason": "Invalid arguments: arguments are not valid JSON: Expecting ',' delimiter: line 1 column 46 (char 45)"
+			},
+			{
+				"type": "tool_call_compose",
+				"tool_call_id": "call_00_Y0H3WaCftObavGGJDxaE5416",
+				"tool_name": "wait",
+				"argument_bytes": 87,
+				"intent": null,
+				"supersedes_tool_call_id": null,
+				"dictation_complete": true,
+				"not_run_reason": "Invalid arguments: arguments are not valid JSON: Expecting ',' delimiter: line 1 column 56 (char 55)"
+			},
+			{
+				"type": "tool_execution_start",
+				"tool_call_id": "call_00_RurxNeugxLBuwuWcplj62934",
+				"tool_name": "wait",
+				"args": {
+					"job_id": ["634ea772fe1a", "885a27817094", "676a252a1aa6"],
+					"wait_ms": 3000000
+				},
+				"intent": "Awaiting MR24 fix QA and pair verification",
+				"started_at_epoch": 1789652393.4988
+			}
+		]
+	},
+	"queuedSeed": {
+		"generation": "3",
+		"liveEvents": [
+			{
+				"type": "tool_call_compose",
+				"tool_call_id": "call_00_QueuedSibling00Example00",
+				"tool_name": "wait",
+				"argument_bytes": 109,
+				"intent": "Awaiting the siblings",
+				"supersedes_tool_call_id": null,
+				"dictation_complete": true,
+				"not_run_reason": null
+			}
+		]
+	}
+}
