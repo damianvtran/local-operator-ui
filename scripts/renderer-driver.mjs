@@ -1478,7 +1478,14 @@ async function sceneStates(cdp) {
 function readPins(cdp) {
 	return cdp.evaluate(`(() => {
 		const text = (node) => node ? node.textContent.replace(/\\s+/g, " ").trim() : null;
-		const rows = Array.from(document.querySelectorAll("button[data-chat-row]")).map((row) => ({
+		// Keyed on data-tour-tag="chat-session-row" and NOT on data-chat-row: the
+		// same marker is on this panel's headings, on its agent and team rows and on
+		// the rail, so a read keyed on it would count navigation as conversations.
+		// The tour tag is the app's own hook for a conversation row and it exists in
+		// both trees, which is what lets this scene run unchanged against the
+		// pre-change one.
+		const conversationRows = Array.from(document.querySelectorAll('button[data-tour-tag="chat-session-row"]'));
+		const rows = conversationRows.map((row) => ({
 			label: text(row),
 			ariaCurrent: row.getAttribute("aria-current"),
 			parentTag: row.parentElement ? row.parentElement.tagName.toLowerCase() : null,
@@ -1501,9 +1508,13 @@ function readPins(cdp) {
 				height: box.height,
 			};
 		});
+		// Every row-like row in document order, so the SECTION order can be asserted
+		// rather than inferred: headings, navigation and conversations.
+		const order = Array.from(document.querySelectorAll("button[data-chat-row]")).map((row) => text(row));
 		return {
 			rows,
 			pins,
+			order,
 			nav: text(document.querySelector("nav")),
 			controls: document.querySelectorAll("[data-session-pin]").length,
 		};
@@ -1519,7 +1530,7 @@ function readPins(cdp) {
  */
 function rowBox(cdp, index) {
 	return cdp.evaluate(`(() => {
-		const rows = Array.from(document.querySelectorAll("button[data-chat-row]")).filter((row) => row.querySelector("[data-session-pin]"));
+		const rows = Array.from(document.querySelectorAll('button[data-tour-tag="chat-session-row"]'));
 		const row = rows[${index}];
 		if (!row) return null;
 		const box = row.getBoundingClientRect();
@@ -1531,6 +1542,54 @@ function rowBox(cdp, index) {
 			width: box.width,
 		};
 	})()`);
+}
+
+/**
+ * Open one of the panel's sections, then wait for its conversations to exist.
+ *
+ * The sections are collapsible and `Previous chats` starts CLOSED, so on a store
+ * nobody has touched yet the panel draws the heading and none of its rows: a
+ * scene that assumed otherwise would photograph an empty list and call it a
+ * catalogue. Pressed through the app's own heading, and the wait is on the rows
+ * rather than on a timer.
+ */
+async function openSection(cdp, label, timeoutMs = 5_000) {
+	const heading = () =>
+		cdp.evaluate(`(() => {
+			const wanted = ${JSON.stringify(label)};
+			const node = Array.from(document.querySelectorAll("button[data-chat-row]"))
+				.find((row) => row.textContent.replace(/\\s+/g, " ").trim().startsWith(wanted));
+			if (!node) return null;
+			const box = node.getBoundingClientRect();
+			return {
+				expanded: node.getAttribute("aria-expanded") === "true",
+				x: box.left + box.width / 2,
+				y: box.top + box.height / 2,
+			};
+		})()`);
+	const started = Date.now();
+	for (;;) {
+		const at = await heading();
+		if (at === null) {
+			if (Date.now() - started > timeoutMs)
+				throw new Error(`no ${label} heading in the panel`);
+			await wait(100);
+			continue;
+		}
+		/*
+		 * Whether the section is OPEN is read from the heading's own `aria-expanded`,
+		 * not inferred from "some conversation row exists": once anything is pinned the
+		 * Pinned section has rows while this one is still closed, so the inferred
+		 * version returned early and the scene then read a one-row panel.
+		 */
+		if (at.expanded) return readPins(cdp);
+		await parkPointer(cdp);
+		await pressPointer(cdp, at.x, at.y);
+		await parkPointer(cdp);
+		await wait(150);
+		if (Date.now() - started > timeoutMs)
+			throw new Error(`pressing the ${label} heading did not open it`);
+	}
 }
 
 /**
@@ -1581,22 +1640,45 @@ async function pressPointer(cdp, x, y) {
 	await wait(120);
 }
 
+/**
+ * A precondition: reported like a check and FATAL, because every line after it
+ * reads the value it just measured. `check` on its own records a failure and
+ * carries on, which for a box's coordinates means a crash two steps later that
+ * says nothing about why.
+ */
+function require(label, value, detail) {
+	check(label, Boolean(value), detail);
+	if (!value) throw new Error(`${label} - ${detail}`);
+	return value;
+}
+
 /** Wait until the sidebar has a `Pinned chats` section holding `label`. */
 async function waitForPinned(cdp, label, timeoutMs = 6_000) {
 	const started = Date.now();
 	let last = null;
 	for (;;) {
 		last = await readPins(cdp);
-		const headingAt = last.rows.findIndex(
-			(row) => row.label === "Pinned chats",
+		/*
+		 * The section's order is read off `order` — every row-like button in the
+		 * panel, document order — because the claim is about SEQUENCE: the
+		 * `Pinned chats` heading, then the pinned conversation, then `All chats` and
+		 * the sections below it.
+		 */
+		const headingAt = last.order.findIndex((line) =>
+			String(line).startsWith("Pinned chats"),
 		);
-		const rowAt = last.rows.findIndex(
-			(row) => row.pinSibling > 0 && row.label === label,
+		const rowAt = last.rows.findIndex((row) => row.label === label);
+		const allChatsAt = last.order.findIndex((line) =>
+			String(line).startsWith("All chats"),
 		);
-		const worked = headingAt >= 0 && rowAt > headingAt;
+		const worked =
+			headingAt >= 0 &&
+			rowAt >= 0 &&
+			allChatsAt >= 0 &&
+			headingAt < allChatsAt;
 		const waited = Date.now() - started;
 		if (worked || waited > timeoutMs)
-			return { worked, waited, headingAt, rowAt, sidebar: last };
+			return { worked, waited, headingAt, rowAt, allChatsAt, sidebar: last };
 		await wait(100);
 	}
 }
@@ -1700,16 +1782,23 @@ async function scenePins(cdp) {
 		);
 		const suffix = theme === "localOperatorDark" ? "dark" : "light";
 		await parkPointer(cdp);
-		const start = await readPins(cdp);
+		/*
+		 * `Previous chats` starts CLOSED, so on a store nobody has opened yet the
+		 * panel draws its heading and none of its rows. The scene opens it through
+		 * the panel's own heading and waits for the rows rather than assuming a timer
+		 * is enough.
+		 */
+		const start = await openSection(cdp, "Previous chats");
 
 		if (start.controls === 0) {
 			/*
-			 * THE FAIL-CLOSED HALF. No pin control anywhere, and the conversation row
-			 * is the pre-change row: the button's own parent holds exactly one button
-			 * (so no wrapper was introduced) and a query for the reserved slot finds
-			 * nothing. Both are asserted before the frame, because a frame of a
-			 * withdrawn capability that still shifted the layout would be a picture of
-			 * the bug rather than of the fallback.
+			 * THE FAIL-CLOSED HALF. No pin control anywhere, and the conversation row is
+			 * the PRE-CHANGE row: its own parent is the section, with no wrapper element
+			 * introduced between them and no reserved slot to find. Both are asserted
+			 * before the frame, because a frame of a withdrawn capability that still
+			 * moved the row by 28px would be a picture of the bug rather than of the
+			 * fallback - and the byte comparison against this same scene's frames from
+			 * the tree before this change is what closes the claim.
 			 */
 			check(
 				"the backend advertises no pin store, so no control is mounted",
@@ -1717,9 +1806,11 @@ async function scenePins(cdp) {
 				JSON.stringify({ rows: start.rows.length, pins: start.controls }),
 			);
 			check(
-				"a conversation row is one button in its own box, as it was before this change",
+				"a conversation row is one button in its own section, as it was before this change",
 				start.rows.length > 0 &&
-					start.rows.every((row) => row.pinSibling === 0),
+					start.rows.every(
+						(row) => row.parentTag === "section" && row.pinSibling === 0,
+					),
 				JSON.stringify(start.rows.slice(0, 3)),
 			);
 			frames.push(await captureSettled(cdp, `pins-withdrawn-${suffix}`));
@@ -1727,96 +1818,129 @@ async function scenePins(cdp) {
 		}
 
 		/*
-		 * The rows this scene drives are the ones carrying a pin control, which is
-		 * every conversation row while the capability is present. The FIRST of them
-		 * is the one that gets pinned; the second is the one the pointer reveals.
+		 * The rows this scene drives are the panel's conversations. The FIRST is the
+		 * one that gets pinned; the second is the one the pointer reveals.
 		 */
-		const pinRows = start.rows.filter((row) => row.pinSibling > 0);
 		check(
 			"the sidebar has conversations to pin",
-			pinRows.length >= 2,
-			`${pinRows.length} rows: ${JSON.stringify(pinRows.map((row) => row.label))}`,
+			start.rows.length >= 2,
+			`${start.rows.length} rows: ${JSON.stringify(start.rows.map((row) => row.label))}`,
 		);
 		check(
 			"the pin control is a SIBLING of the conversation button, not inside it",
-			pinRows.every((row) => row.buttonsInParent === 2),
-			JSON.stringify(pinRows.slice(0, 3)),
+			start.rows.every(
+				(row) =>
+					row.parentTag === "div" &&
+					row.buttonsInParent === 2 &&
+					row.pinSibling === 1,
+			),
+			JSON.stringify(start.rows.slice(0, 3)),
 		);
 		check(
 			"the pin slot is reserved at rest, so the reveal cannot reflow the row",
-			start.pins.every((pin) => pin.width > 0 && pin.height > 0),
+			start.pins.every((pin) => pin.width > 0 && pin.height > 0) &&
+				start.pins.length === start.rows.length,
 			JSON.stringify(start.pins.slice(0, 2)),
 		);
 		check(
-			"nothing is pinned yet, and an unpinned control is invisible at rest",
-			start.rows.every((row) => row.label !== "Pinned chats") &&
+			"nothing is pinned yet: no heading anywhere, and an unpinned control is invisible at rest",
+			!start.order.some((line) => String(line).startsWith("Pinned chats")) &&
 				start.pins.every(
 					(pin) => pin.pressed === "false" && pin.opacity === "0",
 				),
-			JSON.stringify(start.pins.slice(0, 2)),
+			JSON.stringify({
+				pinnedHeadings: start.order.filter((line) =>
+					String(line).startsWith("Pinned chats"),
+				),
+				pins: start.pins.map((pin) => `${pin.pressed}/${pin.opacity}`),
+			}),
 		);
 		frames.push(await captureSettled(cdp, `pins-unpinned-${suffix}`));
 
 		/*
 		 * THE REVEAL. The pointer goes to the second row's own box, and the control
-		 * must become visible WITH THE POINTER STILL THERE — which is the whole
+		 * must become visible WITH THE POINTER STILL THERE - which is the whole
 		 * difference between this frame and the one above.
 		 */
-		const hoverRow = await rowBox(cdp, 1);
+		const hoverRow = require(
+			"the pointer has a second conversation to hover",
+			await rowBox(cdp, 1),
+			"the panel drew fewer than two conversation rows",
+		);
 		await movePointer(cdp, hoverRow.x, hoverRow.y);
 		await wait(260);
 		const hovered = await readPins(cdp);
 		check(
-			"the pointer over an unpinned row reveals its pin",
-			hovered.pins.filter((pin) => pin.opacity === "1").length === 1,
-			JSON.stringify(hovered.pins),
-		);
-		check(
-			"the revealed control is the one on the row under the pointer",
-			hovered.pins.filter((pin) => pin.opacity === "1").length === 1 &&
-				hovered.pins.findIndex((pin) => pin.opacity === "1") === 1,
+			"the pointer over an unpinned row reveals ITS pin, and nothing else",
+			hovered.pins.length > 1 &&
+				hovered.pins[1].opacity === "1" &&
+				hovered.pins.filter((pin, index) => index !== 1 && pin.opacity === "1")
+					.length === 0,
 			JSON.stringify(hovered.pins.map((pin) => pin.opacity)),
 		);
 		frames.push(await captureSettled(cdp, `pins-hover-${suffix}`));
 
 		/*
-		 * THE PRESS. A real button pair at the first row's control, then the app's own
-		 * store and the backend's own answer: the row must move into a section whose
-		 * heading `Pinned chats` sits ABOVE the other sections in document order.
+		 * THE PRESS. A real button pair at the first row's control, and then the panel
+		 * itself: the conversation must move into a `Pinned chats` section whose
+		 * heading sits ABOVE the `All chats` row and the sections under it - the
+		 * operator's "above Active Chats", read as a position in the panel.
 		 */
 		const pressRow = await rowBox(cdp, 0);
 		const target = await readPins(cdp);
 		await pressPointer(cdp, target.pins[0].x, target.pins[0].y);
 		const pinned = await waitForPinned(cdp, pressRow.label);
 		check(
-			"pressing the pin moves the conversation into a Pinned chats section",
+			"pressing the pin moves the conversation into a Pinned chats section above the rest",
 			pinned.worked,
 			JSON.stringify(pinned),
 		);
 		check(
-			"the Pinned chats heading is above the sections below it",
-			pinned.headingAt === 0,
-			JSON.stringify(pinned.sidebar.rows.map((row) => row.label)),
+			"the pinned conversation is drawn in the Pinned section, ahead of every other row",
+			pinned.rowAt === 0,
+			JSON.stringify({ rows: pinned.sidebar.rows.map((row) => row.label) }),
 		);
-		const afterPress = await waitForPinned(cdp, pressRow.label);
-		const pressedPin = afterPress.sidebar.pins.find(
+		const pressedPin = pinned.sidebar.pins.find(
 			(pin) => pin.pressed === "true",
 		);
+		if (theme === themes[0] && TUI_PYTHON !== null && TUI_CONFIG !== null) {
+			/*
+			 * THE OTHER DIRECTION, with the TERMINAL'S OWN reader: the app has just
+			 * pinned from this surface, and the store the terminal reads is asked what it
+			 * holds. `read_pins` is the function the TUI's sidebar calls, so this is not a
+			 * second way of asking - and the ID comes from the backend's own catalogue
+			 * rather than from the press, so the assertion is about the state the
+			 * backend settled on.
+			 */
+			const pressed = (await readBackendSessions()).find((row) => row.pinned);
+			const storeRead = tuiStoreReading();
+			check(
+				"a pin made in this app is in the store the terminal reads",
+				pressed !== undefined && storeRead.pins.includes(pressed.id),
+				JSON.stringify({ pressed, storeRead }),
+			);
+		}
 		check(
 			"the pinned control reports its state and stays legible at rest",
 			pressedPin !== undefined && pressedPin.opacity === "1",
-			JSON.stringify(afterPress.sidebar.pins),
+			JSON.stringify(pinned.sidebar.pins),
 		);
 		check(
 			"the pinned glyph is FILLED, so the state reads without hovering",
 			pressedPin !== undefined && pressedPin.fill === "currentColor",
 			JSON.stringify(pressedPin),
 		);
+		check(
+			"the press asked the BACKEND for the state, and the answer is what is drawn",
+			typeof pressedPin?.title === "string" &&
+				pressedPin.title.startsWith("Unpin"),
+			JSON.stringify(pressedPin),
+		);
 		frames.push(await captureSettled(cdp, `pins-populated-${suffix}`));
 
 		/*
 		 * PINNED AND SELECTED. The pinned row is opened, and the claim is that it is
-		 * drawn ONCE — in the Pinned section — carrying `aria-current`. A lift-and-copy
+		 * drawn ONCE - in the Pinned section - carrying `aria-current`. A lift-and-copy
 		 * would show it twice here, which is the duplication the partition exists to
 		 * prevent.
 		 */
@@ -1828,7 +1952,7 @@ async function scenePins(cdp) {
 			(row) => row.ariaCurrent === "page",
 		);
 		const copies = selected.sidebar.rows.filter(
-			(row) => row.label === selectRow.label && row.pinSibling > 0,
+			(row) => row.label === selectRow.label,
 		);
 		check(
 			"the pinned row that is also current is drawn exactly once",
@@ -1836,8 +1960,9 @@ async function scenePins(cdp) {
 			JSON.stringify(copies),
 		);
 		check(
-			"the current row carries aria-current, inside the Pinned section",
-			currentRows.length === 1 && selected.rowAt > selected.headingAt,
+			"the current row carries aria-current, and it is the one in the Pinned section",
+			currentRows.length === 1 &&
+				copyIndex(selected.sidebar.rows, selectRow.label) === selected.rowAt,
 			JSON.stringify({
 				currentRows,
 				rowAt: selected.rowAt,
@@ -1848,38 +1973,150 @@ async function scenePins(cdp) {
 
 		/*
 		 * THE FILTER. The panel's own search box, typed into through the browser's
-		 * input pipeline, with a query that matches the PINNED conversation only:
-		 * the Pinned section keeps it, and every other section empties. A pinned row
-		 * the filter excludes is absent — it is not kept "because it is pinned".
+		 * input pipeline, with a query that matches the PINNED conversation only: the
+		 * Pinned section keeps it, and the other sections empty. A pinned row the
+		 * filter excludes is absent - it is not kept "because it is pinned".
 		 */
-		const searchSelector = 'input[type="search"]';
-		const search = await verb(cdp, "press", searchSelector);
+		const search = await verb(
+			cdp,
+			"press",
+			// The panel's field carries an aria-label rather than a `type="search"`:
+			// its own accessible name is the stable hook, and the one a reader would
+			// use to find it.
+			'input[aria-label="Search chats and agents"]',
+		);
 		check(
 			"the search field took the press",
 			search.hitTest === true,
 			JSON.stringify(search),
 		);
-		await cdp.send("Input.insertText", { text: pinParts(pressRow.label) });
-		await wait(400);
-		const filtered = await readPins(cdp);
-		const filteredPinned = filtered.rows.filter(
-			(row) => row.label === "Pinned chats",
+		/*
+		 * The pointer press is the user's action; the FOCUS it leaves is the browser's.
+		 * A synthetic pointer event does not move focus, so the caret is placed on the
+		 * field the press hit - named as an exposed action rather than hidden, because
+		 * a scene that typed into whatever happened to be focused would be reading its
+		 * own accident.
+		 */
+		const focused = await cdp.evaluate(`(() => {
+			const field = document.querySelector('input[aria-label="Search chats and agents"]');
+			if (!field) return null;
+			field.focus();
+			return document.activeElement === field;
+		})()`);
+		require(
+			"the caret is in the search field",
+			focused === true,
+			JSON.stringify(focused),
 		);
+		/*
+		 * The query is the conversation's TITLE as the store holds it, not the row's
+		 * rendered text: a row draws a status word ("Recent", "Not sent yet") ahead of
+		 * the title, and searching the rendered string asks the panel for a
+		 * conversation whose name begins with "Recent".
+		 */
+		const pinnedTitle = (await readBackendSessions()).find(
+			(row) => row.pinned,
+		)?.title;
+		const wanted = require(
+			"the pinned conversation's own title was read out of the backend",
+			pinnedTitle ? pinParts(pinnedTitle) : null,
+			JSON.stringify(await readBackendSessions()),
+		);
+		await cdp.send("Input.insertText", { text: wanted });
+		await wait(600);
+		const filtered = await readPins(cdp);
 		check(
-			"the Pinned section survives a filter that matches its row",
-			filteredPinned.length === 1,
-			JSON.stringify(filtered.rows.map((row) => row.label)),
+			"the Pinned section survives a filter that matches only its row",
+			filtered.rows.length === 1 && filtered.rows[0].label === selectRow.label,
+			JSON.stringify({
+				query: wanted,
+				rows: filtered.rows.map((row) => row.label),
+				order: filtered.order,
+			}),
 		);
 		frames.push(await captureSettled(cdp, `pins-filter-${suffix}`));
 
-		// Back to the unfiltered panel through the app's own Escape, so the next
-		// theme starts where this one did.
-		await pressChord(cdp, {
-			key: "Escape",
-			code: "Escape",
-			virtualKeyCode: 27,
-		});
+		/*
+		 * THE FLAT MODE. The design's open question is where the section sits when the
+		 * panel is in `All chats` mode, where there is no `Active chats` anchor for it
+		 * to be above at all. This frame is what the design round judges that from, so
+		 * it is captured rather than argued.
+		 */
+		const cleared = await clearSearch(cdp);
+		check(
+			"Escape cleared the query through the panel's own handler",
+			cleared,
+			JSON.stringify(await readPins(cdp)),
+		);
+		const allChats = await cdp.evaluate(`(() => {
+			const toggle = Array.from(document.querySelectorAll("button[data-chat-row]"))
+				.find((row) => row.textContent.replace(/\\s+/g, " ").trim().startsWith("All chats"));
+			if (!toggle) return null;
+			const box = toggle.getBoundingClientRect();
+			return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+		})()`);
+		check("the All chats toggle is in the panel", allChats !== null, JSON.stringify(allChats));
+		await pressPointer(cdp, allChats.x, allChats.y);
 		await wait(300);
+		const flat = await waitForPinned(cdp, selectRow.label);
+		check(
+			"the Pinned chats section is drawn in the flat list too, still above it",
+			flat.worked && flat.rowAt === 0,
+			JSON.stringify({ order: flat.sidebar.order, rows: flat.sidebar.rows }),
+		);
+		frames.push(await captureSettled(cdp, `pins-flat-${suffix}`));
+		/*
+		 * Back to the split view, so the next theme starts where this one did - and
+		 * through a FRESH read of the toggle's box, because the row moved as the list
+		 * changed and a stale point would press whatever took its place.
+		 */
+		const back = await cdp.evaluate(`(() => {
+			const toggle = Array.from(document.querySelectorAll("button[data-chat-row]"))
+				.find((row) => row.textContent.replace(/\\s+/g, " ").trim().startsWith("All chats"));
+			if (!toggle) return null;
+			const box = toggle.getBoundingClientRect();
+			return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+		})()`);
+		await pressPointer(cdp, back.x, back.y);
+		await wait(300);
+		const split = await readPins(cdp);
+		check(
+			"the panel is back in the split view before the next theme",
+			split.order.some((line) => String(line).startsWith("Active chats")),
+			JSON.stringify({ order: split.order }),
+		);
+
+		/*
+		 * UNPIN, and restore the panel to the state this theme's first frame showed.
+		 * Two reasons, and neither is tidiness: the press is a TOGGLE in the product's
+		 * own terms (the terminal's `f10` verb), so the inverse is a real path the
+		 * frames would otherwise never exercise; and the next theme's `pins-unpinned`
+		 * frame has to be the same state as this one's, or the pair is a picture of
+		 * two different panels. The store this touches is this run's own.
+		 */
+		await parkPointer(cdp);
+		const pinnedNow = await readPins(cdp);
+		const unpinIndex = pinnedNow.pins.findIndex(
+			(pin) => pin.pressed === "true",
+		);
+		require(
+			"the conversation this pass pinned is still pinned",
+			unpinIndex >= 0,
+			JSON.stringify(pinnedNow.pins),
+		);
+		await pressPointer(cdp, pinnedNow.pins[unpinIndex].x, pinnedNow.pins[unpinIndex].y);
+		await wait(400);
+		const unpinned = await readPins(cdp);
+		check(
+			"pressing the pinned control again unpins, and the section goes with it",
+			!unpinned.order.some((line) => String(line).startsWith("Pinned chats")) &&
+				unpinned.pins.every((pin) => pin.pressed === "false"),
+			JSON.stringify({
+				order: unpinned.order,
+				pins: unpinned.pins.map((pin) => `${pin.pressed}/${pin.opacity}`),
+			}),
+		);
+
 	}
 
 	if (TUI_PYTHON !== null && TUI_CONFIG !== null) {
@@ -1892,6 +2129,27 @@ async function scenePins(cdp) {
 	}
 
 	return frames;
+}
+
+/**
+ * Clear the panel's query through the app's own Escape, and wait for the list to
+ * come back — rather than reaching into the input's value, which would leave the
+ * panel in a state no keystroke produced.
+ */
+async function clearSearch(cdp, timeoutMs = 5_000) {
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	const started = Date.now();
+	for (;;) {
+		const now = await readPins(cdp);
+		if (now.rows.length > 1) return true;
+		if (Date.now() - started > timeoutMs) return false;
+		await wait(100);
+	}
+}
+
+/** The index of a conversation row by its label, or -1. */
+function copyIndex(rows, label) {
+	return rows.findIndex((row) => row.label === label);
 }
 
 /**
@@ -1912,6 +2170,32 @@ function pinParts(label) {
 }
 
 /**
+ * What the terminal's own store holds, read through the terminal's own module.
+ *
+ * `read_pins` is the function the TUI's sidebar calls on every refresh, run in a
+ * real interpreter against the daemon's config root — the same file the desktop's
+ * `pinned` flag is projected from. A failure to run it is reported rather than
+ * swallowed: a store that cannot be read is not the same finding as a pin that is
+ * not there.
+ */
+function tuiStoreReading() {
+	const script = [
+		"import json,sys",
+		"from local_operator.tui.sidebar_pins import read_pins",
+		"print(json.dumps({'pins': list(read_pins(sys.argv[1]))}))",
+	].join("\n");
+	const read = spawnSync(TUI_PYTHON, ["-c", script, TUI_CONFIG], {
+		encoding: "utf8",
+	});
+	if (read.status !== 0) {
+		throw new Error(
+			`the terminal's store could not be read: ${JSON.stringify({ status: read.status, stderr: read.stderr })}`,
+		);
+	}
+	return JSON.parse(read.stdout);
+}
+
+/**
  * THE OTHER SURFACE'S HALF: a pin written by the terminal's own store.
  *
  * `toggle_pin` is the function the terminal's `f10` calls (`action_toggle_pin`
@@ -1927,20 +2211,30 @@ function pinParts(label) {
  * asserted at a threshold, because a loaded machine is not a regression.
  */
 async function crossSurfacePin(cdp) {
+	// Back to the theme this scene's first frames were taken in, so the frame this
+	// step writes is a picture of the same panel state at the same theme - and so
+	// its name is true.
+	await verb(cdp, "setTheme", "localOperatorDark");
 	const before = await readPins(cdp);
-	const candidates = before.rows.filter(
-		(row) => row.pinSibling > 0 && row.ariaCurrent !== "page",
+	/*
+	 * The conversation the TERMINAL will pin: a real catalogue row that is not the
+	 * one this app just pinned, so what the frame shows is a pin this run did not
+	 * make from this surface. Its id and its title come from the backend, and the
+	 * DOM row is then identified by matching the title — a row's rendered text
+	 * carries a status word ahead of the title, so the two are not the same string.
+	 */
+	const catalogue = await readBackendSessions();
+	const chosen = catalogue.find((row) => !row.pinned);
+	require(
+		"the backend has an unpinned conversation for the terminal's own store to pin",
+		chosen,
+		JSON.stringify(catalogue),
 	);
-	if (candidates.length === 0) {
-		throw new Error(
-			"no unpinned conversation for the terminal's own store to pin",
-		);
-	}
-	const ids = readPinsIds(cdp);
-	const chosen = ids.find((row) => !row.pinned);
-	if (!chosen) {
-		throw new Error("no unpinned session id was read out of the panel");
-	}
+	require(
+		"that conversation is drawn in this panel",
+		before.rows.some((row) => row.label.includes(chosen.title)),
+		JSON.stringify({ title: chosen.title, rows: before.rows.map((row) => row.label) }),
+	);
 	const script = [
 		"import json,sys",
 		"from local_operator.tui.sidebar_pins import read_pins, toggle_pin",
@@ -1951,7 +2245,7 @@ async function crossSurfacePin(cdp) {
 	].join("\n");
 	const wrote = spawnSync(
 		TUI_PYTHON,
-		["-c", script, TUI_CONFIG, chosen.sessionId],
+		["-c", script, TUI_CONFIG, chosen.id],
 		{ encoding: "utf8" },
 	);
 	check(
@@ -1965,19 +2259,38 @@ async function crossSurfacePin(cdp) {
 	);
 	note("tui store after its own f10 write", (wrote.stdout ?? "").trim());
 
+	/*
+	 * Whether the app's own feed is connected, read from the panel's own sentence
+	 * rather than inferred: the sidebar says "Not connected to the backend — showing
+	 * the last known state." exactly when the feed is expected and is not there
+	 * (`chat-sidebar.tsx`), and a run whose doorbell is silent because nothing is
+	 * subscribed is a different finding from a doorbell that rang and was ignored.
+	 */
+	const feedOffline = await cdp.evaluate(
+		'document.body.innerText.includes("Not connected to the backend")',
+	);
+	note(
+		"app feed state before the terminal's write",
+		feedOffline
+			? "the panel says it is not connected to the backend, so the doorbell has no subscriber"
+			: "the panel is connected to the backend",
+	);
+
 	const started = Date.now();
 	let shown = null;
 	for (;;) {
 		const now = await readPins(cdp);
-		const headingAt = now.rows.findIndex((row) => row.label === "Pinned chats");
-		const rowAt = now.rows.findIndex(
-			(row) => row.pinSibling > 0 && row.label === chosen.label,
+		const headingAt = now.order.findIndex((line) =>
+			String(line).startsWith("Pinned chats"),
 		);
-		if (headingAt >= 0 && rowAt > headingAt) {
+		const rowAt = now.rows.findIndex((row) => row.label.includes(chosen.title));
+		if (headingAt >= 0 && rowAt >= 0) {
 			shown = now;
 			break;
 		}
-		if (Date.now() - started > 15_000) break;
+		// Past the panel's own 30 s safety poll, so a run that never reproduces the
+		// doorbell still reports the bound the poll gives instead of nothing.
+		if (Date.now() - started > 40_000) break;
 		await wait(100);
 	}
 	const latencyMs = Date.now() - started;
@@ -1990,31 +2303,35 @@ async function crossSurfacePin(cdp) {
 		}),
 	);
 	say(
-		`  [pins] terminal pin -> this app's sidebar: ${latencyMs}ms (bound stated by the design: ~1.5s)`,
+		`  [pins] terminal pin -> this app's sidebar: ${latencyMs}ms (the design's bound with the feed connected: ~1.5s; the panel's own safety poll is 30s)`,
 	);
 	const after = await captureSettled(cdp, "pins-from-tui-dark");
 	note("frame", JSON.stringify(after));
 }
 
 /**
- * The session ids behind the rows, read from the store the sidebar renders from.
+ * The catalogue as the BACKEND holds it: id, title, and the pin flag.
  *
- * The DOM does not carry them, and a scene that guessed which row a session id
- * belongs to would be measuring its own guess. This reads the persisted store the
- * panel is drawn from — the same way `stagedDraft` reads a draft — rather than
- * widening the app's surface with a test-only attribute.
+ * Read from the daemon's own route rather than from the DOM, because two things
+ * this scene needs are not in the DOM: a session ID (which the terminal's store
+ * takes) and a title free of the row's own status word. The client's persisted
+ * store is not an option, and the reason is worth writing down: it persists drafts
+ * and the active session, NOT the catalogue, so `localStorage` answers with no rows
+ * at all — a scene that read it would report a live store as empty.
  */
-function readPinsIds(cdp) {
-	return cdp.evaluate(`(() => {
-		try {
-			const raw = localStorage.getItem("canonical-sessions-storage");
-			if (!raw) return [];
-			const rows = JSON.parse(raw)?.state?.sessions ?? [];
-			return rows.map((row) => ({ sessionId: row.session_id, label: row.title || "Untitled chat", pinned: row.pinned === true }));
-		} catch (error) {
-			return [];
-		}
-	})()`);
+async function readBackendSessions() {
+	const response = await fetch(`${BACKEND}/v1/desktop/sessions?limit=50`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const body = await response.json();
+	const rows = body?.result?.sessions ?? body?.sessions ?? [];
+	return rows.map((row) => ({
+		id: row.id,
+		title: String(row.name ?? ""),
+		pinned: row.pinned === true,
+	}));
 }
 
 // ---- the keyboard scene ------------------------------------------------------

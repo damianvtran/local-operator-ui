@@ -189,13 +189,44 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 		1,
 		"the sidebar declares one session pin control",
 	);
-	const gated =
-		/\{pinsEnabled && \(\s*<button\s+type="button"\s+data-session-pin/.exec(
-			source,
-		);
+	/*
+	 * THE GATE IS A BRANCH AROUND THE WHOLE ROW, not a guard around the control.
+	 * With no `session_pins` the row is returned as the bare button it was before
+	 * this feature existed - no wrapper element, no reserved slot, no hover group -
+	 * which is what makes its DOM comparable with the pre-change frames. So the
+	 * assertions are positional: what the fail-closed branch returns, and that the
+	 * wrapper and the slot both come after it.
+	 */
+	const withdrawnAt = source.indexOf("if (!pinsEnabled) {");
 	assert.ok(
-		gated !== null,
-		'the pin control is mounted only as `{pinsEnabled && (<button type="button" data-session-pin …`',
+		withdrawnAt > 0,
+		"the session row has a fail-closed branch on `pinsEnabled`",
+	);
+	const fragmentAt = source.indexOf("return <Fragment", withdrawnAt);
+	assert.ok(fragmentAt > withdrawnAt, "the withdrawn branch returns a keyed Fragment");
+	// The `;` that closes the return, and not the next `}`: the Fragment line carries
+	// two of them (`{row.session_id}`, `{rowButton}`) and the first would cut the
+	// slice off before the thing it is here to check.
+	const branchEnd = source.indexOf(";", fragmentAt);
+	assert.ok(
+		source.slice(withdrawnAt, branchEnd).includes("{rowButton}"),
+		"the withdrawn branch returns the conversation button itself",
+	);
+	assert.ok(
+		!source.slice(withdrawnAt, branchEnd).includes("data-session-pin"),
+		"the withdrawn branch mounts no pin at all",
+	);
+	const slotAt = source.indexOf("data-session-pin");
+	assert.ok(
+		slotAt > branchEnd,
+		"the pin is mounted only in the branch the capability gate opens",
+	);
+	const wrapperAt = source.indexOf(
+		'className="group flex h-8 items-center gap-1 rounded-md"',
+	);
+	assert.ok(
+		wrapperAt > branchEnd && wrapperAt < slotAt,
+		"the hover wrapper belongs to the enabled branch, and the slot is inside it",
 	);
 	/*
 	 * ...and the section that draws the pinned rows is behind the same value: a
