@@ -248,15 +248,39 @@ const beforeFix = (
 	}: { entries?: Entry[]; arrival?: number } = {},
 ): TranscriptState => {
 	let state = withPage(entries);
+	let placed = false;
 	for (const event of seed) {
 		const stated = Number(event.started_at_epoch);
+		if (stated > 0) placed = true;
 		state = applyEvent(
 			state,
 			event,
 			stated > 0 ? Math.round(stated * 1000) : arrival,
 		);
 	}
-	return state;
+	/*
+	 * The pre-fix fold's closing step, spelled out: once ANY frame stated a clock,
+	 * the whole array is put in time order — a stable sort by `ts`, the rule the
+	 * reducer shares with the durable page (`withTimeOrder`). It is load-bearing for
+	 * these frames and not a detail: it is what puts a settled call's injected row
+	 * UNDER the running call the report says it sat under, while without it the
+	 * seed's own order (ends first, the in-flight start last) paints the running
+	 * call at the bottom — the opposite of the photograph.
+	 */
+	if (!placed) return state;
+	const records = state.records
+		.map((record, position) => ({ record, position }))
+		.sort((a, b) =>
+			a.record.ts !== b.record.ts
+				? a.record.ts - b.record.ts
+				: a.position - b.position,
+		)
+		.map((entry) => entry.record);
+	return {
+		...state,
+		records,
+		index: new Map(records.map((record, at) => [record.id, at])),
+	};
 };
 
 /**
