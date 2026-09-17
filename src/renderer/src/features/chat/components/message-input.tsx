@@ -56,7 +56,12 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react";
+import type {
+	ClipboardEvent,
+	FormEvent,
+	KeyboardEvent,
+	PointerEvent,
+} from "react";
 import { v4 as uuidv4 } from "uuid";
 import type {
 	CanonicalFrontendState,
@@ -3223,6 +3228,43 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			submitMessage();
 		};
 
+		/*
+		 * KEEP THE CARET ON A PRESS THAT LANDS ON A CONTROL THE BOX IS REFUSING WITH
+		 * (QA round 2, Q-3).
+		 *
+		 * The Send and dictation controls are `disabled` while this composer refuses,
+		 * and the browser's default action for a `mousedown` is to move the caret to
+		 * what was pressed. A disabled control cannot take focus, so that default does
+		 * not fail harmlessly - it CLEARS focus to `document.body` instead. Measured,
+		 * with the caret in a refused box still holding the reader's sentence: a real
+		 * mouse press on the Send control ends `active=body, focused=false` where the
+		 * keyboard path ends `active=textarea[Message]`. That is the mouse half of the
+		 * defect this refusal exists to fix - the operator's "I type and nothing
+		 * happens", one door over - and the words survive the press only because the
+		 * box was kept `readOnly` rather than `disabled`.
+		 *
+		 * `preventDefault` suppresses ONLY the focus-changing default: the press still
+		 * reaches the control, and a refused control fires no `click` in any case, so
+		 * nothing that worked stops working.
+		 *
+		 * POINTERDOWN RATHER THAN THE SLASH ROWS' MOUSEDOWN, and the difference is
+		 * measured rather than stylistic: a DISABLED control dispatches no mouse
+		 * events at all in this browser (driven, document-level capture listeners: a
+		 * `pointerdown` arrives on the disabled Send control and no `mousedown`
+		 * follows, which is why the slash rows' technique fixes nothing here).
+		 *
+		 * Scoped to the refusal deliberately: outside it these two controls keep the
+		 * browser's normal press behaviour, and a control that is disabled for its OWN
+		 * reason - an empty box's Send, the mic with no Radient credential - is not
+		 * this composer refusing with anyone.
+		 */
+		const holdCaretOnRefusedPress = useCallback(
+			(event: PointerEvent<HTMLButtonElement>) => {
+				if (isInputDisabled) event.preventDefault();
+			},
+			[isInputDisabled],
+		);
+
 		const handleRemoveAttachment = (id: string) => {
 			if (conversationId) {
 				removeAttachment(conversationId, id);
@@ -4868,6 +4910,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														variant="ghost"
 														size={isSmallView ? "icon-sm" : "icon"}
 														className="text-ink-dim hover:bg-elevated hover:text-ink"
+														onPointerDown={holdCaretOnRefusedPress}
 														onClick={handleStartRecording}
 														aria-label="Start recording"
 														disabled={
@@ -5101,6 +5144,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														variant="primary"
 														size={isSmallView ? "icon-sm" : "icon"}
 														type="submit"
+														onPointerDown={holdCaretOnRefusedPress}
 														disabled={
 															isInputDisabled ||
 															isLoading ||
