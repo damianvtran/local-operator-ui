@@ -1,5 +1,11 @@
 {
   "label": "before",
+  "expect": "covered",
+  "takenOn": {
+    "srcTree": "5b3983088eec7bc8bd34b57e74d7f6b35ed935c4",
+    "scriptsTree": "33cfdc15e2f556853e12cd838d9e045de0a69228",
+    "source": "the record predates this field (review 2, F3), so both are RECONSTRUCTED rather than written by the run that produced it: the run was asserted with `--expect covered --compare-against docs/evidence/band-occlusion/after/after-none.png` (the PR's gate table and the README recipe), on the fix's parent's `src` (`git rev-parse e142fee59^:src`), which is the tree the recipe checks out for this half with the pass's fixed rig (`git rev-parse 51ce4aea1:scripts`). A re-run writes both fields itself."
+  },
   "viewport": {
     "w": 1380,
     "h": 868,

@@ -56,7 +56,7 @@
  * its rects rather than judged on its own.
  */
 
-import { spawn, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -837,7 +837,53 @@ const oneBand = (m) => m.bandCount === 1;
 const noBand = (m) => m.bandCount === 0;
 const twoBands = (m) => m.bandCount === 2;
 
-const summary = { label: LABEL, viewport: null, states: {} };
+/**
+ * The tree a path has IN THE WORKTREE, which is not always `HEAD:path`.
+ *
+ * `HEAD:src` answers "what does this commit ship", which is what the manifest's
+ * `srcTree` means - and it is the wrong answer for a record of a run. The before half
+ * checks `src/` out of the fix's PARENT (the recipe in
+ * docs/evidence/band-occlusion/README.md), so during that run the worktree's `src/` is
+ * not HEAD's, and a record carrying `HEAD:src` would name a tree its frames are not
+ * pictures of. Written through a scratch index so the run's own index is never touched:
+ * `git add` against the real one would stage a half-built tree under the operator.
+ */
+const worktreeTree = (path) => {
+	const index = join(tmpdir(), `band-occlusion-index-${process.pid}`);
+	const env = { ...process.env, GIT_INDEX_FILE: index };
+	try {
+		execFileSync("git", ["read-tree", "HEAD"], { cwd: REPO, env });
+		execFileSync("git", ["add", "-A", "--", path], { cwd: REPO, env });
+		const root = execFileSync("git", ["write-tree"], { cwd: REPO, env })
+			.toString()
+			.trim();
+		return execFileSync("git", ["rev-parse", `${root}:${path}`], { cwd: REPO })
+			.toString()
+			.trim();
+	} finally {
+		rmSync(index, { force: true });
+	}
+};
+
+const summary = {
+	label: LABEL,
+	/*
+	 * The direction every state below is asserted in, and the tree it was taken on
+	 * (review round 2, F3). Both were missing, and neither can be recovered from the
+	 * rest of the record: `--expect covered` asserts the OPPOSITE direction from
+	 * `--expect uncovered`, so without this field a `coveredByBand: true` is ambiguous
+	 * between a defect and a passing pre-fix claim - and a record that does not say which
+	 * tree it is a picture of cannot be told from one taken on the folded head, which is
+	 * the distinction the whole stamped-versus-re-captured argument rests on.
+	 */
+	expect: EXPECT,
+	takenOn: {
+		srcTree: worktreeTree("src"),
+		scriptsTree: worktreeTree("scripts"),
+	},
+	viewport: null,
+	states: {},
+};
 const state = { features: COMPLETE_FEATURES, requests: [] };
 
 /** Every path this stub was asked for, and how often - the app's own account of itself. */
@@ -1302,6 +1348,33 @@ function assertState(name, m) {
 			`${m.anchors.chatListHeader?.relativeToRegion} against ${CHAT_LIST_HEADER_TOP}`,
 		);
 	}
+	/*
+	 * The CAUSE, asserted rather than only its consequence (review round 2, F4). Every
+	 * state already records each band's own `position` and `zIndex`, and every claim
+	 * above reads what that placement DOES - nothing covered, region = window - bands -
+	 * and never the placement itself, so a band that took its height some other way (an
+	 * absolutely positioned strip INSIDE the region, say) could satisfy the geometry
+	 * while being a different shape from the one this change argues for. Reading the
+	 * recorded position closes that gap in each tree's own direction: in flow on the
+	 * fixed tree, positioned out of flow on the pre-fix tree.
+	 */
+	if (m.bandCount > 0)
+		check(
+			expectUncovered
+				? `${name}: every band is in flow (none is positioned)`
+				: `${name}: every band is positioned out of flow (the pre-fix shape)`,
+			m.bands.every((band) =>
+				expectUncovered
+					? band.position === "static"
+					: band.position === "fixed",
+			),
+			m.bands
+				.map(
+					(band) =>
+						`${band.position}${band.zIndex && band.zIndex !== "auto" ? ` z ${band.zIndex}` : ""}`,
+				)
+				.join(", "),
+		);
 	if (m.bandCount === 2) {
 		const [first, second] = m.bands;
 		check(

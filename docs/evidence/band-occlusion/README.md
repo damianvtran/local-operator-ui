@@ -137,18 +137,36 @@ the defect, on the tree that fixes it.
 
 ### The pair is a pair: the cross-tree control
 
-With no band up, the two halves are **pixel-identical**: `before/before-none.png`
-against `after/after-none.png`, 0 of 1736 device rows differ, asserted by the run
-(`noneFrameDiff` in `before/before-geometry.json`). So the restructure costs the layout
-nothing when nothing is up, and every difference between the two halves is the bands.
+With no band up **on the chat route**, the two halves are **pixel-identical**:
+`before/before-none.png` against `after/after-none.png`, 0 of 1736 device rows differ,
+asserted by the run (`noneFrameDiff` in `before/before-geometry.json`). So the
+restructure costs the layout nothing when nothing is up, and every difference between
+the two halves ON THAT ROUTE is the bands.
+
+The control is scoped to the state it asserts, and the scope is measured rather than
+assumed (design round 1, D4). On the **`/browser` route** the same no-band pair does
+NOT hold: `before/browser-none.png` and `after/browser-none.png` differ in **158 of
+1736 device rows**, in two blocks - CSS y 41-87.5 across x 324-1371.5, and CSS y
+200-231.5 across x 8-211.5 - by at most 9/255 per channel. No row is added or removed
+and no edge moves, so it is not a layout residue of this change; the two likeliest
+readings are a tint caught mid-flight between the two runs or a pointer/hover state
+that differed between them. It is disclosed rather than re-driven (the host is under
+its load hold, and the pair costs one drive per half), and the browser route's own
+reading stays qualitative and separate: the whole chrome row is under the band before
+and complete below it after.
 
 ### The minimum window (C1), and what it moved
 
-`after-min/after-min-geometry.json`, `--window-size 800x600` -> an `800x572` viewport,
-two bands up. **The bands are taller here: 132 CSS px, not 121**, because at 800 px wide
-both copies wrap to a second line - the copy-dependent height the record's first
-paragraph is about, now measured at a second size. The region is 132 / 436, no anchor is
-covered, `scrollHeight == clientHeight == 572`, and the rig's pixel claim holds for all
+`after-min/after-min-geometry.json`, `--window-size 800x600` -> an **`800x568`**
+viewport (the number is the record's own `viewport.h`, `region.rect.bottom` and
+`documentScroll.clientHeight`; the string `572` this line used to carry occurs nowhere
+in the JSON), two bands up. **The bands are taller here: 132 CSS px, not 121**, and the
++11 is ONE wrapped copy rather than two: the compatibility band grows **53 -> 64** CSS
+px at this width, while the connectivity band is **68 CSS px in both windows** - its
+second line is the refused address, which it carries at 1380x868 as well, where the
+`one-line` state measures 53. That is the copy-dependent height the record's first
+paragraph is about, measured at a second size. The region is 132 / 436, no anchor is
+covered, `scrollHeight == clientHeight == 568`, and the rig's pixel claim holds for all
 264 band rows.
 
 Looked at, not only measured: no glyph row is cut at the region's bottom edge - the last
@@ -157,7 +175,11 @@ reduced height is absorbed by the app's own scroll containers (the chat list col
 paints its own scrollbar in the frame). The **composer is not in this scene at all**: a
 sessionless draft paints no message input at either window size, so "fully visible and
 operable" is not something this evidence measures; it is named here rather than
-implied. Nothing needs a region floor at 800x600.
+implied. The committed min frame paints the pane's DRAFT branch (`Start a chat`), which
+is why it cannot answer the operability half of the design round's C1 - a composer
+reachable with two bands up, and a press on either band's `Retry` - and that half is
+handed to QA's drive (design D5, QA Q5) rather than asserted from this frame. Nothing
+needs a region floor at 800x600.
 
 ### The two copies, seen together (C2)
 
@@ -181,7 +203,7 @@ which is the whole point of the band being in flow.
 
 | frame | state |
 | --- | --- |
-| `before/before-none.png` | attached daemon, every required capability advertised: no band, the control (pixel-identical to `after/after-none.png`) |
+| `before/before-none.png` | attached daemon, every required capability advertised: no band, the control (pixel-identical to `after/after-none.png` on the chat route; the browser route's no-band pair is not, by 158 rows - design D4) |
 | `before/before-one-line.png` | six of the seven required features withdrawn: the compatibility band alone, covering the pane's first row and the search control's top |
 | `before/before-two-line.png` | the address quiet, main's own second line in the copy: the connectivity band alone, device 0-136 |
 | `before/before-two-bands.png` | both bands up at once, overlapping at `y 0` — the case that decided the shape |
@@ -239,15 +261,53 @@ the copy-dependent band height (53 against 68 CSS px in one window, and 132 at
 of both halves, the fix's own three acceptance claims (no row covered at any height, the
 region keeping exactly the window minus the bands, two bands stacking at 68 + 53), and
 the cross-tree control that says the restructure costs the layout nothing when no band
-is up.
+is up - asserted on the chat route's `none` state, which is the state it holds on (D4).
 
 NOT proven here, and named rather than implied:
 
-- **the frames were taken from the tree at `HEAD`, and the rig that took them was
-touched in the same pass** - the four defects below are the record of that. The frames
-are pictures of the `src/` they ship with (the run happened after the rebase and after
-the conflict resolution, with a real `pnpm build` on each half), and the same rig took
-both halves, which is what the pair requires.
+- **the frames were taken on the pass's OWN tree, not on this head, and the rig that
+took them was touched in the same pass** - the four defects below are the record of
+that. The frames are pictures of the pre-fold tree the pass ran on (`src`
+`d19dbadc6ed3`, the tree of `141e5219e`/`51ce4aea1`; the manifest's `srcTree` is the
+tree they SHIP IN, `dcff3db3f591`, and the two are different on purpose), with a real
+`pnpm build` on each half, and the same rig took both halves, which is what the pair
+requires. This bullet used to say the frames are pictures of the `src/` they ship with;
+that is the opposite provenance and it was wrong (review 2, F1).
+- **the three folds onto `main`'s `013aad424`, `e89142ac6` and `ace40b3b6` are STAMPED,
+  NOT RE-CAPTURED**, and the delta each one moves is measured rather than summarised.
+  The frames were taken on the head *before* the folds, so the window that has to be
+  accounted for is the pass's tree against this head: `git diff --name-status 141e5219e
+  44b68172b -- src/` is **110 files**, and every surface this scene paints is either
+  byte-identical or comment-only. Byte-identical: `app.tsx` (`b09cb3b2e67e`), both band
+  components (`880bcad3c23b`, `4dc6a06799c0`), `chat-page.tsx` (`a02a5b518855`),
+  `dialog.tsx` (`6b694466a8b5`) and the command palette (`e1fcdcae0fe7`). Comment-only
+  (comment-stripped text identical, hashes given): `chat-sidebar.tsx` (`2dd925edde7d` ->
+  `6f3956b76303` - the chat list's own column, and the `⌘ + N` cap visible in the
+  two-band frame), `alert.tsx` (`61b64d97f147` -> `f34101ef6111` - the component BOTH
+  bands render), `keyboard-shortcut.tsx`, `chat-content.tsx`, `markdown.css`,
+  `message-input.tsx`, `destination-pickers.tsx` and `base-theme.ts`. The two palettes
+  this scene paints are byte-identical across the window: the `localOperatorDark` and
+  `localOperatorLight` blocks in `themes.generated.css` are 914 and 924 bytes in both
+  trees, unchanged. The window's code changes are in surfaces no frame mounts - the
+  chat header, the canonical transcript and its timestamps, the trace rows, the
+  analytics panels, `data-table.tsx`, `date-utils.ts`, `theme-selector.tsx` - which is
+  the same argument from the other side as the draft branch: the pane paints `Start a
+  chat` and the chat list has no rows to stamp.
+- **the third fold's own delta, since it is the one a summary got wrong** (review 2,
+  F1; QA Q1). `git diff --name-status e89142ac6 ace40b3b6 -- src/` moves **86 files**:
+  **49** added - **47** of them palettes, the other two the theme grid's own new
+  `theme-grid-navigation.ts` and a `theme-selector.stories.tsx` (an addition repaints
+  nothing that already exists) - **32** comment-only, and **5** that change code:
+  `settings/components/theme-selector.tsx`, `shared/themes/index.ts`,
+  `shared/themes/palette-contract.ts`, `shared/types/theme.ts` and
+  `styles/themes.generated.css`. None of the five is on the captured `#/chat` or
+  `#/browser` route, and in `themes.generated.css` all twelve pre-existing theme blocks
+  are byte-identical (47 theme blocks are added). "Palettes and generated theme CSS"
+  was the summary this record carried; it describes 48 of the 86 files - the palettes
+  and `themes.generated.css` - and leaves the 32 comment-only files, the other four code
+  changes and the two non-palette additions out of the account, `alert.tsx` among them,
+  which is the face of the surface under review. A reviewer who would rather see the
+  frames re-taken on the fold's own tree should say so: that is one drive per half.
 - **`headless` is not a focus path**: the bands' `Retry` controls render as they do for
   nobody, and nothing here measures a press. The minimum-window state says the same
   about the composer: it is not painted at all in this scene, so C1 measures geometry
@@ -338,9 +398,11 @@ Two further states, both taken on the fixed tree because both are about the shap
 this change chose:
 
 ```bash
-# C1: the minimum window (800x600 -> an 800x572 viewport on Electron 44.3.0), two
+# C1: the minimum window (800x600 -> an 800x568 viewport on Electron 44.3.0), two
 # bands up. MEASURED: 132 CSS px of band against a 436 px region, not the 121/~451
-# this line used to predict - at 800 px wide both copies wrap to a second line.
+# this line used to predict - and the +11 is ONE wrapped copy, the compatibility
+# band's (53 -> 64 CSS px), while the connectivity band is 68 in both windows
+# because its second line is the refused address, not a wrap.
 node scripts/band-occlusion-evidence.mjs --expect uncovered --only two-bands \
   --window-size 800x600 --out docs/evidence/band-occlusion/after-min --label after-min
 ```

@@ -1,5 +1,11 @@
 {
   "label": "after",
+  "expect": "uncovered",
+  "takenOn": {
+    "srcTree": "d19dbadc6ed306717cb8c2350db15e1a72391d7f",
+    "scriptsTree": "33cfdc15e2f556853e12cd838d9e045de0a69228",
+    "source": "the record predates this field (review 2, F3), so both are RECONSTRUCTED rather than written by the run that produced it: the run was asserted with `--expect uncovered` (the PR's gate table and the README recipe), on the pass's own `src` (`git rev-parse 141e5219e:src`, the tree of the pass's last commits) with the pass's fixed rig (`git rev-parse 51ce4aea1:scripts`). A re-run writes both fields itself."
+  },
   "viewport": {
     "w": 1380,
     "h": 868,
