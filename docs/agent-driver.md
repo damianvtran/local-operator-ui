@@ -271,9 +271,9 @@ rule:
   named, that focus landed in the query field, that typing narrowed the list,
   that Escape closed the dialog, and that focus came BACK to the row that opened
   it — and it does not claim the groups that need a backend (conversations, the
-  settings registry, and the panel rows, which need a live chat pane behind
-  them). Those are covered by unit tests over the join and the ranking, and by
-  the QA pass against a live backend.
+  settings registry, and the panel rows, which now need a live backend rather
+  than a live pane). Those are covered by unit tests over the join and the
+  ranking, and by the QA pass against a live backend.
 - **`new-chat`** — the sidebar's `⌘N`, pressed through CDP's own key pipeline
   (`Input.dispatchKeyEvent`, never a `KeyboardEvent` built inside the page,
   because the whole claim is that the press reaches the listener) against the

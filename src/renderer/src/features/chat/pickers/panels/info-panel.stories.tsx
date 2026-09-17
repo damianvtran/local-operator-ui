@@ -910,3 +910,60 @@ export const WireEnvironment: Story = {
 
 /** 720px: the value column wraps and the markers stack. */
 export const Narrow: Story = { args: { ...base, data: info(), frontend } };
+
+/**
+ * The SESSION-FREE panel: what `/info` renders when no conversation is open.
+ *
+ * The operator's requirement is that this panel runs with no conversation at all
+ * (`/info` on an empty "Start of conversation" pane used to be refused outright),
+ * and that it can be read from a page that is not chat — which is what `""` in
+ * `sessionId` means: no conversation in front of the user, whether because none
+ * exists or because the user is on Settings.
+ *
+ * What to judge, and what must NOT be here: no `This conversation` heading and no
+ * `Nothing to report here.` under it — the heading was the lie, not the notice,
+ * because a section headed "this conversation" that says nothing is there is
+ * worse than no section. The description has dropped its "and the conversation in
+ * front of you" clause for the section that actually exists, and the machine half
+ * is otherwise the same: same install, host, "Sessions on this machine" and
+ * "Could not be read" sections. ENVIRONMENT is the one section that differs from
+ * its populated twin beyond the conversation block, and it says so rather than
+ * looking measured: the MCP row is `—` with the note "not read in this view", and
+ * the `Server / Reported` table under it is omitted because the copy that fills
+ * it is the same missing one — the state `MCP_NOT_READ_NOTE` exists to spell out
+ * (design round 1, D1). The `frontend: null` is what that pane really has, and it
+ * is also what makes the ROWS the conversation section used to read unavailable
+ * rather than empty.
+ *
+ * Which is why the marker is absent from the sessions table here and in
+ * `LiveHalfUnmeasured` both: `sessionLineRows` marks the current row only when a
+ * line's id matches, and `""` matches nothing — the honest outcome, and one this
+ * frame can now be read against.
+ *
+ * THE HOST SNAPSHOT IS SESSIONLESS HERE TOO, and that is the frame's own honesty
+ * rule rather than a tidier fixture: `hostRows` omits a row whose value is empty
+ * ("a backend that serves many sessions legitimately has no `session_id`,
+ * `conversation_name` or `model_label`"), and the live app in this state renders
+ * Host runtime as Process, Kind, Started, Working dir, Config dir, Cache dir — no
+ * session rows at all. The fixture used to carry them, so the one frame whose job
+ * is to show that the conversation section was the lie had a section ABOVE it
+ * still naming a conversation, and a reader could not tell the removal from the
+ * payload (design round 1, D5). `LiveHalfUnmeasured` keeps its session rows on
+ * purpose: its subject is the nulled live half, not this state.
+ */
+export const SessionFree: Story = {
+	args: {
+		...base,
+		data: info({
+			process: {
+				...info().process,
+				session_id: "",
+				conversation_name: "",
+				model_label: "",
+				effective_model: "",
+			},
+		}),
+		frontend: null,
+		sessionId: "",
+	},
+};
