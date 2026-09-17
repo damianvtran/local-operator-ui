@@ -34,6 +34,7 @@ import {
 } from "@renderer/features/chat/components/message-input";
 import type { Message } from "@renderer/features/chat/types/message";
 import { unreadableAttachmentRefusal } from "@renderer/features/chat/utils/attachment-read";
+import { UNREADABLE_ATTACHMENT_CODE } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { DEFAULT_THEME, applyThemeToDocument, getTheme } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
@@ -118,15 +119,16 @@ const STATES: Record<
 		sendError: {
 			message: unreadableMessage(),
 			// What the refusal's own code withholds in the app
-			// (`withholdsRetryHint`): the retry is refused for the same reason
-			// until the chip is replaced or removed.
-			withholdRetryHint: true,
+			// (`withholdsRetryHint`, which the composer reads off this code): the
+			// retry is refused for the same reason until the chip is replaced or
+			// removed.
+			code: UNREADABLE_ATTACHMENT_CODE,
 		},
 	},
 	split: {
 		sendError: {
 			message: unreadableMessage(),
-			withholdRetryHint: true,
+			code: UNREADABLE_ATTACHMENT_CODE,
 			refusedText: REFUSED_TEXT,
 			refusedAttachments: REFUSED_FILES,
 		},

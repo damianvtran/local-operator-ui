@@ -11,6 +11,7 @@ import type { KeyboardEvent } from "react";
 // module by hand do not declare - and a unit of the renderer should not become
 // unbundleable by a test just because it needed a filename.
 import { getFileName } from "../../features/chat/utils/get-file-name";
+import { isStoreWriteRefusal } from "../store/canonical-sessions-store";
 import {
 	type Attachment,
 	useConversationInputStore,
@@ -246,6 +247,77 @@ export const refusedSplitNotice = (
 	if (withheld === "text")
 		return `The ${one ? "file" : "files"} ${list} from your refused message ${one ? "is" : "are"} attached again; its text was left out because the box already holds text you typed.`;
 	return `The text of your refused message was restored, but not its ${one ? "file" : "files"} ${list} — the composer already holds files you picked, so attach ${one ? "it" : "them"} again if you still need ${one ? "it" : "them"}.`;
+};
+
+/**
+ * The composer's restore control, as ONE string with two consumers.
+ *
+ * The held claim's sentence NAMES this control ("Choose Restore message ..."),
+ * which is what makes the store sentence's own "send it again" performable while
+ * the payload is out of the box (UX round 1, U1) — so the words exist here rather
+ * than at the button, and the button interpolates the same constant. A second copy
+ * at either site is how the sentence and the control come to name different
+ * things. Exported from this module rather than from the composer so the suites
+ * that bundle this module by hand (and not the composer's own tree) can pin the
+ * pair.
+ */
+export const RESTORE_LABEL = "Restore message";
+
+/**
+ * The known fact a STORE refusal licenses, in the register the claim keeps it in.
+ *
+ * A store that could not write KNOWS the request was not admitted (`store_busy`
+ * aside — contention is retryable), so "nothing was saved" is a fact and not a
+ * guess, and the copy painted in the transcript is this app's own rather than the
+ * agent's. The other register — "whether it reached the agent is not knowable" —
+ * is written for a lost response and is FALSE here (UX round 1, U4).
+ */
+export const STORE_CLAIM_KNOWN_FACT =
+	"Nothing was saved, and the copy above is this app's own rather than the agent's.";
+
+/**
+ * What a held claim says, decided by the CLAIM's own verdict.
+ *
+ * @param heldClaimCode - the code of the failure that LEFT this payload held
+ *   (`ChatDraft.heldClaimCode`), never the code of the refusal that happens to be
+ *   on screen. The two are different the moment the operator follows the app's
+ *   own advice: `Restore message`, drop the file, Enter, and the unchanged-payload
+ *   guard is what answers — and that refusal's code (`UNCONFIRMED_SEND_CODE`) is
+ *   not a store write refusal, so reading the live code here silently reverted the
+ *   claim to the lost-response register one screen after the app said "Nothing was
+ *   saved", taking the disk off the screen with it (UX round 2, U10).
+ * @param copyOnScreen - whether a copy of the held payload is painted in the
+ *   transcript above (`heldCopyOnScreen`). The shared sentence POINTS at that copy,
+ *   so the clause is dropped rather than asserted when the caller cannot answer.
+ *   It has no effect on the store register, which does not point at anything.
+ */
+export const heldClaimCopy = (
+	heldClaimCode: string | undefined,
+	copyOnScreen: boolean,
+): string => {
+	/*
+	 * THE REMEDY LEADS, AND IT IS A COMPLETE SENTENCE OF ITS OWN.
+	 *
+	 * Both observers of the narrow-window defect asked for this and for the same
+	 * reason: the claim is the only prose on this screen that says what to DO, so
+	 * the clause that does it has to be the first thing read. It was last, and at
+	 * the app's own minimum window the backend's own sentence then ate the whole
+	 * capped window — the remedy clause was the part cut off, and what remained
+	 * ended on a full stop, so nothing read as truncated either (QA round 1's Q-1,
+	 * design round 2's D5, agent review round 2's M1, UX round 2's U11). The line
+	 * is now pinned outside the cap as well (see the composer's own note); the
+	 * order is what makes it survive if a later edit puts it back under one.
+	 *
+	 * The fact's own wording is deliberate and reviewed (design round 2, D2): the
+	 * retention reassurance stays "this app's own rather than the agent's", because
+	 * whether the copy above is the operator's word or the agent's is the question
+	 * the transcript echo raises.
+	 */
+	if (isStoreWriteRefusal(heldClaimCode))
+		return `Choose ${RESTORE_LABEL} to put it back in the composer. ${STORE_CLAIM_KNOWN_FACT}`;
+	return copyOnScreen
+		? "A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable - its copy is in the transcript above - so restore it and send again only if no reply arrives."
+		: "A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives.";
 };
 
 /**

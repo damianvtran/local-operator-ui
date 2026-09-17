@@ -279,6 +279,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the composer's alert region at a narrow width; its first spawn is the vite server that serves the page",
 	),
 	guarded(
+		"scripts/store-refusal-evidence.mjs",
+		"spawn",
+		2,
+		"photographs the composer's alert for each arm of the backend's store-failure ladder, on the alert the app's OWN transport, `desktopResult`, `admitChatDraft` and `withholdsRetryHint` produced; its first spawn is the vite server that serves the page",
+	),
+	guarded(
 		"scripts/diff-body-evidence.mjs",
 		"spawn",
 		1,
