@@ -123,7 +123,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 							isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
 						)}
 					>
-						<div ref={messageContentRef} className="relative">
+						<div ref={messageContentRef} className={cn("relative")}>
 							{replies.length > 0 && <ReplyPreview replies={replies} />}
 							{cloneContentChildren(
 								children,

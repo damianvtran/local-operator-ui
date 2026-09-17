@@ -190,6 +190,15 @@ prose at:
 .lo-measured .lo-markdown > :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6),
 .lo-measured .lo-stream-tail { max-width: 62ch; }
 ```
+**Retired 2026-09-16 — a dated note beside this record, not a rewrite of it.** The
+rule quoted above no longer exists. `.lo-measured` and its 62ch cap were removed on
+2026-09-16 by the change that answers a later operator report (a user card widened by a
+reply quote or an attachment left its prose centre-constrained inside it). The contract
+now reads: the measure is the user card's own `max-w-[75%]` inside `CHAT_MEASURE`, and
+`.lo-markdown` takes no cap and no centring on either branch. It lives in the
+reading-measure comment at `markdown.css:280` and in `branding.md` § 7 (`:422`). Every
+line number, class name and measurement ABOVE this note is what this audit found on its
+own date and has deliberately been left as it was written.
 62ch at the 14px `text-body` step (`index.css:77`) is roughly **465px**. Agent rows are
 additionally indented by `AGENT_GUTTER = "pl-10"` = 40px
 (`message-container.tsx:26`, applied at `:52`). So agent prose occupies x≈40→505 of a

@@ -375,13 +375,13 @@ const UserRow = memo(function UserRow({
 						)}
 					>
 						{/*
-							* The bubble's body takes no measure class any more: its prose used to be
-							* centre-constrained at 62ch inside a card that a reply quote or a wide
-							* attachment had widened (the operator report of 2026-09-16), and the card's
-							* own width is the measure now, so there is nothing to opt into.
-							* `markdown.css`'s measure comment carries the report and the numbers, and
-							* the rule that also keeps a cap off the agent's answer.
-							*/}
+						 * The bubble's body takes no measure class any more: its prose used to be
+						 * centre-constrained at 62ch inside a card that a reply quote or a wide
+						 * attachment had widened (the operator report of 2026-09-16), and the card's
+						 * own width is the measure now, so there is nothing to opt into.
+						 * `markdown.css`'s measure comment carries the report and the numbers, and
+						 * the rule that also keeps a cap off the agent's answer.
+						 */}
 						<div className={cn("relative")}>
 							{/* The quote a quoted turn was sent with, rendered as the same
 							    recessed block the composer stages it in - the reader sees one

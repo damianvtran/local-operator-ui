@@ -308,15 +308,20 @@
  * decision, and at 1440x900 the same two numbers because the cap binds harder
  * the more room there is.
  *
- * Losing the cap costs line length, and the number is recorded rather than
- * argued again next round: measured at the 14px body step (design review round
- * 1, D2), the answer runs 98.1 characters a line at 1024, 1440 AND 1920, and
- * 66.6 at 700 — above the 45-75 the typographic guidance cites. That 98.1 is a
- * CEILING rather than a slope is what makes the trade acceptable: the column is
- * capped at 900px by `CHAT_MEASURE` (`chat-measure.ts`), so the line length
- * stops growing with the window and 1920 reads exactly as 1024 does. The
- * failure a reading cap exists to prevent — prose stretching across a wide
- * display — cannot happen on this surface.
+ * Losing the cap costs line length, and the numbers are recorded rather than
+ * argued again next round — in the TWO quantities this repo now keeps apart.
+ * The first is the figure this file has carried: at the 14px body step (design
+ * review round 1, D2) the answer's column runs 98.1 `ch` at 1024, 1440 AND 1920,
+ * and 66.6 `ch` at 700, above the 45-75 the typographic guidance cites. Those
+ * are `ch` units, NOT characters, and a reader counting characters sees a longer
+ * line: counted from the rendered breaks, the same column carries 131 characters
+ * on an 832.6px line (measured at 1024 on
+ * `chat-older-history-slot--in-transcript-idle`). The 98.1 being a CEILING
+ * rather than a slope is what makes the trade acceptable: the column is capped
+ * at 900px by `CHAT_MEASURE` (`chat-measure.ts`), so the line length stops
+ * growing with the window and 1920 reads exactly as 1024 does. The failure a
+ * reading cap exists to prevent — prose stretching across a wide display —
+ * cannot happen on this surface.
  *
  * ## The user bubble: the CARD is the measure (operator report, 2026-09-16)
  *
@@ -347,13 +352,21 @@
  * card. The narrower box the aside relies on is still there; it is the card's
  * rather than the prose's.
  *
- * What that leaves, in numbers: `CHAT_MEASURE` caps the column at 900px
- * (`chat-measure.ts`) and the transcript scroller insets it by its own `p-4`,
- * so the row content box is 868px; `max-w-[75%]` caps the card at 651px, i.e.
- * 619px of content inside its `px-4`, about 70 characters at the body step —
- * against the agent answer's 868px and 98.1. The user turn is still the narrow
- * register and the answer still reads as the document, with no cap on either
- * one's prose.
+ * What that leaves, in numbers, every one of them read from the live DOM at the
+ * 1024x620 pane in localOperatorDark on
+ * `chat-canonical-user-card-measure--reported-shape`. The measure is 900px
+ * (62..962) and it IS the row content box: `CHAT_MEASURE` caps the content div
+ * and the scroller's `p-4` sits outside it, so the 900 is not a number the
+ * padding comes off. `max-w-[75%]` puts the card at 675px, whose content box is
+ * 641px inside the card's `px-4` and its 1px border — the box the prose now
+ * fills (measured 304..945, `max-width: none`, margins 0, 0px of slack, against
+ * 351.1..897.9 = 546.738px = 62ch with 48.1px of slack on each side before).
+ * The agent's answer resolves against 860px of the same measure, losing the 40px
+ * avatar gutter, and the ledger row fills 102..962. On line length, the user's
+ * own longest rendered line in that fixture is ~99-101 characters on 627.6px
+ * against the answer's 131 on 832.6px. So the user turn is still the narrow
+ * register — 675 against 860 — and the answer still reads as the document, with
+ * no cap on either one's prose.
  *
  * ## Why no measure is coming back to this root
  *
