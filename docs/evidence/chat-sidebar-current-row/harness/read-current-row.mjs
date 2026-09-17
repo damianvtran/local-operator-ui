@@ -55,9 +55,67 @@ const x1 = Number(x1Arg ?? 265);
 const y0 = Number(y0Arg ?? 380);
 const y1 = Number(y1Arg ?? 560);
 
+/**
+ * The eight bytes every PNG starts with.
+ *
+ * CHECKED BY NAME RATHER THAN LEFT TO `zlib`. The frames this set commits are
+ * WebP, so the likeliest wrong input to this script is one of them — the README's
+ * own example invited exactly that — and `inflateSync` answers a WebP with
+ * `incorrect header check` and a stack trace through `node:zlib`, which names
+ * neither the file nor the fix. The magic bytes say what was handed in, so the
+ * failure can too. A missing file is named for the same reason: one line saying
+ * which path was not found and which decoder to run beats a `ENOENT` trace.
+ */
+const PNG_SIGNATURE = Buffer.from([
+	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
+
+/* Top level rather than inside `decodeHint`, per `lint/performance/useTopLevelRegex`:
+   a literal in a function is re-created per call, and this module is required to
+   stay cheap to run in a loop over a whole set's frames. */
+const FRAME_EXTENSION = /\.(png|webp)$/;
+
+/** What the first bytes of a buffer say it is, for a failure message. */
+const describeFormat = (buffer) => {
+	/* `latin1`, not `ascii`: node's `ascii` decoder masks the high bit, so a magic
+	   byte like 0xFF or 0x89 would be compared as 0x7F / 0x09 and every format
+	   check would miss. `latin1` is byte-exact. */
+	const head = (from, to) => buffer.subarray(from, to).toString("latin1");
+	if (head(0, 4) === "RIFF" && head(8, 12) === "WEBP") return "a WebP";
+	if (head(0, 3) === "\u00ff\u00d8\u00ff") return "a JPEG";
+	return "not an image this harness recognises";
+};
+
+/** How to get a PNG out of a committed frame, this script's own invocation. */
+const decodeHint = (path, script) => {
+	/* One extension is replaced, not appended: a reader who passed the committed
+	   `.webp` itself must not be told to decode `…tokyoNight.webp.webp`. */
+	const frame = path.replace(FRAME_EXTENSION, "");
+	return [
+		"  If this is a frame from this set, it is WebP; decode it first and measure the PNG:",
+		`    sips -s format png ${frame}.webp --out /tmp/frame.png   # macOS`,
+		`    dwebp ${frame}.webp -o /tmp/frame.png                  # anywhere else`,
+		`    node ${script} /tmp/frame.png <x0> <x1> <y0> <y1>`,
+	].join("\n");
+};
+
 /** A PNG decoded to `{ width, height, at(x, y) }`, 8-bit RGB/RGBA, no interlace. */
 const decodePng = (path) => {
-	const buffer = readFileSync(path);
+	let buffer;
+	try {
+		buffer = readFileSync(path);
+	} catch (error) {
+		console.error(
+			`${path} could not be read (${error.code ?? error.message}).\n${decodeHint(path, process.argv[1])}`,
+		);
+		process.exit(2);
+	}
+	if (!buffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
+		console.error(
+			`${path} is ${describeFormat(buffer)}, not a PNG — this harness decodes PNG only.\n${decodeHint(path, process.argv[1])}`,
+		);
+		process.exit(2);
+	}
 	let at = 8;
 	let width = 0;
 	let height = 0;
