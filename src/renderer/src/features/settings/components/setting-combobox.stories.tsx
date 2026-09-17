@@ -137,6 +137,10 @@ const Harness: FC<{
 	placeholder?: string;
 	emptyText?: string;
 	clearable?: boolean;
+	busy?: boolean;
+	busyLabel?: string;
+	disabled?: boolean;
+	listNotice?: string;
 }> = ({
 	options,
 	initial,
@@ -144,6 +148,10 @@ const Harness: FC<{
 	placeholder = "Search providers",
 	emptyText,
 	clearable = false,
+	busy = false,
+	busyLabel = "Loading providers",
+	disabled = false,
+	listNotice,
 }) => {
 	const [selected, setSelected] = useState<SearchableOption | null>(initial);
 	const [value, setValue] = useState(initial?.id ?? "");
@@ -163,8 +171,10 @@ const Harness: FC<{
 				emptyText={emptyText}
 				options={options}
 				selected={selected}
-				busy={false}
-				busyLabel="Loading providers"
+				busy={busy}
+				busyLabel={busyLabel}
+				disabled={disabled}
+				listNotice={listNotice}
 				onSelect={(option) => {
 					setSelected(option);
 					setValue(option.id);
@@ -173,6 +183,9 @@ const Harness: FC<{
 					setSelected({ id: text, name: text });
 					setValue(text);
 				}}
+				/* The shipped wrapper's own copy, so a frame shows the row a user
+				   would meet rather than a story-only variant of it. */
+				customRowLabel={(text) => `Use "${text}"`}
 				onClear={clearable ? () => setValue("") : undefined}
 			/>
 			{chromeLess ? (
@@ -197,6 +210,9 @@ const Driven: FC<{
 	placeholder?: string;
 	emptyText?: string;
 	clearable?: boolean;
+	busy?: boolean;
+	busyLabel?: string;
+	listNotice?: string;
 	run: () => Promise<boolean>;
 }> = ({ run, ...rest }) => {
 	useLayoutEffect(() => {
@@ -304,13 +320,17 @@ export const OpenFiltered: Story = {
 				if (!input) return false;
 				input.focus();
 				setFieldValue(input, "anthro");
-				await waitFor(
-					() =>
-						(listbox()?.querySelectorAll('[role="option"]').length ?? 0) === 2,
-				);
-				return (
-					(listbox()?.querySelectorAll('[role="option"]').length ?? 0) === 2
-				);
+				/*
+				 * `:not([data-combobox-row="typed"])` is the typed-value row, which is
+				 * offered BESIDE the filter's result rather than being part of it — an
+				 * assertion about "the rows this query produced" has to exclude it.
+				 */
+				const matches = () =>
+					listbox()?.querySelectorAll(
+						'[role="option"]:not([data-combobox-row="typed"])',
+					).length ?? 0;
+				await waitFor(() => matches() === 2);
+				return matches() === 2;
 			}}
 		/>
 	),
@@ -362,6 +382,157 @@ export const UnknownValue: Story = {
 				}}
 				placeholder="Search models"
 				clearable
+			/>
+		</Ground>
+	),
+};
+
+/*
+ * ---------------------------------------------------------------- *
+ * The three states design round 1 asked for, and why each was new  *
+ * ---------------------------------------------------------------- *
+ */
+
+/**
+ * The active row's mark, and the row that carries the typed text.
+ *
+ * Two states at once, because they are one gesture: a query narrows the list,
+ * the FIRST row it admits carries the mark, and the typed text sits at the
+ * bottom as a row of its own. That is what makes "type three characters, press
+ * Enter" commit the row on screen rather than the three characters — the mark
+ * says which row that is, and the last row is how the typed value stays
+ * committable (UX round 1, U1; design round 1, D5.1).
+ *
+ * The mark itself is two roles, not one: a wash, which is invisible in four of
+ * the fifty-nine palettes on the popover's own ground, and a 1px structural
+ * edge, which carries it in all of them. A frame is the only thing that can
+ * show that the pair reads as a mark.
+ */
+export const ActiveRow: Story = {
+	render: () => (
+		<Driven
+			options={MODELS}
+			initial={{
+				id: "claude-opus-5",
+				name: "anthropic/claude-opus-5",
+			}}
+			placeholder="Search models"
+			run={async () => {
+				const input = combobox();
+				if (!input) return false;
+				input.focus();
+				setFieldValue(input, "anthro");
+				const marked = () =>
+					Boolean(listbox()?.querySelector(".outline-control"));
+				await waitFor(marked);
+				return marked();
+			}}
+		/>
+	),
+};
+
+/**
+ * The list while the catalogue is still on its way, which is every first open.
+ *
+ * Four of the five rows this PR adds are in this state for a moment each time
+ * they are opened for the first time, and the sentence they must NOT say is
+ * "Nothing matches that model": nothing has matched nothing, the query has not
+ * answered. The field keeps its placeholder and stays typeable throughout
+ * (design round 1, D1).
+ */
+export const Loading: Story = {
+	render: () => (
+		<Driven
+			options={[]}
+			initial={null}
+			placeholder="Search models"
+			busy
+			busyLabel="Loading models"
+			run={async () => {
+				combobox()?.focus();
+				await waitFor(() =>
+					(listbox()?.textContent ?? "").includes("Loading models"),
+				);
+				return (listbox()?.textContent ?? "").includes("Loading models");
+			}}
+		/>
+	),
+};
+
+/**
+ * A list that is scoped, saying so.
+ *
+ * The model list is narrowed to the provider the row above it will boot on,
+ * and until this line existed nothing on screen said that — so "Nothing matches
+ * that model" read as "this app does not have that model" when the real reason
+ * was a scope the user was never told about (UX round 1, U2).
+ */
+export const ScopedNotice: Story = {
+	render: () => (
+		<Driven
+			options={MODELS}
+			initial={null}
+			placeholder="Search models"
+			listNotice="Models for Anthropic"
+			run={async () => {
+				combobox()?.focus();
+				await waitFor(() =>
+					(listbox()?.textContent ?? "").includes("Models for Anthropic"),
+				);
+				return (listbox()?.textContent ?? "").includes("Models for Anthropic");
+			}}
+		/>
+	),
+};
+
+/**
+ * A scope that could not be resolved, saying that too.
+ *
+ * When the chosen provider has no rows in the catalogue — seven of the
+ * seventeen providers in the reviewed registry, including OpenRouter, did not —
+ * the list widens to the whole catalogue so that it is never empty. That is the
+ * right fallback and a surprising one: without this line the row above says
+ * "OpenRouter" and the list offers OpenAI, and nothing explains the
+ * relationship (UX round 1, U3).
+ */
+export const UnresolvedScope: Story = {
+	render: () => (
+		<Driven
+			options={MODELS}
+			initial={null}
+			placeholder="Search models"
+			listNotice="No models listed for OpenRouter. Showing all models."
+			run={async () => {
+				combobox()?.focus();
+				await waitFor(() =>
+					(listbox()?.textContent ?? "").includes("Showing all models"),
+				);
+				return (listbox()?.textContent ?? "").includes("Showing all models");
+			}}
+		/>
+	),
+};
+
+/**
+ * A disabled field, which is what a row looks like while its Save is in flight.
+ *
+ * The chevron steps to `ink-disabled` with the field, the way the `Select` in
+ * the same rows already does. Without this frame the state is unphotographable:
+ * the `saving` story in the section's own file is the cascade textarea's row,
+ * and no fixture can put these rows in it (design round 1, D2).
+ */
+export const Disabled: Story = {
+	render: () => (
+		<Ground>
+			<Harness
+				options={MODELS}
+				initial={{
+					id: "claude-opus-5",
+					name: "anthropic/claude-opus-5",
+				}}
+				placeholder="Search models"
+				clearable
+				disabled
 			/>
 		</Ground>
 	),

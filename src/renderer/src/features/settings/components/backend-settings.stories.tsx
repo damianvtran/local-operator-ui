@@ -101,15 +101,17 @@ let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
  * How the stubbed transport answers the two ops the provider and model rows
  * issue.
  *
- * `ok` is the shipped behaviour. The other two are degradation states of this
- * surface that no happy payload can photograph: a model catalogue that came
- * back with a per-provider failure (`errors` non-empty, which still carries
- * `models`), and one whose credential store could not be read, where every
- * row's `connected` is the listing's own default and must not be turned into a
- * badge. Both are asserted in the option builders' test; these stories exist so
- * a reader can SEE what they produce in the row.
+ * `ok` is the shipped behaviour. The other three are states of this surface no
+ * happy payload can photograph: a model catalogue that came back with a
+ * per-provider failure (`errors` non-empty, which still carries `models`), one
+ * whose credential store could not be read, where every row's `connected` is
+ * the listing's own default and must not be turned into a badge, and one that
+ * has not answered yet — the state the list's own loading row exists for, and
+ * the one this surface's first open is ALWAYS in for a moment. All are asserted
+ * in the option builders' test; these stories exist so a reader can SEE what
+ * they produce in the row.
  */
-type CatalogueMode = "ok" | "partial" | "unknown-credentials";
+type CatalogueMode = "ok" | "partial" | "unknown-credentials" | "in-flight";
 
 const installBridge = (
 	payload: BackendSettings,
@@ -138,6 +140,13 @@ const installBridge = (
 				// show the seventeen rows the shipped backend returns.
 				return ok({ providers: PROVIDER_ROWS });
 			case "models.catalogue":
+				if (catalogueMode === "in-flight") {
+					// A promise that never settles, which is what a fetch in flight IS
+					// from the renderer's side. Without this state the list can only be
+					// photographed with rows in it, and the claim it makes before they
+					// arrive goes unexamined (design round 1, D1).
+					return new Promise<DesktopResponse>(() => {});
+				}
 				if (catalogueMode === "partial") {
 					return ok(
 						catalogue({
@@ -658,6 +667,18 @@ const MODEL_LIST: Script = {
 };
 
 /**
+ * The model list opened over a catalogue that never answers.
+ *
+ * The expectation deliberately stops at "the popover is open": waiting for a row
+ * would wait forever, and the frame's subject is what the list says in the
+ * absence of one.
+ */
+const MODEL_LIST_IN_FLIGHT: Script = {
+	run: () => openCombobox("model_name")(),
+	expect: () => listboxOpen(),
+};
+
+/**
  * The five rows at rest: the configured fixture's values, and a placeholder on
  * every row that is unset.
  */
@@ -697,10 +718,33 @@ export const ModelListOpen: Story = {
  * this is a NOTE under the field rather than an error state — collapsing the
  * two is a measured defect (1450 usable rows replaced by a wall of 21 provider
  * names), and `catalogueListing` is the module that exists to keep them apart.
+ *
+ * Named for what it renders. It was `catalogue-deferred`, which promised an
+ * in-flight fetch this story has never shown — a partial failure answers
+ * immediately, with rows — and the name is what made the in-flight state look
+ * covered while no frame showed it (design round 1, D5.3).
  */
-export const CatalogueDeferred: Story = {
+export const CataloguePartial: Story = {
 	render: () =>
 		mount({ state: "changed", catalogueMode: "partial", script: MODEL_LIST }),
+};
+
+/**
+ * The catalogue still on its way: the first open of a model field.
+ *
+ * This is the state four of the five rows this PR adds are in for a moment on
+ * every first open — a lazy ~460 KB fetch — and it is the state the list must
+ * not answer with "Nothing matches that model", a claim about a query that has
+ * not run. The field shows its placeholder and stays typeable; the list says it
+ * is loading.
+ */
+export const CatalogueInFlight: Story = {
+	render: () =>
+		mount({
+			state: "changed",
+			catalogueMode: "in-flight",
+			script: MODEL_LIST_IN_FLIGHT,
+		}),
 };
 
 /**

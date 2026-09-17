@@ -1235,8 +1235,18 @@ export const STORIES = [
 	 */
 	["settings-backend--provider-model-rows", 1380, 900],
 	["settings-backend--hosting-list-open", 1380, 900],
+	/*
+	 * The same open list at the narrowest window the product can render
+	 * (`WINDOW_MIN_WIDTH` 800, so the settings column is ~688px by the arithmetic
+	 * the section's own stories record). The design checklist asks for exactly
+	 * this frame - a popover anchored to a 384px field must not overflow the
+	 * window - and the only narrow frame before it was a 620px column, which is
+	 * below the app's own minimum (design round 1, D5.2).
+	 */
+	["settings-backend--hosting-list-open", 800, 900],
 	["settings-backend--model-list-open", 1380, 900],
-	["settings-backend--catalogue-deferred", 1380, 900],
+	["settings-backend--catalogue-partial", 1380, 900],
+	["settings-backend--catalogue-in-flight", 1380, 900],
 	["settings-backend--catalogue-unknown-credentials", 1380, 900],
 	["settings-backend--dirty", 1380, 900],
 	["settings-backend--saving", 1380, 900],
@@ -1261,6 +1271,11 @@ export const STORIES = [
 	["settings-model-combobox--open-filtered", 560, 420],
 	["settings-model-combobox--no-matches", 560, 300],
 	["settings-model-combobox--unknown-value", 560, 240],
+	["settings-model-combobox--active-row", 560, 460],
+	["settings-model-combobox--loading", 560, 240],
+	["settings-model-combobox--scoped-notice", 560, 300],
+	["settings-model-combobox--unresolved-scope", 560, 300],
+	["settings-model-combobox--disabled", 560, 240],
 	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
