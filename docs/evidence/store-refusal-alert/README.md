@@ -95,3 +95,21 @@ sentence. The app's own `desktopProxyPlugin` answers `200` carrying the
 `{status, body}` envelope, and the harness now does the same; the renderer's dev
 path is only ever handed that shape. Nothing in the product needed changing for
 it, and no frame in this set claims otherwise.
+
+## Reaching this state by hand (for a QA or design round)
+
+The rendered set substitutes the backend's verdict at the HTTP boundary, because
+a store failure cannot be asked for on demand. Two ways to meet the real thing,
+in the order of least risk to the operator's machine:
+
+1. **The composer's half, in the running app.** Point the app at a backend whose
+   `/v1/desktop/sessions/<id>/messages` answers `507` with
+   `{"detail": {"code": "store_out_of_space", "message": "…"}}` (or `500` /
+   `store_unavailable`), then send anything from a chat. That exercises the real
+   Electron IPC hop, the real composer and the real store row, and needs no disk
+   pressure at all — it is the shape a stub backend or an HTTP proxy gives you.
+2. **The whole ladder, for real.** Run the backend against a bounded APFS disk
+   image (`hdiutil create -size 30m -fs APFS`, then detach it afterwards) and let
+   the volume fill: SQLite then fails exactly as it did on 2026-09-17, and the
+   backend's own error ladder picks the status. Never fill the operator's live
+   volume to reach this — the incident happened once already.
