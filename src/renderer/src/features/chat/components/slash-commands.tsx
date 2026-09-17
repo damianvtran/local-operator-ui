@@ -81,7 +81,11 @@ import {
 	slashRunAllowed,
 } from "./slash-contract";
 import { commandSuggestions, matchChoices } from "./slash-rank";
-import { type ArmingCatalogueRow, armedOnlyVocabulary } from "./slash-submit";
+import {
+	type ArgumentShapeRow,
+	type ArmingCatalogueRow,
+	armedOnlyVocabulary,
+} from "./slash-submit";
 import {
 	caretPhase,
 	replaceSpan,
@@ -109,6 +113,16 @@ export type SlashCommandMeta = {
 	consumes_prompt: boolean;
 	destination: string;
 	execution: "owner" | "native";
+	/*
+	 * Mirror the shared wire type's three additive fields
+	 * (`src/shared/desktop-control-contract.ts`) so this meta list is not a
+	 * narrower copy of the same catalogue: optional, because an older backend
+	 * sends none of them, and read only where they answer a question the two
+	 * booleans above cannot.
+	 */
+	prefixes_text?: boolean;
+	argument_shape?: "none" | "word" | "provider" | "subcommand" | "any";
+	argument_words?: string[];
 };
 
 const MAX_VISIBLE_ROWS = 6;
@@ -267,6 +281,21 @@ export type SlashCompletionState = {
 	 * their whole-draft forms as prose (review round 1, R1).
 	 */
 	argumentCommands: ReadonlySet<string>;
+	/**
+	 * THE WIRE'S OWN `prefixes_text`, when the backend sends it — the free-text
+	 * half as the SERVER computes it. Unioned with the three registry-derived
+	 * sets rather than replacing them, so a row this renderer derived and the
+	 * wire did not name keeps working, and an older backend (which sends no such
+	 * field) leaves the set empty and changes nothing.
+	 */
+	prefixingCommands?: ReadonlySet<string>;
+	/**
+	 * The wire's per-word ARGUMENT SHAPES (`argument_shape` + `argument_words`),
+	 * keyed by every primary and alias, for the words the wire answered about.
+	 * Empty on an older backend, which is the fallback path the planner reads as
+	 * "no shape known".
+	 */
+	argumentShapes?: ReadonlyMap<string, ArgumentShapeRow>;
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
@@ -448,6 +477,35 @@ export function useSlashCompletion({
 			for (const alias of command.aliases) names.add(alias.toLowerCase());
 		}
 		return names;
+	}, [registry]);
+	/*
+	 * THE WIRE'S OWN VOCABULARY, which is the point of this pair: `prefixes_text`
+	 * and `argument_shape` are what the ENDPOINT uses to decide whether a draft is
+	 * a message, so reading them here is what stops the two hosts answering the
+	 * same draft differently. Both are additive — a row the wire said nothing
+	 * about is absent from both, and the three sets above answer for it.
+	 */
+	const prefixingCommands = useMemo(() => {
+		const names = new Set<string>();
+		for (const command of registry) {
+			if (command.prefixes_text !== true) continue;
+			names.add(command.name.toLowerCase());
+			for (const alias of command.aliases) names.add(alias.toLowerCase());
+		}
+		return names;
+	}, [registry]);
+	const argumentShapes = useMemo(() => {
+		const shapes = new Map<string, ArgumentShapeRow>();
+		for (const command of registry) {
+			if (command.argument_shape === undefined) continue;
+			const row: ArgumentShapeRow = {
+				shape: command.argument_shape,
+				words: command.argument_words ?? [],
+			};
+			shapes.set(command.name.toLowerCase(), row);
+			for (const alias of command.aliases) shapes.set(alias.toLowerCase(), row);
+		}
+		return shapes;
 	}, [registry]);
 	/*
 	 * Derived like the two sets above, and from the registry rather than from a
@@ -713,6 +771,8 @@ export function useSlashCompletion({
 		armedOnlyCommands,
 		valueArgumentCommands,
 		argumentCommands,
+		prefixingCommands,
+		argumentShapes,
 		nameListCommands: vocabulary.nameList,
 		argumentWords: vocabulary.words,
 		enabled,
