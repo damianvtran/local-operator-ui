@@ -62,7 +62,9 @@
  *      `chat-image-expand--legacy-tabbed` holds focus on the trigger through the
  *      rig's own Tab presses, and `chat-image-expand--legacy-tabbed-open` then
  *      presses Enter through the input pipeline and requires the menu's items to
- *      appear.
+ *      appear. (`Enter` is the keyboard path a real browser has; this file's own
+ *      assertion below drives a `pointerdown`, because jsdom has no `PointerEvent`
+ *      and a synthetic `keydown` Enter does not open the menu here.)
  *   2. **An `<img>` cannot be made to report `error`.** jsdom implements no image
  *      decoder, so the event has to be handed to the element — and doing that
  *      leaves jsdom's own image work pending, which fails after the window closes
@@ -769,7 +771,8 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 		);
 		/*
 		 * And the half the selector actually matches, which until round 4 was
-		 * certified only by the frame: press Enter on the trigger and the pair flips.
+		 * certified only by the frame: press the trigger — a `pointerdown`, the input
+		 * this harness can drive — and the pair flips.
 		 * `aria-expanded` goes TRUE — the value `has-[[aria-expanded=true]]` needs —
 		 * while `data-state` STAYS "closed", because that attribute is the Tooltip's
 		 * and the tooltip is not the thing that opened. That collision is the whole
@@ -799,7 +802,7 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 		assert.equal(
 			trigger.getAttribute("aria-expanded"),
 			"true",
-			"pressing Enter on the trigger opens the menu, and the dropdown's own attribute flips to true — the value the reveal's selector matches",
+			"pressing the trigger opens the menu, and the dropdown's own attribute flips to true — the value the reveal's selector matches",
 		);
 		assert.equal(
 			trigger.getAttribute("data-state"),
