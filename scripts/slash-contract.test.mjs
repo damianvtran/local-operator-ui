@@ -106,7 +106,15 @@ const REGISTRY = readFileSync(
  * case rather than per keystroke, but a module-level literal is the repo's rule
  * (`lint/performance/useTopLevelRegex`) and these are constants.
  */
-const KIND = /kind: "(\w+)"/;
+/*
+ * `[\w-]+` rather than `\w+`: the registry's kind name is a hyphenated word
+ * (`machine-panel`, the `/info`-`/usage`-`/analytics` kind), and a class that
+ * stopped at the hyphen read `undefined` for those three rows - which this
+ * helper reports as "declares its kind" failing, i.e. as a defect in the table
+ * rather than in the reader. Widened here rather than special-cased per
+ * destination: what the helper must accept is any kind the table declares.
+ */
+const KIND = /kind: "([\w-]+)"/;
 const INLINE_SOURCE = /source: "(\w+)"/;
 const NAME_THEN_MESSAGE = /nameThenMessage: (true|false)/;
 const RUNS = /runs: (true|false)/;
@@ -1245,9 +1253,20 @@ test("a destination with no row here answers by kind, not by id", () => {
 	 * And the landed form of what those two stood for, which is the half worth
 	 * keeping: both ids are rows now, and a pick still runs them — a panel with
 	 * no inline list, read off the kind rather than off either id.
+	 *
+	 * The two ids no longer share a KIND, and that difference is now the
+	 * load-bearing fact about them: `/info` describes the machine, so it is a
+	 * `machine-panel` that any host can present, while `/session` reads a
+	 * conversation and stays a `picker` the chat pane owns. What they still share —
+	 * and what this arm is about — is that neither declares an inline source, so a
+	 * pointer pick RUNS it. Both are asserted per id rather than as one set.
 	 */
-	for (const id of ["info", "session.diagnostics"]) {
-		assert.equal(registryEntry(id)?.kind, "picker", id);
+	const panels = [
+		{ id: "info", kind: "machine-panel" },
+		{ id: "session.diagnostics", kind: "picker" },
+	];
+	for (const { id, kind } of panels) {
+		assert.equal(registryEntry(id)?.kind, kind, id);
 		assert.equal(
 			registryEntry(id)?.inline,
 			undefined,
