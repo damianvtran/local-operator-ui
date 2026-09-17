@@ -3129,11 +3129,8 @@ async function scenePinsSearch(cdp) {
 			const row = state.rows.find((item) => item.id === outside.id);
 			if (row !== undefined && row.pinned === false) break;
 		}
-		require(
-			"the panel answered the re-asked search",
-			afterRemoval !== null,
-			"the list never answered a read",
-		);
+		require("the panel answered the re-asked search", afterRemoval !==
+			null, "the list never answered a read");
 		const rowAfterRemoval = afterRemoval.rows.find(
 			(row) => row.id === outside.id,
 		);
