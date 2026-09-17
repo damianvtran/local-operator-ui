@@ -301,6 +301,24 @@ export type SlashSubmissionArgs = {
 	 * names no command, and the pick path cannot be affected by it.
 	 */
 	armedOnlyCommands?: ReadonlySet<string>;
+	/**
+	 * Words whose token plans as a COMMAND wherever it sits in the draft, whatever
+	 * the caret says.
+	 *
+	 * The CALLER's answer rather than a name written here, because the fact that
+	 * makes these words special belongs to the module that owns them: `/credential`
+	 * and its alias carry a SECRET, and the dispatcher strips that argument before
+	 * command text is built for exactly that reason (`slash-dispatch.ts`). A
+	 * message is not something the dispatcher can strip, so the mid-draft `send`
+	 * this file's prose rule answers for every other word would post the secret to
+	 * the model. The asymmetry is the point: that failure is silent and
+	 * unrecoverable, while this one is a refused command the user can see.
+	 *
+	 * EMPTY BY DEFAULT, and it must stay empty for a caller that has not thought
+	 * about it: a host that knows nothing about credentials cannot acquire the
+	 * behaviour by omission.
+	 */
+	commandLockedWords?: ReadonlySet<string>;
 	/** Whether a boundary slash token is a command at all (the feature is on). */
 	enabled: boolean;
 	/**
@@ -505,6 +523,77 @@ function draftOpeningCaret(draft: string): number | null {
 	return first + 1;
 }
 
+/**
+ * The splice a COMMAND-LOCKED word's token plans to, or `null`.
+ *
+ * ASKED OF THE DRAFT ALONE, and that is the whole of the fix rather than a
+ * detail of it. The rule it replaces is a rule about the CARET: `slashTokenSpan`
+ * claims the token at the caret, so a locked word typed mid-sentence with the
+ * caret anywhere but on it — at column 0 above all — had no span and fell
+ * through to `send` three lines into `planSlashSubmission`. Asking from below
+ * that early return is what left the column-0 column open, twice.
+ *
+ * WHY THIS WORD AND NOT EVERY WORD is the asymmetry the caller's set encodes:
+ * a `/credential` argument is a SECRET, the dispatcher strips it before command
+ * text is built for exactly that reason (`slash-dispatch.ts`), and a MESSAGE is
+ * not something the dispatcher can strip. So the `send` reading is silent and
+ * unrecoverable — the secret lands in the transcript — while the splice reading
+ * fails in front of the user, in the command's own refusal ("enter credentials in
+ * the masked form"). That is why the direction is decided here and not left to
+ * the caret, and why the words themselves come from the caller.
+ *
+ * THREE CONJUNCTS, each narrowing rather than decorating:
+ *
+ *   - a NON-EMPTY TAIL (`invocation.args !== ""`): the invocation being planned
+ *     is `/credential <secret>`; a bare mid-draft token is the composer's own
+ *     arming gesture, and the capture owns it rather than this planner;
+ *   - a surviving REST, because the whole-draft form is ALREADY the command —
+ *     the shape `credential-capture`'s own suite pins for `/credential <args>` —
+ *     and this branch may not move it;
+ *   - a word the host KNOWS (`commandNames`), so an exemption cannot invent a
+ *     command for a word the catalogue does not advertise.
+ *
+ * The span is the tokenizer's own — `slashTokenSpan`, asked at the token's `/`,
+ * which is where the splice the rest of this file performs also ends, at the
+ * token's line end — and `span.start !== index` keeps the tokenizer's CLAIMING
+ * rule authoritative: a `/credential` inside another command's argument is that
+ * command's text, not a second token this rule may pull out.
+ */
+function lockedWordSplice(
+	draft: string,
+	commandNames: ReadonlySet<string>,
+	lockedWords: ReadonlySet<string>,
+): SlashSubmissionPlan | null {
+	if (lockedWords.size === 0) return null;
+	for (
+		let index = draft.indexOf("/");
+		index !== -1;
+		index = draft.indexOf("/", index + 1)
+	) {
+		// The tokenizer's boundary rule, restated here only because this walk
+		// reaches `/`s the caret-led path never asks about: a `/` inside a word
+		// (`abc/credential`) is punctuation.
+		if (index > 0 && !WHITESPACE.test(draft[index - 1])) continue;
+		const span = slashTokenSpan(draft, index + 1, commandNames);
+		if (span === null || span.start !== index) continue;
+		const command = invocationOf(draft.slice(span.start, span.end).trim());
+		const word = command.name.toLowerCase();
+		if (!lockedWords.has(word) || command.args === "") continue;
+		if (!commandNames.has(word)) continue;
+		const rest = replaceSpan(draft, span.start, span.end, "");
+		if (rest.text.trim() === "") continue;
+		return {
+			kind: "splice",
+			start: span.start,
+			end: span.end,
+			command,
+			text: rest.text,
+			caret: rest.caret,
+		};
+	}
+	return null;
+}
+
 export function planSlashSubmission({
 	draft,
 	caret,
@@ -516,6 +605,7 @@ export function planSlashSubmission({
 	argumentCommands,
 	prefixingCommands,
 	argumentShapes,
+	commandLockedWords,
 	enabled,
 	gesture = "typed",
 }: SlashSubmissionArgs): SlashSubmissionPlan {
@@ -524,6 +614,24 @@ export function planSlashSubmission({
 	// already has. A splice that ran here would delete text on a backend that
 	// cannot run the command it was deleted for.
 	if (!enabled) return { kind: "send" };
+
+	/*
+	 * THE COMMAND-LOCKED WORDS, BEFORE THE CARET GETS A SAY, and deliberately
+	 * before it: this is the one half of the rule that CANNOT be a question about
+	 * the caret, because the reading it replaces is the reading a careless caret
+	 * produces (`please /credential <secret>` with the caret at column 0 has no
+	 * token at the caret, so the span below is `null` and the draft is prose). A
+	 * check placed under that early return inherits exactly the blindness it exists
+	 * to fix, which is why it lives here rather than beside the prose rule it
+	 * narrows. See `lockedWordSplice` for the asymmetry, the three conjuncts and
+	 * why the vocabulary is the caller's.
+	 */
+	const locked = lockedWordSplice(
+		draft,
+		commandNames,
+		commandLockedWords ?? EMPTY_COMMANDS,
+	);
+	if (locked !== null) return locked;
 
 	/*
 	 * The token at the CARET decides first, and the whole-draft shape is then a
