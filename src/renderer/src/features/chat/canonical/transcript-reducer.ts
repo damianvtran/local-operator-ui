@@ -1981,7 +1981,23 @@ export function applyEvent(
 						// Settled, however it got here: the clock stops even though no
 						// `_end` ever arrived to report a duration.
 						startedAt: null,
-						stopped: Boolean(event.aborted),
+						/*
+						 * A row that never STARTED has no outcome the turn can grant it: no
+						 * tool received the call, so there is nothing that could have
+						 * succeeded. `stopped` is the ladder's "no verdict" state (`outcome`
+						 * reads it after `isError`), and leaving it false here is what put a
+						 * green tick on such a row at a CLEAN turn end — the tick is the
+						 * ladder's default, so "no outcome" has to be said rather than left
+						 * implicit. The TUI settles every live card through the same
+						 * interrupted state for exactly this reason
+						 * (`_retire_live_tool_cards` -> `mark_interrupted`).
+						 *
+						 * A row that WAS running keeps the historical mapping: an abort is an
+						 * interrupt, and a clean end is a call whose end event was lost —
+						 * which is a separate question from this one and is deliberately not
+						 * moved here.
+						 */
+						stopped: Boolean(event.aborted) || unstarted,
 						neverSent: record.neverSent || unstarted,
 					});
 				}

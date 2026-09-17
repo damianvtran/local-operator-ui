@@ -514,7 +514,6 @@ test("an ordinary composing frame is still painted, and still adopted by its sta
 	assert.equal(rowFor(started, "tool:call_live_dictation").phase, "running");
 });
 
-
 /*
  * ------------------------------------------------------- the third ending
  *
@@ -560,14 +559,18 @@ for (const phase of ["composing", "queued"]) {
 			assert.equal(row.output, null);
 			assert.equal(row.durationS, null, "nothing measured an interval");
 			assert.equal(row.startedAt, null);
-			assert.equal(row.argumentBytes, 82, "how far the model got is still known");
-			// The two arms differ in exactly one thing, and it is the turn's:
-			// an abort is an interrupt, a clean end is a lost end event. Neither
-			// is a success, which is what the row would have said before.
+			assert.equal(
+				row.argumentBytes,
+				82,
+				"how far the model got is still known",
+			);
+			// The two arms differ in what the TURN did and in nothing the row paints:
+			// a call that never started is not a success on either, which is the
+			// state the ladder has to be told (it reads `stopped` after `isError`).
 			assert.equal(
 				row.stopped,
-				aborted,
-				"only the turn's own verdict separates the two arms",
+				true,
+				"no tool received the call, so no arm may paint it as a success",
 			);
 		});
 	}
@@ -596,7 +599,11 @@ test("a call that really RAN is still an interrupt at turn end, not a never-sent
 	const row = rowFor(ended, "tool:call_00_RunningAtDeath00");
 	assert.equal(row.phase, "done");
 	assert.equal(row.stopped, true);
-	assert.equal(row.neverSent, false, "it was running, so a tool did receive it");
+	assert.equal(
+		row.neverSent,
+		false,
+		"it was running, so a tool did receive it",
+	);
 });
 
 /*
@@ -630,7 +637,10 @@ test("a seeded frame whose dictation is over is refused with no row on screen", 
 		ARRIVAL_MS - 1_000,
 	);
 	const folded = applyLiveSeed(withRow, frontendOf([QUEUED_FRAME]), ARRIVAL_MS);
-	assert.equal(rowFor(folded, `tool:${QUEUED_FRAME.tool_call_id}`).phase, "queued");
+	assert.equal(
+		rowFor(folded, `tool:${QUEUED_FRAME.tool_call_id}`).phase,
+		"queued",
+	);
 	assert.equal(folded.records.length, 1, "settled in place, never duplicated");
 });
 
@@ -679,9 +689,7 @@ test("a refused call is named for read-back, and its durable row paints at its o
 					tool_call_id: callId,
 					tool_name: "hub",
 					is_error: true,
-					content: [
-						{ type: "text", text: NEVER_RUN[0].not_run_reason },
-					],
+					content: [{ type: "text", text: NEVER_RUN[0].not_run_reason }],
 				},
 			},
 		],
