@@ -2929,3 +2929,6 @@ process.on("uncaughtException", (error) => {
 		})
 		.finally(() => process.exit(1));
 });
+
+// A probe line: this diff is a source change, so the code suite must run.
+export const ciScopeProbe = true;
