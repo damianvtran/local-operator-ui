@@ -69,6 +69,25 @@ const HEIGHT = 900;
 const BACKEND_PORT = 8080;
 const API_URL = `http://127.0.0.1:${BACKEND_PORT}`;
 /*
+ * The daemon's own arguments, named once because two things read them: this file
+ * when it starts the backend, and `reapStaleRuns` when it has to recognise, from
+ * the process table alone, a backend an earlier run left behind. `--hosting test`
+ * and `--model mock-model` are what keep a provider out of these frames, and they
+ * are also what tells this rig's daemon from the operator's own `serve`, which
+ * carries neither.
+ */
+const BACKEND_ARGS = [
+	"serve",
+	"--host",
+	"127.0.0.1",
+	"--port",
+	String(BACKEND_PORT),
+	"--hosting",
+	"test",
+	"--model",
+	"mock-model",
+];
+/*
  * A synthetic bearer, not a credential: it authenticates the app to a backend
  * this run starts, on a config dir under /tmp, and is written only into this
  * run's scratch profile.
@@ -174,6 +193,57 @@ async function stop(entry) {
 const BACKEND_PID_FILE = join(ROOT, "backend.pid");
 
 /**
+ * The command line of a pid, joined the way the process table spells it, or `null`
+ * when the OS will not describe it.
+ *
+ * `ps -o command=` is the question this repo already asks before it acts on a pid
+ * elsewhere (`owned-serve-lifecycle.test.mjs`), and the joined argument list is
+ * what `ps` and `pkill -f` read - so it is the one string that can say whether a
+ * number is still the process it was recorded as.
+ */
+function commandLineOf(pid) {
+	const out = spawnSync("ps", ["-o", "command=", "-p", String(pid)], {
+		encoding: "utf8",
+	});
+	if (out.error || out.status !== 0) return null;
+	const line = out.stdout.trim();
+	return line.length > 0 ? line : null;
+}
+
+/**
+ * Whether the pid a stale root recorded is still the daemon that root started.
+ *
+ * Returns `null` when it is, and a sentence saying what did not match when it is
+ * not - the caller logs that sentence, because "this root was left alone and here
+ * is why" is the record a reader needs when a stale port is not reaped.
+ *
+ * TWO SIGNALS, and both are required, because each one alone is a weaker claim
+ * than the sentence it would be used to support. `portHolders` says a listener is
+ * there and names it; the command line says the process is THIS rig's daemon,
+ * carrying the arguments `BACKEND_ARGS` starts it with. A reuse that lands the
+ * number on a peer session's daemon satisfies the first and not the second; a
+ * reuse that lands it on anything else - the reviewer's spare `sleep 300` -
+ * satisfies neither.
+ *
+ * A question that could not be asked is not a "no": `portHolders` returns `null`
+ * rather than `[]` for exactly this reason, and "cannot tell" refuses the reap. A
+ * reap that cannot identify its target must not fire, because the harm it would
+ * commit is worse than the stale port it would fix.
+ */
+function identifiesRecordedBackend(pid) {
+	const holders = portHolders();
+	if (holders === null) return `\`lsof\` could not say who holds ${API_URL}`;
+	if (!holders.includes(String(pid)))
+		return `pid ${pid} no longer holds ${API_URL} (holders: ${holders.join(", ") || "none"})`;
+	const command = commandLineOf(pid);
+	if (command === null)
+		return `the command line of pid ${pid} could not be read`;
+	if (!command.includes(BACKEND_ARGS.join(" ")))
+		return `pid ${pid} holds the port but its command line is not this rig's daemon: ${command}`;
+	return null;
+}
+
+/**
  * Reap the backend an EARLIER run of this rig left serving the port.
  *
  * `stop()` covers a clean exit and the signals we trap, but not a SIGKILL of this
@@ -184,19 +254,30 @@ const BACKEND_PID_FILE = join(ROOT, "backend.pid");
  * Measured on this repository: a daemon from a finished evidence pass held 8080
  * for hours, and the next run's backend could not bind to it.
  *
- * Two facts identify a stale root, and both are needed: `owner.pid` having no live
- * owner says the run that made it is gone, and `backend.pid` names the process
- * group to signal. A pid alone would be enough only until the OS reused it, which
- * is why the record lives INSIDE the scratch root the pid was taken for. Roots
- * whose owner is still alive are skipped, so two concurrent runs never reap each
- * other.
+ * A RECORDED PID IS NOT AN IDENTITY, and the first cut of this function treated
+ * it as one (code review round 2, M2). Two facts identify a stale ROOT, and only
+ * one of them is about the root: `owner.pid` having no live owner says the run
+ * that made it is gone, and that is a fact about the run. `backend.pid` is a fact
+ * about a NUMBER. The scratch root outlives the run - nothing removes it - and the
+ * backend pid is precisely the number the OS may hand out again the moment that
+ * daemon dies. Because every child here is its own group leader, a reused number
+ * is the worst thing to aim `kill(-pid)` at: it lands on a group this rig never
+ * started. Living inside a directory does not stop reuse, so `backend.pid` is now
+ * only a candidate, `identifiesRecordedBackend` says whether the number is still
+ * the daemon it was recorded as, and a number that cannot be identified is left
+ * alone. Roots whose owner is still alive are skipped, so two concurrent runs
+ * never reap each other.
  *
- * WHAT THIS CANNOT DO, stated because it is what actually happened: a daemon
- * started OUTSIDE this rig's scratch discipline - a peer harness that started its
- * own `serve` on 8080 - carries no record here and is not this rig's to kill.
- * `assertPortAvailable` is what makes that case loud instead of silent.
+ * WHAT THIS CANNOT DO, stated rather than implied: it cannot tell one run of this
+ * rig from another when both were started with the same arguments and only the
+ * port distinguishes them, so a live peer's daemon that inherited a stale root's
+ * number is not distinguishable here - the root's live-owner check closes the
+ * common case of that, not all of it. And a daemon started OUTSIDE this rig's
+ * scratch discipline - a peer harness that started its own `serve` on 8080 -
+ * carries no record here and is not this rig's to kill. `assertPortAvailable` is
+ * what makes that case loud instead of silent.
  */
-function reapStaleRuns() {
+async function reapStaleRuns() {
 	for (const name of readdirSync(tmpdir())) {
 		if (!name.startsWith(SCRATCH_PREFIX) || name === basename(ROOT)) continue;
 		const root = join(tmpdir(), name);
@@ -221,16 +302,61 @@ function reapStaleRuns() {
 			continue; // nothing to reap: this root never got as far as a backend
 		}
 		if (!Number.isInteger(recorded) || recorded <= 0) continue;
+		const unidentified = identifiesRecordedBackend(recorded);
+		if (unidentified !== null) {
+			console.log(
+				`left the process group recorded in ${name} alone: ${unidentified}`,
+			);
+			continue;
+		}
 		try {
 			process.kill(-recorded, "SIGTERM");
 			console.log(
-				`reaped a backend left by an earlier run of this rig (process group ${recorded})`,
+				`reaped a backend left by an earlier run of this rig (process group ${recorded}, identified as the holder of ${API_URL})`,
 			);
 		} catch {
-			/* already gone, which is the common case */
+			continue; // already gone, which is the common case
+		}
+		/*
+		 * THE SIGNAL IS NOT THE END OF IT (code review round 2, M3): `stop()` allows a
+		 * graceful shutdown up to 5 s, and `assertPortAvailable()` runs on the next line
+		 * of `main()`. Returning here therefore made a run that reaped its OWN leftover
+		 * fail the assert naming a process it has just signalled, with a remedy ("Stop
+		 * that process") for a port that is on its way to being free. Waiting the same 5 s
+		 * is what makes the reap and the refusal agree about the port, and it is why this
+		 * function is async.
+		 */
+		const deadline = Date.now() + 5_000;
+		for (;;) {
+			const holders = portHolders();
+			if (holders === null) {
+				console.log(
+					`signalled process group ${recorded}, but \`lsof\` can no longer say whether ${API_URL} is free`,
+				);
+				break;
+			}
+			if (!holders.includes(String(recorded))) break; // the port is free again
+			if (Date.now() >= deadline) {
+				console.log(
+					`signalled process group ${recorded} but it still holds ${API_URL} after 5s`,
+				);
+				break;
+			}
+			await wait(250);
 		}
 	}
 }
+
+/*
+ * `lsof` lives in different places on the two platforms this repo runs rigs on,
+ * and `/usr/sbin/lsof` - macOS's path - is how a Linux run ends up asking a
+ * binary that is not there (code review round 2, N4). Both layouts are tried in
+ * order, with a PATH lookup as the last resort, so the question is asked the same
+ * way on a developer's laptop and on a runner.
+ */
+const LSOF = ["/usr/sbin/lsof", "/usr/bin/lsof"].find((path) =>
+	existsSync(path),
+);
 
 /**
  * Who is listening on the port this run needs, by pid.
@@ -239,11 +365,18 @@ function reapStaleRuns() {
  * port and still stops this run's backend binding to it. An exit status of 1 is
  * `lsof`'s "nothing matched", which is the answer we want; a missing binary is
  * not, and it is said out loud rather than folded into "free".
+ *
+ * THE TWO ANSWERS ARE DIFFERENT AND THE CALLER HAS TO TELL THEM APART: `[]` is
+ * "nothing matched, so the port is free" and `null` is "the question could not be
+ * asked". The first cut returned `[]` for both, so a host where `lsof` cannot run
+ * reported a foreign listener as free - and every frame taken after that would
+ * have depicted that daemon. `reapStaleRuns` reads the same distinction to decide
+ * whether it may signal at all: a question that could not be asked is not a "no".
  */
 function portHolders() {
 	try {
 		const out = spawnSync(
-			"/usr/sbin/lsof",
+			LSOF ?? "lsof",
 			["-nP", `-iTCP:${BACKEND_PORT}`, "-sTCP:LISTEN", "-t"],
 			{ encoding: "utf8" },
 		);
@@ -258,7 +391,7 @@ function portHolders() {
 		console.warn(
 			`panels-without-session-evidence: could not ask \`lsof\` who holds ${API_URL} (${error}); if a foreign daemon is there, these frames would depict it.`,
 		);
-		return [];
+		return null;
 	}
 }
 
@@ -275,6 +408,11 @@ function portHolders() {
  */
 function assertPortAvailable() {
 	const holders = portHolders();
+	if (holders === null) {
+		throw new Error(
+			`cannot tell whether ${API_URL} is free: \`lsof\` could not be run (the warning above says why). This rig cannot move the address (the renderer's CSP allows only 1111 and 8080), so it stops here rather than run against a backend it cannot name - install \`lsof\` on this host and run again.`,
+		);
+	}
 	if (holders.length === 0) return;
 	throw new Error(
 		`${API_URL} is already in use by pid ${holders.join(", ")}. This rig cannot move the address (the renderer's CSP allows only 1111 and 8080), and running against another daemon would put its replies in every frame. Stop that process, or wait for the session that owns it - \`lsof -nP -iTCP:${BACKEND_PORT} -sTCP:LISTEN\` names it and \`ps -o command= -p <pid>\` says what it is.`,
@@ -284,22 +422,12 @@ function assertPortAvailable() {
 async function startBackend() {
 	const backend = launch(
 		"local-operator",
-		[
-			"serve",
-			"--host",
-			"127.0.0.1",
-			"--port",
-			String(BACKEND_PORT),
-			/*
-			 * The mock provider: these scenes are about what the SHELL does with a
-			 * destination, not about a model's answer, and a real provider would put
-			 * an API key and a bill in the path of a UI frame.
-			 */
-			"--hosting",
-			"test",
-			"--model",
-			"mock-model",
-		],
+		/*
+		 * `BACKEND_ARGS` rather than a list spelled here: the mock provider keeps a
+		 * model's answer, its API key and its bill out of these frames, and the same
+		 * arguments are what `reapStaleRuns` recognises this rig's own daemon by.
+		 */
+		BACKEND_ARGS,
 		{
 			...baseEnv,
 			HOME,
@@ -769,7 +897,7 @@ const NAMES = Object.keys(SCENES);
 
 async function main() {
 	assertBuiltForThisBackend();
-	reapStaleRuns();
+	await reapStaleRuns();
 	assertPortAvailable();
 	writeFileSync(join(ROOT, "owner.pid"), String(process.pid));
 	const backend = await startBackend();
