@@ -918,13 +918,24 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("attention.seen"),
 			items: z
 				.array(
-					z.object({
-						sessionId,
-						// A REAL uuid, like `sessions.seen`: a token that is not one cannot
-						// name a completion, so it is refused here rather than round-tripped
-						// to answer `unknown` for an item the client should not have sent.
-						completionToken: z.string().uuid(),
-					}),
+					z
+						.object({
+							sessionId,
+							// A REAL uuid, like `sessions.seen`: a token that is not one cannot
+							// name a completion, so it is refused here rather than round-tripped
+							// to answer `unknown` for an item the client should not have sent.
+							completionToken: z.string().uuid(),
+						})
+						/*
+						 * `.strict()` on the ITEM as well as on the arm, because the
+						 * sibling repository's input model is `extra="forbid"`: without
+						 * it an item carrying a third field is stripped here while the
+						 * request is answered 422 on the far side — and in the other
+						 * direction a future caller's extra field would be silently
+						 * dropped rather than refused. The two frozen surfaces now
+						 * refuse the same (agent review round 1, R5).
+						 */
+						.strict(),
 				)
 				.min(1)
 				.max(500),

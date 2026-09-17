@@ -1414,6 +1414,36 @@ function mergeRow(
 }
 
 /**
+ * The rows a bulk acknowledgement can NAME, in the store's own terms.
+ *
+ * The single home of this predicate, and it lives here rather than in the
+ * feature module that consumes it because the STORE'S action is the other half
+ * of the fact: DESIGN §3.3 pins that "the count the control shows and the set
+ * `markAllRead` sends are the same fact", and two hand-written literals are how
+ * one fact becomes two — silently, and in the direction that costs the user,
+ * because the number on screen would stop being the set the request carries.
+ * `features/chat/mark-all-read.ts` re-exports it for the surface.
+ *
+ * `unseen` AND a `completion_token`: a mark with no token names no completion,
+ * so the backend has nothing to match it against and would answer `unknown` for
+ * it — sending it would only inflate the batch, and counting it would put a
+ * number in the label that no click can honour.
+ */
+export const unreadAckableRows = (
+	rows: CanonicalSessionRow[],
+): CanonicalSessionRow[] =>
+	rows.filter(
+		(row) =>
+			row.attention?.unseen === true &&
+			typeof row.attention.completion_token === "string" &&
+			row.attention.completion_token.length > 0,
+	);
+
+/** How many rows a click would name; zero hides the control entirely. */
+export const unreadAckableCount = (rows: CanonicalSessionRow[]): number =>
+	unreadAckableRows(rows).length;
+
+/**
  * Merge one attention state into the row it names, in one commit.
  *
  * Shared by the single-frame path (`applyAttention`) and the bulk receipt
@@ -1800,20 +1830,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * Enumerated from the STORE rather than from the rendered list, which is
 				 * what makes the control's own count and this batch the same fact: a
 				 * search filter over the sidebar cannot make a visible count disagree
-				 * with the set that is sent. A mark with no `completion_token` names no
-				 * completion and is neither sent nor counted.
+				 * with the set that is sent. The predicate itself is `unreadAckableRows`
+				 * — the ONE home of that rule, so the surface's label and this request
+				 * cannot drift apart.
 				 */
-				const items = get()
-					.sessions.filter(
-						(row) =>
-							row.attention?.unseen === true &&
-							typeof row.attention.completion_token === "string" &&
-							row.attention.completion_token.length > 0,
-					)
-					.map((row) => ({
-						sessionId: row.session_id,
-						completionToken: row.attention?.completion_token as string,
-					}));
+				const items = unreadAckableRows(get().sessions).map((row) => ({
+					sessionId: row.session_id,
+					completionToken: row.attention?.completion_token as string,
+				}));
 				/*
 				 * Nothing unread is not an empty request: `items` has a 1-item floor on
 				 * the wire, and a batch of zero would clear nothing while still costing
