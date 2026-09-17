@@ -1,0 +1,206 @@
+{
+  "label": "after-min",
+  "expect": "uncovered",
+  "takenOn": {
+    "srcTree": "d19dbadc6ed306717cb8c2350db15e1a72391d7f",
+    "scriptsTree": "33cfdc15e2f556853e12cd838d9e045de0a69228",
+    "source": "the record predates this field (review 2, F3), so both are RECONSTRUCTED rather than written by the run that produced it: the run was asserted with `--expect uncovered --only two-bands --window-size 800x600` (the PR's gate table and the README recipe), on the pass's own `src` (`git rev-parse 141e5219e:src`), the same tree the pair's after half was taken on with the pass's fixed rig (`git rev-parse 51ce4aea1:scripts`). A re-run writes both fields itself."
+  },
+  "viewport": {
+    "w": 800,
+    "h": 568,
+    "dpr": 2
+  },
+  "states": {
+    "two-bands": {
+      "frame": "docs/evidence/band-occlusion/after-min/after-min-two-bands.png",
+      "out": "docs/evidence/band-occlusion/after-min",
+      "route": "#/chat",
+      "requests": {
+        "/health": 4,
+        "/v1/desktop/claim": 1,
+        "/v1/desktop/sessions": 2,
+        "/v1/capabilities": 6,
+        "/v1/config": 2,
+        "/v1/desktop/radient": 13,
+        "/v1/auth/providers": 2,
+        "/v1/agents": 4,
+        "/v1/desktop/teams": 1,
+        "/v1/desktop/profiles": 1
+      },
+      "bandCount": 2,
+      "bandTotal": 132,
+      "bands": [
+        {
+          "text": "Not connected to a Local Operator server. If one is still running, the app reconnects to i",
+          "position": "static",
+          "zIndex": "auto",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 800,
+            "h": 68,
+            "top": 0,
+            "bottom": 68
+          },
+          "device": {
+            "top": 0,
+            "bottom": 136
+          }
+        },
+        {
+          "text": "The Local Operator server is missing auth, settings, commands, catalogues, lifecycle, mcp,",
+          "position": "static",
+          "zIndex": "auto",
+          "rect": {
+            "x": 0,
+            "y": 68,
+            "w": 800,
+            "h": 64,
+            "top": 68,
+            "bottom": 132
+          },
+          "device": {
+            "top": 136,
+            "bottom": 264
+          }
+        }
+      ],
+      "anchors": {
+        "chatSearch": {
+          "selector": "input[aria-label=\"Search chats and agents\"]",
+          "text": "",
+          "rect": {
+            "x": 228,
+            "y": 180,
+            "w": 264,
+            "h": 32,
+            "top": 180,
+            "bottom": 212
+          },
+          "device": {
+            "top": 360,
+            "bottom": 424
+          },
+          "relativeToRegion": 48,
+          "bandReachable": true,
+          "coveredByBand": false,
+          "coveredBy": []
+        },
+        "chatListHeader": {
+          "selector": "nav[aria-label=\"Chats\"] h2",
+          "text": "Chats",
+          "rect": {
+            "x": 232,
+            "y": 146.25,
+            "w": 36.04,
+            "h": 19.5,
+            "top": 146.25,
+            "bottom": 165.75
+          },
+          "device": {
+            "top": 293,
+            "bottom": 332
+          },
+          "relativeToRegion": 14.25,
+          "bandReachable": true,
+          "coveredByBand": false,
+          "coveredBy": []
+        },
+        "paneFirstRow": {
+          "selector": "the pane's first h1/h2/h3/p outside nav[aria-label=Chats]",
+          "text": "The backend could not complete this request. Check its conne",
+          "rect": {
+            "x": 500,
+            "y": 132,
+            "w": 300,
+            "h": 55,
+            "top": 132,
+            "bottom": 187
+          },
+          "device": {
+            "top": 264,
+            "bottom": 374
+          },
+          "relativeToRegion": 0,
+          "bandReachable": true,
+          "coveredByBand": false,
+          "coveredBy": []
+        },
+        "railSearch": {
+          "selector": "[data-command-palette-trigger]",
+          "text": "Search ⌘ + K",
+          "rect": {
+            "x": 8,
+            "y": 484,
+            "w": 204,
+            "h": 32,
+            "top": 484,
+            "bottom": 516
+          },
+          "device": {
+            "top": 968,
+            "bottom": 1032
+          },
+          "relativeToRegion": 352,
+          "bandReachable": false,
+          "coveredByBand": false,
+          "coveredBy": []
+        }
+      },
+      "region": {
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
+        "rect": {
+          "x": 0,
+          "y": 132,
+          "w": 800,
+          "h": 436,
+          "top": 132,
+          "bottom": 568
+        },
+        "scrollHeight": 436,
+        "clientHeight": 436
+      },
+      "outer": {
+        "cls": "relative flex h-screen flex-col overflow-hidden",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 800,
+          "h": 568,
+          "top": 0,
+          "bottom": 568
+        },
+        "scrollHeight": 568,
+        "clientHeight": 568
+      },
+      "fixedCount": 0,
+      "documentScroll": {
+        "scrollHeight": 568,
+        "clientHeight": 568,
+        "overflowY": "hidden"
+      },
+      "viewport": {
+        "w": 800,
+        "h": 568,
+        "dpr": 2
+      },
+      "paint": {
+        "grounds": [
+          "#292215"
+        ],
+        "rules": [
+          "#82713f"
+        ],
+        "shiftRows": 264,
+        "rowsChecked": 264,
+        "rowsNotBandPaint": 0,
+        "firstRowNotBandPaint": null,
+        "firstRowPastBandsIsBandPaint": false,
+        "appFirstPaintedRow": 264
+      }
+    }
+  },
+  "windowMode": "[window-mode] window mode headless: 800x600, window created and never shown, page throttling off, no Dock tile",
+  "failures": []
+}
