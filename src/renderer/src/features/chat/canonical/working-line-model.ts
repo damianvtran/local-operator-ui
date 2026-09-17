@@ -53,6 +53,7 @@
  * the working line's own contract calls out.
  */
 
+import { epochMsFromSeconds } from "../../../../../shared/desktop-session-contract";
 import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
 import { paintsSomething } from "./transcript-rows";
@@ -300,12 +301,13 @@ export type WorkingLineInput = {
 	 * The producer's OWN folded phase and the instant it began, straight off the
 	 * frontend state (`activity_phase` / `activity_phase_started_at`).
 	 *
-	 * The instant is in epoch SECONDS on the wire, the unit
-	 * `FrontendSessionState` stamps it in, and is converted here once so no
-	 * caller has to know that. Both members are optional because a facade in
-	 * tests, a legacy runtime and a session between turns all legitimately have
-	 * neither — and `undefined` must keep today's honest local zero rather than
-	 * invent an age (see `foldedSeed` below).
+	 * The instant is in epoch SECONDS on the wire, the unit `FrontendSessionState`
+	 * stamps it in; the conversion is the shared `epochMsFromSeconds`, so this
+	 * reader and the reducer's `started_at_epoch` reader cannot drift apart about
+	 * the unit. Both members are optional because a facade in tests, a legacy
+	 * runtime and a session between turns all legitimately have neither — and an
+	 * absent phase or stamp must keep today's honest local zero rather than invent
+	 * an age (see `foldedSeed` below).
 	 */
 	foldedPhase?: string;
 	foldedPhaseStartedAt?: number | null;
@@ -350,17 +352,15 @@ export function deriveWorkingLine({
 	 * instead of counting from its arrival (the operator report: "each time I
 	 * resume it says it's been waiting for 0s regardless of how long").
 	 *
-	 * `> 0` for the reason the reducer's `epochMs` refuses a non-positive
-	 * epoch: a zeroed field is a producer that has not stamped one, not an
-	 * instant in 1970.
+	 * The refusals are `epochMsFromSeconds`' — a non-positive, non-finite or
+	 * non-numeric stamp is a producer that has not stated one (not an instant in
+	 * 1970), and the same helper is what the reducer reads a tool frame's
+	 * `started_at_epoch` through, so the two surfaces cannot disagree about what a
+	 * stated instant is.
 	 */
 	const foldedSeed = (phase: string): number | null => {
 		if (foldedPhase !== phase) return null;
-		return typeof foldedPhaseStartedAt === "number" &&
-			Number.isFinite(foldedPhaseStartedAt) &&
-			foldedPhaseStartedAt > 0
-			? Math.round(foldedPhaseStartedAt * 1000)
-			: null;
+		return epochMsFromSeconds(foldedPhaseStartedAt);
 	};
 
 	/*
@@ -534,7 +534,7 @@ export function workingLineInputFor(pane: {
 	unavailable: boolean;
 	records: TranscriptRecord[];
 	/** The producer's folded phase, matching `CanonicalFrontendState.activity_phase`. */
-	foldedPhase?: string | null;
+	foldedPhase?: string;
 	/**
 	 * When that phase began, in epoch SECONDS as the wire states it
 	 * (`activity_phase_started_at`). Passed through unconverted: the unit is

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
@@ -74,13 +75,121 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
+/*
+ * Imported inside a `try`, not beside it: a bundle that fails to LOAD (a bad
+ * alias, a Vite-only global the next author has not stubbed) used to leave a
+ * 269k-line artefact in `scripts/`, which then rode into `pnpm lint` and
+ * `lint:scripts` as a changed file and buried the real error behind `ENOBUFS`.
+ * The sibling in `suggestion-stack-react.test.mjs` has the same shape; this one
+ * pays for the lesson it taught.
+ */
+let workingLineModule;
+try {
+	workingLineModule = await import(bundlePath.href);
+} finally {
+	await unlink(bundlePath);
+}
 const {
 	WorkingLine,
 	deriveWorkingLine,
 	workingLineInputFor,
 	ADMITTED_SEND_ACTIVITY,
-} = await import(bundlePath.href);
-await unlink(bundlePath);
+} = workingLineModule;
+
+/*
+ * A SECOND BUNDLE, and it is the point of the section below: the shipped
+ * `CanonicalTranscript`, so the fold reaches the band through the component's
+ * OWN call site and memo rather than through a hand-mapped argument list.
+ *
+ * WHY IT EXISTS. The wiring between `frontend` and `workingLineInputFor` is two
+ * property lines inside a `useMemo` (`canonical-transcript.tsx`), and a test
+ * that hands `foldedPhase` to the builder itself cannot see them: deleting the
+ * call site, or dropping the pair from the memo's dependency array, leaves every
+ * fast test in this repository green and only a Storybook story would notice.
+ * That is a seam in the unit gate rather than in the fix, and it is closed here.
+ *
+ * The alias, loader and external set are the ones `canonical-notice.test.mjs`
+ * already uses to bundle this same component for a server render; here it is
+ * MOUNTED instead, because the property under test needs a SECOND render whose
+ * only change is the fold.
+ */
+const transcriptBundle = await build({
+	stdin: {
+		contents: `
+			export { CanonicalTranscript } from "./${canonical}canonical-transcript";
+			export { EMPTY_TRANSCRIPT } from "./${canonical}transcript-reducer";
+		`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	/*
+	 * The externals are `canonical-notice.test.mjs`'s list plus `react-dom/client`,
+	 * which this file needs because it MOUNTS. Everything else — MUI among it — is
+	 * bundled, and that is not a preference: left external, `@mui/material/styles`
+	 * is a BARE DIRECTORY import at runtime and node refuses it
+	 * (`ERR_UNSUPPORTED_DIR_IMPORT`), where esbuild resolves it through the
+	 * package's export map at bundle time.
+	 */
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react-dom/server",
+		"react/jsx-runtime",
+	],
+	/*
+	 * BOTH of these exist because the bundle runs outside Vite, and each was a
+	 * hard failure rather than a warning:
+	 *
+	 * - `import.meta.env.DEV` is a VITE-only construct. esbuild leaves
+	 *   `import.meta.env` undefined, so the pane's perf effect (`if
+	 *   (!import.meta.env.DEV) return;`) throws `Cannot read properties of
+	 *   undefined (reading 'DEV')`. The FIRST time an effect runs, which a server
+	 *   render never does — which is why `canonical-notice.test.mjs` can bundle
+	 *   this same component without defining it. `false` is the branch a
+	 *   production renderer takes, and the effect it guards is a debug readout.
+	 * - `process.env.NODE_ENV` is unset under `node --test`, and MUI is BUNDLED
+	 *   here (left external, `@mui/material/styles` is a bare DIRECTORY import and
+	 *   node refuses it: `ERR_UNSUPPORTED_DIR_IMPORT`), so its branches need the
+	 *   variable present. `development` keeps every value it looks up.
+	 */
+	define: {
+		"import.meta.env.DEV": "false",
+		"import.meta.env.PROD": "true",
+		"process.env.NODE_ENV": '"development"',
+	},
+	jsx: "automatic",
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	alias: {
+		"@renderer": `${process.cwd()}/src/renderer/src`,
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+		"@assets": `${process.cwd()}/src/renderer/src/assets`,
+	},
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+	},
+	write: false,
+});
+const transcriptBundlePath = new URL(
+	`./_working-line-transcript-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(transcriptBundlePath, transcriptBundle.outputFiles[0].text);
+// Unlinked in a `finally`, for the reason the first bundle's comment gives.
+let transcriptModule;
+try {
+	transcriptModule = await import(transcriptBundlePath.href);
+} finally {
+	await unlink(transcriptBundlePath);
+}
+const { CanonicalTranscript, EMPTY_TRANSCRIPT } = transcriptModule;
 
 const h = React.createElement;
 
@@ -431,6 +540,12 @@ test("the fold the wire carries reaches the rendered row", async () => {
 	 * internal input shape: this is what pins that the resumed pane's row is
 	 * driven by the producer's fold and not by the mount, and it fails if either
 	 * the model stops relying on it or the builder stops carrying it.
+	 *
+	 * WHAT IT DOES NOT COVER, said here because assuming it did is what left the
+	 * seam: the mapping from `frontend` to these two arguments is HANDED OVER in
+	 * this fixture, so the `useMemo` in `canonical-transcript.tsx` that performs
+	 * it is untested by it. The case below mounts the shipped component for
+	 * exactly that reason.
 	 */
 	const frontend = {
 		activity_phase: "running",
@@ -462,4 +577,233 @@ test("a row with no start keeps today's honest local zero", async () => {
 			assert.equal(api.label(), "0s");
 		},
 	);
+});
+
+/*
+ * ------------------------------------------------- the call site, mounted
+ *
+ * The wiring between the reader's `frontend` and the rung's anchor, run through
+ * the SHIPPED `CanonicalTranscript` rather than handed over as an argument.
+ */
+
+/**
+ * The pane's transcript: one user row, which is the honest shape of the state
+ * this defect was reported in (a resumed conversation has a history, and a row
+ * keeps the pane out of its row-less `h-0` collapse).
+ */
+const paneTranscript = {
+	...EMPTY_TRANSCRIPT,
+	records: [
+		{
+			kind: "user",
+			id: "u-resume",
+			ts: 1,
+			text: "Re-run the transport suite against the resumed clock.",
+			images: [],
+		},
+	],
+	index: new Map([["u-resume", 0]]),
+};
+
+/**
+ * The pane's props, held by IDENTITY between the two renders below.
+ *
+ * Load-bearing rather than tidy: the assertion is that a changed `frontend`
+ * alone re-derives the rung, so every other prop — and therefore every other
+ * dependency of the memo — has to be the same object on both renders, or the
+ * memo would recompute for a reason that has nothing to do with the fold.
+ */
+const paneProps = {
+	transcript: paneTranscript,
+	gate: null,
+	waiting: true,
+	starting: false,
+	startingAfterId: null,
+	loadingOlder: false,
+	onLoadOlder: async () => true,
+	containerRef: { current: null },
+	isSmallView: false,
+	status: "live",
+	failure: null,
+	awaitingHydration: false,
+	onReconnect: () => {},
+};
+
+/**
+ * One mounted pane, on a clock this file drives.
+ *
+ * The `Date` stub is the reason the numbers asserted below are arithmetic: the
+ * band reads the wall clock against its anchor, so a real clock would make `1m32s`
+ * a function of how long the harness took to get there.
+ */
+async function paneFixture(now, run) {
+	const dom = new JSDOM("<div id='root'></div>", { pretendToBeVisual: true });
+	const { window } = dom;
+	const intervals = new Map();
+	let nextTimer = 1;
+	const originals = new Map();
+	for (const [key, value] of Object.entries({
+		window,
+		document: window.document,
+		HTMLElement: window.HTMLElement,
+		IS_REACT_ACT_ENVIRONMENT: true,
+		/*
+		 * jsdom implements neither, and the pane reaches for
+		 * `requestAnimationFrame` from a layout effect on mount. Timers rather than
+		 * `window` members: the bundle reads them off the global, the way it would
+		 * in a renderer.
+		 */
+		requestAnimationFrame: (callback) => setTimeout(() => callback(now), 0),
+		cancelAnimationFrame: (id) => clearTimeout(id),
+		/* jsdom implements no `ResizeObserver` either, and the pane measures with
+		   one; nothing here is a measurement, so the stub observes nothing. */
+		ResizeObserver: class {
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		},
+	})) {
+		originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+		Object.defineProperty(globalThis, key, {
+			configurable: true,
+			writable: true,
+			value,
+		});
+	}
+	const realNow = Date.now;
+	Date.now = () => now;
+	window.matchMedia = (query) => ({
+		media: query,
+		matches: false,
+		addEventListener: () => {},
+		removeEventListener: () => {},
+		dispatchEvent: () => false,
+	});
+	window.setInterval = (fn, delay) => {
+		const id = nextTimer++;
+		intervals.set(id, { fn, delay });
+		return id;
+	};
+	window.clearInterval = (id) => {
+		intervals.delete(id);
+	};
+
+	const root = createRoot(window.document.getElementById("root"));
+	const api = {
+		/** The band's clock slot: the second of its two agent-hidden spans. */
+		label: () =>
+			window.document.querySelectorAll("[data-lo-working-line] span")[2]
+				?.textContent,
+		render: async (frontend) => {
+			await act(() =>
+				root.render(h(CanonicalTranscript, { ...paneProps, frontend })),
+			);
+		},
+	};
+	try {
+		await run(api);
+	} finally {
+		Date.now = realNow;
+		await act(() => root.unmount());
+		window.close();
+		for (const [key, descriptor] of originals) {
+			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+			else delete globalThis[key];
+		}
+	}
+}
+
+test("the pane's own call site hands the fold's zero to the band", async () => {
+	/*
+	 * M3, the half a rendered pane CAN answer. `waiting` IS `frontend.streaming`
+	 * (`chat-page.tsx`), so a resumed pane cannot paint the band before the state
+	 * carrying the fold is present: the mount below is the production sequence,
+	 * and `WorkingLine`'s phase-change-only re-anchor therefore adopts the resumed
+	 * anchor on this first frame.
+	 *
+	 * What it pins: the two property lines in `canonical-transcript.tsx` that
+	 * carry `activity_phase` and `activity_phase_started_at` into
+	 * `workingLineInputFor`. Remove either and the band mounts at its own zero.
+	 * The test in the section after this one covers the memo's dependency array,
+	 * which a single mount cannot see.
+	 */
+	await paneFixture(PHASE_STARTED_MS, async (api) => {
+		await api.render({
+			activity_phase: "thinking",
+			activity_phase_started_at: PHASE_STARTED_EPOCH - 92,
+		});
+		assert.equal(
+			api.label(),
+			"1m32s",
+			"the resumed snapshot's own phase zero reaches the band through the pane",
+		);
+	});
+});
+
+test("a pane whose fold states nothing keeps the local zero", async () => {
+	// The control for the case above, and the behaviour this change deliberately
+	// does not move: no phase, no stamp, so the band counts from its own mount.
+	await paneFixture(PHASE_STARTED_MS, async (api) => {
+		await api.render({ activity_phase: "", activity_phase_started_at: null });
+		assert.equal(api.label(), "0s");
+	});
+});
+
+/*
+ * --------------------------------------------------- the memo's dependency array
+ *
+ * The half a MOUNT cannot answer, and the reason it needs its own case rather
+ * than a second render.
+ *
+ * A `useMemo` whose dependency array lost the fold pair returns the rung it
+ * cached, and the only consumer of that rung is `WorkingLine`, whose anchor is
+ * re-read on a PHASE change alone (design round 2's D3). A phase change is always
+ * accompanied by a change to `transcript.records` — the derived phase is a
+ * function of those records and of nothing else — and `records` is itself a
+ * dependency, so a stale memo is not reachable through the rendered clock. The
+ * array is therefore asserted where it lives, in the source, in the shape
+ * `canonical-chat.test.mjs` already uses for a call site it cannot render.
+ *
+ * If a THIRD reader of this memo ever appears, this case fails loudly and its
+ * count is what the author updates; that is the intended behaviour, because the
+ * count is the contract.
+ */
+const PANE_SOURCE =
+	"src/renderer/src/features/chat/canonical/canonical-transcript.tsx";
+
+/** The pane's source with its comments removed, the way the sibling guards read it. */
+const paneSource = readFileSync(PANE_SOURCE, "utf8")
+	.replace(/\/\*[\s\S]*?\*\//g, "")
+	.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+const paneLines = paneSource.split("\n").map((line) => line.trim());
+
+test("the pane's rung memo READS the fold and DEPENDS on it", () => {
+	// Read, at the builder's call site: the pair is taken off `frontend` rather
+	// than reached for through its index signature or defaulted to a literal.
+	assert.match(
+		paneSource,
+		/foldedPhase:\s*frontend\?\.activity_phase,/,
+		"the builder is handed the producer's phase",
+	);
+	assert.match(
+		paneSource,
+		/foldedPhaseStartedAt:\s*frontend\?\.activity_phase_started_at,/,
+		"and the instant that phase began",
+	);
+
+	// Depended on, as a bare entry in some dependency array. A bare entry is the
+	// only spelling that distinguishes a dependency from an argument: at the call
+	// site both fields sit behind a `foldedPhase...:` prefix, so a line that is
+	// exactly `frontend?.activity_phase,` can only be an array member.
+	for (const field of [
+		"frontend?.activity_phase,",
+		"frontend?.activity_phase_started_at,",
+	]) {
+		assert.equal(
+			paneLines.filter((line) => line === field).length,
+			1,
+			`${field} is exactly one entry of exactly one dependency array`,
+		);
+	}
 });

@@ -27,9 +27,10 @@
  * nothing changed. The view's memoisation is only as good as that gate.
  */
 
-import type {
-	CanonicalFrontendState,
-	DesktopHistoryPage,
+import {
+	type CanonicalFrontendState,
+	type DesktopHistoryPage,
+	epochMsFromSeconds,
 } from "../../../../../shared/desktop-session-contract";
 import {
 	type PeerSender,
@@ -2332,10 +2333,16 @@ export function applyEvent(
  * `null` rather than a defaulted instant on purpose — the tempting default is
  * the reader's own arrival dressed as the call's start, which is the fabricated
  * zero the whole `started_at_epoch` path exists to refuse.
+ *
+ * Thin, and deliberately so: the unit and its refusals are the shared helper's
+ * (`epochMsFromSeconds`, beside the field declarations that state the unit), and
+ * this names the FIELD so the reducer reads as what it is — "the frame's own
+ * clock, when the frame has one". That helper is also what the working line's
+ * `activity_phase_started_at` reader goes through, so the two surfaces cannot
+ * come to disagree about what a stated instant is.
  */
 function epochMs(event: LiveEvent): number | null {
-	const epoch = Number(event.started_at_epoch);
-	return Number.isFinite(epoch) && epoch > 0 ? Math.round(epoch * 1000) : null;
+	return epochMsFromSeconds(event.started_at_epoch);
 }
 
 /** The call id a seeded tool frame names, or `null` for any other frame. */
