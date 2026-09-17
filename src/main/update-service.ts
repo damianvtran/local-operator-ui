@@ -39,6 +39,7 @@ import {
 	type UpdateChannelStatus,
 	type UpdateCheckVerdict,
 	isReadableVersion,
+	serverChannelVerdict,
 	updateCheckVerdict,
 } from "./update-check-verdict";
 import {
@@ -83,6 +84,7 @@ import {
 	recordInstallFailure,
 	requiredDiskBytes,
 	resolveCommandPath,
+	resolveDistributionMarkers,
 	resolveGlobalConsoleScript,
 	resolveGlobalInstallPlan,
 	resolveStagedArtifactPath,
@@ -299,6 +301,24 @@ const INSTALLER_PROBE_TIMEOUT_MS = 5000;
 type HealthCheckResult = {
 	/** API server version */
 	version: string;
+	/**
+	 * `sys.prefix` of the install the answering process was started from.
+	 *
+	 * The identity of the INSTALL rather than of the process, and the value the
+	 * update check judges: a machine can have several installs and only one of them
+	 * is serving this app. Optional because a server older than this field answers
+	 * without it, which the check reads as "the install could not be named" rather
+	 * than as "the install is current".
+	 */
+	prefix?: string;
+	/**
+	 * The backend's own classification of that install (`install_kind()`).
+	 *
+	 * Carried for the check's Details line and for the app-owned arm's copy: it is
+	 * the backend's answer about the environment it runs in, which is the one piece
+	 * of evidence the app cannot derive from a path alone.
+	 */
+	install_kind?: string;
 };
 
 /**
@@ -327,6 +347,65 @@ type HealthCheckResponse = {
 	message: string;
 	/** Health check result containing version information (may be undefined in older server versions) */
 	result?: HealthCheckResult;
+};
+
+/**
+ * The server serving this app, as `/health` reports it.
+ *
+ * `version` keeps `getInstalledBackendVersion`'s own convention, because two
+ * callers depend on it: `"Unknown"` is a server that answered without a version
+ * (an older build), and null is a server that did not answer at all. `prefix` and
+ * `installKind` are null rather than `"Unknown"` when the server did not report
+ * them - which the check reads as "the install could not be named", not as
+ * "the install is current".
+ */
+type RunningBackendReading = {
+	version: string | null;
+	/** `sys.prefix` of the install the process was started from, or null. */
+	prefix: string | null;
+	/** The process's own `install_kind()`, or null when it did not report one. */
+	installKind: string | null;
+};
+
+/**
+ * One `/health` body as a reading, with the absent fields made explicit.
+ *
+ * The `Unknown` sentinel is applied by the caller rather than here: this stores
+ * what the server said, and "answered without a version" is a fact about the
+ * answer rather than about the install.
+ */
+function readingOfHealth(health: HealthCheckResponse): RunningBackendReading {
+	const result = health.result;
+	return {
+		version: result?.version ?? null,
+		prefix: result?.prefix ? result.prefix : null,
+		installKind: result?.install_kind ? result.install_kind : null,
+	};
+}
+
+/**
+ * The install that is actually serving this app, and what the app may do to it.
+ *
+ * The subject of every judgement the server channel makes, taken from the running
+ * server's own `/health` rather than from the shim the app can name: a machine can
+ * have a current global install on `PATH` while a different install, three
+ * releases behind, is the one answering the user.
+ */
+type ServingInstall = {
+	/** The install root the server reported (`sys.prefix`), or null. */
+	prefix: string | null;
+	/** The version that root reports on disk, or null when it could not be read. */
+	version: string | null;
+	/** The server's own `install_kind()`, or null when it did not report one. */
+	installKind: string | null;
+	/**
+	 * Whether this root is one of the app's own managed environments.
+	 *
+	 * It decides the REMEDY and nothing else: no package manager owns a tree under
+	 * the app's management root, so neither a pip command nor the app's
+	 * global-install path describes it.
+	 */
+	appOwned: boolean;
 };
 
 /**
@@ -3135,10 +3214,24 @@ export class UpdateService {
 	}
 
 	/**
-	 * Get the installed backend version using the health API
-	 * @returns Promise resolving to the installed version or null if not found
+	 * Read the server serving this app: its version, and the install it runs from.
+	 *
+	 * The install root travels with the version because the update check is a
+	 * statement about an INSTALL, and `/health` is the only thing that knows which
+	 * one is answering. The app used to classify the install it could name from the
+	 * `local-operator` shim on `PATH` and compare THAT against PyPI while reading
+	 * this version separately - so a machine serving the app from a three-release-old
+	 * environment was told "The application and server are up to date" beside a
+	 * Settings row naming the older build.
+	 *
+	 * @returns the reading, with a null version when nothing answered
 	 */
-	private async getInstalledBackendVersion(): Promise<string | null> {
+	private async readRunningBackend(): Promise<RunningBackendReading> {
+		const notAnswered: RunningBackendReading = {
+			version: null,
+			prefix: null,
+			installKind: null,
+		};
 		try {
 			const backendUrl = this.liveBackendUrl();
 			logger.info(
@@ -3163,18 +3256,19 @@ export class UpdateService {
 					`Health API returned status ${response.status}`,
 					LogFileType.UPDATE_SERVICE,
 				);
-				return null;
+				return notAnswered;
 			}
 
 			const healthData = (await response.json()) as HealthCheckResponse;
+			const reading = readingOfHealth(healthData);
 
 			// Check if the response has version information
-			if (healthData.result?.version) {
+			if (reading.version) {
 				logger.info(
-					`Backend version from health API: ${healthData.result.version}`,
+					`Backend version from health API: ${reading.version} (install root ${reading.prefix ?? "not reported"}, install kind ${reading.installKind ?? "not reported"})`,
 					LogFileType.UPDATE_SERVICE,
 				);
-				return healthData.result.version;
+				return reading;
 			}
 
 			// For older server versions that don't have the version information
@@ -3182,7 +3276,7 @@ export class UpdateService {
 				"Backend version not available in health response",
 				LogFileType.UPDATE_SERVICE,
 			);
-			return "Unknown";
+			return { ...reading, version: "Unknown" };
 		} catch (error) {
 			logger.error(
 				"Error getting backend version from health API:",
@@ -3216,18 +3310,19 @@ export class UpdateService {
 							`Alternative health API returned status ${response.status}`,
 							LogFileType.UPDATE_SERVICE,
 						);
-						return null;
+						return notAnswered;
 					}
 
 					const healthData = (await response.json()) as HealthCheckResponse;
+					const reading = readingOfHealth(healthData);
 
 					// Check if the response has version information
-					if (healthData.result?.version) {
+					if (reading.version) {
 						logger.info(
-							`Backend version from alternative health API: ${healthData.result.version}`,
+							`Backend version from alternative health API: ${reading.version} (install root ${reading.prefix ?? "not reported"}, install kind ${reading.installKind ?? "not reported"})`,
 							LogFileType.UPDATE_SERVICE,
 						);
-						return healthData.result.version;
+						return reading;
 					}
 				} catch (altError) {
 					logger.error(
@@ -3254,7 +3349,13 @@ export class UpdateService {
 							`Backend version from pip: ${version}`,
 							LogFileType.UPDATE_SERVICE,
 						);
-						return version;
+						/*
+						 * The version without an install root: `pip show` in this process's own
+						 * environment is not evidence about a server that is not answering, and
+						 * the check treats a missing root as "the serving install could not be
+						 * named" rather than as a reading of the global install.
+						 */
+						return { version, prefix: null, installKind: null };
 					}
 				} catch (pipError) {
 					logger.error(
@@ -3265,8 +3366,19 @@ export class UpdateService {
 				}
 			}
 
-			return null;
+			return notAnswered;
 		}
+	}
+
+	/**
+	 * The version the server serving this app reports, or null when it did not.
+	 *
+	 * Kept beside `readRunningBackend` rather than replaced by it: four callers ask
+	 * only this question (the skew notices, the by-hand panel), and none of them may
+	 * start judging an install because a second reading became available.
+	 */
+	private async getInstalledBackendVersion(): Promise<string | null> {
+		return (await this.readRunningBackend()).version;
 	}
 
 	/**
@@ -3314,6 +3426,93 @@ export class UpdateService {
 	 * @returns Promise resolving to update info or null if no update is available
 	 */
 	/**
+	 * Read the install that is serving this app, from the root `/health` named.
+	 *
+	 * The version comes from the dist-info at that root
+	 * (`resolveDistributionMarkers`, the same read the global classification uses),
+	 * which is shell-free and needs no interpreter: `pip show` inside that
+	 * environment would spawn the very server's python, and a second process is not
+	 * worth a number that is already on disk beside the code.
+	 *
+	 * A root the server did not name answers with nulls, and the check treats that
+	 * as "the serving install could not be identified" rather than falling back to
+	 * an install the app can name - which is the reported defect.
+	 */
+	private readServingInstall(reading: RunningBackendReading): ServingInstall {
+		const prefix = reading.prefix;
+		if (!prefix) {
+			return {
+				prefix: null,
+				version: null,
+				installKind: reading.installKind,
+				appOwned: false,
+			};
+		}
+		let version: string | null = null;
+		try {
+			version = resolveDistributionMarkers(prefix).version;
+		} catch (error) {
+			logger.warn(
+				`Could not read the install at ${prefix}: ${(error as Error).message}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
+		return {
+			prefix,
+			version,
+			installKind: reading.installKind,
+			appOwned: this.appOwnsInstallRoot(prefix),
+		};
+	}
+
+	/**
+	 * Whether an install root lives under the environments the app manages.
+	 *
+	 * The APP'S OWN TREE, not a package manager's: `managed-python` is where the
+	 * app builds and owns its runtime and its pinned environments, nothing outside
+	 * it may be read, walked or removed, and no install tool knows about it. The
+	 * packaged and dev scopes are both matched, because which one owns an install
+	 * is a property of the install rather than of the instance asking - a packaged
+	 * environment outlives the build that made it, and a check that asked only
+	 * about this instance's own scope would offer a package-manager command for a
+	 * tree the app owns.
+	 *
+	 * A relative answer is never inside: `path.relative` returns the input when the
+	 * two paths share no root, and an unreadable/partial prefix must not be read as
+	 * a match by a substring test.
+	 */
+	private appOwnsInstallRoot(prefix: string): boolean {
+		const root = join(
+			managedSupportRoot(app.getPath("home")),
+			"managed-python",
+		);
+		const relative = path.relative(root, prefix);
+		return (
+			relative.length > 0 &&
+			!relative.startsWith("..") &&
+			!path.isAbsolute(relative)
+		);
+	}
+
+	/**
+	 * The identity of the install serving this app, for the classification the plan
+	 * needs when that install is not one the app owns.
+	 *
+	 * Read from the console script INSIDE the reported prefix, so
+	 * `classifyGlobalInstall` sees the install that answered rather than whichever
+	 * one the shim on `PATH` happens to point at - the two differ exactly on the
+	 * machines this check exists for. Null when the prefix carries no console
+	 * script, which is "we could not classify it" rather than a guess.
+	 */
+	private servingInstallIdentity(prefix: string): InstallIdentity | null {
+		const script =
+			process.platform === "win32"
+				? join(prefix, "Scripts", "local-operator.exe")
+				: join(prefix, "bin", "local-operator");
+		return existsSync(script) ? readInstallIdentity(script) : null;
+	}
+
+	/**
 	 * Decide what the backend update prompt may offer for a startup mode.
 	 *
 	 * GLOBAL_INSTALL is the mode that produced the operator's report: the app
@@ -3326,9 +3525,15 @@ export class UpdateService {
 	 * is the same question: a server the app attaches to but does not own was
 	 * still being told to run pip, three lines below the code that had already
 	 * learned better (reviews U4, D4).
+	 *
+	 * Both of those modes resolve the plan for ONE install: the install that is
+	 * actually serving this app, as `/health` reports it. Classifying a global
+	 * install by name while a different one serves the user is how the check came to
+	 * affirm a version the panel's own row contradicted.
 	 */
 	private async resolveBackendUpdatePlan(
 		startupMode: LocalOperatorStartupMode,
+		serving: ServingInstall,
 	): Promise<{
 		canManageUpdate: boolean;
 		updateCommand: string;
@@ -3350,12 +3555,63 @@ export class UpdateService {
 			startupMode === LocalOperatorStartupMode.EXISTING_SERVER ||
 			startupMode === LocalOperatorStartupMode.GLOBAL_INSTALL
 		) {
-			const identity = await this.resolveInstallIdentity();
+			/*
+			 * THE APP'S OWN ENVIRONMENT FIRST, and it names no installer.
+			 *
+			 * A root under `managed-python` is the app's: it built it from its own
+			 * runtime seed, it records which environment is selected, and nothing
+			 * outside that tree may be read, walked or removed. Every classification
+			 * below would answer `pip` for it (it IS a pip venv - `pyvenv.cfg` and an
+			 * `INSTALLER` of `pip`), and the pip arm's command is the one remedy that
+			 * is a lie here: `pip install --upgrade` into the environment a live
+			 * daemon is serving rewrites `site-packages` under a running process,
+			 * which is the in-place rewrite the managed layout exists to avoid and
+			 * which this app may not start on a user's behalf. So no command, and a
+			 * sentence that says which install is behind instead.
+			 *
+			 * `canManageUpdate: false` because the app cannot move it FROM HERE: this
+			 * is the arm for a server the app did not start, and the path that does
+			 * own the environment is its own launch (`APP_BUNDLED_VENV`, below). The
+			 * consequence is stated rather than softened: the fix is not a terminal
+			 * command the reader can run.
+			 */
+			if (serving.appOwned) {
+				const detail = `The server serving this app runs from Local Operator's own managed environment at ${serving.prefix}, which the app owns rather than a package manager (the backend reports it as install kind "${serving.installKind || "not reported"}")${
+					serving.version
+						? `, at version ${serving.version}`
+						: " and its installed version could not be read"
+				}.`;
+				logger.info(
+					`External backend install (${startupMode}) runs from the app's own managed environment ` +
+						`at ${serving.prefix}; no installer owns it, so the app names no command`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return {
+					canManageUpdate: false,
+					updateCommand: "",
+					remedy:
+						"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. Local Operator updates that environment itself when it starts the server.",
+					detail,
+					sourceBuild: false,
+					installedInstallVersion: serving.version,
+				};
+			}
+
+			/*
+			 * The serving install's OWN identity when the server named one, and the
+			 * shim's only as the fallback: a server that answers `/health` from a
+			 * prefix is the install an update has to move, and classifying the shim
+			 * instead is how a global install at the published version came to speak
+			 * for an environment three releases behind it.
+			 */
+			const identity =
+				(serving.prefix ? this.servingInstallIdentity(serving.prefix) : null) ??
+				(await this.resolveInstallIdentity());
 			const plan = resolveGlobalInstallPlan({ identity });
 			logger.info(
 				`External backend install (${startupMode}): ${plan.detail}; remedy is ` +
 					`\`${plan.updateCommand || "nothing the app can name"}\`; install version ` +
-					`${identity.version ?? "unreadable"}`,
+					`${serving.version ?? identity.version ?? "unreadable"}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return {
@@ -3364,7 +3620,7 @@ export class UpdateService {
 				remedy: plan.remedy,
 				detail: plan.detail,
 				sourceBuild: plan.sourceBuild,
-				installedInstallVersion: identity.version ?? null,
+				installedInstallVersion: serving.version ?? identity.version ?? null,
 			};
 		}
 
@@ -3374,7 +3630,13 @@ export class UpdateService {
 			remedy: "Updating the server will improve AI functionality.",
 			detail: `The app started this server itself (${startupMode}).`,
 			sourceBuild: false,
-			installedInstallVersion: null,
+			/*
+			 * The app-managed environment's own on-disk version when the server named
+			 * it, which is what an update moves: the check compares against the same
+			 * install it would rewrite, so a landed update with a daemon still on the
+			 * old build is visible as exactly that rather than as "nothing newer".
+			 */
+			installedInstallVersion: serving.version,
 		};
 	}
 
@@ -3561,16 +3823,26 @@ export class UpdateService {
 			}
 
 			/*
-			 * The plan is resolved BEFORE the comparison, because it is the plan that
-			 * says which install this check is about. "Check updates against that lop"
-			 * means the version the update action would move - the install on disk -
-			 * and the install is what `resolveBackendUpdatePlan` classifies. The running
-			 * backend's `/health` is still read and still reported: it is the same
-			 * install whenever this app spawned the daemon (#254), and it can be a
-			 * different one when discovery adopted a daemon the app did not start.
+			 * THE SERVING INSTALL IS READ FIRST, because it is what this check is about.
+			 *
+			 * `/health` names the process's version AND the install root it was started
+			 * from (`prefix`, with the backend's own `install_kind` beside it), so the
+			 * check can judge the install that is actually answering this app instead of
+			 * whichever install the app can name from the `local-operator` shim on
+			 * `PATH`. Those are different installs on exactly the machines this defect
+			 * was reported on: a global uv-tool install at the published version, and an
+			 * app-managed environment three releases behind serving the user - the check
+			 * compared the first against PyPI, affirmed "up to date", and Settings'
+			 * own row printed the second.
+			 *
+			 * Asked in this order rather than concurrently because both the plan and the
+			 * verdict are statements ABOUT this reading, and a machine can rotate its
+			 * daemon between two requests.
 			 */
-			const plan = await this.resolveBackendUpdatePlan(startupMode);
-			const runningVersion = await this.getInstalledBackendVersion();
+			const running = await this.readRunningBackend();
+			const runningVersion = running.version;
+			const serving = this.readServingInstall(running);
+			const plan = await this.resolveBackendUpdatePlan(startupMode, serving);
 			const latestVersion = await this.getLatestPypiVersion();
 			// Remembered for the by-hand prompt: that event is produced from a click
 			// rather than from a check, and it has to be able to name the published
@@ -3578,11 +3850,20 @@ export class UpdateService {
 			if (latestVersion) this.lastPublishedBackendVersion = latestVersion;
 
 			/*
-			 * The comparison uses the install's own version whenever one resolved, and
-			 * falls back to the running reading otherwise - never to "current". The
-			 * gates below are about the absence of a reading, so a fallback that
-			 * answered "up to date" from a version nobody could read would be the one
-			 * misreading they exist to prevent.
+			 * The version the OFFER and the comparison are about: the install that is
+			 * SERVING this app when the server named it, which is what an update would
+			 * move (`resolveBackendUpdatePlan` resolves exactly that subject, and falls
+			 * back to the install the app can name only when the server did not report
+			 * one - see its own comment). Read from the plan rather than re-derived here,
+			 * so the panel, the installer and the check cannot disagree about which
+			 * install this is.
+			 *
+			 * The running reading stands in when the install reports nothing. That is the
+			 * same install rather than a substitute for it: the process executes the code
+			 * in the prefix it names, so its reading is the install's version or older
+			 * than it, never newer. The gates below are about the absence of a reading,
+			 * so a fallback that answered "up to date" from a version nobody could read
+			 * would be the one misreading they exist to prevent.
 			 */
 			const installVersion = plan.installedInstallVersion;
 			const installedVersion =
@@ -3664,14 +3945,31 @@ export class UpdateService {
 				return { status: "unavailable", info: null };
 			}
 
-			const shouldUpdate = this.isNewerVersion(latestVersion, installedVersion);
+			/*
+			 * THE ONE DECISION, from the one rule that owns it
+			 * (`src/main/update-check-verdict.ts`): what this channel may say about the
+			 * install serving this app and the process running it. `isNewerVersion` is
+			 * handed in rather than re-implemented there, so the app keeps a single
+			 * ordering for its update decisions - including the four-part releases the
+			 * backend has published.
+			 */
+			const channel = serverChannelVerdict({
+				installVersion,
+				runningVersion,
+				publishedVersion: latestVersion,
+				isNewer: (candidate, subject) =>
+					this.isNewerVersion(candidate, subject),
+			});
+			const shouldUpdate = channel.status === "available";
 
 			// Both readings on one line, deliberately: they disagree in exactly one
 			// situation that matters - after an update has landed on disk and before
 			// the daemon that serves it has been restarted - and when they do, the
-			// check has to be answerable from the log.
+			// check has to be answerable from the log. The install ROOT is on the line
+			// too, because the defect this check was reporting on was a comparison
+			// against an install that was not the one answering.
 			logger.info(
-				`Install on disk reports: ${installVersion ?? "no reading"}, running backend reports: ${runningVersion ?? "no reading"}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}, Startup mode: ${startupMode}`,
+				`Install on disk reports: ${installVersion ?? "no reading"} (at ${serving.prefix ?? "an install the server did not name"}), running backend reports: ${runningVersion ?? "no reading"}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}, Server channel: ${channel.status} (${channel.state}), Startup mode: ${startupMode}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 
@@ -3679,6 +3977,24 @@ export class UpdateService {
 				`Installed backend version: ${installedVersion}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}, Startup mode: ${startupMode}`,
 				LogFileType.UPDATE_SERVICE,
 			);
+
+			if (channel.state === "restart-required") {
+				/*
+				 * THE INSTALL IS CURRENT AND THE SERVER IS NOT (status
+				 * `restart-required`, which earns no affirmation).
+				 *
+				 * Nothing to install, so there is no offer: the only thing that closes
+				 * the gap is a restart of the process serving this app, and the notice
+				 * below is the surface that can say so. It is NOT a `current` check:
+				 * the whole installation is not up to date while the build the reader is
+				 * talking to trails the published release, and saying so was the
+				 * contradiction the reported defect produced.
+				 */
+				logger.info(
+					`The install is current (${installedVersion}) and the server serving this app runs ${runningVersion}; a restart of that server picks the installed build up.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
 
 			if (shouldUpdate) {
 				logger.info(
@@ -3747,6 +4063,12 @@ export class UpdateService {
 			 * surface carries. Everything else a silent check could say stays suppressed,
 			 * and the renderer's own guard keeps a pair that agrees silent - so an
 			 * equal-reading machine still hears nothing from a launch.
+			 *
+			 * The two readings here are the SERVING install's and the process's, which is
+			 * the pair the notice is about ("the server is on an older build than the
+			 * install"): a check that compared an unrelated install and then announced a
+			 * skew between it and the daemon would be reporting a disagreement the reader
+			 * cannot act on.
 			 */
 			const readingsDiffer =
 				installedVersion !== null &&
@@ -3779,7 +4101,14 @@ export class UpdateService {
 				});
 			}
 
-			return { status: "current", info: null };
+			/*
+			 * `current` or `restart-required`, and never `unavailable`: the three
+			 * absences above return before this line, and a check that reached here has
+			 * two readable readings and a published release. `restart-required` is what
+			 * keeps the whole check's affirmation off a machine whose server trails the
+			 * install on disk.
+			 */
+			return { status: channel.status, info: null };
 		} catch (error) {
 			logger.error(
 				"Error checking for backend updates:",
@@ -4327,6 +4656,17 @@ export class UpdateService {
 
 			const startupMode = this.backendService.getStartupMode();
 
+			/*
+			 * THE SAME SUBJECT THE OFFER NAMED. The plan is resolved for the install
+			 * that is serving this app, read from `/health` the way the check reads
+			 * it, because the action has to be about the install the panel described:
+			 * resolving it from the shim on `PATH` while a different install serves
+			 * the user is how pressing the button would run a command for an install
+			 * that is already current.
+			 */
+			const running = await this.readRunningBackend();
+			const serving = this.readServingInstall(running);
+
 			// Handle different startup modes
 			switch (startupMode) {
 				case LocalOperatorStartupMode.NOT_STARTED:
@@ -4357,7 +4697,10 @@ export class UpdateService {
 					// receipt, the installers' own listings, the dist-info's own markers)
 					// and names the command that owns it - or names none, rather than
 					// defaulting to pip (reviews R10, U4, D4, R13, Q5).
-					const plan = await this.resolveBackendUpdatePlan(startupMode);
+					const plan = await this.resolveBackendUpdatePlan(
+						startupMode,
+						serving,
+					);
 					// The caller's target when it named one (the "Update server" button
 					// does), otherwise the published release the last check read: the
 					// compatibility banner calls this with no target at all, and the
@@ -4398,7 +4741,10 @@ export class UpdateService {
 					// reader copies for support (review D3). `currentVersion` keeps the
 					// meaning this payload has always had - the build the reader is
 					// using - while `installVersion` is what an update would move.
-					const installed = await this.getInstalledBackendVersion();
+					// The reading taken above, deliberately not a second fetch: this
+					// event and the offer it answers must describe one server, and a
+					// daemon can rotate between two requests.
+					const installed = running.version;
 					this.sendToRenderer("backend-update-manual-required", {
 						message: plan.remedy,
 						command: plan.updateCommand,
