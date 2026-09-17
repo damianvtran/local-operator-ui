@@ -653,13 +653,21 @@ const MEASURE = `(() => {
 	anchor("chatListHeader", 'nav[aria-label="Chats"] h2', true);
 	/*
 	 * The CONVERSATION PANE's own first row, which is not one selector: a draft
-	 * shows its own h1, a live session shows its header row, and main's first heading
-	 * is the CHAT LIST's "Chats" (named above) rather than the pane's. So the pane is
-	 * located as the chat list's parent and the first text row OUTSIDE the chat list
-	 * is taken - the same row the D9 brief measures as the pane's page title.
+	 * shows its own h1, a live session shows its header row, and the app's first
+	 * heading is the CHAT LIST's "Chats" (named above) rather than the pane's. So the
+	 * scope is the app's own region element - main, which holds BOTH columns - and
+	 * the first text row OUTSIDE the chat list is taken: the pane's own first row.
+	 *
+	 * WHY main, AND NOT THE CHAT LIST'S PARENT, which is what this used to be:
+	 * measured on the rebased tree, nav[aria-label="Chats"] is wrapped in a
+	 * sidebar-column div that holds the nav and NOTHING else, so the chat list's
+	 * parent IS that column, the only row it has is the chat list itself, the filter
+	 * leaves nothing, and the probe resolved to 0 elements in every state - which is
+	 * the drift the run then failed on. main is the element that holds the chat list
+	 * column and the pane column both, so the same filter reads the pane.
 	 */
 	const chatList = document.querySelector('nav[aria-label="Chats"]');
-	const pane = chatList ? chatList.parentElement : main;
+	const pane = main;
 	const paneRows = pane
 		? [...pane.querySelectorAll("h1, h2, h3, p")].filter(
 				(el) => !(chatList && chatList.contains(el)),
@@ -668,7 +676,20 @@ const MEASURE = `(() => {
 	record1(
 		"paneFirstRow",
 		paneRows[0] ?? null,
-		'the pane\'s first h1/h2/h3/p outside nav[aria-label="Chats"]',
+		/*
+		 * The description carries NO quote that needs escaping, and that is a
+		 * constraint rather than a style: this whole function is ONE template literal
+		 * delivered to the app through Runtime.evaluate, so an escape written for the
+		 * SOURCE is rewritten on the way out - a backslash before an apostrophe loses
+		 * that backslash, and a description containing a bare apostrophe then closes
+		 * its own string. Measured, and it is what this description used to be: the
+		 * app answered every read with SyntaxError: missing ) after argument list,
+		 * the rig could only report "the page answered nothing", and the run died at
+		 * its FIRST state after the full 180 s wait with a perfectly healthy app
+		 * behind it. The attribute is spelled unquoted - a valid selector spelling -
+		 * and the parse of the delivered expression is asserted below this literal.
+		 */
+		"the pane's first h1/h2/h3/p outside nav[aria-label=Chats]",
 		true,
 	);
 	anchor("railSearch", "[data-command-palette-trigger]", false);
@@ -739,6 +760,28 @@ const MEASURE = `(() => {
 		},
 	});
 })()`;
+
+/*
+ * The delivered expression must be a parsable PROGRAM, and this is asserted here
+ * rather than discovered by the app.
+ *
+ * WHY it can fail at all: the function above is one template literal, so any
+ * escape written for the SOURCE is rewritten on the way out - a `\'` loses its
+ * backslash and a description containing an apostrophe closes its own string. The
+ * app then answers every read with `SyntaxError: missing ) after argument list`,
+ * the rig's own error reads as "the page answered nothing: no context yet", and
+ * the only symptom is a 180 s wait at the first state with a healthy app behind
+ * it. That is a boot cycle to find and a boot cycle to re-find; parsing it here
+ * fails in a millisecond, names the expression, and points at the line.
+ */
+try {
+	new Function(MEASURE);
+} catch (error) {
+	console.error(
+		`MEASURE does not parse as a program: ${error.message}. An escape in the template literal has been rewritten on the way out (a \`\\'\` delivers a bare \`'\`), so check the descriptions inside it for an unescaped quote.`,
+	);
+	process.exit(2);
+}
 
 async function measure() {
 	return JSON.parse(await evaluate(MEASURE));
@@ -904,15 +947,19 @@ function sameRow(a, b, channels) {
  * SAME run, so the comparison cannot be about the tree, the theme or the window -
  * only about the bands.
  *
- * `rowsBelowShiftEqual` walks down from the bands' own device height and reports
- * how far the frame equals the no-band frame translated by exactly that many device
- * rows: the "the region translates" claim as a pixel fact rather than as a rect
- * one. `firstDivergentRow` is where content that depends on the region's height (a
- * centred statement, a bottom-anchored control) stops matching, which is reported
- * rather than asserted - reflow below the fold is expected, and it is not the
- * claim. `firstRowsBelowShiftEqual` is the assertion: the first 100 device rows
- * below the bands match the no-band frame's first 100 translated, which is "the
- * app's first painted row starts exactly at the bands' device height".
+ * `rowsBelowShiftEqual` walks down from the bands' own device height and reports how
+ * far the frame equals the no-band frame translated by exactly that many device
+ * rows. `firstDivergentRow` is where the frame stops matching.
+ *
+ * WHY THIS IS REPORTED AND NOT ASSERTED, which is what it used to be: measured, the
+ * app's own CONTENT differs between the no-band state and the band states - a band is
+ * a signal that the backend state changed, so the pane paints a different notice
+ * under it (`no band` paints the chat pane's own first row; a detached daemon paints
+ * the daemon-absent notice above it) - and it differs in the region's first ~30 CSS
+ * px. An equality assertion over those rows therefore fails for a reason that is not
+ * the defect it means to catch, on the tree that fixes it. The pixel claim that DOES
+ * survive is `bandPaint` below, which is about the rows the bands own rather than
+ * about the app's content.
  */
 function compareWithNone(file, noneFile, shift) {
 	const frame = pngRows(file);
@@ -935,6 +982,96 @@ function compareWithNone(file, noneFile, shift) {
 		firstDivergentRow,
 		firstRowsBelowShiftEqual:
 			firstDivergentRow === null || firstDivergentRow >= shift + 100,
+	};
+}
+
+/**
+ * The designer's pixel claim, as a fact about the pixels: every device row the bands
+ * DECLARE is the bands' own paint, and the app's first painted row is the first row
+ * that is not.
+ *
+ * WHAT IT CHECKS, per state, from the committed frame alone: for every device row in
+ * `0 .. bandTotal*dpr-1` the row's dominant colour is one of the bands' grounds or one
+ * of their own 1px bottom rules, AND both of the row's window-edge pixels carry that
+ * same colour - so the band is opaque and full-bleed for the whole height it
+ * declares. The row at `bandTotal*dpr` must NOT be band paint: that is "the app's
+ * first painted row starts exactly at the bands' device height", and it is the same
+ * claim as the rect assertion above, made about the picture instead of the box.
+ *
+ * WHY THE GROUNDS ARE READ FROM THE FRAME rather than from the palette: the rig has
+ * no theme and must not keep one in step with `shared/themes` - this is a claim about
+ * what was PAINTED, so the colour is taken from the band's own middle row and the
+ * check is that the rest of the band's rows are that colour. A theme change moves
+ * both sides together, which is what makes it a test of the geometry.
+ *
+ * WHY THIS REPLACES a shifted comparison against the no-band frame (see
+ * `compareWithNone`): that one is confounded by the app's own content changing under a
+ * band, and this one is not - it asks only what the bands painted.
+ */
+function bandPaint(file, bands, dpr) {
+	const frame = pngRows(file);
+	const shift = Math.round(
+		bands.reduce((sum, band) => sum + band.rect.h, 0) * dpr,
+	);
+	if (shift <= 0 || shift >= frame.height)
+		return {
+			error: `the bands declare ${shift} device rows of ${frame.height}`,
+		};
+	const colourAt = (row, x) => {
+		const at = x * frame.channels;
+		return (row[at] << 16) | (row[at + 1] << 8) | row[at + 2];
+	};
+	/** The colour most of a device row is, and how many colours it carries at all. */
+	const modeOf = (y) => {
+		const counts = new Map();
+		const row = frame.rows[y];
+		for (let x = 0; x < frame.width; x += 1) {
+			const colour = colourAt(row, x);
+			counts.set(colour, (counts.get(colour) ?? 0) + 1);
+		}
+		let colour = -1;
+		let most = -1;
+		for (const [value, count] of counts)
+			if (count > most) {
+				most = count;
+				colour = value;
+			}
+		return { colour, colours: counts.size };
+	};
+	const hex = (value) => `#${value.toString(16).padStart(6, "0")}`;
+	/*
+	 * Each band's ground is the dominant colour of its own middle row, and its rule is
+	 * the colour of the row directly above its bottom edge - the bottom border the two
+	 * band components carry (`border-t-0 border-b` after the D9 change).
+	 */
+	const grounds = new Set();
+	const rules = new Set();
+	for (const band of bands) {
+		const middle = Math.round((band.rect.top + band.rect.h / 2) * dpr);
+		const bottom = Math.round(band.rect.bottom * dpr);
+		grounds.add(modeOf(middle).colour);
+		if (bottom - 1 >= 0 && bottom - 1 < frame.height)
+			rules.add(modeOf(bottom - 1).colour);
+	}
+	const paint = (y) => {
+		const mode = modeOf(y);
+		return (
+			(grounds.has(mode.colour) || rules.has(mode.colour)) &&
+			colourAt(frame.rows[y], 0) === mode.colour &&
+			colourAt(frame.rows[y], frame.width - 1) === mode.colour
+		);
+	};
+	const notPaint = [];
+	for (let y = 0; y < shift; y += 1) if (!paint(y)) notPaint.push(y);
+	return {
+		grounds: [...grounds].map(hex),
+		rules: [...rules].map(hex),
+		shiftRows: shift,
+		rowsChecked: shift,
+		rowsNotBandPaint: notPaint.length,
+		firstRowNotBandPaint: notPaint[0] ?? null,
+		firstRowPastBandsIsBandPaint: paint(shift),
+		appFirstPaintedRow: paint(shift) ? null : shift,
 	};
 }
 
@@ -994,6 +1131,17 @@ async function record(name, m) {
 			noneFrame,
 			Math.round(m.bandTotal * m.viewport.dpr),
 		);
+	/*
+	 * The bands' own pixels. The result is parked on the MEASUREMENT as well as on the
+	 * record entry, because `assertState` is handed the measurement: an assertion wired
+	 * only to a field the record adds is an assertion that never runs, which is what the
+	 * shifted comparison's used to be (review round 1, N4's failure mode surviving one
+	 * round).
+	 */
+	if (m.bandCount > 0) {
+		entry.paint = bandPaint(file, m.bands, m.viewport.dpr);
+		m.paint = entry.paint;
+	}
 	summary.states[name] = entry;
 	console.log(
 		`# ${name}: route=${m.route} bands=${m.bandCount} total=${m.bandTotal} css px, region=${JSON.stringify(
@@ -1021,6 +1169,28 @@ const expectUncovered = EXPECT === "uncovered";
 /** The anchor offsets a band may not move: measured on the pre-fix tree, in CSS px. */
 const CHAT_SEARCH_TOP = 48;
 const CHAT_LIST_HEADER_TOP = 14.25;
+/**
+ * The anchors whose offset the SHELL pins, so a moved one is a drifted probe.
+ *
+ * `browserContent` is in here because `use-browser-chrome` reports it from the
+ * region's own content element, which the shell's row places; `paneFirstRow` is NOT,
+ * because where the pane's first row sits is a property of the pane's copy (see the
+ * anchor loop in `assertState`).
+ */
+const PINNED_ANCHORS = new Set([
+	"chatSearch",
+	"chatListHeader",
+	"browserContent",
+]);
+const pinnedAnchor = (name) => PINNED_ANCHORS.has(name);
+/**
+ * How far below the region's top a band could still cover a row, in CSS px.
+ *
+ * 200 against the tallest band this app can paint (121 CSS px with both up): the
+ * margin is for a band's copy growing, and the point of the constant is that a row
+ * below it is out of every band's reach rather than that the number is tight.
+ */
+const BAND_REACH_TOP_OFFSET = 200;
 
 /**
  * The acceptance claims, asserted per state, in the direction the tree under test
@@ -1066,13 +1236,36 @@ function assertState(name, m) {
 			continue;
 		}
 		const reachable = value.bandReachable;
-		if (reachable)
+		/*
+		 * WHERE the drift guard applies, and why it is now two rules rather than one.
+		 *
+		 * Its purpose is to stop a vacuous "not covered": a probe parked far below the
+		 * region's top cannot be reached by a band at the top, so reading
+		 * `coveredByBand: false` off it is a pass with nothing behind it (review round 1,
+		 * M1). That argument needs the probe to be one the SHELL pins - and the two
+		 * anchors the shell pins (`chatSearch` at 48 CSS px and `chatListHeader` at 14.25,
+		 * both measured in every state of both runs) keep that offset by layout.
+		 *
+		 * The pane's own first row is NOT one of those. It is wherever the pane's CONTENT
+		 * puts it, and measured in two runs of the fixed tree it sits at 0 CSS px below
+		 * the region's top in the states where the pane paints a notice and at 374.3 and
+		 * 408.3 in the states where it has nothing else to say and CENTRES its statement.
+		 * So the guard's question ("did this probe drift?") has no answer for it: the same
+		 * probe moved 408 px between two states of one run without anything drifting.
+		 *
+		 * What replaces the guard for that anchor is `inReach`: a band is at most 121 CSS
+		 * px tall, so a row further down than BAND_REACH cannot be covered by one and
+		 * nothing is read off it; where it IS in reach, it is asserted like any other
+		 * anchor, in both directions. Its offset stays recorded per state either way.
+		 */
+		const inReach = Math.abs(value.relativeToRegion) <= BAND_REACH_TOP_OFFSET;
+		if (reachable && pinnedAnchor(anchor) && m.bandCount > 0)
 			check(
-				`${name}: anchor ${anchor} is band-reachable (not a drifted probe)`,
-				Math.abs(value.relativeToRegion) <= 200,
+				`${name}: anchor ${anchor} keeps its offset (not a drifted probe)`,
+				inReach,
 				`${value.relativeToRegion} CSS px below the region's top`,
 			);
-		if (expectUncovered && reachable)
+		if (expectUncovered && reachable && inReach)
 			check(
 				`${name}: anchor ${anchor} is not covered`,
 				!value.coveredByBand,
@@ -1080,7 +1273,7 @@ function assertState(name, m) {
 					? `covered by ${JSON.stringify(value.coveredBy)}`
 					: "clear",
 			);
-		if (!expectUncovered && m.bandCount > 0 && reachable)
+		if (!expectUncovered && m.bandCount > 0 && reachable && inReach)
 			check(
 				`${name}: anchor ${anchor} is covered (pre-fix tree)`,
 				value.coveredByBand,
@@ -1126,11 +1319,19 @@ function assertState(name, m) {
 			`${m.bandTotal}`,
 		);
 	}
-	if (expectUncovered && m.bandCount > 0 && m.pixels && !m.pixels.error)
+	/*
+	 * The designer's pixel claim, in the direction the tree under test should satisfy
+	 * it: the rows the bands declare are the bands' paint, edge to edge, and the app's
+	 * first painted row is the row after them.
+	 */
+	if (expectUncovered && m.bandCount > 0 && m.paint && !m.paint.error)
 		check(
-			`${name}: the app's first painted row starts at the bands' device height`,
-			m.pixels.firstRowsBelowShiftEqual,
-			`shift ${m.pixels.shiftRows} device rows, first divergent row ${m.pixels.firstDivergentRow}`,
+			`${name}: the bands' declared rows are all band paint, and the app's first painted row is the row after them`,
+			m.paint.rowsNotBandPaint === 0 &&
+				m.paint.firstRowPastBandsIsBandPaint === false,
+			`${m.paint.rowsNotBandPaint} of ${m.paint.rowsChecked} rows are not band paint` +
+				`; first row past the bands is band paint: ${m.paint.firstRowPastBandsIsBandPaint}` +
+				`; grounds ${m.paint.grounds.join(",")}, rules ${m.paint.rules.join(",")}`,
 		);
 }
 
@@ -1366,8 +1567,29 @@ try {
 	 * driven) and it answers the "with the wizard up" half: the band is IN FLOW now,
 	 * so the scrim dims it like everything else rather than the band painting over
 	 * the scrim.
+	 *
+	 * WHY THE DAEMON COMES BACK, WITH ONE CAPABILITY CENSUS LEFT IN: the wizard is not
+	 * a stored preference - `useCheckFirstTimeUser` decides it from the backend's
+	 * provider CENSUS, and the store's completion flag only says the user has seen it
+	 * before. Un-seeding the store at this point in the run (the daemon is DOWN here -
+	 * that is what the connectivity band is) leaves the app unable to decide anything:
+	 * no capabilities means no census, and the legacy fallback reads a route the
+	 * desktop bearer 503s, so the decision stays "pending" and no wizard ever opens.
+	 * Measured: the state waited its full 150 s with `onboardingVisible: false` and
+	 * killed the run. So the stub is started again - answering `/v1/auth/providers`
+	 * with an empty census, which is "first_time" - while the feature set stays
+	 * NARROWED, which keeps the compatibility band up. That is the pair this state is
+	 * about: a band, and the scrim over it. `auth` is the one capability the narrowed
+	 * set keeps, because without it the census is not even asked for.
 	 */
 	if (wanted("scrim")) {
+		state.features = { ...PARTIAL_FEATURES, auth: 1 };
+		startStub();
+		recordFile = writeRecord(process.pid);
+		heartbeatArmed = true;
+		heartbeat = setInterval(() => {
+			if (heartbeatArmed) writeRecord(process.pid);
+		}, 5_000);
 		await evaluate(`(() => {
 			localStorage.removeItem("onboarding-storage");
 			location.reload();
