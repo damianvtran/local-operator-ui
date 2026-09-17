@@ -268,8 +268,7 @@ const CURRENT = [
 		 * predicate is declared once now (review round 1, A7) and the row reads the
 		 * name, so the element to resolve is the one carrying `rowStyle`.
 		 */
-		expression: () =>
-			expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
+		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
 		stubs: {
 			rowStyle,
 			rowCurrent,
@@ -667,7 +666,7 @@ test("the selected row's mark and its aria-current read the same terms", () => {
 		source.includes(declaration),
 		`the session row's current-row predicate is no longer one named read, so the wrapper, the button and the mark can disagree about it:\n${declaration}`,
 	);
-	const ariaCurrent = "aria-current={current ? \"page\" : undefined}";
+	const ariaCurrent = 'aria-current={current ? "page" : undefined}';
 	assert.ok(
 		source.includes(ariaCurrent),
 		`aria-current no longer reads the named predicate, so it and the row's ground can disagree:\n${ariaCurrent}`,
@@ -677,7 +676,10 @@ test("the selected row's mark and its aria-current read the same terms", () => {
 	 * and the mark's `current` prop. Asserted as a COUNT rather than by anchor,
 	 * because the point is that nothing writes a second predicate.
 	 */
-	const reads = source.slice(source.indexOf(declaration)).match(/current &&|current=\{|current \?/g) ?? [];
+	const reads =
+		source
+			.slice(source.indexOf(declaration))
+			.match(/current &&|current=\{|current \?/g) ?? [];
 	assert.ok(
 		reads.length >= 3,
 		`the named predicate feeds fewer than three elements (${reads.length}), so one of the row's grounds or the mark is deciding for itself:\n${JSON.stringify(reads)}`,
