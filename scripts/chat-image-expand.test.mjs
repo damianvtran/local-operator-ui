@@ -804,7 +804,7 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 		assert.equal(
 			trigger.getAttribute("data-state"),
 			"closed",
-			"while the menu is open the Tooltip's `data-state` is still \"closed\" on that same node, which is why keying the reveal on it could never fire (U3-1, Q3-1)",
+			'while the menu is open the Tooltip\'s `data-state` is still "closed" on that same node, which is why keying the reveal on it could never fire (U3-1, Q3-1)',
 		);
 		// and the menu it claims to have opened is really on the page, not just an
 		// attribute flip: four entries, in the portal, where Radix puts them.

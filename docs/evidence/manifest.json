@@ -2,7 +2,7 @@
   "head": "8eff5b251f5afca7205be62edd4ad6b55edd65fb",
   "headNote": "RE-DERIVED FOR THIS CHANGE ON EVERY FOLD, AND THIS IS THE FIFTH: `srcTree`, `scriptsTree`, `frames` and `surfaces` describe the tree these frames ship in, read from that tree rather than carried forward. The fold onto `cfc28c817` moved `src/` by 16 files and `scripts/` by 7 - this rig among them - so the frames were RE-TAKEN rather than re-stamped, and the per-frame comparison against the previous capture is in `docs/evidence/chat-image-expand/README.md`: the re-take section, its folds 2-4 table, and its fold-5 section, which also carries the trigger-lane measurement that settles round 3's U3-1/Q3-1. Read those before trusting any count here.",
   "srcTree": "7f072d0da60d623d83d0d5f2e7bf7a3d2f73a928",
-  "scriptsTree": "c743abafb2cbadd0db2ac282649308e0a670b530",
+  "scriptsTree": "9e49acff286426d9bc6a09c6d7a35b30689e8a8e",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-15T22:41:55.255Z",
   "frames": 4599,
