@@ -1,3 +1,4 @@
+import { openConversation } from "@features/chat/open-conversation";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import {
@@ -293,20 +294,15 @@ export const CommandPalette: FC = () => {
 					return;
 				case "session": {
 					/*
-					 * Committed first, then validated: the same order the sidebar's
-					 * rows use, so a conversation opens over the transcript that is
-					 * already on screen instead of freezing the panel until the
-					 * store's read answers. A read that refuses leaves the user where
-					 * they were, and the store's own navigation sentence says so.
+					 * The palette's finger on the switch: `openConversation` owns the
+					 * rule (URL written with the commit rather than behind the guard
+					 * read) for all three entrances, and this one was a second copy of
+					 * the deferral the sidebar's rows had - the same race, reached by
+					 * typing instead of clicking.
 					 */
 					const { sessionId } = item.target;
 					closeCommandPalette();
-					useCanonicalSessionsStore
-						.getState()
-						.openSession(sessionId)
-						.then((opened) => {
-							if (opened) navigate(`/chat/${sessionId}`);
-						});
+					void openConversation(navigate, sessionId);
 					return;
 				}
 				case "command":
