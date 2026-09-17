@@ -1289,7 +1289,16 @@ const PressUpdateServer = ({
 	const [ready, setReady] = useState(false);
 	useLayoutEffect(() => {
 		if (variant === "source-build") {
-			window.triggerBackendUpdateSourceBuild = outcome === "inflight";
+			/*
+			 * THE OFFER IS RAISED FOR BOTH OUTCOMES. The press this fixture makes is
+			 * only possible when a managed offer is on screen - "Update server" is the
+			 * button the source-build payload renders - so the failure variant has to
+			 * raise it too and then let the press fail, which is the sequence the app
+			 * produces. (Raising it only for the in-flight variant left the failure
+			 * story with no button to press, so its `capturePending` gate never
+			 * cleared and the frame timed out: measured, 3 elements drawn, 60s.)
+			 */
+			window.triggerBackendUpdateSourceBuild = true;
 			window.triggerBackendUpdateSourceBuildInFlight = outcome === "inflight";
 			window.triggerBackendUpdateSourceBuildFailed = outcome === "failed";
 		} else if (variant === "orphan") {
