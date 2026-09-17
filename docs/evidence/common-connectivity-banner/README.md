@@ -45,6 +45,7 @@ content, and the longest banner (two sentences) is what made the difference.
 | `wedged` | "A Local Operator server is running on this machine and this app is not attached to it." + main's own sentence about the path taken | warning |
 | `unattachable` | the same sentence + main's spawn-gate detail: the path taken (this app was not given the key to that server), that no second daemon was started, and that it keeps probing for one it can open | warning |
 | `no-bridge` | nothing — **no banner renders**: with no desktop bridge the health query has no answer and the hook's own fallback reads the server as online (design round 2, D12) | — |
+| `internet-offline-confirmed` | "You are offline." plus the app's own tail (the configured hosting provider named when main knows one, otherwise "This app's updates require an internet connection.") — and it paints only after the negative reading has persisted across its grace, never on the first unconfirmed sample (`@shared/utils/offline-confirmation`) | warning |
 
 Three things the table is measuring, each of which was a finding in round 1:
 

@@ -5,7 +5,12 @@ import {
 	Button,
 } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
-import { useEffect, useState } from "react";
+import {
+	msUntilOfflineReportable,
+	noOfflineConfirmation,
+	observeConnectivityReading,
+} from "@shared/utils/offline-confirmation";
+import { useEffect, useRef, useState } from "react";
 import { serverBannerCopy } from "../../../../../shared/backend-status";
 
 /**
@@ -26,6 +31,12 @@ export const ConnectivityBanner = ({
 	const {
 		hostingProvider,
 		shouldCheckInternet,
+		/*
+		 * The internet reading itself, not only the issue derived from it: the
+		 * confirmation rule folds readings in, and a surface given only the derived
+		 * boolean could not tell one sample from two.
+		 */
+		isOnline,
 		hasConnectivityIssue,
 		connectivityIssue,
 		serverSnapshot,
@@ -33,23 +44,23 @@ export const ConnectivityBanner = ({
 		refetchInternetStatus,
 	} = useConnectivityStatus();
 
-	// State to track if the banner should be shown
-	const [showBanner, setShowBanner] = useState(false);
 	// State to track if the internet connectivity banner has been dismissed
 	const [internetBannerDismissed, setInternetBannerDismissed] = useState(false);
-
-	// Update banner visibility when connectivity status changes
-	useEffect(() => {
-		// Always show banner if there's a connectivity issue, even during initial loading
-		// For internet issues, respect the dismissed state
-		if (connectivityIssue === "internet_offline") {
-			setShowBanner(hasConnectivityIssue && !internetBannerDismissed);
-		} else {
-			// For server issues, always show
-			setShowBanner(hasConnectivityIssue);
-		}
-	}, [hasConnectivityIssue, connectivityIssue, internetBannerDismissed]);
-
+	/*
+	 * The run of negative internet readings, and whether it has held long enough
+	 * to be reported.
+	 *
+	 * WHY THE BANNER IS NO LONGER PAINTED STRAIGHT FROM THE READING. It used to
+	 * be set true by a bare `window` `offline` event as well as by the poll, and
+	 * Chromium fires that event on any connectivity TRANSITION while traffic is
+	 * still flowing - so one sample of a signal that answers about the local
+	 * interface, not the network, made the app claim a person's machine was
+	 * disconnected. The rule now lives in `@shared/utils/offline-confirmation`:
+	 * the first negative reading starts a grace, and only the same answer after
+	 * it may be reported. A positive reading still clears it immediately.
+	 */
+	const offlineConfirmationRef = useRef(noOfflineConfirmation());
+	const [internetOfflineReported, setInternetOfflineReported] = useState(false);
 	// Reset dismissed state when connectivity status changes
 	useEffect(() => {
 		// If connectivity is restored or changes, reset the dismissed state
@@ -58,30 +69,88 @@ export const ConnectivityBanner = ({
 		}
 	}, [hasConnectivityIssue, connectivityIssue]);
 
-	// Also check navigator.onLine directly to immediately show banner when offline
+	/*
+	 * Also check navigator.onLine directly to start the confirmation immediately.
+	 *
+	 * This effect used to PAINT the banner from the event (`setShowBanner(true)`),
+	 * and its `handleOnline` cleared the banner unconditionally - which hid a
+	 * SERVER-offline banner until the next poll, because one boolean was asked
+	 * to stand for two different claims. It now only advances the internet
+	 * reading's own confirmation: the `offline` event reaches this component
+	 * through the hook's listener as a negative reading, which starts the grace
+	 * exactly as a poll that read offline would, and going online clears only
+	 * what this effect owns. A server that has stopped is reported by the
+	 * server's own state, untouched by anything here.
+	 */
 	useEffect(() => {
-		const handleOffline = () => {
-			if (shouldCheckInternet) {
-				setShowBanner(true);
-				// Reset dismissed state when going offline
-				setInternetBannerDismissed(false);
-			}
+		const read = () =>
+			observeConnectivityReading(offlineConfirmationRef.current, {
+				isOnline: navigator.onLine,
+				at: Date.now(),
+			});
+
+		const advance = () => {
+			const decision = read();
+			offlineConfirmationRef.current = decision.state;
+			/*
+			 * The READING's verdict, in both directions.
+			 *
+			 * This used to set the banner only when `decision.report` was true, so a
+			 * positive reading reset the confirmation state and left the banner
+			 * standing until the next poll happened to re-render it - the opposite of
+			 * the module's own "a positive reading clears immediately" (review round
+			 * 1, R7). A `false` here is the arm that takes the claim back.
+			 */
+			setInternetOfflineReported(decision.report);
 		};
 
-		const handleOnline = () => {
-			setShowBanner(false);
-			// Reset dismissed state when going online
-			setInternetBannerDismissed(false);
-		};
-
-		window.addEventListener("offline", handleOffline);
-		window.addEventListener("online", handleOnline);
+		window.addEventListener("offline", advance);
+		window.addEventListener("online", advance);
 
 		return () => {
-			window.removeEventListener("offline", handleOffline);
-			window.removeEventListener("online", handleOnline);
+			window.removeEventListener("offline", advance);
+			window.removeEventListener("online", advance);
 		};
-	}, [shouldCheckInternet]);
+	}, []);
+
+	/*
+	 * The poll's own readings, and the confirming re-read that follows the grace.
+	 *
+	 * `isOnline` is the hook's answer, which the offline/online events already
+	 * feed (the hook listens for both), so the event path and the poll path obey
+	 * one rule and neither can paint on its own.
+	 */
+	useEffect(() => {
+		const decision = observeConnectivityReading(
+			offlineConfirmationRef.current,
+			{ isOnline, at: Date.now() },
+		);
+		offlineConfirmationRef.current = decision.state;
+		setInternetOfflineReported(decision.report);
+		// A positive reading is the answer, and a reported one needs no re-read.
+		if (isOnline || decision.report) return undefined;
+
+		/*
+		 * ONE NEGATIVE READING IS NOT EVIDENCE: ask again once the grace has
+		 * passed and require the same answer. The delay is the REMAINING grace
+		 * rather than the whole of it, so a re-render that re-runs this effect
+		 * shortens the wait instead of restarting it.
+		 */
+		const id = window.setTimeout(
+			() => {
+				void refetchInternetStatus().then((answer) => {
+					const confirmed = observeConnectivityReading(
+						offlineConfirmationRef.current,
+						{ isOnline: answer.data !== false, at: Date.now() },
+					);
+					offlineConfirmationRef.current = confirmed.state;
+					setInternetOfflineReported(confirmed.report);
+				});
+			},
+			msUntilOfflineReportable(offlineConfirmationRef.current, Date.now()),
+		);
+		return () => window.clearTimeout(id);
+	}, [isOnline, refetchInternetStatus]);
 
 	// Auto-check server connectivity on mount if enabled
 	useEffect(() => {
@@ -128,15 +197,25 @@ export const ConnectivityBanner = ({
 	// Handle dismiss button click (only for internet connectivity issues)
 	const handleDismiss = () => {
 		setInternetBannerDismissed(true);
-		setShowBanner(false);
 	};
+
+	/*
+	 * What the banner may say, decided rather than stored.
+	 *
+	 * The INTERNET claim waits for the confirmation above; the SERVER claim is
+	 * untouched by anything in this file and still paints the moment main
+	 * reports the daemon gone - a server that stopped is a fact, not a sample.
+	 */
+	const isInternetIssue = connectivityIssue === "internet_offline";
+	const showBanner = isInternetIssue
+		? internetOfflineReported && !internetBannerDismissed
+		: hasConnectivityIssue;
 
 	// If no connectivity issues or still loading, don't show anything
 	if (!showBanner) {
 		return null;
 	}
 
-	const isInternetIssue = connectivityIssue === "internet_offline";
 	/*
 	 * The server-side sentences come from the shared contract, not from this
 	 * component: `detached`, `wedged` and the three paths into them each need a
@@ -188,7 +267,16 @@ export const ConnectivityBanner = ({
 					<div className="flex min-w-0 flex-col gap-1">
 						<AlertDescription>
 							{isInternetIssue
-								? `You are offline. Your configured hosting provider (${hostingProvider}) requires an internet connection.`
+								? /*
+									 * The provider name is interpolated only when there IS one. A
+									 * config with no `hosting` value rendered "Your configured
+									 * hosting provider () requires an internet connection" - an
+									 * empty slot in the middle of a sentence, which QA saw in the
+									 * real app rather than in a fixture (QA round 1, Q3) - and the
+									 * sentence is about the machine's connection either way, so
+									 * the clause is simply absent when it has nothing to name.
+									 */
+									`You are offline. ${hostingProvider ? `Your configured hosting provider (${hostingProvider}) requires` : "This app's updates require"} an internet connection.`
 								: (serverIssue?.title ??
 									"A connectivity issue has been detected.")}
 						</AlertDescription>
