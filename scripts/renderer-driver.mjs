@@ -4500,10 +4500,14 @@ async function sceneComposer(cdp) {
 		 * a test door.
 		 */
 		const visible = async (selector) =>
-			cdp.evaluate(`Boolean(document.querySelector(${JSON.stringify(selector)}))`);
+			cdp.evaluate(
+				`Boolean(document.querySelector(${JSON.stringify(selector)}))`,
+			);
 		const row = '[data-tour-tag="chat-session-row"]';
 		if (await visible('[data-tour-tag="chat-all-chats"]')) {
-			await verb(cdp, "press", { selector: '[data-tour-tag="chat-all-chats"]' });
+			await verb(cdp, "press", {
+				selector: '[data-tour-tag="chat-all-chats"]',
+			});
 		}
 		/*
 		 * AND THE ROW IS WAITED FOR, which the first form of this path got wrong: the
