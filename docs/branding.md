@@ -709,9 +709,23 @@ new chat`. Nothing about that pane may contradict it — no "Start of
 conversation" over a transcript that is simply this window's own memory, no
 footer timestamp under a conversation that is gone, and the composer says
 `This conversation is gone` rather than `Agent is busy`, which was a false
-statement about a session that does not exist. A disabled composer STEPS COLOUR
-(`disabled:text-ink-disabled`, § 6) rather than fading, because otherwise the
-only signal is `cursor: not-allowed` after the user has already typed.
+statement about a session that does not exist. A composer that REFUSES input
+STEPS COLOUR (`read-only:text-ink-disabled`, § 6) rather than fading, because
+otherwise the only signal is `cursor: not-allowed` after the user has already
+typed. It refuses with `readOnly` and not `disabled`, because a disabled control
+cannot refuse a keystroke without also dropping the reader's place in it: the box
+keeps FOCUS and the insertion position, and the words the reader was in the
+middle of stay readable, selectable and copyable — the retrieval a disabled box
+made impossible in the one state that also tells them the conversation is gone.
+The pane's own sentence for the state is tied to the box
+(`aria-describedby`), because the placeholder that states it is painted only
+while the box is empty, which is not the state this exists for. Claim focus and
+retrieval here; the visible proof of the state is the colour step and the focus
+ring, because a painted caret is not available as evidence of it (measured — the
+refused box's frames are pixel-identical over 840 ms, and moving the insertion
+point inside a focused read-only textarea changes 0 px against 137 px in the
+editable one, and a frame cannot separate `read-only` from a window that is not
+active).
 
 **A burst is one banner, and its click is the catalogue.** When several
 completions land in one tick the backend caps the per-tick banners and publishes
