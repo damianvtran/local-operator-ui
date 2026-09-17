@@ -115,6 +115,8 @@ const ANNOUNCEMENT: LiveEvent = {
 	not_run_reason: null,
 };
 const VERDICT = SEED[0];
+/** The turn's own end, with no abort: the case that used to paint a tick. */
+const TURN_END: LiveEvent = { type: "agent_end", generation: 1, aborted: false };
 /** The same call with an EMPTY payload: a parked call that composed nothing. */
 const EMPTY_VERDICT: LiveEvent = { ...VERDICT, argument_bytes: 0 };
 
@@ -302,6 +304,26 @@ export const AfterQueuedSeeded: Story = {
 			waiting={true}
 			caption="After, a seeded frame whose dictation is over and which has no row on screen: refused as well, so nothing claims the reader's arrival as the call's time."
 			transcript={afterFix([QUEUED])}
+		/>
+	),
+};
+
+/**
+ * The THIRD ending: the turn died while the call was still being dictated.
+ *
+ * No verdict arrives for this — the harness only leaves one for a call it
+ * refused — and the row used to take the generic turn-end settlement, which on a
+ * clean end paints a SUCCESS tick on a call no tool ever received. It now takes
+ * the TUI's compose record (`never sent · N composed`) with the interrupt's own
+ * state, which is what `ToolCard.mark_interrupted` does for a card that was
+ * still composing.
+ */
+export const AfterTurnDeath: Story = {
+	render: () => (
+		<Frame
+			waiting={false}
+			caption="After, the turn ending on a call still being dictated: `never sent · 2.0 KB composed`, no clock, no duration, and the interrupt's own glyph — not the tick a clean end used to paint."
+			transcript={applyEvent(announced(), TURN_END, ARRIVAL_MS)}
 		/>
 	),
 };

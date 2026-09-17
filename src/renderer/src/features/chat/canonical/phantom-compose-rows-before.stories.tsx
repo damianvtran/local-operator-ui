@@ -92,6 +92,8 @@ const ANNOUNCEMENT: LiveEvent = {
 	not_run_reason: null,
 };
 const VERDICT = SEED[0];
+/** The turn's own end, with no abort: the case that used to paint a tick. */
+const TURN_END: LiveEvent = { type: "agent_end", generation: 1, aborted: false };
 const QUEUED_ANNOUNCEMENT: LiveEvent = {
 	...QUEUED,
 	argument_bytes: 40,
@@ -185,6 +187,28 @@ export const QueuedSeeded: Story = {
 		<Frame
 			caption="Before, a seeded frame whose dictation is over and which has no row on screen: a banded `composing` row is created at the reader's own arrival."
 			transcript={beforeFix([QUEUED])}
+		/>
+	),
+};
+
+/**
+ * The THIRD ending, which this tree had no state for either: a turn ending on a
+ * call that was still being dictated.
+ *
+ * The generic turn-end settlement marks any non-`done` row settled, and this
+ * tree's ladder then reads a row with no output, no duration and no stop as a
+ * row that SUCCEEDED — a tick on a call no tool ever received. Nothing in the
+ * frames argues with it: the harness emits no verdict for a call the turn killed.
+ */
+export const TurnDeath: Story = {
+	render: () => (
+		<Frame
+			caption="Before, the turn ending on a call still being dictated: the row is marked settled, and with no output, no duration and no stop the ladder paints it as a success."
+			transcript={applyEvent(
+				applyEvent(withPage(), ANNOUNCEMENT, ARRIVAL_MS - 30_000),
+				TURN_END,
+				ARRIVAL_MS,
+			)}
 		/>
 	),
 };
