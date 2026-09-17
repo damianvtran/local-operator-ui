@@ -554,6 +554,28 @@ export const STORIES = [
 	/* The badge at its cap (design round 1, D5). */
 	["browser-pane--trigger-at-cap", 560, 84],
 	/*
+	 * The chat header's whole action cluster, which is one control more than the
+	 * trigger frames above carry: the run trigger, the browser button and the canvas
+	 * button together, at the five spacing states the reservation is judged in.
+	 *
+	 * Its own surface rather than three more entries here, because these frames are
+	 * the pair a fix to the CLUSTER is reviewed against - `chat-header-cluster/` is
+	 * the fixed tree and `chat-header-cluster/before/` is the same stories rendered
+	 * by `origin/main`'s `chat-header.tsx` (see that set's declared source in the
+	 * manifest) - and a pair needs its own directory to be re-captured into.
+	 *
+	 * 560x84 is the size the trigger frames use, so a reviewer can put these beside
+	 * those. `no-approval` is the operator's own state: no badge drawn, and the
+	 * asymmetry visible as 8px against 12px before the fix.
+	 */
+	["chat-header-cluster--no-approval", 560, 84],
+	["chat-header-cluster--one-approval", 560, 84],
+	["chat-header-cluster--at-cap", 560, 84],
+	["chat-header-cluster--trigger-dot", 560, 84],
+	/* The badge drawn with the canvas button unmounted: the reservation's room is
+	   owed for the box that button owns, so this state must stay at the 8px step. */
+	["chat-header-cluster--canvas-open-badge", 560, 84],
+	/*
 	 * The strip's own arithmetic at the pane's width, and the route's strip at the
 	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is
 	 * the claim: four tabs fit a 640 pane whole and six do not, and where they do not
@@ -4276,7 +4298,10 @@ const main = async () => {
 	 * record":
 	 *
 	 *   - `head`, `headNote` and every `partialCapture` field describe THIS
-	 *     branch's own pass. Main's values for them name main's pass, and taking
+	 *     branch's own pass - but `countsMean` is NOT in this group: it restates
+	 *     `frames`/`surfaces` in prose, and the ninth fold's first exercise of this
+	 *     rule carried a stale count through it because the two groups both listed
+	 *     it. Main's values for them name main's pass, and taking
 	 *     them sends a verifier to a tree that does not carry this branch's frames
 	 *     - review rounds 4, 5 and 6 each found that, the third time inside the
 	 *     round that had just fixed it. Keep this branch's.
@@ -4284,8 +4309,12 @@ const main = async () => {
 	 *     sides, because the merged tree carries both; `refreshedFrames` is then
 	 *     re-derived against `HEAD` rather than added up, since the gate asks
 	 *     those fields about the tree that ships.
-	 *   - `frames`, `surfaces`, `themes`, `srcTree` and `scriptsTree` are
-	 *     RE-DERIVED from the merged tree, never taken from either side.
+	 *   - `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and `scriptsTree`
+	 *     are RE-DERIVED from the merged tree, never taken from either side.
+	 *   - and no field that SPELLS OUT WHAT A CITATION NAMES is carried from main's
+	 *     side under any name: main's manifest still has `refreshedAtHeadNote`, the
+	 *     spelling this branch deleted, and carrying main's keys this branch lacks
+	 *     re-introduces it - found the first time this rule was exercised.
 	 *
 	 * The gate cannot catch a `head` that names the wrong tree, and BOTH halves of
 	 * what it does ask are worth naming so this is auditable rather than a summary:
