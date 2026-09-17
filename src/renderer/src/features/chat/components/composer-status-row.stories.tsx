@@ -39,6 +39,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
 import { cn } from "@shared/lib/utils";
+import type { DesktopLoopState } from "../../../../../../src/shared/desktop-control-contract";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
 import { ComposerStatusRow } from "./composer-status-row";
 import { type RunDetails, deriveRunDetails } from "./run-details";
@@ -50,8 +51,31 @@ import { type RunDetails, deriveRunDetails } from "./run-details";
  * device: `CanonicalFrontendState` carries around thirty required fields and this
  * row touches one of them.
  */
-const frontend = (goal: string): CanonicalFrontendState =>
-	({ goal }) as CanonicalFrontendState;
+const frontend = (
+	goal: string,
+	loop: DesktopLoopState | null = null,
+): CanonicalFrontendState => ({ goal, loop }) as CanonicalFrontendState;
+
+/**
+ * One wire loop state, in `DesktopLoopState`'s own shape.
+ *
+ * Every field the row reads is a parameter with a resting value, so a band says only
+ * what it is about: the STATUS is the affordance's whole input, `completed`/
+ * `iterations` are the clause's progress, and `goal`/`reason` are carried because the
+ * wire carries them (the row deliberately prints neither — see
+ * `docs/composer-status-tabs.md` § 13).
+ */
+const loopOf = (
+	status: DesktopLoopState["status"],
+	extra: Partial<DesktopLoopState> = {},
+): DesktopLoopState => ({
+	status,
+	completed: 0,
+	iterations: null,
+	goal: "",
+	reason: "",
+	...extra,
+});
 
 /** A plan in the wire shape the backend publishes: phases holding items. */
 const planOf = (statuses: string[]): Array<Record<string, unknown>> => [
@@ -584,20 +608,48 @@ const RowFacts = ({ children }: { children: React.ReactNode }) => {
 				 */
 				const goalItem = row.querySelector<HTMLElement>("[aria-expanded]");
 				const goalText = goalItem?.querySelector<HTMLElement>("span.truncate");
+				/*
+				 * The DISMISS controls' boxes, in the order they appear, which is the number
+				 * this row's two affordances cost: they hold their box at rest so that a hover
+				 * cannot move the text beside them (`docs/composer-status-tabs.md` § 12), and a
+				 * held box is invisible in a still. Printing the widths is the only way the
+				 * frame can say how wide the thing nobody can see is.
+				 */
+				const dismissWidths = [
+					...row.querySelectorAll<HTMLElement>(
+						"[data-status-goal-dismiss], [data-status-loop-dismiss]",
+					),
+				].map((box) => `${Math.round(box.getBoundingClientRect().width)}px`);
 				const goal =
 					goalItem && goalText
 						? ` · goal ${Math.round(
 								goalItem.getBoundingClientRect().width,
 							)}px (text ${goalText.clientWidth}/${goalText.scrollWidth})`
 						: "";
+				/*
+				 * The CHIPS, counted by their own hooks rather than by `button`.
+				 *
+				 * It used to count buttons, which was the same number while every chip was a
+				 * button and nothing else was: the row now also carries one DISMISS control per
+				 * item that has one, so a button count would state a chip count that includes
+				 * controls a reader can see are not chips. The dismiss count is printed
+				 * BESIDE it instead, because holding an invisible box is exactly what those
+				 * controls do and the number is how a still can say how much room they hold.
+				 */
+				const chips = row.querySelectorAll(
+					"[aria-expanded], [data-status-plan], [data-status-wakes], [data-status-subagents], [data-status-jobs], [data-status-loop]",
+				).length;
+				const dismisses = row.querySelectorAll(
+					"[data-status-goal-dismiss], [data-status-loop-dismiss]",
+				).length;
 				setFacts(
 					`${Math.round(
 						row.getBoundingClientRect().width,
 					)}px column · row ${Math.round(
 						row.getBoundingClientRect().height,
-					)}px tall · overflowX ${row.scrollWidth - row.clientWidth}px · ${
-						row.querySelectorAll("button").length
-					} chips${goal}`,
+					)}px tall · overflowX ${row.scrollWidth - row.clientWidth}px · ${chips} chips · ${dismisses} dismiss${
+						dismissWidths.length > 0 ? ` (${dismissWidths.join("+")})` : ""
+					}${goal}`,
 				);
 			}
 			if (!cancelled) {
@@ -971,6 +1023,161 @@ export const WakeWidths: Story = {
 					width={FLOOR_COLUMN_PX}
 					label="172 (the app's real floor): the row stacks, and the chips follow the goal"
 					frontend={frontend(SHORT_GOAL)}
+					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * The goal chip's DISMISS: the `X` and its word, held at rest and revealed by hover
+ * or by focus.
+ *
+ * The state a still can carry is the RESTING one — `:hover` and `:focus-within` are
+ * browser state and no story can force either — so this story pairs a resting band
+ * with the two rig inputs that produce the revealed states
+ * (`{ hover }` moves a real pointer, `{ tabTo }` presses the real Tab key), and the
+ * three frames are read together: `goal-clear-hovered/`, `goal-clear-focused/` and
+ * `goal-clear-dismiss-focused/`.
+ *
+ * What the resting band is FOR, and it is the half a hover frame cannot show: the
+ * control is invisible and STILL THERE, holding its box, so the chip's snippet does
+ * not move under the pointer when the affordance appears (`branding.md` § 5: hover is
+ * a colour step). The band's own numbers (`RowFacts`) print the goal item's width
+ * against the snippet's `clientWidth`/`scrollWidth`, which is the truncation that
+ * the held box costs, as a number rather than as an ellipsis.
+ *
+ * The last two bands are the STACKED arrangement (240px and the app's real 172px
+ * column floor), where the word is dropped and the X is what is left: the affordance
+ * has to survive the one width where the row has least room, and the accessible name
+ * is unchanged there.
+ */
+export const GoalClear: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					label="The goal's dismiss at rest: nothing painted, its box held so hover cannot move the snippet"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+			<Band
+				label="The goal alone on the row: the control is still at the item's trailing edge, not beside the words"
+				frontend={frontend(SHORT_GOAL)}
+				runDetails={null}
+			/>
+			<RowFacts>
+				<Band
+					label="A long goal with a plan: the held box is what the snippet yields to, and the count does not move"
+					frontend={frontend(LONG_GOAL)}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={240}
+					label="240: the goal keeps its line, and the word is dropped while the X and its name stay"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={FLOOR_COLUMN_PX}
+					label="172 (the app's real floor): the row stacks, the chip keeps the row's width, nothing overflows"
+					frontend={frontend(LONG_GOAL)}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * The LOOP chip: the sixth chip, its STOP/CLEAR affordance, and the two absences.
+ *
+ * Seven bands, and the pair structure is the point rather than the count:
+ *
+ * 1. a loop alone — no goal, no plan — so the chip takes the row's content edge and
+ *    the first-chip rule falls to it;
+ * 2. the ordinary pair: a goal, a loop and the plan, which is the band the rig hovers
+ *    and focuses (`loop-clear-hovered/`, `loop-clear-focused/`);
+ * 3. `judging`, the wire's other moving state, where the clause prints its own word
+ *    and no figure;
+ * 4. `achieved` — SETTLED, so the same control says `Clear loop`;
+ * 5. `failed`, the second settled spelling, because the affordance reads the state and
+ *    not a count of successes;
+ * 6. the CONTROL band pair: `idle` beside no loop at all, which render the same
+ *    nothing — a session with no loop grows no chip, and `Loop: idle` is not a line
+ *    above anybody's composer;
+ * 7. the row at its WIDEST now: the goal, the loop and all four counts at 900px, with
+ *    its own numbers — the state the wrap and the ordinal first-chip rule have to
+ *    survive one chip further than `WakeChip` measured.
+ */
+export const LoopChip: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<Band
+				label="A loop alone: 2 of 5 turns, at the row's start, with its own affordance"
+				frontend={frontend(
+					"",
+					loopOf("running", { completed: 2, iterations: 5 }),
+				)}
+				runDetails={null}
+			/>
+			<Band
+				label="The pair: the goal, the loop and the plan — Stop loop while it moves"
+				frontend={frontend(
+					SHORT_GOAL,
+					loopOf("running", { completed: 2, iterations: 5 }),
+				)}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="Judging: the same chip, the other moving state, and no figure beside the word"
+				frontend={frontend(SHORT_GOAL, loopOf("judging", { completed: 5 }))}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="Settled: the loop met the goal, and the control now says Clear loop"
+				frontend={frontend(SHORT_GOAL, loopOf("achieved", { completed: 5 }))}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="Settled, the other spelling: a loop that failed is cleared, not stopped"
+				frontend={frontend(SHORT_GOAL, loopOf("failed", { completed: 3 }))}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="The control: an idle loop draws no chip at all"
+				frontend={frontend(SHORT_GOAL, loopOf("idle"))}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="The control: the same session with the field absent, which is the same absence"
+				frontend={frontend(SHORT_GOAL)}
+				runDetails={IN_FLIGHT}
+			/>
+			<RowFacts>
+				<Band
+					label="All six chips at 900: the goal, the loop and four counts on one line"
+					frontend={frontend(
+						SHORT_GOAL,
+						loopOf("running", { completed: 2, iterations: 5 }),
+					)}
+					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={FLOOR_COLUMN_PX}
+					label="172 (the app's real floor): six chips stacked, the loop's own line under the goal"
+					frontend={frontend(
+						SHORT_GOAL,
+						loopOf("running", { completed: 2, iterations: 5 }),
+					)}
 					runDetails={ALL_FIVE}
 				/>
 			</RowFacts>

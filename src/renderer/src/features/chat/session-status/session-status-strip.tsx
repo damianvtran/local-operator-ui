@@ -230,8 +230,17 @@ export const READING_BUTTON = cn(
 	"focus-visible:outline-offset-1!",
 );
 
-/** The inert form, for a reading with nothing to open. */
-const READING_LABEL = cn(READING_BOX, "cursor-default text-ink-dim");
+/**
+ * The inert form, for a reading with nothing to open.
+ *
+ * EXPORTED beside `READING_BUTTON` and for the same reason: it is the one box a
+ * chip on the composer's status row wears when the chip states a fact rather
+ * than opening something, and a restated class string is how the loop chip below
+ * would drift into a second readout ink and a second cursor rule
+ * (`docs/composer-status-tabs.md` § 6.1). The name stays the readings' because
+ * that is where the box was authored; what is shared is the box.
+ */
+export const READING_LABEL = cn(READING_BOX, "cursor-default text-ink-dim");
 
 /**
  * A snapshot that has measured nothing, for a pane that has no snapshot yet.
