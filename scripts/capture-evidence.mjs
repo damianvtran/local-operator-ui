@@ -2349,6 +2349,7 @@ export const STORIES = [
 	["chat-phantom-compose-rows--after-settled-narrow", 420, 800],
 	["chat-phantom-compose-rows--after-queued", 1280, 800],
 	["chat-phantom-compose-rows--after-queued-seeded", 1280, 800],
+	["chat-phantom-compose-rows--after-turn-death", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin-open", 1280, 800],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
