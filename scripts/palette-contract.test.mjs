@@ -227,6 +227,17 @@ test("the bands are in flow, and the region keeps the window minus their height"
 	 * band's own class attribute is not positioned, the region below them is
 	 * `flex-1 min-h-0`, and the two bands are the shell root's first children.
 	 */
+	/*
+	 * THE REACH OF THIS, which is a literal class attribute and nothing else (review
+	 * round 2, F5). `className="..."` is what it reads, so a band that took its
+	 * positioning through `cn(...)` - this repo's route for conditional classes - would
+	 * satisfy this assertion without carrying the class in an attribute at all. That is
+	 * complete TODAY and only today: both band files use literal class names (0 `cn(`
+	 * calls), and the day one of them grows a conditional class this assertion, the
+	 * palette's level comparison and the first-children check below all need a scan of
+	 * the class surface rather than of the attribute. Stated here so the limit is read
+	 * beside the assertion rather than discovered when it matters.
+	 */
 	for (const file of BANDS) {
 		assert.doesNotMatch(
 			read(file),
