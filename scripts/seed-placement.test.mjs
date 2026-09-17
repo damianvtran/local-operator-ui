@@ -13,10 +13,16 @@ import { build } from "esbuild";
  * transcript's own last entry, so it is the newest 100 journal entries and it
  * ends at the final message. Everything below that message was therefore
  * injected by the SEED path — `applyLiveSeed` folds the snapshot's
- * `frontend.live_events` after the page — and `applyEvent` stamps a row it
- * creates with the clock it is handed while `upsert` APPENDS an unknown id. A
- * seed row the page does not name is painted after the page's tail whatever
- * time it really belongs to.
+ * `frontend.live_events` after the page — and `applyEvent` stamps the `ts` of a
+ * row it creates with the clock it is handed while `upsert` APPENDS an unknown
+ * id. A seed row the page does not name is painted after the page's tail
+ * whatever time it really belongs to.
+ *
+ * (`ts` is the field this file is about, and it IS still the caller's clock.
+ * One field on a tool `_start` frame is deliberately not: the row's own
+ * `startedAt` prefers the frame's `started_at_epoch`, so a viewer that resumes
+ * a RUNNING call counts from the call's real start rather than from its own
+ * arrival — see `transcript-reducer.test.mjs`'s resumed-clock cases.)
  *
  * THE FIXTURE IS THE REAL SESSION, not a hand-made one. Every half is derived
  * from the journal of `~/.local-operator/sessions/f91fbda61750/transcript.jsonl`
