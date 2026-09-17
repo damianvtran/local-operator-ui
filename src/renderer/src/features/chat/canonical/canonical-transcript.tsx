@@ -73,7 +73,7 @@ import {
 	AGENT_GUTTER,
 	MessageContainer,
 } from "../components/message-item/message-container";
-import { MessageTimestamp } from "../components/message-item/message-timestamp";
+import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
 import {
 	AgentQuestion,
@@ -337,50 +337,79 @@ const UserRow = memo(function UserRow({
 	);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
-			<div ref={turnRef} className="relative flex w-full justify-end">
-				<div
-					className={cn(
-						// `border-control`, not `hairline`. The bubble keeps its own
-						// ground (`surface`) on a column that is `canvas` for the working
-						// surface's sake (see chat-content.tsx), so the fill is a
-						// lightness step as well as this edge - but a step is not an
-						// edge, and this border is still the boundary the design contract
-						// asks for. Because the agent side has no bubble at all, the edge
-						// is also the whole visual distinction between the two speakers.
-						// Removing it would lose information, which is the contract's own
-						// test for a structural boundary, so it takes the role with the
-						// 3:1 floor rather than the decorative one with no floor.
-						"relative rounded-frame border border-control bg-surface text-ink break-words",
-						isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
-					)}
-				>
-					<div className={cn("relative", MEASURE)}>
-						{/* The quote a quoted turn was sent with, rendered as the same
-						    recessed block the composer stages it in - the reader sees one
-						    idiom for "this is quoted" whether it is pending or sent. */}
-						{replies.length > 0 && <ReplyPreview replies={replies} />}
-						<MarkdownRenderer content={remainingContent} />
-						{record.images.length > 0 && (
-							<div className={cn("mt-2 flex flex-col gap-2")}>
-								{record.images.map((image, index) => (
-									<CanonicalImage
-										key={image.id}
-										image={image}
-										scope={scope}
-										label={
-											record.images.length === 1
-												? "Attached image"
-												: `Attached image ${index + 1}`
-										}
-									/>
-								))}
-							</div>
+			{/*
+			 * The turn is a COLUMN - the bubble's row, then its stamp - and the stamp
+			 * is a sibling of the bubble rather than a line inside it.
+			 *
+			 * `items-end` on the column is what puts the stamp against the BUBBLE's
+			 * right edge: the bubble's row is justified to the same edge, so both
+			 * resolve to it, while an agent-side row's shared content box (§ 7's one
+			 * left rail and one right edge) is not where a reader looks for the time
+			 * of their own message. The measure of the bubble, not of the column, is
+			 * the thing a user turn reads as - so the stamp measures with it.
+			 *
+			 * The stamp is OUTSIDE `turnRef` on purpose, and the quote toolkit is
+			 * where that matters most: `turnRef` is the element a selection must lie
+			 * inside to count as a quote of this turn (the toolkit reads it as its
+			 * `bodyText` anchor), so a drag that swept over a time would otherwise
+			 * quote it as part of the words. `turnRef` is on the ROW div rather than
+			 * on the bubble because the toolkit's own trigger has to sit inside it
+			 * too; this column keeps the stamp out of it either way.
+			 */}
+			<div className={cn("flex w-full flex-col items-end gap-1")}>
+				<div ref={turnRef} className="group relative flex w-full justify-end">
+					<div
+						className={cn(
+							// `border-control`, not `hairline`. The bubble keeps its own
+							// ground (`surface`) on a column that is `canvas` for the working
+							// surface's sake (see chat-content.tsx), so the fill is a
+							// lightness step as well as this edge - but a step is not an
+							// edge, and this border is still the boundary the design contract
+							// asks for. Because the agent side has no bubble at all, the edge
+							// is also the whole visual distinction between the two speakers.
+							// Removing it would lose information, which is the contract's own
+							// test for a structural boundary, so it takes the role with the
+							// 3:1 floor rather than the decorative one with no floor.
+							"relative rounded-frame border border-control bg-surface text-ink break-words",
+							isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
 						)}
+					>
+						<div className={cn("relative", MEASURE)}>
+							{/* The quote a quoted turn was sent with, rendered as the same
+							    recessed block the composer stages it in - the reader sees one
+							    idiom for "this is quoted" whether it is pending or sent. */}
+							{replies.length > 0 && <ReplyPreview replies={replies} />}
+							<MarkdownRenderer content={remainingContent} />
+							{record.images.length > 0 && (
+								<div className={cn("mt-2 flex flex-col gap-2")}>
+									{record.images.map((image, index) => (
+										<CanonicalImage
+											key={image.id}
+											image={image}
+											scope={scope}
+											label={
+												record.images.length === 1
+													? "Attached image"
+													: `Attached image ${index + 1}`
+											}
+										/>
+									))}
+								</div>
+							)}
+						</div>
 					</div>
+					{conversationId && isQuotable(record, remainingContent) && (
+						<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+					)}
 				</div>
-				{conversationId && isQuotable(record, remainingContent) && (
-					<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
-				)}
+				{/*
+				 * One stamp per turn, always visible (the operator's request). The
+				 * record's own `ts` is the moment the message was sent, which the
+				 * reducer sets from the owner's frame rather than from paint time -
+				 * § 7's "rows are placed by the time they carry, never by the moment
+				 * the reader happened to see them".
+				 */}
+				<TurnTimestamp timestamp={record.ts} scope="turn" />
 			</div>
 		</MessageContainer>
 	);
@@ -485,12 +514,15 @@ const ToolRow = memo(function ToolRow({
 	showAvatar,
 	nameColumn,
 	scope,
+	onOpenChange,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
+	/** Reports this row's open state upward; the transcript's footer gates on it. */
+	onOpenChange?: (open: boolean) => void;
 }) {
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
@@ -507,7 +539,7 @@ const ToolRow = memo(function ToolRow({
 		!composing && isBareToolName(summary, record.toolName)
 			? outputFallbackLine(record.output)
 			: null;
-	const details =
+	const body =
 		// The TUI's body-selection case 2 (`_build_content`, tool_card.py:1928-1939):
 		// when a settled, SUCCESSFUL `write`/`edit` reported a diff, the expansion is
 		// the DIFF ALONE. The arguments of a `write` are the whole new file content —
@@ -532,6 +564,62 @@ const ToolRow = memo(function ToolRow({
 				isError={record.isError}
 			/>
 		) : undefined;
+	/*
+	 * The stamp at the foot of the EXPANDED section, and the reason it is a
+	 * sibling of the body rather than a line inside `ToolDetail`.
+	 *
+	 * The operator asked for the time "at the bottom right of the expanded
+	 * section", and the expanded section is this composition — the arguments or
+	 * the diff, then the result — not the pane component alone. Both body shapes
+	 * get the stamp from here: a settled `write`/`edit` whose expansion is the
+	 * DIFF (`isDiffBodyRow`) never mounts `ToolDetail` at all, so a stamp handled
+	 * inside the pane would be missing from exactly the rows whose payload is
+	 * longest and whose time is most worth knowing.
+	 *
+	 * It is also the only placement that survives the pane's own scrolling.
+	 * `ToolDetail`'s two sections are each their own `overflow-auto` box with a
+	 * `detailOverflowLabel` report under them, and that report is deliberately
+	 * OUTSIDE its scroller so it stays true at rest; anything INSIDE the pane is
+	 * scrolled away at rest on a long payload, which is a stamp that is not "at
+	 * the bottom of the expanded section" for the rows that most need one. Below
+	 * the pane there is nothing to scroll: the stamp is on screen the moment the
+	 * row opens, with the last line that is true of the payload immediately above
+	 * it.
+	 *
+	 * The air above it is the disclosure content's own `gap-2`
+	 * (`shared/components/ui/disclosure.tsx`), which is the one spacing the shared
+	 * idiom owns; the stamp takes the rhythm of the section it sits in rather than
+	 * adding a margin of its own. Its right edge is the pane's, because both are
+	 * in the same indented column.
+	 *
+	 * A COLLAPSED row has no body at all — `hasDetail`/`isDiffBodyRow` return
+	 * false and the ledger row renders its disabled branch, which structurally
+	 * cannot render children — so a run of twenty calls stays twenty quiet lines
+	 * with no stamps. That quiet is what the hover-only model was protecting, and
+	 * it is why the stamp lives inside the disclosure instead of under every row.
+	 */
+	const details = body ? (
+		<>
+			{body}
+			{/*
+			 * `pr-4` is the row's own meta column, and it is what keeps a ledger row to
+			 * ONE right edge. The disclosure's trigger is `w-full` inside a box that also
+			 * carries `-mx-2 px-2` (`trace/tool-row.tsx`), and that negative margin bleeds
+			 * on the LEFT only, so the trigger's box ends 8px short of the row and its own
+			 * `px-2` puts the duration 8px further in again - 16px in total, measured at
+			 * 1074 against the row's 1090 at 1280 and 364 against 380 at 420, in both
+			 * palettes. The pane and the disclosure content column both reach the row's
+			 * true edge, so without this the stamp sat 16px right of the duration one line
+			 * above it: two right edges inside one card (design round 1, D2). The stamp
+			 * moves onto the meta column rather than the trigger growing, because the
+			 * trigger's bleed is what the row's hover ground is drawn from and restyling
+			 * that ground is a different change from this one.
+			 */}
+			<div className={cn("flex justify-end pr-4")}>
+				<TurnTimestamp timestamp={record.ts} scope="turn" />
+			</div>
+		</>
+	) : undefined;
 	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
 	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
 	// being fixed, not a smaller version of it.
@@ -578,6 +666,7 @@ const ToolRow = memo(function ToolRow({
 				nameColumn={nameColumn}
 				details={details}
 				media={media}
+				onOpenChange={onOpenChange}
 			/>
 		</MessageContainer>
 	);
@@ -889,12 +978,15 @@ const TranscriptRow = memo(function TranscriptRow({
 	nameColumn,
 	scope,
 	conversationId,
+	onToolOpenChange,
 }: {
 	row: Row;
 	isSmallView: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/** Forwarded to a ledger row so the transcript can gate its footer on it. */
+	onToolOpenChange?: (id: string, open: boolean) => void;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -928,6 +1020,11 @@ const TranscriptRow = memo(function TranscriptRow({
 					showAvatar={row.showAvatar}
 					nameColumn={nameColumn}
 					scope={scope}
+					onOpenChange={
+						onToolOpenChange
+							? (open) => onToolOpenChange(record.id, open)
+							: undefined
+					}
 				/>
 			);
 			break;
@@ -1313,6 +1410,53 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 	const lastRecord = transcript.records[transcript.records.length - 1];
 
+	/*
+	 * The footer's gate, and it asks the ROW rather than reading the row's kind.
+	 *
+	 * The footer states when the last thing in the conversation happened. A user
+	 * turn states that itself (its stamp is one line above), and so does a ledger
+	 * row the reader has OPENED — its stamp sits at the foot of the expanded
+	 * section. Gating on `kind !== "user"` covered only the first, so a transcript
+	 * ending in an open call printed the same clock twice, eight pixels apart
+	 * (`chat-tool-rows/diff-body`, design round 1 D1 / QA round 1 Q-1).
+	 *
+	 * The rule is therefore "the last row paints no stamp of its own", and the
+	 * disclosure's open state is what decides the second half of it. A CLOSED
+	 * ledger row keeps the footer: it has no stamp of its own, so the footer is the
+	 * only time on screen there, which is its job.
+	 *
+	 * MEMBERSHIP, NOT IDENTITY, and the first attempt got this wrong in a way that
+	 * mattered (review round 2, R2-1 / design D2-1). It held ONE id, assigned on
+	 * every report, so it answered "which row reported last" rather than "is the
+	 * last row open": with the last row open the footer went away, and opening any
+	 * EARLIER row overwrote the id with its own and brought the footer back beside
+	 * the still-open last row's stamp - both orders, since closing the earlier row
+	 * then nulled the slot too. `Disclosure` owns its state per row, so several rows
+	 * are open at once as a matter of ordinary use (`chat-tool-rows/mixed-run`
+	 * paints three). The set below is what the rule actually needs: the question is
+	 * membership of `lastRecord.id`, and an id that leaves the set takes nothing
+	 * with it.
+	 *
+	 * The callback is stable and returns the SAME set when nothing changed, so the
+	 * memoised rows keep skipping: a row that reports a state it is already in
+	 * (which every `defaultOpen` row does on mount) causes no render.
+	 */
+	const [openStampRowIds, setOpenStampRowIds] = useState<ReadonlySet<string>>(
+		() => new Set<string>(),
+	);
+	const handleToolOpenChange = useCallback((id: string, open: boolean) => {
+		setOpenStampRowIds((previous) => {
+			if (previous.has(id) === open) return previous;
+			const next = new Set(previous);
+			if (open) next.add(id);
+			else next.delete(id);
+			return next;
+		});
+	}, []);
+	const lastRowPaintsStamp =
+		lastRecord?.kind === "user" ||
+		(lastRecord?.kind === "tool" && openStampRowIds.has(lastRecord.id));
+
 	// What the working line says, and which phase it is timing. The derivation
 	// (and its copy contract, including the one branch this app drives from its
 	// own admitted send rather than from a frame) lives in
@@ -1666,6 +1810,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								nameColumn={nameColumn}
 								scope={mediaScope}
 								conversationId={conversationId}
+								onToolOpenChange={handleToolOpenChange}
 							/>
 						))}
 
@@ -1803,12 +1948,40 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    The composer's version wins because it offers the action; this
 				    one only described the situation. */}
 					{/* Gated on `missing` for the same reason as the history slot: the
-				    failure path keeps the cached rows, so an ungated footer left a bare
-				    timestamp floating bottom-right under a state that says this
-				    conversation does not exist here (design review round 1, D2). */}
-					{lastRecord && !missing && (
+					    failure path keeps the cached rows, so an ungated footer left a bare
+					    timestamp floating bottom-right under a state that says this
+					    conversation does not exist here (design review round 1, D2).
+
+					    AND NOT UNDER A ROW THAT STATES THE TIME ITSELF (`lastRowPaintsStamp`,
+					    defined beside `lastRecord`). This line is the transcript's own answer
+					    to "when was the last thing here", which is the same fact a stamp
+					    states - so it is suppressed for a USER TURN, whose stamp is one line
+					    above it (`12:13 PM` over `12:13 PM`, the duplicate that first take of
+					    the `turn-timestamps` frame found), and for a LEDGER ROW THE READER HAS
+					    OPENED, whose stamp sits at the foot of its expanded section (the same
+					    clock twice eight pixels apart in `chat-tool-rows/diff-body`; design
+					    round 1, D1, and QA round 1, Q-1, which hit it with a real press).
+
+					    IT KEEPS ITS JOB EVERYWHERE ELSE, and the CLOSED ledger row is why the
+					    rule is stated about stamps rather than about row kinds: a settled row
+					    that has never been opened paints nothing, so this line is the only
+					    time on screen there - which is what the frames show, and what the
+					    render tests assert (the footer present on an answer and on a closed
+					    tool row, absent under a user turn and under an open one).
+
+					    IT RENDERS `TurnTimestamp` FOR THE SAME REASON IT IS GATED HERE AT
+					    ALL: it states the same fact a turn's stamp states, so it has to state
+					    it in the same words. It used to be a `MessageTimestamp` - the hover
+					    row's component - which formats for a reader already looking at the
+					    message (`10:40 AM` today, `Monday` inside the week, `yyyy-MM-dd`
+					    after that). With a turn stamp on screen that put two spellings of one
+					    clock in one column, which is the defect `date-utils.ts` documents in
+					    `formatCalendarDate`'s and `formatCalendarDateTime`'s own comments
+					    (`August 5, 2026` beside `8/5/2026, 10:40:00 AM`), and the frames
+					    showed it as `2025-10-09` directly under `Oct 9, 2025, 4:53 AM`. */}
+					{lastRecord && !missing && !lastRowPaintsStamp && (
 						<div className="mt-1 flex justify-end">
-							<MessageTimestamp timestamp={new Date(lastRecord.ts)} />
+							<TurnTimestamp timestamp={lastRecord.ts} scope="footer" />
 						</div>
 					)}
 				</div>
