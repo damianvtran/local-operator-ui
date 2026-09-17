@@ -1406,6 +1406,32 @@ async function sceneBrowserMark(cdp) {
 	note("frame", JSON.stringify(pressedFrame));
 
 	/*
+	 * THE DISCLOSURE STATE, READ IN THE STATE THAT MAKES IT INTERESTING (design review
+	 * round 2, U8). The mark toggles (U6, ruled), so its accessible state has to name
+	 * which of the two things the next press does. The control that read
+	 * `aria-expanded="false"` over "Open the browser for …" one press ago must read
+	 * `"true"` over the close's own words now, and the two labels must differ in the verb
+	 * and nothing else — the counts are a fact about the conversation, not about the pane.
+	 * Read at the same selector the press used, so the words, the attribute and the press
+	 * cannot describe different states.
+	 */
+	const openMark = await markReading(cdp);
+	const markedOpen = openMark.marks.find(
+		(mark) => mark.sessionId === sessionId,
+	);
+	const closeLabel = walked.label.replace(
+		"Open the browser",
+		"Close the browser",
+	);
+	check(
+		'while the pane is open on that conversation its mark says so in both channels: aria-expanded="true" and the close\u2019s own words (U8)',
+		markedOpen !== undefined &&
+			markedOpen.expanded === "true" &&
+			markedOpen.label === closeLabel,
+		`expanded ${JSON.stringify(markedOpen?.expanded ?? null)}, label ${JSON.stringify(markedOpen?.label ?? null)} (expected ${JSON.stringify(closeLabel)}); the closed reading it replaces was ${JSON.stringify(walked)}`,
+	);
+
+	/*
 	 * THE SECOND PRESS IS THE TOGGLE (design review round 2, U6, ruled). A press on the
 	 * mark while the pane is already open ON THAT CONVERSATION closes it — the state a
 	 * second press used to leave untouched, which is indistinguishable from a press that
@@ -1425,6 +1451,17 @@ async function sceneBrowserMark(cdp) {
 		"and a second press on the same mark CLOSES the pane it opened (U6)",
 		toggled.pane === false && toggled.mark === true,
 		`after the toggle: ${JSON.stringify(toggled)}`,
+	);
+	const closedMark = await markReading(cdp);
+	const markedClosed = closedMark.marks.find(
+		(mark) => mark.sessionId === sessionId,
+	);
+	check(
+		'and the mark goes back with it: aria-expanded="false" and the open\u2019s own words again (U8)',
+		markedClosed !== undefined &&
+			markedClosed.expanded === "false" &&
+			markedClosed.label === walked.label,
+		`expanded ${JSON.stringify(markedClosed?.expanded ?? null)}, label ${JSON.stringify(markedClosed?.label ?? null)} (expected ${JSON.stringify(walked.label)})`,
 	);
 
 	note(
@@ -1453,6 +1490,11 @@ async function markReading(cdp) {
 			marks: marks.map((mark) => ({
 				sessionId: mark.getAttribute('data-browser-mark') ?? '',
 				label: mark.getAttribute('aria-label') ?? '',
+				/** The disclosure state (design review round 2, U8): which of the two things the
+				 * next press does. Read as the ATTRIBUTE rather than as a boolean so an absent
+				 * one is distinguishable from the string "false" — the defect U8 filed was
+				 * that the control carried none at all. */
+				expanded: mark.getAttribute('aria-expanded'),
 			})),
 		};
 	})()`);
@@ -1895,7 +1937,15 @@ async function sceneBrowserPane(cdp) {
 	check(
 		"with a backend the chat route renders its header, and the trigger with it",
 		triggerPresent === true,
-		"the trigger is absent even though a backend answered — the press below would prove nothing",
+		/*
+		 * THE DETAIL STATES THE READING, NOT THE FAILURE (QA round 2, Q3). It used to be a
+		 * sentence written for the failing branch — "the trigger is absent even though a
+		 * backend answered" — which is what a passing run also printed under its own
+		 * `[PASS]`, so the transcript's evidence line described a state the run had just
+		 * refuted. Same class of defect as the ones this change already fixed: a check's
+		 * own line has to be true whichever way it came out.
+		 */
+		`trigger present: ${triggerPresent} (the press below asserts the pane it opens, so an absent trigger here would prove nothing about it)`,
 	);
 
 	// 1. THE PRESS, which is the whole claim: a real click on the real control.
