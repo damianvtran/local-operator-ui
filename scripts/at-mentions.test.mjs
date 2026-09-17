@@ -181,10 +181,7 @@ test("atSegments splits the draft against the spans it will measure", () => {
 	const text = "look at @a.py and @b.py";
 	const spans = atTokenSpans(text);
 	const segments = atSegments(text, spans);
-	assert.equal(
-		segments.map((segment) => segment.text).join(""),
-		text,
-	);
+	assert.equal(segments.map((segment) => segment.text).join(""), text);
 	assert.deepEqual(
 		segments.filter((segment) => segment.span).map((segment) => segment.text),
 		["@a.py", "@b.py"],
@@ -293,7 +290,7 @@ test("a recent outranks an equal-scoring neighbour but never a better band", () 
 	assert.equal(ranked[0].path, "zzz.md");
 	// A recent can NOT lift a fuzzy candidate past a prefix match.
 	const withPrefix = rankAtRows(
-		[ row("reads.md"), row("zreads.md")],
+		[row("reads.md"), row("zreads.md")],
 		"reads",
 		new Set(["zreads.md"]),
 	);
@@ -381,9 +378,7 @@ test("descend is bounded to the top two MATCHING directories", () => {
 
 test("interleaveDescend puts children after the row that matched", () => {
 	const ranked = [row("components", true), row("app.py")];
-	const children = new Map([
-		["components", [row("components/button.tsx")]],
-	]);
+	const children = new Map([["components", [row("components/button.tsx")]]]);
 	assert.deepEqual(
 		interleaveDescend(ranked, children).map((entry) => entry.path),
 		["components", "components/button.tsx", "app.py"],
@@ -398,10 +393,9 @@ test("a closed or composing list passes every key", () => {
 	assert.deepEqual(atKeyIntent({ ...KEY, key: "Enter", open: false }), {
 		kind: "pass",
 	});
-	assert.deepEqual(
-		atKeyIntent({ ...KEY, key: "Enter", composing: true }),
-		{ kind: "pass" },
-	);
+	assert.deepEqual(atKeyIntent({ ...KEY, key: "Enter", composing: true }), {
+		kind: "pass",
+	});
 });
 
 test("arrows clamp and report whether the marker moved", () => {
@@ -518,10 +512,7 @@ test("the four empty facts get four different sentences", () => {
 test("the atomic delete takes a whole chip at its edge, and nothing else", () => {
 	const spans = atTokenSpans("look at @a.py then");
 	const resolved = new Map([["8:13", { outside: false }]]);
-	assert.deepEqual(
-		atDeleteSpan(13, "back", spans, resolved),
-		spans[0],
-	);
+	assert.deepEqual(atDeleteSpan(13, "back", spans, resolved), spans[0]);
 	assert.deepEqual(atDeleteSpan(8, "forward", spans, resolved), spans[0]);
 	// Inside the token: ordinary characters, by the browser's own rules.
 	assert.equal(atDeleteSpan(11, "back", spans, resolved), null);

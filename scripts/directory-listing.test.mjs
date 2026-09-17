@@ -120,7 +120,10 @@ test("an unreadable directory is an error with its reason, not an empty folder",
 test("the entry cap bounds the list and reports the truncation", () => {
 	mkdirSync(join(root, "wide"));
 	for (let index = 0; index < 230; index++)
-		writeFileSync(join(root, "wide", `f${String(index).padStart(3, "0")}.txt`), "");
+		writeFileSync(
+			join(root, "wide", `f${String(index).padStart(3, "0")}.txt`),
+			"",
+		);
 	const listing = listDirectory(join(root, "wide"));
 	assert.equal(listing.entries.length, 200);
 	assert.equal(listing.truncated, true);
@@ -143,6 +146,9 @@ test("realPathOrNull resolves a symlink, and says nothing when it cannot", () =>
 	// Compared against the resolved ROOT rather than the temp path the test built:
 	// on macOS `realpath` also resolves `/var` to `/private/var`, which is exactly
 	// the kind of difference that makes this function worth having.
-	assert.equal(realPathOrNull(join(root, "link")), join(realPathOrNull(root), "target"));
+	assert.equal(
+		realPathOrNull(join(root, "link")),
+		join(realPathOrNull(root), "target"),
+	);
 	assert.equal(realPathOrNull(join(root, "missing")), null);
 });

@@ -3551,7 +3551,10 @@ async function sceneMentions(cdp) {
 			.find((value) => value?.startsWith("/"));
 		return { labels, absolute: absolute ?? null };
 	})()`);
-	note("the composer's working directory, as the control row names it", JSON.stringify(cwdLabel));
+	note(
+		"the composer's working directory, as the control row names it",
+		JSON.stringify(cwdLabel),
+	);
 	if (!cwdLabel.absolute) {
 		throw new Error(
 			`the composer does not name an absolute working directory (${JSON.stringify(cwdLabel.labels)}), so this scene cannot place its fixture files where the picker will list them`,
@@ -3559,7 +3562,10 @@ async function sceneMentions(cdp) {
 	}
 	mkdirSync(join(cwdLabel.absolute, "src", "components"), { recursive: true });
 	writeFileSync(join(cwdLabel.absolute, "README.md"), "# listing fixture\n");
-	writeFileSync(join(cwdLabel.absolute, "my file.txt"), "a name with a space\n");
+	writeFileSync(
+		join(cwdLabel.absolute, "my file.txt"),
+		"a name with a space\n",
+	);
 	writeFileSync(join(cwdLabel.absolute, "src", "app.py"), "print('hi')\n");
 	writeFileSync(
 		join(cwdLabel.absolute, "src", "components", "button.tsx"),
@@ -3654,7 +3660,8 @@ async function sceneMentions(cdp) {
 	);
 	check(
 		'the notice distinguishes "nothing here matches" from "this folder is empty"',
-		typeof noMatch.notice === "string" && noMatch.notice.includes('No files match "zzzz".'),
+		typeof noMatch.notice === "string" &&
+			noMatch.notice.includes('No files match "zzzz".'),
 		JSON.stringify(noMatch.notice),
 	);
 	check(
@@ -3716,7 +3723,10 @@ async function sceneMentions(cdp) {
 			tokens: tokens.map((el) => ({ span: el.dataset.mentionToken, ...rect(el) })),
 		};
 	})()`);
-	note("the chip and the run it was measured from", JSON.stringify(chip, null, 2));
+	note(
+		"the chip and the run it was measured from",
+		JSON.stringify(chip, null, 2),
+	);
 	check(
 		"a hand-typed path that resolves paints exactly one chip",
 		chip.chips.length === 1 && chip.chips[0].kind === "plain",
@@ -3725,7 +3735,11 @@ async function sceneMentions(cdp) {
 	check(
 		"the chip is drawn on its own glyph run, inside the tolerance",
 		chip.tokens.length === 1 &&
-			Math.abs(chip.chips[0].top - (chip.tokens[0].top + (chip.tokens[0].height - chip.chips[0].height) / 2)) <= 1 &&
+			Math.abs(
+				chip.chips[0].top -
+					(chip.tokens[0].top +
+						(chip.tokens[0].height - chip.chips[0].height) / 2),
+			) <= 1 &&
 			Math.abs(chip.chips[0].left - (chip.tokens[0].left - 6)) <= 1 &&
 			Math.abs(chip.chips[0].right - (chip.tokens[0].right + 6)) <= 1,
 		JSON.stringify({ fill: chip.chips[0], run: chip.tokens[0] }),
@@ -3770,13 +3784,7 @@ async function sceneMentions(cdp) {
 	await verb(cdp, "setTheme", "localOperatorLight");
 	const pairLight = await captureSettled(cdp, "mentions-pair-light");
 
-	const frames = [
-		openFrame,
-		noMatchFrame,
-		chipFrame,
-		pairFrame,
-		pairLight,
-	];
+	const frames = [openFrame, noMatchFrame, chipFrame, pairFrame, pairLight];
 	check(
 		"every capture is a frame the app held still for, with no toast on it",
 		frames.every((frame) => frame.stable === true && frame.toastFree === true),

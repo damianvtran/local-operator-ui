@@ -2269,12 +2269,7 @@ export const STORIES = [
 	 * than the shell being pushed off the bottom. The same story twice is the
 	 * comparison — the budget is a claim about two frames, not about the formula.
 	 */
-	[
-		"chat-mention-chips--picker-many-rows",
-		800,
-		600,
-		{ dir: "budget-800x600" },
-	],
+	["chat-mention-chips--picker-many-rows", 800, 600, { dir: "budget-800x600" }],
 	/*
 	 * And the ceiling, at the band's own window: the budget's other end. The
 	 * formula clamps at eight rows whatever the room, so a frame at 1380x872 is
