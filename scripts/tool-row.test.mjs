@@ -726,38 +726,64 @@ test("the transcript no longer renders a Writing row", () => {
 	);
 });
 
-test("agent prose takes no reading cap, and the user bubble keeps one", () => {
-	// The operator's report: agent prose must share the tool rows' left edge and
-	// width, so it carries no `lo-measured` and therefore no 62ch cap and no
-	// `margin-inline: auto`. The user bubble is deliberately unchanged — it is
-	// an aside, and widening it is the unrequested half of this change.
-	// The bare `MEASURE` token only — `CHAT_MEASURE` is the column's shared
-	// width and a different thing entirely, so a substring match would count it.
-	const measured = (path) =>
-		readFileSync(path, "utf8")
+test("neither surface caps the prose with a reading measure", () => {
+	// The operator's report of 2026-09-16: a user card widened by a reply quote
+	// or a wide attachment left the message floating as a centre-constrained
+	// column inside it, with equal slack on each side. The 62ch cap and the
+	// centring that produced it are gone, and so is the class that opted a box
+	// into them.
+	//
+	// This test used to assert the opposite for the user bubble — "agent prose
+	// takes no reading cap, and the user bubble keeps one" — on the reading that
+	// the bubble's narrower box is what makes a turn an aside, and that widening
+	// it was the unrequested half of the earlier change. The report above
+	// reversed that call: the aside is the CARD's own `max-w-[75%]` inside
+	// `CHAT_MEASURE`, and the prose fills the card. The agent half is unchanged —
+	// no cap there either, so it shares the tool rows' edges.
+	const source = (path) => readFileSync(path, "utf8");
+	// `lo-measured` is what opted a box into the rule, so its absence is the
+	// whole contract: no cap can land on a box that never carries the class.
+	// Both surfaces are checked rather than the canonical one alone, because the
+	// two have to keep agreeing.
+	for (const path of [
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"src/renderer/src/features/chat/components/message-item/message-paper.tsx",
+	]) {
+		// A string literal, not the bare name: the history in `markdown.css` and in
+		// `message-paper.tsx` names the class it lost, and a prose mention is not an
+		// application. What must not come back is a box carrying it.
+		assert.ok(
+			!/["']lo-measured["']/.test(source(path)),
+			`${path} opts no box into a reading measure`,
+		);
+		// The bare `MEASURE` token as well, so a class re-applied under another
+		// name still has to survive this. `CHAT_MEASURE` is the column's shared
+		// width and a different thing entirely, so a substring match would count
+		// it.
+		const applied = source(path)
 			.split("\n")
 			.filter(
 				(line) => /(?<![A-Z_])MEASURE\b/.test(line) && line.includes("cn("),
 			);
-	// The canonical transcript: exactly one application, on the user row.
-	const canonical = measured(
-		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		assert.deepEqual(applied, [], `${path} applies no measure to a box`);
+	}
+	// Comments stripped first, so the argument above is not read as a rule. The
+	// stylesheet must keep neither the selector nor a cap on the rendered
+	// markdown root — a cap re-added under another name is the same defect
+	// returning in a different costume.
+	const css = source(
+		"src/renderer/src/features/chat/components/markdown.css",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.ok(
+		!/(?:^|\s)\.lo-measured\s*[{,]/.test(css),
+		"the stylesheet no longer opts a box into a reading measure",
 	);
-	assert.equal(canonical.length, 1, "one measured box in the canonical path");
-	// The legacy path must not keep the old behaviour either, or the same defect
-	// returns on whichever surface still renders through it.
-	const legacy = measured(
-		"src/renderer/src/features/chat/components/message-item/message-paper.tsx",
-	);
-	assert.equal(legacy.length, 1, "one measured box in the legacy path");
-	// The cap itself still exists, for the bubble that still wants it.
-	assert.match(
-		readFileSync(
-			"src/renderer/src/features/chat/components/markdown.css",
-			"utf8",
-		),
-		/\.lo-measured \.lo-markdown \{\s*max-width: 62ch;/,
-		"the reading measure is still defined for the user bubble",
+	// The bare root, not a descendant: `.lo-markdown pre` legitimately takes
+	// `max-width: 100%` so a code block wraps to its container, and a reading cap
+	// is a cap on the rendered root itself.
+	assert.ok(
+		!/\.lo-markdown\s*\{[^{}]*max-width/.test(css),
+		"no max-width is applied to the rendered markdown root",
 	);
 });
 
