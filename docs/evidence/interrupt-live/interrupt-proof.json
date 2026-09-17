@@ -1,6 +1,6 @@
 {
   "backend": "http://127.0.0.1:1131",
-  "out": "/tmp/interrupt-live-proof-r4",
+  "out": "/tmp/interrupt-live-proof",
   "steps": [
     {
       "step": "bridge",
@@ -8,7 +8,7 @@
     },
     {
       "step": "firstRun.dialogBefore",
-      "present": false
+      "present": true
     },
     {
       "step": "firstRun.seeded",
@@ -21,7 +21,23 @@
     },
     {
       "step": "capabilities",
-      "value": "{\"desktop_contract\":1,\"desktop_available\":true,\"desktop_auth\":\"bearer\",\"features\":{\"auth\":1,\"settings\":1,\"commands\":1,\"catalogues\":1,\"profile_catalogue\":1,\"team_catalogue\":1,\"session_catalogue\":3,\"session_search\":1,\"draft_preview\":1,\"draft_selection\":1,\"lifecycle\":1,\"completion_ack\":1,\"notification_contract\":1,\"mcp\":1,\"mcp_auth\":1,\"radient\":1,\"session_variables\":1,\"subagent_transcript\":1,\"session_move\":2,\"frontend_replace\":1,\"diagnostics\":1,\"desktop_feed\":1,\"desktop_presence\":1,\"session_interrupt\":1}}"
+      "value": "{\"desktop_contract\":1,\"desktop_available\":true,\"desktop_auth\":\"bearer\",\"features\":{\"auth\":1,\"settings\":1,\"commands\":2,\"catalogues\":1,\"profile_catalogue\":1,\"team_catalogue\":1,\"session_catalogue\":3,\"session_search\":1,\"draft_preview\":1,\"draft_selection\":1,\"lifecycle\":1,\"completion_ack\":1,\"notification_contract\":1,\"mcp\":1,\"mcp_auth\":1,\"radient\":1,\"session_variables\":1,\"subagent_transcript\":1,\"session_move\":2,\"frontend_replace\":1,\"diagnostics\":1,\"desktop_feed\":1,\"desktop_presence\":1,\"session_interrupt\":1}}"
+    },
+    {
+      "step": "dictation.live",
+      "present": true,
+      "disabled": false,
+      "waitedMs": 3
+    },
+    {
+      "step": "dictation.live",
+      "ok": true,
+      "what": "the dictation control never became pressable, so nothing below would be measuring the composer's layout",
+      "dictation": {
+        "present": true,
+        "disabled": false,
+        "waitedMs": 3
+      }
     },
     {
       "step": "turn1.admit",
@@ -36,6 +52,29 @@
     {
       "step": "turn1.control",
       "present": true
+    },
+    {
+      "step": "slot.clusterRunning",
+      "boxes": [
+        {
+          "label": "Start recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "Stop",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ]
     },
     {
       "step": "turn1.pressed",
@@ -63,11 +102,7 @@
       "outcome": "aborted"
     },
     {
-      "step": "turn1.controlAfter",
-      "present": false
-    },
-    {
-      "step": "slot.clusterIdle",
+      "step": "slot.clusterGrace",
       "boxes": [
         {
           "label": "Start recording",
@@ -87,7 +122,11 @@
           "w": 32,
           "centre": 1323
         }
-      ]
+      ],
+      "at": {
+        "sinceFlipMs": 74
+      },
+      "graceMs": 500
     },
     {
       "step": "slot.repress",
@@ -96,14 +135,61 @@
         "y": 819
       },
       "owner": "div|not-reserved",
+      "at": {
+        "beforeSinceFlipMs": 161,
+        "afterSinceFlipMs": 170
+      },
       "after": {
         "recording": false,
         "mic": true
       }
     },
     {
+      "step": "turn1.controlAfter",
+      "present": false
+    },
+    {
       "step": "slot.clusterAfterRepress",
       "boxes": [
+        {
+          "label": "Start recording",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ]
+    },
+    {
+      "step": "slot.graceIsTheBusyRow",
+      "ok": true,
+      "what": "the row inside the grace window is not the row the turn ran with",
+      "running": [
+        {
+          "label": "Start recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "Stop",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "grace": [
         {
           "label": "Start recording",
           "x": 1235,
@@ -118,6 +204,436 @@
         },
         {
           "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "stop": {
+        "w": 32,
+        "h": 32,
+        "top": 803,
+        "left": 1271
+      }
+    },
+    {
+      "step": "slot.repressStartsNothing",
+      "ok": true,
+      "what": "the second press at the point the first one landed either started something or arrived after the window",
+      "graceMs": 500,
+      "press": {
+        "point": {
+          "x": 1287,
+          "y": 819
+        },
+        "owner": "div|not-reserved",
+        "at": {
+          "beforeSinceFlipMs": 161,
+          "afterSinceFlipMs": 170
+        },
+        "after": {
+          "recording": false,
+          "mic": true
+        }
+      }
+    },
+    {
+      "step": "slot.clusterSettled",
+      "boxes": [
+        {
+          "label": "Start recording",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "at": {
+        "sinceFlipMs": 1776
+      }
+    },
+    {
+      "step": "slot.settledCollapses",
+      "ok": true,
+      "what": "the settled row is not [dictation][Send] with the box gone and the dictation control where the box was held",
+      "graceMs": 500,
+      "settled": [
+        {
+          "label": "Start recording",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "grace": [
+        {
+          "label": "Start recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "reserved-slot",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "rowGap": 4,
+      "at": {
+        "sinceFlipMs": 1776
+      }
+    },
+    {
+      "step": "slot.micPoint",
+      "x": 1287,
+      "y": 819,
+      "rect": {
+        "left": 1271,
+        "w": 32
+      },
+      "owner": "Start recording",
+      "disabled": false
+    },
+    {
+      "step": "slot.micLiveAtItsNewCentre",
+      "ok": true,
+      "what": "the point the dictation control now occupies is not owned by a live dictation control",
+      "point": {
+        "x": 1287,
+        "y": 819,
+        "rect": {
+          "left": 1271,
+          "w": 32
+        },
+        "owner": "Start recording",
+        "disabled": false
+      },
+      "settled": {
+        "label": "Start recording",
+        "x": 1271,
+        "w": 32,
+        "centre": 1287
+      }
+    },
+    {
+      "step": "slot.livePress",
+      "aim": {
+        "x": 1287,
+        "y": 819,
+        "rect": {
+          "w": 32,
+          "h": 32,
+          "top": 803,
+          "left": 1271
+        },
+        "target": "button[aria-label=\"Start recording\"]",
+        "attempts": [
+          {
+            "x": 1287,
+            "y": 819,
+            "owner": "button[aria-label=\"Start recording\"]",
+            "hit": true
+          }
+        ]
+      },
+      "after": {
+        "recording": true,
+        "mic": false
+      }
+    },
+    {
+      "step": "slot.livePressStartsRecording",
+      "ok": true,
+      "what": "pressing the dictation control where it now sits started no recording",
+      "after": {
+        "recording": true,
+        "mic": false
+      }
+    },
+    {
+      "step": "slot.recordingCancelled",
+      "aim": {
+        "x": 1287,
+        "y": 819,
+        "rect": {
+          "w": 32,
+          "h": 32,
+          "top": 803,
+          "left": 1271
+        },
+        "target": "button[aria-label=\"Cancel recording\"]",
+        "attempts": [
+          {
+            "x": 1287,
+            "y": 819,
+            "owner": "button[aria-label=\"Cancel recording\"]",
+            "hit": true
+          }
+        ]
+      },
+      "after": {
+        "recording": false,
+        "mic": true
+      }
+    },
+    {
+      "step": "inFlight.start",
+      "aim": {
+        "x": 1287,
+        "y": 819,
+        "rect": {
+          "w": 32,
+          "h": 32,
+          "top": 803,
+          "left": 1271
+        },
+        "target": "button[aria-label=\"Start recording\"]",
+        "attempts": [
+          {
+            "x": 1287,
+            "y": 819,
+            "owner": "button[aria-label=\"Start recording\"]",
+            "hit": true
+          }
+        ]
+      }
+    },
+    {
+      "step": "inFlight.recording",
+      "recording": true,
+      "mic": false
+    },
+    {
+      "step": "inFlight.admit",
+      "status": 200,
+      "detail": "prompt admitted"
+    },
+    {
+      "step": "inFlight.streaming",
+      "streaming": true,
+      "outcome": "aborted"
+    },
+    {
+      "step": "inFlight.settled",
+      "streaming": false,
+      "outcome": "aborted"
+    },
+    {
+      "step": "inFlight.pressed",
+      "x": 1323,
+      "y": 819,
+      "rect": {
+        "w": 32,
+        "h": 32,
+        "top": 803,
+        "left": 1307
+      },
+      "target": "button[aria-label=\"Stop\"]",
+      "attempts": [
+        {
+          "x": 1323,
+          "y": 819,
+          "owner": "button[aria-label=\"Stop\"]",
+          "hit": true
+        }
+      ]
+    },
+    {
+      "step": "inFlight.grace",
+      "boxes": [
+        {
+          "label": "Confirm recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "Cancel recording",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "reserved-slot",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "at": {
+        "sinceFlipMs": 205
+      },
+      "graceMs": 500
+    },
+    {
+      "step": "inFlight.afterWindow",
+      "boxes": [
+        {
+          "label": "Confirm recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "Cancel recording",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "reserved-slot",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "at": {
+        "sinceFlipMs": 1226
+      }
+    },
+    {
+      "step": "inFlight.holdsTheBox",
+      "ok": true,
+      "what": "the box is not held while a dictation is in flight, so the release moves the recording's own controls 36px under a press",
+      "held": [
+        {
+          "label": "Confirm recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "Cancel recording",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "reserved-slot",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "afterWindow": [
+        {
+          "label": "Confirm recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "Cancel recording",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "reserved-slot",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "stop": {
+        "w": 32,
+        "h": 32,
+        "top": 803,
+        "left": 1307
+      }
+    },
+    {
+      "step": "inFlight.recordingEnded",
+      "aim": {
+        "x": 1287,
+        "y": 819,
+        "rect": {
+          "w": 32,
+          "h": 32,
+          "top": 803,
+          "left": 1271
+        },
+        "target": "button[aria-label=\"Cancel recording\"]",
+        "attempts": [
+          {
+            "x": 1287,
+            "y": 819,
+            "owner": "button[aria-label=\"Cancel recording\"]",
+            "hit": true
+          }
+        ]
+      },
+      "boxes": [
+        {
+          "label": "Start recording",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "after": {
+        "recording": false,
+        "mic": true
+      },
+      "takesBack": "Cancel recording"
+    },
+    {
+      "step": "inFlight.collapsesWithTheRecording",
+      "ok": true,
+      "what": "the row did not collapse to the idle shape when the recording ended",
+      "ended": [
+        {
+          "label": "Start recording",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ],
+      "held": [
+        {
+          "label": "Confirm recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "Cancel recording",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "reserved-slot",
           "x": 1307,
           "w": 32,
           "centre": 1323
@@ -165,7 +681,7 @@
         "message": "Desktop session result.",
         "result": {
           "status": "interrupted",
-          "receipt": "stopping this turn",
+          "receipt": "stopping this turn; refused 1 waiting prompt",
           "children_running": 0,
           "background_jobs": 0,
           "replayed": false
@@ -200,7 +716,7 @@
         "message": "Desktop session result.",
         "result": {
           "status": "interrupted",
-          "receipt": "stopping this turn",
+          "receipt": "stopping this turn; refused 1 waiting prompt",
           "children_running": 0,
           "background_jobs": 0,
           "replayed": false
@@ -222,8 +738,340 @@
       "draftAfter": "a draft the interrupt must not clear",
       "untouched": true,
       "noticeElements": 0
+    },
+    {
+      "step": "settle.timeline",
+      "changes": 70,
+      "sampledMs": 15976,
+      "samples": [
+        {
+          "t": 5554,
+          "stop": false,
+          "slot": false,
+          "placeholder": "Ask me for help"
+        },
+        {
+          "t": 11533,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Waiting for the agent"
+        },
+        {
+          "t": 11688,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Answer the question above"
+        },
+        {
+          "t": 11846,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Waiting for the agent"
+        },
+        {
+          "t": 11879,
+          "stop": false,
+          "slot": true,
+          "placeholder": "Ask me for help"
+        },
+        {
+          "t": 12380,
+          "stop": false,
+          "slot": false,
+          "placeholder": "Ask me for help"
+        },
+        {
+          "t": 14400,
+          "stop": false,
+          "slot": true,
+          "placeholder": null
+        },
+        {
+          "t": 15103,
+          "stop": false,
+          "slot": false,
+          "placeholder": "Ask me for help"
+        },
+        {
+          "t": 15939,
+          "stop": false,
+          "slot": true,
+          "placeholder": null
+        },
+        {
+          "t": 17164,
+          "stop": true,
+          "slot": false,
+          "placeholder": null
+        },
+        {
+          "t": 17298,
+          "stop": false,
+          "slot": true,
+          "placeholder": null
+        },
+        {
+          "t": 18626,
+          "stop": false,
+          "slot": false,
+          "placeholder": "Ask me for help"
+        },
+        {
+          "t": 19586,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Waiting for the agent"
+        },
+        {
+          "t": 19605,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Answer the question above"
+        },
+        {
+          "t": 19648,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Waiting for the agent"
+        },
+        {
+          "t": 19666,
+          "stop": false,
+          "slot": true,
+          "placeholder": "Ask me for help"
+        },
+        {
+          "t": 20073,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Waiting for the agent"
+        },
+        {
+          "t": 20098,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Answer the question above"
+        },
+        {
+          "t": 20146,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Waiting for the agent"
+        },
+        {
+          "t": 20166,
+          "stop": false,
+          "slot": true,
+          "placeholder": "Ask me for help"
+        },
+        {
+          "t": 20666,
+          "stop": false,
+          "slot": false,
+          "placeholder": "Ask me for help"
+        },
+        {
+          "t": 20789,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Waiting for the agent"
+        },
+        {
+          "t": 20806,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Answer the question above"
+        },
+        {
+          "t": 20998,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Waiting for the agent"
+        },
+        {
+          "t": 21030,
+          "stop": false,
+          "slot": true,
+          "placeholder": "Ask me for help"
+        },
+        {
+          "t": 21530,
+          "stop": false,
+          "slot": false,
+          "placeholder": "Ask me for help"
+        }
+      ]
+    },
+    {
+      "step": "settle.sampled",
+      "ok": true,
+      "what": "the settle observer saw too little of the run to attribute anything with it",
+      "timeline": {
+        "step": "settle.timeline",
+        "changes": 70,
+        "sampledMs": 15976,
+        "samples": [
+          {
+            "t": 5554,
+            "stop": false,
+            "slot": false,
+            "placeholder": "Ask me for help"
+          },
+          {
+            "t": 11533,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Waiting for the agent"
+          },
+          {
+            "t": 11688,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Answer the question above"
+          },
+          {
+            "t": 11846,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Waiting for the agent"
+          },
+          {
+            "t": 11879,
+            "stop": false,
+            "slot": true,
+            "placeholder": "Ask me for help"
+          },
+          {
+            "t": 12380,
+            "stop": false,
+            "slot": false,
+            "placeholder": "Ask me for help"
+          },
+          {
+            "t": 14400,
+            "stop": false,
+            "slot": true,
+            "placeholder": null
+          },
+          {
+            "t": 15103,
+            "stop": false,
+            "slot": false,
+            "placeholder": "Ask me for help"
+          },
+          {
+            "t": 15939,
+            "stop": false,
+            "slot": true,
+            "placeholder": null
+          },
+          {
+            "t": 17164,
+            "stop": true,
+            "slot": false,
+            "placeholder": null
+          },
+          {
+            "t": 17298,
+            "stop": false,
+            "slot": true,
+            "placeholder": null
+          },
+          {
+            "t": 18626,
+            "stop": false,
+            "slot": false,
+            "placeholder": "Ask me for help"
+          },
+          {
+            "t": 19586,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Waiting for the agent"
+          },
+          {
+            "t": 19605,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Answer the question above"
+          },
+          {
+            "t": 19648,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Waiting for the agent"
+          },
+          {
+            "t": 19666,
+            "stop": false,
+            "slot": true,
+            "placeholder": "Ask me for help"
+          },
+          {
+            "t": 20073,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Waiting for the agent"
+          },
+          {
+            "t": 20098,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Answer the question above"
+          },
+          {
+            "t": 20146,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Waiting for the agent"
+          },
+          {
+            "t": 20166,
+            "stop": false,
+            "slot": true,
+            "placeholder": "Ask me for help"
+          },
+          {
+            "t": 20666,
+            "stop": false,
+            "slot": false,
+            "placeholder": "Ask me for help"
+          },
+          {
+            "t": 20789,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Waiting for the agent"
+          },
+          {
+            "t": 20806,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Answer the question above"
+          },
+          {
+            "t": 20998,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Waiting for the agent"
+          },
+          {
+            "t": 21030,
+            "stop": false,
+            "slot": true,
+            "placeholder": "Ask me for help"
+          },
+          {
+            "t": 21530,
+            "stop": false,
+            "slot": false,
+            "placeholder": "Ask me for help"
+          }
+        ]
+      }
     }
   ],
-  "session": "a286880cf094",
+  "session": "16b49b6e1e92",
+  "claims": [],
   "viewport": "{\"w\":1380,\"h\":868,\"dpr\":2}"
 }
