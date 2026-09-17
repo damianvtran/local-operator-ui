@@ -618,13 +618,43 @@ export function planSlashSubmission({
 	 * see.
 	 */
 	const shape =
-		wireShape?.shape === "none" && (argumentCommands ?? EMPTY_COMMANDS).has(word)
+		wireShape?.shape === "none" &&
+		(argumentCommands ?? EMPTY_COMMANDS).has(word)
 			? { shape: "any" as const, words: wireShape.words }
 			: wireShape;
-	/** Asked by the whole-draft branch and the leading-line hoist alike. */
-	const ownsArgs = (args: string): boolean => {
-		if (args.trim() === "") return true;
-		return shape ? argumentFits(shape, args) : consumesText;
+	/*
+	 * ... and it is asked TWICE, with the two branches' own readings of a tail.
+	 *
+	 * WHOLE DRAFT: nothing typed fits every shape. A bare `/login`, `/mcp`,
+	 * `/rename` or `/move` is the command the user asked for, and the route decides
+	 * what to do with it; reading those as prose is the 422 dead end review R2
+	 * found.
+	 *
+	 * SPANNING (the leading-line hoist): the tail is the beginning of an
+	 * INSTRUCTION, so ownership needs a tail — an empty first line means there is
+	 * nothing to hoist, and `/compact⏎hello` must not run as `/compact`. The
+	 * exception is a row that owns the rest of the draft whatever it says: an `ANY`
+	 * row hoists on an empty tail because the instruction is what follows.
+	 *
+	 * One predicate, two readings, and no branch asks a third question — which is
+	 * the defect Q-1/U1 measured.
+	 */
+	const ownsArgs = (args: string, spanning = false): boolean => {
+		if (shape) {
+			if (shape.shape === "any") return true;
+			if (spanning && args.trim() === "") return false;
+			if (args.trim() === "") return true;
+			return argumentFits(shape, args);
+		}
+		/*
+		 * The older wire: the vocabularies answer, exactly as they did before the
+		 * shape existed. A consuming row owns the rest of the draft, so the hoist
+		 * applies to it however the tail sits on the page; a non-consuming row owns
+		 * nothing, and a whole draft with no tail after a word is still the command
+		 * (`main`'s own reading of a bare word, and the case review R2 is about).
+		 */
+		if (spanning) return consumesText;
+		return args.trim() === "" || consumesText;
 	};
 	/*
 	 * And whether the word is armed ONLY by an explicit pick. This narrows the
@@ -649,7 +679,7 @@ export function planSlashSubmission({
 	// trailing text IS its argument and which a typed draft may hoist at all, is
 	// a command. Anything else is the sentence the user is writing, and it is sent
 	// as written.
-	if (!ownsArgs(command.args) || armedOnly) return { kind: "send" };
+	if (!ownsArgs(command.args, true) || armedOnly) return { kind: "send" };
 	if (!opensDraft && gesture !== "pick") return { kind: "send" };
 
 	/*
