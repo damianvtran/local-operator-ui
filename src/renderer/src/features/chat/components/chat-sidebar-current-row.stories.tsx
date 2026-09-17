@@ -476,7 +476,6 @@ export const NestedRowCurrent: Story = {
 	},
 };
 
-
 /**
  * The current row UNDER KEYBOARD FOCUS — the one arrangement where two outline
  * rules meet on one box, and a state no frame in this set has ever held.
@@ -500,7 +499,9 @@ export const FocusedRowCurrent: Story = {
 		agentCatalogue = [];
 		selected = REVENUE;
 		draftKey = null;
-		return <Page note="A conversation row is current, with the keyboard on it" />;
+		return (
+			<Page note="A conversation row is current, with the keyboard on it" />
+		);
 	},
 	play: async () => {
 		await catalogueSettled(3);
@@ -563,8 +564,8 @@ export const WashSwatches: Story = {
 				</div>
 			</div>
 			<p className="text-meta text-ink-muted">
-				A reader judges the pair by whether the two blocks read as two
-				grounds; the contract asserts the same distance numerically.
+				A reader judges the pair by whether the two blocks read as two grounds;
+				the contract asserts the same distance numerically.
 			</p>
 		</div>
 	),
