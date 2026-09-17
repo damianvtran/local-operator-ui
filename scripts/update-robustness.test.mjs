@@ -6704,8 +6704,16 @@ const driveGlobalUpdate = async ({
 		const readings = [before, after];
 		updateService.readGlobalInstallVersion = () =>
 			readings.length > 1 ? readings.shift() : after;
-		updateService.runGlobalUpdate = async (consolePath) => {
-			calls.installers.push(consolePath);
+		/*
+		 * The command the attempt reaches for, recorded by its PATH rather than by the
+		 * whole descriptor: the service hands `runGlobalUpdate` a `{ path, args }`
+		 * pair, because a managed update is not always the entry point (`<console
+		 * path> update`) any more - the source-build route runs `lop-update`, which
+		 * takes no `update` argument. What this harness is asserting is unchanged:
+		 * which install's own tool was reached for.
+		 */
+		updateService.runGlobalUpdate = async (command) => {
+			calls.installers.push(command.path);
 			if (runGate) await runGate({ markerPath });
 			return {
 				exitCode,
@@ -6715,7 +6723,7 @@ const driveGlobalUpdate = async ({
 						? ""
 						: "error: Failed to install: the index is unreachable\n\n  Caused by: network unreachable",
 				ran,
-				command: consolePath,
+				command: command.path,
 			};
 		};
 		/*

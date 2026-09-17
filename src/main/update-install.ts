@@ -8,6 +8,7 @@ import {
 	realpathSync,
 	renameSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
@@ -2395,6 +2396,37 @@ export type BackendPlan = {
 	 * the closing sentence both say so instead.
 	 */
 	sourceBuild: boolean;
+	/**
+	 * WHICH managed route the app runs, when `canManageUpdate` is true.
+	 *
+	 * `entry-point` is the install's own front end, `<resolved console script>
+	 * update`, which is the only route for a host on the generation layout: it
+	 * detects the kind, writes the `.lop-source` marker runtimes converge on, and
+	 * lands the install in a tree no running process is reading.
+	 *
+	 * `source-build` is `lop-update` - the checkout rebuild - and it exists because
+	 * a uv tool BUILT FROM THIS MACHINE's checkout is a different audience. The
+	 * entry point installs the PUBLISHED WHEEL over such an install (the harness
+	 * prints the same notice), which is the right answer for a released install and
+	 * the wrong one for the operator's own: their `.lop-source` names a git sha and
+	 * `lop-update` is the tool that maintains it, so refusing to run anything left
+	 * the panel instructing them to paste the command themselves. This route runs
+	 * that same tool, and only that tool: with `lop-update` absent from the machine
+	 * the arm falls back to the refusal and the command, unchanged.
+	 *
+	 * null for every refusal, which is what the surfaces read.
+	 */
+	managedRoute: "entry-point" | "source-build" | null;
+	/**
+	 * The install tree the managed route rewrites, when it may rewrite one.
+	 *
+	 * It is where that route's EVIDENCE lives, and the two routes read different
+	 * evidence on purpose: the entry point moves the install's VERSION, while a
+	 * rebuild of the checkout usually keeps the version (the checkout's
+	 * `pyproject.toml` names the last release) and moves `.lop-source`'s ref - so a
+	 * version comparison would report a successful rebuild as a failure.
+	 */
+	installPrefix: string | null;
 };
 
 /**
@@ -2558,6 +2590,139 @@ export function readSourceRef(prefix: string): string | null {
 		// and not a failure worth propagating out of a version check.
 		return null;
 	}
+}
+
+/**
+ * What `<prefix>/.lop-source` says, and when it last said it.
+ *
+ * THE EVIDENCE A REBUILD MOVES, and the two fields are there because neither alone
+ * is enough. The REF is the identity of the commit that was installed - it is what
+ * makes an update that landed distinguishable from one that did not, where the
+ * VERSION cannot be: a checkout's `pyproject.toml` names the last release, so a
+ * successful rebuild of `main` usually reports the same `0.56.x` it reported
+ * before, and comparing versions would call that a failure. The MTIME is the
+ * fallback for the case the ref cannot answer - a marker written by an older
+ * tool, or a rebuild that landed the same commit again after a `reset` - and it is
+ * read from the same stat call, so a caller never has to decide which to ask for.
+ *
+ * `prefix` is a parameter and null is an answer, not an error: the caller resolves
+ * the install's prefix freshly on every read rather than holding the one its check
+ * saw, because the generations swap moves the tree the prefix names.
+ */
+export type SourceMarkerState = {
+	ref: string | null;
+	mtimeMs: number | null;
+};
+
+export function readSourceMarkerState(
+	prefix: string | null,
+): SourceMarkerState {
+	if (!prefix) return { ref: null, mtimeMs: null };
+	const marker = join(prefix, ".lop-source");
+	try {
+		const stat = statSync(marker);
+		return { ref: readSourceRef(prefix), mtimeMs: stat.mtimeMs };
+	} catch {
+		return { ref: null, mtimeMs: null };
+	}
+}
+
+/**
+ * Whether a rebuild of the checkout landed, judged by the marker rather than by a
+ * version.
+ *
+ * The rule, in the order it is applied: a changed REF is a landed rebuild, whatever
+ * the versions say; when either reading has no ref to compare, an ADVANCED mtime
+ * is; and a marker that was ABSENT before and present now is one too, because that
+ * is what the first rebuild of an editable-style prefix looks like. Everything else
+ * is not-landed - including the case where the after reading is absent entirely,
+ * which means the tool removed the marker or the prefix could not be read, and a
+ * failure is the honest answer to both.
+ */
+export function didSourceRebuildLand(input: {
+	before: SourceMarkerState;
+	after: SourceMarkerState;
+}): boolean {
+	const { before, after } = input;
+	const hadMarker = before.ref !== null || before.mtimeMs !== null;
+	const hasMarker = after.ref !== null || after.mtimeMs !== null;
+	if (!hasMarker) return false;
+	if (!hadMarker) return true;
+	if (before.ref !== null && after.ref !== null) {
+		return before.ref !== after.ref;
+	}
+	if (before.mtimeMs !== null && after.mtimeMs !== null) {
+		return after.mtimeMs > before.mtimeMs;
+	}
+	return false;
+}
+
+/**
+ * A line that tells the reader to go around a guard the installer just applied.
+ *
+ * `lop-update` refuses a ref that is behind or diverged FROM ITS OWN GATE and then
+ * closes its message with how to bypass that gate (`--skip-remote-check`, and the
+ * same spelling for `--allow-downgrade` and any `--force`). That line is the LAST
+ * line of its output and it is the one thing this module must never put in front of
+ * the user as their remedy: it recommends disabling the check that just protected
+ * them (review round 2, U7 - measured on the operator's own refusal, 18 lines whose
+ * head carries the diagnosis and whose tail carries the bypass).
+ */
+const GUARD_BYPASS_ADVICE =
+	/--skip-[a-z-]+|--allow-downgrade|--force\b|--no-verify|--ignore-checks/i;
+
+/**
+ * A line that is an instruction to run something in a terminal.
+ *
+ * The refusal's body is addressed to a person at a shell - `git -C ... fetch`,
+ * `lop-update <ref>` - and those belong to the by-hand path the panel already
+ * offers, not to the diagnosis. They also nest a `lop-update` line inside a message
+ * ABOUT a `lop-update` run, which reads as the app telling itself what to do.
+ *
+ * AN INSTALLER'S OWN DIAGNOSTICS ARE NOT INSTRUCTIONS, and the lookahead is what
+ * draws that line: `lop-update: REFUSING to release a stale ref.` is the tool
+ * SPEAKING (and the one line this function exists to keep), while `lop-update main
+ * --skip-remote-check` is the tool being RUN. Without it the first message line
+ * would end the head at the warning above it and the verdict would be lost.
+ */
+const TERMINAL_INSTRUCTION =
+	/^(?!\S+:\s)(?:git|lop-update|uv|pip|pipx|python\d?|sudo)\b/i;
+
+/**
+ * The installer's own diagnosis, chosen by where the diagnosis IS rather than by
+ * where its output ended.
+ *
+ * WHY NOT A TAIL (`stderrTail`). An installer's last line is its exit reason for a
+ * crash - `installer exited 127`, `error: Failed to install` - which is why the pip
+ * path takes the tail. A REFUSAL is the opposite shape: the verdict, the refs and
+ * the consequence are the FIRST paragraph, and what follows is the by-hand
+ * instructions and then how to bypass the guard. Selecting by tail hands the reader
+ * the bypass as their remedy, which is what this function exists to prevent.
+ *
+ * The rules, in order: drop guard-bypass lines entirely; take the head up to the
+ * first terminal instruction (so the verdict and its evidence survive and the
+ * by-hand recipe does not); cap at `maxLines`; and fall back to the tail when the
+ * head yields nothing usable, because a short unexplained one-liner (`installer
+ * exited 127`) must still reach the panel. The result is bounded, because it lands
+ * in a panel sentence whose full streams are in the update service log.
+ */
+export function installDiagnosisLines(text: string, maxLines = 6): string {
+	const lines = text
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+	if (lines.length === 0) return "";
+	const allowed = lines.filter((line) => !GUARD_BYPASS_ADVICE.test(line));
+	const pool = allowed.length > 0 ? allowed : lines;
+	const head: string[] = [];
+	for (const line of pool) {
+		if (head.length >= maxLines) break;
+		if (head.length > 0 && TERMINAL_INSTRUCTION.test(line)) break;
+		head.push(line);
+	}
+	return (head.length > 0 ? head : pool.slice(-maxLines))
+		.join("\n")
+		.slice(0, 800);
 }
 
 /** `local_operator-0.56.0.dist-info`, in either separator spelling. */
@@ -3129,6 +3294,27 @@ export function classifyGlobalInstall(
 }
 
 /**
+ * The tree an install lives in, from what the identity itself carries.
+ *
+ * The `pyvenv.cfg`'s own prefix when the install has one - it is EVIDENCE, a file
+ * read from the tree - and otherwise the prefix the resolved script sits in
+ * (`<prefix>/bin/<name>`, which is uv's and pipx's layout for every kind this
+ * function classifies). Both are needed: a uv tool install seen through a
+ * `generations/<id>` symlink carries the generation's own `pyvenv.cfg`, while a
+ * fixture or a half-installed tree can have the script without the config file.
+ * Null when there is no resolved path at all.
+ *
+ * This is the plan's `installPrefix`, which is where a managed route's EVIDENCE
+ * lives: an answer that named the wrong tree would make a landed rebuild read as
+ * one that did not.
+ */
+function installPrefixOf(identity: InstallIdentity): string | null {
+	if (identity.venvPrefix) return identity.venvPrefix;
+	const script = identity.realPath ?? identity.path;
+	return script ? dirname(dirname(script)) : null;
+}
+
+/**
  * Resolve what a global (GLOBAL_INSTALL) backend can be told to do.
  *
  * `canManageUpdate` is false in every case: the installer that owns the
@@ -3145,8 +3331,18 @@ export function classifyGlobalInstall(
  */
 export function resolveGlobalInstallPlan(input: {
 	identity: InstallIdentity;
+	/**
+	 * The `lop-update` this machine resolves, or null when it has none.
+	 *
+	 * An INPUT rather than a lookup in here, because this function is the statement
+	 * that has to be testable without a machine: the caller resolves the tool the
+	 * same way it resolves everything else, and the plan says what that licence is
+	 * worth. Null means what it says - the app has no rebuild route here.
+	 */
+	sourceRebuild?: string | null;
 }): BackendPlan {
 	const kind = classifyGlobalInstall(input.identity);
+	const installPrefix = installPrefixOf(input.identity);
 	// A uv tool built from a git snapshot and the checkout itself both report the
 	// CHECKOUT's version after they are updated, so neither can be promised the
 	// version the app offered (review U12). Which of the two it is now comes from
@@ -3181,6 +3377,8 @@ export function resolveGlobalInstallPlan(input: {
 				"The server is running from a source checkout on this machine rather than an installed copy, so update it with lop-update after your change is merged.",
 			detail,
 			sourceBuild: true,
+			managedRoute: null,
+			installPrefix,
 		};
 	}
 	if (kind === "uv-tool") {
@@ -3206,12 +3404,26 @@ export function resolveGlobalInstallPlan(input: {
 		 * from then on.
 		 */
 		const managed = generationInstallRoot(input.identity) !== null;
+		/*
+		 * THE SOURCE-BUILD ROUTE, and why it is NOT gated on the generation layout the
+		 * way the entry point is. That gate exists because `<console path> update`
+		 * installs the published wheel: on a legacy layout it rewrites `site-packages`
+		 * under every live runtime, which is the 2026-09-15 incident. `lop-update`
+		 * rebuilds and reinstalls THE CHECKOUT this install already came from - the
+		 * exact command the panel has been telling this audience to paste, and the only
+		 * one that keeps their build rather than replacing it with a release wheel.
+		 * Running it for them changes who types it, not what happens; and it is the
+		 * case the report asked for, because the operator's install is a uv-tool build
+		 * of their own checkout and a refusal left them a copy/paste instruction.
+		 */
+		const sourceRebuildRoute =
+			!managed && sourceBuild && (input.sourceRebuild ?? null) !== null;
 		const provenance = sourceBuild
 			? " Built from source on this machine, so `lop update` installs the published release over it - the harness prints the same notice."
 			: "";
 		return {
-			canManageUpdate: managed,
-			updateCommand: "lop update",
+			canManageUpdate: managed || sourceRebuildRoute,
+			updateCommand: sourceRebuildRoute ? "lop-update" : "lop update",
 			/*
 			 * The remedy is the sentence above the command well in the by-hand panel
 			 * and the consequence line in the managed offer, and each arm says the
@@ -3224,6 +3436,10 @@ export function resolveGlobalInstallPlan(input: {
 			 * destructive thing this path does, so it is stated here rather than in
 			 * the in-flight panel the user reaches only after pressing.
 			 *
+			 * Source build - the same disclosure with the one difference that matters:
+			 * what is rebuilt is THEIR checkout, and the version they end up on is the
+			 * checkout's rather than the release the app offered.
+			 *
 			 * Legacy - WHY the app will not press the button, which is what the user
 			 * is choosing between (reviews U8, N1). It lived only in the mono Details
 			 * line, trailing a resolved path and a classification.
@@ -3234,9 +3450,23 @@ export function resolveGlobalInstallPlan(input: {
 			 */
 			remedy: managed
 				? "The app updates this install and then restarts the server it started, so a turn that is in flight is dropped while the server comes back. This can take a minute or two."
-				: "This install predates the non-disruptive installer, so update it once from your terminal. This install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn; the app manages updates after that.",
-			detail: `${detail}${provenance}`,
+				: sourceRebuildRoute
+					? "The app rebuilds this source checkout with `lop-update` and then restarts the server it started. That rebuild reinstalls the install in place, so sessions running on this machine can be interrupted while it happens, and it can take a few minutes. The version this install reports afterwards is the checkout's, not the release the app offered."
+					: "This install predates the non-disruptive installer, so update it once from your terminal. This install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn; the app manages updates after that.",
+			detail: `${detail}${
+				managed
+					? provenance
+					: sourceRebuildRoute
+						? " Built from source on this machine, so the app rebuilds the checkout rather than installing the published release over it."
+						: provenance
+			}`,
 			sourceBuild,
+			managedRoute: managed
+				? "entry-point"
+				: sourceRebuildRoute
+					? "source-build"
+					: null,
+			installPrefix,
 		};
 	}
 	if (kind === "pipx") {
@@ -3246,6 +3476,8 @@ export function resolveGlobalInstallPlan(input: {
 			remedy: "The server is a pipx install, so update it from your terminal",
 			detail,
 			sourceBuild: false,
+			managedRoute: null,
+			installPrefix,
 		};
 	}
 	if (kind === "pip") {
@@ -3255,6 +3487,8 @@ export function resolveGlobalInstallPlan(input: {
 			remedy: "The server is a pip install, so update it from your terminal",
 			detail,
 			sourceBuild: false,
+			managedRoute: null,
+			installPrefix,
 		};
 	}
 	return {
@@ -3264,6 +3498,8 @@ export function resolveGlobalInstallPlan(input: {
 			"The app could not tell how this server was installed, so update it with the tool you installed it with - uv, pipx or pip",
 		detail,
 		sourceBuild: false,
+		managedRoute: null,
+		installPrefix,
 	};
 }
 

@@ -2322,6 +2322,27 @@ export const STORIES = [
 	 */
 	["common-updatenotification--backend-update-in-flight", 1280, 900],
 	["common-updatenotification--backend-update-failed", 1280, 900],
+	/*
+	 * THE SOURCE-BUILD ROUTE, in the four states this pass added. The install is a
+	 * uv-tool build of this machine's checkout, so the app runs `lop-update` rather
+	 * than handing the command over - and every field of the panel differs from the
+	 * release case above: the consequence sentence names the rebuild and the
+	 * checkout's version, the provenance line says the checkout is rebuilt rather
+	 * than replaced by the published release, and the failure frame carries the
+	 * installer's own DIAGNOSIS (its verdict and the refs) instead of the last line
+	 * of its output, which advised bypassing the guard that just refused the user
+	 * (review round 2, U7). `--backend-update-failed-orphan` is the one sentence
+	 * this pass put in front of a user that had no frame at all: an updater stopped
+	 * on its budget with something it started still alive.
+	 */
+	["common-updatenotification--backend-update-offer-source-build", 1280, 900],
+	[
+		"common-updatenotification--backend-update-in-flight-source-build",
+		1280,
+		900,
+	],
+	["common-updatenotification--backend-update-failed-source-build", 1280, 900],
+	["common-updatenotification--backend-update-failed-orphan", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	/*
 	 * Two more than the set had, and both for a reason: `--filtered` is the only

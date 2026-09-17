@@ -71,7 +71,9 @@ const install = await import(
 );
 const {
 	PENDING_SERVER_UPDATE_GRACE_MS,
+	didSourceRebuildLand,
 	evaluatePendingServerUpdateMarker,
+	installDiagnosisLines,
 	parsePendingServerUpdateMarker,
 } = install;
 
@@ -366,4 +368,92 @@ test("the recorded group is believed only when it is ours, and its deadline boun
 		["expired", "gone"],
 	);
 	assert.ok(PENDING_SERVER_UPDATE_GRACE_MS > 0);
+});
+
+test("a refusal's diagnosis is the head, and the bypass advice never reaches the panel", () => {
+	/*
+	 * THE OPERATOR'S OWN `lop-update`, refusing. Captured by driving the real script
+	 * in an isolated repository - `LOCAL_OPERATOR_REPO` pointing at a throwaway
+	 * checkout whose `main` is one commit behind its `origin/main`, so the script
+	 * refuses BEFORE it builds anything - and pasted here verbatim, because the
+	 * shape is the finding: the verdict and the refs are the FIRST paragraph, and
+	 * the last line tells the reader to disable the guard that just refused them
+	 * (review round 2, U7).
+	 */
+	const refusal = [
+		"lop-update: warning: could not fetch origin (offline?); comparing against the last known state of origin/main",
+		"lop-update: REFUSING to release a stale ref.",
+		"",
+		"  local  main          = 2a0b473",
+		"  remote origin/main = 4b32d95  (1 commit(s) ahead)",
+		"",
+		"Local main is BEHIND origin/main, so installing it would publish code",
+		"older than what is merged -- and would report success while doing it.",
+		"",
+		"Update the local ref first, then re-run:",
+		"",
+		"  git -C /repo fetch origin",
+		"  git -C /repo update-ref refs/heads/main origin/main   # safe while another branch is checked out",
+		"  lop-update main",
+		"",
+		"(If main is the checked-out branch, use 'git -C /repo merge --ff-only origin/main' instead.)",
+		"",
+		"To install the local ref anyway: lop-update main --skip-remote-check",
+	].join("\n");
+
+	const diagnosis = installDiagnosisLines(refusal);
+	// The verdict, the refs and the consequence - the part that says WHY.
+	assert.match(diagnosis, /REFUSING to release a stale ref\./);
+	assert.match(diagnosis, /local {2}main {10}= 2a0b473/);
+	assert.match(diagnosis, /4b32d95 {2}\(1 commit\(s\) ahead\)/);
+	assert.match(diagnosis, /BEHIND origin\/main/);
+	// Never the line that advises going around the refusal.
+	assert.doesNotMatch(diagnosis, /--skip-remote-check/);
+	assert.doesNotMatch(diagnosis, /bypass/i);
+	// And never the shell recipe, which belongs to the by-hand path the panel
+	// already offers - and which nests a `lop-update` line inside a message about
+	// an app-run `lop-update`.
+	assert.doesNotMatch(diagnosis, /git -C/);
+	assert.doesNotMatch(diagnosis, /^lop-update .*$/m);
+	assert.ok(diagnosis.split("\n").length <= 6, "the panel sentence is bounded");
+
+	// A crash-shaped output keeps working: a one-line exit reason IS the diagnosis
+	// when there is no structure to prefer, which is why the fallback is the tail.
+	assert.equal(
+		installDiagnosisLines("error: Failed to install\ninstaller exited 127"),
+		"error: Failed to install\ninstaller exited 127",
+	);
+	// Nothing at all stays nothing: the panel then shows its own sentence alone.
+	assert.equal(installDiagnosisLines("   \n\n  "), "");
+});
+
+test("a rebuild's landing is the marker, not the version", () => {
+	/*
+	 * The evidence rule for the source-build route. `lop-update` builds from the
+	 * checkout's `main` while `pyproject.toml` names the last release, so a landed
+	 * rebuild usually keeps the version - `0.56.x -> 0.56.x` - and a version
+	 * comparison would report a success as a failure.
+	 */
+	const state = (ref, mtimeMs) => ({ ref, mtimeMs });
+	const landed = (before, after) => didSourceRebuildLand({ before, after });
+	assert.equal(
+		landed(state("a".repeat(40), 1), state("b".repeat(40), 2)),
+		true,
+	);
+	// The same commit reinstalled is NOT a landed update: the install still holds
+	// the revision it held, and the panel must say so rather than claim progress.
+	assert.equal(
+		landed(state("a".repeat(40), 1), state("a".repeat(40), 9)),
+		false,
+	);
+	// No refs to compare - an older writer, or a rebuild after a `reset` - the
+	// marker's own write time is the fallback.
+	assert.equal(landed(state(null, 1), state(null, 2)), true);
+	assert.equal(landed(state(null, 2), state(null, 2)), false);
+	// The first rebuild of a prefix that never carried a marker.
+	assert.equal(landed(state(null, null), state("b".repeat(40), 2)), true);
+	// An absent after reading is not evidence of anything good: the tool removed
+	// the marker, or the prefix could not be read, and both are failures.
+	assert.equal(landed(state("a".repeat(40), 1), state(null, null)), false);
+	assert.equal(landed(state(null, null), state(null, null)), false);
 });
