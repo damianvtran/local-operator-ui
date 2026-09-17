@@ -130,7 +130,7 @@ const legacyInstall = (root, { version = "0.55.10", sourceRef = null } = {}) =>
 // The layout decides who runs the command
 // ---------------------------------------------------------------------------
 
-test("a legacy uv-tool install names `lop update` and does not let the app run it", () => {
+test("a legacy uv-tool install with no `lop-update` on the machine names `lop update` and does not let the app run it", () => {
 	const root = tempRoot("legacy");
 	const prefix = legacyInstall(root, {
 		version: "0.55.10",
@@ -151,6 +151,9 @@ test("a legacy uv-tool install names `lop update` and does not let the app run i
 	assert.equal(plan.canManageUpdate, false);
 	assert.equal(plan.updateCommand, "lop update");
 	assert.equal(plan.sourceBuild, true);
+	// No rebuild tool was passed, which is the state of most machines: the app has
+	// no route it may run, and says so rather than guessing at one.
+	assert.equal(plan.managedRoute, null);
 	/*
 	 * WHY THE COMMAND IS REFUSED lives in the remedy, which is the sentence above
 	 * the command well, and no longer in the mono Details line (reviews U8, N1):
@@ -166,6 +169,99 @@ test("a legacy uv-tool install names `lop update` and does not let the app run i
 	assert.match(plan.detail, /classified as uv-tool\./);
 	assert.match(plan.detail, /installs the published release over it/);
 	assert.doesNotMatch(plan.detail, /rewrites the shared environment in place/);
+});
+
+test("a uv-tool SOURCE BUILD is managed by `lop-update` when the machine has it, and the release install is not", () => {
+	/*
+	 * THE CASE THE REPORT IS ABOUT. A uv-tool build of this machine's own checkout
+	 * reports the CHECKOUT's version and carries a git sha in `.lop-source`; the
+	 * entry point would install the published wheel over it (the harness's own
+	 * notice says so), and `lop-update` is the tool that maintains exactly this
+	 * install. Refusing and handing the user the command was the whole complaint, so
+	 * when `lop-update` resolves the app runs it - and only then: absent, the plan is
+	 * the refusal it always was.
+	 *
+	 * The release install beside it is the OTHER half, and it is here on purpose: a
+	 * uv-tool install from PyPI has no `.lop-source` ref to move, so `lop-update` is
+	 * not its tool and the entry point stays the only route.
+	 */
+	const root = tempRoot("source-rebuild");
+	const sourcePrefix = legacyInstall(root, {
+		version: "0.56.5",
+		sourceRef: "d0601cfadaf6024503298ce452e18054a46dfac7 main",
+	});
+	const sourceIdentity = readInstallIdentity(
+		join(sourcePrefix, "bin", "local-operator"),
+	);
+	assert.equal(classifyGlobalInstall(sourceIdentity), "uv-tool");
+	assert.equal(generationInstallRoot(sourceIdentity), null);
+
+	const rebuild = "/Users/someone/.local/bin/lop-update";
+	const managed = resolveGlobalInstallPlan({
+		identity: sourceIdentity,
+		sourceRebuild: rebuild,
+	});
+	assert.equal(managed.canManageUpdate, true);
+	assert.equal(managed.managedRoute, "source-build");
+	assert.equal(managed.updateCommand, "lop-update");
+	assert.equal(managed.sourceBuild, true);
+	// The install tree the route rewrites, which is where its evidence lives.
+	assert.equal(managed.installPrefix, sourcePrefix);
+	/*
+	 * The copy states what the app does, the risk the operator accepted on
+	 * everyone's behalf, and the one thing it cannot promise: the version this
+	 * install reports afterwards is the checkout's. The in-place clause is pinned
+	 * here because it is the consent the decision recorded - the app ships to people
+	 * who did not make it, so nobody may meet the consequence by surprise.
+	 */
+	assert.match(managed.remedy, /rebuilds this source checkout/);
+	assert.match(managed.remedy, /reinstalls the install in place/);
+	assert.match(
+		managed.remedy,
+		/sessions running on this machine can be interrupted/,
+	);
+	assert.match(managed.remedy, /is the checkout's/);
+	assert.match(managed.detail, /rebuilds the checkout rather than installing/);
+
+	// No tool on the machine: today's refusal, unchanged, and no route.
+	const refused = resolveGlobalInstallPlan({ identity: sourceIdentity });
+	assert.equal(refused.canManageUpdate, false);
+	assert.equal(refused.managedRoute, null);
+	assert.equal(refused.updateCommand, "lop update");
+
+	// A uv-tool install from PyPI is not a source build: the ref is absent, so the
+	// rebuild tool is not its tool and main's behaviour stands untouched.
+	const releasePrefix = legacyInstall(tempRoot("release"), {
+		version: "0.56.5",
+	});
+	const releaseIdentity = readInstallIdentity(
+		join(releasePrefix, "bin", "local-operator"),
+	);
+	const releasePlan = resolveGlobalInstallPlan({
+		identity: releaseIdentity,
+		sourceRebuild: rebuild,
+	});
+	assert.equal(releasePlan.canManageUpdate, false);
+	assert.equal(releasePlan.managedRoute, null);
+	assert.equal(releasePlan.sourceBuild, false);
+
+	// And a generation install keeps the entry point even when `lop-update` exists:
+	// the rebuild is for a source build, not a second way to do the same update.
+	const generationPrefix = uvToolEnv(join(root, "lop", "generations", "g1"), {
+		version: "0.56.5",
+		sourceRef: "d0601cfadaf6024503298ce452e18054a46dfac7 main",
+	});
+	const generationIdentity = readInstallIdentity(
+		join(generationPrefix, "bin", "local-operator"),
+	);
+	if (generationInstallRoot(generationIdentity) !== null) {
+		const generationPlan = resolveGlobalInstallPlan({
+			identity: generationIdentity,
+			sourceRebuild: rebuild,
+		});
+		assert.equal(generationPlan.managedRoute, "entry-point");
+		assert.equal(generationPlan.updateCommand, "lop update");
+	}
 });
 
 test("a generation install is managed, and the layout is the licence - not the version", () => {
