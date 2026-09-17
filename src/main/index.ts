@@ -22,6 +22,7 @@ import {
 	BACKEND_STATUS_EVENT,
 } from "../shared/backend-status";
 import {
+	type DirectoryListing,
 	MAX_FILE_READ_BYTES,
 	MAX_PROBE_PATHS,
 	type ProbedFile,
@@ -59,6 +60,11 @@ import {
 	resolveDevDriverArming,
 } from "./dev-driver";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
+import {
+	listDirectory,
+	outsideWorkspace,
+	realPathOrNull,
+} from "./directory-listing";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
 import {
@@ -1820,18 +1826,37 @@ app
 				const asked = Array.isArray(paths)
 					? paths.filter((path): path is string => typeof path === "string")
 					: [];
+				/*
+				 * The workspace root the containment verdict is measured against, resolved
+				 * ONCE per batch: it is the same directory for every path asked about, and
+				 * `realpath` on it per path would pay for one answer sixty-four times.
+				 * `null` when no cwd was given, which is a caller that cannot get a
+				 * verdict rather than a caller that gets "inside".
+				 */
+				const realRoot = cwd ? realPathOrNull(resolveUserPath(cwd)) : null;
 				return asked.slice(0, MAX_PROBE_PATHS).map((input) => {
 					let resolved = input;
 					try {
 						resolved = resolveUserPath(input, cwd);
 						const stat = statSync(resolved, { throwIfNoEntry: false });
+						const exists = stat !== undefined;
 						return {
 							input,
 							resolved,
-							exists: stat !== undefined,
+							exists,
 							isFile: stat?.isFile() ?? false,
 							sizeBytes: stat?.isFile() ? stat.size : null,
 							mtimeMs: stat?.isFile() ? stat.mtimeMs : null,
+							/*
+							 * The containment verdict, and the reason it is asked ONLY of a path
+							 * that exists: the one caller that reads it (the composer's `@` chip)
+							 * asks the question about a candidate reference, so a path that is not
+							 * there costs no second syscall — and a miss is the common case on the
+							 * keystroke path this runs on.
+							 */
+							outsideWorkspace: exists
+								? outsideWorkspace(realPathOrNull(resolved), realRoot)
+								: undefined,
 						};
 					} catch (error) {
 						// A genuine fault - permission, a stale network mount - is not the
@@ -1848,6 +1873,30 @@ app
 						};
 					}
 				});
+			},
+		);
+
+		/*
+		 * One directory's listable entries, for a picker that offers rows from the
+		 * filesystem.
+		 *
+		 * WHY THIS EXISTS AT ALL: the renderer cannot read a directory and
+		 * `probe-files` answers existence, not membership, so a picker over the working
+		 * directory has nothing to offer without it. It is ONE level by construction:
+		 * a recursive walk on a keystroke path is the cost `scan_directory` in the
+		 * harness spends a module docstring refusing, and deepening is the caller's
+		 * business — it asks again for the directory the user typed a `/` into.
+		 *
+		 * The path goes through the SAME `resolveUserPath` as every other local-file
+		 * handler, so `~`, a relative path and an absolute path mean here exactly what
+		 * they mean to `probe-files` — the two calls a picker makes per keystroke
+		 * cannot disagree about which directory they are describing.
+		 */
+		ipcMain.handle(
+			"list-directory",
+			async (_, dir: unknown, cwd?: string): Promise<DirectoryListing> => {
+				const target = typeof dir === "string" && dir.length > 0 ? dir : ".";
+				return listDirectory(resolveUserPath(target, cwd));
 			},
 		);
 

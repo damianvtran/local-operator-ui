@@ -2714,12 +2714,13 @@ export function desktopEndpoint(request: DesktopRequest): {
  * The local-file bridge, shared by main, the preload and the renderer.
  *
  * These are NOT `DesktopRequest`s. Every op in the union above travels to the
- * backend over HTTP and is validated by a zod schema there; these four handlers
- * (`read-file`, `save-file`, `probe-files`, `read-file-bytes`) never leave the
- * machine, and two of them return bytes that a zod schema would only get in the
- * way of. They are declared here anyway because this module is the one place
- * the three processes already agree on a shape, and a type that lives beside
- * `ReadFileResponse` in a `.d.ts` is a type main cannot import.
+ * backend over HTTP and is validated by a zod schema there; the local-file
+ * handlers (`read-file`, `save-file`, `probe-files`, `read-file-bytes`,
+ * `list-directory`) never leave the machine, and two of them return bytes that a
+ * zod schema would only get in the way of. They are declared here anyway because
+ * this module is the one place the three processes already agree on a shape, and
+ * a type that lives beside `ReadFileResponse` in a `.d.ts` is a type main cannot
+ * import.
  */
 
 /**
@@ -2735,6 +2736,48 @@ export function desktopEndpoint(request: DesktopRequest): {
  * which is what made the tail of a long conversation unreachable).
  */
 export const MAX_PROBE_PATHS = 64;
+
+/**
+ * Entries one `list-directory` call may return.
+ *
+ * 200, which is the harness's own `_DIRECTORY_ENTRY_LIMIT` for the directory
+ * element of a reference block — the same number, so a directory the two
+ * surfaces describe has the same length. A bound exists at all because the
+ * listing crosses IPC on a keystroke path and is rendered as rows; the answer
+ * reports the truncation rather than silently dropping the tail.
+ */
+export const DIRECTORY_ENTRY_LIMIT = 200;
+
+/** One entry of a `list-directory` answer. */
+export type DirectoryEntry = {
+	name: string;
+	/**
+	 * Whether the entry is a directory, with SYMLINKS FOLLOWED — the harness's
+	 * `DirEntry.is_dir()` does the same, so a link to a directory is a directory
+	 * row on both surfaces.
+	 */
+	directory: boolean;
+};
+
+/**
+ * One directory, as a picker's list of rows.
+ *
+ * `dir` is the path after the path rule resolved it, which is what lets a caller
+ * place the rows relative to the working directory without doing path
+ * arithmetic of its own.
+ */
+export type DirectoryListing = {
+	dir: string;
+	entries: DirectoryEntry[];
+	/** True when `DIRECTORY_ENTRY_LIMIT` hid entries. */
+	truncated: boolean;
+	/**
+	 * Present only when the directory could not be read at all. "Unreadable" and
+	 * "empty" are different facts and the caller says so, rather than painting an
+	 * empty folder for a permission wall.
+	 */
+	error?: string;
+};
 
 /**
  * The largest file `read-file-bytes` will return, in bytes.
@@ -2766,6 +2809,19 @@ export type ProbedFile = {
 	 * words in a bug report.
 	 */
 	error?: string;
+	/**
+	 * Whether the target's FULLY RESOLVED path lies outside the fully resolved
+	 * workspace root passed as `cwd` — symlinks followed on both sides, which is
+	 * the harness's own containment rule (`builtin.py:_resolve_workspace_path`)
+	 * and the fact a caller paints "this will ask for approval" from.
+	 *
+	 * Absent rather than `false` when the question cannot be asked: no `cwd`
+	 * argument, or a target that will not resolve. A caller that needs a verdict
+	 * for its own decision (`outsideWorkspace` in `src/main/directory-listing.ts`)
+	 * treats the unresolvable case as outside; a caller that only DECORATES is
+	 * told nothing rather than told "inside".
+	 */
+	outsideWorkspace?: boolean;
 };
 
 /**
