@@ -1897,7 +1897,6 @@ const HIGHLIGHT_STEP_PINS = [
 	},
 ];
 
-
 /*
  * The chart's hover mark, and why it is TWO assertions rather than one.
  *
@@ -2111,7 +2110,10 @@ for (const { id, palette: p } of palettes) {
 		if (pin) {
 			/* A pinned palette: the assertion becomes that the recorded step and the
 			   ink that caps it are still what this palette does. */
-			if (Math.abs(wanted - pin.step) > 0.05 || ratio(p[pin.inkRole], p.highlight) < pin.onGround - 0.05) {
+			if (
+				Math.abs(wanted - pin.step) > 0.05 ||
+				ratio(p[pin.inkRole], p.highlight) < pin.onGround - 0.05
+			) {
 				fail(
 					`${id}: the pinned highlight step no longer matches — recorded ${pin.step} L* with ${pin.inkRole} at ${pin.onGround}:1 on the row's ground, measured ${r2(wanted)} L* with ${r2(ratio(p[pin.inkRole], p.highlight))}:1. Re-measure the cap, re-author the value if the inks moved, and update the pin`,
 				);
