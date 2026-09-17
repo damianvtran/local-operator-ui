@@ -2756,9 +2756,23 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 		strip.includes("+{tabsOffScreen}"),
 		"the count of tabs that are not shown is the control's own text",
 	);
+	// AND IT IS A CHIP RATHER THAN A BARE PLUS (design review round 2, U5, ruled), which is
+	// what stops it reading as the strip's `+` (new tab) control at a glance: the count
+	// carries the tab chips' own grammar, and the new-tab control is bounded by its edge.
 	assert.ok(
-		strip.includes("aria-label={`All tabs, ${tabsOffScreen} not shown`}"),
-		"and it is in the accessible name, not only in the tooltip",
+		strip.includes(
+			'"rounded-sm border border-control px-1 text-meta text-ink-dim tabular-nums"',
+		),
+		"the count is drawn in the chip grammar",
+	);
+	assert.ok(
+		strip.includes('variant="outline"') &&
+			strip.includes('className="mx-1 h-4 w-px shrink-0 self-center bg-hairline"'),
+		"the new-tab control is a bounded control, and the strip's own rule separates it from the count when both are on screen",
+	);
+	assert.ok(
+		strip.includes("`All tabs, ${tabsOffScreen} more tabs`"),
+		"and it is in the accessible name, not only in the tooltip, in the words the U5 ruling names",
 	);
 	assert.ok(
 		strip.includes('querySelectorAll("[data-tab-id]")'),

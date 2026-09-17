@@ -1213,48 +1213,88 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					})}
 				</div>
 				{tabsOffScreen > 0 && (
+					/*
+					 * THE COUNT IS A CHIP, AND IT NAMES ITSELF (design review round 2, U5, ruled):
+					 * this control and the strip's `+` (new tab) used to be two bare plus signs
+					 * distinguished only by whether a digit followed one of them. The count now
+					 * carries the chip grammar the tab chips use (`border-control`, `text-ink-dim`,
+					 * `tabular-nums`) so it reads as a COUNT, and the words `N more tabs` are in
+					 * both channels the ruling names: the control's accessible name and its
+					 * tooltip. `N not shown` stays the LIST's own heading, where the sentence is
+					 * about the rows below it rather than about this control's count.
+					 */
 					<Tooltip
 						content={
 							tabsOffScreen === 1
-								? "All tabs — 1 not shown"
-								: `All tabs — ${tabsOffScreen} not shown`
+								? "All tabs — 1 more tab"
+								: `All tabs — ${tabsOffScreen} more tabs`
 						}
 					>
 						<Button
 							ref={overflowTriggerRef}
 							variant="ghost"
 							size="icon-sm"
-							aria-label={`All tabs, ${tabsOffScreen} not shown`}
+							aria-label={
+								tabsOffScreen === 1
+									? "All tabs, 1 more tab"
+									: `All tabs, ${tabsOffScreen} more tabs`
+							}
 							aria-expanded={overflowOpen}
 							onClick={() => setOverflowOpen((open) => !open)}
 							data-tour-tag="browser-tab-overflow"
-							className={cn("shrink-0 gap-0.5 self-center px-1")}
+							className={cn("shrink-0 gap-1 self-center px-1")}
 						>
 							<ChevronDown aria-hidden="true" />
-							{/* The count itself, at the chip's own step and tabular so two
-							    digits do not shift the row it sits in. */}
-							<span aria-hidden="true" className={cn("text-meta tabular-nums")}>
+							{/* The count itself, drawn in the chip grammar and tabular so two digits
+							    do not shift the row it sits in. */}
+							<span
+								aria-hidden="true"
+								className={cn(
+									"rounded-sm border border-control px-1 text-meta text-ink-dim tabular-nums",
+								)}
+							>
 								+{tabsOffScreen}
 							</span>
 						</Button>
 					</Tooltip>
 				)}
 				{tabs.length > 0 && (
-					/* Not drawn when the strip is empty (design round 1, N3): the page area
-					   already offers `New tab` under the same label, and two controls 270px
-					   apart that do the same thing is the duplication the empty state's own
-					   comment forbids. */
-					<Tooltip content={newTabLabel}>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label={newTabLabel}
-							onClick={onNewTab}
-							data-tour-tag="browser-new-tab"
-						>
-							<Plus aria-hidden className="size-4" />
-						</Button>
-					</Tooltip>
+					<>
+						{/*
+						 * THE NEW-TAB CONTROL IS A BOUNDED CONTROL, NOT A SECOND PLUS (design review
+						 * round 2, U5, ruled). `variant="outline"` is what separates it from the count
+						 * chip beside it at a glance: a chip carries a number in the chip grammar, a
+						 * control carries a 1px `border-control` edge around its own glyph, so the two
+						 * are no longer told apart by whether a digit follows the plus. Its tooltip is
+						 * its own (`newTabLabel`, "New tab in this conversation" in the pane and
+						 * "New tab" on the route) and it is drawn as an icon button either way.
+						 *
+						 * The RULE BETWEEN THEM comes from the strip's own vocabulary (`bg-hairline`,
+						 * the same role its tab dividers use) and is drawn only when the count chip is
+						 * actually on screen, which is the state U5's frame shows.
+						 *
+						 * Not drawn when the strip is empty (design round 1, N3): the page area already
+						 * offers `New tab` under the same label, and two controls 270px apart that do
+						 * the same thing is the duplication the empty state's own comment forbids.
+						 */}
+						{tabsOffScreen > 0 && (
+							<span
+								aria-hidden={true}
+								className="mx-1 h-4 w-px shrink-0 self-center bg-hairline"
+							/>
+						)}
+						<Tooltip content={newTabLabel}>
+							<Button
+								variant="outline"
+								size="icon-sm"
+								aria-label={newTabLabel}
+								onClick={onNewTab}
+								data-tour-tag="browser-new-tab"
+							>
+								<Plus aria-hidden className="size-4" />
+							</Button>
+						</Tooltip>
+					</>
 				)}
 			</div>
 			{overflowOpen && (

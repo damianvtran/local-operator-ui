@@ -2302,7 +2302,7 @@ async function sceneBrowserPane(cdp) {
 			"past that, the pinned control appears and its own text is the count of tabs that are not shown",
 			six.control !== null &&
 				/\(\+\d+\)|\+\d+/.test(six.control.text) &&
-				(six.control.label ?? "").includes("not shown"),
+				(six.control.label ?? "").includes("more tab"),
 			JSON.stringify({ six, control: six.control }),
 		);
 		check(
