@@ -287,6 +287,110 @@ test("an instant that cannot be read states nothing", () => {
 	act(() => root.unmount());
 });
 
+test("the stamp's own clock agrees with its title on a 24-hour locale", () => {
+	/*
+	 * The operator asked for am/pm, so `formatTurnTimestamp` forces `hour12`; the
+	 * title used to take the LOCALE's cycle, so on a machine whose default clock is
+	 * 24-hour one element stated the same instant two ways - `15 Sept, 3:42 pm`
+	 * under `15 September 2026 at 15:42` (review round 1, R3).
+	 *
+	 * The locale is the fixture rather than the machine: jsdom's navigator is en-US,
+	 * whose default cycle is ALREADY h12, which is why the forcing had no test at
+	 * all until now (R4) - deleting `hour12` left this file green. de-DE defaults to
+	 * h23, so the assertion below is red exactly when the option goes.
+	 */
+	const descriptor = Object.getOwnPropertyDescriptor(
+		globalThis.navigator,
+		"language",
+	);
+	const original = globalThis.navigator.language;
+	Object.defineProperty(globalThis.navigator, "language", {
+		value: "de-DE",
+		configurable: true,
+	});
+	try {
+		const instant = new Date(2026, 8, 15, 15, 42);
+		const text = formatTurnTimestamp(instant, NOW);
+		assert.match(text, /3:42 PM/, "the visible clock is the requested am/pm");
+		assert.doesNotMatch(text, /15:42/, "not the locale's own 24-hour cycle");
+
+		const container = document.createElement("div");
+		const root = createRoot(container);
+		act(() => {
+			root.render(h(TurnTimestamp, { timestamp: instant, scope: "turn" }));
+		});
+		const label = container.querySelector("time").getAttribute("aria-label");
+		assert.match(label, /15\. September 2026/);
+		assert.match(label, /3:42 PM/, "and the title half agrees with it");
+		assert.doesNotMatch(
+			label,
+			/15:42/,
+			"the two halves of one element differ no more",
+		);
+		act(() => root.unmount());
+	} finally {
+		if (descriptor) {
+			Object.defineProperty(globalThis.navigator, "language", descriptor);
+		} else {
+			// jsdom's `language` is a getter on the prototype, so the stub above is
+			// an OWN property of the instance and removing it restores the getter.
+			Object.defineProperty(globalThis.navigator, "language", {
+				value: original,
+				configurable: true,
+			});
+		}
+	}
+});
+
+test("a stamp re-decides the day when the local midnight passes", async (t) => {
+	/*
+	 * An always-on stamp is new in this feature, and so is the staleness it can
+	 * carry: a settled conversation re-renders only when a record or a prop
+	 * changes, so before `use-calendar-day` a window left open overnight kept
+	 * printing a bare clock for a turn that had become yesterday's, which reads as
+	 * today (review round 1, R5).
+	 *
+	 * The clock is mocked rather than waited for: the assertions are "same day,
+	 * then yesterday", and the transition is the only thing under test.
+	 */
+	const midnight = new Date(2026, 3, 15, 0, 0, 0, 0).getTime();
+	const elevenFifty = midnight - 10 * 60_000;
+	t.mock.timers.enable({
+		apis: ["setTimeout", "Date"],
+		now: midnight - 60_000,
+	});
+	try {
+		const container = document.createElement("div");
+		const root = createRoot(container);
+		act(() => {
+			root.render(h(TurnTimestamp, { timestamp: elevenFifty, scope: "turn" }));
+		});
+		const text = () => plain(container.querySelector("time").textContent);
+		assert.equal(
+			text(),
+			formatTurnTimestamp(elevenFifty, new Date(elevenFifty)),
+		);
+		assert.doesNotMatch(
+			text(),
+			/Yesterday/,
+			"it is still today at a minute to midnight",
+		);
+
+		// Past the boundary the store re-reads the day and re-renders its subscribers.
+		await act(async () => {
+			t.mock.timers.tick(61_000);
+		});
+		assert.match(
+			text(),
+			/^Yesterday /,
+			"after midnight the same turn is yesterday's, and says so",
+		);
+		act(() => root.unmount());
+	} finally {
+		t.mock.timers.reset();
+	}
+});
+
 test("the stamp is a machine-readable time element whose text is the friendly one", () => {
 	const instant = new Date(2026, 8, 15, 15, 42);
 	const container = document.createElement("div");
@@ -301,9 +405,21 @@ test("the stamp is a machine-readable time element whose text is the friendly on
 	// identically on purpose and a caller that mixed them up would be invisible
 	// in the text.
 	assert.equal(time.getAttribute("data-stamp"), "turn");
-	// The full date and time ride in the title, where the stamp's own four-word
-	// shape has had to abbreviate.
-	assert.match(time.getAttribute("title"), /September 15, 2026/);
+	/*
+	 * The full date and time ride in the accessible name and in the tooltip, where
+	 * the stamp's own four-word shape has had to abbreviate - and they carry the
+	 * DAY, which "3:42 PM" alone does not. A `title` used to hold this and was
+	 * pointer-only, which is why it moved to `aria-label` on the element itself
+	 * (review round 1, R7) with the app's shared `Tooltip` for the pointer half
+	 * (design round 1, D5).
+	 */
+	assert.match(time.getAttribute("aria-label"), /September 15, 2026/);
+	assert.match(
+		time.getAttribute("aria-label"),
+		/3:42 PM/,
+		"in the 12-hour shape the operator asked for",
+	);
+	assert.equal(time.getAttribute("title"), null, "no second, native tooltip");
 	assert.equal(plain(time.textContent), formatTurnTimestamp(instant));
 	act(() => root.unmount());
 });
@@ -466,8 +582,11 @@ test("a collapsed tool row has no stamp at all, and one appears when it is opene
 		"a closed tool row paints no stamp of its own",
 	);
 	// The footer is a different fact - when the last thing here happened - and it
-	// is present with every row present: the pair is what says the assertion
-	// above is about the ROW and not about a page carrying no stamps at all.
+	// is present while the row is CLOSED, which is the case it exists for: a settled
+	// row that has never been opened paints nothing, so the footer is the only time
+	// on screen. Once the row is opened its own stamp takes over and the footer goes
+	// (asserted below), which is the pair that says the assertion above is about the
+	// ROW and not about a page carrying no stamps at all.
 	assert.equal(stamps(container, "footer").length, 1);
 
 	const trigger = container.querySelector('button[aria-expanded="false"]');
@@ -497,6 +616,18 @@ test("a collapsed tool row has no stamp at all, and one appears when it is opene
 		pane.contains(stamp),
 		false,
 		"the pane does not contain the stamp",
+	);
+	/*
+	 * AND THE FOOTER GOES, which is the half of the rule the kind-based gate got
+	 * wrong (review round 1, D1 / QA round 1, Q-1). The footer states when the last
+	 * thing in the conversation happened; while this row was closed it was the only
+	 * time on screen, and now that the row is open its own stamp states that same
+	 * instant eight pixels above it. One clock, stated once.
+	 */
+	assert.equal(
+		stamps(container, "footer").length,
+		0,
+		"an open last row states the time, so the footer does not repeat it",
 	);
 	unmount();
 });

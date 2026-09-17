@@ -1314,9 +1314,13 @@ export const STORIES = [
 	   The wide pass carries all four shapes of the formatter in one frame (today,
 	   `Yesterday`, a dated stamp from this year and one from last year) plus the
 	   CLEAR - a call with nothing to disclose, which is a line with no stamp. The
-	   420px pass is where the placement claim is judged, because the stamp shares
-	   the BUBBLE's right edge rather than the row content box's, and at that
-	   width the two edges are close enough that the wrong one reads as correct.
+	   420px pass is the NARROW COLUMN rather than the small view (the bubble takes
+	   the comfortable `max-w-[75%]` there; the small view is pictured by
+	   `admitted-send-before-first-frame-small-view`), and it is worth a frame
+	   because the transcript is a different shape at that width - not because the
+	   stamp's edge could be confused with another one: a user row is
+	   `flex w-full justify-end` with no right inset, so the bubble's right edge IS
+	   the row content box's right edge, at every width (review round 1, R2/D3).
 	   Both are clipped to their content: the stamps are 12px captions, so a tall
 	   frame is almost entirely ground and `check-evidence`'s uniformity ceiling
 	   rejects it as a frame that is not a picture of anything. */

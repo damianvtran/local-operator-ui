@@ -514,12 +514,15 @@ const ToolRow = memo(function ToolRow({
 	showAvatar,
 	nameColumn,
 	scope,
+	onOpenChange,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
+	/** Reports this row's open state upward; the transcript's footer gates on it. */
+	onOpenChange?: (open: boolean) => void;
 }) {
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
@@ -598,7 +601,21 @@ const ToolRow = memo(function ToolRow({
 	const details = body ? (
 		<>
 			{body}
-			<div className={cn("flex justify-end")}>
+			{/*
+			 * `pr-4` is the row's own meta column, and it is what keeps a ledger row to
+			 * ONE right edge. The disclosure's trigger is `w-full` inside a box that also
+			 * carries `-mx-2 px-2` (`trace/tool-row.tsx`), and that negative margin bleeds
+			 * on the LEFT only, so the trigger's box ends 8px short of the row and its own
+			 * `px-2` puts the duration 8px further in again - 16px in total, measured at
+			 * 1074 against the row's 1090 at 1280 and 364 against 380 at 420, in both
+			 * palettes. The pane and the disclosure content column both reach the row's
+			 * true edge, so without this the stamp sat 16px right of the duration one line
+			 * above it: two right edges inside one card (design round 1, D2). The stamp
+			 * moves onto the meta column rather than the trigger growing, because the
+			 * trigger's bleed is what the row's hover ground is drawn from and restyling
+			 * that ground is a different change from this one.
+			 */}
+			<div className={cn("flex justify-end pr-4")}>
 				<TurnTimestamp timestamp={record.ts} scope="turn" />
 			</div>
 		</>
@@ -649,6 +666,7 @@ const ToolRow = memo(function ToolRow({
 				nameColumn={nameColumn}
 				details={details}
 				media={media}
+				onOpenChange={onOpenChange}
 			/>
 		</MessageContainer>
 	);
@@ -960,12 +978,15 @@ const TranscriptRow = memo(function TranscriptRow({
 	nameColumn,
 	scope,
 	conversationId,
+	onToolOpenChange,
 }: {
 	row: Row;
 	isSmallView: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/** Forwarded to a ledger row so the transcript can gate its footer on it. */
+	onToolOpenChange?: (id: string, open: boolean) => void;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -999,6 +1020,11 @@ const TranscriptRow = memo(function TranscriptRow({
 					showAvatar={row.showAvatar}
 					nameColumn={nameColumn}
 					scope={scope}
+					onOpenChange={
+						onToolOpenChange
+							? (open) => onToolOpenChange(record.id, open)
+							: undefined
+					}
 				/>
 			);
 			break;
@@ -1384,6 +1410,34 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 	const lastRecord = transcript.records[transcript.records.length - 1];
 
+	/*
+	 * The footer's gate, and it asks the ROW rather than reading the row's kind.
+	 *
+	 * The footer states when the last thing in the conversation happened. A user
+	 * turn states that itself (its stamp is one line above), and so does a ledger
+	 * row the reader has OPENED — its stamp sits at the foot of the expanded
+	 * section. Gating on `kind !== "user"` covered only the first, so a transcript
+	 * ending in an open call printed the same clock twice, eight pixels apart
+	 * (`chat-tool-rows/diff-body`, design round 1 D1 / QA round 1 Q-1).
+	 *
+	 * The rule is therefore "the last row paints no stamp of its own", and the
+	 * disclosure's open state is what decides the second half of it. A CLOSED
+	 * ledger row keeps the footer: it has no stamp of its own, so the footer is the
+	 * only time on screen there, which is its job.
+	 *
+	 * One id rather than a set, because only the last row's disclosure can make the
+	 * footer redundant; a row opened further up the transcript changes this value
+	 * without affecting the gate, which the comparison against `lastRecord.id` is
+	 * what expresses. The callback is stable so the memoised rows keep skipping.
+	 */
+	const [openStampRowId, setOpenStampRowId] = useState<string | null>(null);
+	const handleToolOpenChange = useCallback((id: string, open: boolean) => {
+		setOpenStampRowId(open ? id : null);
+	}, []);
+	const lastRowPaintsStamp =
+		lastRecord?.kind === "user" ||
+		(lastRecord?.kind === "tool" && openStampRowId === lastRecord.id);
+
 	// What the working line says, and which phase it is timing. The derivation
 	// (and its copy contract, including the one branch this app drives from its
 	// own admitted send rather than from a frame) lives in
@@ -1725,6 +1779,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								nameColumn={nameColumn}
 								scope={mediaScope}
 								conversationId={conversationId}
+								onToolOpenChange={handleToolOpenChange}
 							/>
 						))}
 
@@ -1862,15 +1917,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					    timestamp floating bottom-right under a state that says this
 					    conversation does not exist here (design review round 1, D2).
 
-					    AND NOT UNDER A USER TURN, which now carries its own stamp one line
-					    above it. This line states when the last thing in the transcript
-					    happened, and on a conversation asked and not yet answered the last
-					    thing is the user's own turn - so an ungated footer printed the SAME
-					    clock twice with nothing between them (`12:13 PM` over `12:13 PM` in
-					    the `turn-timestamps` frame this change is judged on, which is where
-					    the defect was found). The footer keeps its job on every other last
-					    row: an answer or a ledger line carries no stamp of its own, and for
-					    those this is the only time on screen.
+					    AND NOT UNDER A ROW THAT STATES THE TIME ITSELF (`lastRowPaintsStamp`,
+					    defined beside `lastRecord`). This line is the transcript's own answer
+					    to "when was the last thing here", which is the same fact a stamp
+					    states - so it is suppressed for a USER TURN, whose stamp is one line
+					    above it (`12:13 PM` over `12:13 PM`, the duplicate that first take of
+					    the `turn-timestamps` frame found), and for a LEDGER ROW THE READER HAS
+					    OPENED, whose stamp sits at the foot of its expanded section (the same
+					    clock twice eight pixels apart in `chat-tool-rows/diff-body`; design
+					    round 1, D1, and QA round 1, Q-1, which hit it with a real press).
+
+					    IT KEEPS ITS JOB EVERYWHERE ELSE, and the CLOSED ledger row is why the
+					    rule is stated about stamps rather than about row kinds: a settled row
+					    that has never been opened paints nothing, so this line is the only
+					    time on screen there - which is what the frames show, and what the
+					    render tests assert (the footer present on an answer and on a closed
+					    tool row, absent under a user turn and under an open one).
 
 					    IT RENDERS `TurnTimestamp` FOR THE SAME REASON IT IS GATED HERE AT
 					    ALL: it states the same fact a turn's stamp states, so it has to state
@@ -1882,7 +1944,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					    `formatCalendarDate`'s and `formatCalendarDateTime`'s own comments
 					    (`August 5, 2026` beside `8/5/2026, 10:40:00 AM`), and the frames
 					    showed it as `2025-10-09` directly under `Oct 9, 2025, 4:53 AM`. */}
-					{lastRecord && !missing && lastRecord.kind !== "user" && (
+					{lastRecord && !missing && !lastRowPaintsStamp && (
 						<div className="mt-1 flex justify-end">
 							<TurnTimestamp timestamp={lastRecord.ts} scope="footer" />
 						</div>

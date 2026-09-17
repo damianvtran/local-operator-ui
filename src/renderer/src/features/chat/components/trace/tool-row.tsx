@@ -173,6 +173,17 @@ export type ToolRowProps = {
 	details?: ReactNode;
 	/** Open the disclosure initially (stories and measurement surfaces). */
 	defaultOpen?: boolean;
+	/**
+	 * Reports this row's open state to the list it is in.
+	 *
+	 * The disclosure owns its own open state, which is right for every caller
+	 * that only paints the row — but the TRANSCRIPT needs one fact from it: whether
+	 * the LAST row is painting a stamp of its own. That is what its footer line
+	 * gates on, because an open row's stamp and the footer state the same instant
+	 * one line apart otherwise (review round 1, D1/M2). Absent for callers with no
+	 * footer to gate.
+	 */
+	onOpenChange?: (open: boolean) => void;
 	/** Extra classes on the row. */
 	className?: string;
 	/** Rendered under the row, inside its ground: tool-result screenshots. */
@@ -400,6 +411,7 @@ export const ToolRow = ({
 	nameColumn = TOOL_NAME_COL_MIN,
 	details,
 	defaultOpen = false,
+	onOpenChange,
 	className,
 	media,
 }: ToolRowProps) => {
@@ -516,6 +528,7 @@ export const ToolRow = ({
 			summary={row}
 			chevron="leading"
 			defaultOpen={defaultOpen}
+			onOpenChange={onOpenChange}
 			className={cn("@container/toolrow", className)}
 			rowClassName={ROW_HEIGHT}
 			// The whole row is the target, so it takes a row-shaped ground that

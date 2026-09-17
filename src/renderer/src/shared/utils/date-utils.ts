@@ -91,9 +91,10 @@ export const formatCalendarDate = (dateTimeString?: string | Date): string => {
  * The shape is deliberately not `formatMessageDateTime`'s. That one answers the
  * HOVER row's question - the reader is already looking at the message, so a
  * bare weekday inside the week and a bare clock time today are enough - and its
- * call sites (the hover meta row, the transcript's own footer line, the message
- * controls) depend on it, so this is a second formatter rather than a change to
- * the first. A stamp that is always on screen has to name the DAY itself, since
+ * call sites (the hover meta row's own component, `message-item/index.tsx`
+ * and `message-controls.tsx`, which both render `MessageTimestamp`) depend on
+ * it, so this is a second formatter rather than a change to the first. A stamp
+ * that is always on screen has to name the DAY itself, since
  * nothing beside it does:
  *
  *   today            -> `3:42 PM`
@@ -172,9 +173,23 @@ export const formatTurnTimestamp = (
  * the calendar formatter exists to replace. A modification is a moment rather
  * than a day, so this keeps the time and drops the seconds, which are never
  * what anyone is reading a "last modified" field for.
+ *
+ * `hour12` IS OPT-IN AND OFF BY DEFAULT, because the callers want different
+ * clocks and both are right: a settings metadata field is read by someone
+ * comparing timestamps in their own locale, so it keeps the locale's hour cycle
+ * (24-hour on a 24-hour machine). A TURN STAMP's title is read by someone
+ * looking at a stamp whose own text is forced 12-hour by the operator's request,
+ * so leaving it to the locale printed `15 September 2026 at 15:42` under the
+ * text `15 Sept, 3:42 pm` - one instant, two conventions, in one element on a
+ * day-first 24-hour machine (review round 1, R3). The option exists so that
+ * caller can agree with itself without moving every other caller's output.
  */
 export const formatCalendarDateTime = (
 	dateTimeString?: string | Date,
+	options?: {
+		/** Force the 12-hour clock (a stamp's own text is am/pm by request). */
+		hour12?: boolean;
+	},
 ): string => {
 	if (!dateTimeString) return "";
 
@@ -190,6 +205,7 @@ export const formatCalendarDateTime = (
 			day: "numeric",
 			hour: "numeric",
 			minute: "2-digit",
+			...options,
 		});
 	} catch (error) {
 		console.error("Error formatting calendar date-time:", error);

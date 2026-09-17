@@ -27,24 +27,52 @@
  * row's `MessageTimestamp`, so a screen carried `2025-10-09` under `Oct 9, 2025,
  * 4:53 AM`: two spellings of one clock in one column, which is the defect class
  * `date-utils.ts` documents in `formatCalendarDate`'s own comment. One component
- * also keeps the gating honest — the footer is suppressed when the last row is
- * a user turn, because that turn's stamp is already one line above it.
+ * also keeps the gating honest — the footer is suppressed whenever the last row
+ * already paints a stamp of its own, which is a user turn OR a ledger row whose
+ * disclosure is open (review round 1, D1/M2).
  *
- * GEOMETRY, because the frame is the whole of what a stamp is: it is a
- * sibling of the bubble in a column (`UserRow`), so it sits under the bubble
- * and shares the bubble's own right edge rather than the row content box's —
- * the bubble's narrower box is what makes a user turn read as an aside
- * (docs/branding.md § 7), and a stamp on the shared edge would hang in space to
- * the right of the thing it belongs to.
+ * GEOMETRY, because the frame is the whole of what a stamp is: it is a sibling
+ * of the bubble in a column (`UserRow`), so it sits under the bubble and shares
+ * the bubble's own right edge. THAT EDGE IS ALSO THE ROW CONTENT BOX'S, and
+ * saying otherwise would be false: a user row is `flex w-full justify-end` with
+ * no right inset (`message-container.tsx`), so the bubble is justified to the
+ * row's right edge and the two are the same line — measured at 0.0px delta on
+ * every width in the review round (`columnRight - bubbleRight`, 420/1024/1440).
+ * What `docs/branding.md` § 7 actually distinguishes on a user row is the
+ * bubble's LEFT inset, which is what makes a turn read as an aside; the stamp
+ * follows the bubble because it is a caption to it, not because the two right
+ * edges differ (review round 1, R2/D3).
+ *
+ * ONE RIGHT EDGE PER LEDGER ROW, and that one is the row's own meta column. An
+ * open tool row's stamp is inset 16px (`mr-4` where the transcript composes it)
+ * so it lines up with the header's duration slot, because the disclosure's
+ * trigger is `w-full` inside a box carrying `-mx-2 px-2` (`trace/tool-row.tsx`),
+ * which bleeds on the left only and so ends 16px short of the row on the right
+ * (design round 1, D2). Without the inset the same row carried two right edges
+ * one line apart.
+ *
+ * THE AIR IS 4px UNDER A BUBBLE AND 8px UNDER A DISCLOSURE, and that is the two
+ * idioms rather than drift: `UserRow`'s column is `gap-1` because a stamp is a
+ * caption to the bubble above it, while the disclosure content's own `gap-2`
+ * (`shared/components/ui/disclosure.tsx`) puts the same 8px under an expanded
+ * pane as between any two of its blocks, and a stamp that took a margin of its
+ * own would be a second spacing rule beside the shared one (design round 1, D6).
  *
  * A real `<time>` with a machine-readable `dateTime`, because the text is a
  * friendly spelling of a fact the DOM should still be able to answer for a
  * screen reader, a test, or anything that reads the transcript semantically.
- * The `title` carries `formatCalendarDateTime`'s full date and time, which is
- * where the year, the full month name and the seconds-free clock come from when
- * the stamp's own four-word shape has had to abbreviate.
+ * THE VISIBLE TEXT IS NOT WHAT A SCREEN READER READS: `aria-label` carries the
+ * same full instant the tooltip does, because "3:42 PM" alone loses the day for
+ * a reader who cannot see which card it sits under (review round 1, R7). The
+ * full date and time come from `formatCalendarDateTime` with `hour12` forced,
+ * so the tooltip and the label agree with the 12-hour text the operator asked
+ * for rather than taking the locale's own clock — on a 24-hour machine the two
+ * halves of one element used to state the same instant in two conventions
+ * (review round 1, R3).
  */
 
+import { Tooltip } from "@shared/components/ui";
+import { useStampNow } from "@shared/hooks/use-calendar-day";
 import { cn } from "@shared/lib/utils";
 import {
 	formatCalendarDateTime,
@@ -80,6 +108,14 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 }) => {
 	const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
 	/*
+	 * ONE `now` FOR THE WHOLE TRANSCRIPT, recomputed at local midnight rather
+	 * than read here. Reading `new Date()` at render is what let a window left
+	 * open overnight keep calling yesterday's turn "today" (review round 1, R5);
+	 * `use-calendar-day` owns the single timer and hands back a value that is
+	 * stable between midnights, so a memoised row is not re-rendered for it.
+	 */
+	const now = useStampNow();
+	/*
 	 * A stamp that cannot be computed paints nothing rather than `Invalid Date`
 	 * or an empty `<time>`: a record with an unparseable `ts` is a row with no
 	 * time to state, and a placeholder would be a claim about when it happened.
@@ -89,24 +125,42 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 	 */
 	if (Number.isNaN(date.getTime())) return null;
 
+	/*
+	 * The same string for the tooltip and for the accessible name, built once:
+	 * they answer the same question (what instant is this, spelled out) and the
+	 * tooltip is the app's shared idiom here rather than a native `title`
+	 * (design round 1, D5). `hour12` is forced because the visible text is
+	 * 12-hour by the operator's request, and a title in the locale's own cycle
+	 * disagreed with it on a 24-hour machine (review round 1, R3).
+	 */
+	const full = formatCalendarDateTime(date, { hour12: true });
 	return (
-		<time
-			dateTime={date.toISOString()}
-			data-stamp={scope}
-			title={formatCalendarDateTime(date)}
-			/*
-			 * `text-ink-dim` + `text-meta` is the contract's own pair for a
-			 * caption (§ 4: `text-meta` is "captions, timestamps, counts"; § 2:
-			 * `ink-dim` is the caption ink, 4.5:1 on every ground). `select-none`
-			 * because a stamp is not part of the turn's words: a selection drag
-			 * that sweeps it must not put a time into a quote.
-			 */
-			className={cn(
-				"shrink-0 select-none whitespace-nowrap text-ink-dim text-meta",
-				className,
-			)}
-		>
-			{formatTurnTimestamp(date)}
-		</time>
+		<Tooltip content={full} side="bottom" delayDuration={1200}>
+			<time
+				dateTime={date.toISOString()}
+				data-stamp={scope}
+				/*
+				 * The label rather than the text is what assistive tech reads: the
+				 * visible "3:42 PM" is a caption under a card, and out of that
+				 * context it states no day at all (review round 1, R7).
+				 */
+				aria-label={`Sent ${full}`}
+				/*
+				 * `text-ink-dim` + `text-meta` is the contract's own pair for a
+				 * caption (§ 4: `text-meta` is "captions, timestamps, counts"; § 2:
+				 * `ink-dim` is the caption ink, 4.5:1 on every ground). `select-none`
+				 * because a stamp is not part of the turn's words: a selection drag
+				 * that sweeps it must not put a time into a quote. `cursor-help`
+				 * matches the hover row's stamp, so one gesture in this app means one
+				 * thing.
+				 */
+				className={cn(
+					"shrink-0 cursor-help select-none whitespace-nowrap text-ink-dim text-meta",
+					className,
+				)}
+			>
+				{formatTurnTimestamp(date, now)}
+			</time>
+		</Tooltip>
 	);
 };

@@ -54,13 +54,22 @@ $ magick /tmp/old-foot.png /tmp/new-foot.png -append /tmp/pair.png   # `2025-10-
 The run panel's reader frames moved the same way (`reader-settled` by 2,991px, `reader-nested` by
 25,714px); they were re-taken without a before set, so their old shape lives in that same commit.
 
-## Both widths, because the placement claim is about edges
+## Both widths, because the narrow column is a different transcript
 
-The stamp sits against the **bubble's** right edge rather than the row content box's, and a
-user bubble is `max-w-[75%]` (`92%` in the small view). At 1440 the two edges are far
-apart, so a frame showing the wrong one is visibly wrong; at 1024 they are close enough
-that only the pair shows it. Both are in the set for the reason the after-frames are
-captured at both.
+The stamp is right-aligned to the turn's own right edge, which for a user turn is the
+bubble's, because a user row is `flex w-full justify-end` with no right inset
+(`message-item/message-container.tsx`) — **the bubble's right edge and the row content
+box's are the same line at every width**, measured at a 0.0px delta on 420/1024/1440 in
+review round 1 (R2/D3). What `docs/branding.md` § 7 distinguishes on a user row is the
+bubble's LEFT inset, which is what makes a turn read as an aside.
+
+This section used to claim the pair was evidence of an edge distinction that "at 1440 the
+two edges are far apart". It is not, and they are not: the 1440 frame's bubble right edge
+and the ledger's own right rail are the same x (1170). Both widths are still in the set,
+for the reason the after-frames are captured at both — the transcript is a different shape
+in a narrow column (the bubble is a larger fraction of the width, and the stamp is the last
+thing on a line that is already close to wrapping), and a reader on a narrow window is the
+one most likely to be reading a single long conversation.
 
 ## Declared, not swept
 

@@ -979,13 +979,26 @@ export const TurnTimestamps: Story = {
 };
 
 /**
- * The same stamps in the narrow column, where the design question actually is.
+ * The same stamps in the NARROW COLUMN.
  *
- * A stamp under a user turn shares the BUBBLE's right edge, and the bubble is a
- * percentage of the column (`max-w-[75%]`, `92%` in the small view) — so the
- * bubble's edge and the row's are two different edges, and at 420px they are
- * close enough that a frame showing the wrong one would read as correct. The
- * whole point of this pass is that distance.
+ * Not the small view, and this comment said it was until review round 1 (D4):
+ * `isSmallView` is false here, so the bubble takes the comfortable
+ * `max-w-[75%] px-4 py-3` rather than the small view's `max-w-[92%] px-3 py-2`.
+ * The small view IS pictured with a stamp —
+ * `chat-tool-rows/admitted-send-before-first-frame-small-view/`, where the
+ * bubble's border and the stamp's ink both end at the same x.
+ *
+ * The narrow column is worth a frame because the transcript is a different shape
+ * there: the bubble is a larger fraction of the width, the stamp is the last
+ * thing on a line that is already close to wrapping, and a reader on a narrow
+ * window is the one most likely to be reading a single long conversation.
+ *
+ * IT IS NOT EVIDENCE OF AN EDGE DISTINCTION, which this comment implied and
+ * which the layout does not have: a user row is `flex w-full justify-end` with no
+ * right inset, so the bubble's right edge and the row content box's are the same
+ * line at every width (measured at 0.0px on 420/1024/1440 in review round 1,
+ * R2/D3). The stamp is right-aligned to the turn's own right edge, which is the
+ * bubble's because the row is right-justified.
  */
 export const TurnTimestampsNarrow: Story = {
 	render: () => {
