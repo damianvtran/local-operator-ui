@@ -24,6 +24,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
  * measured with numbers.
  */
 import type { Meta, StoryObj } from "@storybook/react";
+import { screen, userEvent } from "@storybook/test";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Message } from "../types/message";
@@ -584,6 +585,49 @@ const Draft = ({
 	);
 };
 
+/**
+ * The composer with a draft TYPED into it, for the states whose tint depends on
+ * where the caret is.
+ *
+ * WHY THIS EXISTS BESIDE `Draft`. `planSlashSubmission` reads the token AT the
+ * caret, so a draft merely SEEDED into the store leaves the composer's caret at
+ * offset 0 — a position no token claims — and Enter would send it as a message.
+ * Measured on this harness: `/team frontend-guild review the queue` at caret 0 is
+ * `send` (and paints nothing), while at caret 1 and at the end it is `whole` (and
+ * paints the command and the name run). A seeded frame therefore photographs the
+ * state "nobody has typed here yet", which is not the state either of these two
+ * stories is about.
+ *
+ * The typing is the app's own pipeline — real key events through the composer's
+ * `onChange`/`onSelect` — so the caret the plan reads is the caret the user's
+ * gesture produced, not a value written behind the component's back. The
+ * vocabulary is seeded for the same reason the geometry probe seeds it (design
+ * round 3 D9): a run must not be measured — or photographed — against a registry
+ * that has not arrived yet.
+ */
+const TypedDraft = ({ label }: { label: string }) => {
+	const conversationId = conversationIdFor(label);
+	const queryClient = useQueryClient();
+	useLayoutEffect(() => {
+		queryClient.setQueryData(desktopKeys.commands, COMMANDS);
+		for (const command of ["team", "agent"]) {
+			queryClient.setQueryData(
+				["desktop", "entities", conversationId, command, ""],
+				{ entities: TEAM_ENTITIES, current: "" },
+			);
+		}
+	}, [queryClient, conversationId]);
+	return (
+		<MessageInput
+			isLoading={false}
+			messages={NONEMPTY}
+			conversationId={conversationId}
+			sessionStatus={{ frontend: null, onCommand: () => {} }}
+			onSendMessage={async () => true}
+		/>
+	);
+};
+
 const Frame = ({
 	label,
 	width = 900,
@@ -625,17 +669,80 @@ export const CommandAlone: Story = {
 	),
 };
 
-/** A start command: the word, the ROSTER NAME, and the instruction in prose. */
+/**
+ * A start command: the word, the ROSTER NAME, and the instruction in prose.
+ *
+ * ONE CONTENT LINE, and that is the state this host's planner produces a tint in
+ * (see the neighbouring story for the multi-line shape and why it paints
+ * nothing). It is the design's headline: `/team` takes the command ink, the
+ * resolved name takes the name ink, and the instruction — which is what the
+ * command will NOT send as message text — stays prose.
+ */
 export const StartNameInstruction: Story = {
 	name: "start-name-instruction",
+	/*
+	 * THE DRAFT IS TYPED, and the caret is why (see `TypedDraft`). A click and an
+	 * `End` were tried first and are NOT enough: the composer's caret is its own
+	 * state, updated from the field's change and select events, and a programmatic
+	 * selection left that state at 0 while the DOM showed the caret at the end —
+	 * so the frame photographed a plan (`send`) its own pixels disagreed with.
+	 */
+	play: async () => {
+		/*
+		 * `clear` first, because a play function is not guaranteed to run once:
+		 * observed on this harness, the typed draft arrived TWICE at the caret
+		 * ("/team frontend-guild review the queue/team frontend-guild review the
+		 * queue"), which is a frame of no state the app can be in. Clearing makes
+		 * the gesture idempotent: whatever the field holds, the play leaves it
+		 * holding the draft.
+		 */
+		const field = await screen.findByLabelText("Message");
+		await userEvent.clear(field);
+		await userEvent.type(field, "/team frontend-guild review the queue");
+	},
 	render: () => (
-		<Frame label="start-name-instruction — /team <name> <instruction spanning lines>">
-			<Draft
-				label="start-name-instruction"
-				draft={
-					"/team frontend-guild review the queue\nand then send it on to the reviewer"
-				}
-			/>
+		<Frame label="start-name-instruction — /team <name> <instruction>">
+			<TypedDraft label="start-name-instruction" />
+		</Frame>
+	),
+};
+
+/**
+ * The same command with its instruction spanning lines: **nothing is painted**,
+ * and the frame exists to show that rather than to be skipped.
+ *
+ * The run rule computes both runs for this draft — the probe prints
+ * `command+name` — and the PLAN is what withholds them: with the caret at the
+ * end of the draft, `planSlashSubmission` answers `send`, because the token at
+ * the caret is not a command. Enter really does post this draft as a message on
+ * this host, and a tint that said otherwise would be the defect the rule's own
+ * D6 note is about (the TUI paints it because the endpoint admits the draft as a
+ * command; the desktop's planner is caret-dependent until the wire's own
+ * `argument_shape` vocabulary lands, which is a separate change).
+ *
+ * So this frame is the honest picture of the interaction rather than of the
+ * rule: the same draft paints its two runs while the caret is inside the command
+ * word, and paints nothing once the caret is in the instruction — which is what
+ * Enter will do with each of those two states.
+ */
+export const NameInstructionMultiline: Story = {
+	name: "name-instruction-multiline",
+	/*
+	 * Typed, so the caret ends where a user's would: at the end of the draft, in
+	 * the instruction. That is the state the plan reads, and the one this frame is
+	 * about.
+	 */
+	play: async () => {
+		const field = await screen.findByLabelText("Message");
+		await userEvent.clear(field);
+		await userEvent.type(
+			field,
+			"/team frontend-guild review the queue\nand then send it on to the reviewer",
+		);
+	},
+	render: () => (
+		<Frame label="name-instruction-multiline — the caret is in the instruction, so Enter sends this draft and the tint follows it">
+			<TypedDraft label="name-instruction-multiline" />
 		</Frame>
 	),
 };
