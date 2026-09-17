@@ -526,13 +526,42 @@ export const STORIES = [
 	   the committed empty-rows frame cannot cover (design review round 1, D2). */
 	["chat-notification-feed-states--conversation-gone-with-paint", 720, 260],
 
-	/* The composer's two refusals and the state a vanished conversation leaves
-	   it in (design review round 1, D3): the transcript stories above render the
-	   transcript alone, so the false "Agent is busy" placeholder and the missing
-	   colour step were never in a frame. Sized to the band, not to a window. */
-	["chat-composer-states--idle", 900, 160],
-	["chat-composer-states--busy", 900, 160],
-	["chat-composer-states--conversation-gone", 900, 160],
+	/* The composer's missing colour step, and the state a vanished conversation
+	   leaves it in (design review round 1, D3): the transcript stories above
+	   render the transcript alone, so a composer that refuses input over a
+	   conversation this machine no longer has was never in a frame.
+
+	   ONE ROW, NOT THE BAND'S THREE. The two other states this region used to
+	   name, `idle` and `awaiting-reply`, are already swept by the composer's own
+	   set at its 1024x300 measure, and that is the only measure that fits them:
+	   the story's `Frame` is a FIXED 1024px column, so a second capture at the
+	   band's old 900 would be the same state twice AND clipped - 124px of the
+	   column, the box's right border and the send control, off the edge, with the
+	   frame itself coming out 900x213 rather than the tuple's 160 because the
+	   story's own height governs. The gone state is what the band uniquely
+	   carried, so it is swept at the same 1024x300 as its siblings, and the three
+	   read together.
+
+	   THESE IDS FOLLOW THE STORY, NOT THE OTHER WAY ROUND. The rows were written
+	   against `Chat/Composer states`, a title that never existed on `main`:
+	   `7550bf1ae` ADDED `message-input.stories.tsx` already titled `Chat/Message
+	   input`, and the ids were born dangling 316 commits LATER in `cb0d55dc6`'s
+	   rebase resolution - the commit whose own note says the `Busy` and second
+	   `Idle` stories were deliberately NOT re-added. So the old ids named stories
+	   that no longer existed, and a full sweep aborted at the unknown-id check
+	   until now. Not "every sweep": that check validates only the ids a run will
+	   VISIT, so a narrowed `--only=` run naming other stories was never blocked.
+
+	   The band's middle frame has NO successor here, and that is worth saying
+	   rather than pointing at the nearest story. `Busy` passed `isLoading` with a
+	   non-null `currentJobId`, so it photographed `Agent is busy` with the field
+	   DISABLED; `chat-message-input--awaiting-reply` photographs a different state
+	   (`awaitingReply`, no load: `Waiting for the agent`, box live). Dropping it
+	   loses no reachable state: `isBusy` needs a non-null `currentJobId` and every
+	   call site passes null (`chat-page.tsx:1931`, `chat-content.tsx:1128`), which
+	   is exactly why `cb0d55dc6` refused to re-add the story - a frame of it would
+	   photograph a state no user can be in. */
+	["chat-message-input--conversation-gone", 1024, 300],
 
 	/* The browser feature's own surfaces, added with the round that remediated its
 	   review. This is the ONE part of the visible browser a browser tool can
@@ -2316,6 +2345,42 @@ export const STORIES = [
 	["chat-stale-seed-order--after-arrival", 1280, 800],
 	["chat-stale-seed-order--before-seam", 1280, 800],
 	["chat-stale-seed-order--after-seam", 1280, 800],
+	/* The phantom compose rows: the four rows the operator photographed stuck at
+	   the bottom of a conversation waiting on subagents — `hub composing 2.0 KB`
+	   and three `wait composing` rows, all of them calls the harness NEVER RAN.
+	   Built by the SHIPPED reducer from the real snapshot's frames
+	   (`scripts/fixtures/phantom-compose-rows.json`), and the states are the
+	   contract's endings rather than a montage: `arrival` is the seed as it
+	   arrives, `settled`/`settled-open` the verdict on the row its own
+	   announcement left, `settled-empty` a call that composed nothing,
+	   `queued`/`queued-seeded` the dictation ending with and without a row on
+	   screen to settle, and `durable-twin`/`durable-twin-open` the case where the
+	   transcript's own row is loaded.
+
+	   THE `before` HALF IS NOT THIS TABLE'S, and that is the point of it: those
+	   frames are the same states rendered by the BASE tree
+	   (`phantom-compose-rows-before.stories.tsx`, deliberately not listed here),
+	   captured in a worktree at the base commit and moved under
+	   `chat-phantom-compose-rows/before/`, which `manifest.json` declares as a
+	   supplementary set with its own `source`. A `before` captured from this tree
+	   photographs the fix — the first pass of this set did exactly that, and
+	   agent review round 1 caught it by folding the committed fixture through the
+	   real pre-fix reducer and finding the fields identical and the order not.
+	   `README.md` in the set carries the recipe.
+
+	   `settled-narrow` is captured at 420px because the fixed summary is eleven
+	   characters longer than the composing one it replaced, so the shed order
+	   under width pressure is part of what this change has to show. */
+	["chat-phantom-compose-rows--after-arrival", 1280, 800],
+	["chat-phantom-compose-rows--after-settled", 1280, 800],
+	["chat-phantom-compose-rows--after-settled-open", 1280, 800],
+	["chat-phantom-compose-rows--after-settled-empty", 1280, 800],
+	["chat-phantom-compose-rows--after-settled-narrow", 420, 800],
+	["chat-phantom-compose-rows--after-queued", 1280, 800],
+	["chat-phantom-compose-rows--after-queued-seeded", 1280, 800],
+	["chat-phantom-compose-rows--after-turn-death", 1280, 800],
+	["chat-phantom-compose-rows--after-durable-twin", 1280, 800],
+	["chat-phantom-compose-rows--after-durable-twin-open", 1280, 800],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
 	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
 	   popup from wire-shaped fixtures — the rows the backend's
