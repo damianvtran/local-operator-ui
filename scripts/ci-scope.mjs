@@ -188,6 +188,53 @@ const RUNTIME_DEP_SCRIPTS = new Set([
 const ROOT_MARKDOWN_RE = /^[^/]+\.md$/;
 
 /**
+ * The trees and files this table NAMES as live even though their category is
+ * `other`, which is also the catch-all for "anything I did not enumerate".
+ *
+ * Why the distinction exists: `other` is BOTH the designed live bucket (`src/**`
+ * and friends are `other` by the table) and the unknown-path harbour, so a
+ * warning keyed on the category alone fires on essentially every real pull
+ * request - and a warning that fires on `src/main/app.ts` trains people to
+ * ignore the one that fires on a path nobody enumerated. The summary prints
+ * every path with its category either way; `isNamedLivePath` is what separates
+ * "we recognised this and ran the code suite" from "we did not recognise this,
+ * so we ran the code suite anyway", and only the second earns a `::warning::`.
+ *
+ * Exported so `scripts/ci-scope.test.mjs` can assert every entry is still
+ * categorised `other`: this list may only ever name LIVE paths, because an inert
+ * path hidden here would be a skip nobody can see.
+ */
+export const KNOWN_LIVE_PREFIXES = [
+	"src/",
+	"bin/",
+	"scripts/",
+	"build/",
+	"resources/",
+];
+
+/** The table's `tsconfig*.json`. */
+export const KNOWN_LIVE_ROOT_RE = /^tsconfig[^/]*\.json$/;
+
+/** The other root files the table names outright. */
+export const KNOWN_LIVE_ROOT_FILES = new Set([
+	"electron.vite.config.js",
+	"biome.json",
+]);
+
+/**
+ * Whether the category table NAMED this path's tree, rather than reaching its
+ * answer through the `other` catch-all. See `KNOWN_LIVE_PREFIXES`.
+ */
+export function isNamedLivePath(path) {
+	const p = normalise(path);
+	return (
+		KNOWN_LIVE_PREFIXES.some((prefix) => p.startsWith(prefix)) ||
+		KNOWN_LIVE_ROOT_RE.test(p) ||
+		KNOWN_LIVE_ROOT_FILES.has(p)
+	);
+}
+
+/**
  * The repo-relative POSIX form of a path from git.
  *
  * `git diff --name-status` reports forward slashes on every platform, but a
@@ -879,29 +926,29 @@ export function main(argv = process.argv.slice(2)) {
 	const ciEvent = githubEvent(args);
 	const event = ciEvent ?? "local";
 
-	if (args.verbose) {
-		process.stderr.write(
-			`ci-scope: root=${root} shape=${args.base ? "ci(--base)" : "local"} ` +
-				`event=${event} module=${fileURLToPath(import.meta.url)}\n`,
-		);
-	}
-
 	let note = null;
 	let base = null;
 	let baseLabel = "(none)";
 	let paths = [];
 	let flags;
+	// Which branch decided the flags. Reported by `--verbose`, because from the
+	// outside "every flag true" and "classified correctly" look identical - which
+	// is what made the copied-module defect invisible in the backend repository.
+	let branch;
 
 	if (args.all) {
+		branch = "--all";
 		flags = allFlags(true);
 		note = "`--all`: every job runs (classification not attempted)";
 	} else if (ciEvent !== null && ciEvent !== "pull_request") {
+		branch = `event(${event})`;
 		flags = allFlags(true);
-		baseLabel = event;
+		baseLabel = "(not read: every job runs for this event)";
 		note = `event \`${event}\` is not a \`pull_request\`: every job runs. \`main\` is the safety net for the narrowed pull-request matrix, so its run stays unconditional.`;
 	} else {
 		const rev = args.base || args.since;
 		if (!rev) {
+			branch = "no-base";
 			flags = allFlags(true);
 			note = "no `--base`/`--since` given: every job runs";
 			warn(
@@ -913,6 +960,7 @@ export function main(argv = process.argv.slice(2)) {
 			baseLabel = rev;
 			base = resolveBase(rev, root);
 			if (base === null) {
+				branch = "unresolvable-base";
 				flags = allFlags(true);
 				note = `base \`${rev}\` could not be resolved: every job runs`;
 				warn(
@@ -926,10 +974,12 @@ export function main(argv = process.argv.slice(2)) {
 				// files, which is what makes `pnpm check-changed` useful before a
 				// commit exists.
 				const local = !args.base;
+				branch = local ? "local(--since)" : "ci(--base)";
 				const collected = collectPaths(base, local, root);
 				const diff =
 					collected === null ? null : manifestDiff(base, local, root);
 				if (collected === null || diff === null) {
+					branch = "git-diff-failed";
 					flags = allFlags(true);
 					note = "`git diff` failed: every job runs";
 					warn(
@@ -940,18 +990,28 @@ export function main(argv = process.argv.slice(2)) {
 				} else {
 					paths = collected;
 					flags = classify(paths, diff);
+					// Only a path the table does NOT name is worth an annotation. `other`
+					// is this table's deliberate live bucket, so keying the warning on it
+					// alone would fire on every `src/**` diff and teach people to skip
+					// the warning that matters. See `KNOWN_LIVE_PREFIXES`.
 					const unrecognised = paths.filter(
-						(path) => categoryOf(path) === CAT_OTHER,
+						(path) => categoryOf(path) === CAT_OTHER && !isNamedLivePath(path),
 					);
 					if (unrecognised.length) {
 						warn(
-							`this diff contains ${unrecognised.length} path(s) the classifier does not recognise, which run every code-suite job: ${unrecognised.join(", ")}`,
-							"Unrecognised path",
+							`this diff contains ${unrecognised.length} path(s) the category table does not name, so every code-suite job runs: ${unrecognised.join(", ")}`,
+							"Path outside the category table",
 						);
 					}
 				}
 			}
 		}
+	}
+
+	if (args.verbose) {
+		process.stderr.write(
+			`ci-scope: root=${root} event=${event} branch=${branch} module=${fileURLToPath(import.meta.url)}\n`,
+		);
 	}
 
 	const text = summaryLines({

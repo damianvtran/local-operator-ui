@@ -18,13 +18,16 @@ import {
 	FLAGS,
 	JOB_COMMANDS,
 	JOB_FLAGS,
+	KNOWN_LIVE_PREFIXES,
 	LOCAL_EXCLUSIONS,
 	PERMISSIVE_DEPS,
 	ScopeError,
 	UNGATED_JOBS,
+	categoryOf,
 	classify,
 	flagValue,
 	flagsFor,
+	isNamedLivePath,
 	isPermissiveDependency,
 } from "./ci-scope.mjs";
 
@@ -427,6 +430,82 @@ test("A9: an unknown path runs the code suite", () => {
 			);
 		}
 	}
+});
+
+/*
+ * Defect: an annotation that fires on the paths the table DID enumerate. `other`
+ * is this table's designed live bucket - `src/**`, `bin/**`, `scripts/**` and
+ * friends are `other` by the table - so keying the warning on the category alone
+ * annotates essentially every real pull request, and a warning that always fires
+ * is one nobody reads. That is how the annotation meaning "I did not recognise
+ * this" stops being noticed, which is the failure it exists to prevent.
+ * Mutation: warn on `categoryOf(path) === CAT_OTHER` alone; or add an inert path
+ * to `KNOWN_LIVE_PREFIXES`, where it would hide a skip.
+ */
+test("A9: only a path the table does not name raises the annotation", () => {
+	const named = [
+		...KNOWN_LIVE_PREFIXES.map((prefix) => `${prefix}example.ts`),
+		"tsconfig.json",
+		"tsconfig.web.json",
+		"electron.vite.config.js",
+		"biome.json",
+	];
+	for (const path of named) {
+		assert.equal(
+			categoryOf(path),
+			"other",
+			`${path} is named as live and is categorised something else, so this list could hide a skip`,
+		);
+		assert.ok(
+			isNamedLivePath(path),
+			`${path} is named as live and is not recognised as such`,
+		);
+	}
+	for (const unknown of ["foo.bar", "newdir/x", "assets/logo.svg", "LICENSE"]) {
+		assert.ok(
+			!isNamedLivePath(unknown),
+			`${unknown} is not named by the table and must be reported as such`,
+		);
+	}
+
+	// Driven for real in a scratch repository, because this is a claim about what
+	// a reviewer SEES: a path the table does not name is annotated and runs the
+	// code suite, and a path it does name is silent.
+	const { repo, base } = scratchRepo();
+	writeFileSync(join(repo, "LICENSE"), "a licence\n");
+	commitAll(repo, "a root file the table does not name");
+	const annotated = runClassifier(
+		["--event", "pull_request", "--base", base],
+		repo,
+	);
+	assert.equal(annotated.status, 0);
+	assert.match(
+		annotated.stdout,
+		/::warning title=Path outside the category table::/,
+	);
+	assert.match(annotated.stdout, /`LICENSE` -> `other`/);
+	for (const flag of ["lint", "types", "unit", "pack"]) {
+		assert.match(
+			annotated.stdout,
+			new RegExp(`\`${flag}\` = \\*\\*true\\*\\*`),
+			`'${flag}' must run for a path the table does not name`,
+		);
+	}
+
+	mkdirSync(join(repo, "src"), { recursive: true });
+	writeFileSync(join(repo, "src/main.ts"), "export const x = 1;\n");
+	commitAll(repo, "a source file the table names");
+	const quiet = runClassifier(
+		["--event", "pull_request", "--base", "HEAD^1"],
+		repo,
+	);
+	assert.equal(quiet.status, 0);
+	assert.match(quiet.stdout, /`src\/main.ts` -> `other`/);
+	assert.doesNotMatch(
+		quiet.stdout,
+		/::warning/,
+		"a path the table names was annotated: that is the noise which trains people to ignore the annotation that matters",
+	);
 });
 
 test("A9: an unresolvable base runs every job, warns, and exits 0", () => {
