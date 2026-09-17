@@ -346,86 +346,26 @@ export function ChatSidebar({
 	 * Space carries no click count, and a real pointer press carries 1.
 	 */
 	const listPanelRef = useRef<HTMLDivElement | null>(null);
-	const movedRef = useRef<{
-		id: string;
-		top: number;
-		follow: boolean;
-		anchorId: string | null;
-		anchorTop: number;
-		/** Where the pointer was at the press, for the wobble slop above. */
-		pointer: { x: number; y: number } | null;
-	} | null>(null);
-	const rememberMovedRow = (
-		sessionId: string,
-		follow: boolean,
-		pointer: { x: number; y: number } | null,
-	) => {
-		const rows = Array.from(
-			listPanelRef.current?.querySelectorAll<HTMLElement>(
-				"[data-session-row]",
-			) ?? [],
-		);
-		const index = rows.findIndex(
-			(row) => row.getAttribute("data-session-row") === sessionId,
-		);
-		if (index < 0) {
-			movedRef.current = null;
-			return;
-		}
-		// The row the reader can watch: the one below the pressed row, or the one above
-		// when it was last. Either is a row the pointer is NOT on, which is the point.
-		const neighbour = rows[index + 1] ?? rows[index - 1] ?? null;
-		movedRef.current = {
-			id: sessionId,
-			top: rows[index].getBoundingClientRect().top,
-			follow,
-			pointer,
-			anchorId: neighbour?.getAttribute("data-session-row") ?? null,
-			anchorTop: neighbour ? neighbour.getBoundingClientRect().top : 0,
-		};
-	};
-	// biome-ignore lint/correctness/useExhaustiveDependencies: this runs after every render and clears itself; the guard IS the state it waits on
-	useEffect(() => {
-		const moved = movedRef.current;
-		const list = listPanelRef.current;
-		if (!moved || !list) return;
-		const row = list.querySelector<HTMLElement>(
-			`[data-session-row="${moved.id}"]`,
-		);
-		if (!row) {
-			// The row is gone entirely (the read removed it): nothing to correct, and the
-			// ref must not survive into the next press as a stale anchor.
-			movedRef.current = null;
-			return;
-		}
-		if (moved.follow) {
-			const delta = row.getBoundingClientRect().top - moved.top;
-			if (delta !== 0) list.scrollTop += delta;
-			const listBox = list.getBoundingClientRect();
-			const rowBox = row.getBoundingClientRect();
-			if (rowBox.top < listBox.top) list.scrollTop -= listBox.top - rowBox.top;
-			else if (rowBox.bottom > listBox.bottom)
-				list.scrollTop += rowBox.bottom - listBox.bottom;
-			/*
-			 * `preventScroll`, which is the whole reason the correction above survives: a
-			 * plain `focus()` scrolls the element into view itself - measured as the region
-			 * snapping to 0 and the row landing 202 px above the line it was pressed on.
-			 * The correction is this effect's; focus only says where the caret is.
-			 */
-			row
-				.querySelector<HTMLElement>("[data-session-pin]")
-				?.focus({ preventScroll: true });
-		} else if (moved.anchorId !== null) {
-			const anchor = list.querySelector<HTMLElement>(
-				`[data-session-row="${moved.anchorId}"]`,
-			);
-			if (anchor) {
-				const delta = anchor.getBoundingClientRect().top - moved.anchorTop;
-				if (delta !== 0) list.scrollTop += delta;
-			}
-		}
-		movedRef.current = null;
-	});
+	/*
+	 * THE CORRECTION THAT USED TO LIVE HERE IS GONE, AND THE MEASUREMENT IS WHY.
+	 *
+	 * This panel used to remember a pressed row's position and its neighbour's line and
+	 * restore them itself, because Chrome's scroll anchoring picks the element that moved and
+	 * pays for its travel by moving THIS container's `scrollTop`. #300 refuses that
+	 * compensation at the container (`[overflow-anchor:none]`, whose own comment carries the
+	 * argument and its cost) and holds the FOCUSED row with `holdFocusedRow`. So the two
+	 * mechanisms were a workaround and its replacement side by side.
+	 *
+	 * Measured, not assumed: with this correction disabled, `--scene pins-scroll` on the merged
+	 * tree reads 45 checks passed / 0 failed, with the same numbers the unmutated tree printed
+	 * (`scroll 0 -> 0`, neighbour top 859 -> 859) - /tmp/pins-r7-scroll-both.log against
+	 * /tmp/pins-r7-scroll-mut.log. Two mechanisms for one problem is the defect this repository
+	 * names, so ours is deleted rather than kept inert beside theirs.
+	 *
+	 * What stays is the PARKED-POINTER record (`lastPinPress`), which is a different job: it
+	 * decides whether a press is a NEW GESTURE, not where a row sits.
+	 */
+
 	/*
 	 * A PRESS BELONGS TO THE CONTROL IT WAS MADE ON (QA round 1, U3; UX round 2, U3-unpin).
 	 *
@@ -982,7 +922,8 @@ export function ChatSidebar({
 						onClick={(event) => {
 							/*
 							 * THE GUARD RUNS FIRST (review round 3, MINOR 2). A dropped press must
-							 * change nothing at all, and `rememberMovedRow` arms an anchor
+							 * change nothing at all, and the container's own `overflow-anchor` refusal is what
+							 * keeps the reader's line
 							 * correction that the next render - a doorbell, a keystroke - would
 							 * then apply, computing a correction for a press that never wrote
 							 * anything. Dropped means dropped, so nothing is recorded.
@@ -997,13 +938,7 @@ export function ChatSidebar({
 							) {
 								return;
 							}
-							// Where the row is NOW, and WHICH PRESS it was: the two get opposite
-							// corrections (see `rememberMovedRow`), and `detail === 0` is the
-							// keyboard (a click synthesised from Enter or Space carries no count).
-							rememberMovedRow(row.session_id, event.detail === 0, {
-								x: event.clientX,
-								y: event.clientY,
-							});
+
 							/*
 							 * The seed is what lets the store HOLD a conversation it does not
 							 * list: without it the write reaches the backend and the row keeps
