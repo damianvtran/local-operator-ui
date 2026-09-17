@@ -28,12 +28,13 @@
  *     signed installer would start silently disagreeing with the update metadata
  *     that names its hash.
  *
- * HOW IT UPLOADS. Each artifact is streamed from disk -- never buffered, since the
- * mac dmg alone is 158 MB -- with an explicit per-attempt timeout and a bounded
- * number of backoff retries when an attempt fails transiently (timeout, reset
- * connection, 5xx). The stall that broke v0.26.5 held the job open until the runner's
- * own limit precisely because the old `execFileSync` call had no timeout and nothing
- * retried it.
+ * HOW IT UPLOADS. Each artifact is streamed from disk -- never buffered whole, which
+ * is what keeps a 158 MB installer out of the runner's memory -- with an explicit
+ * per-attempt timeout and a bounded number of backoff retries when an attempt fails
+ * transiently (timeout, reset connection, 5xx). The stall that broke v0.26.5 held the
+ * job open until the runner's own limit precisely because the old `execFileSync` call
+ * had no timeout and nothing retried it; the DELETE this path also makes carries its
+ * own deadline for the same reason.
  *
  * EVERY FAILURE SAYS WHAT ACTUALLY HAPPENED. The HTTP status and the endpoint's own
  * message are reported for the file that failed, and the word "collision" is used
@@ -111,6 +112,14 @@ const UPLOAD_ATTEMPT_TIMEOUT_MS = 10 * 60 * 1000;
 const UPLOAD_ATTEMPTS = 3;
 const UPLOAD_BACKOFF_MS = 5_000;
 
+// The DELETE's own ceiling, for the reason the upload has one: a subprocess with no
+// timeout is how a stall becomes a job that hangs until the runner kills it. This one
+// is on the critical path rather than incidental -- the name an incomplete record
+// holds is exactly what the next upload is refused over -- while a hundred-byte DELETE
+// against a host that has just answered a list should take milliseconds, so a minute
+// is a ceiling and not a budget.
+const REMOVE_TIMEOUT_MS = 60_000;
+
 function artifactFiles(root) {
 	return Object.entries(PLATFORM_INSTALLERS).flatMap(
 		([platform, installer]) => {
@@ -172,9 +181,13 @@ function classifyAsset(assets, name, size) {
 	}
 	if (complete.length) {
 		// A release can only carry one asset per name, so a second complete asset of
-		// this name is a state this script has never seen; comparing against the
-		// first is the conservative reading of it (refusing when the sizes disagree,
-		// and skipping only when the bytes on the release are the bytes we built).
+		// this name is a state this script has never seen; comparing against the first
+		// is the conservative reading of it. What is compared is SIZE, not bytes: the
+		// API reports a size without making anyone download the asset, and fetching 158
+		// MB to compare bytes deliberately is the cost this rule exists to avoid -- so
+		// an asset of the same length built from OTHER bytes is skipped here, and the
+		// check that catches that one is electron-updater's own verification of the
+		// hash its channel file carries, not this rule.
 		const attached = complete[0];
 		if (Number(attached.size) === size)
 			return { action: "skip", asset: attached };
@@ -349,7 +362,13 @@ async function streamUpload({
  * Uses `gh api` like every other read and write in this pair of scripts. The
  * subprocess's output is deliberately not echoed: it can carry authentication
  * detail, which is the same reason `validate-release.mjs` keeps it out of its lookup
- * failures. What the reader needs is the record and the exit status.
+ * failures. What the reader needs is the record, and whether the failure was an answer
+ * (a status) or an absence of one (the deadline), which is why the bound is named in
+ * the line rather than left to be inferred.
+ *
+ * Deliberately one attempt rather than the upload's retry budget: a DELETE that did
+ * not answer may or may not have been applied, the next step (a POST) is what makes
+ * that visible, and a re-run of the job repairs the release either way.
  */
 function removeAsset(repo, token, asset) {
 	try {
@@ -364,11 +383,16 @@ function removeAsset(repo, token, asset) {
 			{
 				env: { ...process.env, GH_TOKEN: token },
 				stdio: ["ignore", "pipe", "pipe"],
+				// Without this the DELETE is the one call in the attach path that can
+				// still hold a job open forever -- the shape this script was changed to
+				// remove, one layer down.
+				timeout: REMOVE_TIMEOUT_MS,
 			},
 		);
 	} catch (error) {
+		const timedOut = error?.code === "ETIMEDOUT";
 		throw new ValidationError(
-			`Unable to remove the incomplete upload of ${asset.name} (asset ${asset.id}), which holds the name this upload is refused over: gh exited with status ${error?.status ?? "unknown"}. Delete that asset by hand and re-run`,
+			`Unable to remove the incomplete upload of ${asset.name} (asset ${asset.id}), which holds the name this upload is refused over: ${timedOut ? `gh gave no answer within the ${REMOVE_TIMEOUT_MS / 1000}s deadline` : `gh exited with status ${error?.status ?? "unknown"}`} (${describeError(error)}). Delete that asset by hand and re-run`,
 		);
 	}
 }

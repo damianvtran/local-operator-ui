@@ -19,7 +19,9 @@
  *   (b) a `starter` asset is already on the release -> deleted and re-uploaded;
  *   (c) a complete asset of the same name and size -> skipped, nothing re-uploaded;
  *   (d) a complete asset of the same name at a different size -> refused by name, with
- *       both sizes, and nothing uploaded.
+ *       both sizes, and nothing uploaded;
+ *   (e) a SET whose second artifact collides -> the run stops before the first write,
+ *       because a collision anywhere in the set must not leave the release half-way.
  *
  * WHAT IS REAL HERE. The transport is `streamUpload` itself -- a streamed request
  * body, a `content-length` taken from the file, a per-attempt deadline -- and the
@@ -251,7 +253,11 @@ test("(a) a stalled attempt is retried, and the starter record it left is remove
 							releaseId,
 							artifact,
 							token: TOKEN,
-							timeoutMs: 250,
+							// Generous on purpose: the stub answers the second attempt in
+							// milliseconds, and this case fails on a loaded machine if the answer
+							// deadline is tight enough for scheduling latency to miss it -- a
+							// deadline tight enough to be interesting is the boundary case below.
+							timeoutMs: 2000,
 						}),
 					remove: state.remove,
 					...TEST_RETRY,
@@ -409,7 +415,12 @@ test("(a) a stall that never clears fails on the deadline, naming the file and t
 				assert.match(failure.message, /app\.dmg: TimeoutError/);
 				assert.match(failure.message, /after a 0\.2s attempt deadline/);
 				assert.match(failure.message, /attempt 2 of 2/);
-				assert.equal(requests.length, 2);
+				// What is NOT pinned here is how many requests this stub saw: the deadline is
+				// deliberately tight, so whether the aborted first attempt's body had been
+				// read to its end by the server before the client gave up is scheduling, not
+				// the property under test. `attempt 2 of 2` above is what proves the retry,
+				// and it comes from the run's own report.
+				for (const request of requests) assert.equal(request.bytes, 256);
 			},
 		);
 	});
@@ -599,6 +610,63 @@ test("(d) a complete asset of this name at another size is refused, naming both 
 		assert.deepEqual(
 			state.assets.map((asset) => [asset.id, asset.size]),
 			[[9301, 999]],
+		);
+	});
+});
+
+test("(e) a collision anywhere in the set stops the run before the FIRST write", async () => {
+	await withArtifactDir(async (dir) => {
+		// Two artifacts, and only the second one collides. The reservation is checked for
+		// the whole set before anything is uploaded, so an absent name is not a licence
+		// to upload early: classification deferred into the per-artifact loop would post
+		// app.dmg here and only then refuse app.exe, which leaves a partially-attached
+		// release -- the state the pre-write plan exists to avoid, and the one a re-run
+		// would then have to reconcile. Nothing may be written and nothing deleted.
+		const uploadable = writeArtifact(dir, "app.dmg", 4096);
+		const colliding = writeArtifact(dir, "app.exe", 2048);
+		const state = releaseState([
+			{ id: 9501, name: "app.exe", state: "uploaded", size: 700 },
+		]);
+		await withStubEndpoint(
+			() => ({ status: 201, body: "" }),
+			async ({ baseUrl, requests }) => {
+				let failure;
+				try {
+					await uploadRelease({
+						api: state.attachApi,
+						tag: TAG,
+						expectedSha: SHA,
+						expectedReleaseId: RELEASE_ID,
+						files: [uploadable, colliding],
+						upload: (releaseId, artifact) =>
+							streamUpload({
+								baseUrl,
+								repo: REPO,
+								releaseId,
+								artifact,
+								token: TOKEN,
+								timeoutMs: 5000,
+							}),
+						remove: state.remove,
+						...TEST_RETRY,
+						log: () => {},
+					});
+				} catch (error) {
+					failure = error;
+				}
+				assert.ok(failure, "a colliding artifact must stop the run");
+				assert.match(
+					failure.message,
+					/app\.exe is already attached to this release with a different size: attached 700 bytes, this build's 2048 bytes/,
+				);
+				// The assertion that discriminates: app.dmg would have uploaded happily.
+				assert.equal(requests.length, 0);
+			},
+		);
+		assert.deepEqual(state.removed, []);
+		assert.deepEqual(
+			state.assets.map((asset) => [asset.id, asset.size]),
+			[[9501, 700]],
 		);
 	});
 });

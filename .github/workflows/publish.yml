@@ -592,6 +592,16 @@ jobs:
             scripts/upload-release.mjs
           sparse-checkout-cone-mode: false
 
+      # Pinned like every build job, and added after the fact: this step used to run
+      # on the image's default Node because it only shelled out to `gh`, and its
+      # upload now also needs `fetch`, `AbortSignal.timeout` and a streamed request
+      # body (`duplex: "half"`) -- behaviour the version decides, and the only place
+      # the attach path runs.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
