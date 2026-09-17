@@ -1201,10 +1201,12 @@ shipped with.
 
 **Attaching an asset is repairable by re-running the job, and the rule that makes
 that true is about the asset, not about its name.** `scripts/upload-release.mjs`
-streams each installer to the pinned release ID — nothing is buffered, since the mac
+streams each installer to the pinned release ID — never buffered whole, since the mac
 dmg alone is 158 MB — with a per-attempt timeout and a bounded backoff retry on a
 transient failure (a timeout, a reset connection, a 5xx), because a stall nothing
-bounds is a job that hangs until the runner kills it. The recoverability lives in how
+bounds is a job that hangs until the runner kills it. The one write the path makes to
+the release's own records, the DELETE of an incomplete upload, carries its own
+deadline for the same reason. The recoverability lives in how
 what is already attached is reconciled, decided per artifact by name and size: an
 absent name is uploaded; a complete asset at **our** byte count is skipped, so a
 re-run over an intact release writes nothing at all; a complete asset at a
