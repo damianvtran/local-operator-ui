@@ -1800,6 +1800,81 @@ test("a tab the user opens in a conversation belongs to it, and still gives no a
 	);
 });
 
+test("revoking a hand-over gives the tab back to its conversation, not to nobody (design §5.1 row 6; review round 1, Q2)", async () => {
+	const { host, registry } = makeHost();
+	const owner = { requester: "session:alice", url: "https://home.example/" };
+	await host.dispatch("request_access", owner, "req-1");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	await host.dispatch("open", owner, "req-2");
+
+	// The user's own tab, opened in the conversation — the path R1 added, and the one
+	// whose conversation the revocation used to lose.
+	await host.newTab("alice");
+	const opened = host.chromeState().tabs.at(-1);
+	assert.equal(opened.sessionId, "alice");
+	await host.handOver(opened.tabId, "alice");
+	assert.equal(
+		host.chromeState().tabs.at(-1).sessionId,
+		"alice",
+		"a hand-over moves who may drive the tab, and the tab's conversation is the same one",
+	);
+
+	const revoked = host.revokeHandOver(opened.tabId);
+	const after = revoked.tabs.find((tab) => tab.tabId === opened.tabId);
+	assert.ok(after);
+	assert.equal(after.owner, "user", "the tab is the user's again");
+	assert.equal(after.handedOver, false);
+	/*
+	 * THE FINDING ITSELF. `sessionId` is what the panes read to decide which
+	 * conversation's tabs they are showing (`tabsInScope`), what the conversation's own
+	 * tab count is computed from, and what the sidebar's mark counts — so a revocation
+	 * that nulled it took the tab out of the conversation the user opened it in and left
+	 * it under "No conversation", with no way back. `homeSessionId`, set once at
+	 * `create` and restored here, is what makes the revoke a true inverse.
+	 */
+	assert.equal(
+		after.sessionId,
+		"alice",
+		"the tab is back in the conversation it was opened in, which is what puts it under `This conversation` again",
+	);
+	const record = registry.get(opened.tabId);
+	assert.ok(record);
+	assert.equal(
+		registry.mayDrive(record, "alice"),
+		false,
+		"while the capability is still gone: the conversation is back, the authority is not",
+	);
+	assert.equal(surfaceToken(record), null);
+
+	/*
+	 * AND THE TAB WITH NO HOME STILL LANDS ON NOTHING, which is the behaviour every
+	 * tab had before this field: the route's tab has no conversation to return to.
+	 */
+	await host.newTab(null);
+	const routed = host.chromeState().tabs.at(-1);
+	assert.equal(routed.sessionId, null);
+	await host.handOver(routed.tabId, "alice");
+	const routedBack = host
+		.revokeHandOver(routed.tabId)
+		.tabs.find((tab) => tab.tabId === routed.tabId);
+	assert.equal(
+		routedBack?.sessionId,
+		null,
+		"a tab opened with no conversation is still nobody's after a revoke",
+	);
+
+	/*
+	 * AND A RESTORED TAB IS STILL NOBODY'S — the field does not resurrect the
+	 * attribution a `session.json` never carried (design 7.3).
+	 */
+	const restored = registry.create({
+		owner: "agent",
+		sessionId: "session:bob",
+		restored: true,
+	});
+	assert.equal(restored.homeSessionId, null);
+});
+
 test("a batch close is ONE change, and releases every webContents exactly once (R5)", () => {
 	const { host, registry, views, removed, notified } = makeHost();
 	const tabIds = ["a", "b", "c"].map(
