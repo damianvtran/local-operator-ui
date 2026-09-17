@@ -535,7 +535,7 @@ const main = async () => {
 			);
 			if (result.intermediateOrders.length > 0) {
 				console.log(
-					`  INTERMEDIATE ORDERS ${result.intermediateOrders.length} sample(s), first at t=${result.intermediateOrders[0].t} ms`,
+					`  INTERMEDIATE ORDERS ${result.intermediateOrders.length} sample(s), first at t=${result.intermediateOrders[0].t} ms - a position that is neither the first nor the settled one. A story that re-files TWICE (the completion, and then the read receipt) shows its first move here by design; for the one-move stories this is a sample in a position no frame carries.`,
 				);
 			}
 		}
