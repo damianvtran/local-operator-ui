@@ -1,8 +1,22 @@
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { getCurrentPath } from "@shared/utils/path-utils";
 import type { NavigateFunction } from "react-router-dom";
 
 /**
- * THE ONE PLACE A SWITCH WRITES ITS URL.
+ * A SWITCH'S URL IS WRITTEN HERE, WITH ITS COMMIT.
+ *
+ * WHAT "A SWITCH" MEANS, AND WHAT IS OUTSIDE IT. This owns the URL write of the
+ * three entrances that MOVE THE VIEW ONTO A CONVERSATION: the sidebar's rows, the
+ * command palette and the `/chat` slash rebind. It is not every URL that names a
+ * chat - `chat-page.tsx`'s send path re-points the URL once a draft's session has
+ * materialised, and `app.tsx`, `agents-sidebar.tsx`, `legacy-agents-page.tsx`,
+ * `use-download-agent-mutation.ts` and `onboarding-modal.tsx` write `/chat/<id>`
+ * for somewhere the user is being SENT TO. Those are URL-first: they write the
+ * route and let the effect open it, so none of them can defer a write behind a
+ * read and none carries the defect this file exists for. What is checked by
+ * `session-switch.test.mjs` is not "no other file writes a chat URL" - it is that
+ * no `/chat/<id>` write in the renderer is a switch the arms have not met, with
+ * every site listed and its reason given.
  *
  * WHY THE URL MOVES WITH THE COMMIT AND NOT BEHIND THE GUARD READ. `openSession`
  * commits `activeSessionId` in the caller's own frame and validates behind that
@@ -50,10 +64,46 @@ export function openConversation(
 ): Promise<boolean> {
 	const store = useCanonicalSessionsStore.getState();
 	const pending = store.openSession(sessionId);
-	navigate(`/chat/${sessionId}`);
+	const written = `/chat/${sessionId}`;
+	navigate(written);
 	void pending.then((ok) => {
 		if (ok) return;
-		const restored = useCanonicalSessionsStore.getState().activeSessionId;
+		/*
+		 * ONLY WHILE THIS CALL'S OWN WRITE IS STILL THE ROUTE.
+		 *
+		 * The refusal can arrive after the user has moved on WITHOUT this switch being
+		 * the thing that was superseded. `openSession` reports `false` for any newer
+		 * intent, and staging a draft is one: `stageDraft` bumps the same
+		 * `navigationGeneration` counter (`canonical-sessions-store.ts`) that a switch
+		 * does while leaving `activeSessionId` alone, so a restore derived from
+		 * `activeSessionId` writes `/chat/<the session the user LEFT>` over the user's
+		 * `/chat` - and `ChatPage`'s route-to-store effect then reads that stale route
+		 * as an instruction and re-opens it, clearing the draft. Measured: click a row,
+		 * press New chat while its `sessions.get` is in flight (the window is the whole
+		 * read - 25-32 s on the machine in the report), and the user's New chat is
+		 * silently undone. The same restore pulls a user out of Settings when a read
+		 * for a deleted session finally answers.
+		 *
+		 * So the bound is "is my own write still the URL", read from the URL rather
+		 * than from the router (`getCurrentPath` reads the hash `navigate` writes
+		 * synchronously; the router's `useLocation` mirror lags it by a render, which is
+		 * the lag this whole file is about). If anything moved - a newer switch, a
+		 * staged draft, a route out of chat entirely - the failure is not this call's to
+		 * report and the route is not this call's to repair.
+		 */
+		if (getCurrentPath() !== written) return;
+		const state = useCanonicalSessionsStore.getState();
+		/*
+		 * A staged draft is the view here, so `/chat` is where the user is, however the
+		 * route came to name a session (`stage()` writes `/chat` with the draft in the
+		 * same gesture; a caller that stages without writing would otherwise get the
+		 * session URL). The draft key is read from the store, which owns it.
+		 */
+		if (state.activeDraftKey) {
+			navigate("/chat", { replace: true });
+			return;
+		}
+		const restored = state.activeSessionId;
 		navigate(restored ? `/chat/${restored}` : "/chat", { replace: true });
 	});
 	return pending;
