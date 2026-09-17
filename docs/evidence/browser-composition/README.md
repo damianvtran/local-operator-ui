@@ -24,8 +24,8 @@ Storybook story cannot answer any of them:
 | `12-approvals-queue.webp` | the band with a numbered queue: the count, the chips, the selected request's card |
 | `17-tab-actions-in-band.webp` | the tab actions row and the badge in situ (D3, D4) |
 | `18-approvals-dock.webp` | the dock open, the page still visible and narrowed, no suppression (D2, D9) |
-| `19-strip-marked-tab-at-rest.webp` | the strip at rest with a user and an agent-marked row, **and on this head the strip is not in the picture**: the top ~67 CSS px of the frame is the no-daemon banner's fill, and the strip sits under it (see the D9 note below). What IS in the frame is the surface the strip belongs to — the app's own sidebar with `Browser` selected and the page the tabs point at — which is coverage of the composition and NOT of the markers |
-| `20-strip-failed-and-agent-markers.webp` | the same occlusion over the surface with the band OPEN: the band's items (`Let an agent use "Proof page one"…`, `Close "Proof page one"`, `Close 1 other tab`, `Copy URL`) and the URL bar are visible below the banner, and the strip's own row — the only place the `Failed` and `Agent` chips exist — is behind it. The markers are NOT visible here; the pair is evidenced in `browser-conversation-mark/*` and `chat-sidebar-status-feed/browser-marks/*`, which photograph the mark on a row that is not under a banner |
+| `19-strip-marked-tab-at-rest.webp` | the strip at rest with a user and an agent-marked row, **and on this head the strip IS in the picture**: re-taken 2026-09-17 on the harness that calls `exposeStrip()` before every frame, the frame carries the strip's own row with the `Agent` chip legible on `Proof page two` beside the unmarked `proof-open 1` row (see the D9 note below for what moved and what the DOM reading says). The no-daemon banner is still painted across the top of the window — the harness has no daemon by design — but the strip now sits BELOW it rather than under it, which is the difference between a frame that shows the subject and one that only shows where it would have been |
+| `20-strip-failed-and-agent-markers.webp` | the same surface with the band OPEN, and the same re-take: the strip's own row carries the pair at once — `Agent` and the `Failed` pill side by side on `127.0.0.1:52792/broken` — with the band's items (`Let an agent use "Proof page one"…`, `Close "Proof page one"`, `Close 1 other tab`, `Copy URL`) below it and the URL bar under those. This is the frame D11/D12 asked for: the closed actions block is gone and the four counted closes are the band's only red |
 
 Source, exactly:
 
@@ -44,65 +44,88 @@ what keeps the sweep's own frame count honest.
 
 ## What these frames are photographs of, and the one bounded delta left
 
-`12`, `17`, `18`, `19` and `20` were re-taken at `25ad52c33` (this branch's spelling
-of the round that re-shaped the tab strip's overlaid chrome cluster, the band's busy
-cue, the dock's notice sentence and waiting row, and the URL bar's label reserve).
-That re-shoot is done: the deferral the earlier revision of this file carried is
-discharged, and `manifest.json`'s `partialCapture.roundTwoRecapture` records it.
+**THREE OF THE SIX WERE RE-TAKEN AGAIN ON 2026-09-17, and the set now mixes two
+runs.** `17-tab-actions-in-band`, `19-strip-marked-tab-at-rest` and
+`20-strip-failed-and-agent-markers` come from the run below; `03-surface-populated`,
+`12-approvals-queue` and `18-approvals-dock` are unchanged from `25ad52c33` (this
+branch's spelling of the round that re-shaped the tab strip's overlaid chrome
+cluster, the band's busy cue, the dock's notice sentence and waiting row, and the URL
+bar's label reserve), which is what `manifest.json`'s `partialCapture.roundTwoRecapture`
+records. The split is not arbitrary: review round 2's remediation moved the band's own
+rows (D11: the four counted closes take `variant="danger"` and `Watch` returns to
+`ghost`; D12: a hairline opens the destructive block) and the pinned control's channel
+words (D10), and `17` is the in-situ frame of that band. `19` and `20` were owed for a
+different reason, D9, which is answered in its own section below. Nothing moved in the
+other three, and rather than re-shoot them for tidiness this file says which run each
+came from.
 
-**The bounded delta is CLOSED, and these six frames are current at this head.** The
-earlier revision of this paragraph recorded that `03` carried strip pixels from an
-older tree and that none of the six had been re-photographed at the head that added
-the four- and five-chip floors and the button-level clip; review round 2 then changed
-two surfaces every one of them contains (the pinned control's count chip beside the
-new-tab control, and the actions band's shape), so the whole set was re-taken. Source,
-exactly, at this head: `pnpm build`, then
+**THE IN-SITU CLAIM IS THE REASON `17` IS HERE AT ALL.** The story frames under
+`browser-tab-strip/` show the band alone, on a decorator that pads the page; in the
+running app the badge is drawn at the window's right edge, next to the tab actions row,
+and the page sits under the band. `17` is the frame that shows all three at once — the
+expanded band, the URL bar with its `Approvals` badge at the window edge, and the
+consent card in the page area — on the D7 band (one item per row, `Copy URL` last behind
+the rule) that the remediation then re-coloured.
+
+**THE RE-TAKE'S OWN SOURCE, EXACTLY.** `pnpm build` (or the app already built), then,
+at the commit that ships these frames:
 
 ```
-env -u NO_COLOR LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_NO_TERMINAL_TITLE=1 \
+env -u CMUX_WORKSPACE_ID -u CMUX_SESSION_ID -u CMUX_TERM -u CMUX_SOCKET -u LOP_SESSION_ID \
   node scripts/browser-chrome-proof.mjs --keep
 ```
 
-and the run's own scratch frames (PNG) encoded to `.webp` at quality 90. Where each
-frame comes from, now stated rather than implied, because two of the names are not
-the run's own: `03-surface-populated`, `12-approvals-queue`, `17-tab-actions-in-band`
-and `18-approvals-dock` are the run's frames of those names; `19-strip-marked-tab-at-rest`
-is the run's `09-strip-user-and-agent` (the strip at rest with one user and one
-agent-marked tab) and `20-strip-failed-and-agent-markers` is its
-`16-surface-strip-failed-agent-tab` (the `Failed` and `Agent` markers painted
-together). `17` is the frame that carries review round 2's D7 band — one item per row,
-`Copy URL` last behind the rule — in the running app.
+The `CMUX_*`/`LOP_*` unsets are the machine's own rule for any agent-driven run (an
+inherited `CMUX_WORKSPACE_ID` once let a headless test rename the operator's real cmux
+workspaces), and the harness deletes those keys from the app's environment itself — the
+`env -u` is what makes that true of the HARNESS process too. An earlier revision of this
+file also unset `NO_COLOR` and set `TERM`; this run left both as the shell had them
+(`NO_COLOR=1`, `TERM=dumb`), and that is measured rather than assumed: the same run's
+`browser-tab-strip/overflow-list` set came back byte-identical to frames taken under the
+older command in 11 of its 12 themes, so neither variable reaches the renderer. The run
+reported `83 PASS / 0 FAIL / ALL CHECKS PASSED`.
 
-## The two frames named for the strip's markers do not contain the strip (review round 2, D9)
+Where each frame comes from, stated rather than implied, because three of the names are
+not the run's own: `03-surface-populated`, `12-approvals-queue` and `18-approvals-dock`
+are the run's frames of those names in its own scratch directory, and
+`17-tab-actions-in-band` is too; `19-strip-marked-tab-at-rest` is the run's
+`09-strip-user-and-agent` (the strip at rest with one user and one agent-marked tab) and
+`20-strip-failed-and-agent-markers` is its `16-surface-strip-failed-agent-tab` (the
+`Failed` and `Agent` markers painted together), each encoded to `.webp` at quality 90.
 
-**MEASURED, IN THE COMMITTED PIXELS.** In both `19` and `20` the frame's top 133
-device px (≈67 CSS at dpr 2) is a fill that ends in a rule at device y 134, and it is
-the no-daemon banner: `20` shows it verbatim — "Not connected to a Local Operator
-server…" with its `Retry`. Underneath it `20` shows the band and the URL bar and `19`
-shows the page, so the banner is not merely at the top of the window: it is lying over
-the strip's own row, which is why neither frame contains a chip-coloured pixel in the
-pane: against the chips' own `#67C674`, a 5% fuzz finds 11,250 px in the frame that
-DOES show them (`browser-pane-live/browser-pane-strip-four.png`) and 0 in `19` and 5 in
-`20`, all of the latter inside the pane's own x-range. That is what the two captions
-above now state — what these frames can and cannot show — rather than what they were
-taken for.
+## The two frames named for the strip's markers now contain the strip (review round 2, D9, DISCHARGED 2026-09-17)
 
-**THE RE-TAKE IS OWED, AND THE MECHANISM FOR IT IS ALREADY IN THIS TREE.** Both frames
-come from `captureRenderer` (`browser-chrome-proof.mjs:1777` and `:1905`), and that
-wrapper calls `exposeStrip()` before every single frame — the round-3 fix that hides
-EVERY element in the hit chain at the strip's centre, by geometry rather than by a
-banner's name, in a `<style>` the app cannot re-render away, and then ASSERTS the strip
-is topmost. So the harness that produced these files knows how to put the strip in the
-frame, and the committed bytes predate or bypass that path. Which of the two it is has
-not been established: proving it needs the run itself, and the re-take is the same
-command — `pnpm build` (or the app already built) and
+**MEASURED, IN THE COMMITTED PIXELS, ON BOTH SIDES OF THE FIX.** The frames these two
+names carried before this re-take were taken on a tree where the strip's own row sat at
+CSS 0-36 and the no-daemon banner ran to CSS 68, so the banner lay OVER the strip: the
+frame's top 133 device px (≈67 CSS at dpr 2) was the banner's fill ending in a rule at
+device y 134, and against the chips' own `#67C674` a 5% fuzz found 11,250 px in the frame
+that DOES show them (`browser-pane-live/browser-pane-strip-four.png`) and 0 in `19` and 5
+in `20`. Those two files are replaced, not re-captioned.
 
-```
-env -u NO_COLOR LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_NO_TERMINAL_TITLE=1 \
-  node scripts/browser-chrome-proof.mjs --keep
-```
+What the re-take produced, from the run's own assertions rather than from my eye: the
+harness records the geometry at the strip's centre and CHECKS it before it photographs —
+`banner {"top":0,"height":68}, tab strip {"top":121,"height":37}, overlaps false`, and
+`elementFromPoint(800, 140) -> flex min-w-0 grow items-stretch` with `hidden over it: []`.
+So the strip is not merely present in the layout, it is the topmost element at its own
+centre, and nothing had to be hidden to make it so: the app's own chrome changes moved the
+strip's row from CSS 0 to CSS 121, below the banner's 68. Both frames carry the markers —
+`Agent` on `Proof page two` in `19`, `Agent` and `Failed` together on
+`127.0.0.1:52792/broken` in `20` — which is the claim these two names exist to carry.
 
-with the `09-strip-user-and-agent` and `16-surface-strip-failed-agent-tab` scratch PNGs
-encoded to `.webp` at quality 90 as before. Until that runs, this set claims the
-markers nowhere: the claim lives in the frames that show them, and these two state
-plainly that the strip's row is behind the banner.
+**NOT BANNER-FREE, AND THAT IS THE HONEST STATEMENT.** The banner is still at the top of
+both frames, on purpose: the harness boots the app against no daemon at all (its own
+"scratch backend port is dead" check is what makes the run isolated), so the app's
+reconnect banner is a property of the run, not a defect in the frame. What D9 was about —
+two committed frames named for a strip they did not contain — is answered by the strip
+being in them; a reader who wants a frame with no banner anywhere should read that as a
+frame of a different run rather than a better one.
+
+What it took: the harness that carries this file's frames is
+`scripts/browser-chrome-proof.mjs`, and the defect that stopped it completing a run at
+all — a synchronous `osascript` frontmost sampler starving the event loop, so the probe
+read the host's own record outside its own deadline and died with `no LIVE host
+answered /health` while the host was up — is documented in its `frontmost()` docblock
+and fixed in the same commit that ships these frames. The re-take is the command above,
+with the `17-tab-actions-in-band`, `09-strip-user-and-agent` and
+`16-surface-strip-failed-agent-tab` scratch PNGs encoded to `.webp` at quality 90.
