@@ -1,0 +1,26 @@
+<!doctype html>
+<!--
+  Rendered-evidence harness for a send the backend's STORE refused (a capture
+  surface, not part of the app).
+
+  Why not a story, and why not `composer-alert-geometry.html`. The claim under
+  evidence is not what the alert looks like - it is that a refusal which arrives
+  as a 507 or a 500 reaches the composer with its own code, so the generic
+  "Your message is still in the composer. Send it again." is withheld, while the
+  503 of the same shape still shows it. A story renders the alert from props it
+  was handed, which is the part nobody doubts; this page runs the app's OWN
+  transport, `desktopResult`, the canonical store's admission and the shipped
+  predicate, and mounts the shipped `MessageInput` on whatever they produced.
+  The verdict is substituted at the HTTP boundary, as `send-error-evidence.mjs`
+  substitutes the 409.
+-->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Store refusals — the composer's alert, from the real pipeline</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./store-refusal-evidence.tsx"></script>
+	</body>
+</html>

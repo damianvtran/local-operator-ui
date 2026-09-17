@@ -159,6 +159,30 @@ export type ChatDraft = {
 	submittedImages?: ChatImage[];
 	submittedMode?: "prompt" | "steer";
 	/**
+	 * The code of the failure that LEFT the payload above held — the claim's own
+	 * verdict, travelling with the payload.
+	 *
+	 * WHY IT IS A FIELD AND NOT `errorCode`. `errorCode` is a statement about the
+	 * LAST attempt (and `onDismiss` clears it the moment the operator acknowledges
+	 * the sentence), while this one is a statement about the payload the store is
+	 * still holding — the two part company on the flow this whole change exists for:
+	 * refusal, `Restore message`, drop the file, Enter. The unchanged-payload guard
+	 * answers that press, so the code on screen becomes `UNCONFIRMED_SEND_CODE` and
+	 * the composer's held line reverted to "whether it reached the agent is not
+	 * knowable ... send again only if no reply arrives" — one screen after the app
+	 * itself said "Nothing was saved", with the disk off the screen entirely (UX
+	 * round 2, U10). The guard throws before this row is written, so nothing here
+	 * can be blamed on the guard overwriting it: the information was never recorded
+	 * against the claim in the first place.
+	 *
+	 * Written only for a failure that leaves a claim (post-admission), cleared when
+	 * the claim ends (`releaseClaim`, `discardDraft`, `finishDraft`), and rewritten
+	 * by each later failure of the same held payload — so it always describes the
+	 * payload `submittedText` names, which is exactly what the composer's held line
+	 * is allowed to assert.
+	 */
+	heldClaimCode?: string;
+	/**
 	 * True only once an admission request has actually been ISSUED, i.e. its
 	 * outcome is genuinely unknown to us. This is what the unchanged-payload
 	 * guard keys on: a send that failed BEFORE admission (session creation
@@ -324,17 +348,142 @@ export function isLeadingSlashRefusal(error: unknown, text: string): boolean {
 export const UNREADABLE_ATTACHMENT_CODE = "attachment_read_failed";
 
 /**
+ * A send refused because the backend could not write its store: the disk is
+ * full.
+ *
+ * WHY ONE `sqlite3.Error` HAD TO BECOME THREE ANSWERS. The backend's desktop
+ * routes caught the BASE class - `sqlite3.Error` - and mapped every member of it
+ * to one 503 reading "Read state is busy right now. It will catch up on its
+ * own.", so lock contention, an unopenable database, a corrupted one and a full
+ * volume were a single branch, and the sentence described the only one of them
+ * that is transient. On 2026-09-17 this machine's boot volume hit 0 bytes free
+ * at 09:56; SQLite could not allocate its journal or WAL, and a send carrying an
+ * IMAGE was refused with that sentence plus this composer's own generic hint,
+ * "Your message is still in the composer. Send it again." - the one action that
+ * cannot help on a full disk, and the one the operator repeated. The image is
+ * what crossed the threshold first because it is by far the largest write in the
+ * flow: attachment bytes plus a much bigger transcript append, while a few-KB
+ * text send still landed. It went away when disk space came back, which is the
+ * correlation the report describes.
+ *
+ * A code rather than a reading of the copy, for the same reason as its siblings
+ * above: the sentence is expected to be reworded, and matching prose would
+ * silently stop matching. What the code decides is the one thing the copy cannot
+ * carry - whether the composer's generic retry hint is TRUE.
+ *
+ * The SENTENCE is the BACKEND's, rendered verbatim from the error body's
+ * `message` field (`desktopResult` reads `detail.code`/`detail.message` for any
+ * status). Naming the volume and the remedy is a fact about the machine that only
+ * the process which touched the store has, so authoring a second copy here would
+ * be a second place for it to drift from the one the user is shown. The renderer
+ * half of the fix is that this code SURVIVES to the alert - it is what
+ * `withholdsRetryHint` below reads - and that the sentence is not replaced by a
+ * generic one on the way (pinned in `scripts/canonical-chat.test.mjs`).
+ *
+ * The notice does NOT retire on a timer, and that is deliberate: the read
+ * window's notice can, because the window it names closes on an observable
+ * condition, while a full disk does not heal itself. It clears when the
+ * refusal's remedy actually happened - the next send that lands (`finishDraft`)
+ * - or when the user edits the draft, as every other send refusal does.
+ */
+export const STORE_OUT_OF_SPACE_CODE = "store_out_of_space";
+
+/**
+ * A send refused because the backend's store could not be read or written at all
+ * - unopenable, corrupted, "file is not a database" - which is every
+ * `sqlite3.Error` that is not contention and not a full volume.
+ *
+ * The remedy is NOT a retry: the same store is in the same state on the next
+ * attempt, so resending the same bytes is refused for the same reason, and the
+ * hint the composer would otherwise render under this sentence would be the
+ * incident's own false instruction in a different costume. The sentence the user
+ * reads says so and points at the machine; a code is what withholds the hint
+ * that contradicts it.
+ *
+ * `store_busy` - the third arm, genuine lock contention - deliberately has no
+ * constant in this file: it keeps the backend's existing sentence AND the
+ * composer's retry hint, because there a retry is exactly the right advice. The
+ * split exists so that "send it again" becomes true-for-contention and
+ * false-for-a-failed-store, so nothing in the renderer changes for it.
+ */
+export const STORE_UNAVAILABLE_CODE = "store_unavailable";
+
+/**
+ * Whether this refusal is the STORE's own verdict on the write - the two arms
+ * that are not contention.
+ *
+ * ONE PREDICATE FOR ONE FACT, with two consumers, because the two of them must
+ * not disagree about it on one screen. The fact is what a store failure KNOWS
+ * that the other refusals do not: the write did not happen. Every other refusal
+ * in this list is silent about the request's fate - the transport may have lost
+ * the response, the owner may have admitted it - which is why their shared held
+ * claim says the outcome is "not knowable" and conditions the retry on a reply
+ * arriving.
+ *
+ * For these two codes that sentence is simply wrong, and it is wrong in the
+ * incident's own direction: it tells the operator to wait for a reply that the
+ * failed write makes impossible while the transcript above shows their message
+ * painted (UX round 1, U4). So the composer reads this predicate for the two
+ * places the difference lands:
+ *
+ *   - the held line states the known fact instead of the unknowable-outcome
+ *     sentence (see the alert's `storeWriteRefused` branch);
+ *   - the generic retry hint is withheld, by `withholdsRetryHint` below, which
+ *     is a SEPARATE question - "is the retry the remedy" - and is kept separate
+ *     here: one predicate per fact, so a code can be added to either list for
+ *     its own reason without silently answering the other question.
+ *
+ * `store_busy` is deliberately NOT a member: contention is a refusal whose
+ * outcome really is unknowable, and it keeps the shared held sentence for the
+ * same reason it keeps the retry hint.
+ */
+export function isStoreWriteRefusal(code: string | undefined): boolean {
+	return code === STORE_OUT_OF_SPACE_CODE || code === STORE_UNAVAILABLE_CODE;
+}
+
+/**
  * Whether a refusal's remedy is anything OTHER than "send it again".
  *
  * The composer's generic retry hint is the alert's "what to do" half, and it is
- * only ever rendered where it is true. Three refusals cannot be answered by
+ * only ever rendered where it is true. Six refusals cannot be answered by
  * resending the same bytes: the read window refuses every send for as long as
  * its own notice is on screen, the leading-slash policy refuses this text
- * forever, and an attachment that cannot be read is still unreadable on the
- * next attempt - the same chip is still attached, so the retry is refused for
- * the same reason until the chip is replaced or removed (UX round 3, U9; UX
- * round 2, U13; design round 4, D13). Each carries its own statement of what to
- * do instead, and the composer withholds the hint for all three.
+ * forever, an attachment that cannot be read is still unreadable on the next
+ * attempt - the same chip is still attached, so the retry is refused for the
+ * same reason until the chip is replaced or removed - a store that is out of
+ * space or unreadable is in the same state on the next attempt too, and the
+ * unchanged-payload guard's code is the sixth, and it is the one term that is
+ * NOT the guard's whole story (agent review round 2, N1, which measured it): an
+ * UNCHANGED resend of the held payload is admitted - that is what `Restore
+ * message` exists to make possible - so the guard refuses the retry only when the
+ * payload differs from the one it is holding, and by itself this code licenses no
+ * statement about the hint. It is in the list as a BACKSTOP for a question the
+ * composer answers more precisely and cannot always answer at all: its own
+ * `heldInBox` test needs the held chip set, which is absent on the arm where the
+ * store knows only the text, and an unknown chip set reads as "not the held
+ * payload" - so on that arm the code is what keeps the hint off a screen whose
+ * next press the guard refuses. The two directions are not symmetric: withholding
+ * a hint that would have been true costs one redundant line (the payload is in the
+ * box and Enter retries it), while rendering it over a refusal is an instruction
+ * the app then refuses. Where the comparison IS available, `heldInBox` withholds
+ * first and this term changes nothing - which is why the committed `altered-held`
+ * frame would pass with either mechanism (N1).
+ *
+ * (UX round 3, U9; UX round 2, U13; design round 4, D13; the store split; UX
+ * round 1, U2.) Each carries its own statement of what to do instead, and the
+ * composer withholds the hint for all of them.
+ *
+ * The guard's own code is the one with a history of being left out, and where the
+ * hint is not merely redundant but self-contradicting: the operator's own remedy on
+ * 2026-09-17 - drop the image that pushed the write over the threshold - lands
+ * exactly there, and read "Send it again" over a guard that then refused the press.
+ * It went to the user as an infinite instruction/refusal loop, measured at 11 ->
+ * 11 requests (UX round 1, U2).
+ *
+ * What the two store codes add to that list is a distinction the copy alone
+ * cannot make: the third arm of the same backend ladder, `store_busy`, reads
+ * much like them and IS worth retrying, so this predicate - not the sentence's
+ * shape - is what tells the two apart.
  *
  * One function rather than two call-site comparisons, so the composer reads the
  * rule instead of listing the codes, and so `scripts/canonical-chat.test.mjs`
@@ -344,7 +493,10 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 	return (
 		code === SESSION_UNVALIDATED_CODE ||
 		code === LEADING_SLASH_CODE ||
-		code === UNREADABLE_ATTACHMENT_CODE
+		code === UNREADABLE_ATTACHMENT_CODE ||
+		code === UNCONFIRMED_SEND_CODE ||
+		code === STORE_OUT_OF_SPACE_CODE ||
+		code === STORE_UNAVAILABLE_CODE
 	);
 }
 
@@ -766,6 +918,30 @@ export async function admitChatDraft(
 		submittedAttachments: input.attachments,
 		submittedImages: images,
 		submittedMode: mode,
+		/*
+		 * The SENTENCE is cleared here and the CODE is deliberately left alone, and
+		 * the asymmetry is a decision rather than an oversight (review round 1,
+		 * R-4, which asked for the choice to be stated).
+		 *
+		 * Clearing both would hand the two refusals that raise a sentence with NO
+		 * code of their own - the send lock (`chat-page`'s "send it again in a
+		 * moment") and the message-budget refusal - the answer `undefined`, and
+		 * `withholdsRetryHint(undefined)` is false, so the composer's generic
+		 * "Send it again" would render under the budget refusal, whose remedy is
+		 * "remove an image or split the message". That is the D13 defect (a hint
+		 * instructing the action the refusal forbids) reintroduced on a path this
+		 * PR does not touch, one line below the fix for it.
+		 *
+		 * Leaving it alone has a cost, and it is the mirror image: a code-less
+		 * refusal falling through after a store refusal inherits these codes and
+		 * loses a hint that would have been TRUE there. It is the benign direction
+		 * - the send-lock sentence carries its own retry instruction in words
+		 * ("send it again in a moment"), so what is lost is a redundant line and
+		 * never a wrong instruction - and the fix that would remove it entirely is
+		 * for those two sites to carry codes of their own, which is a change to a
+		 * third refusal family (its own copy and its own evidence) rather than a
+		 * line of remediation here.
+		 */
 		error: undefined,
 	});
 	// Declared outside the try because the catch needs it to address the echo:
@@ -910,6 +1086,23 @@ export async function admitChatDraft(
 		// create fields and must keep its own diagnosis (round 5, R13).
 		const leadingSlash =
 			inFlight === "sessions.message" && isLeadingSlashRefusal(error, text);
+		/*
+		 * ONE resolution of the failure's code, read by the two fields below.
+		 *
+		 * A leading-slash refusal has no code of its own on the wire (the 422's
+		 * `detail` is a plain string), so it is classified from the payload we sent.
+		 * Every other refusal states itself. Resolved once because `errorCode` (this
+		 * attempt's verdict, which a dismissal clears) and `heldClaimCode` (the
+		 * claim's, which survives one) must not be two readings of one failure that
+		 * can part - the claim would then carry a code no refusal ever produced.
+		 */
+		const failureCode = leadingSlash
+			? LEADING_SLASH_CODE
+			: error instanceof Error &&
+					"code" in error &&
+					typeof error.code === "string"
+				? error.code
+				: undefined;
 		store.updateDraft(key, {
 			pending: false,
 			// 413 and 422 on this path both mean the message was refused BEFORE
@@ -945,20 +1138,25 @@ export async function admitChatDraft(
 			// of that identity check - so the one action that would make the message
 			// fit, removing a screenshot, was the one action forbidden. The only way
 			// out was discarding the message.
-			...(refusedBeforeAdmission ? { admissionAttempted: false } : {}),
+			...(refusedBeforeAdmission
+				? // Nothing is held on this arm (the flag's own contract above says so), so the
+					// claim's verdict goes with the claim. Left behind, it would describe a
+					// payload the composer no longer has (`heldText` is gated on the same
+					// flag), and the next held payload would inherit a failure that is not
+					// its own.
+					{ admissionAttempted: false, heldClaimCode: undefined }
+				: // Post-admission: the payload above is held, and THIS is the failure that
+					// left it held. The fix for UX round 2's U10 is that the composer's held
+					// line reads this rather than whatever refusal is on screen later.
+					{ heldClaimCode: failureCode }),
 			/*
-			 * A leading-slash refusal has no code of its own on the wire (the 422's
-			 * `detail` is a plain string), so it is classified from the payload we
-			 * sent, and it carries the product's own sentence rather than the
-			 * transport's. Every other refusal states itself as before.
+			 * This attempt's own verdict, and the sentence that states it.
+			 *
+			 * The sentence IS cleared on the next admission while this code is
+			 * deliberately not (see the asymmetry's own note below); the code is what
+			 * the composer's two predicates read.
 			 */
-			errorCode: leadingSlash
-				? LEADING_SLASH_CODE
-				: error instanceof Error &&
-						"code" in error &&
-						typeof error.code === "string"
-					? error.code
-					: undefined,
+			errorCode: failureCode,
 			error: leadingSlash
 				? LEADING_SLASH_MESSAGE
 				: userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE),
@@ -2059,6 +2257,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						submittedAttachments: _attachments,
 						submittedImages: _images,
 						submittedMode: _mode,
+						// The claim's own verdict ends with the claim it describes: it is a fact
+						// about the payload being released, so keeping it past the release would
+						// let the next held payload inherit this one's register (UX round 2,
+						// U10's own failure mode, one level down).
+						heldClaimCode: _claimCode,
 						error: _error,
 						errorCode: _errorCode,
 						...kept

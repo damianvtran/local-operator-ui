@@ -89,6 +89,12 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	argumentBytes: 0,
 	output: "ok",
 	isError: false,
+	// The harness's never-run verdict and its fact, which only a row settled by
+	// a compose frame carries — by verdict, or by a turn that ended while the
+	// call was still being dictated. Every row here but the never-run states is
+	// a call that really was sent to a tool.
+	notRunReason: null,
+	neverSent: false,
 	durationS: 0.4,
 	startedAt: null,
 	images: [],
@@ -353,6 +359,23 @@ export const States: Story = {
 					phase: "running",
 					durationS: null,
 					startedAt: Date.now() - 12_000,
+					output: null,
+				}),
+				// NEVER RUN, and the reason this row is in the comparison beside the
+				// failure above: it wears the same danger ground and cross glyph, and
+				// the two must still be told apart on the row itself. The summary says
+				// `never sent`, not `failed`, and the label says the call never ran —
+				// the call produced no result to fail. It also carries no duration at
+				// all, because nothing measured one.
+				tool({
+					id: "tool:7",
+					toolName: "hub",
+					args: null,
+					argumentBytes: 2048,
+					notRunReason:
+						"Invalid arguments: arguments are not valid JSON: Expecting ',' delimiter: line 1 column 1978 (char 1977)",
+					neverSent: true,
+					durationS: null,
 					output: null,
 				}),
 			]}
