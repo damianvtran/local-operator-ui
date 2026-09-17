@@ -31,9 +31,14 @@ a top inset measured from them. It lost on measurement rather than taste:
   the inset would have to sum the two the moment the shape changed to stack them.
 
 What was given up: an in-flow band **shifts the app down** at the moment it appears —
-which is the moment the app is already announcing a state change — where a reserving
-inset would not. What that buys is that a band can never be the reason a row is
-missing.
+which is the moment the app is already announcing a state change. A measured inset
+does not remove that shift: it moves the app by the same amount the moment a band
+appears or its copy changes, and only a **permanently reserved slot** would remove it,
+at the cost of moving the no-band layout for every user on every launch. What the
+in-flow shape buys is that a band can never be the reason a row is missing. The cost
+as measured on this shape — the mis-aim window at the instant of the shift, the
+click swallowed on arrival, the window's three displacements — is recorded on the PR
+under its *Accepted trade-offs and recorded costs* section.
 
 ## What the fix is
 
