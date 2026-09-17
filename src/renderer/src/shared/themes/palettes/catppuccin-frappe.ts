@@ -31,19 +31,18 @@ export const catppuccinFrappe: ThemeDefinition = {
 		surface: "#363B4E",
 		elevated: "#3D4255",
 		sunken: "#2A2D3E",
-
 		/*
 		 * The current row's own ground:
-		 * `surface` cast 0.11 toward `accent`, then stepped 0.25 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 2.75 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.66:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4.04 from `surface`, 4.67 from `elevated` and 5.92 from
-		 * `sunken`; the step of 0.31 `L*` is short of the 3 `L*` floor and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * `surface` cast 0.12 toward `accent`, then stepped 2.52 on the `L*` axis — branch H
+		 * of this port's selection rule, and this palette's OWN ink is what caps the step:
+		 * `inkDim` reaches its floor with the 0.15 of headroom at 2.75 `L*` on this panel
+		 * (4.66:1 there), so the band is paid on the cast. Design round 3 (D2) found the
+		 * first cut stopping at 0.31 `L*` — an eighth of that cap — so the step now runs to
+		 * the cap and the cast pays only the remainder: ΔE00 4.34 from `surface`, 4.09 from
+		 * `elevated`, 7.21 from `sunken`. The step is still short of the 3 `L*` floor and is
+		 * pinned against the cap in `scripts/contrast-contract.mjs`, which re-derives it.
 		 */
-		highlight: "#3B3A52",
+		highlight: "#403F57",
 
 		// Canonical text C6D0F5 is 6.52:1 on `elevated` — under the 7:1 body floor. Lifted
 		// along the same lavender-white.

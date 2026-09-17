@@ -30,19 +30,17 @@ export const palenight: ThemeDefinition = {
 		surface: "#2F3446",
 		elevated: "#353B4E",
 		sunken: "#232736",
-
 		/*
 		 * The current row's own ground:
-		 * `surface` cast 0.09 toward `accent`, then stepped 0.75 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 2.25 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.7:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4.09 from `surface`, 4.59 from `elevated` and 6.61 from
-		 * `sunken`; the step of 0.73 `L*` is short of the 3 `L*` floor and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * `surface` cast 0.10 toward `accent`, then stepped 2.22 on the `L*` axis — branch H
+		 * of this port's selection rule, capped by this palette's OWN ink: `inkDim` reaches
+		 * its floor with the 0.15 of headroom at 2.25 `L*` here (4.70:1), so the band is paid
+		 * on the cast. Design round 3 (D2) found the first cut stopping at 0.73 `L*` with cap
+		 * to spare, so the step now runs to the cap: ΔE00 4.87 from `surface`, 4.85 from
+		 * `elevated`, 7.74 from `sunken`. The step is under the 3 `L*` floor and is pinned
+		 * against the cap, which the gate re-derives.
 		 */
-		highlight: "#34344C",
+		highlight: "#383750",
 
 		ink: "#EEFFFF",
 		inkMuted: "#BBC2E3",
