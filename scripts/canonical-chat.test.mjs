@@ -111,7 +111,10 @@ const {
 	LEADING_SLASH_CODE,
 	LEADING_SLASH_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
+	STORE_OUT_OF_SPACE_CODE,
+	STORE_UNAVAILABLE_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
+	isRefusedBeforeAdmission,
 	refusedBeforeAdmissionAttachments,
 	refusedBeforeAdmissionText,
 	restoreSubmittedAttachments,
@@ -1153,6 +1156,128 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	assert.equal(withholdsRetryHint(UNCONFIRMED_SEND_CODE), false);
 	assert.equal(withholdsRetryHint("unresolved_attachment"), false);
 	assert.equal(withholdsRetryHint(undefined), false);
+});
+
+/*
+ * The store's own refusals: the disk is full, or the store cannot be read or
+ * written at all.
+ *
+ * Both arms used to be ONE answer, because the backend caught the BASE class
+ * (`sqlite3.Error`) and mapped every member of it to a 503 reading "Read state is
+ * busy right now. It will catch up on its own." - lock contention, an unopenable
+ * database, a corrupted one and a full volume in a single branch, and the
+ * sentence described the only one of them that is transient. On 2026-09-17 this
+ * machine's boot volume reached 0 bytes free at 09:56; SQLite could not allocate
+ * its journal, and a send carrying an IMAGE - the largest write in the flow, so
+ * the one that crosses the threshold while a few-KB text append still lands - was
+ * refused with that sentence plus the composer's own "Your message is still in
+ * the composer. Send it again.": the one instruction that cannot help, on the
+ * one occasion the operator repeated.
+ *
+ * What is pinned here is the RENDERER half of the repair. The sentence is the
+ * BACKEND's, deliberately - it is the process that knows which volume is full and
+ * what the remedy is, and a second copy in the renderer would be a second place
+ * for that fact to drift - so the assertions are that it reaches the composer
+ * VERBATIM and that the code travels beside it into `withholdsRetryHint`. The two
+ * failure modes this rules out are the ones the incident actually had: a generic
+ * sentence replacing the actionable one, and a code left unset (or inherited from
+ * an earlier refusal) so the alert under it announces a retry that cannot work.
+ *
+ * `store_busy` - the third arm, and the only one where "send it again" is TRUE -
+ * is the contrast case: it keeps its hint, which is the whole point of the split.
+ */
+test("a failed store is refused with its own code, and the retry hint it cannot honour is withheld", async () => {
+	// The two store arms, each with the copy the backend's own error body carries.
+	const cases = [
+		{
+			code: STORE_OUT_OF_SPACE_CODE,
+			status: 507,
+			message:
+				"There is not enough space on this disk to save your message. Free up space, then send it again.",
+		},
+		{
+			code: STORE_UNAVAILABLE_CODE,
+			status: 500,
+			message:
+				"This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+		},
+	];
+
+	for (const { code, status, message } of cases) {
+		reset();
+		// The error the transport builds from the envelope: `desktopResult` reads
+		// `detail.code`/`detail.message` for ANY status, which
+		// `desktop-renderer-transport.test.mjs` drives against a real 507 and 500
+		// response body rather than a constructed error.
+		globalThis.__canonicalRequest = async (request) => {
+			calls.push(request);
+			return Promise.reject(
+				new DesktopControlError(status, message, undefined, code),
+			);
+		};
+		const key = store
+			.getState()
+			.stageDraft({ kind: "agent", name: "reviewer" });
+		const text = "look at this screenshot";
+		await assert.rejects(
+			admitChatDraft(
+				key,
+				{
+					...input,
+					text,
+					images: [{ data_b64: "AAAA", mime_type: "image/png" }],
+				},
+				"222222222222",
+			),
+			(error) => error instanceof DesktopControlError && error.code === code,
+		);
+		const draft = store.getState().drafts[key];
+		// The refusal is recorded on the ROW the composer reads (`activeErrorCode`
+		// is `sendErrorCode ?? draft.errorCode`), which is what makes the alert's
+		// hint a function of this refusal rather than of the conversation's
+		// history - design round 4's D13, at a refusal the wire classified.
+		assert.equal(draft.errorCode, code);
+		assert.equal(draft.error, message);
+		assert.equal(withholdsRetryHint(draft.errorCode), true);
+		/*
+		 * And the outcome stays UNKNOWABLE, deliberately. A store failure is not a
+		 * validation refusal: the write that failed may have been the transcript
+		 * append or the completion row, so the renderer cannot claim the message
+		 * never reached the owner. That is why the text does NOT go back in the box
+		 * (the echo stays painted, and Restore replays the claim) - the one part of
+		 * this path that touches ownership, asserted here so a later change cannot
+		 * quietly turn it into a pre-admission refusal.
+		 */
+		assert.equal(
+			isRefusedBeforeAdmission(
+				new DesktopControlError(status, message, undefined, code),
+			),
+			false,
+		);
+		assert.equal(draft.admissionAttempted, true);
+	}
+
+	// The third arm of the same ladder: genuine lock contention. It keeps the
+	// backend's existing sentence AND the composer's retry hint, because there a
+	// retry is the right advice - so no renderer code names it.
+	reset();
+	const busyMessage =
+		"Read state is busy right now. It will catch up on its own.";
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return Promise.reject(
+			new DesktopControlError(503, busyMessage, undefined, "store_busy"),
+		);
+	};
+	const busyKey = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(busyKey, { ...input, text: "hello" }, "222222222222"),
+	);
+	const busyDraft = store.getState().drafts[busyKey];
+	assert.equal(busyDraft.error, busyMessage);
+	assert.equal(withholdsRetryHint(busyDraft.errorCode), false);
 });
 
 /*
