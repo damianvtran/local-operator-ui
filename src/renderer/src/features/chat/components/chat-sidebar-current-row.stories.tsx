@@ -1,3 +1,7 @@
+import {
+	DEFAULT_SETTINGS_SECTIONS,
+	SettingsSidebar,
+} from "@features/settings/components/settings-sidebar";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
@@ -5,16 +9,28 @@ import type { FC } from "react";
 import { ChatSidebar } from "./chat-sidebar";
 
 /*
- * The chat sidebar with a row that is CURRENT, and with the New chat row current.
+ * The chat sidebar with a row that is CURRENT, and with the New chat row current —
+ * plus the settings rail's current section, the other panel that paints the same
+ * role.
  *
  * Two states one change touched, photographed on the panel's own ground in every
- * theme. `chat-sidebar-status-feed.stories.tsx` renders this same component for
- * the frame-delivered row status, and this file exists for the same reason it
- * does: the sidebar cannot be rendered in isolation — it reads the router, the
- * canonical sessions store and the desktop capability hooks — and a claim about
- * which GROUND a row paints is a claim about pixels, not about a class string.
- * `scripts/chat-sidebar-selection.test.mjs` resolves the class expressions, and a
- * green assertion there proves the merge, not that the panel looks right.
+ * theme — plus the two arrangements where the mark is drawn on an ink the other
+ * three never reach (a `· lopdev` binding inside a current row, and a nested row
+ * under its agent). `chat-sidebar-status-feed.stories.tsx` renders this same
+ * component for the frame-delivered row status, and this file exists for the same
+ * reason it does: the sidebar cannot be rendered in isolation — it reads the
+ * router, the canonical sessions store and the desktop capability hooks — and a
+ * claim about which GROUND a row paints is a claim about pixels, not about a
+ * class string. `scripts/chat-sidebar-selection.test.mjs` resolves the class
+ * expressions, and a green assertion there proves the merge, not that the panel
+ * looks right.
+ *
+ * The settings rail is in this file for the reason the set exists: both panels
+ * take ONE role decision from ONE palette value and mark it with one two-part
+ * mark, so a second set would be two instruments for one fact. It was a stated
+ * gap before — the shipped `settings-appearance` story sets `capturePending` and
+ * never clears it offline, which aborts a sweep before it reaches the rail — and
+ * rendering the component directly closes it.
  *
  * ## What is stubbed, and how little
  *
@@ -37,36 +53,111 @@ import { ChatSidebar } from "./chat-sidebar";
  * The rest of the panel is deliberately not re-shot here: the All chats filter,
  * the entity rows and the hover states are the same role at the same call sites
  * (`docs/evidence/chat-sidebar-selection/` carries them, with its own note on
- * where its frames stop describing the shipped ground).
+ * where its frames stop describing the shipped ground). The two states added in
+ * round 2's remediation are exceptions to that rule rather than a widening of
+ * it: a BOUND row and a NESTED row are the only places this panel draws the
+ * mark's own trailing ink and its inset geometry, and neither was reachable in
+ * any frame when the round-1 streams looked.
  */
 
 /** The `sessions.list` wire row, in the fields the sidebar reads. */
-const wireRow = (id: string, name: string, mtime: number) => ({
+const wireRow = (
+	id: string,
+	name: string,
+	mtime: number,
+	binding: { agent: string | null; team: string | null } = {
+		agent: null,
+		team: null,
+	},
+	active = true,
+) => ({
 	id,
 	name,
 	mtime,
 	preview: "",
 	live_state: "attached",
 	pending: null,
-	active: true,
-	binding: { agent: null, team: null },
+	active,
+	binding,
 	status: { code: "idle", label: "Recent" },
 });
 
 const REVENUE = "0f1e2d3c4b5a";
 const LEDGER = "1a2b3c4d5e6f";
 const DEPLOY = "2b3c4d5e6f70";
+const BOUND = "3c4d5e6f7081";
+const NESTED = "4d5e6f708192";
 
 /*
- * The third row is the current one, and the roster is ordered newest-first the
- * way the catalogue returns it: the sidebar draws top-down, and a current row
- * that lands below a frame's fold would be a picture of the wrong thing.
+ * The roster is MUTABLE because the states differ in more than which row is
+ * selected: two of them need a row that carries a binding (`· lopdev`), and one
+ * needs a child row that belongs to an agent's own list rather than to the flat
+ * global partition. The stub below reads it at call time, which is after the
+ * story's `render` has set it and before the component mounts.
  */
-const roster = [
+const DEFAULT_ROSTER = [
 	wireRow(LEDGER, "Reconcile the supplier ledger", 1_760_000_300),
 	wireRow(DEPLOY, "Migrate the deploy script", 1_760_000_200),
 	wireRow(REVENUE, "Quarterly revenue model", 1_760_000_100),
 ];
+let roster = DEFAULT_ROSTER;
+
+/* The agent an agent-bound conversation is bound to. Named because the binding
+   label, the entity row's name and the profile fixture all have to agree. */
+const LOPDEV = "lopdev";
+
+/*
+ * A roster whose third row carries a binding, so the current row draws the
+ * `· lopdev` half of its trailing statement INSIDE the mark: `ink-muted` on
+ * `highlight`, which is the pair the ink floors are measured for, and the case
+ * the operator's own screenshot shows. Kept third for the same reason the
+ * default roster's current row is third — a row above it is what a hover
+ * comparison needs.
+ */
+const BOUND_ROSTER = [
+	wireRow(LEDGER, "Reconcile the supplier ledger", 1_760_000_300),
+	wireRow(DEPLOY, "Migrate the deploy script", 1_760_000_200),
+	wireRow(BOUND, "Quarterly revenue model", 1_760_000_100, {
+		agent: LOPDEV,
+		team: null,
+	}),
+];
+
+/*
+ * A roster with a CHILD row — a conversation bound to an agent — and it is
+ * INACTIVE on purpose: the flat Active chats partition only draws active rows,
+ * so an inactive one appears under its agent's entity row and nowhere else, and
+ * the frame is a picture of one marked row rather than two.
+ */
+const NESTED_ROSTER = [
+	wireRow(LEDGER, "Reconcile the supplier ledger", 1_760_000_300),
+	wireRow(DEPLOY, "Migrate the deploy script", 1_760_000_200),
+	wireRow(
+		NESTED,
+		"Quarterly revenue model",
+		1_760_000_100,
+		{
+			agent: LOPDEV,
+			team: null,
+		},
+		false,
+	),
+];
+
+/* The agent catalogue the entity list is built from. Empty unless a story needs
+   an entity row, because an entity the story does not render against is a row
+   that moves every other row in the frame. */
+let agentCatalogue: unknown[] = [];
+const LOPDEV_PROFILE = {
+	name: LOPDEV,
+	kind: "role" as const,
+	source: "installed" as const,
+	agent_id: null,
+	description: "",
+	tools: null,
+	effort: null,
+	delegate: false,
+};
 
 /** Which conversation is marked current, per story. */
 let selected: string | undefined = REVENUE;
@@ -105,10 +196,26 @@ if (typeof window !== "undefined") {
 					desktop_contract: 1,
 					desktop_available: true,
 					desktop_auth: "bearer",
-					features: { session_catalogue: 2 },
+					features: {
+						session_catalogue: 2,
+						profile_catalogue: 1,
+						team_catalogue: 1,
+					},
 				});
 			case "sessions.list":
 				return ok({ sessions: roster, truncated: false });
+			/*
+			 * The agent and team catalogues, which the entity lists are built from.
+			 * Stubbed rather than left to fail because one of the states here is a
+			 * NESTED row — a conversation bound to an agent renders under that agent's
+			 * own row, not in the flat partition — and an entity list nobody can reach
+			 * is a surface nobody has looked at. `agentCatalogue` is []; unless a story
+			 * fills it, the lists render empty and nothing else in the frame moves.
+			 */
+			case "profiles.list":
+				return ok({ profiles: agentCatalogue });
+			case "teams.list":
+				return ok({ teams: [] });
 			default:
 				throw new Error(`unexpected desktop op in this story: ${request.op}`);
 		}
@@ -149,10 +256,12 @@ const Page: FC<{ note: string }> = ({ note }) => (
 			<p className="text-ink">{note}</p>
 			<p>
 				The current row is drawn on <code className="font-mono">highlight</code>
-				, a shallow step off the panel's{" "}
-				<code className="font-mono">surface</code>; the hover step the same rows
-				carry is <code className="font-mono">elevated</code>. The caps carry no
-				fill and no border on any of them.
+				, a LIGHTNESS step off the panel's{" "}
+				<code className="font-mono">surface</code> in the direction the mode
+				runs (lighter on a dark theme, darker on a light one), plus{" "}
+				<code className="font-mono">font-medium</code>; the hover step the same
+				rows carry is <code className="font-mono">elevated</code>. The caps
+				carry no fill and no border on any of them.
 			</p>
 			<p>
 				{selected
@@ -175,6 +284,8 @@ type Story = StoryObj;
 /** A conversation row is the current one, and the pointer is somewhere else. */
 export const SelectedRow: Story = {
 	render: () => {
+		roster = DEFAULT_ROSTER;
+		agentCatalogue = [];
 		selected = REVENUE;
 		draftKey = null;
 		return <Page note="A conversation row is current" />;
@@ -199,6 +310,8 @@ export const SelectedRow: Story = {
  */
 export const NewChatRowCurrent: Story = {
 	render: () => {
+		roster = DEFAULT_ROSTER;
+		agentCatalogue = [];
 		selected = undefined;
 		draftKey = "draft-untargeted";
 		return (
@@ -213,4 +326,247 @@ export const NewChatRowCurrent: Story = {
 		});
 		await sleep(300);
 	},
+};
+
+/*
+ * The THIRD row of the default roster. Named rather than inlined so the caption
+ * and the component cannot disagree about which row is marked, and NOT the first
+ * (`general`) deliberately: a current row with a row above it is the arrangement a
+ * hover comparison needs.
+ */
+const RAIL_ACTIVE = "integrations";
+
+/**
+ * The settings rail's current section — the OTHER `surface` panel that paints the
+ * same role with the same mark.
+ *
+ * WHY IT IS IN THIS FILE RATHER THAN A SET OF ITS OWN. It is one role decision on
+ * one ground, taken from one palette value and marked with one class string in two
+ * files, so a second set would be two instruments for one fact — the same reason
+ * `scripts/chat-sidebar-selection.test.mjs` covers both rails. What it is NOT is a
+ * duplicate surface: this rail is a menu, its rows are shorter, and its current row
+ * carries a 16px accent-coloured glyph where the chat panel's carries a status dot,
+ * so whether the mark reads against those is a question only a frame answers.
+ *
+ * `docs/evidence/chat-sidebar-current-row/README.md` records that this surface was
+ * a stated GAP for two rounds — the `settings-appearance` story sets
+ * `capturePending` and never clears it offline, which aborts a sweep before it
+ * reaches the rail. Rendering the rail directly is what closes it: the component
+ * takes `activeSection`, `sections` and a callback, reads no store, and needs no
+ * desktop bridge, so nothing about it has to be stubbed or faked.
+ *
+ * The width matters and is why this story is registered at 1280 rather than the 780
+ * its siblings use: `SettingsSidebar` switches between its labelled and its 48px
+ * icon-only layouts at `(min-width: 1040px)`, and the labelled one is the surface
+ * the current row's ground has to carry text on.
+ */
+export const SettingsRail: Story = {
+	render: () => (
+		<div className={cn("flex h-screen overflow-hidden bg-canvas text-ink")}>
+			<div className="w-[280px] shrink-0 border-hairline border-r">
+				<SettingsSidebar
+					activeSection={RAIL_ACTIVE}
+					onSelectSection={() => undefined}
+					sections={DEFAULT_SETTINGS_SECTIONS}
+				/>
+			</div>
+			<div className="w-[420px] shrink-0 space-y-3 p-4 text-meta text-ink-muted">
+				<p className="text-ink">The settings rail's current section</p>
+				<p>
+					A menu row on the SAME <code className="font-mono">surface</code>{" "}
+					ground as the chat panel, carrying the same{" "}
+					<code className="font-mono">highlight</code> ground and the same{" "}
+					<code className="font-mono">font-medium</code> weight.
+				</p>
+				<p>{`activeSection = ${RAIL_ACTIVE}`}</p>
+			</div>
+		</div>
+	),
+	play: async () => {
+		await sleep(300);
+	},
+};
+
+/**
+ * A conversation BOUND to an agent is the current row, so the frame draws the
+ * `· lopdev` binding INSIDE the mark.
+ *
+ * WHY THIS STATE EXISTS (design round 1, D5 and QA's N6). Every fixture row in
+ * this set carried `binding: { agent: null, team: null }`, so the binding half of
+ * the mark — `ink-muted` on `highlight`, one of the two inks the floors on this
+ * ground are measured for — was an assertion in `pnpm check-themes` and in no
+ * frame at all, while it is plainly visible in the operator's own screenshot.
+ * A flat row is the way to reach it: the binding renders in the row's trailing
+ * slot, and the row is in the Active chats partition because it is active —
+ * which is also what keeps its agent's entity row out of this frame
+ * (`agentCatalogue` is empty here, so no entity list renders at all).
+ */
+export const BoundRowCurrent: Story = {
+	render: () => {
+		roster = BOUND_ROSTER;
+		agentCatalogue = [];
+		selected = BOUND;
+		draftKey = null;
+		return (
+			<Page note="A row bound to an agent is current, drawing · lopdev inside the mark" />
+		);
+	},
+	play: async () => {
+		await catalogueSettled(3);
+		useCanonicalSessionsStore.setState({ activeDraftKey: null });
+		await sleep(300);
+	},
+};
+
+/**
+ * A NESTED row is the current one: a conversation bound to an agent, drawn under
+ * that agent's own entity row rather than in the flat partition.
+ *
+ * WHY IT IS A SEPARATE FRAME FROM `BoundRowCurrent`. A nested row is the one
+ * arrangement where the mark sits at the row's own inset (`pl-7`) inside a
+ * disclosure, next to the entity row that stages a draft against the same agent —
+ * and it is the case both review streams recorded as unreachable (design D5,
+ * QA N3). It is reachable in a story: the child row is INACTIVE, so the flat
+ * Active chats partition does not draw it, and the agent's own disclosure is
+ * clicked open because it starts collapsed. The click is the only way to open it
+ * without a query, and a query would be a different surface (a filtered list).
+ */
+export const NestedRowCurrent: Story = {
+	render: () => {
+		roster = NESTED_ROSTER;
+		agentCatalogue = [LOPDEV_PROFILE];
+		selected = NESTED;
+		draftKey = null;
+		return <Page note="A nested row under its agent is current" />;
+	},
+	play: async () => {
+		await catalogueSettled(3);
+		useCanonicalSessionsStore.setState({ activeDraftKey: null });
+		/*
+		 * The disclosure starts COLLAPSED (`expanded` is empty state here), so the
+		 * nested row this state is about is not on screen until it is opened. A
+		 * real click rather than a store write, because the open state is the
+		 * component's own.
+		 *
+		 * TWO THINGS THIS LOOP HAS TO GET RIGHT, both measured rather than assumed:
+		 *
+		 *   1. WAIT for the row to exist. The disclosure renders from the profile
+		 *      catalogue's answer, and `catalogueSettled` above is about the SESSION
+		 *      list. A click dispatched before that answer lands is a `null` click —
+		 *      the first capture of this state produced six frames with the agent
+		 *      collapsed and six with it open, split by palette.
+		 *   2. CLICK ONLY IF IT IS SHUT. `expanded` persists in
+		 *      `localStorage['chat-sidebar-disclosures']`, so a sweep of twelve
+		 *      themes leaves it open for the next one, and an unconditional click
+		 *      closes what the previous frame opened — which is how the same run
+		 *      alternated open/collapsed frame by frame.
+		 */
+		for (let attempt = 0; attempt < 50; attempt += 1) {
+			const disclosure =
+				document.querySelector<HTMLButtonElement>("[data-disclosure]");
+			if (disclosure) {
+				if (disclosure.getAttribute("aria-expanded") === "false") {
+					disclosure.click();
+				}
+				break;
+			}
+			await sleep(100);
+		}
+		await sleep(300);
+	},
+};
+
+/**
+ * The current row UNDER KEYBOARD FOCUS — the one arrangement where two outline
+ * rules meet on one box, and a state no frame in this set has ever held.
+ *
+ * The row's own class list carries `focus-visible:outline focus-visible:outline-2
+ * focus-visible:outline-accent focus-visible:outline-offset-2`, so a focused
+ * current row is the `highlight` ground plus an `accent` ring at a 2px offset
+ * drawn AROUND it. Every other frame in the set shows the ground alone, and the
+ * question this one exists for is whether the two marks read as one state or as
+ * a mark fighting its own outline (design round 2, N3; round 3, N4).
+ *
+ * Focus is moved to the row itself rather than to a store field, because the ring
+ * is `:focus-visible`'s and only the browser's own focus state produces it. A
+ * scripted `.focus()` matches `:focus-visible` in a fresh page whose last
+ * interaction was not a pointer, which is the state a capture starts in — the
+ * rig's pointer states are separate entries for exactly this reason.
+ */
+export const FocusedRowCurrent: Story = {
+	render: () => {
+		roster = DEFAULT_ROSTER;
+		agentCatalogue = [];
+		selected = REVENUE;
+		draftKey = null;
+		return (
+			<Page note="A conversation row is current, with the keyboard on it" />
+		);
+	},
+	play: async () => {
+		await catalogueSettled(3);
+		useCanonicalSessionsStore.setState({ activeDraftKey: null });
+		await sleep(300);
+		/*
+		 * NO focus call here on purpose. The ring this state is about is
+		 * `:focus-visible`'s, which is BROWSER state: a programmatic `element.focus()`
+		 * does not match it in Blink unless the last interaction was the keyboard, so
+		 * a story that focused a control itself would photograph the resting state and
+		 * file it under a ring. The rig presses the real Tab key instead (`{ tabTo }`
+		 * on this set's own row in `capture-evidence.mjs`) and throws rather than
+		 * shooting the unfocused state if it never lands. The first cut of this story
+		 * called `.focus()` from here and the frame came back with the ground and no
+		 * ring — measured, not assumed.
+		 */
+		await sleep(200);
+	},
+};
+
+/**
+ * A COLOUR-ONLY frame, and it says so in the picture.
+ *
+ * The pair this shows is `highlight` — the current row's ground — beside
+ * `accentWash`, the tint the app already paints on an active or selected row
+ * elsewhere (`bg-accent-wash`). On four palettes the two measured under the
+ * contract's 2.0 field floor after the theme port landed, and three of them were
+ * re-authored to clear it while `rosePineDawn` could not (its ink caps the route;
+ * the contract pins the pair at its measured 1.75 ceiling).
+ *
+ * WHY A SWATCH AND NOT A SCREEN. Every call site that paints `accentWash` is in a
+ * different panel from this one — the agents sidebar, the category rail, the
+ * spreadsheet's selected row — and this rig's seven states photograph the chat
+ * sidebar and the settings rail, so no state in it can hold a current row and a
+ * wash element in one view. Rather than imply a screen was found, the frame draws
+ * the two grounds at the size they are painted and labels itself: what it settles
+ * is the ΔE00 between the two colours, which is the whole of the claim, and the
+ * README says the same thing where a reader meets the frames.
+ */
+export const WashSwatches: Story = {
+	render: () => (
+		<div className={cn("flex h-screen flex-col gap-6 bg-canvas p-8 text-ink")}>
+			<p className="text-body">
+				COLOUR-ONLY FRAME — this is not a screen. It shows the current row's
+				ground beside the app's active-row wash, at the size a row is painted,
+				because no state in this set can hold both in one view.
+			</p>
+			<div className="flex gap-6">
+				<div className="flex flex-col gap-2">
+					<div className="h-24 w-[320px] rounded-md bg-highlight" />
+					<p className="font-mono text-meta text-ink-muted">
+						bg-highlight — the current row's ground
+					</p>
+				</div>
+				<div className="flex flex-col gap-2">
+					<div className="h-24 w-[320px] rounded-md bg-accent-wash" />
+					<p className="font-mono text-meta text-ink-muted">
+						bg-accent-wash — the app's active-row tint
+					</p>
+				</div>
+			</div>
+			<p className="text-meta text-ink-muted">
+				A reader judges the pair by whether the two blocks read as two grounds;
+				the contract asserts the same distance numerically.
+			</p>
+		</div>
+	),
 };

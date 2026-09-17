@@ -45,16 +45,14 @@ export const synthwave: ThemeDefinition = {
 		surface: "#2D2A41",
 		elevated: "#35314C",
 		sunken: "#1E1B2A",
-
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.050, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.33 from `surface`, 2.96 from `elevated` and 6.86 from
-		 * `sunken`.
+		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule —
+		 * and stepped 3.27 on the `L*` axis, which is the whole of what the band needed:
+		 * ΔE00 4.02 from `surface` (4.52 before design round 3's D1 re-derivation), 2.43
+		 * from `elevated`, 9.24 from `sunken`, `inkDim` 4.65:1.
 		 */
-		highlight: "#312942",
+		highlight: "#392F4B",
 
 		ink: "#F2EFF8",
 		inkMuted: "#BCB3D4",
