@@ -1478,7 +1478,10 @@ const MODIFIER = { alt: 1, ctrl: 2, meta: 4, shift: 8 };
  * answers differently (`repeat`) and a chord left down would leak into the next
  * step's reading.
  */
-async function pressChord(cdp, { key, code, virtualKeyCode, modifiers = 0 }) {
+async function pressChord(
+	cdp,
+	{ key, code, virtualKeyCode, modifiers = 0, commands },
+) {
 	for (const type of ["keyDown", "keyUp"]) {
 		await cdp.send("Input.dispatchKeyEvent", {
 			type,
@@ -1487,6 +1490,14 @@ async function pressChord(cdp, { key, code, virtualKeyCode, modifiers = 0 }) {
 			modifiers,
 			windowsVirtualKeyCode: virtualKeyCode,
 			nativeVirtualKeyCode: virtualKeyCode,
+			/*
+			 * An EDITING chord needs Chromium's own editing command. A bare
+			 * modifier+key pair reaches the page and performs no edit, so `Cmd+A`
+			 * selected nothing and the next insert appended at the caret — measured
+			 * here, where it turned the scene's query into a concatenation (QA round
+			 * 2, Q5).
+			 */
+			...(type === "keyDown" && commands ? { commands } : {}),
 		});
 	}
 }
@@ -2937,6 +2948,7 @@ async function sceneSettingsModel(cdp) {
 		code: "KeyA",
 		virtualKeyCode: 65,
 		modifiers: MODIFIER.meta,
+		commands: ["selectAll"],
 	});
 	await cdp.send("Input.insertText", { text: "zzzz-no-such-model" });
 	/*
