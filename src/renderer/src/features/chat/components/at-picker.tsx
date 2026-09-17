@@ -579,7 +579,13 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 	state,
 	onPick,
 }) => {
-	const shellRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * `HTMLDivElement & HTMLOutputElement`: the shell is a `div` when it holds the list
+	 * and an `<output>` when it says why the harness cannot carry a mention — the
+	 * element that IS the status role rather than a `div` wearing it (UX round 2,
+	 * U12) — and the measurement below reads only geometry, so one ref serves both.
+	 */
+	const shellRef = useRef<(HTMLDivElement & HTMLOutputElement) | null>(null);
 	const activeRef = useRef<HTMLLIElement | null>(null);
 	const [budget, setBudget] = useState(AT_ROWS_MIN);
 

@@ -16,17 +16,30 @@ to happen for one to exist.
 no surface which talks to a backend; the composer here reaches only the three
 channels below), plus one narrowed run for
 `--only=chat-mention-chips--picker-many-rows` when the row-budget entry was added.
-That pass ran at `561be43e2d71e572c5a140d10cc8e570d7dd090b`, twelve themes: **276
-frames over 23 directories**. (The head is cited in the spelling this branch
-ships: the pass first landed on `c5492ebfb`, and the rebase onto `origin/main`
-replayed that commit as `561be43e2`, so the pre-rebase spelling is one a reviewer
-cannot fetch. The frames themselves are unchanged — a rebase replays this
-branch's own commit content, and no `.webp` here moved.)
+The pass this set ships from ran at
+`5a860966adcbb9a799a7ca6a55e4deb0294b6987`, twelve themes: **288 frames over 24
+directories** — the 276 over 23 the reviewed round carried, plus the 12 frames of
+`quoted-mention`, the state review round 2 named as the one frame this surface was
+still missing. The head is cited in the spelling this branch ships, and it is the
+head the frames were TAKEN at rather than the one they ship in: the manifest's own
+ancestry rule requires its `head` to be an ancestor of `HEAD`, and a capture can
+only be stamped from a tree that is already committed, so a set always lands in a
+commit after the tree it photographed.
+
+**What moved in this pass, measured.** 170 of the 288 frames differ from the
+reviewed set, in three groups and no others: the states a round-2 finding named
+(`chip-needs-approval`, `mentions-at-the-edges`, `harness-cannot-expand`,
+`no-rows-enter`), the picker states (the fixture gained the long name Q-5's own
+assertion needs, so every count and footer in those frames moved with it), and
+180-2,639 pixels elsewhere that are the ambient tip row's rotating entry —
+`before-no-mentions`, `mention-at-rest`, `atomic-delete`, `scrolled-draft` and
+`small-view-mention` differ by at most 36 pixels of 1,203,360, all inside the tip
+band below the composer.
 
 **Provenance, stated because it is not a full sweep.** `frames` is re-derived from
 the tree the way `check-evidence.mjs` derives it — every `.webp` under
 `docs/evidence` outside a declared supplementary set — so the number is the sweep
-count with this set's 276 added, and `surfaces` is the capturer's own story list
+count with this set's 288 added, and `surfaces` is the capturer's own story list
 count. Both are written by the rig, and the commit that carries these frames is the
 one `srcTree`/`scriptsTree` name: re-deriving them while the change is still in the
 working tree is how a set comes to describe a tree it does not sit on, which is
