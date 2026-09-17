@@ -1,3 +1,4 @@
+import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { useSyncExternalStore } from "react";
 import type { BrowserChromeState } from "../hooks/use-browser-chrome";
 
@@ -58,19 +59,6 @@ export function browserBridge(): BrowserBridge | null {
  * Electron says so rather than throwing on the first click. */
 export function browserBridgeAvailable(): boolean {
 	return browserBridge() !== null;
-}
-
-/** The prefix Electron adds to an `ipcRenderer.invoke` rejection. Module scope
- * because a regex literal inside the function is rebuilt on every call and the
- * linter's rule is right about it. It lives beside the bridge because a rejected
- * invoke is the bridge's own error shape. */
-const IPC_ERROR_PREFIX = /^Error invoking remote method '[^']+':\s*/;
-
-/** IPC rejections arrive as `Error` with a prefix Electron adds, so the message
- * is unwrapped rather than shown raw. */
-export function messageOf(caught: unknown): string {
-	const raw = caught instanceof Error ? caught.message : String(caught);
-	return raw.replace(IPC_ERROR_PREFIX, "").trim();
 }
 
 export interface BrowserProjectionSnapshot {
@@ -167,7 +155,10 @@ export async function refreshBrowserProjection(): Promise<BrowserChromeState | n
 		return next;
 	} catch (caught) {
 		if (generation === readGeneration) {
-			publish({ state: snapshot.state, readError: messageOf(caught) });
+			publish({
+				state: snapshot.state,
+				readError: unwrapIpcErrorMessage(caught),
+			});
 		}
 		return null;
 	}

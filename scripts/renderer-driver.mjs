@@ -2351,7 +2351,10 @@ async function sceneBrowserPane(cdp) {
 			"past that, the pinned control appears and its own text is the count of tabs that are not shown",
 			six.control !== null &&
 				/^\d+$/.test(six.control.text.trim()) &&
-				(six.control.label ?? "").includes("more tab"),
+				// THE WORDS ARE `not shown` (design review round 2, D10): the count is measured
+				// from the rows' boxes, so a row clipped at its right edge is counted, and
+				// "more tabs" read as a count of tabs with no visible trace at all.
+				(six.control.label ?? "").includes("not shown"),
 			JSON.stringify({ six, control: six.control }),
 		);
 		check(

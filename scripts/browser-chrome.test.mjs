@@ -2773,8 +2773,8 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 		"the new-tab control is a bounded control, and the strip's own rule separates it from the count when both are on screen",
 	);
 	assert.ok(
-		strip.includes("`All tabs, ${tabsOffScreen} more tabs`"),
-		"and it is in the accessible name, not only in the tooltip, in the words the U5 ruling names",
+		strip.includes("`All tabs, ${tabsOffScreen} not shown`"),
+		"and it is in the accessible name, not only in the tooltip, in the words D10 revised: the count is measured from the rows' boxes, so a row clipped at its right edge is counted, and `not shown` is true of it where `more tabs` was not",
 	);
 	assert.ok(
 		strip.includes('querySelectorAll("[data-tab-id]")'),

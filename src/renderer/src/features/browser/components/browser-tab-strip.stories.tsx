@@ -56,8 +56,11 @@ const strip = (
 	activeTabId,
 	waiting,
 	onActivate: () => {},
-	onClose: () => {},
-	onCloseTabs: () => {},
+	// A fake close has to ANSWER (the strip bounds its caret restore on the close's own
+	// outcome, review round 2, A-2): `true` is the honest fake for an intent nothing
+	// refuses, and the story's tabs never leave, so the record ends on its own expiry.
+	onClose: async () => true,
+	onCloseTabs: async () => true,
 	onNewTab: () => {},
 	onHandOver: () => {},
 	onRevokeHandOver: () => {},

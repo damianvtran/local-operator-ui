@@ -491,14 +491,19 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			className="flex h-full min-h-0 flex-col bg-canvas"
 			data-tour-tag={surfaceTag}
 		>
+			{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
+			    `void`-ed: a close's own outcome is what bounds its caret restore (review
+			    round 2, A-2), and discarding it here would leave the one caller that needs
+			    the answer with nothing to read. Every other chrome call stays fired-and-
+			    forgotten, which is what `void` says. */}
 			<BrowserTabStrip
 				tabs={tabs}
 				sessions={sessions}
 				activeTabId={state?.activeTabId ?? null}
 				waiting={queue.waiting}
 				onActivate={(tabId) => void chrome.activateTab(tabId)}
-				onClose={(tabId) => void chrome.closeTab(tabId)}
-				onCloseTabs={(intent) => void chrome.closeTabs(intent)}
+				onClose={(tabId) => chrome.closeTab(tabId)}
+				onCloseTabs={(intent) => chrome.closeTabs(intent)}
 				onNewTab={() => void chrome.newTab(hostSessionId)}
 				newTabLabel={newTabLabel}
 				onHandOver={(tab) => setHandOverTab(tab)}

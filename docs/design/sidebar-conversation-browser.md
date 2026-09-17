@@ -440,14 +440,24 @@ ruled).** The pinned control's count was a bare `+N` sitting immediately left of
 new-tab control's `+`, so at a glance "add N" and "open one" were one glyph apart. The
 count now carries the chip grammar (`border-control`, `ink-dim`, tabular), **without a
 plus of its own** — the requirement is that the two affordances must not be
-distinguishable only by whether a digit follows the plus, and the one character that
+Distinguishable only by whether a digit follows the plus, and the one character that
 kept this one a second plus sign was the `+` itself, so the chip carries the number and
-the only plus in that corner is the control that opens one more tab. `N more tabs` is
+the only plus in that corner is the control that opens one more tab. **The words are
+`N not shown` (review round 2, D10, which revises the wording this paragraph first
+carried).** They were `N more tabs`, and the reviewer's reading of the pane's own
+four-tab frame is why they moved: three titles are READABLE there while the chip reads
+`2`, because the third row is clipped at its right edge — and the count is measured from
+the rows' own boxes, so a row lying half outside is counted, which is what the `+n`
+family has always meant and what the count exists to disclose (the width cost R4's
+ruling accepts). The sentence gives way to the measure rather than the measure to the
+sentence: `N not shown` is exactly true of a clipped row and of a hidden one, and it is
+now the same sentence the pinned LIST's heading carries, so the two channels a reader
+can compare cannot disagree. What the chip must not read as is a count of tabs with NO
+visible trace, which is what `N more tabs` invited beside three readable titles. It is
 in the count's accessible name and its tooltip; the new-tab control is a bounded icon
 button (`variant="outline"`, its own `New tab …` tooltip) rather than a second bare
 plus; and the strip's own `hairline` rule is drawn between them while the count is on
-screen. `N not shown` remains the pinned LIST's heading, where the sentence is about
-the rows below it. The row-level `+n` chip keeps its plus: it hides STATE chips rather
+screen. The row-level `+n` chip keeps its plus: it hides STATE chips rather
 than tabs, never sits beside this control, and its tooltip names the states it hides.
 
 **Fix 2: the pinned control becomes an in-band list, sectioned by conversation.**
@@ -527,11 +537,30 @@ It used to be a wrapping flex row, so `Copy URL` orphaned onto a second line onc
 four counted closes were present at the 1280px fixture — a failure class a wrap at one
 fixture width hides and a wider band only postpones. The order is the item table's:
 the closes, then a hairline, then `Copy URL` last (the only item that closes nothing).
-Bounded with internal scroll, and the bound is a guard rather than a fold: eight rows
-at 28px plus the rule is 233px against `max-h-60`'s 240px, so nothing D7 is about sits
-below a scroll. Its heading row and dismiss control live outside the scroller, the
-same shape the pinned list uses, and the focus contract is unchanged (`focus` in on
-open, Escape and the dismiss control back to the trigger, dismiss last in DOM order).
+**And the table's two groups are drawn as two groups: a second hairline opens the
+destructive block at `Close "X"` (review round 2, D12).** The table separates the two
+unnumbered rows that take nothing away (`Watch`, hand-over/revoke) from the numbered
+closes, and the paragraph above calls those numbered items destructive with no undo; a
+family that "reads as one block" (D7) needs an edge on both sides of it, so the block
+has one above the closes and D7's one below them, before `Copy URL`.
+
+**The band's weight follows that split (review round 2, D11).** The four counted
+closes carry `variant="danger"` — the design system's own treatment for a control that
+removes something (`border-danger-border text-danger`, `hover:bg-danger-wash`), whose
+triple the contrast contract already asserts through its `danger callout` row over
+`canvas`/`surface` and its `AS_TEXT` list — and the benign rows (`Watch`, the hand-over
+pair, `Copy URL`) are `ghost`. Before this round it was the other way round: `Watch`
+drew an outlined, full-width box and was the loudest element in the band, while the
+four closes were bare text. One grammar for a row (`size="sm"`, `w-full justify-start`)
+and the variant carries the weight: `danger` closes a tab, `ghost` does not.
+
+Bounded with internal scroll, and the bound is a guard rather than a fold: SEVEN rows
+at 28px plus the two 9px rules is 214px against `max-h-60`'s 240px — seven because
+hand-over and revoke are mutually exclusive, so the reachable ceiling is one fewer than
+the item table's rows — so nothing D7 is about sits below a scroll. Its heading row and
+dismiss control live outside the scroller, the same shape the pinned list uses, and the
+focus contract is unchanged (`focus` in on open, Escape and the dismiss control back to
+the trigger, dismiss last in DOM order).
 
 **Why the closes are one intent, not N `closeTab` calls.** From the code (§1.4):
 `closeTab` is one tab per intent, and each `destroy` fires `onChanged` per tab,
