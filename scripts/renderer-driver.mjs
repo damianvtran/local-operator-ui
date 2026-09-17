@@ -2531,8 +2531,20 @@ async function readSettingField(cdp, key) {
 			 * sub-line with the credential state and concatenating the two would
 			 * make every assertion about the offered rows a substring match.
 			 */
+			/*
+			 * This template is PAGE-SIDE source, so no backticks in a comment here.
+			 * The rows the LISTING produced: the typed-text row carries
+			 * role="option" as well, because the arrow keys reach it, and it is not
+			 * a match - counting it made the no-match assertion "1 === 0" for every
+			 * query (QA round 2, Q5). The data-combobox-row="typed" hook is what
+			 * tells the two apart.
+			 */
 			options: list
-				? Array.from(list.querySelectorAll('[role="option"]')).map((node) => {
+				? Array.from(
+						list.querySelectorAll(
+							'[role="option"]:not([data-combobox-row="typed"])',
+						),
+					).map((node) => {
 						const name = node.querySelector('span');
 						return ((name ? name.textContent : node.textContent) || '')
 							.replace(/\\s+/g, ' ')
@@ -2913,6 +2925,19 @@ async function sceneSettingsModel(cdp) {
 		cdp,
 		`document.querySelector('ul[role="listbox"]') !== null`,
 	);
+	/*
+	 * Replace the buffer before typing. Step 6 ends by committing a picked row, so
+	 * the field holds its selector — and `Input.insertText` inserts AT THE CARET,
+	 * which turned this query into `anthropic/claude-opus-5zzzz-no-such-model` and
+	 * made every assertion below about a string nobody typed (QA round 2, Q5).
+	 * `Cmd+A` then typing is the gesture a user makes.
+	 */
+	await pressChord(cdp, {
+		key: "a",
+		code: "KeyA",
+		virtualKeyCode: 65,
+		modifiers: MODIFIER.meta,
+	});
 	await cdp.send("Input.insertText", { text: "zzzz-no-such-model" });
 	/*
 	 * The typed-text row is a `role="option"` too, so the wait is for a list
