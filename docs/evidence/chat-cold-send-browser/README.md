@@ -16,6 +16,24 @@ session-`/messages` POST past the app's own 20 s control budget, captured by the
 app's `capturePage` at the same 2880 x 1634 device pixels (1440 x 817 viewport).
 Every other frame here is untouched.
 
+**The user bubble's text measure moved under that frame afterwards, and that is
+disclosed rather than re-shot.** `main`'s #290 (the user-bubble measure) landed
+after the frame was re-taken: it removed the `.lo-measured .lo-markdown {
+max-width: 62ch; margin-inline: auto }` rule and the `lo-measured` class from
+both components that render a user bubble (`message-paper.tsx` and
+`canonical/canonical-transcript.tsx`), and this frame contains one. What the
+frame is evidence for is unchanged - the deadline sentence, `A message is still
+being held...` and the `Restore message` / `Discard message` controls all still
+render, and no copy commit is in that range - so only the bubble's measure is a
+picture of the previous build. It was not re-shot because the rig that took it
+is scratch under `/tmp` and was reclaimed with the rest of that round's scratch,
+and its reconstruction (isolated daemon, a discovery record the app will attach
+to, and the tap) is refused by the app's own attach check: the seeded daemon is
+classified `heartbeat-stale` and the app waits rather than attaching, so the
+deadline state is never reached. No sweep can catch this - the set is
+`supplementary` and not swept - which is why it is written down here, and why
+rebuilding that rig as a committed script is worth doing before the next pass.
+
 ## Provenance and scope
 
 The worktree started at `7550bf1ae`, already containing the round-2 code and the

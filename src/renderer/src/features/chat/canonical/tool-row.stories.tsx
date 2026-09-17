@@ -1520,7 +1520,7 @@ export const MixedProseCodeAndTables: Story = {
 						"- `62ch` resolved to 546.7px, stopping the prose 313px short of the ledger's right edge on any comfortable window.",
 						"- Both grew with the window rather than shrinking, because the cap binds harder the more room there is.",
 						"",
-						"The measure is now the user bubble's property alone.",
+						"The measure is the user card's own width instead, and the prose inside it fills the card.",
 					].join("\n"),
 					streaming: false,
 					complete: true,

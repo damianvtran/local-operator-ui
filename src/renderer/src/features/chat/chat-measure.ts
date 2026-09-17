@@ -26,11 +26,14 @@
  *
  * ## What is NOT here
  *
- * The 62ch cap stays in `markdown.css`, on the `.lo-markdown` root rather than
- * on this container. It now applies to the USER bubble alone: agent output
- * takes no cap at all, because it has to share the left edge and the width of
- * the tool rows in the same turn — see that file's measure comment for the
- * operator report and the numbers.
+ * No reading measure on `.lo-markdown`, on either branch. The 62ch cap that
+ * used to live there was removed from the user bubble too (operator report,
+ * 2026-09-16: a card widened by a reply quote or an attachment left the prose a
+ * centre-constrained column inside it), so a user turn is an aside by the
+ * card's own `max-w-[75%]` inside this 900px measure, and agent output takes no
+ * cap at all — it shares the left edge and the width of the tool rows in the
+ * same turn. `markdown.css`'s measure comment carries both reports and the
+ * numbers.
  *
  * So this 900px is the whole width the agent's answer resolves against, and
  * the ledger resolves against it too. That is the alignment: one container

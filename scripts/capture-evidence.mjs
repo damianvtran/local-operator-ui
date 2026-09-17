@@ -469,6 +469,30 @@ export const STORIES = [
 		},
 	],
 	/*
+	 * The user card's own width, which is the measure since 2026-09-16.
+	 *
+	 * The operator's report was a card holding a wide attachment with its text
+	 * centred inside it, and the three stories here are the three routes to a card
+	 * wider than its prose: a reply quote, an attachment, and — the majority
+	 * shape, and the one the round that fixed this did not photograph — a long
+	 * turn with neither. What each frame has to show is one thing: the prose's
+	 * left edge and the card's inner left edge are the SAME line, at every
+	 * paragraph and at the attachment.
+	 *
+	 * 1024x620 is the PANE these are judged at, which is where the measure sits at
+	 * its 900px cap and the card at 675px; the story file's header carries the DOM
+	 * read behind both numbers. The before half is a declared supplementary set
+	 * (`../chat-canonical-user-card-measure-before/`) — the same three stories on
+	 * the same rig, with the three rendering files at the branch's base in the
+	 * working tree and nothing else moved, so the pair differs in the measure
+	 * alone. Both halves were re-shot at the rebased head on 2026-09-17, so the
+	 * base named there is the rebase's own fork point (`562bc5837`), not the
+	 * pre-rebase `962f43350`.
+	 */
+	["chat-canonical-user-card-measure--reported-shape", 1024, 620],
+	["chat-canonical-user-card-measure--wide-attachment", 1024, 620],
+	["chat-canonical-user-card-measure--long-text-only", 1024, 620],
+	/*
 	 * The three states a notification click can paint before the owner answers:
 	 * a cached paint with its caption, the skeleton for a first-ever open, and
 	 * the named state for a conversation this machine no longer has.

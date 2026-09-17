@@ -535,19 +535,29 @@ test("a user turn carries one stamp, under the bubble and outside it", async () 
 	/*
 	 * Placement, as far as a layout-less DOM can state it: the stamp is a
 	 * sibling of the bubble's row, it comes AFTER it in document order, and it
-	 * is not inside the bubble's own measure box. The last one is the fact the
-	 * design needs - a stamp inside the bubble would be a line of the message,
-	 * and would travel with a quote.
+	 * is not inside the bubble's own card. The last one is the fact the design
+	 * needs - a stamp inside the bubble would be a line of the message, and
+	 * would travel with a quote.
+	 *
+	 * KEYED ON THE CARD, NOT ON A MEASURE CLASS. These two assertions read
+	 * `.lo-measured` until 2026-09-16, when that class was retired: the user
+	 * bubble no longer opts its prose into a 62ch reading measure, because the
+	 * measure is the card's own width now (the operator report of that date;
+	 * `markdown.css`'s measure comment carries it and the numbers). A selector
+	 * for a class nothing applies names no box, so the same two facts are asked
+	 * of `.rounded-frame` - which is what the user bubble actually is - and the
+	 * assistant side renders no card at all, which is what keeps the negative
+	 * assertion in the test below meaningful.
 	 */
 	const column = stamp.parentElement;
 	const bubbleRow = stamp.previousElementSibling;
 	assert.ok(bubbleRow, "the stamp follows the bubble's own row");
 	assert.ok(
-		bubbleRow.querySelector(".lo-measured"),
-		"the bubble's reading measure is the row above the stamp",
+		bubbleRow.querySelector(".rounded-frame"),
+		"the bubble's card is the box in the row above the stamp",
 	);
 	assert.equal(
-		container.querySelector(".lo-measured").contains(stamp),
+		container.querySelector(".rounded-frame").contains(stamp),
 		false,
 		"the stamp is not part of the message's words",
 	);
@@ -739,8 +749,11 @@ test("assistant prose carries no stamp of its own", async () => {
 	const turns = stamps(container, "turn");
 	assert.equal(turns.length, 1, "only the user turn is stamped");
 	assert.ok(
-		turns[0].parentElement.querySelector(".lo-measured"),
-		"and it is the user turn's: the answer has no measure box to hang one on",
+		// The card, not `.lo-measured`: that class was retired on 2026-09-16 (the
+		// note in the placement test above records why), and an answer still
+		// renders no card of its own for a stamp to hang on.
+		turns[0].parentElement.querySelector(".rounded-frame"),
+		"and it is the user turn's: the answer has no card to hang one on",
 	);
 	assert.equal(
 		stamps(container, "footer").length,
