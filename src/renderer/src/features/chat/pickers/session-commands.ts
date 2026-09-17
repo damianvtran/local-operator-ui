@@ -32,9 +32,24 @@
  * had separate copies of the predicate (the picker's inline at its own `running`,
  * the row's exported `loopIsRunning`). Two copies of a truth table are two answers
  * waiting to disagree about a loop the user can see is moving.
+ *
+ * The command NAMES are here too (agent review round 2, NIT 2), and the first
+ * version of this module is why: it owned the ARGUMENT (`clear`, `stop`) while
+ * `"goal"` and `"loop"` stayed literals in three call sites — the row's own
+ * module constant and the two picker presses. That is the same divergence one
+ * level up: an operation is a NAME plus a value, and a module that owns half of
+ * one cannot keep the two callers spelling the whole of it the same way. All
+ * three call sites now import the pair, so this file is the only place either
+ * half is written.
  */
 
 import type { DesktopLoopState } from "../../../../../shared/desktop-control-contract";
+
+/** The owner command that carries the standing goal. */
+export const GOAL_COMMAND = "goal";
+
+/** The owner command that carries the session's loop. */
+export const LOOP_COMMAND = "loop";
 
 /** The value `goal` takes to unset the standing goal (`/goal clear`). */
 export const GOAL_CLEAR_ARGS = "clear";
