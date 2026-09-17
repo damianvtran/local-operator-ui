@@ -1,6 +1,6 @@
 # The pane in the app: opened by a press, with live requests, against an isolated backend
 
-Thirteen frames from `scripts/renderer-driver.mjs`'s `browser-pane` scene — the
+Fourteen frames from `scripts/renderer-driver.mjs`'s `browser-pane` scene — the
 scene §10.3 of `docs/design/browser-approval-ux.md` names — photographed through
 the app's own `capturePage()` in the headless window mode, with the pane opened
 by a hit-tested press on the chat header's Globe trigger.
@@ -43,6 +43,21 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=<the same token> node scripts/renderer-driver.mjs \
 
 Output, verbatim (`[PASS]` lines, with the run's own numbers where they are the
 claim):
+
+**THIS BLOCK IS THE PRE-RULING RUN, AND TWO OF ITS LINES NO LONGER DESCRIBE THE
+STRIP THIS SET SHIPS** (review round 2, D13). The transcript was taken before
+`166b201df` raised the narrow ladder's rungs and before `445896d4f` took the plus
+out of the count chip; the frames committed beside it were RE-TAKEN on this head
+(`5001d8d98`). On this head the pane's four-tab state OVERFLOWS — the state D1
+filed is reachable at the pane's own width — and the control carries its bare
+number rather than the `+N` this block prints. The run that took the committed
+frames measured it and the reading is the one to use for this head: a 640px
+window, a 558px scroller, four agent tabs at 105px of title each against the 85px
+promise, the pinned control present and reading `2`. Re-running this block on
+this head is owed (it boots the built app); until then the two strip rows of the
+frame table below state what the committed PIXELS show and this block states what
+the pre-ruling rungs did, which is the whole difference. Nothing here is a claim
+about a tree other than the one the frames were taken on.
 
 ```
 [PASS] the app holds a connection to this run's backend (http://127.0.0.1:7461)
@@ -111,8 +126,8 @@ is a frame of a screen this feature does not change).
 | `browser-pane-requests-scope-conversation.png` | The tray with the switch on `This conversation`: `2 approvals for this conversation`, two chips, nothing in the resolved list. The app holds THREE pending at this instant (one belongs to another conversation) |
 | `browser-pane-requests-scope-all.png` | The same instant with the switch on `All tabs`: **the same two chips and the same sentence.** This is the frame QA round 1 (Q1) and UX round 1 (U1) could not get: before the fix this pair read `3 approvals for this conversation` with the third chip naming another conversation, and pressing back printed `Withdrawn by the agent` over a request that was still pending — the scene asserts the count, the chips, the resolved list and the app's own pending list at each step, in both directions |
 | `browser-pane-strip-one.png` | One tab, and the same strip box as the frame before it: `{"empty":{"height":36,"rows":0},"oneTab":{"height":36,"rows":1}}` — a zero-pixel step where design round 2 (D9) measured 32 (the page's rect moved from `y 450 h 418` to `y 482 h 386`). The pair is also a story pair, `scope-empty` and `one-tab`, both captured at 640x460 with `reported content rect: 640x316 at 0,118` in each |
-| `browser-pane-strip-four.png` | Four tabs of this conversation in the pane's own strip at its 640 default: `rows 4, whole 4`, `clientWidth 595 = scrollWidth 595`, **no pinned control** — D1's remainder, which was that a whole tab was off screen here with nothing saying so |
-| `browser-pane-strip-overflow.png` | Two more tabs, and the honest half: `rows 6, whole 4`, `clientWidth 567, scrollWidth 797`, and the pinned control reading `+2` with the label `All tabs, 2 not shown` — the count is the number of rows whose boxes are not inside the scroller, not the tab count |
+| `browser-pane-strip-four.png` | Four tabs of this conversation in the pane's own strip at its 640 default, and ON THIS HEAD THEY DO NOT FIT: the pinned control is drawn and its chip reads `2`, while three titles are readable (the third row is clipped at its right edge). The transcript above says `whole 4, control null` for this same state, because it was taken on the pre-ruling rungs; the count is what the measurement above means and has always meant — a row lying half outside is counted as not shown — so the chip counts the clipped third row and the hidden fourth. D1's remainder, answered twice over: the state D1 filed is reachable at the pane's own width, and it now says so |
+| `browser-pane-strip-overflow.png` | Two more tabs, the same six rows the transcript describes and a wider overflow: the chip reads `4` where the transcript prints `+2`, and the same clipped third row is part of it (rows 1 and 2 are whole, the third is cut, the rest are outside). The number is the chip's own text with the count it counts — rows whose boxes are not fully inside the scroller, not the tab count — and it carries no plus. Its accessible name on this head is `All tabs, N not shown` (design round 2, D10): the frames can carry the number, not the sentence, which is why the sentence is asserted in the scene and in `browser-chrome.test.mjs` rather than read off a picture |
 | `browser-pane-lens-after-switch.png` | `All tabs` after a conversation switch and back (UX round 1, U3): the pane stays open, its content follows the session, and the lens the user chose is still chosen — the reason it lives in the window's slot state rather than in the pane |
 | `browser-pane-closed-focus.png` | The pane closed by its own control, with the caret back on the header's Globe (UX round 1, U2). The scene walks the state that loses it first — the trigger given real focus, the pane opened from there, `document.activeElement` left on `<body>` — and asserts that lost state before it asserts the return |
 | `browser-route-strip.png` | The route's own strip with the same tabs: the control is present here too, because at this window the route cannot hold them all either. The claim is the invariant the scene asserts on both hosts — the control is on screen exactly when a tab is not |
