@@ -3457,6 +3457,17 @@
           "scriptsTree": "a8f153d7d2d44a069b64bb3991d20e65c8564ef9",
           "capturedAt": "2026-09-17T07:08:08.000Z"
         }
+      },
+      {
+        "at": "2026-09-17, on `fix/composer-focus-flow`, on the rebase onto `origin/main` at `e489a6377` (PR #312, `fix/phantom-compose-rows`, on top of the 0.26.10 release merge; the branch's head before the rebase was `31e8caaed`)",
+        "by": "PR #308",
+        "why": "A RE-STAMP, NOT A RECAPTURE, and the SEVENTH one on this branch. The rebase onto `main`'s live tip (`e489a6377`) moved `src/` and `scripts/` under this branch - `main`'s phantom-compose-rows work and the 0.26.10 release merge - so `srcTree`/`scriptsTree` are re-derived from the tree this commit ships rather than carried from either side of the rebase. THE OVERLAP IS THREE FILES AND ONE OF THEM IS SEMANTIC: `canonical-transcript.tsx`, where `main` rebuilt the `ToolRow` summary arm (`never sent` / `queued` / `not-run`, the `notRunReason` body and its `Not run` section) and added `clock={working.clock}` to the working line, while this branch added the `MISSING_SESSION_NOTICE_ID` - the element the refused composer's `aria-describedby` names - to the pane's refusal sentence in the `missing` branch of `CanonicalTranscript`; `main` never restructured that sentence, the regions are disjoint, git reported no conflict on the file, and the auto-merge is the union of both, so the sentence keeps its `id` and the rebuilt row keeps its states. The wiring is untouched at its other end because `message-input.tsx` is not one of the overlapping files. `package.json` is the second: `main` released 0.26.10 and appended `tool-compose-lifecycle.test.mjs` to `test:desktop`, so the resolution is that list with this branch's three appended - 145 registrations, 143 of them `*.test.mjs`, no duplicate and no drop, at `main`'s own 0.26.10, since this branch bumps nothing. This file is the third and conflicts on the stamp block alone; it resolves BY RULE - `main`'s file is the base and keeps every field it declares, and this branch's side contributes its append-only `reStamps` entries only - and the values written are the rebased tree's own (`d36e7e792`/`485322b86`), derived from this commit's trees rather than carried from either side. WHY SOME OF WHAT THIS ENTRY REPLACES IS MAIN'S: `head` (`083ff4b49`), `frames` (5,645 -> 5,665), `surfaces` (603 -> 613), `supplementary` (76 -> 77 sets), `partialCapture`, `countsMean`, `beforeSetNote`, `phantomRowsPass` and `dirtyWorkingTree` are `main`'s own records of its fold chain, whose phantom-compose-rows set contributes exactly the 20 frames and 10 stories the two counts differ by; this branch re-took no frame and claims none. No swept frame was re-taken and none is claimed to describe this tree: every frame under `docs/evidence/**` still depicts the tree it was captured from, which is what the `before/` halves are for.",
+        "replaced": {
+          "head": "31e8caaed0d00c12c4c35200626a0924fe3755c8",
+          "srcTree": "3227becbf3be03f0e0f3dbb8e155173cd23abf13",
+          "scriptsTree": "79ccfa178c3ef99701f8f0ffca1aaecffc023dd7",
+          "capturedAt": "2026-09-17T07:08:08.000Z"
+        }
       }
     ],
     "browserToolPass": {
