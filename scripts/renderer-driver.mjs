@@ -3438,6 +3438,358 @@ async function scenePalette(cdp) {
 	return frames;
 }
 
+// ---- the composer's @ mentions -------------------------------------------------
+
+/*
+ * THE `@` PICKER AND ITS INLINE CHIPS, DRIVEN BY REAL KEYSTROKES ON THE BUILT APP.
+ *
+ * WHAT THIS SCENE IS FOR, and what Storybook cannot answer. The chip layer draws
+ * rectangles measured from the field's own text, and the picker offers rows read
+ * over the app's own IPC — two claims whose truth depends on a real `readdir`, a
+ * real `stat`, a real textarea's layout and real keystrokes reaching the field.
+ * A story hands all four in as fixtures; this run has none of them faked.
+ *
+ * THE FIXTURE IS A REAL DIRECTORY, and it is this run's OWN scratch cwd: the app
+ * is spawned with `cwd: APP_CWD`, the composer's working directory is unset on a
+ * pane with no backend, and `list-directory` resolves `.` against the process's
+ * cwd exactly as `probe-files` resolves every other local path. So the rows a
+ * frame shows are entries that exist on this machine, listed by the shipped IPC
+ * handler.
+ *
+ * THE CLAIM THIS RUN EXISTS FOR is the one the harness's own picker got wrong:
+ * a query that stops matching must NOT move the composer. PR #1220 measures that
+ * defect at +17px across one keystroke, because its no-match branch closes the
+ * list; here the notice row holds the picker open and every anchor in the band
+ * has to read the same as it did while the list matched. The numbers are read
+ * back from the page — the field's rect, the send button's rect and the
+ * suggestion stack's rect — because a still cannot show "nothing moved" and a
+ * note beside a frame is not a check.
+ *
+ * WHAT IT CANNOT REACH, and says so rather than pretending: the needs-approval
+ * fill needs a workspace root to judge `outsideWorkspace` against, and this pane
+ * has no session cwd (`probe-files` answers `undefined`, which is not "outside"),
+ * so every chip here is the ordinary one. That state is photographed by the
+ * `chat-mention-chips` story set, where the fact comes from a fixture.
+ */
+async function sceneMentions(cdp) {
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	const FIELD = 'textarea[aria-label="Message"]';
+	const anchors = `(() => {
+		const field = document.querySelector(${JSON.stringify(FIELD)});
+		const box = (el) => (el ? { top: el.getBoundingClientRect().top, height: el.getBoundingClientRect().height, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right } : null);
+		return {
+			field: box(field),
+			box: box(field?.parentElement),
+			send: box(document.querySelector('[aria-label="Send message"]')),
+			focus: document.activeElement?.tagName ?? null,
+			focusedIsField: document.activeElement === field,
+			value: field?.value ?? null,
+		};
+	})()`;
+
+	const closed = await cdp.evaluate(anchors);
+	note("the band with an empty draft", JSON.stringify(closed));
+	/*
+	 * THIS SCENE NEEDS A BACKEND, and it says so rather than reporting a run of
+	 * failed checks. On a pane with no backend the chat route paints its offline
+	 * card and the composer is NOT MOUNTED at all - measured on this scene's first
+	 * run, where `document.activeElement` was `BODY` and the field did not exist -
+	 * so there is nothing here to drive. Both flags the `new-chat` scene documents
+	 * are what makes the composer exist: `--backend <url>` for a live daemon this
+	 * run owns, and the record and onboarding flags that let the app reach it.
+	 */
+	if (closed.field === null) {
+		throw new Error(
+			"the composer is not on screen: this scene needs a live backend " +
+				"(see `--backend` / `--backend-records` in docs/agent-driver.md). " +
+				"Without one the chat route paints its offline card and the field does " +
+				"not exist, which is this run's own finding rather than a failed check.",
+		);
+	}
+	check(
+		"the composer's field is on screen and holds the caret",
+		closed.focusedIsField === true,
+		JSON.stringify(closed),
+	);
+
+	/*
+	 * The fixture the picker will list, written into the working directory the
+	 * composer is ACTUALLY in — read off the control row's own cwd chip rather than
+	 * assumed, because with a backend that directory is the session's and not this
+	 * process's. Names chosen so the frames answer the states the design names: a
+	 * directory to drill into, a nested one to read a parent column from, a common
+	 * file the pool boosts, and a name with a space (the quoted form's only reason
+	 * to exist).
+	 */
+	const cwdLabel = await cdp.evaluate(`(() => {
+		const labels = [...document.querySelectorAll("[aria-label]")]
+			.map((el) => el.getAttribute("aria-label"))
+			.filter((label) => typeof label === "string" && label.startsWith("Working directory"));
+		const absolute = labels
+			.map((label) => label.split(": ").slice(1).join(": "))
+			.find((value) => value?.startsWith("/"));
+		return { labels, absolute: absolute ?? null };
+	})()`);
+	note("the composer's working directory, as the control row names it", JSON.stringify(cwdLabel));
+	if (!cwdLabel.absolute) {
+		throw new Error(
+			`the composer does not name an absolute working directory (${JSON.stringify(cwdLabel.labels)}), so this scene cannot place its fixture files where the picker will list them`,
+		);
+	}
+	mkdirSync(join(cwdLabel.absolute, "src", "components"), { recursive: true });
+	writeFileSync(join(cwdLabel.absolute, "README.md"), "# listing fixture\n");
+	writeFileSync(join(cwdLabel.absolute, "my file.txt"), "a name with a space\n");
+	writeFileSync(join(cwdLabel.absolute, "src", "app.py"), "print('hi')\n");
+	writeFileSync(
+		join(cwdLabel.absolute, "src", "components", "button.tsx"),
+		"export {}\n",
+	);
+
+	/*
+	 * `@` alone: the whole-directory listing. Typed through the browser's own input
+	 * pipeline into whatever the page has focused, the same domain the palette
+	 * scene types through.
+	 */
+	await cdp.send("Input.insertText", { text: "@" });
+	const opened = await cdp.evaluate(`(() => {
+		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
+		const rows = list ? [...list.querySelectorAll('[role="option"]')] : [];
+		return {
+			list: Boolean(list),
+			rows: rows.length,
+			names: rows.slice(0, 8).map((row) => row.textContent),
+			header: list?.firstElementChild?.textContent ?? null,
+			footer: list?.lastElementChild?.textContent ?? null,
+			controls: document.querySelector(${JSON.stringify(FIELD)})?.getAttribute("aria-controls") ?? null,
+			expanded: document.querySelector(${JSON.stringify(FIELD)})?.getAttribute("aria-expanded") ?? null,
+		};
+	})()`);
+	note("after typing @", JSON.stringify(opened));
+	check(
+		"typing @ opens the file list over the composer",
+		opened.list === true,
+		JSON.stringify(opened),
+	);
+	check(
+		"the list is populated from the working directory over the real IPC",
+		opened.rows > 0 &&
+			opened.names.some((name) => name.includes("README.md")) &&
+			opened.names.some((name) => name.includes("src")),
+		JSON.stringify(opened.names),
+	);
+	check(
+		"the listbox is named by the field it belongs to, with aria-controls and aria-expanded",
+		typeof opened.controls === "string" && opened.expanded === "true",
+		JSON.stringify(opened),
+	);
+	const openFrame = await captureSettled(cdp, "mentions-list-dark");
+
+	// The drill: a trailing slash is the grammar's own deepening gesture.
+	await cdp.send("Input.insertText", { text: "src/" });
+	const drilled = await cdp.evaluate(`(() => {
+		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
+		const rows = list ? [...list.querySelectorAll('[role="option"]')] : [];
+		return {
+			header: list?.firstElementChild?.textContent ?? null,
+			names: rows.map((row) => row.textContent),
+			count: list?.lastElementChild?.lastElementChild?.textContent ?? null,
+		};
+	})()`);
+	note("after drilling into src/", JSON.stringify(drilled));
+	check(
+		"a trailing slash lists that directory, and the header says which",
+		drilled.header === "src/",
+		JSON.stringify(drilled),
+	);
+	check(
+		"the drilled listing is that directory's entries",
+		drilled.names.some((name) => name.includes("app.py")) &&
+			drilled.names.some((name) => name.includes("components")),
+		JSON.stringify(drilled.names),
+	);
+
+	/*
+	 * THE NO-MATCH STATE, and the assertion this whole scene is for. The query
+	 * below matches nothing in `src/`, so the picker paints its notice row — and
+	 * every anchor in the band has to be where it was while the list matched.
+	 */
+	const beforeNoMatch = await cdp.evaluate(anchors);
+	await cdp.send("Input.insertText", { text: "zzzz" });
+	const noMatch = await cdp.evaluate(`(() => {
+		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
+		return {
+			list: Boolean(list),
+			options: list ? list.querySelectorAll('[role="option"]').length : -1,
+			notice: list?.lastElementChild?.previousElementSibling?.textContent ?? null,
+		};
+	})()`);
+	const afterNoMatch = await cdp.evaluate(anchors);
+	note("no-match state", JSON.stringify(noMatch));
+	note("the band while nothing matched", JSON.stringify(afterNoMatch));
+	check(
+		"the picker HOLDS with a notice row instead of closing",
+		noMatch.list === true && noMatch.options === 0,
+		JSON.stringify(noMatch),
+	);
+	check(
+		'the notice distinguishes "nothing here matches" from "this folder is empty"',
+		typeof noMatch.notice === "string" && noMatch.notice.includes('No files match "zzzz".'),
+		JSON.stringify(noMatch.notice),
+	);
+	check(
+		"the field does not move a single pixel between the matching and no-match states",
+		beforeNoMatch.field.top === afterNoMatch.field.top &&
+			beforeNoMatch.field.height === afterNoMatch.field.height,
+		`matched ${JSON.stringify(beforeNoMatch.field)} vs no-match ${JSON.stringify(afterNoMatch.field)}`,
+	);
+	check(
+		"nothing else in the band moves either",
+		JSON.stringify(beforeNoMatch.box) === JSON.stringify(afterNoMatch.box) &&
+			JSON.stringify(beforeNoMatch.send) === JSON.stringify(afterNoMatch.send),
+		`box ${JSON.stringify(afterNoMatch.box)} send ${JSON.stringify(afterNoMatch.send)}`,
+	);
+	const noMatchFrame = await captureSettled(cdp, "mentions-no-match-dark");
+
+	/*
+	 * Escape closes the list and leaves the draft alone: the picker is a list over
+	 * the text, and dismissing it must not edit what the user wrote.
+	 */
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+	}
+	const afterEscape = await cdp.evaluate(`(() => {
+		const field = document.querySelector(${JSON.stringify(FIELD)});
+		return {
+			list: Boolean(document.querySelector('[role="listbox"][aria-label="Files"]')),
+			value: field?.value ?? null,
+		};
+	})()`);
+	note("after Escape", JSON.stringify(afterEscape));
+	check(
+		"Escape closes the list and the token it was opened on is still there",
+		afterEscape.list === false && afterEscape.value === "@src/zzzz",
+		JSON.stringify(afterEscape),
+	);
+
+	/*
+	 * A hand-typed, resolvable mention: the chip is derived from the field's own
+	 * value, so a newline and the path below are all it takes — the picker is an
+	 * accelerator, never a requirement.
+	 *
+	 * The line starts at the buffer's only newline, and the caret is at the end,
+	 * which is exactly the "mention at the very end of the text" state.
+	 */
+	await cdp.send("Input.insertText", { text: "\nlook at @README.md" });
+	const chip = await cdp.evaluate(`(() => {
+		const chips = [...document.querySelectorAll("[data-mention-chip]")];
+		const tokens = [...document.querySelectorAll("[data-mention-token]")];
+		const rect = (el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top * 100) / 100, left: Math.round(r.left * 100) / 100, right: Math.round(r.right * 100) / 100, width: Math.round(r.width * 100) / 100, height: Math.round(r.height * 100) / 100 }; };
+		return {
+			chips: chips.map((el) => ({ kind: el.dataset.mentionChip, span: el.dataset.mentionSpan, ...rect(el) })),
+			tokens: tokens.map((el) => ({ span: el.dataset.mentionToken, ...rect(el) })),
+		};
+	})()`);
+	note("the chip and the run it was measured from", JSON.stringify(chip, null, 2));
+	check(
+		"a hand-typed path that resolves paints exactly one chip",
+		chip.chips.length === 1 && chip.chips[0].kind === "plain",
+		JSON.stringify(chip.chips),
+	);
+	check(
+		"the chip is drawn on its own glyph run, inside the tolerance",
+		chip.tokens.length === 1 &&
+			Math.abs(chip.chips[0].top - (chip.tokens[0].top + (chip.tokens[0].height - chip.chips[0].height) / 2)) <= 1 &&
+			Math.abs(chip.chips[0].left - (chip.tokens[0].left - 6)) <= 1 &&
+			Math.abs(chip.chips[0].right - (chip.tokens[0].right + 6)) <= 1,
+		JSON.stringify({ fill: chip.chips[0], run: chip.tokens[0] }),
+	);
+	check(
+		"the fill is the design's height and overhang, to within half a pixel",
+		Math.abs(chip.chips[0].height - 17.7) <= 0.5 &&
+			Math.abs(chip.chips[0].width - (chip.tokens[0].width + 12)) <= 0.5,
+		JSON.stringify(chip.chips[0]),
+	);
+	check(
+		"the chip's fill is wider than the glyphs it sits behind",
+		chip.chips[0].width > chip.tokens[0].width,
+		JSON.stringify({ fill: chip.chips[0].width, run: chip.tokens[0].width }),
+	);
+	const chipFrame = await captureSettled(cdp, "mentions-chip-dark");
+
+	/*
+	 * TWO MENTIONS, which is the adjacency case the grammar makes reachable: a
+	 * token opens only at a boundary, so true adjacency is impossible and the pair
+	 * is separated by the space's own advance. The fills must never touch.
+	 */
+	await cdp.send("Input.insertText", { text: " and @src/app.py" });
+	const pair = await cdp.evaluate(`(() => {
+		const rect = (el) => { const r = el.getBoundingClientRect(); return { top: r.top, left: r.left, right: r.right, height: r.height }; };
+		return [...document.querySelectorAll("[data-mention-chip]")].map(rect);
+	})()`);
+	note("two mentions on one line", JSON.stringify(pair));
+	check(
+		"two mentions paint two fills that do not touch",
+		pair.length === 2 && pair[1].left > pair[0].right,
+		JSON.stringify(pair),
+	);
+	const pairFrame = await captureSettled(cdp, "mentions-pair-dark");
+
+	/*
+	 * A LIGHT THEME, because the fill step's two thinnest palettes are the light
+	 * ones (`iceberg` 2.15, `localOperatorLight` 2.25 for the `elevated` candidate;
+	 * `sunken` carries 3.75 at its worst) and the whole set's contrast question is
+	 * asked where it is worst.
+	 */
+	await verb(cdp, "setTheme", "localOperatorLight");
+	const pairLight = await captureSettled(cdp, "mentions-pair-light");
+
+	const frames = [
+		openFrame,
+		noMatchFrame,
+		chipFrame,
+		pairFrame,
+		pairLight,
+	];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: stable ${frame.stable}, toast-free ${frame.toastFree}`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
 // ---- gate-check --------------------------------------------------------------
 
 /**
@@ -3999,6 +4351,7 @@ async function main() {
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
+			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

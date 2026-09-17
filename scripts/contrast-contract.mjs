@@ -987,6 +987,62 @@ const PERCEPTIBLE = [
 		maxWeightChange: 2.0,
 		against: "canvas",
 	},
+	{
+		/*
+		 * THE MENTION CHIP'S FILL STEP, and why it is here rather than in `CONTROLS`.
+		 *
+		 * A chip inside the composer is a fill behind text the user wrote: it is not a
+		 * control, it is not the sole boundary of one, and `CONTROLS` asserts the
+		 * opposite shape - a control's fill OR border must clear 3:1 against its
+		 * ground. A ground step between two ADJACENT GROUNDS cannot: `surface` ->
+		 * `sunken` measures 3.75 ΔE00 at its worst and 1.03-1.30 as a luminance ratio,
+		 * and `sunken` is deliberately the role the app already uses for recessed
+		 * small objects (the neutral badge, the tabs track, the table header, the
+		 * skeleton bar). What the chip owes is being SEEN as one object, which is this
+		 * table's own question, so the row states that and nothing else.
+		 *
+		 * THE PAIRING DEPENDS ON THE BOX KEEPING `bg-surface`, which is why
+		 * `STRUCTURAL_CALL_SITES` pins that call site: against `canvas` the same fill
+		 * step collapses to 1.23 in `obsidian`, because `sunken` on `canvas` is the
+		 * weak step the loading bars already document.
+		 *
+		 * The two states are ONE WEIGHT, which is the other half: the needs-approval
+		 * fill is a HUE step (ΔE00 5.37 at worst, against a luminance ratio of
+		 * 1.06:1), so a reader who cannot separate the two hues must still read them
+		 * as one kind of object rather than as two controls of different importance.
+		 * `maxWeightChange` 2.0 states exactly that, and the fact that this half is
+		 * structurally satisfied by two adjacent grounds is recorded rather than
+		 * removed - it is a ceiling that says the step must not stop being a step.
+		 */
+		name: "mention chip fill step",
+		role: "sunken",
+		on: ["surface"],
+		minDeltaE: 2.0,
+		pairedWith: "warningWash",
+		maxWeightChange: 2.0,
+		against: "surface",
+	},
+	{
+		/*
+		 * THE NEEDS-APPROVAL CHIP'S FILL, and it is a row of its own rather than a
+		 * second `on` in the row above because the two FILLS differ, not the ground:
+		 * sharing one row would measure `warningWash` against `surface` under a name
+		 * that says `sunken`.
+		 *
+		 * Its separation is chromatic, which is the one place ΔE00's chroma axis does
+		 * work a contrast ratio cannot - the luminance ratio for the same pair is
+		 * 1.06:1 and would fail a floor of 1.1. The chip asserts nothing about the
+		 * approval decision itself: the gate stays where it is, at submit, and the
+		 * fill only says which references will raise a card.
+		 */
+		name: "mention chip needs-approval fill step",
+		role: "warningWash",
+		on: ["surface"],
+		minDeltaE: 2.0,
+		pairedWith: "sunken",
+		maxWeightChange: 2.0,
+		against: "surface",
+	},
 ];
 
 /**
@@ -1074,6 +1130,48 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/browser/components/browser-tab-strip.tsx",
 		must: "border-control border-x border-t bg-canvas text-ink",
 		why: "the active tab's only marker a glance can find is its `border-control` edge; the ground step alone is a depth cue that measures under 1.4:1 in every palette",
+	},
+	{
+		/*
+		 * The mention chip's ground, at its call site.
+		 *
+		 * The palette rows prove `surface` -> `sunken` is a step worth drawing; only
+		 * this pin can see the edit that removes it - swapping the chip's fill for a
+		 * role that IS the ground (`surface`) leaves every ratio green while the chips
+		 * simply stop being visible, and the `PERCEPTIBLE` row above cannot see which
+		 * role a component paints.
+		 */
+		what: "mention chip fill",
+		file: "src/renderer/src/features/chat/components/at-mention-overlay.tsx",
+		must: 'MENTION_CHIP_ROLE = "rounded-sm bg-sunken"',
+		why: "the fill IS the chip's boundary - it takes no edge by design - so repainting it as the ground it sits on erases every mention in a sentence with no palette assertion able to see it",
+	},
+	{
+		/*
+		 * The needs-approval chip's fill, pinned for the same reason from the other
+		 * side: the row above proves `warningWash` is a perceivable step from
+		 * `surface`, and nothing else proves the composer still USES it. An edit that
+		 * dropped this state would leave a path outside the workspace looking exactly
+		 * like one inside it, which is a claim about the approval gate the composer
+		 * would then be making silently.
+		 */
+		what: "mention chip needs-approval fill",
+		file: "src/renderer/src/features/chat/components/at-mention-overlay.tsx",
+		must: 'MENTION_CHIP_APPROVAL_ROLE = "rounded-sm bg-warning-wash"',
+		why: "the hue step is the only signal in the composer that a reference will raise an approval card; flattening it to the ordinary fill keeps every contrast ratio green while the state disappears",
+	},
+	{
+		/*
+		 * The composer box's own ground, which the chip's step is measured AGAINST.
+		 * Two roles decide the chip's legibility and only one of them is in the chip's
+		 * file: this pin closes the half a later edit could move - repainting the box
+		 * `canvas` collapses the same fill step to 1.23 ΔE00 in `obsidian`, below the
+		 * row's floor, and the row cannot see the box at all.
+		 */
+		what: "composer box ground",
+		file: "src/renderer/src/features/chat/components/message-input.tsx",
+		must: "border border-control bg-surface",
+		why: "the mention chip's fill step is measured against `surface`; `sunken` against `canvas` is 1.23 ΔE00 in obsidian, so the box's ground is half of that assertion and no palette row can see it",
 	},
 	{
 		what: "chat working surface ground",

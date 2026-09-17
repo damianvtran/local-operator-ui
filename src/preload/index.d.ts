@@ -8,6 +8,7 @@ import type {
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	DesktopAPI,
+	DirectoryListing,
 	ProbedFile,
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
@@ -107,6 +108,11 @@ declare global {
 			 * maps to. That resolved path is the Files panel's identity for a file.
 			 */
 			probeFiles: (paths: string[], cwd?: string) => Promise<ProbedFile[]>;
+			/**
+			 * One directory's listable entries, sorted by name, at most
+			 * `DIRECTORY_ENTRY_LIMIT` of them per call.
+			 */
+			listDirectory: (dir: string, cwd?: string) => Promise<DirectoryListing>;
 			openExternal: (url: string) => Promise<void>;
 			showItemInFolder: (filePath: string) => Promise<void>;
 			systemInfo: {
