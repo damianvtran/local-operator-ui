@@ -2427,9 +2427,10 @@ test("a conversation's summary counts its tabs, and reuses its entry when nothin
 });
 
 test("the bulk closes resolve to the tabs the labels name", () => {
-	// Design R5. `others` means the WHOLE POOL, not the host's visible list — in the
-	// pane, scoped to two tabs of eight, the label reads `Close 7 other tabs`, which
-	// is the truth about what it does.
+	// Design R5 as the round-2 ruling reads it: `others` means every OTHER tab in the
+	// list the caller hands in, which is the host's own visible list. In the pane scoped
+	// to two tabs of a pool of eight the label reads `Close 1 other tab` — the truth about
+	// what that press closes — and the six tabs the host is not showing are left alone.
 	const tabs = [
 		{ tabId: 1, sessionId: null },
 		{ tabId: 2, sessionId: "alice" },
@@ -2472,37 +2473,37 @@ test("the bulk closes resolve to the tabs the labels name", () => {
 	});
 });
 
-test("the strip feeds `close others` the POOL, not the list it is showing (design R5; review round 1, A3)", () => {
+test("the strip feeds `close others` the list it is showing, and nothing wider (the U7 ruling)", () => {
 	/*
 	 * WHY THIS IS A SOURCE ASSERTION rather than an input to the model: the model takes
-	 * whatever list it is handed, and the defect was never in it — it was the call site.
-	 * The pane's strip is scoped to a conversation, so `tabs` there is the host's visible
-	 * list; passing that to `closeOthersIntent` made the item read `Close 1 other tab` in
-	 * a pane holding two of the pool's eight while this file's test above, the model's own
-	 * docstring and the design's R5 all promised the pool. A frame cannot catch it (the
-	 * label is honest about what the press does) and no unit input can either, so the
-	 * call site is pinned where it is written.
+	 * whatever list it is handed, so the contract is the CALL SITE's, and a frame cannot
+	 * catch a violation of it (the label is honest about whatever the press does). Review
+	 * round 1 (A3) read design R5 as "the whole pool" and this branch threaded a second,
+	 * WIDER list into the strip — a `poolTabs` prop the pane filled with every tab it had —
+	 * so the item could count tabs the host was not showing. The operator's round-2 ruling
+	 * (U7) settled it the other way, and the code moved rather than the expectation: the
+	 * count is the scoped list the strip passes, because a scoped host's band must not close
+	 * tabs the user cannot see. The second list is gone from the component, so there is one
+	 * list and no pair that can drift apart.
 	 */
 	const strip = shippedSource(
 		"src/renderer/src/features/browser/components/browser-tab-strip.tsx",
 	);
 	assert.match(
 		strip,
-		/closeOthersIntent\(poolTabs, actionsTabId\)/,
-		"`Close N other tabs` must be built from the strip's `poolTabs` prop: the pool is what the label counts and what the press closes",
+		/closeOthersIntent\(tabs, actionsTabId\)/,
+		"`Close N other tabs` must be built from the strip's own `tabs`: what it shows is what the label counts and what the press closes",
 	);
-	assert.match(
-		strip,
-		/poolTabs\?: BrowserTabView\[\]/,
-		"and the prop is declared, so the pane has something to pass",
+	assert.ok(
+		!strip.includes("poolTabs"),
+		"and no second, wider list is threaded into the strip, which is what the U7 ruling withdrew",
 	);
 	const surface = shippedSource(
 		"src/renderer/src/features/browser/components/browser-surface.tsx",
 	);
-	assert.match(
-		surface,
-		/poolTabs=\{allTabs \?\? \[\]\}/,
-		"the pane — the one host whose visible list is not the pool — passes it",
+	assert.ok(
+		!surface.includes("poolTabs"),
+		"the pane — the one host whose visible list is narrower than the pool — passes one list only",
 	);
 });
 

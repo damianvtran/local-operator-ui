@@ -91,19 +91,17 @@ import {
  */
 
 export interface BrowserTabStripProps {
+	/** The host's OWN list — the pane's strip is scoped to a conversation, the route's is
+	 * everything — and it is the list every count in the band is taken from (design R5 as
+	 * the operator ruled it in review round 2, settling U7 against round 1's A3).
+	 *
+	 * THE ALTERNATIVE WAS A SECOND, WIDER LIST ON THIS COMPONENT (`poolTabs`, which A3
+	 * added so `Close N other tabs` could count the whole pool), and it was withdrawn:
+	 * a scoped host's band must not close tabs the user cannot see, the label is truthful
+	 * either way because it counts what the press closes, and one list means no host can
+	 * hand this component two lists that can drift apart. The model's `closeOthersIntent`
+	 * takes whatever list it is given, so the contract lives in its docstring. */
 	tabs: BrowserTabView[];
-	/** The WHOLE pool, for `Close N other tabs` (design R5).
-	 *
-	 * `tabs` is the host's visible list — the pane's strip is scoped to a
-	 * conversation — and the design's `others` intent is the whole pool, not that
-	 * list: in the pane, scoped to two tabs of eight, the item has to read
-	 * `Close 7 other tabs`. The two are the same array in the route's strip, so a
-	 * host that shows everything passes nothing (review round 1, A3: the call site
-	 * passed the scoped list while this file and the model both claimed the pool).
-	 *
-	 * `Close N tabs to the right` deliberately stays scoped: "to the right" is a
-	 * fact about the order on screen. */
-	poolTabs?: BrowserTabView[];
 	/** The conversation list, for a group chip's name.
 	 *
 	 * PASSED IN RATHER THAN READ HERE, the same choice the hand-over dialog and the
@@ -332,7 +330,6 @@ const NARROW_REVEAL =
 
 export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	tabs,
-	poolTabs = tabs,
 	sessions = [],
 	activeTabId,
 	waiting,
@@ -499,14 +496,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			closingTabIds.current =
 				intent.mode === "ids"
 					? [...intent.tabIds]
-					: poolTabs
+					: tabs
 							.filter((tab) => tab.sessionId === intent.sessionId)
 							.map((tab) => tab.tabId);
 			closeFocusPending.current = true;
 			setActionsTabId(null);
 			onCloseTabs(intent);
 		},
-		[onCloseTabs, poolTabs],
+		[onCloseTabs, tabs],
 	);
 
 	/** A single close from the band takes the same path, for the same reason the batch
@@ -608,23 +605,27 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 */
 	const showGroupLabels = groups.length > 1;
 	/**
-	 * The two BULK CLOSES whose labels carry a count, and the one difference between
-	 * them: `others` counts the POOL (`poolTabs`, design R5 — in the pane scoped to two
-	 * tabs of eight the item reads `Close 7 other tabs`, which is the truth about what it
-	 * does), while `to the right` counts the order ON SCREEN, because that is what "to the
-	 * right" means. `null` means "do not offer the item", which is the design's rule for
-	 * a press that would close nothing.
+	 * The two BULK CLOSES whose labels carry a count, and they agree about which list
+	 * that count comes from because they are the SAME list: the one this host is showing
+	 * (`tabs`) — the pane's is a conversation's, the route's is everything. Review round 2
+	 * settled this (the operator's U7 ruling), withdrawing round 1's A3, which had fed
+	 * `others` a second, wider `poolTabs` list so the item could count beyond what the pane
+	 * displays: a band that closes tabs the user cannot see is a scope overreach, and the
+	 * label stays honest either way because it counts what the press closes. `null` means
+	 * "do not offer the item", which is the design's rule for a press that would close
+	 * nothing.
 	 */
 	const closeOthers =
-		actionsTabId === null ? null : closeOthersIntent(poolTabs, actionsTabId);
+		actionsTabId === null ? null : closeOthersIntent(tabs, actionsTabId);
 	const closeRight =
 		actionsTabId === null ? null : closeToTheRightIntent(ordered, actionsTabId);
 	/** How many tabs a conversation holds, for the group item's count and its `>= 2`
 	 * gate: closing "all" of a conversation's single tab is `Close "X"` under a longer
-	 * label. Read from the POOL for the same reason `others` is — the item presses
-	 * against the conversation, not against what this host happens to be showing. */
+	 * label. Read from the visible list, and that is the same number the pool would give:
+	 * the pane's list IS that conversation's tabs when the lens is on it, and the
+	 * conversation's tabs are a subset of the list when the lens is on everything. */
 	const conversationTabCount = (sessionId: string): number =>
-		poolTabs.filter((tab) => tab.sessionId === sessionId).length;
+		tabs.filter((tab) => tab.sessionId === sessionId).length;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when the ordered pool changes even though the body never reads it.
 	useEffect(() => {
 		const strip = scrollerRef.current;

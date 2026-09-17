@@ -374,29 +374,33 @@ export type CloseTabsIntent =
 export type CloseTabsByIdsIntent = Extract<CloseTabsIntent, { mode: "ids" }>;
 
 /**
- * `Close N other tabs`: every tab in the POOL except the one the menu is on.
+ * `Close N other tabs`: every tab in the list it is HANDED except the one the band is on.
  *
- * THE CALLER OWNS THE POOL, AND THAT IS THE WHOLE CONTRACT (review round 1, A3). The
- * pane's strip is scoped to a conversation, so its `tabs` prop is the host's VISIBLE
- * list — passing that here made the item read `Close 1 other tab` in a pane holding two
- * of the pool's eight tabs while this docstring and the design's R5 both promised `Close
- * 7 other tabs`: a label honest about what the press did and wrong about what the design
- * said it does. The parameter is named `poolTabs` rather than `allTabs` so a reader
- * cannot hand it the scoped list by accident, and the strip passes `poolTabs` (its own
- * prop, defaulting to `tabs` on the route, where the two are the same array).
+ * THE CALLER OWNS THE LIST, AND THAT IS THE WHOLE CONTRACT — and the list is the host's
+ * own visible one (the operator's U7 ruling in review round 2, which settled this against
+ * round 1's A3). The pane's strip is scoped to a conversation and the route's is
+ * everything, so in the pane the item counts what the pane is showing: scoped to two tabs
+ * of a pool of eight it reads `Close 1 other tab`, and the six tabs the user cannot see
+ * are left alone. THAT IS THE POINT rather than a shortfall — a band that closes tabs
+ * outside the list it belongs to is a scope overreach, and the label is truthful either
+ * way because it counts exactly what the press closes.
  *
- * This counts the POOL while `closeToTheRightIntent` counts the ORDER ON SCREEN, and the
- * difference is deliberate: "other" is a fact about the pool, "to the right" is a fact
- * about the strip the user is looking at.
+ * A3 took the other reading (feed this function a wider `poolTabs` so the item counts the
+ * whole pool), on the strength of this file's and the design's earlier wording. The ruling
+ * withdrew it and the wording moved instead; the parameter is named `tabs` rather than
+ * `poolTabs` so no reader re-introduces the second list by accident.
+ *
+ * `Close N tabs to the right` counts the ORDER ON SCREEN for the same reason: "to the
+ * right" is a fact about the strip the user is looking at, not about the registry.
  *
  * `null` when there is nothing to close, so the item is not offered at all rather
  * than offered and inert.
  */
 export function closeOthersIntent(
-	poolTabs: readonly TabInput[],
+	tabs: readonly TabInput[],
 	keepTabId: number,
 ): CloseTabsByIdsIntent | null {
-	const tabIds = pooledTabs(poolTabs)
+	const tabIds = pooledTabs(tabs)
 		.map((tab) => tab.tabId)
 		.filter((tabId) => tabId !== keepTabId);
 	return tabIds.length ? { mode: "ids", tabIds } : null;
