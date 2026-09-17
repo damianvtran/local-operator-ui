@@ -615,12 +615,16 @@ const PANELS = [
 	},
 ];
 
-test("a panel row names the destination the chat pane presents", () => {
+test("a panel row names the destination a HOST presents", () => {
 	const [row] = buildPanelItems(PANELS);
 	/*
-	 * The name of a PICKER DESTINATION, not a route: these panels live in the
-	 * chat pane's presentation slot, which is why the palette asks for one
-	 * instead of navigating to it.
+	 * The name of a PICKER DESTINATION, not a route: a panel is presented from a
+	 * presentation slot rather than navigated to, which is why the palette asks for
+	 * one instead. WHICH slot depends on the destination, and the row says nothing
+	 * about that on purpose — a session-scoped panel is the chat pane's, and these
+	 * machine panels have a shell host as well (`panel-outlet.tsx`), so the palette
+	 * writes the request and moves the route only when the destination needs a pane
+	 * to be presented at all (`command-palette.tsx`).
 	 */
 	assert.deepEqual(row.target, { type: "panel", destination: "info" });
 	assert.equal(row.group, "panels");
