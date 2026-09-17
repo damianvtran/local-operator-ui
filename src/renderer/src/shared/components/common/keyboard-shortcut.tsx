@@ -44,10 +44,10 @@
  * grounds: `surface` (the chat sidebar), `highlight` (a row that is current),
  * `sunken` (the app rail) and `elevated` (the command palette's footer). The
  * contract in `scripts/contrast-contract.mjs` asserts `ink-dim` at the 4.5:1 text
- * floor on the four grounds a cap renders on, and it measures **4.51:1** at its
- * worst across the twelve palettes (dracula on `elevated`; 4.72:1 on `highlight`,
- * 4.65:1 on `sunken`), so one role is legal everywhere a cap lands rather than one
- * role per ground.
+ * floor on the four grounds a cap renders on in every palette, and it measures
+ * **4.51:1** at its worst over the twelve palettes the port started from (dracula
+ * on `elevated`; 4.72:1 on `highlight`, 4.65:1 on `sunken`), so one role is legal
+ * everywhere a cap lands rather than one role per ground.
  *
  * It spent a round at `ink-muted`, one step up, and the measurement that moved it
  * back is about the RANK of the thing a cap annotates rather than about the floor

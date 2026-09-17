@@ -422,8 +422,8 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    synchronised when the textarea scrolls internally (it only does so past
    `max-h`).
    **The armed run, measured** (design round 2; the figure below is recomputed
-   from all twelve palettes rather than quoted, and it corrects the range round
-   1 recorded, whose low end was sage's 3.99 where the minimum is
+   from all twelve palettes the set then held rather than quoted, and it corrects
+   the range round 1 recorded, whose low end was sage's 3.99 where the minimum is
    `localOperatorLight`'s **3.69**): `warningWash` against `canvas` runs
    **ΔE00 3.69** (`localOperatorLight`) to **13.79** (`neon`), and against
    `surface` **5.37** (`obsidian`) to **15.86** (`neon`) — three to seven times
@@ -737,7 +737,7 @@ on a minted pill.
   the bytes.
 - A store that fails produces the honest citation and a notice, never a key
   nothing holds.
-- The pill and the masked span are legible in **all twelve themes** (contrast
+- The pill and the masked span are legible in **every theme** (contrast
   floors from the branding contract), not only the two brand palettes.
 
 ## 11. Out of scope

@@ -698,9 +698,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * rule, no border, no shadow, because elevation in this system is a
 					 * lightness step (branding § 2). `check-themes` already asserts
 					 * `canvas`/`surface` and `surface`/`sunken` as adjacent ground pairs:
-					 * across the twelve palettes `surface`→`canvas` measures ΔE00 2.11
-					 * (iceberg) to 6.56 (synth), against 3.75 (iceberg) to 14.94 (synth)
-					 * for `surface`→`sunken`. The rail therefore keeps the clearly
+					 * across every palette `surface`→`canvas` measures ΔE00 2.08
+					 * (catppuccinMacchiato) to 6.56 (synth), against 3.75 (iceberg) to 14.94
+					 * (synth) for `surface`→`sunken`. The rail therefore keeps the clearly
 					 * stronger separation, which is the relationship the report asked
 					 * for.
 					 *

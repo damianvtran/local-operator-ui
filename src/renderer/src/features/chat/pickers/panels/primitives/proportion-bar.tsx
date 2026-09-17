@@ -4,9 +4,9 @@ import { cn } from "@shared/lib/utils";
  * The share meter.
  *
  * Geometry and semantics are a port of the `/usage` provider meter, which is
- * the only one in the tree that has been measured in all twelve themes. The
- * three things it settled, and which this primitive therefore owns once rather
- * than once per panel:
+ * the only one in the tree that has been measured in all twelve palettes the
+ * port started from. The three things it settled, and which this primitive
+ * therefore owns once rather than once per panel:
  *
  * - **The track is `border-control`, not `hairline`.** Without a perceivable
  *   container the meter stops reading as a meter at BOTH extremes: `sunken` on

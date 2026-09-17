@@ -9,13 +9,13 @@ import type { ThemePalette } from "./palette-contract";
  * breakpoints, type scale, radii, spacing, motion, elevation, and every
  * component override. A theme supplies a `ThemePalette` and nothing else.
  *
- * ## Why this replaced twelve `createTheme()` calls
+ * ## Why this replaced a `createTheme()` per theme
  *
- * The twelve theme files were 209–252 lines each and structurally identical:
+ * The theme files were 209–252 lines each and structurally identical:
  * roughly a third colour, two thirds copy-pasted breakpoints, typography and
  * `MuiAppBar` / `MuiListItemButton` / `MuiIconButton` / `MuiButton` / `MuiCard`
- * / `MuiContainer` overrides. A single type-scale change was a twelve-file
- * diff, and the drift was already visible: three themes had quietly dropped the
+ * / `MuiContainer` overrides. A type-scale change was a diff across every theme file, and the drift was
+ * already visible: three themes had quietly dropped the
  * `MuiPaper` `backgroundImage: none` reset, two had grown per-theme neon glows,
  * and Iceberg carried two `MuiTypography` contrast patches that only existed
  * because its palette could not be read. All three classes of defect are
@@ -29,14 +29,15 @@ import type { ThemePalette } from "./palette-contract";
  * change.
  *
  * The important half of that job is the keys the old themes never authored.
- * Eleven of the twelve defined only `primary`, `secondary`, `background`,
- * `text` and the custom roots — yet application code reads `divider`, `action`,
- * `success`, `warning`, `info`, `grey` and `common` 409 times. Those values
- * were coming from MUI's stock palette: a Material blue `info`, a Material red
- * `error`, and an untinted grey ramp, none of which appeared in any theme file
- * and none of which any theme author had ever checked for contrast. Every one
- * of them is authored below, derived from the palette's own roles, so nothing
- * falls through to a MUI default again.
+ * Eleven of the twelve themes that existed then defined only `primary`,
+ * `secondary`, `background`, `text` and the custom roots — yet application
+ * code reads `divider`, `action`, `success`, `warning`, `info`, `grey` and
+ * `common` 409 times. Those values were coming from MUI's stock palette: a
+ * Material blue `info`, a Material red `error`, and an untinted grey ramp,
+ * none of which appeared in any theme file and none of which any theme author
+ * had ever checked for contrast. Every one of them is authored below, derived
+ * from the palette's own roles, so nothing falls through to a MUI default
+ * again.
  *
  * @see palette-contract.ts — the 29 roles and their contrast floors
  * @see ../../styles/index.css — the same non-colour decisions for Tailwind

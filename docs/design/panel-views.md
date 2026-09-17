@@ -1193,7 +1193,7 @@ Degrades:
 
 1. **One series per chart.** The only chart hue is `accent` (via `fill-accent`
    / `stroke-accent`), which `check-themes` already asserts at ≥ 4.5:1 as text on
-   `canvas` and `surface` in all twelve palettes (`branding.md:143-152`). A
+   `canvas` and `surface` in every palette (`branding.md:143-152`). A
    second series colour is not available: `branding.md:109-116` gives the accent
    a budget of about three spends per screen, and re-purposing `success` /
    `info` decoratively would invent a semantic that the contrast contract has no
@@ -1223,7 +1223,7 @@ Degrades:
    never offered. In a table, the bar column is a fixed `w-24` and the value
    column is right-aligned mono with `tabular-nums`, so bars align down the
    table and the numbers form one right edge.
-6. **Twelve themes.** Nothing may be carried by colour alone: the series is
+6. **The theme set.** Nothing may be carried by colour alone: the series is
    named in the section title, and every bar has its number in the row. Because
    the only chart role is `accent`, a chart cannot be legible in one theme and
    invisible in another — and the two frames per theme that evidence this

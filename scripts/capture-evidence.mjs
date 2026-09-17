@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Captures visual evidence across all twelve themes from Storybook.
+ * Captures visual evidence from Storybook, one frame per story per theme in
+ * the sweep's theme list below.
  *
  *     node scripts/capture-evidence.mjs [storybook-origin]   # default :6017
  *
@@ -45,6 +46,7 @@ import { fileURLToPath } from "node:url";
 import { assertFramePaints, frames as frameFiles } from "./check-evidence.mjs";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
@@ -69,6 +71,17 @@ const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
  * reviewed, which buries the two that changed. `manifest.json`'s
  * `partialCapture` records that this happened so the next reader can tell a
  * narrowed set from a swept one.
+ *
+ * UNDER `--only`, `--themes` MAY NAME ANY PALETTE IN THE REGISTRY, not only the
+ * twelve in the sweep's list below. The list is a bounded representative set
+ * (see its own note for the arithmetic), so a narrowed run is the only way to
+ * photograph one surface in the other forty-seven themes without paying the
+ * sweep's multiplication — which is what `docs/evidence/settings-appearance/`
+ * is, the appearance picker in all fifty-nine. A full sweep still intersects
+ * with the list, because a stray id must not silently widen a run that writes
+ * `manifest.themes`. Ids are checked against the palettes on disk rather than
+ * trusted: a frame named after a theme the app does not have is worse than a
+ * missing one, and `--themes=typo` would otherwise write `typo.webp`.
  */
 const ONLY = flag("only");
 
@@ -80,6 +93,9 @@ const IMAGE_EXPAND_PICTURE = 'button[title^="Click to expand"]';
 const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label="File actions"]';
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
 const PARTIAL = Boolean(ONLY || THEME_FILTER);
+
+/** Every palette id the registry has, read the one way the gates read them. */
+const PALETTE_IDS = new Set(loadPalettes().map(({ id }) => id));
 
 /*
  * A backend on the configured port normally fails the run, because a captured
@@ -121,6 +137,55 @@ const BACKEND_ORIGIN = (() => {
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
+/*
+ * THE SWEEP'S THEME LIST IS A DELIBERATELY BOUNDED SET, NOT "every theme the
+ * app ships".
+ *
+ * Every story below is captured once per theme, so this list multiplies the
+ * whole evidence set. It held the twelve palettes this app shipped, and it still
+ * holds them: those twelve are painted on every surface in this file, which is
+ * what makes a frame comparable with the ones committed before it, and they
+ * span both modes and the two brand ramps. The registry now carries
+ * fifty-nine, so a full sweep is a 59/12 multiple of the swept set: from the
+ * **4,925** frames committed today — `find docs/evidence -name '*.webp' | wc -l`
+ * and `git ls-files docs/evidence | grep -c '\.webp$'`, both 4,925 at this head —
+ * holding **196 MB** on disk — `du -sh docs/evidence`, the filesystem figure
+ * rather than the 133.9 MiB the files' own bytes sum to — of which **4,184**
+ * stand outside the 64 declared supplementary sets, to roughly **24,000 frames
+ * and ~950 MB**. A run goes from about half an hour to several — on a box that
+ * several other worktrees are working in at the same time.
+ *
+ * Re-derive those three numbers from the tree this note ships in rather than
+ * carrying them forward, and name the commands. Two earlier revisions of this
+ * note got that wrong in the same way, one fold apart: 4,379 / 167 MB / 3,762 and
+ * a projection of ~21,000 (review round 1, M-2; QA round 1, Q-1 — the same
+ * defect, found twice), then 4,851 / 195 MB / 4,110, which was the second fold's
+ * triple and, worse, attributed 4,110 to `manifest.json`'s own `frames` while the
+ * manifest carried 4,184 (round 2, M-1). The rule that keeps it right is not
+ * "update the number" but "update the number AND the record it points at, from
+ * the tree you are committing": 4,184 is the manifest's `frames` at this head,
+ * 4,925 is what both count commands return, and the 741 difference is the frames
+ * inside the declared sets. The conclusion survives all three corrections: a full
+ * sweep is roughly five times this set and close to a gigabyte of WebP. The
+ * twelve stay the spine because the
+ * forty-seven they do not cover are covered where it matters rather than
+ * silently dropped:
+ *
+ *   - `pnpm check-themes` asserts every contrast floor over ALL fifty-nine
+ *     palettes, because the contract reads the palette directory rather than
+ *     this list;
+ *   - `docs/evidence/settings-appearance/` carries the appearance picker in all
+ *     fifty-nine, once, because that is the surface a palette port is judged on;
+ *   - any other theme can be captured on demand, with no code change, through
+ *     `--themes=<a,b,…>` (a comma-separated `ThemeName` list — intersected with
+ *     this literal for a sweep, and free of it under `--only`, which is how a
+ *     single surface is captured in the whole registry).
+ *
+ * So a frame in `localOperatorDark` is a picture of every surface in the app,
+ * and a frame in `catppuccinMocha` is one command away rather than free by
+ * default. Growing this list is a decision about the evidence budget rather
+ * than about coverage, which is why it is written down here instead of implied.
+ */
 export const THEMES = [
 	"localOperatorDark",
 	"localOperatorLight",
@@ -1041,6 +1106,21 @@ export const STORIES = [
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
 	   and a still is the only instrument for it. */
 	["chat-run-panel--trigger-activity-dot", 1280, 700],
+	/*
+	 * Settings > Appearance: the theme picker, in the settings page's own 896px
+	 * column — the surface a palette port is judged on, and the only story that
+	 * renders the whole theme set at once (fifty-nine tiles, forty-one under
+	 * `Dark` and eighteen under `Light`).
+	 *
+	 * Captured at the picker's own height rather than the 900 default: the frame
+	 * IS the grid, and a viewport that clips the light group cannot answer the
+	 * question the tiles exist for — whether fifty-nine palettes read as a set
+	 * you can take in at a glance. The rendered column measures 1200.8px at this
+	 * width; 1420 is that plus the ground the pair shares with the before frames
+	 * in `docs/evidence/settings-appearance-before/`, which are taken at the
+	 * same viewport so the two are a like-for-like comparison.
+	 */
+	["settings-appearance--gallery", 1000, 1420],
 	/*
 	 * Settings > Integrations: the surface `/mcp` LANDS ON, and the four states
 	 * that report was about — the deep link revealing a named server, an argument
@@ -2888,8 +2968,25 @@ const main = async () => {
 	 */
 	const stories = ONLY ? STORIES.filter(([id]) => id.includes(ONLY)) : STORIES;
 	if (stories.length === 0) throw new Error(`--only=${ONLY} matched no story`);
+	/*
+	 * A narrowed run may reach past the sweep's list (see the flag block at the
+	 * top of this file) — and then the ids have to be real ones, because the id
+	 * becomes both the `args=theme:` the preview reads and the frame's file
+	 * name. A full sweep still intersects with the list, so an id the sweep does
+	 * not carry cannot widen it.
+	 */
+	const unknownPalettes = (THEME_FILTER ?? []).filter(
+		(id) => !PALETTE_IDS.has(id),
+	);
+	if (ONLY && unknownPalettes.length > 0) {
+		throw new Error(
+			`unknown theme id(s): ${unknownPalettes.join(", ")}. The ids are the \`id\` fields in src/renderer/src/shared/themes/palettes/.`,
+		);
+	}
 	const themes = THEME_FILTER
-		? THEMES.filter((t) => THEME_FILTER.includes(t))
+		? ONLY
+			? THEME_FILTER.filter((id) => PALETTE_IDS.has(id))
+			: THEMES.filter((t) => THEME_FILTER.includes(t))
 		: THEMES;
 	if (themes.length === 0) throw new Error("--themes matched no palette");
 
