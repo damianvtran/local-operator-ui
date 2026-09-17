@@ -1,4 +1,5 @@
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
+import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -18,10 +19,16 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import {
+	showSuccessToast,
+	showWarningToast,
+} from "@shared/utils/toast-manager";
+import {
 	Bot,
+	CheckCheck,
 	ChevronDown,
 	ChevronRight,
 	List,
+	LoaderCircle,
 	MessageSquarePlus,
 	MoreHorizontal,
 	Plus,
@@ -30,6 +37,7 @@ import {
 } from "lucide-react";
 import {
 	type KeyboardEvent,
+	type ReactNode,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -47,6 +55,7 @@ import {
 	searchChats,
 } from "../chat-search";
 import { clearSearch } from "../clear-search";
+import { markAllReadReceipt, unreadAckableCount } from "../mark-all-read";
 import { newChatShortcutCap } from "../new-chat-shortcut";
 import { catalogueGate } from "../sidebar-catalogue-gate";
 
@@ -294,6 +303,7 @@ export function ChatSidebar({
 	const livenessUnread = statusUnavailable.includes("liveness");
 	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
 	const drafts = useCanonicalSessionsStore((s) => s.drafts);
+	const markAllRead = useCanonicalSessionsStore((s) => s.markAllRead);
 	const [query, setQuery] = useState("");
 	const [all, setAll] = useState(false);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
@@ -311,6 +321,105 @@ export function ChatSidebar({
 			...current,
 			[key]: !(current[key] ?? initial),
 		}));
+	/*
+	 * The bulk read receipt: one control, one gesture, no shortcut.
+	 *
+	 * An acknowledgement is IRREVERSIBLE — nothing in the store withdraws a
+	 * receipt, so a mark this clears cannot be put back — which is why this is an
+	 * explicit click and nothing else: no key binding, no blur hook, no "clear on
+	 * close" path. The backend's own design records the same rule from the other
+	 * end (only the explicit route, the TUI command and this control may call the
+	 * batch write).
+	 *
+	 * Gated on the CAPABILITY, not on a 404: a backend without
+	 * `completion_ack_bulk` gets no control at all, because a control that is
+	 * clicked and answers "this backend does not support it" has already promised
+	 * a mark was cleared. And hidden at zero, on this file's own precedent that a
+	 * zero badge beside a group which already says it is empty is one fact told
+	 * twice — here the marks themselves are the fact, so with none on screen the
+	 * action has no subject.
+	 */
+	const unreadCount = unreadAckableCount(sessions);
+	const [clearingUnread, setClearingUnread] = useState(false);
+	const markAllReadShown =
+		unreadCount > 0 &&
+		desktopFeatureEnabled(capabilities.data, "completion_ack_bulk");
+	const clearUnread = async () => {
+		setClearingUnread(true);
+		try {
+			const { tone, message } = markAllReadReceipt(await markAllRead());
+			if (tone === "success") showSuccessToast(message);
+			else showWarningToast(message);
+		} catch (failure) {
+			/*
+			 * Nothing moved: `markAllRead` writes local state only from the answer's
+			 * `read` bucket, so a refused request (a background window refused by
+			 * main's foreground gate, a busy store answering 503) leaves every mark
+			 * exactly where it was and the sentence says so rather than reporting a
+			 * clear that did not happen.
+			 */
+			showWarningToast(
+				userFacingMessage(failure, "The unread marks were not cleared."),
+			);
+		} finally {
+			setClearingUnread(false);
+		}
+	};
+	/**
+	 * The control, as the sibling of a section's toggle rather than inside it: a
+	 * button nested in the toggle's own button would share its hit area, so the
+	 * inner click and the outer one could not be told apart, and the arrow walk
+	 * over `[data-chat-row]` would land on a control whose activation also
+	 * collapsed the group. It is stamped as a row of its own so it IS a stop in
+	 * that walk, like every other control in the list — for the states in which
+	 * it can actually take focus (see the attribute below).
+	 */
+	const markAllReadControl: ReactNode = markAllReadShown ? (
+		<button
+			type="button"
+			/*
+			 * `data-chat-row` drops out while the request is in flight, on the
+			 * New chat row's own rule: only a focusable row is a stop in the arrow
+			 * ring, and `keyDown` moves by calling `.focus()` on the next such
+			 * element — which a disabled button silently refuses, stranding a
+			 * keyboard user on the row they are already on for as long as the
+			 * request takes.
+			 */
+			data-chat-row={clearingUnread ? undefined : true}
+			data-tour-tag="mark-all-read"
+			disabled={clearingUnread}
+			// The count is in the tooltip rather than in the label: the row's own
+			// heading already ends in a number and a second one beside it reads as
+			// the same fact. It is stated before the click all the same, because an
+			// acknowledgement cannot be undone.
+			title={`Mark ${unreadCount} unread ${
+				unreadCount === 1 ? "chat" : "chats"
+			} as read`}
+			onClick={() => void clearUnread()}
+			className="flex h-7 shrink-0 items-center gap-1 rounded-md px-1 text-meta text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+		>
+			{clearingUnread ? (
+				<LoaderCircle
+					className="size-3.5 motion-safe:animate-spin"
+					aria-hidden="true"
+				/>
+			) : (
+				<CheckCheck className="size-3.5" aria-hidden="true" />
+			)}
+			Mark all as read
+			{/*
+			 * The count is in the accessible name as well as the tooltip: the action
+			 * is irreversible, and how many marks it will clear is not decoration
+			 * for someone who cannot see the pile. Appended rather than replacing
+			 * the label, so the visible text stays a prefix of the name (WCAG 2.5.3
+			 * Label in Name) — the same shape `ChatSessionStatus` uses for its own
+			 * ", unread" suffix.
+			 */}
+			<span className="sr-only">
+				{` (${unreadCount} unread ${unreadCount === 1 ? "chat" : "chats"})`}
+			</span>
+		</button>
+	) : null;
 	useEffect(() => {
 		localStorage.setItem("chat-sidebar-disclosures", JSON.stringify(expanded));
 	}, [expanded]);
@@ -888,29 +997,47 @@ export function ChatSidebar({
 			</span>
 		</span>
 	);
+	/*
+	 * A section's header, as a ROW of controls rather than one button.
+	 *
+	 * The toggle is the whole header — clicking anywhere on it collapses the group
+	 * — so a second control nested inside it would be a button within a button:
+	 * one hit area for two actions, where an inner click also toggles the group
+	 * and neither control can be activated independently. They are SIBLINGS here,
+	 * which is what lets the action sit in the header at all; the toggle keeps
+	 * every property it had (the row's `data-chat-row` stamp, so the arrow walk
+	 * still visits it, and its `aria-expanded`).
+	 *
+	 * `action` is undefined for every group but the one that can carry one, so the
+	 * row renders as it always did for the rest.
+	 */
 	const heading = (
 		key: string,
 		label: string,
 		initial: boolean,
 		count?: number,
+		action?: ReactNode,
 	) => (
-		<button
-			type="button"
-			data-chat-row
-			className="flex h-7 w-full items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-elevated"
-			aria-expanded={query ? true : isOpen(key, initial)}
-			onClick={() => toggle(key, initial)}
-		>
-			{query || isOpen(key, initial) ? (
-				<ChevronDown className="size-3.5" />
-			) : (
-				<ChevronRight className="size-3.5" />
-			)}
-			<span className="flex-1 text-left">{label}</span>
-			{/* A zero badge next to a group that already says it is empty is the
-			    same fact twice; only a non-zero count carries information. */}
-			{count !== undefined && count !== 0 && countBadge(count)}
-		</button>
+		<div className="flex h-7 items-center gap-1">
+			<button
+				type="button"
+				data-chat-row
+				className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-elevated"
+				aria-expanded={query ? true : isOpen(key, initial)}
+				onClick={() => toggle(key, initial)}
+			>
+				{query || isOpen(key, initial) ? (
+					<ChevronDown className="size-3.5" />
+				) : (
+					<ChevronRight className="size-3.5" />
+				)}
+				<span className="flex-1 text-left">{label}</span>
+				{/* A zero badge next to a group that already says it is empty is the
+				    same fact twice; only a non-zero count carries information. */}
+				{count !== undefined && count !== 0 && countBadge(count)}
+			</button>
+			{action}
+		</div>
 	);
 	const keyDown = (event: KeyboardEvent<HTMLElement>) => {
 		const target = event.target as HTMLElement;
@@ -1468,6 +1595,17 @@ export function ChatSidebar({
 									"Active chats",
 									true,
 									matching.filter((row) => row.active).length,
+									/*
+									 * The bulk read receipt sits with the group the operator
+									 * pointed at — the one whose rows carry the completion
+									 * checkmarks — while the set it clears is the STORE's, so
+									 * the visible column of marks and the count the action names
+									 * are the same fact. It is deliberately not duplicated
+									 * beside "Previous chats": one gesture, one control, and two
+									 * affordances for one irreversible write would be a second
+									 * thing to keep in step.
+									 */
+									markAllReadControl,
 								)}
 								{(query || isOpen("active", true)) &&
 									(matching.some((row) => row.active) ? (
