@@ -11,19 +11,22 @@
  *
  * ## Measure
  *
- * The USER bubble is capped at `MEASURE`; the agent's answer is not. A user
- * turn is an aside — a quotation of the reader's own words — and the narrower
- * box is what makes it read as one while the agent's answer reads as the
- * document.
+ * Neither side carries a reading cap now, and this LEGACY path has to agree
+ * with `canonical-transcript.tsx` on that — a cap left here would show up as
+ * the same defect on whichever surface still renders through this component.
  *
- * The agent side used to take the same cap, and no longer does. It must share
- * the left edge and the width of the tool rows in the same turn, which is an
- * operator requirement about the seam between the two registers rather than a
- * taste call about line length; `markdown.css`'s measure comment carries the
- * report and the measured numbers. This file is the LEGACY message path and
- * `canonical-transcript.tsx` is the canonical one, so they have to agree —
- * a cap left here would show up as the same defect on whichever surface still
- * renders through this component.
+ * The USER bubble used to carry it: its body took the `lo-measured` class,
+ * which capped the prose at 62ch and centred it inside the bubble. The operator
+ * report of 2026-09-16 ended that — a card widened by a reply quote or a wide
+ * attachment left the message floating as a centre-constrained column with
+ * equal slack on each side — so the card's own width is the measure and its
+ * prose fills it.
+ *
+ * The agent's answer takes no cap either: it must share the left edge and the
+ * width of the tool rows in the same turn, which is an operator requirement
+ * about the seam between the two registers rather than a taste call about line
+ * length. `markdown.css`'s measure comment carries both reports and the
+ * measured numbers.
  *
  * The type size is separate and unchanged: `text-body` on the § 4 ramp, not
  * the hardcoded `1.05rem` this once used.
@@ -43,9 +46,6 @@ import { ReplyPreview } from "../reply-preview";
 import { AgentReasoning } from "../trace";
 import { MessageControls } from "./message-controls";
 import { StreamingMessage } from "./streaming-message";
-
-/** Opts the USER bubble into the reading measure defined in `markdown.css`. */
-const MEASURE = "lo-measured";
 
 // Props for the MessagePaper component
 type MessagePaperProps = {
@@ -123,7 +123,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 							isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
 						)}
 					>
-						<div ref={messageContentRef} className={cn("relative", MEASURE)}>
+						<div ref={messageContentRef} className="relative">
 							{replies.length > 0 && <ReplyPreview replies={replies} />}
 							{cloneContentChildren(
 								children,
