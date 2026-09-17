@@ -130,6 +130,18 @@ import {
  * elements of THIS component and nothing outside it should need to know.
  */
 const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
+
+/**
+ * The id the mention layer's description carries, so the field can name it.
+ *
+ * The chip's own states are carried by a FILL, and a fill is `aria-hidden`
+ * decoration: the field's value is the literal text, which is the right
+ * announcement for the reference itself but says nothing about a reference the
+ * agent will ask before reading. This sentence is the one channel that reaches
+ * every user without adding visual noise, which is the shape UX round 1's U7
+ * asked for.
+ */
+const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
 import { sampleSuggestions } from "./composer-suggestions";
 import { ComposerTipRow } from "./composer-tip";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
@@ -147,7 +159,7 @@ import { atDeleteSpan } from "./at-contract";
 import { AtMentionOverlay } from "./at-mention-overlay";
 import { AtSuggestionsPopup, handleAtKeyDown, useAtPicker } from "./at-picker";
 import type { AtRow } from "./at-rank";
-import { atReference, atToken } from "./at-token";
+import { atPickerToken, atReference } from "./at-token";
 import {
 	DirectoryIndicator,
 	type DirectoryIndicatorHandle,
@@ -480,6 +492,18 @@ type MessageInputProps = {
 	 */
 	isHydrating?: boolean;
 	/**
+	 * Whether the `@` affordance may be offered at all — see
+	 * `UseAtPickerArgs.enabled` for the two states this folds and why it fails
+	 * closed.
+	 *
+	 * ONE PROP FOR BOTH SURFACES it gates, because they are one mechanism: the list
+	 * that writes the token and the fill that asserts it. `undefined` is the same as
+	 * false, which is what a caller that has not thought about it gets — the composer
+	 * offering a chip the harness will not expand is the defect this exists for, so
+	 * a broken wire has to fail in the quiet direction.
+	 */
+	mentionsEnabled?: boolean;
+	/**
 	 * The conversation is not on this machine (M6), so nothing typed here could
 	 * be sent anywhere.
 	 *
@@ -802,6 +826,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isSmallView = false,
 			isHydrating = false,
 			unavailable = false,
+			mentionsEnabled = false,
 			sessionStatus,
 			onSlashCommand,
 			onSlashNote,
@@ -1509,8 +1534,35 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * beside. They share the working directory and the value, which is all they
 		 * have in common.
 		 */
-		const at = useAtPicker({ text: newMessage, caret, cwd });
-		const atMentions = useAtResolution({ text: newMessage, cwd });
+		const at = useAtPicker({
+			text: newMessage,
+			caret,
+			cwd,
+			enabled: mentionsEnabled,
+		});
+		const atMentions = useAtResolution({
+			text: newMessage,
+			cwd,
+			enabled: mentionsEnabled,
+		});
+
+		/*
+		 * How many of the draft's references the agent will ask about before reading,
+		 * which is the fact the outside-workspace fill states and a fill cannot
+		 * announce.
+		 *
+		 * ONLY THE OUTSIDE HALF IS DESCRIBED, and the unresolved half deliberately is
+		 * not: an unresolved token is the normal state of a half-typed path, so a
+		 * sentence counting them would be re-announced on every keystroke of the one
+		 * state that has to stay quiet, and it would be describing what the user is in
+		 * the middle of writing. The sighted signal for that state is the ABSENCE of a
+		 * fill, and the field's own text is the same evidence a screen reader reads.
+		 */
+		const outsideMentions = useMemo(
+			() =>
+				[...atMentions.resolved.values()].filter((fact) => fact.outside).length,
+			[atMentions.resolved],
+		);
 
 		/*
 		 * A caret a programmatic edit asked for, written to the DOM once the new
@@ -2731,24 +2783,45 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * because the replacement brings its own space and keeping both would leave the
 		 * user's sentence with a doubled gap. That is `replaceSpan`'s own absorbing
 		 * rule, applied where this write needs it: the helper absorbs only when the
-		 * token opened the buffer, which is the case it was written for.
+		 * token opened the buffer, which is the case it was written for — SO THIS ONE
+		 * DEFERS TO IT THERE (review round 1, N4). Claiming the separator here as well
+		 * meant the start-of-draft case absorbed two, and `@a.py  fix` came back with
+		 * one of the user's own spaces gone.
+		 *
+		 * AND THE CARET GOES INSIDE THE CLOSING QUOTE for a spaced directory. The
+		 * unspaced form `@src/` carries the caret after its own slash, which is inside
+		 * the token, so the list stays open and the next segment drills in. The quoted
+		 * form ends at the closing quote (`tokenEnd`), so the identical caret position
+		 * left the token CLOSED: the directory resolved, the picker shut, and the rest
+		 * of the name went out as prose beside a reference to the folder — accepted a
+		 * row, typed the next segment, silently referenced the wrong thing (review
+		 * round 1, M5). Placing the caret before the quote makes the two forms agree on
+		 * the only thing that matters here: the caret is inside the token.
 		 */
 		const handleAtPick = useCallback(
 			(row: AtRow) => {
-				const token = atToken(newMessage, caret);
+				const token = atPickerToken(newMessage, caret);
 				if (!token) return;
 				const write = atReference(row);
 				const following = newMessage.slice(token.end, token.end + 1);
-				const absorb = following === " " || following === "\n" ? 1 : 0;
+				// `replaceSpan` absorbs one separator of its own when the token opened the
+				// buffer, so this side must not claim that one a second time.
+				const absorb =
+					token.start > 0 && (following === " " || following === "\n") ? 1 : 0;
 				const spliced = replaceSpan(
 					newMessage,
 					token.start,
 					token.end + absorb,
 					write,
 				);
-				pendingCaret.current = spliced.caret;
+				// `atReference` writes the quoted, CLOSED form for a name with a space;
+				// the caret belongs in front of that quote for the reason above.
+				const caretAfter = write.endsWith('"')
+					? spliced.caret - 1
+					: spliced.caret;
+				pendingCaret.current = caretAfter;
 				setNewMessage(spliced.text);
-				setCaret(spliced.caret);
+				setCaret(caretAfter);
 				// The ring the next `@` ranks against is written from HERE, where a pick
 				// actually happened, rather than from the row's render: ranking reads the
 				// ring, and a write during render would re-enter its own derivation.
@@ -4066,6 +4139,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					>
 						{credentialNotice}
 					</output>
+					{/*
+					 * The outside-workspace mentions, described rather than drawn: `sr-only`,
+					 * because the fill already says it to a sighted reader and a second visible
+					 * line under the box is the geometry every round of this composer has had to
+					 * argue for. It renders only while there is something to say, so an ordinary
+					 * draft is not described by an empty element.
+					 */}
+					{outsideMentions > 0 && (
+						<span id={MENTION_OUTSIDE_NOTICE_ID} className="sr-only">
+							{outsideMentions === 1
+								? "1 reference points outside this session's working directory; the agent will ask you to approve it before reading."
+								: `${outsideMentions} references point outside this session's working directory; the agent will ask you to approve them before reading.`}
+						</span>
+					)}
 					<div
 						className={cn(
 							COMPOSER_BOX,
@@ -4351,8 +4438,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									disabled={isInputDisabled}
 									aria-label="Message"
 									role="combobox"
+									/*
+									 * Both descriptions, space-separated as the attribute demands: the capture's
+									 * notice while one is owed, and the mention sentence while a reference
+									 * points outside the workspace. `undefined` rather than an empty string when
+									 * neither applies, because an empty `aria-describedby` is a reference to
+									 nothing.
+									 */
 									aria-describedby={
-										credentialNotice ? CREDENTIAL_NOTICE_ID : undefined
+										[
+											credentialNotice ? CREDENTIAL_NOTICE_ID : null,
+											outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
+										]
+											.filter(Boolean)
+											.join(" ") || undefined
 									}
 									aria-expanded={slash.open || at.open}
 									aria-controls={
@@ -4773,7 +4872,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * change in the peripheral field cannot pull the eye off what
 						 * the user is typing; the row itself keeps painting.
 						 */}
-						<ComposerTipRow suspended={newMessage.trim().length > 0} />
+						<ComposerTipRow
+							suspended={newMessage.trim().length > 0}
+							mentionsEnabled={mentionsEnabled}
+						/>
 					</div>
 				)}
 				{showEmptyChatPrompt && (

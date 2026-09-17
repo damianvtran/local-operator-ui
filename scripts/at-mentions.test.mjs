@@ -40,12 +40,14 @@ const { token, rank, contract } = await import(
 const {
 	atToken,
 	atTokenSpans,
+	atPickerToken,
 	atSegments,
 	splitToken,
 	isBoundary,
 	tokenEnd,
 	activeAt,
 	atReference,
+	referenceBlockSpans,
 } = token;
 const {
 	rankAtRows,
@@ -167,6 +169,72 @@ test("@a@b is ONE unresolvable span, not two chips", () => {
 test("a bare @ is not a candidate reference", () => {
 	assert.deepEqual(atTokenSpans("ask @ then wait"), []);
 	assert.equal(atTokenSpans("ask @").length, 0);
+});
+
+/*
+ * THE PASTED BLOCK, ported because a chip over one asserts an expansion the
+ * resolver will not perform (review round 1, M4).
+ *
+ * `references._block_spans` and `references._already_expanded`, both executed
+ * against the branch that adds them. The second half is the one a plain span skip
+ * cannot reach: the harness's own `typed="…"` recovery exists because the user's
+ * token SURVIVES in the prose beside the block, so a re-scan would find it and
+ * expand it a second time.
+ */
+test("a token inside a pasted block marker is not a candidate chip", () => {
+	const text =
+		"<operator-references>\n@src/app.py\n</operator-references>\nand @src/app.py again";
+	const blocks = referenceBlockSpans(text);
+	assert.equal(blocks.length, 1);
+	assert.deepEqual(blocks[0], [
+		0,
+		text.indexOf("</operator-references>") + "</operator-references>".length,
+	]);
+	const spans = atTokenSpans(text);
+	// The one in the prose expands and is a chip; the one inside the block does not.
+	assert.equal(spans.length, 1);
+	assert.equal(spans[0].path, "src/app.py");
+	assert.equal(spans[0].start, text.lastIndexOf("@src/app.py"));
+	// An UNCLOSED marker runs to the end, the harness's own fail-closed reading.
+	assert.deepEqual(referenceBlockSpans("a <operator-references> b"), [
+		[2, "a <operator-references> b".length],
+	]);
+});
+
+test("a token a block's typed= attribute already names is not a candidate", () => {
+	const text =
+		'<operator-references>\n<file path="src/app.py" typed="@src/app.py">x</file>\n</operator-references>\n' +
+		"and @src/app.py again";
+	const spans = atTokenSpans(text);
+	// The prose token is named by the block, so the resolver skips it as already
+	// expanded — and a chip on it would say otherwise.
+	assert.deepEqual(spans, []);
+	// A token the block does NOT name still expands.
+	const other =
+		'<operator-references>\n<file path="a" typed="@a">x</file>\n</operator-references>\nsee @b';
+	assert.deepEqual(
+		atTokenSpans(other).map((span) => span.path),
+		["b"],
+	);
+	// The attribute decoder runs `&amp;` last, so a literal `&amp;lt;` cannot come
+	// back as `<`.
+	const escaped =
+		'<operator-references>\n<file path="a" typed="@a&amp;lt;b">x</file>\n</operator-references>\nsee @a&lt;b';
+	assert.deepEqual(atTokenSpans(escaped), []);
+});
+
+test("the picker's own token honours the same two exclusions", () => {
+	const blocked = "<operator-references>\n@src/app.py\n</operator-references>";
+	assert.equal(atToken(blocked, blocked.length), null, "no token at all here");
+	// The caret is inside the block, at the end of the token: `atToken` finds it,
+	// `atPickerToken` refuses it, which is what keeps a list from opening over a
+	// span whose token will be sent as prose.
+	const caret = blocked.indexOf("@src/app.py") + "@src/app.py".length;
+	assert.ok(atToken(blocked, caret));
+	assert.equal(atPickerToken(blocked, caret), null);
+	// Outside the block the same draft offers its token as usual.
+	const open = "see @src/app.py now";
+	assert.deepEqual(atPickerToken(open, 14), atToken(open, 14));
 });
 
 test("splitToken cuts at the last slash, exactly as the harness does", () => {
@@ -431,7 +499,29 @@ test("Enter and Tab both apply the row, with no ambiguity gate", () => {
 		kind: "apply",
 		index: 2,
 	});
+});
+
+/*
+ * THE EMPTY LIST, which is the one case the two keys do NOT share (UX round 1,
+ * U3). Enter is the composer's SUBMIT, so with no row to take it must be held:
+ * `pass` handed it to the submit path, and on a failed or non-matching listing —
+ * which is every `@` on a brand-new chat's own state — the first `@…`+Enter a user
+ * pressed sent their half-written sentence instead of referencing a file. Tab's
+ * own meaning is a focus move and claims nothing about a file, so it still passes
+ * and the composer's Tab ladder is untouched.
+ */
+test("Enter is held when the list holds no row, and Tab is not", () => {
 	assert.deepEqual(atKeyIntent({ ...KEY, key: "Enter", count: 0 }), {
+		kind: "hold",
+	});
+	assert.deepEqual(atKeyIntent({ ...KEY, key: "Enter", count: 0, active: 0 }), {
+		kind: "hold",
+	});
+	// A marker past the end of the rows is the same state: nothing to apply.
+	assert.deepEqual(atKeyIntent({ ...KEY, key: "Enter", count: 2, active: 5 }), {
+		kind: "hold",
+	});
+	assert.deepEqual(atKeyIntent({ ...KEY, key: "Tab", count: 0 }), {
 		kind: "pass",
 	});
 });
@@ -447,49 +537,94 @@ test("the row budget is measured, clamped, and a whole number of rows", () => {
 	assert.equal(atRowBudget(800, 0), 8);
 	// The minimum window, where the column clips the popup: the floor applies and
 	// the shell shrinks rather than being pushed off the bottom.
-	assert.equal(atRowBudget(200, 0), 3);
 	assert.equal(atRowBudget(100, 0), 3);
+	// 143.2px of room is four rows at the MEASURED 35.5px pitch (142px) and only
+	// three at the 36px the constant used to claim — which is the finding
+	// (QA round 1, Q-1) in one line: the wrong pitch both overflowed the cap on a
+	// long listing and under-counted the rows on a short one.
+	assert.equal(atRowBudget(200, 0), 4);
 	// And a middle case is an exact multiple of the pitch rather than a slice.
-	const rows = atRowBudget(400, 0);
-	assert.equal(rows, 8);
+	assert.equal(atRowBudget(400, 0), 8);
 	assert.equal(atRowBudget(52.8 + 4 + AT_ROW_PITCH * 3 + 1, 0), 3);
+	// The pitch itself, so a later edit to it is a decision rather than a typo.
+	assert.equal(AT_ROW_PITCH, 35.5);
 });
 
 test("the footer reads off the active row", () => {
+	// "Enter"/"Esc" name KEYS, and the slash popup in the same slot capitalises
+	// them too (design round 1, D5).
 	assert.equal(
 		atFooter({ path: "src/app.py", directory: false }),
-		"enter inserts @src/app.py · esc closes",
+		"Enter inserts @src/app.py · Esc closes",
 	);
 	assert.equal(
 		atFooter({ path: "src/components", directory: true }),
-		"enter opens src/components · esc closes",
+		"Enter opens src/components · Esc closes",
 	);
 	assert.equal(
 		atFooter({ path: "my file.txt", directory: false }),
-		'enter inserts @"my file.txt" · esc closes',
+		'Enter inserts @"my file.txt" · Esc closes',
 	);
 	// No row to act on: the Escape clause stands alone rather than promising an
-	// insertion over a notice row.
-	assert.equal(atFooter(undefined), "esc closes");
+	// insertion over a notice row — and Enter is held in that state, so the clause
+	// is the whole truth about the keys.
+	assert.equal(atFooter(undefined), "Esc closes");
 });
 
 test("the count appears only when it adds something", () => {
 	assert.equal(atCount(4, 37), "4 of 37");
 	assert.equal(atCount(37, 37), undefined);
 	assert.equal(atCount(0, 0), undefined);
+	// THE CASE THE COLUMN WAS BLIND TO (design round 1, D3): a ten-entry listing
+	// whose region draws seven rows withheld three of them, and the count said
+	// nothing because the two numbers it was handed were both the matched count.
+	assert.equal(atCount(7, 10), "7 of 10");
+	assert.equal(atCount(0, 10), "0 of 10");
+	assert.equal(atCount(3, 11), "3 of 11");
 });
 
 test("the four empty facts get four different sentences", () => {
 	assert.equal(
-		atEmptyCopy({ loading: false, entries: 0, matched: 0, query: "" }),
+		atEmptyCopy({
+			loading: false,
+			entries: 0,
+			matched: 0,
+			query: "",
+			scope: "./",
+		}),
 		"This folder is empty.",
 	);
+	// The SCOPE is named, not just the query: a user who knows the file name and
+	// not its directory was told only that nothing matched, while the header above
+	// said where the search had looked and said nothing about it (UX round 1, U6).
 	assert.equal(
-		atEmptyCopy({ loading: false, entries: 12, matched: 0, query: "zz" }),
-		'No files match "zz".',
+		atEmptyCopy({
+			loading: false,
+			entries: 12,
+			matched: 0,
+			query: "zz",
+			scope: "./",
+		}),
+		'No files match "zz" in ./.',
 	);
 	assert.equal(
-		atEmptyCopy({ loading: true, entries: 0, matched: 0, query: "" }),
+		atEmptyCopy({
+			loading: false,
+			entries: 4,
+			matched: 0,
+			query: "zz",
+			scope: "src/components/",
+		}),
+		'No files match "zz" in src/components/.',
+	);
+	assert.equal(
+		atEmptyCopy({
+			loading: true,
+			entries: 0,
+			matched: 0,
+			query: "",
+			scope: "./",
+		}),
 		"Reading this folder…",
 	);
 	assert.equal(
@@ -498,13 +633,50 @@ test("the four empty facts get four different sentences", () => {
 			entries: 0,
 			matched: 0,
 			query: "",
-			error: "EACCES",
+			scope: "./",
+			error: "EACCES: permission denied, scandir '/private/tmp/x/secret-dir/'",
 		}),
-		"Could not read this folder. EACCES",
+		"Could not read this folder. It may need a permission this app does not have.",
 	);
+	// A folder that vanished while the picker was open gets the other sentence, and
+	// no failure quotes the errno, the syscall or the absolute path at the user
+	// (design round 1's D4 and UX round 1's U5 measured that sentence live).
+	assert.equal(
+		atEmptyCopy({
+			loading: false,
+			entries: 0,
+			matched: 0,
+			query: "",
+			scope: "./",
+			error: "ENOENT: no such file or directory, scandir '~'",
+		}),
+		"Could not read this folder. Check that it exists and that you can open it.",
+	);
+	for (const detail of [
+		"EACCES: permission denied",
+		"ENOENT: no such file or directory",
+		"something else entirely",
+	])
+		assert.doesNotMatch(
+			atEmptyCopy({
+				loading: false,
+				entries: 0,
+				matched: 0,
+				query: "",
+				scope: "./",
+				error: detail,
+			}),
+			/EACCES|ENOENT|scandir|\//,
+		);
 	// A listing already on screen is not replaced while the next one is in flight.
 	assert.equal(
-		atEmptyCopy({ loading: true, entries: 3, matched: 3, query: "" }),
+		atEmptyCopy({
+			loading: true,
+			entries: 3,
+			matched: 3,
+			query: "",
+			scope: "./",
+		}),
 		"This folder is empty.",
 	);
 });

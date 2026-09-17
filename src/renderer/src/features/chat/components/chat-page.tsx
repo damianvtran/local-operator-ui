@@ -471,6 +471,29 @@ function SessionPanel({
 		"subagent_transcript",
 	);
 	/*
+	 * Whether the composer may offer `@` at all, folded from the TWO facts that
+	 * decide it and computed HERE because this is where each of them already is:
+	 *
+	 *   1. the connected harness advertises that it expands a mention
+	 *      (`desktop-hooks.ts`'s `references` key). No released harness does — the
+	 *      expansion is `local_operator/references.py`, which is not in any tag
+	 *      through v0.56.8, and the half that adds it is PR #1220. So the composer
+	 *      offers the picker and paints the chips only on a backend that says it can
+	 *      carry them, and on today's installs the `@` is plain text, which is what
+	 *      the harness does with it.
+	 *   2. the send this draft would make is a PROMPT rather than a mid-turn STEER.
+	 *      `busy` is the same expression the send path reads one screen down
+	 *      (`mode: busy ? "steer" : "prompt"`), and a steer bypasses
+	 *      `Session.prompt`, so an `@path` in one is left as inert prose. A chip
+	 *      there would assert an expansion the harness will not perform, so the
+	 *      affordance is withheld for the length of the turn instead.
+	 *
+	 * Both halves fail closed, and the fallback is not a lesser feature: the text is
+	 * sent as written, which is exactly what the harness would do with it.
+	 */
+	const mentionsEnabled =
+		desktopFeatureEnabled(capabilities.data, "references") && !busy;
+	/*
 	 * Moving a LIVE session's directory, which is the one composer control whose
 	 * write path is a lifecycle operation rather than a draft field.
 	 *
@@ -1943,6 +1966,7 @@ function SessionPanel({
 					mcpGrantRunning={mcpGrantRunning}
 					mcpRemedy={mcpRemedy}
 					childrenOpenable={childrenOpenable}
+					mentionsEnabled={mentionsEnabled}
 					pulses={canonical.subagentPulses}
 					canonical={{
 						view,

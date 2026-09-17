@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import {
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
 	rmSync,
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
@@ -37,10 +38,16 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { listDirectory, outsideWorkspace, realPathOrNull, PRUNE_NAMES } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	listDirectory,
+	outsideWorkspace,
+	realPathOrNull,
+	PRUNE_NAMES,
+	resolveUserPath,
+	DIRECTORY_SCAN_LIMIT,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 let root;
 
@@ -65,8 +72,8 @@ after(() => {
 	if (root) rmSync(root, { recursive: true, force: true });
 });
 
-test("a listing returns entries sorted, with dotfiles and build directories out", () => {
-	const listing = listDirectory(root);
+test("a listing returns entries sorted, with dotfiles and build directories out", async () => {
+	const listing = await listDirectory(root);
 	assert.equal(listing.dir, root);
 	assert.equal(listing.error, undefined);
 	assert.equal(listing.truncated, false);
@@ -86,8 +93,8 @@ test("a listing returns entries sorted, with dotfiles and build directories out"
 		assert.ok(typeof name === "string" && name.length > 0);
 });
 
-test("a directory is a directory row, and a symlink follows the link", () => {
-	const listing = listDirectory(root);
+test("a directory is a directory row, and a symlink follows the link", async () => {
+	const listing = await listDirectory(root);
 	const kinds = new Map(
 		listing.entries.map((entry) => [entry.name, entry.directory]),
 	);
@@ -98,14 +105,14 @@ test("a directory is a directory row, and a symlink follows the link", () => {
 	assert.equal(kinds.get("link"), true);
 });
 
-test("a name containing a space lists as one entry", () => {
+test("a name containing a space lists as one entry", async () => {
 	writeFileSync(join(root, "my file.txt"), "x\n");
-	const listing = listDirectory(root);
+	const listing = await listDirectory(root);
 	assert.ok(listing.entries.some((entry) => entry.name === "my file.txt"));
 });
 
-test("an unreadable directory is an error with its reason, not an empty folder", () => {
-	const listing = listDirectory(join(root, "does-not-exist"));
+test("an unreadable directory is an error with its reason, not an empty folder", async () => {
+	const listing = await listDirectory(join(root, "does-not-exist"));
 	assert.deepEqual(listing.entries, []);
 	assert.equal(listing.truncated, false);
 	assert.equal(typeof listing.error, "string");
@@ -113,23 +120,84 @@ test("an unreadable directory is an error with its reason, not an empty folder",
 	// "Unreadable" and "empty" are different facts and the caller says so: an empty
 	// directory is a listing with no error at all.
 	const empty = join(root, "target");
-	assert.deepEqual(listDirectory(empty).entries, []);
-	assert.equal(listDirectory(empty).error, undefined);
+	assert.deepEqual((await listDirectory(empty)).entries, []);
+	assert.equal((await listDirectory(empty)).error, undefined);
 });
 
-test("the entry cap bounds the list and reports the truncation", () => {
+test("the entry cap bounds the list and reports the truncation", async () => {
 	mkdirSync(join(root, "wide"));
 	for (let index = 0; index < 230; index++)
 		writeFileSync(
 			join(root, "wide", `f${String(index).padStart(3, "0")}.txt`),
 			"",
 		);
-	const listing = listDirectory(join(root, "wide"));
+	const listing = await listDirectory(join(root, "wide"));
 	assert.equal(listing.entries.length, 200);
 	assert.equal(listing.truncated, true);
 });
 
-test("outsideWorkspace is the harness's containment rule", () => {
+/*
+ * THE PATH RULE, and the defect this test exists for. A brand-new chat's draft
+ * carries the literal cwd `"~"` (`canonical-sessions-store.ts`), and the rule
+ * used to expand only a cwd matching `~/…`: the bare `~` fell through, `join("~",
+ * ".")` was `"~"`, and the picker ran `scandir '~'` — ENOENT, zero rows, and no
+ * token could ever resolve either, because `probe-files` resolves the same way
+ * and answered `~/README.md` for `@README.md`. The feature's only entry point
+ * failed on the first attempt of every user who had not yet chosen a directory.
+ */
+test("a bare `~` working directory expands exactly like a bare `~` path", async () => {
+	const home = homedir();
+	assert.equal(resolveUserPath("~", undefined, home), home);
+	assert.equal(resolveUserPath(".", "~", home), home);
+	assert.equal(
+		resolveUserPath("README.md", "~", home),
+		join(home, "README.md"),
+	);
+	assert.equal(resolveUserPath("src/", "~", home), join(home, "src/"));
+	// The `~/…` spelling keeps working, and both reach the same directory.
+	assert.equal(resolveUserPath(".", "~/project", home), join(home, "project"));
+	assert.equal(
+		resolveUserPath("a.py", "~/project", home),
+		resolveUserPath("a.py", join(home, "project"), home),
+	);
+	// An absolute path is taken literally and an absent cwd changes nothing.
+	assert.equal(resolveUserPath("/etc/hosts", "~", home), "/etc/hosts");
+	assert.equal(resolveUserPath("a.py", undefined, home), "a.py");
+	// Outside the home directory a `~` mid-path is a NAME, not an expansion:
+	// `/tmp/~x` is a real directory nobody's home is.
+	assert.equal(resolveUserPath("a.py", "/tmp/~x", home), "/tmp/~x/a.py");
+});
+
+/*
+ * THE SCAN CAP, asserted as a retention rule rather than as a row count.
+ *
+ * The bound is on the WORK, and the answer it produces is the one a
+ * sort-then-truncate produced: the alphabetically-smallest candidates. A shape
+ * that simply stopped reading at the cap would answer with whatever the
+ * directory's own enumeration order happened to give, which is a listing whose
+ * contents depend on the filesystem — so this builds more than twice the cap and
+ * checks the 200 rows against the FIRST 200 of a full sorted listing.
+ */
+test("more than twice the scan cap still answers with the smallest names", async () => {
+	const count = DIRECTORY_SCAN_LIMIT * 2 + 200;
+	const wide = join(root, "wider");
+	mkdirSync(wide);
+	for (let index = 0; index < count; index++)
+		writeFileSync(join(wide, `f${String(index).padStart(5, "0")}.txt`), "");
+	const listing = await listDirectory(wide);
+	assert.equal(listing.truncated, true);
+	assert.equal(listing.entries.length, 200);
+	const expected = readdirSync(wide)
+		.filter((name) => !name.startsWith(".") && !PRUNE_NAMES.includes(name))
+		.sort((a, b) => a.localeCompare(b))
+		.slice(0, 200);
+	assert.deepEqual(
+		listing.entries.map((entry) => entry.name),
+		expected,
+	);
+});
+
+test("outsideWorkspace is the harness's containment rule", async () => {
 	assert.equal(outsideWorkspace("/ws/a", "/ws"), false);
 	assert.equal(outsideWorkspace("/ws", "/ws"), false);
 	assert.equal(outsideWorkspace("/other/a", "/ws"), true);
@@ -142,7 +210,7 @@ test("outsideWorkspace is the harness's containment rule", () => {
 	assert.equal(outsideWorkspace(null, "/ws"), true);
 });
 
-test("realPathOrNull resolves a symlink, and says nothing when it cannot", () => {
+test("realPathOrNull resolves a symlink, and says nothing when it cannot", async () => {
 	// Compared against the resolved ROOT rather than the temp path the test built:
 	// on macOS `realpath` also resolves `/var` to `/private/var`, which is exactly
 	// the kind of difference that makes this function worth having.

@@ -13,19 +13,22 @@ to happen for one to exist.
 
 `node scripts/capture-evidence.mjs --only=chat-mention-chips --allow-backend`
 (the `--allow-backend` is this repo's own opt-in for a narrowed set that captures
-no surface which talks to a backend; the composer here reaches only the two
-channels below), then one narrowed run for
-`--only=chat-mention-chips--picker-many-rows` after the row-budget entry below was
-added. Both passes ran at `013aad424`, twelve themes each: 204 frames over 17
-directories.
+no surface which talks to a backend; the composer here reaches only the three
+channels below), plus one narrowed run for
+`--only=chat-mention-chips--picker-many-rows` when the row-budget entry was added.
+That pass ran at `c5492ebfb995cc2efda425923a1cae610b865801`, twelve themes: **276
+frames over 23 directories**.
 
-**Provenance, stated because it is not a full sweep.** A narrowed run leaves the
-manifest's swept count alone, and this pass added frames rather than refreshing
-only committed ones, so `frames` was re-derived from the tree the way
-`check-evidence.mjs` derives it — every `.webp` under `docs/evidence` outside a
-declared supplementary set: **4427**, which is the pre-existing `4223` plus these
-204. `surfaces` is the table's own row count and `srcTree`/`scriptsTree` are the
-trees this commit ships, both written by the rig.
+**Provenance, stated because it is not a full sweep.** `frames` is re-derived from
+the tree the way `check-evidence.mjs` derives it — every `.webp` under
+`docs/evidence` outside a declared supplementary set — so the number is the sweep
+count with this set's 276 added, and `surfaces` is the capturer's own story list
+count. Both are written by the rig, and the commit that carries these frames is the
+one `srcTree`/`scriptsTree` name: re-deriving them while the change is still in the
+working tree is how a set comes to describe a tree it does not sit on, which is
+what review round 1's M3 found here — this README described a head and a count that
+the manifest next to it did not have. The same paragraph now names the head the
+frames were taken at, and the numbers above are the rig's, not a paraphrase.
 
 ## What the fixtures stand in for
 
@@ -36,7 +39,8 @@ keystroke, every measure and every paint after that boundary is the shipped code
 | fact | what the frame can therefore claim | what it cannot |
 | --- | --- | --- |
 | a listing's entries | what the picker does with a listing — ranking, the drill, the parent column, the budget | that a particular directory contains those entries |
-| a probe's answer | the rule `chip <=> the token resolves`, the two fills, the needs-approval state | that `stat` agrees, or that the containment test is right (that is `scripts/directory-listing.test.mjs`, against real symlinks) |
+| a probe's answer | the rule `chip <=> the token resolves`, the two fills, the outside-workspace state | that `stat` agrees, or that the containment test is right (that is `scripts/directory-listing.test.mjs`, against real symlinks) |
+| the connected harness's **capabilities** | that the composer's `@` affordance is offered exactly when the shipped `desktopFeatureEnabled` says the harness expands a mention — `harness-cannot-expand` is the state every release carries today | how the capability fetch itself behaves against a live backend (that is main's `/v1/capabilities` path, already exercised by every other gated surface) |
 
 The live half of both is `scripts/renderer-driver.mjs --scene mentions`, written
 in this branch and **not run here**: the composer only exists on a pane with a
@@ -63,9 +67,15 @@ per `docs/agent-driver.md`, which is the QA pass's job, not this set's.
 | `picker-no-match` | nothing matches: the notice row, the list still open | 1380x768 |
 | `picker-empty-folder` | an empty directory | 1380x768 |
 | `picker-unreadable` | a directory that cannot be read | 1380x768 |
-| `picker-many-rows` | ten entries: the budget at 7 rows | 1380x768 |
+| `picker-many-rows` | ten entries: the budget at 7 rows, and the footer's count saying so | 1380x768 |
 | `budget-800x600` | the same story at the design's narrow case: 4 rows | 800x600 |
 | `ceiling-1380x872` | the same story at the band's own window: the 8-row ceiling | 1380x872 |
+| `floor-768x520` | the same story at the clamp's own window: the 3-row floor binds | 768x520 |
+| `harness-cannot-expand` | a harness that advertises no `references`: no list, no chip, the path plain | 1380x872 |
+| `small-view-mention` | the small view, a 520px column: the fill reaches the field's 6px inset edge | 1380x872 |
+| `scrolled-draft` | a draft past `max-h-28`: the fills travel with the field's own scroll | 1380x872 |
+| `atomic-delete` | one Backspace at a chip's edge, with real arrow keys onto it | 1380x872 |
+| `no-rows-enter` | Enter over a list with no rows: nothing is sent, the list stands | 1380x768 |
 
 ## Geometry, read back off the rendered story
 
@@ -80,10 +90,10 @@ number below; the frames are the picture of them):
 | chip fill overhang, both sides | **6.00 / 6.00** | 6 each side |
 | fill's left/right against its glyph run | **0.00 / 0.00** drift | within 1px |
 | first chip at the draft's start | fill left **259.0**, glyphs 265.0 — inside the field's own inset (field left 257) | never reaches the box's padding |
-| two adjacent chips | fills **259.0..346.86** and **347.86..449.20**: **1.00px** of clear ground | ≈16.5px of clear ground |
+| two adjacent chips | fills **259.0..346.86** and **347.86..449.20**: **3.80px** of clear ground (the whole space advance) | ≈16.5px of clear ground |
 | a wrapped token | two fills, fill 1 bottom **381.47**, fill 2 top **385.47**: **4.00px** between the lines | 4px |
 | picker shell, 8 rows | **342.78** | 340.8 |
-| picker region, 8 / 7 / 4 rows | **288 / 252 / 144** | 288 at its ceiling |
+| picker region, 8 / 7 / 4 / 3 rows | **284 / 248.5 / 142 / 106.5** = `budget x 35.5`, the row height the browser lays out | 288 at its ceiling |
 | picker gap to the box | **4.00** (`mb-1`) | 4px |
 | picker shell, no matches | **90.28** (header + one 36px notice row + footer) | 36px region |
 | box top across every picker state | **324.44** at 1380x768, **376.44** at 1380x872 — identical open, filtered, drilled, no-match, empty, unreadable | unchanged |
@@ -108,8 +118,18 @@ number below; the frames are the picture of them):
    construction; what the frames add is that nothing else in the band moved.
 4. **At a short window the picker is not sliced — CONFIRMED.** At 800x600 the
    shell's top edge is at **19.91** (inside the column) and the region shows
-   **4 rows (144px)** where the same story at 1380x872 shows **8 (288px)**: the
-   budget falls, and the shell is never pushed off the bottom.
+   **4 rows (142px)** where the same story at 1380x872 shows **8 (284px)**: the
+   budget falls, and the shell is never pushed off the bottom. **And the cap lands
+   on a row boundary, which is now asserted rather than argued** (QA round 1,
+   Q-1): the story's own play reads the region's inline cap, the row height the
+   browser laid out and the visible box off the DOM at every viewport this story is
+   captured at, and the capturer stops the sweep if the cap or the visible box is
+   not a whole number of rows. The `36` this geometry used to state was a belief
+   about the `text-body-sm` line box — 0.8125rem x 1.5 is 19.5px, so a row is
+   **35.5** — and it capped the region 4.0px into a ninth row at the ceiling
+   (2.5px at 800x600): `budget x 0.5px`, exactly the "a cap cannot be aligned to a
+   row by construction" defect the measured budget exists to prevent. The last
+   frame below the ceiling is now a whole row.
 
 ### One prediction the frames falsify, and the fix that came out of it
 
@@ -121,27 +141,46 @@ OUT of the ground, not added to it, so 12px of overhang over a 3.8px space is
 covering both tokens and the separator — the one thing the same paragraph's rule
 forbids ("the fill covers the token and never the separator").
 
-Measured on this field, the space's advance is **3.8px**, not 4.5px. The drawing
-now clamps an overhang to half the clear ground on that side (0.5px less, so the
-two fills can never meet), keeping the full 6px wherever there is no neighbour.
-`adjacent-mentions` is the frame of the result: two separate rounded fills with
-**1.00px** of unpainted separator between them, and the outer overhangs still 6px.
-The rule and its numbers are asserted in `scripts/at-mentions.test.mjs` only as
-far as they are pure (the reference/directory/space rules); the clamp itself is
-geometry and is measured here.
+Measured on this field, the space's advance is **3.8px**, not 4.5px. The first
+correction clamped an overhang to half the clear ground on that side, which left
+**1.00px** of separator — a value that exists in the DOM and not in the pixels:
+read off the frames this set shipped then, no pixel in that seam came within 4/255
+of the ground in `localOperatorLight`, and the dark themes never approached it at
+all. A one-pixel gap is not a separator, and the merge it hid was making a claim
+rather than merely reading quiet: the quoted form `@"my file.txt"` paints ONE fill
+over a space, so two merged chips were indistinguishable from a single token
+(design round 1, D2).
+
+A side that **faces another mention now takes 0 overhang**, so the whole 3.8px
+space is unpainted ground between two fills and the outer 6px stands on both
+chips, which is where the container reading lives. `adjacent-mentions` is the
+frame of the result. The rule and its numbers are asserted in
+`scripts/at-mentions.test.mjs` only as far as they are pure (the
+reference/directory/space rules); the geometry itself is measured here, and § 5
+state 10 of the design record carries the correction rather than the prediction.
 
 ## What this set does not cover
 
 - **The harness's own expansion.** Nothing here sends a message: the feature's
   contract with the backend is the *text* it writes, and the harness half is
   `damianvtran/local-operator#1220`. A frame is evidence about the composer.
-- **A mid-turn steer.** The same token expands on a normal submit and not on a
-  mid-turn steer, and the composer's submit path routes a mid-turn draft to the
-  steer path. The composer shows no preview in either state, so there is no claim
-  to falsify here — but it is the reason this feature deliberately makes no
-  "this will be sent as a file" promise anywhere in the UI.
-- **The needs-approval fact's real source.** The frames show the fill; the
+- **A mid-turn steer's own frame.** The composer now WITHHOLDS the whole
+  affordance while the send this draft would make is a steer (no list, no chip, no
+  `@` tip), because the harness's steer path bypasses `Session.prompt` and leaves
+  an `@path` as inert prose. That decision is exercised by the same gate
+  `harness-cannot-expand` photographs — a fixture capability answer — and not by a
+  frame of a live mid-turn composer: a story cannot put the app in a live turn, and
+  the steer state has no other visual consequence to photograph, since a withheld
+  affordance looks exactly like a harness that cannot expand one.
+- **The capability fetch against a live backend.** `harness-cannot-expand` proves
+  the DECISION (the shipped gate, fed a fixture answer); that main's
+  `/v1/capabilities` path delivers the real answer is exercised by every other
+  gated surface in the app, and by `pnpm test:desktop`'s transport contract.
+- **The outside-workspace fact's real source.** The frames show the fill; the
   containment judgement itself is the main process's and is exercised by
-  `scripts/directory-listing.test.mjs` against a real symlinked tree.
+  `scripts/directory-listing.test.mjs` against a real symlinked tree. What the
+  fill does NOT cover is the harness's deny list — a `.env` inside the workspace
+  chips plainly and still raises a card at submit — and that gap is stated in the
+  PR body rather than left to be inferred from a frame (review round 1's N1).
 - **The driver scene.** Written in this branch, refused without a backend, and
   named above with the flags a QA pass needs to run it.
