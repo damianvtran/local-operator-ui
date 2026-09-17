@@ -2256,6 +2256,19 @@ export const STORIES = [
 	["chat-mention-chips--chip-needs-approval", 1380, 872],
 	["chat-mention-chips--caret-inside-token", 1380, 872],
 	["chat-mention-chips--wrapped-mention", 1380, 872],
+	/*
+	 * The four surfaces this remediation added, each a state a finding named:
+	 * `harness-cannot-expand` is the state every release carries today (no
+	 * `references` capability, so no list and no chip), `small-view-520` is the
+	 * field's 6px inset that decided the overhang, `scrolled-draft` is the fill
+	 * layer travelling with the field's own scroll, and `atomic-delete` is the one
+	 * chip promise that is not a drawing.
+	 */
+	["chat-mention-chips--harness-cannot-expand", 1380, 872],
+	["chat-mention-chips--small-view-mention", 1380, 872],
+	["chat-mention-chips--scrolled-draft", 1380, 872],
+	["chat-mention-chips--atomic-delete", 1380, 872],
+	["chat-mention-chips--no-rows-enter", 1380, 768],
 	["chat-mention-chips--picker-open", 1380, 768],
 	["chat-mention-chips--picker-drilled", 1380, 768],
 	["chat-mention-chips--picker-descend", 1380, 768],
@@ -2282,6 +2295,15 @@ export const STORIES = [
 		872,
 		{ dir: "ceiling-1380x872" },
 	],
+	/*
+	 * And the FLOOR the design's open item 3 names, which no frame had shown
+	 * (design round 1, D7): at this window the room above the anchor buys exactly the
+	 * three rows `atRowBudget` clamps at — a taller window is four or more and a
+	 * shorter one overflows the window's own top edge, because the floor holds the
+	 * region at three rows whatever the room — so a reader can see the clamp bind,
+	 * rather than read it as a branch in a pure function.
+	 */
+	["chat-mention-chips--picker-many-rows", 768, 520, { dir: "floor-768x520" }],
 	["chat-slash-completion--command-phase", 768, 460],
 	/* Two rows: `/tea` matches the primary and its alias, in registry order. */
 	["chat-slash-completion--command-phase-narrowed", 768, 220],

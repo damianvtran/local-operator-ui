@@ -41,6 +41,9 @@
  *   - Word-phase only: the caret must be INSIDE the token. Moving out into the
  *     request closes the list, which is what makes the trailing space the
  *     picker's own close gesture.
+ *   - A token inside an already-emitted `<operator-references>` block is NOT a
+ *     candidate, and neither is one a block's `typed=` attribute already names —
+ *     `_block_spans`/`_already_expanded`, ported below.
  */
 
 /** A boundary `@` is the line start or the cell right after whitespace. */
@@ -162,6 +165,95 @@ export function splitToken(query: string): [string, string] {
 }
 
 /**
+ * The marker pair an expansion pass wraps its output in.
+ *
+ * `references.py`'s `REFERENCE_BLOCK_OPEN`/`REFERENCE_BLOCK_CLOSE`, copied
+ * verbatim: the two strings are the contract between the harness's writer and
+ * both of its readers, and a composer that spelled them differently would fail to
+ * recognise a block it had just written.
+ */
+export const REFERENCE_BLOCK_OPEN = "<operator-references>";
+export const REFERENCE_BLOCK_CLOSE = "</operator-references>";
+
+/** The attribute one expanded element names its source token in. */
+const TYPED_ATTRIBUTE = 'typed="';
+
+/**
+ * Half-open `[start, end)` spans of every already-emitted block.
+ *
+ * `references._block_spans`, ported. An UNCLOSED marker runs to the end of the
+ * text, which is the harness's own fail-closed reading: the token that might be
+ * inside a block is treated as inside one.
+ */
+export function referenceBlockSpans(text: string): [number, number][] {
+	const spans: [number, number][] = [];
+	let cursor = 0;
+	for (;;) {
+		const start = text.indexOf(REFERENCE_BLOCK_OPEN, cursor);
+		if (start === -1) return spans;
+		const close = text.indexOf(REFERENCE_BLOCK_CLOSE, start);
+		const end =
+			close === -1 ? text.length : close + REFERENCE_BLOCK_CLOSE.length;
+		spans.push([start, end]);
+		cursor = end;
+	}
+}
+
+/**
+ * Inverse of `references._attribute`, and it must run in THIS order.
+ *
+ * `&amp;` last, or a literal `&amp;lt;` would come back as `<` — a character the
+ * user never typed, invented by the decoder, which is also what would break the
+ * round trip the exclusion below depends on.
+ */
+function unattribute(value: string): string {
+	return value
+		.replace(/&#10;/g, "\n")
+		.replace(/&gt;/g, ">")
+		.replace(/&lt;/g, "<")
+		.replace(/&quot;/g, '"')
+		.replace(/&amp;/g, "&");
+}
+
+/**
+ * Tokens a previous pass over `text` already resolved.
+ *
+ * `references._already_expanded`, and it is the half a span skip alone cannot
+ * do: the user's typed token deliberately SURVIVES in the prose BESIDE the block
+ * (the transcript wants the sentence, and the model reads it), so it sits outside
+ * every span and a plain scan would find it — and paint a chip on a reference the
+ * harness will not expand again, because it is already expanded.
+ */
+export function alreadyExpandedTokens(
+	text: string,
+	spans: readonly [number, number][],
+): Set<string> {
+	const typed = new Set<string>();
+	for (const [start, end] of spans) {
+		const region = text.slice(start, end);
+		let cursor = 0;
+		for (;;) {
+			const found = region.indexOf(TYPED_ATTRIBUTE, cursor);
+			if (found === -1) break;
+			const valueStart = found + TYPED_ATTRIBUTE.length;
+			const close = region.indexOf('"', valueStart);
+			if (close === -1) break;
+			typed.add(unattribute(region.slice(valueStart, close)));
+			cursor = close + 1;
+		}
+	}
+	return typed;
+}
+
+/** Whether a buffer offset falls inside one of `spans`. */
+export function insideBlock(
+	index: number,
+	spans: readonly [number, number][],
+): boolean {
+	return spans.some(([start, end]) => start <= index && index < end);
+}
+
+/**
  * Every candidate reference in a finished buffer, left to right.
  *
  * The composer's half of `references._reference_tokens`, and it exists so the
@@ -175,14 +267,25 @@ export function splitToken(query: string): [string, string] {
  *     span, not two chips. Clicking between two would-be chips cannot split
  *     them, because there is only ever one decoration per maximal span.
  *
- * Deliberately absent: the harness's `_block_spans`/`_already_expanded` skip. A
- * block marker cannot be present in the composer's own draft — the composer is
- * where a block is PRODUCED, and a pasted block is prose the user chose to paste
- * (it would expand on submit by the resolver's own marker rules, which is a
- * property of the harness, not of this decoration).
+ * The harness's `_block_spans`/`_already_expanded` skip IS ported, and the
+ * paragraph that used to sit here said the opposite (“Deliberately absent: a
+ * block marker cannot be present in the composer's own draft”) while claiming a
+ * pasted block “would expand on submit by the resolver's own marker rules”.
+ * That claim is false, and it is the wrong claim to leave for the next reader:
+ * `_reference_tokens` SKIPS every candidate inside a block span and counts it, so
+ * a token in a pasted block is sent as prose with a notice, and a chip over it
+ * asserts an expansion that will not happen — the same defect the design's rule
+ * (“chip ⇔ the token resolves”, and review round 1's U2) exists to make
+ * impossible. It needs a pasted marker, e.g. copying a previous turn back into
+ * the composer, which is a real gesture and not a contrived one.
+ *
+ * The scan skips such a token entirely rather than decorating it differently: the
+ * chip layer has exactly two grounds and both of them mean “this resolves”.
  */
 export function atTokenSpans(text: string): AtSpan[] {
 	const spans: AtSpan[] = [];
+	const blocks = referenceBlockSpans(text);
+	const resolved = alreadyExpandedTokens(text, blocks);
 	let index = 0;
 	while (index < text.length) {
 		if (text[index] !== "@" || !isBoundary(text, index)) {
@@ -195,7 +298,7 @@ export function atTokenSpans(text: string): AtSpan[] {
 		const lineEnd = newline === -1 ? text.length : newline;
 		const { end, query } = tokenEnd(text.slice(index, lineEnd), 0);
 		const typed = text.slice(index, index + end);
-		if (query)
+		if (query && !resolved.has(typed) && !insideBlock(index, blocks))
 			spans.push({ start: index, end: index + end, typed, path: query });
 		index += Math.max(end, 1);
 	}
@@ -236,6 +339,34 @@ export function atSegments(
 }
 
 /**
+ * The token the picker has open, or `null` — `atToken`, minus the tokens the
+ * harness will not expand.
+ *
+ * Two exclusions, both from the resolver's own rules rather than from taste: a
+ * token inside a pasted `<operator-references>` block is skipped by
+ * `_reference_tokens`, and one a block's `typed=` attribute already names is
+ * skipped by `_already_expanded`. The picker is not the chip layer, but it writes
+ * the token the chip layer draws, so a list offered over either would be leading
+ * the user to the same false claim one step earlier.
+ */
+export function atPickerToken(
+	text: string,
+	cursor: number | null = null,
+): AtToken | null {
+	const token = atToken(text, cursor);
+	if (!token) return null;
+	const blocks = referenceBlockSpans(text);
+	if (insideBlock(token.start, blocks)) return null;
+	// The whole span as it will be written, which is what the attributes carry:
+	// the picker replaces `[start, end)`, so `typed` is that slice.
+	if (
+		alreadyExpandedTokens(text, blocks).has(text.slice(token.start, token.end))
+	)
+		return null;
+	return token;
+}
+
+/**
  * The reference a pick writes, given the token it replaces and the row chosen.
  *
  * The harness's `_file_span_replacement` semantics with ONE deliberate
@@ -259,6 +390,16 @@ export function atSegments(
  *     OUTSIDE the token, so the block the harness builds from `@src/app.py `
  *     carries exactly the `typed="@src/app.py"` it would carry without it: the
  *     insertion is harness-equivalent, not a second expansion rule.
+ *
+ * WHY THE TRAILING `/` ALONE DOES NOT KEEP A SPACED DIRECTORY OPEN, because the
+ * sentence above used to claim it did (review round 1, M5). The spaced form is
+ * QUOTED and CLOSED — `@"my dir/"` — and `tokenEnd` ends the token at the closing
+ * quote, so the next character typed lands outside it and the directory resolves
+ * while the rest of the name is sent as prose. The caller closes that gap by
+ * placing the CARET BEFORE THE CLOSING QUOTE after a directory pick
+ * (`message-input.tsx`'s `handleAtPick`), which is the same shape as the
+ * unspaced token's: the caret sits inside the token, the picker stays open and
+ * drills, and the next segment is typed into the span it belongs to.
  */
 export function atReference(row: { path: string; directory: boolean }): string {
 	// A directory keeps its trailing `/`: it is what makes the token stay open so

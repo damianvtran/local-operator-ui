@@ -31,6 +31,17 @@ document is the direction.
 the limits quoted in § 1 come from that branch, and the UI half must not assume
 it has merged.
 
+**And the UI half therefore ships DARK.** The expansion is harness state, it is
+released in no tag through `v0.56.8`, and the half that adds it publishes no
+capability of its own — the whole feature is two Python modules with no server
+surface at all. So the composer reads a capability key (`references`, in
+`local_operator/server/routes/capabilities.py`) and offers the picker and the
+chips only when the connected harness advertises it. On every install that exists
+today the key is absent, the affordance is withheld, and `@path` stays plain text
+— which is what the harness does with it. The key is what the harness half has to
+add for this feature to appear, and that dependency is stated on the PR rather
+than assumed here.
+
 ---
 
 ## 1. What is there now, measured
@@ -476,7 +487,7 @@ per line fragment, so a token that wraps paints two fills.
 | Edge at rest | **none** | The fill is the boundary. See the fallback below before reaching for a line. |
 | Radius | `rounded-sm` (**6px**) | Branding § 5: 6px is the control radius. The fill is 17.7px tall, so 6px is a corner and not a lozenge. |
 | Fill height | **17.7px** = the 21.7px line box − 4px (2px top, 2px bottom) | 2px of inset each side leaves consecutive lines' fills **4px apart**, so a chip on line 2 cannot merge with a chip on line 1; and 17.7px still covers the field's ~16.5px glyph content box at 14px. |
-| Fill width | the token run's measured width + **12px** (2 x 6px overhang) | The overhang is what makes the fill read as a container rather than as highlighting: it is wider than the glyphs at both ends. It is deliberately **6px and not 8px** — the field's own inset is `px-2` (8px) at ≥550px and `px-1.5` (6px) in the small view, so a mention at the very start of a draft paints inside the field at every size and reaches the field's inset edge with nothing to spare in the small view, never the box's own 16px padding. |
+| Fill width | the token run's measured width + **12px** (2 x 6px overhang), where a side that FACES another mention takes **0** overhang instead | The overhang is what makes the fill read as a container rather than as highlighting: it is wider than the glyphs at both ends. It is deliberately **6px and not 8px** — the field's own inset is `px-2` (8px) at ≥550px and `px-1.5` (6px) in the small view, so a mention at the very start of a draft paints inside the field at every size and reaches the field's inset edge with nothing to spare in the small view, never the box's own 16px padding. Facing side: see state 10 below — the overhang is spent from the ground BETWEEN two mentions, so where there is a neighbour the whole gap is the separator. |
 | Fill y | the line box's top + 2px | Derived from the same rect, so it is 8px below the field's top edge (its `py-1.5` plus the 2px inset). |
 | Token ink | **unchanged** — the field's own `text-ink` | The glyphs are the textarea's. See § 4.2 for why that is a feature. |
 | Scroll | the fill layer is translated by the field's `scrollTop` | The field is `overflow-y-auto` and caps at `max-h-28` (112px, about 5 lines). Past that the field scrolls itself, and a fill that does not scroll with it detaches from its own text. |
@@ -580,7 +591,7 @@ src/components/                       <- header: the directory being listed
 ▪ button.tsx   src/components/        File   <- selected: accent wash + 2px bar
   card.tsx     src/components/        File
   dialog.tsx   src/components/        File
-  enter inserts @src/components/button.tsx · esc closes          4 of 37
+  Enter inserts @src/components/button.tsx · Esc closes          4 of 37
 ```
 
 (The marker in that sketch stands in for the app's own selected-row treatment —
@@ -595,9 +606,9 @@ CLI's `>` glyph; see the row below and § 9.)
 | Tag | right-aligned, `text-meta text-ink-dim`, one word | `File` or `Directory`. Not `Dir` — the abbreviation is a terminal economy, and this app's own composer already says "Working directory". Not a lucide glyph: the row already carries two paths, and the tag answers the one question a path cannot. The **same slot** also carries `Needs approval`, which is the only place the picker can say *why* a row will ask (§ 5). |
 | Column alignment | no fixed name column, plain `gap-3` | The Codex CLI pads its name column so the parent column starts at one x across rows. That pays when a search spans depths; in the common listing every row's parent is the same string, so it aligns one repeated value — and a fixed column cannot hold a long name, which is the field the user is scanning. |
 | Selected row | the app's own wash + 2px accent bar; **no `>` marker** | The Codex CLI's marker exists because a terminal has no ground step worth using (the desktop app's marker is a filled row — 2.1). Adding one here would put two selection signals in one list, and the bar is already there for a measured reason (`slash-commands.tsx:900-911`: the wash alone is 1.000:1 in `dune`). |
-| Footer, left | one line, read off **the active row**: `enter inserts @src/components/button.tsx` or `enter opens src/components`, then ` · esc closes` | The slash popup already reads its footer off the active row so the key and the row cannot describe different things. Here Enter means two different things depending on the row kind, which is exactly the case that footer pattern exists for. |
-| Footer, right | `n of m`, `text-meta text-ink-dim`, only when the list overflows | The Codex CLI's right-aligned footer column, spent on the one fact a scrolled list cannot show: how much of it there is. |
-| Visible rows | **measured**, `clamp(3, floor((boxTop − columnTop − 4 − chrome) / 36), 8)`, and the row region's max-height is that whole multiple of 36 | The row budget is not a taste call: the popup spends the space between the box's top edge and what clips, which is least on an empty chat at the app's minimum window. This is `suggestionStackCapFor`'s argument, ported — "a cap in px cannot be aligned to a row by construction" (`suggestion-stack.ts:19-27`) — with the same off-by-a-slice defect to avoid. 8 is the ceiling because the TUI's own `@` picker uses `MAX_VISIBLE_ROWS = 8` (`command_picker.py`), so the two surfaces agree; 3 is the floor so the picker is never a stub. |
+| Footer, left | one line, read off **the active row**: `Enter inserts @src/components/button.tsx` or `Enter opens src/components`, then ` · Esc closes` | The slash popup already reads its footer off the active row so the key and the row cannot describe different things. Here Enter means two different things depending on the row kind, which is exactly the case that footer pattern exists for. The key names are capitalised because they name KEYS, and because the popup sharing this footer slot over this same field spells them that way. |
+| Footer, right | `n of m`, `text-meta text-ink-dim`, only when the region shows fewer rows than the listing holds | The Codex CLI's right-aligned footer column, spent on the one fact a scrolled list cannot show: how much of it there is. `n` is the rows the REGION draws (`min(rows, budget)`) and `m` is the entries the listing holds, so the column is absent exactly when the reader is looking at everything — including when a query has filtered most of a directory away, and, the case this row was written for, when the region itself is truncating. |
+| Visible rows | **measured**, `clamp(3, floor((boxTop − columnTop − 4 − chrome) / 35.5), 8)`, and the row region's max-height is that whole multiple of the measured pitch | The row budget is not a taste call: the popup spends the space between the box's top edge and what clips, which is least on an empty chat at the app's minimum window. This is `suggestionStackCapFor`'s argument, ported — "a cap in px cannot be aligned to a row by construction" (`suggestion-stack.ts:19-27`) — with the same off-by-a-slice defect to avoid. 8 is the ceiling because the TUI's own `@` picker uses `MAX_VISIBLE_ROWS = 8` (`command_picker.py`), so the two surfaces agree; 3 is the floor so the picker is never a stub. **35.5 and not 36**: a row is `py-2` (16) plus the `text-body-sm` line box at 0.8125rem x 1.5, i.e. 19.5px, measured at 35.5 in the built app at every window size; the 36 this row used to state was a belief about the line box, and it made the cap overflow by `budget x 0.5px`. |
 | Total height at the ceiling | 2 (edge) + 25.4 (header) + 8 x 36 = 288 (region) + 25.4 (footer) = **340.8px** | Derived. At 8 rows the region is 72px taller than the slash popup's 216px, which is the one number to check on a frame at the minimum window (§ 5, "narrow window"). |
 | Motion | none — no transition on the shell, no entrance | It opens instantly, like the slash popup, and branding § Motion reserves durations for things entering the screen with a reason. |
 
@@ -672,7 +683,7 @@ whether the picker fits on the screen but what it does to those parts.
   ┌ picker ───────────────────────────────────────────────┐
   │ header: src/components/                               │  25.4px
   │ rows: 8 x 36px max, the region scrolls                │  288px
-  │ footer: enter inserts … · esc closes      4 of 37     │  25.4px
+  │ footer: Enter inserts … · Esc closes      4 of 37     │  25.4px
   └───────────────────────────────────────────────────────┘
   4px                 mb-1 on the picker
   composer box        rounded-frame 16px, p-4, border-control bg-surface
@@ -802,7 +813,10 @@ which the brief's list leaves implicit but the coder cannot.
 
 **1. No matches (picker).** The picker **stays open** and paints one notice row
 at the shared empty-state geometry: `px-3 py-2 text-body-sm text-ink-muted`,
-**36px**, `No files match "zz".` The row region's max-height collapses to that one
+**36px**, `No files match "zz" in ./.` — the query quoted and the SCOPE named,
+because a user who knows the file name and not the directory it lives in was
+told only that nothing matched while the header said where the search had looked
+and said nothing about it. The row region's max-height collapses to that one
 row (36px, not the 288px budget), and the shell shrinks with it — the composer
 does not move, and not merely because the popup is out of flow: the frame that
 proves it is `ref-codex-04-filesystem.png`, where the picker's footer climbs 126px
@@ -810,6 +824,10 @@ and the composer stays at `y = 410.0` (§ 2.2). Copy distinguishes this from the
 next state, because PR #1220 asks for exactly that: "the fix is to hold a notice
 row, which would also let the copy distinguish 'this directory is empty' from
 'nothing here matches `zz`'".
+
+**Enter over this state is HELD, not passed.** It is the composer's submit key,
+and handing it through sent a half-written sentence while the user believed they
+had chosen a row. Escape closes the list and gives the key back to the composer.
 
 **2. Empty directory.** Same geometry, different string: `This folder is
 empty.` A different *fact* from state 1, so a different sentence — not a
@@ -878,11 +896,28 @@ marking the link *as a link* would be marking something the model never sees.
 **10. Two adjacent mentions.** The grammar makes true adjacency impossible: a
 token opens only at a boundary, so `@a.py@b.py` is one unresolvable span and not
 two chips. The reachable case is `@a.py @b.py`, and its rule is that **the fill
-covers the token and never the separator**: each chip is its own rectangle with
-its own 6px overhang, separated by the space's own advance — about 4.5px at 14px
-— plus 12px of overhang, i.e. about **16.5px of clear ground between the two
-fills** (the space itself is unpainted). The measurement to check on a frame is
-that the fills never touch.
+covers the token and never the separator**: on a side that faces the other
+mention the overhang is **0**, so the whole space advance — measured on this
+field at **3.8px**, not the 4.5px this paragraph used to assume — is unpainted
+ground between two fills, and the outer 6px overhangs stand on both chips, which
+is where the container reading lives. The measurement to check on a frame is that
+the fills never touch.
+
+**What this paragraph used to predict, and why it was wrong.** It said the gap
+would be "the space's own advance — about 4.5px at 14px — plus 12px of overhang",
+i.e. about **16.5px of clear ground**. The arithmetic is inverted: the overhangs
+are taken OUT of the ground rather than added to it, so 12px of overhang over a
+3.8px space is 8.2px of OVERLAP, and the two same-coloured fills merged into one
+rectangle covering both tokens and the separator — the one thing this paragraph's
+own rule forbids. The first fix clamped an overhang to half the clear ground less
+0.5px, which left **1.00px** of separator: a value that exists in the DOM and not
+in the pixels, since no pixel in that seam came within 4/255 of the ground in the
+light themes and the dark ones never approached it at all. The merge was worse
+than quiet, too: the quoted form `@"my file.txt"` paints ONE fill over a space,
+so two merged chips were indistinguishable from a single token. Zero on a facing
+side is the answer, and it is the widest separator this geometry can produce
+without painting the space itself. `docs/evidence/chat-mention-chips/` owns the
+frames.
 
 **11. A mention at the very start or end of the text.** Identical treatment. At
 the start, the 6px overhang lands inside the field's own inset (`px-2` = 8px at
@@ -1025,7 +1060,7 @@ are what the frame decides):
 | Band height with the picker open vs closed | — | identical in every state | **0px** |
 | Chip fill height | — | **17.7px** (line box 21.7 − 4) | — |
 | Chip fill overhang | — | **6px** each side | — |
-| Gap between two adjacent chips' fills | — | **≈16.5px** (a space at 14px, about 4.5px, plus 12px of overhang) | — |
+| Gap between two adjacent chips' fills | — | **the whole space advance, 3.8px measured**, with 0 overhang on each facing side | — |
 | Picker gap to the box | — | **4px** (`mb-1`) | — |
 | Picker shell at 8 rows | — | **340.8px** | — |
 | Picker region, 8 rows | — | **288px**, scrolling | — |
@@ -1070,14 +1105,20 @@ string that names the object it is about.
 | Slot | String | Why |
 | --- | --- | --- |
 | Header | the directory being listed, e.g. `src/components/` | A path is machine voice and carries no sentence. It states where the list came from; it does not ask a question. |
-| Footer, active row a file | `enter inserts @src/components/button.tsx` | Names the exact token, not the act: the user can see what Enter will write. |
-| Footer, active row a directory | `enter opens src/components` | "Opens", not "inserts", because the row does something else. The difference is why this line is read off the active row. |
-| Footer, escape | ` · esc closes` | One clause, appended, not a second line. The Codex CLI's `enter insert · esc close · …` shape, minus the mode labels this picker does not have. |
-| Footer, right | `4 of 37` | Machine voice, three tokens, no sentence. Only when the list overflows. |
+| Footer, active row a file | `Enter inserts @src/components/button.tsx` | Names the exact token, not the act: the user can see what Enter will write. |
+| Footer, active row a directory | `Enter opens src/components` | "Opens", not "inserts", because the row does something else. The difference is why this line is read off the active row. |
+| Footer, escape | ` · Esc closes` | One clause, appended, not a second line. The Codex CLI's `enter insert · esc close · …` shape, minus the mode labels this picker does not have. |
+
+With no row to act on — a listing that failed, or a query that matched nothing —
+the Escape clause stands alone and **Enter is held** rather than passed to the
+composer: Enter is the composer's SUBMIT, so handing it through over an open list
+with no rows sent the user's half-written sentence while they believed they had
+picked a file. Escape is the way back to the composer's own meaning of the key.
+| Footer, right | `4 of 37` | Machine voice, three tokens, no sentence. `n` is what the REGION draws and `m` is what the listing holds, so it is absent exactly when the reader is looking at everything. |
 | Empty directory | `This folder is empty.` | A fact about the folder. Says nothing about matching, because nothing was searched for. |
-| No matches | `No files match "zz".` | A fact about the query, with the query quoted. A different sentence because it is a different fact (PR #1220 asks for exactly this split). |
+| No matches | `No files match "zz" in ./.` | A fact about the query, with the query quoted and the scope named. A different sentence because it is a different fact (PR #1220 asks for exactly this split). |
 | Loading | `Reading this folder…` | One clause, `text-body-sm text-ink-muted`, holding the region's own geometry. Not a skeleton: the region has rows or it does not, and there is nothing to replace. |
-| Unreadable directory | `Could not read this folder.` + the reason from the IPC | What happened, then what it means. An error that only quotes an exception is unfinished (§ 8). |
+| Unreadable directory | `Could not read this folder.` + what it MEANS in the user's terms: a permission this app does not have, or a path to check | What happened and what to do, in the sibling popup's register. The errno, the syscall and the absolute path go to the console, not to the sentence (§ 8: an error that only quotes an exception is unfinished). |
 | Tag, `File` row | `File` | Type tag, right-aligned. |
 | Tag, `Directory` row | `Directory` | The app's own noun for it — the composer already says "Working directory" — rather than the terminal's `Dir`. |
 | Tag, gated row | `Needs approval` | The only place the picker can say why choosing this row will raise a card. Two words, and it is the row's own business. |

@@ -53,16 +53,37 @@ import { composerTextBox } from "./credential-overlay";
 /**
  * The two grounds a chip can take, and nothing else.
  *
- * `sunken` is the ordinary state; `warning-wash` is the needs-approval state,
- * which is a HUE step rather than a luminance one — ΔE00 5.37 at its worst where
- * the luminance ratio for the same pair is 1.06:1, which is why ΔE00 is the right
- * instrument (`docs/branding.md` § 3). Both are one class string each so the
- * contrast contract can pin them: `scripts/contrast-contract.mjs` carries a
- * `PERCEPTIBLE` row per step plus a call-site pin on this constant, so a later
- * edit to the chip's ground fails a gate instead of quietly flattening it.
+ * `sunken` is the ordinary state; `warning-wash` is the OUTSIDE-WORKSPACE state,
+ * and the name is the fact the fill actually encodes (design round 1, D8): the
+ * renderer's condition is CONTAINMENT alone (`fill.outside`, the harness's
+ * `_resolve_workspace_path`), so a deny-listed path inside the workspace takes
+ * the ordinary fill while the gate still raises a card at submit. Calling this
+ * "the needs-approval fill" would claim the pair is the approval prediction, and
+ * it is not — the gate at submit is the approval decision, and this fill is the
+ * half of it the composer can answer without re-spelling backend state.
+ *
+ * The step between the two states is a HUE step rather than a luminance one —
+ * ΔE00 5.37 at its worst where the luminance ratio for the same pair is 1.06:1 —
+ * which is why ΔE00 is the right instrument (`docs/branding.md` § 3) and why the
+ * outside fill ALSO carries an edge (`border-warning-border`). The edge is not
+ * decoration: measured over the shipped palettes, the pair (`warning-wash`
+ * against `sunken`) is ΔE00 0.72 in `kanagawaLotus`, 1.44 in `sage` and 1.61 in
+ * `paper`, i.e. in three of them hue alone is not a step a reader can see, and a
+ * 1px rule is a second channel that does not depend on it. Two class strings
+ * rather than one so the contrast contract can pin them at the call site
+ * (`scripts/contrast-contract.mjs` pins this literal, and its `PERCEPTIBLE` rows
+ * carry the palette half), so a later edit to either chip's ground fails a gate
+ * instead of quietly flattening it.
+ *
+ * `box-border` is load-bearing on the second one: the fills' width and height are
+ * written from a measurement, and a border that ADDED 2px per axis would move
+ * every outside chip off the glyphs it sits under. Tailwind's preflight already
+ * sets `border-box`, so this states the requirement where a reader meets the edge
+ * rather than leaving it to a global.
  */
 export const MENTION_CHIP_ROLE = "rounded-sm bg-sunken";
-export const MENTION_CHIP_APPROVAL_ROLE = "rounded-sm bg-warning-wash";
+export const MENTION_CHIP_OUTSIDE_ROLE =
+	"box-border rounded-sm border border-warning-border bg-warning-wash";
 
 /**
  * How far the fill extends past the token's own glyphs, on each side.
@@ -226,16 +247,29 @@ export const AtMentionOverlay = ({
 			}
 		}
 		/*
-		 * The overhang on a side is at most half the clear ground to a NEIGHBOUR on
-		 * the same line, and half a pixel less so the two fills can never meet: with
-		 * the one space between them that is what keeps the separator unpainted, and
-		 * with no neighbour on that side the full 6px stands. A neighbour is a run of
-		 * a DIFFERENT token whose vertical band overlaps this one's, so a wrapped
-		 * token's own fragments never clamp each other, and two mentions on different
-		 * lines never see each other at all.
+		 * THE OVERHANG ON A SIDE THAT FACES ANOTHER MENTION IS ZERO (design round 1,
+		 * D2), and the number it replaced is the reason. It used to be half the clear
+		 * ground less 0.5px, which left 1.00px of unpainted separator between two
+		 * adjacent fills — a value that exists in the DOM and not in the pixels: read
+		 * off the committed frames, no pixel in the seam came within 4/255 of the ground
+		 * in `localOperatorLight`, and the dark themes never approached it at all. The
+		 * fill is the boundary, so a one-pixel gap is not a separator, and the merge it
+		 * hid was not merely quiet: the quoted form `@"my file.txt"` paints ONE fill
+		 * over a space, so two merged chips were indistinguishable from a single token —
+		 * a picture making a claim that is false.
+		 *
+		 * Zero on a facing side leaves the WHOLE space advance unpainted — the 3.8px this
+		 * field measures, against the 1.00px that shipped — which is the widest
+		 * separator this geometry can produce without painting the space itself. The
+		 * full 6px still stands wherever there is no neighbour, which is where the
+		 * container reading lives (a mention opening or closing a draft, or the two
+		 * outer ends of a pair).
+		 *
+		 * A neighbour is a run of a DIFFERENT token whose vertical band overlaps this
+		 * one's, so a wrapped token's own fragments never clamp each other, and two
+		 * mentions on different lines never see each other at all.
 		 */
 		const overhang = (run: (typeof runs)[number], side: "left" | "right") => {
-			let ground = Number.POSITIVE_INFINITY;
 			for (const other of runs) {
 				if (other.span === run.span) continue;
 				if (
@@ -243,13 +277,10 @@ export const AtMentionOverlay = ({
 					run.top >= other.top + other.height
 				)
 					continue;
-				if (side === "left" && other.right <= run.left)
-					ground = Math.min(ground, run.left - other.right);
-				if (side === "right" && other.left >= run.right)
-					ground = Math.min(ground, other.left - run.right);
+				if (side === "left" && other.right <= run.left) return 0;
+				if (side === "right" && other.left >= run.right) return 0;
 			}
-			if (!Number.isFinite(ground)) return CHIP_OVERHANG_PX;
-			return Math.min(CHIP_OVERHANG_PX, Math.max(0, ground / 2 - 0.5));
+			return CHIP_OVERHANG_PX;
 		};
 		const measured: FillRect[] = runs.map((run, index) => {
 			const left = overhang(run, "left");
@@ -361,12 +392,18 @@ export const AtMentionOverlay = ({
 						 * back: `data-mention-chip` says which of the two grounds it took, and
 						 * `data-mention-span` names the token it belongs to, so the fill's rect and
 						 * the token's own run can be compared without either side being guessed at.
+						 *
+						 * The two VALUES are this surface's names for the states (`plain`,
+						 * `approval`) and are what the driver scene and the QA matrix read; the
+						 * ground each one means is the fact `MENTION_CHIP_OUTSIDE_ROLE` states —
+						 * CONTAINMENT, which is the question the approval gate will ask at submit
+						 * and not the whole of its answer.
 						 */
 						data-mention-chip={fill.outside ? "approval" : "plain"}
 						data-mention-span={fill.span}
 						className={cn(
 							"absolute",
-							fill.outside ? MENTION_CHIP_APPROVAL_ROLE : MENTION_CHIP_ROLE,
+							fill.outside ? MENTION_CHIP_OUTSIDE_ROLE : MENTION_CHIP_ROLE,
 						)}
 						style={{
 							left: `${fill.left}px`,

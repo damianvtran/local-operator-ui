@@ -16,8 +16,24 @@ import type { AtSpan } from "./at-token";
  * the same shape satisfies it.
  */
 
-/** The row pitch, in px: `py-2` (16) plus a 20px `text-body-sm` line box. */
-export const AT_ROW_PITCH = 36;
+/**
+ * The row pitch, in px: `py-2` (16) plus the row's `text-body-sm` line box.
+ *
+ * 35.5 AND NOT 36, and the difference is a live measurement rather than
+ * arithmetic (QA round 1, Q-1). `text-body-sm` is `0.8125rem` (13px) at
+ * `line-height: 1.5`, i.e. a **19.5px** line box, so a row measures 16 + 19.5 =
+ * 35.5 at every window size — measured on the region's own rows in the built app
+ * at both 1380x872 and 800x600 (`distinctRowHeights: [35.5]`, every row, both
+ * sizes). The constant used to say 36 on the belief that the line box was 20px,
+ * and the region's cap is `budget * AT_ROW_PITCH`: eight rows were capped at
+ * 288px over rows that occupy 284px, so the region painted **4.0px** of a ninth
+ * row — `budget x 0.5px`, i.e. the constant rather than the layout, which is what
+ * made it a single-number fix. The sliver was the clipped row's own top padding,
+ * so no glyph was cut at these budgets; it is the failure mode the constant
+ * exists to prevent all the same, and it is worse when the clipped row is the
+ * highlighted one, whose 2px accent bar then starts below the last whole row.
+ */
+export const AT_ROW_PITCH = 35.5;
 
 /**
  * The picker's header and footer strips, both `py-1` + `text-meta`, plus the
@@ -75,6 +91,20 @@ export type AtKeyIntent =
 	| { kind: "move"; index: number; moved: boolean }
 	/** Apply `rows[index]`. */
 	| { kind: "apply"; index: number }
+	/**
+	 * The list is open and holds no row, and this key must not reach the composer.
+	 *
+	 * WHY IT IS A THIRD ANSWER rather than a `pass`. Enter over an open list is the
+	 * user saying "take this row", and the composer's own Enter SUBMITS the draft.
+	 * With no row to take, `pass` handed the key straight to the submit path: on any
+	 * listing that failed or matched nothing — which is every `@` on the picker's
+	 * own failed state — the first `@…`+Enter a new user presses SENT their message
+	 * instead of referencing a file, with `esc closes` as the only thing on screen
+	 * saying otherwise. Swallowing it is the honest answer: the sentence is still
+	 * being written, the list is visibly up, and Escape is the way back to the
+	 * composer's own meaning for the key.
+	 */
+	| { kind: "hold" }
 	| { kind: "close" }
 	| { kind: "pass" };
 
@@ -108,6 +138,11 @@ export type AtKeyInput = {
  * Tab is included with Enter for the same reason it is the completion key in both
  * slash phases (`editor.py:3259`): it takes the highlighted row and never runs.
  * Here "never runs" is not a distinction from Enter, so the two are one case.
+ *
+ * WHAT THEY DO NOT SHARE is the empty list. Enter is the composer's SUBMIT, so an
+ * Enter with no row to take must be held (see `hold`); Tab's own meaning is a
+ * focus move, which claims nothing about a file, so it still passes through and
+ * the composer's Tab ladder is untouched.
  */
 export function atKeyIntent(input: AtKeyInput): AtKeyIntent {
 	if (!input.open) return { kind: "pass" };
@@ -122,6 +157,9 @@ export function atKeyIntent(input: AtKeyInput): AtKeyIntent {
 			return { kind: "move", index, moved: index !== input.active };
 		}
 		case "Enter":
+			return input.count > 0 && input.active < input.count
+				? { kind: "apply", index: input.active }
+				: { kind: "hold" };
 		case "Tab":
 			return input.count > 0 && input.active < input.count
 				? { kind: "apply", index: input.active }
@@ -167,15 +205,23 @@ export function atCandidateKey(rows: readonly { path: string }[]): string {
  * the Escape clause stands alone. The line is there to say what a key will do,
  * and there is no row for Enter to act on; promising "inserts" over a notice row
  * is exactly the class of lie this repository's copy tables exist to prevent.
+ * Enter is HELD in that state rather than passed to the submit
+ * (`atKeyIntent`), so the clause is also the whole truth about the key: nothing
+ * will be sent, and Escape is the way back to the composer's own Enter.
+ *
+ * "Enter"/"Esc" are capitalised because they name KEYS. The slash popup in the
+ * same slot over the same field reads `Enter needs a row you pick: ↓ then Enter`,
+ * and two lists over one caret disagreeing about how a key is spelled is one
+ * register too many (design round 1, D5).
  */
 export function atFooter(
 	row: { path: string; directory: boolean } | undefined,
 ): string {
-	if (!row) return "esc closes";
+	if (!row) return "Esc closes";
 	const verb = row.directory
-		? `enter opens ${row.path}`
-		: `enter inserts ${atFooterToken(row.path)}`;
-	return `${verb} · esc closes`;
+		? `Enter opens ${row.path}`
+		: `Enter inserts ${atFooterToken(row.path)}`;
+	return `${verb} · Esc closes`;
 }
 
 /** The token a footer line names: the write minus the space that closes it. */
@@ -184,7 +230,7 @@ function atFooterToken(path: string): string {
 }
 
 /**
- * The footer's right column: how much of the listing the query admitted.
+ * The footer's right column: how much of the listing the reader can see.
  *
  * The one fact a scrolled list cannot show, which is why it takes the reference's
  * right-aligned column. `m` is the number of ENTRIES the listing holds rather
@@ -192,10 +238,19 @@ function atFooterToken(path: string): string {
  * actually has — "am I looking at everything?" — including when a query has
  * filtered most of a directory away. `undefined` when the two agree, because a
  * column that says `37 of 37` on every listing is chrome.
+ *
+ * `shown` IS THE ROWS THE REGION DRAWS, NOT THE ROWS THE QUERY MATCHED, and the
+ * difference is the whole of design round 1's D3. It used to be handed the
+ * matched count, which is the same number until the region SCROLLS — and there it
+ * is the wrong one: a ten-entry listing capped at seven rows drew seven and
+ * reported `undefined`, because `matched (10) >= entries (10)`. The column was
+ * therefore absent in exactly the two long-list states § 3.2 wrote it for, with
+ * no scrollbar at rest in this shell either, so the reader had no signal at all
+ * that anything sat below the fold.
  */
-export function atCount(matched: number, entries: number): string | undefined {
-	if (entries <= 0 || matched >= entries) return undefined;
-	return `${matched} of ${entries}`;
+export function atCount(shown: number, entries: number): string | undefined {
+	if (entries <= 0 || shown >= entries) return undefined;
+	return `${shown} of ${entries}`;
 }
 
 /**
@@ -209,7 +264,27 @@ export function atCount(matched: number, entries: number): string | undefined {
  * exactly that split ("the fix is to hold a notice row, which would also let the
  * copy distinguish 'this directory is empty' from 'nothing here matches zz'").
  * The query is quoted because a bare `No files match zz.` reads as a statement
- * about files rather than about what was typed.
+ * about files rather than about what was typed, and the SCOPE is named for the
+ * same reason one step further out (UX round 1, U6): a user who knows the file
+ * name and not the directory it lives in was told only that nothing matched, with
+ * no statement of WHERE the search looked — while the header above said `./` and
+ * said nothing about it being the thing searched. `in ./` ties the two together.
+ *
+ * WHY IT NAMES THE SCOPE AND NOT THE GESTURE. "type / to look inside a folder"
+ * was the other half of that finding, and it does not fit: the notice is a
+ * ONE-ROW region (36px, a measured number in § 3.2), so a sentence long enough to
+ * wrap turns the picker's own height into a function of the copy — and the row
+ * that holds this one is the row that keeps the band still.
+ *
+ * AN UNREADABLE FOLDER IS TRANSLATED, not quoted (design round 1's D4 and UX
+ * round 1's U5). The row used to read `Could not read this folder. EACCES:
+ * permission denied, scandir '/private/…/secret-dir/'` — an errno, a syscall and
+ * an absolute internal path in the one sentence a user reads when something is
+ * wrong, and no next step. § 8 asks an error to say what happened, what it means
+ * and what to do; the sibling popup's own error row in this same slot reads
+ * `Could not read the model catalogue.`, which is the register. The raw detail is
+ * NOT lost: it is what the caller logs (`use-at-picker.ts`), because a console is
+ * where a syscall belongs.
  */
 export function atEmptyCopy(state: {
 	error?: string | null;
@@ -217,15 +292,42 @@ export function atEmptyCopy(state: {
 	entries: number;
 	matched: number;
 	query: string;
+	/** The directory being listed, as the header spells it (`./`, `src/`). */
+	scope: string;
 }): string {
-	if (state.error) return `Could not read this folder. ${state.error}`;
+	if (state.error) return unreadableCopy(state.error);
 	if (state.loading && state.entries === 0) return "Reading this folder…";
 	if (state.entries === 0) return "This folder is empty.";
-	if (state.matched === 0) return `No files match "${state.query}".`;
+	if (state.matched === 0)
+		return `No files match "${state.query}" in ${state.scope}.`;
 	// Unreachable while the caller renders a notice only when it has no rows, and
 	// stated rather than left undefined so a future caller that asks anyway gets a
 	// sentence instead of an empty div.
 	return "This folder is empty.";
+}
+
+/*
+ * The two errno families the listing can produce, at module scope because a
+ * regex literal inside a function is allocated on every call and this one runs on
+ * the picker's keystroke path (biome's `useTopLevelRegex`).
+ */
+const PERMISSION_ERRNO = /\bEACCES\b|\bEPERM\b/;
+
+/**
+ * The user's terms for a failure the IPC reported in its own.
+ *
+ * Two sentences rather than one, because the two causes have different next
+ * steps: a permission this app does not have is not something the user can fix by
+ * checking a path, and a folder that vanished while the picker was open is not
+ * something a permission change would reach. `EACCES`/`EPERM` and the
+ * missing-entry family are the two the listing can actually produce; anything
+ * else gets the sentence that asks the user to look at the path, which is the
+ * only advice that is true of an unknown failure.
+ */
+export function unreadableCopy(error: string): string {
+	if (PERMISSION_ERRNO.test(error))
+		return "Could not read this folder. It may need a permission this app does not have.";
+	return "Could not read this folder. Check that it exists and that you can open it.";
 }
 
 /**

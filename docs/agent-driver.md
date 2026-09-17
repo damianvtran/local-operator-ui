@@ -367,15 +367,22 @@ rule:
   is therefore covered by reading the two halves of its wiring, never by pressing
   it here; proving the runtime half needs a human in a visible window, and saying
   otherwise would be claiming coverage this harness cannot have.
-- **And a key injected through CDP stops at the app's handlers.**
-  `Input.dispatchKeyEvent` reaches a `keydown` listener — which is what makes the
-  guards around one measurable, `defaultPrevented` being the tell — but it does
-  not drive Chromium's EDITING pipeline: measured while giving the palette's
-  caret its modifier arrows back, the caret stayed at 8 whatever modifier arrived,
-  and the plain arrow moved the list while leaving the caret where it was. So a
-  property about what a keystroke then does to a selection or a caret is not
-  yours to assert here; assert the one this harness can see (whether the app
-  consumed the key) and say which half you left to a real keystroke.
+- **And a key injected through CDP reaches the app's handlers, and this build's
+  EDITING pipeline too — but not every pipeline.** `Input.dispatchKeyEvent`
+  reaches a `keydown` listener, which is what makes the guards around one
+  measurable (`defaultPrevented` being the tell). **Corrected in review round 1 of
+  #297, measured while walking the composer's `@` flow:** this paragraph used to
+  state flatly that the injected key does not drive Chromium's editing pipeline,
+  and on the built app (Electron 44.3.0) it does — `Input.insertText('abcdef')`
+  followed by three `ArrowLeft` moved the field's own `selectionStart` 6 → 3. What
+  is still NOT reachable is a MODIFIER-based selection (`⌘A`, `⇧arrows`: a caret
+  asked for its modifier arrows back stayed at 8 whatever modifier arrived), and a
+  range set from OUTSIDE the page does not reliably reach React's own caret state
+  — the composer's caret is React state fed by real keystrokes, and a select-all
+  plus one Backspace was measured taking the app's atomic-delete path against a
+  stale caret. So: caret movement and typed text can be driven here with plain
+  keys, a modifier selection cannot, and a state that lives in React rather than in
+  the DOM still needs a real keystroke — say in the row which of the two you used.
 - **It is not a way to answer an approval, and must not be used as one.** A verb
   can press an in-app approval control, so a scene that did would make every "it
   works" captured through it worthless: approvals are the operator's, and the

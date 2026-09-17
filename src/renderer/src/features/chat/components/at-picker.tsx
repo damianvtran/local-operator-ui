@@ -64,7 +64,7 @@ import {
 	rankAtRows,
 	rowsFromListing,
 } from "./at-rank";
-import { type AtToken, atToken, splitToken } from "./at-token";
+import { type AtToken, atPickerToken, splitToken } from "./at-token";
 
 /** The listing IPC, as this file uses it. Absent outside Electron. */
 type ListingBridge = {
@@ -98,8 +98,24 @@ const bridge = (): ListingBridge | null => {
  */
 export const AT_QUERY_DEBOUNCE_MS = 60;
 
+/**
+ * Where a listing's raw failure detail goes, and why it is not the notice row.
+ *
+ * The row says what happened and what to do in the user's terms (`unreadableCopy`);
+ * the errno, the syscall and the absolute path are what a developer needs when the
+ * user reports it, so they are written here instead. One channel, one line per
+ * failure, and a cancelled render never reaches it.
+ */
+const reportListingError = (dir: string, detail: string) => {
+	if (typeof console !== "undefined")
+		console.warn(`[mentions] could not list ${dir || "."}: ${detail}`);
+};
+
 export type AtCompletionState = {
-	/** Whether this surface exists at all: no listing bridge, no picker. */
+	/**
+	 * Whether this surface exists at all: no listing bridge, no picker — and no
+	 * harness that expands a mention either (see `UseAtPickerArgs.enabled`).
+	 */
 	available: boolean;
 	open: boolean;
 	active: number;
@@ -113,7 +129,8 @@ export type AtCompletionState = {
 	/** That directory's resolved path, for the header's `title`. */
 	headerTitle: string;
 	footer: string;
-	count: string | undefined;
+	/** How many entries the listing holds, for the footer's own count. */
+	entries: number;
 	notice: string;
 	loading: boolean;
 	/** True once the user has arrowed onto a row in THIS list. */
@@ -131,6 +148,23 @@ export type UseAtPickerArgs = {
 	caret: number;
 	/** The session's working directory, or undefined on a draft pane. */
 	cwd?: string;
+	/**
+	 * Whether the `@` affordance may be offered at all.
+	 *
+	 * FALSE MEANS THE PICKER DOES NOT EXIST, and it is an input rather than a
+	 * derivation here because both of the states it folds in are the composer's own
+	 * to know and neither is a property of the listing: the connected harness must
+	 * advertise that it expands a mention (`desktop-hooks.ts`'s `references` key),
+	 * and the send this draft would make must be a PROMPT rather than a mid-turn
+	 * STEER — the harness's steer path bypasses `Session.prompt`, so an `@path` in
+	 * one is left as inert prose.
+	 *
+	 * FAIL CLOSED, and the asymmetry is deliberate: an offer that does nothing costs
+	 * the user a pick, a chip claiming a reference the model never receives, and no
+	 * way to tell. The plain-text path it falls back to is the harness's own
+	 * behaviour for exactly this draft.
+	 */
+	enabled?: boolean;
 };
 
 /**
@@ -152,9 +186,10 @@ export function useAtPicker({
 	text,
 	caret,
 	cwd,
+	enabled = false,
 }: UseAtPickerArgs): AtCompletionState {
 	const listId = useId();
-	const available = bridge() !== null;
+	const available = enabled && bridge() !== null;
 
 	/*
 	 * The recents ring, per workspace, from the UI preferences store — the
@@ -171,7 +206,13 @@ export function useAtPicker({
 		return new Set(recentsFor.paths);
 	}, [recentsFor, cwd]);
 
-	const token = useMemo(() => atToken(text, caret), [text, caret]);
+	/*
+	 * `atPickerToken` rather than `atToken`: the picker writes the token the chip
+	 * layer draws, so it must skip the two cases the resolver will not expand (a
+	 * pasted block, and a `typed=` token a block already names) or it would offer a
+	 * list over a span the harness sends as prose. See the function.
+	 */
+	const token = useMemo(() => atPickerToken(text, caret), [text, caret]);
 	const [dirPart, nameQuery] = useMemo(
 		() => (token ? splitToken(token.query) : ["", ""]),
 		[token],
@@ -205,19 +246,25 @@ export function useAtPicker({
 				.listDirectory(dirPart, cwd)
 				.then((answer) => {
 					if (cancelled) return;
+					if (answer.error) reportListingError(answer.dir, answer.error);
 					setListing(answer);
 					setLoading(false);
 				})
 				.catch((error: unknown) => {
 					if (cancelled) return;
 					// A transport failure is reported in the listing's own sentence
-					// rather than swallowed: "could not read this folder" with no reason
-					// is the unfinished error the contract refuses (§ 8).
+					// rather than swallowed: `Could not read this folder.` with no next step
+					// is the unfinished error the contract refuses (§ 8). The raw detail is
+					// logged rather than quoted at the user (design round 1's D4 / UX round
+					// 1's U5 measured the sentence that used to carry an errno, the syscall
+					// and an absolute path).
+					const detail = error instanceof Error ? error.message : String(error);
+					reportListingError(dirPart, detail);
 					setListing({
 						dir: dirPart,
 						entries: [],
 						truncated: false,
-						error: error instanceof Error ? error.message : String(error),
+						error: detail,
 					});
 					setLoading(false);
 				});
@@ -292,7 +339,30 @@ export function useAtPicker({
 	 */
 	const dismissed = useRef<string | null>(null);
 	const tokenKey = token === null ? null : `${token.start}:${token.query}`;
-	const [state, setState] = useState({ open: false, active: 0 });
+	/*
+	 * THE MARKER FOLLOWS A ROW, NOT A SLOT (UX round 1, U9).
+	 *
+	 * The rows are re-derived asynchronously: accepting a directory re-writes the
+	 * token and the descend listing lands after the base listing, so the row SET
+	 * changes under a marker that used to be clamped by INDEX. The same two
+	 * keystrokes then inserted two different files — measured live, one run with the
+	 * marker on `schema.ts` (a row the user never moved to) and the footer naming
+	 * it, the repeat with the marker correctly on the first row.
+	 *
+	 * So the marker's identity is the marked row's `path`, and a re-derived list
+	 * re-anchors the marker onto that path. `marked: null` is the no-choice state a
+	 * freshly opened list is in: the marker sits on the top row and Enter takes it
+	 * (the footer names it, so the key is not a surprise), but nothing has BEEN
+	 * chosen, so a reorder cannot be said to have moved a choice. A marked row that
+	 * is no longer in the list clears the marker rather than leaving the index where
+	 * it was, because a reflex second Enter must never land on a row the user has
+	 * not read.
+	 */
+	const [state, setState] = useState<{
+		open: boolean;
+		active: number;
+		marked: string | null;
+	}>({ open: false, active: 0, marked: null });
 	const lastTokenKey = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -303,25 +373,33 @@ export function useAtPicker({
 			if (tokenKey === null || dismissed.current === tokenKey) {
 				return current.open ? { ...current, open: false } : current;
 			}
-			return {
-				open: true,
-				// A new token moves the marker back to the top; typing inside one token
-				// CLAMPS it, so the marker does not jump off the row being read.
-				active: changed
-					? 0
-					: Math.min(current.active, Math.max(rows.length - 1, 0)),
-			};
+			// A new token opens on the top row with no choice made.
+			if (changed) return { open: true, active: 0, marked: null };
+			if (current.marked === null)
+				return { open: true, active: 0, marked: null };
+			const index = rows.findIndex((row) => row.path === current.marked);
+			if (index === -1) return { open: true, active: 0, marked: null };
+			return index === current.active
+				? current
+				: { open: true, active: index, marked: current.marked };
 		});
-	}, [tokenKey, rows.length]);
+	}, [tokenKey, rows]);
 
 	const close = useCallback(() => {
 		dismissed.current = tokenKey;
 		setState((current) => ({ ...current, open: false }));
 	}, [tokenKey]);
 
-	const setActive = useCallback((index: number) => {
-		setState((current) => ({ ...current, active: index }));
-	}, []);
+	const setActive = useCallback(
+		(index: number) => {
+			setState((current) => ({
+				...current,
+				active: index,
+				marked: rows[index]?.path ?? null,
+			}));
+		},
+		[rows],
+	);
 
 	/*
 	 * A hover moves the marker without counting as a choice. There is no ambiguity
@@ -361,7 +439,14 @@ export function useAtPicker({
 		header: dirPart === "" ? "./" : dirPart,
 		headerTitle: listing?.dir ?? "",
 		footer: atFooter(activeRow),
-		count: atCount(rows.length, entries),
+		/*
+		 * The footer's count is assembled by the POPUP, not here, because its first
+		 * number is the rows the REGION draws — and the region's height is the popup's
+		 * own measured budget (design round 1, D3). Handing `rows.length` from here was
+		 * the defect: the column described the query rather than the window, so it
+		 * vanished exactly when the region truncated.
+		 */
+		entries,
 		notice: atEmptyCopy({
 			error: listing?.error ?? null,
 			// Rows on screen mean the wait is not the state the user is looking at:
@@ -370,6 +455,7 @@ export function useAtPicker({
 			entries,
 			matched: rows.length,
 			query: nameQuery,
+			scope: dirPart === "" ? "./" : dirPart,
 		}),
 		loading,
 		close,
@@ -416,6 +502,13 @@ export function handleAtKeyDown(
 		}
 		case "close":
 			state.close();
+			return true;
+		case "hold":
+			// The list is open and holds no row, so Enter must not reach the composer's
+			// submit path: the user pressed the key to TAKE A ROW and there is none to
+			// take. Claiming the key with nothing written is the whole of this case —
+			// `state.close()` would be a different claim ("dismiss the list"), and
+			// Escape is already on screen as the way to do that (UX round 1, U3).
 			return true;
 		default:
 			return false;
@@ -488,6 +581,15 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 	}, [state.active]);
 
 	if (!state.open) return null;
+
+	/*
+	 * The footer's right column: the rows the REGION draws against the entries the
+	 * listing holds, so the pair answers "am I looking at everything?" rather
+	 * than "how many rows did the query admit". Assembled here rather than in the
+	 * hook because the first number is `budget`, this component's own measurement
+	 * (design round 1, D3).
+	 */
+	const count = atCount(Math.min(state.rows.length, budget), state.entries);
 
 	return (
 		/* biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order. */
@@ -589,9 +691,18 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 								 * string and `ink-dim` on `elevated` clears its floor by 0.01
 								 * (`dracula`), which is a margin no new string has any business
 								 * starting from.
+								 *
+								 * SUPPRESSED WHERE IT EQUALS THE HEADER, and suppressed rather than
+								 * removed, so the three-column row geometry is identical in every
+								 * state (design round 1, D6): a plain listing printed `./` on all
+								 * seven rows under a header that already said `./`, and
+								 * `caret-inside-token` printed `src/components/` three times on one
+								 * screen. The column EARNS its place in the descend state, where it
+								 * is what separates `src/` rows from `src/components/` rows, which
+								 * is why the fix is a suppression and not a deletion.
 								 */}
 								<span className="min-w-0 flex-1 truncate font-mono text-body-sm text-ink-muted">
-									{row.parent}
+									{row.parent === state.header ? null : row.parent}
 								</span>
 								{/*
 								 * The type tag. `Directory` rather than the terminal's `Dir`: this
@@ -613,7 +724,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 			 */}
 			<div className="flex items-baseline justify-between gap-3 border-t border-hairline px-3 py-1 text-meta text-ink-dim">
 				<p>{state.footer}</p>
-				{state.count ? <p>{state.count}</p> : null}
+				{count ? <p>{count}</p> : null}
 			</div>
 		</div>
 	);

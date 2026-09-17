@@ -35,9 +35,11 @@
  * 'ipcRenderer')". That module carries the measurement behind the ordering.
  */
 import "./story-electron-shim";
+import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
 import type { Meta, StoryObj } from "@storybook/react";
-import { userEvent } from "@storybook/test";
+import { expect, userEvent } from "@storybook/test";
 import type { ReactNode } from "react";
+import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
 import type { Message } from "../types/message";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 import { MessageInput } from "./message-input";
@@ -111,13 +113,47 @@ const asListingKey = (dir: string): string =>
 	dir === "" || dir === "." ? "" : dir.endsWith("/") ? dir : `${dir}/`;
 
 /**
+ * The two CAPABILITY answers the fixture boundary now has to give, because the
+ * `@` affordance is gated on one of them.
+ *
+ * `mentionsEnabled` is decided by the shipped `desktopFeatureEnabled`, fed the
+ * answer below rather than a hand-set boolean: a story that passed `true` would
+ * photograph a decision nobody made, and the whole point of the gate is that the
+ * DECISION is what has to be right.
+ *
+ * `WITHOUT_MENTIONS` is not a hypothetical. It is every install that exists: the
+ * expansion is `local_operator/references.py`, which no release tag through
+ * v0.56.8 carries, and the harness half that adds it (PR #1220) publishes no
+ * capability key at all yet — so the key is what the composer reads, and its
+ * ABSENCE is the case a user on today's release would meet.
+ */
+const HARNESS: Record<string, DesktopCapabilities> = {
+	// A backend that expands a mention, and says so.
+	withMentions: {
+		desktop_contract: 1,
+		desktop_available: true,
+		desktop_auth: "bearer",
+		features: { references: 1, commands: 1, session_catalogue: 1 },
+	},
+	// Every backend that exists today: no `references` key, so no affordance.
+	withoutMentions: {
+		desktop_contract: 1,
+		desktop_available: true,
+		desktop_auth: "bearer",
+		features: { commands: 1, session_catalogue: 1 },
+	},
+};
+
+/**
  * The desktop bridge, installed at module scope for the reason
  * `./story-electron-shim` states for `window.electron`: the composer reaches the
  * bridge from an effect on mount, and Storybook's preview mocks `window.api`
- * rather than these two channels. Only the two channels this surface uses are
- * replaced, so the preview's own mocks for everything else survive.
+ * rather than these channels. Three channels are replaced - the two listing ones
+ * and `capabilities`, whose answer the mention gate reads - and every other op is
+ * a 5xx, so a story that starts depending on another one says so loudly instead
+ * of rendering a surface with quietly missing data.
  */
-const installFixtureBridge = () => {
+const installFixtureBridge = (harness: (typeof HARNESS)[string]) => {
 	const api = (window.api ?? {}) as Record<string, unknown>;
 	api.listDirectory = async (dir: string) => {
 		// `boom/` is a directory that cannot be read: the error row is a state the
@@ -143,9 +179,18 @@ const installFixtureBridge = () => {
 				outsideWorkspace: hit?.outside,
 			};
 		});
+	api.desktop = {
+		request: async (request: { op: string }) =>
+			request.op === "capabilities"
+				? {
+						status: 200,
+						body: { result: harness },
+					}
+				: { status: 501, body: { detail: "this story has no backend" } },
+	};
 	window.api = api as typeof window.api;
 };
-installFixtureBridge();
+installFixtureBridge(HARNESS.withMentions);
 
 /** The store key a state's draft lives under: per conversation, so two states
  *  cannot show each other's text. */
@@ -211,10 +256,39 @@ type DraftStory = {
 	label: string;
 	/** A narrower column, for the wrap and budget states. */
 	width?: number;
+	/**
+	 * The composer's SMALL VIEW — the app's own "this column is under 550px" flag
+	 * (`chat-content.tsx`), not a width. It is what switches the field's inset to
+	 * `px-1.5`, which is the number the 6px overhang was chosen against.
+	 */
+	smallView?: boolean;
+	/**
+	 * Which harness this state is photographed against. Defaults to the one that
+	 * expands a mention; `withoutMentions` is the harness every release carries
+	 * today, and the gate's own state.
+	 */
+	harness?: keyof typeof HARNESS;
 	/** Where the caret is left, when the state is about the caret. */
 	moveCaretTo?: (box: HTMLTextAreaElement) => void;
 	/** True once the state the frame is OF exists on screen. */
 	settled: () => boolean;
+	/**
+	 * A GESTURE this state is about, run once `settled` holds and before the frame
+	 * is taken. Real keys through `userEvent`, for the reason the draft is typed:
+	 * the composer's caret is React state fed by real keystrokes, and a range set
+	 * from outside does not reliably reach it (QA round 1 measured exactly that).
+	 *
+	 * Named `gesture` and not `then`: an object property called `then` makes the
+	 * object a thenable, and biome refuses the name outright for that reason.
+	 */
+	gesture?: (box: HTMLTextAreaElement) => Promise<void>;
+	/**
+	 * The precondition the frame needs AFTER `then`, and the assertion that makes
+	 * the gesture's outcome evidence rather than decoration: a play that throws
+	 * never releases the shutter, so the capture fails loudly instead of
+	 * photographing a state the gesture did not reach.
+	 */
+	after?: () => boolean;
 };
 
 /*
@@ -249,6 +323,11 @@ const rowCount = (): number =>
 const chipCount = (): number =>
 	document.querySelectorAll("[data-mention-chip]").length;
 
+/** The composer's own value, read off the DOM: what a gesture left in the box. */
+const boxValue = (): string =>
+	document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]')
+		?.value ?? "";
+
 /** The picker's one-row notice, or null when the list has rows (or is not up). */
 const noticeText = (): string | null => {
 	const list = document.querySelector('[role="listbox"][aria-label="Files"]');
@@ -273,7 +352,7 @@ const draftPlay =
 		played.add(state.story);
 		holdShutter();
 		try {
-			installFixtureBridge();
+			installFixtureBridge(HARNESS[state.harness ?? "withMentions"]);
 			const box = canvasElement.querySelector<HTMLTextAreaElement>(
 				'textarea[aria-label="Message"]',
 			);
@@ -298,6 +377,21 @@ const draftPlay =
 				);
 			if (state.moveCaretTo) state.moveCaretTo(box);
 			await poll(state.settled, `after typing ${JSON.stringify(state.draft)}`);
+			if (state.gesture) await state.gesture(box);
+			/*
+			 * `after` runs whether or not there was a gesture, because two of the states
+			 * that need it are not gestures at all: the row budget's own arithmetic
+			 * (QA round 1's Q-1) is a MEASUREMENT of the region the frame is about, and
+			 * a frame whose cap is not a whole number of rows is not evidence about a
+			 * budget. It is polled like `settled`, and it may throw through `expect`: the
+			 * capturer stops the sweep on a play that threw (`capture-evidence.mjs`),
+			 * which is what makes this an assertion rather than a note.
+			 */
+			if (state.after)
+				await poll(
+					state.after,
+					`after the gesture that follows ${JSON.stringify(state.draft)}`,
+				);
 		} finally {
 			releaseShutter();
 		}
@@ -329,6 +423,18 @@ const stateStory = (state: DraftStory): Story => ({
 				conversationId={storyColumn(state.story)}
 				cwd="/Users/you/project"
 				initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
+				isSmallView={state.smallView ?? false}
+				/*
+				 * THE GATE, evaluated by the SHIPPED function rather than handed in as a
+				 * boolean: the story feeds it the fixture's capability answer, so the frame
+				 * is evidence about the decision the app makes and not about a prop a story
+				 * chose. `desktop-hooks.ts`'s `references` is the key, and the
+				 * `withoutMentions` harness below is what every release carries today.
+				 */
+				mentionsEnabled={desktopFeatureEnabled(
+					HARNESS[state.harness ?? "withMentions"],
+					"references",
+				)}
 				onSendMessage={async () => true}
 			/>
 		</Column>
@@ -419,13 +525,19 @@ export const UnresolvedStaysProse: Story = stateStory({
 });
 
 /**
- * The needs-approval fill, beside an ordinary one.
+ * The outside-workspace fill, beside an ordinary one.
  *
- * The chip asserts nothing about the approval decision — the gate stays where it
- * is, at submit — it only says which references will raise a card. The step is a
- * HUE step (ΔE00 5.37 at its worst, where the luminance ratio for the same pair
- * is 1.06:1), which is why the two states are one weight and the contrast
- * contract measures the pair that way.
+ * WHAT IT ENCODES IS CONTAINMENT, not the approval decision: the gate stays where
+ * it is, at submit, and a deny-listed path INSIDE the workspace takes the ordinary
+ * fill while still raising a card (design round 1, D8 — the constant is named for
+ * the fact it can answer).
+ *
+ * The step is a HUE step, and in three palettes it is not a step a reader can see
+ * — `kanagawaLotus` ΔE00 0.72, `sage` 1.44, `paper` 1.61 between the two fills —
+ * which is why this chip ALSO carries a `border-warning-border` edge (design round
+ * 1, D1). Read the frame for that: the outside fill's boundary is a rule the
+ * ordinary chip does not have, and it is the signal that survives the palettes
+ * whose two washes are one colour.
  */
 export const ChipNeedsApproval: Story = stateStory({
 	story: "approval",
@@ -563,4 +675,158 @@ export const PickerManyRows: Story = stateStory({
 		"ten entries listed: the region stops at its measured budget and scrolls",
 	draft: "@",
 	settled: () => rowCount() > 0,
+	/*
+	 * THE ROW BUDGET, MEASURED IN THE BROWSER RATHER THAN RECOMPUTED (QA round 1,
+	 * Q-1). The region's cap is `budget x AT_ROW_PITCH` and the rows measure their
+	 * own height, so the one thing the arithmetic cannot check about itself is
+	 * whether those two numbers agree — which is exactly what was wrong: a 36px
+	 * pitch over 35.5px rows capped the region 4.0px into a ninth row and painted a
+	 * sliver of it. This reads BOTH numbers off the rendered DOM, at every viewport
+	 * this story is captured at (1380x768, 1380x872, 800x600 and 768x372), and
+	 * throws if the cap is not a whole number of the rows the browser actually laid
+	 * out. A sweep that captures a budget frame therefore also asserts the budget.
+	 */
+	after: () => {
+		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
+		if (!list) return false;
+		const region = [...list.children].find(
+			(child): child is HTMLElement =>
+				child instanceof HTMLElement && child.style.maxHeight !== "",
+		);
+		const row = list.querySelector<HTMLElement>('[role="option"]');
+		if (!region || !row) return false;
+		const cap = Number.parseFloat(region.style.maxHeight);
+		const pitch = row.getBoundingClientRect().height;
+		// The visible box, not `clientHeight`: that rounds to an integer, and every
+		// number in this geometry is a half pixel.
+		const visible = region.getBoundingClientRect().height;
+		expect(pitch).toBeGreaterThan(0);
+		expect(Math.abs(cap - Math.round(cap / pitch) * pitch)).toBeLessThan(0.02);
+		expect(
+			Math.abs(visible - Math.round(visible / pitch) * pitch),
+		).toBeLessThan(0.02);
+		return true;
+	},
+});
+
+/*
+ * ---- the two states the gates exist for ---------------------------------------
+ */
+
+/**
+ * A HARNESS THAT DOES NOT EXPAND A MENTION: no list, no chip, plain text.
+ *
+ * THE STATE EVERY RELEASE CARRIES TODAY. The expansion is
+ * `local_operator/references.py`, which no tag through v0.56.8 has, and the
+ * harness half that adds it is PR #1220 — in review, and publishing no capability
+ * key at all yet. So the composer reads `desktop-hooks.ts`'s `references` key and
+ * withholds the whole affordance when it is absent, because the alternative is a
+ * picker whose pick writes a chip claiming a reference the model never receives.
+ *
+ * The draft carries BOTH facts in one frame on purpose: a token that would be a
+ * chip if the harness could expand it, and a bare `@` at the caret that would open
+ * the list. Read off the frame: neither happens, and the sentence is exactly the
+ * text that will be sent.
+ */
+export const HarnessCannotExpand: Story = stateStory({
+	story: "no-references",
+	harness: "withoutMentions",
+	label:
+		"a harness that cannot expand a mention: no list, no chip, the path sent as written",
+	draft: "look at @src/app.py then fix @",
+	settled: () => chipCount() === 0 && rowCount() === 0,
+});
+
+/**
+ * The SMALL VIEW: the field's 6px inset, which is the number the overhang was
+ * chosen against.
+ *
+ * `isSmallView` is the app's own flag for a column under 550px, and it is what
+ * switches the composer box to `px-1.5`. The design's § 5.11 prediction is that a
+ * mention opening the draft reaches that inset's edge EXACTLY and stops there at
+ * this width — the one number that decided 6px rather than 8px — and no committed
+ * frame had shown it (design round 1, D7). The narrowest frame that existed was a
+ * normal-view composer in a narrow window, which is the one thing this is not.
+ */
+export const SmallViewMention: Story = stateStory({
+	story: "small-view",
+	width: 520,
+	smallView: true,
+	label:
+		"the small view (column under 550px): the fill reaches the field's 6px inset edge",
+	draft: "@src/app.py is the entry point",
+	settled: () => chipCount() === 1,
+});
+
+/**
+ * The FIELD'S OWN SCROLL, with a chip on it.
+ *
+ * The chip layer is a drawing translated by the field's `scrollTop`, and the
+ * design states that as a property of the layer. It had never been executed: every
+ * story's draft was a single line, so nothing in the set showed the field past
+ * `max-h-28` (review round 1, N3). The precondition asserts the scroll, not just
+ * the chip, so a frame taken with the field at rest cannot pass as evidence about
+ * it.
+ */
+export const ScrolledDraft: Story = stateStory({
+	story: "scrolled",
+	label: "a draft past max-h-28: the fills travel with the field's own scroll",
+	draft: `${"the parser needs a second pass over the tree before it can answer ".repeat(6)}see @src/app.py`,
+	settled: () => {
+		const box = document.querySelector<HTMLTextAreaElement>(
+			'textarea[aria-label="Message"]',
+		);
+		return chipCount() === 1 && (box?.scrollTop ?? 0) > 0;
+	},
+});
+
+/**
+ * THE ATOMIC DELETE, which is the one chip promise that is not a drawing.
+ *
+ * One Backspace with the caret at a chip's right edge takes the whole token — and
+ * the single separator in front of it — in one keystroke. It routes through the
+ * same `replaceSpan` the inline slash gesture uses, and it is exercised here with
+ * REAL keys: the composer's caret is React state, and QA round 1 measured that a
+ * range set from outside does not reliably reach it.
+ *
+ * Seven arrow presses from the end of `see @README.md please` land the caret on
+ * the token's last cell. `after` asserts what the gesture left in the box, so a
+ * frame is only taken if the delete actually happened.
+ */
+export const AtomicDelete: Story = stateStory({
+	story: "atomic-delete",
+	label:
+		"one Backspace at a chip's edge: the whole token goes, in one keystroke",
+	draft: "see @README.md please",
+	settled: () => chipCount() === 1,
+	gesture: async () => {
+		for (let press = 0; press < 7; press++)
+			await userEvent.keyboard("{ArrowLeft}");
+		await userEvent.keyboard("{Backspace}");
+	},
+	after: () => boxValue() === "see please" && chipCount() === 0,
+});
+
+/**
+ * ENTER OVER A LIST WITH NO ROWS, which is the reflex "choose this file".
+ *
+ * The picker is up on a query that matched nothing — the state a brand-new chat's
+ * first `@` reached on the reviewed head, because the draft's cwd of `"~"` listed
+ * nothing. Enter used to be handed straight to the composer's submit path, so the
+ * user's half-written sentence was SENT while they believed they had picked a row
+ * (UX round 1, U3). It is now held by the open list.
+ *
+ * The frame is the note: the draft is still in the box and the list is still up,
+ * and `after` is what makes that an assertion rather than a picture.
+ */
+export const NoRowsEnter: Story = stateStory({
+	story: "no-rows-enter",
+	label:
+		"Enter over a list with no rows: the sentence is not sent, the list stands",
+	draft: "@zzzz",
+	settled: () => noticeText() !== null,
+	gesture: async () => {
+		await userEvent.keyboard("{Enter}");
+	},
+	after: () => boxValue() === "@zzzz" && noticeText() !== null,
 });

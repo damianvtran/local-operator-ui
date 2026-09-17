@@ -28,6 +28,13 @@
  *     process may re-spell — a `.env` inside the workspace chips plainly and
  *     raises its card at submit, which is the honest half of the trade the design
  *     direction names.
+ *     THE GAP IS REACHABLE WITH THE MOUSE, not only by typing a deny-listed path:
+ *     the picker's exclusions are dotfiles and `PRUNE_NAMES`, which is the
+ *     harness's LISTING vocabulary rather than its gate — `id_rsa`,
+ *     `credentials`, `server.pem` and `prod.env` are offered as ordinary rows, and
+ *     accepting one writes a plain chip over a path whose `read` raises a
+ *     "may hold secrets" card (review round 1, N1). Stated here because a
+ *     disclosure that describes the gap as a typing-only case understates it.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -70,11 +77,22 @@ export type AtResolution = {
 export function useAtResolution({
 	text,
 	cwd,
+	enabled = false,
 }: {
 	text: string;
 	cwd?: string;
+	/**
+	 * Whether a mention expands at all — see `UseAtPickerArgs.enabled` for the two
+	 * states this folds and why it fails closed. FALSE HERE MEANS NO SPANS: no
+	 * probe is issued, no fill is painted AND the atomic delete is inert, because
+	 * the delete asks this hook which tokens are chips.
+	 */
+	enabled?: boolean;
 }): AtResolution {
-	const spans = useMemo(() => atTokenSpans(text), [text]);
+	const spans = useMemo(
+		() => (enabled ? atTokenSpans(text) : []),
+		[text, enabled],
+	);
 
 	/*
 	 * The cache, keyed by the path as typed, holding only POSITIVE answers.
@@ -90,6 +108,7 @@ export function useAtResolution({
 	const cache = useRef(
 		new Map<string, { exists: boolean; outside: boolean }>(),
 	);
+	const cacheCwd = useRef<string | undefined>(cwd);
 	const [facts, setFacts] = useState<
 		ReadonlyMap<string, { exists: boolean; outside: boolean }>
 	>(new Map());
@@ -116,7 +135,37 @@ export function useAtResolution({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the request is keyed by `pathsKey`, the batch's own identity; `paths` is an array rebuilt every render and listing it would re-run the request with nothing changed.
 	useEffect(() => {
 		const api = (window as unknown as { api?: Partial<ProbeBridge> }).api;
-		if (paths.length === 0 || typeof api?.probeFiles !== "function") {
+		/*
+		 * A MOVED WORKING DIRECTORY INVALIDATES EVERY ANSWER IN THE CACHE
+		 * (review round 1, M1).
+		 *
+		 * The answers are RELATIVE — `@src/app.py` is a different file under a
+		 * different cwd — and the composer is not remounted when the session's
+		 * directory moves (`chat-content.tsx` passes no `key`; `cwd` arrives as a
+		 * prop), so the ref survived the move and the effect's `missing.length === 0`
+		 * short-circuit re-set the OLD map without ever asking again. Reproduced:
+		 * a draft whose file exists under `/A` kept its chip after the session moved
+		 * to `/B`, where the path does not exist — the chip outliving the file it
+		 * names, which is the one thing the design's rule ("the chip <=> the token
+		 * resolves") exists to make impossible. The stale `outside` verdict travelled
+		 * with it, so a chip could be plain over a path the gate would card.
+		 *
+		 * Cleared rather than keyed: the cache exists to make a RE-ASK cheap inside
+		 * one workspace, and a keyed map would keep every workspace's answers alive
+		 * in a composer that has one cwd at a time. The facts are cleared with it
+		 * because they are the same answers one render later — leaving them would
+		 * paint the moved workspace from the old one for the debounce window.
+		 */
+		if (cacheCwd.current !== cwd) {
+			cacheCwd.current = cwd;
+			cache.current.clear();
+			setFacts(new Map());
+		}
+		if (
+			!enabled ||
+			paths.length === 0 ||
+			typeof api?.probeFiles !== "function"
+		) {
 			setFacts((current) => (current.size > 0 ? new Map() : current));
 			return;
 		}
