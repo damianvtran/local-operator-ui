@@ -16,14 +16,18 @@
  *
  * That agreement is between THESE TWO and is not a claim about the repository.
  * A third definition of the same tier lives in `utils/message-grouping.ts`
- * (`boundarySpacing`: `trace` ⇒ `mt-1`, 4px, in the comfortable view), and it is
- * not dead code — the legacy `messages-view.tsx` renders live conversations
- * through it, and the swept `chat-trace--conversation*` stories render through
- * it too, so `docs/evidence/chat-trace/` and `docs/evidence/chat-tool-rows/`
- * genuinely show two different distances side by side. That is a real
- * inconsistency and it is deliberately NOT resolved here: converging the legacy
- * surface is a change to a live rendering path with its own frames to re-take,
- * and folding it into a tier adjustment for the canonical transcript would be a
+ * (`boundarySpacing`: `trace` ⇒ `mt-1`, 4px, in the comfortable view). It is not
+ * dead code, but it is not on a live conversation either: the legacy
+ * `messages-view.tsx` that reads it is UNREACHABLE in a shipped state —
+ * `chat-content.tsx` chooses it only when no canonical session exists, and every
+ * mount site passes a freshly built `canonical` object (`chat-page.tsx`), which
+ * `message-item/index.tsx` records at length. What still renders through it is
+ * the swept `chat-trace--conversation*` stories, so `docs/evidence/chat-trace/`
+ * and `docs/evidence/chat-tool-rows/` genuinely show two different distances
+ * side by side. That is a real inconsistency and it is deliberately NOT resolved
+ * here: converging a rendering path that only stories drive would be a change to
+ * story fixtures with their own frames to re-take, and folding it into a tier
+ * adjustment for the canonical transcript would be a
  * second, unreviewed change riding along. Whoever converges them should move
  * `boundarySpacing`'s `trace` arm and re-capture `chat-trace/*`.
  */

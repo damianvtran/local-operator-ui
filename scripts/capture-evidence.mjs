@@ -1467,6 +1467,23 @@ export const STORIES = [
 	   ABSENCE, so it needs a frame of its own to be checkable. */
 	["chat-tool-rows--prose-tool-alignment", 1024, 700],
 	["chat-tool-rows--prose-tool-alignment", 1440, 900],
+	/* The turn stamps, and the two surfaces the operator named: the date and time
+	   under a user turn, and the same inside a tool call the reader has opened.
+	   The wide pass carries all four shapes of the formatter in one frame (today,
+	   `Yesterday`, a dated stamp from this year and one from last year) plus the
+	   CLEAR - a call with nothing to disclose, which is a line with no stamp. The
+	   420px pass is the NARROW COLUMN rather than the small view (the bubble takes
+	   the comfortable `max-w-[75%]` there; the small view is pictured by
+	   `admitted-send-before-first-frame-small-view`), and it is worth a frame
+	   because the transcript is a different shape at that width - not because the
+	   stamp's edge could be confused with another one: a user row is
+	   `flex w-full justify-end` with no right inset, so the bubble's right edge IS
+	   the row content box's right edge, at every width (review round 1, R2/D3).
+	   Both are clipped to their content: the stamps are 12px captions, so a tall
+	   frame is almost entirely ground and `check-evidence`'s uniformity ceiling
+	   rejects it as a frame that is not a picture of anything. */
+	["chat-tool-rows--turn-timestamps", 1024, 760],
+	["chat-tool-rows--turn-timestamps-narrow", 420, 500],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
 	/* The cold engage: a send the app has admitted and the owner has not answered
 	   yet - the operator's "I hit send and nothing happens for three seconds".
