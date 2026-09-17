@@ -932,3 +932,63 @@ test("a turn with no quote renders its own text untouched", () => {
 	assert.equal(payload, "a plain turn");
 	assert.deepEqual(parseReplies(payload).replies, []);
 });
+
+/*
+ * ---------------------------------------------------------------- the link toolbar
+ *
+ * The transcript gained a SECOND floating control when a link became pressable
+ * (Copy / Open / Open folder, plus Quote when the reader's highlight lies inside
+ * the link). It wears the same shell - and therefore the same
+ * `QUOTE_TOOLKIT_ATTR` - as the turn's Quote control, so the exclusion above is
+ * inherited rather than re-derived. That inheritance is asserted here instead of
+ * trusted, because it is the difference between one attribute with one meaning
+ * and two controls that happen to agree.
+ *
+ * The link toolbar is also the case the attribute's own comment predicted would
+ * be reachable "the moment it carries a label": unlike the Quote control's lone
+ * glyph, this strip renders text (a `No file at /tmp/x` note, and a `Copied`
+ * state), so a drag that reaches it has real words to leak into a quote.
+ */
+
+test("a drag that ends on the LINK toolbar is not a quote of the turn", () => {
+	const turn = node("div");
+	const prose = node("p", turn);
+	const link = node("a", turn);
+	const toolbar = node("div", turn);
+	// Both toolbars are found by the same attribute, which is the point.
+	toolbar.attr = true;
+	const button = node("button", toolbar);
+	const label = node("span", button);
+	label.text = "No file at /tmp/x";
+
+	select(
+		clippableRange({
+			turn,
+			startContainer: prose,
+			endContainer: label,
+			inside: "the second clause ",
+			after: "No file at /tmp/x",
+		}),
+	);
+	assert.equal(quoteSelectionIn(turn), null);
+	select(
+		clippableRange({
+			turn,
+			startContainer: label,
+			endContainer: prose,
+			inside: "No file at /tmp/x the second clause",
+		}),
+	);
+	assert.equal(quoteSelectionIn(turn), null);
+	// And the link itself is ordinary prose to this model: an anchor is not a
+	// control, so a highlight over it is a quote of the turn's words.
+	select(
+		clippableRange({
+			turn,
+			startContainer: link,
+			endContainer: link,
+			inside: "~/x/report.xlsx",
+		}),
+	);
+	assert.equal(quoteSelectionIn(turn).text, "~/x/report.xlsx");
+});

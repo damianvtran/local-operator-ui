@@ -950,6 +950,31 @@ const GRAPHICS = [
 		on: ["surface"],
 		fg: "accent",
 	},
+	{
+		/*
+		 * The link toolbar's own ION: the icon in a hovered action button, which is
+		 * `hover:bg-accent-wash hover:text-accent` on `button.tsx`'s ghost variant.
+		 *
+		 * A graphic object rather than a control triple, and the difference is the
+		 * whole reason this row, is here. The hovered button paints a wash and a NEW
+		 * ink, and it paints no edge: `accentWash` against the strip's own `elevated`
+		 * measures 1.00-1.38:1 across the twelve palettes, so a `CONTROLS` row asking
+		 * for its fill or border to clear 3:1 could only pass by inventing an edge the
+		 * design does not have - and a hover that grows a border is a state change,
+		 * not the colour step § 2 permits.
+		 *
+		 * What a hovered ICON owes is being legible against the wash it sits on, which
+		 * is exactly what `GRAPHICS` asserts: `accent` on `accentWash` measures
+		 * 4.53-14.47:1, clear of the 3:1 non-text floor in every palette. The RESTING
+		 * ink (`inkDim` on `elevated`) needs no row of its own: it is a role on a
+		 * ground, and `INKS` asserts it on all four at the text floor (worst 4.51:1,
+		 * obsidian) - the same argument the context-wheel rows already make for not
+		 * repeating a pairing another loop covers.
+		 */
+		name: "link toolbar action icon (hovered)",
+		on: ["accentWash"],
+		fg: "accent",
+	},
 ];
 
 /**
@@ -1191,6 +1216,45 @@ const PERCEPTIBLE = [
 		role: "warningBorder",
 		on: ["warningWash", "sunken"],
 		minDeltaE: 4.0,
+	},
+	{
+		/*
+		 * THE LINK TOOLBAR'S OWN GROUND STEP, and why it is HERE rather than in
+		 * `CONTROLS`.
+		 *
+		 * The toolbar (the transcript's link actions, `link-toolkit.tsx`) is a
+		 * floating strip with its own fill and its own border, which the section
+		 * above says means a row - and it cannot have a `CONTROLS` row, for the
+		 * reason the browser-tab hover fill above cannot: `elevated` on the grounds
+		 * it floats over measures 1.03-1.40:1 against `canvas` and `surface`, and a
+		 * fill step between adjacent grounds is under the 3:1 floors by construction.
+		 * Listing it there would either fail on a property the design deliberately
+		 * does not have, or force a heavier edge onto a strip whose whole look IS the
+		 * lightness step - and `hairline`, the edge it actually wears, is capped below
+		 * 2:1 by design (see the "usage bar track boundary" pin, which exists because
+		 * `hairline` was the tempting weight there too).
+		 *
+		 * What the strip owes is being SEEN against what is behind it, which is this
+		 * table's question. Measured this round: `elevated` against `surface` is
+		 * ΔE00 2.09 at worst (catppuccinMacchiato) and against `canvas` 3.90
+		 * (rosePineDawn), so the floor is 2.0 - § 3's "a human can tell these apart",
+		 * the same floor and the same reason as the chip row above rather than a
+		 * restatement of its measurement.
+		 *
+		 * BOTH GROUNDS, because both are reachable and one of them is new here: the
+		 * strip floats over the assistant's `canvas` column AND over a user turn's
+		 * `surface` bubble (the row it is pinned to contains both). The weight half is
+		 * a ratio ceiling against `canvas` for the reason the chip row records about
+		 * its own - a hover step measures ~1.05-1.4 either way - so read it as "the
+		 * step must not stop being a step", not as a proof about this strip.
+		 */
+		name: "link toolbar ground step",
+		role: "elevated",
+		on: ["canvas", "surface"],
+		minDeltaE: 2.0,
+		pairedWith: "canvas",
+		maxWeightChange: 2.0,
+		against: "canvas",
 	},
 ];
 
