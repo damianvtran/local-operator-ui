@@ -2197,6 +2197,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// only one of the three vocabularies `/login`, `/logout`,
 					// `/credential`, `/stop`, `/fast` and `/move` appear in.
 					argumentCommands: slash.argumentCommands,
+					// The wire's own two halves of the same question, when the backend
+					// sends them: the endpoint's `prefixes_text`, and the shape +
+					// vocabulary its command route validates an argument against. An
+					// older backend sends neither and the planner falls back to the
+					// registry-derived sets above.
+					prefixingCommands: slash.prefixingCommands,
+					argumentShapes: slash.argumentShapes,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
@@ -2206,6 +2213,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash.armedOnlyCommands,
 				slash.valueArgumentCommands,
 				slash.argumentCommands,
+				slash.prefixingCommands,
+				slash.argumentShapes,
 				slash.nameListCommands,
 				slash.available,
 				onSlashCommand,

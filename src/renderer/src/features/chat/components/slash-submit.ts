@@ -265,6 +265,29 @@ export type SlashSubmissionArgs = {
 	 * rather than failing to build; the composer wires it.
 	 */
 	argumentCommands?: ReadonlySet<string>;
+	/**
+	 * THE WIRE'S OWN VOCABULARY, when the backend sends it: names the endpoint
+	 * itself calls `prefixes_text`, unioned with the three sets above because each
+	 * half keeps its own single derivation and none of them is a superset.
+	 *
+	 * It is what makes the two hosts agree on a draft the older derivation read
+	 * wrongly in BOTH directions: a row whose argument is declared only as a shape
+	 * (`/mcp logout` — `arguments: optional`, no inline list) was prose here while
+	 * the endpoint admitted it, and a row that carries both booleans but no typed
+	 * text is still a command there. An older backend sends no field, the set
+	 * stays empty, and every row falls back to the union above — the behaviour
+	 * this file had before the field existed.
+	 */
+	prefixingCommands?: ReadonlySet<string>;
+	/**
+	 * Per-word SHAPES from the wire (`argument_shape`/`argument_words`), keyed by
+	 * every primary and alias. Consulted AFTER the booleans, never instead of
+	 * them: the booleans answer "does this command take text at all", and the
+	 * shape answers the finer question the endpoint validates — which is why a
+	 * boolean-carried row published with `argument_shape: "none"` still reads as a
+	 * command, while `/mcp logout seems to cause a crash` does not.
+	 */
+	argumentShapes?: ReadonlyMap<string, ArgumentShapeRow>;
 	/** Names of commands whose argument list is open before any name is typed. */
 	nameListCommands: ReadonlySet<string>;
 	/**
@@ -317,6 +340,13 @@ const WHITESPACE = /\s/;
  */
 /** The default for an input a caller has not wired yet; never mutated. */
 const EMPTY_COMMANDS: ReadonlySet<string> = new Set<string>();
+
+/**
+ * The shapes an older backend leaves: none. Named rather than a bare `new Map()`
+ * at the use so "the wire said nothing" is a value the planner can be read
+ * against — it selects the fallback path, never a defaulted shape.
+ */
+const NO_SHAPES: ReadonlyMap<string, ArgumentShapeRow> = new Map();
 
 /** The lower-cased command word of a token's text, `/team ops` → `team`. */
 function wordOf(commandText: string): string {
@@ -391,6 +421,82 @@ function oneLine(text: string): string {
 	return text.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * One row's answer to "does text after this word belong to it", as the WIRE
+ * states it (`argument_shape` + `argument_words`).
+ *
+ * A shape with an EMPTY word list is "any argument" (`/rename my title`); a
+ * non-empty list restricts the first token to that vocabulary (`/login openai`),
+ * which is what makes the planner and the command route agree about a draft like
+ * `/mcp logout seems to cause a crash`.
+ */
+export type ArgumentShapeRow = {
+	shape: "none" | "word" | "provider" | "subcommand" | "any";
+	words: readonly string[];
+};
+
+/**
+ * Whether the trailing text of a whole-draft token fits the shape the wire
+ * declared for its word.
+ *
+ * Absent shape is not this function's business: a word the wire said nothing
+ * about never reaches it, and keeps the booleans' answer. A `none` shape refuses
+ * any text; `optional`/`required` take text, and a non-empty `words` restricts
+ * its FIRST token to that vocabulary — the same partition the command route
+ * applies, so the two hosts cannot disagree about what a draft is.
+ */
+function argumentFits(row: ArgumentShapeRow, args: string): boolean {
+	const trimmed = args.trim();
+	if (row.shape === "none") return trimmed === "";
+	if (row.shape === "any") return trimmed !== "";
+	const tokens = trimmed.split(/\s+/);
+	/*
+	 * The FIRST token is the value, and the ARITY is the shape's: a provider id
+	 * and a selection are one word, an MCP `<subcommand> [name]` is at most two,
+	 * and a third token is the user talking past the command. This is the
+	 * endpoint's own reading — `command_argument_is_used` and the route's
+	 * validator share one derivation, so `/mcp logout` is the command and
+	 * `/mcp logout seems to cause a crash` is the message the operator was
+	 * writing.
+	 */
+	const first = tokens[0].toLowerCase();
+	const known =
+		row.words.length === 0 ||
+		row.words.some((word) => word.toLowerCase() === first);
+	if (!known) return false;
+	return row.shape === "subcommand" ? tokens.length <= 2 : tokens.length === 1;
+}
+
+/**
+ * The offset to evaluate when NO token sits at the caret: inside the draft's
+ * LEADING command word, or `null` when the draft does not open with one.
+ *
+ * WHY THIS EXISTS. The token-at-the-caret test ends a token's span at its own
+ * line end, so a draft-opening command whose instruction spans lines has no
+ * token at a caret that has moved into the body: `/team ops fix this` then a
+ * second line planned `send` at the end of the body and staged the command at
+ * column 4 of line 1, and the same draft with the caret at column 0 (Home, or
+ * select-all collapsed to the start) planned `send` too — the caret deciding an
+ * outcome it cannot express. Evaluating the leading line instead makes those
+ * cases agree with the caret-inside-the-word reading they had a keystroke
+ * earlier. It cannot fire on a draft that does not OPEN with a command word, so
+ * a slash mid-sentence, on a later line, or in prose is unaffected; the arming,
+ * name-list and argument-vocabulary gates all still run on the span it produces,
+ * which is what keeps `/goal` and a bare `/team ` out of it.
+ */
+function draftOpeningCaret(draft: string): number | null {
+	const first = draft.search(/\S/);
+	if (first === -1 || draft[first] !== "/") return null;
+	const lineEnd = draft.indexOf("\n", first);
+	const line = draft.slice(first, lineEnd === -1 ? draft.length : lineEnd);
+	// A bare `/` is the popup's own opener, not a word: `activeSlash` accepts it
+	// on the leading line, and a span over it names no command.
+	if (line.trim() === "/") return null;
+	// Just inside the leading word: the span it yields is that LINE's, so the
+	// exact offset within the word does not matter.
+	return first + 1;
+}
+
 export function planSlashSubmission({
 	draft,
 	caret,
@@ -400,6 +506,8 @@ export function planSlashSubmission({
 	valueArgumentCommands,
 	nameListCommands,
 	argumentCommands,
+	prefixingCommands,
+	argumentShapes,
 	enabled,
 	gesture = "typed",
 }: SlashSubmissionArgs): SlashSubmissionPlan {
@@ -419,7 +527,15 @@ export function planSlashSubmission({
 	 * transport as a provider name (round 1 R2 = QA Q1 = UX U1). The reference
 	 * calls `slash_token_span` first for the same reason (`editor.py:8184-8197`).
 	 */
-	const span = slashTokenSpan(draft, caret, commandNames);
+	let span = slashTokenSpan(draft, caret, commandNames);
+	if (span === null) {
+		// No token at the caret: the draft-opening branch is read off the LEADING
+		// line (see `draftOpeningCaret` for the measured cases this repairs).
+		// Everything downstream is unchanged, so the arming, name-list and
+		// vocabulary gates still decide whether that leading word is a command.
+		const leading = draftOpeningCaret(draft);
+		if (leading !== null) span = slashTokenSpan(draft, leading, commandNames);
+	}
 	if (span === null) return { kind: "send" };
 
 	const spliced = replaceSpan(draft, span.start, span.end, "");
@@ -460,7 +576,8 @@ export function planSlashSubmission({
 	const consumesText =
 		promptCommands.has(word) ||
 		valueArgumentCommands.has(word) ||
-		(argumentCommands ?? EMPTY_COMMANDS).has(word);
+		(argumentCommands ?? EMPTY_COMMANDS).has(word) ||
+		(prefixingCommands ?? EMPTY_COMMANDS).has(word);
 	/*
 	 * And whether the word is armed ONLY by an explicit pick. This narrows the
 	 * DRAFT-OPENING branch alone, never the whole-draft one, because that is what
@@ -477,6 +594,12 @@ export function planSlashSubmission({
 		// it`). A no-argument command with trailing text is the operator's own
 		// report — `/compact hello` ran and ate `hello` — so the draft is prose.
 		if (!consumesText && command.args) return { kind: "send" };
+		// THE SHAPE, SECOND AND ONLY WHEN THE WIRE SENT ONE. The booleans above say
+		// the command takes text; the shape says what THAT text may be, which is
+		// the endpoint's own predicate — so `/mcp logout` runs while `/mcp logout
+		// seems to cause a crash` stays the sentence the user wrote.
+		const shape = (argumentShapes ?? NO_SHAPES).get(word);
+		if (shape && !argumentFits(shape, command.args)) return { kind: "send" };
 		return { kind: "whole", command };
 	}
 

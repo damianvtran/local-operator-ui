@@ -22,6 +22,22 @@ export type DesktopCommandMetadata = {
 	consumes_prompt: boolean;
 	destination: string;
 	execution: "owner" | "native";
+	/*
+	 * The endpoint's OWN admission rule, and the reason the planner can stop
+	 * guessing. All three are ADDITIVE: a renderer that reads none of them keeps
+	 * its own derivation (the booleans above plus the inline argument lists), and
+	 * one that reads them answers a draft the way the endpoint will.
+	 *
+	 * `prefixes_text` is the free-text half as the SERVER computes it;
+	 * `argument_shape` is the third source of "text after this word is the
+	 * command's argument", which neither boolean expresses; `argument_words` is
+	 * the vocabulary that argument's first token must come from (empty = any).
+	 * They have shipped since v0.56.1 (`server/utils/desktop_commands.py`), so
+	 * reading them is integration with released code rather than a new contract.
+	 */
+	prefixes_text?: boolean;
+	argument_shape?: "none" | "word" | "provider" | "subcommand" | "any";
+	argument_words?: string[];
 };
 export type DesktopLoopState = {
 	status:

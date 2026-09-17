@@ -986,3 +986,113 @@ test("a command that declares an argument keeps its whole-draft form", () => {
 	assert.equal(plan("/compact hello", 14).kind, "send");
 	assert.equal(plan("fix this /login openai", 21).kind, "send");
 });
+
+/* ------------------------------------------------------------------ */
+/* PR 1: the wire's own vocabulary, and the leading-line repair         */
+/* ------------------------------------------------------------------ */
+
+/** The wire's answer for the words these rows are about, as the endpoint sends it. */
+const WIRE = {
+	prefixingCommands: new Set([
+		"team",
+		"teams",
+		"agent",
+		"agents",
+		"goal",
+		"loop",
+	]),
+	/*
+	 * The registry-derived set the composer still passes: `arguments !== "none"`.
+	 * `mcp`, `rename` and `login` are carried ONLY here — the wire's shape refines
+	 * that reading, it does not replace it, which is why the two are ORed and the
+	 * shape is asked second.
+	 */
+	argumentCommands: new Set([
+		...ARGUMENT_COMMANDS,
+		"mcp",
+		"rename",
+		"login",
+		"model",
+	]),
+
+	argumentShapes: new Map([
+		[
+			"mcp",
+			{ shape: "subcommand", words: ["logout", "add", "remove", "list"] },
+		],
+		["compact", { shape: "none", words: [] }],
+		["rename", { shape: "any", words: [] }],
+		["login", { shape: "provider", words: ["openai", "anthropic"] }],
+		["model", { shape: "provider", words: ["gpt-5", "claude"] }],
+	]),
+};
+const wire = (draft, caret, over = {}) =>
+	plan(draft, caret, {
+		...WIRE,
+		commandNames: new Set([
+			...COMMAND_NAMES,
+			"mcp",
+			"compact",
+			"rename",
+			"login",
+			"model",
+		]),
+		...over,
+	});
+
+test("the wire's shape decides the whole-draft argument, not the booleans alone", () => {
+	/*
+	 * The endpoint's own reading, which is why the planner reads the same field
+	 * (`command_argument_is_used`): a subcommand-shaped argument is
+	 * `<subcommand> [name]`, so the command runs on `/mcp logout` and the sentence
+	 * the operator was writing stays a sentence.
+	 */
+	assert.equal(wire("/mcp logout", 11).kind, "whole");
+	assert.equal(wire("/mcp logout seems to cause a crash", 36).kind, "send");
+	assert.equal(wire("/mcp add server", 14).kind, "whole");
+	assert.equal(wire("/mcp add server extra words", 26).kind, "send");
+	// A provider id is ONE word, so a second token is prose.
+	assert.equal(wire("/login openai", 13).kind, "whole");
+	assert.equal(wire("/login openai extra", 19).kind, "send");
+	// ANY owns its trailing text (`/rename my title`); NONE owns none of it, which
+	// is the operator's own report (`/compact hello` ran and ate `hello`).
+	assert.equal(wire("/rename my title", 16).kind, "whole");
+	assert.equal(wire("/compact hello", 14).kind, "send");
+	// A prefixing command keeps the free-text reading, and the shape is asked
+	// only after the booleans.
+	assert.equal(wire("/team ops fix this", 17).kind, "whole");
+});
+
+test("an older wire that sends no shape keeps the booleans' answer", () => {
+	// The same drafts with the shapes absent: `mcp` is carried by the registry's
+	// own `arguments` declaration, so the command still runs and nothing about
+	// the fallback changed.
+	const bare = {
+		commandNames: new Set([...COMMAND_NAMES, "mcp", "compact", "rename"]),
+		argumentCommands: new Set([...ARGUMENT_COMMANDS, "mcp", "rename"]),
+	};
+	assert.equal(plan("/mcp logout", 11, bare).kind, "whole");
+	assert.equal(plan("/rename my title", 16, bare).kind, "whole");
+	// `/compact hello` is prose on that wire too — the booleans say a no-argument
+	// command with trailing text is the user's sentence.
+	assert.equal(plan("/compact hello", 14, bare).kind, "send");
+});
+
+test("a draft-opening command is read off the leading line when the caret leaves it", () => {
+	const draft = "/team ops fix this\nand then ship it";
+	// Caret in the word, at the end of the body, and at column 0 of line 1: the
+	// same answer, because the caret cannot be the thing that decides it.
+	const atWord = plan(draft, 4);
+	for (const caret of [draft.length, 0, draft.indexOf("ship")]) {
+		assert.deepEqual(plan(draft, caret), atWord, `caret ${caret}`);
+	}
+	assert.notEqual(atWord.kind, "send");
+	// The exclusions still hold on the leading line: an armed-only command is not
+	// hoisted by opening with it, and a name-list command with no name yet leaves
+	// the list open rather than consuming the draft.
+	assert.equal(plan("/goal ship it\nand more", 22).kind, "send");
+	assert.equal(plan("/team \nand more", 15).kind, "list-open");
+	// A draft that does not OPEN with a command word is untouched by the repair.
+	assert.equal(plan("please check /usage\nin the logs", 25).kind, "send");
+	assert.equal(plan("hello\n/team ops fix this", 21).kind, "send");
+});
