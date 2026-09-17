@@ -26,27 +26,40 @@ ancestry rule requires its `head` to be an ancestor of `HEAD`, and a capture can
 only be stamped from a tree that is already committed, so a set always lands in a
 commit after the tree it photographed.
 
-**And this set was folded onto a moved `main` after that pass, so read the head
-above as the spelling the rebase gave it.** `main` moved 35 commits and 738 files
-under this branch (the 0.26.4 and 0.26.5 windows, the provider/model combobox), 40
-of them under `src/` and 19 under `scripts/`; the manifest's `srcTree`/`scriptsTree`
-describe the tree the frames SHIP in, so the rebase invalidates them whatever the
-branch's own delta is, and both were re-derived on the merged tree. What it does
-NOT invalidate is the pictures, and that was measured rather than argued: this
-set's own narrowed run re-took all **288 frames on the merged tree** and 19 came
-back with different bytes — **0 pixels differing above a 4% fuzz in every one of
-them**, RMSE at most 0.0011, against 1,407 pixels over the threshold at this set's
-smallest redrawn change — so the encoding-level bytes were reverted and the fold's
-diff carries no `.webp` at all. The file-level argument agrees and is why nothing
-was expected to move: none of the files this band renders is among the moved ones
-(`message-input.tsx`, `at-picker.tsx`, `at-mention-overlay.tsx`, `at-token.ts`,
-`at-rank.ts`, `at-contract.ts`, `composer-tip.tsx`, `composer-tips.ts`,
-`chat-page.tsx`, `chat-content.tsx` are untouched), and the two `features/chat`
-files upstream did move — `pickers/destination-pickers.tsx` and
-`components/run-details/run-detail-wakes.tsx` — render in the slash destination and
-run-detail surfaces rather than in this one. The counts in the manifest next to this
-file are the merged tree's own (`frames` 5,722 outside the 74 declared sets,
-`surfaces` 615), re-derived by the same walker `check-evidence.mjs` uses.
+**And this set was folded onto a moved `main` after that pass — twice — so read the
+head above as the spelling the folds gave it.** The manifest's
+`srcTree`/`scriptsTree` describe the tree the frames SHIP in, so a fold invalidates
+them whatever the branch's own delta is, and both are re-derived on the merged tree
+each time. The eighth fold (`main` at `318cbb75e`) moved 35 commits and 738 files —
+40 under `src/`, 19 under `scripts/` — and left the pictures alone, and that was
+measured rather than argued: this set's own narrowed run re-took all **288 frames on
+the merged tree** and 19 came back with different bytes — **0 pixels differing above
+a 4% fuzz in every one of them**, RMSE at most 0.0011, against 1,407 pixels over the
+threshold at this set's smallest redrawn change — so the encoding-level bytes were
+reverted and that fold's diff carries no `.webp` at all. The file-level argument
+agreed there: none of the files this band renders was among the moved ones, and the
+two `features/chat` files upstream did move (`pickers/destination-pickers.tsx`,
+`components/run-details/run-detail-wakes.tsx`) render in the slash destination and
+run-detail surfaces rather than in this one.
+
+**The ninth fold (`main` at `44cb3af3c`) is the one that moved this band, so that
+file-level argument does not carry it.** `main` moved 60 commits and 226 files under
+this branch (the 0.26.6 through 0.26.9 windows, the composer mic's stop-slot grace
+window, #307's store-refusal retry hint), 17 of them under `src/` and 26 under
+`scripts/`, and **`message-input.tsx`, `chat-page.tsx` and `chat-content.tsx` are
+now among them**. The case is therefore made on frames rather than on filenames:
+every composer-band state BOTH trees hold is byte-identical across this window,
+twelve frames each, base-to-`44cb3af3c` AND this branch to `44cb3af3c` —
+`chat-message-input/{idle,awaiting-answer,awaiting-reply,stop-control-while-streaming,stop-control-without-capability,credential-armed}`.
+The instrument is calibrated in the same run by the pair that DID move: the renamed
+`stop-slot-reserved` -> `stop-slot-settled` sets differ in all twelve frames. And
+the mention stories render an idle composer with no session status and no alert, so
+the two changed paths — the store-refusal alert, and the Stop slot's grace window —
+are on no frame of this set's render path. No frame was re-taken for this fold.
+
+The counts in the manifest next to this file are the merged tree's own (`frames`
+5,933 outside the 76 declared sets, `surfaces` 627), re-derived by the same walker
+`check-evidence.mjs` uses.
 
 **What moved in this pass, measured.** 170 of the 288 frames differ from the
 reviewed set, and the three groups below are exhaustive of them. The first is the
