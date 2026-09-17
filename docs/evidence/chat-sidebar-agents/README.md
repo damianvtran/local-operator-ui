@@ -29,6 +29,20 @@ The last three are driven by their stories' own `play` functions — a real clic
 the action, then a wait for the state under test — so they are pictures of the
 component reacting rather than of a prop that fakes a state.
 
+**PAUSED MID-CAPTURE — read this before judging this set.** The re-capture for
+design/UX round 1 was stopped by a host-load hold (the machine was pageout-bound)
+after the hub's frames landed and before this surface's run reached it. So:
+
+- `installing-mid-run` has NO frames committed on this head. The story exists,
+  it is declared in `capture-evidence.mjs`'s `STORIES`, and the line above
+  describes what it will show — but nothing has photographed it yet.
+- The six other states are the PREVIOUS round's captures, taken before the meter,
+  summary and copy changes in `add709df1`. They are not evidence for those
+  changes and should not be read as such.
+
+The frames are owed, not waived; the pause comment on the PR lists this as
+remaining work.
+
 ## What these frames do NOT prove
 
 - **Not that the local backend answers any of this.** The catalogue and install
@@ -65,4 +79,5 @@ that drops it fail a gate rather than a frame review.
 
 `installing-mid-run` exists because the set could not previously answer the
 question the bar raises: with only the starting frame, a bar that never moves is
-indistinguishable from a bar that is not drawn.
+indistinguishable from a bar that is not drawn. Its frames are still owed on this
+head — see the pause note above.
