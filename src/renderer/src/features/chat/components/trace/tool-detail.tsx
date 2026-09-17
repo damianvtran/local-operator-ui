@@ -110,6 +110,15 @@ const NEST_STEP_PX = 8;
  */
 const SECTION_MAX = "max-h-[240px]";
 
+/**
+ * The section cap, for a caller that renders its own section in this idiom.
+ *
+ * Exported rather than copied: the never-run body on a tool row is the second
+ * section in the trace that is a long machine payload under a label, and a
+ * second `max-h-[240px]` literal is a second cap free to drift from this one.
+ */
+export const DETAIL_SECTION_MAX = SECTION_MAX;
+
 export type ToolDetailProps = {
 	/** The call's arguments, or `null` when the row has none to show. */
 	args: Record<string, unknown> | null;

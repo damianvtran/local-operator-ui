@@ -65,8 +65,8 @@ HOW the seed is folded. The story is
   stamped with that arrival (8) and then names them: the `before-report` frame
   prints all eight ids and no `… N more` line, and a `… N more` line appears only
   on a moment that injects more than eight — which is `before-live` alone (60
-  rows, eight ids and `… 52 more`). `after-live` injects one and prints its header
-  plus that one id, with no more-line, so the sentence that named "the two `live`
+  rows, eight ids and `… 52 more`). `after-live` injects none and prints its
+  header alone, with no more-line, so the sentence that named "the two `live`
   frames" was one frame too wide (design round 2, D2-4).
 - **`after-report/`** — the same session, the same page, the same frames through
   the shipped fold: the pane still ends at that call, the injected rows are
@@ -78,12 +78,16 @@ HOW the seed is folded. The story is
   ends plus one compose frame, 60 rows stamped with the arrival, and the same
   shape — the running `wait` above them and the fabricated wall as the pane's own
   last rows.
-- **`after-live/`** — none of the settled ones. One row is still stamped with the
-  arrival: the seed's `tool_call_compose` frame, which never ran (a call whose plan
-  the harness rejected has no start and therefore no clock). It is the pane's last
-  RECORD row, with the in-flight `wait` immediately above it. That is #312's half
-  of the same `else if` chain rather than this change's, and the caption names its
-  id instead of counting it away.
+- **`after-live/`** — none at all, since the fold onto #312. The seed's
+  `tool_call_compose` frame — a call whose plan the harness rejected, so it has no
+  start, no end and therefore no clock — used to be the one row still stamped
+  with the arrival, sitting under the running `wait`; it is now refused with the
+  settled ends, so the panel reads `rows stamped at the reader's arrival: 0` and
+  the pane's last record row is the turn's in-flight `wait`. Both halves are ONE
+  rule rather than two: a frame that states no time has no position the reader can
+  be given, and the settled end is this change's while the finished dictation is
+  #312's. The caption still names the compose row's id, because the row ITSELF is
+  what moved.
 
 **Each caption is held to TWO lines, and that is a constraint rather than a
 style.** The box above the pane is `h-10` — two lines of `text-body-sm` at its 1.5

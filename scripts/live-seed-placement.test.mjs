@@ -263,6 +263,29 @@ test("pre-fix: a settled row the page cannot name is painted at the arrival, nam
 				);
 				continue;
 			}
+			/*
+			 * TWO CLASSES OF ROW, and the difference is #312's rather than this
+			 * change's: a settled END reports the duration the backend measured and
+			 * falls through to the output's first line, while a COMPOSE frame whose
+			 * dictation ended settles with the harness's verdict instead — measured on
+			 * the real fixture, that row is `phase: done`, `durationS: null` (nothing
+			 * measured one) and `output: null`, with `notRunReason` carrying the
+			 * harness's words and `neverSent` set. Asserting a duration on it is the
+			 * shape #312 replaced, and it is what this test was reading until the fold.
+			 */
+			if (compose.some((frame) => frame.tool_call_id === callId)) {
+				assert.equal(record.phase, "done");
+				assert.equal(
+					record.durationS,
+					null,
+					`${record.id}: no duration was measured`,
+				);
+				assert.ok(
+					record.notRunReason,
+					`${record.id}: keeps the harness's verdict`,
+				);
+				continue;
+			}
 			assert.equal(record.phase, "done");
 			assert.equal(
 				typeof record.durationS,
@@ -289,33 +312,29 @@ test("pre-fix: a settled row the page cannot name is painted at the arrival, nam
 	}
 });
 
-test("the fix: no settled call is painted at the arrival, on either moment", () => {
+test("the fix: nothing is painted at the arrival, on either moment", () => {
 	for (const moment of MOMENTS) {
 		const arrival = arrivalOf(moment.seed);
 		const state = shipped(moment.entries, moment.seed, true, arrival);
-		const named = namedCalls(moment.entries);
 		const painted = stamps(state, arrival);
-		// Composing rows are #312's rule, not this one: a compose frame is dictation
-		// that never ran, and the seed carries one here. Everything else must be
-		// placed by a source that states a time.
+		/*
+		 * NOTHING may keep the arrival on either moment, and that covers BOTH frame
+		 * classes the placement rule refuses: a settled call (`settlesACall`, this
+		 * change) and a compose frame whose dictation ended
+		 * (`finishedDictationFrame`, #312). The harvest moment is the one that used
+		 * to keep exactly one row — the seed's single compose frame, refused now for
+		 * the reason the settled ends are: it states no time, so the reader's arrival
+		 * is not a position it can be given.
+		 */
 		for (const record of painted) {
-			assert.equal(
-				record.phase,
-				"composing",
-				`${moment.name}: ${record.id} was painted at the reader's arrival`,
+			assert.fail(
+				`${moment.name}: ${record.id} (phase ${record.phase}) was painted at the reader's arrival`,
 			);
-			assert.equal(named.has(record.id.slice("tool:".length)), false);
 		}
-		const settled = painted.filter((record) => record.phase !== "composing");
 		assert.equal(
-			settled.length,
+			painted.length,
 			0,
-			`${moment.name}: ${settled.length} settled rows stamped with the arrival (was ${moment.unlabelled.length} before the fix)`,
-		);
-		assert.equal(
-			stamps(state, arrival).length,
-			moment.seed.filter((frame) => frame.type === "tool_call_compose").length,
-			`${moment.name}: only the seed's compose frames may keep the arrival`,
+			`${moment.name}: ${painted.length} rows stamped with the arrival, against ${moment.unlabelled.length} unnamed settled ends plus the seed's compose frames before the fix`,
 		);
 	}
 });
@@ -495,33 +514,44 @@ test("a clock the runtime does not have is refused rather than invented", () => 
 	assert.equal(state.index.get(`tool:${callId}`), undefined);
 });
 
-test("the gate no longer depends on the flag, and the read-back is still sized for it", () => {
+test("the fold no longer depends on the flag, and the read-back is sized for every refused call", () => {
 	for (const moment of MOMENTS) {
 		const arrival = arrivalOf(moment.seed);
 		const live = shipped(moment.entries, moment.seed, true, arrival);
 		const finished = shipped(moment.entries, moment.seed, false, arrival);
-		// The two folds now agree on every SETTLED row. They still differ by the seed's
-		// compose frame, which a finished turn refuses outright and an in-flight one
-		// paints at the arrival — #312's half of this clause, not this change's.
-		const settledShape = (state) =>
-			state.records
-				.filter((record) => record.phase !== "composing")
-				.map((record) => [record.id, record.ts]);
+		/*
+		 * The two folds agree on EVERY row now, not only on the settled ones: with
+		 * both refusal classes in place the in-flight flag has nothing left to
+		 * excuse, because every frame that would create a row without a clock is
+		 * refused whether or not a turn is running. Measured on both real moments:
+		 * 70 records each, same ids, same `ts`, same phases.
+		 */
+		const shape = (state) =>
+			state.records.map((record) => [record.id, record.ts, record.phase]);
 		assert.deepEqual(
-			settledShape(live),
-			settledShape(finished),
-			`${moment.name}: an in-flight turn and a finished one fold their settled rows identically`,
+			shape(live),
+			shape(finished),
+			`${moment.name}: an in-flight turn and a finished one fold identically`,
+		);
+		const composeFrames = moment.seed.filter(
+			(frame) => frame.type === "tool_call_compose",
 		);
 		assert.equal(
 			live.records.some((record) => record.phase === "composing"),
-			moment.seed.some((frame) => frame.type === "tool_call_compose"),
-			`${moment.name}: the only difference is the compose frame`,
+			false,
+			`${moment.name}: a refused frame leaves no composing row behind`,
 		);
 		const named = namedCalls(moment.entries);
 		const missing = seedCallsMissingLabels(moment.seed, named);
+		/*
+		 * The read-back is sized for the unnamed settled ends AND the compose frames
+		 * (#312 widened `seedCallsMissingLabels` to both), so the count is the two
+		 * together rather than the fixture's `ghosts` alone — 8 + 0 on the reported
+		 * moment, 59 + 1 on the harvest.
+		 */
 		assert.equal(
 			missing.length,
-			moment.unlabelled.length,
+			moment.unlabelled.length + composeFrames.length,
 			`${moment.name}: every refused call is named for the read-back`,
 		);
 		assert.equal(
