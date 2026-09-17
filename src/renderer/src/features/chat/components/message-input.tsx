@@ -72,6 +72,10 @@ import type {
 	DraftPickerDestination,
 	DraftResolution,
 } from "../draft-selection";
+import {
+	type InterruptSlotHold,
+	interruptSlotHold,
+} from "../interrupt-slot-grace";
 import { MOVE_UNAVAILABLE_REASON } from "../move-session";
 import {
 	DESTINATIONS,
@@ -366,11 +370,16 @@ type MessageInputProps = {
 	/**
 	 * Whether this session's backend negotiates `session_interrupt` at all.
 	 *
-	 * The control's SLOT exists whenever this is true, even while no turn runs:
-	 * the reservation below is what keeps the dictation control out of the
-	 * position a reflex second press lands on (UX round 1's U1, QA's Q1). It is
-	 * the same capability `canonicalStop.active` is folded with at the call site,
-	 * so the reservation cannot outlive the control it reserves for.
+	 * The control's SLOT can only be held on a backend that could ever fill it, so
+	 * this is the outer half of the reservation's gate - an invisible placeholder
+	 * that no control will ever stand in for is a gap, not a reservation. It is the
+	 * same capability `canonicalStop.active` is folded with at the call site, so the
+	 * reservation cannot outlive the control it reserves for.
+	 *
+	 * It is no longer the whole gate: the slot is held while a turn runs and for a
+	 * grace window after it ends, and is empty once the row has settled (the
+	 * operator's report that the standing gap put the dictation control away from
+	 * Send). See the reservation at the row and `interrupt-slot-grace.ts`.
 	 */
 	canonicalStopAvailable?: boolean;
 	/**
@@ -2816,6 +2825,80 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const isInputDisabled = unavailable || isBusy;
 
 		/*
+		 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER A TURN ENDS.
+		 *
+		 * The reservation itself is argued at the row (see `data-interrupt-slot`
+		 * below); this is the clock it runs on, and the reason it is a grace rather
+		 * than a permanent state: the operator reported the standing gap it used to
+		 * leave in the idle composer, and the geometry cannot avoid moving the
+		 * dictation control when the Stop leaves the row - with the Stop between them
+		 * the two controls are 68px apart, without it 36px, so an idle row in which
+		 * dictation sits beside Send NECESSARILY puts it where the Stop was. Holding
+		 * the box only for the window the reflex press comes in (`interrupt-slot-
+		 * grace.ts` carries the measured U1/Q1 hazard behind the number and what the
+		 * 500ms costs) is what answers both reports at once.
+		 *
+		 * THE EDGE, and why it is read from a ref rather than from state. What opens
+		 * the window is a TRANSITION - the control was rendered and now is not - which
+		 * cannot be read off one render, so the previous sample is kept in a ref. The
+		 * fold itself is pure and idempotent (`interruptSlotHold`), which is what makes
+		 * a double-invoked effect harmless: folding the same inputs twice cannot
+		 * shorten the window, extend it, or open one that was never opened. A freshly
+		 * mounted idle composer folds (false, false, no deadline) and therefore holds
+		 * nothing - mounting never renders a reservation.
+		 *
+		 * ONE TIMER, ARMED ONLY WHEN THE DEADLINE CHANGES, and cleared when the box is
+		 * replaced by the control it stands in for. It is deliberately NOT cleared by
+		 * the effect that armed it: that effect re-runs when the state it just set
+		 * lands, and a cleanup responsible for the timer would cancel the window it had
+		 * opened. The unmount-only effect below owns the disposal instead.
+		 */
+		const stopActive = Boolean(canonicalStop?.active);
+		const [slotHold, setSlotHold] = useState<InterruptSlotHold>({
+			held: false,
+			heldUntil: null,
+		});
+		const wasStopActiveRef = useRef(false);
+		const slotGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+			null,
+		);
+		useEffect(() => {
+			const now = Date.now();
+			const next = interruptSlotHold({
+				previousActive: wasStopActiveRef.current,
+				currentActive: stopActive,
+				heldUntil: slotHold.heldUntil,
+				now,
+			});
+			wasStopActiveRef.current = stopActive;
+			if (next.held === slotHold.held && next.heldUntil === slotHold.heldUntil)
+				return;
+			if (slotGraceTimerRef.current !== null) {
+				clearTimeout(slotGraceTimerRef.current);
+				slotGraceTimerRef.current = null;
+			}
+			setSlotHold(next);
+			if (next.heldUntil !== null) {
+				slotGraceTimerRef.current = setTimeout(() => {
+					slotGraceTimerRef.current = null;
+					setSlotHold({ held: false, heldUntil: null });
+				}, next.heldUntil - now);
+			}
+		}, [stopActive, slotHold]);
+		// The window must not outlive the composer that opened it: a timer left armed
+		// here would set state on an unmounted component, and a failed unmount is the
+		// kind of leak that only shows up as a warning nobody reads.
+		useEffect(
+			() => () => {
+				if (slotGraceTimerRef.current !== null) {
+					clearTimeout(slotGraceTimerRef.current);
+					slotGraceTimerRef.current = null;
+				}
+			},
+			[],
+		);
+
+		/*
 		 * Whether the suggestion chips are inert.
 		 *
 		 * The draft case is not the composer being disabled - the box is very much
@@ -4490,33 +4573,88 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										</>
 									)}
 									{/*
-									 * THE SLOT IS RESERVED, not merely vacated.
+									 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER THE
+									 * TURN IT BELONGED TO ENDS - and empty otherwise.
 									 *
-									 * Without this, pressing Stop slides the dictation control 36px
-									 * right - 32px of control plus the row's 4px gap - into the exact
-									 * centre of the box the press just landed in, so a reflex second
-									 * press starts a MICROPHONE RECORDING. Measured independently by
-									 * UX round 1 (U1) and QA (Q1): the element at the Stop's own
-									 * centre is `button[aria-label="Start recording"]` once the turn
-									 * settles, and pressing there reports `recording_started: true`.
-									 * A 120ms double press still hits Stop twice, which is what made
+									 * THE HAZARD, MEASURED TWICE. Pressing Stop used to slide the
+									 * dictation control 36px right - 32px of control plus the row's
+									 * 4px gap - into the exact centre of the box the press had just
+									 * landed in, so a reflex second press started a MICROPHONE
+									 * RECORDING. UX round 1 (U1) and QA (Q1) found it independently
+									 * on the unreserved build: the element at the Stop's own centre
+									 * was `button[aria-label="Start recording"]` once the turn
+									 * settled, and a press there reported `recording_started: true`.
+									 * A 120ms double press still hit Stop twice, which is what made
 									 * it a trap rather than something a user notices.
 									 *
-									 * So an invisible, non-interactive box holds the position for as
-									 * long as the backend negotiates `session_interrupt`, and the mic
-									 * never occupies the Stop's centre. `aria-hidden`, no focus and no
-									 * pointer events: this is geometry, not a control - nothing may be
-									 * reachable, announced or pressed there. The cost, stated rather
-									 * than hidden: the idle composer carries a one-control gap between
-									 * the dictation control and Send.
+									 * WHY A GRACE RATHER THAN A STANDING RESERVATION. Holding the
+									 * box for as long as the capability is negotiated removes the
+									 * hazard and leaves the idle composer with a one-control gap
+									 * between dictation and Send, which the operator reported as a
+									 * defect of its own ("the dictation control should sit beside
+									 * Send"). Both cannot hold: the right cluster is right-justified
+									 * (`ml-auto`), so the dictation control sits exactly one
+									 * control-plus-gap - the Stop's own 32px plus the row's 4px -
+									 * further from Send while the Stop is rendered than with it gone,
+									 * and an idle row whose dictation control sits BESIDE Send is the
+									 * row in which the control has moved into the vacated box - the layout
+									 * cannot be preserved, only the hazard bounded. What a user
+									 * needs protection from is the moment the turn ends, which is
+									 * when the reflex press arrives; a row that has settled since is
+									 * a row nobody is mid-double-press on. So the box is held while
+									 * the turn runs and for `INTERRUPT_SLOT_GRACE_MS` (500) after the
+									 * control leaves, then released to nothing. The window's own
+									 * reasoning, the measurement behind the number and what it costs
+									 * (a second press more than 500ms after the turn settles lands on
+									 * the dictation control, which by then is where it is drawn) live
+									 * in `interrupt-slot-grace.ts`, where they can be tested without
+									 * a browser.
 									 *
-									 * Gated on the same legacy condition the mic is (`isLoading &&
-									 * currentJobId`), because that path hides the mic and renders its
-									 * own `Stop agent` in this cluster; reserving a slot nothing will
-									 * fill would move a control for no reason.
+									 * WHAT IS DELIBERATELY NOT DONE: the recording action is never
+									 * refused, gated or greyed. The dictation control stays visible,
+									 * live and pressable at every instant, and during the grace it is
+									 * at its busy position - the row the operator sees today. The
+									 * grace decides whether an invisible placeholder sits beside it,
+									 * and nothing else. A control that looks live but is not would be
+									 * a worse defect than the gap it replaced, and it would refuse a
+									 * deliberate press.
+									 *
+									 * ALTERNATIVES CONSIDERED AND REJECTED. (a) No guard at all:
+									 * reintroduces the MAJOR above. (b) Putting Stop to the LEFT of
+									 * the dictation control, so the dictation control never moves:
+									 * changes the running layout the operator explicitly asked to keep
+									 * and moves Stop away from Send, where the hand that just sent the
+									 * message already is. (c) Refusing or greying the first press
+									 * inside the window: a control that looks live but is not, a grey
+									 * flicker after every turn, and a deliberate press refused. (d)
+									 * Holding the box while the pointer rests in it: a standing gap
+									 * for exactly the user who just pressed Stop, i.e. the reported
+									 * defect restored for the one person it was measured on.
+									 *
+									 * THE START-OF-TURN TRANSITION IS DELIBERATELY NOT CHANGED (noted
+									 * so a later reader does not "fix" it by symmetry). When the turn
+									 * starts, the Stop appears in the box the dictation control had
+									 * been beside, so Send moves right by the same 36px. It is a
+									 * different case on the merits: the dictation control unmounts on
+									 * its own press (`isRecording` is the same state the recorder
+									 * holds), so nothing the user just pressed is left where a press
+									 * would land somewhere else; the control that ARRIVES is the one
+									 * the new turn needs; and Send moves rather than being replaced,
+									 * so an aim at Send lands on Send. A press aimed at where Send was
+									 * would now hit Stop - that is the cost, and it stops the turn the
+									 * user can see is running, which is recoverable and legible in a
+									 * way that a silent microphone recording is not.
+									 *
+									 * `aria-hidden`, no focus and no pointer events: this is geometry,
+									 * not a control - nothing may be reachable, announced or pressed
+									 * there. Gated on the same legacy condition the mic is (`isLoading
+									 * && currentJobId`), because that path hides the mic and renders
+									 * its own `Stop agent` in this cluster; reserving a slot nothing
+									 * will fill would move a control for no reason.
 									 */}
 									{canonicalStopAvailable &&
 										!canonicalStop?.active &&
+										slotHold.held &&
 										!(isLoading && currentJobId) && (
 											<span
 												aria-hidden="true"
