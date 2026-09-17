@@ -23,8 +23,9 @@ another worktree's server, which is why this one uses 6047.)
 one instead of sweeping it; `manifest.json`'s `partialCapture` and
 `themePortCapture` record that, and `themes`/`surfaces`/`frames` in the same file
 are the full-set values. The companion set `../settings-appearance-before/` is
-the same story on this branch's merge base (`6da8665ee`), in the twelve palettes
-this app shipped — the other half of the pair.
+the same story in a worktree at `6da8665ee` — the branch's merge base at the time
+that half was shot, which this branch's later folds have moved past — in the
+twelve palettes this app shipped: the other half of the pair.
 
 ## Why this surface, and why fifty-nine rather than the sweep's twelve
 
@@ -36,12 +37,15 @@ theme, so a missing story is a missing subject rather than a missing theme.
 
 `scripts/capture-evidence.mjs`'s own `THEMES` list deliberately stays at the
 twelve this app shipped, because every story in that file is captured once per
-theme: sweeping all fifty-nine would take the committed set from **4,851**
-frames / **195 MB** on disk (`git ls-files 'docs/evidence/**/*.webp' | wc -l`;
-`du -sh docs/evidence`), of which **4,110** stand outside the declared
-supplementary sets, to roughly **24,000** frames / **~950 MB** — the 59/12 ratio
-the list itself implies. So the picker is captured in the whole registry here,
-once, and everything else keeps its twelve — with
+theme: sweeping all fifty-nine would take the committed set from **4,925**
+frames / **196 MB** on disk (`find docs/evidence -name '*.webp' | wc -l` and
+`git ls-files 'docs/evidence/**/*.webp' | wc -l`, both 4,925 at this head;
+`du -sh docs/evidence`), of which **4,184** stand outside the 64 declared
+supplementary sets — which is the figure `manifest.json`'s own `frames` carries,
+re-derived here rather than carried — to roughly **24,000** frames / **~950 MB**
+— the 59/12 ratio the list itself implies. (The files' own bytes sum to 133.9
+MiB, the smaller number `du` is not reporting.) So the picker is captured in the
+whole registry here, once, and everything else keeps its twelve — with
 `pnpm check-themes` asserting every contrast floor over all fifty-nine palettes
 regardless, since it reads the palette directory rather than that list.
 
@@ -68,14 +72,22 @@ height in every case):
 
 | window | grid column | columns | rows | tile w | grid span | per theme |
 |---|---|---|---|---|---|---|
+| 800 | 460 | 2 | 30 | 226.0 | 2415px | 40.9px |
 | 1000 | 660 | 3 | 20 | 214.7 | 1621px | 27.5px |
 | 1020 | 680 | 4 | 16 | 164.0 | 1304px | 22.1px |
 | 1040 | 528 | 3 | 20 | 170.7 | 1621px | 27.5px |
 | 1300 | 788 | 4 | 16 | 191.0 | 1304px | 22.1px |
 | 1380 | 868 | 5 | 13 | 167.2 | 1066px | 18.1px |
 
-So the honest figure is 27.5px per theme at 1000px and 18.1px at 1380px against
-92.1px for the twelve, and the 1040 band is SPARSER than the 1020 band below it
+The 800 row is the app's declared minimum window (`WINDOW_MIN_WIDTH = 800`), so
+the table covers the whole range the app renders in rather than stopping at
+1000px (round 2, U3). It is the most expensive band there is: at a 460px column
+the grid is 2 across and 30 rows deep, 2415px of scroll for the set, measured in
+the story at a 508px viewport.
+
+So the honest figure is 40.9px per theme at the app's 800px minimum, 27.5px at
+1000px and 18.1px at 1380px against 92.1px for the twelve, and the 1040 band is
+SPARSER than the 1020 band below it
 because crossing 1040 expands the settings rail from 48px to 220px inside the
 same window. A full five columns needs a window of about 1344px, which the app's
 own default of 1380 clears by 36px. The "14px shorter" line above therefore holds
@@ -84,8 +96,9 @@ their widest count; at the narrower bands the two are not comparable on that
 axis, because they change column count at different widths.
 
 `theme-selector.tsx`'s tile docblock carries the same two tables beside the code
-that renders the grid, including the 1040 band as a documented property of the
-page's rails rather than a defect to tune away.
+that renders the grid, including the 800px band and the 1040 band as documented
+properties of the page's rails and of the app's minimum window rather than
+defects to tune away.
 
 ## What these frames ARE, and what they are NOT
 
@@ -105,19 +118,40 @@ as a picture of a window at 40px tall.
 They are also not the sweep. Only the picker's twelve themes are painted on every
 other surface in this directory; the other forty-seven appear in this set alone.
 
-## Re-shot at the rebased head, and what changed
+## Re-shot twice, and which re-shoot these frames are
 
-These frames were taken again at `d84d71f7d` (the rebased head, after the
-`highlight` role landed in the palettes) rather than re-stamped, and the before
-half was taken again at the merge base. **All 71 frames came back byte-identical
-to their earlier captures** (`shasum -a 256`, 59 + 12, no exceptions): the
-palette values did not move when the role was authored, the miniature paints
+The frames in the tree are the ROUND-1 re-shoot: committed in `18f13afac`
+("re-capture the picker at this head") and taken at the tree `89da5eed2`, which is
+the commit `manifest.json`'s `head` and `partialCapture.refreshedAtHead` both
+name and whose cause `themePortCapture.reCaptureAtTheRebasedHead` records.
+**All 59 after frames changed bytes on purpose** — the picture was meant to
+move — and that is what the recording commit says: `git show --stat 18f13afac --
+docs/evidence/settings-appearance/gallery` reports 59 files changed, 0
+insertions, 0 deletions. Every frame carries a different selected tile at this
+head, because round 1 moved the tile's ground off the bare `accentWash` onto
+`accentWash` carrying 8% of `accent` (D1), moved the check out of the name row
+onto the preview's corner (D2), and re-drew two of the light group's marks
+(`tokyoNightDay`'s `MountainSnow`, `alucard`'s `Ghost`, D7).
+
+The before half did not move with it: `git diff 89da5eed2 HEAD --
+docs/evidence/settings-appearance-before` is empty, and it could not have —
+those twelve frames render the merge base's own twelve-card `ThemeSelector`,
+which this change does not touch.
+
+The FIRST re-shoot is a different pass, and the byte-identity claim below belongs
+to it rather than to the frames shipping here. At the head that fold named —
+`manifest.json`'s `themePortCapture.reCaptureAtTheRebasedHead` is where that
+citation lives, and the spelling it names is a pre-fold one this branch no longer
+contains — both halves were re-taken rather than re-stamped, after the `highlight`
+role landed in the palettes, and **all 71 frames came back byte-identical to
+their earlier captures** (`shasum -a 256`, 59 + 12, no exceptions): the palette
+values did not move when the role was authored, the miniature paints
 `canvas`/`surface`/`elevated`/`sunken`/`ink`/`accent` and never `highlight`, and
 the one upstream `src/` change in this story's path is four *added* lines in
-`styles/index.css`. The re-shoot's value is therefore the record — `head`,
-`srcTree` and `scriptsTree` in `manifest.json` now name the tree these frames
-ship in — and the "did the picture move" question is answered by comparing bytes
-rather than by asserting it.
+`styles/index.css`. The value of that pass was therefore the record — `head`,
+`srcTree` and `scriptsTree` in `manifest.json` named the tree those frames ship
+in — and that is why the re-shoot below, where the bytes were supposed to move,
+is documented the same way.
 
 The bundle this round shot from is **not** left in place: the box was short of
 both disk and memory, and a stale `storybook-static` is what round 1's own
