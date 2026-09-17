@@ -16,6 +16,35 @@
  *    of a directory is a no-op on macOS), and a missing path gets neither — a
  *    press that would silently do nothing is the thing this matrix exists to
  *    prevent, so the missing case states the reason instead.
+ * 3. **The click.** Whether a press on an anchor opens anything is a function of
+ *    the target's kind and of whether the reader is dragging a highlight over it
+ *    (`clickDecision`), which is the ONE place the anchor's two traps are decided
+ *    — asserted directly, because neither can be read off a frame.
+ *
+ * ## Where a `%` is decoded, and why it is decoded here
+ *
+ * THE ANCHOR'S HREF ARRIVES PERCENT-ENCODED, and this module is the one place
+ * that undoes it. The mdast keeps a link destination verbatim — for a detected
+ * path it is already the DECODED path, because `link-grammar.ts` parses the
+ * `file://` form through `new URL` — but react-markdown runs the destination
+ * through `remark-rehype`'s `normalizeUri` on the way to hast, which encodes
+ * every character a URI may not carry literally. So `/tmp/a b.txt` reaches this
+ * module as `/tmp/a%20b.txt`, and the reader's own screenshot
+ * `Screenshot 2026-09-17 at 10.14.02.png` reaches it as `%20`s.
+ *
+ * That encoding is invisible in a browser (the address bar re-encodes), but it is
+ * not invisible to a filesystem: `shell.openPath` takes a PATH, so the encoded
+ * string opened nothing, and Copy copied a string that named no file. QA measured
+ * it end to end (`{"ok":false,…,"error":"Failed to open path"}`) on the story's
+ * own `file://` fixture.
+ *
+ * So decoding belongs HERE and nowhere else: this is the boundary where a
+ * rendered href becomes the thing the app acts on, and a second decode down the
+ * line would break exactly the paths whose names contain a literal `%` (the
+ * encoder wrote `%25`, so one decode — and only one — restores it).
+ * `link-grammar.ts` decodes too, because a `file://` URL has its own `%`-escapes
+ * to undo before this module ever sees it; a path that has been through both is
+ * decoded once in each layer, never twice in one.
  *
  * Pure except for the probe cache, which is module-level on purpose: a row
  * re-renders per delta while a turn streams, so a per-row probe would be a stat
@@ -43,6 +72,25 @@ const HTTP_HREF = /^https?:\/\//i;
 
 /** A `file://` href, which the app writes and a hand-written link may contain. */
 const FILE_HREF = /^file:\/\//i;
+
+/**
+ * A percent-encoded href, undone once so the app acts on the path it names.
+ *
+ * FAIL-SAFE, never throwing: `decodeURIComponent` throws a `URIError` on a lone
+ * `%` or a malformed escape, and `50% off/notes.txt` is a legal file name that
+ * the encoder leaves alone (a `%` not followed by two hex digits is not an
+ * escape). The literal is then the right answer, because the string the reader
+ * wrote IS the path. Measured against the four shapes this has to survive:
+ * `%20` (a space), `%25` (a literal `%`), `%C3%A9` (a non-ASCII name) and a
+ * malformed `%2` (left verbatim).
+ */
+const decodeHrefPath = (href: string): string => {
+	try {
+		return decodeURIComponent(href);
+	} catch {
+		return href;
+	}
+};
 
 /**
  * What an href names, from its shape alone.
@@ -79,20 +127,61 @@ export function classifyHref(
 	 * Everything else - `notes.md`, `./x`, `ftp://…`, `mailto:…` - is `other`.
 	 */
 	if (href.startsWith("/") || href.startsWith("~/")) {
-		return { kind: "file", target: href };
+		/*
+		 * The plain-path branch is where a detected link arrives, so it is where the
+		 * rendering layer's percent-encoding is undone — see the module header. One
+		 * value, used by the anchor's href, Copy, Open, Open folder, the probe and the
+		 * reveal.
+		 */
+		return { kind: "file", target: decodeHrefPath(href) };
 	}
 	return { kind: "other", target: href };
 }
 
 /**
- * Whether a plain click on this kind of target is the app's to handle.
+ * What a press on a rendered anchor does, decided in ONE place.
  *
- * Only a local file. A URL keeps the behaviour it already had (`target="_blank"`
- * into `setWindowOpenHandler` into `shell.openExternal`), and `other` is left
- * entirely alone - which is the whole of "do not disrupt links that are already
- * captured by markdown parsing".
+ * `markdown-renderer.tsx`'s anchor carries two traps whose removal no frame can
+ * show and no other suite can catch (`scripts/chat-link-affordances.test.mjs`
+ * mounts the anchor and asserts this answer instead of reading it off a still):
+ *
+ * 1. **`preventDefault()` on every file target** is mandatory rather than
+ *    defensive. Nothing in this app guards same-window navigation - there is no
+ *    `will-navigate` handler - so the default would replace the app's own window
+ *    with a file the reader cannot navigate back from. It is also what makes the
+ *    hand-written `[report](file:///tmp/a.pdf)` case work: with `file:` preserved
+ *    by `MarkdownRenderer`'s own `urlTransform`, letting the default through would
+ *    navigate the window.
+ * 2. **The drag-select guard.** `mousedown` and `mouseup` inside one anchor fire
+ *    `click`, so a drag that began inside a link and released inside it IS a click
+ *    as far as the browser is concerned - and without this a drag over a file link
+ *    would launch an application mid-gesture. `hold` is that state: the default is
+ *    still cancelled, and nothing is launched.
+ *
+ * `browse` is "this app has nothing to add": a URL keeps the `target="_blank"`
+ * path it already had into `setWindowOpenHandler` (and a highlight over a URL does
+ * NOT stop that click, which is the behaviour it had before this change - stated
+ * rather than silently tightened), and `other` is left entirely alone, which is
+ * what "do not disrupt links markdown already captured" means in code. The old
+ * `shouldOpenOnClick` predicate is folded in here rather than kept beside it: one
+ * question, one answer.
  */
-export const shouldOpenOnClick = (kind: LinkKind): boolean => kind === "file";
+export type ClickOutcome =
+	/** Cancel the default and open the local path. */
+	| "open"
+	/** Cancel the default and do nothing: the reader is selecting, not pressing. */
+	| "hold"
+	/** Leave the anchor's own behaviour to the browser. */
+	| "browse";
+
+export function clickDecision(input: {
+	kind: LinkKind;
+	/** Whether the reader's live highlight touches this anchor. */
+	hasHighlight: boolean;
+}): ClickOutcome {
+	if (input.kind !== "file") return "browse";
+	return input.hasHighlight ? "hold" : "open";
+}
 
 /** The probe's answer for one path, or `null` when nothing is known yet. */
 export type ProbedTarget = { exists: boolean; isFile: boolean } | null;
@@ -170,6 +259,16 @@ export async function probeTarget(
  * wrapper's boundary.
  */
 export const LINK_TARGET_ATTR = "data-lo-kind";
+
+/**
+ * The attribute carrying the target itself, as `classifyHref` resolved it.
+ *
+ * One name rather than a literal in every reader: the anchor writes it
+ * (`markdown-renderer.tsx`) and three places read it - the toolbar's own subject
+ * (`link-toolkit.tsx`), the anchor's click handler, and the story fixture that
+ * finds a link by what it names.
+ */
+export const LINK_TARGET_PATH_ATTR = "data-lo-target";
 
 export const LINK_TARGET_SELECTOR = `[${LINK_TARGET_ATTR}]`;
 
@@ -270,6 +369,12 @@ export type LinkToolbarModel = {
 	 * conclude the app is broken.
 	 */
 	note: string | null;
+	/**
+	 * The same reason with the path SPELLED OUT, for the tooltip and the accessible
+	 * name, which have the room `note` does not. Equal to `note` whenever nothing
+	 * was shortened. See `missingNote`.
+	 */
+	noteTitle: string | null;
 	/** The strip's own accessible name: what these actions are actions ON. */
 	label: string;
 };
@@ -279,6 +384,45 @@ const action = (id: LinkActionId, label: string): LinkAction => ({ id, label });
 /** The last path segment, for a label that fits. */
 const baseName = (target: string): string =>
 	target.split("/").filter(Boolean).pop() ?? target;
+
+/**
+ * How much of a missing-file reason the strip can paint before it truncates.
+ *
+ * From the box rather than from taste: the note's slot is `max-w-56` (224px) at
+ * `text-meta` (12px), which carries roughly 38 characters, and round 1 measured
+ * the ellipsis eating `report-2026-09-17.pdf` - the only part of the sentence that
+ * distinguishes one missing path from another - while the DIRECTORY sat there in
+ * full. 40 rather than 38 because a sentence that fits with two pixels to spare
+ * is not worth a second ellipsis; a basename longer than the slot still falls to
+ * the CSS clamp, which is the backstop and not the rule.
+ *
+ * The reveal's own `title` and accessible name keep the whole sentence either
+ * way, so nothing is lost - only shortened.
+ */
+const MISSING_NOTE_MAX_CHARS = 40;
+
+/**
+ * The missing-file reason, with the DIRECTORY ellipsised instead of the name.
+ *
+ * `No file at …/lo-link-missing/report-2026-09-17.pdf` when that fits, and
+ * `No file at report-2026-09-17.pdf` when it does not: the basename is the whole
+ * point of the sentence, so it is the LAST thing this gives up, never the first.
+ * The full path is still on the anchor above the strip and in `title`.
+ */
+export function missingNote(target: string): { note: string; title: string } {
+	const title = `No file at ${target}`;
+	const base = baseName(target) || target;
+	const parts = target.split("/").filter(Boolean);
+	const directory = parts.length > 1 ? parts[parts.length - 2] : "";
+	const withDirectory = directory ? `No file at …/${directory}/${base}` : title;
+	return {
+		note:
+			withDirectory.length <= MISSING_NOTE_MAX_CHARS
+				? withDirectory
+				: `No file at ${base}`,
+		title,
+	};
+}
 
 /**
  * The buttons a link's toolbar shows, or `null` when this target has none.
@@ -314,6 +458,7 @@ export function linkToolbarModel(input: {
 				action("open", "Open in browser"),
 			],
 			note: null,
+			noteTitle: null,
 			label: `Actions for ${name}`,
 		};
 	}
@@ -326,9 +471,11 @@ export function linkToolbarModel(input: {
 	const isDirectory = probe?.exists === true && !probe.isFile;
 	const missing = probe?.exists === false;
 	if (missing) {
+		const reason = missingNote(target);
 		return {
 			actions: [...leading, action("copy", "Copy path")],
-			note: `No file at ${target}`,
+			note: reason.note,
+			noteTitle: reason.title,
 			label: `Actions for ${name}`,
 		};
 	}
@@ -344,6 +491,7 @@ export function linkToolbarModel(input: {
 	return {
 		actions: [...leading, action("copy", "Copy path"), ...fileActions],
 		note: null,
+		noteTitle: null,
 		label: `Actions for ${name}`,
 	};
 }

@@ -1235,11 +1235,22 @@ const PERCEPTIBLE = [
 		 * `hairline` was the tempting weight there too).
 		 *
 		 * What the strip owes is being SEEN against what is behind it, which is this
-		 * table's question. Measured this round: `elevated` against `surface` is
-		 * ΔE00 2.09 at worst (catppuccinMacchiato) and against `canvas` 3.90
-		 * (rosePineDawn), so the floor is 2.0 - § 3's "a human can tell these apart",
-		 * the same floor and the same reason as the chip row above rather than a
-		 * restatement of its measurement.
+		 * table's question. TWO measurements are quoted, because they answer different
+		 * questions and round 1 (design D5) found only the wider one here: this gate
+		 * measures the WORST of all fifty-nine palettes - `elevated` against `surface`
+		 * is ΔE00 2.09 at worst (catppuccinMacchiato) and against `canvas` 3.90
+		 * (rosePineDawn), which is why the floor is 2.0 - while the rows the design
+		 * actually judged are the twelve the evidence set paints, where the rendered
+		 * step from the canvas it floats over measures 4.52 (iceberg) to 12.00
+		 * (radient). The floor is the wider reading (§ 3's "a human can tell these
+		 * apart"); the narrower one is what the review round looked at, and quoting it
+		 * here is what stops the two numbers looking like a contradiction.
+		 *
+		 * § 9.8 says a component with its own fill and its own border goes into
+		 * `CONTROLS`, and this row plus the browser-tab hover fill above are its two
+		 * worked exceptions. Named HERE, beside the row, rather than only in the row's
+		 * comment: a reader comparing the two is looking at this table, and an
+		 * exception a reader has to reconstruct from prose is one nobody can check.
 		 *
 		 * BOTH GROUNDS, because both are reachable and one of them is new here: the
 		 * strip floats over the assistant's `canvas` column AND over a user turn's
@@ -1248,7 +1259,7 @@ const PERCEPTIBLE = [
 		 * its own - a hover step measures ~1.05-1.4 either way - so read it as "the
 		 * step must not stop being a step", not as a proof about this strip.
 		 */
-		name: "link toolbar ground step",
+		name: "link toolbar ground step (a § 9.8 exception - see this row's comment)",
 		role: "elevated",
 		on: ["canvas", "surface"],
 		minDeltaE: 2.0,

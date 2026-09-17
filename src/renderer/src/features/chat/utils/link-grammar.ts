@@ -20,9 +20,8 @@
  *
  * ## Where the two surfaces deliberately differ
  *
- * Exactly three named differences, and every one of them is policy rather than
- * grammar. They are expressed on `TargetPolicy` so a reviewer can reject one
- * alone:
+ * EXACTLY TWO ADMISSION DIFFERENCES, both expressed on `TargetPolicy` so a
+ * reviewer can reject one alone, plus one difference in what the answer is FOR:
  *
  * 1. **`knownExtensionRequired`.** The Files panel admits a prose `/abs` or
  *    `~/` token only when its extension is one the app knows (`~/x/report.xlsx`
@@ -35,15 +34,17 @@
  *    shell metacharacters, API prefixes, length, network locations, non-file
  *    schemes) is shared, and both surfaces keep the same `file://` rule: no
  *    extension required on either side.
- * 2. **Relative tokens are admitted on NEITHER side.** `notes.md`, `src/foo.ts`
- *    - no cwd is available to the text's author, so admitting one would mean
- *    guessing a root, and a guess is wrong exactly when it matters. See
- *    `mentioned-files.ts`'s own note for the long form.
- * 3. **What the answer is FOR.** The panel wants a set of paths, in
- *    first-mention order, deduplicated; the linkifier wants SPANS, so a
- *    substring can be replaced in place. `targetsIn` answers both by returning
- *    spans whose `target` is already canonicalised, and the panel's list
- *    producers are one-line filters over it.
+ * 2. **`rejectFragments`.** The linkifier refuses a bare token that stopped
+ *    inside a longer name (`/tmp/{a,b}.ts`, `screen(1).png`) where the panel
+ *    admits it. Round 1 (review M2) measured this second one, because the round's
+ *    own prose - and this file's - claimed the extension filter was the only
+ *    admission difference: `/tmp/out/report.pdf(banana)` is admitted by the panel
+ *    and refused by the linkifier, so there are TWO, and both are here.
+ * 3. **What the answer is FOR.** The panel wants a set of paths, in first-mention
+ *    order, deduplicated; the linkifier wants SPANS, so a substring can be
+ *    replaced in place. `targetsIn` answers both by returning spans whose `target`
+ *    is already canonicalised, and the panel's list producers are one-line filters
+ *    over it. This is not an admission difference and is not counted as one.
  *
  * ## Cost
  *
@@ -320,7 +321,14 @@ export function normalizeFileUrl(raw: string): string | null {
  * target, which is the same off-by-one the Files panel would suffer as a
  * missing tile.
  */
-export type LinkTarget = {
+/*
+ * NAMED FOR ITS JOB, and that is a fix rather than a preference (round 1, review
+ * N2): `link-actions.ts` exports its own `LinkTarget` - `{kind, target}`, the
+ * thing an ANCHOR acts on - and two exported types with one name and two shapes
+ * is an import that compiles and then reads like a typo at the call site. This
+ * one is a SPAN: where the token is in the text, and what it resolves to.
+ */
+export type TargetSpan = {
 	/** Offset of the token's first character in the scanned text. */
 	start: number;
 	/** Offset one past its last character. */
@@ -387,8 +395,9 @@ export type TargetPolicy = {
 	 * link to `/tmp/` and the screenshot renders one to `screen`, i.e. an anchor
 	 * whose whole claim is wrong, in a way a missing tile never was.
 	 *
-	 * ON for the linkifier for exactly that reason, and it is the fourth way the
-	 * two surfaces differ. Kept as its own flag rather than folded into the
+	 * ON for the linkifier for exactly that reason, and it is the SECOND of the two
+	 * ways the two surfaces differ in what they ADMIT (with `knownExtensionRequired`;
+	 * see the module header). Kept as its own flag rather than folded into the
 	 * extension one so a reviewer can reject it alone — and so that a future
 	 * decision to bring the panel the same guard is one line here rather than a
 	 * rewrite of both.
@@ -407,6 +416,14 @@ export const LINK_POLICY: TargetPolicy = {
 	knownExtensionRequired: false,
 	rejectFragments: true,
 };
+
+/*
+ * NOT A POLICY: the `#` cut in `targetsIn`'s prose branch, which BOTH surfaces
+ * take. A fragment is not a path - the rule `normalizeFileUrl` already states
+ * for a `file://` URL - so `/tmp/a.pdf#page=2` is the file `/tmp/a.pdf` on either
+ * side, and a future policy that wanted the fragment linked would have to argue
+ * against that rule rather than flip a flag. Its cost is documented at the cut.
+ */
 
 /**
  * The characters `TRAILING_PUNCTUATION` would remove from the end of a token,
@@ -501,8 +518,8 @@ const isFragment = (rest: string): boolean => {
  * function at all - and the character a token follows is still a space, so the
  * `ALLOWED_PREFIX` decision is unchanged.
  */
-export function targetsIn(text: string, policy: TargetPolicy): LinkTarget[] {
-	const found: LinkTarget[] = [];
+export function targetsIn(text: string, policy: TargetPolicy): TargetSpan[] {
+	const found: TargetSpan[] = [];
 
 	/*
 	 * `file://` URLs, with the two truncation guards `scanFileUrls` documented:
@@ -545,19 +562,37 @@ export function targetsIn(text: string, policy: TargetPolicy): LinkTarget[] {
 		const previous = index > 0 ? masked[index - 1] : undefined;
 		if (previous !== undefined && !ALLOWED_PREFIX.has(previous)) continue;
 		const raw = match[0];
+		/*
+		 * A FRAGMENT IS NOT A PATH, on this tier as much as on the `file://` one
+		 * (round 1, review M4). `/tmp/a.pdf#page=2` used to be admitted whole - an
+		 * anchor whose `target` named a file nothing on disk has, on the very tier
+		 * that STRIPS the fragment when the same path arrives as a URL. `#` is not a
+		 * character this grammar's paths carry: what follows it is an editor line
+		 * reference or a URL fragment, and the file is what precedes it, so the span
+		 * ENDS at the `#` and the reader's `#page=2` stays ordinary text.
+		 *
+		 * The cost of the rule, stated because it is real: a file whose NAME contains
+		 * a `#` is linked as the part before it, and the toolbar reports the path it
+		 * cannot find rather than opening a file it cannot name. Measured against the
+		 * alternative (refusing the whole token): refusal is silent, and the reader
+		 * gets no toolbar to explain itself.
+		 */
+		const fragmentAt = raw.indexOf("#");
+		const written = fragmentAt === -1 ? raw : raw.slice(0, fragmentAt);
+		if (!written) continue;
 		if (
 			policy.rejectFragments &&
-			isFragment(masked.slice(index + raw.length))
+			isFragment(masked.slice(index + written.length))
 		) {
 			continue;
 		}
-		const candidate = normalizeCandidate(raw);
+		const candidate = normalizeCandidate(written);
 		if (!candidate) continue;
 		/*
 		 * The extension test, after the trim, so `saved to /tmp/a.pdf.` matches.
 		 * `~` paths carry their extension after the last dot exactly like
-		 * absolute ones. This is the ONE admission the two policies differ on -
-		 * see `TargetPolicy.knownExtensionRequired`.
+		 * absolute ones. This is ONE of the two admission differences between the
+		 * policies - see `TargetPolicy.knownExtensionRequired`.
 		 */
 		if (policy.knownExtensionRequired) {
 			const extension = extensionOf(candidate);
@@ -565,7 +600,7 @@ export function targetsIn(text: string, policy: TargetPolicy): LinkTarget[] {
 		}
 		found.push({
 			start: index,
-			end: index + raw.length - trailingPunctuationLength(raw),
+			end: index + written.length - trailingPunctuationLength(written),
 			kind: "path",
 			target: candidate,
 			href: candidate,

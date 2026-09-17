@@ -1,11 +1,21 @@
 import { cn } from "@shared/lib/utils";
 import type { CSSProperties, FC, MouseEvent as ReactMouseEvent } from "react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, {
+	type Components,
+	type UrlTransform,
+	defaultUrlTransform,
+} from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import { classifyHref, shouldOpenOnClick } from "../utils/link-actions";
+import {
+	LINK_TARGET_ATTR,
+	LINK_TARGET_PATH_ATTR,
+	type LinkKind,
+	classifyHref,
+	clickDecision,
+} from "../utils/link-actions";
 import { openLocalTarget, selectionTouches } from "../utils/link-open";
 import {
 	type BlockScanner,
@@ -82,9 +92,25 @@ const MATH_COMMAND_REGEX = /\\[a-zA-Z]+(\{[^}]*\})?/;
  *
  * `data-lo-kind` is what the transcript's hover toolbar looks for
  * (`event.target.closest("[data-lo-kind]")`), and `data-lo-target` is the
- * target it acts on - the PATH, never a `file://` URL, because
- * react-markdown's own `defaultUrlTransform` replaces a `file://` href with the
- * empty string and the anchor would render as a link to nowhere.
+ * target it acts on - the PATH, never a `file://` URL, and never a
+ * percent-encoded one, because the toolbar's Copy and Open act on a filesystem
+ * path (`link-actions.ts`'s module header says which layer decodes).
+ *
+ * `href` and `data-lo-target` are the SAME string for a target this app opens,
+ * which is the property round 1 (review N1) found broken: the anchor used to
+ * carry the encoded href from the renderer beside a decoded target, so what the
+ * reader saw underlined and what Copy produced were two spellings of one path.
+ * For a detected `file://` URL the two are still different STRINGS by design -
+ * the visible text is the URL the agent wrote, and the target is the path it
+ * names - and `link-toolkit.tsx` says so where the toolbar's label is built.
+ *
+ * `draggable={false}` is load-bearing rather than cosmetic: an `<a>` carrying an
+ * href is draggable in Chromium, so a mousedown-then-drag on a link starts the
+ * browser's own LINK DRAG and suppresses text selection entirely - which is what
+ * made the designed "a highlight wholly inside one link" state unreachable with a
+ * mouse (round 1, UX U4). Verified in the live story: the same gesture now
+ * selects, and `docs/evidence/chat-canonical-links/selection-link-and-prose/`
+ * holds a frame of a real drag that produced a highlight across two links.
  */
 const MarkdownAnchor: FC<{ href?: string; children?: React.ReactNode }> = ({
 	href,
@@ -98,49 +124,80 @@ const MarkdownAnchor: FC<{ href?: string; children?: React.ReactNode }> = ({
 			</a>
 		);
 	}
-	if (!shouldOpenOnClick(target.kind)) {
-		return (
-			// A URL keeps `target="_blank"`: it leaves the app through
-			// `setWindowOpenHandler` into `shell.openExternal`, which is the path
-			// that already exists and already works.
-			<a
-				href={href}
-				data-lo-kind={target.kind}
-				data-lo-target={target.target}
-				target="_blank"
-				rel="noopener noreferrer"
-			>
-				{children}
-			</a>
-		);
-	}
 	return (
 		<a
-			href={href}
-			data-lo-kind="file"
+			/*
+			 * The decoded target, both as the destination and as the string the
+			 * toolbar acts on (see the docstring above).
+			 */
+			href={target.target}
+			data-lo-kind={target.kind}
 			data-lo-target={target.target}
-			onClick={handleFileAnchorClick}
+			draggable={false}
+			/*
+			 * A URL keeps `target="_blank"`: it leaves the app through
+			 * `setWindowOpenHandler` into `shell.openExternal`, which is the path that
+			 * already exists and already works. Only a local path gets the click
+			 * handler, because only a local path is this app's to open.
+			 */
+			target={target.kind === "url" ? "_blank" : undefined}
+			rel={target.kind === "url" ? "noopener noreferrer" : undefined}
+			onClick={target.kind === "file" ? handleFileAnchorClick : undefined}
 		>
 			{children}
 		</a>
 	);
 };
 
+/** A `file:` scheme, for the one href shape this renderer must keep alive. */
+const FILE_SCHEME = /^file:/i;
+
+/** The two attribute names the anchor writes, read back by its own handler. */
+const LINK_TARGET_PATH = LINK_TARGET_PATH_ATTR;
+
 /**
  * A plain click on a detected file link.
  *
- * `preventDefault()` on EVERY detected target is mandatory rather than
- * defensive: nothing in this app guards same-window `file://` navigation - there
- * is no `will-navigate` handler - so letting the default through would replace
- * the app's own window with a file the reader cannot navigate back from.
+ * The decision is `clickDecision`'s (`link-actions.ts`) and this function only
+ * performs it, which is what makes both traps assertable without a browser: the
+ * mandatory `preventDefault` for a file target, and the drag-select refusal. The
+ * live selection is the input because the browser owns it - whatever ended the
+ * gesture, the state that matters is whether text is still lit.
  */
 const handleFileAnchorClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
-	event.preventDefault();
 	const anchor = event.currentTarget;
-	if (selectionTouches(anchor)) return;
-	const target = anchor.getAttribute("data-lo-target");
+	const kind = (anchor.getAttribute(LINK_TARGET_ATTR) ?? "file") as LinkKind;
+	const outcome = clickDecision({
+		kind,
+		hasHighlight: selectionTouches(anchor),
+	});
+	if (outcome === "browse") return;
+	event.preventDefault();
+	if (outcome === "hold") return;
+	const target = anchor.getAttribute(LINK_TARGET_PATH);
 	if (!target) return;
 	void openLocalTarget(target);
+};
+
+/**
+ * `file:` is preserved, and everything else is the library's own answer.
+ *
+ * `defaultUrlTransform`'s safe list is `https?|ircs?|mailto|xmpp`, so a
+ * HAND-WRITTEN `[report](file:///tmp/a.pdf)` renders as `<a href="">` - an inert
+ * anchor with no target attributes and therefore no toolbar, which made
+ * `classifyHref`'s `file://` branch unreachable in the app (round 1, review M1).
+ * The operator asked for the affordances on markdown-captured links too, so the
+ * branch is made real instead of deleted: `file:` survives, and `javascript:`,
+ * `data:`, `vbscript:` and every other unlisted scheme still blank out exactly as
+ * the library intends (asserted in `scripts/chat-link-affordances.test.mjs`).
+ *
+ * Only `href` is transformed. An `<img src="file://…">` in a transcript is not a
+ * link and nothing here needs it to load - leaving images to the library keeps
+ * this change's reach to the surface it is about.
+ */
+const LINK_URL_TRANSFORM: UrlTransform = (url, key) => {
+	if (key === "href" && FILE_SCHEME.test(url)) return url;
+	return defaultUrlTransform(url);
 };
 
 /**
@@ -295,6 +352,7 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 				<ReactMarkdown
 					remarkPlugins={remarkPlugins}
 					rehypePlugins={rehypePlugins}
+					urlTransform={LINK_URL_TRANSFORM}
 					components={MARKDOWN_COMPONENTS}
 				>
 					{trimmed}
@@ -342,6 +400,7 @@ const StableBlock = memo(({ source }: { source: string }) => {
 		<ReactMarkdown
 			remarkPlugins={remarkPlugins}
 			rehypePlugins={rehypePlugins}
+			urlTransform={LINK_URL_TRANSFORM}
 			components={MARKDOWN_COMPONENTS}
 		>
 			{source}

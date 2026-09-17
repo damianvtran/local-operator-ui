@@ -12,11 +12,15 @@ import { build } from "esbuild";
  *    strings in real transcripts that must NOT become one.
  * 2. THAT THE GRAMMAR IS GENUINELY SHARED. The Files panel and the linkifier
  *    are two readers of one token grammar (`link-grammar.ts`), and the failure
- *    this pins is two parsers that agree until one is fixed. The policies
- *    differ in exactly ONE admission - the known-extension filter - and the
- *    property below asserts the difference is exactly that and nothing else,
- *    over a corpus: every link target the panel admits is a link target, and
- *    the only extras are the extensionless ones.
+ *    this pins is two parsers that agree until one is fixed. The policies differ
+ *    in exactly TWO admissions - the known-extension filter and the fragment
+ *    guard - and the property below names BOTH, with a case each, over a corpus:
+ *    every link target the panel admits is a link target, and the only extras are
+ *    the ones one of those two flags explains. (Round 1, review M2: the first
+ *    version of this property said ONE and only inspected the linkifier's extras,
+ *    so a change that only NARROWED the panel - `MENTION_POLICY.rejectFragments
+ *    = true`, a real change to what the Files panel shows - left every suite
+ *    green.)
  * 3. THAT EXISTING MARKDOWN IS UNTOUCHED. Markdown links, GFM autolinks,
  *    reference links and images must come out of the pipeline BYTE-IDENTICAL
  *    whether or not the plugin ran. That is a test rather than a claim, and it
@@ -122,7 +126,7 @@ test("a bare `~` or `/` path is a target under both policies", () => {
 	}
 });
 
-test("the ONE policy difference is the known-extension filter", () => {
+test("the two policy differences are the extension filter and the fragment guard", () => {
 	/*
 	 * The operator's case, and the reason the linkifier drops the filter: a
 	 * directory the agent named has no extension, and "Open folder" is what
@@ -140,6 +144,20 @@ test("the ONE policy difference is the known-extension filter", () => {
 			token,
 		);
 	}
+	/*
+	 * And the OTHER difference, which round 1 measured the code denying: a token
+	 * that stopped inside a longer name is the panel's to admit (its extension rule
+	 * answers `report.pdf` and never looks at the bracket) and the linkifier's to
+	 * refuse, because an anchor there claims a file called `report.pdf(banana)`.
+	 */
+	assert.deepEqual(
+		found("see /tmp/out/report.pdf(banana) here", MENTION_POLICY),
+		["path:/tmp/out/report.pdf"],
+	);
+	assert.deepEqual(
+		found("see /tmp/out/report.pdf(banana) here", LINK_POLICY),
+		[],
+	);
 });
 
 test("a `file://` URL needs no extension on either side, and is decoded", () => {
@@ -229,6 +247,33 @@ test("spans are offsets into the text, across lines and in a table cell", () => 
 	);
 });
 
+test("a `#` in a prose path ends the link at the file, as it does for a URL", () => {
+	/*
+	 * ROUND 1, REVIEW M4: `/tmp/a.pdf#page=2` used to be admitted whole - an anchor
+	 * whose target named a file nothing has - while the `file://` tier STRIPPED the
+	 * same fragment. One rule now: a fragment is not a path. The span ends at the
+	 * `#`, so the reader's `#page=2` stays ordinary text, and the target is the file
+	 * that is actually there.
+	 */
+	for (const policy of [MENTION_POLICY, LINK_POLICY]) {
+		assert.deepEqual(found("see /tmp/a.pdf#page=2 now", policy), [
+			"path:/tmp/a.pdf",
+		]);
+		assert.deepEqual(found("opened /tmp/run.log#L59", policy), [
+			"path:/tmp/run.log",
+		]);
+	}
+	const text = "see /tmp/a.pdf#page=2 now";
+	const [match] = targetsIn(text, LINK_POLICY);
+	assert.equal(text.slice(match.start, match.end), "/tmp/a.pdf");
+	/* The file-url tier already did this; both tiers now answer the same. */
+	assert.deepEqual(found("see file:///tmp/a.pdf#page=2 now", LINK_POLICY), [
+		"file-url:/tmp/a.pdf",
+	]);
+	/* A bare `#` with nothing before it is not a path at all. */
+	assert.deepEqual(found("see #page=2 now", LINK_POLICY), []);
+});
+
 test("a URL's own path is never admitted as a path", () => {
 	assert.deepEqual(
 		found("see https://example.com/a/b.png now", LINK_POLICY),
@@ -241,60 +286,74 @@ test("a URL's own path is never admitted as a path", () => {
 
 /* ------------------------------------------------------- the shared grammar */
 
-test("the grammar is shared: the linkifier adds nothing but the filter", () => {
+test("the grammar is shared: the difference between the surfaces is exactly two flags", () => {
 	/*
-	 * The property that makes "genuinely shared" checkable rather than asserted:
-	 * over a corpus of real-looking text, every path the PANEL admits is a path
-	 * the LINKIFIER admits, and the linkifier's extras are exactly those the
-	 * extension rule removed - i.e. tokens the panel's own normaliser still
-	 * accepts. A second scanner would fail the first half the moment one of them
-	 * was touched.
+	 * The property that makes "genuinely shared" checkable rather than asserted
+	 * (round 1, review M2 rewrote it): over a corpus of real-looking text, every
+	 * answer EITHER surface gives lies inside the union of the two flags - a
+	 * policy with both of them relaxed - and the difference between the two
+	 * surfaces is exactly the difference those two flags predict, case by case.
+	 *
+	 * The first version asserted only "mentions ⊆ links" and inspected only the
+	 * linkifier's extras, which cannot see a change that NARROWS the panel:
+	 * `MENTION_POLICY.rejectFragments = true` - a real change to what the Files
+	 * panel shows - left all four suites green. The corpus therefore carries the
+	 * fragment case, and the difference is computed in BOTH directions.
 	 */
+	const RELAXED = { knownExtensionRequired: false, rejectFragments: false };
 	const corpus = [
-		"The write went to /Users/x/out/report.xlsx and the log is /tmp/run.log.",
-		"Opened ~/workspace/opoint-renewal-2026-09-17/proj for the migration.",
-		"see file:///tmp/a.pdf and /tmp/b.pdf",
-		"`/tmp/a.pdf` and /v1/static/images and src/foo.ts",
-		"failed on /tmp/x$PID.log then wrote /tmp/ok.md",
+		{
+			text: "The write went to /Users/x/out/report.xlsx and the log is /tmp/run.log.",
+			why: "both flags agree",
+		},
+		{
+			text: "Opened ~/workspace/opoint-renewal-2026-09-17/proj for the migration.",
+			why: "the EXTENSION filter: the linkifier admits the directory, the panel does not",
+			linkOnly: ["path:~/workspace/opoint-renewal-2026-09-17/proj"],
+		},
+		{
+			text: "see file:///tmp/a.pdf and /tmp/b.pdf",
+			why: "a file:// target needs no extension on either side",
+		},
+		{
+			text: "`/tmp/a.pdf` and /v1/static/images and src/foo.ts",
+			why: "the whole-span rule and the shared rejections",
+		},
+		{
+			text: "failed on /tmp/x$PID.log then wrote /tmp/ok.md",
+			why: "the shared metacharacter and extension rules",
+		},
+		{
+			text: "the tool cut it off at /tmp/out/report.pdf(banana) mid-name",
+			why: "the FRAGMENT guard: the panel admits the token, the linkifier refuses it",
+			panelOnly: ["path:/tmp/out/report.pdf"],
+		},
 	];
-	for (const text of corpus) {
+	for (const { text, why, linkOnly = [], panelOnly = [] } of corpus) {
 		const mentions = new Set(found(text, MENTION_POLICY));
 		const links = new Set(found(text, LINK_POLICY));
-		for (const mention of mentions) {
-			assert.ok(links.has(mention), `${mention} in ${text}`);
-		}
-		for (const link of links) {
-			if (mentions.has(link)) continue;
-			const target = link.slice(link.indexOf(":") + 1);
-			/* Every extra is the same admission: an extensionless token. */
+		const relaxed = new Set(found(text, RELAXED));
+		/*
+		 * Every answer either surface gives is an answer the two flags describe:
+		 * a third knob would show up here as a token outside the union.
+		 */
+		for (const token of [...mentions, ...links]) {
 			assert.ok(
-				!target.includes(".") || !/\.\w+$/.test(target),
-				`${link} in ${text} is an extra that is not the extension rule`,
+				relaxed.has(token),
+				`${token} in ${text} is outside both flags`,
 			);
 		}
+		assert.deepEqual(
+			[...links].filter((token) => !mentions.has(token)).sort(),
+			[...linkOnly].sort(),
+			`linkifier-only targets in ${text} (${why})`,
+		);
+		assert.deepEqual(
+			[...mentions].filter((token) => !links.has(token)).sort(),
+			[...panelOnly].sort(),
+			`panel-only targets in ${text} (${why})`,
+		);
 	}
-});
-
-test("the panel keeps every rejection it had, through the shared grammar", () => {
-	/*
-	 * The other half of the shared-grammar proof, and the reason the move into
-	 * `link-grammar.ts` is mechanical: the inputs below are the ones the panel's
-	 * own suite pins as REJECTED, and they are re-asserted through the moved
-	 * code rather than trusted to the move.
-	 */
-	assert.deepEqual(
-		extractFromArgs({ path: "/v1/static/images?path=/a.png" }),
-		[],
-	);
-	assert.deepEqual(extractFromArgs({ path: "qa-res-$PID.pdf" }), []);
-	assert.deepEqual(extractFromArgs({ path: "https://example.com/a.png" }), []);
-	assert.deepEqual(extractFromArgs({ path: "/tmp/{a,b}.ts" }), []);
-	assert.deepEqual(
-		extractMentionedPaths([
-			{ kind: "assistant", id: "a", ts: 1, text: "src/foo.ts and notes.md" },
-		]),
-		[],
-	);
 });
 
 /* ---------------------------------------------------- existing markdown, untouched */
@@ -332,6 +391,85 @@ test("a markdown-only document is byte-identical with the plugin on and off", ()
 		JSON.stringify(parseWith(MARKDOWN_ONLY, true)),
 		JSON.stringify(parseWith(MARKDOWN_ONLY, false)),
 	);
+});
+
+test("markdown nodes are untouched beside a bare path the plugin links", () => {
+	/*
+	 * ROUND 1, REVIEW M3: the document-level byte-identity test above is inert by
+	 * construction - `MARKDOWN_ONLY` holds no admitted target, so a plugin that DID
+	 * disturb an existing markdown link could not have failed it. This fixture holds
+	 * both at once: an existing labelled link, a GFM autolink, a reference, an
+	 * image, AND a bare path the plugin must linkify in the SAME paragraph. The
+	 * claim is then a real one rather than a tautology, and it is made node by node
+	 * because the bare path legitimately changes the tree.
+	 */
+	const document = [
+		"A [labelled link](https://example.com/a/b.png) and /tmp/bare.pdf beside it.",
+		"",
+		"An autolink https://example.com/c/d.png and a [reference][ref].",
+		"",
+		"[ref]: https://example.com/e/f.png",
+		"",
+		"![alt text](/tmp/chart.png)",
+	].join("\n");
+	const before = linksIn(document);
+	const after = parseWith(document, true);
+	/*
+	 * 1. The plugin really did act, or the rest of this test proves nothing.
+	 */
+	assert.ok(linksIn(document).some((link) => link.url === "/tmp/bare.pdf"));
+	assert.ok(
+		JSON.stringify(after).includes('"/tmp/bare.pdf"'),
+		"the fixture must contain a bare path the plugin links",
+	);
+	const walk = (node, visit) => {
+		visit(node);
+		for (const child of node.children ?? []) walk(child, visit);
+	};
+	/*
+	 * 2. Every `link`/`image`/`definition` node present WITHOUT the plugin has an
+	 * identical counterpart WITH it - same url, same label children - which is the
+	 * "do not disrupt what markdown already captured" claim in the shape that can
+	 * actually fail.
+	 */
+	const collect = (tree) => {
+		const nodes = [];
+		walk(tree, (node) => {
+			if (
+				node.type === "link" ||
+				node.type === "image" ||
+				node.type === "definition"
+			) {
+				nodes.push({ type: node.type, url: node.url, children: node.children });
+			}
+		});
+		return nodes;
+	};
+	const untouched = (nodes) =>
+		nodes.filter((node) => node.url !== "/tmp/bare.pdf");
+	assert.deepEqual(
+		untouched(collect(parseWith(document, true))),
+		untouched(collect(parseWith(document, false))),
+	);
+	/*
+	 * 3. And the paragraph the plugin edited kept every one of those links as its
+	 * OWN node, rather than being flattened into text around the new anchor.
+	 */
+	assert.deepEqual(
+		after.children[0].children.map((child) => child.type),
+		["text", "link", "text", "link", "text"],
+	);
+	assert.deepEqual(
+		after.children[0].children.map((child) => child.value ?? child.url),
+		[
+			"A ",
+			"https://example.com/a/b.png",
+			" and ",
+			"/tmp/bare.pdf",
+			" beside it.",
+		],
+	);
+	assert.equal(before[0].text, "labelled link");
 });
 
 test("existing markdown links keep their own hrefs", () => {
@@ -400,10 +538,7 @@ test("a linked inline-code span keeps its code child", () => {
 	 * anchor wraps the span rather than replacing it, so the face survives and
 	 * `markdown.css`'s `a code` rule is what stops the two colours fighting.
 	 */
-	const [link] = parseWith(
-		"`~\u200b/x/report.xlsx`".replace("\u200b", ""),
-		true,
-	).children[0].children;
+	const [link] = parseWith("`~/x/report.xlsx`", true).children[0].children;
 	assert.equal(link.type, "link");
 	assert.equal(link.children.length, 1);
 	assert.equal(link.children[0].type, "inlineCode");

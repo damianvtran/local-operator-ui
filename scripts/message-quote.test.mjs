@@ -690,6 +690,75 @@ test("a flip clears the highlight's LAST line, so it never lands on the text", (
 	assert.equal(placed.top, 140 + QUOTE_CONTROL_GAP);
 });
 
+test("a link below its row's first line is placed BELOW it, not over the line above", () => {
+	/*
+	 * The link toolbar's rule (round 1, design D2, UX U6): an 8px-above placement
+	 * covers the line before a link that is not on its row's first line, and round 1
+	 * measured it hiding 128px of the very path this change exists to make usable.
+	 * The unit is the anchor's own line height, so this case is one line down from
+	 * the row's top: below, cleared of its own LAST line.
+	 */
+	const row = box(300, 40, 984, 700);
+	const secondLine = box(322, 200, 500, 344);
+	assert.deepEqual(place([secondLine], { row, belowWhenOffFirstLine: true }), {
+		top: 344 + QUOTE_CONTROL_GAP,
+		left: 200,
+		placement: "below",
+	});
+});
+
+test("a link ON the row's first line keeps the clearance above it", () => {
+	/*
+	 * The other half of the same rule, and the case that must not regress: the first
+	 * line of a row is where the 8px is the row's own leading, so nothing is covered
+	 * and "above" is still the right side.
+	 */
+	const row = box(300, 40, 984, 700);
+	const firstLine = box(300, 200, 900, 322);
+	assert.deepEqual(place([firstLine], { row, belowWhenOffFirstLine: true }), {
+		top: 300 - QUOTE_CONTROL_GAP - CONTROL.height,
+		left: 200,
+		placement: "above",
+	});
+});
+
+test("the mid-row rule is the toolbar's choice, and off by default", () => {
+	/* The quote control shows no `row` and no flag, and its placement is unchanged. */
+	const offFirstLine = box(322, 200, 500, 344);
+	assert.equal(place([offFirstLine]).placement, "above");
+	assert.equal(
+		place([offFirstLine], { row: box(300, 40, 984, 700) }).placement,
+		"above",
+	);
+});
+
+test("with no room below, the mid-row rule falls back above rather than to the clamp", () => {
+	/*
+	 * A link just above the pane's floor: taking the rule literally would push the
+	 * flip past the pane and hand the position to the vertical clamp, which is how a
+	 * control ends up over its own anchor's line. `above` has room there, so it wins.
+	 */
+	const nearFloor = box(640, 200, 500, 662);
+	const placed = place([nearFloor], {
+		row: box(300, 40, 984, 700),
+		belowWhenOffFirstLine: true,
+	});
+	assert.deepEqual(placed, {
+		top: 640 - QUOTE_CONTROL_GAP - CONTROL.height,
+		left: 200,
+		placement: "above",
+	});
+});
+
+test("the mid-row flip is measured from a wrapped link's LAST line", () => {
+	const row = box(300, 40, 984, 700);
+	const wrapped = [box(322, 200, 900, 344), box(344, 40, 300, 366)];
+	const placed = place(wrapped, { row, belowWhenOffFirstLine: true });
+	assert.equal(placed.placement, "below");
+	assert.equal(placed.top, 366 + QUOTE_CONTROL_GAP);
+	assert.equal(placed.left, 200);
+});
+
 test("a highlight scrolled above the pane hides", () => {
 	// Anchored to a line the reader can no longer see: there is nothing left for
 	// the control to be about, so it reports null rather than pinning itself to

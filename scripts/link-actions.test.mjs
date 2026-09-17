@@ -25,15 +25,16 @@ const bundle = await build({
 		contents: `
 			export {
 				classifyHref,
+				clickDecision,
 				hasHighlight,
 				forgetProbe,
 				linkToolbarModel,
+				missingNote,
 				probeStateFor,
 				probeTarget,
 				resetProbeCache,
 				selectionLinkIn,
 				selectionWhollyWithin,
-				shouldOpenOnClick,
 				LINK_TARGET_ATTR,
 			} from "./src/renderer/src/features/chat/utils/link-actions";
 		`,
@@ -57,15 +58,16 @@ globalThis.Node = { ELEMENT_NODE: 1 };
 
 const {
 	classifyHref,
+	clickDecision,
 	forgetProbe,
 	hasHighlight,
 	linkToolbarModel,
+	missingNote,
 	probeStateFor,
 	probeTarget,
 	resetProbeCache,
 	selectionLinkIn,
 	selectionWhollyWithin,
-	shouldOpenOnClick,
 	LINK_TARGET_ATTR,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -93,6 +95,14 @@ test("an href is classified by its own shape", () => {
 });
 
 test("a file:// href is decoded to a path, and a foreign host stays other", () => {
+	/*
+	 * REACHABLE, and asserted through the rendered anchor in
+	 * `scripts/chat-link-affordances.test.mjs`: round 1 (review M1) found this
+	 * branch dead, because `defaultUrlTransform` blanked a hand-written `file:`
+	 * href before the component ever saw it. `MarkdownRenderer` now passes a
+	 * `urlTransform` that preserves `file:`, so a hand-written
+	 * `[report](file:///tmp/a.pdf)` reaches this classifier and gets its toolbar.
+	 */
 	assert.deepEqual(classifyHref("file:///Users/x/My%20Docs/a.pdf"), {
 		kind: "file",
 		target: "/Users/x/My Docs/a.pdf",
@@ -109,6 +119,54 @@ test("a file:// href is decoded to a path, and a foreign host stays other", () =
 	assert.equal(classifyHref("file://other-host/share/a.pdf")?.kind, "other");
 });
 
+test("a percent-encoded plain path is decoded ONCE, at the classifier", () => {
+	/*
+	 * The rendering layer percent-encodes a link destination (`remark-rehype`'s
+	 * `normalizeUri`), so this is the branch a DETECTED link arrives on and the
+	 * layer that undoes it (round 1, QA Q-1 and UX U3: Copy copied `%20`s and
+	 * `shell.openPath` was handed a string naming no file). The four shapes are
+	 * the ones one decode has to survive - and the reason a SECOND decode anywhere
+	 * down the line would be a bug rather than belt-and-braces.
+	 */
+	assert.deepEqual(classifyHref("/tmp/qa-link/a%20b.txt"), {
+		kind: "file",
+		target: "/tmp/qa-link/a b.txt",
+	});
+	/* The fixture's own case: macOS's default screenshot name. */
+	assert.deepEqual(
+		classifyHref(
+			"/Users/someone/Downloads/Screenshot%202026-09-17%20at%2010.14.02.png",
+		),
+		{
+			kind: "file",
+			target: "/Users/someone/Downloads/Screenshot 2026-09-17 at 10.14.02.png",
+		},
+	);
+	/* A literal `%`: the encoder wrote `%25`, so one decode restores it exactly. */
+	assert.deepEqual(classifyHref("/tmp/50%25%20off/notes.txt"), {
+		kind: "file",
+		target: "/tmp/50% off/notes.txt",
+	});
+	/* A non-ASCII name, encoded as UTF-8 bytes and decoded back whole. */
+	assert.deepEqual(classifyHref("/tmp/caf%C3%A9/r%C3%A9sum%C3%A9.pdf"), {
+		kind: "file",
+		target: "/tmp/café/résumé.pdf",
+	});
+	/*
+	 * A malformed escape is NOT an escape: `decodeURIComponent` throws, and the
+	 * literal is the right answer because `50% off/notes.txt` is a legal file name
+	 * the encoder left alone.
+	 */
+	assert.deepEqual(classifyHref("/tmp/50% off/notes.txt"), {
+		kind: "file",
+		target: "/tmp/50% off/notes.txt",
+	});
+	assert.deepEqual(classifyHref("/tmp/a%2"), {
+		kind: "file",
+		target: "/tmp/a%2",
+	});
+});
+
 test("everything this app does not open is `other`, not a file", () => {
 	for (const href of [
 		"notes.md",
@@ -118,6 +176,8 @@ test("everything this app does not open is `other`, not a file", () => {
 		"ftp://host/a.pdf",
 		"tel:+1234",
 		"data:text/plain,hello",
+		"javascript:alert(1)",
+		"vbscript:msgbox(1)",
 	]) {
 		assert.equal(classifyHref(href)?.kind, "other", href);
 	}
@@ -126,11 +186,25 @@ test("everything this app does not open is `other`, not a file", () => {
 	assert.equal(classifyHref(undefined), null);
 });
 
-test("only a local file is the app's own click to handle", () => {
-	assert.equal(shouldOpenOnClick("file"), true);
-	/* A URL keeps `target="_blank"` into `openExternal`; `other` is untouched. */
-	assert.equal(shouldOpenOnClick("url"), false);
-	assert.equal(shouldOpenOnClick("other"), false);
+test("the click decision: a file opens, a drag refuses, everything else default", () => {
+	/*
+	 * THE TWO TRAPS, asserted where they are decided (round 1, review M3). Neither
+	 * can be read off a frame - a still of an opened file and a still of a suppressed
+	 * click look the same - and the anchor's own handler is the one place they live,
+	 * so the decision was lifted here to be assertable without a browser.
+	 *
+	 * `hold` is the drag-select refusal: `mousedown` and `mouseup` inside one anchor
+	 * fire `click`, so a drag over a file link without it would launch an
+	 * application mid-gesture. `browse` is everything this app has no answer for:
+	 * a URL keeps `target="_blank"`, and a highlight over one does NOT stop that
+	 * click, which is the behaviour it had before this change.
+	 */
+	assert.equal(clickDecision({ kind: "file", hasHighlight: false }), "open");
+	assert.equal(clickDecision({ kind: "file", hasHighlight: true }), "hold");
+	assert.equal(clickDecision({ kind: "url", hasHighlight: false }), "browse");
+	assert.equal(clickDecision({ kind: "url", hasHighlight: true }), "browse");
+	assert.equal(clickDecision({ kind: "other", hasHighlight: false }), "browse");
+	assert.equal(clickDecision({ kind: "other", hasHighlight: true }), "browse");
 });
 
 /* ------------------------------------------------------------ the toolbar matrix */
@@ -171,6 +245,31 @@ test("a directory offers Open and drops Open folder", () => {
 	assert.equal(model.note, null);
 });
 
+test("a missing path's reason names the FILE, not the directory", () => {
+	/*
+	 * Round 1 (design D4) measured the ellipsis eating `report-2026-09-17.pdf` -
+	 * the only part of the sentence that distinguishes one missing path from
+	 * another - while the directory sat there in full. The directory is what the
+	 * rule gives up now, and the full path stays available to the tooltip.
+	 */
+	assert.deepEqual(missingNote("/tmp/lo-link-missing/report-2026-09-17.pdf"), {
+		note: "No file at report-2026-09-17.pdf",
+		title: "No file at /tmp/lo-link-missing/report-2026-09-17.pdf",
+	});
+	/* Short enough for the directory to fit: the pair, not the basename alone. */
+	assert.deepEqual(missingNote("/tmp/out/a.pdf"), {
+		note: "No file at …/out/a.pdf",
+		title: "No file at /tmp/out/a.pdf",
+	});
+	/* A `~` path keeps its own shape: `~` is a root the app can resolve. */
+	assert.deepEqual(missingNote("~/x/gone.pdf"), {
+		note: "No file at …/x/gone.pdf",
+		title: "No file at ~/x/gone.pdf",
+	});
+	/* A bare name has no directory to drop. */
+	assert.equal(missingNote("report.pdf").note, "No file at report.pdf");
+});
+
 test("a missing path offers Copy only, and says why", () => {
 	const model = modelFor({
 		kind: "file",
@@ -181,7 +280,8 @@ test("a missing path offers Copy only, and says why", () => {
 		model.actions.map((action) => action.id),
 		["copy"],
 	);
-	assert.equal(model.note, "No file at ~/x/report.xlsx");
+	assert.equal(model.note, "No file at …/x/report.xlsx");
+	assert.equal(model.noteTitle, "No file at ~/x/report.xlsx");
 });
 
 test("an unprobed path offers the whole matrix", () => {
