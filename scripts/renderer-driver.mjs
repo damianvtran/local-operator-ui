@@ -1322,7 +1322,7 @@ async function sceneBrowserMark(cdp) {
 	 * round 1, Q1a). */
 	const poolBefore = JSON.parse(
 		await cdp.evaluate(
-			`window.api.browser.state().then((s) => JSON.stringify(s.tabs.map((tab) => tab.tabId)))`,
+			"window.api.browser.state().then((s) => JSON.stringify(s.tabs.map((tab) => tab.tabId)))",
 		),
 	);
 	await verb(cdp, "press", {
@@ -1358,7 +1358,7 @@ async function sceneBrowserMark(cdp) {
 	check(
 		"with a tab open in it, that row's mark counts it — and the other rows stay quiet (R2)",
 		walked !== undefined &&
-			walked.label === quietLabel.replace(/"$/, ' — 1 tab"') &&
+			walked.label === `${quietLabel} — 1 tab` &&
 			drawn.marks.filter((mark) => mark.label.includes("tab")).length === 1,
 		`quiet ${JSON.stringify(quietLabel)} then ${JSON.stringify(walked)}; all ${JSON.stringify(drawn.marks)}`,
 	);
@@ -1392,13 +1392,22 @@ async function sceneBrowserMark(cdp) {
 }
 
 /** Every mark on the sidebar, with the words each one would announce, the conversation
- * it belongs to, and how many rows the list holds — so a check can say "one mark per row"
- * rather than "one mark". */
+ * it belongs to, and how many CONVERSATION rows the list holds — so a check can say "a
+ * mark per conversation" rather than "one mark".
+ *
+ * `[data-chat-row]` ALONE IS NOT "the conversations": the agent, team, draft and palette
+ * rows carry it too, so the count is taken over `chat-session-row` — the tour tag the two
+ * things this check compares share, the row `sessionRow` renders and the mark inside it.
+ * That distinction is what this scene got wrong on its first driven runs: 2 marks against
+ * 12 `data-chat-row` elements, ten of them the agent catalogue, and then 2 against 6 once
+ * entity rows were excluded (the rest were draft and palette rows).
+ */
 async function markReading(cdp) {
 	return await cdp.evaluate(`(() => {
 		const marks = [...document.querySelectorAll('[data-browser-mark]')];
+		const rows = [...document.querySelectorAll('[data-tour-tag="chat-session-row"]')];
 		return {
-			rows: document.querySelectorAll('[data-chat-row]').length,
+			rows: rows.length,
 			marks: marks.map((mark) => ({
 				sessionId: mark.getAttribute('data-browser-mark') ?? '',
 				label: mark.getAttribute('aria-label') ?? '',
