@@ -51,7 +51,10 @@
  * viewport by at most one row pitch, and the focused row is the SAME row before
  * and after the re-file and inside the panel. The check that the key actually
  * landed is part of the assertion, so a build where the key never reached the
- * sidebar reports a failure rather than a comfortable zero.
+ * sidebar reports a failure rather than a comfortable zero. What that story's
+ * re-file itself does is NOT asserted to be zero: following the cursor is the fix,
+ * and the rule only follows a row that was inside the panel before the change and
+ * outside after it (round 2: U1 kept, U5 excluded).
  *
  * WHAT IT MEASURES, per story, in CSS pixels at the viewport `capture-evidence`
  * frames the same story at where there is a frame (the entry is read from that
@@ -73,11 +76,13 @@
  * output: a measurement-only story is a measuring fixture, not a picture, and
  * `docs/evidence/` carries frames for the five states the pull request added.
  *
- * `--assert` turns the pinned properties into an exit code: the viewport may move
- * by at most ONE row pitch across a re-file, a move that could have been clamped
- * is BLIND rather than OK, and the keyboard traversal may not jump the list. It is
- * not wired into a gate - the stories need Storybook - so it is a falsifier a
- * reviewer (or the next agent changing this container) runs by hand.
+ * `--assert` turns the pinned properties into an exit code: a container that holds
+ * its position across a re-file must do so EXACTLY (0.5 px, not one row pitch -
+ * see the assertion's own note for why the pitch allowance let the smallest drag
+ * pass), a move that could have been clamped is BLIND rather than OK, and the
+ * keyboard traversal may not jump the list by more than one pitch. It is not wired
+ * into a gate - the stories need Storybook - so it is a falsifier a reviewer (or
+ * the next agent changing this container) runs by hand.
  *
  * Raw CDP against a private headless Chrome, deliberately the same approach as
  * `capture-evidence.mjs`, `chat-alignment-geometry.mjs` and
@@ -354,10 +359,6 @@ const PROBE = `(() => {
 	};
 })()`;
 
-/** The sample's own identity, for change detection: order plus scrollTop. */
-const stateKey = (sample) =>
-	`${sample.container.scrollTop}|${sample.container.rows.map((r) => r.title).join(" | ")}`;
-
 /** One decimal, the resolution every number this rig reports is read at. */
 const round = (n) => Math.round(n * 10) / 10;
 
@@ -487,10 +488,21 @@ const main = async () => {
 		 */
 		const rowsNow = (sample) =>
 			(sample?.[story.container]?.rows ?? []).filter((row) => row.title).length;
+		/*
+		 * A COLD SERVER'S FIRST STORY NEEDS MORE THAN THE SETTLE LOOP USED TO GIVE IT.
+		 * 80 samples at 25 ms is ~2-4 s once each evaluate round trip is counted, and a
+		 * storybook that has just started compiles the story on demand: the first story
+		 * of the first run against a fresh server died here with a hard error, twice
+		 * (review round 2, N2), and passed on the next, warm run. It failed loudly
+		 * rather than falsely, so the cost is a re-run - but a command a reviewer is
+		 * told to run should not need one. 240 samples is ~6-12 s, paid only by a page
+		 * that is actually still assembling, since the loop exits on a settled count.
+		 */
+		const SETTLE_SAMPLES = 240;
 		let stable = 0;
 		let seen = 0;
 		let resized = null;
-		for (let i = 0; i < 80; i++) {
+		for (let i = 0; i < SETTLE_SAMPLES; i++) {
 			const { result } = await cdp.send("Runtime.evaluate", {
 				returnByValue: true,
 				expression: PROBE,
@@ -525,7 +537,7 @@ const main = async () => {
 		}
 		if (resized === null) {
 			throw new Error(
-				`${story.id}: the ${story.container} container never settled on a row count, so the viewport could not be matched to the frame's. The story rendered no rows, or it kept changing them.`,
+				`${story.id}: the ${story.container} container never settled on a row count within ${SETTLE_SAMPLES} samples, so the viewport could not be matched to the frame's. The story rendered no rows, or it kept changing them - a cold storybook compiling this story on demand is the usual cause, and a second run usually settles.`,
 			);
 		}
 		/*
@@ -830,11 +842,13 @@ const main = async () => {
 						);
 					console.log(
 						`    room          ${move.roomAbovePx} px above / ${move.roomBelowPx} px below${
-							move.blind && key === result.container
+							move.blind && key === result.container && !result.keyboard
 								? "  -> BLIND: the drag could have been clamped"
-								: move.blind
-									? "  (blind, but this is not the story's own container - reported, not asserted)"
-									: ""
+								: move.blind && key === result.container
+									? "  (blind, but this move is not asserted: this story's claim is the traversal below)"
+									: move.blind
+										? "  (blind, but this is not the story's own container - reported, not asserted)"
+										: ""
 						}`,
 					);
 					console.log(
@@ -857,29 +871,31 @@ const main = async () => {
 		}
 	}
 	/*
-	 * The assertion is deliberately one row and not zero. A list that re-files a
-	 * row redraws the rows below it in their new positions, and a container that
-	 * holds its `scrollTop` still shifts them by one pitch relative to the
-	 * viewport - that is the re-file being visible, not a defect. What the
-	 * anchoring drag does is pay for the WHOLE travel instead, which is what this
-	 * rejects.
+	 * The hold is asserted EXACTLY, and the tolerance is no longer one pitch.
 	 *
-	 * PER MOVE, and BLIND is not OK. A move is judged where it happened rather
-	 * than over the run, so a story that re-files twice is two measurements instead
-	 * of a cancelled net (R2), and a move the container could only have clamped is
-	 * reported BLIND and fails too: a rig that passes a story it could not have
-	 * seen is the defect this instrument was reworked for. A container that cannot
-	 * scroll at all (`maxScrollTop` 0) is the one case that is vacuous rather than
-	 * blind - there is no viewport for a drag to move.
+	 * The first version allowed `pitch + 0.5` on the reasoning that a container
+	 * holding its `scrollTop` still redraws the rows below the mover one pitch lower
+	 * relative to the viewport. The metric is `scrollTop`, not a row's position, so
+	 * that reasoning does not reach it: with the declaration present the hold is 0 px
+	 * in every story, and the allowance let the SMALLEST drag the app can produce - a
+	 * one-slot re-file, whose row travel is exactly one pitch and whose drag is the
+	 * same pitch - read as "held its position" (review round 2, R2-3). A container
+	 * that cannot scroll at all is still vacuous rather than blind (it has no viewport
+	 * to drag).
 	 *
-	 * The keyboard story is judged on its own claim: the cursor is ON the row that
-	 * re-files, so the container is allowed to follow it there (that is the fix),
-	 * and what may not happen is a JUMP when the cursor moves on.
+	 * The KEYBOARD story is the one exception, and it is judged on its own claim: the
+	 * cursor is ON the row that re-files, so the container is allowed to follow it
+	 * there (that is the fix) - the pitch is the bound on the travel of the arrow press
+	 * that follows (`step.travel`), not on the re-file. Its own move is not asserted
+	 * here at all: what may not happen is a JUMP when the cursor moves on.
 	 */
 	if (ASSERT) {
 		const failures = [];
+		/** The keyboard traversal's allowance: the browser's own scroll-into-view of
+		 * the neighbour the cursor moved to is bounded by one row pitch. */
+		const HOLD_PX = 0.5;
 		for (const result of results) {
-			const limit = result.pitch === null ? 0.5 : result.pitch + 0.5;
+			const keyLimit = result.pitch === null ? HOLD_PX : result.pitch + 0.5;
 			if (result.keyboard) {
 				const step = result.keyStep;
 				if (!step) {
@@ -896,7 +912,7 @@ const main = async () => {
 					failures.push(
 						`FAIL ${result.story}: the cursor was NOT inside the panel when the arrow key was pressed, so a jump on the next press is the state the capture starts from rather than what the traversal produced.`,
 					);
-				if (Math.abs(step.travel) > limit)
+				if (Math.abs(step.travel) > keyLimit)
 					failures.push(
 						`FAIL ${result.story}: the arrow key after the re-file moved the viewport ${step.travel} px (limit: one ${result.pitch} px row). The container follows the row the cursor is on across a re-file; it may not jump when the cursor moves on.`,
 					);
@@ -916,9 +932,9 @@ const main = async () => {
 				continue;
 			}
 			for (const move of result.subjectMoves) {
-				if (Math.abs(move.viewportTravel) > limit) {
+				if (Math.abs(move.viewportTravel) > HOLD_PX) {
 					failures.push(
-						`FAIL ${result.story}: the viewport moved ${move.viewportTravel} px while a row re-filed (limit: one ${result.pitch} px row). The container should hold its scroll position - see chat-sidebar.tsx's note on overflow-anchor.`,
+						`FAIL ${result.story}: the viewport moved ${move.viewportTravel} px while a row re-filed (limit: ${HOLD_PX} px - the container holds its scroll position exactly). The container should hold its scroll position - see chat-sidebar.tsx's note on overflow-anchor.`,
 					);
 					continue;
 				}
@@ -932,7 +948,7 @@ const main = async () => {
 		if (failures.length > 0) process.exitCode = 1;
 		else
 			console.log(
-				"\nOK: every measured move held its position within one row pitch, every move had the room to show a drag, and the keyboard traversal did not jump the list.",
+				"\nOK: every measured move held its scroll position exactly (within 0.5 px), every move had the room to show a drag, and the keyboard traversal did not jump the list.",
 			);
 	}
 };
@@ -954,4 +970,4 @@ if (isEntryPoint(import.meta.url)) {
 		});
 }
 
-export { PROBE, stateKey, STORIES };
+export { PROBE, STORIES };
