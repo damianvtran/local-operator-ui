@@ -107,6 +107,26 @@ same store the panel reads, and its last line is measured off the DOM (the
 element the control stamps itself with) so a caption cannot claim a control that
 is not on screen.
 
+## Re-running the gates a reviewer of this set needs
+
+The frames are pictures of a state, so what re-checks them is the suite:
+
+```
+env -u NO_COLOR TERM=xterm-256color pnpm test:desktop   # includes this set's stamp test
+pnpm check-evidence                                     # the machine-wide sweep over every committed frame
+```
+
+`test:desktop` needs the explicit `TERM` and a cleared `NO_COLOR` because the
+sidebar's own contrast probes read rendered styles through the theme; both are
+what CI does.
+
+`check-evidence` admits **one** sweep per machine through a permanent lock at
+`/tmp/local-operator-ui-check-evidence.lock`. A second caller exits **75
+DEFERRED** — that is a lease, not a failure, and the lock file is never deleted
+or reclaimed. It is also slow on a loaded laptop: 5,700+ frames go through
+ImageMagick, so on a busy machine it can outlast a review round. If it defers,
+say so and retry rather than reading it as a pass.
+
 ## What these frames are not
 
 They are not the native window's pixels, and they are not the store's behaviour:
