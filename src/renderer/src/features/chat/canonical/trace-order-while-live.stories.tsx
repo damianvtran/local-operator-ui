@@ -15,7 +15,12 @@
  * local-operator` (13), `906 local_operator/server/routes/desktop_sessions.py`
  * (16), `__init__.py` (17), `"""Additive authenticated session API; legacy
  * per-turn chat stays unchanged."""` (20) and `Tool call skipped: interrupted by
- * steering.` (21), each string occurring exactly once in the journal.
+ * steering.` (21). THE PREVIEWS ARE NOT UNIQUE STRINGS — three of the eight occur
+ * more than once in the journal, `__pycache__` seven times — so the claim this
+ * story rests on is the measured one instead: the page at that moment names
+ * NONE of the eight (`reported.page_names_ghosts: []`), which is a fact about
+ * the page rather than about how searchable a preview happens to be (QA round 1,
+ * Q3).
  *
  * WHICH DOOR PAINTED THEM, settled with frames rather than with reasoning.
  * Three shipped paths could inject a row here, and the fixture carries the one
@@ -189,6 +194,25 @@ const REPORTED_ARRIVAL_MS = arrivalOf(REPORTED_SEED);
  */
 const PANE = 685;
 
+/**
+ * The list box under the pane: eight ids, and one `… N more` line when the set
+ * is longer than eight.
+ *
+ * DERIVED FROM WHAT IT PRINTS, and that is the point of the constant rather than
+ * a `h-*` step: the box it replaces was `h-28` (112px) with the same
+ * `overflow-hidden`, which fitted the header, five id lines and nothing else —
+ * the sixth line was cut through its glyphs at the box's own bottom edge and the
+ * `… N more` line never rendered at all, so the panel's header count and its list
+ * said different things and the README claimed all eight ids were named (design
+ * round 1, D2). The row pitch is the one the committed frames show (17px), and
+ * the terms are: 8px padding, the 17px header line, its 4px `mb-1`, then
+ * `PANEL_IDS + 1` lines for the ids plus the `… more` line, then 8px padding.
+ * 192 keeps the ninth line inside with room to spare; the numbers are re-measured
+ * off the pixels after every re-capture (see the set's README).
+ */
+const PANEL_IDS = 8;
+const PANEL = 8 + 17 + 4 + 17 * (PANEL_IDS + 1) + 8;
+
 const pageOf = (entries: Entry[]): DesktopHistoryPage => ({
 	entries,
 	has_more: true,
@@ -236,9 +260,11 @@ const shipped = (
  * a before/after pair possible on ONE tree, and what the `Before` frames are
  * evidence about. It is the pre-fix `applyLiveSeed` body: a loop over the seed's
  * frames, handing `applyEvent` the clock the frame itself states (`epochMs`) or
- * the reader's arrival. The pre-fix fold's closing `withTimeOrder` is not spelled
- * out because it cannot move a frame painted at the arrival, which is newer than
- * anything the seed states.
+ * the reader's arrival. The pre-fix fold's closing `withTimeOrder` is spelled out
+ * below and is load-bearing for these frames: this seed's LAST frame states a
+ * clock, so the sort ran, and it is what puts the injected rows after the running
+ * call rather than before it — the order the operator photographed (review round
+ * 1, R2; fixed at 352a38f30).
  */
 const beforeFix = (
 	seed: LiveEvent[],
@@ -302,17 +328,42 @@ const injected = (transcript: TranscriptState, arrival: number): string[] =>
  * The caption is apparatus, `text-ink-muted` for the reason the other transcript
  * stories' captions are: it describes the frame rather than being part of the
  * surface under test.
+ *
+ * `waiting` IS THE APP'S OWN VALUE, NOT `false`. The app passes
+ * `waiting={canonical.busy}` (`features/chat/components/chat-content.tsx`) and
+ * that `busy` is `canonical.frontend?.streaming === true`, so a mid-turn pane
+ * has it true — the same `streaming` that lets the fold create an arrival row at
+ * all. Every moment in this set is a mid-turn state, so the fold and the Frame
+ * are handed the SAME `seed.streaming` and cannot disagree. Hard-coding `false`
+ * here photographed a mid-turn pane with the turn's own liveness element — the
+ * working line, which `deriveWorkingLine` reaches only under `waiting` — deleted
+ * (design round 1, D3).
+ *
+ * WHAT THE FOOTNOTE AND THE PANEL ARE FOR. A frame has to carry the facts a
+ * reader of the BYTES cannot infer: the viewport it was taken in (AGENTS.md's
+ * capture rule), and the running row's elapsed figure — which counts to the
+ * MACHINE's clock at render, so it differs between the two frames of a pair and
+ * between captures of one commit, while every other cell reproduces (design
+ * round 1, D6/D7; QA round 1, Q2). The panel under the pane is a fixed box, so
+ * the pair overlays: it is sized for its header, its eight id lines and the
+ * `… N more` line that can follow them, because at the 112px it shipped with the
+ * sixth id was cut through its glyphs by the box's own bottom edge and the
+ * `… N more` line never rendered at all (design round 1, D2).
  */
 const Frame = ({
 	transcript,
 	caption,
 	rows,
+	waiting,
 }: {
 	transcript: TranscriptState;
 	caption: string;
 	rows: string[];
+	waiting: boolean;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
+	/** The ids the panel prints before it counts the rest. */
+	const shown = rows.slice(0, PANEL_IDS);
 	return (
 		<div className="flex flex-col gap-2 bg-canvas p-6">
 			{/*
@@ -333,7 +384,7 @@ const Frame = ({
 				<CanonicalTranscript
 					transcript={transcript}
 					gate={null}
-					waiting={false}
+					waiting={waiting}
 					starting={false}
 					loadingOlder={false}
 					onLoadOlder={async () => true}
@@ -348,18 +399,36 @@ const Frame = ({
 			{/*
 			 * The injected set, named. A frame is evidence about WHICH rows are painted
 			 * where, and "the pane ends in a wall of rows" is not that: the ids below are
-			 * the seed's own signature (see `injected`), printed in a fixed box so the
-			 * pair overlays and the list cannot move the pane above it.
+			 * the seed's own signature (see `injected`). The box is a fixed height on
+			 * EVERY frame — including the two with no ids to print — so the pair overlays,
+			 * and `PANEL` is derived from what it prints (see its own note).
 			 */}
-			<div className="h-28 overflow-hidden rounded-sm border border-hairline bg-sunken p-2 font-mono text-mono-sm text-ink-muted">
+			<div
+				className="overflow-hidden rounded-sm border border-hairline bg-sunken p-2 font-mono text-mono-sm text-ink-muted"
+				style={{ height: PANEL }}
+			>
 				<div className="mb-1 text-meta text-ink-dim">
 					rows stamped at the reader's arrival: {rows.length}
 				</div>
-				{rows.slice(0, 6).map((id) => (
+				{shown.map((id) => (
 					<div key={id}>{id}</div>
 				))}
-				{rows.length > 6 ? <div>… {rows.length - 6} more</div> : null}
+				{rows.length > PANEL_IDS ? (
+					<div>… {rows.length - PANEL_IDS} more</div>
+				) : null}
 			</div>
+			{/*
+			 * The geometry, on the frame rather than only in the README beside it: a
+			 * reader holding the bytes has no other way to know which window they were
+			 * taken in.
+			 */}
+			<p className="text-meta text-ink-dim">
+				pane {PANE}px pinned, column full width, capture viewport 1280x800
+				floored to the document; the running row's elapsed figure counts from
+				the call's own start to the machine's clock at render, so it moves
+				between captures, while the working line times the phase and not the
+				call.
+			</p>
 		</div>
 	);
 };
@@ -378,8 +447,14 @@ type Story = StoryObj;
  * The page is the one record 122 served, read by the runtime's own reader out of
  * a truncated copy of the journal; the seed is the ends the journal states for
  * that moment plus the in-flight call. The eight `bash` rows below it are the
- * operator's report, painted by the SHIPPED fold, and every one of their previews
- * is an output string his evidence proves occurs exactly once.
+ * operator's report, painted by the STORY-LOCAL pre-fix fold — not by the shipped
+ * one, which refuses every one of them (see `beforeFix`) — and the fact that
+ * carries the argument is measured rather than inferred from look-alike text: the
+ * page names NONE of the eight (`reported.page_names_ghosts: []`, and `ghosts` is
+ * reconstructed from the journal's own rows). Their previews are NOT unique
+ * strings — three of the eight occur more than once in the journal
+ * (`__pycache__` seven times) — so this story claims the measured empty
+ * intersection and not uniqueness (QA round 1, Q3).
  */
 export const BeforeReport: Story = {
 	render: () => {
@@ -390,9 +465,10 @@ export const BeforeReport: Story = {
 		const inFlight = REPORTED.in_flight;
 		return (
 			<Frame
-				caption={`Before: opening the session while its turn runs (streaming: ${REPORTED.seed.streaming}) at journal record ${REPORTED.through_record}. The pane ends at the call the turn was inside (${inFlight?.tool_name}, ${inFlight?.intent}) and the opening turn's eight bash calls — an hour earlier — are painted under it at the reader's arrival, each showing output where its command belongs.`}
+				caption={`Before: opening the session while its turn runs (streaming: ${REPORTED.seed.streaming}) at journal record ${REPORTED.through_record}. The pane's own last rows are the eight — the opening turn's bash calls, an hour earlier — each painted at the reader's arrival showing output where its command belongs, with the call the turn was inside (${inFlight?.tool_name}, ${inFlight?.intent}) immediately above them.`}
 				transcript={transcript}
 				rows={injected(transcript, REPORTED_ARRIVAL_MS)}
+				waiting={REPORTED.seed.streaming}
 			/>
 		);
 	},
@@ -403,7 +479,18 @@ export const BeforeReport: Story = {
  *
  * The eight rows are refused rather than greyed or captioned — an unplaceable row
  * is not painted at a position nobody stated — and they return as durable rows
- * through the reconcile read the client already fires for unlabelled calls.
+ * through the reconcile read the client already fires for unlabelled calls
+ * (`reconcileLimit`; `seedCallsMissingLabels` selects exactly this set).
+ *
+ * THAT RETURN IS DERIVED, NOT COMMITTED, and this comment says so rather than
+ * leaving a reader to look for a frame that does not exist: the committed fixture
+ * cannot carry it, because `page`, `older` and `reported.page` name 0 of the
+ * eight each. Design round 1 derived it from the real journal instead —
+ * `read_transcript_page(session_dir, before_id=<reported.page[0].id>, limit=300)`
+ * against an isolated copy — which returns 22 entries naming 8/8 of them at their
+ * own instants (1789663239.573 … 264.898 … 267.398 … 270.200), with the pane's
+ * tail pixel-identical to this frame and `rows stamped at the reader's arrival: 0`.
+ * So the claim holds and has a measurement; it has no still (design round 1, D4).
  */
 export const AfterReport: Story = {
 	render: () => {
@@ -414,9 +501,10 @@ export const AfterReport: Story = {
 		const inFlight = REPORTED.in_flight;
 		return (
 			<Frame
-				caption={`After: the same session and the same frames. The pane still ends at the call the turn was inside (${inFlight?.tool_name}, ${inFlight?.intent}), and nothing is painted under it: a clockless settled row is refused because a settled row's position belongs to the durable record, which is the only thing that can date it.`}
+				caption={`After: the same session and the same frames. The pane still ends on the call the turn was inside (${inFlight?.tool_name}, ${inFlight?.intent}) — the working line and the footer are all that sit below it — and no injected row is painted: a clockless settled row is refused, because a settled row's position belongs to the durable record, which is the only thing that can date it.`}
 				transcript={transcript}
 				rows={injected(transcript, REPORTED_ARRIVAL_MS)}
+				waiting={REPORTED.seed.streaming}
 			/>
 		);
 	},
@@ -427,8 +515,8 @@ export const AfterReport: Story = {
  *
  * `derivation.unlabelled_ends` (59) of the seed's 100 ends name a call the page
  * cannot label, so the wall is the class rather than the eight — the eight are
- * simply the ones the report could prove by a string that occurs once, and at
- * record 122 that same rule injected exactly those eight.
+ * simply the ones the report could prove at record 122, by the page naming none
+ * of them, and at that moment the same rule injected exactly those eight.
  */
 export const BeforeLive: Story = {
 	render: () => {
@@ -438,9 +526,10 @@ export const BeforeLive: Story = {
 		);
 		return (
 			<Frame
-				caption={`Before: the harvested seed itself — ${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} of them unable to name a command — folded by the pre-fix fold under the turn's in-flight ${inFlight?.tool_name}. The window reaches back to journal record ${FIXTURE.derivation.reach_back_records?.[0]}.`}
+				caption={`Before: the harvested seed itself — ${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} of them unable to name a command — through the pre-fix fold. The pane's own foot is ${FIXTURE.derivation.unlabelled_ends + 1} fabricated rows, each stamped with the reader's arrival and showing output where its command belongs; the turn's in-flight ${inFlight?.tool_name} sits above them, off this pane's top edge.`}
 				transcript={transcript}
 				rows={injected(transcript, ARRIVAL_MS)}
+				waiting={FIXTURE.seed.streaming}
 			/>
 		);
 	},
@@ -451,7 +540,7 @@ export const BeforeLive: Story = {
  *
  * This is the frame that states the fix does not depend on the reported moment:
  * the same 100 retained ends, the same page, the same in-flight call, and no row
- * painted at the arrival.
+ * painted at the arrival by the settled-row rule.
  */
 export const AfterLive: Story = {
 	render: () => {
@@ -467,9 +556,10 @@ export const AfterLive: Story = {
 			.join(", ");
 		return (
 			<Frame
-				caption={`After: the harvested seed (${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} of them unable to name a command) through the shipped fold. The pane ends at the turn's in-flight ${inFlight?.tool_name}, and no settled row is painted at the arrival; the one row that still is (${composing}) is the seed's compose frame, which never ran.`}
+				caption={`After: the harvested seed (${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} of them unable to name a command) through the shipped fold. The pane's last record row IS the one row still stamped at the arrival (${composing}) — the seed's compose frame, which never ran and is #312's half of the same clause — with the turn's in-flight ${inFlight?.tool_name} immediately above it and no settled call's row painted at the arrival at all.`}
 				transcript={transcript}
 				rows={injected(transcript, ARRIVAL_MS)}
+				waiting={FIXTURE.seed.streaming}
 			/>
 		);
 	},
