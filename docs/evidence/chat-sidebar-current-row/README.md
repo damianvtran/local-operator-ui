@@ -2,7 +2,7 @@
 
 Two changes the operator reported, photographed on the surfaces they are visible
 on, in all TWENTY-THREE themes this set covers: the twelve the band was authored on,
-plus the eleven the theme port (PR #272) added, which are the palettes whose
+plus the forty-seven the theme port (PR #272) added, which are the palettes whose
 `highlight` this branch re-authored to the same rule. Frames added in a pass are
 named in the section for the state they belong to, and every frame's reading is in
 the tables below rather than asserted in prose:
@@ -149,8 +149,9 @@ recorded rather than papered over.** The ink floors cap how far the ground can c
 while the hover step the rows around it carry is `elevated`, which is also every
 menu, popover and tooltip ground in the app, so it cannot come down to meet the
 selection. Measured over all **59** themes, `elevated` is still the LARGER step off `surface` on
-**11 of them**, and the mark leads the pointer on **none**: the ground this change authors
-is quieter than the hover it has to outrank wherever a pointer rests on a neighbour. The
+**11 of them**, so the mark leads the pointer on the other **48 of 59** — and it leads on
+none of those eleven, which is the ordering this change records rather than fixes: the
+ground it authors is quieter than the hover wherever a pointer rests on a neighbour. The
 `4.63 > 4.48` this set quoted in round 1 was a q88 reading of the frame set against a
 `magick`-sampled value, so the two numbers were never the same measurement — the lossless
 pair is `4.58 > 4.09` on `tokyoNight`. The
