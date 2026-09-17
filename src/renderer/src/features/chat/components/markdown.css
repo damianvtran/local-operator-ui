@@ -317,9 +317,11 @@
  * line: counted from the rendered breaks, the same column carries 131 characters
  * on an 832.6px line (measured at 1024 on
  * `chat-older-history-slot--in-transcript-idle`). The 98.1 being a CEILING
- * rather than a slope is what makes the trade acceptable: the column is capped
- * at 900px by `CHAT_MEASURE` (`chat-measure.ts`), so the line length stops
- * growing with the window and 1920 reads exactly as 1024 does. The failure a
+ * rather than a slope is what makes the trade acceptable: the content measure is
+ * capped at 900px by `CHAT_MEASURE` (`chat-measure.ts`) - the measure, not the
+ * column, which is why the `p-4` above sits outside the number rather than
+ * inside it - so the line length stops growing with the window and 1920 reads
+ * exactly as 1024 does. The failure a
  * reading cap exists to prevent — prose stretching across a wide display —
  * cannot happen on this surface.
  *
