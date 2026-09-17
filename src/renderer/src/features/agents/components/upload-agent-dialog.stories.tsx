@@ -23,7 +23,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { userEvent } from "@storybook/test";
 import "../../../styles/index.css";
 import { usePublishedListingsStore } from "@shared/store/published-listings-store";
-import { useEffect } from "react";
 import { UploadAgentDialog } from "./upload-agent-dialog";
 
 /**
@@ -208,13 +207,43 @@ const seedRememberedListing = (seeded: Scenario) => {
 	});
 };
 
-/** Clears the remembered-listing store on unmount, so one story cannot seed the next. */
-const ClearListings = () => {
-	useEffect(() => {
-		return () => usePublishedListingsStore.setState({ listings: {} });
-	}, []);
-	return null;
-};
+/*
+ * Clears the remembered-listing store as this module is evaluated, so one story
+ * cannot seed the next.
+ *
+ * WHY MODULE SCOPE, AND NOT AN UNMOUNT CLEANUP. The store is `persist`ed to
+ * localStorage, and the capture rig replaces the whole document per story
+ * (`Page.navigate` to the next `iframe.html?id=...`), so React never unmounts
+ * the story it just photographed and an unmount cleanup never runs. This file
+ * carried exactly that cleanup, and it was silently wrong in the one place it
+ * mattered: `NameTakenByYou`'s play republishes, the stub accepts, and the
+ * app's own accepted-publication path writes the listing into the store — so
+ * every story captured AFTER it rehydrated that listing and rendered the
+ * dialog's UPDATE state. Five frames (`name-claim-in-flight`,
+ * `reserved-builtin`, `reserved-builtin-refusal`, `moderation-rejected`,
+ * `moderation-unavailable`) showed `Update the Agent hub listing for "..."`
+ * with the update affordance and no availability line, where the refusal or the
+ * reservation they are named for belongs.
+ *
+ * The consequence was worse than five wrong frames: the set depended on how the
+ * run was NARROWED. Captured one story at a time - a fresh browser profile each
+ * run - every frame was right; captured as the family the table declares
+ * (`--only=agents-publish-dialog`), five of them were of the previous story's
+ * leftovers. Evidence that changes with the shape of the command that took it
+ * is not evidence, and `manifest.json` cannot record which shape produced it.
+ *
+ * Evaluated once per story document, before the first render, so the dialog's
+ * first paint already sees the empty store: a reset in a mount effect would run
+ * after that paint and the frame could catch the state being replaced. The seed
+ * a republish needs is still applied synchronously in `render`, below, which is
+ * the only story that wants a listing to be there.
+ *
+ * It is here rather than in each file that photographs a listing, and it is a
+ * reset of the STORE rather than of this file's stories: a story document
+ * evaluates every story module in the preview, so this line runs for a story of
+ * any family - the pull's outcome frames included - before that story renders.
+ */
+usePublishedListingsStore.setState({ listings: {} });
 
 /**
  * Waits for text to appear, so a `play` finishes on the state under test rather
@@ -336,7 +365,6 @@ const publishDialog = (
 			if (seedListing) seedRememberedListing(captured);
 			return (
 				<div className="flex min-h-screen items-center justify-center bg-canvas p-8">
-					<ClearListings />
 					<UploadAgentDialog {...args} />
 				</div>
 			);
