@@ -40,14 +40,19 @@ the two runs, and every claim below is about the sidebar.
 
 ## The frames
 
-Thirty-one frames, counted by `ls docs/evidence/pins/*.png` rather than by summing the
-scenes - the sets overlap on purpose (`pins-pinned-hover-{dark,light}` is drawn by `--scene
-pins-scroll` and belongs to both the scrolled pair and the pinned-state pair), so `17 + 4 + 6 + 4`
-read as 31 against a directory that holds fewer, and the overlap is what the arithmetic was
-missing. `--scene pins-search` contributes six: the search-only row pinned, the same row unpinned
-from its own control, the row after the query is cleared, and the re-asked answer after the pin is
-removed on the other surface, per theme. Plus the four
-of the capability-withdrawn pair. The window is `1380x900` in `--window-mode=headless` (a
+Thirty-one files, counted by `ls docs/evidence/pins/*.png`: sixteen STATES, every one of them in
+both themes except `pins-from-tui`, which the round trip photographs once, and the two
+capability-withdrawn states. The earlier paragraph here added scene totals together (`17 + 4 + 6`)
+and so read as 31 against a directory that holds 31 for different reasons — the sets overlap,
+because `pins-pinned-hover-{dark,light}` is drawn by `--scene pins-scroll` and belongs to both the
+scrolled pair and the pinned-state pair. By the scene that writes it:
+
+| Scene | States | Files |
+| --- | --- | --- |
+| `--scene pins` | `pins-populated`, `pins-hover`, `pins-unpinned`, `pins-flat`, `pins-selected`, `pins-filter`, `pins-from-tui` | 13 |
+| `--scene pins-scroll` | `pins-scrolled`, `pins-pinned-hover` | 4 |
+| `--scene pins-search` | `pins-search-pinned`, `pins-search-unpinned`, `pins-search-cleared`, `pins-search-resuperseded`, `pins-stationary` | 10 |
+| the capability-withdrawn stage | `pins-withdrawn`, `pins-withdrawn-main` | 4 | The window is `1380x900` in `--window-mode=headless` (a
 1380x868 CSS viewport, `devicePixelRatio` 2, so the PNGs are 2760x1736), never shown and
 never focused: the run asserts both from main's own window facts before it takes a frame.
 
@@ -64,7 +69,9 @@ never focused: the run asserts both from main's own window facts before it takes
 | [`pins-pinned-hover-dark`](pins-pinned-hover-dark.png) ([light](pins-pinned-hover-light.png)) | the pointer ON an already-pinned row's glyph | **The pinned state does not depend on the reveal**: the glyph is filled and fully opaque at rest, and it says what a press would do (`Unpin “…”`) |
 | [`pins-search-pinned-dark`](pins-search-pinned-dark.png) ([light](pins-search-pinned-light.png)) | a conversation OUTSIDE the panel's own page (568 seeded, the page reads 500), pinned from its search hit | **Qr2-1, both directions**: the press writes the wire, the store the terminal reads holds it, and the row it was made on follows - then the SAME row unpins it, with all three surfaces checked again |
 | [`pins-search-unpinned-dark`](pins-search-unpinned-dark.png) ([light](pins-search-unpinned-light.png)) | the same row, after the second press | the control inverts the STORE's state, not a cached wire answer |
-| [`pins-stationary-dark`](pins-stationary-dark.png) ([light](pins-stationary-light.png)) | a stationary repeat press on a pinned glyph, then a 3 px wobble of the same gesture | **U3-unpin**: neither press reaches a row the pointer is not on. The repeat acts on the conversation whose control is under the pointer and on nothing else - what the check asserts (`a stationary repeat press acts on the row under the pointer and on no other`). The disarm this caption used to name was replaced by `dropRepeatPress` (identity, not time or distance), and the reader's own repeat is exercised by keyboard, where it is reachable |
+| [`pins-search-cleared-dark`](pins-search-cleared-dark.png) ([light](pins-search-cleared-light.png)) | the query cleared, with the pin still held for a conversation the catalogue page does not carry | **The pin the page cannot draw, drawn** (design round 4, D17; UX round 4, U14): the row is there, above `Active chats`, carrying the title the fact holds, and its section counts it — so the panel and the terminal hold the same set |
+| [`pins-search-resuperseded-dark`](pins-search-resuperseded-dark.png) ([light](pins-search-resuperseded-light.png)) | the same row after the pin is removed through the daemon's own route, then asked for again | **The currency rule, live** (review round 3, MAJOR 2; round 4, M1): a fresh answer supersedes the client's memory and settles the ROW it speaks about, so the other surface's removal is visible here |
+| [`pins-stationary-dark`](pins-stationary-dark.png) ([light](pins-stationary-light.png)) | a stationary repeat press on a pinned glyph, then a 3 px wobble of the same gesture | **U3-unpin**: neither press reaches a row the pointer is not on. The repeat acts on the conversation whose control is under the pointer and on nothing else - what the check asserts (`a stationary repeat press acts on the row under the pointer and on no other`). The disarm this caption used to name was replaced by `dropRepeatPress`, which drops a repeat press on a DIFFERENT conversation inside a 6 px slop of the last pointer press — identity AND a small radius, expired by the pointer's own path (a move beyond the slop, or leaving the list) — and the reader's own repeat is exercised by keyboard, where it is reachable |
 | [`pins-withdrawn-dark`](pins-withdrawn-dark.png) ([light](pins-withdrawn-light.png)) | a backend whose capabilities omit `session_pins` | **Fail-closed**: no affordance anywhere |
 | [`pins-withdrawn-main-dark`](pins-withdrawn-main-dark.png) ([light](pins-withdrawn-main-light.png)) | the same backend, driven by the **same scene on `origin/main`** | **...byte-identical to the pre-change panel** — see below |
 
@@ -115,8 +122,22 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=$TOKEN node scripts/renderer-driver.mjs --scene pin
 
 The `VITE_GOOGLE_*`/`VITE_MICROSOFT_*` values are inert build fixtures
 (`pins-build-only-not-a-credential`); no credential file was read and no sign-in is
-claimed. The scene prints `[PASS]`/`[FAIL]` for every assertion it makes — 43 checks in the
-pins run, 34 in each `--scene pins-scroll` run and 15 in each withdrawn run, all passing on the head these frames were taken at — and it refuses to run at
+claimed. The scene prints `[PASS]`/`[FAIL]` for every assertion it makes, and the counts below are this
+head's own runs, read off the capture log — **45** in each `--scene pins` run, **45** in each
+`--scene pins-scroll` run, **34** in each `--scene pins-search` run (the scene the earlier
+paragraph here left out entirely) and **15** in each withdrawn run, all passing on the head these
+frames were taken at:
+```
+[capture] pins/localOperatorDark: 45 checks passed, 0 failed
+[capture] pins/localOperatorLight: 45 checks passed, 0 failed
+[capture] pins-scroll/localOperatorDark: 45 checks passed, 0 failed
+[capture] pins-scroll/localOperatorLight: 45 checks passed, 0 failed
+[capture] pins-search/localOperatorDark: 34 checks passed, 0 failed
+[capture] pins-search/localOperatorLight: 34 checks passed, 0 failed
+[capture] pins/localOperatorDark: 15 checks passed, 0 failed
+[capture] pins/localOperatorLight: 15 checks passed, 0 failed
+```
+It refuses to run at
 all without `--backend`, because a run with no catalogue has no row to pin and every frame it
 could write would be a picture of an empty panel. The pins run also asks the daemon's SEARCH
 route for the pinned conversation and asserts that the hit carries `pinned` (a hit is the
@@ -247,10 +268,16 @@ run: the clamped case cannot be mistaken for the passing one.
 | Review round 1 (M1, m1) | the current-row ground had to span the pin slot: the ground moved to the row's own box, with one decision (`current`) worn by every site rather than re-spelled at each | `pins-selected-{dark,light}`: the ground covers the row AND the slot the filled glyph sits in |
 | Design round 1 (D1, D2, D5) | the section's placement; one theme per launch, because a two-theme pass left the light frames in the dark pass's state; the cost of the reserved slot | the table above: D1's placement in both modes, D2's per-theme frames, and the slot measured below |
 | QA round 1 (U1, U2, U3) | the move a pin makes: content anchoring for a pointer press, follow-the-row for a keyboard press, and an inert reveal under a parked pointer | `pins-scrolled-{dark,light}` and the measured numbers above |
-| Review round 2 (m2, m3) | the U1 assertion could not fail (its anchor was the row the correction anchors on); the disarm reached only the pointer path and only the unpinned glyph | the disarm was replaced in round 3 by `dropRepeatPress` - identity rather than time or distance, expired by the pointer's own path - and `pins-stationary-{dark,light}` carries the repeat-press state |
+| Review round 2 (m2, m3) | the U1 assertion could not fail (its anchor was the row the correction anchors on); the disarm reached only the pointer path and only the unpinned glyph | the disarm was replaced in round 3 by `dropRepeatPress` - identity plus a 6 px slop, expired by the pointer's own path - and `pins-stationary-{dark,light}` carries the repeat-press state |
 | Review round 3 (m1, m2, m3 + minors) | the replacement `m2` check was held by arithmetic and ran at `scrollTop 0` where the correction has nothing to add; the client's pin fact outranked a fresher answer with no currency; a dropped press armed the move correction; the central fix's test was a source scrape | an UNPIN press at a depth the correction can act from, with the region's own `scrollTop` asserted to have changed; `PinFact` carries the answer sequence and an answer that speaks about an id supersedes an older fact; the guard runs before `rememberMovedRow`; the test is behavioural |
 | Design round 3 (D11, D12) | the scrolled pair photographed a depth its caption did not describe, and the state one click after the search pair was in no frame | the frame is taken at a state the checks assert (the correction settles before the scroll is set) and `pins-search-cleared-*` photographs the pin held for a row the page cannot carry |
 | QA round 3 (Qr3-1) + UX round 3 (U9) | the guard was a coordinate disc with no expiry, so a press after the pointer left and returned was silently dropped | the record is expired by the pointer's path - a move beyond the slop, or leaving the list |
+| Review round 4 (M1, m1, m2) | the page's currency guard covered the FACT but not the ROW, so a page whose request predated a press regressed the row and dropped the row the press inserted; the currency assertions passed with both guards deleted; two presses in flight on one row settled on the stale answer | the page's rows carry the same guard as its facts; the behavioural tests drive the ordering the way concurrency produces it (a page asked for, a press, then the answer) and each guard has a named mutation that turns a check red; each write takes its own sequence, so a superseded press's answer cannot settle the row |
+| Design round 4 (D17) + UX round 4 (U14) | the pin a page cannot carry was drawn NOWHERE - no row, no heading, no count - so the app under-reported a set the backend and the terminal both held | `pinFacts` carries the title a row needs and the list draws a row from it, above `Active chats`, with the section counting it; `pins-search-cleared-{dark,light}` is the frame and the check asserts the row BY ID against the same store the terminal reads |
+| QA round 4 (Qr4-1, Qr4-2, Qr4-4) | as above, plus the fold's `package.json` regression (the branch's own older file, 125 `test:desktop` entries where main has 138) and fourteen resurrected script reformats | `package.json` is main's with one registration added (139 entries, version `0.26.5`); the reformats are main's content again and `git diff origin/main` names only this feature's files |
+| Code round 4 (B1) | the same `package.json` regression, merge-blocking | fixed and proven with the version, the argument-list diff and the count |
+| Recorded, not fixed: UX U12 | the 6 px slop is deliberate rather than accidental: a 3 px and a 6 px repeat are dropped, 7 px acts, so the guard narrows the DROP set rather than widening the ACT set, and U9's silent swallow is gone. Named here so the next reader does not re-derive it from the constant |
+| Recorded, not fixed: UX U13 | the caret is restored one render behind the remount in the follow-the-row case; no reader-visible repro was found, and the correction itself is asserted |
 | Design round 2 (D6-D10) | the nav rows move 44 CSS px on a press (recorded, below); the scrolled frames refuted their own claim; `pins-hover` had the pointer on the row, not the glyph; the gate table was a pre-B1 snapshot; the slot's cost was argued | fourteen pins and an assertion that the set is taller than the window, the pointer on the glyph, the refreshed table, and the D9 claim narrowed to what the frames carry |
 | QA round 2 (Qr2-1, Qr2-2, Qr2-3) | a pin on a search-only conversation could not be undone from its own row; the gate table; a missing light link | the store now holds the row the press acts on (both directions proven in `pins-search-*`), and the table is refreshed |
 

@@ -35,12 +35,14 @@ export const linen: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.42 from `surface`,
-		 * 4.81 from `elevated` and 2.48 from `sunken`.
+		 * `surface` cast 0.07 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 5 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.02 from `surface`, 6.27 from `elevated` and 2.32 from `sunken`;
+		 * the step is -4.98 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 5.07:1 the ink that binds it.
 		 */
-		highlight: "#DDDEDB",
+		highlight: "#D6DCD8",
 
 		ink: "#2B2E2C",
 

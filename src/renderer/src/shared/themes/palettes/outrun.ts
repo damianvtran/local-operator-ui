@@ -46,13 +46,14 @@ export const outrun: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.030, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.48 from `surface`, 4.12 from `elevated` and 6.90 from
-		 * `sunken`.
+		 * `surface` cast 0.04 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 3.75 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.1 from `surface`, 3.79 from `elevated` and 9.37 from `sunken`;
+		 * the step is 3.6 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.69:1 the ink that binds it.
 		 */
-		highlight: "#1A1732",
+		highlight: "#231D3C",
 
 		ink: "#E6E6F2",
 		inkMuted: "#ADAFD0",

@@ -33,13 +33,14 @@ export const ayuDark: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.065, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.17 from `surface`, 3.80 from `elevated` and 7.56 from
-		 * `sunken`.
+		 * `surface` cast 0.06 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4.75 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.14 from `surface`, 2.25 from `elevated` and 10.08 from `sunken`;
+		 * the step is 4.97 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.67:1 the ink that binds it.
 		 */
-		highlight: "#141E2A",
+		highlight: "#1D2835",
 
 		ink: "#BFBDB6",
 		inkMuted: "#ACB6BF",

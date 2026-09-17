@@ -86,4 +86,38 @@ export const deltaE = (h1, h2) => {
 	);
 };
 
+/*
+ * The inverse of `toLab`, for the one caller that has to ASK a question of a
+ * palette rather than check a value it already has: `contrast-contract.mjs`
+ * re-derives each pinned palette's ink cap by moving `L*` in the mode's
+ * direction at the panel's own hue and chroma until an ink floor breaks, so it
+ * needs to turn a Lab triple back into a colour it can measure. Returns null
+ * when the triple lands outside sRGB, which is what makes a palette's chroma
+ * axis finite: past that boundary the search has no candidate at all.
+ */
+export const labToHex = ([L, a, b]) => {
+	const fy = (L + 16) / 116;
+	const fx = fy + a / 500;
+	const fz = fy - b / 200;
+	const finv = (t) => (t > 6 / 29 ? t ** 3 : 3 * (6 / 29) ** 2 * (t - 4 / 29));
+	const X = finv(fx) * 0.95047;
+	const Y = finv(fy);
+	const Z = finv(fz) * 1.08883;
+	const lin = [
+		X * 3.2404542 + Y * -1.5371385 + Z * -0.4985314,
+		X * -0.969266 + Y * 1.8760108 + Z * 0.041556,
+		X * 0.0556434 + Y * -0.2040259 + Z * 1.0572252,
+	];
+	const srgb = lin.map((v) =>
+		v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055,
+	);
+	if (srgb.some((v) => v < -0.0015 || v > 1.0015)) return null;
+	const c = (v) =>
+		Math.round(Math.min(1, Math.max(0, v)) * 255)
+			.toString(16)
+			.padStart(2, "0")
+			.toUpperCase();
+	return `#${srgb.map(c).join("")}`;
+};
+
 export const r2 = (n) => Math.round(n * 100) / 100;

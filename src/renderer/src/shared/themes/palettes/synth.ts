@@ -20,14 +20,30 @@ export const synth: ThemeDefinition = {
 		surface: "#1B0A2F",
 		elevated: "#2C1D43",
 		sunken: "#06020D",
+
 		/*
-		 * The current row's own ground: `surface` stepped +8/+8/+7 on R/G/B
-		 * toward white. ΔE00 2.20 from `surface`, 3.39 from `elevated` and 15.43
-		 * from `sunken` — the
-		 * widest gap between the two roles of any palette here, which is what
-		 * `sunken` was doing to this panel.
+		 * The current row's own ground: `surface` stepped up its own neon-purple
+		 * ramp 6.08 `L*`, at 1.14x the panel's chroma. ΔE00 4.14 from `surface`,
+		 * 2.37 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 17.33 from `sunken`. The row is 1.133x the panel's relative
+		 * luminance.
+		 *
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#231236)
+		 * stepped 3.53 `L*` off the panel, and this one steps 6.08. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
+		 *
+		 * Ink on this ground: `ink` 14.87:1, `ink-muted` 7.54:1, `ink-dim` 5.29:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 5.29:1.
 		 */
-		highlight: "#231236",
+		highlight: "#281641",
 
 		// The old file borrowed the generic dark theme's F9FAFB and 9CA3AF for its
 		// text, which is a cool grey ramp sitting on a purple one. The inks here are

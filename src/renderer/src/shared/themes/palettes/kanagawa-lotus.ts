@@ -32,12 +32,14 @@ export const kanagawaLotus: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -10 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.27 from `surface`,
-		 * 4.46 from `elevated` and 3.22 from `sunken`.
+		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 6.25 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.06 from `surface`, 6.21 from `elevated` and 2.14 from `sunken`;
+		 * the step is -6.16 `L*`, in the band this branch raised to 4.0, with
+		 * inkMuted at 4.84:1 the ink that binds it.
 		 */
-		highlight: "#DFD8AC",
+		highlight: "#D6D1A7",
 
 		ink: "#363557",
 		inkMuted: "#545363",

@@ -38,15 +38,18 @@ export const rosePine: ThemeDefinition = {
 		surface: "#1f1d2e",
 		elevated: "#26233a",
 		sunken: "#12101b",
-
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped +7 on every channel toward white — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.21 from `surface`,
-		 * 2.85 from `elevated` and 7.06 from `sunken`.
+		 * `surface` cast toward `accent` and stepped 3.29 on the `L*` axis — branch H of
+		 * this port's selection rule, with the cast sized by the same rule as `oneLight`'s:
+		 * the row has to clear the palette's own `accentWash` by the contract's field floor,
+		 * and the value that carried only the band measured ΔE00 **0.98** against it. Here
+		 * the wash separation is 2.75, at the cost of the louder total (ΔE00 5.97 from
+		 * `surface`, 5.73 from `elevated`, 9.41 from `sunken`, `inkDim` 4.65:1) — a
+		 * deliberate trade of loudness for two distinguishable selected-row idioms, and the
+		 * frame in the window's pixel list is where it is judged.
 		 */
-		highlight: "#262435",
+		highlight: "#2F2131",
 
 		ink: "#e0def4",
 		// subtle, lifted; see the header. Canonical muted 6e6a86 is the inert
