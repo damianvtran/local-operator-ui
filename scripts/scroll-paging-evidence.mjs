@@ -1254,9 +1254,18 @@ await sleep(2500);
 // react-remove-scroll sets on the body; an open dialog is the other half of the
 // same condition. Failing here costs a run, whereas measuring through a lock
 // costs a review round and a false claim in the evidence.
+/*
+ * The guard reports WHAT is locking, not just that something is (round 1 fix #4).
+ * "locked: 1, dialogs: 1" cost this round a run and a guess about which layer had
+ * opened; the title and the first line of body copy name it.
+ */
 const lock = JSON.parse(
 	await evaluate(
-		`JSON.stringify({ locked: document.body.getAttribute('data-scroll-locked'), dialogs: document.querySelectorAll('[role=dialog][data-state=open]').length })`,
+		`JSON.stringify({
+			locked: document.body.getAttribute('data-scroll-locked'),
+			dialogs: document.querySelectorAll('[role=dialog][data-state=open]').length,
+			layer: [...document.querySelectorAll('[role=dialog][data-state=open]')].map((d) => (d.innerText || '').split('\\n').slice(0, 3).join(' | ')).join(' ;; '),
+		})`,
 	),
 );
 if (lock.locked || lock.dialogs > 0) {
@@ -1546,87 +1555,56 @@ phase2.push(
 await shot(`${MODE}-06-fling-crossing-two-walls`);
 
 /*
- * THE FREEZE, in the state that produces it: a reader who has just been
- * answered at the hard top, with rows still held back by the window, who keeps
- * pushing.
+ * THE FREEZE, and the copy the reader reads while it happens.
  *
- * The state is REACHED BY MEASUREMENT, not by a fixed gesture, and that is the
- * fix for round 1's R1-3/D1-2: the scenario used to inherit whatever the
- * previous act left behind, so the two arms measured different scenes (`d = 24`
- * on one, `d = 7790` on the other). `notchUntil` drives to the hard top and
- * refuses to measure anything if it cannot get there.
+ * From the ARRIVAL state — the one state the fixture guarantees identically on
+ * both arms — the reader arrives at the wall and keeps pushing. Round 1 drove
+ * this from a setup that reached "the wall" by measurement and inherited
+ * leftovers, so the arms measured different scenes (`d = 24` against
+ * `d = 7790`): a landing inserts its rows ABOVE the reader and moves them off
+ * the wall by the inserted extent, which is the app answering them. There is no
+ * setup here, so there is nothing for the arms to diverge in at the start.
+ *
+ * What the row is FOR is the copy timeline (`slotTransitions`) and the landing:
+ * on the replaced module a reader pinned at the top is told to "scroll up to
+ * load" while the app is finishing exactly that load, and repainted 105ms later
+ * with a different count (design round 1, D1-3; UX round 1, U1-2). On this
+ * branch: one statement per act.
  */
-let pinnedSetupResult = null;
-let slowSetupResult = null;
-
-const pinnedSetup = async () => {
-	/*
-	 * ONE attempt, deliberately.
-	 *
-	 * A second attempt would drive the AFTER arm past the state this row is
-	 * about: on that arm each arrival at the wall is answered, so "notch until
-	 * the wall holds" keeps going until the whole conversation is loaded and the
-	 * measured act then finds nothing left to reveal — a vacuous row that would
-	 * hide the fix. One arrival plus a quiet period is the state the operator's
-	 * report is about ("I get stuck ... I need to scroll jitter down a bit and
-	 * back up"), and it is the state the before arm reproduces: at the wall, rows
-	 * held back, nothing coming.
-	 *
-	 * What the arms then differ in at the START of the measured act is disclosed
-	 * in the README rather than smoothed over — on this branch a landing pushes
-	 * the reader off the wall (`d` jumps by the inserted extent, ~6153px) because
-	 * the app answered them, which is the change, not a confound to remove.
-	 */
-	const journey = await driveTo(atTheWall, {
-		deltaY: -420,
-		gapMs: 24,
-		maxNotches: 200,
-		attempts: 1,
-	});
-	pinnedSetupResult = {
-		reached: journey.reached,
-		tries: journey.tries,
-		distance: Math.round(journey.state.distanceFromTop),
-		hiddenRows: journey.state.hiddenRows,
-		slot: journey.state.slotText,
-	};
-	await sleep(1200);
-};
-
 phase2.push(
 	await arrivalScenario("page-lands-with-rows-hidden", {
-		setup: pinnedSetup,
 		gesture: async () => {
+			await fling(40, -420, 10);
+			await sleep(400);
 			await fling(120, -80, 10);
-			// The setup's own outcome, reported so a reader can see that both arms
-			// began the measured act at the hard top.
-			return { setupToWall: pinnedSetupResult };
 		},
 		settleMs: 2200,
 		beforeSettle: () =>
 			shot(`${MODE}-07-page-lands-with-rows-hidden-at-act-end`),
-		note: "pinned at the wall by measurement on both arms, with rows held back: the widen that makes the page visible must arrive, and it must not be a second page",
+		note: "arrive at the wall, then keep pushing: one statement per act, and a page that lands with its rows held back gets the widen that shows it",
 	}),
 );
 await shot(`${MODE}-07-page-lands-with-rows-hidden`);
 
 /*
- * The bound rule 4 exists for, on the real surface: 200 notches held against the
- * clamped top in one act. The reader is driven to the wall first, so the whole
- * measured act is the resting finger — round 1 measured this scenario from
- * 7,790px away on one arm, where it never reached the top at all (R1-3).
+ * The bound rule 4 exists for, on the real surface: 200 notches from the arrival
+ * state, which is the same start on both arms.
+ *
+ * The claim is about the PAGE COUNT per act, not about where the reader ends up:
+ * on the replaced module the finger reaches the wall and stays there for the
+ * rest of the act with the conversation unloaded (the freeze), and on this
+ * branch the app answers and the reader travels into what it answered. Counting
+ * pages per act keeps the two arms comparable without pretending they end in the
+ * same place — they end in different places BECAUSE of the change, which is the
+ * reading the README states in those words.
  */
 phase2.push(
 	await arrivalScenario("resting-finger-at-clamped-top", {
-		setup: pinnedSetup,
-		gesture: async () => {
-			await fling(200, -80, 10);
-			return { setupToWall: pinnedSetupResult };
-		},
+		gesture: () => fling(200, -80, 10),
 		settleMs: 2400,
 		beforeSettle: () =>
 			shot(`${MODE}-08-resting-finger-at-clamped-top-at-act-end`),
-		note: "a finger resting on the top edge: the page count must not grow with the notch count",
+		note: "200 notches at the clamp from the arrival state: the page count must not grow with the notch count",
 	}),
 );
 await shot(`${MODE}-08-resting-finger-at-clamped-top`);
@@ -1646,6 +1624,16 @@ await shot(`${MODE}-08-resting-finger-at-clamped-top`);
  *
  * The number that reads it out is `revealsInsideZoneBeforeLastInput`.
  */
+/*
+ * The setup's own outcome, handed to `analyse` through the gesture's return
+ * value. It is a module-scope `let` because the setup runs in a different
+ * closure from the gesture: `scenario` reports `extra` from the GESTURE's
+ * return, and the setup's report has to ride along with it. (Order matters —
+ * the declaration must precede the `await arrivalScenario(...)` below, which is
+ * a module-level statement, or the read is a temporal-dead-zone throw.)
+ */
+let slowSetupResult = null;
+
 phase2.push(
 	await arrivalScenario("slow-approach-into-zone", {
 		setup: async () => {
