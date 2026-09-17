@@ -528,6 +528,28 @@ export type CanonicalFrontendState = {
 	 * should run.
 	 */
 	activity_started_at?: number | null;
+	/**
+	 * The phase the WORKING LINE is in, as the producer folded it from its own
+	 * events, or `""` when there is no phase (between turns).
+	 *
+	 * Mirrors `FrontendSessionState.activity_phase`. Declared rather than
+	 * reached through the index signature for the reason `last_usage` gives
+	 * above: the reader matches this string against the phase it derived itself
+	 * and uses the answer to decide whether a clock may run at all, so a rename
+	 * on the wire has to be a type error here rather than a silently
+	 * never-matching comparison that blanks every resumed clock.
+	 */
+	activity_phase?: string | null;
+	/**
+	 * When `activity_phase` began, as an epoch in SECONDS, or `null`.
+	 *
+	 * Mirrors `FrontendSessionState.activity_phase_started_at`. This is the
+	 * whole of the resumed working line's clock: the phase's zero is the
+	 * producer's, so a viewer that attaches mid-turn resumes the true age
+	 * instead of counting from its own arrival. Seconds, not milliseconds — the
+	 * conversion happens once, in `working-line-model.ts`.
+	 */
+	activity_phase_started_at?: number | null;
 	// Canonical runtime fields are additive; preserve unknown fields rather
 	// than throwing away newer owner's accounting/roster data on reconnect.
 	[key: string]: unknown;

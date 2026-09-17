@@ -148,10 +148,17 @@ const BASH_CALL: ToolCall = {
  *
  * WHY IT IS A PARAMETER. `gap` and `restored` pass `BASE`, a fixed instant, so
  * those frames re-capture byte for byte. The running state passes the capture's
- * own clock: a running row's elapsed counts up to the MACHINE's clock, so a
- * frame pinned to 2025 photographs a call running from then as `100d+` — a
- * fixture artefact, not a state the app can produce. The tool-row stories pin
- * `Date.now()` offsets for the same reason.
+ * own clock, and the reason is the ROW rather than the conversation: the
+ * conversation's own timestamps are all relative to the anchor, but the RUNNING
+ * call's elapsed counter is measured against the real wall clock at render, so
+ * a frame pinned to 2025 would photograph a call still counting in 2026 as
+ * `100d+` — a fixture artefact, not a state the app can produce. (`tool-row.stories.tsx`
+ * pins `Date.now()` offsets for the same reason.)
+ *
+ * That elapsed counter is now anchored by the frame itself rather than by the
+ * capture: `RUNNING_CALL` carries `started_at_epoch`, so the row resumes the
+ * age the call really has instead of starting at `0s` when the frame is taken
+ * — see `runningCall`, and `transcript-reducer.ts`'s `tool_execution_start`.
  */
 const conversationRows = (
 	base: number,
@@ -380,7 +387,11 @@ export const RestoredRunning: Story = {
 						[[settled, failed], [rows[4]], rows.slice(0, 4)],
 						now - 60_000,
 					),
-					RUNNING_CALL,
+					// The seed's own frame, carrying the call's real start. The
+					// arrival instant below is deliberately LATER than that start:
+					// this frame is the operator's report, and before the fix the
+					// row counted from the arrival and read `0s`.
+					runningCall(now),
 					now - 2_000,
 				)}
 			/>
@@ -397,11 +408,20 @@ export const RestoredRunning: Story = {
  * object column and a row box 16px narrower than every other row's, which is a
  * shape a live running call does not produce. The design round caught exactly
  * that in the first version of this frame.
+ *
+ * `started_at_epoch` is the producer's stamp, in the epoch SECONDS the wire
+ * states it in, and it is what makes this frame the discriminating one: without
+ * it the row falls back to the seed's arrival instant and the capture shows
+ * `0s` beside a call that has been running for over two minutes. It is derived
+ * from the capture's own anchor — the same clock the row's counter is measured
+ * against — so the age this frame photographs is a property of the fixture and
+ * not of when the shutter opened.
  */
-const RUNNING_CALL = {
+const runningCall = (now: number) => ({
 	type: "tool_execution_start",
 	tool_call_id: "call-live",
 	tool_name: "bash",
 	intent: "re-running the transport suite",
 	args: { command: "pnpm test:desktop" },
-};
+	started_at_epoch: (now - 137_000) / 1000,
+});

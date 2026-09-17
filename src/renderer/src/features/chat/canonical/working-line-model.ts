@@ -297,6 +297,19 @@ export type WorkingLineInput = {
 	/** A question is pending; it outranks every working state (branding § 7). */
 	gate: boolean;
 	/**
+	 * The producer's OWN folded phase and the instant it began, straight off the
+	 * frontend state (`activity_phase` / `activity_phase_started_at`).
+	 *
+	 * The instant is in epoch SECONDS on the wire, the unit
+	 * `FrontendSessionState` stamps it in, and is converted here once so no
+	 * caller has to know that. Both members are optional because a facade in
+	 * tests, a legacy runtime and a session between turns all legitimately have
+	 * neither — and `undefined` must keep today's honest local zero rather than
+	 * invent an age (see `foldedSeed` below).
+	 */
+	foldedPhase?: string;
+	foldedPhaseStartedAt?: number | null;
+	/**
 	 * The stream has failed unrecoverably and the transcript is rendering that
 	 * failure instead. A working line next to it would claim progress the
 	 * transport is not making.
@@ -313,9 +326,42 @@ export function deriveWorkingLine({
 	startingAfterId,
 	gate,
 	unavailable,
+	foldedPhase,
+	foldedPhaseStartedAt,
 	records,
 }: WorkingLineInput): WorkingLineState | null {
 	if (gate) return null;
+
+	/*
+	 * The producer's OWN start instant for `phase`, when the producer agrees
+	 * that this is the phase. This is the whole of the anchor's safety, and the
+	 * gate is the same one the TUI applies (`OperatorApp._folded_phase_epoch`,
+	 * `tui/app.py`): the phase folded from the runtime's events is compared by
+	 * STRING with the phase derived here, and any disagreement withholds the
+	 * instant instead of passing a zero that does not belong.
+	 *
+	 * The two are different reductions of one stream, so a disagreement means
+	 * one of them has missed events — the disagreement cases are real rather
+	 * than defensive dressing: a compaction or retry fallback phase the fold
+	 * does not model, a legacy runtime whose events carry no phase, and every
+	 * reduced facade in tests. Withholding the clock THERE is what the row
+	 * already did, so a mismatch can only preserve behaviour, never invent an
+	 * age; on a match, a viewer that attached mid-turn resumes the true age
+	 * instead of counting from its arrival (the operator report: "each time I
+	 * resume it says it's been waiting for 0s regardless of how long").
+	 *
+	 * `> 0` for the reason the reducer's `epochMs` refuses a non-positive
+	 * epoch: a zeroed field is a producer that has not stamped one, not an
+	 * instant in 1970.
+	 */
+	const foldedSeed = (phase: string): number | null => {
+		if (foldedPhase !== phase) return null;
+		return typeof foldedPhaseStartedAt === "number" &&
+			Number.isFinite(foldedPhaseStartedAt) &&
+			foldedPhaseStartedAt > 0
+			? Math.round(foldedPhaseStartedAt * 1000)
+			: null;
+	};
 
 	/*
 	 * The pass outranks `waiting`, and `unavailable` outranks the pass: a rung
@@ -359,7 +405,33 @@ export function deriveWorkingLine({
 					? (runningTools[0].intent ??
 						`running ${displayName(runningTools[0].toolName)}`)
 					: `running ${runningTools.length} tools`;
-			return { activity, phase: "running" };
+			/*
+			 * A running batch is measured from the OLDEST running card's own start,
+			 * never from the folded phase edge: the phase restarts on every call
+			 * that joins the batch while the batch's clock must not, so the cards
+			 * are the finer anchor (`frontend_state.py`'s `_fold_activity_phase`,
+			 * `the running phase is folded so the end rule can tell a batch that
+			 * still has siblings from one that has just lost its last call. Its
+			 * clock does NOT come from here`).
+			 *
+			 * EVERY running card must date itself: one unknown start poisons the
+			 * batch's zero, because the call the clock claims to measure is exactly
+			 * the oldest one. That is the TUI's rule for the same row
+			 * (`_current_activity`'s `dateable`), and it is what a row restored
+			 * from a durable page alone produces — a running entry the durable fold
+			 * cannot stamp carries `startedAt: null`, so the row falls back to its
+			 * own local zero rather than wearing a sibling's age.
+			 */
+			const starts = runningTools
+				.map((record) => record.startedAt)
+				.filter((start): start is number => start !== null);
+			const since =
+				starts.length === runningTools.length ? Math.min(...starts) : null;
+			return {
+				activity,
+				phase: "running",
+				...(since === null ? {} : { startedAt: since }),
+			};
 		}
 		const composing = records.filter(
 			(record) => record.kind === "tool" && record.phase === "composing",
@@ -367,9 +439,11 @@ export function deriveWorkingLine({
 		if (composing > 0) {
 			// The tool's NAME is deliberately absent: it arrives in fragments, and
 			// `composing wr` reads as a typo rather than as a state.
+			const since = foldedSeed("composing");
 			return {
 				activity: `composing ${composing === 1 ? "a call" : `${composing} calls`}`,
 				phase: "composing",
+				...(since === null ? {} : { startedAt: since }),
 			};
 		}
 		const tail = records[records.length - 1];
@@ -379,9 +453,26 @@ export function deriveWorkingLine({
 			// token, so flipping on it would claim the model is writing for the
 			// whole of every turn — which is why the record's own `text` is the
 			// trigger here, not its existence.
-			if (tail.text) return { activity: "responding", phase: "responding" };
+			if (tail.text) {
+				const since = foldedSeed("responding");
+				return {
+					activity: "responding",
+					phase: "responding",
+					...(since === null ? {} : { startedAt: since }),
+				};
+			}
 		}
-		return { activity: "thinking", phase: "thinking" };
+		// The turn's fallback rung. It carries the fold's `thinking` edge when
+		// the producer agrees it is thinking, which is the one rung with no card
+		// behind it and therefore the only one a per-call stamp cannot answer:
+		// without this a viewer joining mid-model-call watched the label it just
+		// resumed start counting from its own arrival.
+		const since = foldedSeed("thinking");
+		return {
+			activity: "thinking",
+			phase: "thinking",
+			...(since === null ? {} : { startedAt: since }),
+		};
 	}
 
 	if (!starting) return null;
@@ -390,6 +481,13 @@ export function deriveWorkingLine({
 	// The turn ended without painting: an incident is the app's own record that
 	// what this rung claims is in flight has stopped.
 	if (turnStopped(records, startingAfterId)) return null;
+	/*
+	 * The ADMITTED-SEND rung KEEPS its local zero, and that is deliberate rather
+	 * than the fold being forgotten here: this expression began when THIS app
+	 * sent, so the app is the clock's own producer and there is nothing older to
+	 * resume. Seeding it from the runtime's `thinking` edge would be a second
+	 * answer to a question this branch already has the first answer to.
+	 */
 	return { activity: ADMITTED_SEND_ACTIVITY, phase: "thinking" };
 }
 
@@ -435,7 +533,32 @@ export function workingLineInputFor(pane: {
 	gate?: unknown;
 	unavailable: boolean;
 	records: TranscriptRecord[];
+	/** The producer's folded phase, matching `CanonicalFrontendState.activity_phase`. */
+	foldedPhase?: string | null;
+	/**
+	 * When that phase began, in epoch SECONDS as the wire states it
+	 * (`activity_phase_started_at`). Passed through unconverted: the unit is
+	 * normalised once, in `deriveWorkingLine`, so the two readers of this input
+	 * cannot disagree about it.
+	 */
+	foldedPhaseStartedAt?: number | null;
 }): WorkingLineInput {
+	/*
+	 * Spread rather than spelled out, so a pane with no fold produces the SAME
+	 * object shape as before these fields existed: a facade in tests, a legacy
+	 * runtime and a session between turns all have no phase, and an explicit
+	 * `foldedPhase: undefined` would be a different object to every depth-aware
+	 * comparison in `tool-row.test.mjs`. An EMPTY phase is the producer's own
+	 * "no phase" (`FrontendSessionState` folds `""` at a turn end), so it is
+	 * treated as absent rather than as a phase nothing will ever match.
+	 */
+	const folded =
+		typeof pane.foldedPhase === "string" && pane.foldedPhase !== ""
+			? {
+					foldedPhase: pane.foldedPhase,
+					foldedPhaseStartedAt: pane.foldedPhaseStartedAt ?? null,
+				}
+			: {};
 	return {
 		waiting: pane.waiting,
 		compacting: pane.compacting === true,
@@ -444,6 +567,7 @@ export function workingLineInputFor(pane: {
 		startingAfterId: pane.startingAfterId ?? null,
 		gate: Boolean(pane.gate),
 		unavailable: pane.unavailable,
+		...folded,
 		records: pane.records,
 	};
 }
