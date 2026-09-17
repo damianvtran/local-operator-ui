@@ -1376,6 +1376,24 @@ export const STORIES = [
 	["chat-sidebar-status-feed--gate-parked", 780, 560],
 	["chat-sidebar-status-feed--completion-unseen", 780, 560],
 	/*
+	 * A row re-filing INSIDE its section (local-operator #1224's renderer half).
+	 * Five states rather than five transitions: the same four-row roster once with
+	 * the completed row still in the working band (`completion-in-place`, which IS
+	 * the operator's report) and once with it leading the list after the catalogue
+	 * frame and the reordered read (`completion-reordered`), a completed block that
+	 * is already two rows deep, the same row re-filing again when the completion is
+	 * READ, and the overflowing list, where the viewport rather than the row is the
+	 * subject. The last one is taller on purpose: the panel is a window onto a list
+	 * it cannot hold, which is the state the scroll container is asked about, and
+	 * the height is the one its own content produces so the rig measures the layout
+	 * the frame is shot at rather than a shorter one beside it.
+	 */
+	["chat-sidebar-status-feed--completion-in-place", 780, 660],
+	["chat-sidebar-status-feed--completion-reordered", 780, 660],
+	["chat-sidebar-status-feed--completion-second-in-band", 780, 660],
+	["chat-sidebar-status-feed--completion-acknowledged", 780, 660],
+	["chat-sidebar-status-feed--completion-reordered-offscreen", 780, 660],
+	/*
 	 * The sidebar's CURRENT ROW, and the caps beside it on that row.
 	 *
 	 * Two surfaces, and both are the row the reader is on: a conversation row
