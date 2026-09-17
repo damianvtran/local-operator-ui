@@ -23,7 +23,7 @@
  *
  * The text is `text-accent` on `bg-accent-wash` with a `border-accent` edge —
  * the exact triple the contrast contract measures for accent badges, so the
- * callout is legible in all twelve palettes by construction rather than by
+ * callout is legible in every palette by construction rather than by
  * inspection.
  */
 
@@ -83,10 +83,10 @@ export const AgentQuestion = ({
 				 * to it sat above 7:1. Importance was signalled by making the most
 				 * important text hardest to read.
 				 *
-				 * Identity still comes from the icon, the border and the eyebrow
-				 * label, which are the parts accent is actually good at. Measured
-				 * on `bg-accent-wash` across all twelve palettes: accent floored at
-				 * 4.59:1 (localOperatorLight), ink floors at 8.36:1 (iceberg). */}
+				 * Identity still comes from the icon, the border and the eyebrow label,
+				 * which are the parts accent is actually good at. Measured on `bg-accent-
+				 * wash` across every palette: accent floors at
+				 * 4.53:1 (outrun) and ink at 6.88:1 (ayuLight). */}
 				<div className="lo-on-wash text-ink">
 					<MarkdownRenderer content={content} />
 				</div>

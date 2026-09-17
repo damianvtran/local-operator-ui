@@ -209,7 +209,7 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 				// subject to the 3:1 floor — and `ink-disabled` is the one role
 				// exempt from a floor, measuring 2.00:1 on card in the light brand
 				// palette. `ink-dim` is the status dot's own role and clears 4.5:1
-				// on every ground in all twelve palettes.
+				// on every ground in every palette.
 				<span
 					className={cn("border-ink-dim border-t border-dotted")}
 					aria-hidden="true"

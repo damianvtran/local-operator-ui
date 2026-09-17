@@ -166,14 +166,14 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			 * grid. Like and favourite are reactions, not the job, and they read
 			 * as two quiet counters.
 			 *
-			 * Active, those two borrow the `danger` and `warning` hues. Neither is
-			 * a warning about anything — the palette has no "liked" role to spend,
-			 * and those families are where the red and the amber a person expects
-			 * behind a heart and a star actually live. What they replace is the
-			 * MUI-era `#e53935` and `#ffb300`, which ignored all twelve palettes
-			 * and put the favourited star at 1.62:1 on `iceberg`, under half the
-			 * 3:1 floor a meaningful graphic owes its ground.
-			 * `agent-details-page` renders the same pair the same way.
+			 * Active, those two borrow the `danger` and `warning` hues. Neither is a
+			 * warning about anything — the palette has no "liked" role to spend, and
+			 * those families are where the red and the amber a person expects behind a
+			 * heart and a star actually live. What they replace is the MUI-era
+			 * `#e53935` and `#ffb300`, which ignored the user's own palette and put the
+			 * favourited star at 1.62:1 on `iceberg`, under half the 3:1 floor a
+			 * meaningful graphic owes its ground. `agent-details-page` renders the same
+			 * pair the same way.
 			 *
 			 * The counter group carries `min-w-0` and the row wraps, because a
 			 * flex item defaults to `min-width: auto` and so refuses to shrink

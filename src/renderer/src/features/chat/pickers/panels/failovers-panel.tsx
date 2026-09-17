@@ -47,9 +47,11 @@ export type FailoversPanelProps = {
 /**
  * One hop in a chain.
  *
- * A `Badge` with its border turned off, and that is a measurement rather than a
- * preference: across all twelve palettes the strongest edge this chip can draw
- * is 1.58:1 (`hairline` on `surface`), and its own fill is 1.11-1.55:1, so
+ * A `Badge` with its border turned off, and that is a measurement rather than
+ * a preference: across the twelve palettes the port started from the strongest
+ * edge this chip can draw is 1.58:1 (`hairline` on `surface`), and its own
+ * fill is
+ * 1.11-1.55:1, so
  * neither clears the 3:1 floor the contrast contract requires of a control's
  * boundary. A chip with no perceivable boundary is not a control, so it does
  * not get `border-control` (the contract's own rule: a rule that carries no

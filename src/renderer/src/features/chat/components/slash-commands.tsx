@@ -1054,7 +1054,7 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 			 * and does not read as a second selection. The SLOT is always rendered,
 			 * fixed width, so the marker can never move the name or the description
 			 * column: it used to sit in the row's text flow and indent the marked row
-			 * by ~24px in all twelve themes (round 1 D1). `title` names it, because
+			 * by ~24px in every theme (round 1 D1). `title` names it, because
 			 * the glyph is the only thing distinguishing "current" from "the row Enter
 			 * would apply" (round 1 N2); screen readers get the same fact from
 			 * `aria-current` on the row.

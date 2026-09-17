@@ -94,13 +94,13 @@ export const sage: ThemeDefinition = {
 		// reads as a member of this palette rather than a swatch borrowed from
 		// a cooler one. Now ΔE00 46.9 from `success` and 36.8 from `accent`.
 		info: "#3A659F",
-		// The wash and the border are seated by loudness, not by eye. Sage's
-		// other four washes sit ΔE00 3.98-5.70 from `canvas` — the tightest
-		// family in the twelve palettes, because each is a warm tint of a warm
-		// paper and hue costs nothing when the hue already matches. The first
-		// blue wash tried here sat at 13.75: 2.4x the loudest of the family it
-		// had just joined, so the one callout that means "nothing is wrong"
-		// shouted over the one that means "this failed".
+		// The wash and the border are seated by loudness, not by eye. Sage's other
+		// four washes sit ΔE00 3.98-5.70 from `canvas` — the tightest family among
+		// the palettes that shipped with it (bar the light brand ramp, at 3.69),
+		// because each is a warm tint of a warm paper and hue costs nothing when the
+		// hue already matches. The first blue wash tried here sat at 13.75: 2.4x the
+		// loudest of the family it had just joined, so the one callout that means
+		// "nothing is wrong" shouted over the one that means "this failed".
 		//
 		// On paper this warm, that loudness is bought entirely by hue, not by
 		// lightness or chroma — the old wash was already at the family's L* and

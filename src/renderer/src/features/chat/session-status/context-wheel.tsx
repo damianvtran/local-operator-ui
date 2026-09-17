@@ -127,10 +127,10 @@ export const ContextWheel: FC<ContextWheelProps> = ({ reading, className }) => {
 				 * which a user sees as the ring fading out on the first turn
 				 * (design round 2, D7).
 				 *
-				 * `hairline` carries no floor because a decorative line does not owe
-				 * one; what it owes is PERCEPTIBILITY, measured across all twelve
-				 * themes: ΔE00 7.0-15.3 against `surface` and 3.2-12.8 against the
-				 * `accentWash` hover, every one above the ~2 threshold, so D6 does
+				 * `hairline` carries no floor because a decorative line does not owe one;
+				 * what it owes is PERCEPTIBILITY, measured across every palette: ΔE00
+				 * 5.99-15.31 against `surface` and 3.16-28.27 against the `accentWash`
+				 * hover, every one above the ~2 threshold, so D6 does
 				 * not regress. Weight change across the transition falls from 5.59x
 				 * to 1.34x - one ring in two states.
 				 *
@@ -142,13 +142,13 @@ export const ContextWheel: FC<ContextWheelProps> = ({ reading, className }) => {
 				 * track therefore recedes to `sunken`, which is § 2's named role for
 				 * a track and lifts the same pair to 4.59-8.52:1.
 				 *
-				 * No single value satisfies both: a track 3:1 from the arc AND 3:1
-				 * from the ground needs about 9:1 between arc and ground, and the
-				 * best theme here has 7.33:1 (measured across all twelve). Since the
-				 * populated ring's own arc clears 4.65:1 against the ground, the
-				 * control keeps a perceivable edge either way, so switching is the
-				 * option that satisfies every floor that is reachable at all rather
-				 * than trading one failure for another.
+				 * No single value satisfies both: a track 3:1 from the arc AND 3:1 from
+				 * the ground needs about 9:1 between arc and ground, and the best palette
+				 * here has 7.33:1 (measured across the twelve the port started from).
+				 * Since the populated ring's own arc clears 4.65:1 against the ground, the
+				 * control keeps a perceivable edge either way, so switching is the option
+				 * that satisfies every floor that is reachable at all rather than trading
+				 * one failure for another.
 				 */
 				className={cn(hasArc ? "stroke-sunken" : "stroke-hairline")}
 			/>

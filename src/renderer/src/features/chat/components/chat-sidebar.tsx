@@ -66,15 +66,21 @@ const rowStyle =
  * `nav aria-label="Chats"` root), and a selection needs a step off it that is
  * SEEN and no more than that. `highlight` is the palette role authored for this
  * ground — a shallow step off `surface` in the direction the mode runs, at ΔE00
- * 2.18-2.28 across the twelve palettes, which is above the perceptual threshold
- * `docs/branding.md` § 3 cites and well under the `sunken` well it replaced
- * (3.75-14.94 from `surface`, the operator's "very dark colour" measured).
+ * 2.18-2.28 across the twelve palettes the port started from, which is above the
+ * perceptual threshold `docs/branding.md` § 3 cites and well under the `sunken`
+ * well it replaced (3.75-14.94 from `surface`, the operator's "very dark colour"
+ * measured).
  *
  * WHY NOT THE ACCENT WASH. `accentWash` is ΔE00 **1.05** from `surface` in
  * tokyoNight (#262B3F on #24283B) — the operator's own report, "you can't tell
  * from the sidebar which one is selected", measured. Hover is louder than
  * selection in that theme (the `elevated` step those rows already carry, ΔE00
  * 4.58), so the pointer read as the current row while the current row did not.
+ * That is not one palette's accident: measured over the set, the wash sits under
+ * the ΔE00 **2.0** field floor against `surface` in **seven** of the fifty-nine
+ * palettes (worst `catppuccinMacchiato` 0.80, then tokyoNight 1.05), where the
+ * twelve the port started from had only the one (the next lowest there, dracula,
+ * at 3.28).
  * The wash is not broken everywhere — the app rail paints it on `sunken`, where
  * it measures 9.6 — which is why this is a call-site ground and NOT a wash:
  * strengthening `accentWash` for the panels that draw it on `surface` would make
@@ -1018,8 +1024,8 @@ export function ChatSidebar({
 				{/*
 				    The state is carried by the sentence, never by a treatment on the rows
 				    (branding § 6 and § 9: disabled changes colour, and opacity is not a state
-				    signal at all - it composites `ink` down to ~6:1 on this palette and below
-				    the 4.5:1 floor on four of the twelve, which `check-themes` cannot see
+				    signal at all - it composites `ink` down to ~6:1 on this palette and below the 4.5:1 floor on four of the twelve palettes it was
+				    measured on, which `check-themes` cannot see
 				    because it does not evaluate alpha). These rows are also the only way to
 				    reach a conversation, so dimming them says "unavailable" about the one
 				    thing that still works. Design round 1, D1. */}

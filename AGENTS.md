@@ -33,7 +33,7 @@ output. The short version of the parts most often got wrong:
   `border-control` — never a hex, never `theme.palette.*` in ported files. If a
   value maps to no role, the system is missing one; add it to the contract
   rather than working around it.
-- **Twelve themes are user-selectable.** A "Dracula" theme is a promise to a
+- **Fifty-nine themes are user-selectable.** A "Dracula" theme is a promise to a
   user, so the brand ports as roles with contrast floors, not as brand green
   applied everywhere. Only the two `localOperator*` palettes are the brand.
 - **`hairline` vs `border-control`.** Decorative rules vs the sole boundary of
@@ -52,8 +52,8 @@ output. The short version of the parts most often got wrong:
 
 ### Where colour comes from
 
-One source, two consumers. `shared/themes/palettes/*.ts` holds twelve
-`ThemePalette` objects; MUI consumes them as hex (≈299 `alpha()` call sites
+One source, two consumers. `shared/themes/palettes/*.ts` holds one `ThemePalette` object per selectable
+theme — fifty-nine of them today; MUI consumes them as hex (≈299 `alpha()` call sites
 cannot take a `var()`), and Tailwind consumes CSS variables generated from the
 same objects. After editing any palette run `pnpm gen-themes`, and never
 hand-edit `styles/themes.generated.css`.
@@ -122,11 +122,21 @@ and re-stamp" rather than a warning - so `main` moving a rig, or any sibling bra
 landing one, invalidates the stamp for everybody holding a branch, whether or not
 that branch's own frames changed. That is the convergence cost of the file, and the
 reason a sync here ends with a re-stamp-only commit whose message says what moved,
-what did not, and why. Only `pnpm check-evidence` checks it, and that is the command
-that defers (exit 75) while another sweep holds the lease, so a stale stamp is
-invisible locally until a sweep actually runs: re-derive both from the tree you are
-committing (`git rev-parse HEAD:src`, `HEAD:scripts` after staging) rather than
-letting the next author rediscover it.
+what did not, and why. `scripts/evidence-manifest.test.mjs` checks the stamp and
+needs no lease: it runs inside `pnpm test:desktop`, fails in well under a second, and
+it is what caught the stale stamps that reached `main` once - so a stale stamp is
+visible locally without a sweep, contrary to what this paragraph used to say. Only
+the sweep half, `pnpm check-evidence`, takes the machine-wide lease and defers (exit
+75) while another sweep holds it. Re-derive both from the tree the commit names -
+which is the MERGED tree, so the derivation happens after the merge or sync commit
+exists. Deriving them while the change is still in the working tree asks `git
+rev-parse HEAD:src` about the PRE-merge head and gets its trees: real trees, so the
+diff looks right, just not this one's (fold 11 shipped exactly that to `main`; fold
+10 was stale from the other side one commit earlier, its merge commit declaring its
+second parent's trees until a follow-up re-derived them). When the change also
+touches `scripts/`, that stamp cannot include the edit until the edit is committed,
+so the order is commit, derive, write the values in, `--amend` - the amendment moves
+`docs/` only, and the value written stays true.
 
 `pnpm test:desktop` runs focused desktop transport/security contract checks with
 Node's built-in runner. It bundles the actual TypeScript modules in memory and
