@@ -40,6 +40,10 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useState } from "react";
 import type { DesktopInfoData } from "../../../../../../shared/desktop-contract";
 import "../../../../styles/index.css";
+import {
+	desktopRequestDeadlineDetail,
+	desktopRequestDeadlineMs,
+} from "../../../../../../shared/desktop-contract";
 import type { InfoFrontend } from "./info-model";
 import { InfoPanel } from "./info-panel";
 import { scrollPanelToSection } from "./story-scroll";
@@ -661,8 +665,11 @@ export const Unavailable: Story = {
 	args: {
 		...base,
 		data: null,
-		error:
-			"The backend did not answer /v1/desktop/info within 30s. Close and reopen this panel to try again.",
+		/* Built from the shipped functions, not transcribed: see the analytics story. */
+		error: desktopRequestDeadlineDetail(
+			"info.get",
+			desktopRequestDeadlineMs("info.get"),
+		).message,
 		frontend,
 	},
 };
