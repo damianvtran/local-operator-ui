@@ -86,15 +86,30 @@ test("the offset is measured inside the region, not from the page", () => {
 	assert.equal(lower.scrollTop, 0);
 });
 
-test("the current position is included and the low end clamps to zero", () => {
-	// 40 + 60 - 100 - 0 = 0, from a region already 40px down: the arithmetic is
-	// absolute, so it must not add to what is already there a second time beyond
-	// the measurement, and a target above the content top must not assign a
-	// negative `scrollTop` (the browser would clamp it, but the value is a lie
-	// until it does).
+test("the current position is included in the measurement, not added to it", () => {
+	// 40 + 260 - 100 - 0 = 200: the region is already 40px down and the target
+	// sits 160px into its content box, so an assignment that dropped the
+	// `region.scrollTop` term would land the section 40px short of the head.
 	const region = regionStub({ scroll: 40, top: 100, clientTop: 0 });
-	scrollRegionToTop(region, targetStub(60));
-	assert.equal(region.scrollTop, 0);
+	scrollRegionToTop(region, targetStub(260));
+	assert.equal(region.scrollTop, 200);
+});
+
+test("a target above the content top assigns zero rather than a negative", () => {
+	/*
+	 * Round 2's R2-5, and the reason this case exists at all: the case that used to
+	 * carry this name computed `40 + 60 - 100 - 0`, which is 0 with or WITHOUT the
+	 * low clamp — so the term the name claimed was pinned by a case that could not
+	 * fail on it. This one cannot pass with the clamp removed: the raw value is
+	 * NEGATIVE (`40 + 20 - 100 = -40`), which is a `scrollTop` no box can hold, and
+	 * the clamp is the only thing between the arithmetic and that assignment.
+	 */
+	const above = regionStub({ scroll: 0, top: 100, clientTop: 0 });
+	scrollRegionToTop(above, targetStub(60));
+	assert.equal(above.scrollTop, 0);
+	const scrolled = regionStub({ scroll: 40, top: 100, clientTop: 0 });
+	scrollRegionToTop(scrolled, targetStub(20));
+	assert.equal(scrolled.scrollTop, 0);
 });
 
 test("a target already flush with the content top is a no-op", () => {

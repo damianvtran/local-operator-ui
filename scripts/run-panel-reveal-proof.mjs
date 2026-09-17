@@ -214,21 +214,75 @@ const MEASURE = `(() => {
 	 */
 	const paneEl = document.querySelector("[data-run-panel-pane]");
 	const closeEl = document.querySelector('[aria-label="Close run details"]');
-	const acceptance = { clipPx: null, closeControl: null, closeControlHit: null, elidedRows: 0, cutRows: 0 };
+	const acceptance = {
+		clipPx: null,
+		closeControl: null,
+		closeControlHit: null,
+		elidedRows: 0,
+		cutRows: 0,
+		collapsedTextRows: 0,
+		outsideRegionRows: 0,
+		collapsedTextExamples: [],
+		outsideRegionExamples: [],
+	};
 	if (paneEl) {
 		const paneRect = paneEl.getBoundingClientRect();
 		acceptance.clipPx = Math.max(0, Math.round(paneRect.right - window.innerWidth));
 		/*
-		 * Truncation is two different things and only one of them is a defect. A row
-		 * whose text-overflow is an ellipsis and that fits INSIDE the viewport is the
-		 * design working: the reader sees the three dots. The same row with its
-		 * elision point outside the viewport is the failure the round measured - the
-		 * pane's right edge is past the window, so the text ends at a hard screen edge
-		 * with no ellipsis anywhere on screen.
+		 * A TEXT BOX COLLAPSED TO NOTHING, and it is a defect class of its own
+		 * (design round 2, D7). The predicate below used to SKIP a box with
+		 * 'clientWidth <= 0', which is exactly the failure it was written to see: at
+		 * the pane width this change newly renders at, every row's name was 0px wide
+		 * with 'scrollWidth' 60-133 — not elided, gone, and reachable by no gesture,
+		 * because there is nothing to scroll to. A box with text in it, no children
+		 * of its own, zero width and content that wants some, is that class and only
+		 * that class; 'display: none' (scrollWidth 0) and a 1px 'sr-only' clip
+		 * (clientWidth 1) are both excluded by those two terms.
 		 */
+		const label = (node) =>
+			node.tagName.toLowerCase() +
+			(node.className ? "." + String(node.className).split(" ").slice(0, 2).join(".") : "") +
+			" " +
+			JSON.stringify((node.textContent ?? "").trim().slice(0, 40));
+		const regionEl = document.querySelector("[data-run-panel-region]");
+		/*
+		 * The client box the pane's content was actually given, so "past the box" is
+		 * measured against the region that owns it rather than against the window:
+		 * the earlier predicate only saw a truncating box whose elision point fell
+		 * outside the WINDOW, and a trailing value that simply overflows its
+		 * container without being truncated ('scrollWidth == clientWidth') was
+		 * invisible to it. Design's own predicate over the same geometry found four
+		 * such rows on a frame this one scored 0 on.
+		 */
+		const regionClientRight = regionEl
+			? regionEl.getBoundingClientRect().right -
+				(regionEl.offsetWidth - regionEl.clientWidth)
+			: null;
 		for (const node of paneEl.querySelectorAll("*")) {
-			if (node.clientWidth <= 0 || node.scrollWidth <= node.clientWidth + 1) continue;
+			const text = (node.textContent ?? "").trim();
+			const leaf = node.children.length === 0 && text.length > 0;
 			const rect = node.getBoundingClientRect();
+			if (leaf && node.clientWidth <= 0 && node.scrollWidth > 0) {
+				acceptance.collapsedTextRows += 1;
+				if (acceptance.collapsedTextExamples.length < 8)
+					acceptance.collapsedTextExamples.push(label(node));
+				continue;
+			}
+			if (leaf && regionClientRight !== null && node.clientWidth > 0 && rect.right > regionClientRight + 1) {
+				acceptance.outsideRegionRows += 1;
+				if (acceptance.outsideRegionExamples.length < 8)
+					acceptance.outsideRegionExamples.push(label(node));
+				continue;
+			}
+			/*
+			 * Truncation is two different things and only one of them is a defect. A
+			 * row whose text-overflow is an ellipsis and that fits INSIDE the viewport
+			 * is the design working: the reader sees the three dots. The same row with
+			 * its elision point outside the viewport is the failure the round measured
+			 * - the pane's right edge is past the window, so the text ends at a hard
+			 * screen edge with no ellipsis anywhere on screen.
+			 */
+			if (node.clientWidth <= 0 || node.scrollWidth <= node.clientWidth + 1) continue;
 			if (rect.right > window.innerWidth) acceptance.cutRows += 1;
 			else acceptance.elidedRows += 1;
 		}
@@ -270,6 +324,21 @@ const MEASURE = `(() => {
 	};
 })()`;
 
+/*
+ * The scratch profile and the spawned tree live OUTSIDE the launch IIFE, because
+ * the teardown below must be able to reach them when the LAUNCH ITSELF fails.
+ * This is not defensive style, it is a measured leak (QA round 2, Q1):
+ * `no app page target after 60s` throws INSIDE that IIFE, above the instrumented
+ * block whose `finally` owns the reap, so the throw returned before `app` existed
+ * and the app was left reparented to `launchd` - three processes under a `ppid=1`
+ * root, unchanged a minute later - with the mkdtemp'd profile on disk for good.
+ * Every other failure path (a missing chip, a bad `--expect`, the rail) throws
+ * inside the instrumented block and reaped correctly, which is why this one hid.
+ */
+const PROFILE = mkdtempSync(join(tmpdir(), "lo-reveal-proof-"));
+/** The `npx` child, as soon as it exists, so a launch failure is reaped too. */
+let spawned = null;
+
 const app = await (async () => {
 	/*
 	 * A port somebody else is already holding is the one start-up failure that
@@ -288,14 +357,13 @@ const app = await (async () => {
 			throw error;
 		// Nothing listening: the normal case.
 	}
-	const profile = mkdtempSync(join(tmpdir(), "lo-reveal-proof-"));
 	const child = spawn(
 		"npx",
 		[
 			"electron",
 			".",
 			`--remote-debugging-port=${PORT}`,
-			`--user-data-dir=${profile}`,
+			`--user-data-dir=${PROFILE}`,
 			`--window-size=${WIDTH}x${HEIGHT}`,
 		],
 		{
@@ -334,6 +402,7 @@ const app = await (async () => {
 			detached: true,
 		},
 	);
+	spawned = child;
 	child.unref();
 	const log = [];
 	child.stdout.on("data", (chunk) => log.push(String(chunk)));
@@ -432,7 +501,7 @@ const app = await (async () => {
 	};
 	// A headless window cannot be focused, so a key event is dropped without it.
 	await send("Emulation.setFocusEmulationEnabled", { enabled: true });
-	return { child, profile, send, evaluate, click, screenshot, log, socket };
+	return { child, send, evaluate, click, screenshot, log, socket };
 })();
 
 const outDir = join(OUT, `press-${WIDTH}x${HEIGHT}`);
@@ -529,36 +598,56 @@ try {
 	 * it lands on whatever is beneath and the state silently never changes.
 	 */
 	if (RAIL === "collapsed" || RAIL === "expanded") {
-		const want = RAIL === "collapsed" ? "Collapse sidebar" : "Expand sidebar";
 		const railWidth = () =>
 			app.evaluate(
 				`Math.round(document.querySelector("nav.group")?.getBoundingClientRect().width ?? 0)`,
 			);
 		const railBefore = await railWidth();
-		const railPoint = await app.evaluate(`(() => {
+		/*
+		 * WHICH state a profile opens in is not a constant, so the target is reached
+		 * from whatever state the launch is actually in rather than assumed. A fresh
+		 * scratch profile already opens EXPANDED (220px), and the toggle's own label
+		 * in that state is `Collapse sidebar` - so the flag's old unconditional press
+		 * for `Expand sidebar` had nothing to press and threw, which meant
+		 * `--rail=expanded` could not run at all and the README's expanded rows
+		 * cannot have come from that flag (QA round 2, Q2). Collapsed is 48px against
+		 * expanded 220px, so the split is at 100 and the press is skipped when the
+		 * launch is already where the flag wants it.
+		 */
+		const collapsedPx = (width) => width < 100;
+		const alreadyThere =
+			RAIL === "collapsed" ? collapsedPx(railBefore) : !collapsedPx(railBefore);
+		if (alreadyThere) {
+			console.error(
+				`[rail] ${RAIL}: already at ${railBefore}px, no press needed`,
+			);
+		} else {
+			const want = RAIL === "collapsed" ? "Collapse sidebar" : "Expand sidebar";
+			const railPoint = await app.evaluate(`(() => {
 			const node = document.querySelector("nav.group");
 			if (!node) return null;
 			const rect = node.getBoundingClientRect();
 			return { x: rect.left + rect.width / 2, y: rect.top + 120 };
 		})()`);
-		if (!railPoint) throw new Error(`no rail to set to ${RAIL}`);
-		await app.send("Input.dispatchMouseEvent", {
-			type: "mouseMoved",
-			x: railPoint.x,
-			y: railPoint.y,
-		});
-		await wait(500);
-		if (!(await app.click(`[aria-label="${want}"]`)))
-			throw new Error(
-				`the rail's "${want}" control is not on screen; the rail is at ${railBefore}px`,
-			);
-		await wait(900);
-		const railAfter = await railWidth();
-		if (Math.abs(railAfter - railBefore) < 4)
-			throw new Error(
-				`the rail did not ${RAIL}: it was ${railBefore}px and is ${railAfter}px, so the press would be measured in the other state`,
-			);
-		console.error(`[rail] ${RAIL}: ${railBefore}px -> ${railAfter}px`);
+			if (!railPoint) throw new Error(`no rail to set to ${RAIL}`);
+			await app.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: railPoint.x,
+				y: railPoint.y,
+			});
+			await wait(500);
+			if (!(await app.click(`[aria-label="${want}"]`)))
+				throw new Error(
+					`the rail's "${want}" control is not on screen; the rail is at ${railBefore}px`,
+				);
+			await wait(900);
+			const railAfter = await railWidth();
+			if (Math.abs(railAfter - railBefore) < 4)
+				throw new Error(
+					`the rail did not ${RAIL}: it was ${railBefore}px and is ${railAfter}px, so the press would be measured in the other state`,
+				);
+			console.error(`[rail] ${RAIL}: ${railBefore}px -> ${railAfter}px`);
+		}
 	} else if (RAIL !== "") {
 		throw new Error(`unknown --rail=${RAIL}; use collapsed or expanded`);
 	}
@@ -770,6 +859,13 @@ try {
 					paneOpen: [before.paneOpen, after.paneOpen],
 					movers,
 					todosOffsetInRegion: after.todosOffsetInRegion,
+					acceptance: {
+						clipPx: after.acceptance.clipPx,
+						cutRows: after.acceptance.cutRows,
+						elidedRows: after.acceptance.elidedRows,
+						collapsedTextRows: after.acceptance.collapsedTextRows,
+						outsideRegionRows: after.acceptance.outsideRegionRows,
+					},
 				},
 				null,
 				2,
@@ -803,6 +899,21 @@ try {
 				throw new Error(
 					`expected the To-dos section at the top of the pane's own region, but its offset in that region is ${offset}`,
 				);
+			/*
+			 * And the third half: the pane's own rows stayed LEGIBLE in the width it was
+			 * given. A text box collapsed to nothing is the failure design round 2's D7
+			 * named - the predicate used to skip exactly that box, so a run whose pane
+			 * rendered every row's name at 0px reported `cutRows: 0` and passed. Gated
+			 * rather than reported, because a number nothing fails on is the same defect
+			 * one step along; `outsideRegionRows` is reported beside it and not gated,
+			 * because a scroll region's content may legitimately exceed its client box
+			 * (that is what its own scrollbar is for) and the cases that matter are
+			 * graded by the row grammar.
+			 */
+			if (after.acceptance.collapsedTextRows > 0)
+				throw new Error(
+					`expected no text box collapsed to nothing in the pane, but ${after.acceptance.collapsedTextRows} did: ${JSON.stringify(after.acceptance.collapsedTextExamples)}`,
+				);
 		} else if (EXPECT !== "") {
 			throw new Error(
 				`unknown --expect=${EXPECT}; the only value is region-only`,
@@ -810,7 +921,7 @@ try {
 		}
 	}
 } finally {
-	app.socket.close();
+	app?.socket?.close();
 	/*
 	 * Kill the process GROUP, not the direct child, and tolerate a group that has
 	 * already gone away: the direct child here is `npx`, whose exit says nothing
@@ -818,11 +929,12 @@ try {
 	 * is what left one app per run alive on this lane.
 	 */
 	const killGroup = (signal) => {
+		if (!spawned) return;
 		try {
-			process.kill(-app.child.pid, signal);
+			process.kill(-spawned.pid, signal);
 		} catch {
 			try {
-				app.child.kill(signal);
+				spawned.kill(signal);
 			} catch {
 				// Already gone.
 			}
@@ -836,9 +948,13 @@ try {
 	 * consecutive sizes failed that way). SIGKILL is the backstop for an app that
 	 * ignores the term.
 	 */
-	for (let attempt = 0; attempt < 20 && app.child.exitCode === null; attempt++)
+	for (
+		let attempt = 0;
+		attempt < 20 && spawned && spawned.exitCode === null;
+		attempt++
+	)
 		await wait(250);
-	if (app.child.exitCode === null) {
+	if (spawned && spawned.exitCode === null) {
 		killGroup("SIGKILL");
 		await wait(500);
 	}
@@ -851,7 +967,7 @@ try {
 	 * cannot be matched by it.
 	 */
 	try {
-		execFileSync("pkill", ["-f", `user-data-dir=${app.profile}`]);
+		execFileSync("pkill", ["-f", `user-data-dir=${PROFILE}`]);
 	} catch {
 		// `pkill` exits 1 when nothing matched, which is the good case.
 	}
@@ -860,7 +976,7 @@ try {
 	 * The profile is this run's own mkdtemp; leave the machine as it was found.
 	 */
 	try {
-		rmSync(app.profile, { recursive: true, force: true });
+		rmSync(PROFILE, { recursive: true, force: true });
 	} catch {
 		// A profile an app is still holding can refuse removal; not this run's failure.
 	}
@@ -872,7 +988,7 @@ try {
 	 * process was still alive when the run was timed out). Destroy them and exit
 	 * on the result the run already has.
 	 */
-	app.child.stdout?.destroy();
-	app.child.stderr?.destroy();
-	app.child.unref();
+	spawned?.stdout?.destroy();
+	spawned?.stderr?.destroy();
+	spawned?.unref();
 }

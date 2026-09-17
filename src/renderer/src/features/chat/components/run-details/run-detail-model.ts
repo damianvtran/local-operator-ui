@@ -2603,13 +2603,40 @@ export function mcpErrorTexts(rows: unknown): Record<string, string> {
  * sees together. Both now call `attentionClause`/`attentionVerb` below, which is
  * the only place the verb is chosen (round 3's last nit).
  */
-export function mcpTally(rows: readonly McpServerRow[]): string {
+export function mcpTally(
+	rows: readonly McpServerRow[],
+	maxChars?: number,
+): string {
 	if (mcpServersAreCold(rows)) return MCP_COLD_LINE;
 	const connected = rows.filter((row) => row.status === "connected").length;
 	const problems = rows.filter((row) => row.problem).length;
 	const base = `${connected} of ${rows.length} connected`;
 	if (problems === 0) return base;
-	return `${base} · ${attentionClause(problems)}`;
+	const full = `${base} · ${attentionClause(problems)}`;
+	/*
+	 * The ATTENTION CLAUSE sheds first, and it is the only term that can: the base
+	 * is the number the reader acts on (`2 of 11 connected`), while the clause says
+	 * which of them are asking for something — useful, and the first thing to give
+	 * when the pane is too narrow to hold both. This is the same eviction rule the
+	 * other sections' tallies follow, applied at the one segment boundary this
+	 * sentence has.
+	 *
+	 * WHY IT NEEDS A BUDGET AT ALL (`§ 8`, design round 2's D8): the warm header is
+	 * the only section header in the pane that never called `tallyBudget`, and it
+	 * shares its line with a `shrink-0` label. At the 303px the fit change renders
+	 * at 1024x673 with the rail expanded, CSS `truncate` cut it mid-word —
+	 * `2 of 11 connected · 8 need atte…` — where the same string is complete at 419.
+	 * A BUDGET cannot make the sentence fit; it makes the SECTION decide what to
+	 * drop, which is the difference between `2 of 11 connected` and a word cut in
+	 * half.
+	 *
+	 * The base is left un-shed even when it exceeds the budget: it is 17 characters
+	 * against a 37-character budget at the pane's own 320px floor, so the case does
+	 * not arise, and inventing a shorter form would replace the count the reader
+	 * wants with one they have to decode.
+	 */
+	if (maxChars !== undefined && full.length > maxChars) return base;
+	return full;
 }
 
 /**

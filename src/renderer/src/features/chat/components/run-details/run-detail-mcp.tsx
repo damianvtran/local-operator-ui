@@ -53,6 +53,7 @@ import {
 	type McpServerRow,
 	mcpServersAreCold,
 	mcpTally,
+	tallyBudget,
 } from "./run-detail-model";
 import type { McpRemedyControls } from "./use-mcp-remedy";
 
@@ -304,15 +305,90 @@ const iconFor = (status: string) =>
 
 const inkFor = (status: string) => MCP_INK[status] ?? "text-ink-dim";
 
+/**
+ * The row's line-1 grammar under pressure: the NAME keeps a floor, and the
+ * trailing values shed from the right until it has one.
+ *
+ * The design's rule (`§ 8`) is that the name is the ONLY segment allowed to
+ * shrink — it carries a `title` with the whole string, so a truncated name is
+ * still readable on hover — while the status word, the tool count and the scope
+ * are `shrink-0`, because the numbers rule forbids cutting a value mid-figure.
+ * `min-w-0 flex-1` on the name implements "the name shrinks" and NOT "the name
+ * has a floor": in a pane narrower than the three trailing segments put together
+ * it shrinks to ZERO, and the values it gave way to are then drawn past the
+ * pane's own edge.
+ *
+ * Measured on the pane this change newly renders at (design round 2, D6): at
+ * 800x600 with the rail expanded the pane is 79px, and every row's name was
+ * `clientWidth 0` with `scrollWidth` 60-133 — not elided, gone, and reachable by
+ * no gesture. At 99px the `config.toml` rows were still 0px.
+ *
+ * So the trailing values shed first, right to left (scope, then count), and the
+ * status word is the LAST to go because it is why a problem row is a problem row.
+ * The name's floor is then whatever the line has left, capped at the floor above:
+ * at a width that cannot host even that, the name is small rather than absent,
+ * and the row does not overflow the box it was given.
+ *
+ * The per-character advance MIRRORS `TALLY_CHAR_PX` in `run-detail-model.ts` — the
+ * same measured 6px, rounded up, for the same reason: a budget that errs short
+ * sheds one segment earlier, while one that errs long is the overflow this exists
+ * to remove.
+ */
+const MCP_ROW_NAME_FLOOR_PX = 44;
+/** The row's own chrome: `px-3` both sides, the 16px mark, and its 8px gap. */
+const MCP_ROW_CHROME_PX = 12 + 12 + 16 + 8;
+const MCP_ROW_GAP_PX = 8;
+const MCP_ROW_CHAR_PX = 6;
+
+/**
+ * How many trailing segments fit beside a name that keeps its floor, and how much
+ * the name may then claim. Pure, so the arithmetic is readable outside the JSX.
+ */
+const mcpRowLineGrammar = (
+	paneWidth: number,
+	labels: readonly (string | null)[],
+): { kept: readonly boolean[]; nameMinPx: number } => {
+	const present = labels.filter((label): label is string => label !== null);
+	const trailingPx = (count: number) =>
+		count === 0
+			? 0
+			: count * MCP_ROW_GAP_PX +
+				present.slice(0, count).reduce((sum, label) => sum + label.length, 0) *
+					MCP_ROW_CHAR_PX;
+	let keptCount = present.length;
+	const lineWidth = paneWidth - MCP_ROW_CHROME_PX;
+	while (
+		keptCount > 0 &&
+		MCP_ROW_NAME_FLOOR_PX + trailingPx(keptCount) > lineWidth
+	)
+		keptCount -= 1;
+	let seen = 0;
+	return {
+		kept: labels.map((label) => {
+			if (label === null) return false;
+			const keep = seen < keptCount;
+			seen += 1;
+			return keep;
+		}),
+		nameMinPx: Math.max(
+			1,
+			Math.min(MCP_ROW_NAME_FLOOR_PX, lineWidth - trailingPx(keptCount)),
+		),
+	};
+};
+
 const McpRow = ({
 	row,
 	cold,
+	paneWidth,
 	remedy,
 	controlDisabled,
 	onPress,
 }: {
 	row: McpServerRow;
 	cold: boolean;
+	/** The pane's own width, which is what the line's grammar is budgeted against. */
+	paneWidth: number;
 	remedy: McpRemedyControls;
 	/**
 	 * Whether this row's control is disabled because another row's grant is
@@ -328,6 +404,19 @@ const McpRow = ({
 	onPress: (row: McpServerRow) => void;
 }) => {
 	const Mark = iconFor(row.status);
+	/*
+	 * Which of the line's trailing values this width can host, and how much the
+	 * name may claim. See `mcpRowLineGrammar` for what it replaces and why.
+	 */
+	const line = mcpRowLineGrammar(paneWidth, [
+		cold ? null : row.status,
+		row.toolCount === null
+			? null
+			: row.toolCount === 1
+				? "1 tool"
+				: `${row.toolCount} tools`,
+		row.scope ?? null,
+	]);
 	/*
 	 * The row's height is pinned by the design (`§ 8`): 32px healthy, 48px on a
 	 * problem row. `py-1.5` around a 20px line and a 16px remedy line lands both —
@@ -386,6 +475,7 @@ const McpRow = ({
 						className={cn(
 							"min-w-0 flex-1 truncate text-body-sm text-ink leading-5",
 						)}
+						style={{ minWidth: line.nameMinPx }}
 						title={row.name}
 					>
 						{row.name}
@@ -401,7 +491,7 @@ const McpRow = ({
 					 * A COLD row has no word: one jargon word repeated N times is what
 					 * the section refuses, and the cold line says it once instead.
 					 */}
-					{!cold && (
+					{!cold && line.kept[0] && (
 						/*
 						 * The state word takes the NAME's type step and a medium weight, and
 						 * that is D2's other half judged as ranking rather than as hue: the word
@@ -420,7 +510,7 @@ const McpRow = ({
 							{row.status}
 						</span>
 					)}
-					{row.toolCount !== null && (
+					{row.toolCount !== null && line.kept[1] && (
 						/*
 						 * A connected server's reach, in the panel's numbers grammar: only
 						 * ever rendered for `connected` (the model omits it otherwise), so
@@ -439,7 +529,7 @@ const McpRow = ({
 					 * two lines tall for a fact the reader is not looking for — in the
 					 * pane's scarcest direction.
 					 */}
-					{row.scope && (
+					{row.scope && line.kept[2] && (
 						<span
 							className={cn("shrink-0 text-meta text-ink-dim")}
 							title={row.scope}
@@ -513,10 +603,13 @@ export const RunDetailMcp = ({
 	 * (`mcpGrantInFlight`).
 	 */
 	grantRunning,
+	paneWidth,
 	remedy,
 }: {
 	servers: readonly McpServerRow[];
 	grantRunning: boolean;
+	/** The pane's own width, which is what the tally's budget is measured against. */
+	paneWidth: number;
 	/**
 	 * The pane's remedy controls, threaded from the page (`chat-page.tsx`).
 	 *
@@ -585,7 +678,8 @@ export const RunDetailMcp = ({
 							"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
 						)}
 					>
-						{mcpTally(servers)}
+						{/* Budgeted, not merely truncated: see `mcpTally`'s `maxChars`. */}
+						{mcpTally(servers, tallyBudget(paneWidth))}
 					</span>
 				</div>
 			)}
@@ -595,6 +689,7 @@ export const RunDetailMcp = ({
 						key={row.name}
 						row={row}
 						cold={cold}
+						paneWidth={paneWidth}
 						remedy={remedy}
 						controlDisabled={disabledFor(row)}
 						onPress={start}
