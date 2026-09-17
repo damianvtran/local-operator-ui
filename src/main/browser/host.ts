@@ -581,10 +581,15 @@ export class BrowserHost implements BrowserActionContext {
 				owner: entry.owner,
 				// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
 				// change adds to the wire. `null` is a real and common value — a restored
-				// tab is nobody's (`registry.ts:231`), a user tab that was never handed
-				// over is nobody's, and a tab handed back goes back to `null` (`:386`) —
-				// and it means "not any conversation's", which is why a conversation's
-				// scope shows it under no scope but `"all"` (spec 7.2).
+				// tab is nobody's (`registry.ts:231`), a user tab never handed over and
+				// opened from the route or a draft is nobody's — and it means "not any
+				// conversation's", which is why a conversation's scope shows it under no
+				// scope but `"all"` (spec 7.2).
+				//
+				// A TAB HANDED BACK KEEPS ITS CONVERSATION (review round 1, Q2):
+				// revocation restores `homeSessionId` rather than writing `null`, so the
+				// field is "which conversation this belongs to", not "which session is
+				// driving it" — the second question is `handedOver` and `owner`.
 				sessionId: entry.sessionId,
 				active: entry.active,
 				restored: entry.restored,
