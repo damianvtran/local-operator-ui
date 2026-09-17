@@ -95,8 +95,18 @@ type BackendSessionRow = Omit<CanonicalSessionRow, "session_id"> & {
  */
 export type PinFact = {
 	pinned: boolean;
-	/** The answer sequence current when this fact was written. */
+	/** The sequence this write took, which orders it against every request. */
 	at: number;
+	/*
+	 * What a ROW needs to be drawn, carried WITH the fact (design round 4, D17; UX round 4,
+	 * U14). The panel may have to draw a pinned conversation its catalogue page does not
+	 * carry, and a fact that were only a boolean would leave it drawing nothing at all - a
+	 * pin the terminal and the backend both hold and the app silently under-reports, which
+	 * is the state the round refused. Taken from the row the press acted on, or from the
+	 * seed the press carried when the store held no row.
+	 */
+	title?: string;
+	updated_at?: number;
 };
 
 export type PinFailure = {
@@ -1070,11 +1080,14 @@ type CanonicalSessionsState = {
 	/**
 	 * The answer counter every fact and every request is stamped against.
 	 *
-	 * One monotonic sequence shared by the two writers: `setSessionPin` stamps
-	 * what it writes with the current value, and each request takes the NEXT value
-	 * when it starts. So `fact.at < answerSeq-of-this-request` means the answer is
-	 * newer than the write and may supersede it, and the reverse order means the
-	 * write is newer and the answer must not touch it (`PinFact` has the reasoning).
+	 * One monotonic sequence over every state-changing event on this client: each
+	 * request takes the next value when it STARTS, and each write takes the next
+	 * value when it LANDS. So `fact.at < answerSeq-of-this-request` means the
+	 * answer is newer than the write and may supersede it, and the reverse order
+	 * means the write is newer and the answer must not touch it (`PinFact` has the
+	 * reasoning). Writes take their own value rather than reading the current one
+	 * so that two writes can never share a stamp and mistake each other for
+	 * themselves.
 	 */
 	answerSeq: number;
 	/**
@@ -1523,8 +1536,31 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							if (fact === undefined || fact.at >= answerAt) continue;
 							delete facts[row.session_id];
 						}
+						/*
+						 * AND THE ROWS, not only the facts (review round 4, M1; QA Qr4-1).
+						 * `replaceSessionRows` rebuilds membership and values from the page
+						 * alone, so a page whose request STARTED before a press would hand the
+						 * panel the pre-press value - the row visibly regresses under a control
+						 * the reader just used - and would DROP a row the press inserted for a
+						 * conversation the page cannot carry. A write newer than the page's own
+						 * request outranks it, exactly as it outranks the page's facts above:
+						 * the row keeps the value the write put there, and it keeps its place
+						 * until a page requested AFTER the write arrives to settle it.
+						 */
+						const protectedRows = state.sessions.filter(
+							(row) => (state.pinFacts[row.session_id]?.at ?? -1) >= answerAt,
+						);
+						let next = replaceSessionRows(state.sessions, rows);
+						for (const held of protectedRows) {
+							const fact = state.pinFacts[held.session_id];
+							const at = next.findIndex(
+								(row) => row.session_id === held.session_id,
+							);
+							if (at === -1) next = [...next, { ...held, pinned: fact.pinned }];
+							else next[at] = { ...next[at], pinned: fact.pinned };
+						}
 						return {
-							sessions: replaceSessionRows(state.sessions, rows),
+							sessions: next,
 							pinFacts: facts,
 							loading: false,
 							truncated: result.truncated === true,
@@ -2141,6 +2177,23 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								pinned,
 							}
 						: null;
+				/*
+				 * The stamp this write owns: a FRESH sequence, taken rather than read. Every
+				 * later handler asks whether it is still the latest write for this conversation
+				 * before it touches anything, and two presses in flight on one row settle in the
+				 * order they were MADE (review round 4, m2). Reading the sequence instead of
+				 * taking one left two presses in the same tick sharing a stamp, so neither could
+				 * tell that the other had happened.
+				 */
+				const stamp = get().beginAnswer();
+				/*
+				 * What a row needs if the panel has to DRAW this conversation later: the title
+				 * from the row the press acted on, or from the seed when the store held none.
+				 * Carried on the fact so a held pin is never the invisible half of the set
+				 * (design round 4, D17).
+				 */
+				const title = before?.title ?? seed?.title;
+				const updated_at = before?.updated_at ?? seed?.updated_at;
 				set((state) => ({
 					sessions:
 						seedRow === null
@@ -2154,7 +2207,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					// it and an answer requested before it does not.
 					pinFacts: {
 						...state.pinFacts,
-						[sessionId]: { pinned, at: state.answerSeq },
+						[sessionId]: { pinned, at: stamp, title, updated_at },
 					},
 					// A press retires the previous press's sentence: the notice is about the
 					// row under the pointer, and two of them would be a log.
@@ -2165,23 +2218,42 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						session_id: string;
 						pinned: boolean;
 					}>({ op: "sessions.pin", sessionId, pinned });
-					set((state) => ({
-						sessions: state.sessions.map((row) =>
-							row.session_id === sessionId
-								? { ...row, pinned: answer.pinned === true }
-								: row,
-						),
-						pinFacts: {
-							...state.pinFacts,
-							[sessionId]: {
-								pinned: answer.pinned === true,
-								at: state.pinFacts[sessionId]?.at ?? state.answerSeq,
+					let settled = false;
+					set((state) => {
+						/*
+						 * A LATER PRESS OWNS THE ROW NOW. `setSessionPin` stamps each write, and a
+						 * second press on the same row replaces the fact - so an answer whose
+						 * stamp is no longer the fact's belongs to a press the user has already
+						 * superseded, and applying it would settle the row on the stale half of
+						 * two in-flight writes (review round 4, m2).
+						 */
+						const current = state.pinFacts[sessionId];
+						if (current === undefined || current.at !== stamp) return {};
+						settled = true;
+						return {
+							sessions: state.sessions.map((row) =>
+								row.session_id === sessionId
+									? { ...row, pinned: answer.pinned === true }
+									: row,
+							),
+							pinFacts: {
+								...state.pinFacts,
+								[sessionId]: {
+									...current,
+									pinned: answer.pinned === true,
+								},
 							},
-						},
-					}));
-					return true;
+						};
+					});
+					return settled;
 				} catch (error) {
 					set((state) => {
+						/*
+						 * A later press's write is not this call's to revert, for the same
+						 * reason an earlier press's answer is not this call's to apply.
+						 */
+						const current = state.pinFacts[sessionId];
+						if (current !== undefined && current.at !== stamp) return {};
 						// The fact goes back to what it was, or goes away: a revert that MINTED
 						// one would claim this window knows the state of a conversation it has
 						// only just failed to write.
@@ -2194,7 +2266,17 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						if (factBefore === null && before === undefined) {
 							delete facts[sessionId];
 						} else {
-							facts[sessionId] = { pinned: held, at: state.answerSeq };
+							/*
+							 * The stamp goes back with the value: the fact describes the state the
+							 * control was showing again, and it must not look older than the press
+							 * whose refusal it records.
+							 */
+							facts[sessionId] = {
+								pinned: held,
+								at: Math.max(factBefore?.at ?? 0, stamp),
+								title: factBefore?.title ?? title,
+								updated_at: factBefore?.updated_at ?? updated_at,
+							};
 						}
 						return {
 							sessions: state.sessions.map((row) =>

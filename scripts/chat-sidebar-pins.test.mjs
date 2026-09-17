@@ -596,27 +596,80 @@ const seed = (over = {}) => {
 
 const held = () => store.getState().sessions[0].pinned;
 
-test("a press on a conversation the store does not hold holds it, and keeps holding it through a page", async () => {
+test("a press outranks a page whose request predates it, and settles under one that does not", async () => {
 	/*
-	 * QA round 2's Qr2-1, asserted as BEHAVIOUR rather than as the shape of the source
-	 * (review round 3, MINOR 3). The three facts the fix is made of, each driven through the
-	 * shipped store with only the transport faked:
+	 * QA round 2's Qr2-1 and round 4's Qr4-1/M1, asserted as BEHAVIOUR through the shipped
+	 * store with only the transport faked (review round 3, MINOR 3; round 4, m1 - the earlier
+	 * version of this test asserted the fact and left the ROW unasserted, so deleting the
+	 * row guards left every case green).
 	 *
-	 *  1. a press on a conversation the store does not hold makes the store hold it, and the
-	 *     fact that outlives the row;
-	 *  2. the catalogue page that cannot carry it drops the row and leaves the fact alone -
-	 *     which is the mechanism the fix exists for;
-	 *  3. a search answer requested AFTER the press supersedes the fact, and one requested
-	 *     BEFORE it does not (the currency rule).
+	 * The currency is per-REQUEST, so the ordering is exercised the way concurrency makes it
+	 * happen: a page is asked for, a press lands while it is in flight, and the page then
+	 * arrives. A write newer than the REQUEST that produced an answer outranks it - for the
+	 * fact and for the row - and a write older than it is settled by it.
 	 */
 	const OUTSIDE = "e79ebe96485c";
 	const OTHER = "0a1b2c3d4e5f";
+	let resolvePage = null;
+	const page = () =>
+		new Promise((resolve) => {
+			resolvePage = resolve;
+		});
 	store.setState({
 		sessions: [],
 		pinFacts: {},
 		pinFailure: null,
 		answerSeq: 0,
 	});
+	globalThis.__pinRequest = (request) =>
+		request.op === "sessions.list"
+			? page()
+			: Promise.resolve({ session_id: OUTSIDE, pinned: true });
+
+	/*
+	 * 2. A PAGE ASKED FOR BEFORE THE PRESS, arriving after it. This is the ordering
+	 * concurrency produces, and the one the guard is about: its answer cannot carry this
+	 * conversation, and before the guard it took the row away AND left the older `pinned` on
+	 * anything it did carry - which is the regression QA measured on the real path.
+	 */
+	const inFlight = store.getState().fetchSessions();
+
+	// 1. the press holds a conversation the store does not list, title and all
+	assert.equal(
+		await store.getState().setSessionPin(OUTSIDE, true, {
+			title: "Sweep 001",
+			updated_at: 1_789_639_020,
+		}),
+		true,
+	);
+	const afterPress = store.getState().sessions.find(
+		(row) => row.session_id === OUTSIDE,
+	);
+	assert.deepEqual(
+		[afterPress?.pinned, afterPress?.title],
+		[true, "Sweep 001"],
+		"the press must hold the row, with what a row needs to be drawn",
+	);
+	assert.equal(
+		store.getState().pinFacts[OUTSIDE].pinned,
+		true,
+		"and the fact that outlives it",
+	);
+
+	resolvePage({
+		sessions: [
+			{ id: OTHER, name: "A listed chat", mtime: 1_789_000_000, pinned: false },
+		],
+	});
+	await inFlight;
+	assert.equal(
+		store.getState().sessions.find((row) => row.session_id === OUTSIDE)?.pinned,
+		true,
+		"a page whose request predates the press must not drop the row it cannot carry",
+	);
+
+	// 3. A PAGE ASKED FOR AFTER THE PRESS is the newer answer and settles it: the row it
+	// cannot carry goes, and the fact is what keeps the pin readable for it.
 	globalThis.__pinRequest = async (request) =>
 		request.op === "sessions.list"
 			? {
@@ -630,83 +683,119 @@ test("a press on a conversation the store does not hold holds it, and keeps hold
 					],
 				}
 			: { session_id: OUTSIDE, pinned: true };
-
-	// 1. the press holds a conversation the store does not list
-	assert.equal(
-		await store.getState().setSessionPin(OUTSIDE, true, {
-			title: "Sweep 001",
-			updated_at: 1_789_639_020,
-		}),
-		true,
-	);
-	assert.deepEqual(
-		store.getState().sessions.map((row) => [row.session_id, row.pinned]),
-		[[OUTSIDE, true]],
-		"the store must hold the row the press acted on",
-	);
-	assert.equal(
-		store.getState().pinFacts[OUTSIDE].pinned,
-		true,
-		"and the fact that outlives it",
-	);
-
-	// 2. a page that cannot carry it drops the row and keeps the fact
 	await store.getState().fetchSessions();
-	assert.deepEqual(
-		store.getState().sessions.map((row) => row.session_id),
-		[OTHER],
-		"the page is the authority on membership, so the row goes",
+	assert.equal(
+		store.getState().sessions.some((row) => row.session_id === OUTSIDE),
+		false,
+		"the newer page is the authority on membership",
 	);
 	assert.equal(
 		store.getState().pinFacts[OUTSIDE].pinned,
 		true,
-		"and the fact is what keeps the pin readable for a row the page cannot carry",
+		"and the fact keeps the pin readable for a row the page cannot carry",
 	);
+});
 
+test("two presses in flight on one row settle in the order they were made", async () => {
 	/*
-	 * 3a. an answer whose REQUEST started BEFORE the press must not supersede it: the
-	 * sequence is taken when the question is asked, so an answer that was in flight across
-	 * the press cannot undo the press it predates. (Comparing arrival times instead would
-	 * let it, which is the flicker this stamp exists to prevent.)
+	 * Review round 4, m2. A pin and an unpin on the same control can be in flight together -
+	 * the transport is one request either way, and the reader can press again while the first
+	 * answer is outstanding. Each write takes the sequence current at its own press, so the
+	 * row follows the LATER press whatever order the answers come back in; without the stamp
+	 * each handler applied whatever answer it was handed, and the slower one won.
+	 */
+	const ROW = "1f2e3d4c5b6a";
+	const pending = [];
+	store.setState({
+		sessions: [
+			{
+				session_id: ROW,
+				title: "A row with two presses",
+				updated_at: 1_789_000_000,
+				pinned: false,
+			},
+		],
+		pinFacts: {},
+		pinFailure: null,
+		answerSeq: 0,
+	});
+	globalThis.__pinRequest = (request) =>
+		new Promise((resolve) => pending.push({ request, resolve }));
+	const pinned = () => store.getState().sessions.find((row) => row.session_id === ROW)?.pinned;
+
+	const first = store.getState().setSessionPin(ROW, true);
+	const second = store.getState().setSessionPin(ROW, false);
+	assert.equal(pinned(), false, "the optimistic write is the last press's");
+	assert.equal(pending.length, 2, "two presses, two requests");
+
+	// the FIRST press's answer lands last, carrying the state the later press replaced
+	pending[1].resolve({ session_id: ROW, pinned: false });
+	await second;
+	assert.equal(pinned(), false, "the later press's answer is applied");
+	pending[0].resolve({ session_id: ROW, pinned: true });
+	await first;
+	assert.equal(
+		pinned(),
+		false,
+		"the superseded press's answer must not settle the row on a state the reader has since inverted",
+	);
+});
+
+test("the currency orders the FACT and the ROW it speaks about", async () => {
+	const OUTSIDE = "e79ebe96485c";
+	let resolvePin = null;
+	store.setState({
+		sessions: [],
+		pinFacts: {},
+		pinFailure: null,
+		answerSeq: 0,
+	});
+	globalThis.__pinRequest = () =>
+		new Promise((resolve) => {
+			resolvePin = resolve;
+		});
+	/*
+	 * The answer that predates the press is a request TAKEN BEFORE IT - which is what this
+	 * sequence is, and what the press then stamps itself with (`setSessionPin` stamps with the
+	 * sequence current at its own moment).
 	 */
 	const beforePress = store.getState().beginAnswer();
-	assert.equal(
-		await store.getState().setSessionPin(OUTSIDE, true, {
-			title: "Sweep 001",
-			updated_at: 1_789_639_020,
-		}),
-		true,
-	);
-	store
-		.getState()
-		.applySearchAnswer(beforePress, [{ id: OUTSIDE, pinned: false }]);
-	assert.equal(
-		store.getState().pinFacts[OUTSIDE]?.pinned,
-		true,
-		"an answer older than the press must not undo it",
+	const press = store.getState().setSessionPin(OUTSIDE, true, {
+		title: "Sweep 001",
+		updated_at: 1_789_639_020,
+	});
+	resolvePin({ session_id: OUTSIDE, pinned: true });
+	await press;
+	const row = () =>
+		store.getState().sessions.find((item) => item.session_id === OUTSIDE);
+
+	// an answer asked for BEFORE the press must not reach the fact or the row
+	store.getState().applySearchAnswer(beforePress, [
+		{ id: OUTSIDE, pinned: false },
+	]);
+	assert.deepEqual(
+		[store.getState().pinFacts[OUTSIDE]?.pinned, row()?.pinned],
+		[true, true],
+		"an answer older than the press must move neither the fact nor the row",
 	);
 
-	// 3b. an answer requested AFTER the press supersedes the fact, which is how a pin
-	// removed on the other surface stops reading pinned here
+	// an answer asked for AFTER it settles BOTH, which is how a pin removed on the other
+	// surface stops reading pinned - on the fact and on the row the press inserted
 	const afterPress = store.getState().beginAnswer();
-	store
-		.getState()
-		.applySearchAnswer(afterPress, [{ id: OUTSIDE, pinned: false }]);
-	assert.equal(
-		store.getState().pinFacts[OUTSIDE],
-		undefined,
-		"an answer newer than the press must supersede the fact",
+	store.getState().applySearchAnswer(afterPress, [
+		{ id: OUTSIDE, pinned: false },
+	]);
+	assert.deepEqual(
+		[store.getState().pinFacts[OUTSIDE], row()?.pinned],
+		[undefined, false],
+		"a newer answer must supersede the fact and settle the row",
 	);
 
-	/*
-	 * 3c. an answer that says nothing about an id is not a claim: a hit whose backend does
-	 * not describe the pin supersedes nothing, which is the same rule the row's own shape
-	 * follows ("an absent key is not a claim").
-	 */
+	// an answer that says nothing about an id is not a claim
 	store.setState({ pinFacts: { [OUTSIDE]: { pinned: true, at: 0 } } });
-	store
-		.getState()
-		.applySearchAnswer(store.getState().beginAnswer(), [{ id: OUTSIDE }]);
+	store.getState().applySearchAnswer(store.getState().beginAnswer(), [
+		{ id: OUTSIDE },
+	]);
 	assert.equal(
 		store.getState().pinFacts[OUTSIDE]?.pinned,
 		true,
