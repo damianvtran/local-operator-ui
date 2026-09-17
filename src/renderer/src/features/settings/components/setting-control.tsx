@@ -34,7 +34,9 @@ import {
 	Textarea,
 } from "@shared/components/ui";
 import type { KeyboardEvent } from "react";
+import { settingComboSource } from "../backend-setting-combos";
 import { CASCADE_SENTINEL, serialize } from "./backend-settings-drafts";
+import { SettingCombobox, settingHelpId } from "./setting-combobox";
 
 /**
  * The width each kind's control occupies.
@@ -183,6 +185,12 @@ export type SettingControlProps = {
 	setting: BackendSetting;
 	/** The serialized draft, or the cascade sentinel for the cascade kind. */
 	value: string;
+	/**
+	 * The `hosting` this row will boot on: the hosting row's draft while it is
+	 * unsaved, the server's value otherwise. Only the model rows read it, and
+	 * only to narrow their list.
+	 */
+	effectiveHosting?: string;
 	/** The cascade chains, when the kind is `cascade`. */
 	chains?: Record<string, string[]>;
 	/** True while the row is saving, or gated off by another setting. */
@@ -198,7 +206,38 @@ export const SettingControl = ({
 	disabled = false,
 	onValueChange,
 	onChainsChange,
+	effectiveHosting = "",
 }: SettingControlProps) => {
+	/*
+	 * The searchable combobox branch, keyed on the setting's KEY rather than on
+	 * its kind, and placed before the switch so it cannot be reached by a later
+	 * arm.
+	 *
+	 * WHY A KEY: every one of these rows IS `Kind.TEXT`, on the server and on the
+	 * wire, and stays that way — the suggestions assist a deliberately open value
+	 * space rather than constraining it to a closed set. A new `kind` would force
+	 * `coerce`, `validate` and the CLI to grow a branch for that open space, which
+	 * is the argument the TUI recorded when it shipped the same feature
+	 * (`_SUGGEST_KEYS` in `settings_view.py`). The row's own behaviour — its
+	 * `text` slot width, its deep-link reveal seam — therefore stays as it is.
+	 */
+	const comboSource = settingComboSource(setting.key);
+	if (comboSource) {
+		return (
+			<SettingCombobox
+				setting={setting}
+				kind={comboSource}
+				value={value}
+				disabled={disabled}
+				onValueChange={onValueChange}
+				effectiveHosting={effectiveHosting}
+				/* The row renders its help in a `core` row and behind a disclosure in an
+				   `advanced` one, so the id only names something that is on the page. */
+				helpId={setting.help ? settingHelpId(setting.key) : undefined}
+			/>
+		);
+	}
+
 	switch (setting.kind) {
 		case "bool":
 			return (
