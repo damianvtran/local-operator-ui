@@ -320,12 +320,17 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 	const refusals = validateScheduledTask({
 		message: prompt,
 		/*
-		 * Suppressed when the picker has nothing to offer: the empty-list sentence
-		 * already says why there is no choice, and "Pick a conversation." under it
-		 * would be the second reason for one absence. The refusal is for the case
-		 * where the choice EXISTS and has not been made.
+		 * The guard and the sentence are separate inputs, deliberately (round 2,
+		 * N1). `needsConversation` is passed RAW, so an empty or still-loading
+		 * picker refuses the save; `hasConversationChoices` suppresses only the
+		 * "Pick a conversation." sentence, which would otherwise be the second
+		 * reason for one absence while the empty-list line already gives the first.
+		 * Folding them into one `&&` was the defect: it switched the guard off with
+		 * the copy, and `Create` then armed `{cwd}` - a new conversation - while the
+		 * form said `An existing conversation`.
 		 */
-		needsConversation: needsConversation && conversations.length > 0,
+		needsConversation,
+		hasConversationChoices: conversations.length > 0,
 		repeatMs,
 		endsRuns: ends === "runs" && endsRuns !== "" ? endsRuns : null,
 		existingWakeCount,

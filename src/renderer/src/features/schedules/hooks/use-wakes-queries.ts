@@ -1,5 +1,7 @@
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
-import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import {
+	type SessionRow,
+	useSessionRows,
+} from "@features/chat/pickers/destination-pickers";
 /**
  * The Schedules page's reads and writes.
  *
@@ -43,6 +45,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { retryWakeWrite } from "../scheduled-task-model";
 
 /**
  * How often the listing re-reads, and why this number.
@@ -56,48 +59,28 @@ import {
  */
 export const WAKES_POLL_MS = 30_000;
 
-/**
- * Whether a wake WRITE may be sent a second time.
- *
- * The app's query client retries a mutation once by default, and for this family
- * that default is wrong in a way a user can see. A write here is at-most-once:
- * the backend keeps a receipt per `request_id`, so a retry of a request that
- * already ran replays the first attempt's outcome. But a request that was
- * REFUSED (a 409, a 422) leaves its receipt claimed and unresolved, so the retry
- * is answered with the journal's own sentence - "Request outcome is
- * indeterminate. Reconcile session state before issuing a new request" - and the
- * reason the user needed ("at most 16 wake schedules are allowed.") is replaced
- * by an internal one. Measured on the live drive, against a conversation at the
- * cap: two 409s in the backend log, and the indeterminate sentence on screen.
- *
- * So the retry is kept for exactly the case the receipt exists for - a request
- * that never got an answer, where re-sending is the only way to learn the
- * outcome (`status === null` is this transport's name for that) - and refused
- * for every request the backend DID answer.
+/*
+ * The write retry's policy lives in the model (`scheduled-task-model.ts`,
+ * `retryWakeWrite`) rather than beside this hook, so a test can construct the
+ * boundary instead of approximating it - round 2's M1, and the reason
+ * `defaultQueryOptions` is exported for its own policy in `query-client.ts`.
  */
-const retryWakeWrite = (failureCount: number, error: Error): boolean =>
-	error instanceof DesktopControlError && error.status === null
-		? failureCount < 1
-		: false;
 
 /** One cache entry for the whole listing: there is no per-query variant of it. */
 export const WAKES_LIST_KEY = ["desktop", "wakes", "list"] as const;
 
 /**
- * One conversation the picker can offer, in the shape `sessions.list` returns.
+ * One conversation the picker can offer: the shared `SessionRow`, under the name
+ * this feature reads it by - one type rather than two structural twins over one
+ * cache entry (round 2, M3).
  *
  * `mtime` is the conversation's last activity in **epoch SECONDS**, which is
  * where this wire differs from the wake listing beside it (milliseconds) - named
  * here because the two are read by one dialog, and a caller that assumed the
- * other unit rendered a real conversation as "20691d ago" (measured, on the
- * drive against a live backend). `live_state` is the owner's state.
+ * other unit rendered a real conversation as "20691d ago" (measured, on the drive
+ * against a live backend). `live_state` is the owner's state.
  */
-export type ConversationChoice = {
-	id: string;
-	name: string;
-	mtime: number;
-	live_state?: string;
-};
+export type ConversationChoice = SessionRow;
 
 /**
  * The conversations a user could arm a wake in, newest first.
@@ -117,15 +100,13 @@ export type ConversationChoice = {
  */
 export const useConversationChoices = (enabled: boolean) => {
 	const { baseUrl } = apiConfig;
-	return useQuery<ConversationChoice[], Error>({
-		queryKey: ["desktop", "sessions", "rows"],
-		queryFn: () =>
-			desktopResult<{ sessions: ConversationChoice[] }>({
-				op: "sessions.list",
-				limit: 200,
-			}).then((result) => result.sessions ?? []),
+	/*
+	 * Through the shared read, not a second declaration of it: same op, same
+	 * `limit`, same mapping and same cache entry as the stop picker, so the only
+	 * thing this caller owns is the two options that differ (round 2, M3).
+	 */
+	return useSessionRows({
 		enabled: enabled && !!baseUrl,
-		staleTime: 5_000,
 		refetchOnWindowFocus: true,
 	});
 };

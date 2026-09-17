@@ -1500,7 +1500,20 @@ export const ForkPicker: FC<PickerContext> = ({
 
 // -------------------------------------------------------------------- stop
 
-type SessionRow = {
+/**
+ * One conversation `sessions.list` returns, as BOTH pickers read it.
+ *
+ * Exported, with the read below, because two features ask this one question over
+ * one cache entry: this file's stop picker and the Schedules dialog's destination
+ * picker. They used to declare the same key, the same op, the same `limit: 200`
+ * and the same mapping twice, with two structural row types that differed by a
+ * `pending?` - two answers to one question over one entry, which is round 2's M3.
+ *
+ * `mtime` is epoch **SECONDS** on this wire, where the wake listing beside it is
+ * milliseconds: the pickers convert at the call site rather than here, and the
+ * Schedules dialog is the caller that learned why.
+ */
+export type SessionRow = {
 	id: string;
 	name: string;
 	mtime: number;
@@ -1508,17 +1521,33 @@ type SessionRow = {
 	pending?: unknown;
 };
 
-function useSessionRows() {
+/**
+ * The shared read behind both pickers.
+ *
+ * The options are exactly what the two callers differ on, rather than a second
+ * copy of the query: the Schedules dialog must ask what exists NOW when it opens
+ * (it is mounted for the page's whole life, so a query with no `enabled` gate
+ * answered once per page load and a conversation created since was missing from
+ * the list), while the stop picker is happy with the default.
+ */
+export function useSessionRows(
+	options: { enabled?: boolean; refetchOnWindowFocus?: boolean } = {},
+) {
 	return useQuery({
-		queryKey: ["desktop", "sessions", "rows"],
+		queryKey: SESSION_ROWS_KEY,
 		queryFn: () =>
 			desktopResult<{ sessions: SessionRow[] }>({
 				op: "sessions.list",
 				limit: 200,
 			}).then((result) => result.sessions ?? []),
+		enabled: options.enabled ?? true,
 		staleTime: 5_000,
+		refetchOnWindowFocus: options.refetchOnWindowFocus,
 	});
 }
+
+/** The one cache entry this question has, named once. */
+const SESSION_ROWS_KEY = ["desktop", "sessions", "rows"] as const;
 
 function sessionLabel(row: SessionRow) {
 	return row.name?.trim() || `Untitled ${row.id}`;

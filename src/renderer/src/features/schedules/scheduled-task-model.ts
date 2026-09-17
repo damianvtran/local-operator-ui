@@ -5,6 +5,7 @@ import {
 	formatWakeDue,
 } from "@features/chat/components/run-details/run-detail-model";
 import type { ScheduleResponse } from "@shared/api/local-operator";
+import { isServerUnreachable } from "@shared/api/local-operator/desktop-api";
 import {
 	type DesktopWakeSupervisor,
 	WAKE_MESSAGE_MAX_CHARS,
@@ -320,6 +321,20 @@ export type ScheduledTaskInput = {
 	message: string;
 	/** A conversation must be named on the create branch's existing-conversation arm. */
 	needsConversation: boolean;
+	/**
+	 * Whether the picker has anything to OFFER.
+	 *
+	 * A second field because the sentence and the guard are two different
+	 * questions, and sharing one boolean between them was round 2's N1: the
+	 * suppression that keeps "Pick a conversation." from doubling the empty-list
+	 * sentence also switched off the refusal, so `invalid` came back false and the
+	 * primary button was ENABLED with no destination while the form said `An
+	 * existing conversation` - pressing it resolved to `{cwd}` and created a NEW
+	 * conversation the user had not chosen. That window is not an edge case: the
+	 * picker's read is in flight on every open, so `conversations` is empty for a
+	 * moment on the common path.
+	 */
+	hasConversationChoices: boolean;
 	/** `null` when the form is not naming a repeat. */
 	repeatMs: number | null;
 	/** The `After N runs` bound, or `null`. */
@@ -350,7 +365,17 @@ export const validateScheduledTask = (
 		length > WAKE_MESSAGE_MAX_CHARS
 			? `This prompt is ${length.toLocaleString()} characters, and a wake holds at most ${WAKE_MESSAGE_MAX_CHARS.toLocaleString()}. Shorten it to save.`
 			: "";
-	const conversation = input.needsConversation ? "Pick a conversation." : "";
+	/*
+	 * The SENTENCE yields when there is nothing to pick (the empty-list line
+	 * already says why), and it is the only thing that yields: `invalid` below
+	 * keeps the raw `needsConversation`, so an empty or still-loading picker
+	 * refuses the save instead of writing to a destination the form does not name
+	 * (round 2, N1).
+	 */
+	const conversation =
+		input.needsConversation && input.hasConversationChoices
+			? "Pick a conversation."
+			: "";
 	const repeat =
 		input.repeatMs !== null && input.repeatMs < MIN_WAKE_INTERVAL_MS
 			? "Wakes repeat no more often than once a minute."
@@ -607,3 +632,53 @@ export const repeatEveryString = (
 	count: number,
 	unit: "minutes" | "hours" | "days" | "weeks",
 ): string => `${count}${unit.charAt(0)}`;
+
+/**
+ * Whether a wake WRITE may be sent a second time.
+ *
+ * Kept in the model rather than beside the hook that uses it, and exported, for
+ * the reason this repo's `defaultQueryOptions` gives for its own placement: a
+ * verification surface has to be able to CONSTRUCT a policy rather than
+ * approximate it. This is the one piece of the feature that produced a
+ * user-visible defect on the drive, and until round 2 it had no pin at all (M1).
+ *
+ * The app's query client retries a mutation once by default, and for this family
+ * that default is wrong in a way a user can see. A write here is at-most-once:
+ * the backend keeps a receipt per `request_id`, so a retry of a request that
+ * already ran replays the first attempt's outcome. But a request that was
+ * REFUSED (a 409, a 422) leaves its receipt claimed and unresolved, so the retry
+ * is answered with the journal's own sentence - "Request outcome is
+ * indeterminate. Reconcile session state before issuing a new request" - and the
+ * reason the user needed ("at most 16 wake schedules are allowed.") is replaced
+ * by an internal one. Measured on the live drive, against a conversation at the
+ * cap: two 409s in the backend log, and the indeterminate sentence on screen.
+ *
+ * So the retry is kept for exactly the case the receipt exists for - a request
+ * that never got an answer, where re-sending is the only way to learn the
+ * outcome - and refused for every request the backend DID answer.
+ *
+ * **Which failures those are is the repo's existing reading, not a new one.**
+ * This predicate shipped comparing `status === null`, on the claim that `null`
+ * names "the transport never answered". It does not, in the app that ships:
+ * `src/main/desktop-transport.ts` catches every fetch throw - a refused socket,
+ * a reset, and its own 20 s `AbortSignal.timeout` - and returns a SYNTHESISED 503
+ * with `answered: false`, so the renderer never sees `null` for those. Round 2's
+ * reviewer reproduced both against the real transport (ECONNREFUSED, and an
+ * accept-and-never-answer past the 20 s abort): `status = 503`,
+ * `answered = false` each time. `null` reaches the renderer only when the IPC
+ * call itself rejects or main never replies within its own 30 s deadline - "main
+ * is wedged" - which is not the case a receipt can be learned from, so the old
+ * predicate fired where nothing had been sent and was withheld from the case the
+ * receipt exists for.
+ *
+ * `isServerUnreachable` is this repo's one reading of that pair (`null` is a
+ * transport that never produced a response, 503 is the relay saying it could
+ * not), already used by the compatibility banner and the stop path. A second,
+ * narrower reading of one status in a sibling file is the shape this repo's notes
+ * keep flagging, so this uses that judgement instead of restating it.
+ *
+ * `failureCount < 1` is exactly one retry, which is what TanStack v5 means by it:
+ * the callback is first called with `failureCount === 0`.
+ */
+export const retryWakeWrite = (failureCount: number, error: Error): boolean =>
+	isServerUnreachable(error) ? failureCount < 1 : false;

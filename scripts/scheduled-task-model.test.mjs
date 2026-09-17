@@ -28,6 +28,13 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/schedules/scheduled-task-model";',
 			'export * from "./src/renderer/src/shared/api/local-operator/wakes-api";',
+			/*
+			 * The retry policy's own currency: `retryWakeWrite` reads a
+			 * `DesktopControlError`'s status, so a test that pins its boundary has to
+			 * be able to CONSTRUCT one rather than approximate it - the same reason
+			 * `defaultQueryOptions` is exported for its own policy (round 2, M1).
+			 */
+			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -61,7 +68,9 @@ const {
 	scheduledTaskRows,
 	supervisorLead,
 	toScheduledTaskRow,
+	retryWakeWrite,
 	validateScheduledTask,
+	DesktopControlError,
 	wakeCountClause,
 	wakeCreateBody,
 	wakePromptHead,
@@ -450,6 +459,7 @@ test("the dialog's refusals are inline, named, and independent", () => {
 	const quiet = {
 		message: "read my email",
 		needsConversation: false,
+		hasConversationChoices: true,
 		repeatMs: null,
 		endsRuns: null,
 		existingWakeCount: 0,
@@ -464,6 +474,44 @@ test("the dialog's refusals are inline, named, and independent", () => {
 	assert.equal(
 		validateScheduledTask({ ...quiet, needsConversation: true }).conversation,
 		"Pick a conversation.",
+	);
+	/*
+	 * Round 2's N1, as the invariant rather than the symptom: the sentence yields
+	 * when there is nothing to pick, and the GUARD does not. One boolean doing both
+	 * jobs left `invalid` false with the picker empty, so the primary button was
+	 * enabled with no destination and pressing it armed `{cwd}` - a new
+	 * conversation - while the form said `An existing conversation`.
+	 */
+	assert.equal(
+		validateScheduledTask({ ...quiet, needsConversation: true }).conversation,
+		"Pick a conversation.",
+	);
+	assert.equal(
+		validateScheduledTask({
+			...quiet,
+			needsConversation: true,
+			hasConversationChoices: false,
+		}).conversation,
+		"",
+		"with nothing to pick, the sentence yields - the empty-list line says why",
+	);
+	assert.equal(
+		validateScheduledTask({
+			...quiet,
+			needsConversation: true,
+			hasConversationChoices: false,
+		}).invalid,
+		true,
+		"and the refusal does NOT yield with it: an empty picker must stop the save",
+	);
+	/* The ceiling still outranks the picker's sentence when both apply. */
+	assert.equal(
+		validateScheduledTask({
+			...quiet,
+			needsConversation: true,
+			existingWakeCount: 16,
+		}).conversation,
+		"This conversation already has 16 wakes, the most it can hold. Cancel one to add another.",
 	);
 	/* The repeat floor. */
 	assert.equal(
@@ -497,6 +545,39 @@ test("the dialog's refusals are inline, named, and independent", () => {
 		validateScheduledTask({ ...quiet, endsRuns: 4, alreadyRun: 3 }).ends,
 		"",
 	);
+});
+
+test("the write retry is one retry, and only where nothing was sent (round 2, M1/N2)", () => {
+	/*
+	 * The policy that produced a user-visible defect on the live drive and had no
+	 * pin until round 2. The shipped transport answers a refused socket and its own
+	 * 20 s abort with a SYNTHESISED 503 (`answered: false`), so 503 is "nothing was
+	 * sent" for this app while a 409/422 is the backend answering - and a retry of
+	 * an ANSWERED refusal is what replaced "at most 16 wake schedules are allowed."
+	 * with the journal's "indeterminate" sentence.
+	 */
+	const transport = (status) => new DesktopControlError(status, "transport");
+	assert.equal(
+		retryWakeWrite(0, transport(503)),
+		true,
+		"a 503 is retried once",
+	);
+	assert.equal(retryWakeWrite(1, transport(503)), false, "and only once");
+	assert.equal(
+		retryWakeWrite(0, transport(null)),
+		true,
+		"a null status is retried once",
+	);
+	assert.equal(retryWakeWrite(1, transport(null)), false);
+	for (const status of [409, 422, 401, 404, 500]) {
+		assert.equal(
+			retryWakeWrite(0, transport(status)),
+			false,
+			`${status} is the backend answering, so no retry`,
+		);
+	}
+	/* A failure that is not this transport's error is never retried. */
+	assert.equal(retryWakeWrite(0, new Error("boom")), false);
 });
 
 test("the dialog's two grammars: repeat durations, and a prompt head", () => {
