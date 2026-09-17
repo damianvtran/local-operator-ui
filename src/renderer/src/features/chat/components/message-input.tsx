@@ -3377,10 +3377,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 */
 								undefined,
 				// Whether discarding would empty a composer the user can see text in.
-				// The label has to name the cost: "Discard unsent message" over an
-				// empty box drops an invisible claim and costs nothing, but the same
-				// words over a full box destroy what is in it, and with `heldInBox`
-				// true those are the SAME words for two different outcomes.
+				// The label has to name the cost: a discard over an empty box drops
+				// an invisible claim and costs nothing, but the same words over a
+				// full box destroy what is in it, and with `heldInBox` true those
+				// are the SAME words for two different outcomes. Both spellings stay
+				// neutral about delivery for the reason the held claim does (design
+				// round 2, D9): "unsent" is a state this app cannot check.
 				discardClearsBox: !boxEmpty,
 			};
 		}, [sendError, newMessage, replies]);
@@ -3577,11 +3579,22 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							 * third possibility - and it has to name the retry too, or the two
 							 * copies read as a duplicate rather than as one message with a
 							 * remedy.
+							 *
+							 * The noun is deliberately NEUTRAL ("a message"), not "an unsent
+							 * message" (design round 2, D9). Whether the request was admitted
+							 * is the very thing this sentence calls unknowable, so calling it
+							 * unsent asserted non-delivery one clause before denying that anyone
+							 * could know - and it sat on the same card as the transport's own
+							 * sentence for a write, which says the request may or may not have
+							 * reached the server. A reader told both that the message is unsent
+							 * and that its fate is unknowable has been given the reason to
+							 * re-send twice, which is the harm the deadline copy exists to
+							 * avoid.
 							 */
 							<p className={cn("text-ink-muted")}>
 								{heldCopyOnScreen === true
-									? "An unsent message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable - its copy is in the transcript above - so restore it and send again only if no reply arrives."
-									: "An unsent message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives."}
+									? "A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable - its copy is in the transcript above - so restore it and send again only if no reply arrives."
+									: "A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives."}
 							</p>
 						)}
 						{!abandonNotice &&
@@ -3646,7 +3659,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												textareaRef.current?.focus();
 											}}
 										>
-											Restore unsent message
+											Restore message
 										</Button>
 									)}
 									{composerAlert.abandon && (
@@ -3690,14 +3703,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												if (composerAlert.abandon === "discard") {
 													setNewMessage("");
 													sendError?.onDiscard?.();
-													setAbandonNotice("Unsent message discarded.");
+													setAbandonNotice("Message discarded.");
 												} else {
 													sendError?.onReleaseHeld?.();
 													// Names the outcome the user chose: the typed draft is
 													// deliberately still there, only the claim is gone.
-													setAbandonNotice(
-														"No longer holding the unsent message.",
-													);
+													setAbandonNotice("No longer holding the message.");
 												}
 												// This control unmounts itself, and focus would fall to
 												// `<body>` - where Enter sends nothing and typing lands
@@ -3712,10 +3723,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												? composerAlert.discardClearsBox
 													? // The box holds the payload, so discarding empties
 														// something the user can see. "this message" names
-														// what is in front of them; "unsent message" reads as
+														// what is in front of them; "message" reads as
 														// the invisible claim and understates the cost.
 														"Discard this message"
-													: "Discard unsent message"
+													: "Discard message"
 												: "Stop holding it"}
 										</Button>
 									)}
