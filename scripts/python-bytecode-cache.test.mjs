@@ -1394,13 +1394,15 @@ test("every python-running runCommand call site in the update service passes the
 	);
 
 	// Asserted rather than assumed, so a reorganisation cannot make this pass by
-	// finding nothing: the probe, the pip upgrade and the global install's update
-	// child are the three that exist, beside `codesign` and the installer list
-	// probe below.
+	// finding nothing: the probe and the pip upgrade are the two that exist, beside
+	// `codesign` and the installer list probe below. The global install's update
+	// child LEFT this table when it moved to `runInOwnProcessGroup` - the group stop
+	// is that module's whole point - so its guard is asserted by name below, where
+	// this scan can no longer see it.
 	assert.equal(
 		calls.length,
-		5,
-		`expected the file's five runCommand call sites, found ${calls.length}`,
+		4,
+		`expected the file's four runCommand call sites, found ${calls.length}`,
 	);
 	/*
 	 * The fifth is `probeInstallerList`, and it runs python too - `uv` and `pipx`
@@ -1422,10 +1424,25 @@ test("every python-running runCommand call site in the update service passes the
 		/env:\s*this\.pythonSpawnEnv\(\)/,
 		`the installer list probe must pass the guarded environment: ${probeCalls[0].text.replace(/\s+/g, " ")}`,
 	);
+	/*
+	 * The global install's own update child, which is a Python process this app
+	 * still starts and still responsible for: it runs through `runInOwnProcessGroup`
+	 * so an expired budget can stop the uv/pipx/pip the front end starts, and it
+	 * carries the same guard plus the ONE addition it needs - the installer PATH its
+	 * own lookup reads. Asserted here because the `runCommand` inventory above can no
+	 * longer reach it.
+	 */
+	const runnerCall = source.slice(source.indexOf("runInOwnProcessGroup({"));
+	assert.ok(runnerCall.length > 0, "the update child is not spawned by name");
+	assert.match(
+		runnerCall,
+		/env:\s*\{\s*\.\.\.this\.pythonSpawnEnv\(\),\s*PATH:\s*updatePath\s*\}/,
+		"the global install's update child must pass the guarded environment plus the installer PATH",
+	);
 	assert.equal(
 		pythonCalls.length,
-		3,
-		`expected three python-running call sites, found ${pythonCalls.length}`,
+		2,
+		`expected two python-running call sites, found ${pythonCalls.length}`,
 	);
 	for (const { line, text } of pythonCalls) {
 		/*
@@ -2134,6 +2151,19 @@ const SPAWN_SITES = [
 		2,
 		/jobProbe/,
 		"asks launchd whether ShipIt's job is loaded; `jobProbe` is `/bin/launchctl` from `watchdogSignals`",
+	),
+	passThrough(
+		"src/main/install-group-run.ts",
+		"spawn",
+		1,
+		"runs the install's own front end (`<resolved console script> update`) as its own GROUP LEADER, so an expired budget can signal the uv/pipx/pip that front end starts rather than only the front end itself. The environment is the caller's: `update-service.ts` hands it `pythonSpawnEnv()` plus the installer PATH, and this module builds none of its own",
+	),
+	runsCommand(
+		"src/main/install-group-run.ts",
+		"spawnSync",
+		1,
+		/"ps"/,
+		"reads a live pid's START STAMP (`ps -o lstart= -p <pid>`), which is the identity evidence a pending-update record is judged by - a pid is unique only among LIVE processes, so a recycled number would otherwise be read as this app's updater; `ps` starts no interpreter",
 	),
 	runsCommand(
 		"src/main/update-service.ts",
