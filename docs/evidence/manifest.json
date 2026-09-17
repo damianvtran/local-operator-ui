@@ -1,6 +1,6 @@
 {
-  "head": "2f3a77cd60bfe3df3f28de46e557adf5c302ca20",
-  "headNote": "The merge this evidence rides: `2f3a77cd6`. `head` names it rather than the evidence commit after it, because that commit moves `docs/` only - the same statement the fold rule makes for every other pass in this file. The fold brought main's own frames and records with it (two declared sets, five swept story entries), so `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and `scriptsTree` are RE-DERIVED on the fused tree in this commit: the counts beside this note describe the tree that ships rather than either side's, which is group (4) of `citationConvention` and the fix for the stale `countsMean` round 1 filed as R5.",
+  "head": "c8506c5aea3210ea8b554c4ee7a6294c8a0d75f6",
+  "headNote": "The merge this evidence rides: `c8506c5ae`. `head` names it rather than the evidence commit after it, because that commit moves `docs/` only - the same statement the fold rule makes for every other pass in this file. This manifest rides TWO folds in one round (onto `2c8f66d33`, then onto `846ff92a5` as main moved again while the round was in review); both brought main's own frames and records with them, so `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and `scriptsTree` are RE-DERIVED on the twice-fused tree in the commits around it: the counts beside this note describe the tree that ships rather than either side's, which is group (4) of `citationConvention` and the fix for the stale `countsMean` round 1 filed as R5.",
   "srcTree": "e6a342261d3cf1df37342c88c959a8656fb5e938",
   "scriptsTree": "8552b6f6cd48c6ea4dabe728d6de248b890a6b03",
   "dirtyWorkingTree": false,
