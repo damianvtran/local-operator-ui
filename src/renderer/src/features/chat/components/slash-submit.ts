@@ -447,7 +447,15 @@ export type ArgumentShapeRow = {
  */
 function argumentFits(row: ArgumentShapeRow, args: string): boolean {
 	const trimmed = args.trim();
-	if (row.shape === "none") return trimmed === "";
+	/*
+	 * NOTHING TYPED FITS EVERY SHAPE. The user has not given the command a tail to
+	 * own yet, and refusing here would read a bare `/login`, `/mcp`, `/rename` or
+	 * `/move` as prose — a 422 dead end where a command was meant (review R2).
+	 * The endpoint's "no args" test is about what the ROUTE then does with a
+	 * command it was handed, not about which drafts are commands.
+	 */
+	if (trimmed === "") return true;
+	if (row.shape === "none") return false;
 	if (row.shape === "any") return trimmed !== "";
 	const tokens = trimmed.split(/\s+/);
 	/*
@@ -573,11 +581,51 @@ export function planSlashSubmission({
 	 * (`inlineArgumentFor`), and `argumentCommands` is the declaration itself
 	 * (`arguments`), which is the only one `/login` appears in (R1).
 	 */
+	/*
+	 * THE ONE QUESTION THE WHOLE RULE TURNS ON, and the reason this file can be
+	 * argued with: does THIS word own THIS tail?
+	 *
+	 * The wire's shape decides, because that is the endpoint's own rule and the
+	 * only fact that can tell `/mcp logout` from `/mcp logout seems to cause a
+	 * crash`. The three vocabularies are the OLDER-WIRE FALLBACK and answer
+	 * exactly as they did before the field existed, so a backend that publishes no
+	 * shape reproduces its previous behaviour to the letter.
+	 *
+	 * A shape that VETOES a row the booleans own is the defect this replaced
+	 * (review R1/R2, QA Q-1, UX U1): with `credential` published as `none`, the
+	 * whole-draft bridge below still read the row as prose, the released endpoint
+	 * admitted the text, and a secret the dispatcher exists to strip landed in a
+	 * session as a user message. So the shape is consulted FIRST and completely,
+	 * and the booleans are consulted only when the wire said nothing.
+	 */
 	const consumesText =
 		promptCommands.has(word) ||
 		valueArgumentCommands.has(word) ||
 		(argumentCommands ?? EMPTY_COMMANDS).has(word) ||
 		(prefixingCommands ?? EMPTY_COMMANDS).has(word);
+	const wireShape = (argumentShapes ?? NO_SHAPES).get(word);
+	/*
+	 * THE SKEW BRIDGE, and it is deliberately asymmetric.
+	 *
+	 * A shape of `none` beside a row whose own `arguments` says it takes text is
+	 * the one contradiction the two fields can be in, and it is not hypothetical:
+	 * the RELEASED backend publishes `none` for `/credential` while a core fix in
+	 * flight makes it `any`. For that window the COMMAND reading wins — the
+	 * previous release's behaviour — because the alternative sends the command's
+	 * trailing text to the model, and here the trailing text is a SECRET. The
+	 * asymmetry is the whole point: the failure of the other reading is silent and
+	 * unrecoverable, and the failure of this one is a refused command the user can
+	 * see.
+	 */
+	const shape =
+		wireShape?.shape === "none" && (argumentCommands ?? EMPTY_COMMANDS).has(word)
+			? { shape: "any" as const, words: wireShape.words }
+			: wireShape;
+	/** Asked by the whole-draft branch and the leading-line hoist alike. */
+	const ownsArgs = (args: string): boolean => {
+		if (args.trim() === "") return true;
+		return shape ? argumentFits(shape, args) : consumesText;
+	};
 	/*
 	 * And whether the word is armed ONLY by an explicit pick. This narrows the
 	 * DRAFT-OPENING branch alone, never the whole-draft one, because that is what
@@ -593,13 +641,7 @@ export function planSlashSubmission({
 		// argument only if the command takes one (`/model gpt-5`, `/goal ship
 		// it`). A no-argument command with trailing text is the operator's own
 		// report — `/compact hello` ran and ate `hello` — so the draft is prose.
-		if (!consumesText && command.args) return { kind: "send" };
-		// THE SHAPE, SECOND AND ONLY WHEN THE WIRE SENT ONE. The booleans above say
-		// the command takes text; the shape says what THAT text may be, which is
-		// the endpoint's own predicate — so `/mcp logout` runs while `/mcp logout
-		// seems to cause a crash` stays the sentence the user wrote.
-		const shape = (argumentShapes ?? NO_SHAPES).get(word);
-		if (shape && !argumentFits(shape, command.args)) return { kind: "send" };
+		if (!ownsArgs(command.args)) return { kind: "send" };
 		return { kind: "whole", command };
 	}
 
@@ -607,7 +649,7 @@ export function planSlashSubmission({
 	// trailing text IS its argument and which a typed draft may hoist at all, is
 	// a command. Anything else is the sentence the user is writing, and it is sent
 	// as written.
-	if (!consumesText || armedOnly) return { kind: "send" };
+	if (!ownsArgs(command.args) || armedOnly) return { kind: "send" };
 	if (!opensDraft && gesture !== "pick") return { kind: "send" };
 
 	/*
