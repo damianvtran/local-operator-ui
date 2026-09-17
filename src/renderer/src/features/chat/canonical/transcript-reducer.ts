@@ -96,9 +96,50 @@ export type TranscriptRecord =
 			/** The model's own `i` narration, when it wrote one. */
 			intent: string | null;
 			args: Record<string, unknown> | null;
-			/** compose -> running -> done. Compose means arguments still arriving. */
-			phase: "composing" | "running" | "done";
+			/**
+			 * compose -> queued -> running -> done.
+			 *
+			 * `composing` is the model still DICTATING the arguments; `queued` is the
+			 * producer's terminal dictation frame (`ToolCallComposeEvent.
+			 * dictation_complete`) saying the writing stopped and the call has not
+			 * started — it may wait a long while behind a sibling's execution group
+			 * before it does. Both are unsettled; only `composing` claims the model is
+			 * still writing, and neither has an execution clock.
+			 */
+			phase: "composing" | "queued" | "running" | "done";
 			argumentBytes: number;
+			/**
+			 * The harness's own verdict that this call will NEVER run, or `null`.
+			 *
+			 * Set from `ToolCallComposeEvent.not_run_reason`, which is the only
+			 * statement such a call ever gets: a call parked at planning (invalid
+			 * arguments, an unknown tool, a duplicate id) or skipped by steering
+			 * deliberately has no `tool_execution_start`/`_end` — the API server pairs
+			 * tool records by id, so a synthetic start would claim the tool ran. The
+			 * composing surface is therefore the only one that announced the call and
+			 * the only one that can honestly settle it.
+			 *
+			 * It is a SEPARATE field from `isError` on purpose: the call did not fail,
+			 * it was never sent to a tool, and a row that reported it as a tool result
+			 * would claim an outcome that never existed. The reason is the whole
+			 * content of the fact and names what stopped it.
+			 */
+			notRunReason: string | null;
+			/**
+			 * The call was never handed to a tool: it was parked with a verdict, or
+			 * the turn died while it was still being dictated or waiting to run.
+			 *
+			 * A fact of its own, and NOT the same one as `notRunReason`: the verdict
+			 * carries the harness's words, and a turn that dies leaves none — the TUI
+			 * settles that row with the `never sent · N composed` record and no error
+			 * text at all (`app.py::_retire_live_tool_cards` retires every live card
+			 * through `ToolCard.mark_interrupted`, which keeps the compose record for a
+			 * card that was still composing or queued). Without the flag the row has
+			 * nothing to say about a call that reached no tool: a clean turn end painted
+			 * it as a SUCCESS with a tick, and an abort as an interrupt of a call that
+			 * had not begun.
+			 */
+			neverSent: boolean;
 			output: string | null;
 			isError: boolean;
 			durationS: number | null;
@@ -731,6 +772,74 @@ function removeMatching(
 ) {
 	if (!state.records.some(predicate)) return state;
 	const records = state.records.filter((record) => !predicate(record));
+	return { ...state, records, index: withIndex(records) };
+}
+
+/**
+ * Drop the row a compose frame announced under an index-derived placeholder.
+ *
+ * The promotion path REKEYS that row rather than dropping it (`supersedesRekey`,
+ * which is the shape the contract names); this is the case where a second frame
+ * already arrived under the call's real id, so the announcement is a duplicate
+ * that the row would otherwise sit beside for the life of the turn.
+ *
+ * Only an ANNOUNCEMENT is retired. A placeholder row that has somehow settled is
+ * left alone: it is the record of a call that reached an outcome, and deleting
+ * it would erase a fact rather than a duplicate. Returns the SAME state when
+ * there is nothing to retire.
+ */
+function supersedesRetire(
+	state: TranscriptState,
+	placeholderCallId: string,
+): TranscriptState {
+	const id = `tool:${placeholderCallId}`;
+	const position = state.index.get(id);
+	if (position === undefined) return state;
+	const record = state.records[position];
+	if (
+		!(
+			record.kind === "tool" &&
+			(record.phase === "composing" || record.phase === "queued")
+		)
+	)
+		return state;
+	return removeMatching(state, (candidate) => candidate.id === id);
+}
+
+/**
+ * REKEY the announcement row: the same row, in the same place, under the real id.
+ *
+ * `ToolCallComposeEvent.supersedes_tool_call_id` says this frame's id belongs to
+ * the call the frames carrying the placeholder's id were announcing. Rekeying
+ * rather than closing one row and opening another is what the contract asks for
+ * ("lets each of those consumers rekey the row it already has instead of opening
+ * a second one"), and it is what keeps the ledger's order stable: the record
+ * holds its position, so the row cannot jump down the transcript at the moment
+ * its identity arrives. The record handed in already carries the announcement's
+ * own `ts` and byte count, so the row keeps the time and the size it was painted
+ * with.
+ *
+ * Returns the SAME state when there is nothing to rekey — no placeholder row, or
+ * one that has already settled — which is half of what makes the repeat
+ * announcement a no-op (the caller's equality gate is the other half).
+ */
+function supersedesRekey(
+	state: TranscriptState,
+	placeholderCallId: string,
+	record: TranscriptRecord,
+): TranscriptState {
+	const at = state.index.get(`tool:${placeholderCallId}`);
+	if (at === undefined) return state;
+	const announcing = state.records[at];
+	if (
+		!(
+			announcing.kind === "tool" &&
+			(announcing.phase === "composing" || announcing.phase === "queued")
+		)
+	)
+		return state;
+	const records = state.records.slice();
+	records[at] = record;
 	return { ...state, records, index: withIndex(records) };
 }
 
@@ -1524,6 +1633,11 @@ function durableRecord(
 			args: null,
 			phase: "done",
 			argumentBytes: 0,
+			// A row read back from the durable transcript is a call the harness
+			// recorded a result for: whatever live verdict it may have carried, the
+			// transcript's own account of the call wins.
+			notRunReason: null,
+			neverSent: false,
 			output: messageText(payload) || null,
 			isError: Boolean(payload.is_error),
 			durationS:
@@ -1843,17 +1957,48 @@ export function applyEvent(
 					});
 				}
 				if (record.kind === "tool" && record.phase !== "done") {
-					// A call still running when the turn ends never reported an
-					// outcome. On an ABORT that is an interrupt, which is its own
-					// state; on a clean end it is a call whose end event was lost, and
-					// claiming success for it would be worse than claiming nothing.
+					/*
+					 * A call still RUNNING when the turn ends never reported an outcome. On
+					 * an ABORT that is an interrupt, which is its own state; on a clean end
+					 * it is a call whose end event was lost, and claiming success for it
+					 * would be worse than claiming nothing.
+					 *
+					 * A row that never STARTED is a different fact, and the turn's verdict
+					 * does not decide it: the call was announced, the turn died, and no tool
+					 * ever received it. The TUI settles exactly these two states this way —
+					 * `_retire_live_tool_cards` retires every live card, and
+					 * `ToolCard.mark_interrupted` keeps the `never sent · N composed` record
+					 * for a card that was still composing or queued. Without it a clean end
+					 * painted a green tick on a call that never ran, and an abort blamed an
+					 * interrupt on a call that had not begun. The compose record is the row's
+					 * whole account of it: no duration, because nothing measured one.
+					 */
+					const unstarted =
+						record.phase === "composing" || record.phase === "queued";
 					next = upsert(next, {
 						...record,
 						phase: "done",
 						// Settled, however it got here: the clock stops even though no
 						// `_end` ever arrived to report a duration.
 						startedAt: null,
-						stopped: Boolean(event.aborted),
+						/*
+						 * A row that never STARTED has no outcome the turn can grant it: no
+						 * tool received the call, so there is nothing that could have
+						 * succeeded. `stopped` is the ladder's "no verdict" state (`outcome`
+						 * reads it after `isError`), and leaving it false here is what put a
+						 * green tick on such a row at a CLEAN turn end — the tick is the
+						 * ladder's default, so "no outcome" has to be said rather than left
+						 * implicit. The TUI settles every live card through the same
+						 * interrupted state for exactly this reason
+						 * (`_retire_live_tool_cards` -> `mark_interrupted`).
+						 *
+						 * A row that WAS running keeps the historical mapping: an abort is an
+						 * interrupt, and a clean end is a call whose end event was lost —
+						 * which is a separate question from this one and is deliberately not
+						 * moved here.
+						 */
+						stopped: Boolean(event.aborted) || unstarted,
+						neverSent: record.neverSent || unstarted,
 					});
 				}
 			}
@@ -1985,42 +2130,154 @@ export function applyEvent(
 		case "tool_call_compose": {
 			const callId = String(event.tool_call_id ?? "");
 			if (!callId) return state;
+			/*
+			 * IDENTITY PROMOTION FIRST, before anything looks a row up.
+			 *
+			 * ``supersedes_tool_call_id`` announces that THIS frame carries the real
+			 * id of a call previously announced under an index-derived placeholder,
+			 * and that the two are the SAME call. A provider that sends a call's
+			 * `name` before its `id` makes the loop announce the row as
+			 * `compose:{index}` while every start and end carries the real id, so a
+			 * client that keys rows by tool_call_id holds TWO records for one call —
+			 * and the abandoned one is painted as an interrupted call at turn end, on
+			 * a call that succeeded.
+			 *
+			 * The TUI rekeys its card and the phone moves the row's correlation onto
+			 * the real id. This port does the same thing to the record: the row the
+			 * announcement left is REKEYED, not closed and reopened, so the call's row
+			 * keeps its place in the ledger.
+			 */
+			const superseded = String(event.supersedes_tool_call_id ?? "");
 			const id = `tool:${callId}`;
 			const current = state.records[state.index.get(id) ?? -1];
-			if (current && current.kind === "tool" && current.phase !== "composing")
-				return state;
-			return upsert(state, {
+			const placeholder = superseded
+				? state.records[state.index.get(`tool:${superseded}`) ?? -1]
+				: undefined;
+			// The row this call already has, in whichever id space holds it: the real
+			// id first, because a frame that already carried it is the tighter
+			// statement, then the announcement's placeholder.
+			const announced =
+				current?.kind === "tool"
+					? current
+					: placeholder?.kind === "tool"
+						? placeholder
+						: undefined;
+			// A row that has OUTGROWN the announcement is left exactly as it is: a
+			// call whose `tool_execution_start` already arrived is history on this
+			// frame and present on that row, and relabelling it from a replayed
+			// announcement would walk a running call back to `queued` (the phone's
+			// `started` guard exists for the same reason).
+			if (
+				announced &&
+				announced.phase !== "composing" &&
+				announced.phase !== "queued"
+			) {
+				// The one case where a call could hold two rows: a later frame already
+				// arrived under the real id, so the announcement beside it is a stale
+				// duplicate and is retired. This is also what makes the promotion
+				// idempotent — the announcement repeats on every later frame of the
+				// call, and the contract defines the repeat to be harmless.
+				return superseded && current?.kind === "tool"
+					? supersedesRetire(state, superseded)
+					: state;
+			}
+			/*
+			 * The NEVER-RUN ending, and it comes FIRST — the order the TUI's handler
+			 * uses, for the same reason: `not_run_reason` is a verdict, and a frame
+			 * that carries one also carries `dictation_complete` (the dictation did
+			 * end — it ended because nothing would receive the call). Reading the
+			 * queued arm first would leave a row saying `queued` on a call that will
+			 * never run, which is the lie this terminal state exists to kill.
+			 *
+			 * The row SETTLES IN PLACE, which is the TUI's `mark_not_run` shape: it
+			 * keeps the final `argument_bytes` from THIS frame (the terminal frame is
+			 * often the only one a viewer saw, so the size has to be handed over
+			 * rather than inherited), takes no clock, and is terminal.
+			 */
+			const reason = String(event.not_run_reason ?? "").trim();
+			const notRun = reason || null;
+			// The frame's own final count, except that a zero is left alone: an
+			// earlier frame that measured nothing and a frame that carries nothing
+			// agree, and a terminal frame with an empty payload must not erase a size
+			// a live frame already measured (`mark_not_run`'s rule).
+			const statedBytes = Number(event.argument_bytes ?? 0);
+			const record: TranscriptRecord = {
 				kind: "tool",
 				id,
-				ts: current?.ts ?? now,
+				// The row's own time survives: it was ANNOUNCED then, and the identity
+				// arriving now does not move it — the same reason the TUI carries the
+				// card's navigation anchor over when it moves the card's id.
+				ts: announced?.ts ?? now,
 				toolCallId: callId,
 				toolName: String(event.tool_name ?? ""),
 				intent: (event.intent as string | null) ?? null,
 				args: null,
-				phase: "composing",
-				argumentBytes: Number(event.argument_bytes ?? 0),
+				phase: notRun
+					? "done"
+					: event.dictation_complete === true
+						? "queued"
+						: "composing",
+				argumentBytes:
+					statedBytes > 0 ? statedBytes : (announced?.argumentBytes ?? 0),
 				output: null,
 				isError: false,
 				durationS: null,
 				// Composing is the model still dictating arguments, which is not part
-				// of the call's execution time. The clock starts at `_start`.
+				// of the call's execution time. The clock starts at `_start`, and a
+				// never-run call never gets one: nothing executed, so there is no
+				// interval to report and the blank column is the honest reading.
 				startedAt: null,
 				images: EMPTY_IMAGES,
 				added: 0,
 				removed: 0,
-				// Composing is the model dictating arguments: there is no RESULT
-				// yet, so there is no diff. The guard above returns early for any
-				// row that already settled, so this cannot blank one.
+				// Composing is the model dictating arguments: there is no RESULT yet,
+				// so there is no diff. The guards above return early for any row that
+				// already settled, so this cannot blank one.
 				diff: null,
 				stopped: false,
-			});
+				notRunReason: notRun,
+				// A verdict is the harness saying the call reached no tool. A call still
+				// being dictated, or waiting to run, has not reached one yet either —
+				// which is a state rather than a settlement, and `phase` carries it.
+				neverSent: notRun !== null,
+			};
+			// The promotion's own case, when the announcement is the ONLY row this
+			// call has: rekey it in place rather than closing it and opening another.
+			if (
+				superseded &&
+				placeholder?.kind === "tool" &&
+				current?.kind !== "tool"
+			)
+				return supersedesRekey(state, superseded, record);
+			return upsert(
+				superseded && current?.kind === "tool"
+					? supersedesRetire(state, superseded)
+					: state,
+				record,
+			);
 		}
 		case "tool_execution_start": {
 			const callId = String(event.tool_call_id ?? "");
 			if (!callId) return state;
 			const id = `tool:${callId}`;
 			const current = state.records[state.index.get(id) ?? -1];
-			if (current && current.kind === "tool" && current.phase === "done")
+			/*
+			 * A row that has ALREADY RUN is not restarted by a replayed start — but a
+			 * never-run row is the exception, and it is the one the producer's
+			 * terminal frames created: two calls may share an id, and then the loser is
+			 * parked with a verdict while the WINNER executes. The TUI's
+			 * `begin_running` revives exactly that card, clearing the error text and
+			 * the error tint for "a row a never-run verdict settled on one of two
+			 * calls sharing an id, whose twin then executed"; this is the same row and
+			 * the same reason. A row that really ran keeps its result, which is what
+			 * refusing here protects: a replay must not blank a settled row's output.
+			 */
+			if (
+				current &&
+				current.kind === "tool" &&
+				current.phase === "done" &&
+				!current.notRunReason
+			)
 				return state;
 			const args = knownArgs(state, callId, event, current);
 			// Remember them for the DURABLE row that will replace this one. The
@@ -2052,6 +2309,12 @@ export function applyEvent(
 					(typeof args?.i === "string" ? args.i : null),
 				args,
 				phase: "running",
+				// A call that is running has outgrown the announcement, so any never-run
+				// verdict on the row it revives is spent (the guard above lets that row
+				// through for the two-calls-one-id case, and the twin's execution is the
+				// fact that retires the verdict).
+				notRunReason: null,
+				neverSent: false,
 				argumentBytes: 0,
 				output: null,
 				isError: false,
@@ -2134,6 +2397,8 @@ export function applyEvent(
 							args: null,
 							phase: "done" as const,
 							argumentBytes: 0,
+							notRunReason: null,
+							neverSent: false,
 							output: null,
 							isError: false,
 							durationS: null,
@@ -2169,6 +2434,14 @@ export function applyEvent(
 				...base,
 				args,
 				phase: "done",
+				// A call that REPORTED a result demonstrably ran, so a never-run verdict
+				// on the row cannot outlive it. The two reach the same row only when two
+				// calls share one id — the loser parked with a verdict, the winner
+				// executing — and the phone clears its own `error` on the start for
+				// exactly this reason. Leaving it would paint `never sent · N composed`
+				// over a call's real output.
+				notRunReason: null,
+				neverSent: false,
 				output: messageText(result) || null,
 				isError: Boolean(event.is_error ?? result.is_error),
 				durationS:
@@ -2407,6 +2680,28 @@ function seededClock(event: LiveEvent, state: TranscriptState): number | null {
 }
 
 /**
+ * Whether a seeded frame states that its call's DICTATION is over.
+ *
+ * Both terminal compose endings are this: a verdict (`not_run_reason`, the call
+ * will never run) and a finished dictation (`dictation_complete`, the call waits
+ * to start). Neither is an announcement of something being written right now —
+ * which is the only thing a reader's arrival can honestly date — and neither has
+ * a start or end event, because the producer deliberately synthesises none (the
+ * API server pairs tool records by id, so a synthetic start would claim the tool
+ * ran). They are therefore the frames the placement rule below has to tell apart
+ * from an ordinary announcement, and the ones a read-back must be sized for.
+ */
+function finishedDictationFrame(event: LiveEvent): boolean {
+	if (event.type !== "tool_call_compose") return false;
+	if (
+		typeof event.not_run_reason === "string" &&
+		event.not_run_reason.trim().length > 0
+	)
+		return true;
+	return event.dictation_complete === true;
+}
+
+/**
  * Seed the in-flight turn from a snapshot's `live_events`. Called after the
  * snapshot's history page has been applied so durable rows win.
  *
@@ -2450,6 +2745,30 @@ function seededClock(event: LiveEvent, state: TranscriptState): number | null {
  * it could locate, measured 41 of 62), while the older ones — an 8-hour turn's
  * earliest work — come back only through the reader's own `load older`. They are
  * not lost (the page stays `has_more`), but this does not promise them at once.
+ *
+ * AND A FRAME WHOSE DICTATION IS OVER IS REFUSED EVEN WITH A TURN IN FLIGHT,
+ * because the in-flight exemption above is a claim about WORK, not about time. A
+ * live clockless announcement is admitted mid-turn because it describes a call
+ * being dictated RIGHT NOW: the viewer's arrival is a wrong number but a true
+ * ordering, and the alternative is a mid-turn join that shows nothing at all.
+ * Both settled-dictation endings say the opposite — the model has stopped writing
+ * this call, so what happens next (a wait behind a sibling's execution group, a
+ * start elsewhere in the batch, or nothing at all) is not at the reader's
+ * arrival — and the reported abnormality is exactly what dating them there
+ * produced: one `wait` turn's four never-run calls rode the persisted seed into
+ * every conversation switch as live `composing` rows stuck for the whole
+ * multi-hour wait. The call's durable row is the authority and the client paints
+ * it IN PLACE when the durable read reaches it — with the record's own time,
+ * which is the one thing these frames cannot state; that is why a refused frame's
+ * call id is also named by `seedCallsMissingLabels`, so the read is sized to
+ * reach it. The read is a bounded tail read, so a call older than its bound
+ * returns through the reader's own `load older` rather than at once. Refusing
+ * here and refusing when no turn is in flight are one rule with one reason — the
+ * frame states no time, so the row must wait for a source that does. A frame
+ * whose record is ALREADY painted is still folded, whatever the clock and
+ * whatever it says: that settles a row the reader can see without moving any row,
+ * and it is the path that paints a verdict on the row its own announcement left
+ * on screen.
  */
 export function applyLiveSeed(
 	state: TranscriptState,
@@ -2492,7 +2811,12 @@ export function applyLiveSeed(
 			if (stated !== null) {
 				clock = stated;
 				placed = true;
-			} else if (!inFlight) {
+			} else if (finishedDictationFrame(event) || !inFlight) {
+				// No time on the frame, so the only instant left is this viewer's
+				// arrival: refuse it rather than paint a row at a moment that belongs to
+				// the reader. The doctrine above has every reason — the turn is over, or
+				// the frame says the dictation finished, which means the call's execution
+				// (queued, running elsewhere, or never) is not happening here.
 				continue;
 			}
 		}
@@ -2529,6 +2853,17 @@ export function applyLiveSeed(
  *
  * Oldest first, deduplicated, and only ids the seed actually settled: a call
  * still running has its start, which carries its own arguments.
+ *
+ * AND SO ARE THE CALLS A SETTLED-DICTATION FRAME NAMES. A compose frame whose
+ * dictation is over (`finishedDictationFrame`) is the ONE announcement of a call
+ * that has no start and no end — and, after the placement rule above, no seeded
+ * row either: its durable row is the authority and the row must come from a
+ * read. Leaving those ids out of this list made that promise half true: the
+ * durable page the caller sizes from this list would not reach them at all, so a
+ * never-run verdict vanished from the ledger and a queued call appeared only
+ * when its start finally arrived. Naming them costs a page the caller was going
+ * to read anyway, and a call whose row cannot be found spends its own bounded
+ * attempts and is dropped like any other (`labelGapCandidates`).
  */
 export function seedCallsMissingLabels(
 	liveEvents: readonly Record<string, unknown>[] | null | undefined,
@@ -2536,8 +2871,11 @@ export function seedCallsMissingLabels(
 ): string[] {
 	const missing: string[] = [];
 	for (const event of liveEvents ?? []) {
-		if (!event || event.type !== "tool_execution_end") continue;
-		const callId = String(event.tool_call_id ?? "");
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		if (frame.type !== "tool_execution_end" && !finishedDictationFrame(frame))
+			continue;
+		const callId = String(frame.tool_call_id ?? "");
 		if (!callId || missing.includes(callId) || labelled.has(callId)) continue;
 		missing.push(callId);
 	}
