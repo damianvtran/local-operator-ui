@@ -231,7 +231,19 @@ const MEASURE = `(() => {
 	 * mid-word with no ellipsis.
 	 */
 	const paneEl = document.querySelector("[data-run-panel-pane]");
-	const closeEl = document.querySelector('[aria-label="Close run details"]');
+	/*
+	 * THE PANE'S OWN control, not the first element with this aria-label.
+	 *
+	 * The pane's close control and the header trigger that opens it share the
+	 * label "Close run details" - they are the same affordance in two places - so
+	 * an unscoped document-wide query reads whichever comes first in the DOM,
+	 * which on this head is the TRIGGER (outside the pane, 592..624 against the
+	 * bar control's 764..792). The measurement is about the pane's own bar, so it
+	 * is read from the pane: design round 3's D16, which is about which node the
+	 * recorded column describes rather than about the claim (two streams measured
+	 * the real control, and it holds).
+	 */
+	const closeEl = paneEl?.querySelector('[aria-label="Close run details"]');
 	const acceptance = {
 		clipPx: null,
 		closeControl: null,
@@ -994,7 +1006,11 @@ try {
 					))
 				)
 					break;
-				if (!(await app.click('[aria-label="Close run details"]'))) {
+				if (
+					!(await app.click(
+						'[data-run-panel-pane] [aria-label="Close run details"]',
+					))
+				) {
 					await app.evaluate(
 						"document.activeElement instanceof HTMLElement && document.activeElement.blur()",
 					);
