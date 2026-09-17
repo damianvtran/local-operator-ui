@@ -39,6 +39,7 @@ export const PUBLICATION_ERROR_CODES = [
 	"payload_too_large",
 	/** Another account has published this name. Agent names are unique on the hub. */
 	"name_taken",
+	"name_claim_in_flight",
 	/** The name belongs to a built-in agent, which the hub reserves. */
 	"name_reserved_builtin",
 	/** The reviewer refused the instruction body. A content decision, not a fault. */

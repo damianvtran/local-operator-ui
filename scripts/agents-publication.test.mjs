@@ -300,6 +300,50 @@ test("every moderation category has a line, and an unknown one falls back rather
 	assert.equal(unknown.body, "reason");
 });
 
+test("a name held by an in-flight publication is retryable, not taken", () => {
+	/*
+	 * agent-server's ninth code, and the one most easily folded into
+	 * `name_taken` by accident. They are different facts: `name_taken` is a claim
+	 * to give up on, `name_claim_in_flight` is a seconds-long reservation to wait
+	 * out. The assertions below are about that difference - a retry action, no
+	 * name-field focus, a warning register - and about the neighbours it must not be
+	 * confused with, asserted in the same place so the distinction is one test
+	 * rather than three files.
+	 */
+	const inFlight = publicationTreatment(
+		{
+			code: "name_claim_in_flight",
+			message:
+				'The name "adverse-media-screener" is being published right now. Try again in a moment.',
+			details: { owned_by_caller: false, retryable: true },
+		},
+		context(),
+	);
+	assert.deepEqual(inFlight.actions, ["retry"]);
+	assert.equal(inFlight.focus, null);
+	assert.equal(inFlight.variant, "warning");
+	assert.match(inFlight.headline, /being published/i);
+	assert.doesNotMatch(inFlight.body, /another account|choose another/i);
+
+	// Its two neighbours on the submit path: the taken name, and the review
+	// outage. Only the outage offers a retry, and only the taken name sends the
+	// user back to the name field.
+	assert.deepEqual(
+		publicationTreatment(
+			{ code: "name_taken", message: "taken", details: {} },
+			context(),
+		).actions,
+		["focus-name"],
+	);
+	assert.deepEqual(
+		publicationTreatment(
+			{ code: "moderation_unavailable", message: "down", details: {} },
+			context(),
+		).actions,
+		["retry"],
+	);
+});
+
 test("a validator refusal points at the field it names, and at nothing when it names none", () => {
 	const name = publicationTreatment(
 		{
