@@ -155,6 +155,9 @@ line.
   them — which is what these frames caught on their first take and what the `admitted-send-*`
   frames would otherwise show — and its second half is the open row, found in review round 1
   (D1/Q-1) and made a membership test in round 2 (R2-1/D2-1).
+  **THE FOOTER ITSELF IS NOW GONE** — the gate below was a gate on a line that no longer
+  exists, and the section *The footer's removal* carries that report, the frames it moved and
+  why the gate could not survive it.
 - **And it states that time in the same words.** The footer line answers the same question a
   turn's stamp answers, so it renders the same component; it used to render the HOVER row's
   `MessageTimestamp`, which formats for a reader already looking at the message, and the two
@@ -177,6 +180,65 @@ The same change paints in four other surfaces, re-taken in their OWN theme sets 
 this one's: `chat-ask-options` (twelve palettes), `chat-notification-feed-states` (three),
 `chat-reconnect-gap` (twelve, and `restored-running` gained the ten it did not have rather
 than being left stale), and `chat-run-panel`'s reader states (two).
+
+## The footer's removal (the `fix/turn-stamp-scope` branch)
+
+The transcript's footer line is **removed**, not gated a third time. It stated when the last thing
+in the conversation happened, and the operator reported on 2026-09-17 that during a live turn it
+painted under the working line: "the time that shows up below messages also seems to be showing up
+below the thinking indicator, make sure that it doesn't, only beside user messages and in tool
+traces when expanded". Every gate the line had asked WHICH ROW came last, and the row that comes
+last during a turn is the working line — not a record, and not something the gate could name — so
+the fix is the removal of the line rather than a third condition on it.
+
+WHAT SURVIVES is exactly the two placements the operator named, and both are untouched:
+[`turn-timestamps`](turn-timestamps/) (the stamp under a user turn's bubble) and
+[`expanded-detail`](expanded-detail/) (the stamp at the foot of an open disclosure) are this pass's
+controls and are **not re-encoded at all**.
+
+### Which frames moved, and how they were found
+
+A DOM query over every story in the sweep's list — `document.querySelectorAll('time[data-stamp="footer"]')`,
+run against the BASE tree — names the frames this change can move: **34 stories across six
+surfaces** (this one, `chat-canonical-notices`, `chat-notification-feed-states`,
+`chat-reconnect-gap`, `chat-stale-seed-order`, and `chat-run-panel`'s reader states). A pixel diff
+cannot answer that question on its own, and the measurement is worth keeping: several stories carry
+a live clock or a `Date.now()` fixture, so a capture of the UNCHANGED tree already moves them — the
+base tree re-captured against its own committed frames differs by 36,166px in
+`turn-boundary-and-working-line`'s light frame and 3,114px across the prose block of
+`prose-tool-alignment@1024`'s dark one. Those two are inside the affected set anyway; the point is
+that a diff alone would also have named frames nothing moved in.
+
+Each affected story's directory was re-taken **in the themes it already carried** — twelve for this
+surface, three for `chat-notification-feed-states`, two for the rest — so this pass moves frames and
+adds none.
+
+THE PAIR is [`../turn-stamp-footer-before/`](../turn-stamp-footer-before/), declared as its own
+supplementary set for the reason the previous pair is: a sweep captures the current tree and can
+never produce the base tree's frames.
+
+### The measurement, rather than "the footer is gone"
+
+- **The removed line, measured on a story with no clock in it.** `prose-tool-alignment`, both widths
+  and both brand themes: the whole difference between the two trees is the stamp's own box —
+  `138x26` at `+838+358` for `@1024` and at `+1046+358` for `@1440`, AE 2,721 / 2,165 (dark / light)
+  at 1024 and 2,673 / 2,431 at 1440. Nothing else in those frames moved, which is what makes the
+  pair checkable rather than asserted.
+- **The reported state.** `turn-boundary-and-working-line`, the stamp's own band (`300x30+700+320`):
+  **472 ink pixels before, 0 after** in `localOperatorDark`; in `localOperatorLight` the same band's
+  mean luminance moves off the ground the other way, 0.9293 to 0.9464. Read as a picture, the before
+  half ends `⠹ Measuring the row pitch 1s` with `Oct 9, 2025, 4:53 AM` under it, and the after half
+  ends at the working line.
+- **The two survivors, unmoved.** Neither control is in the re-encoded set, the probe finds no footer
+  in either on either tree, and the capture's own noise floor there is 0px on `expanded-detail`'s
+  light frame and 29px in an 8x8 box (a glyph edge) on its dark one.
+
+### What the removal costs, stated rather than found later
+
+A transcript ending on assistant prose, or on a settled tool row nobody opened, now shows no time at
+its foot. Both end on a row whose own affordance is the disclosure, and that is the trade the
+operator asked for; it is also why the render tests' footer assertions were **inverted rather than
+deleted** (`scripts/turn-timestamp.test.mjs`), the working line's own case among them.
 
 ## Measured, not eyeballed
 
