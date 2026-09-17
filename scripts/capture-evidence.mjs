@@ -4726,6 +4726,18 @@ const main = async () => {
 	 *      neither side. `countsMean` is in this group because it restates
 	 *      `frames`/`surfaces` - its prose says what each field counts and where
 	 *      to read it, and carries no number of its own for a fold to falsify.
+	 *      The stamps in group (4) - `srcTree` and `scriptsTree` - are derived
+	 *      from the MERGED tree, which means AFTER the merge commit exists.
+	 *      Deriving them while the merge is still uncommitted asks
+	 *      `git rev-parse HEAD:src` and gets the PRE-merge head's trees: real
+	 *      trees, so nothing looks wrong in the diff, just not this one's. Fold 11
+	 *      shipped exactly that to `main` and the desktop suite's own stamp test
+	 *      caught it; fold 10 ran the same derivation after committing and was
+	 *      right. When `scripts/` is part of the change the trap binds twice,
+	 *      because writing the values is itself a change to the file the `scripts`
+	 *      tree is computed from - so the order is commit, derive, write the
+	 *      values in, `--amend`: the amendment moves `docs/` only, and the
+	 *      `scripts` tree the values name is unchanged.
 	 *   5. And NO FIELD THAT SPELLS OUT WHAT A CITATION NAMES is carried from
 	 *      main's side under any name: main's manifest still has
 	 *      `refreshedAtHeadNote`, the spelling this branch deleted, and carrying
