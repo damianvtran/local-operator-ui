@@ -31,6 +31,7 @@ import {
 import {
 	type KeyboardEvent,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -172,6 +173,86 @@ const LEGACY_CATALOGUE_POLL_MS = 5_000;
  * event is unambiguously doing the work when the two disagree.
  */
 const CATALOGUE_SAFETY_POLL_MS = 30_000;
+
+/** Where a scroll container last saw the row that held keyboard focus. */
+type FocusedSlot = { node: HTMLElement | null; index: number };
+
+/**
+ * Hold the row that holds FOCUS inside its scroll container across a re-file.
+ *
+ * `overflow-anchor: none` on the two scrollers this panel owns is what stops a
+ * completion dragging a reader who is somewhere else in the list (see the note at
+ * each declaration). This is that rule's one cost, and it is paid by the reader
+ * who is NOT somewhere else: a keyboard cursor is an ELEMENT, so the row the
+ * cursor is on can re-file to a slot outside the panel while the container
+ * correctly holds its position - and the cursor leaves the screen. The next arrow
+ * press focuses the neighbouring row, the browser's own scroll-into-view pays for
+ * the distance, and the jump measured as 386 px to the top of the band on the
+ * operator's roster (UX round 1, U1).
+ *
+ * So when the row that holds focus changes SLOT, the container follows it, by the
+ * minimum that puts it back inside the panel. Two properties are what make this
+ * the honest shape rather than a re-introduction of the drag the declaration
+ * removes: the row followed is the one the cursor is on, which is the argument the
+ * transcript's sibling rule already makes for following content a reader is pinned
+ * to (`canonical-transcript.tsx` sets `overflow-anchor: auto` for exactly that),
+ * and it is one instantaneous `scrollTop` assignment - no transition, no
+ * animation, nothing at all for a reader whose focus is not inside the list.
+ *
+ * The other shape the finding offered - move focus to the row that takes the
+ * departed row's place - is rejected rather than untried: the DOM node IS the
+ * session, so transferring focus would retarget the cursor to a DIFFERENT
+ * conversation under an unchanged ring, and `Enter` would open a chat the reader
+ * never chose without anything on screen saying so. A bounded viewport adjustment
+ * is the smaller surprise of the two, and the row it reveals is the one the
+ * reader's own cursor moved with.
+ *
+ * GATED ON THE FOCUSED ROW'S SLOT CHANGING, not on any re-order. A reader who
+ * scrolls the panel away from their cursor and then watches an arrival re-file
+ * some other row must keep the position they scrolled to; the index comparison is
+ * what separates that case from this one, and it is the whole reason this cannot
+ * be a plain "keep the focused element visible" rule.
+ *
+ * The NODE is the identity, not an attribute: React keys each row by session id,
+ * so an intra-section re-file moves the same element and no row carries a session
+ * id for a rig to read (see `scripts/attach-frame-evidence.mjs` on why not). A
+ * focus change between two commits (`previous.node !== active`) is the reader
+ * moving rather than the row, and is left alone for the same reason.
+ */
+const holdFocusedRow = (
+	container: HTMLElement | null,
+	slot: { current: FocusedSlot },
+) => {
+	if (!container) {
+		slot.current = { node: null, index: -1 };
+		return;
+	}
+	const rows = [...container.querySelectorAll<HTMLElement>("[data-chat-row]")];
+	const active =
+		document.activeElement instanceof HTMLElement
+			? document.activeElement
+			: null;
+	const index = active ? rows.indexOf(active) : -1;
+	const previous = slot.current;
+	slot.current = { node: active, index };
+	if (
+		!active ||
+		index < 0 ||
+		previous.node !== active ||
+		previous.index < 0 ||
+		previous.index === index
+	)
+		return;
+	const rowBox = active.getBoundingClientRect();
+	const panelBox = container.getBoundingClientRect();
+	const above = rowBox.top - panelBox.top;
+	const below = panelBox.bottom - rowBox.bottom;
+	if (above >= 0 && below >= 0) return;
+	container.scrollTop = Math.min(
+		Math.max(container.scrollTop + (above < 0 ? above : -below), 0),
+		container.scrollHeight - container.clientHeight,
+	);
+};
 
 export function ChatSidebar({
 	selectedConversation,
@@ -839,6 +920,32 @@ export function ChatSidebar({
 				disclosure.click();
 		}
 	};
+	/*
+	 * The two scrollers this panel owns keep the focused row in view across a
+	 * re-file - `holdFocusedRow` carries the argument and the two rejected shapes.
+	 *
+	 * BOTH containers, because both draw rows that re-file on the same order-key
+	 * event: the entity region's entities are disclosure rows whose CHILDREN are
+	 * session rows (`children()` over the catalogue's own array), so a nested row
+	 * changes slot on a completion exactly as a list row does (round 1, R1).
+	 *
+	 * A plain `useLayoutEffect` with no dependency list, because the signal is a
+	 * SLOT CHANGE rather than any one value, and the order the rows are in is not
+	 * something this component re-renders on: React re-uses each keyed node, so the
+	 * DOM's own order is the only place the move is visible. Running after every
+	 * commit is what makes the correction land in the same frame as the re-file -
+	 * the same reason `use-scroll-paging.ts` corrects its anchor in a layout effect
+	 * rather than a passive one, where a correction arriving one frame late is
+	 * still a jump.
+	 */
+	const entityPanelRef = useRef<HTMLDivElement | null>(null);
+	const listPanelRef = useRef<HTMLDivElement | null>(null);
+	const entitySlotRef = useRef<FocusedSlot>({ node: null, index: -1 });
+	const listSlotRef = useRef<FocusedSlot>({ node: null, index: -1 });
+	useLayoutEffect(() => {
+		holdFocusedRow(entityPanelRef.current, entitySlotRef);
+		holdFocusedRow(listPanelRef.current, listSlotRef);
+	});
 	return (
 		<nav
 			aria-label="Chats"
@@ -979,7 +1086,28 @@ export function ChatSidebar({
 						? `Nothing in your chats matches ${query.trim()}.`
 						: ""}
 			</p>
-			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
+			{/* The entity region, and the SECOND container that needs the rule below.
+			    An entity is a disclosure row whose CHILDREN are session rows drawn from
+			    the same catalogue array the list draws (`children()`), so a nested row's
+			    slot is the same backend order key: a completion re-files it on the same
+			    event, inside a container that scrolls. The region was "deliberately not
+			    touched" in the first pass on the premise that nothing in it re-files,
+			    and that premise was false (round 1, R1) - the measurement is in
+			    `scripts/sidebar-resort-geometry.mjs`, which walks this container from a
+			    NESTED row rather than from the list's.
+
+			    The trade is not the list's, and it is stated rather than implied: this is
+			    the one region where content genuinely GROWS above the reader - a
+			    catalogue arriving, or a query expanding every entity at once - and
+			    `overflow-anchor: none` gives up Chrome's compensation for that case to
+			    buy the re-file case. The growth is user-initiated or at load (the search
+			    box re-renders the region it filters), while the re-file is involuntary
+			    and arrives on every completion, which is the exchange this side of the
+			    declaration takes. */}
+			<div
+				ref={entityPanelRef}
+				className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none]"
+			>
 				{capabilities.isLoading && (
 					<p aria-live="polite" className="text-meta text-ink-dim">
 						Connecting to chats…
@@ -1106,9 +1234,30 @@ export function ChatSidebar({
 			    The sibling rule is the transcript's, and the two are opposite on
 			    purpose: `canonical-transcript.tsx` sets `overflow-anchor: auto` because
 			    ITS content grows under a reader pinned to the end, where following the
-			    content is the feature. Nothing here grows; the list only re-orders. */}
+			    content is the feature.
+
+			    THIS CONTAINER IS THE RE-ORDER CASE, AND IT IS NOT THE ONLY ONE - the
+			    entity region above carries the same declaration for the same reason,
+			    and the two are a pair. What it gives up is stated rather than denied:
+			    a row inserted ABOVE a reader who is scrolled down, or a list read that
+			    adds rows above the viewport, is no longer compensated for, so the
+			    reader's content shifts by the insertion - the trade this declaration
+			    accepts for holding the position through a re-file, which arrives on
+			    every completion rather than on an edit the reader made. (The claim in
+			    the first pass ran the other way - "nothing here grows; the list only
+			    re-orders" - and it was both false for the entity region and false
+			    here: round 1, N2.)
+
+			    One cost is not paid by the reader who is nowhere near the row: the
+			    keyboard cursor is an ELEMENT, so a focused row that re-files out of the
+			    panel would leave the cursor off screen. `holdFocusedRow` above is the
+			    other half of this rule - the container follows the row the CURSOR is on,
+			    by the minimum, which is the case the transcript's rule is about. */}
 			{showList && (
-				<div className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2 [overflow-anchor:none]">
+				<div
+					ref={listPanelRef}
+					className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2 [overflow-anchor:none]"
+				>
 					<section>
 						<button
 							type="button"

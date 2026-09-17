@@ -74,6 +74,17 @@ const wireRow = (
 	mtime: number,
 	status: { code: string; label: string },
 	statusRevision: number,
+	/*
+	 * The binding, because a SESSION ROW IS DRAWN IN TWO PLACES: once in the list
+	 * and once, nested, under the agent or team it is bound to. `children()` reads
+	 * the same `matching` array for both, which is what makes a completion re-file
+	 * a nested row on the same event as a list one - the finding this parameter
+	 * exists to be able to photograph (round 1, R1).
+	 */
+	binding: { agent: string | null; team: string | null } = {
+		agent: null,
+		team: null,
+	},
 ): WireRow => ({
 	id,
 	name,
@@ -82,7 +93,7 @@ const wireRow = (
 	live_state: "attached",
 	pending: null,
 	active: true,
-	binding: { agent: null, team: null },
+	binding,
 	status,
 	status_revision: statusRevision,
 	status_epoch: FEED_EPOCH,
@@ -171,6 +182,24 @@ const attentionFrame = (sessionId: string, unseen: boolean, seq: number) => ({
 
 let roster: WireRow[] = [];
 
+/**
+ * The entity catalogues this page answers, or null for a story that has none.
+ *
+ * ONE FIXTURE GAP MADE A FINDING INVISIBLE, and this is the plug. `profiles.list`
+ * and `teams.list` are gated on the `profile_catalogue`/`team_catalogue`
+ * capabilities, and the fixture below answered neither, so no story rendered an
+ * entity - and the entity region draws `sessionRow(row, true)` children off the
+ * same catalogue array the list does, which means a nested row's slot is the same
+ * backend order key a completion invalidates. The claim that nothing above the
+ * list re-files could therefore be neither confirmed nor refuted on this rig
+ * (round 1, R1). `CompletionReorderedNested` is the story that measures it.
+ *
+ * It is a MODULE variable rather than a constant for the same reason `roster` is:
+ * every other story must keep answering no catalogue, or the frames that predate
+ * this one would gain two sections and stop being the states they were shot in.
+ */
+let entities: { agents: string[]; teams: string[] } | null = null;
+
 if (typeof window !== "undefined") {
 	const page = window as unknown as {
 		api?: {
@@ -192,15 +221,18 @@ if (typeof window !== "undefined") {
 	const ok = (result: unknown) => ({ status: 200, body: { result } });
 
 	/*
-	 * Only the two operations this surface reads, and anything else is refused BY
-	 * NAME - a story that starts issuing a third call fails loudly instead of
-	 * hanging on a promise nothing answers.
+	 * The two operations this surface reads, plus the two catalogues the ENTITY
+	 * story needs, and anything else is refused BY NAME - a story that starts
+	 * issuing an unknown call fails loudly instead of hanging on a promise nothing
+	 * answers.
 	 *
 	 * `features.desktop_feed` is what gates the hook (`useDesktopFeed`), and
-	 * `session_catalogue` 2 is what gates the sidebar itself; `profile_catalogue`,
-	 * `team_catalogue` and `session_search` are deliberately absent, which is how
-	 * this fixture keeps the entity pickers and the conversation search out of a
-	 * frame about the row's status.
+	 * `session_catalogue` 2 is what gates the sidebar itself; `session_search` is
+	 * deliberately absent, which is how this fixture keeps the conversation search
+	 * out of a frame about the row's status. `profile_catalogue` and
+	 * `team_catalogue` are answered ONLY while `entities` is set, so the five
+	 * stories that predate the entity one keep rendering exactly the panel they
+	 * were shot in while the sixth renders the region above it (round 1, R1).
 	 */
 	desktop.request = async (request: { op: string }) => {
 		switch (request.op) {
@@ -209,10 +241,37 @@ if (typeof window !== "undefined") {
 					desktop_contract: 1,
 					desktop_available: true,
 					desktop_auth: "bearer",
-					features: { desktop_feed: 1, session_catalogue: 2 },
+					features: {
+						desktop_feed: 1,
+						session_catalogue: 2,
+						...(entities ? { profile_catalogue: 1, team_catalogue: 1 } : {}),
+					},
 				});
 			case "sessions.list":
 				return ok({ sessions: roster, truncated: false });
+			case "profiles.list":
+				return ok({
+					profiles: (entities?.agents ?? []).map((name) => ({
+						name,
+						kind: "role",
+						source: "builtin",
+						agent_id: null,
+						description: "",
+						tools: null,
+						effort: null,
+						delegate: false,
+					})),
+				});
+			case "teams.list":
+				return ok({
+					teams: (entities?.teams ?? []).map((name) => ({
+						id: name,
+						name,
+						description: "",
+						manager: name,
+						members: [],
+					})),
+				});
 			default:
 				throw new Error(`unexpected desktop op in this story: ${request.op}`);
 		}
@@ -580,6 +639,12 @@ export const CompletionInPlace: Story = {
  * The reorder is applied to the stub BEFORE the frame is delivered, which is the
  * order the real system runs in - the invalidation is what causes the read, so
  * the read's answer is necessarily the post-completion order.
+ *
+ * THE SHUTTER OPENS AFTER THE LAST STEP, and that is the guarantee rather than a
+ * detail: it used to open before the pair that produces the reorder this story is
+ * NAMED for, so what the frame carried was the capturer's 200 ms poll happening
+ * to land after the re-render rather than the latch doing its job (round 1, R4).
+ * Two of the five stories already released last; this and the two below now do.
  */
 export const CompletionReordered: Story = {
 	render: () => {
@@ -592,10 +657,10 @@ export const CompletionReordered: Story = {
 		deliver(statusFrame(MIGRATE, COMPLETE, 3, 71));
 		deliver(attentionFrame(MIGRATE, true, 72));
 		await sleep(300);
-		releaseShutter();
 		roster = resortAfter();
 		deliver(catalogueFrame(2, 73));
 		await sleep(300);
+		releaseShutter();
 	},
 };
 
@@ -641,7 +706,6 @@ export const CompletionSecondInBand: Story = {
 		deliver(statusFrame(MIGRATE, COMPLETE, 3, 82));
 		deliver(attentionFrame(MIGRATE, true, 83));
 		await sleep(300);
-		releaseShutter();
 		roster = [
 			wireRow(QUARTERLY, "Quarterly revenue model", 1_760_010_400, COMPLETE, 9),
 			wireRow(MIGRATE, "Migrate the deploy script", 1_760_010_100, COMPLETE, 3),
@@ -656,6 +720,9 @@ export const CompletionSecondInBand: Story = {
 		];
 		deliver(catalogueFrame(2, 84));
 		await sleep(300);
+		// The band of two, not the band of one before it: the shutter opens on the
+		// state this story is named for (round 1, R4).
+		releaseShutter();
 	},
 };
 
@@ -688,7 +755,6 @@ export const CompletionAcknowledged: Story = {
 		deliver(statusFrame(MIGRATE, COMPLETE, 3, 71));
 		deliver(attentionFrame(MIGRATE, true, 72));
 		await sleep(300);
-		releaseShutter();
 		roster = resortAfter();
 		deliver(catalogueFrame(2, 73));
 		await sleep(300);
@@ -709,6 +775,10 @@ export const CompletionAcknowledged: Story = {
 		];
 		deliver(catalogueFrame(3, 75));
 		await sleep(300);
+		// Both moves are behind the shutter: this story's subject is the SETTLED
+		// state of the round trip, and releasing after the first move photographed a
+		// state the story is not named for (round 1, R4).
+		releaseShutter();
 	},
 };
 
@@ -858,6 +928,350 @@ export const CompletionReorderedOffscreen: Story = {
 		roster = overflowingAfter();
 		deliver(catalogueFrame(2, 93));
 		await sleep(400);
+		releaseShutter();
+	},
+};
+
+/* ---------------------------------------- the region above the list, measured */
+
+/**
+ * Scroll the container that holds a row so the row sits `below` px below its
+ * upper edge - the state a reader is in when the row they are on moves UP out of
+ * the panel, which is the state every measurement below needs and the reason the
+ * walk in the rig reports the room it had.
+ *
+ * The mirror of `scrollToRow`, which puts a row above the head: choosing the
+ * offset rather than the bottom is what makes the ROOM a property of the roster
+ * instead of of the panel's height, and the room is the one thing a geometry
+ * claim has to state before its number means anything.
+ */
+const scrollRowBelowHead = (title: string, below: number) => {
+	const row = [...document.querySelectorAll("[data-chat-row]")].find((node) =>
+		(node.textContent ?? "").trim().includes(title),
+	);
+	if (!row) throw new Error(`no row titled ${title} to scroll to`);
+	let node = row.parentElement;
+	while (node && node !== document.body) {
+		const scrolls = ["auto", "scroll"].includes(
+			getComputedStyle(node).overflowY,
+		);
+		if (scrolls && node.scrollHeight > node.clientHeight + 8) {
+			const offset =
+				row.getBoundingClientRect().top -
+				node.getBoundingClientRect().top +
+				node.scrollTop;
+			node.scrollTop = Math.max(0, offset - below);
+			return;
+		}
+		node = node.parentElement;
+	}
+	throw new Error(`${title} is not inside a scrolling container`);
+};
+
+/** Put keyboard focus on a row, and fail loudly if it did not land. */
+const focusRow = (title: string) => {
+	const row = [...document.querySelectorAll("[data-chat-row]")].find((node) =>
+		(node.textContent ?? "").trim().includes(title),
+	);
+	if (!row) throw new Error(`no row titled ${title} to focus`);
+	if (typeof (row as HTMLElement).focus !== "function")
+		throw new Error(`${title} is not a focusable row`);
+	(row as HTMLElement).focus();
+	/*
+	 * Asserted at the source, because the stories that use this are ABOUT the
+	 * cursor: one that believed it had focused a row and had not would measure a
+	 * container with no cursor in it, and pass.
+	 */
+	if (document.activeElement !== row)
+		throw new Error(`focus did not land on ${title}`);
+};
+
+/**
+ * Wait for a condition rather than for a clock, so a story depends on the thing
+ * it needs having arrived. The profiles and the sessions land on two separate
+ * queries, and a click that fires before the second one has rendered throws a
+ * message that reads like a bad selector rather than like a race.
+ */
+const until = async (what: string, ready: () => boolean, ms = 4000) => {
+	const started = Date.now();
+	while (Date.now() - started < ms) {
+		if (ready()) return;
+		await sleep(50);
+	}
+	throw new Error(`timed out waiting for ${what}`);
+};
+
+/**
+ * Open an entity's disclosure, through the entity's own control.
+ *
+ * The lookup reads the row's NAME span rather than its `textContent`, and that is
+ * not tidiness: the row draws its own child count in a sibling span, so the
+ * button's text content is "coder16" for an entity with sixteen chats - which is
+ * what a `textContent` comparison was silently comparing against until this story
+ * said `no entity named coder` over a row that was on screen.
+ */
+const expandEntity = (name: string) => {
+	const row = [...document.querySelectorAll("[data-entity-name]")].find(
+		(node) =>
+			(node.querySelector("span.min-w-0")?.textContent ?? "").trim() === name,
+	);
+	if (!row) throw new Error(`no entity named ${name} to expand`);
+	const disclosure = row.parentElement?.querySelector("[data-disclosure]");
+	if (!(disclosure instanceof HTMLElement))
+		throw new Error(`the ${name} row has no disclosure control`);
+	disclosure.click();
+};
+
+/** A group of nested rows: names and ids generated, so the roster stays readable. */
+const nestedGroup = (
+	prefix: string,
+	label: string,
+	count: number,
+	base: number,
+	binding: { agent: string | null; team: string | null },
+): WireRow[] =>
+	Array.from({ length: count }, (_, index) =>
+		wireRow(
+			`${prefix}${String(index + 1).padStart(3, "0")}`,
+			`${label} ${index + 1}`,
+			base - index * 100,
+			BUSY,
+			60 + index,
+			binding,
+		),
+	);
+
+const NESTED_AGENT = "scout";
+
+/**
+ * THE REGION ABOVE THE LIST, MEASURED RATHER THAN ASSUMED (review round 1, R1).
+ *
+ * The first pass said this region "needs nothing" because nothing in it re-files
+ * on a catalogue event, and that is false: an entity's CHILDREN are session rows
+ * (`sessionRow(row, true)` over `children()`), drawn from the same `matching`
+ * array as the list, so a completion moves a nested row's slot on exactly the
+ * same order-key change - inside a container that kept `overflow-anchor: auto`.
+ * The finding was a code-level one because no story rendered an entity at all
+ * (the fixture answered neither catalogue), so the measurement is what this
+ * story exists to produce; it is not swept, because it is a fixture for a
+ * number rather than a state a frame should carry.
+ *
+ * The roster is shaped for the measurement rather than for a picture: groups
+ * BEFORE the completer's so its slot has room above it, and a group AFTER so the
+ * region still has content below, because a drag can only be seen where the
+ * container had the room to be dragged (see the rig's BLIND rule).
+ */
+const nestedBefore = (): WireRow[] => [
+	...nestedGroup("f1a203", "Size the search index", 8, 1_760_050_900, {
+		agent: NESTED_AGENT,
+		team: null,
+	}),
+	wireRow(MIGRATE, "Migrate the deploy script", 1_760_050_000, BUSY, 2, {
+		agent: NESTED_AGENT,
+		team: null,
+	}),
+	...nestedGroup("f2b304", "Sketch the migration", 6, 1_760_049_700, {
+		agent: "architect",
+		team: null,
+	}),
+	...nestedGroup("f3c405", "Trace the slow endpoint", 8, 1_760_048_900, {
+		agent: "coder",
+		team: null,
+	}),
+	...nestedGroup("f4d506", "Check the vendor list", 21, 1_760_047_500, {
+		agent: null,
+		team: "quality",
+	}),
+];
+
+/** The same rows with the completer leading its OWN group, which is where the
+ *  next read files it - the entity's children are that entity's rows, in the
+ *  catalogue's order, so the row moves to the head of the group it belongs to. */
+const nestedAfter = (): WireRow[] => [
+	wireRow(MIGRATE, "Migrate the deploy script", 1_760_050_000, BUSY, 2, {
+		agent: NESTED_AGENT,
+		team: null,
+	}),
+	...nestedGroup("f1a203", "Size the search index", 8, 1_760_050_900, {
+		agent: NESTED_AGENT,
+		team: null,
+	}),
+	...nestedGroup("f2b304", "Sketch the migration", 6, 1_760_049_700, {
+		agent: "architect",
+		team: null,
+	}),
+	...nestedGroup("f3c405", "Trace the slow endpoint", 8, 1_760_048_900, {
+		agent: "coder",
+		team: null,
+	}),
+	...nestedGroup("f4d506", "Check the vendor list", 21, 1_760_047_500, {
+		agent: null,
+		team: "quality",
+	}),
+];
+
+export const CompletionReorderedNested: Story = {
+	render: () => {
+		entities = {
+			agents: [NESTED_AGENT, "architect", "coder"],
+			teams: ["quality"],
+		};
+		roster = nestedBefore();
+		return <Page readoutRows={4} />;
+	},
+	play: async () => {
+		holdShutter();
+		await catalogueSettled(44);
+		/* Two waits, not one: the profiles arrive on their own query, and the
+		   entity's children only exist once its disclosure has opened. */
+		await until(
+			"the three entities",
+			() => document.querySelectorAll("[data-entity-name]").length >= 3,
+		);
+		/*
+		 * EVERY group is opened, not just the completer's. The entity region only
+		 * scrolls when its content exceeds it, and a measurement of what a scroll
+		 * container does needs one that can scroll at all - so the fixture opens
+		 * the four groups the roster fills, which is also the state the region is
+		 * in when a reader has been through their agents.
+		 */
+		for (const name of [NESTED_AGENT, "architect", "coder", "quality"])
+			expandEntity(name);
+		await until(
+			"every group's children",
+			() => document.querySelectorAll("[data-child]").length >= 43,
+		);
+		/* An offset with room on both sides of the re-filing row: the measurement
+		   below is only a measurement while the container could have been dragged
+		   by the row's travel (the rig's BLIND rule). */
+		/*
+		 * The completer just ABOVE the region's head, with room on both sides of it,
+		 * which is the shape the operator's own report reproduced in the list panel
+		 * (and the one `CompletionReorderedOffscreen` uses there). Positioned
+		 * relative to the row rather than to a fraction of the overflow, because the
+		 * measured drag is a property of where the MOVING ROW sits against the
+		 * viewport: QA's sweep found the drag at one scroll position and none at
+		 * five others, and a fixture at an arbitrary offset would measure the
+		 * absence and call it the container.
+		 *
+		 * Re-applied after a beat, because the rig resizes the viewport to the height
+		 * the frame would be shot at and this region's overflow is a function of that
+		 * height: a single application raced the resize and left the region at the
+		 * offset the 660 px layout implies.
+		 */
+		scrollToRow("Migrate the deploy script");
+		await sleep(500);
+		scrollToRow("Migrate the deploy script");
+		await sleep(250);
+		deliver(statusFrame(MIGRATE, COMPLETE, 3, 101));
+		deliver(attentionFrame(MIGRATE, true, 102));
+		await sleep(300);
+		roster = nestedAfter();
+		deliver(catalogueFrame(2, 103));
+		await sleep(400);
+		releaseShutter();
+	},
+};
+
+/* ------------------------------------ a second move in the same container */
+
+/**
+ * TWO MOVES, IN A CONTAINER WITH THE ROOM TO SHOW BOTH (review round 1, R2).
+ *
+ * The committed `completion-acknowledged` story is the round trip on a list that
+ * FITS its panel, so neither move can move a viewport and the assertion has
+ * nothing to see - while the rig's first version reported the pair as "0 px
+ * against null px of row travel", because it compared the pre-move sample with
+ * the settled one and the two moves cancelled. This story is the same round trip
+ * in the overflowing roster, where both moves have the room to drag: it is what
+ * turns "the instrument cannot see a two-move story" into a FAIL on a stashed
+ * rule rather than a comfortable zero. Not swept: the pair it belongs to is
+ * already framed, and this one is a measurement.
+ */
+export const CompletionAcknowledgedOffscreen: Story = {
+	render: () => {
+		roster = overflowingBefore();
+		return <Page readoutRows={8} />;
+	},
+	play: async () => {
+		holdShutter();
+		await catalogueSettled(22);
+		await sleep(250);
+		scrollToRow("Migrate the deploy script");
+		await sleep(250);
+		deliver(statusFrame(MIGRATE, COMPLETE, 3, 91));
+		deliver(attentionFrame(MIGRATE, true, 92));
+		await sleep(300);
+		roster = overflowingAfter();
+		deliver(catalogueFrame(2, 93));
+		await sleep(400);
+		/* The read receipt: the mark rests, and the backend re-files the row into
+		   the resting band - the second move, downwards, on the same container. */
+		deliver(attentionFrame(MIGRATE, false, 94));
+		roster = [
+			...RESORT_WORKING.map(([id, name, mtime], index) =>
+				wireRow(id, name, mtime, BUSY, 20 + index),
+			),
+			wireRow(MIGRATE, "Migrate the deploy script", 1_760_020_100, COMPLETE, 3),
+			...restingRows(),
+		];
+		deliver(catalogueFrame(3, 95));
+		await sleep(400);
+		releaseShutter();
+	},
+};
+
+/* ------------------------------------------- the cursor on the row that moves */
+
+/**
+ * THE KEYBOARD CASE (review round 1, U1): the cursor is ON the row that re-files.
+ *
+ * With the container holding its position, the row the cursor is on can leave the
+ * panel - and the next arrow press then focuses the neighbouring row and lets the
+ * browser's own scroll-into-view pay for the distance, which measured as a 386 px
+ * jump to the top of the band. The fix is that the container follows the row the
+ * CURSOR is on, by the minimum, and this story is the replay: the completer's
+ * whole group is below it, so its re-file is a long move out of the panel.
+ *
+ * The rig presses ArrowDown on its own once it has seen the re-file (see its
+ * `KEY_AFTER_REFILE_MS`), because the press is the thing being measured and a
+ * story that pressed it itself would be reporting its own arithmetic.
+ */
+export const CompletionKeyboardRefile: Story = {
+	render: () => {
+		roster = [
+			...RESORT_WORKING.map(([id, name, mtime], index) =>
+				wireRow(id, name, mtime, BUSY, 20 + index),
+			),
+			...restingRows(),
+			wireRow(MIGRATE, "Migrate the deploy script", 1_760_020_100, BUSY, 2),
+		];
+		return <Page readoutRows={8} />;
+	},
+	play: async () => {
+		holdShutter();
+		await catalogueSettled(22);
+		await sleep(250);
+		/* The cursor at the BOTTOM of a long band: the state the report is about,
+		   and the one where the row's own travel is longer than the panel. */
+		scrollRowBelowHead("Migrate the deploy script", 360);
+		await sleep(250);
+		focusRow("Migrate the deploy script");
+		await sleep(150);
+		deliver(statusFrame(MIGRATE, COMPLETE, 3, 91));
+		deliver(attentionFrame(MIGRATE, true, 92));
+		await sleep(300);
+		roster = [
+			wireRow(MIGRATE, "Migrate the deploy script", 1_760_020_100, BUSY, 2),
+			...RESORT_WORKING.map(([id, name, mtime], index) =>
+				wireRow(id, name, mtime, BUSY, 20 + index),
+			),
+			...restingRows(),
+		];
+		deliver(catalogueFrame(2, 93));
+		/* The rig presses the arrow inside this window; the shutter stays closed
+		   until it has, so the same story can be swept later without a change. */
+		await sleep(1200);
 		releaseShutter();
 	},
 };
