@@ -285,6 +285,21 @@ last left the pane showing All tabs. One click in the pane's own switch takes th
 lens back, and the switch's value is what the pane shows
 (`browser-pane.tsx:110`).
 
+**The press TOGGLES (review round 2, U6, ruled).** A second press on the same mark
+used to be inert — state before and after identical, which is indistinguishable from
+a press that did not register. It now closes the pane when that pane is already open
+on that conversation (`isBrowserPaneOpen && browserPaneScope === "conversation" &&
+active === sessionId`); every other press is the three steps above. The lens is one
+of the three conditions rather than a detail: a pane left on *All tabs* is not "open
+on this conversation" in the sense the control means, so a press there normalises the
+lens instead of closing a surface the user is looking at for another reason. The
+header's `Globe` is NOT this and is left alone — it renders only while the pane is
+shut (`chat-header.tsx`: `onOpenBrowser && !isBrowserPaneOpen`), so it has no
+second-press state to make inert and already behaves as a one-way toggle by
+disappearing. The mark's accessible name is unchanged, deliberately: the press's
+outcome is visible on screen, and a state-dependent label would change the label
+grammar the driver scene reads.
+
 ### R3 — The route pools tabs by conversation
 
 **Grouping happens in the renderer, and the registry's order is untouched.** This
@@ -398,11 +413,37 @@ reachable chip count, which is a pure function and belongs in
 `browser-chrome.test.mjs`, not in a frame. The exact class strings are the
 implementer's to settle from frames; the invariant is the requirement.
 
+**The NARROW TIER pays the same floors, and its rungs were raised for it (review round
+2, D1, ruled as option 1 of the two the finding priced).** Below `@max-2xl` — the
+pane's own width — the active row's cluster is `absolute`, so it costs no width and the
+promise there is `floor − 32 − chips − 6×(chips+1) ≥ 85` with no 68px term. Round 1's
+frames showed that promise broken at the pane: a 640px pane rendered a four-chip row's
+title as the single glyph `C`, because the narrow rungs were 120/132/200/224/248 against
+a chip cluster of up to 189px. The narrow rungs are now **inactive 124/192/240/296/336
+and active 192/260/308/364/404** for 0-4 chips, which leaves 86/86/85/87/85 and
+154/154/153/155/153px of title, and the test asserts that floor **at every reachable
+count in every tier** rather than comparing the narrow tier to its own past. What it
+costs, knowingly: at a 640px pane the common CHIP-LESS active row goes 120 → 192px and
+the worst four-chip row 248 → 404px, so fewer tabs fit whole. That is the trade the
+pinned control exists to absorb — the tabs that no longer fit are reachable through it,
+and the pane's own scope switch is the narrowing tool — and it is the price of the
+operator's requirement that no title is ever reduced below a readable floor.
+
 The collapsed chip is honest about what it hides: visible `+2`, `title` listing
 them, and an `sr-only` span inside the button carrying the words (`, 2 more:
 Restored, Shared`) so assistive tech reads the state rather than a number. The
 full state is also in the tab's native `title` and in the actions band, which names
 the tab.
+
+**And the row-level chip is not the only `+` in the strip (review round 2, U5,
+ruled).** The pinned control's count was a bare `+N` sitting immediately left of the
+new-tab control's `+`, so at a glance "add N" and "open one" were one glyph apart.
+The count now carries the chip grammar (`border-control`, `ink-dim`, tabular) with the
+words `N more tabs` in its accessible name and its tooltip, the new-tab control is a
+bounded icon button (`variant="outline"`, its own `New tab …` tooltip) rather than a
+second bare plus, and the strip's own `hairline` rule is drawn between them while the
+count is on screen. `N not shown` remains the pinned LIST's heading, where the
+sentence is about the rows below it.
 
 **Fix 2: the pinned control becomes an in-band list, sectioned by conversation.**
 Per §6's rule and `browser-view-policy.ts:34-38`, a menu inside the band paints
@@ -458,17 +499,34 @@ the pane, scoped to 2 tabs of 8, the item reads `Close 7 other tabs`, which is t
 truth about what it does. `paneApprovalHeaderLabel`'s sibling rule applies here
 too — the words have to agree with the scope.
 
-*Implemented at the call site, and that is where it had gone wrong* (review round 1,
-A3): the model always took the list it was handed, and the pane's strip is scoped, so
-the item counted the visible list while this section, the model's docstring and the
-band's comment all said the pool. The strip now takes a `poolTabs` prop (defaulting
-to `tabs`, which is the route's own case) and hands *that* to `closeOthersIntent`;
-`Close N tabs to the right` stays scoped, because "to the right" is a fact about the
-order on screen.
+**RULED THE OTHER WAY IN ROUND 2 (U7), and this paragraph is the correction.** Round 1
+(A3) read the sentence above as a requirement and the branch threaded a second, WIDER
+list into the strip — a `poolTabs` prop the pane filled with every tab it had — so the
+item could count tabs the host was not showing. The operator's round-2 ruling settled
+it the other way: **the count is the scoped list the strip passes**, because a scoped
+host's band must not close tabs the user cannot see. In the pane scoped to two tabs of
+a pool of eight the item reads `Close 1 other tab`, and those six tabs survive. The
+label is truthful either way — it counts exactly what the press closes — so this is a
+scope decision rather than a correctness one, and the scope rule is the one
+`paneApprovalHeaderLabel`'s sibling sentence states: the words have to agree with the
+scope. The `poolTabs` prop is gone from the component, so there is one list and no
+pair that can drift; `Close N tabs to the right` reads the order on screen for the
+same reason.
 
 **Every bulk label carries a count** (review round 1, U3): the four items read
 `Close "X"`, `Close N other tabs`, `Close N tabs to the right` and
 `Close all N tabs in this conversation`.
+
+**The band is a COLUMN, one item per row at every width (review round 2, D7, ruled).**
+It used to be a wrapping flex row, so `Copy URL` orphaned onto a second line once the
+four counted closes were present at the 1280px fixture — a failure class a wrap at one
+fixture width hides and a wider band only postpones. The order is the item table's:
+the closes, then a hairline, then `Copy URL` last (the only item that closes nothing).
+Bounded with internal scroll, and the bound is a guard rather than a fold: eight rows
+at 28px plus the rule is 233px against `max-h-60`'s 240px, so nothing D7 is about sits
+below a scroll. Its heading row and dismiss control live outside the scroller, the
+same shape the pinned list uses, and the focus contract is unchanged (`focus` in on
+open, Escape and the dismiss control back to the trigger, dismiss last in DOM order).
 
 **Why the closes are one intent, not N `closeTab` calls.** From the code (§1.4):
 `closeTab` is one tab per intent, and each `destroy` fires `onChanged` per tab,
