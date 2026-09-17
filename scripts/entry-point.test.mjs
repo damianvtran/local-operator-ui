@@ -314,12 +314,22 @@ function cases(root) {
 			// the backend repository shipped and only noticed under review. The diff here
 			// is prose-only, so the answer this case pins is the one where every flag is
 			// FALSE - and a broken root would answer true for all of them.
+			// `docs/BUILD.md` is the FIXTURE's path, and requiring it is what makes this
+			// case discriminate. Driven only through the fixture's cwd, a
+			// path-resolving module classifies the HOST checkout's `HEAD^1..HEAD`
+			// instead of the fixture - and those false values satisfied the flag
+			// regexes by coincidence whenever the host's own last commit happened to be
+			// inert, which is how this case stayed green under the very mutation its
+			// comment names. A module reading the real repository cannot print this
+			// line, so the assertion is about the fixture and not about whatever
+			// repository happens to be nearby.
 			script: "ci-scope.mjs",
 			args: ["--event", "pull_request", "--base", "HEAD^1"],
 			cwd: classifierRepo(root),
 			env: {},
 			status: 0,
-			stdout: /`lint` = \*\*false\*\*[\s\S]*`pack` = \*\*false\*\*/,
+			stdout:
+				/`docs\/BUILD\.md` -> `docs`[\s\S]*`lint` = \*\*false\*\*[\s\S]*`pack` = \*\*false\*\*/,
 			stderr: /^$/,
 		},
 	];

@@ -328,7 +328,25 @@ test("A5: a prose-only diff selects nothing, and source selects the code suite",
 	const rootMarkdown = classify(["README.md"]);
 	assert.equal(rootMarkdown.unit, false);
 	assert.equal(rootMarkdown.lint, false);
-	assert.equal(classify([".github/workflows/ci.yml"]).pack, true);
+
+	// D14, pinned as the WHOLE vector rather than one flag, and pinned twice
+	// because it is an override rather than a category: `.github/**` sets every
+	// flag in `flagsFor` BEFORE any predicate runs, so it outranks the rest of
+	// the table. Only two of the six flags depend on that. `lint`, `types`, `unit`
+	// and `pack` are true through the live-category path anyway, while
+	// `runtime_deps` and `audit` are true ONLY by the override - so an assertion
+	// that watched one flag (this one used to check `pack`) watched the override
+	// be deleted in silence, and the two jobs it uniquely protects, the
+	// runtime-dependency allowlist and the security audit, would have stopped
+	// running on exactly the diffs that change the gating itself.
+	for (const path of [".github/workflows/ci.yml", ".github/CODEOWNERS"]) {
+		const flags = classify([path]);
+		assert.deepEqual(
+			FLAGS.map((flag) => flags[flag]),
+			FLAGS.map(() => true),
+			`${path} did not set every flag: D14's override is what makes \`.github/**\` outrank the table, and \`runtime_deps\`/\`audit\` are true by nothing else`,
+		);
+	}
 });
 
 // ---------------------------------------------------------------------------
@@ -712,11 +730,7 @@ test("A12: one module is named by both entry points, and FLAGS is the outputs li
  * copy instead of the base revision.
  */
 test("A13: the classifier is read from the base revision, and every copied file with it", () => {
-	const step = (jobs.changes.steps ?? []).find(
-		(candidate) => typeof candidate.run === "string",
-	);
-	assert.ok(step, "the `changes` job has no `run:` step");
-	const run = step.run;
+	const run = classifyStepRun();
 	for (const required of [
 		"git rev-parse HEAD^1",
 		"git cat-file -e",
@@ -728,27 +742,119 @@ test("A13: the classifier is read from the base revision, and every copied file 
 			`the classifier step does not contain \`${required}\`: a PR could disarm the gates that classify it`,
 		);
 	}
-	// Belt-and-braces with `defaultRoot`, and required for the same reason: the
-	// step runs a copy from outside the checkout, so the root is named rather
-	// than inferred.
+
+	// `--root` on the invocation that runs in STEADY STATE. The fallback carries
+	// the same string, so an assertion that only asked whether the step contains
+	// `--root` at all was satisfied by the fallback's copy and could not see the
+	// flagged one lose it - which is the invocation that decides every ordinary
+	// pull request. Continuations are joined first: that call is written across
+	// lines, so a line-by-line form of this assertion reads a different string
+	// than the shell does.
+	const lines = continuationJoined(run);
+	const healthy = lines.find((line) =>
+		line.includes('node "$RUNNER_TEMP/ci-scope.mjs"'),
+	);
 	assert.ok(
-		run.includes('--root "$GITHUB_WORKSPACE"'),
-		"the classifier step must pass --root explicitly; the module resolves it from the invocation directory as well, and two independent fixes beat one clever default",
+		healthy,
+		"the step no longer runs the copied classifier from $RUNNER_TEMP, so either D3 or the copy itself is gone",
+	);
+	assert.ok(
+		healthy.includes('--root "$GITHUB_WORKSPACE"'),
+		"the base-revision invocation does not pass --root: it is the one that runs on every ordinary pull request, and the module's own resolution is the thing that must not have to be trusted alone",
 	);
 
-	// The transitive relative-import closure, derived from the module rather than
-	// from a list in the workflow: a list is the thing that rots.
+	// ONE `git show "$base:<path>"` PER COPIED PATH, not one `git show` anywhere in
+	// the step. The loose form survived the mutation that matters: replacing only
+	// the module's copy with the working tree's (`cp scripts/ci-scope.mjs ...`),
+	// which is the natural way D3 gets broken and the one that lets a PR ship the
+	// classifier that decides its own gates.
 	const closure = relativeImportClosure(MODULE);
 	assert.ok(
 		closure.size > 0,
 		`${MODULE} imports nothing relative; expected its reuse set`,
 	);
-	for (const file of closure) {
+	for (const file of [MODULE, ...closure]) {
+		const copied = lines.find(
+			(line) =>
+				line.includes(`git show "$base:${file}"`) &&
+				line.includes("$RUNNER_TEMP"),
+		);
 		assert.ok(
-			run.includes(file),
-			`the classifier step does not copy ${file}, which ${MODULE} imports: node cannot resolve it from $RUNNER_TEMP, the classifier dies before writing an output, and behind \`!= 'false'\` every job runs on every PR forever`,
+			copied,
+			`the step does not copy ${file} with \`git show "$base:${file}"\` into $RUNNER_TEMP: it must come from the BASE revision, so that a PR cannot ship the classifier that classifies it`,
+		);
+		// ...and the copy is GUARDED, because GitHub runs this block under
+		// `bash -e`. An unguarded `git show` for a file the base revision does not
+		// have - the ordinary state of a PR that adds an import - aborts the step
+		// before it writes an output, i.e. a red `Change Scope` on a legitimate
+		// PR, where the documented behaviour is warn-and-run-everything.
+		assert.match(
+			copied,
+			/\|\|\s*\S/,
+			`the copy of ${file} is unguarded: under \`bash -e\` a base revision without it aborts the step instead of taking the warn-and-run-everything path the module's header promises`,
 		);
 	}
+});
+
+/*
+ * The step's text is all the assertions above can read, and two of its
+ * properties are not visible in text at all: WHICH file it executes, and what it
+ * does when the base revision is missing one of them.
+ *
+ * Defect (a): the step copying the working tree's classifier instead of the base
+ * revision's - the whole point of D3, and the mutation that leaves the textual
+ * assertion above green unless it names the path per file.
+ * Defect (b): an unguarded copy aborting the step under `bash -e` (GitHub's own
+ * shell for a `run:` block; this repository's job logs print
+ * `shell: /usr/bin/bash -e {0}`), so a PR that adds an import gets a RED check
+ * where the documented behaviour is `::warning::` plus `--all`.
+ * Mutations: point the module's copy at the working tree; drop one `|| copied=false`.
+ */
+test("A13: the step itself executes the base copy, and fails OPEN without it", () => {
+	// (a) The BASE revision's copy is what runs. The fixture's base carries a
+	// stand-in for the module that prints a marker the real module cannot print, so
+	// "the base copy ran" is observable rather than assumed.
+	const complete = stepFixture({
+		"scripts/ci-scope.mjs": BASE_COPY_STUB,
+		"scripts/version-bump-guard.mjs": null,
+		"scripts/entry-point.mjs": null,
+	});
+	const ran = runClassifyStep(complete.repo);
+	assert.equal(
+		ran.status,
+		0,
+		`the classify step failed:\n${ran.stdout}\n${ran.stderr}`,
+	);
+	assert.match(
+		ran.stdout,
+		/BASE-REVISION-COPY/,
+		"the step did not execute the BASE revision's copy of the classifier: it ran the working tree's, which is a pull request shipping the code that decides its own gates",
+	);
+	assert.doesNotMatch(ran.stdout, /::warning/);
+	assert.deepEqual(
+		ran.output.trim().split("\n"),
+		FLAGS.map((flag) => `${flag}=false`),
+		"the base revision's copy wrote something other than what it was handed to write",
+	);
+
+	// (b) A base revision missing one of the module's imports warns and runs
+	// everything, with exit 0 - the branch the module's own header documents.
+	const incomplete = stepFixture({ "scripts/ci-scope.mjs": null });
+	const fellBack = runClassifyStep(incomplete.repo);
+	assert.equal(
+		fellBack.status,
+		0,
+		`a base revision without one of the copied files must not fail the step:\n${fellBack.stdout}\n${fellBack.stderr}`,
+	);
+	assert.match(
+		fellBack.stdout,
+		/::warning title=Change classification unavailable::/,
+	);
+	assert.deepEqual(
+		fellBack.output.trim().split("\n"),
+		FLAGS.map((flag) => `${flag}=true`),
+		"the fallback did not write every flag true, so an unclassifiable diff would skip jobs",
+	);
 });
 
 test("A13: the copied module classifies from the invocation directory, not its own path", () => {
@@ -1032,6 +1138,124 @@ const commitAll = (repo, message) => {
 };
 
 const mv = (from, to, cwd) => git(["mv", from, to], cwd);
+
+/** The `changes` job's classify step, as its own text. */
+function classifyStepRun() {
+	const step = (jobs.changes.steps ?? []).find(
+		(candidate) =>
+			typeof candidate.run === "string" && candidate.run.includes(MODULE),
+	);
+	assert.ok(step, `the \`changes\` job has no step that runs ${MODULE}`);
+	return step.run;
+}
+
+/**
+ * A `run:` body with its line continuations joined, so an assertion can read the
+ * command the SHELL will read: `node "$RUNNER_TEMP/ci-scope.mjs" \` and its
+ * flags are one logical line, and a per-line check reads a different string.
+ */
+const continuationJoined = (run) =>
+	run
+		.replace(/\\\r?\n\s*/g, " ")
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean);
+
+/**
+ * A stand-in for the classifier, committed as a fixture's BASE revision. It
+ * prints a marker the real module never prints, which is what makes "the step
+ * executed the base revision's copy" an observable fact rather than an
+ * inference from the step's text.
+ */
+const BASE_COPY_STUB = [
+	'import { appendFileSync } from "node:fs";',
+	'process.stdout.write("BASE-REVISION-COPY\\n");',
+	'const flags = ["lint", "types", "unit", "runtime_deps", "audit", "pack"];',
+	"appendFileSync(",
+	"\tprocess.env.GITHUB_OUTPUT,",
+	'\t`${flags.map((flag) => `${flag}=false`).join("\\n")}\\n`,',
+	");",
+	'appendFileSync(process.env.GITHUB_STEP_SUMMARY, "from the base revision copy\\n");',
+	"",
+].join("\n");
+
+/**
+ * A repository whose BASE revision carries exactly the files the caller names,
+ * and whose working tree carries the real module and its closure - which is the
+ * state a PR that adds an import is in.
+ *
+ * `baseFiles` maps a repo-relative path to the content the base revision holds:
+ * `null` for the real file, or a string to stand in for it. Paths not named are
+ * absent from the base and present in the working tree.
+ */
+function stepFixture(baseFiles) {
+	const dir = realpathSync(mkdtempSync(join(tmpdir(), "ci-scope-step-")));
+	const repo = join(dir, "repo");
+	mkdirSync(join(repo, "scripts"), { recursive: true });
+	mkdirSync(join(repo, "docs"), { recursive: true });
+	git(["init", "-q", "-b", "main"], repo);
+	git(["config", "user.email", "test@example.invalid"], repo);
+	git(["config", "user.name", "ci-scope test"], repo);
+	git(["config", "commit.gpgsign", "false"], repo);
+
+	// The base revision: exactly the named files, one commit.
+	writeFileSync(join(repo, "docs/BUILD.md"), "# build\n");
+	for (const [file, content] of Object.entries(baseFiles)) {
+		writeFileSync(
+			join(repo, file),
+			content ?? readFileSync(join(repoRoot, file), "utf8"),
+		);
+	}
+	git(["add", "docs/BUILD.md", ...Object.keys(baseFiles)], repo);
+	git(["commit", "-qm", "the base revision"], repo);
+
+	// A second commit, because the step reads `HEAD^1` and a single-commit
+	// repository has none - that is a different branch of the step.
+	append(join(repo, "docs/BUILD.md"), "\nprose\n");
+	commitAll(repo, "a prose-only change");
+
+	// The working tree, as a checkout of this branch has it: the module and every
+	// file it imports, even where the base revision had a stand-in or nothing.
+	for (const file of [MODULE, ...relativeImportClosure(MODULE)]) {
+		cpSync(join(repoRoot, file), join(repo, file));
+	}
+	return { dir, repo };
+}
+
+/**
+ * Drive the `changes` job's classify step the way GitHub does - `bash -e` over the
+ * step's own body, with the Actions channel files in the environment - and return
+ * its status, its output and the two files it wrote.
+ */
+function runClassifyStep(repo) {
+	const script = join(repo, ".ci-classify-step.sh");
+	writeFileSync(script, classifyStepRun());
+	const runnerTemp = mkdtempSync(join(tmpdir(), "ci-scope-runner-temp-"));
+	const output = join(runnerTemp, "github-output");
+	const summary = join(runnerTemp, "step-summary");
+	writeFileSync(output, "");
+	writeFileSync(summary, "");
+	const result = spawnSync("bash", ["-e", script], {
+		cwd: repo,
+		encoding: "utf8",
+		env: {
+			PATH: process.env.PATH,
+			HOME: process.env.HOME,
+			GITHUB_EVENT_NAME: "pull_request",
+			GITHUB_WORKSPACE: repo,
+			GITHUB_OUTPUT: output,
+			GITHUB_STEP_SUMMARY: summary,
+			RUNNER_TEMP: runnerTemp,
+		},
+	});
+	return {
+		status: result.status,
+		stdout: result.stdout ?? "",
+		stderr: result.stderr ?? "",
+		output: readFileSync(output, "utf8"),
+		summary: readFileSync(summary, "utf8"),
+	};
+}
 
 /**
  * The module's transitive relative-import closure, derived from the SOURCE
