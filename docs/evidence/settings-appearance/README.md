@@ -119,6 +119,16 @@ the one upstream `src/` change in this story's path is four *added* lines in
 ship in — and the "did the picture move" question is answered by comparing bytes
 rather than by asserting it.
 
-The built bundle is left in place for the review rounds:
-`<worktree>/storybook-static`, served on `http://localhost:6047` by a detached
-`npx http-server storybook-static -p 6047 --silent` run from that worktree.
+The bundle this round shot from is **not** left in place: the box was short of
+both disk and memory, and a stale `storybook-static` is what round 1's own
+re-capture had to work around, so the directory and the static server that
+matched it (`npx http-server storybook-static -p 6047 --silent`) were torn down
+after the re-shoot. The committed frames above are the artifact; to re-shoot one,
+rebuild and serve again:
+
+```
+pnpm build-storybook
+npx http-server storybook-static -p 6047 --silent
+node scripts/capture-evidence.mjs http://localhost:6047 \
+  --only=settings-appearance--gallery --themes=<the ThemeName ids to re-shoot> --allow-backend
+```
