@@ -24,8 +24,8 @@ import {
 	BaselineError,
 	compareVersions,
 	normaliseReleases,
-	selectVersionAnchor,
 	selectIncumbentAnchor,
+	selectVersionAnchor,
 	tagVersion,
 } from "./release-baseline.mjs";
 
@@ -106,7 +106,8 @@ test("a tag no user could reach is not an incumbent anchor", () => {
 	// release owner derives it from `<the newest tag>..origin/main`, see AGENTS.md,
 	// and the version-anchor cases below pin the anchor that range rests on.)
 	assert.equal(
-		selectIncumbentAnchor(RELEASES, { exclude: "v0.24.0", below: "0.23.4" }).tag,
+		selectIncumbentAnchor(RELEASES, { exclude: "v0.24.0", below: "0.23.4" })
+			.tag,
 		"v0.23.3",
 	);
 	const withPrereleaseNewest = [

@@ -470,9 +470,11 @@ test("both `/move` forms ask the pane's readiness, not the capability alone (age
 	 * guard posts - and the count is what carries the claim.
 	 */
 	assert.equal(
-		(dispatchSource.match(
-			/if \(!sessionId\) \{[\s\S]{0,600}?if \(!paneReady\) \{/g,
-		) ?? []).length,
+		(
+			dispatchSource.match(
+				/if \(!sessionId\) \{[\s\S]{0,600}?if \(!paneReady\) \{/g,
+			) ?? []
+		).length,
 		2,
 		"identity is answered before readiness, in both forms",
 	);
@@ -536,11 +538,16 @@ test("the chip's accessible name carries the phrase its label slot paints (R3-1,
 	 * is that the name contains the label. Both are read out of the shipped source
 	 * and asked directly.
 	 */
-	const painted = chip.match(/\{pending \? "(Moving session:)" : "(Working directory:)"\}/);
+	const painted = chip.match(
+		/\{pending \? "(Moving session:)" : "(Working directory:)"\}/,
+	);
 	const named = chip.match(
 		/aria-label=\{`\$\{pending \? "(Moving session)" : "(Working directory)"\}/,
 	);
-	assert.ok(painted && named, "both the slot and the name must be found to be compared");
+	assert.ok(
+		painted && named,
+		"both the slot and the name must be found to be compared",
+	);
 	assert.equal(
 		named[1],
 		painted[1].replace(/:$/, ""),

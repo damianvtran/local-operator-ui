@@ -28,9 +28,9 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import {
+	SEEDED_CATALOGUE,
 	assertHealthyFrame,
 	baselineRows,
-	SEEDED_CATALOGUE,
 } from "./new-chat-row-evidence.mjs";
 
 /** The guard's own failure messages, matched rather than restated. */
@@ -45,7 +45,9 @@ const BANNER_COPY = /will not function properly/;
 
 const ROOT = process.cwd();
 const readback = (name) =>
-	JSON.parse(readFileSync(join(ROOT, "docs/evidence/new-chat-row", name), "utf8"));
+	JSON.parse(
+		readFileSync(join(ROOT, "docs/evidence/new-chat-row", name), "utf8"),
+	);
 
 /** A record of the shape the capture probes write, healthy unless overridden. */
 const healthyFrame = (overrides = {}) => ({
@@ -64,7 +66,10 @@ const healthyFrame = (overrides = {}) => ({
 
 test("a frame of the seeded catalogue passes", () => {
 	assert.doesNotThrow(() =>
-		assertHealthyFrame(healthyFrame(), { baselineY: 568, requireSignals: true }),
+		assertHealthyFrame(healthyFrame(), {
+			baselineY: 568,
+			requireSignals: true,
+		}),
 	);
 });
 
@@ -84,7 +89,8 @@ test("the degraded run round 1 published is rejected", () => {
 	// As recorded, the scroll is what fails first — the extra `Retry` control is
 	// a button in the document, not something that moves the row on its own.
 	assert.throws(
-		() => assertHealthyFrame(recorded(), { baselineY: 568, requireSignals: true }),
+		() =>
+			assertHealthyFrame(recorded(), { baselineY: 568, requireSignals: true }),
 		SCROLLED,
 	);
 	// Held at the baseline, the walk alone still fails it: the control is only
@@ -107,10 +113,13 @@ test("a frame from a run whose panel is scrolled is rejected", () => {
 	// between the states of one run unless something above it changed height.
 	assert.throws(
 		() =>
-			assertHealthyFrame(healthyFrame({ newChat: { box: { y: 503.83, h: 32 } } }), {
-				baselineY: 568,
-				requireSignals: true,
-			}),
+			assertHealthyFrame(
+				healthyFrame({ newChat: { box: { y: 503.83, h: 32 } } }),
+				{
+					baselineY: 568,
+					requireSignals: true,
+				},
+			),
 		SCROLLED,
 	);
 });
@@ -129,29 +138,38 @@ test("a half-arrived catalogue is rejected on the split totals, not just the row
 	);
 	assert.throws(
 		() =>
-			assertHealthyFrame(healthyFrame({ previousChatsText: "Previous chats 0" }), {
-				baselineY: 568,
-				requireSignals: true,
-			}),
+			assertHealthyFrame(
+				healthyFrame({ previousChatsText: "Previous chats 0" }),
+				{
+					baselineY: 568,
+					requireSignals: true,
+				},
+			),
 		PREVIOUS_TOTAL,
 	);
 });
 
 test("an error surface in the sidebar is rejected, three ways", () => {
 	assert.throws(
-		() => assertHealthyFrame(healthyFrame({ alerts: 1 }), { requireSignals: true }),
+		() =>
+			assertHealthyFrame(healthyFrame({ alerts: 1 }), { requireSignals: true }),
 		ANY_ALERT,
 	);
 	assert.throws(
 		() =>
 			assertHealthyFrame(
-				healthyFrame({ navText: "The backend could not complete this request." }),
+				healthyFrame({
+					navText: "The backend could not complete this request.",
+				}),
 				{ requireSignals: true },
 			),
 		INCOMPLETE_CALL,
 	);
 	assert.throws(
-		() => assertHealthyFrame(healthyFrame({ navScroll: 64.17 }), { requireSignals: true }),
+		() =>
+			assertHealthyFrame(healthyFrame({ navScroll: 64.17 }), {
+				requireSignals: true,
+			}),
 		SIDEBAR_SCROLLED,
 	);
 });
@@ -179,8 +197,9 @@ test("a record without the error-surface signals fails the strict contract", () 
 	// The capture must not silently lose the signals the re-capture added.
 	const { alerts, navText, navScroll, bannerText, ...frame } = healthyFrame();
 	assert.equal(
-		[alerts, navText, navScroll, bannerText].filter((value) => value !== undefined)
-			.length,
+		[alerts, navText, navScroll, bannerText].filter(
+			(value) => value !== undefined,
+		).length,
 		4,
 		"the fixture is expected to carry the signal block",
 	);

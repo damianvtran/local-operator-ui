@@ -54,10 +54,17 @@ test("the score bands are exact > prefix > fuzzy > none", () => {
 	assert.equal(scoreCommandTextMatch("model", "model"), SCORE_EXACT);
 	assert.equal(scoreCommandTextMatch("MODEL", "model"), SCORE_EXACT);
 	assert.equal(scoreCommandTextMatch("mod", "model"), SCORE_PREFIX);
-	assert.equal(scoreCommandTextMatch("", "model"), 0, "empty prefix is not a match");
+	assert.equal(
+		scoreCommandTextMatch("", "model"),
+		0,
+		"empty prefix is not a match",
+	);
 	assert.equal(scoreCommandTextMatch("zzz", "model"), 0);
 	const fuzzy = scoreCommandTextMatch("mdl", "model");
-	assert.ok(fuzzy >= 1 && fuzzy <= SCORE_FUZZY_MAX, `fuzzy score in band, got ${fuzzy}`);
+	assert.ok(
+		fuzzy >= 1 && fuzzy <= SCORE_FUZZY_MAX,
+		`fuzzy score in band, got ${fuzzy}`,
+	);
 	assert.ok(fuzzy < SCORE_PREFIX);
 });
 
@@ -138,7 +145,10 @@ test("matchChoices returns the primary name even when an alias matched", () => {
 	// An argument's alias is only a way to FIND it: returning `claude` would put
 	// a word in the buffer that the command then rejects.
 	const fuzzy = matchChoices("g", choices).map((row) => row.name);
-	assert.ok(!fuzzy.includes("gpt"), "an alias must never be returned as a value");
+	assert.ok(
+		!fuzzy.includes("gpt"),
+		"an alias must never be returned as a value",
+	);
 });
 
 test("a tie keeps registry order, which is what keeps the row stable", () => {
@@ -162,8 +172,14 @@ test("Enter runs a row only when the choice is unambiguous", () => {
 	// A hand-moved row: the user read the list and chose.
 	assert.equal(isUnambiguous("", "any-row", 9, false, true), true);
 	// Typed in full: the user named it rather than letting the matcher choose.
-	assert.equal(isUnambiguous("openrouter", "openrouter", 3, false, false), true);
-	assert.equal(isUnambiguous("OpenRouter", "openrouter", 3, false, false), true);
+	assert.equal(
+		isUnambiguous("openrouter", "openrouter", 3, false, false),
+		true,
+	);
+	assert.equal(
+		isUnambiguous("OpenRouter", "openrouter", 3, false, false),
+		true,
+	);
 	// One survivor of a harmless list.
 	assert.equal(isUnambiguous("oer", "openrouter", 1, false, false), true);
 	// One survivor of a DESTRUCTIVE list is NOT evidence: a subsequence matcher

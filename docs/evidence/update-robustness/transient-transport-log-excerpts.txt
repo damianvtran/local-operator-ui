@@ -1,0 +1,106 @@
+The transport failures behind "stop showing raw Chromium network errors", as the
+operator's own update log held them.
+
+SOURCE
+  ~/Library/Application Support/Local Operator/logs/update-service.log
+  read on 2026-09-16 at ~11:29-11:35 by this change's author, grep/sed only.
+
+WHY AN EXCERPT AND NOT A POINTER. The app is running and rewrites this file: it
+rotated at 12:14 the same day, and by then the lines below were no longer on
+disk (both `update-service.log` and `update-service.old.log` held zero `net::`
+entries, and the 10 MB file the counts came from was gone). What is quoted here
+is what was read, and the counts are the counts of the file as it then stood.
+The 09:03:12 block in the task report could NOT be re-read for the same reason;
+what was re-readable is the 2026-09-13 block below, which is the same defect
+with the same two producers.
+
+1. A FIVE-MINUTE SCHEDULED CHECK, SILENT, REPORTED TWICE, ON A MACHINE THAT WAS
+   ONLINE. `[error] Error: Error: net::ERR_TIMED_OUT` is electron-updater's own
+   logger printing `<name>: <stack>`, whose first line already reads
+   `<name>: <message>` - the doubled prefix, and it never reaches the renderer.
+   `Update error:` is this app's handler, `Checking if error should be filtered`
+   is `shouldFilterUpdateError`, and `Error checking for updates` is the check's
+   own catch. Two producers of one user-facing message, one of them a silent
+   background check:
+
+   [2026-09-13 07:58:55.437] [info]  Running scheduled update check (every 5 minutes)
+   [2026-09-13 07:58:55.437] [info]  Checking for updates... (silent mode: true)
+   [2026-09-13 07:58:55.438] [info]  Checking for update
+   [2026-09-13 07:59:26.518] [error] Error: Error: net::ERR_TIMED_OUT
+       at SimpleURLLoaderWrapper.<anonymous> (node:electron/js2c/browser_init:2:123516)
+       at SimpleURLLoaderWrapper.emit (node:events:518:28)
+   [2026-09-13 07:59:26.519] [error] Update error: Error: net::ERR_TIMED_OUT
+   [2026-09-13 07:59:26.519] [info]  Checking if error should be filtered: net::ERR_TIMED_OUT
+   [2026-09-13 07:59:26.519] [error] Error checking for updates: Error: net::ERR_TIMED_OUT
+   [2026-09-13 07:59:26.519] [info]  Checking for backend updates... (silent mode: true)
+
+   `err.message` is the SINGLE-prefixed string above: the check's own catch logs
+   it without a second `Error: `, which is how the raw code came to be sent to
+   the renderer unchanged - and it is what the alert showed the operator.
+
+2. FIVE-MINUTE INTERVALS, DIFFERENT TRANSIENT CODES, ALL MORNING. The same
+   scheduled check failed again and again over the morning with a different
+   member of the family each time - which is the shape of a network stack, not
+   of a broken server:
+
+   [2026-09-13 07:59:26.518]  net::ERR_TIMED_OUT
+   [2026-09-13 08:04:59.971]  net::ERR_CONNECTION_RESET
+   [2026-09-13 08:09:25.508]  net::ERR_TIMED_OUT
+   [2026-09-13 08:14:25.630]  net::ERR_TIMED_OUT
+   [2026-09-13 08:21:37.760]  net::ERR_CONNECTION_RESET
+   [2026-09-13 08:27:18.906]  net::ERR_CONNECTION_RESET
+   [2026-09-13 08:31:48.314]  net::ERR_CONNECTION_RESET
+   [2026-09-13 08:35:03.003]  net::ERR_CONNECTION_RESET
+   [2026-09-13 08:41:42.763]  net::ERR_CONNECTION_RESET
+   [2026-09-13 08:44:40.764]  net::ERR_CONNECTION_RESET
+
+   The transport was the only thing that failed, and it failed intermittently:
+   in the same second as the 07:59:26 failure, the same check's LOCAL read of the
+   running server answered normally -
+
+   [2026-09-13 07:59:26.519] [info]  Checking for backend updates... (silent mode: true)
+   [2026-09-13 07:59:26.520] [info]  Checking backend version from health API at http://127.0.0.1:1111/health
+   [2026-09-13 07:59:26.524] [info]  Backend version from health API: 0.54.31
+
+   - so the machine was up, the server was up, and the release FEED was what
+   could not be reached that instant. One of these failures is not an answer
+   about the world; asking again is. (What the log cannot show now, because it
+   has rotated, is the following check reporting itself `not available`; the task
+   report's 09:03:12 / 09:08:12 pair is that same hour and that same claim.)
+
+3. THE COUNTS, over the four days the file then covered, counted by this change's
+   author from the file itself (`grep -o 'net::ERR_[A-Z_]*' ... | sort | uniq
+   -c`). The task report's own reading of the same log records that each of these
+   was followed by a check five minutes later that succeeded - the 09:03:12 /
+   09:08:12 pair - which is the half the excerpt cannot re-derive now:
+
+   36  net::ERR_CONNECTION_RESET
+   24  net::ERR_TIMED_OUT
+   14  net::ERR_CONNECTION_REFUSED
+    8  net::ERR_NETWORK_CHANGED
+    8  net::ERR_INTERNET_DISCONNECTED
+    1  getaddrinfo ENOTFOUND pypi.org        (the server-version read, same instant)
+
+4. THE WRAPPED SHAPE, which is why the classifier matches on the CODE rather
+   than on a table of whole strings. One `err.message`, three nested `Error: `
+   prefixes, and the transport code at the end of a sentence:
+
+   [2026-09-15 21:52:00.767] [error] Error: Error: Cannot parse releases feed: Error: Unable to find latest version on GitHub (https://github.com/damianvtran/local-operator-ui/releases/latest), please ensure a production release exists: Error: net::ERR_NETWORK_CHANGED
+   [2026-09-15 21:52:00.769] [error] Update error: Error: Cannot parse releases feed: Error: Unable to find latest version on GitHub (https://github.com/damianvtran/local-operator-ui/releases/latest), please ensure a production release exists: Error: net::ERR_NETWORK_CHANGED
+   [2026-09-15 21:52:00.770] [info]  Checking if error should be filtered: Cannot parse releases feed: Error: Unable to find latest version on GitHub (https://github.com/damianvtran/local-operator-ui/releases/latest), please ensure a production release exists: Error: net::ERR_NETWORK_CHANGED
+   [2026-09-15 21:52:00.772] [error] Error checking for updates: Error: Cannot parse releases feed: Error: Unable to find latest version on GitHub (https://github.com/damianvtran/local-operator-ui/releases/latest), please ensure a production release exists: Error: net::ERR_NETWORK_CHANGED
+
+WHAT EACH LINE IS EVIDENCE FOR
+  * `[error] Update error: ...` and `[error] Error checking for updates: ...` are
+    the two producers of one `update-error`, and `(silent mode: true)` above them
+    is the background check that had no business reporting at all.
+  * `err.message` carrying `net::ERR_*` is why the alert's whole text was the
+    code: `update-error` sent that string and the surface painted it.
+  * The intermittent codes across the morning, with the local server answering
+    in the same second, are why the honest response is a bounded retry rather
+    than a message - and why an unfetched feed must stay `unavailable` rather
+    than being reported as "nothing newer".
+  * The wrapped shape is why `transientTransportFragment` searches for the code
+    inside the message (`src/shared/transport-failure.ts`), and why the doubled
+    prefix is stripped at the source before the string is sent
+    (`stripErrorPrefixes`).

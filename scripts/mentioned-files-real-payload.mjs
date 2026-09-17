@@ -57,9 +57,10 @@ const bundle = await build({
 		"@shared": "./src/renderer/src/shared",
 	},
 });
-const { EMPTY_TRANSCRIPT, applyHistoryPage, extractMentionedPaths } = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const { EMPTY_TRANSCRIPT, applyHistoryPage, extractMentionedPaths } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
 
 /** The same expansion `resolveUserPath` performs in main, for the audit only. */
 function diskPath(path) {

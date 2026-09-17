@@ -375,8 +375,11 @@ export function releaseNotesVerdict(body) {
 function assertReleaseNotes(tag, body) {
 	const { refusal, warnings } = releaseNotesVerdict(body);
 	for (const warning of warnings)
-		console.log(`::warning title=Release notes look incomplete::${tag}: ${warning}`);
-	if (refusal) throw new ValidationError(`Refusing to publish ${tag}: ${refusal}`);
+		console.log(
+			`::warning title=Release notes look incomplete::${tag}: ${warning}`,
+		);
+	if (refusal)
+		throw new ValidationError(`Refusing to publish ${tag}: ${refusal}`);
 }
 
 /**
