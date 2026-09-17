@@ -56,6 +56,7 @@ import { useEntities } from "../pickers/destination-pickers";
 import {
 	DESTINATIONS,
 	type InlineArgumentSource,
+	destinationNeedsSession,
 	inlineArgumentFor,
 } from "../pickers/picker-registry";
 import {
@@ -784,9 +785,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	 * unreachable in every state the popup can be in, and the app printed the
 	 * fallback while the copy table said otherwise (review F2 / QA Q3-1).
 	 */
+	/*
+	 * The active COMMAND row's destination, read ONCE because three things below are
+	 * about this same row: which line of copy its pick answers to, what the promise
+	 * names, and whether the pane clause qualifies that promise. Asking the row
+	 * three times is how the three come to describe different rows.
+	 */
+	const activeDestination =
+		activeRow?.kind === "command" ? activeRow.command.destination : undefined;
 	const pickRuns = activeRowRuns({
-		destination:
-			activeRow?.kind === "command" ? activeRow.command.destination : undefined,
+		destination: activeDestination,
 		entry:
 			activeRow?.kind === "command"
 				? DESTINATIONS[activeRow.command.destination]
@@ -828,9 +836,22 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			activeRow?.kind === "command" ? activeRow.command.consumes_prompt : false,
 		// The armed row's destination, so the promise this line makes about the
 		// next Enter is the note's own sentence rather than a second one (design D4).
-		destination:
-			activeRow?.kind === "command" ? activeRow.command.destination : undefined,
-		paneHasSession: state.paneHasSession,
+		destination: activeDestination,
+		/*
+		 * The pane clause, folded with the destination exactly as the staged note
+		 * folds it (`message-input.tsx`): the dispatcher refuses a destination that
+		 * needs a conversation, and a MACHINE panel (`/info`, `/usage`, `/analytics`)
+		 * does not — it runs on a sessionless pane. Passing the raw bit here left the
+		 * footer the only surface still promising "this pane needs an open
+		 * conversation" for a command that then runs, which is the disagreement § 3.1
+		 * centralised the predicate to prevent; it was unreachable only because no
+		 * machine panel currently declares a staging route (code review round 1, m3).
+		 * The predicate is the table's, so this line and the dispatcher cannot
+		 * disagree.
+		 */
+		paneHasSession: destinationNeedsSession(activeDestination)
+			? state.paneHasSession
+			: true,
 		hoists: state.hoists,
 		unambiguous: activeArgument
 			? slashRunAllowed({

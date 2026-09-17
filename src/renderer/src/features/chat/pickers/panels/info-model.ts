@@ -716,6 +716,27 @@ export function mcpSummary(frontend: InfoFrontend | null): McpSummary {
 	};
 }
 
+/**
+ * The MCP row's qualifier when this presentation holds no live renderer copy.
+ *
+ * The VALUE in that state is `—` ("no live copy was read"), which is the panel's
+ * spelling for an unknown and not a measurement of zero. The note says WHY, and
+ * it is load-bearing because the row is not the only thing that goes with the
+ * copy: `mcp.failures` is empty for the same reason, so the `Server / Reported`
+ * table under the row is omitted too — and the table is the only surface in the
+ * app that names a broken MCP server, so a reader looking for one has to be told
+ * that this door will not show it rather than left to conclude nothing is wrong
+ * (design round 1, D1).
+ *
+ * `this view` rather than "no conversation": there are two doors into this panel
+ * and they lose the copy for different reasons. On a sessionless pane there is
+ * no conversation to read; from the shell host (`panel-outlet.tsx`) there may be
+ * one open on another route, and the copy lives on the pane's canonical handle,
+ * which is not mounted there. What is true in both is that THIS presentation read
+ * nothing, and that is the claim the note makes.
+ */
+export const MCP_NOT_READ_NOTE = "not read in this view";
+
 /** Section 6's rows: everything except the terminal-only half. */
 export function environmentRows(
 	env: DesktopInfoData["env"],
@@ -738,11 +759,17 @@ export function environmentRows(
 					? "none configured"
 					: `${formatCount(mcp.connected)} of ${formatCount(mcp.configured)} connected`,
 			/*
-			 * Reporting "1 of 3 up" mid-handshake is how a user files a bug about
-			 * a server that came up a second later.
+			 * `not read in this view` is the fourth spelling, and the reason it is not
+			 * silent: with no copy the failure table below is omitted as well, so the
+			 * unmeasured row is the only place the reader can learn that this
+			 * presentation did not look (design round 1, D1).
+			 *
+			 * Reporting "1 of 3 up" mid-handshake is the other extreme, and how a user
+			 * files a bug about a server that came up a second later.
 			 */
-			note:
-				mcp.measured && mcp.settling
+			note: !mcp.measured
+				? MCP_NOT_READ_NOTE
+				: mcp.settling
 					? "still connecting deferred servers"
 					: undefined,
 		},

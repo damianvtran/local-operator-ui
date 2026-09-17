@@ -177,6 +177,13 @@ const base = {
 	windowDays: 7,
 	metric: "tokens" as const,
 	thisSessionOnly: false,
+	/*
+	 * TRUE in every fixture but `SessionFree`, and it is what keeps these frames
+	 * honest: the scope control is a live-conversation affordance, so a fixture
+	 * that dropped it would photograph a state no pane can produce — and every
+	 * frame in this set is a pane's.
+	 */
+	canScopeToSession: true,
 	now: NOW,
 	onWindowChange: noop,
 	onMetricChange: noop,
@@ -586,6 +593,38 @@ export const Narrow: Story = {
 			}),
 			session_names: {},
 		},
+		loading: false,
+		refreshing: false,
+		error: null,
+	},
+};
+
+/**
+ * The SESSION-FREE panel: what `/analytics` renders when no conversation is open.
+ *
+ * The operator's requirement is that this panel runs with no conversation at all
+ * (`/analytics` on an empty pane used to be refused outright), and that it can be
+ * read from a page that is not chat. Both mean the panel is painted with no
+ * session in front of the user, which is `canScopeToSession: false` here.
+ *
+ * What to judge, and what must NOT be here: no `This session only` check (its
+ * label would name nothing on screen and its query already drops a falsy session
+ * id, so it could only change the query key), the scope still reading
+ * `all sessions` in the Totals meta, and the chart meta free of the `· all
+ * sessions` clause — that clause exists to say the DAILY series is machine-wide
+ * even when the totals are scoped, so with nothing scoped it is not information.
+ * The populated fixtures beside this frame are the pair that proves the
+ * live-conversation rendering is untouched.
+ *
+ * The payload is the same `populated` fixture rather than an empty one, on
+ * purpose: an empty ledger would also drop every section, so the two changes
+ * would be indistinguishable in one frame.
+ */
+export const SessionFree: Story = {
+	args: {
+		...base,
+		data: populated,
+		canScopeToSession: false,
 		loading: false,
 		refreshing: false,
 		error: null,

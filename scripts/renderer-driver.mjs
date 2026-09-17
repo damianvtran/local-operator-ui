@@ -2563,27 +2563,31 @@ async function scenePalette(cdp) {
 	/*
 	 * The panel rows, and why this run has none.
 	 *
-	 * `/info`, `/usage`, `/analytics` and `/session` are presented by the CHAT PANE,
-	 * whose adapters need that pane's session handle, command catalogue and rebind
-	 * path - so the palette does not open them, it ASKS (`chat-panel-request-store`)
-	 * and the pane answers. This run has no backend, so the chat route paints its
-	 * connecting state with no pane behind it, and the palette offers no panel row at
-	 * all: a row there would close the palette and open nothing. That is the gate
-	 * working, not a capture missing, and the assertion says so rather than leaving a
-	 * reader to wonder why `provider usage` finds nothing.
+	 * The panel rows are gated on what the row NEEDS. `/info`, `/usage` and
+	 * `/analytics` describe the machine and read no conversation, so they are
+	 * offered wherever the backend is live — a shell host presents them on any
+	 * route, and no pane is required. `/session` reads a conversation, so it needs
+	 * a pane that can present it. THIS run has no backend, so neither condition
+	 * holds: the chat route paints its connecting state, `canStageDraft` is false,
+	 * and the palette offers no panel row at all — a row there would close the
+	 * palette and open nothing, which is the dead control the palette refuses to
+	 * offer.
 	 *
-	 * The panels themselves are exercised against a live backend in the QA pass; no
-	 * driver scene can reach them, and pretending otherwise would mean pointing this
-	 * harness at the operator's own daemon.
+	 * (Before the panels became readable without a conversation the single gate for
+	 * all four was "can a pane present one". It is now two conditions over two
+	 * kinds, and what this scene still pins is the liveness half: with nothing to
+	 * read, the rows are absent rather than dead. The pane-vs-shell split is
+	 * exercised against a live backend in the QA pass — no driver scene can reach
+	 * it without pointing this harness at the operator's own daemon.)
 	 */
 	await verb(cdp, "press", "[data-command-palette-trigger]");
 	await cdp.send("Input.insertText", { text: "provider usage" });
 	const offline = await cdp.evaluate(
 		"({ palette: Boolean(document.querySelector('[data-tour-tag=\"command-palette-dialog\"]')), rows: document.querySelectorAll('#command-palette-results [role=\"option\"]').length, text: (document.querySelector('[data-tour-tag=\"command-palette-dialog\"]')?.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 80) })",
 	);
-	note("a panel query with no pane to present it", JSON.stringify(offline));
+	note("a panel query with no backend to answer it", JSON.stringify(offline));
 	check(
-		"no panel row is offered while no pane can present one",
+		"no panel row is offered while nothing can answer one",
 		offline.palette === true && offline.rows === 0,
 		JSON.stringify(offline),
 	);
