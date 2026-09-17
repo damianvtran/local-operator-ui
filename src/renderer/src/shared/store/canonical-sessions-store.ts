@@ -1030,7 +1030,25 @@ type CanonicalSessionsState = {
 	 *
 	 * Returns whether the press stands, for a caller that wants to act on it.
 	 */
-	setSessionPin: (sessionId: string, pinned: boolean) => Promise<boolean>;
+	/**
+	 * Pin or unpin, and INSERT the row when the store does not hold it yet.
+	 *
+	 * WHY the seed. A conversation reached through the search answer - a hit for a
+	 * session this client's page does not list - has no row here, so a press used to
+	 * write the backend and change nothing this panel could read: the sidebar kept
+	 * drawing the synthesized row from the cached WIRE hit, whose `pinned` no store
+	 * write updates, and the next press re-sent the state already applied (QA round 2,
+	 * Qr2-1: a pin that could not be undone from the row it was made on).
+	 *
+	 * So the press carries enough of the row to hold it: from that moment the STORE's
+	 * `pinned` is what the control renders and what the press inverts, and the wire hit
+	 * is only what a conversation the store has never held is drawn from.
+	 */
+	setSessionPin: (
+		sessionId: string,
+		pinned: boolean,
+		seed?: { title?: string; updated_at?: number },
+	) => Promise<boolean>;
 	/**
 	 * Which reads the daemon could not answer on the last successful session
 	 * list, in the daemon's own vocabulary (`liveness`, `wakes`, `attention`), or
@@ -1936,14 +1954,33 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 * incoming state, so a concurrent catalog read cannot make the revert
 			 * write a third value), and `pinFailure` states it.
 			 */
-			setSessionPin: async (sessionId, pinned) => {
+			setSessionPin: async (sessionId, pinned, seed) => {
 				const before = get().sessions.find(
 					(row) => row.session_id === sessionId,
 				);
+				/*
+				 * A row the store does not hold is INSERTED from the seed rather than left
+				 * absent: the map below is a no-op without it, and a press whose result the
+				 * panel cannot read is the failure this exists to prevent. `updated_at` is
+				 * the wire's own mtime when the hit carried one, so the row sorts where the
+				 * search said it belongs rather than at the top of the list.
+				 */
+				const seedRow: CanonicalSessionRow | null =
+					before === undefined && seed !== undefined
+						? {
+								session_id: sessionId,
+								title: seed.title || "Untitled chat",
+								updated_at: seed.updated_at,
+								pinned,
+							}
+						: null;
 				set((state) => ({
-					sessions: state.sessions.map((row) =>
-						row.session_id === sessionId ? { ...row, pinned } : row,
-					),
+					sessions:
+						seedRow === null
+							? state.sessions.map((row) =>
+									row.session_id === sessionId ? { ...row, pinned } : row,
+								)
+							: [...state.sessions, seedRow],
 					// A press retires the previous press's sentence: the notice is about the
 					// row under the pointer, and two of them would be a log.
 					pinFailure: null,

@@ -336,31 +336,77 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	assert.match(source, /\{pinned\.length > 0 && \(\s*<section>/);
 });
 
-test("the reveal is DISARMED under a parked pointer, and hidden and inert when it is", () => {
+test("a parked pointer cannot operate EITHER glyph state, and any input re-arms it", () => {
 	const source = read(SIDEBAR);
-	// The JSX attribute, not the name: the panel also SELECTS `[data-session-pin]` in the
-	// move-anchoring effect, and that mention sits far above the slot itself.
-	const at = source.indexOf("data-session-pin\n");
-	const block = source.slice(at, at + 2000);
 	/*
-	 * QA round 1, U3: a pin press moves a row out of the list, the rows below slide up,
-	 * and the pointer - which has not moved - is left over a different conversation whose
-	 * pin was revealed under it. The reveal is therefore conditional on the pointer having
-	 * MOVED since the press, and the disarmed branch is inert as well as hidden: hidden
-	 * alone would leave a control that acts on a conversation nobody chose.
+	 * UX round 2's U3-unpin: the disarm reached only the `pinned ? "text-ink" : …` branch, so
+	 * with two pinned rows a stationary double-click unpinned the first conversation and then
+	 * the second one whose glyph had slid into the vacated line - zero pins, no notice. Both
+	 * glyph states are inert while the pointer is parked now, and the pinned one stays VISIBLE
+	 * because it is the state rather than a reveal.
 	 */
+	const at = source.indexOf("data-session-pin\n");
+	const block = source.slice(at, at + 4200);
 	assert.match(
 		block,
-		/revealArmed\s*\?/,
-		"the slot's reveal must be conditional on the arming flag",
+		/pinned\s*\?\s*cn\(/,
+		"the pinned branch must be a conditional class list, or it cannot be disarmed",
 	);
 	assert.ok(
-		block.includes("pointer-events-none"),
-		"the disarmed slot must be inert as well as hidden",
+		block.includes('!revealArmed && "pointer-events-none"'),
+		"the pinned glyph must be inert while the reveal is disarmed",
 	);
 	assert.ok(
-		/onPointerMove/.test(source),
-		"re-arming must be the pointer moving, not a timer",
+		block.includes("pointer-events-none") &&
+			block.split("pointer-events-none").length - 1 >= 2,
+		"both glyph states must be inert while the reveal is disarmed",
+	);
+	/*
+	 * The disarm belongs to BOTH kinds of press (m3): the keyboard path left exactly the
+	 * parked state a pointer press does. And the re-arm is the reader ACTING - a pointer move
+	 * or a key press - never a timer, which would re-arm under a pointer that never moved.
+	 */
+	assert.match(
+		source,
+		/onPointerMove|\(onPointerMove\)/,
+		"a pointer move must re-arm the reveal",
+	);
+	assert.match(
+		source,
+		/onKeyDown/,
+		"a key press must re-arm the reveal, or a keyboard press leaves the panel inert",
+	);
+	assert.ok(
+		!/setTimeout\(\s*\(\)\s*=>\s*setRevealArmed/.test(source),
+		"re-arming must not be a timer",
+	);
+});
+
+test("a press on a conversation the store does not hold makes the store hold it", () => {
+	const source = read(SIDEBAR);
+	/*
+	 * QA round 2's Qr2-1: a pin write against a search-only row reached the backend and the
+	 * store's map was a no-op, because the store had no row for it - so the panel kept drawing
+	 * the cached WIRE hit and the press could never be undone from that row. The press now
+	 * carries enough of the row to be held, and the store inserts when it is absent.
+	 */
+	assert.match(
+		source,
+		/setSessionPin\(row\.session_id, !pinned, \{/,
+		"the press must carry the row's seed so a store that does not hold it can",
+	);
+	const store = read(
+		"src/renderer/src/shared/store/canonical-sessions-store.ts",
+	);
+	assert.match(
+		store,
+		/seedRow/,
+		"the store must insert a row it does not hold rather than mapping over nothing",
+	);
+	assert.match(
+		store,
+		/setSessionPin: \(\s*sessionId: string,\s*pinned: boolean,\s*seed\?:/,
+		"the action's signature must accept the seed",
 	);
 });
 
