@@ -3071,6 +3071,86 @@ export const STORIES = [
 	   be told from a story that never mounted (the trap `attached` documents), so
 	   the rule is pinned by its own cases instead. */
 	["common-connectivity-banner--internet-offline-confirmed", 1024, 420],
+
+	/*
+	 * The transcript's LINK affordances (`link-targets.stories.tsx`), and the two
+	 * pointer states among them are the ones nothing else can photograph.
+	 *
+	 * The REVEALED toolbar is browser state: a story `play` cannot produce a real
+	 * pointer, so these entries pass the rig's own `{ hover }` - CDP
+	 * `Input.dispatchMouseEvent` through the input pipeline, the same mechanism the
+	 * trigger-hover frames use - and the toolbar is raised by the shipped
+	 * `pointerover` handler reacting to it.
+	 *
+	 * `DetectedTargets` is the resting half and carries the eight admission shapes
+	 * in one frame (a `~` path, the operator's own report; a backticked path; a
+	 * `file://` URL; a bare https URL that remark-gfm already linked, which must not
+	 * be linked twice; a path in a table cell; a directory; a path that is not
+	 * there; and one long enough to wrap). Its BEFORE half is `main`'s tree at the
+	 * same story - the same text with no anchors in it at all.
+	 *
+	 * `hover-file` is the file case (Copy, Open, Open folder); `hover-url` is the
+	 * URL case, which is the already-captured-by-markdown case and offers no Open
+	 * folder; `hover-directory` is the matrix's one deliberate omission; and
+	 * `hover-missing` is the state that replaced a press which silently did
+	 * nothing, so what it shows is a SENTENCE rather than a disabled button.
+	 *
+	 * The narrow pass is its own entry rather than a second width of the same one:
+	 * a long path in a 420px column wraps, and where the toolbar lands for a
+	 * wrapped link is exactly what it is for.
+	 */
+	["chat-canonical-links--detected-targets", 1024, 720],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="file"]',
+			hoverSettleMs: 400,
+			dir: "hover-file",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="url"]',
+			hoverSettleMs: 400,
+			dir: "hover-url",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover:
+				'[data-record-id="a1"] a[data-lo-target$="opoint-renewal-2026-09-17"]',
+			hoverSettleMs: 400,
+			dir: "hover-directory",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-target^="/tmp/lo-link-missing/"]',
+			hoverSettleMs: 400,
+			dir: "hover-missing",
+		},
+	],
+	["chat-canonical-links--detected-targets-narrow", 420, 900],
+	/*
+	 * The operator's second ask, driven by a real Selection built in the story
+	 * (`highlightLink`) because a `play` cannot make a real drag: the toolbar is the
+	 * LINK's, the turn's own Quote control is absent, and Quote leads the strip.
+	 */
+	["chat-canonical-links--selection-in-link", 1024, 720],
+	/* The press that follows, with the composer in frame: what the toolbar stages is
+	   the link's own text, on the same `conversationId` the chip reads. */
+	["chat-canonical-links--selection-in-link-staged", 1024, 820],
 ];
 
 /**
