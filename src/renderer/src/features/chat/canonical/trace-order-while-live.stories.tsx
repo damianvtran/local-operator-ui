@@ -341,14 +341,19 @@ const injected = (transcript: TranscriptState, arrival: number): string[] =>
  *
  * WHAT THE FOOTNOTE AND THE PANEL ARE FOR. A frame has to carry the facts a
  * reader of the BYTES cannot infer: the viewport it was taken in (AGENTS.md's
- * capture rule), and the running row's elapsed figure — which counts to the
- * MACHINE's clock at render, so it differs between the two frames of a pair and
- * between captures of one commit, while every other cell reproduces (design
- * round 1, D6/D7; QA round 1, Q2). The panel under the pane is a fixed box, so
- * the pair overlays: it is sized for its header, its eight id lines and the
- * `… N more` line that can follow them, because at the 112px it shipped with the
- * sixth id was cut through its glyphs by the box's own bottom edge and the
- * `… N more` line never rendered at all (design round 1, D2).
+ * capture rule), and the cells that are a function of the wall clock — the
+ * running row's elapsed figure and the working line's age beside it, which read
+ * the SAME anchor (the call's own producer stamp, `working-line-model.ts`'s
+ * all-or-nothing `startedAt` from PR #310) and count to the MACHINE's clock at
+ * render. They move together between the two frames of a pair and between
+ * captures of one commit, while every other cell reproduces (design round 1,
+ * D6/D7; QA round 1, Q2) — and the same rule is what makes the two figures
+ * AGREE, which design round 1's D3 found them not doing on the pre-#310 base,
+ * where the line restarted at the reader's arrival. The panel under the pane is a
+ * fixed box, so the pair overlays: it is sized for its header, its eight id lines
+ * and the `… N more` line that can follow them, because at the 112px it shipped
+ * with the sixth id was cut through its glyphs by the box's own bottom edge and
+ * the `… N more` line never rendered at all (design round 1, D2).
  */
 const Frame = ({
 	transcript,
@@ -424,10 +429,10 @@ const Frame = ({
 			 */}
 			<p className="text-meta text-ink-dim">
 				pane {PANE}px pinned, column full width, capture viewport 1280x800
-				floored to the document; the running row's elapsed figure counts from
-				the call's own start to the machine's clock at render, so it moves
-				between captures, while the working line times the phase and not the
-				call.
+				floored to the document; the running row's elapsed figure and the
+				working line's age read the SAME anchor — the call's own producer stamp
+				— and both count to the machine's clock at render, which is why they
+				move together between captures.
 			</p>
 		</div>
 	);
