@@ -269,10 +269,11 @@ What that found, and what it does not:
   settlements (a 534-550 ms collapse instead of 500) and UX round 1 sampled one
   5.8 ms frame of it; in round 2 QA reproduced it on this head at **14 ms after a
   settle, 165 ms wide**, with the box back at its falling edge and released 501 ms
-  after the second edge (that round's own report, its run 3), and the design round
-  measured **1 in 10 settlements** at 1380 and 0 in 8 at the small-view rung. Those
-  figures are their authors' and are cited as such: the observations behind them
-  are in the PR's review rounds, and this repository ships no record of them.
+  after the second edge - and that same report is where the rate comes from, **1
+  pulse in 10 settlements at 1380 and 0 in 8 at the small-view rung** (round 1:
+  0 of 9 at 1380, 4 of 14 overall). Those figures are their authors' and are cited
+  as such: the observations behind them are in the PR's review rounds, and this
+  repository ships no record of them.
 - **Attribution, which their reports and this one agree on:** the composer's own
   placeholder is the busy string, `"Waiting for the agent"`, in the pulse's own
   transition - so the pulse is the canonical layer re-deriving the turn as active.

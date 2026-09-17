@@ -466,11 +466,15 @@ test("the held box is mounted on the grace predicate, not on the capability alon
 	 * row draws `[Confirm][Cancel]` where the dictation control and Send were, and
 	 * the held box renders after them - `[Confirm 1235][Cancel 1271][box 1307]`,
 	 * this record's own `inFlight.grace`. Release the box and both controls move
-	 * 36px right, which is the two-control row the previous head's own record
-	 * carries (`slot.recordingCancelled.aim.rect.left = 1307`: `[Confirm 1271]`
-	 * `[Cancel 1307]`) - so the slot the Stop itself occupies in this shape
-	 * (`inFlight.pressed.rect.left = 1307`) would be occupied by **Cancel
-	 * recording**, and a reflex press there DISCARDS in-flight audio. Holding the
+	 * 36px right, which is the two-control row the PREVIOUS head's own record
+	 * carries (`git show 043b0b7c3:docs/evidence/interrupt-live/
+	 * interrupt-proof.json`: `slot.recordingCancelled.aim.rect.left = 1307`,
+	 * `[Confirm 1271][Cancel 1307]` - that head's step is the row with the box
+	 * already released, where this head's own `slot.recordingCancelled` reads
+	 * 1271 because its box is held). So the slot the Stop itself occupies in this
+	 * shape (1307, from THIS record: `inFlight.pressed.rect.left`) would be
+	 * occupied by **Cancel recording**, and a reflex press there DISCARDS in-flight
+	 * audio. Holding the
 	 * box while the dictation controls are rendered removes that press;
 	 * `isTranscribing` deliberately has no term, because it gates both the
 	 * dictation control and Send, so nothing is drawn that a press could reach.

@@ -4594,10 +4594,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									 * and Send were (Send is gated on `!isRecording`), and the held box
 									 * renders AFTER them: `[Confirm 1235][Cancel 1271][box 1307]`, which
 									 * is this record's own `inFlight.grace`. Release the box and both
-									 * controls move 36px right, to the two-control row the previous head's
-									 * record carries (`slot.recordingCancelled.aim.rect.left = 1307`,
-									 * i.e. `[Confirm 1271][Cancel 1307]`). The slot the Stop itself
-									 * occupies in that shape is 1307 (`inFlight.pressed.rect.left`), so a
+									 * controls move 36px right, to the two-control row the PREVIOUS
+									 * head's record carries - a different head, so it is named with the
+									 * path to it: `git show 043b0b7c3:docs/evidence/interrupt-live/
+									 * interrupt-proof.json`, `slot.recordingCancelled.aim.rect.left =
+									 * 1307`, i.e. `[Confirm 1271][Cancel 1307]`. (That head's step is
+									 * that row with the box already released, which is why its Cancel
+									 * sits a slot right of this head's own `slot.recordingCancelled` -
+									 * the same aim, 1271, in the row with the box HELD. Same field,
+									 * two rows: read the record each number belongs to.) The slot the
+									 * Stop itself occupies in that shape is 1307, from THIS record
+									 * (`inFlight.pressed.rect.left`), so a
 									 * reflex press at the Stop's own centre would land on **Cancel
 									 * recording** and DISCARD in-flight audio - a mistimed Stop press
 									 * would throw away a recording the user made deliberately, which is
