@@ -132,6 +132,33 @@ export type Arrival = "typing" | "completion" | "caret" | "arrival";
 export const MASK_CELL = "\u2022";
 
 /**
+ * The WORDS the arming token may be spelled with — the command and its alias.
+ *
+ * The ONE place the spellings live: {@link CREDENTIAL_ARM} and
+ * {@link CREDENTIAL_TOKEN} are both built from it, so the pair cannot drift
+ * apart and a lexical fix lands in one place rather than in whichever regex the
+ * author remembered. Longest first, which is the order the arming regex was
+ * written in and the honest order for an alternation whose first word is a
+ * prefix of its second.
+ *
+ * Exported for ONE consumer outside this module, and it needs the words
+ * THEMSELVES rather than a match somewhere in one buffer: the composer hands
+ * them to `slash-submit.ts` as `commandLockedWords`, the set whose token plans
+ * as a command wherever it sits in a draft. THAT file says why the words are
+ * the caller's answer rather than names written into its rule.
+ */
+export const CREDENTIAL_WORDS: readonly string[] = ["credential", "cred"];
+
+/**
+ * The words as one alternation, for the two regexes below.
+ *
+ * Deliberately unescaped: the words are literal lowercase ASCII and this array
+ * is the only writer of the pattern, so an escape helper would be a second rule
+ * to keep in step with a vocabulary that cannot contain a metacharacter.
+ */
+const CREDENTIAL_WORDS_PATTERN = CREDENTIAL_WORDS.join("|");
+
+/**
  * The arming predicate, ported verbatim from `editor.py:551`:
  *
  * ```python
@@ -155,7 +182,10 @@ export const MASK_CELL = "\u2022";
  * Applied to the caret's own line, never to the whole buffer — see
  * {@link armSpan}.
  */
-export const CREDENTIAL_ARM = /(?:^|(?<=\s))\/(?:credential|cred)[ \t]*$/i;
+export const CREDENTIAL_ARM = new RegExp(
+	`(?:^|(?<=\\s))\\/(?:${CREDENTIAL_WORDS_PATTERN})[ \\t]*$`,
+	"i",
+);
 
 /**
  * The same token WITHOUT the end-of-line anchor, used only to RE-LOCATE a
@@ -167,7 +197,10 @@ export const CREDENTIAL_ARM = /(?:^|(?<=\s))\/(?:credential|cred)[ \t]*$/i;
  * negative lookahead is the same partition the arming regex draws, so
  * `/credentials` is not a token here either.
  */
-export const CREDENTIAL_TOKEN = /(?:^|(?<=\s))\/(?:credential|cred)(?!\S)/gi;
+export const CREDENTIAL_TOKEN = new RegExp(
+	`(?:^|(?<=\\s))\\/(?:${CREDENTIAL_WORDS_PATTERN})(?!\\S)`,
+	"gi",
+);
 
 /**
  * The word at the anchor, for the arm's TYPED-THROUGH rule

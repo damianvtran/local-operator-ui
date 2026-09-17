@@ -93,6 +93,7 @@ import {
 	CREDENTIAL_STORE_TIMEOUT_MS,
 	CREDENTIAL_TOKEN,
 	CREDENTIAL_TYPING_NOTICE,
+	CREDENTIAL_WORDS,
 	type CancelledToken,
 	type Capture,
 	type CredentialPayload,
@@ -118,6 +119,17 @@ import {
 	unredactedOverBuffer,
 	unstoredNotice,
 } from "./credential-capture";
+
+/**
+ * The capture's words, in the shape the planner takes them.
+ *
+ * One set built once, because the words must not be written a second time here:
+ * `credential-capture.ts` owns the spellings its token is armed with, and this is
+ * that vocabulary handed to `planSlashSubmission` unchanged. See that set's
+ * `commandLockedWords` for what the planner does with it, and the capture module
+ * for why the words are its to declare.
+ */
+const CREDENTIAL_LOCKED_WORDS: ReadonlySet<string> = new Set(CREDENTIAL_WORDS);
 
 /**
  * The id the capture's notice carries, so the field it describes can name it.
@@ -2205,6 +2217,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					prefixingCommands: slash.prefixingCommands,
 					argumentShapes: slash.argumentShapes,
 					nameListCommands: slash.nameListCommands,
+					/*
+					 * The capture's words, so a mid-draft `/credential <secret>` plans as the
+					 * COMMAND instead of as a message: the token is a command wherever it
+					 * sits, and the route then refuses the typed secret in front of the user
+					 * rather than the secret travelling to the model as prose. The words
+					 * come from `credential-capture.ts`, which owns them; a word this file
+					 * does not name cannot be locked by accident.
+					 */
+					commandLockedWords: CREDENTIAL_LOCKED_WORDS,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
 			[
