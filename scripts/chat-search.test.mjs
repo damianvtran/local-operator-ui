@@ -49,13 +49,58 @@ const row = (session_id, title, { agent = null, team = null } = {}) => ({
 	binding: { agent, team },
 });
 
-const hit = (id, rank, body_match = false, name = "name") => ({
+const hit = (
+	id,
+	rank,
+	body_match = false,
+	name = "name",
+	pinned = undefined,
+) => ({
 	id,
 	name,
 	mtime: 1,
 	forked: false,
 	rank,
 	body_match,
+	...(pinned === undefined ? {} : { pinned }),
+});
+
+test("the client's own pin fact outranks the cached answer on a hit the catalogue does not carry", () => {
+	// A conversation past the catalogue page reaches this panel only as a hit, and the answer
+	// is what the SEARCH last saw - so after a press the row it draws would report the state
+	// the press already applied, and the next press would re-send it (QA round 2, Qr2-1).
+	const rows = [row("aaaaaaaaaaaa", "One")];
+	const cached = [
+		hit("bbbbbbbbbbbb", SESSION_RANK_NAME, false, "Sweep 001", false),
+	];
+
+	const asAnswered = searchChats(rows, "Sweep 001", cached);
+	assert.deepEqual(
+		asAnswered.rows.map((item) => [item.session_id, item.pinned]),
+		[["bbbbbbbbbbbb", false]],
+	);
+
+	// The fact wins, in both directions: it is what the control renders and what a press
+	// inverts, so a press made after a pin sends `false` rather than the applied `true`.
+	const pinned = searchChats(rows, "Sweep 001", cached, { bbbbbbbbbbbb: true });
+	assert.deepEqual(
+		pinned.rows.map((item) => [item.session_id, item.pinned]),
+		[["bbbbbbbbbbbb", true]],
+	);
+	const unpinned = searchChats(rows, "Sweep 001", cached, {
+		bbbbbbbbbbbb: false,
+	});
+	assert.deepEqual(
+		unpinned.rows.map((item) => [item.session_id, item.pinned]),
+		[["bbbbbbbbbbbb", false]],
+	);
+
+	// A hit the backend does not describe, with no fact, is still no claim: the sidebar reads
+	// the absence as "unknown" and withholds the control (QA round 1, Q1).
+	const silent = searchChats(rows, "Sweep 001", [
+		hit("bbbbbbbbbbbb", SESSION_RANK_NAME, false, "Sweep 001"),
+	]);
+	assert.equal("pinned" in silent.rows[0], false);
 });
 
 test("an empty query is not a search", () => {

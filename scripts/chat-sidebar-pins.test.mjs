@@ -336,49 +336,79 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	assert.match(source, /\{pinned\.length > 0 && \(\s*<section>/);
 });
 
-test("a parked pointer cannot operate EITHER glyph state, and any input re-arms it", () => {
+test("a repeat press is dropped only when it lands on a DIFFERENT conversation", () => {
 	const source = read(SIDEBAR);
 	/*
-	 * UX round 2's U3-unpin: the disarm reached only the `pinned ? "text-ink" : …` branch, so
-	 * with two pinned rows a stationary double-click unpinned the first conversation and then
-	 * the second one whose glyph had slid into the vacated line - zero pins, no notice. Both
-	 * glyph states are inert while the pointer is parked now, and the pinned one stays VISIBLE
-	 * because it is the state rather than a reveal.
-	 */
-	const at = source.indexOf("data-session-pin\n");
-	const block = source.slice(at, at + 4200);
-	assert.match(
-		block,
-		/pinned\s*\?\s*cn\(/,
-		"the pinned branch must be a conditional class list, or it cannot be disarmed",
-	);
-	assert.ok(
-		block.includes('!revealArmed && "pointer-events-none"'),
-		"the pinned glyph must be inert while the reveal is disarmed",
-	);
-	assert.ok(
-		block.includes("pointer-events-none") &&
-			block.split("pointer-events-none").length - 1 >= 2,
-		"both glyph states must be inert while the reveal is disarmed",
-	);
-	/*
-	 * The disarm belongs to BOTH kinds of press (m3): the keyboard path left exactly the
-	 * parked state a pointer press does. And the re-arm is the reader ACTING - a pointer move
-	 * or a key press - never a timer, which would re-arm under a pointer that never moved.
+	 * WHAT THIS ENCODES, and why it replaced the disarm. QA round 1 (U3) found that a pin
+	 * press re-orders the panel under a stationary pointer, so a repeat press lands on a row
+	 * the reader never pointed at. The first instrument was a disarm: after any press the
+	 * reveal went inert until the pointer moved again - and QA round 2 (Qr2-1) found what
+	 * that cost, because a reader who pins a row and presses its glyph again to unpin it is
+	 * pressing the SAME control, at coordinates that had not changed, and the disarm dropped
+	 * the gesture the panel invites.
+	 *
+	 * The guard is therefore about identity: a pointer press repeating the last one inside
+	 * the wobble slop is dropped when the control under it belongs to a DIFFERENT session,
+	 * and honoured when it is the same one. Both halves are asserted here, plus the two facts
+	 * that make it safe: the decision is taken before anything is written, and the keyboard
+	 * (which carries no pointer position) is never dropped.
 	 */
 	assert.match(
 		source,
-		/onPointerMove|\(onPointerMove\)/,
-		"a pointer move must re-arm the reveal",
+		/const dropRepeatPress = \(/,
+		"the repeat-press decision must be one named function",
 	);
 	assert.match(
 		source,
-		/onKeyDown/,
-		"a key press must re-arm the reveal, or a keyboard press leaves the panel inert",
+		/last\.sessionId !== sessionId/,
+		"only a DIFFERENT conversation's control may be dropped",
+	);
+	assert.match(
+		source,
+		/Math\.hypot\(pointer\.x - last\.x, pointer\.y - last\.y\) <= PIN_PRESS_SLOP_PX/,
+		"the repeat must be judged by the wobble slop, not by any movement at all",
+	);
+	const handlerAt = source.indexOf("dropRepeatPress(");
+	const writeAt = source.indexOf("setSessionPin(row.session_id, !pinned, {");
+	assert.ok(
+		handlerAt !== -1 && writeAt !== -1 && handlerAt < writeAt,
+		"the guard must run before the write, or it guards nothing",
+	);
+	assert.match(
+		source,
+		/event\.detail === 0\s*\?\s*null\s*:/,
+		"a keyboard press carries no pointer position and must never be dropped",
 	);
 	assert.ok(
 		!/setTimeout\(\s*\(\)\s*=>\s*setRevealArmed/.test(source),
-		"re-arming must not be a timer",
+		"the guard must not be a timer: nothing re-arms under a parked pointer",
+	);
+});
+
+test("a hidden reveal is inert, and the reveal is what makes it operable", () => {
+	const source = read(SIDEBAR);
+	const at = source.indexOf("data-session-pin\n");
+	const block = source.slice(at, at + 4200);
+	/*
+	 * An affordance the reader cannot see must not be the thing a press lands on (QA round 1,
+	 * U3) - and the same two states that reveal it are what make it operable, so the control
+	 * is never visible-but-inert and never invisible-but-live. The pinned glyph is the STATE
+	 * rather than a reveal, so it is visible and operable unconditionally, and its
+	 * repeat-press hazard is the guard's job.
+	 */
+	assert.ok(
+		block.includes("pointer-events-none") &&
+			block.includes("group-hover:pointer-events-auto") &&
+			block.includes("group-focus-within:pointer-events-auto"),
+		"the hidden reveal must be inert and become operable with the reveal",
+	);
+	assert.ok(
+		!block.includes('pointer-events-none",\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t'),
+		"the pinned glyph must not be made inert",
+	);
+	assert.ok(
+		/pinned\s*\?\s*(\/\/[^\n]*\n\s*)*"text-ink"/.test(block),
+		"the pinned branch is the visible state, not a conditional inert list",
 	);
 });
 

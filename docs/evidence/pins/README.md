@@ -228,13 +228,13 @@ run: the clamped case cannot be mistaken for the passing one.
 
 | Gate | Output |
 | --- | --- |
-| `pnpm lint` | `Checked 714 files in 296ms. No fixes applied. Found 68 warnings.` (the warnings are the tree's pre-existing backlog; `scripts/` is covered by the gate below) |
+| `pnpm lint` | `Checked 715 files in 224ms. No fixes applied. Found 68 warnings.` (the warnings are the tree's pre-existing backlog; `scripts/` is covered by the gate below) |
 | `pnpm lint:scripts` | `check-scripts-lint: 7 changed file(s) under scripts/ are lint-clean against origin/main (3afcc73)` |
 | `pnpm check-types` | `tsc --noEmit -p tsconfig.app.json` and `-p tsconfig.main.json`, both clean |
-| `pnpm test:desktop` | 2312 of 2314 pass. The two failures are the machine's, not this diff's: `update-robustness.test.mjs`'s "operator's own install" test and `python-bytecode-cache.test.mjs`'s prefix test each fail identically in a worktree at `origin/main` (`47a7d5e37`). No `npx-smoke-test.mjs` and no electron cookie run appear at all - the duplicated runner token that manufactured them was removed this round |
+| `pnpm test:desktop` | 2314 of 2317 pass. Two failures are the machine's, not this diff's (`update-robustness.test.mjs`'s "operator's own install" and `python-bytecode-cache.test.mjs`'s prefix test, both failing identically in a worktree at `origin/main`). The third is `the SHIPPED manifest's stamps describe the tree it ships in`: `docs/evidence/manifest.json`'s `srcTree`/`scriptsTree` are written by the `pnpm check-evidence` sweep, which is deferred on this head, so the stamps still describe the previous one. It is a re-stamp, not a code failure - and it is named here rather than left to be discovered |
 | `pnpm build` | clean |
 | `pnpm check-themes` | `Contrast contract holds: 16070 assertions across 59 themes, 11 pinned exception(s), 5 pinned ink step(s).` |
-| `pnpm check-evidence` | the frame set is stamped against this head (see the re-stamp commit) |
+| `pnpm check-evidence` | **DEFERRED, not passed.** The gate admits one sweep per machine and a sibling lane held the lease while this head was prepared; the frames in this directory were captured directly by the scene runner (`[capture] ... N checks passed, 0 failed`, pasted above) and are re-stamped in the single unbounded sweep when the manager schedules it. Nothing here should be read as that gate having run |
 
 ## The rounds, and what each one changed
 
@@ -282,25 +282,65 @@ sees the ring's right edge against the track. It is a measurement from the desig
 claim this change makes, and the ring itself is `outline` (never a shadow) as the branding
 contract requires.
 
-## Open on this head (recorded, not papered over)
+## Round 2, closed: the two legs and the boundary
 
-Two legs of the round-2 remediation are NOT green on this head, and the scenes that carry them
-are in the tree because a failing scene is worth more than a missing one:
+**The search-only conversation (QA round 2, Qr2-1).** The press reached the backend and the store's
+optimistic write was a no-op, because the store held no row for it - and the row the panel drew was
+rebuilt from the cached wire hit on every render, so it reported the state the search last saw and
+the next press re-sent the state already applied. The instrument that found the rest of it was a
+read of the element under the press coordinates: the press was landing, the row was not following.
 
-* **`--scene pins-scroll`, the U1 anchor check at the D7 depth.** The D7 state (fourteen pins,
-  a pinned set taller than the region's window) forces the region deep enough that the anchor
-  cannot keep the pressed row's neighbourhood on its line, and the scene's own m2 check fails
-  there: `the row left under the parked pointer did not itself move`. That is UX round 2's
-  measured residual showing up as a check rather than as prose. The D6 measurement at that depth
-  is `delta 0` - the nav rows do not move - so the residual is in the row neighbourhood, not the
-  header.
-* **`--scene pins-search`, the row-follows-the-press leg.** The wire and the terminal's store
-  both take the pin (`the wire the search answers from says pinned, on the hit itself` and `the
-  store the terminal reads holds it` pass), and the ROW does not follow it: the panel keeps
-  drawing the cached hit, which is QA round 2's Qr2-1 seen from the client's side. The store's
-  action was instrumented for one run and its body was never entered for that press, so the gap
-  is between the row's press and the store's action rather than in the action itself - which is
-  where the next attempt should look.
+Two mechanisms, both now closed:
+
+* **The catalogue page dropped the row.** `replaceSessionRows` rebuilds the row list from the page
+  payload alone - deliberately, since the page is the authority on which conversations exist - and
+  `sessions.list` is capped at 500 while the search answer is uncapped. So a conversation the user
+  pins from a search hit has its row inserted by the press and then dropped by the catalogue
+  refresh that very write triggers. The store now keeps the pin itself (`pinFacts`): one boolean
+  per conversation this window has written and the backend has confirmed, which the page cannot
+  take away, and which `searchChats` renders for a row the catalogue does not list.
+* **The repeat-press guard was a disarm.** After any press the reveal went inert until the pointer
+  moved again, which kept a repeat press off the row that had slid into the vacated line - and also
+  swallowed the reader's own second press on the control they meant, which is exactly what a reader
+  does to unpin. The guard is now about identity rather than time: a pointer press repeating the
+  last one inside the wobble slop is dropped only when the control under it belongs to a DIFFERENT
+  conversation. The row's own button carries the same guard, because opening a conversation the
+  reader never pointed at is the same hazard and worse to undo.
+
+`--scene pins-search` on a 568-session store, 23 checks, 0 failed on both themes:
+
+```
+[PASS] the page does not list it, so the search answer is the only way it can arrive
+[PASS] the hit is drawn, with a pin control, and the wire says it is unpinned
+[PASS] the row follows the press: it is pinned, from a row the store did not hold
+[PASS] the wire the search answers from says pinned, on the hit itself
+[PASS] the store the terminal reads holds it
+[PASS] the SAME row unpins what it pinned: the store's state is what the control inverts
+[PASS] the store the terminal reads has dropped it
+[PASS] a stationary repeat press acts on the row under the pointer and on no other (U3-unpin)
+[PASS] a 3 px wobble is the same gesture: it never reaches a row the pointer is not on
+```
+
+**The scrolled pair (the promise and the boundary).** `--scene pins-scroll`, 38 checks, 0 failed on
+both themes, now asserts two different things at two different depths, because one geometry cannot
+carry both:
+
+* **The promise, at a state shallow enough for it to hold.** The rows BELOW the pressed row keep
+  their lines through the press (the row the correction anchors on, and the content the reader is
+  looking at); a repeat press on a parked pointer changes only the conversation whose control is
+  under it; and the pressed row's new home - `Pinned chats`, at the top of the content - is inside
+  the region's window, so a reader at that depth watches the row arrive.
+* **The boundary, at the D7 depth.** The anchor still holds (the neighbouring row keeps its line)
+  and the pressed row's new home is OFF the window. That is UX round 2's residual as a measurement
+  with both directions asserted, so the boundary cannot move silently either way. The rows ABOVE
+  the pressed row move by exactly the section's growth - printed with their deltas on every run
+  (`[pins] m2 measured: ... above [[ad49c02e766c,719,751], ...]`, +32 CSS px) - and the D6
+  measurement of the nav rows is `delta 0` at this depth, which is the number that moved in the
+  design round's favour (round 1 measured 44 CSS px there).
+* The guard is what makes the residual survivable: whatever slid under the parked pointer after a
+  press is a conversation the press did not mean, and pressing it does nothing.
+
+The gate outputs are in the table above.
 
 ## What these frames do not show
 

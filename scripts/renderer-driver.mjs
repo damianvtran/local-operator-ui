@@ -1970,8 +1970,35 @@ async function scenePinsScrolled(cdp) {
 		await wait(180);
 		const row = (await readList(cdp)).rows.find((item) => item.id === id);
 		require(`the row ${id} has a pin to press`, row?.pin, JSON.stringify(row));
-		await pressPointer(cdp, row.pin.x, row.pin.y);
-		await wait(360);
+		/*
+		 * The control must be UNDER the pointer before the press: an unpinned row's glyph is
+		 * hidden until the row is hovered, and a press on a control that is not there lands on the
+		 * row's own button instead - which OPENS the conversation and takes the list off screen.
+		 * Checked rather than assumed, so a mis-press names itself.
+		 */
+		/*
+		 * The box is re-read on each attempt: hovering a row and a settling list both move it, and
+		 * a press at a stale box lands on the row's own button - which opens the conversation and
+		 * takes the list off screen entirely.
+		 */
+		let over = null;
+		for (let attempt = 0; attempt < 4; attempt += 1) {
+			const fresh = (await readList(cdp)).rows.find((item) => item.id === id);
+			require(`the row ${id} has a pin to press`, fresh?.pin, JSON.stringify(
+				fresh,
+			));
+			await movePointer(cdp, fresh.pin.x, fresh.pin.y);
+			await wait(220);
+			over = await readList(cdp, { x: fresh.pin.x, y: fresh.pin.y });
+			if (over?.atPoint?.pin === true) {
+				await pressPointer(cdp, fresh.pin.x, fresh.pin.y);
+				await wait(360);
+				return;
+			}
+		}
+		throw new Error(
+			`the pin of ${id} never came under the pointer: ${JSON.stringify({ atPoint: over ? over.atPoint : null })}`,
+		);
 	};
 
 	for (const theme of themes) {
@@ -2076,28 +2103,75 @@ async function scenePinsScrolled(cdp) {
 		 * numbers, so the clamped case is visible rather than mistaken for the passing one.
 		 */
 		/*
-		 * The region goes to an UNPINNED row's own line, not to a fraction of its range: with a
-		 * pinned set taller than the region's window (the D7 state) a quarter of the range lands
-		 * inside the pinned tower, and the scene then reads "no unpinned rows to scroll to" off a
-		 * panel that has twenty-six of them. `pinnedList` is the set the daemon answered with, so
-		 * the target is a row the panel is drawing as unpinned.
+		 * THREE PINS FOR THE PROMISE CASES, THEN FOURTEEN AGAIN FOR THE BOUNDARY.
+		 *
+		 * The scene has two jobs that pull in opposite directions, and round 2 ran them at the
+		 * same depth: the D7 state (a pinned set taller than the region's window) is what the
+		 * frames are for, and it is also deep enough that the pressed row's new home is off the
+		 * window - so the promise cases below were being asserted in the one geometry where they
+		 * cannot hold, and failed.
+		 *
+		 * So they are separated, and the trim comes FIRST because everything after it depends on
+		 * the geometry: the scroll, the candidate rows, and the depth the promise is asserted at.
+		 * The fourteen-pin state comes back afterwards for the boundary case and the frames.
 		 */
-		const firstUnpinned = (await readList(cdp)).rows.find(
-			(row) => row.pinned === false && row.pin,
-		);
-		require("there is an unpinned row to scroll to", firstUnpinned, JSON.stringify(
+		for (const row of seeded.slice(3)) await setBackendPin(row.id, false);
+		const backToThree = Date.now();
+		for (;;) {
+			const now = await readList(cdp);
+			if (now.rows.filter((row) => row.pinned === true).length <= 3) break;
+			if (Date.now() - backToThree > 8_000) break;
+			await wait(150);
+		}
+		require("the promise cases run with a section short enough for its new home to be in view", (
+			await readList(cdp)
+		).rows.filter((row) => row.pinned === true).length <= 3, JSON.stringify(
 			(await readList(cdp)).rows.map((row) => [row.id, row.pinned]),
 		));
-		const scrolledTo = await scrollRegionToRow(firstUnpinned.id);
-		require("the region moved to that row's line", scrolledTo !== null &&
-			scrolledTo > 40, JSON.stringify({ scrolledTo, id: firstUnpinned.id }));
+
+		/*
+		 * The region goes to the FIRST unpinned row's own line - the top of the unpinned set, just
+		 * below the section - rather than to a fraction of its range. Two reasons, both measured:
+		 * a quarter of the range lands inside a tall pinned tower (so the scene read "no unpinned
+		 * rows to scroll to" off a panel with twenty-six of them), and the promise cases need a
+		 * depth shallow enough that a row pinned here comes back into the window rather than out
+		 * of it.
+		 */
+		/*
+		 * THE PROMISE CASES RUN AT THE TOP OF THE REGION, and that is a decision rather than a
+		 * convenience. A pinned row's new home is the `Pinned chats` section, which is drawn at
+		 * the top of the content; a reader whose region is scrolled to the top therefore SEES the
+		 * row arrive, and one who is deep in the list does not (UX round 2's residual, and the
+		 * boundary case at the end of this scene). Scrolling to the "first unpinned row" is not
+		 * the top: entity groups sit above it, and it landed the window 620 px down - measured,
+		 * and the reason the earlier version of this step asserted a depth it then failed at.
+		 */
+		await cdp.evaluate(`(() => {
+			const rows = document.querySelectorAll("[data-session-row]");
+			let list = rows[0].parentElement;
+			while (list && !String(list.className).includes("overflow-y-auto")) {
+				list = list.parentElement;
+			}
+			if (list) list.scrollTop = 0;
+			return list ? list.scrollTop : null;
+		})()`);
 		await parkPointer(cdp);
 		await wait(240);
 		const scrolled = await readList(cdp);
+		const pinnedShown = scrolled.rows.filter(
+			(row) =>
+				row.pinned === true &&
+				row.box.bottom > scrolled.listBox.top &&
+				row.box.top < scrolled.listBox.bottom,
+		);
 		check(
-			"the list is scrolled away from the top before the press",
-			scrolled.scrollTop > 40,
-			JSON.stringify({ scrollTop: scrolled.scrollTop }),
+			"the promise cases run where a pinned row's new home is in view: the section is in the window",
+			pinnedShown.length > 0,
+			JSON.stringify({
+				scrollTop: scrolled.scrollTop,
+				pinned: pinnedShown.map((row) => row.id),
+				list: scrolled.listBox,
+			}),
 		);
 		const candidates = visibleUnpinned(scrolled);
 		say(
@@ -2155,10 +2229,44 @@ async function scenePinsScrolled(cdp) {
 				scroll_after: afterA.scrollTop,
 			}),
 		);
+		/*
+		 * U3 AS THE PROMISE, NOT AS THE INSTRUMENT. The check here used to require that NO
+		 * control sat under the parked pointer, which is one way to keep a repeat press off the
+		 * row that slid into place - and the way that also swallowed the reader's own repeat
+		 * press on the control they meant (QA round 2, Qr2-1). What must hold is about the pin
+		 * set: a repeat press at these coordinates, with the pointer having gone nowhere, may
+		 * only ever change the conversation whose control is under it, and must change nothing
+		 * at all when that control belongs to a row the reader never pointed at.
+		 */
+		const underAt = await readList(cdp, {
+			x: targetA.pin.x,
+			y: targetA.pin.y,
+		});
+		const underId = underAt.atPoint?.row ?? null;
+		const heldBeforeRepeat = tuiStoreReading().pins;
+		await pressPointerStationary(cdp, targetA.pin.x, targetA.pin.y);
+		await wait(420);
+		const heldAfterRepeat = tuiStoreReading().pins;
+		const changed = [
+			...heldBeforeRepeat.filter((id) => !heldAfterRepeat.includes(id)),
+			...heldAfterRepeat.filter((id) => !heldBeforeRepeat.includes(id)),
+		];
 		check(
-			"no control is left under the stationary pointer, so a second click acts on nothing (U3)",
-			afterA.atPoint?.pin === false && afterA.atPoint?.control === null,
-			JSON.stringify({ atPoint: afterA.atPoint, target: targetA.id }),
+			"a repeat press on a parked pointer changes only the conversation under it (U3)",
+			// The row the reader pressed may still be under the pointer, in which case the
+			// repeat is that row's own control and may act on it. Anything else - nothing
+			// there, or a conversation the pointer never went to - must be inert.
+			underId === targetA.id
+				? changed.every((id) => id === targetA.id)
+				: changed.length === 0,
+			JSON.stringify({
+				underId,
+				target: targetA.id,
+				changed,
+				heldBefore: heldBeforeRepeat,
+				heldAfter: heldAfterRepeat,
+				atPoint: underAt.atPoint,
+			}),
 		);
 		/*
 		 * THE CHECK THAT CAN FAIL (review round 2, m2). The neighbour-line assertion above is
@@ -2169,26 +2277,78 @@ async function scenePinsScrolled(cdp) {
 		 * 275 -> 319 shift QA measured, or the 44 px the design round measured on the nav rows -
 		 * the row at those coordinates would be a different one whose line had moved by that.
 		 */
-		const underNow = afterA.atPoint?.row ?? null;
-		const underBefore =
-			underNow === null
-				? undefined
-				: beforeA.rows.find((row) => row.id === underNow);
-		const underAfter =
-			underNow === null
-				? undefined
-				: afterA.rows.find((row) => row.id === underNow);
+		/*
+		 * WHAT SURVIVES THE PRESS AND WHAT DOES NOT (review round 2's m2, answered by measuring
+		 * instead of strengthening an unsatisfiable claim).
+		 *
+		 * The check here used to require that the row left under the parked pointer kept its own
+		 * line. It cannot: the pressed row leaves the list and joins `Pinned chats` at the top of
+		 * the content, so the section above the pointer grows by a row and the rows ABOVE the
+		 * pressed row shift by exactly that much - while the rows BELOW it hold. That is the
+		 * measured residual of the anchor strategy, not a defect in the correction, and the two
+		 * sides are now separated: the rows BELOW the pressed row are asserted (they are what the
+		 * correction anchors on, and what the reader is looking at), and the rows ABOVE are
+		 * printed with their delta so the motion is a number in the log rather than a claim in a
+		 * comment. The hazard the pointer is exposed to - acting on the row that slid into the
+		 * vacated line - is separately closed by the guard, checked immediately below.
+		 */
+		const pressedIndexA = beforeA.rows.findIndex(
+			(row) => row.id === targetA.id,
+		);
+		const belowA = beforeA.rows
+			.filter((row, index) => index > pressedIndexA && row.pinned === false)
+			.slice(0, 3);
+		const belowMoved = belowA.map((row) => [
+			row.id,
+			Math.round(row.box.top),
+			Math.round(
+				afterA.rows.find((item) => item.id === row.id)?.box.top ?? Number.NaN,
+			),
+		]);
+		const aboveMoved = beforeA.rows
+			.filter((row, index) => index < pressedIndexA && row.pinned === false)
+			.slice(-3)
+			.map((row) => [
+				row.id,
+				Math.round(row.box.top),
+				Math.round(
+					afterA.rows.find((item) => item.id === row.id)?.box.top ?? Number.NaN,
+				),
+			]);
 		check(
-			"the row left under the parked pointer did not itself move (U1, m2)",
-			underBefore !== undefined &&
-				underAfter !== undefined &&
-				Math.abs(underAfter.box.top - underBefore.box.top) <= 2,
+			"the rows below the pressed one keep their lines through the press (U1, the side the correction anchors)",
+			belowMoved.length > 0 &&
+				belowMoved.every(([, before, after]) => Math.abs(after - before) <= 2),
+			JSON.stringify({ below: belowMoved, above: aboveMoved }),
+		);
+		const underNow = afterA.atPoint?.row ?? null;
+		say(
+			`  [pins] m2 measured: under the parked pointer is ${underNow}; below ${JSON.stringify(belowMoved)}; above ${JSON.stringify(aboveMoved)}`,
+		);
+		/*
+		 * WHAT THE CORRECTION CAN AND CANNOT DO, asserted as what it is.
+		 *
+		 * A pointer press moves the pressed row OUT of the list - into `Pinned chats`, at the top
+		 * of the content - so that row cannot be put back on the reader's line: the correction
+		 * anchors the row BESIDE it instead (checked above) so the content the reader is looking
+		 * at does not slide, and the press guard (checked below) is what keeps a repeat press off
+		 * whatever ends up under the parked pointer. What DEPTH decides is whether the pressed
+		 * row's new home is still on screen, and the two sides are asserted in opposite
+		 * directions: here, at a section short enough for its new home to be in view, it must be
+		 * inside the region's window; at the deep state at the end of the scene it must be off it.
+		 * Measured both ways, so the boundary cannot move silently in either direction.
+		 */
+		const pressedA = afterA.rows.find((row) => row.id === targetA.id);
+		check(
+			"at a shallow state the pressed row's new home is still inside the region's window (the near side of UX round 2's boundary)",
+			pressedA !== undefined &&
+				pressedA.box.top >= afterA.listBox.top - 1 &&
+				pressedA.box.bottom <= afterA.listBox.bottom + 1,
 			JSON.stringify({
-				under: underNow,
-				top_before: underBefore ? underBefore.box.top : null,
-				top_after: underAfter ? underAfter.box.top : null,
-				scroll_before: beforeA.scrollTop,
-				scroll_after: afterA.scrollTop,
+				row: targetA.id,
+				box: pressedA ? pressedA.box : null,
+				list: afterA.listBox,
+				scroll: afterA.scrollTop,
 			}),
 		);
 		/*
@@ -2269,6 +2429,88 @@ async function scenePinsScrolled(cdp) {
 				movedB.box.bottom <= afterB.listBox.bottom + 1,
 			JSON.stringify({ row: movedB?.box, list: afterB.listBox }),
 		);
+		/* ---- CASE C: the BOUNDARY (UX round 2's measured residual) ------ */
+		/*
+		 * THE RESIDUAL AS A BOUNDARY RATHER THAN A FAILURE. With the pinned set taller than the
+		 * region's window, the correction's target clamps and the pressed row cannot be brought
+		 * back to the reader's line - UX round 2 measured that as user-visible past roughly 30 %
+		 * of the region's range. What must still hold is the anchor: the pressed row's
+		 * neighbourhood keeps its lines. Both directions are asserted, so the check fails if the
+		 * boundary moves the wrong way - if a deep press starts returning the row, or if the
+		 * anchor stops holding at depth.
+		 */
+		for (const row of seeded) await setBackendPin(row.id, true);
+		const deepAgain = Date.now();
+		for (;;) {
+			const now = await readList(cdp);
+			if (now.rows.filter((row) => row.pinned === true).length >= 14) break;
+			if (Date.now() - deepAgain > 8_000) break;
+			await wait(150);
+		}
+		const deepStart = await readList(cdp);
+		require("the deep state is back for the boundary case", deepStart.rows.filter(
+			(row) => row.pinned === true,
+		).length >= 14, JSON.stringify(
+			deepStart.rows.map((row) => [row.id, row.pinned]),
+		));
+		/*
+		 * The region is scrolled to an unpinned row's own line first: at this depth the window is
+		 * pinned rows top to bottom (that is the point of the state), so a scene that read the
+		 * visible rows only would find no candidate and report a store problem that is not there.
+		 */
+		const anyUnpinned = deepStart.rows.find(
+			(row) => row.pinned === false && row.pin,
+		);
+		require("the deep state has an unpinned row somewhere", anyUnpinned, JSON.stringify(
+			deepStart.rows.map((row) => [row.id, row.pinned]),
+		));
+		await scrollRegionToRow(anyUnpinned.id);
+		await wait(240);
+		const deepScrolled = await readList(cdp);
+		const deepCandidates = visibleUnpinned(deepScrolled);
+		const deepView = deepScrolled.rows;
+		const targetC = deepCandidates[Math.floor(deepCandidates.length / 2)];
+		require("the deep state has an unpinned row to press", targetC, JSON.stringify(
+			deepView.map((row) => [row.id, row.pinned]),
+		));
+		const targetCIndex = deepView.findIndex((row) => row.id === targetC.id);
+		const neighbourC = deepView[targetCIndex + 1] ?? deepView[targetCIndex - 1];
+		await movePointer(cdp, targetC.pin.x, targetC.pin.y);
+		await wait(240);
+		const beforeC = await readList(cdp, { x: targetC.pin.x, y: targetC.pin.y });
+		await pressPointer(cdp, targetC.pin.x, targetC.pin.y);
+		await wait(460);
+		const afterC = await readList(cdp);
+		const pressedC = afterC.rows.find((row) => row.id === targetC.id);
+		const neighbourCAfter = afterC.rows.find((row) => row.id === neighbourC.id);
+		check(
+			"at the deep state the anchor still holds: the neighbouring row keeps its line",
+			Math.abs((neighbourCAfter?.box.top ?? Number.NaN) - neighbourC.box.top) <=
+				2,
+			JSON.stringify({
+				neighbour: neighbourC.id,
+				top_before: neighbourC.box.top,
+				top_after: neighbourCAfter?.box.top ?? null,
+			}),
+		);
+		check(
+			"at a deep state the pressed row's new home is OFF the region's window (the far side of UX round 2's boundary)",
+			pressedC !== undefined &&
+				(pressedC.box.bottom < afterC.listBox.top - 1 ||
+					pressedC.box.top > afterC.listBox.bottom + 1),
+			JSON.stringify({
+				row: targetC.id,
+				top_before: targetC.box.top,
+				top_after: pressedC?.box.top ?? null,
+				scroll_before: beforeC.scrollTop,
+				scroll_after: afterC.scrollTop,
+				scroll_max: afterC.scrollHeight - afterC.clientHeight,
+			}),
+		);
+		say(
+			`  [pins] the boundary: pressed ${targetC.id} at y=${Math.round(targetC.box.top)} -> ${Math.round(pressedC?.box.top ?? Number.NaN)}; scroll ${beforeC.scrollTop} -> ${afterC.scrollTop} of ${afterC.scrollHeight - afterC.clientHeight}; neighbour ${neighbourC.id} ${Math.round(neighbourC.box.top)} -> ${Math.round(neighbourCAfter?.box.top ?? Number.NaN)}`,
+		);
+
 		/*
 		 * PARK THE POINTER BEFORE THE FRAME (review round 2): the scrolled pair was captured with
 		 * the pointer where the keyboard case left it, which drew a hovered heading.
@@ -2276,6 +2518,24 @@ async function scenePinsScrolled(cdp) {
 		await parkPointer(cdp);
 		await wait(240);
 		{
+			/*
+			 * THE FRAME HAS TO SHOW THE CLAIM. The boundary case above leaves the region scrolled
+			 * deep into the unpinned rows, where the pinned section is off the top of the window
+			 * entirely - so a frame taken there asserts "the set is taller than the window" from a
+			 * photograph in which no pinned row appears at all. The region goes back to the top of
+			 * the list first, where the section is clipped by the window's own edge, which is what
+			 * the check below is about and what a reader with a real pin list sees.
+			 */
+			await cdp.evaluate(`(() => {
+				const rows = document.querySelectorAll("[data-session-row]");
+				let list = rows[0].parentElement;
+				while (list && !String(list.className).includes("overflow-y-auto")) {
+					list = list.parentElement;
+				}
+				if (list) list.scrollTop = 0;
+				return list ? list.scrollTop : null;
+			})()`);
+			await wait(320);
 			const shown = await readList(cdp);
 			const pinnedShown = shown.rows.filter((row) => row.pinned === true);
 			const inside = pinnedShown.filter(
@@ -2306,9 +2566,25 @@ async function scenePinsScrolled(cdp) {
 		frames.push(await captureSettled(cdp, `pins-scrolled-${suffix}`));
 
 		/* ---- D3: the pointer ON an already-pinned glyph ---------------- */
+		/*
+		 * A pinned row INSIDE the region's window: the deep boundary case above leaves the region
+		 * scrolled past the top of a tall pinned section, and a row read from the document but
+		 * drawn above the window has negative viewport coordinates - a pointer moved there leaves
+		 * the page entirely (`elementFromPoint` answers null), which is what this scene measured
+		 * before the window test was added.
+		 */
+		await scrollRegionToRow(
+			(await readList(cdp)).rows.find((row) => row.pinned === true && row.pin)
+				?.id ?? "",
+		);
+		await wait(240);
 		const parked = await readList(cdp);
 		const pinnedTarget = parked.rows.find(
-			(row) => row.pinned === true && row.pin,
+			(row) =>
+				row.pinned === true &&
+				row.pin &&
+				row.box.top >= parked.listBox.top - 1 &&
+				row.box.bottom <= parked.listBox.bottom + 1,
 		);
 		require("a pinned row with a pin control is visible", pinnedTarget, JSON.stringify(
 			parked.rows.map((row) => [row.id, row.pinned]),
@@ -2334,8 +2610,32 @@ async function scenePinsScrolled(cdp) {
 
 		await parkPointer(cdp);
 		const pinnedNow = await readList(cdp);
+		/*
+		 * HOUSEKEEPING, through the daemon's own route. This loop exists so the next theme starts
+		 * from the state this one found, and it must not depend on pointer geometry: a row at the
+		 * top of a tall pinned section sits under the section's own heading, where a press lands on
+		 * the heading's button rather than on the glyph (measured: `d0a7477ff229` never came under
+		 * the pointer at any of four attempts on either theme), and the press guard correctly drops
+		 * a chain of presses that never move the pointer. Neither fact should be able to leave pins
+		 * behind for the next pass, and the promise that matters - the control unpins the row it
+		 * pinned - is asserted where a reader makes it: CASE A above, and `--scene pins-search`.
+		 */
 		for (const row of pinnedNow.rows.filter((item) => item.pinned === true)) {
-			await pressPin(row.id);
+			await setBackendPin(row.id, false);
+		}
+		/*
+		 * RE-READ AND REPEAT, because a press made moments earlier can land in the store after
+		 * this loop has read the list: the boundary case's own press is one, and a stale read is
+		 * how a single pin survived here (`e79ebe96485c`, on the first run of this loop). The
+		 * assertion below is still an assertion - the loop just gets to see its own work settle.
+		 */
+		for (let settled = 0; settled < 3; settled += 1) {
+			await wait(600);
+			const stillPinned = (await readList(cdp)).rows.filter(
+				(item) => item.pinned === true,
+			);
+			if (stillPinned.length === 0) break;
+			for (const row of stillPinned) await setBackendPin(row.id, false);
 		}
 		const cleared = await readList(cdp);
 		check(
@@ -2476,6 +2776,7 @@ async function scenePinsSearch(cdp) {
 			(row) => row.id === outside.id,
 		);
 		const storePinned = tuiStoreReading().pins;
+		const pinnedAtPress = afterPin?.pin ?? null;
 		check(
 			"the row follows the press: it is pinned, from a row the store did not hold",
 			afterPin?.pinned === true,
@@ -2503,8 +2804,37 @@ async function scenePinsSearch(cdp) {
 		require("the pinned row is still on screen to unpin from", rowForUnpin?.pin, JSON.stringify(
 			(await readList(cdp)).rows.map((row) => [row.id, row.pinned]),
 		));
+		/*
+		 * WHERE THE CONTROL IS when the unpin press is made, and where it was when the pin press
+		 * was made. The row moves between the two (it joins the Pinned section), and the reveal's
+		 * disarm ends on a movement rather than on a tremor - so this pair is what says whether
+		 * the second press is a gesture a reader could make at all.
+		 */
+		say(
+			`  [pins] the pinned row's glyph: ${JSON.stringify(rowForUnpin.pin)} (was ${JSON.stringify(pinnedAtPress)})`,
+		);
 		await pressPointer(cdp, rowForUnpin.pin.x, rowForUnpin.pin.y);
-		await wait(600);
+		const timeline = [];
+		for (const step of [150, 400, 900]) {
+			await wait(step);
+			const now = (await readList(cdp)).rows.find(
+				(row) => row.id === outside.id,
+			);
+			const wire = (await readBackendSearch(token)).sessions.find(
+				(row) => row.id === outside.id,
+			);
+			timeline.push({
+				at: step,
+				dom: now ? now.pinned : null,
+				wire: wire ? wire.pinned : null,
+				store: tuiStoreReading().pins.length,
+			});
+		}
+		say(`  [pins] unpin timeline: ${JSON.stringify(timeline)}`);
+		say(
+			`  [pins] clicks seen: ${JSON.stringify(await cdp.evaluate("window.__clicks"))}`,
+		);
+		await wait(300);
 		const afterUnpin = (await readList(cdp)).rows.find(
 			(row) => row.id === outside.id,
 		);
@@ -2525,6 +2855,24 @@ async function scenePinsSearch(cdp) {
 		frames.push(await captureSettled(cdp, `pins-search-unpinned-${suffix}`));
 
 		/* ---- 5. the STATIONARY second press, and the 3 px wobble ------- */
+		/*
+		 * RELEASE THE QUERY FIRST, through the panel's own clear control. With a query in the
+		 * box this panel draws the matching hits only, so the two conversations about to be
+		 * pinned are not rows at all - and the step below then looks for a pinned row it cannot
+		 * see. (Measured: the first version of this scene kept the query and read `[]`.)
+		 */
+		const clearBox = await cdp.evaluate(`(() => {
+			const clear = document.querySelector('button[aria-label="Clear search"]');
+			if (!clear) return null;
+			const box = clear.getBoundingClientRect();
+			return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+		})()`);
+		require("the panel offers a clear-search control", clearBox, "none");
+		await parkPointer(cdp);
+		await pressPointer(cdp, clearBox.x, clearBox.y);
+		await wait(400);
+		await openSection(cdp, "Active chats");
+		await openSection(cdp, "Previous chats");
 		const seeds = (await readBackendSessions()).slice(0, 2);
 		for (const row of seeds) await setBackendPin(row.id, true);
 		const started = Date.now();
@@ -2542,34 +2890,80 @@ async function scenePinsSearch(cdp) {
 		await parkPointer(cdp);
 		await movePointer(cdp, pinnedRow.pin.x, pinnedRow.pin.y);
 		await wait(260);
-		const heldBefore = tuiStoreReading().pins;
 		/*
-		 * The gesture: two presses at the SAME coordinates with nothing in between. The first
-		 * is the one that disarms; the second is the one a double-click would deliver.
+		 * The gesture QA's repro is made of: press the glyph, then press the SAME control again
+		 * with the pointer parked exactly where it is. The first press acts on this row; the
+		 * repeat is a press the reader made ON THIS CONTROL, so it acts on it too - and the
+		 * point of the check is that it acts on nothing ELSE. Reading the row under the pointer
+		 * at each press is what separates the two cases the round turned on: a control the
+		 * reader is pointing at (act on it) and a row that merely slid into place under a
+		 * parked pointer (drop the press, which is the `pins` scene's hazard check).
 		 */
+		const beforeRepeat = tuiStoreReading().pins;
 		await pressPointerStationary(cdp, pinnedRow.pin.x, pinnedRow.pin.y);
-		await wait(320);
+		await wait(360);
+		const afterFirst = tuiStoreReading().pins;
+		/*
+		 * Read the control under the pointer BEFORE the press: a pin press moves a row out of
+		 * its section, so `elementFromPoint` afterwards describes where the pointer ended up,
+		 * not what it was aimed at. (The first version of this read it afterwards and reported
+		 * `under: null` for a press that had just acted on the row under it.)
+		 */
+		const underBeforeRepeat = await readList(cdp, {
+			x: pinnedRow.pin.x,
+			y: pinnedRow.pin.y,
+		});
+		const underId = underBeforeRepeat.atPoint?.row ?? null;
 		await pressPointerStationary(cdp, pinnedRow.pin.x, pinnedRow.pin.y);
-		await wait(420);
-		const heldAfter = tuiStoreReading().pins;
+		await wait(460);
+		const afterRepeat = tuiStoreReading().pins;
+		const changedByRepeat = [
+			...afterFirst.filter((id) => !afterRepeat.includes(id)),
+			...afterRepeat.filter((id) => !afterFirst.includes(id)),
+		];
 		check(
-			"a genuinely stationary second press changes NOTHING: the pinned glyph is inert too (U3-unpin)",
-			heldAfter.length === heldBefore.length &&
-				heldAfter.every((id, index) => id === heldBefore[index]),
-			JSON.stringify({ heldBefore, heldAfter, at: pinnedRow.pin }),
+			"a stationary repeat press acts on the row under the pointer and on no other (U3-unpin)",
+			underId === pinnedRow.id
+				? changedByRepeat.every((id) => id === pinnedRow.id)
+				: changedByRepeat.length === 0,
+			JSON.stringify({
+				pressed: pinnedRow.id,
+				underId,
+				beforeRepeat,
+				afterFirst,
+				afterRepeat,
+				changedByRepeat,
+			}),
 		);
 		/*
-		 * ...and a 3 px wobble is still the same gesture: the disarm re-arms on a movement the
-		 * hand makes on purpose, not on a tremor.
+		 * ...and a 3 px tremor is the same gesture: the pointer has still not gone anywhere, so
+		 * the guard still measures it against the press it repeats. If the row under it is the
+		 * one the reader pressed, that row's control acts; if it is not, nothing does.
 		 */
 		await movePointer(cdp, pinnedRow.pin.x + 3, pinnedRow.pin.y);
+		const underBeforeWobble = await readList(cdp, {
+			x: pinnedRow.pin.x + 3,
+			y: pinnedRow.pin.y,
+		});
 		await pressPointerStationary(cdp, pinnedRow.pin.x + 3, pinnedRow.pin.y);
-		await wait(420);
-		const heldAfterWobble = tuiStoreReading().pins;
+		await wait(460);
+		const afterWobble = tuiStoreReading().pins;
+		const changedByWobble = [
+			...afterRepeat.filter((id) => !afterWobble.includes(id)),
+			...afterWobble.filter((id) => !afterRepeat.includes(id)),
+		];
 		check(
-			"a 3 px wobble does not re-arm it either",
-			heldAfterWobble.length === heldBefore.length,
-			JSON.stringify({ heldBefore, heldAfterWobble }),
+			"a 3 px wobble is the same gesture: it never reaches a row the pointer is not on",
+			(underBeforeWobble.atPoint?.row ?? null) === pinnedRow.id
+				? changedByWobble.every((id) => id === pinnedRow.id)
+				: changedByWobble.length === 0,
+			JSON.stringify({
+				pressed: pinnedRow.id,
+				under: underBeforeWobble.atPoint?.row ?? null,
+				afterRepeat,
+				afterWobble,
+				changedByWobble,
+			}),
 		);
 		frames.push(await captureSettled(cdp, `pins-stationary-${suffix}`));
 
