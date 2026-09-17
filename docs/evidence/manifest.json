@@ -1,5 +1,5 @@
 {
-  "head": "e2ab7be68507d2542bc6e24b0197f8169eb8877a",
+  "head": "4ec8226ed9964784a952223ec386283b4613ffc1",
   "headNote": "RE-STAMPED FOR THE PINS ROUNDS, ON THE TWICE-FOLDED TREE. This branch adds the sidebar's pinned conversations and their frames (`docs/evidence/pins/`: seventeen PNGs from `--scene pins`, four from the state QA measured under `--scene pins-scroll`, plus the four of the capability-withdrawn pair; the set's own README carries the table, the commands, the round-by-round record, the measurement of BOTH folds onto `main` - each of which moved the chat phase of six frames and not one pixel of the sidebar - and what it does not photograph). `head` names the commit the frames are pictures of, and the stamps are re-derived AT it rather than while a remediation or a fold was uncommitted, which is the trap #295 documents.",
   "srcTree": "d041d3a7ee07afca37ed719c976a7c366a0d54b1",
   "scriptsTree": "153e1ecba3d052172ddd2ff2d130106f6235a70b",
