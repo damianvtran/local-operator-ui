@@ -2827,9 +2827,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * The reservation itself is argued at the row (see `data-interrupt-slot`
 		 * below); the clock it runs on is `useInterruptSlotHold`, which owns the
 		 * edge, the single timer and its disposal, and which the review round's own
-		 * test drives through the measured sequence. What belongs here is the ORDER
-		 * of the two conditions the row reads: the fold's `held` first, so a running
-		 * turn is never asked to render a box beside its own control.
+		 * test drives through the measured sequence. What belongs here is the ONE
+		 * thing the argument decides and the gate cannot: the edge the window opens
+		 * on is the Stop control's own state (`canonicalStop?.active`), never the
+		 * capability or a busy flag - that argument and the gate's own
+		 * `!canonicalStop?.active` term are what between them keep the box off the
+		 * row while the control is drawn there.
 		 */
 		const slotHold = useInterruptSlotHold(Boolean(canonicalStop?.active));
 
@@ -4588,21 +4591,47 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									 * THE BOX IS HELD WHILE A DICTATION IS IN FLIGHT, on a different
 									 * reason than the window. While `isRecording` the row draws
 									 * `[Confirm recording][Cancel recording]` where the dictation control
-									 * and Send were (Send is gated on `!isRecording`), so a release would
-									 * move BOTH of them 36px right at the moment the window expired -
-									 * measured on the previous head: `[Confirm 1235][Cancel 1271][box
-									 * 1307]` inside the window, `[Confirm 1271][Cancel 1307]` after it.
-									 * A reflex press at the Stop's own centre would therefore land on
-									 * Confirm recording and send in-flight audio. Holding the box while
-									 * the dictation controls are rendered removes that press and costs
-									 * nothing visible: neither the dictation control nor Send is drawn in
-									 * that shape, so there is no beside-Send reading to preserve - this
-									 * is also the shape the pre-change build had, where the reservation
-									 * was standing. `isTranscribing` deliberately gets no such term, and
-									 * that is a statement rather than an omission: `!isTranscribing` gates
-									 * both the dictation control and Send, so while a transcription is in
-									 * flight the row draws nothing a press could reach in the vacated
-									 * box, and a term for it would be symmetry rather than a fix.
+									 * and Send were (Send is gated on `!isRecording`), and the held box
+									 * renders AFTER them: `[Confirm 1235][Cancel 1271][box 1307]`, which
+									 * is this record's own `inFlight.grace`. Release the box and both
+									 * controls move 36px right, to the two-control row the previous head's
+									 * record carries (`slot.recordingCancelled.aim.rect.left = 1307`,
+									 * i.e. `[Confirm 1271][Cancel 1307]`). The slot the Stop itself
+									 * occupies in that shape is 1307 (`inFlight.pressed.rect.left`), so a
+									 * reflex press at the Stop's own centre would land on **Cancel
+									 * recording** and DISCARD in-flight audio - a mistimed Stop press
+									 * would throw away a recording the user made deliberately, which is
+									 * why the box is held for as long as the dictation controls are
+									 * rendered rather than only for the window.
+									 *
+									 * WHAT THIS SHAPE COSTS, stated because the honest version is not
+									 * "nothing visible": the row's rightmost VISIBLE control sits one
+									 * control-plus-gap short of the row's right edge for the whole
+									 * recording, because the third slot is held empty and the box draws
+									 * no ink. That is a TRAILING void - both controls are drawn where the
+									 * right-justified cluster puts them and nothing is displaced - and it
+									 * is not introduced here: it is `origin/main`'s own recording row,
+									 * whose reservation was unconditional. Against `main` this change
+									 * removes the void from the idle row and leaves this one alone.
+									 *
+									 * AND STARTING A RECORDING MOVES THE PAIR 36px LEFT: the third slot
+									 * fills from the instant `isRecording` is true, so `[mic 1271]
+									 * [Send 1307]` becomes `[Confirm 1235][Cancel 1271][box 1307]` - the
+									 * slot that was just pressed (the dictation control's own, 1271) comes
+									 * back as **Cancel recording**, where without the box it would be
+									 * Confirm. Legible and one press from recovery, and the alternative
+									 * (filling the slot only once a window opens during a recording)
+									 * trades it for a 36px jump at the moment a turn ends under a
+									 * recording - the re-layout class this change exists to bound. The
+									 * same class of note as the start-of-turn transition above, for the
+									 * same reason: recorded so a later reader does not "fix" it by
+									 * symmetry.
+									 *
+									 * `isTranscribing` deliberately gets no such term, and that is a
+									 * statement rather than an omission: `!isTranscribing` gates both the
+									 * dictation control and Send, so while a transcription is in flight
+									 * the row draws nothing a press could reach in the vacated box, and a
+									 * term for it would be symmetry rather than a fix.
 									 *
 									 * `aria-hidden`, no focus and no pointer events: this is geometry,
 									 * not a control - nothing may be reachable, announced or pressed

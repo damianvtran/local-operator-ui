@@ -240,6 +240,33 @@ const ROW_GAP_PX = (() => {
 	return Number(match[1]) * 4;
 })();
 
+/*
+ * The row's gap as the LIVE RIG measured it, so the assertion below is a
+ * measurement rather than a re-derivation (code review round 2, NIT 4).
+ *
+ * Reading the gap out of the row's own class fixed the round-1 defect (a
+ * misleading failure) and traded away a real sensitivity: every derived box is
+ * laid out from the value it reads, so `gap-1` -> `gap-2` passed every test. The
+ * shipped record carries the row's own gap - `slot.settledCollapses.rowGap`, the
+ * rig's measurement of the distance between the two controls once the box is
+ * released - so pinning the two together is what makes a changed gap fail, and it
+ * fails as a disagreement with a measurement rather than with a constant someone
+ * restated here.
+ */
+const RECORDED_ROW_GAP_PX = (() => {
+	const record = JSON.parse(
+		readFileSync("docs/evidence/interrupt-live/interrupt-proof.json", "utf8"),
+	);
+	const measured = record.steps.find(
+		(step) => step.step === "slot.settledCollapses",
+	)?.rowGap;
+	assert.ok(
+		typeof measured === "number" && measured > 0,
+		"the live rig's own record carries no row gap to compare the row against (docs/evidence/interrupt-live/interrupt-proof.json, `slot.settledCollapses.rowGap`)",
+	);
+	return measured;
+})();
+
 /** The Button variant map, so a control's `size` variant resolves to its class. */
 const BUTTON_SIZES = (() => {
 	const source = readFileSync(
@@ -436,14 +463,17 @@ test("the held box is mounted on the grace predicate, not on the capability alon
 	/*
 	 * THE DICTATION-IN-FLIGHT TERM (design round 1, D2), and why it is separate
 	 * from the window: while a recording runs Send is not rendered at all, so the
-	 * row draws `[Confirm][Cancel]` where the dictation control and Send were. A
-	 * release would move BOTH of them 36px right at the moment the window expired
-	 * - measured on the previous head: `[Confirm 1235][Cancel 1271][box 1307]`
-	 * inside the window, `[Confirm 1271][Cancel 1307]` after it - so a reflex press
-	 * at the Stop's own centre would land on Confirm recording. Holding the box
-	 * while the dictation controls are rendered removes that press; `isTranscribing`
-	 * deliberately has no term, because it gates both the dictation control and
-	 * Send, so nothing is drawn that a press could reach.
+	 * row draws `[Confirm][Cancel]` where the dictation control and Send were, and
+	 * the held box renders after them - `[Confirm 1235][Cancel 1271][box 1307]`,
+	 * this record's own `inFlight.grace`. Release the box and both controls move
+	 * 36px right, which is the two-control row the previous head's own record
+	 * carries (`slot.recordingCancelled.aim.rect.left = 1307`: `[Confirm 1271]`
+	 * `[Cancel 1307]`) - so the slot the Stop itself occupies in this shape
+	 * (`inFlight.pressed.rect.left = 1307`) would be occupied by **Cancel
+	 * recording**, and a reflex press there DISCARDS in-flight audio. Holding the
+	 * box while the dictation controls are rendered removes that press;
+	 * `isTranscribing` deliberately has no term, because it gates both the
+	 * dictation control and Send, so nothing is drawn that a press could reach.
 	 */
 	assert.match(ROW_PARTS.gate, /slotHold\.held \|\| isRecording/);
 	// And the predicate is the shipped module's, folded through the shipped
@@ -458,6 +488,23 @@ test("the held box is mounted on the grace predicate, not on the capability alon
 		/import \{\s*type InterruptSlotHold,\s*interruptSlotHold,\s*\} from "\.\.\/interrupt-slot-grace"/s,
 	);
 	assert.match(HOOK_SOURCE, /interruptSlotHold\(\{/);
+	/*
+	 * AND THE ARGUMENT THE COMPOSER HANDS IT (code review round 2, MINOR 1).
+	 *
+	 * Everything above asserts that the hook is imported and folded; none of it
+	 * asserted WHAT the composer folds, and the reviewer's mutation showed the hole
+	 * is load-bearing: `useInterruptSlotHold(Boolean(canonicalStopAvailable))` -
+	 * which holds the box for as long as the capability is negotiated, i.e. the
+	 * operator's standing gap - left both suites green. The hazard this whole
+	 * change exists to bound lives in that argument, so it is pinned literally:
+	 * the edge the window opens on is the Stop control's OWN state, never the
+	 * capability's.
+	 */
+	assert.match(
+		ROW_SOURCE,
+		/useInterruptSlotHold\(Boolean\(canonicalStop\?\.active\)\)/,
+		"the composer does not fold the Stop control's own state: a capability or a busy flag in its place reopens the standing gap or drops the window",
+	);
 });
 
 test("a running turn's row is [dictation][Stop][Send]", () => {
@@ -502,6 +549,16 @@ test("a settled idle row is [dictation][Send], with one row gap between them", (
 	assert.ok(
 		settledGate,
 		"the shipped grace predicate does not release the box",
+	);
+	// The row's own gap against the live rig's measurement of it (round 2, NIT 4):
+	// `ROW_GAP_PX` is read out of the row's class, and this is what makes a CHANGED
+	// gap fail - the shipped record measured 4px between the two controls once the
+	// box was released, and a row that declares a different one is a row whose
+	// record and whose source disagree.
+	assert.equal(
+		ROW_GAP_PX,
+		RECORDED_ROW_GAP_PX,
+		"the row's own gap and the live rig's measurement of it disagree",
 	);
 	for (const [rung, isSmallView] of ROW_RUNGS) {
 		const boxes = rowBoxes(isSmallView, "settled");
