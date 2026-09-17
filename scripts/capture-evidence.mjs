@@ -1473,6 +1473,31 @@ export const STORIES = [
 			hover: 'li:has(+ li > button[aria-current="page"]) > button',
 		},
 	],
+	/*
+	 * The current row with the KEYBOARD on it, which is the one arrangement where
+	 * two outline rules meet on one box: the row's `highlight` ground plus the
+	 * app's `focus-visible` ring drawn around it. Design round 2's N3 asked for it
+	 * and it has never been photographed; round 3's N4 kept it open. Shot on the
+	 * ten themes the design named (the six pinned plus the four re-authored
+	 * values), where a mark paid on the cast is the thing most worth looking at.
+	 *
+	 * 780x560 like its siblings: the ring is drawn OUTSIDE the row's box, so the
+	 * frame has to include the margin it sits in.
+	 */
+	[
+		"chat-sidebar-current-row--focused-row-current",
+		780,
+		560,
+		{ tabTo: '[data-chat-row][aria-current="page"]' },
+	],
+	/*
+	 * The two-swatch wash frame (design round 3, D3), labelled in the picture as a
+	 * colour-only frame rather than a screen: this rig's states cannot co-shoot a
+	 * current row and an `accentWash` element, and the claim is about the distance
+	 * between two grounds rather than about a layout. Narrower than its siblings
+	 * because there is no panel to fit - a caption and two blocks.
+	 */
+	["chat-sidebar-current-row--wash-swatches", 780, 260],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
