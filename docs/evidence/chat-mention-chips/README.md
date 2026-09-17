@@ -90,7 +90,7 @@ number below; the frames are the picture of them):
 | chip fill overhang, both sides | **6.00 / 6.00** | 6 each side |
 | fill's left/right against its glyph run | **0.00 / 0.00** drift | within 1px |
 | first chip at the draft's start | fill left **259.0**, glyphs 265.0 — inside the field's own inset (field left 257) | never reaches the box's padding |
-| two adjacent chips | fills **259.0..346.86** and **347.86..449.20**: **3.80px** of clear ground (the whole space advance) | ≈16.5px of clear ground |
+| two adjacent chips | fills **259.0..346.86** and **347.86..449.20**: **3.80px** of clear ground (the whole space advance). Read off the pixels at `localOperatorLight`: the seam is **4 ground-coloured pixels** wide (`345..348`), against **1** (`347`) in the frame this replaces — the 1.00px gap was one antialiased column, which is why it read as a merge | ≈16.5px of clear ground |
 | a wrapped token | two fills, fill 1 bottom **381.47**, fill 2 top **385.47**: **4.00px** between the lines | 4px |
 | picker shell, 8 rows | **342.78** | 340.8 |
 | picker region, 8 / 7 / 4 / 3 rows | **284 / 248.5 / 142 / 106.5** = `budget x 35.5`, the row height the browser lays out | 288 at its ceiling |
