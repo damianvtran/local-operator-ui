@@ -149,10 +149,17 @@ type Evidence = {
 	code: string | undefined;
 	/** The row's own copy of it, which the guard's refusal does not update (R-4). */
 	rowCode?: string | undefined;
+	/**
+	 * The code of the failure that LEFT the held payload held (`ChatDraft.heldClaimCode`),
+	 * which is the code the composer's held line reads for its register (UX round 2, U10).
+	 */
+	heldClaimCode?: string | undefined;
 	rowMessage?: string | undefined;
 	message: string | undefined;
 	withholdRetryHint: boolean;
 	storeWriteRefusal: boolean;
+	/** The same predicate over the CLAIM's verdict, which is what decides the held line. */
+	claimStoreWriteRefusal: boolean;
 	refusedBeforeAdmission: boolean;
 	admissionAttempted: boolean | undefined;
 	submittedText: string | undefined;
@@ -174,6 +181,7 @@ const evidence: Evidence = {
 	message: undefined,
 	withholdRetryHint: false,
 	storeWriteRefusal: false,
+	claimStoreWriteRefusal: false,
 	refusedBeforeAdmission: false,
 	admissionAttempted: undefined,
 	submittedText: undefined,
@@ -265,6 +273,15 @@ evidence.status =
  */
 evidence.rowCode = draft.errorCode;
 evidence.rowMessage = draft.error;
+/*
+ * ... and the CLAIM's own verdict, which is a different field on the row for a
+ * reason: `errorCode` describes the last ATTEMPT and `onDismiss` clears it, while
+ * `heldClaimCode` describes the payload the store is still holding. On the
+ * `altered` case the two disagree - the guard's code is what the composer is
+ * handed, the store's is what the claim knows - and the held line must follow the
+ * claim (UX round 2, U10).
+ */
+evidence.heldClaimCode = draft.heldClaimCode;
 evidence.code =
 	typeof (raised as { code?: unknown })?.code === "string"
 		? ((raised as { code: string }).code as string)
@@ -273,6 +290,7 @@ evidence.message =
 	raised instanceof Error && raised.message ? raised.message : draft.error;
 evidence.withholdRetryHint = withholdsRetryHint(evidence.code);
 evidence.storeWriteRefusal = isStoreWriteRefusal(evidence.code);
+evidence.claimStoreWriteRefusal = isStoreWriteRefusal(draft.heldClaimCode);
 evidence.admissionAttempted = draft.admissionAttempted;
 evidence.submittedText = draft.submittedText;
 evidence.submittedAttachments = draft.submittedAttachments;
@@ -363,6 +381,12 @@ const Harness = () => {
 		code: evidence.code,
 		heldText,
 		heldAttachments: draft.submittedAttachments,
+		/*
+		 * `heldClaimCode`, not `code`: the composer's own contract since UX round 2's
+		 * U10, and the field the `altered` frame exists to exercise - there the code
+		 * above is the guard's and this one is still the store's.
+		 */
+		heldClaimCode: draft.heldClaimCode,
 		onRestoreHeld: () => {},
 		onDiscard: () => {},
 		onReleaseHeld: () => {},

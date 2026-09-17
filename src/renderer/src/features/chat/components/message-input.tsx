@@ -9,9 +9,11 @@ import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import {
+	RESTORE_LABEL,
 	SEND_HELD,
 	type SendOutcome,
 	adoptRefusedPayload,
+	heldClaimCopy,
 	refusedSplitNotice,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
@@ -22,7 +24,6 @@ import {
 import { cn } from "@shared/lib/utils";
 import {
 	buildSendPayload,
-	isStoreWriteRefusal,
 	withholdsRetryHint,
 } from "@shared/store/canonical-sessions-store";
 import {
@@ -196,22 +197,25 @@ export type ComposerSendError = {
 	 */
 	message?: string;
 	/**
-	 * The code this failure was classified with, as `chat-page` resolved it
+	 * The code THIS failure was classified with, as `chat-page` resolved it
 	 * (`activeErrorCode = sendErrorCode ?? draft.errorCode`).
 	 *
 	 * The CODE rather than the answers drawn from it, and that is the point of
-	 * the field: the composer reads the store's own predicates
-	 * (`withholdsRetryHint`, `isStoreWriteRefusal`) at the two places the code
-	 * decides something. It used to be handed a pre-computed
+	 * the field: the composer reads the store's own predicate
+	 * (`withholdsRetryHint`) at the one place this code decides something - whether
+	 * the generic retry hint is true. It used to be handed a pre-computed
 	 * `withholdRetryHint` boolean, which meant the store's rule existed twice -
-	 * once as a predicate and once as a value travelling through props - and a
-	 * second question (the held line's register, UX round 1, U4) would have made
-	 * it a third.
+	 * once as a predicate and once as a value travelling through props.
+	 *
+	 * The held line does NOT read this field any more, and that is a fix rather
+	 * than a tidy-up: this code is about the last ATTEMPT, so on the flow this PR
+	 * exists for (`Restore message`, drop the file, Enter) it is the guard's code
+	 * while the claim still knows the store's verdict - see `heldClaimCode`.
 	 *
 	 * Absent for a retained claim whose refusal carried no code, which is the
-	 * common case for the two sentences `chat-page` raises without one: both
-	 * predicates answer "no" for `undefined`, so the hint is offered (it is true
-	 * there) and the held line keeps the shared wording.
+	 * common case for the two sentences `chat-page` raises without one:
+	 * `withholdsRetryHint(undefined)` is false, so the hint is offered (it is true
+	 * there).
 	 */
 	code?: string;
 	actions?: { label: string; onClick: () => void }[];
@@ -238,6 +242,26 @@ export type ComposerSendError = {
 	 * chip is exactly what this decides about).
 	 */
 	heldAttachments?: string[];
+	/**
+	 * The code of the failure that LEFT that payload held - the claim's own
+	 * verdict, from the row (`ChatDraft.heldClaimCode`) rather than from the
+	 * failure on screen now.
+	 *
+	 * A second field rather than a second reading of `code`, because the two answer
+	 * different questions and the difference is the incident's own flow. `code` is
+	 * about the attempt that just failed; this is about the payload the store is
+	 * still holding. After `Restore message`, dropping the file and pressing Enter,
+	 * the guard is what refuses - so `code` is `unconfirmed_send` while the claim's
+	 * verdict is still `store_out_of_space`, and a held line that read `code`
+	 * reverted to "whether it reached the agent is not knowable ... send again only
+	 * if no reply arrives" one screen after the app said "Nothing was saved" (UX
+	 * round 2, U10).
+	 *
+	 * Supplied rather than inferred here too: the composer cannot see the row, and a
+	 * claim whose verdict was never recorded cannot be reconstructed from the code
+	 * that happens to be active.
+	 */
+	heldClaimCode?: string;
 	/**
 	 * The payload a refusal that admitted NOTHING owes the box, when the store is
 	 * still holding it (`refusedBeforeAdmissionText` in the canonical store).
@@ -648,21 +672,13 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 const ABANDON_NOTICE_MS = 4000;
 
 /**
- * The label on the control that puts a held payload back in the box - and, in
- * the store refusals' own held line, the name that sentence uses for it.
- *
- * ONE STRING, TWO READERS, because they must not drift: the sentence exists to
- * make the failure's own instruction performable - the box is empty while the
- * claim holds the payload, so the store sentence's "send it again" is a step
- * the app cannot take, and the control that revives it is a 12px link the
- * sentence never named (UX round 1, U1). A sentence naming a control that is
- * labelled something else is worse than one naming none, which is how "the
- * sentence and its button hold copies of the same words" becomes a defect.
- *
- * Not in `chat-measure.ts` or the store module: it is copy for THIS region, and
- * both the button and the sentence are here.
+ * `RESTORE_LABEL` moved to `@shared/hooks/use-message-input`, beside the sentence
+ * that names it (`heldClaimCopy`), for the reason the comment it carried here
+ * gave when both lived in this file: the button and the sentence must hold ONE
+ * string. It is the sentence that moved - the held line is now built by a pure
+ * function, so the store's copy and the control's label can be read together
+ * (and driven by a test) rather than reconstructed from this component's JSX.
  */
-const RESTORE_LABEL = "Restore message";
 
 const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
@@ -3393,8 +3409,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			// not `newMessage.trim()` for the same reason: one definition of "empty".
 			const boxEmpty = boxPayload === "";
 			/*
-			 * WHICH SENTENCE THE HELD CLAIM GETS, and it is a question about what
-			 * this failure KNOWS (UX round 1, U4).
+			 * WHICH SENTENCE THE HELD CLAIM GETS, decided by the CLAIM's own verdict
+			 * (UX round 1, U4; UX round 2's U10 for whose verdict it is).
 			 *
 			 * The shared wording - "Whether it reached the agent is not knowable ...
 			 * send again only if no reply arrives" - is written for a lost response:
@@ -3405,22 +3421,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * in the transcript is this app's own. An operator who follows the
 			 * unknowable-outcome line waits for a reply that cannot arrive.
 			 *
-			 * `storeWriteRefused` is the same predicate the hint is withheld by, asked
-			 * of the same code, so the two halves of the alert cannot answer the
-			 * question differently; and `heldCopyOnScreen` is honoured here as it is
-			 * there, because the line POINTS at that copy.
+			 * It is asked of `heldClaimCode` - the failure that LEFT this payload held -
+			 * and not of `code` - whatever refusal is on screen now. Those part company on
+			 * the operator's own remedy: `Restore message`, drop the file, Enter, and the
+			 * unchanged-payload guard is the refusal, so the live code says
+			 * `unconfirmed_send` while the claim still knows the store's verdict. Reading
+			 * the live code there reverted this line to the unknowable register one screen
+			 * after the app said "Nothing was saved", with the disk off the screen (UX
+			 * round 2, U10).
 			 *
-			 * The closing clause is what makes the sentence above performable: the
-			 * "send it again" half of the store sentence is dead while the payload is
-			 * out of the box, and the control that revives it is named here with the
-			 * SAME string the button is labelled with (`RESTORE_LABEL`).
+			 * The sentence itself - its three registers and the order of its clauses - is
+			 * built by `heldClaimCopy` in `use-message-input`, so it is one string with
+			 * one decision, pinned by a test that can drive it, rather than prose written
+			 * inside this render.
 			 */
-			const storeWriteRefused = isStoreWriteRefusal(sendError?.code);
-			const heldCopy = storeWriteRefused
-				? `Nothing was saved, and the copy above is this app's own rather than the agent's. Choose ${RESTORE_LABEL} to put it back in the composer.`
-				: heldCopyOnScreen === true
-					? "A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable - its copy is in the transcript above - so restore it and send again only if no reply arrives."
-					: "A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives.";
+			const heldCopy = heldClaimCopy(
+				sendError?.heldClaimCode,
+				heldCopyOnScreen === true,
+			);
 			return {
 				message: sendError?.message,
 				/*
@@ -3624,8 +3642,31 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * region for the reason design round 1, D2 wrote it: six whole lines
 						 * at the composer's own leading, so the last painted line is a line
 						 * and not a row of glyph tops.
+						 *
+						 * THE CLAIM THAT NAMES THE REMEDY IS OUT HERE TOO (QA round 1's Q-1,
+						 * design round 2's D5, agent review round 2's M1, UX round 2's U11 - one
+						 * defect with four observers). Moving the controls out fixed the remedy's
+						 * POSITION and left the sentence that explains it inside the window: at the
+						 * app's own minimum window in its DEFAULT layout the composer's track is
+						 * 236px, the backend's own sentence wraps to fill the whole 120px window,
+						 * and the clause naming the control was the part cut off - ending on a full
+						 * stop, so nothing read as truncated either. Same failure as U3, one level
+						 * in: the operator sees a refusal and no statement of what to do about it.
+						 * So the region now holds pinned PROSE AND ITS REMEDY, one group: the
+						 * sentences that can be LONG (the backend's copy - this app does not own
+						 * it and cannot shorten it) scroll, and the two things written HERE - the
+						 * claim that names the control, and the control itself - cannot. The cap
+						 * is unchanged, which is the point of the fix.
+						 *
+						 * `[&>*+*]:mt-5` AND NOT `gap-1`: the whole-line device above is true only
+						 * while every child starts on the leading's grid, and the 4px gap shifted a
+						 * second paragraph 4px off it - so the window cut a line 4px in and shaved
+						 * the descenders of the last visible one, the artifact `CAPPED_BLOCK`
+						 * exists to prevent (design round 2, D6; measured against the wide frame as
+						 * the control). One leading is a margin the cap's own arithmetic already
+						 * accounts for, at any number of children; 4px is not.
 						 */}
-						<div className={cn("flex flex-col gap-1", CAPPED_BLOCK)}>
+						<div className={cn("flex flex-col [&>*+*]:mt-5", CAPPED_BLOCK)}>
 							{abandonNotice && (
 								// Rendered in the same region rather than replacing it, so the
 								// escape is CONFIRMED where the problem was reported. Muted ink
@@ -3657,7 +3698,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									<span className="flex shrink-0 items-center pt-0.5">
 										<CircleAlert size={14} aria-hidden="true" />
 									</span>
-									<span>
+									{/*
+									 * `min-w-0 break-words`, because the sentence this row carries is not
+									 * the app's and can contain a word the app does not control.
+									 *
+									 * A floating child of a wrapping row already had `min-w-0`; this one did
+									 * not, so its minimum width was its longest WORD. The sibling backend's
+									 * store sentence names the config root the request used (`{root}`),
+									 * and a real macOS root contains one ~34-character path segment - wider
+									 * than the whole composer track at the app's minimum window. The flex
+									 * item therefore could not shrink, every line was cut mid-word at the
+									 * block's right edge, and the clause naming the remedy was beyond it on
+									 * all of them: the same class of loss as the vertical clip QA round 1
+									 * measured, on the axis that has no scrollbar to hint at it. Found by
+									 * projecting the sibling's real sentence into this set, which is what
+									 * the manager's note asked for.
+									 */}
+									<span className="min-w-0 break-words">
 										{composerAlert.message}
 										{/*
 										 * The "what to do" half of the error contract (branding
@@ -3674,48 +3731,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									</span>
 								</p>
 							)}
-							{!abandonNotice && composerAlert.showHeld && (
-								/*
-								 * The held claim, stated because it is being ENFORCED.
-								 *
-								 * `admissionAttempted` makes the store refuse any send whose
-								 * payload differs, and clearing the textarea does not drop it -
-								 * deliberately, since a keystroke says nothing about a request
-								 * that may be executing on the owner. Left unsaid, that produced
-								 * the worst failure in the flow: the user select-all-deleted,
-								 * saw nothing retained, typed something else, and was refused by
-								 * a healthy backend with no link back to what they did.
-								 *
-								 * Rendered only when the box does NOT already hold the payload.
-								 * When it does, the message is on screen and Enter retries it -
-								 * saying so would be noise on the common path.
-								 *
-								 * The second half of the sentence states the UNCERTAINTY, which the
-								 * failure copy does not: that copy is the backend's own refusal string
-								 * (or the generic fallback) and reads as "nothing happened", while the
-								 * branch's design keeps the echo painted precisely because the outcome
-								 * is unknowable (design round 1's D1, UX round 1's U5). One register
-								 * says "this failed", the other shows the message still in the
-								 * transcript, so the held claim is the only place that can name the
-								 * third possibility - and it has to name the retry too, or the two
-								 * copies read as a duplicate rather than as one message with a
-								 * remedy.
-								 *
-								 * The noun is deliberately NEUTRAL ("a message"), not "an unsent
-								 * message" (design round 2, D9). Whether the request was admitted
-								 * is the very thing this sentence calls unknowable, so calling it
-								 * unsent asserted non-delivery one clause before denying that anyone
-								 * could know - and it sat on the same card as the transport's own
-								 * sentence for a write, which says the request may or may not have
-								 * reached the server. A reader told both that the message is unsent
-								 * and that its fate is unknowable has been given the reason to
-								 * re-send twice, which is the harm the deadline copy exists to
-								 * avoid.
-								 */
-								<p className={cn("text-ink-muted")}>{composerAlert.heldCopy}</p>
-							)}
 							{/*
-							 * THE MUTED CONTEXT COMES LAST, INSIDE THE PROSE; THE CONTROLS ARE PINNED AFTER IT.
+							 * THE MUTED CONTEXT COMES LAST, INSIDE THE PROSE; THE CLAIM THAT NAMES THE
+							 * REMEDY AND THE CONTROLS THEMSELVES ARE PINNED AFTER IT.
 							 *
 							 * The block caps itself and scrolls internally (see the region's own note
 							 * on `max-h`), so its children are ranked in the only way a capped block
@@ -3754,137 +3772,234 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							)}
 						</div>
 						{!abandonNotice &&
-							(composerAlert.actions.length > 0 ||
+							(composerAlert.showHeld ||
+								composerAlert.actions.length > 0 ||
 								composerAlert.restore ||
 								composerAlert.abandon) && (
 								/*
-								 * `min-h-6` on the row, not on the buttons: the targets are 20px
-								 * of text and sit directly above a 44px send button, which read
-								 * as less important than they are. The row grows the hit area to
-								 * the 24px comfortable minimum without changing the type size.
+								 * THE HELD CLAIM IS ONE THING WITH ITS REMEDY, so they are pinned together
+								 * and outside the cap (QA round 1's Q-1/D5/M1/U11).
+								 *
+								 * The claim is stated because it is being ENFORCED. `admissionAttempted`
+								 * makes the store refuse any send whose payload differs, and clearing the
+								 * textarea does not drop it - deliberately, since a keystroke says
+								 * nothing about a request that may be executing on the owner. Left
+								 * unsaid, that produced the worst failure in the flow: the user
+								 * select-all-deleted, saw nothing retained, typed something else, and was
+								 * refused by a healthy backend with no link back to what they did.
+								 *
+								 * Rendered only when the box does NOT already hold the payload. When it
+								 * does, the message is on screen and Enter retries it - saying so would
+								 * be noise on the common path.
+								 *
+								 * WHY IT LEFT THE CAPPED BLOCK. The sentence that names `Restore message`
+								 * is the ONLY prose on this screen that says what to do, and at the app's
+								 * own minimum window it was the part the cap cut - the backend's own
+								 * sentence fills the window at a 236px track, the clause naming the
+								 * control sits last in the paragraph, and what was left ended on a full
+								 * stop so nothing read as truncated either. Keeping the control on screen
+								 * while hiding its own instruction is U3 one level in. This app's own copy
+								 * is bounded (one sentence, fixed at build time); the backend's is not, so
+								 * the unbounded half is the half that keeps the cap.
+								 *
+								 * The sentence's own text states the UNCERTAINTY the failure copy does not:
+								 * that copy is the backend's own refusal string (or the generic fallback)
+								 * and reads as "nothing happened", while the branch's design keeps the
+								 * echo painted precisely because the outcome is unknowable (design round
+								 * 1's D1, UX round 1's U5). One register says "this failed", the other
+								 * shows the message still in the transcript, so the held claim is the
+								 * only place that can name the third possibility - which is why it is
+								 * built from the claim's own verdict rather than from the refusal on
+								 * screen, and why it has to name the retry too (see `heldClaimCopy`).
+								 *
+								 * The noun is deliberately NEUTRAL ("a message"), not "an unsent
+								 * message" (design round 2, D9). Whether the request was admitted is the
+								 * very thing that register calls unknowable, so calling it unsent
+								 * asserted non-delivery one clause before denying that anyone could know.
 								 */
-								<div
-									className={cn("flex min-h-6 flex-wrap items-center gap-3")}
-								>
-									{composerAlert.actions.map((action) => (
-										<Button
-											key={action.label}
-											type="button"
-											variant="link"
-											size="sm"
-											// `underline` at rest: `link` underlines only on hover and
-											// active, so these rendered as plain green words with no
-											// border, box or underline - an affordance carried by
-											// colour alone, which is not one.
-											className={cn("cursor-pointer text-body-sm underline")}
-											onClick={action.onClick}
-										>
-											{action.label}
-										</Button>
-									))}
-									{composerAlert.restore && (
-										/*
-										 * Puts the held payload back in the box, which is the only
-										 * way to satisfy a guard that demands a byte-identical
-										 * retry of a message the user can no longer see. This
-										 * replaces the old instruction to "edit it, then send
-										 * again" - advice the guard itself refuses, and following
-										 * it looped.
-										 */
-										<Button
-											type="button"
-											variant="link"
-											size="sm"
-											// `text-meta` (12px, `--text-meta: 0.75rem`), matching the abandon control rather
-											// than the 13px prose: `variant="link"` paints `text-accent`,
-											// which out-contrasts `danger` in 9 of 12 palettes, so at
-											// body size the REMEDY read louder than the failure it
-											// answers. Size is the axis that settles it; the accent hue
-											// still marks it as the primary action of the two.
-											className={cn("cursor-pointer text-meta underline")}
-											onClick={() => {
-												// The held payload already CARRIES the reply markup, so
-												// the chips that produced it have been consumed. Leaving
-												// them attached would re-prefix the restored text on the
-												// next send, and the guard refuses that mismatch - the
-												// deadlock Restore exists to escape. The referenced text
-												// is not lost: it is in the box, in the payload, visible.
-												if (conversationId) clearReplies(conversationId);
-												setNewMessage(composerAlert.restore ?? "");
-												sendError?.onRestoreHeld?.();
-												textareaRef.current?.focus();
-											}}
-										>
-											{RESTORE_LABEL}
-										</Button>
+								<div className={cn("flex flex-col gap-1")}>
+									{composerAlert.showHeld && (
+										<p className={cn("text-ink-muted")}>
+											{composerAlert.heldCopy}
+										</p>
 									)}
-									{composerAlert.abandon && (
+									{(composerAlert.actions.length > 0 ||
+										composerAlert.restore ||
+										composerAlert.abandon) && (
 										/*
-										 * One control, two behaviours, because the two cases lose
-										 * different things. With the held payload in the box there
-										 * is nothing else to protect, so this discards the draft.
-										 * With something else typed, discarding would destroy that
-										 * too - unprompted, under a label naming the OLD message -
-										 * so it releases only the store's claim and leaves the new
-										 * text alone. The label says which.
-										 *
-										 * `text-meta text-ink-dim`, down from `text-body-sm
-										 * text-ink-muted`: as the latter this outweighed the
-										 * failure it belongs to in 56 of the 59 palettes (radient 11.86:1
-										 * against danger's 6.98:1), putting a destructive secondary
-										 * at the top of the hierarchy. Now radient reads 7.41 and
-										 * the worst remaining margin over danger is 0.43 rather
-										 * than 4.88, with the 13px -> 12px size drop carrying the
-										 * rest of the demotion.
-										 *
-										 * NOT fixed by mixing danger toward the ground, which was
-										 * tried: it guarantees the ordering by construction but
-										 * rendered the control at 1.05-1.47:1 in the dark palettes,
-										 * i.e. an illegible destructive control - a worse defect
-										 * than the one being fixed. Nor by brightening
-										 * `text-danger`, which already clears AA everywhere and is
-										 * contract-verified. The residual inversion is a palette
-										 * question (the ink ramps are ordered by design intent, not
-										 * by contrast against THIS ground) and is raised for design
-										 * round 2 rather than papered over here.
+										 * `min-h-6` on the row, not on the buttons: the targets are 20px
+										 * of text and sit directly above a 44px send button, which read
+										 * as less important than they are. The row grows the hit area to
+										 * the 24px comfortable minimum without changing the type size.
 										 */
-										<Button
-											type="button"
-											variant="link"
-											size="sm"
+										<div
 											className={cn(
-												"cursor-pointer text-ink-dim text-meta underline",
+												"flex min-h-6 flex-wrap items-center gap-3",
 											)}
-											onClick={() => {
-												if (composerAlert.abandon === "discard") {
-													setNewMessage("");
-													sendError?.onDiscard?.();
-													setAbandonNotice("Message discarded.");
-												} else {
-													sendError?.onReleaseHeld?.();
-													// Names the outcome the user chose: the typed draft is
-													// deliberately still there, only the claim is gone.
-													setAbandonNotice("No longer holding the message.");
-												}
-												// This control unmounts itself, and focus would fall to
-												// `<body>` - where Enter sends nothing and typing lands
-												// zero characters. It is the LAST step of the recovery
-												// flow: the user has just been told they are free to
-												// send, with the text on screen. Focus goes back to the
-												// composer for the same reason Restore does it.
-												textareaRef.current?.focus();
-											}}
 										>
-											{composerAlert.abandon === "discard"
-												? composerAlert.discardClearsBox
-													? // The box holds the payload, so discarding empties
-														// something the user can see. "this message" names
-														// what is in front of them; "message" reads as
-														// the invisible claim and understates the cost.
-														"Discard this message"
-													: "Discard message"
-												: "Stop holding it"}
-										</Button>
+											{composerAlert.actions.map((action) => (
+												<Button
+													key={action.label}
+													type="button"
+													variant="link"
+													size="sm"
+													// `underline` at rest: `link` underlines only on hover and
+													// active, so these rendered as plain green words with no
+													// border, box or underline - an affordance carried by
+													// colour alone, which is not one.
+													className={cn(
+														"cursor-pointer text-body-sm underline",
+													)}
+													onClick={action.onClick}
+												>
+													{action.label}
+												</Button>
+											))}
+											{composerAlert.restore && (
+												/*
+												 * Puts the held payload back in the box, which is the only
+												 * way to satisfy a guard that demands a byte-identical
+												 * retry of a message the user can no longer see. This
+												 * replaces the old instruction to "edit it, then send
+												 * again" - advice the guard itself refuses, and following
+												 * it looped.
+												 */
+												<Button
+													type="button"
+													variant="link"
+													size="sm"
+													// `text-meta` (12px, `--text-meta: 0.75rem`), matching the abandon control rather
+													// than the 13px prose: `variant="link"` paints `text-accent`,
+													// which out-contrasts `danger` in 9 of 12 palettes, so at
+													// body size the REMEDY read louder than the failure it
+													// answers. Size is the axis that settles it; the accent hue
+													// still marks it as the primary action of the two.
+													className={cn("cursor-pointer text-meta underline")}
+													onClick={() => {
+														// The held payload already CARRIES the reply markup, so
+														// the chips that produced it have been consumed. Leaving
+														// them attached would re-prefix the restored text on the
+														// next send, and the guard refuses that mismatch - the
+														// deadlock Restore exists to escape. The referenced text
+														// is not lost: it is in the box, in the payload, visible.
+														if (conversationId) clearReplies(conversationId);
+														setNewMessage(composerAlert.restore ?? "");
+														/*
+														 * AND ITS FILES, because half a payload is not a remedy (QA
+														 * round 1, Q-2).
+														 *
+														 * This control writes the held TEXT over the box; it left
+														 * the chip row alone, and the chip row is half of what the
+														 * unchanged-payload guard compares. In the state the operator
+														 * reaches by following the app's own advice - restore, drop
+														 * the file that pushed the write over the threshold - pressing
+														 * `Restore message` therefore refilled one half and left the
+														 * payload mismatched, so the next Enter was refused by the
+														 * same guard, with the same two controls: a loop for anyone
+														 * who keeps pressing the control that names their remedy.
+														 *
+														 * The whole payload is reconstituted rather than merged into
+														 * whatever the row holds, which is the same rule the text half
+														 * already follows above: one press, one payload, both halves.
+														 * A press that could not do that would be a control whose
+														 * name promises something it does not deliver, which is the
+														 * defect class this whole change exists for. Anything the
+														 * operator has attached since is not silently listed as
+														 * sent either - the chips on screen after the press ARE the
+														 * payload the next send carries.
+														 *
+														 * An ABSENT chip set is left alone rather than cleared: the
+														 * store only knows the text on that arm, so there is nothing
+														 * to put back and emptying the row would destroy files the
+														 * user picked for a payload this app cannot name.
+														 */
+														const heldChips = sendError?.heldAttachments;
+														if (conversationId && heldChips !== undefined) {
+															clearAttachments(conversationId);
+															for (const path of heldChips)
+																addAttachment(conversationId, {
+																	id: uuidv4(),
+																	path,
+																});
+														}
+														sendError?.onRestoreHeld?.();
+														textareaRef.current?.focus();
+													}}
+												>
+													{RESTORE_LABEL}
+												</Button>
+											)}
+											{composerAlert.abandon && (
+												/*
+												 * One control, two behaviours, because the two cases lose
+												 * different things. With the held payload in the box there
+												 * is nothing else to protect, so this discards the draft.
+												 * With something else typed, discarding would destroy that
+												 * too - unprompted, under a label naming the OLD message -
+												 * so it releases only the store's claim and leaves the new
+												 * text alone. The label says which.
+												 *
+												 * `text-meta text-ink-dim`, down from `text-body-sm
+												 * text-ink-muted`: as the latter this outweighed the
+												 * failure it belongs to in 56 of the 59 palettes (radient 11.86:1
+												 * against danger's 6.98:1), putting a destructive secondary
+												 * at the top of the hierarchy. Now radient reads 7.41 and
+												 * the worst remaining margin over danger is 0.43 rather
+												 * than 4.88, with the 13px -> 12px size drop carrying the
+												 * rest of the demotion.
+												 *
+												 * NOT fixed by mixing danger toward the ground, which was
+												 * tried: it guarantees the ordering by construction but
+												 * rendered the control at 1.05-1.47:1 in the dark palettes,
+												 * i.e. an illegible destructive control - a worse defect
+												 * than the one being fixed. Nor by brightening
+												 * `text-danger`, which already clears AA everywhere and is
+												 * contract-verified. The residual inversion is a palette
+												 * question (the ink ramps are ordered by design intent, not
+												 * by contrast against THIS ground) and is raised for design
+												 * round 2 rather than papered over here.
+												 */
+												<Button
+													type="button"
+													variant="link"
+													size="sm"
+													className={cn(
+														"cursor-pointer text-ink-dim text-meta underline",
+													)}
+													onClick={() => {
+														if (composerAlert.abandon === "discard") {
+															setNewMessage("");
+															sendError?.onDiscard?.();
+															setAbandonNotice("Message discarded.");
+														} else {
+															sendError?.onReleaseHeld?.();
+															// Names the outcome the user chose: the typed draft is
+															// deliberately still there, only the claim is gone.
+															setAbandonNotice(
+																"No longer holding the message.",
+															);
+														}
+														// This control unmounts itself, and focus would fall to
+														// `<body>` - where Enter sends nothing and typing lands
+														// zero characters. It is the LAST step of the recovery
+														// flow: the user has just been told they are free to
+														// send, with the text on screen. Focus goes back to the
+														// composer for the same reason Restore does it.
+														textareaRef.current?.focus();
+													}}
+												>
+													{composerAlert.abandon === "discard"
+														? composerAlert.discardClearsBox
+															? // The box holds the payload, so discarding empties
+																// something the user can see. "this message" names
+																// what is in front of them; "message" reads as
+																// the invisible claim and understates the cost.
+																"Discard this message"
+															: "Discard message"
+														: "Stop holding it"}
+												</Button>
+											)}
+										</div>
 									)}
 								</div>
 							)}

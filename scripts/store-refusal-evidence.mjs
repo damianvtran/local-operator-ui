@@ -61,6 +61,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withMockKeychain } from "./chrome-keychain.mjs";
+import { failureFor } from "./store-refusal-copy.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ARGS = process.argv.slice(2);
@@ -133,10 +134,11 @@ const CASES = [
 		state: "restored",
 		arm: "store_busy",
 		status: 503,
-		message: "Read state is busy right now. It will catch up on its own.",
+		message: failureFor("busy").message,
 		hint: true,
 		withholds: false,
 		storeWrite: false,
+		claimStoreWrite: false,
 		namesControl: false,
 		box: "payload",
 		chips: 1,
@@ -150,16 +152,59 @@ const CASES = [
 		controlLabels: ["Discard this message"],
 	},
 	{
+		/*
+		 * THE CONTRAST FRAME FOR THE HELD LINE'S TWO REGISTERS (design round 2, D8).
+		 *
+		 * `isStoreWriteRefusal` makes the held claim arm-specific: the store arms get
+		 * the known fact and contend it, the busy arm falls through to the shared
+		 * "whether it reached the agent is not knowable" sentence. The set had
+		 * `busy-restored` and no `busy-held`, so the one screen where the predicate
+		 * CHANGES WHAT IS PAINTED was asserted in readings and never shown. Same
+		 * claim, same empty box, same two controls - and the only sentence on the
+		 * screen that differs from `out-of-space-held` is the held line.
+		 */
+		file: "busy-held",
+		case: "busy",
+		state: "held",
+		arm: "store_busy",
+		status: 503,
+		message: failureFor("busy").message,
+		/*
+		 * The hint is absent from the SCREEN and un-withheld by the PREDICATE, and the
+		 * two are different facts: `withholdsRetryHint(store_busy)` is false because
+		 * contention really is worth retrying (UX round 1, U7), while the composer does
+		 * not paint the hint at all in this state because the box is empty - there is
+		 * nothing left to send (the post-admission reason the PR body's table states).
+		 */
+		hint: false,
+		withholds: false,
+		storeWrite: false,
+		claimStoreWrite: false,
+		/*
+		 * The shared sentence does not name the control by its label: it says "restore
+		 * it and send again only if no reply arrives", which is the lost-response
+		 * register's own wording, unchanged by this PR (U1's naming clause is the store
+		 * arm's). Asserted rather than assumed, because the two registers differ in
+		 * exactly this.
+		 */
+		namesControl: false,
+		unknowable: true,
+		box: "empty",
+		chips: 1,
+		controls: true,
+		controlLabels: ["Restore message", "Discard message"],
+	},
+	{
 		file: "out-of-space-restored",
 		case: "out-of-space",
 		state: "restored",
 		arm: "store_out_of_space",
 		status: 507,
-		message:
-			"There is not enough space on this disk to save your message. Free up space, then send it again.",
+		message: failureFor("out-of-space").message,
 		hint: false,
 		withholds: true,
 		storeWrite: true,
+		claimStoreWrite: true,
 		namesControl: false,
 		box: "payload",
 		chips: 1,
@@ -178,11 +223,11 @@ const CASES = [
 		state: "restored",
 		arm: "store_unavailable",
 		status: 500,
-		message:
-			"This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+		message: failureFor("unavailable").message,
 		hint: false,
 		withholds: true,
 		storeWrite: true,
+		claimStoreWrite: true,
 		namesControl: false,
 		box: "payload",
 		chips: 1,
@@ -201,12 +246,13 @@ const CASES = [
 		state: "held",
 		arm: "store_out_of_space",
 		status: 507,
-		message:
-			"There is not enough space on this disk to save your message. Free up space, then send it again.",
+		message: failureFor("out-of-space").message,
 		hint: false,
 		withholds: true,
 		storeWrite: true,
+		claimStoreWrite: true,
 		namesControl: true,
+		knownFact: true,
 		box: "empty",
 		chips: 1,
 		controls: true,
@@ -225,22 +271,16 @@ const CASES = [
 		state: "held",
 		arm: "store_unavailable",
 		status: 500,
-		message:
-			"This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+		message: failureFor("unavailable").message,
 		hint: false,
 		withholds: true,
 		storeWrite: true,
+		claimStoreWrite: true,
 		namesControl: true,
+		knownFact: true,
 		box: "empty",
 		chips: 1,
 		controls: true,
-		/*
-		 * Both of them, primary first: the empty box is the state that makes
-		 * `Restore message` the way forward, and the destructive control is offered
-		 * beside it as `Discard message` (an empty box means a discard costs nothing
-		 * visible). UX round 1, U9 is the question of whether that second label is
-		 * honest enough; the frames now show it rather than describing it.
-		 */
 		controlLabels: ["Restore message", "Discard message"],
 	},
 	{
@@ -254,7 +294,9 @@ const CASES = [
 		hint: false,
 		withholds: true,
 		storeWrite: false,
-		namesControl: false,
+		claimStoreWrite: true,
+		namesControl: true,
+		knownFact: true,
 		box: "payload",
 		chips: 0,
 		controls: true,
@@ -266,47 +308,109 @@ const CASES = [
 		 * U9). The label is a consequence of the chip-aware comparison this frame
 		 * exists to pin: a text-only one says the payload is back and offers `Discard
 		 * this message` over the user's text instead.
+		 *
+		 * IT IS ALSO THE U10 FRAME, and it is the only one in the set where the code on
+		 * screen and the claim's verdict differ: the sentence above is the GUARD's
+		 * (`unconfirmed_send`, `storeWrite: false`), the claim still carries
+		 * `store_out_of_space`, and the held line must state the KNOWN FACT under the
+		 * guard's sentence rather than revert to "not knowable" one screen after the
+		 * app said nothing was saved. `knownFact: true` is that assertion; before this
+		 * round the frame asserted the reverse.
 		 */
 		controlLabels: ["Restore message", "Stop holding it"],
 	},
 	{
 		/*
-		 * The track is 340px, and the number to read is not the track but the block:
-		 * the prose is longer than the 120px whole-line window it renders in, which is
-		 * the state the pinning exists for. The app derives this track from the window
-		 * and the panes beside the chat (at the app's own minimum window the sidebar
-		 * leaves about 472px, and a picker or the canvas pane takes it lower), so the
-		 * claim this frame carries is the cap's own numbers - `clientHeight` 120 with a
-		 * taller `scrollHeight` - plus both controls inside the region; QA walks the
-		 * real window.
+		 * THE APP'S OWN MINIMUM WINDOW, IN THE COLUMN THE APP ACTUALLY DERIVES.
+		 *
+		 * 800x568 is the size the app clamps to, and QA round 1 measured the composer's
+		 * track in the DEFAULT layout at this window: 236px, not the ~472px an earlier
+		 * comment here assumed from the sidebar's width (the picker and the canvas pane
+		 * take it lower, and the default layout is where an operator starts). At 236px
+		 * the backend's own sentence fills the whole capped window, and this frame is
+		 * the one that showed the clause naming the remedy being the part cut off -
+		 * with the still printing a PASS beside its own `overflowing: true` because
+		 * `namesControl` was read off the DOM text rather than off what is painted
+		 * (QA round 1's Q-1, design round 2's D5, agent review round 2's M1, UX round
+		 * 2's U11).
+		 *
+		 * It is still the frame where the cap's own numbers are asserted, and it is the
+		 * frame that must FAIL if the naming clause is not on screen: `namesControl` is
+		 * now asked of the VISIBLE prose (see the probe), which is the instrument the
+		 * design round asked for.
 		 */
 		file: "unavailable-narrow-held",
 		case: "unavailable",
 		state: "held",
 		arm: "store_unavailable",
 		status: 500,
-		message:
-			"This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+		message: failureFor("unavailable").message,
 		hint: false,
 		withholds: true,
 		storeWrite: true,
+		claimStoreWrite: true,
 		namesControl: true,
+		knownFact: true,
 		box: "empty",
 		chips: 1,
 		controls: true,
 		controlLabels: ["Restore message", "Discard message"],
 		viewport: { width: 800, height: 568 },
-		column: 340,
+		column: 236,
 		/*
-		 * Only here can the cap's own numbers be asserted: the copy has to overflow
-		 * the block for the pinning to be what keeps the remedy on screen.
+		 * NO `overflowing` ASSERTION HERE, and that is the measurement rather than an
+		 * omission: the sibling's 500 sentence wraps to exactly the six lines the cap
+		 * shows at this track, so the block's own numbers say 120/120 and a 1px metric
+		 * difference would flip a claim this frame is not making. What this frame is
+		 * for is the CLAUSE - it must be painted at the app's minimum window, which is
+		 * what `namesControl` and `knownFact` now ask of the visible rect. The sibling's
+		 * longer sentence (the 507, below) is the frame that carries the overflow.
 		 */
+	},
+	{
+		/*
+		 * THE LONGEST COPY THE SIBLING'S CONTRACT CAN PRODUCE, at the same window.
+		 *
+		 * The 507 sentence names the volume and where it is, which makes it the longest
+		 * of the three (~180 characters with a real config root); the projection in
+		 * design round 2's D5 was made from the 500 frame's character width, and this
+		 * frame is that projection MEASURED rather than projected. It is the case the
+		 * manager asked for by name: the same defect returns the moment
+		 * local-operator#1243 merges if only the shorter sentence was ever validated.
+		 */
+		file: "out-of-space-narrow-held",
+		case: "out-of-space",
+		state: "held",
+		arm: "store_out_of_space",
+		status: 507,
+		message: failureFor("out-of-space").message,
+		hint: false,
+		withholds: true,
+		storeWrite: true,
+		claimStoreWrite: true,
+		namesControl: true,
+		knownFact: true,
+		box: "empty",
+		chips: 1,
+		controls: true,
+		controlLabels: ["Restore message", "Discard message"],
+		viewport: { width: 800, height: 568 },
+		column: 236,
 		overflowing: true,
 	},
 ];
 
 const RETRY_HINT = "Your message is still in the composer. Send it again.";
 const RESTORE_LABEL = "Restore message";
+/*
+ * The known fact a store refusal licenses, as the shipped module builds it
+ * (`heldClaimCopy` in `use-message-input`). A rig carries its own copy of the
+ * strings it asserts - what it must NOT do is carry its own copy of the RULE,
+ * which is why `withholdRetryHint`/`isStoreWriteRefusal` are read from the page's
+ * shipped module rather than restated here.
+ */
+const STORE_CLAIM_KNOWN_FACT =
+	"Nothing was saved, and the copy above is this app's own rather than the agent's.";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -386,16 +490,92 @@ const PROBE = `(() => {
 		[...document.querySelectorAll("button")].find((b) =>
 			/send message/i.test(b.getAttribute("aria-label") ?? ""),
 		) ?? null;
+	/*
+	 * THE PROSE IS THE REGION'S PARAGRAPHS, not the capped block's (QA round 1's
+	 * Q-1). The claim that names the remedy was moved OUT of the cap in this round -
+	 * it is pinned with the control it names, because at the app's minimum window the
+	 * backend's own sentence fills the window and the clause was the part cut off -
+	 * so a read scoped to the capped block would report that the sentence is missing
+	 * rather than that it moved. Both levels are measured instead: this is what the
+	 * region SAYS, and visibleProse below is what a person can READ of it.
+	 *
+	 * The paragraphs and not the region's whole text: the pinned control row's labels
+	 * sit in the same region, and U1's claim is that a SENTENCE names a control -
+	 * reading the region's text would be satisfied by the button merely existing.
+	 */
+	const paragraphs = region ? [...region.querySelectorAll("p")] : [];
+	/*
+	 * WHAT IS ACTUALLY PAINTED, character by character.
+	 *
+	 * The text read above is blind to the cap: a sentence the window cuts off still
+	 * reports itself in full, which is how this rig printed the naming clause in its
+	 * PASS line beside a frame that did not paint those words - a PASS next to its
+	 * own overflowing: true (QA round 1's Q-1, design round 2's D5, agent review round
+	 * 2's M1, UX round 2's U11). Each character's own client rect has to sit inside
+	 * every box that clips it - the paragraph's nearest scrolling ancestor, and the
+	 * region itself - for it to count, so a line the window cuts or has scrolled past
+	 * drops out and an assertion about this string is an assertion about the screen.
+	 */
+	const clipBox = (node) => {
+		let el = node.parentElement;
+		while (el && el !== region) {
+			const overflow = getComputedStyle(el).overflowY;
+			if (overflow === "auto" || overflow === "scroll" || overflow === "hidden") return el;
+			el = el.parentElement;
+		}
+		return region;
+	};
+	const visibleProse = () => {
+		if (!region) return null;
+		const regionBox = region.getBoundingClientRect();
+		const parts = [];
+		for (const paragraph of paragraphs) {
+			const clip = clipBox(paragraph).getBoundingClientRect();
+			const top = Math.max(regionBox.top, clip.top);
+			const bottom = Math.min(regionBox.bottom, clip.bottom);
+			const left = Math.max(regionBox.left, clip.left);
+			const right = Math.min(regionBox.right, clip.right);
+			const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
+			let run = "";
+			for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+				const text = node.nodeValue || "";
+				for (let i = 0; i < text.length; i++) {
+					const range = document.createRange();
+					range.setStart(node, i);
+					range.setEnd(node, i + 1);
+					const painted = [...range.getClientRects()].some(
+						(r) =>
+							r.height > 0 &&
+							r.top >= top - 0.5 &&
+							r.bottom <= bottom + 0.5 &&
+							r.left >= left - 0.5 &&
+							r.right <= right + 0.5,
+					);
+					if (painted) run += text[i];
+					else if (run.trim()) {
+						parts.push(run.trim());
+						run = "";
+					}
+				}
+				if (run.trim()) {
+					parts.push(run.trim());
+					run = "";
+				}
+			}
+		}
+		return parts.join(" ").replace(/\\s+/g, " ").trim();
+	};
 	return {
 		regionPresent: !!region,
 		alertText: region ? (region.textContent || "").replace(/\\s+/g, " ").trim() : null,
-		alertProse: capped
-			? [...capped.querySelectorAll("p")]
+		alertProse: region
+			? paragraphs
 					.map((p) => p.textContent || "")
 					.join(" ")
 					.replace(/\\s+/g, " ")
 					.trim()
 			: null,
+		visibleProse: visibleProse(),
 		boxValue: textarea ? textarea.value : null,
 		theme: document.documentElement.dataset.theme,
 		fonts: document.fonts.status,
@@ -405,6 +585,15 @@ const PROBE = `(() => {
 					...rect(capped),
 					clientHeight: capped.clientHeight,
 					scrollHeight: capped.scrollHeight,
+					/*
+					 * The HORIZONTAL numbers as well: a sentence carrying a word the app
+					 * does not control (the sibling's config root) used to lay out wider
+					 * than this block and have every line cut mid-word at its right edge -
+					 * a clip with no scrollbar to hint at it, and one the vertical
+					 * instrument cannot see.
+					 */
+					clientWidth: capped.clientWidth,
+					scrollWidth: capped.scrollWidth,
 					overflowY: getComputedStyle(capped).overflowY,
 				}
 			: null,
@@ -423,7 +612,7 @@ const PROBE = `(() => {
 		send: send ? rect(send) : null,
 		viewport: { width: window.innerWidth, height: window.innerHeight },
 	};
-})()`;
+})();`;
 
 let vite = null;
 let chrome = null;
@@ -577,6 +766,17 @@ const assertions = (probe, expected) => {
 			`isStoreWriteRefusal is ${evidence.storeWriteRefusal}, expected ${expected.storeWrite} for ${expected.arm}`,
 		);
 	/*
+	 * And the SAME predicate over the CLAIM's verdict rather than the refusal on
+	 * screen. They are the same value in every case but `altered`, and that case is
+	 * the point: the composer's held line may only state the known fact when the
+	 * payload it is describing was left held by a store write refusal (UX round 2,
+	 * U10), and on the operator's own remedy the code on screen is the guard's.
+	 */
+	if (evidence.claimStoreWriteRefusal !== expected.claimStoreWrite)
+		fail(
+			`isStoreWriteRefusal(heldClaimCode) is ${evidence.claimStoreWriteRefusal}, expected ${expected.claimStoreWrite} for the claim ${JSON.stringify(evidence.heldClaimCode)} left by ${expected.arm}`,
+		);
+	/*
 	 * The box, asserted because every claim about the hint is conditional on it and
 	 * because this round's fix is about what the box does NOT hold. `held` is the
 	 * state the refusal leaves - the claim has the payload, so the box is empty and
@@ -620,11 +820,53 @@ const assertions = (probe, expected) => {
 		 * and a frame whose button merely exists are told apart.
 		 */
 		const proseNamesControl = probe.alertProse.includes(RESTORE_LABEL);
-		if (proseNamesControl !== expected.namesControl)
+		/*
+		 * THE SAME QUESTION, ASKED OF WHAT IS PAINTED (QA round 1's Q-1, design round
+		 * 2's D5, agent review round 2's M1, UX round 2's U11).
+		 *
+		 * `alertProse` is textContent, which a cap cannot reach: it reported the
+		 * naming clause in full on a frame that cut the clause off, so this rig printed
+		 * a PASS beside its own `overflowing: true`. Both are asserted, and they are
+		 * different findings when they disagree: "never written" versus "written where
+		 * the operator cannot read it".
+		 */
+		const shownNamesControl = (probe.visibleProse ?? "").includes(
+			RESTORE_LABEL,
+		);
+		if (expected.namesControl && !proseNamesControl)
 			fail(
-				expected.namesControl
-					? `the prose never names ${RESTORE_LABEL}, which is the step the store sentence's "send it again" needs while the box is empty (UX round 1, U1): ${JSON.stringify(probe.alertProse)}`
-					: `the prose names ${RESTORE_LABEL} where no restore is offered (UX round 1, U1): ${JSON.stringify(probe.alertProse)}`,
+				`the prose never names ${RESTORE_LABEL}, which is the step the store sentence's "send it again" needs while the box is empty (UX round 1, U1): ${JSON.stringify(probe.alertProse)}`,
+			);
+		else if (expected.namesControl && !shownNamesControl)
+			fail(
+				`the prose names ${RESTORE_LABEL} but the window does not SHOW it, so the operator is left with a refusal and no statement of what to do about it (QA round 1's Q-1, D5, M1, U11). rendered: ${JSON.stringify(probe.alertProse)} / painted: ${JSON.stringify(probe.visibleProse)}`,
+			);
+		else if (!expected.namesControl && proseNamesControl)
+			fail(
+				`the prose names ${RESTORE_LABEL} where no restore is offered (UX round 1, U1): ${JSON.stringify(probe.alertProse)}`,
+			);
+		/*
+		 * WHICH REGISTER THE CLAIM IS IN, on the screen rather than only in the
+		 * reading: `knownFact` is the store arms' sentence (U4, and U10 for whose
+		 * verdict picks it) and `unknowable` is the shared one contention keeps.
+		 */
+		if (expected.knownFact) {
+			if (!(probe.alertProse ?? "").includes(STORE_CLAIM_KNOWN_FACT))
+				fail(
+					`the claim does not state the known fact a store refusal licenses: ${JSON.stringify(probe.alertProse)}`,
+				);
+			else if (!(probe.visibleProse ?? "").includes(STORE_CLAIM_KNOWN_FACT))
+				fail(
+					`the claim states the known fact somewhere the window does not paint: ${JSON.stringify(probe.visibleProse)}`,
+				);
+			if (/not knowable/.test(probe.alertProse ?? ""))
+				fail(
+					`the claim reverts to the lost-response register under a store refusal, which tells the operator to wait for a reply that cannot arrive (UX round 1, U4; UX round 2, U10): ${JSON.stringify(probe.alertProse)}`,
+				);
+		}
+		if (expected.unknowable && !/not knowable/.test(probe.alertProse ?? ""))
+			fail(
+				`the contention arm no longer keeps the shared unknowable-outcome sentence, which is the register that IS true for it (design round 2, D8): ${JSON.stringify(probe.alertProse)}`,
 			);
 	}
 	/*
@@ -665,6 +907,21 @@ const assertions = (probe, expected) => {
 	 * The cap's own numbers, asserted only where the copy genuinely overflows: the
 	 * point of the pinning is that the region can hold more prose than it shows.
 	 */
+	/*
+	 * THE COPY WRAPS RATHER THAN OVERFLOWING SIDEWAYS, in every case.
+	 *
+	 * Not a styling preference: the block is `overflow-y: auto` with the other axis
+	 * computing to `auto` too, so a paragraph wider than the block is clipped per
+	 * LINE, mid-word, with no scrollbar drawn at rest - every line loses its tail,
+	 * which is where this app's and the backend's actionable clauses both live. The
+	 * trigger is a word the app does not control coming through `detail.message`
+	 * (the sibling's config root), so the assertion is made on every frame rather
+	 * than on the one that carries the long copy.
+	 */
+	if (probe.capped && probe.capped.scrollWidth > probe.capped.clientWidth + 0.5)
+		fail(
+			`the prose block overflows horizontally (${probe.capped.scrollWidth} in ${probe.capped.clientWidth}), so every line of the sentence is cut mid-word at its right edge and the remedy clause is beyond it on all of them`,
+		);
 	if (expected.overflowing) {
 		if (!probe.capped) fail("no capped prose block found at all");
 		else {
@@ -788,6 +1045,28 @@ const main = async () => {
 		for (const failure of failures)
 			problems.push(`${expected.file}: ${failure}`);
 
+		/*
+		 * SETTLE THE POINTER BEFORE THE SHOT (design round 2, D7).
+		 *
+		 * `altered-held` did not reproduce: 4,004 pixels differed from an independent
+		 * re-run, confined to the send control's own box, because the still caught the
+		 * control mid-transition at (51,179,95) where a re-run paints the resting
+		 * accent `#38c96a`. Anything hover- or transition-dependent belongs to the
+		 * pointer's history rather than to the state, so it is parked at the origin and
+		 * the frame waits for the transition to finish before it is taken - the same
+		 * reason the driver waits for the fonts.
+		 */
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 0,
+			y: 0,
+		});
+		await sleep(400);
+		await cdp.send("Runtime.evaluate", {
+			awaitPromise: true,
+			expression:
+				"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
+		});
 		const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
 		shots.set(`${expected.file}.png`, Buffer.from(shot.data, "base64"));
 	}
@@ -801,11 +1080,14 @@ const main = async () => {
 		status: record.evidence?.status,
 		code: record.evidence?.code,
 		rowCode: record.evidence?.rowCode,
+		heldClaimCode: record.evidence?.heldClaimCode,
 		withholdRetryHint: record.evidence?.withholdRetryHint,
 		storeWriteRefusal: record.evidence?.storeWriteRefusal,
+		claimStoreWriteRefusal: record.evidence?.claimStoreWriteRefusal,
 		box: record.boxValue === "" ? "(empty)" : record.boxValue,
 		controls: record.controls?.labels ?? null,
 		alertProse: record.alertProse,
+		visibleProse: record.visibleProse,
 		alertText: record.alertText,
 		failures: record.failures,
 	}));
@@ -841,8 +1123,10 @@ const main = async () => {
 					rowCode: record.evidence?.rowCode,
 					rowMessage: record.evidence?.rowMessage,
 					message: record.evidence?.message,
+					heldClaimCode: record.evidence?.heldClaimCode,
 					withholdRetryHint: record.evidence?.withholdRetryHint,
 					storeWriteRefusal: record.evidence?.storeWriteRefusal,
+					claimStoreWriteRefusal: record.evidence?.claimStoreWriteRefusal,
 					refusedBeforeAdmission: record.evidence?.refusedBeforeAdmission,
 					admissionAttempted: record.evidence?.admissionAttempted,
 					submittedText: record.evidence?.submittedText,
@@ -850,6 +1134,7 @@ const main = async () => {
 					boxValue: record.boxValue,
 					boxAttachments: record.evidence?.boxAttachments,
 					alertProse: record.alertProse,
+					visibleProse: record.visibleProse,
 					alertText: record.alertText,
 					region: record.region,
 					capped: record.capped,
@@ -869,7 +1154,7 @@ const main = async () => {
 	}
 	for (const row of report)
 		process.stdout.write(
-			`PASS ${row.file}: ${row.status}/${row.code} withholdRetryHint=${row.withholdRetryHint} storeWriteRefusal=${row.storeWriteRefusal}\n  prose: ${row.alertProse}\n  controls: ${JSON.stringify(row.controls)}\n`,
+			`PASS ${row.file}: ${row.status}/${row.code} withholdRetryHint=${row.withholdRetryHint} storeWriteRefusal=${row.storeWriteRefusal} claimStoreWriteRefusal=${row.claimStoreWriteRefusal}\n  painted: ${row.visibleProse}\n  rendered: ${row.alertProse}\n  controls: ${JSON.stringify(row.controls)}\n`,
 		);
 	process.stdout.write(`\nframes: ${OUT}\n`);
 };
