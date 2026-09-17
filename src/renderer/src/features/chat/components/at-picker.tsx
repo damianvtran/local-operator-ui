@@ -395,11 +395,30 @@ export function useAtPicker({
 		const changed = lastTokenKey.current !== tokenKey;
 		lastTokenKey.current = tokenKey;
 		setState((current) => {
-			if (tokenKey === null || dismissed.current === tokenKey) {
+			/*
+			 * THE AFFORDANCE IS PART OF THE STATE, NOT A HIDE OVER IT (UX round 3, U15).
+			 *
+			 * The gate that withholds `@` while a steer is in flight folds into the
+			 * RETURNED flag (`open: state.open && tokenKey !== null && available`), so a
+			 * list the user had up when the turn began stayed latched and simply became
+			 * visible again the instant the turn ended - with no keystroke to ask for it -
+			 * and the next Enter, a moment earlier the composer's submit, inserted a space
+			 * instead. Closing here as well as hiding means the list can only RISE on a
+			 * token change that happened while the affordance was live, which is the same
+			 * rule the chip already follows on that edge (U14).
+			 */
+			if (tokenKey === null || dismissed.current === tokenKey || !available) {
 				return current.open ? { ...current, open: false } : current;
 			}
 			// A new token opens on the top row with no choice made.
 			if (changed) return { open: true, active: 0, marked: null };
+			/*
+			 * And a CLOSED list stays closed. A re-derivation may re-anchor the marker of
+			 * a list that is already up, but nothing here opens one on its own: that is
+			 * what makes the return of `available` a no-op for a user who was mid-turn,
+			 * rather than the unasked-for re-open U15 reported.
+			 */
+			if (!current.open) return current;
 			if (current.marked === null)
 				return { open: true, active: 0, marked: null };
 			const index = rows.findIndex((row) => row.path === current.marked);
@@ -408,7 +427,7 @@ export function useAtPicker({
 				? current
 				: { open: true, active: index, marked: current.marked };
 		});
-	}, [tokenKey, rows]);
+	}, [tokenKey, rows, available]);
 
 	const close = useCallback(() => {
 		dismissed.current = tokenKey;

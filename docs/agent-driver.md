@@ -63,6 +63,16 @@ default would leave the renderer talking to the operator's own backend while mai
 talked to the run's. The run asserts which URL the renderer was built with and
 fails by name if it is not the one `--backend` named.
 
+**And the port has to be one the PAGE allows.** `src/renderer/index.html` pins
+`connect-src` to `1111`, `8080` and three vendor origins, and nothing computes it
+at runtime, so the renderer refuses — by its own policy, before any of this run's
+logic — a fetch to a backend on any other loopback port. `--backend` on such a
+port still boots and main still talks to it, which is what makes the failure read
+as a missing composer rather than a refused fetch; the app's own log carries
+`Connecting to 'http://127.0.0.1:<port>/v1/credentials' violates the following
+Content Security Policy`, and `--scene mentions` names the port in its refusal
+(QA round 3, Q-6). Run the rig's proxy on `8080` or `1111`.
+
 **The run refuses before its first boot if the tree is not on the Electron this
 branch pins** (`package.json` `optionalDependencies.electron`, the version
 `pnpm install --frozen-lockfile` gives and `build.electronVersion` moves with).
