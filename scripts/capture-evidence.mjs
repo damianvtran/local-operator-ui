@@ -3295,13 +3295,186 @@ export const STORIES = [
 		},
 	],
 	/*
-	 * The operator's second ask, driven by a real Selection built in the story
-	 * (`highlightLink`) because a `play` cannot make a real drag: the toolbar is the
-	 * LINK's, the turn's own Quote control is absent, and Quote leads the strip.
+	 * THE PATH A MOUSE ACTUALLY MAKES (round 2, design D1 - the BLOCKER).
+	 *
+	 * Every entry above moves the pointer by TELEPORT: one `mouseMoved` at an
+	 * element's centre. A deliberate move delivers a stream of positions, and the
+	 * intermediate ones cross the 8px clearance between the link's own box and the
+	 * toolbar's - which belongs to the row's WRAPPER, so the old `pointerover`
+	 * handler cleared the subject there and the strip unmounted before the pointer
+	 * could reach a button. The committed `hover-toolbar-button` and `copy-pressed`
+	 * frames were therefore showing a state under a gesture the reader could not
+	 * make. These four entries are that gesture, and each one is an ASSERTION rather
+	 * than a scene: `hoverPath`'s `expectKept` fails on a tree where the corridor is
+	 * missing.
+	 *
+	 *  - `hover-gap-crossing`: the pointer crosses from the anchor ONTO its first
+	 *    button in two samples 16ms apart and BACK onto the anchor - both steps a
+	 *    mouse makes, and the one that was lost at step 1 on the pre-remediation
+	 *    tree (design D1's own measurement).
+	 *  - `hover-gap-long`: the same arrival in four samples, which is the spacing a
+	 *    slower hand produces and the case that was lost at step 2.
+	 *  - `hover-gap-fine`: a sample every PIXEL at 8ms, from a link placed BELOW its
+	 *    toolbar (the mid-paragraph directory link), so both placements are covered:
+	 *    this is the path that was lost on the first pixel off the anchor's own box.
+	 *  - `hover-gap-leave`: the same arrival, and then the pointer moving on out to
+	 *    the prose beside the link - where the strip must go. That is the other half
+	 *    of the claim, and without it "keep the subject" could be satisfied by never
+	 *    dismissing at all.
+	 */
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="file"]',
+			hoverSettleMs: 400,
+			hoverPath: {
+				from: '[data-record-id="a1"] a[data-lo-kind="file"]',
+				stepSettleMs: 16,
+				legs: [
+					{
+						to: '[data-lo-link-toolbar] button[aria-label="Copy path"]',
+						samples: 2,
+						expectKept: {
+							on: '[data-record-id="a1"] a[data-lo-kind="file"]',
+						},
+					},
+					{
+						to: '[data-record-id="a1"] a[data-lo-kind="file"]',
+						samples: 2,
+						expectKept: {
+							on: '[data-record-id="a1"] a[data-lo-kind="file"]',
+						},
+					},
+				],
+			},
+			hoverChainSettleMs: 500,
+			dir: "hover-gap-crossing",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="file"]',
+			hoverSettleMs: 400,
+			hoverPath: {
+				from: '[data-record-id="a1"] a[data-lo-kind="file"]',
+				stepSettleMs: 16,
+				legs: [
+					{
+						to: '[data-lo-link-toolbar] button[aria-label="Open"]',
+						samples: 4,
+						expectKept: {
+							on: '[data-record-id="a1"] a[data-lo-kind="file"]',
+						},
+					},
+				],
+			},
+			hoverChainSettleMs: 500,
+			dir: "hover-gap-long",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover:
+				'[data-record-id="a1"] a[data-lo-target$="opoint-renewal-2026-09-17"]',
+			hoverSettleMs: 400,
+			hoverPath: {
+				from: '[data-record-id="a1"] a[data-lo-target$="opoint-renewal-2026-09-17"]',
+				stepSettleMs: 8,
+				legs: [
+					{
+						to: '[data-lo-link-toolbar] button[aria-label="Open"]',
+						stepPx: 1,
+						expectKept: {
+							on: '[data-record-id="a1"] a[data-lo-target$="opoint-renewal-2026-09-17"]',
+						},
+					},
+				],
+			},
+			hoverChainSettleMs: 500,
+			dir: "hover-gap-fine",
+		},
+	],
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-kind="file"]',
+			hoverSettleMs: 400,
+			hoverPath: {
+				from: '[data-record-id="a1"] a[data-lo-kind="file"]',
+				stepSettleMs: 16,
+				legs: [
+					{
+						to: '[data-lo-link-toolbar] button[aria-label="Copy path"]',
+						samples: 3,
+						expectKept: {
+							on: '[data-record-id="a1"] a[data-lo-kind="file"]',
+						},
+					},
+					{
+						text: "is gone, and",
+						samples: 3,
+						expectKept: false,
+					},
+				],
+			},
+			hoverChainSettleMs: 500,
+			dir: "hover-gap-leave",
+		},
+	],
+	/*
+	 * A TABLE-CELL anchor (round 2, design D4): the same-line and wrapped cases are
+	 * above, and neither shows what the placement does inside a bounded container.
+	 * Measured at this head: the cell link's box is `[255,544,612,561]`, the table
+	 * ends at 573, and the strip (`[255,569,353,601]`) therefore hangs 28px out of
+	 * the table over the paragraph below. § 5 records that cost beside the rule;
+	 * this frame is the picture it is recorded from.
+	 */
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-target$="summary.pdf"]',
+			hoverSettleMs: 500,
+			dir: "hover-cell",
+		},
+	],
+	/*
+	 * THE SCRIPTED-HIGHLIGHT STATES, and the gesture behind each one is stated rather
+	 * than implied - because it is NOT a gesture a reader can make (round 2, UX U4).
+	 *
+	 * Round 1 believed `draggable={false}` had made "a highlight wholly inside a
+	 * link" reachable with a mouse. It did not: measured in a windowed build with
+	 * focus emulated, and re-measured on the story surface at this head, a drag, a
+	 * double-click, a triple-click and a click+Shift+click that begin and end inside
+	 * one anchor all leave `getSelection()` empty and fire no `selectstart` - while
+	 * the same instrument selects in the prose beside it, and selects THROUGH the
+	 * link from the prose. What `draggable={false}` removes is the browser's own
+	 * LINK DRAG; it does not make the link's own text selectable, and no page-side
+	 * code can.
+	 *
+	 * So these frames are built by the story through the DOM's `Selection` API
+	 * (`highlightLink`), which is a legitimate instrument for photographing a state
+	 * the COMPONENT must handle - the toolbar's `Quote`-leading layout, and what a
+	 * press on it stages - but not evidence that a reader can produce that state.
+	 * The set's README says so in the same words, and the design doc's § 5 states
+	 * the consequence: `Quote` is offered on the HOVER state too, so the affordance
+	 * does not depend on a selection the browser will not make.
 	 */
 	["chat-canonical-links--selection-in-link", 1024, 720],
 	/* The press that follows, with the composer in frame: what the toolbar stages is
-	   the link's own text, on the same `conversationId` the chip reads. */
+	   the link's own text, on the same `conversationId` the chip reads. Also a
+	   scripted `Selection`, and also not reachable with a pointer. */
 	["chat-canonical-links--selection-in-link-staged", 1024, 820],
 ];
 
@@ -4342,6 +4515,148 @@ const main = async () => {
 				for (const [index, selector] of options.hoverChain.entries()) {
 					await movePointerTo(selector, `hoverChain[${index}]`);
 					await sleep(options.hoverChainSettleMs ?? 400);
+				}
+			}
+
+			/*
+			 * A POINTER PATH WITH INTERMEDIATE SAMPLES, which is the ONE gesture the
+			 * options above cannot make.
+			 *
+			 * `movePointerTo` dispatches a single `mouseMoved` at an element's centre, so
+			 * every entry above moves the pointer by TELEPORT: one boundary crossing,
+			 * no sample in between. A reader's mouse does not - a deliberate move
+			 * delivers a stream of positions, and it is exactly those positions that
+			 * round 2 (design D1, the BLOCKER) found the strip cannot survive: the
+			 * toolbar sits 8px clear of the anchor's box, that clearance belongs to the
+			 * row's WRAPPER rather than to the turn, and a pointerover on the wrapper
+			 * cleared the subject - so `Copy`/`Open`/`Open folder` were reachable only
+			 * by a gesture no mouse makes, and the `hover-toolbar-button`/
+			 * `copy-pressed` frames showed a state a reader could not produce.
+			 *
+			 * `legs` is a list of moves, each starting from where the last one ended:
+			 * `to` is a selector, or `text` for a run of prose outside any link (the
+			 * same search `hoverText` does), and the samples between here and there are
+			 * spaced by the GREATER of `samples` equal steps and `stepPx`, so a path can
+			 * be stated the way a reader's move is ("1px at a time") or the way a test
+			 * is ("four steps"). `expectKept` turns the leg into a CLAIM rather than a
+			 * scene: the raised strip must still be up afterwards, and must name the
+			 * target of `expectKept.on` when that is given - which is false on the
+			 * pre-remediation tree for every path whose samples cross the gap, so the
+			 * entry is a regression test and not a photograph.
+			 */
+			if (options?.hoverPath) {
+				const { legs, stepSettleMs = 16 } = options.hoverPath;
+				const pointFor = async (leg, index) => {
+					if (leg.text) {
+						const { result } = await cdp.send("Runtime.evaluate", {
+							returnByValue: true,
+							expression: `(() => {
+								const wanted = ${JSON.stringify(leg.text)};
+								const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+								for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+									const at = node.data.indexOf(wanted);
+									if (at === -1) continue;
+									if (node.parentElement?.closest("a,button")) continue;
+									const range = document.createRange();
+									range.setStart(node, at);
+									range.setEnd(node, at + wanted.length);
+									const rect = range.getClientRects()[0];
+									if (!rect) continue;
+									return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+								}
+								return null;
+							})()`,
+						});
+						if (!result.value) {
+							throw new Error(
+								`${story} @ ${theme}: hoverPath leg ${index} matches no prose run`,
+							);
+						}
+						return result.value;
+					}
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(leg.to)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					if (!result.value) {
+						throw new Error(
+							`${story} @ ${theme}: hoverPath leg ${index} selector \`${leg.to}\` matched nothing`,
+						);
+					}
+					return result.value;
+				};
+				const move = async (x, y) => {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseMoved",
+						x: Math.round(x),
+						y: Math.round(y),
+						button: "none",
+						buttons: 0,
+						clickCount: 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+					await sleep(stepSettleMs);
+				};
+				const from = await movePointerTo(
+					options.hoverPath.from,
+					"hoverPath.from",
+				);
+				let at = from;
+				for (const [index, leg] of legs.entries()) {
+					const to = await pointFor(leg, index);
+					const distance = Math.hypot(to.x - at.x, to.y - at.y);
+					const count = Math.max(
+						leg.samples ?? 1,
+						leg.stepPx ? Math.ceil(distance / leg.stepPx) : 1,
+					);
+					for (let step = 1; step <= count; step++) {
+						await move(
+							at.x + ((to.x - at.x) * step) / count,
+							at.y + ((to.y - at.y) * step) / count,
+						);
+					}
+					at = to;
+					if (leg.expectKept === undefined) continue;
+					const { result: seen } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const strip = document.querySelector("[data-lo-link-toolbar]");
+							const on = ${JSON.stringify(leg.expectKept.on ?? null)};
+							const anchor = on ? document.querySelector(on) : null;
+							return {
+								strip: strip ? strip.getAttribute("aria-label") : null,
+								target: anchor ? anchor.getAttribute("data-lo-target") : null,
+							};
+						})()`,
+					});
+					if (leg.expectKept && !seen.value.strip) {
+						throw new Error(
+							`${story} @ ${theme}: leg ${index} (${count} samples to ${leg.to ?? leg.text}) lost the strip - a pointer path a mouse can make must reach the buttons (design D1)`,
+						);
+					}
+					if (!leg.expectKept && seen.value.strip) {
+						throw new Error(
+							`${story} @ ${theme}: leg ${index} left \`${seen.value.strip}\` up after the pointer moved onto ${JSON.stringify(leg.text ?? leg.to)} - leaving the link must dismiss`,
+						);
+					}
+					const named = String(seen.value.target ?? "")
+						.split("/")
+						.pop();
+					if (
+						leg.expectKept &&
+						named &&
+						!String(seen.value.strip).includes(named)
+					) {
+						throw new Error(
+							`${story} @ ${theme}: leg ${index} kept a strip for \`${seen.value.strip}\`, not ${named}`,
+						);
+					}
 				}
 			}
 

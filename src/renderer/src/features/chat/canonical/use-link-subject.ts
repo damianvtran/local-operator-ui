@@ -24,8 +24,8 @@
  *
  * | the reader's state | the row's subject |
  * |---|---|
- * | pointer over a link, nothing highlighted | that link |
- * | a highlight wholly inside a link | that link, Quote offered |
+ * | pointer over a link, nothing highlighted | that link, Quote offered last |
+ * | a highlight wholly inside a link | that link, Quote offered first |
  * | a highlight that leaves a link (spans prose, or two links, or two turns) | none - the turn's own Quote control |
  * | a link focused with Tab | that link |
  * | nothing | none |
@@ -67,6 +67,15 @@
  * a plain Tab reaches the buttons of the LAST link only - earlier links' actions
  * were Tab-unreachable and `Shift+F10`, a key a Mac keyboard does not label, was
  * the only per-link route (round 1, UX U1).
+ *
+ * "THAT link" IS ENFORCED RATHER THAN ASSUMED. The pointer and the keyboard can
+ * disagree about the subject - the pointer out-ranks the keyboard, so a resting
+ * pointer re-subjects the strip - and in that mixed state the old code consumed
+ * the Tab and focused the strip's first button, which belonged to the link under
+ * the POINTER: the press that followed acted on the wrong link (round 2, UX U8 /
+ * code review MINOR 1). The Tab branch therefore re-subjects to the focused link
+ * before the button takes focus, so the contract above holds in every state a
+ * reader can be in rather than in the ones where the two happen to agree.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -75,6 +84,7 @@ import {
 	hasHighlight,
 	selectionLinkIn,
 } from "../utils/link-actions";
+import { QUOTE_CONTROL_GAP } from "./quote-anchor";
 import { QUOTE_TOOLKIT_ATTR } from "./quote-model";
 
 /**
@@ -97,6 +107,20 @@ export const LINK_TOOLBAR_ATTR = "data-lo-link-toolbar";
  * toolbar acts, and the reader who has rested on a link wants the buttons.
  */
 export const HOVER_DWELL_MS = 120;
+
+/**
+ * How far outside the anchor's and the toolbar's own boxes a pointer may stray
+ * and still count as travelling between them.
+ *
+ * The toolbar is placed `QUOTE_CONTROL_GAP` (8px) clear of the anchor's own box
+ * (`quote-anchor.ts`), so the gap a deliberate move crosses is that clearance - a
+ * teleport is the only gesture that skips it. This margin is added on top for the
+ * sub-pixel rounding of two boxes measured a frame apart, and nothing more: the
+ * corridor has to be narrow enough that a reader who has moved off the link and
+ * onto the text around it is genuinely dismissed, which is what keeps the strip
+ * from following them across the paragraph (round 2, design D1's other half).
+ */
+const CORRIDOR_MARGIN_PX = 2;
 
 export type LinkSubjectState = {
 	/** The link the toolbar is about, or `null` when nothing is. */
@@ -213,7 +237,59 @@ export function useLinkSubject(turnRef: {
 			}, HOVER_DWELL_MS) as unknown as number;
 		};
 
-		const onPointerOver = (event: Event) => {
+		/**
+		 * Whether a pointer at (x, y) is between the toolbar and the link it is about.
+		 *
+		 * WHY A GEOMETRIC CORRIDOR RATHER THAN A CONTAINMENT TEST (round 2, design
+		 * D1 - the BLOCKER). The toolbar is placed 8px clear of the anchor's own box,
+		 * and those 8px are the row's own wrapper - `position: absolute` keeps the
+		 * strip out of the turn's box, so the element under the pointer there is an
+		 * ANCESTOR of the turn, not a descendant. Every containment test available
+		 * answers "not the turn" for it: `turn.contains(related)` is false, the
+		 * `closest(LINK_TARGET_SELECTOR)` is null, and the non-link branch of
+		 * `pointerover` clears the subject. So a deliberate move - which samples that
+		 * gap - unmounted the strip before the press could land, and only a single
+		 * teleport survived: Copy/Open/Open folder were reachable by a gesture no
+		 * mouse makes.
+		 *
+		 * The corridor is the union of the anchor's own box and the toolbar's,
+		 * each inflated by the clearance the toolbar is placed at plus a rounding
+		 * margin. It cannot outlive the pointer leaving both, because it is a
+		 * function of where the pointer IS rather than of a timer, and it cannot
+		 * keep the strip over the prose: half a line of text is further from the
+		 * anchor's box than the clearance. (The measurement behind that second
+		 * half: the anchor's box is one inline box per line, ~17px tall, and the
+		 * clearance plus the margin is 10 - so a pointer resting on the words
+		 * AROUND a link is outside the corridor unless it is within 10px of the
+		 * link's own box, which is the strip's own travel distance.)
+		 *
+		 * A box with no area is skipped rather than treated as the origin: jsdom has
+		 * no layout engine, so every box there is 0x0, and a corridor that accepted
+		 * one would hold a subject on a 0,0 pointer in the suites that drive this
+		 * hook without a browser.
+		 */
+		const onTheWayToToolbar = (x: number, y: number): boolean => {
+			const anchor = pinnedRef.current;
+			if (!anchor || !turn.contains(anchor)) return false;
+			const strip = turn.querySelector(`[${LINK_TOOLBAR_ATTR}]`);
+			const by = QUOTE_CONTROL_GAP + CORRIDOR_MARGIN_PX;
+			for (const element of [anchor, strip]) {
+				if (!element) continue;
+				const box = element.getBoundingClientRect();
+				if (box.width <= 0 || box.height <= 0) continue;
+				if (
+					x >= box.left - by &&
+					x <= box.right + by &&
+					y >= box.top - by &&
+					y <= box.bottom + by
+				) {
+					return true;
+				}
+			}
+			return false;
+		};
+
+		const onPointerOver = (event: PointerEvent) => {
 			const target = event.target as Element | null;
 			/*
 			 * The pointer on the toolbar is still the reader pointing at the
@@ -224,13 +300,27 @@ export function useLinkSubject(turnRef: {
 			 * control, which sits inside this same turn element.
 			 */
 			if (target?.closest(`[${QUOTE_TOOLKIT_ATTR}]`)) return;
-			revealAfterDwell(target?.closest(LINK_TARGET_SELECTOR) ?? null);
+			const link = target?.closest(LINK_TARGET_SELECTOR) ?? null;
+			/*
+			 * The corridor covers the case the two containment tests above cannot:
+			 * the pointer is over the row's own wrapper, in the clearance between
+			 * the link and its toolbar, on its way to a button.
+			 */
+			if (!link && onTheWayToToolbar(event.clientX, event.clientY)) return;
+			revealAfterDwell(link);
 		};
 
 		const onPointerOut = (event: PointerEvent) => {
 			const related = event.relatedTarget as Node | null;
 			// Still inside the turn - another link, the prose, or the toolbar.
 			if (related && turn.contains(related)) return;
+			/*
+			 * LEAVING THE LINK FOR ITS TOOLBAR IS LEAVING THE TURN'S OWN BOX, not
+			 * its subtree (see `onTheWayToToolbar`): the element under the pointer in
+			 * the clearance is the row's wrapper, an ancestor, so the containment
+			 * test above answers "no" for a move that has not gone anywhere.
+			 */
+			if (onTheWayToToolbar(event.clientX, event.clientY)) return;
 			reveal(null);
 		};
 
@@ -323,6 +413,20 @@ export function useLinkSubject(turnRef: {
 			if (event.shiftKey) return false;
 			const link = target.closest(LINK_TARGET_SELECTOR);
 			if (!link || !turn.contains(link)) return false;
+			/*
+			 * THE STRIP MAY BE ABOUT ANOTHER LINK, and then it has to be re-subjected
+			 * before its first button takes focus (round 2, UX U8 / code review MINOR
+			 * 1). The pointer out-ranks the keyboard (`revealAfterDwell` writes
+			 * `pinnedRef`), so a reader who is on a link with the keyboard while the
+			 * pointer rests on a DIFFERENT one sees the other link's strip - and the
+			 * old code consumed their Tab and focused that strip's first button, so the
+			 * press that followed acted on the link the pointer was on. `Tab` is the
+			 * keyboard asking for THIS link's actions, so the row re-subjects to the
+			 * focused link and the two agree again. The contract is unchanged and is
+			 * the one in the module header; what changed is that it now holds in the
+			 * mixed state, which is the only state it could be violated in.
+			 */
+			if (pinnedRef.current !== link) reveal(link);
 			const [first] = toolbarButtons();
 			if (!first) return false;
 			first.focus();

@@ -427,17 +427,32 @@ export function missingNote(target: string): { note: string; title: string } {
 /**
  * The buttons a link's toolbar shows, or `null` when this target has none.
  *
- * QUOTE IS FIRST WHEN IT IS OFFERED, and that ordering is the operator's ask
- * ("if selecting a link in part or whole, show the quote within the hover
- * buttons"): a reader who has highlighted something has already chosen what they
- * are acting on, and the press that continues their gesture belongs at the
- * leading edge rather than behind two clipboard-shaped ones.
+ * QUOTE IS ALWAYS OFFERED, and where it sits is the reader's own state.
+ *
+ * With a highlight inside the link it LEADS: the operator's ask ("if selecting a
+ * link in part or whole, show the quote within the hover buttons") is about a
+ * reader who has already chosen what they are acting on, and the press that
+ * continues their gesture belongs at the leading edge rather than behind two
+ * clipboard-shaped ones.
+ *
+ * With NO highlight it TRAILS (`Copy path` · `Open` · `Open folder` · `Quote`),
+ * and that is round 2's decision rather than a leftover: the designed
+ * "highlight wholly inside one link" state turned out to be unreachable with a
+ * mouse in every instrument this project can drive (UX round 2, U4 - a
+ * `mousedown` on an `<a href>` in Chromium starts no selection and fires no
+ * `dragstart`, with or without `draggable={false}`), so a Quote that only
+ * appeared for that highlight was dead UI for a pointer reader. The press is the
+ * same press either way - `use-quote-press.ts` stages the highlight when there is
+ * one and the link's own text when there is not - so the affordance the operator
+ * asked for ("the buttons AND quote in all cases on hover or select") is real in
+ * both states, and a highlight inside the link is still preferred over the
+ * whole-link text.
  *
  * `quotable` is the caller's answer to "is the reader's selection wholly inside
- * THIS link" - a DOM question, and the one thing this function cannot decide.
- * It is only ever consulted for a link that is the toolbar's subject, so a
- * `false` here does not mean "this link cannot be quoted"; it means the reader
- * has not highlighted this link.
+ * THIS link" - a DOM question, and the one thing this function cannot decide. It
+ * is only ever consulted for a link that is the toolbar's subject, so a `false`
+ * here does not mean "this link cannot be quoted"; it means the reader has not
+ * highlighted this link, and the press will quote what the link says instead.
  */
 export function linkToolbarModel(input: {
 	kind: LinkKind;
@@ -448,6 +463,7 @@ export function linkToolbarModel(input: {
 	const { kind, target, probe, quotable } = input;
 	if (kind === "other") return null;
 	const leading = quotable ? [action("quote", "Quote")] : [];
+	const trailing = quotable ? [] : [action("quote", "Quote")];
 	const name = baseName(target) || target;
 
 	if (kind === "url") {
@@ -456,6 +472,7 @@ export function linkToolbarModel(input: {
 				...leading,
 				action("copy", "Copy link"),
 				action("open", "Open in browser"),
+				...trailing,
 			],
 			note: null,
 			noteTitle: null,
@@ -473,7 +490,7 @@ export function linkToolbarModel(input: {
 	if (missing) {
 		const reason = missingNote(target);
 		return {
-			actions: [...leading, action("copy", "Copy path")],
+			actions: [...leading, action("copy", "Copy path"), ...trailing],
 			note: reason.note,
 			noteTitle: reason.title,
 			label: `Actions for ${name}`,
@@ -489,7 +506,12 @@ export function linkToolbarModel(input: {
 		? [action("open", "Open")]
 		: [action("open", "Open"), action("open-folder", "Open folder")];
 	return {
-		actions: [...leading, action("copy", "Copy path"), ...fileActions],
+		actions: [
+			...leading,
+			action("copy", "Copy path"),
+			...fileActions,
+			...trailing,
+		],
 		note: null,
 		noteTitle: null,
 		label: `Actions for ${name}`,

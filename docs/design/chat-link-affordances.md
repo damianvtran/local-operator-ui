@@ -202,6 +202,66 @@ rather than a constant, and it only takes the flip when below is inside the pane
 (first line, still above) and `hover-directory` (mid-row, now below) are the two
 frames that show it.
 
+**The rule's cost, measured rather than argued** (round 2, design D2). Flipping
+does not make the coverage disappear; it moves it to the line BELOW the anchor,
+and § 5 recorded only the benefit. Round 2 measured the ink under the strip in
+the hover frames — pixels of the resting frame that differ from the canvas by
+more than 30 — and found two states where what is covered is text a reader wants:
+
+| state | strip rect | covered ink | what it is |
+|---|---|---|---|
+| `hover-file` | `[174,337,271,368]` | 0 px | nothing — the first-line case is genuinely clean |
+| `hover-directory` | `[584,612,651,642]` | 4 px | descender tops |
+| `hover-url` | `[245,486,312,517]` | **167 px** | the table's own column header, the word `path` |
+| `hover-missing` | `[217,612,444,643]` | 66 px | the tail of the sentence's wrapped continuation |
+
+The alternative considered and NOT taken is "place it on the side that covers
+less readable text". It cannot be implemented in the placement: `placeQuoteControl`
+is a pure function of BOXES (`quote-anchor.ts`), and "is this text readable or is
+it a table header" is not a property of a box. What the placement could do is
+prefer the side with more room, and that is the rule that produced the round-1
+defect this one replaces — the reason the flip exists is that the space above a
+mid-paragraph link is the line above it, which has text in it. So the rule stands
+and the cost is recorded here, with both sides photographed (`hover-file` above,
+`hover-directory`/`hover-url` below) rather than asserted away.
+
+**The strip may leave its container, and does.** In a table, the cell link's box
+is `[255,544,612,561]`, the table ends at 573, and the strip lands at
+`[255,569,353,601]` — 28px of it below the table, over the paragraph that follows
+(`hover-cell`). The placement clamps to the pane (`quote-anchor.ts`), not to the
+anchor's own ancestors, and deliberately: a link can sit in a table cell, a list
+item, a blockquote or a paragraph, and a container-aware rule would need an
+answer for each. The visible consequence is that a table's header row can be
+covered by the strip for a link in its first body row, which is the same cost
+measured above, one container further in.
+
+**The pointer travels a CORRIDOR between the link and its toolbar, and that is
+what makes the buttons reachable at all** (round 2, design D1 — the BLOCKER). The
+toolbar is placed 8px clear of the anchor's own box, and those 8px belong to the
+row's wrapper: `position: absolute` keeps the strip out of the turn's own box, so
+the element under a pointer crossing the gap is an ANCESTOR of the turn. Every
+containment test the row had answers "not the turn" for it — `turn.contains(related)`
+is false and `closest("[data-lo-kind]")` is null — so the non-link branch of
+`pointerover` cleared the subject and the strip unmounted before the pointer could
+reach a button. Only a single teleport survived: `2 steps@16ms` was lost at step
+1, `4 steps` at step 2, `1px@8ms` on the first pixel off the anchor, and the
+committed `hover-toolbar-button`/`copy-pressed` frames showed a state under a
+gesture no mouse makes.
+
+The rule is now geometric and stated once (`use-link-subject.ts`): the subject
+survives while the pointer is inside the union of the anchor's own box and the
+strip's, each inflated by the 8px clearance the strip is placed at plus a 2px
+rounding margin. It cannot outlive the pointer leaving both, because it is a
+function of where the pointer IS rather than of a timer, and it cannot follow a
+reader into the prose: half a line of text is further from the anchor's box than
+the clearance, so moving onto the words around a link dismisses as before. The
+rig drives the failing chains as ASSERTIONS rather than scenes —
+`hover-gap-crossing` (in and back out, two samples at 16ms), `hover-gap-long`
+(four samples), `hover-gap-fine` (a sample every pixel at 8ms, from a link placed
+BELOW its toolbar, so both placements are covered) and `hover-gap-leave` (the
+arrival, then out to the prose, where the strip must go). Each fails on the
+pre-remediation tree, which is what makes them evidence rather than pictures.
+
 **The pointer dwells for 120ms; the keyboard does not.** Sweeping the pointer
 across a paragraph that names several paths used to re-mount the strip for each
 one it crossed, so it flashed and moved under a gesture the reader was not
@@ -215,13 +275,27 @@ and a streaming row re-renders per delta.
 
 | the reader's state | the row's subject | what is offered |
 |---|---|---|
-| pointer over a link, nothing highlighted | that link | `Copy path` · `Open` · `Open folder` |
+| pointer over a link, nothing highlighted | that link | `Copy path` · `Open` · `Open folder` · **Quote** |
 | a highlight wholly inside a link (part or whole) | that link | **Quote** · `Copy path` · `Open` · `Open folder` |
 | a highlight spanning a link and the prose beside it | none — the turn's Quote control | Quote only |
 | a highlight across two links in one turn | none — the turn's Quote control | Quote only |
 | a highlight spanning two turns | none — `quote-model.ts`'s own rule | Quote on the turn it began in |
-| a link focused with `Tab` | that link | as the file case; Quote iff the highlight is in it |
+| a link focused with `Tab` | that link | as the file case; Quote leading iff the highlight is in it |
 | nothing | none | nothing |
+
+**Quote is on the toolbar in BOTH states, and that is round 2's decision** (UX
+round 2, U4). The state it used to wait for — a highlight wholly inside the link —
+turned out not to be reachable with a mouse in any instrument this project can
+drive: a `mousedown` on an `<a href>` in Chromium starts no text selection and
+fires no `dragstart`, with or without `draggable={false}`, so the
+`selection-in-link*` frames are built through the DOM's `Selection` API and show a
+state no pointer reader can produce. A Quote that appears only for that selection
+is dead UI for most readers, and the operator's ask is the buttons AND quote "in
+all cases on hover or select". So the hover state carries Quote too — trailing,
+because a reader who has not chosen is offered the actions on the link first and
+the quote of the link's own words last — and the press quotes the highlight when
+there is one and the link's own text when there is not. A highlight inside the
+link still wins over the whole-link text.
 
 **A highlight outranks the pointer**, and that ordering is what keeps a quote
 attributed to the link it came from: a drag that ends on a different link leaves
@@ -273,6 +347,17 @@ label) was the only per-link route:
 | `Escape` | inside the toolbar | hides the strip, hands focus back to the link, and drops the highlight it was acting on |
 | `Escape` | anywhere else, with the strip up | hides the strip (the pointer-raised case, where focus is wherever the reader left it) |
 | `Shift+F10`, the context-menu key | a focused link | raises the strip and focuses its first button |
+
+**The two halves can disagree, and `Tab` resolves it toward the keyboard** (round
+2, UX U8 / code review MINOR 1). The pointer out-ranks the keyboard — a resting
+pointer re-subjects the strip — so focus can be on one link while the strip is
+about another. In that state the old code consumed the reader's `Tab` and focused
+the strip's first button, which belonged to the link under the POINTER: the press
+that followed acted on a link the reader had not chosen. The row now re-subjects
+to the FOCUSED link before its first button takes focus, so the table above holds
+in every state rather than only where the two happen to agree. `Shift+F10` and
+the context-menu key already did this (they re-pin to the focused link), which is
+why the defect was only ever visible on the `Tab` path.
 
 `Escape` is answered by the toolbar for its own focused buttons and by
 `use-link-subject.ts` for a pointer-raised strip, and neither may test
@@ -347,10 +432,18 @@ Stated because a reviewer will look for them:
   selection-in-link boundary set.
 - `scripts/chat-link-affordances.test.mjs` — the SHIPPED components in jsdom: the
   rendered anchor's decoded `href`/`data-lo-target`, a hand-written
-  `file://` markdown link, the schemes that must stay blanked, `draggable={false}`,
-  a real click that opens the decoded path and a real click with a live highlight
-  that opens nothing, and the placement's re-measure when the subject changes
-  inside one turn (with stubbed boxes; the arithmetic is the defect).
+  `file://` markdown link, the scheme matrix against the transform itself
+  (`javascript:`, `data:`, `vbscript:`, `ftp:`, `blob:`, `about:blank` and the
+  `file:`-prefixed shapes the classifier declines, in mixed case and with leading
+  whitespace and control characters, all with the invariant that nothing survives
+  the transform unclassified), `draggable={false}`, a real click that opens the
+  decoded path and a real click with a live highlight that opens nothing, the
+  placement's re-measure when the subject changes inside one turn, the pointer
+  CORRIDOR between a link and its toolbar, and the keyboard contract (`Tab` into
+  the focused link's toolbar in the mixed pointer/keyboard state, `Escape` out of
+  it and back to the link). The boxes are stubbed throughout — jsdom has no layout
+  — so the arithmetic and the wiring are what these assert; the pixels are the
+  rig's.
 - `scripts/message-quote.test.mjs` — the `QUOTE_TOOLKIT_ATTR` exclusion asserted
   against the link toolbar (which renders real text, so the exclusion is not
   theoretical), plus the mid-row flip and its fallback.
@@ -362,10 +455,14 @@ Stated because a reviewer will look for them:
   pointer-revealed toolbars (the rig's own CDP `Input.dispatchMouseEvent`, because
   a story `play` cannot produce a real pointer) and the states round 1's review
   found missing. Several of those entries carry a CLAIM rather than only a
-  picture — `expectAnchored`, `expectGone`/`expectPresent`, `expectAttribute` — so
-  the sweep fails rather than photographing the wrong state under a confident
-  name. Its README states the gesture behind each directory, and the one limit
-  this branch could not remove.
+  picture — `expectAnchored`, `expectGone`/`expectPresent`, `expectAttribute`, and
+  round 2's `hoverPath`/`expectKept` — so the sweep fails rather than
+  photographing the wrong state under a confident name. The four `hover-gap-*`
+  entries are design D1's BLOCKER as regression tests: real pointer paths, sampled
+  at 16ms and at every pixel, in both placements and back out to the prose, each
+  of which fails on the pre-remediation tree. Its README states the gesture behind
+  each directory, and the one limit this branch could not remove from the code
+  side — a highlight inside an anchor, which no mouse gesture makes.
 
 ### What the evidence set does NOT have, and why
 

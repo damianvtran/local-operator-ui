@@ -1,6 +1,20 @@
 /**
  * The toolbar a link raises on the canonical transcript: Copy, Open, Open folder,
- * and Quote when the reader has highlighted the link.
+ * and Quote.
+ *
+ * QUOTE IS ON IT IN BOTH STATES, and that is round 2's decision rather than a
+ * widening for its own sake (UX round 2, U4). The state it used to wait for - a
+ * highlight wholly inside the link - turned out to be unreachable with a mouse in
+ * every instrument this project can drive: Chromium starts no text selection from
+ * a `mousedown` on an `<a href>`, with or without `draggable={false}`, so the
+ * three `selection-in-link*` frames were shot through the DOM's own `Selection`
+ * API and showed a state no pointer reader could produce. A `Quote` that only
+ * appears for that highlight is dead UI for most readers, and the operator's ask
+ * is the buttons AND quote "in all cases on hover or select" - so Quote is on the
+ * hover state too, trailing (see `link-actions.ts`'s model for why it leads when
+ * there IS a highlight and trails when there is not), and a press quotes the
+ * link's own text when there is nothing highlighted. A highlight inside the link
+ * still wins over the whole-link text: the press reads the selection first.
  *
  * ONE OBJECT, TWO TOOLBARS, ONE LOOK. The shell is deliberately the same one the
  * turn's Quote control wears - the same `bg-elevated` ground, `border-hairline`
@@ -54,7 +68,7 @@ import {
 	Quote,
 } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
 	LINK_TARGET_PATH_ATTR,
 	type LinkActionId,
@@ -92,7 +106,18 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 }) => {
 	const target = subject.getAttribute(LINK_TARGET_PATH_ATTR) ?? "";
 	const kind = (subject.getAttribute("data-lo-kind") ?? "file") as LinkKind;
-	const handleQuote = useQuotePress(conversationId, turnRef);
+	/*
+	 * What a Quote press stages when the reader has NOT highlighted this link:
+	 * the link's own visible text, which is the agent's own words for a bare path
+	 * and the URL it wrote for a detected `file://` one. Stable per subject so the
+	 * press callback is not rebuilt on every render of a row that repaints per
+	 * delta.
+	 */
+	const linkText = useCallback(
+		() => (subject.textContent ?? "").trim() || null,
+		[subject],
+	);
+	const handleQuote = useQuotePress(conversationId, turnRef, linkText);
 	const [copied, setCopied] = useState(false);
 	/*
 	 * The probe's answer, or `null` while nothing is known. Seeded from the cache
