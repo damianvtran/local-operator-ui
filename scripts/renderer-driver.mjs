@@ -119,6 +119,7 @@ import {
 	mkdirSync,
 	readFileSync,
 	readdirSync,
+	realpathSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -974,7 +975,7 @@ async function browserRpc(method, params) {
  * not what this asserts: the caller reports what it got and skips the step when
  * there is no id in it.
  */
-async function createBackendSession() {
+async function createBackendSession(cwd = SCRATCH) {
 	const response = await fetch(`${BACKEND}/v1/desktop/sessions`, {
 		method: "POST",
 		headers: {
@@ -985,7 +986,7 @@ async function createBackendSession() {
 		// desktop UI sends; a hand-made string is a 422 with no session in it.
 		body: JSON.stringify({
 			request_id: randomUUID(),
-			cwd: SCRATCH,
+			cwd,
 		}),
 	});
 	const body = await response.json();
@@ -3449,12 +3450,14 @@ async function scenePalette(cdp) {
  * real `stat`, a real textarea's layout and real keystrokes reaching the field.
  * A story hands all four in as fixtures; this run has none of them faked.
  *
- * THE FIXTURE IS A REAL DIRECTORY, and it is this run's OWN scratch cwd: the app
- * is spawned with `cwd: APP_CWD`, the composer's working directory is unset on a
- * pane with no backend, and `list-directory` resolves `.` against the process's
- * cwd exactly as `probe-files` resolves every other local path. So the rows a
- * frame shows are entries that exist on this machine, listed by the shipped IPC
- * handler.
+ * THE FIXTURE IS A REAL DIRECTORY, and it is a directory THIS RUN OWNS: the pane is
+ * a session created on this run's own backend with an explicit `cwd` inside the
+ * scratch tree, the fixture files are written into that directory, and
+ * `list-directory` resolves `.` against the session's cwd exactly as `probe-files`
+ * resolves every other local path. So the rows a frame shows are entries that exist
+ * on this machine, listed by the shipped IPC handler, and they are this run's
+ * entries rather than the operator's — the first pass of this scene listed the
+ * operator's own home and that is not a frame this set may publish.
  *
  * THE CLAIM THIS RUN EXISTS FOR is the one the harness's own picker got wrong:
  * a query that stops matching must NOT move the composer. PR #1220 measures that
@@ -3466,23 +3469,22 @@ async function scenePalette(cdp) {
  * note beside a frame is not a check.
  *
  * WHAT IT CANNOT REACH, and says so rather than pretending: the needs-approval
- * fill needs a workspace root to judge `outsideWorkspace` against, and this pane
- * has no session cwd (`probe-files` answers `undefined`, which is not "outside"),
- * so every chip here is the ordinary one. That state is photographed by the
- * `chat-mention-chips` story set, where the fact comes from a fixture.
+ * fill needs a reference that resolves OUTSIDE the session's directory, and every
+ * token this scene types names a fixture inside `src/` — so every chip here is the
+ * ordinary one. That state is photographed by the `chat-mention-chips` story set,
+ * where the fact comes from a fixture rather than from a real containment verdict.
  *
  * AND THE CAPABILITY, WHICH IS THE OTHER HALF OF REACHING THIS FLOW AT ALL (UX
  * round 2, U14b). The scene used to throw at its own composer precondition — with
- * a live backend attached — because it looked for the field on a route that mounts
- * the composer only for a session or a staged draft, and staging one is exactly
- * what it did not do. With that fixed it reaches the composer, and then the gate
- * refuses: NO harness advertises `references` yet, so `@` is dark by design and
- * there is no list to drive. So the run asserts the capability as a PRECONDITION
- * before it types anything, and refuses with the rig it needs named in full — a
- * backend whose `/v1/capabilities` carries `features.references = 1`, i.e. a
+ * a live backend attached — because `/chat` mounts no composer without a session,
+ * and staging one is exactly what it did not do. So it stages a session now, and
+ * then asserts the capability as a precondition before it types anything: NO
+ * harness advertises `references`, so on an ordinary backend the `@` affordance is
+ * dark by design and there is no list to drive. The refusal names the rig in full —
+ * a backend whose `/v1/capabilities` carries `features.references = 1`, i.e. a
  * loopback proxy in front of a live daemon that injects that one field (the shape
- * QA round 2 ran). That refusal is a statement about the harness, not a defect in
- * this scene, and it is the honest answer while the key does not exist.
+ * QA round 2 ran). That is a statement about the harness, not a defect in this
+ * scene, and it is the honest answer while the key does not exist.
  */
 async function sceneMentions(cdp) {
 	const hello = await verb(cdp, "hello");
@@ -3524,47 +3526,56 @@ async function sceneMentions(cdp) {
 	const closed = await cdp.evaluate(anchors);
 	note("the band with an empty draft", JSON.stringify(closed));
 	/*
-	 * STAGE A COMPOSER FIRST, and this is the fix rather than a workaround (UX
-	 * round 2, U14b). `/chat` with a live backend and no staged draft mounts NO
-	 * composer: the route opens on the empty-chat surface, whose field exists only
-	 * for a session or for a draft the user started. The scene used to look for the
-	 * field and throw its "this scene needs a live backend" refusal — while the app
-	 * was in fact attached to one — so the live half of this evidence set was
-	 * unrunnable by anyone. The ⌘N chord is the app's own way to stage that draft
-	 * (`sceneNewChat` drives the same press through the same `session_catalogue`
-	 * gate), and it is pressed here only when there is no field already.
+	 * STAGE A PANE FIRST, ON THIS RUN'S OWN BACKEND AND IN THIS RUN'S OWN DIRECTORY
+	 * (UX round 2, U14b).
+	 *
+	 * WHY THE COMPOSER IS NOT ALREADY THERE: `/chat` with a live backend and no
+	 * session or staged draft mounts NO composer — the route opens on the empty-chat
+	 * surface — and the scene used to look for the field and throw its "this scene
+	 * needs a live backend" refusal while the app was in fact attached to one. That
+	 * is why the live half of this evidence set was unrunnable by anyone.
+	 *
+	 * WHY A SESSION AND NOT THE ⌘N CHORD, which the first version of this fix used:
+	 * a NEW DRAFT's working directory is the BACKEND'S ACCOUNT HOME, and the chip's
+	 * `~` does NOT mean this run's scratch `HOME` — measured on the first pass that
+	 * got this far, the picker listed the OPERATOR'S OWN home (129 rows: `Music`,
+	 * `Documents`, `Library`, and every scratch directory on the machine), which is
+	 * the one thing this rig exists to keep out of a frame. So the pane is a session
+	 * created with an explicit `cwd` — the same `POST /v1/desktop/sessions` the
+	 * desktop UI makes, and the same call `sceneBrowserPane` already uses — and the
+	 * directory is a workspace inside this run's scratch tree. The fixtures below are
+	 * then written into the directory the picker is actually reading.
 	 */
-	const stageComposer = async () => {
-		const mounted = () =>
-			cdp.evaluate(`document.querySelector(${JSON.stringify(FIELD)}) !== null`);
-		if (await mounted()) return "the route already held a composer";
-		await pressChord(cdp, {
-			key: "n",
-			code: "KeyN",
-			virtualKeyCode: 78,
-			modifiers: MODIFIER.meta,
-		});
-		for (let attempt = 0; attempt < 60; attempt++) {
-			await wait(100);
-			if (await mounted()) return "staged with ⌘N";
-		}
-		return null;
-	};
-	const staged = await stageComposer();
-	note("how the composer got on screen", String(staged));
-	if (staged === null) {
+	const workspace = join(SCRATCH, "mentions-workspace");
+	mkdirSync(workspace, { recursive: true });
+	if (BACKEND) {
+		const staged = await createBackendSession(workspace);
+		note(
+			"the session this scene lists from",
+			JSON.stringify({ id: staged.id, status: staged.status }),
+		);
+		if (staged.id) await verb(cdp, "navigate", `/chat/${staged.id}`);
+	}
+	const fieldMounted = () =>
+		cdp.evaluate(`document.querySelector(${JSON.stringify(FIELD)}) !== null`);
+	for (let attempt = 0; attempt < 60 && !(await fieldMounted()); attempt++) {
+		await wait(100);
+	}
+	const stagedBand = await cdp.evaluate(anchors);
+	note("the band with the staged pane", JSON.stringify(stagedBand));
+	if (stagedBand.field === null) {
 		throw new Error(
-			"no composer on screen, and ⌘N did not stage one: this scene needs a live, " +
-				"ISOLATED backend this run owns (`--backend <url>` with `--backend-records " +
-				"<dir>` and `--seed-onboarding-complete`), because the ⌘N chord takes the " +
-				"New chat row's own `session_catalogue` capability. Without one the chat " +
-				"route paints its offline card, the chord is inert and there is nothing to drive.",
+			"no composer on screen and `POST /v1/desktop/sessions` did not produce a pane " +
+				"with one: this scene needs a live, ISOLATED backend this run owns " +
+				"(`--backend <url>` plus `--seed-onboarding-complete`, per docs/agent-driver.md), " +
+				"because a session (and with it the composer) is the backend's to create. " +
+				"Without one the chat route paints its offline card and there is nothing to drive.",
 		);
 	}
 	check(
 		"the composer's field is on screen and holds the caret",
-		closed.focusedIsField === true,
-		JSON.stringify(closed),
+		stagedBand.focusedIsField === true,
+		JSON.stringify(stagedBand),
 	);
 
 	/*
@@ -3625,7 +3636,8 @@ async function sceneMentions(cdp) {
 	 * of this scene against a session in the operator's workspace would scribble
 	 * fixture files into it.
 	 */
-	const cwdChip = await cdp.evaluate(`(() => {
+	const readCwdChip = () =>
+		cdp.evaluate(`(() => {
 		const paths = [...document.querySelectorAll("[data-lo-cwd-path]")]
 			.map((el) => el.getAttribute("data-lo-cwd-path"));
 		const labels = [...document.querySelectorAll("[aria-label]")]
@@ -3633,6 +3645,18 @@ async function sceneMentions(cdp) {
 			.filter((label) => typeof label === "string" && label.startsWith("Working directory"));
 		return { paths, labels };
 	})()`);
+	/*
+	 * AND THE CHIP IS WAITED FOR, because it is a property of the SESSION and not of
+	 * the pane: the control row renders it only once the composer knows which
+	 * directory it is in, which arrives with the session's own status read. Reading it
+	 * in the same tick as the field's mount measures that read, not the surface —
+	 * measured, this is exactly what the first session-based pass did (`paths: []`).
+	 */
+	let cwdChip = await readCwdChip();
+	for (let attempt = 0; attempt < 60 && cwdChip.paths.length === 0; attempt++) {
+		await wait(100);
+		cwdChip = await readCwdChip();
+	}
 	note(
 		"the composer's working directory, as the control row names it",
 		JSON.stringify(cwdChip),
@@ -3641,15 +3665,27 @@ async function sceneMentions(cdp) {
 		cwdChip.paths.find(
 			(value) => typeof value === "string" && value.length > 0,
 		) ?? null;
-	const cwd = spelled?.startsWith("~")
-		? join(HOME_DIR, spelled.slice(1).replace(/^\//, ""))
-		: spelled;
+	const cwd = spelled;
 	if (!cwd) {
 		throw new Error(
 			`the composer's chip names no working directory (${JSON.stringify(cwdChip.paths)}), so this scene cannot place its fixture files where the picker will list them`,
 		);
 	}
-	if (!cwd.startsWith(SCRATCH + sep)) {
+	/*
+	 * AND IT IS AN ABSOLUTE PATH INSIDE THIS RUN'S SCRATCH TREE, with no `~`
+	 * translation: a `~` here is the BACKEND'S home and this script cannot know what
+	 * that is, which is exactly how the first pass listed the operator's own home.
+	 * Anything outside the scratch root is refused before a byte is written.
+	 *
+	 * BOTH SIDES RESOLVED, and that is not tidiness: `tmpdir()` answers
+	 * `/var/folders/...` on macOS while the app's own path for the same directory is
+	 * `/private/var/folders/...`, so an unresolved comparison refuses the very
+	 * directory this run just created (measured: `the composer's working directory
+	 * /private/var/folders/…/mentions-workspace is outside this run's scratch tree
+	 * /var/folders/…`). The same rule the containment check itself applies to both
+	 * sides of a path.
+	 */
+	if (!realpathSync(cwd).startsWith(realpathSync(SCRATCH) + sep)) {
 		throw new Error(
 			`the composer's working directory ${cwd} is outside this run's scratch tree ${SCRATCH}: this scene WRITES its fixture files there, so it refuses a directory it does not own. Start the run against an isolated backend whose session cwd is this run's own scratch (see docs/agent-driver.md), or point it at a directory you are willing to have four fixture files written into.`,
 		);
@@ -3665,9 +3701,16 @@ async function sceneMentions(cdp) {
 	 * `@` alone: the whole-directory listing. Typed through the browser's own input
 	 * pipeline into whatever the page has focused, the same domain the palette
 	 * scene types through.
+	 *
+	 * AND THE ROWS ARE WAITED FOR, because the listing is an ASYNC IPC round trip on
+	 * a debounce: reading the list in the same tick as the keystroke measures the
+	 * debounce, not the surface. The first runnable pass is what showed it — the
+	 * check read `rows: 0` here and the same listing answered 129 rows a moment
+	 * later.
 	 */
 	await cdp.send("Input.insertText", { text: "@" });
-	const opened = await cdp.evaluate(`(() => {
+	const readOpened = () =>
+		cdp.evaluate(`(() => {
 		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
 		const rows = list ? [...list.querySelectorAll('[role="option"]')] : [];
 		return {
@@ -3680,6 +3723,11 @@ async function sceneMentions(cdp) {
 			expanded: document.querySelector(${JSON.stringify(FIELD)})?.getAttribute("aria-expanded") ?? null,
 		};
 	})()`);
+	let opened = await readOpened();
+	for (let attempt = 0; attempt < 40 && opened.rows === 0; attempt++) {
+		await wait(100);
+		opened = await readOpened();
+	}
 	note("after typing @", JSON.stringify(opened));
 	check(
 		"typing @ opens the file list over the composer",
@@ -3702,7 +3750,8 @@ async function sceneMentions(cdp) {
 
 	// The drill: a trailing slash is the grammar's own deepening gesture.
 	await cdp.send("Input.insertText", { text: "src/" });
-	const drilled = await cdp.evaluate(`(() => {
+	const readDrilled = () =>
+		cdp.evaluate(`(() => {
 		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
 		const rows = list ? [...list.querySelectorAll('[role="option"]')] : [];
 		return {
@@ -3711,6 +3760,15 @@ async function sceneMentions(cdp) {
 			count: list?.lastElementChild?.lastElementChild?.textContent ?? null,
 		};
 	})()`);
+	let drilled = await readDrilled();
+	for (
+		let attempt = 0;
+		attempt < 40 && !drilled.names.some((name) => name.includes("app.py"));
+		attempt++
+	) {
+		await wait(100);
+		drilled = await readDrilled();
+	}
 	note("after drilling into src/", JSON.stringify(drilled));
 	check(
 		"a trailing slash lists that directory, and the header says which",
@@ -3731,7 +3789,8 @@ async function sceneMentions(cdp) {
 	 */
 	const beforeNoMatch = await cdp.evaluate(anchors);
 	await cdp.send("Input.insertText", { text: "zzzz" });
-	const noMatch = await cdp.evaluate(`(() => {
+	const readNoMatch = () =>
+		cdp.evaluate(`(() => {
 		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
 		return {
 			list: Boolean(list),
@@ -3739,6 +3798,15 @@ async function sceneMentions(cdp) {
 			notice: document.querySelector("[data-mention-notice]")?.textContent ?? null,
 		};
 	})()`);
+	let noMatch = await readNoMatch();
+	for (
+		let attempt = 0;
+		attempt < 40 && typeof noMatch.notice !== "string";
+		attempt++
+	) {
+		await wait(100);
+		noMatch = await readNoMatch();
+	}
 	const afterNoMatch = await cdp.evaluate(anchors);
 	note("no-match state", JSON.stringify(noMatch));
 	note("the band while nothing matched", JSON.stringify(afterNoMatch));
@@ -3803,7 +3871,8 @@ async function sceneMentions(cdp) {
 	 * which is exactly the "mention at the very end of the text" state.
 	 */
 	await cdp.send("Input.insertText", { text: "\nlook at @README.md" });
-	const chip = await cdp.evaluate(`(() => {
+	const readChip = () =>
+		cdp.evaluate(`(() => {
 		const chips = [...document.querySelectorAll("[data-mention-chip]")];
 		const tokens = [...document.querySelectorAll("[data-mention-token]")];
 		const rect = (el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top * 100) / 100, left: Math.round(r.left * 100) / 100, right: Math.round(r.right * 100) / 100, width: Math.round(r.width * 100) / 100, height: Math.round(r.height * 100) / 100 }; };
@@ -3812,6 +3881,11 @@ async function sceneMentions(cdp) {
 			tokens: tokens.map((el) => ({ span: el.dataset.mentionToken, ...rect(el) })),
 		};
 	})()`);
+	let chip = await readChip();
+	for (let attempt = 0; attempt < 40 && chip.chips.length === 0; attempt++) {
+		await wait(100);
+		chip = await readChip();
+	}
 	note(
 		"the chip and the run it was measured from",
 		JSON.stringify(chip, null, 2),
@@ -3821,28 +3895,39 @@ async function sceneMentions(cdp) {
 		chip.chips.length === 1 && chip.chips[0].kind === "plain",
 		JSON.stringify(chip.chips),
 	);
+	const chipToken = chip.tokens.find(
+		(token) => token.span === chip.chips[0]?.span,
+	);
 	check(
 		"the chip is drawn on its own glyph run, inside the tolerance",
-		chip.tokens.length === 1 &&
+		chip.chips.length === 1 &&
+			chipToken !== undefined &&
 			Math.abs(
 				chip.chips[0].top -
-					(chip.tokens[0].top +
-						(chip.tokens[0].height - chip.chips[0].height) / 2),
+					(chipToken.top + (chipToken.height - chip.chips[0].height) / 2),
 			) <= 1 &&
-			Math.abs(chip.chips[0].left - (chip.tokens[0].left - 6)) <= 1 &&
-			Math.abs(chip.chips[0].right - (chip.tokens[0].right + 6)) <= 1,
-		JSON.stringify({ fill: chip.chips[0], run: chip.tokens[0] }),
+			Math.abs(chip.chips[0].left - (chipToken.left - 6)) <= 1 &&
+			Math.abs(chip.chips[0].right - (chipToken.right + 6)) <= 1,
+		JSON.stringify({
+			fill: chip.chips[0],
+			run: chipToken,
+			allTokens: chip.tokens,
+		}),
 	);
 	check(
 		"the fill is the design's height and overhang, to within half a pixel",
-		Math.abs(chip.chips[0].height - 17.7) <= 0.5 &&
-			Math.abs(chip.chips[0].width - (chip.tokens[0].width + 12)) <= 0.5,
+		chip.chips.length === 1 &&
+			chipToken !== undefined &&
+			Math.abs(chip.chips[0].height - 17.7) <= 0.5 &&
+			Math.abs(chip.chips[0].width - (chipToken.width + 12)) <= 0.5,
 		JSON.stringify(chip.chips[0]),
 	);
 	check(
 		"the chip's fill is wider than the glyphs it sits behind",
-		chip.chips[0].width > chip.tokens[0].width,
-		JSON.stringify({ fill: chip.chips[0].width, run: chip.tokens[0].width }),
+		chip.chips.length === 1 &&
+			chipToken !== undefined &&
+			chip.chips[0].width > chipToken.width,
+		JSON.stringify({ fill: chip.chips[0]?.width, run: chipToken?.width }),
 	);
 	const chipFrame = await captureSettled(cdp, "mentions-chip-dark");
 
@@ -3852,10 +3937,21 @@ async function sceneMentions(cdp) {
 	 * is separated by the space's own advance. The fills must never touch.
 	 */
 	await cdp.send("Input.insertText", { text: " and @src/app.py" });
-	const pair = await cdp.evaluate(`(() => {
+	const readPair = () =>
+		cdp.evaluate(`(() => {
 		const rect = (el) => { const r = el.getBoundingClientRect(); return { top: r.top, left: r.left, right: r.right, height: r.height }; };
 		return [...document.querySelectorAll("[data-mention-chip]")].map(rect);
 	})()`);
+	/*
+	 * AND THE SECOND FILL IS WAITED FOR: the chip is derived from a PROBE, which is
+	 * debounced, so reading in the same tick as the keystroke sees the previous
+	 * draft's one chip (measured — the first pass reported a single fill here).
+	 */
+	let pair = await readPair();
+	for (let attempt = 0; attempt < 40 && pair.length < 2; attempt++) {
+		await wait(100);
+		pair = await readPair();
+	}
 	note("two mentions on one line", JSON.stringify(pair));
 	check(
 		"two mentions paint two fills that do not touch",
