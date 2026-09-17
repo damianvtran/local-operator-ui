@@ -2877,6 +2877,7 @@ test("every floor rung leaves the title the width the strip promises (R4, fix 1)
 	// rather than in a frame somebody has to notice.
 	const SPACING_PX = {
 		"min-w-30": 120,
+		"min-w-31": 124,
 		"min-w-33": 132,
 		"min-w-36": 144,
 		"min-w-44": 176,
@@ -2885,9 +2886,15 @@ test("every floor rung leaves the title the width the strip promises (R4, fix 1)
 		"min-w-56": 224,
 		"min-w-60": 240,
 		"min-w-62": 248,
+		"min-w-65": 260,
 		"min-w-72": 288,
+		"min-w-74": 296,
+		"min-w-77": 308,
 		"min-w-80": 320,
+		"min-w-84": 336,
+		"min-w-91": 364,
 		"min-w-96": 384,
+		"min-w-101": 404,
 		"min-w-[26rem]": 416,
 	};
 	/** The three rungs a single `tabFloor` string carries, by tier. */
@@ -2905,7 +2912,7 @@ test("every floor rung leaves the title the width the strip promises (R4, fix 1)
 			`the rung names a base spacing step this test knows: ${floor}`,
 		);
 		// A TIER WITH NO TOKEN OF ITS OWN INHERITS THE WIDER ONE, which is how the
-		// cascade works and why `min-w-96 @max-2xl:min-w-62` is a floor at BOTH the base
+		// cascade works and why `min-w-96 @max-2xl:min-w-84` is a floor at BOTH the base
 		// and the middle tier.
 		out.middle ??= out.base;
 		out.narrow ??= out.middle;
@@ -2941,23 +2948,32 @@ test("every floor rung leaves the title the width the strip promises (R4, fix 1)
 		PILL.request + PILL.agent + PILL.failed,
 		PILL.request + PILL.agent + PILL.failed + PILL.collapsed,
 	];
-	/** A row's title: the floor, less the row's 32px of padding, the pills, the 6px
-	 * gaps (`pills + 1` of them), and the active row's 68px in-flow cluster. */
-	const title = (floorPx, pills, active) =>
-		floorPx - 32 - widestPills[pills] - 6 * (pills + 1) - (active ? 68 : 0);
+	/** A row's title at a tier: the floor, less the row's 32px of padding, the pills, the
+	 * 6px gaps (`pills + 1` of them), and - at the base and middle tiers only - the
+	 * active row's 68px in-flow cluster. THE CLUSTER IS `absolute` BELOW `@max-2xl`
+	 * (design round 1, fix 3: it is what lets the narrow rungs be pixels rather than
+	 * declarations), so the narrow tier's promise is the same subtraction without it -
+	 * which is the arithmetic D1's ruling is written from. */
+	const title = (floorPx, pills, active, narrow = false) =>
+		floorPx -
+		32 -
+		widestPills[pills] -
+		6 * (pills + 1) -
+		(active && !narrow ? 68 : 0);
 
 	const rows = [];
 	for (const active of [false, true]) {
 		for (let pills = 0; pills <= 4; pills += 1) {
 			const { base, middle, narrow } = rungs(tabFloor(active, pills));
 			rows.push({ active, pills, base, middle, narrow });
-			for (const [tier, floorPx] of [
-				["base", base],
-				["middle", middle],
+			for (const [tier, floorPx, isNarrow] of [
+				["base", base, false],
+				["middle", middle, false],
+				["narrow", narrow, true],
 			]) {
 				assert.ok(
-					title(floorPx, pills, active) >= 85,
-					`${active ? "active" : "inactive"} ${pills}-pill row at the ${tier} tier (${floorPx}px): title ${title(floorPx, pills, active)}px, and the file promises 85`,
+					title(floorPx, pills, active, isNarrow) >= 85,
+					`${active ? "active" : "inactive"} ${pills}-pill row at the ${tier} tier (${floorPx}px): title ${title(floorPx, pills, active, isNarrow)}px, and the file promises 85`,
 				);
 			}
 		}
@@ -2982,20 +2998,35 @@ test("every floor rung leaves the title the width the strip promises (R4, fix 1)
 		);
 	}
 
-	// THE NARROW TIER PROMISES LESS AND ALWAYS DID (the pane's own width): the rung a
-	// row gets is never LARGER than the one it had before the cap, and the capped row's
-	// title is strictly wider because the collapse pill is narrower than the pills it
-	// replaces. That is the whole obligation the cap owes this tier.
-	const PRE_CAP_NARROW = [120, 132, 200, 224, 248, 248];
-	for (let present = 0; present <= 5; present += 1) {
-		const capped = rows.find(
-			(row) => row.pills === Math.min(present, 4) && row.active === false,
-		);
-		assert.ok(
-			capped.narrow <= PRE_CAP_NARROW[present],
-			`${present} states at the narrow tier: ${capped.narrow}px is no larger than the ${PRE_CAP_NARROW[present]}px it used to get`,
+	// THE NARROW TIER IS HELD TO THE SAME PROMISE, AT EVERY REACHABLE COUNT (design
+	// review round 2, D1). What this replaced was a weaker obligation - "the rung a row
+	// gets is never larger than the one it had before the cap" - which is a comparison
+	// rather than a floor: a row could satisfy it at any width and still clip its title.
+	// D1's frame was exactly that (a 640px pane, the title reduced to one glyph), so the
+	// assertion is now the same one the other two tiers take, and the counts it walks are
+	// the reachable ones: 0-4 pills, the cap being what makes 4 the ceiling (three states
+	// plus one collapse chip).
+	//
+	// THE NARROW RUNGS ARE THE RULING'S NUMBERS, restated here so an edit to the ladder
+	// that keeps this test green has to be an edit to both: inactive 124/192/240/296/336
+	// and active 192/260/308/364/404 for 0-4 pills.
+	for (const [active, expected] of [
+		[false, [124, 192, 240, 296, 336]],
+		[true, [192, 260, 308, 364, 404]],
+	]) {
+		assert.deepEqual(
+			expected.map((_, pills) => rungs(tabFloor(active, pills)).narrow),
+			expected,
+			`the ${active ? "active" : "inactive"} narrow rungs are the ladder D1's ruling settled: ${expected.join("/")}px`,
 		);
 	}
+	// The two rows the raised ladder is priced by, in the pane's own 640px: the common
+	// chip-less ACTIVE row (120 -> 192px) and the worst capped row (248 -> 404px). The
+	// numbers are asserted rather than described, because the ruling's cost argument is
+	// these two differences and nothing else.
+	assert.equal(rungs(tabFloor(true, 0)).narrow, 192);
+	assert.equal(rungs(tabFloor(false, 4)).narrow, 336);
+	assert.equal(rungs(tabFloor(true, 4)).narrow, 404);
 	// THE ARBITRARY LENGTH IS SINGULAR, which is the design's own simplification: one
 	// step past the spacing scale survives (`min-w-[26rem]`) instead of two, and no rung
 	// at any count uses anything else outside the scale.
