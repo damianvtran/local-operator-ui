@@ -4217,11 +4217,11 @@
     },
     {
       "path": "browser-pane-live",
-      "frames": 13,
+      "frames": 14,
       "surfaces": 13,
       "themes": 1,
       "source": "the built app, headless, against an isolated backend this run owned (a worktree of local-operator origin/main serving on a port it picked and verified free, a scratch LOCAL_OPERATOR_CONFIG_DIR, a token minted for the run, one session and one second conversation created through its own API), photographed through the app's own capturePage(); the pane is opened by the driver's hit-tested press on the chat header's trigger, the scope switch, the dock and the close the same way, and the live TABS AND APPROVALS are raised through the app's own loopback browser RPC - the intake an agent's browser tool uses. Regenerate with `node scripts/renderer-driver.mjs --scene browser-pane --backend <url> --backend-records <dir> --seed-onboarding-complete`; the run's own output is quoted in this set's README",
-      "why": " THE COUNT HERE IS THE SET'S OWN FRAME COUNT AND NOT A `.webp` COUNT, which is why the gate's walker reports 0 against it: this set's frames are `.png` files, and `check-evidence.mjs` walks `.webp` only. Recorded here because a reader comparing the declaration against the tree finds the two disagree and would otherwise have to guess which one is wrong; the frames are on disk and are the set's. The mismatch is inherited from `main`, not introduced by this change, and it is one of the two reasons `check-evidence` cannot be green at this head. (Restored on the tenth pass: fold #9 dropped this field because the union was stated at ENTRY granularity, so main's whole entry replaced this branch's authored `why` - review round 8's R8-2, whose fix is the field-level union below.)"
+      "why": "COUNT CORRECTED ON THE ROUND-2 REBASE: the set holds 14 frames, not the 13 this field declared - `browser-pane-new-tab-attributed.png` was added by the attribution fix and the count was not moved with it. Nothing reads this number in CI (`check-evidence.mjs`'s `main()` is the only consumer and no workflow runs it), which is exactly why it drifted."
     },
     {
       "path": "run-panel-back-before",
