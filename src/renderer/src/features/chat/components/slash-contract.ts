@@ -242,12 +242,19 @@ export function slashDestructive(
  * so naming it here would make a value-level cycle out of a type-only dependency.
  * `DESTINATIONS`'s own entries are assignable to it, and the caller passes the
  * entry it looked up rather than a second table kept here.
+ *
+ * `machine-panel` is listed with nothing in it, and that empty arm is the whole
+ * answer it owes here: it carries no `inline` source (a machine panel is a view,
+ * not an argument list), so a POINTER pick of one RUNS it — which is what
+ * `pointerPickRuns`'s `kind !== "picker"` arm already does for the other two
+ * kinds, and what a pick of `Analytics` must do.
  */
 export type PickDestination =
 	| {
 			kind: "picker";
 			inline?: { source: string; nameThenMessage: boolean; runs: boolean };
 	  }
+	| { kind: "machine-panel" }
 	| { kind: "navigate" }
 	| { kind: "direct" };
 

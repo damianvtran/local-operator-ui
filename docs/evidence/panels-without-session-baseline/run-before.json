@@ -1,0 +1,87 @@
+{
+  "label": "before",
+  "rig_sha256": "78b708c38e7f838784b6e6642b12f4141862549a960d78cb70000991ae0dffb9",
+  "at": "2026-09-16T16:55:43.523Z",
+  "records": [
+    {
+      "scene": "draft-analytics",
+      "label": "before",
+      "frame": "/tmp/pws-evidence-before/draft-analytics.png",
+      "page": {
+        "route": "/chat",
+        "composer": true,
+        "dialog_title": null,
+        "regions": [],
+        "refusal": true,
+        "conversation_section": false,
+        "session_scope": false,
+        "all_sessions": false,
+        "empty_notice": false,
+        "suppressed_by": null,
+        "paused_note": false,
+        "text": "Local Operator Chat My agents Agent hub Schedules Browser Settings Search ⌘+K U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 7 7 New chat ⌘ + N Active chats Nothing running right now. Previous chats 7 7 Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat New chat The session starts when you send your first message. Start of conversation /analytics needs an open conversation. Start one first. 12:54 PM Choose a model Working directory: ~"
+      }
+    },
+    {
+      "scene": "draft-info",
+      "label": "before",
+      "frame": "/tmp/pws-evidence-before/draft-info.png",
+      "page": {
+        "route": "/chat",
+        "composer": true,
+        "dialog_title": null,
+        "regions": [],
+        "refusal": true,
+        "conversation_section": false,
+        "session_scope": false,
+        "all_sessions": false,
+        "empty_notice": false,
+        "suppressed_by": null,
+        "paused_note": false,
+        "text": "Local Operator Chat My agents Agent hub Schedules Browser Settings Search ⌘+K U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 7 7 New chat ⌘ + N Active chats Nothing running right now. Previous chats 7 7 Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat New chat The session starts when you send your first message. Start of conversation /info needs an open conversation. Start one first. 12:54 PM Choose a model Working directory: ~"
+      }
+    },
+    {
+      "scene": "palette-settings",
+      "label": "before",
+      "frame": "/tmp/pws-evidence-before/palette-settings.png",
+      "page": {
+        "route": "/chat",
+        "composer": true,
+        "dialog_title": "",
+        "regions": [
+          "Host info region"
+        ],
+        "refusal": false,
+        "conversation_section": true,
+        "session_scope": false,
+        "all_sessions": false,
+        "empty_notice": true,
+        "suppressed_by": null,
+        "paused_note": false,
+        "text": "Local Operator Chat My agents Agent hub Schedules Browser Settings Search ⌘+K U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 7 7 New chat ⌘ + N Active chats Nothing running right now. Previous chats 7 7 Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat New chat The session starts when you send your first message. What can I help you with today? Choose a model Working directory: ~ search chats and agents to reopen an earlier session Build"
+      }
+    },
+    {
+      "scene": "palette-browser",
+      "label": "before",
+      "frame": "/tmp/pws-evidence-before/palette-browser.png",
+      "page": {
+        "route": "/chat",
+        "composer": true,
+        "dialog_title": "",
+        "regions": [
+          "Host info region"
+        ],
+        "refusal": false,
+        "conversation_section": true,
+        "session_scope": false,
+        "all_sessions": false,
+        "empty_notice": true,
+        "suppressed_by": null,
+        "paused_note": false,
+        "text": "Local Operator Chat My agents Agent hub Schedules Browser Settings Search ⌘+K U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 7 7 New chat ⌘ + N Active chats Nothing running right now. Previous chats 7 7 Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat New chat The session starts when you send your first message. What can I help you with today? Choose a model Working directory: ~ search chats and agents to reopen an earlier session Show "
+      }
+    }
+  ]
+}
