@@ -3108,8 +3108,32 @@ async function scenePinsSearch(cdp) {
 		 * the client's memory alone.
 		 */
 		await cdp.send("Input.insertText", { text: token.slice(0, -1) });
-		await wait(1400);
-		const afterRemoval = await readList(cdp);
+		/*
+		 * WAIT FOR THE ANSWER, not for a number of milliseconds. The property is "the next
+		 * ANSWER settles it", so the instrument has to observe an answer rather than a delay
+		 * chosen on an idle machine - this read is what a loaded host made a false failure out
+		 * of (a 1.4 s wait that the debounce, the request and the doorbell had to fit inside).
+		 */
+		/*
+		 * A READ THAT ANSWERS NOTHING IS NOT AN ANSWER: `readList` returns null while the
+		 * renderer is mid-navigation, and reading `.rows` off it threw here on a loaded host
+		 * (the same shape twice in one pass). The loop tolerates the empty read and asks again,
+		 * which is what it was already doing for the answer it is waiting for.
+		 */
+		let afterRemoval = null;
+		for (let attempt = 0; attempt < 24; attempt++) {
+			await wait(250);
+			const state = await readList(cdp);
+			if (state === null) continue;
+			afterRemoval = state;
+			const row = state.rows.find((item) => item.id === outside.id);
+			if (row !== undefined && row.pinned === false) break;
+		}
+		require(
+			"the panel answered the re-asked search",
+			afterRemoval !== null,
+			"the list never answered a read",
+		);
 		const rowAfterRemoval = afterRemoval.rows.find(
 			(row) => row.id === outside.id,
 		);
@@ -3293,6 +3317,135 @@ async function scenePinsSearch(cdp) {
 				beforeKeyboard,
 				afterKeyboardFirst,
 				afterKeyboardSecond,
+			}),
+		);
+
+		/* ---- 6. the TERMINAL pins an OLDER conversation the app never watched (U15) ---- */
+		/*
+		 * UX round 5's U15, end to end. A pin the app never watched being made - a fresh boot,
+		 * or the terminal's `f10` - drew no row, no count and no trace for 11.2 s and beyond,
+		 * because the only read channel was the `pinned` flag on a row of the client's own
+		 * 500-row page and the operator's store holds thousands. The backend increment closes
+		 * it: the list route appends every pinned conversation below the newest `limit` rows,
+		 * so the panel's ordinary row path draws it with no merge path of its own.
+		 *
+		 * The pin is written by the TERMINAL'S OWN WRITER in a separate process, on a
+		 * conversation that is not on the page at all, and the app is not touched: no reload,
+		 * no focus, no refetch. What is measured is how long the operator would wait, and then
+		 * the same row is unpinned from that surface and must leave.
+		 */
+		const u15Clear = await cdp.evaluate(`(() => {
+			const clear = document.querySelector('button[aria-label="Clear search"]');
+			if (!clear) return null;
+			const box = clear.getBoundingClientRect();
+			return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+		})()`);
+		if (u15Clear) {
+			await pressPointer(cdp, u15Clear.x, u15Clear.y);
+			await wait(400);
+		}
+		const pageIds = new Set(
+			(await readBackendSessions(500)).map((row) => row.id),
+		);
+		const listed = spawnSync(
+			TUI_PYTHON,
+			[
+				"-c",
+				"import json,os,sys;print(json.dumps(sorted(os.listdir(os.path.join(sys.argv[1],'sessions')))))",
+				TUI_CONFIG,
+			],
+			{ encoding: "utf8", env: pythonChildEnv({}) },
+		);
+		const terminalIds = JSON.parse(listed.stdout || "[]");
+		const offPage = terminalIds.filter((id) => !pageIds.has(id));
+		require("the store has conversations beyond the client's own page for the terminal to pin", offPage.length >
+			0, JSON.stringify({
+			page: pageIds.size,
+			terminal: terminalIds.length,
+			sample: terminalIds.slice(0, 3),
+		}));
+		const offPageTarget = offPage[0];
+		const pinWriter = [
+			"import json,sys",
+			"from local_operator.tui.sidebar_pins import read_pins, toggle_pin",
+			"root = sys.argv[1]",
+			"session_id = sys.argv[2]",
+			"toggle_pin(root, session_id)",
+			"print(json.dumps({'pins': list(read_pins(root))}))",
+		].join("\n");
+		const pinnedIt = spawnSync(
+			TUI_PYTHON,
+			["-c", pinWriter, TUI_CONFIG, offPageTarget],
+			{ encoding: "utf8", env: pythonChildEnv({}) },
+		);
+		check(
+			"the terminal's own writer pinned a conversation the page does not carry",
+			pinnedIt.status === 0 && tuiStoreReading().pins.includes(offPageTarget),
+			JSON.stringify({
+				status: pinnedIt.status,
+				stdout: pinnedIt.stdout,
+				stderr: pinnedIt.stderr,
+			}),
+		);
+		const startedAt = Date.now();
+		let offPageRow = null;
+		for (let attempt = 0; attempt < 48; attempt++) {
+			await wait(250);
+			const state = await readList(cdp);
+			offPageRow = state.rows.find((row) => row.id === offPageTarget) ?? null;
+			if (offPageRow !== null) break;
+		}
+		const waitedMs = Date.now() - startedAt;
+		const offPagePanel = await cdp.evaluate(`(() => {
+			const heading = Array.from(
+				document.querySelectorAll("button[data-chat-row]"),
+			).find((button) => (button.textContent || "").trim().startsWith("Pinned chats"));
+			const row = document.querySelector('[data-session-row="${offPageTarget}"]');
+			return {
+				heading: heading ? (heading.textContent || "").trim() : null,
+				rowText: row ? (row.textContent || "").trim() : null,
+			};
+		})()`);
+		const offPageTerminal = tuiStoreReading().pins;
+		say(
+			`  [pins] U15 off-page pin: ${offPageTarget} (of ${terminalIds.length} in the store, ${pageIds.size} on the page) drawn after ${waitedMs} ms; panel ${JSON.stringify(offPagePanel)}`,
+		);
+		check(
+			"a pin the terminal made on a conversation the page does not carry is DRAWN, named, pinned at rest and counted (UX round 5, U15)",
+			offPageRow !== null &&
+				offPageRow.pinned === true &&
+				offPageTerminal.includes(offPageTarget) &&
+				offPagePanel.heading !== null &&
+				(offPagePanel.rowText || "").trim().length > 0,
+			JSON.stringify({
+				waitedMs,
+				row: offPageRow,
+				panel: offPagePanel,
+				terminal: offPageTerminal,
+			}),
+		);
+		frames.push(await captureSettled(cdp, `pins-tui-offpage-${suffix}`));
+		const unpinned = spawnSync(
+			TUI_PYTHON,
+			["-c", pinWriter, TUI_CONFIG, offPageTarget],
+			{ encoding: "utf8", env: pythonChildEnv({}) },
+		);
+		let left = false;
+		for (let attempt = 0; attempt < 48; attempt++) {
+			await wait(250);
+			const state = await readList(cdp);
+			if (!state.rows.some((row) => row.id === offPageTarget)) {
+				left = true;
+				break;
+			}
+		}
+		check(
+			"and the row LEAVES when the terminal unpins it, rather than being held by this client's memory",
+			unpinned.status === 0 && left,
+			JSON.stringify({
+				status: unpinned.status,
+				left,
+				terminal: tuiStoreReading().pins,
 			}),
 		);
 
