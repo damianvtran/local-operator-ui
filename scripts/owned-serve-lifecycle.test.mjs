@@ -58,6 +58,19 @@ const python = spawnSync(
 	["-c", "import sys; print(sys.executable)"],
 	{ env, encoding: "utf8" },
 ).stdout.trim();
+/*
+ * The launcher this fixture's manager spawns is NAMED by `resolveCommandPath`
+ * over the process's own environment, not over `shellEnv`: the app is normally
+ * started without a shell, so that search is the whole point of it, and it
+ * searches the inherited PATH before the installers' directories (see
+ * `commandSearchDirs`). Only the spawn is handed `m.shellEnv`. The fixture's
+ * fake install therefore has to be in THIS process's PATH too - in front of
+ * `~/.local/bin`, where a developer's real global install lives and would
+ * otherwise answer for the fixture. Without it the resolution finds nothing (or
+ * the wrong launcher) wherever the machine has no global install, which is how
+ * this file failed and then hung on a runner with none.
+ */
+process.env.PATH = env.PATH;
 assert.ok(python.startsWith("/"));
 mkdirSync(join(home, "bin"));
 mkdirSync(join(home, "local_operator"));
