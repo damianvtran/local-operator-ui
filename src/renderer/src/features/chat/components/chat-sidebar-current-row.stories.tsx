@@ -14,13 +14,16 @@ import { ChatSidebar } from "./chat-sidebar";
  * role.
  *
  * Two states one change touched, photographed on the panel's own ground in every
- * theme. `chat-sidebar-status-feed.stories.tsx` renders this same component for
- * the frame-delivered row status, and this file exists for the same reason it
- * does: the sidebar cannot be rendered in isolation — it reads the router, the
- * canonical sessions store and the desktop capability hooks — and a claim about
- * which GROUND a row paints is a claim about pixels, not about a class string.
- * `scripts/chat-sidebar-selection.test.mjs` resolves the class expressions, and a
- * green assertion there proves the merge, not that the panel looks right.
+ * theme — plus the two arrangements where the mark is drawn on an ink the other
+ * three never reach (a `· lopdev` binding inside a current row, and a nested row
+ * under its agent). `chat-sidebar-status-feed.stories.tsx` renders this same
+ * component for the frame-delivered row status, and this file exists for the same
+ * reason it does: the sidebar cannot be rendered in isolation — it reads the
+ * router, the canonical sessions store and the desktop capability hooks — and a
+ * claim about which GROUND a row paints is a claim about pixels, not about a
+ * class string. `scripts/chat-sidebar-selection.test.mjs` resolves the class
+ * expressions, and a green assertion there proves the merge, not that the panel
+ * looks right.
  *
  * The settings rail is in this file for the reason the set exists: both panels
  * take ONE role decision from ONE palette value and mark it with one two-part
@@ -50,36 +53,111 @@ import { ChatSidebar } from "./chat-sidebar";
  * The rest of the panel is deliberately not re-shot here: the All chats filter,
  * the entity rows and the hover states are the same role at the same call sites
  * (`docs/evidence/chat-sidebar-selection/` carries them, with its own note on
- * where its frames stop describing the shipped ground).
+ * where its frames stop describing the shipped ground). The two states added in
+ * round 2's remediation are exceptions to that rule rather than a widening of
+ * it: a BOUND row and a NESTED row are the only places this panel draws the
+ * mark's own trailing ink and its inset geometry, and neither was reachable in
+ * any frame when the round-1 streams looked.
  */
 
 /** The `sessions.list` wire row, in the fields the sidebar reads. */
-const wireRow = (id: string, name: string, mtime: number) => ({
+const wireRow = (
+	id: string,
+	name: string,
+	mtime: number,
+	binding: { agent: string | null; team: string | null } = {
+		agent: null,
+		team: null,
+	},
+	active = true,
+) => ({
 	id,
 	name,
 	mtime,
 	preview: "",
 	live_state: "attached",
 	pending: null,
-	active: true,
-	binding: { agent: null, team: null },
+	active,
+	binding,
 	status: { code: "idle", label: "Recent" },
 });
 
 const REVENUE = "0f1e2d3c4b5a";
 const LEDGER = "1a2b3c4d5e6f";
 const DEPLOY = "2b3c4d5e6f70";
+const BOUND = "3c4d5e6f7081";
+const NESTED = "4d5e6f708192";
 
 /*
- * The third row is the current one, and the roster is ordered newest-first the
- * way the catalogue returns it: the sidebar draws top-down, and a current row
- * that lands below a frame's fold would be a picture of the wrong thing.
+ * The roster is MUTABLE because the states differ in more than which row is
+ * selected: two of them need a row that carries a binding (`· lopdev`), and one
+ * needs a child row that belongs to an agent's own list rather than to the flat
+ * global partition. The stub below reads it at call time, which is after the
+ * story's `render` has set it and before the component mounts.
  */
-const roster = [
+const DEFAULT_ROSTER = [
 	wireRow(LEDGER, "Reconcile the supplier ledger", 1_760_000_300),
 	wireRow(DEPLOY, "Migrate the deploy script", 1_760_000_200),
 	wireRow(REVENUE, "Quarterly revenue model", 1_760_000_100),
 ];
+let roster = DEFAULT_ROSTER;
+
+/* The agent an agent-bound conversation is bound to. Named because the binding
+   label, the entity row's name and the profile fixture all have to agree. */
+const LOPDEV = "lopdev";
+
+/*
+ * A roster whose third row carries a binding, so the current row draws the
+ * `· lopdev` half of its trailing statement INSIDE the mark: `ink-muted` on
+ * `highlight`, which is the pair the ink floors are measured for, and the case
+ * the operator's own screenshot shows. Kept third for the same reason the
+ * default roster's current row is third — a row above it is what a hover
+ * comparison needs.
+ */
+const BOUND_ROSTER = [
+	wireRow(LEDGER, "Reconcile the supplier ledger", 1_760_000_300),
+	wireRow(DEPLOY, "Migrate the deploy script", 1_760_000_200),
+	wireRow(BOUND, "Quarterly revenue model", 1_760_000_100, {
+		agent: LOPDEV,
+		team: null,
+	}),
+];
+
+/*
+ * A roster with a CHILD row — a conversation bound to an agent — and it is
+ * INACTIVE on purpose: the flat Active chats partition only draws active rows,
+ * so an inactive one appears under its agent's entity row and nowhere else, and
+ * the frame is a picture of one marked row rather than two.
+ */
+const NESTED_ROSTER = [
+	wireRow(LEDGER, "Reconcile the supplier ledger", 1_760_000_300),
+	wireRow(DEPLOY, "Migrate the deploy script", 1_760_000_200),
+	wireRow(
+		NESTED,
+		"Quarterly revenue model",
+		1_760_000_100,
+		{
+			agent: LOPDEV,
+			team: null,
+		},
+		false,
+	),
+];
+
+/* The agent catalogue the entity list is built from. Empty unless a story needs
+   an entity row, because an entity the story does not render against is a row
+   that moves every other row in the frame. */
+let agentCatalogue: unknown[] = [];
+const LOPDEV_PROFILE = {
+	name: LOPDEV,
+	kind: "role" as const,
+	source: "installed" as const,
+	agent_id: null,
+	description: "",
+	tools: null,
+	effort: null,
+	delegate: false,
+};
 
 /** Which conversation is marked current, per story. */
 let selected: string | undefined = REVENUE;
@@ -118,10 +196,26 @@ if (typeof window !== "undefined") {
 					desktop_contract: 1,
 					desktop_available: true,
 					desktop_auth: "bearer",
-					features: { session_catalogue: 2 },
+					features: {
+						session_catalogue: 2,
+						profile_catalogue: 1,
+						team_catalogue: 1,
+					},
 				});
 			case "sessions.list":
 				return ok({ sessions: roster, truncated: false });
+			/*
+			 * The agent and team catalogues, which the entity lists are built from.
+			 * Stubbed rather than left to fail because one of the states here is a
+			 * NESTED row — a conversation bound to an agent renders under that agent's
+			 * own row, not in the flat partition — and an entity list nobody can reach
+			 * is a surface nobody has looked at. `agentCatalogue` is []; unless a story
+			 * fills it, the lists render empty and nothing else in the frame moves.
+			 */
+			case "profiles.list":
+				return ok({ profiles: agentCatalogue });
+			case "teams.list":
+				return ok({ teams: [] });
 			default:
 				throw new Error(`unexpected desktop op in this story: ${request.op}`);
 		}
@@ -162,11 +256,12 @@ const Page: FC<{ note: string }> = ({ note }) => (
 			<p className="text-ink">{note}</p>
 			<p>
 				The current row is drawn on <code className="font-mono">highlight</code>
-				, a step off the panel's <code className="font-mono">surface</code> that
-				carries the same hue at more chroma, and a 1px{" "}
-				<code className="font-mono">outline-control</code> edge; the hover step
-				the same rows carry is <code className="font-mono">elevated</code>. The
-				caps carry no fill and no border on any of them.
+				, a LIGHTNESS step off the panel's{" "}
+				<code className="font-mono">surface</code> in the direction the mode
+				runs (lighter on a dark theme, darker on a light one), plus{" "}
+				<code className="font-mono">font-medium</code>; the hover step the same
+				rows carry is <code className="font-mono">elevated</code>. The caps
+				carry no fill and no border on any of them.
 			</p>
 			<p>
 				{selected
@@ -189,6 +284,8 @@ type Story = StoryObj;
 /** A conversation row is the current one, and the pointer is somewhere else. */
 export const SelectedRow: Story = {
 	render: () => {
+		roster = DEFAULT_ROSTER;
+		agentCatalogue = [];
 		selected = REVENUE;
 		draftKey = null;
 		return <Page note="A conversation row is current" />;
@@ -213,6 +310,8 @@ export const SelectedRow: Story = {
  */
 export const NewChatRowCurrent: Story = {
 	render: () => {
+		roster = DEFAULT_ROSTER;
+		agentCatalogue = [];
 		selected = undefined;
 		draftKey = "draft-untargeted";
 		return (
@@ -230,7 +329,7 @@ export const NewChatRowCurrent: Story = {
 };
 
 /*
- * The fourth row of the default roster. Named rather than inlined so the caption
+ * The THIRD row of the default roster. Named rather than inlined so the caption
  * and the component cannot disagree about which row is marked, and NOT the first
  * (`general`) deliberately: a current row with a row above it is the arrangement a
  * hover comparison needs.
@@ -239,7 +338,7 @@ const RAIL_ACTIVE = "integrations";
 
 /**
  * The settings rail's current section — the OTHER `surface` panel that paints the
- * same role with the same two-part mark.
+ * same role with the same mark.
  *
  * WHY IT IS IN THIS FILE RATHER THAN A SET OF ITS OWN. It is one role decision on
  * one ground, taken from one palette value and marked with one class string in two
@@ -276,14 +375,103 @@ export const SettingsRail: Story = {
 				<p>
 					A menu row on the SAME <code className="font-mono">surface</code>{" "}
 					ground as the chat panel, carrying the same{" "}
-					<code className="font-mono">highlight</code> ground and the same 1px{" "}
-					<code className="font-mono">outline-control</code> edge.
+					<code className="font-mono">highlight</code> ground and the same{" "}
+					<code className="font-mono">font-medium</code> weight.
 				</p>
 				<p>{`activeSection = ${RAIL_ACTIVE}`}</p>
 			</div>
 		</div>
 	),
 	play: async () => {
+		await sleep(300);
+	},
+};
+
+/**
+ * A conversation BOUND to an agent is the current row, so the frame draws the
+ * `· lopdev` binding INSIDE the mark.
+ *
+ * WHY THIS STATE EXISTS (design round 1, D5 and QA's N6). Every fixture row in
+ * this set carried `binding: { agent: null, team: null }`, so the binding half of
+ * the mark — `ink-muted` on `highlight`, one of the two inks the floors on this
+ * ground are measured for — was an assertion in `pnpm check-themes` and in no
+ * frame at all, while it is plainly visible in the operator's own screenshot.
+ * A flat row is the way to reach it: the binding renders in the row's trailing
+ * slot, and the row is in the Active chats partition because it is active —
+ * which is also what keeps its agent's entity row out of this frame
+ * (`agentCatalogue` is empty here, so no entity list renders at all).
+ */
+export const BoundRowCurrent: Story = {
+	render: () => {
+		roster = BOUND_ROSTER;
+		agentCatalogue = [];
+		selected = BOUND;
+		draftKey = null;
+		return (
+			<Page note="A row bound to an agent is current, drawing · lopdev inside the mark" />
+		);
+	},
+	play: async () => {
+		await catalogueSettled(3);
+		useCanonicalSessionsStore.setState({ activeDraftKey: null });
+		await sleep(300);
+	},
+};
+
+/**
+ * A NESTED row is the current one: a conversation bound to an agent, drawn under
+ * that agent's own entity row rather than in the flat partition.
+ *
+ * WHY IT IS A SEPARATE FRAME FROM `BoundRowCurrent`. A nested row is the one
+ * arrangement where the mark sits at the row's own inset (`pl-7`) inside a
+ * disclosure, next to the entity row that stages a draft against the same agent —
+ * and it is the case both review streams recorded as unreachable (design D5,
+ * QA N3). It is reachable in a story: the child row is INACTIVE, so the flat
+ * Active chats partition does not draw it, and the agent's own disclosure is
+ * clicked open because it starts collapsed. The click is the only way to open it
+ * without a query, and a query would be a different surface (a filtered list).
+ */
+export const NestedRowCurrent: Story = {
+	render: () => {
+		roster = NESTED_ROSTER;
+		agentCatalogue = [LOPDEV_PROFILE];
+		selected = NESTED;
+		draftKey = null;
+		return <Page note="A nested row under its agent is current" />;
+	},
+	play: async () => {
+		await catalogueSettled(3);
+		useCanonicalSessionsStore.setState({ activeDraftKey: null });
+		/*
+		 * The disclosure starts COLLAPSED (`expanded` is empty state here), so the
+		 * nested row this state is about is not on screen until it is opened. A
+		 * real click rather than a store write, because the open state is the
+		 * component's own.
+		 *
+		 * TWO THINGS THIS LOOP HAS TO GET RIGHT, both measured rather than assumed:
+		 *
+		 *   1. WAIT for the row to exist. The disclosure renders from the profile
+		 *      catalogue's answer, and `catalogueSettled` above is about the SESSION
+		 *      list. A click dispatched before that answer lands is a `null` click —
+		 *      the first capture of this state produced six frames with the agent
+		 *      collapsed and six with it open, split by palette.
+		 *   2. CLICK ONLY IF IT IS SHUT. `expanded` persists in
+		 *      `localStorage['chat-sidebar-disclosures']`, so a sweep of twelve
+		 *      themes leaves it open for the next one, and an unconditional click
+		 *      closes what the previous frame opened — which is how the same run
+		 *      alternated open/collapsed frame by frame.
+		 */
+		for (let attempt = 0; attempt < 50; attempt += 1) {
+			const disclosure =
+				document.querySelector<HTMLButtonElement>("[data-disclosure]");
+			if (disclosure) {
+				if (disclosure.getAttribute("aria-expanded") === "false") {
+					disclosure.click();
+				}
+				break;
+			}
+			await sleep(100);
+		}
 		await sleep(300);
 	},
 };
