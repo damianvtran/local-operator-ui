@@ -1921,6 +1921,19 @@ async function rowInDom() {
 		 * The Radix tooltips' own observers land in the same list and are left alone:
 		 * they are only registered while a tooltip is open, and this file's tooltips are
 		 * never opened.
+		 *
+		 * RECORDED, NOT FIXED (agent review round 3, MINOR 2): `disconnect()` below is a
+		 * NO-OP, so an observer a component discarded is still driven by `resize()`. A
+		 * faithful shim would drop the entry on `disconnect()` and leave only the live
+		 * observer in the list. It is left as it is because the difference is not
+		 * invisible to this file's own drives and changing it would silently re-point
+		 * assertions written against today's behaviour: the rule's effect re-registers on
+		 * every dependency change, so several superseded closures can answer one
+		 * `resize()`, each with the `itemFits` its own render captured. Every drive below
+		 * that depends on a re-measure therefore changes ONE dependency at a time, which
+		 * keeps the stale entries in agreement with the live one; a future test that
+		 * re-arms `itemFits` and drives `resize()` in the same step should fix the shim
+		 * first rather than write around it.
 		 */
 		ResizeObserver: class {
 			constructor(callback) {
@@ -2940,17 +2953,26 @@ test("the loop's figure is painted exactly while the row's own box carries it", 
 	 * at a 240px column, and the row painted 19px/52px past it. The yield is now the
 	 * measurement the box model answers, so it holds at every width and for every
 	 * clause the wire can print — including one wider than any of the recorded ones.
+	 *
+	 * The last two blocks are agent review round 3's MINOR 2 rewritten and MINOR 1's
+	 * own sequence: the old final assertion set a 999px item in an 868px content box
+	 * and asserted the wide column STILL carried the clause, which is the inverse of
+	 * the rule — it passed only because nothing re-measured there, so the stale 275px
+	 * demand answered for a 999px sentence. The rule is asserted instead, and the
+	 * clause it is asserted about is the one the comment always claimed
+	 * (`2 of 100000 turns`, i.e. figures no boundary was sized for) rather than the
+	 * `iterations: 5` fixture that printed `2 of 5 turns`.
 	 */
 	const { window: dom, root, cleanup, resize } = await rowInDom();
 	try {
 		const widths = { row: 0, item: 0 };
 		stubWidths(dom, widths);
 		const h = createElement;
-		const element = () =>
+		const element = (iterations = 5) =>
 			h(ComposerStatusRow, {
 				frontend: frontendWith({
 					goal: "",
-					loop: wireLoop("running", { completed: 2, iterations: 5 }),
+					loop: wireLoop("running", { completed: 2, iterations }),
 				}),
 				runDetails: null,
 			});
@@ -2978,21 +3000,66 @@ test("the loop's figure is painted exactly while the row's own box carries it", 
 		assert.match(clause(), /, 2 of 5 turns/);
 
 		/*
-		 * And a clause WIDER than the recorded ones — the case a fixed boundary cannot
-		 * cover, which is why the rule is a measurement. `, 2 of 100000 turns` is the
-		 * wire's own spelling with figures no boundary was ever sized for.
+		 * THE TWO DIRECTIONS THE REMEMBERED DEMAND CAN BE WRONG IN (agent review round 3,
+		 * MINOR 1), and they are separate drives on purpose: the demand is only re-derived
+		 * while the figure is PAINTED, so a clause that changes under a suppressed figure is
+		 * the only shape that can leave it stale — and `loopClauseText` is an effect
+		 * dependency, so a clause that changes while the figure IS painted re-measures on
+		 * its own. Both drives therefore start with the figure suppressed.
+		 *
+		 * The widths are the test's own stubs, so the numbers here are chosen for the gap
+		 * rather than measured: 999px of item is the "figures no boundary was sized for"
+		 * clause (`2 of 100000 turns`), 200px is a narrowed one, and 600px is a content box
+		 * that carries the second and not the first.
 		 */
 		widths.item = 999;
-		widths.row = 868;
+		widths.row = 1200;
+		await act(async () => void root.render(element(100000)));
+		assert.match(clause(), /, 2 of 100000 turns/);
+
+		// Suppressed: 999px of item in a 300px content box.
+		widths.row = 300;
+		await act(async () => resize("[data-composer-status-row]"));
+		assert.equal(clause(), "Loop: running");
+
+		/*
+		 * AND THE CLAUSE NARROWS WHILE IT IS SUPPRESSED — the defect itself. The remembered
+		 * 999px belongs to a sentence that is no longer on the wire, so a 200px item in a
+		 * 600px box must paint: keeping it hidden there is the row yielding something its box
+		 * demonstrably carries. This assertion fails on a demand that survives its clause.
+		 */
+		widths.item = 200;
+		widths.row = 600;
 		await act(async () => void root.render(element()));
 		assert.match(
 			clause(),
-			/2 of 5 turns/,
-			"the wide column still carries the clause",
+			/, 2 of 5 turns/,
+			"a narrower clause re-derives the demand: the figure is not suppressed by the old one",
 		);
-		widths.row = 900;
+
+		/*
+		 * AND THE RULE ITSELF, stated as the rule: a 999px item in an 868px content box does
+		 * NOT fit. The previous form of this assertion set exactly those numbers and claimed
+		 * the wide column still carried the clause, which is the inverse — it passed only
+		 * because nothing re-measured there, so the stale demand answered for a sentence it
+		 * did not describe (MINOR 2). `resize()` is what a real column change does, and it is
+		 * what makes this a measurement rather than a report of the last one.
+		 */
+		widths.item = 999;
+		widths.row = 868;
+		await act(async () => void root.render(element(100000)));
+		assert.equal(
+			clause(),
+			"Loop: running",
+			"a 999px item in an 868px content box does not fit: the figure yields",
+		);
+		widths.row = 1000;
 		await act(async () => resize("[data-composer-status-row]"));
-		assert.equal(clause(), "Loop: running");
+		assert.match(
+			clause(),
+			/, 2 of 100000 turns/,
+			"and a box that carries it gets the clause back, whichever figures it prints",
+		);
 	} finally {
 		cleanup();
 	}
@@ -3335,6 +3402,69 @@ test("the goal's undo belongs to its own clearing, and the confirmation names it
 			requests[2].args,
 			"A goal the agent set",
 			"the undo returns the text of ITS OWN clearing",
+		);
+
+		/*
+		 * SEQUENCE 3 — THE OFFER OUTLIVING ITS OWN ROW (UX round 3, U9). A route change
+		 * unmounts the row (measured in the app: `{route:"#/browser", row:false}`) while the
+		 * confirmation stays up, because the toast host is the APP's and not the row's. The
+		 * press then has to send NOTHING: the offer was taken from a wire that was empty, and
+		 * with nothing watching that session no one can confirm it still is.
+		 *
+		 * `root.render` without the row IS the unmount — the same root, a tree that no longer
+		 * contains it — so the row's cleanup runs and the session stops being observed. That
+		 * release is the whole difference from the shipped defect: the precondition used to be
+		 * a ref the row froze at its last mounted value, and a frozen `""` is indistinguishable
+		 * from a live one. This is the assertion that fails if the press goes back to reading
+		 * the row.
+		 */
+		/*
+		 * A THIRD GOAL TEXT, and it has to be a third: `showInfoToast` dedupes on the
+		 * message, so reusing SEQUENCE 2's would put the previous offer's id back rather
+		 * than paint a new one (the same map that keeps two identical refusals from
+		 * stacking).
+		 */
+		await act(
+			async () => void root.render(element("Reconcile the April ledger")),
+		);
+		await waitForRetired();
+		await act(async () => dismiss().click());
+		await waitForLive("Goal cleared · Reconcile the April ledger");
+		/*
+		 * The wire is empty and the offer stands — the state the offer is only ever made in,
+		 * and the one the press has to be able to trust. It is what a real clear leaves behind,
+		 * and the last thing the row is shown holding before it goes away.
+		 */
+		await act(async () => void root.render(element("")));
+		const beforeUnmount = requests.length;
+		/*
+		 * THE ROW'S SLOT GOES EMPTY AND THE TOAST HOST'S DOES NOT, which is the app's own
+		 * shape: the row is the page's and the host is the window's. Rendering the host
+		 * ALONE would reconcile it as a different tree and remount it, and a remounted
+		 * Toaster is not the offer outliving its row — it is a second host.
+		 */
+		await act(
+			async () =>
+				void root.render(
+					h(
+						Fragment,
+						null,
+						null,
+						h(ThemedToastContainer, { duration: Number.POSITIVE_INFINITY }),
+					),
+				),
+		);
+		await pressUndo();
+		assert.equal(
+			requests.length,
+			beforeUnmount,
+			"an offer whose row is gone sends nothing: no session is watching that wire",
+		);
+		await waitForRetired();
+		assert.equal(
+			liveToasts().length,
+			0,
+			"and the stale offer is taken back rather than left promising an undo it cannot keep",
 		);
 	} finally {
 		cleanup();

@@ -282,6 +282,59 @@ export const goalClearedText = (cleared: string): string => {
 };
 
 /**
+ * THE GOAL THE WIRE LAST HELD, per session, kept outside this row so an OFFER that
+ * outlives the row can still read it (UX round 3, U9).
+ *
+ * WHY IT IS NOT A REF ON THE ROW, which is what it replaced. The goal's confirmation
+ * carries an `Undo`, and the toast host that owns it is the APP's, not this component's —
+ * so the offer can still be on screen after the row is gone. That is not a race in
+ * principle: opening the browser route unmounts this row (`{route:"#/browser",
+ * row:false}` measured), and the offer stood for the whole 2,486 ms of its life on top of
+ * the newer goal the wire had set in the meantime. A ref updates in an EFFECT on the row,
+ * so while the row is unmounted it is frozen at its last mounted value — the empty string
+ * the clear left — and the press below read that frozen value as permission to re-send.
+ * The result was the same silent replacement round 2 fixed, one route change away: the
+ * cleared text went back over a goal the user never asked to replace.
+ *
+ * So the observation lives with the SESSION rather than with the component, and it is
+ * DELETED when the observing row goes away. Absence is meaningful and it is the point: an
+ * unwatched session is not an empty goal, and the press treats the two differently.
+ * `observedWireGoal` returns `null` (not `""`) for it, so "nothing is watching" can never
+ * be mistaken for "the wire is empty".
+ *
+ * Keyed by session id because the row is not the only thing that can host an offer for a
+ * session: the id is the row's own `frontend.session_id`, the same snapshot the goal comes
+ * off, and it is captured in the offer's closure at the press.
+ */
+const wireGoals = new Map<string, string>();
+
+/** Record the goal the wire now holds for `sessionId`. Callers own the id they pass. */
+export const observeWireGoal = (sessionId: string, goal: string): void => {
+	wireGoals.set(sessionId, goal);
+};
+
+/**
+ * Drop the observation for `sessionId`, because the thing making it has unmounted.
+ *
+ * A no-op for an id nobody is watching, so the cleanup that calls it needs no guard.
+ */
+export const releaseWireGoal = (sessionId: string): void => {
+	wireGoals.delete(sessionId);
+};
+
+/**
+ * The goal the wire held for `sessionId` at its last observation, or `null` when no
+ * mounted row is watching that session.
+ *
+ * The two answers are deliberately distinct values rather than one falsy one: a caller
+ * that may not send into an empty wire must be able to tell "the wire is empty" from
+ * "nobody can see the wire", and a `""`-for-both signature invites exactly the mistake
+ * U9 was.
+ */
+export const observedWireGoal = (sessionId: string): string | null =>
+	wireGoals.has(sessionId) ? (wireGoals.get(sessionId) as string) : null;
+
+/**
  * The clamp on a dismiss's tooltip, which repeats the value it is about to throw
  * away (design review round 1, D7).
  *
@@ -891,14 +944,25 @@ export const ComposerStatusRow = ({
 	 * toast manager's own `dismissToast`, one place the app can retire something it
 	 * said rather than a second route to the library underneath it.
 	 *
-	 * `wireGoal` is the same rule as a REF because the confirmation's action outlives
-	 * the render that made it: its closure sees the goal of the press's own frame, and
-	 * the press below is the second moment the rule has to be read at.
+	 * The rule is read in TWO PLACES and they answer different questions. This effect
+	 * is the RETIREMENT, and it needs the row: it takes the offer back when a goal
+	 * arrives while the row is up. The press itself is the other, and it CANNOT rely on
+	 * this effect having run — that is U9 — so it re-reads the wire from the
+	 * session-keyed registry above instead of from a ref on the row.
 	 */
 	const pendingUndo = useRef<Array<string | number>>([]);
-	const wireGoal = useRef(goal);
 	useEffect(() => {
-		wireGoal.current = goal;
+		/*
+		 * The observation the press reads, and its own lifetime. Publishing here rather
+		 * than in the retirement effect below is deliberate: this is the write that has to
+		 * happen on EVERY goal, including the empty and the unmounted-cleanup cases, while
+		 * the retirement only ever acts on a non-empty one.
+		 */
+		const sessionId = frontend?.session_id ?? "";
+		observeWireGoal(sessionId, goal);
+		return () => releaseWireGoal(sessionId);
+	}, [frontend?.session_id, goal]);
+	useEffect(() => {
 		if (goal.length === 0 || pendingUndo.current.length === 0) return;
 		for (const id of pendingUndo.current) dismissToast(id);
 		pendingUndo.current = [];
@@ -1008,9 +1072,33 @@ export const ComposerStatusRow = ({
 	 * `requiredItemWidth` is what keeps that question stable. With the progress DROPPED
 	 * the item is narrower by construction, so re-measuring then would ask a different
 	 * question and flip on every frame; the remembered width is the item's own, taken
-	 * from the last frame the full clause was painted in, and the rule is
-	 * `row.clientWidth >= requiredItemWidth` — monotone in the row's width, which is
-	 * the only input that can change the answer. The observer is on the ROW for the
+	 * from the last frame the FULL clause was painted in, and the rule is
+	 * `lineWidth() >= requiredItemWidth` — monotone in the row's width for a FIXED
+	 * clause, and for a fixed clause the row's width is the only input that can change
+	 * the answer.
+	 *
+	 * THE CLAUSE IS THE OTHER INPUT, and the demand has to be invalidated against it
+	 * (agent review round 3, MINOR 1). What the ref holds is the width of the sentence
+	 * that was painted IN FULL, and a sentence is not a constant of the row: `2 of 5
+	 * turns` and `2 of 100000 turns` are tens of pixels apart. A demand remembered from
+	 * the previous clause is therefore an answer about a sentence that is no longer on
+	 * the wire — the reviewer's probe, reproduced: a 300px row suppressed the figure for
+	 * a 900px clause, the clause then narrowed to a 200px item, and the figure stayed
+	 * hidden at 600px and at 890px and returned only past 901px, because the 900 was
+	 * never re-derived. Cosmetic only — the row never paints past its column from this —
+	 * but it is the row yielding something its box could carry, and at a 600px column the
+	 * clause it belongs to was 200px wide.
+	 *
+	 * So a clause that differs from the one the demand was taken from RESETS it. The
+	 * reset is not the re-measure of the dropped item that the paragraph above refuses:
+	 * when the figure is suppressed the reset re-arms the FULL paint for one pass through
+	 * the layout effect (state, not pixels — the pass that paints the full clause is
+	 * measured and re-rendered before the browser paints anything), and the measurement
+	 * that follows is of the full clause by exactly the steady-state path below. Both
+	 * directions then close: a narrower clause stops over-suppressing, and a wider one
+	 * cannot hide behind a demand that describes the sentence it replaced.
+	 *
+	 * The observer is on the ROW for the
 	 * reason `directory-indicator.tsx` records: what moves this box is a CONTAINER
 	 * query (the canvas opening, a column resize), and no window event sees it. It is a
 	 * LAYOUT effect so the first paint already carries the answer — a measurement that
@@ -1019,7 +1107,22 @@ export const ComposerStatusRow = ({
 	const [itemFits, setItemFits] = useState(true);
 	const loopItemRef = useRef<HTMLDivElement | null>(null);
 	const requiredItemWidth = useRef(0);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `loopClauseText` is the TRIGGER for this effect rather than a value its body reads (the body reads the rendered box, deliberately — the clause is what decides the item's width), the same shape `directory-indicator.tsx` records. It is a string and not the wire object because that identity is new on every poll, and an observer rebuilt for a state that did not move is a measurement taken for nothing.
+	/**
+	 * The clause `requiredItemWidth` was taken from, so a DIFFERENT one can invalidate it.
+	 *
+	 * `null` until the first measurement, which is why it is nullable rather than
+	 * initialised to the first clause: a sentinel that happens to equal a real clause
+	 * would skip the very first derivation.
+	 */
+	const measuredClause = useRef<string | null>(null);
+	/*
+	 * `loopClauseText` is in the deps as a TRIGGER and now also as a READ: the clause is
+	 * what the effect invalidates its remembered width against, so the dependency list
+	 * needs no suppression any more (it did while the body only read the rendered box).
+	 * It is a string and not the wire object because that identity is new on every poll,
+	 * and an observer rebuilt for a state that did not move is a measurement taken for
+	 * nothing.
+	 */
 	useLayoutEffect(() => {
 		const row = rowRef.current;
 		const item = loopItemRef.current;
@@ -1042,9 +1145,28 @@ export const ComposerStatusRow = ({
 			);
 		};
 		const measure = () => {
-			if (itemFits) requiredItemWidth.current = item.scrollWidth;
+			if (itemFits) {
+				requiredItemWidth.current = item.scrollWidth;
+				measuredClause.current = loopClauseText;
+			}
 			setItemFits(lineWidth() >= requiredItemWidth.current);
 		};
+		/*
+		 * The invalidation the block above describes, and the ONE place the demand is allowed
+		 * to be derived without a painted full clause: the reset drops it to 0 and the next
+		 * pass reads it from the full item. `itemFits` is deliberately re-armed rather than
+		 * the dropped item measured — measuring what is painted while suppressed is the flip
+		 * this rule exists to avoid — and the `return` costs this pass an observer, which the
+		 * re-run installs.
+		 */
+		if (measuredClause.current !== loopClauseText) {
+			measuredClause.current = loopClauseText;
+			requiredItemWidth.current = 0;
+			if (!itemFits) {
+				setItemFits(true);
+				return;
+			}
+		}
 		measure();
 		if (typeof ResizeObserver === "undefined") return;
 		const observer = new ResizeObserver(measure);
@@ -1122,12 +1244,31 @@ export const ComposerStatusRow = ({
 	 *
 	 * AND IT MAY NOT OVERWRITE A GOAL THE WIRE NOW HOLDS (UX round 2, U7): the offer
 	 * is only ever made while that state is EMPTY, and this is that same precondition
-	 * read at the one other moment it can be — the press, which can land after a goal
-	 * arrived and before the effect above took the offer back. Sending anyway is what
-	 * silently replaced a newer goal, so a press that loses that race sends NOTHING.
+	 * read at the one other moment it can be — the press. Sending anyway is what
+	 * silently replaced a newer goal, so a press with a goal on the wire sends NOTHING.
+	 *
+	 * WHERE IT READS THE WIRE IS THE WHOLE OF UX ROUND 3'S U9, and it is the registry
+	 * and not the offer's closure. The precondition was a `wireGoal` ref on this row,
+	 * which is only as fresh as the last time the row RENDERED an effect: with the row
+	 * unmounted (a route change is enough) a goal can arrive on the wire, the ref still
+	 * says `""` because nothing has updated it since, and this press reads that as
+	 * permission. `observedWireGoal` is keyed by session and DELETED when the observing
+	 * row unmounts, so it answers `null` for a wire nobody is watching — and `null`,
+	 * not `""`, is why that case refuses here instead of sending into the dark.
+	 *
+	 * A REFUSAL ALSO TAKES THE OFFER BACK. The two things a stale press can do are
+	 * "offer nothing" and "refuse", and returning while the toast stays up would leave a
+	 * control that looks live and does nothing on every further press; the offer is
+	 * PROVEN wrong at this point, so retiring it is the same rule the effect above
+	 * applies, just decided at the moment the proof arrives.
 	 */
 	const restoreGoal = async (text: string) => {
-		if (wireGoal.current.length > 0) return;
+		const sessionId = frontend?.session_id ?? "";
+		if (observedWireGoal(sessionId) !== "") {
+			for (const id of pendingUndo.current) dismissToast(id);
+			pendingUndo.current = [];
+			return;
+		}
 		const result = await goalCommand.run(GOAL_COMMAND, text, GOAL_UNDO_FAILURE);
 		if (result.result.tone === "error") showErrorToast(result.result.text);
 	};

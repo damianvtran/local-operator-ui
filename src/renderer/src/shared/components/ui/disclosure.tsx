@@ -180,6 +180,14 @@ export type DisclosureProps = {
 	 * a type-level refusal would have to name a shape this prop genuinely does not
 	 * care about, and the honest statement is that `trailing` belongs to the
 	 * interactive branch only.
+	 *
+	 * THE NO-OVERLAP CLAIM IS CHECKED, and the check is two greps rather than a trust
+	 * in this comment (agent review round 3, NIT 3): `grep -rn 'trailing=' src/renderer/src`
+	 * returns exactly one call site — this row's goal chip, which passes no `disabled` —
+	 * and `disabled=` on a `<Disclosure>` appears only in the trace rows and the
+	 * run-detail rows, none of which has a `trailing` control. Re-run those two before
+	 * relying on the pair, and if a third caller ever genuinely needs both, this is
+	 * where the guard belongs rather than a third paragraph of prose.
 	 */
 	trailing?: ReactNode;
 	/**
