@@ -87,10 +87,13 @@ pass the app's `waiting` (`canonical.busy`, i.e.
 `canonical.frontend.streaming === true`), which is `true` for every moment here —
 all four are mid-turn, which is also why the fold may create an arrival row at
 all. So each live frame shows the working line under the rows, as a reader saw
-it, rather than a mid-turn pane with that line deleted. Two figures beside the
-same call disagree by design and not by accident: the running row states the
-CALL's execution time while the working line states the AGE OF THE PHASE
-(`working-line.tsx`'s own distinction), and both read the machine's clock.
+it, rather than a mid-turn pane with that line deleted. The running row's
+elapsed figure and the working line's age read the SAME anchor — the call's own
+producer stamp (`working-line-model.ts`'s all-or-nothing `startedAt`, PR #310) —
+so the two figures agree rather than disagree, and both count to the machine's
+clock at render. Design round 1's D3 found them disagreeing (the row's `2h37m`
+against the line's `4s`) on the pre-#310 base, where the line restarted at the
+reader's arrival; these frames are the folded base's resolved state.
 
 **A reader should note what is *not* claimed:** nothing here says the runtime
 still served that seed at the moment the operator clicked (his session is live
@@ -118,13 +121,14 @@ row in the wrong place.
 ## What is not byte-reproducible, and why
 
 Every frame re-captures within 73 pixels at a 5% fuzz (`magick compare`). The
-residual is the one live cell: a running row's elapsed figure counts to the
-MACHINE's clock at render, so the pair's two frames state slightly different
-figures (e.g. `1h46m` against `1h47m`) and a re-capture of the same commit moves
-it. Where the working line is shown, its phase age moves for the same reason, and
-it settles at whatever the capture's own shutter delay produced. Nothing else
-moves. The frame's own footnote carries both facts, so a reader of the bytes does
-not have to find this file.
+residual is the one live cell in each direction: the running row's elapsed figure
+and the working line's age beside it read the call's own producer stamp and count
+to the MACHINE's clock at render, so the pair's two frames state slightly
+different figures (e.g. `1h46m` against `1h47m`) and a re-capture of the same
+commit moves both together. Nothing else moves — the line no longer re-bases to
+the reader's arrival, which is why the two figures agree on this base. The
+frame's own footnote carries the fact, so a reader of the bytes does not have to
+find this file.
 
 ## Why the pane's height is pinned
 
