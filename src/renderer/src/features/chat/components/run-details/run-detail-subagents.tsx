@@ -35,6 +35,7 @@ import {
 	panelSlice,
 	subagentTally,
 	tallyBudget,
+	tallyFitsInline,
 } from "./run-detail-model";
 import { SubagentRowBody } from "./run-detail-row-parts";
 
@@ -228,7 +229,9 @@ export const RunDetailSubagents = ({
 						"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
 					)}
 				>
-					{subagentTally(details.subagents, tallyBudget(paneWidth))}
+					{tallyFitsInline(paneWidth)
+						? subagentTally(details.subagents, tallyBudget(paneWidth))
+						: null}
 				</span>
 			</div>
 			<ul className={cn("flex flex-col")}>

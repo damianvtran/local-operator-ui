@@ -383,8 +383,13 @@ export const RunPanel = ({
 	/*
 	 * `§ 3.5`'s ladder, bound on the DOCUMENT while the pane is open and GUARDED
 	 * to a press that actually belongs to it: one that came from inside this
-	 * section, or from the trigger.
+	 * section, from the trigger, or from the composer's plan chip — the three
+	 * controls that open it.
 	 *
+	 * What the guard decides, exactly: a press some layer has CLAIMED. An unclaimed
+	 * `Escape` reaches this ladder from anywhere while the pane is open
+	 * (`escapeFromAnywhere`, below). See `fromChip` for why the chip still has to be
+	 * named.
 	 * Why not on the container, which is where it used to be: the trigger lives in
 	 * the header, outside this subtree (`section.contains(trigger) === false`), so
 	 * the state the trigger's own click produces — focus on the button, pane open,
@@ -413,6 +418,31 @@ export const RunPanel = ({
 			const target = event.target instanceof Element ? event.target : null;
 			if (!target) return;
 			const fromTrigger = target.closest("[data-run-panel-trigger]") !== null;
+			/*
+			 * The composer's plan chip is a THIRD control that opens this pane (`§ 5.2`,
+			 * `revealPlan`), and it is neither the trigger nor inside the section — so a
+			 * press that came from it did not count as this pane's.
+			 *
+			 * WHAT THAT ACTUALLY DECIDES, corrected in round 2 (R2-2): this guard only
+			 * answers for a press some layer has CLAIMED (`event.defaultPrevented &&
+			 * !mine`, below). An UNCLAIMED `Escape` is already the pane's from anywhere
+			 * while it is open (`escapeFromAnywhere`, which landed on `main` in
+			 * `bcda2ab6a` and is in both this branch's old base and the one it lands on),
+			 * so on those trees the pane closed from the chip with or without this clause.
+			 * The layer that claims it is the chip's OWN `<Tooltip>`: Radix's dismissable
+			 * layer calls `preventDefault` on `Escape` from a capture-phase listener (the
+			 * comment below describes that path). Naming the chip here is what makes the
+			 * pane's rung win over its own tooltip.
+			 *
+			 * The composer's own `Escape` is untouched: the chip is a button in the status
+			 * row, not the textarea that owns that key.
+			 *
+			 * The one consequence, stated rather than left to be found: with `mine` true
+			 * from the chip, the `⌘[` / `Ctrl+[` chord below now fires from a press whose
+			 * target is the chip, where the earlier guard returned first. That matches the
+			 * header trigger, and it is what "the chip is a third entry point" means.
+			 */
+			const fromChip = target.closest("[data-status-plan]") !== null;
 			const inPane = sectionRef.current?.contains(target) ?? false;
 			/*
 			 * A press carrying no element of its own — `<body>`, which is where focus
@@ -423,7 +453,7 @@ export const RunPanel = ({
 			 */
 			const onDocument =
 				target === document.body || target === document.documentElement;
-			const mine = fromTrigger || inPane;
+			const mine = fromTrigger || fromChip || inPane;
 			/*
 			 * ESCAPE IS THE PANE'S FROM ANYWHERE WHILE IT IS OPEN (QA round 1's
 			 * Q2). The contract lists this pane ABOVE the composer's turn
@@ -898,6 +928,14 @@ export const RunPanel = ({
 				 */
 				<div
 					ref={bodyRef}
+					/*
+					 * The pane's own scroll region, named for the same reason the pane and
+					 * its rows are: a proof driver and a QA pass have to be able to say WHICH
+					 * box moved. `run-panel-reveal-proof.mjs --expect=region-only` reads this
+					 * attribute to separate "the pane's reading position moved", which is the
+					 * behaviour, from "something else moved", which is the defect.
+					 */
+					data-run-panel-region=""
 					className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain")}
 				>
 					{/*

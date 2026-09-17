@@ -25,16 +25,35 @@
  * starts at its border box while its scroll origin is its padding box.
  *
  * Assigning `scrollTop` rather than adding to it keeps this idempotent: the
- * measurement already includes the region's current scroll position, and the
- * browser clamps the result to the region's own scrollable range.
+ * measurement already includes the region's current scroll position, and each
+ * end of the result is held by a DIFFERENT guard rather than by one clamp.
+ * `Math.max(0, …)` below holds the LOW end, so a target above the region's
+ * content top assigns 0 rather than a negative `scrollTop` — a value no box can
+ * hold. The HIGH end is left to the browser, which clamps at
+ * `scrollHeight - clientHeight`; this helper cannot know that value, because the
+ * region may still grow after the assignment.
+ *
+ * PRECONDITION: the region must be the target's containing scroll box, or an
+ * ancestor of it. The arithmetic resolves the target's position against THIS
+ * region's box, so a region that does not contain the target produces a number
+ * with no meaning rather than a throw — the third call site this ever gets
+ * should be checked against that rule first.
+ *
+ * Two `scrollIntoView` behaviours are deliberately not reproduced, and nothing
+ * in this renderer uses either today (no `scroll-margin`, `scroll-padding`,
+ * `scroll-mt` or `scroll-pt` anywhere in `src/`): `scroll-padding-top` on a
+ * region and `scroll-margin-top` on a target, which `scrollIntoView({ block:
+ * "start" })` honours and this helper ignores. If a sticky header ever appears
+ * above a section a reveal targets, the offset here gains that padding term
+ * rather than the call site going back to `scrollIntoView`.
  *
  * Adopted from PR #207 (`damianvtran/fix/reveal-view-shift`), which carried this
- * same function for the same three call sites and is still open and conflicting.
- * This branch adds two more triggers for the defect — the composer's subagents
- * and jobs chips — so the fix could not wait for that PR, and duplicating the
- * helper in a second place is worse than landing it here: if #207 lands first,
- * delete this file and import its copy, which is the same semantics under the
- * same name.
+ * same function for the same three call sites. This branch adds two more
+ * triggers for the defect — the composer's subagents and jobs chips — so the fix
+ * could not wait for that PR, and duplicating the helper in a second place is
+ * worse than landing it here. #207 landed second and imports THIS copy for the
+ * run panel's reveal and the story sweep's own scroll rather than carrying a
+ * second one under the same name.
  */
 export const scrollRegionToTop = (
 	region: HTMLElement,

@@ -227,6 +227,7 @@ export const RunDetailsPanel = ({
 				<RunDetailMcp
 					servers={mcpServers}
 					grantRunning={mcpGrantRunning}
+					paneWidth={paneWidth}
 					remedy={mcpRemedy}
 				/>
 			),

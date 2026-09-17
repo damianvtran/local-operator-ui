@@ -10,13 +10,17 @@ import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	DEFAULT_RUN_PANEL_WIDTH,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import React, {
 	type FC,
 	type ReactNode,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -371,6 +375,39 @@ const defaultCanvasState = {
 	mentionedFiles: [],
 };
 
+/**
+ * The run pane's own contract floor, in pixels: the design's 320/420/640 range
+ * (`docs/run-sidebar.md` § 8) starts at 320.
+ *
+ * ONE home for that number, because it is the floor of two different things: the
+ * width the divider lets the user DRAG the pane's preference down to, and the
+ * width flex may SHRINK the rendered pane down to when the row cannot host the
+ * preference. Two literals here would drift the moment either moves, and the
+ * second one is the whole of the fix below: a preference pinned as a floor is not
+ * a floor, it is a promise the row cannot keep.
+ */
+const RUN_PANEL_MIN_PX = 320;
+
+/**
+ * The other end of that contract range: 640 is the widest the pane may ask for
+ * (`docs/run-sidebar.md` § 8). Named here beside the floor because the divider's
+ * range is now built from both, and because the ceiling is what a drag is
+ * refused at once the row cannot host it.
+ */
+const RUN_PANEL_MAX_PX = 640;
+
+/**
+ * The chat column's own floor, in pixels, as a fallback for the measured one.
+ *
+ * The column declares it as `min-w-[220px]` on the element beside the pane, and
+ * the measurement below reads it back from that element's computed style rather
+ * than trusting this number — the floor is what tells the pane's own divider how
+ * much room the ROW can give it, and a constant here that drifted from the class
+ * would silently re-open the divergence the divider fix closes. This is the
+ * fallback for a computed style that cannot be parsed, not a second source.
+ */
+const CHAT_COLUMN_MIN_PX = 220;
+
 export const ChatContent: FC<ChatContentProps> = React.memo(
 	({
 		activeTab,
@@ -522,9 +559,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const isRunPanelOpen = useUiPreferencesStore((s) => s.isRunPanelOpen);
 		const runPanelWidth = useUiPreferencesStore((s) => s.runPanelWidth);
 		const setRunPanelWidth = useUiPreferencesStore((s) => s.setRunPanelWidth);
-		const restoreDefaultRunPanelWidth = useUiPreferencesStore(
-			(s) => s.restoreDefaultRunPanelWidth,
-		);
 		const setRunPanelOpen = useUiPreferencesStore((s) => s.setRunPanelOpen);
 		/*
 		 * The pane's VIEW state — which of its two views is showing — and the reason it
@@ -603,6 +637,131 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * exist yet.
 		 */
 		const browserAttentionCount = useConversationApprovals(sessionId ?? null);
+		/*
+		 * The run pane's RENDERED width, which is not always its preference.
+		 *
+		 * The wrapper below takes the preference as its `width` and NO floor, so flex
+		 * shrinks it into the space the row actually has — the same rule the canvas
+		 * dock follows one slot up, where a floor pinned at the dock's preferred width
+		 * is what made the grid's fourth column unreachable. The pane's width-DERIVED
+		 * layout (`tallyBudget`, and the section grammar the record measures at
+		 * 320/420/640) has to be budgeted against the box it is drawn in: handed the
+		 * preference, a shrunk pane sheds for a width it does not have and truncates at
+		 * the width it does, which is the class of failure `tallyBudget`'s own docblock
+		 * exists to prevent.
+		 *
+		 * Measured rather than derived: the pane's available width is what the ROW
+		 * leaves it, and that depends on the rail, the chat list and the column's own
+		 * 220px floor — three inputs this component does not compute. A `ResizeObserver`
+		 * on the wrapper reports the box as it really is, including a drag of the
+		 * divider, and a sub-pixel change is ignored so the pane cannot re-render in a
+		 * loop against its own measurement.
+		 */
+		const runPanelRef = useRef<HTMLDivElement | null>(null);
+		const runPanelRowRef = useRef<HTMLDivElement | null>(null);
+		const chatColumnRef = useRef<HTMLDivElement | null>(null);
+		const [renderedRunPanelWidth, setRenderedRunPanelWidth] = useState(
+			effectiveRunPanelWidth,
+		);
+		/*
+		 * How wide the pane COULD be drawn, as opposed to how wide it is.
+		 *
+		 * `renderedRunPanelWidth` says what the pane got; this says what the ROW can
+		 * still give it, which is the row's width minus the chat column's own floor.
+		 * The divider needs both, and the reason is round 2's U6: with the wrapper's
+		 * floor gone, the pane's width is `min(preference, this)`, so a preference
+		 * above this renders as this — the separator was announcing and accepting a
+		 * number the pane was not drawn at, and a drag in a row that could not host it
+		 * stored a width that only appeared later, out of context, when the rail or
+		 * the window changed.
+		 *
+		 * The column's floor is READ from the element rather than assumed: it is a
+		 * Tailwind class on the column beside the pane, and the one number this
+		 * component must agree with is the one the browser actually applies.
+		 */
+		const [runPanelCapacity, setRunPanelCapacity] = useState(
+			effectiveRunPanelWidth,
+		);
+		/*
+		 * `useLayoutEffect`, not `useEffect`: the measured width FEEDS the pane's own
+		 * budgets, so a passive effect would let the pane's first commit hand
+		 * `tallyBudget` the 420px preference while the box on screen is 303px or 79px
+		 * — the failure that budget exists to prevent, for one render. A non-discrete
+		 * open (a reveal request consumed in an effect, a pane restored open on a
+		 * session switch) does not get React's pre-paint passive flush, so this is the
+		 * phase the measurement belongs in. `use-scroll-paging.ts` makes the same
+		 * argument for the same reason.
+		 */
+		useLayoutEffect(() => {
+			if (!isRunPanelOpen) return;
+			const element = runPanelRef.current;
+			if (!element) return;
+			const measure = () => {
+				const width = element.getBoundingClientRect().width;
+				if (width <= 0) return;
+				setRenderedRunPanelWidth((current) =>
+					Math.abs(current - width) < 1 ? current : width,
+				);
+				const row = runPanelRowRef.current;
+				const column = chatColumnRef.current;
+				if (!row || !column) return;
+				const columnFloor =
+					Number.parseFloat(getComputedStyle(column).minWidth) ||
+					CHAT_COLUMN_MIN_PX;
+				const capacity = row.getBoundingClientRect().width - columnFloor;
+				setRunPanelCapacity((current) =>
+					Math.abs(current - capacity) < 1 ? current : capacity,
+				);
+			};
+			measure();
+			const observer = new ResizeObserver(measure);
+			observer.observe(element);
+			if (runPanelRowRef.current) observer.observe(runPanelRowRef.current);
+			if (chatColumnRef.current) observer.observe(chatColumnRef.current);
+			return () => observer.disconnect();
+		}, [isRunPanelOpen]);
+		/*
+		 * THE DIVIDER'S CONTRACT, in one place: what the separator announces and
+		 * accepts is what the pane renders.
+		 *
+		 * `runPanelResizable` is false when the row cannot host even the pane's own
+		 * 320px contract floor — at 1024x673 with the rail expanded the row is 524px
+		 * and the column's floor is 220 of them, so no preference the control is
+		 * allowed to store (320..640) could render as itself: every one of them draws
+		 * 304px. Resizing is then not a no-op that lies, it is not offered: the value
+		 * below is the drawn width, the range collapses onto it, and a write is
+		 * refused so the user's stored preference survives intact for a window that
+		 * can honour it. Otherwise the range ends at the capacity, which is what makes
+		 * the stored preference and the drawn width the same number after any drag.
+		 */
+		const runPanelResizable = runPanelCapacity >= RUN_PANEL_MIN_PX;
+		const runPanelDividerValue = runPanelResizable
+			? Math.min(
+					Math.max(renderedRunPanelWidth, RUN_PANEL_MIN_PX),
+					runPanelCapacity,
+				)
+			: renderedRunPanelWidth;
+		const handleRunPanelWidthChange = useCallback(
+			(width: number) => {
+				if (runPanelCapacity < RUN_PANEL_MIN_PX) return;
+				setRunPanelWidth(width);
+			},
+			[runPanelCapacity, setRunPanelWidth],
+		);
+		/*
+		 * A RESET IS A DRAG to the design's default — the separator's double-click,
+		 * and its Enter, both land here — so it goes through the SAME clamped write a
+		 * drag does. The store's own reset writes the preference directly and knows
+		 * nothing about the row, which is round 2's U6 on a different gesture: at
+		 * 1024x673 with the rail expanded a reset would store 420 while the pane went
+		 * on rendering 304, and the number the control hands back would be one the
+		 * pane does not use. Routing the default through the clamp leaves the stored
+		 * preference alone in that state — the same refusal a drag gets — and stores
+		 * the default wherever the row can host it.
+		 */
+		const handleRunPanelWidthReset = useCallback(() => {
+			handleRunPanelWidthChange(DEFAULT_RUN_PANEL_WIDTH);
+		}, [handleRunPanelWidthChange]);
 
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
@@ -675,8 +834,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			 * zeroed instead and `flex-1` grows it back from there - the floor
 			 * survives and the content no longer votes on the width.
 			 */
-			<div className="relative flex h-full w-full flex-row overflow-hidden">
-				<div className="relative h-full w-0 min-w-[220px] flex-1">
+			<div
+				ref={runPanelRowRef}
+				className="relative flex h-full w-full flex-row overflow-hidden"
+			>
+				<div
+					ref={chatColumnRef}
+					className="relative h-full w-0 min-w-[220px] flex-1"
+				>
 					{/*
 					 * The working surface takes the PAGE ground, `canvas`, not the panel
 					 * ground.
@@ -1066,7 +1231,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * construction (`setRunPanelOpen`/`setCanvasOpen` each clear the other), so
 				 * only one of these two blocks can ever be mounted and neither needs a
 				 * guard against the other. It reuses the canvas's own three pieces — the
-				 * divider, the pinned-width wrapper with the `border-l` seam, and a root
+				 * divider, the shrinkable wrapper with the `border-l` seam, and a root
 				 * element — because the pane mechanics are the slot's rather than either
 				 * occupant's. The divider takes its own label: two separators named
 				 * "Resize canvas" 8px apart are indistinguishable to a screen reader.
@@ -1080,20 +1245,51 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				{isRunPanelOpen && runDetails && (
 					<>
 						<ResizableDivider
-							sidebarWidth={effectiveRunPanelWidth}
-							onSidebarWidthChange={setRunPanelWidth}
-							minWidth={320}
-							maxWidth={640}
+							sidebarWidth={runPanelDividerValue}
+							onSidebarWidthChange={handleRunPanelWidthChange}
+							minWidth={
+								runPanelResizable ? RUN_PANEL_MIN_PX : runPanelDividerValue
+							}
+							maxWidth={
+								runPanelResizable
+									? Math.min(RUN_PANEL_MAX_PX, runPanelCapacity)
+									: runPanelDividerValue
+							}
 							side="left"
-							onDoubleClick={restoreDefaultRunPanelWidth}
+							onDoubleClick={handleRunPanelWidthReset}
 							label="Resize run details"
 						/>
 						<div
+							ref={runPanelRef}
 							style={{
-								minWidth: effectiveRunPanelWidth,
+								/*
+								 * The preference is the `width`, and there is NO floor: `minWidth: 0`
+								 * is what lets the flex item shrink below its own content minimum at
+								 * all, which is the whole of the fix below. Pinning the preference as
+								 * the floor is what put the pane's right edge - its close control and
+								 * its scrollbar - past the window at any window the row could not
+								 * host 420 in: measured 116px past at 1024x673 with the rail
+								 * expanded and 340px at the app's 800x600 floor, with the row's
+								 * `overflow-hidden` hiding the difference and no gesture that
+								 * reaches it. The canvas dock one slot up dropped its own pinned
+								 * floor for exactly this reason.
+								 *
+								 * A floor at the pane's own 320px contract minimum was measured too
+								 * and is NOT enough: it still leaves 16px of the pane past the
+								 * window at 1024x673 with the rail expanded (the close control's
+								 * right edge, off-screen) and 68px at 800x600 with the rail
+								 * collapsed, because the row's other floors - a 220px column and a
+								 * 280px chat list, under a 48px or 220px rail - do not leave 320.
+								 * With no floor the pane takes exactly the space the row has left,
+								 * and the budgets below follow that measured width, so a narrow
+								 * pane sheds and elides inside its own box instead of being cut by
+								 * the window. `RUN_PANEL_MIN_PX` stays the DIVIDER's floor: the
+								 * width the user may drag the preference down to.
+								 */
+								minWidth: 0,
 								width: effectiveRunPanelWidth,
 							}}
-							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							className="relative h-full shrink overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
 						>
 							<RunPanel
 								details={runDetails}
@@ -1104,15 +1300,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}
 								/*
-								 * The pane's own width, in pixels, and the SAME value the
-								 * wrapper's `width`/`minWidth` take above — not a second
-								 * reading of the preference. The pane owns its width; the
-								 * sections whose tallies are budgeted against it (`§ 8`)
-								 * receive it rather than measuring themselves, so a section
-								 * can never disagree with the pane it is drawn in at the
-								 * window floor.
+								 * The pane's own width, in pixels: the box it is actually drawn in
+								 * (`renderedRunPanelWidth`, measured on the wrapper above), not the
+								 * preference the wrapper asks for. The two differ whenever the row
+								 * cannot host the preference — a narrow window, or a wide rail — and
+								 * only the measured one is a width this pane has. The pane owns its
+								 * width; the sections whose tallies are budgeted against it (`§ 8`)
+								 * receive it rather than measuring themselves, so a section can
+								 * never disagree with the pane it is drawn in at the window floor.
 								 */
-								paneWidth={effectiveRunPanelWidth}
+								paneWidth={renderedRunPanelWidth}
 								readerChildId={readerChildId}
 								onReaderChildChange={setReaderChildId}
 								onClose={() => setRunPanelOpen(false)}
