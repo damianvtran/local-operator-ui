@@ -299,7 +299,8 @@ and `scripts/`), and the three round-1 stories were re-captured on the merged
 tree rather than re-stamped on trust. Byte-comparison against their committed
 copies, per frame:
 
-- **24 of 36 are byte-identical**;
+- **24 of 36 are byte-identical** (measured over `391bea527..3ed0dec8f`, the
+  commits either side of this fold);
 - **12 differ**, and every one of them differs MOSTLY inside the picture's own
   box (`expanded/monokai` 199 px, `expanded/neon` 1851, `expanded/radient` 7374,
   `expanded-small-image/{dune,localOperatorLight,obsidian,sage,synth}` 105-4089,
@@ -327,9 +328,10 @@ moved, and re-stamp only if none did.
 
 | fold | main's commit | what it was | what it cost |
 | --- | --- | --- | --- |
-| 2 | `6da8665ee` | PR #256, the Backend settings rebuild | **re-capture**: 108 of 132 frames byte-identical; the 30 that moved differ by AE 17..35,907 px — **0.0015%..5.906% of each frame's own pixels**, worst RMSE **0.1618%** — with the picture's measured box identical old against new (x 52..747, y 250..510 at 800x760, four themes re-checked) and the best-fit integer shift (0,0) over ±2px (the reviewer's own measurement, `sharp`-decoded and agreeing with ImageMagick). The 35,907 px frame is the 800x760 one, so its share is 5.9% of that frame and not 3.1% of a 1280x900 one (Q2-1's denominator correction). |
+| 2 | `6da8665ee` | PR #256, the Backend settings rebuild | **re-capture** (`d03181a06..5adb1d042`): 108 of 132 frames byte-identical; the 30 that moved differ by AE 17..35,907 px — **0.0015%..5.906% of each frame's own pixels**, worst RMSE **0.1618%** — with the picture's measured box identical old against new (x 52..747, y 250..510 at 800x760, four themes re-checked) and the best-fit integer shift (0,0) over ±2px (the reviewer's own measurement, `sharp`-decoded and agreeing with ImageMagick). The 35,907 px frame is the 800x760 one, so its share is 5.9% of that frame and not 3.1% of a 1280x900 one (Q2-1's denominator correction). |
 | 3 | `5b0544c3f` | PR #274, the collapse guard in CI | **re-stamp only**: its diff touches CI, `package.json`, one test under `scripts/` and the manifest, and **nothing under `src/`**, so no frame's subject moved. |
 | 4 | `da9e75a61` | PR #233 (compact without a dialog), PR #261 (the quote toolbar) and PR #279 (0.25.16) | **re-capture**: three PRs' worth of `src/` moved. See below. |
+| 5 | `cfc28c817` | PR #262 (the update surfaces) and PR #284 (0.25.17) | **re-capture**: 23 files under `src/` + `scripts/` (16 + 7, the rig included), one textual conflict (`manifest.json`), `package.json` auto-merged. See below. |
 
 ### Fold 4, and the frames the press changed (design D2-4)
 
@@ -353,8 +355,67 @@ Measured on the committed frames of this fold, in the close button's own lane:
 
 Against the previous head this fold changes 80 frames: those 60 (the ring
 leaving), and 20 more whose difference is encoder-level — a content change in a
-webp frame shifts the encoder's own block decisions, so the mean channel
-difference over such a frame is 0.06% with the maximum at the ring itself. Where
-nothing changed the frames are simply identical: `in-thread`, `legacy` and
-`expanded-failed` came back **byte-identical** in the themes checked, and the one
-tool-row frame that moved differs by 95 px with a maximum channel delta of 5/255.
+webp frame shifts the encoder's own block decisions. Measured at
+`d7e40012d..c0641aede` (`git diff --name-only` for the changed set, `magick compare
+-metric RMSE` per frame): **88 of the 168 frames this PR re-shot on that fold are
+byte-identical and 80 changed** — within `chat-image-expand`, 63 of 132 identical — the
+60 press frames differing by 0.41%-2.63% of full scale whole-frame against
+0.003%-0.080% for the 20 non-press ones, so the mean-channel class belongs to the
+press frames rather than to the re-capture as a whole. (Review round 3, R3-2 and
+R3-4: the earlier sentence said 52 identical and attributed the 0.06% mean to the
+re-capture; the reviewer's own mean-channel measure gives 0.06% for the press class
+and 0.0084% worst non-press, and their chroma-25 bound is exceeded by 13 px across
+the five `tokyoNight` press frames — my saturation-count at the same threshold reads
+larger because it includes the scrim's own dithering. Every figure here is stated
+with the method that produces it, because the next fold moves these numbers.)
+
+**What came back byte-identical, exactly** (same commit pair): all twelve
+`expanded-failed` frames, all twelve `legacy-tabbed-open` frames, 11 of 12
+`legacy`, 9 of 12 `in-thread` (3 themes moved), and 85 of 96 tool-row frames — **11
+of those moved**, the worst `chat-tool-rows/screenshots/dracula.webp` at 95 px with a
+maximum channel delta of 5/255. The earlier sentence named `in-thread` and `legacy`
+as byte-identical in the themes checked and spoke of "the one tool-row frame that
+moved": both were wrong, and are corrected here.
+
+### Fold 5, and the frame that proves the reveal (U3-1, Q3-1, D3-1)
+
+`origin/main` moved to the 0.25.17 release over the update surfaces, and the range
+moves 23 files under `src/` and `scripts/` (16 + 7), so this was a re-capture
+rather than a re-stamp. Against the previous capture (`fa5708b5a`), measured by
+byte-comparing every frame this PR ships against its copy at that commit:
+
+| set | frames | byte-identical | changed |
+| --- | --- | --- | --- |
+| `chat-image-expand` | 132 | 108 | 24 |
+| `chat-tool-rows` | 144 | 108 | 36 |
+
+**Twelve of those 24 moved frames are the fix itself, not the fold.** Round 3's
+two streams (UX U3-1, QA Q3-1) found the round-2 reveal on `has-[[data-state=open]]`
+to be a runtime no-op — the trigger's `data-state` belongs to the Tooltip and reads
+"closed" while the menu is open — so `legacy-tabbed-open`, the tuple that exists to
+photograph exactly that state, was byte-identical to its pre-fix self and showed the
+trigger absent. It is now keyed on the dropdown's own `aria-expanded`, and the
+frame moves for that reason. Measured on the committed frames, `localOperatorDark`,
+in the trigger's own glyph lane (`20x16+1059+79`):
+
+```
+magick <frame> -crop 20x16+1059+79 +repage -colorspace gray -threshold 15% -format "%[fx:mean*w*h]" info:
+
+at rest            legacy              0 lit px
+focused            legacy-tabbed      13 lit px        <- the ring and the glyph
+menu open, PRE-fix  fa5708b5a          0 lit px        <- U3-1: the trigger is gone
+menu open, POST-fix 43c9cd8cc         14 lit px        <- the fix, in the same box
+```
+
+The focused frame reads 13 px in **both** trees, which is the control that says the
+box did not move and the zero is the state rather than the position. The twelve
+`legacy-tabbed-open` frames are also no longer byte-identical to their pre-fix
+selves (they were, and a frame that does not change is a frame that proves
+nothing — design D3-1). The remaining twelve moved frames (`in-thread` 5,
+`legacy-hovered` 5, `legacy` 2) are main's own range re-rendering this surface, and
+every other frame in both sets came back byte-identical to the pixel.
+
+The fourteen light-theme frames of that tuple read differently under the same
+threshold because their ground is light rather than dark, so the discriminating
+measurement here is the dark theme's; the frames themselves are all committed and
+a reader can crop any of them with the command above.
