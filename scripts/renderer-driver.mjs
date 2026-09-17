@@ -3388,7 +3388,14 @@ async function scenePinsSearch(cdp) {
 		let offPageRow = null;
 		for (let attempt = 0; attempt < 48; attempt++) {
 			await wait(250);
+			/*
+			 * An empty read is not an absence: `readList` answers null while the renderer is
+			 * mid-navigation, and the wait here is for a ROW, so an empty read asks again
+			 * rather than throwing (review round 6, r6-1: the same shape this commit fixed
+			 * in the re-ask below, twice over).
+			 */
 			const state = await readList(cdp);
+			if (state === null) continue;
 			offPageRow = state.rows.find((row) => row.id === offPageTarget) ?? null;
 			if (offPageRow !== null) break;
 		}
@@ -3430,7 +3437,9 @@ async function scenePinsSearch(cdp) {
 		let left = false;
 		for (let attempt = 0; attempt < 48; attempt++) {
 			await wait(250);
+			/* The same empty read, and the same answer: ask again. */
 			const state = await readList(cdp);
+			if (state === null) continue;
 			if (!state.rows.some((row) => row.id === offPageTarget)) {
 				left = true;
 				break;

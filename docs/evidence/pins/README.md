@@ -8,7 +8,7 @@ TUI shows and the other way round.
 
 The backend half of this feature is a sibling pull request (`feat/desktop-session-pins`).
 These frames were taken against
-**`cffdedfbdcffdfcc1bbc5e8846e045516f6dbbfb`** of that branch, booted as a real uvicorn
+**`46b0178fb`** of that branch (the append increment, `8300e843f`, included: the U15 pair in this directory is evidence about THAT build, not the earlier one), booted as a real uvicorn
 daemon with its own venv, on an isolated `HOME` and `LOCAL_OPERATOR_CONFIG_DIR` under
 `/tmp`, with `LOCAL_OPERATOR_DESKTOP_TOKEN` in its environment. That revision carries
 `pinned` on every search row as well as every catalogue row, and refuses a coerced pin body:
@@ -42,7 +42,7 @@ the two runs, and every claim below is about the sidebar.
 
 Thirty-three files, counted by `ls docs/evidence/pins/*.png`: seventeen STATES, every one of them in
 both themes except `pins-from-tui`, which the round trip photographs once, and the two
-capability-withdrawn states. The earlier paragraph here added scene totals together (`17 + 4 + 6`)
+capability-withdrawn states. The earlier paragraph here added scene totals together (`17 + 4 + 6` = 27)
 and so read as 31 against a directory that holds 31 for different reasons — the sets overlap,
 because `pins-pinned-hover-{dark,light}` is drawn by `--scene pins-scroll` and belongs to both the
 scrolled pair and the pinned-state pair. By the scene that writes it:
@@ -135,8 +135,8 @@ frames were taken at:
 [capture] pins/localOperatorLight: 45 checks passed, 0 failed
 [capture] pins-scroll/localOperatorDark: 45 checks passed, 0 failed
 [capture] pins-scroll/localOperatorLight: 45 checks passed, 0 failed
-[capture] pins-search/localOperatorDark: 34 checks passed, 0 failed
-[capture] pins-search/localOperatorLight: 34 checks passed, 0 failed
+[capture] pins-search/localOperatorDark: 39 checks passed, 0 failed
+[capture] pins-search/localOperatorLight: 39 checks passed, 0 failed
 [capture] pins/localOperatorDark: 15 checks passed, 0 failed
 [capture] pins/localOperatorLight: 15 checks passed, 0 failed
 ```
@@ -190,7 +190,7 @@ process tree.
 
 ## The folds onto `main`, measured rather than asserted
 
-The branch was folded twice while this set existed - onto `ccc3017a3` (#299), then onto
+The branch was folded three times while this set existed - onto `ccc3017a3` (#299), then onto
 `3afcc732f` (#290, the user bubble's measure width) - and each time the question was the same:
 did the fold move anything this set is a picture of?
 
