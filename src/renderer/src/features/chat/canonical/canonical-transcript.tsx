@@ -88,7 +88,7 @@ import {
 	wakePromptBody,
 	wakeReceiptHeadline,
 } from "../components/trace/receipt-row-model";
-import { ToolDetail } from "../components/trace/tool-detail";
+import { DETAIL_SECTION_MAX, ToolDetail } from "../components/trace/tool-detail";
 import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
@@ -555,11 +555,22 @@ const ToolRow = memo(function ToolRow({
 	// story) carries no `notRunReason` key at all, and `undefined !== null` would
 	// paint every one of them as a never-run verdict.
 	const notRun = Boolean(record.notRunReason);
-	const summary = notRun
+	/*
+	 * The call reached no tool — the verdict's fact, and also the turn-death one:
+	 * a row still being dictated or waiting to run when the turn ended was never
+	 * sent either, and the harness's verdict is only one of the two ways that
+	 * happens. The TUI states the two the same way, and the record of it is the
+	 * same sentence (`mark_not_run`'s summary; `mark_interrupted` keeps the compose
+	 * facts for a card that was composing or queued), which is why the row below
+	 * reads `never sent · N composed` for both rather than only where a verdict
+	 * happened to arrive.
+	 */
+	const neverSent = record.neverSent === true || notRun;
+	const summary = neverSent
 		? // `never sent`, not `failed`: the call produced no result to fail, and the
-			// size is the record of how far the model got before it was told nothing
-			// would receive it (`ToolCard.mark_not_run`). An empty payload is named
-			// rather than rendered as `0 B`, which would claim a measurement.
+			// size is the record of how far the model got before nothing would receive
+			// it (`ToolCard.mark_not_run`). An empty payload is named rather than
+			// rendered as `0 B`, which would claim a measurement.
 			`never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`
 		: composing
 			? `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`
@@ -597,22 +608,36 @@ const ToolRow = memo(function ToolRow({
 	 * and the error only makes sense beside them.
 	 */
 	const body = notRun ? (
-		// The harness's own words, and the whole content of the fact: this call was
-		// announced and then never sent to a tool, and the reason is what stopped
-		// it (`Invalid arguments: arguments are not valid JSON: …`). Rendered
-		// through the same sunken box idiom as a result body so a row is a row,
-		// and LABELLED `Not run` rather than `Error`: the call produced no error
-		// result, it produced no result at all, and a reader scanning for what
-		// went wrong needs the two kept apart.
+		/*
+		 * The harness's own words, and the whole content of the fact: this call was
+		 * announced and then never sent to a tool, and the reason is what stopped it
+		 * (`Invalid arguments: arguments are not valid JSON: …`).
+		 *
+		 * The markup MIRRORS `ToolDetail`'s output section rather than approximating
+		 * it, because a body in the trace is a section of machine payload and the two
+		 * must read as one idiom: the same sunken box, the same `text-meta` label step
+		 * above it (without which the label and the text run together as one
+		 * paragraph — design round 1, D3), the same shared height cap, and the same
+		 * `whitespace-pre` under an `overflow-auto` box: a verdict is a machine string
+		 * with its own columns, and it scrolls sideways rather than reflowing, exactly
+		 * as a tool's output does.
+		 *
+		 * LABELLED `Not run` rather than `Error`, which is the one difference from a
+		 * result body and the point of it: the call produced no error RESULT, it
+		 * produced no result at all.
+		 */
 		<div
 			className={cn(
 				"w-full rounded-sm border border-hairline bg-sunken p-3 font-mono text-mono-sm",
 			)}
+			data-detail-section="not-run"
 		>
-			<span className={cn("text-danger")}>Not run</span>
-			<p className={cn("mt-1 break-words whitespace-pre-wrap text-danger")}>
-				{record.notRunReason}
-			</p>
+			<span className={cn("mb-1 block text-meta text-danger")}>Not run</span>
+			<div className={cn(DETAIL_SECTION_MAX, "overflow-auto")}>
+				<pre className={cn("whitespace-pre font-mono text-danger")}>
+					{record.notRunReason}
+				</pre>
+			</div>
 		</div>
 	) : isDiffBodyRow(record) ? (
 		<DiffBlock diff={record.diff} />
@@ -1906,6 +1931,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								activity={working.activity}
 								phase={working.phase}
 								startedAt={working.startedAt}
+								clock={working.clock}
 							/>
 						</div>
 					)}

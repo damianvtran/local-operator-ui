@@ -49,6 +49,7 @@ const {
 	applyHistoryPage,
 	applyLiveSeed,
 	deriveWorkingLine,
+	seedCallsMissingLabels,
 } = reducer;
 
 const FIXTURE = JSON.parse(
@@ -58,7 +59,8 @@ const PAGE = FIXTURE.page.entries;
 const TWIN_PAGE = FIXTURE.pageWithTwin.entries;
 const SEED = FIXTURE.seed.liveEvents;
 const QUEUED_FRAME = FIXTURE.queuedSeed.liveEvents[0];
-const ARRIVAL_MS = Math.round((FIXTURE.historyWindow.lastTs + 3 * 3600) * 1000);
+const LAST_TS = FIXTURE.historyWindow.lastTs;
+const ARRIVAL_MS = Math.round((LAST_TS + 3 * 3600) * 1000);
 
 const pageOf = (entries) => ({
 	entries,
@@ -186,6 +188,11 @@ test("a never-run frame settles the row its own announcement left, in place", ()
 		"no tool reported a failure — the call was never sent to one",
 	);
 	assert.equal(
+		row.neverSent,
+		true,
+		"the fact a turn-death settlement shares with this one",
+	);
+	assert.equal(
 		row.ts,
 		ARRIVAL_MS,
 		"the row keeps the instant its announcement was painted at",
@@ -265,6 +272,11 @@ test("a settled dictation says queued, and keeps the size the frame reached", ()
 		undefined,
 		"a queued call has no zero to count from",
 	);
+	// The band WITHHOLDS the number rather than counting from the label's own
+	// change: `WorkingLine` draws no clock for this rung, and the state says so.
+	// Without it the line read `waiting to run a call 1s`, ticking from the phase
+	// edge — and after a seed, from the viewer's own mount.
+	assert.equal(rung.clock, false);
 
 	// And the call starting later ADOPTS that row rather than mounting a second.
 	state = applyEvent(
@@ -500,4 +512,199 @@ test("an ordinary composing frame is still painted, and still adopted by its sta
 		1,
 	);
 	assert.equal(rowFor(started, "tool:call_live_dictation").phase, "running");
+});
+
+
+/*
+ * ------------------------------------------------------- the third ending
+ *
+ * A turn that ENDS is the third way a call announced by a compose frame reaches
+ * no tool: it was still being dictated, or waiting to run, when the turn died.
+ * The harness sends no verdict for it, so nothing in the frames says so — but
+ * the row must not claim a result either, which is what the generic turn-end
+ * settlement used to do: on a clean end the row read `done` with a green tick on
+ * a call that never ran, and on an abort it read `interrupted` on a call that
+ * had not begun. The TUI settles both with the compose record and no error text
+ * (`_retire_live_tool_cards` -> `ToolCard.mark_interrupted`).
+ */
+
+/** One announced call, in the phase the turn will interrupt. */
+const announcedCall = (phase) => ({
+	type: "tool_call_compose",
+	tool_call_id: "call_00_TurnDeathExample00",
+	tool_name: "wait",
+	argument_bytes: 82,
+	dictation_complete: phase === "queued",
+	not_run_reason: null,
+});
+const TURN_DEATH = "tool:call_00_TurnDeathExample00";
+
+for (const phase of ["composing", "queued"]) {
+	for (const aborted of [false, true]) {
+		test(`a call still ${phase} when the turn ends (aborted=${aborted}) is never sent, not a result`, () => {
+			const state = applyEvent(EMPTY_TRANSCRIPT, announcedCall(phase), 1_000);
+			assert.equal(rowFor(state, TURN_DEATH).phase, phase);
+			const ended = applyEvent(
+				state,
+				{ type: "agent_end", generation: 1, aborted },
+				2_000,
+			);
+			const row = rowFor(ended, TURN_DEATH);
+			assert.equal(row.phase, "done");
+			assert.equal(
+				row.neverSent,
+				true,
+				"the call reached no tool, which is what the row has to say",
+			);
+			assert.equal(row.notRunReason, null, "the turn left no verdict to carry");
+			assert.equal(row.output, null);
+			assert.equal(row.durationS, null, "nothing measured an interval");
+			assert.equal(row.startedAt, null);
+			assert.equal(row.argumentBytes, 82, "how far the model got is still known");
+			// The two arms differ in exactly one thing, and it is the turn's:
+			// an abort is an interrupt, a clean end is a lost end event. Neither
+			// is a success, which is what the row would have said before.
+			assert.equal(
+				row.stopped,
+				aborted,
+				"only the turn's own verdict separates the two arms",
+			);
+		});
+	}
+}
+
+test("a call that really RAN is still an interrupt at turn end, not a never-sent", () => {
+	// The other side of the same settlement: a call whose start arrived did
+	// reach a tool, so the turn's death interrupts it and must not be reported
+	// with the compose record.
+	const running = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "call_00_RunningAtDeath00",
+			tool_name: "bash",
+			args: { command: "sleep 300" },
+			started_at_epoch: 1789652393.4988,
+		},
+		1_000,
+	);
+	const ended = applyEvent(
+		running,
+		{ type: "agent_end", generation: 1, aborted: true },
+		2_000,
+	);
+	const row = rowFor(ended, "tool:call_00_RunningAtDeath00");
+	assert.equal(row.phase, "done");
+	assert.equal(row.stopped, true);
+	assert.equal(row.neverSent, false, "it was running, so a tool did receive it");
+});
+
+/*
+ * -------------------------------------------------- the sibling ending, seeded
+ */
+
+test("a seeded frame whose dictation is over is refused with no row on screen", () => {
+	/*
+	 * The sibling of the reported shape. A `dictation_complete` frame states that
+	 * the model stopped writing this call; with no row on screen the old fold
+	 * created one at the reader's own arrival — a live `queued` row claiming the
+	 * call was announced NOW, in a turn whose real rows are hours old — and
+	 * nothing in that row could say when it happened.
+	 */
+	const state = applyLiveSeed(
+		withPage(),
+		frontendOf([QUEUED_FRAME], true),
+		ARRIVAL_MS,
+	);
+	assert.deepEqual(
+		ids(state),
+		PAGE.map((entry) => entry.id),
+		"nothing is painted for a frame that states no time",
+	);
+	assert.equal(rowFor(state, `tool:${QUEUED_FRAME.tool_call_id}`), undefined);
+	// With the row ALREADY on screen it folds, which is the settle path — the
+	// rule is about a frame that would CREATE a row.
+	const withRow = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ ...QUEUED_FRAME, dictation_complete: false, argument_bytes: 40 },
+		ARRIVAL_MS - 1_000,
+	);
+	const folded = applyLiveSeed(withRow, frontendOf([QUEUED_FRAME]), ARRIVAL_MS);
+	assert.equal(rowFor(folded, `tool:${QUEUED_FRAME.tool_call_id}`).phase, "queued");
+	assert.equal(folded.records.length, 1, "settled in place, never duplicated");
+});
+
+/*
+ * --------------------------------------------- the read that paints the truth
+ *
+ * A refused frame's call is not lost: its durable row is the authority, so the
+ * caller's tail read has to be SIZED for these calls — they have no end event to
+ * be named by, which is how the first pass of this work left them unreachable.
+ * The row then paints at the transcript's own time.
+ */
+
+test("a refused call is named for read-back, and its durable row paints at its own time", () => {
+	const seed = [...SEED, QUEUED_FRAME];
+	const refused = [...CALL_IDS, QUEUED_FRAME.tool_call_id];
+	const named = seedCallsMissingLabels(seed, new Set());
+	for (const callId of refused) {
+		assert.ok(
+			named.includes(callId),
+			`${callId} must be named so the read is sized for it`,
+		);
+	}
+	// A call the transcript can already answer for is not named: the read is
+	// sized for the GAP, not for the seed.
+	assert.deepEqual(seedCallsMissingLabels(seed, new Set(refused)), []);
+	assert.deepEqual(
+		seedCallsMissingLabels(seed, new Set()),
+		[...refused],
+		"oldest first, deduplicated, and in the seed's own order",
+	);
+
+	// The durable row, read back through the page the caller asked for, paints
+	// at the transcript's own instant rather than at the reader's arrival.
+	const callId = CALL_IDS[0];
+	const durableTs = LAST_TS - 600;
+	const page = {
+		entries: [
+			{
+				id: "backfill-tool",
+				ts: durableTs,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "tool",
+					id: "backfill-tool",
+					tool_call_id: callId,
+					tool_name: "hub",
+					is_error: true,
+					content: [
+						{ type: "text", text: NEVER_RUN[0].not_run_reason },
+					],
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const afterRead = applyLiveSeed(
+		applyHistoryPage(withPage(), page),
+		frontendOf(SEED, true),
+		ARRIVAL_MS,
+	);
+	const row = rowFor(afterRead, `tool:${callId}`);
+	assert.equal(row.kind, "tool");
+	assert.equal(
+		row.ts,
+		Math.round(durableTs * 1000),
+		"the transcript's own time, not the reader's arrival",
+	);
+	assert.notEqual(row.ts, ARRIVAL_MS);
+	assert.equal(row.isError, true, "the durable row's own verdict stands");
+	assert.equal(
+		afterRead.records.filter((record) => record.id === `tool:${callId}`).length,
+		1,
+		"one row for one call, whatever the seed and the page each carry",
+	);
 });
