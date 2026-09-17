@@ -80,7 +80,12 @@
  * its position across a re-file must do so EXACTLY (0.5 px, not one row pitch -
  * see the assertion's own note for why the pitch allowance let the smallest drag
  * pass), a move that could have been clamped is BLIND rather than OK, and the
- * keyboard traversal may not jump the list by more than one pitch. It is not wired
+ * keyboard traversal may not jump the list by more than one pitch. It also asserts
+ * what the hold's own clearance exists for (round 3, R3-4 / D4): that a ring IS
+ * painted on the focused row at the key, and that none of it is clipped - the rig
+ * enables focus emulation before the first story, because a headless page that is
+ * not focused does not compute a `:focus-visible` treatment at all and every ring
+ * reading without it is a zero that means nothing. It is not wired
  * into a gate - the stories need Storybook - so it is a falsifier a reviewer (or
  * the next agent changing this container) runs by hand.
  *
@@ -154,6 +159,32 @@ const STORIES = [
 		id: "chat-sidebar-status-feed--completion-keyboard-refile",
 		container: "list",
 		keyboard: true,
+		viewport: [780, 660],
+	},
+	/*
+	 * THE GATE'S TWO EDGES, as a pair (round 3, U6 / D3). Both put a CURSOR on the
+	 * row that re-files and then move the reader's own scroll, and the only
+	 * difference between them is whether that row was still partly on screen when
+	 * the change landed:
+	 *
+	 *  - `reader-scrolled-away` is the NEGATIVE, and it is measured by the ordinary
+	 *    rule below: the record says the row was already off screen before the
+	 *    change, so the container holds its position exactly (U5, D2).
+	 *  - `cursor-partly-clipped` is the POSITIVE the two-state record got wrong: a
+	 *    row the reader could still SEE, taken the rest of the way out by the
+	 *    re-file, so the container has to follow it (U6, D3). `followsCursor` says
+	 *    that this story's claim IS the correction firing, which is the one thing the
+	 *    hold assertion must not demand of it.
+	 */
+	{
+		id: "chat-sidebar-status-feed--completion-reader-scrolled-away",
+		container: "list",
+		viewport: [780, 660],
+	},
+	{
+		id: "chat-sidebar-status-feed--completion-cursor-partly-clipped",
+		container: "list",
+		followsCursor: true,
 		viewport: [780, 660],
 	},
 ];
@@ -345,17 +376,83 @@ const PROBE = `(() => {
 		 * headless), but the identity, the position and the containment are the
 		 * functional half and are all readable here.
 		 */
-		focus:
-			active && active.hasAttribute("data-chat-row")
-				? {
-						title: label(active),
-						top: round(active.getBoundingClientRect().top),
-						inList: Boolean(listScroller && listScroller.contains(active)),
-						inEntity: Boolean(
-							entityScroller && entityScroller.contains(active),
-						),
-					}
-				: null,
+		focus: (() => {
+			if (!active || !active.hasAttribute("data-chat-row")) return null;
+			/*
+			 * Where keyboard focus is, in the terms the claim is made in: the row it is
+			 * on, whether that row is inside each container, and whether the container
+			 * is showing it.
+			 *
+			 * THE RING IS PART OF THIS READING NOW (round 3, R3-4 / D4). The rule that
+			 * holds the cursor's row leaves the row's own ring band as clearance, and
+			 * nothing in this repo measured whether that ring was whole - the band
+			 * reading rested on a scratch harness in another stream. The band is read the
+			 * way the app reads it (the row's own computed outline-width plus
+			 * outline-offset, 0 whenever no ring is painted), and ringClippedPx is how
+			 * much of it sits above the container's clip box, so a row whose ring has a
+			 * segment shaved off fails the keyboard assertion below rather than passing
+			 * as a number nobody checked.
+			 *
+			 * A page that is not FOCUSED computes outline-style none for a
+			 * :focus-visible treatment, so this reading is only meaningful with
+			 * Emulation.setFocusEmulationEnabled - set once, before the first story -
+			 * and the assertion requires a painted ring, which is what keeps a
+			 * band-of-zero from passing as a whole ring.
+			 */
+			const scroller = listScroller?.contains(active)
+				? listScroller
+				: entityScroller?.contains(active)
+					? entityScroller
+					: null;
+			const cs = getComputedStyle(active);
+			const band =
+				cs.outlineStyle === "none"
+					? 0
+					: (Number.parseFloat(cs.outlineWidth) || 0) +
+						(Number.parseFloat(cs.outlineOffset) || 0);
+			const rowBox = active.getBoundingClientRect();
+			const clipTop = scroller
+				? scroller.getBoundingClientRect().top + scroller.clientTop
+				: null;
+			const ringTop = rowBox.top - band;
+			return {
+				title: label(active),
+				top: round(rowBox.top),
+				inList: Boolean(listScroller && listScroller.contains(active)),
+				inEntity: Boolean(
+					entityScroller && entityScroller.contains(active),
+				),
+				/*
+				 * The row's containment in its own container, computed the way the APP
+				 * computes it (sidebar-focus-hold.ts): a padding-box clip, and three
+				 * states rather than a boolean. Carrying the same three names here is what
+				 * makes these cells legible against the rule - the rig can say the cursor's
+				 * row was partly on screen before the change and inside after it, which
+				 * is the claim U6/D3 is about and not something a top reading states.
+				 */
+				visibility: (() => {
+					if (!scroller || clipTop === null) return null;
+					const clipBottom = clipTop + scroller.clientHeight;
+					if (
+						rowBox.bottom <= clipTop ||
+						rowBox.top >= clipBottom
+					)
+						return "outside";
+					return rowBox.top >= clipTop && rowBox.bottom <= clipBottom
+						? "inside"
+						: "partly";
+				})(),
+				ring: {
+					outlineStyle: cs.outlineStyle,
+					band: round(band),
+					clipTop: clipTop === null ? null : round(clipTop),
+					ringTop: round(ringTop),
+					clearancePx: clipTop === null ? null : round(rowBox.top - clipTop),
+					ringClippedPx:
+						clipTop === null ? null : round(Math.max(0, clipTop - ringTop)),
+				},
+			};
+		})(),
 	};
 })()`;
 
@@ -437,6 +534,20 @@ const main = async () => {
 	const cdp = new Cdp(ws);
 	await cdp.send("Page.enable");
 	await cdp.send("Runtime.enable");
+	/*
+	 * A HEADLESS PAGE IS NEVER FOCUSED, SO ITS `:focus-visible` TREATMENT IS NOT
+	 * COMPUTED AT ALL.
+	 *
+	 * Measured on this branch's keyboard story, both ways: without this call the row
+	 * the story focuses reports `outline-style: none` (band 0, nothing painted), and
+	 * with it `2px solid` at a `2px` offset (band 4) - which is the same number the
+	 * app-side cells read. That matters twice over: the ring reading below is
+	 * vacuous without it, and the APP's own correction reads the same computed style
+	 * (`ringBand`), so an unfocused page would have this rig measuring the
+	 * mouse-focus landing (flush at the clip edge) while reporting it as the
+	 * keyboard one.
+	 */
+	await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true });
 
 	const index = await fetch(`${ORIGIN}/index.json`).then((r) => r.json());
 	const known = new Set(Object.keys(index.entries ?? {}));
@@ -489,29 +600,57 @@ const main = async () => {
 		const rowsNow = (sample) =>
 			(sample?.[story.container]?.rows ?? []).filter((row) => row.title).length;
 		/*
-		 * A COLD SERVER'S FIRST STORY NEEDS MORE THAN THE SETTLE LOOP USED TO GIVE IT.
-		 * 80 samples at 25 ms is ~2-4 s once each evaluate round trip is counted, and a
-		 * storybook that has just started compiles the story on demand: the first story
-		 * of the first run against a fresh server died here with a hard error, twice
-		 * (review round 2, N2), and passed on the next, warm run. It failed loudly
-		 * rather than falsely, so the cost is a re-run - but a command a reviewer is
-		 * told to run should not need one. 240 samples is ~6-12 s, paid only by a page
-		 * that is actually still assembling, since the loop exits on a settled count.
+		 * A COLD SERVER'S FIRST STORY WAITS ON A COMPILE SIGNAL, AND BOTH PHASES ARE
+		 * COUNTED IN SAMPLES RATHER THAN IN MILLISECONDS (round 2 N2, raised again in
+		 * round 3 as R3-3).
+		 *
+		 * Two budgets rather than one, because the two failure states want opposite
+		 * answers. A storybook that has just started COMPILES a story on demand, so the
+		 * story has not mounted: the page is not `ready`, no container is in the DOM, and
+		 * the only thing that helps is waiting longer - a run against a fresh server at
+		 * load average ~300 died here twice in review round 3, the second time on a story
+		 * that had already failed once, so "a second run usually settles" is advice
+		 * nobody should have to take. A page that IS ready and never settles its row
+		 * count is a different defect - the story re-renders, or it renders no titled
+		 * rows - and reporting that as a mount failure sends the reader to the wrong
+		 * thing.
+		 *
+		 * SAMPLES AND NOT MILLISECONDS, deliberately: each sample is a CDP round trip
+		 * through a page that is competing with sibling worktrees, so on a loaded host a
+		 * sample can take a second rather than 25 ms - a wall-clock budget therefore
+		 * SHRINKS when the host is busy, which is the opposite of what a settle timeout is
+		 * for. Counted in samples, the budget stretches with the load; the wall-clock
+		 * ceiling is only a backstop so a wedged page cannot hang a reviewer's run
+		 * forever, and a run that reaches it says the elapsed time it waited.
+		 *
+		 * The row count is read off the container's own rows and filtered to the ones
+		 * that carry a title: the panel's chrome (band headings, the search field) is in
+		 * the container from the first paint, so waiting on "some row count" would be
+		 * satisfied before a single session arrived - and the transition this rig
+		 * measures would then be sampled against an empty list.
 		 */
-		const SETTLE_SAMPLES = 240;
+		const MOUNT_SAMPLES = 600;
+		const SETTLE_SAMPLES = 600;
+		const CEILING_MS = 900_000;
+		const startedAt = Date.now();
+		let samples = 0;
 		let stable = 0;
 		let seen = 0;
+		let everReady = false;
 		let resized = null;
-		for (let i = 0; i < SETTLE_SAMPLES; i++) {
+		for (;;) {
+			samples += 1;
 			const { result } = await cdp.send("Runtime.evaluate", {
 				returnByValue: true,
 				expression: PROBE,
 			});
 			const count = rowsNow(result.value);
+			everReady = everReady || Boolean(result.value?.ready);
 			if (process.env.RIG_DEBUG)
 				console.error(
 					"settle",
-					i,
+					`${Date.now() - startedAt} ms`,
+					`samples=${samples}`,
 					"rows=",
 					JSON.stringify(count),
 					"ready=",
@@ -533,11 +672,23 @@ const main = async () => {
 				});
 				break;
 			}
+			const waited = Date.now() - startedAt;
+			if (samples > (everReady ? SETTLE_SAMPLES : MOUNT_SAMPLES)) break;
+			if (waited > CEILING_MS) break;
 			await sleep(SAMPLE_MS);
 		}
 		if (resized === null) {
+			const waited = Math.round((Date.now() - startedAt) / 1000);
+			/*
+			 * The two states are named in the failure rather than described, because what
+			 * a reader does next differs: a page that never mounted is waited on, a page
+			 * that mounted and kept changing is looked at.
+			 */
+			const why = everReady
+				? `The page mounted and then kept changing the rows (${samples} samples), so this is not a cold server: wait for the story to stop re-rendering, or look at what it is rendering - the rig reports a row count it never saw settle rather than a number it could not match.`
+				: `The page never mounted a container at all in ${samples} samples, which is a storybook still compiling this story on demand - re-run it, and if a second run also stalls at the same story, start the server and let it finish its first compile before measuring.`;
 			throw new Error(
-				`${story.id}: the ${story.container} container never settled on a row count within ${SETTLE_SAMPLES} samples, so the viewport could not be matched to the frame's. The story rendered no rows, or it kept changing them - a cold storybook compiling this story on demand is the usual cause, and a second run usually settles.`,
+				`${story.id}: the ${story.container} container never settled on a row count after ${waited} s of sampling (last count ${seen}, mounted: ${everReady}). ${why}`,
 			);
 		}
 		/*
@@ -741,6 +892,12 @@ const main = async () => {
 						(row) => row.title === beforeKey.focus?.title && row.visible,
 					),
 				),
+				/*
+				 * The ring the correction existed to uncover, read at the same sample - so
+				 * the clearance and the clipping are the numbers of the frame the key is
+				 * pressed in rather than of the settled end state.
+				 */
+				ringAtKey: beforeKey?.focus?.ring ?? null,
 			};
 		}
 		const focusedAtRefile = subjectMoves.map((move) => ({
@@ -754,6 +911,7 @@ const main = async () => {
 			story: story.id,
 			container: story.container,
 			keyboard: Boolean(story.keyboard),
+			followsCursor: Boolean(story.followsCursor),
 			framed,
 			viewport: `${width}x${height}`,
 			declaredHeight: height,
@@ -854,6 +1012,10 @@ const main = async () => {
 					console.log(
 						`    focus         ${move.beforeFocus?.title ?? "(none)"} -> ${move.focus?.title ?? "(none)"}${move.focus?.inList || move.focus?.inEntity ? " (inside a container)" : ""}`,
 					);
+					if (move.focus)
+						console.log(
+							`    cursor row    ${move.beforeFocus?.visibility ?? "(no reading)"} -> ${move.focus?.visibility ?? "(no reading)"} in its container`,
+						);
 				}
 			}
 			console.log(
@@ -866,6 +1028,9 @@ const main = async () => {
 				);
 				console.log(
 					`  at the key      the focused row was visible in the panel: ${step.insidePanelAtKey}`,
+				);
+				console.log(
+					`  ring at the key ${step.ringAtKey?.outlineStyle} band ${step.ringAtKey?.band} px; the row's box sits ${step.ringAtKey?.clearancePx} px past the clip edge at ${step.ringAtKey?.clipTop}; ring clipped by ${step.ringAtKey?.ringClippedPx} px`,
 				);
 			}
 		}
@@ -912,6 +1077,33 @@ const main = async () => {
 					failures.push(
 						`FAIL ${result.story}: the cursor was NOT inside the panel when the arrow key was pressed, so a jump on the next press is the state the capture starts from rather than what the traversal produced.`,
 					);
+				/*
+				 * The ring the hold exists to uncover, and the clearance that is supposed
+				 * to keep it whole (round 3, R3-4 / D4 - the code review's finding and the
+				 * design stream's D4 are one defect, so they are one check here).
+				 *
+				 * Two failures rather than one, because they are different defects: a row
+				 * with NO ring painted means this cell measured nothing at all (a
+				 * `:focus-visible` treatment does not compute on a page that is not focused,
+				 * so the absence is an instrument failure and it has to be loud), while a
+				 * CLIPPED ring is D1's own symptom - the ring's outer edge landing above the
+				 * container's clip box, which is a pixel the reader loses.
+				 *
+				 * The clearance the correction aims at is EXACT - the row's own band, not the
+				 * band plus a margin - so `clearancePx` is printed beside this check rather
+				 * than asserted at a value: a future +1 px of slack would show up there as a
+				 * visible gap, and a shaved pixel shows up here as a failure. That is the
+				 * contract this rig now measures; the module comment states that exactness is
+				 * the intent.
+				 */
+				if (!step.ringAtKey || step.ringAtKey.outlineStyle === "none")
+					failures.push(
+						`FAIL ${result.story}: the focused row painted no ring at the key (outline-style ${step.ringAtKey?.outlineStyle ?? "(no reading)"}), so this cell cannot say whether the hold leaves the ring whole. The rig enables focus emulation before the first story; without it a headless page never matches :focus-visible and every ring reading here is a zero that means nothing.`,
+					);
+				else if ((step.ringAtKey.ringClippedPx ?? 0) > 0)
+					failures.push(
+						`FAIL ${result.story}: the focused row's ring is clipped by ${step.ringAtKey.ringClippedPx} px at the key (ringTop ${step.ringAtKey.ringTop} against clipTop ${step.ringAtKey.clipTop}, band ${step.ringAtKey.band}) - the hold is supposed to leave the ring's own band inside the clip box, and a shaved ring is the defect the clearance exists to prevent.`,
+					);
 				if (Math.abs(step.travel) > keyLimit)
 					failures.push(
 						`FAIL ${result.story}: the arrow key after the re-file moved the viewport ${step.travel} px (limit: one ${result.pitch} px row). The container follows the row the cursor is on across a re-file; it may not jump when the cursor moves on.`,
@@ -931,6 +1123,42 @@ const main = async () => {
 					);
 				continue;
 			}
+			/*
+			 * A story whose own claim IS the correction firing (round 3, U6/D3): the
+			 * cursor's row was still PARTLY on screen when the re-file took it out, so the
+			 * container has to follow it - which is the one thing the hold assertion below
+			 * must not demand. Three properties, because each rules out a different way of
+			 * passing for the wrong reason: the row really was partly visible before the
+			 * change (or the cell is measuring the state next to it), the correction really
+			 * ran (a zero here is the defect), and it was the MINIMUM - bounded by the row's
+			 * own travel plus its ring band - with the row INSIDE at the settle rather than
+			 * merely closer to the panel.
+			 */
+			if (result.followsCursor) {
+				for (const move of result.subjectMoves) {
+					const band = move.focus?.ring?.band ?? 0;
+					if (move.beforeFocus?.visibility !== "partly")
+						failures.push(
+							`FAIL ${result.story}: the cursor's row was ${move.beforeFocus?.visibility ?? "(no reading)"} in its container before the change rather than PARTLY - this story's claim is the row the reader could still see, so at this position it is measuring the neighbouring state instead.`,
+						);
+					else if (move.viewportTravel === 0)
+						failures.push(
+							`FAIL ${result.story}: the re-file took the cursor's row out of the panel and the container did not follow it (0 px) - that is the stranding U6/D3 filed, a focused row the reader cannot see.`,
+						);
+					else if (
+						Math.abs(move.viewportTravel) >
+						(move.rowTravelPx ?? 0) + band + 0.5
+					)
+						failures.push(
+							`FAIL ${result.story}: the container followed the cursor by ${move.viewportTravel} px for ${move.rowTravelPx} px of row travel (bound: the travel plus the row's own ${band} px ring band) - the correction is the minimum that brings the row back, not a jump past it.`,
+						);
+					if (move.focus?.visibility !== "inside")
+						failures.push(
+							`FAIL ${result.story}: the cursor's row ends ${move.focus?.visibility ?? "(no reading)"} in its container rather than INSIDE, so the correction did not bring it back into the panel.`,
+						);
+				}
+				continue;
+			}
 			for (const move of result.subjectMoves) {
 				if (Math.abs(move.viewportTravel) > HOLD_PX) {
 					failures.push(
@@ -946,10 +1174,14 @@ const main = async () => {
 		}
 		for (const failure of failures) console.error(failure);
 		if (failures.length > 0) process.exitCode = 1;
-		else
+		else {
+			const followNote = results.some((result) => result.followsCursor)
+				? " The cursor-follow cell is judged on its own claim instead: the re-file DID move the container, by no more than the row's own travel plus its ring band, and the cursor's row is inside the panel at the settle."
+				: "";
 			console.log(
-				"\nOK: every measured move held its scroll position exactly (within 0.5 px), every move had the room to show a drag, and the keyboard traversal did not jump the list.",
+				`\nOK: every measured move held its scroll position exactly (within 0.5 px), every move had the room to show a drag, and the keyboard traversal did not jump the list.${followNote}`,
 			);
+		}
 	}
 };
 

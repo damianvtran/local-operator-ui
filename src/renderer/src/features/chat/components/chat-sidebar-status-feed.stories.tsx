@@ -968,6 +968,47 @@ const scrollRowBelowHead = (title: string, below: number) => {
 	throw new Error(`${title} is not inside a scrolling container`);
 };
 
+/**
+ * Leave a row's box `over` px past the container's LOWER clip edge.
+ *
+ * The mirror of `scrollRowBelowHead`, which chooses an offset measured from the
+ * container's head: this one chooses the row's distance past the FOOT, so a row at
+ * the END of the content can be left partly visible rather than flush at the
+ * container's maximum. That is the resting position U6/D3 filed, and the one the
+ * browser's own focus scroll lands whenever the row pitch and the panel height
+ * disagree by a fraction.
+ *
+ * The box is computed against the container's PADDING box, which is the box a
+ * scroll container clips at - the same correction `clipBox` makes in the app.
+ */
+const scrollRowPastFoot = (title: string, over: number) => {
+	const row = [...document.querySelectorAll("[data-chat-row]")].find((node) =>
+		(node.textContent ?? "").trim().includes(title),
+	);
+	if (!row) throw new Error(`no row titled ${title} to scroll past the foot`);
+	let node = row.parentElement;
+	while (node && node !== document.body) {
+		const scrolls = ["auto", "scroll"].includes(
+			getComputedStyle(node).overflowY,
+		);
+		if (scrolls && node.scrollHeight > node.clientHeight + 8) {
+			const top =
+				row.getBoundingClientRect().top -
+				node.getBoundingClientRect().top -
+				node.clientTop +
+				node.scrollTop;
+			const height = row.getBoundingClientRect().height;
+			node.scrollTop = Math.min(
+				Math.max(top + height - node.clientHeight - over, 0),
+				node.scrollHeight - node.clientHeight,
+			);
+			return;
+		}
+		node = node.parentElement;
+	}
+	throw new Error(`${title} is not inside a scrolling container`);
+};
+
 /** Put keyboard focus on a row, and fail loudly if it did not land. */
 const focusRow = (title: string) => {
 	const row = [...document.querySelectorAll("[data-chat-row]")].find((node) =>
@@ -1271,6 +1312,115 @@ export const CompletionKeyboardRefile: Story = {
 		deliver(catalogueFrame(2, 93));
 		/* The rig presses the arrow inside this window; the shutter stays closed
 		   until it has, so the same story can be swept later without a change. */
+		await sleep(1200);
+		releaseShutter();
+	},
+};
+
+/* ------------------------------------------- the gate's two edges, as rig cells */
+
+/**
+ * THE GATE'S NEGATIVE, LIVING IN THE SAME FIXTURE AS THE POSITIVE (round 3).
+ *
+ * `completion-reordered-offscreen` measures the reader who is somewhere else in
+ * the list with NO cursor in the panel, which cannot separate the two mechanisms
+ * that hold it: the `overflow-anchor: none` declaration, and the focus rule's gate
+ * refusing to follow a row the reader scrolled away. This story puts a CURSOR on
+ * the row that re-files and then takes the reader's own scroll past it, so the
+ * gate is asked the question it exists for - the record says the row was already
+ * off screen before the change landed, so the container must not move.
+ *
+ * Its twin is `completion-cursor-partly-clipped` immediately below: same roster,
+ * same re-file, same cursor, and the only difference is whether the cursor's row
+ * was still PARTLY on screen when the change landed. The pair is what states the
+ * rule's three states in a browser rather than in prose, and the rig asserts each
+ * one on its own claim (`scripts/sidebar-resort-geometry.mjs`).
+ */
+export const CompletionReaderScrolledAway: Story = {
+	render: () => {
+		roster = overflowingBefore();
+		return <Page readoutRows={8} />;
+	},
+	play: async () => {
+		holdShutter();
+		await catalogueSettled(22);
+		await sleep(250);
+		focusRow("Migrate the deploy script");
+		await sleep(150);
+		/* The reader's own move, and it is a SCROLL rather than a keypress: the panel
+		   is taken past the cursor's row, so that row is above the head - the position
+		   a completion must leave alone. It fires a real `scroll`, which is the input
+		   the record is refreshed on.
+
+		   The 40 px is chosen rather than arbitrary: the rig reports a move BLIND
+		   when the room above or below the viewport is smaller than the row's travel,
+		   because a drag could then have been clamped away and a zero would prove
+		   nothing. A row 40 px above the head still leaves both rooms (240 px above,
+		   111 px below) larger than the mover's 96 px, so a correction here would have
+		   been visible had the gate fired. */
+		scrollToRow("Migrate the deploy script", 40);
+		await sleep(300);
+		deliver(statusFrame(MIGRATE, COMPLETE, 3, 91));
+		deliver(attentionFrame(MIGRATE, true, 92));
+		await sleep(300);
+		roster = overflowingAfter();
+		deliver(catalogueFrame(2, 93));
+		await sleep(400);
+		releaseShutter();
+	},
+};
+
+/**
+ * THE STATE U6 AND D3 FILED (round 3): the cursor's row is PARTLY past the panel's
+ * lower edge when the re-file takes it the rest of the way out.
+ *
+ * This is the app's own resting position rather than a contrived one: the
+ * browser's focus scroll lands a row flush with the clip edge whenever the row
+ * pitch and the panel height disagree by a fraction, and the UX stream's census
+ * found 2 of 19 landings strictly outside by 0.5 px. Under a two-state record that
+ * row read as `outside` before the change, so the correction refused and the
+ * reader was left with a focused row 185 px above the panel - a cursor they could
+ * not see, on the same panel the U1 guarantee is about.
+ *
+ * The roster and the re-file are `completion-keyboard-refile`'s, deliberately:
+ * the ONLY difference is where the reader left the panel, so a difference in the
+ * two measurements is the rule's own.
+ */
+export const CompletionCursorPartlyClipped: Story = {
+	render: () => {
+		roster = [
+			...RESORT_WORKING.map(([id, name, mtime], index) =>
+				wireRow(id, name, mtime, BUSY, 20 + index),
+			),
+			...restingRows(),
+			wireRow(MIGRATE, "Migrate the deploy script", 1_760_020_100, BUSY, 2),
+		];
+		return <Page readoutRows={8} />;
+	},
+	play: async () => {
+		holdShutter();
+		await catalogueSettled(22);
+		await sleep(250);
+		scrollRowBelowHead("Migrate the deploy script", 360);
+		await sleep(150);
+		focusRow("Migrate the deploy script");
+		await sleep(150);
+		/* The reader's own nudge, and it is the exact shape U6/D3 filed: the cursor's
+		   row is left 19 px past the lower clip edge - on screen, partly - which is the
+		   state the record has to carry as `partly` for the arrival to be followed. */
+		scrollRowPastFoot("Migrate the deploy script", 19);
+		await sleep(300);
+		deliver(statusFrame(MIGRATE, COMPLETE, 3, 91));
+		deliver(attentionFrame(MIGRATE, true, 92));
+		await sleep(300);
+		roster = [
+			wireRow(MIGRATE, "Migrate the deploy script", 1_760_020_100, BUSY, 2),
+			...RESORT_WORKING.map(([id, name, mtime], index) =>
+				wireRow(id, name, mtime, BUSY, 20 + index),
+			),
+			...restingRows(),
+		];
+		deliver(catalogueFrame(2, 93));
 		await sleep(1200);
 		releaseShutter();
 	},
