@@ -140,6 +140,64 @@ test("a filter that excludes a pinned row leaves it out of both halves", () => {
 	assert.deepEqual(ids(unpinnedRows(filtered, true)), ["bbbbbbbbbbbb"]);
 });
 
+test("a pinned row stays in its agent's group, because groups are the other axis", () => {
+	/*
+	 * Sections and agent groups are two axes, and this panel already draws one
+	 * conversation in two places on two axes. So the claim is not "a pinned row is
+	 * in the Pinned section" (the tests above hold that) but "the group view was
+	 * never partitioned", and it is asserted as the DECISION rather than as a
+	 * count: the entity helper reads `matching`, while only the two section lists
+	 * read the partitioned halves.
+	 */
+	const owned = row("aaaaaaaaaaaa", {
+		pinned: true,
+		binding: { agent: "coder", team: null },
+	});
+	const catalogue = [owned, row("bbbbbbbbbbbb")];
+	const pinned = pinnedRows(catalogue, true);
+	const rest = unpinnedRows(catalogue, true);
+	// The child is in the pinned half and out of the section half, and the group's
+	// own view is `matching` - which the partition never writes to, so its badge
+	// (`children().length`) cannot move either.
+	assert.deepEqual(ids(pinned), ["aaaaaaaaaaaa"]);
+	assert.deepEqual(ids(rest), ["bbbbbbbbbbbb"]);
+	assert.equal(catalogue.length, 2, "the partition copies nothing");
+	const children = catalogue.filter(
+		(item) => !item.binding.team && item.binding.agent === "coder",
+	);
+	assert.deepEqual(
+		ids(children),
+		["aaaaaaaaaaaa"],
+		"the group view is `matching`, so a pinned child is still drawn under its agent",
+	);
+
+	const source = read(SIDEBAR);
+	const childrenAt = source.indexOf("const children = (");
+	assert.ok(childrenAt > 0, "the entity helper is where this file says it is");
+	const childrenBody = source.slice(
+		childrenAt,
+		source.indexOf("\n\tconst pinned = ", childrenAt),
+	);
+	assert.ok(
+		childrenBody.includes("matching.filter"),
+		"the entity helper filters the UNPARTITIONED list",
+	);
+	assert.ok(
+		!childrenBody.includes("rest.filter"),
+		"...and not the section half, which would lift a pinned chat out of its group",
+	);
+	assert.match(
+		source,
+		/const pinned = pinnedRows\(matching, pinsEnabled\);/,
+		"the Pinned section draws `matching ∩ pinned`",
+	);
+	assert.match(
+		source,
+		/const rest = unpinnedRows\(matching, pinsEnabled\);/,
+		"and every section below it draws the complement",
+	);
+});
+
 test("the order is the catalogue's own, untouched", () => {
 	/*
 	 * The wire carries no rank or timestamp beside `pinned`, and the partition must
