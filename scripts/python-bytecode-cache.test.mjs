@@ -2545,6 +2545,20 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		why: "the venv interpreter's own `site` probe",
 	},
 	{
+		file: "scripts/renderer-driver.mjs",
+		name: "spawnSync",
+		index: 2,
+		binding: /const env = pythonChildEnv\(\{\}\)/,
+		why: "the terminal's own `read_pins`, asked what the shared pin store holds after this app pinned from its own surface — the pins scene's `--tui-python` step",
+	},
+	{
+		file: "scripts/renderer-driver.mjs",
+		name: "spawnSync",
+		index: 3,
+		env: /env:\s*pythonChildEnv\(\{\}\)/,
+		why: "the terminal's own `toggle_pin`, which is the write the TUI's `f10` makes — the cross-surface half of the same scene, and the only python this repository starts to WRITE a store rather than read one",
+	},
+	{
 		file: "scripts/submit-latency.test.mjs",
 		name: "spawn",
 		index: 1,

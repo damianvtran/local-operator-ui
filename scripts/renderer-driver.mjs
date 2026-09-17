@@ -134,6 +134,14 @@ import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
+/*
+ * Every python this harness starts is handed an environment it has decided about,
+ * never `process.env`: an inherited `PYTHONPYCACHEPREFIX` wrote 19 `.pyc` into the
+ * operator's installed app once (see `python-child-env.mjs`), and
+ * `scripts/python-bytecode-cache.test.mjs` enumerates the sites that may start an
+ * interpreter, so a new one has to say so there as well as here.
+ */
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 const ROOT = process.cwd();
 
@@ -2179,8 +2187,10 @@ function tuiStoreReading() {
 		"from local_operator.tui.sidebar_pins import read_pins",
 		"print(json.dumps({'pins': list(read_pins(sys.argv[1]))}))",
 	].join("\n");
+	const env = pythonChildEnv({});
 	const read = spawnSync(TUI_PYTHON, ["-c", script, TUI_CONFIG], {
 		encoding: "utf8",
+		env,
 	});
 	if (read.status !== 0) {
 		throw new Error(
@@ -2239,6 +2249,7 @@ async function crossSurfacePin(cdp) {
 	].join("\n");
 	const wrote = spawnSync(TUI_PYTHON, ["-c", script, TUI_CONFIG, chosen.id], {
 		encoding: "utf8",
+		env: pythonChildEnv({}),
 	});
 	check(
 		"the terminal's own store wrote the pin",
