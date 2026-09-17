@@ -423,6 +423,69 @@ const echoTargets = new Map<
 >();
 
 /**
+ * Mounted panes, by session, that can re-read their own canonical snapshot.
+ *
+ * Exists for one case the stream cannot cover: a mutation made from ANOTHER
+ * surface of the app, on a session this window may be displaying. The owner
+ * pushes a frame when its own scheduler changes (`_notify_change`), so a live
+ * session heals itself - but a COLD session (no runtime) is synthesised from the
+ * derived wake index at subscribe time, and nothing pushes when the index moves
+ * underneath it. `docs/composer-wakes.md` section 11.6 records that gap for the
+ * composer's chip and the run pane's Wakes section: "a cold session's chip does
+ * not track the index until re-entry".
+ *
+ * The Schedules page is the surface that CREATES that situation: cancelling a
+ * wake there on a conversation open in the chat pane would otherwise leave the
+ * pane asserting a wake that no longer exists, one screen away from the row that
+ * just removed it. So the mutation asks the pane to re-read, and the pane does it
+ * by re-opening its subscription without a cursor (see the resync in the effect
+ * below), which is the only read that re-synthesises a cold snapshot.
+ *
+ * Keyed by session id and holding ONE entry per session, like `echoTargets`: the
+ * pane for a session is a single subscriber, and a later mount (a session switch
+ * back) re-registers over the previous entry, whose cleanup is identity-checked.
+ */
+const resyncTargets = new Map<string, () => void>();
+
+/**
+ * Register a pane as the place a re-read of this session's snapshot lands, and
+ * return the matching unregister.
+ *
+ * Exported with the same `__` marker as `__registerEchoTarget`, and for its
+ * reason: a rule about delivery that a test has to be able to drive against the
+ * REAL registry rather than a recorder standing in for it.
+ */
+export function __registerCanonicalResync(
+	sessionId: string,
+	resync: () => void,
+): () => void {
+	resyncTargets.set(sessionId, resync);
+	return () => {
+		// Only if still ours: a remount for the same session registers before the
+		// old effect cleans up, and an unconditional delete would drop the live
+		// registration.
+		if (resyncTargets.get(sessionId) === resync)
+			resyncTargets.delete(sessionId);
+	};
+}
+
+/**
+ * Re-read a session's canonical snapshot, if this window is displaying it.
+ *
+ * Returns whether a pane took the request. `false` is not a failure: it means
+ * no pane holds that session (the common case - the user is on the Schedules
+ * page, not in the conversation), so the next subscribe reads the new state
+ * anyway. Never queues, unlike an echo: a stale snapshot IS the next frame a
+ * pane gets when it mounts, whereas an echo is a paint nothing else can produce.
+ */
+export function resyncCanonicalSession(sessionId: string): boolean {
+	const resync = resyncTargets.get(sessionId);
+	if (!resync) return false;
+	resync();
+	return true;
+}
+
+/**
  * Echoes for a session whose transcript had not registered yet, replayed the
  * moment one does.
  *
@@ -1547,6 +1610,43 @@ export function useCanonicalSessionStream(
 		};
 
 		/*
+		 * Re-read the owner's snapshot because a DIFFERENT surface of this app just
+		 * changed something this pane displays.
+		 *
+		 * The cursor is dropped first, and that is the whole point: a reconnect that
+		 * keeps `epoch`/`afterSeq` asks only for what happened SINCE those frames,
+		 * while the state that moved here (a cold session's wake list, synthesised
+		 * from the derived index at subscribe time) is older than the cursor. Asking
+		 * without one is what makes the backend answer with a fresh snapshot, and a
+		 * snapshot is the only read that re-synthesises the cold path.
+		 *
+		 * Deliberately NOT published as a user action: the caller is a mutation
+		 * elsewhere in the app that has already succeeded, so there is nothing to
+		 * press and nothing to explain. The pane's own `retry` stays the only control
+		 * on this handle, and its budget reset (`attempt = 0`) is not needed here.
+		 *
+		 * A pending RETRY is cancelled first, and that ordering is load-bearing
+		 * rather than tidy: this used to assume "a resync only runs while a
+		 * subscription is live", which is false inside the backoff window above
+		 * (`dispose` is null and `retryTimer` is armed to call `connect()` itself).
+		 * A wake write from the Schedules page landing in that window would connect
+		 * here, then have the timer connect a SECOND stream over it - the first
+		 * handle overwritten and never disposed, so it keeps delivering frames into
+		 * this reducer and outlives the pane's unmount, whose cleanup closes only the
+		 * newest (the reviewer's R4: code-read, and the fix is the ordering).
+		 */
+		const resync = () => {
+			if (retryTimer !== 0) {
+				window.clearTimeout(retryTimer);
+				retryTimer = 0;
+			}
+			reconnectRef.current = {};
+			receiptRef.current = null;
+			closeStream();
+			connect();
+		};
+
+		/*
 		 * The user's own way back, published on the handle as `retry`.
 		 *
 		 * Deliberately re-arms BOTH halves rather than only the stream: the state
@@ -1605,10 +1705,14 @@ export function useCanonicalSessionStream(
 		// Non-null only while this effect owns the stream, so a Retry pressed after
 		// the session changed (or after unmount) cannot re-open the old session.
 		retryRef.current = reopen;
+		// Same lifetime rule for the resync: it is addressable by session id from
+		// another feature, and it must not outlive the pane it re-reads for.
+		const unregisterResync = __registerCanonicalResync(sessionId, resync);
 
 		return () => {
 			generationRef.current += 1;
 			retryRef.current = null;
+			unregisterResync();
 			dispose?.();
 			if (raf) cancelAnimationFrame(raf);
 			if (fallback) clearTimeout(fallback);
