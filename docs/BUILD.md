@@ -272,3 +272,5 @@ This configuration publishes updates to GitHub Releases, which users can automat
 - Check that you have sufficient permissions to create the output files
 
 For more detailed troubleshooting, refer to the [electron-builder documentation](https://www.electron.build/).
+
+A probe line: this diff touches nothing any job in ci.yml reads.
