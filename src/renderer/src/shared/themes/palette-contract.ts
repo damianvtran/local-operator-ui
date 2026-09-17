@@ -8,21 +8,20 @@
  *
  * ## Why this exists
  *
- * Before this contract, each of the twelve themes was a standalone
- * `createTheme()` of 209–252 lines, and only ~33% of those lines were colour.
- * The other ~67% — breakpoints, typography, and the `MuiAppBar` /
- * `MuiListItemButton` / `MuiIconButton` / `MuiButton` / `MuiCard` /
- * `MuiContainer` overrides — was copied twelve times. A single type-scale
- * change was a twelve-file diff, and the twelfth file is the one that gets
- * missed.
+ * Before this contract, every theme was a standalone `createTheme()` of
+ * 209–252 lines, and only ~33% of those lines were colour. The other ~67% —
+ * breakpoints, typography, and the `MuiAppBar` / `MuiListItemButton` /
+ * `MuiIconButton` / `MuiButton` / `MuiCard` / `MuiContainer` overrides — was
+ * copied into every one of them. A type-scale change was a diff across every
+ * theme file, and the last file is the one that gets missed.
  *
- * Worse, eleven of the twelve never authored `divider`, `action`, `success`,
- * `warning`, `info`, `grey` or `common` at all, while application code reads
- * those 409 times. Those values were coming from MUI's stock palette — a blue
- * `info` and a red `error` that appeared in no theme file and that no theme
- * author had ever seen, let alone checked for contrast. Making the roles
- * mandatory here is what closes that hole: a palette that omits one no longer
- * compiles.
+ * Worse, eleven of the twelve themes that existed then never authored
+ * `divider`, `action`, `success`, `warning`, `info`, `grey` or `common` at
+ * all, while application code reads those 409 times. Those values were coming
+ * from MUI's stock palette — a blue `info` and a red `error` that appeared in
+ * no theme file and that no theme author had ever seen, let alone checked for
+ * contrast. Making the roles mandatory here is what closes that hole: a
+ * palette that omits one no longer compiles.
  *
  * ## Roles, not hexes
  *
@@ -37,6 +36,13 @@
  * @see docs/branding.md — the human-readable version of this contract
  * @see scripts/contrast-contract.mjs — the executable version
  */
+
+/*
+ * Type-only, so `themes/palette-contract.ts` and `types/theme.ts` still share
+ * no runtime code: the registry is built from the palette directory, and the
+ * union this file is checked against is erased at compile time.
+ */
+import type { ThemeName } from "../types/theme";
 
 /**
  * A theme's complete colour surface.
@@ -207,7 +213,21 @@ export type ThemePalette = {
 
 /** A palette plus the identity the theme picker shows. */
 export type ThemeDefinition = {
-	id: string;
+	/**
+	 * The theme's id, typed as the union rather than `string` on purpose.
+	 *
+	 * A `string` here compiled anything: a palette whose `id` disagreed with its
+	 * `ThemeName` member still shipped a `[data-theme="…"]` block under that
+	 * spelling (the CSS generator reads this directory, not the union), still
+	 * rendered a tile (the picker maps over this array), and `getTheme` returned
+	 * the default for it in silence. Widening the set from twelve hand-typed ids
+	 * to fifty-nine is what made that trap worth closing, and it closes here
+	 * rather than in the registry: with `ThemeName` on the field, a mismatch
+	 * between a file's id and the union is a compile error, and `index.ts` no
+	 * longer needs a cast to build `ThemeCollection` out of it (review round 1,
+	 * M-1). A type-only import, so the two modules still share no runtime code.
+	 */
+	id: ThemeName;
 	name: string;
 	/** One line, shown under the name in the theme picker. */
 	description: string;

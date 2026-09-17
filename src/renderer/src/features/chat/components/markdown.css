@@ -4,7 +4,7 @@
  * This was an Emotion `styled(Box)` carrying ~180 lines of nested selectors and
  * a dozen `alpha(theme.palette.grey[...])` calls. Emotion re-evaluates that
  * function on every theme read and, worse, none of those greys were theme
- * roles, so the twelve palettes all rendered markdown against the same handful
+ * roles, so every palette rendered markdown against the same handful
  * of hardcoded neutrals.
  *
  * It lives in a plain stylesheet rather than Tailwind utilities because

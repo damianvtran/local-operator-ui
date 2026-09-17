@@ -375,14 +375,16 @@ export function pickerPrimaryLabel(state: {
  *
  * WHY TWO GROUNDS, AND WHICH GROUND EACH ONE TAKES.
  *
- * `isActive` is the keyboard's selection — what Enter picks. It takes
- * `bg-sunken`, because that is the only ground role that steps perceptibly away
- * from the dialog's own `bg-elevated` in ALL twelve themes (measured ΔE00
- * 5.85-16.70). The sibling composer popup's `bg-accent-wash` tint was the first
- * choice and is a real step in the brand pair, but `accent-wash` collapses onto
- * `elevated` in obsidian (ΔE00 0.77, ratio 1.01) and is under ΔE00 4 in
- * tokyoNight (3.74) and dracula (3.99), with dune's 4.88 the next-worst and the
- * first to clear it — i.e. it would reproduce the original defect for whichever
+ * `isActive` is the keyboard's selection — what Enter picks. It takes `bg-
+ * sunken`, because that is the only ground role that steps perceptibly away
+ * from the dialog's own `bg-elevated` in every one of the palettes (measured
+ * ΔE00 5.85-16.70 across all fifty-nine). The sibling composer popup's `bg-
+ * accent-wash` tint was the first choice and is a real step in the brand pair,
+ * but `accent-wash` collapses onto `elevated` in obsidian (ΔE00 0.77, ratio
+ * 1.01) and is under ΔE00 4 in thirteen of the fifty-nine palettes —
+ * tokyoNight (3.74) and dracula (3.99) among them, and over the twelve the
+ * port started from those three were the only ones, with dune's 4.88 the first
+ * to clear it — i.e. it would reproduce the original defect for whichever
  * theme the user happens to run. The wash keeps the pointer's role instead.
  *
  * `isHovered` is the pointer's own position and nothing else. It takes
@@ -404,11 +406,11 @@ export function pickerPrimaryLabel(state: {
  * operator's original report surviving intact in a user-selectable theme — and
  * the in-flight row lost its mark with it. So the mark is not wash-only any
  * more: a 1px `outline-control` edge clears the 3:1 structural floor against
- * the dialog's ground in ALL twelve palettes BY CONSTRUCTION, which is why the
- * contrast contract asserts the ROLE on this ground (`picker row pointer mark`)
- * rather than only the class string — the string stayed green while the role
- * collapsed. The wash is kept where it does read, as the tint the sibling popup
- * uses for the same gesture.
+ * the dialog's ground in every palette BY CONSTRUCTION, which is why the
+ * contrast contract asserts the ROLE on this ground (`picker row pointer
+ * mark`) rather than only the class string — the string stayed green while the
+ * role collapsed. The wash is kept where it does read, as the tint the sibling
+ * popup uses for the same gesture.
  *
  * `isPicked` keeps that edge for as long as the operation is in flight, so the
  * row being switched to is marked even after the pointer leaves it; the spinner
@@ -454,7 +456,7 @@ export const PickerRow: FC<PickerRowProps> = memo(
 				isActive && "bg-sunken",
 				isHovered && !isActive && "bg-accent-wash",
 				// The structural half of both marks; see the block comment above for
-				// why the wash alone is not enough in all twelve themes.
+				// why the wash alone is not enough in every theme.
 				(isPicked || (isHovered && !isActive)) &&
 					"outline-solid outline-1 -outline-offset-1 outline-control",
 				option.disabled && "text-ink-disabled",

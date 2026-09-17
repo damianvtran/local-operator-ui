@@ -19,9 +19,10 @@
  * - **The options are OUTSIDE the accent wash, and that is deliberate.** The
  *   callout keeps the accent and owns the question; the buttons sit beneath it
  *   on the transcript's own ground. `border-control` on `accent-wash` measures
- *   2.89:1 on iceberg — under the 3:1 structural floor — so a bordered control
- *   inside the wash is not a thing that can exist in all twelve themes. They
- *   still read as one unit, by proximity and a shared left rail.
+ *   2.69:1 at its worst (cyberpunk; 2.89:1 on iceberg) — under the 3:1
+ * structural floor — so a bordered control inside the wash is not a thing that
+ * can exist in any theme. They still read as one unit, by proximity and a
+ * shared left rail.
  * - **The recommended option says the word.** Not a colour difference and not
  *   a bare glyph: the terminal card learned in its own design round that a
  *   marker styled like the prose around it cannot be found in a rendered frame

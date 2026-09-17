@@ -456,11 +456,14 @@ export const Populated: Story = {
  * frames are DIFFERENT states: this one marks the pointer's row with the
  * accent-wash tint PLUS a 1px `outline-control` edge and leaves the selection
  * where it was, where the keyboard's frame moves the selection and paints it
- * with the `sunken` ground. The edge is not decoration: `accent-wash` collapses
- * onto `elevated` in obsidian (ΔE00 0.77), so the tint alone was no mark at all
- * in four of the twelve themes (design D12). The play asserts the separation
- * AND what UX U1 asks for in the same frame: with the pointer on a row that is
- * NOT the keyboard's, the footer still names the row Enter would pick.
+ * with the `sunken` ground. The edge is not decoration: `accent-wash`
+ * collapses onto `elevated` in obsidian (ΔE00 0.77), so the tint alone was no
+ * mark at all where it does not clear the field floor: over every palette
+ * `accent-wash` on `elevated` runs from ΔE00 0.77 (obsidian) to 24.73
+ * (cyberpunk), and sits under ΔE00 4 in thirteen of the fifty-nine (design
+ * D12). The play asserts the separation AND what UX U1 asks for in the same
+ * frame: with the pointer on a row that is NOT the keyboard's, the footer
+ * still names the row Enter would pick.
  */
 export const Hovered: Story = {
 	render: () => <Frame bridge={catalogueOnly(catalogue())} />,

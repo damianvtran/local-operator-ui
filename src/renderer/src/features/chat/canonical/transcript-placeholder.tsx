@@ -27,7 +27,8 @@ import type { FC } from "react";
  * A placeholder whose entire job is to be seen was standing on the faintest
  * step the system has, so the ROLE was the bug and not the pulse. `elevated` is
  * the next ground up from the pane's own and clears the threshold with margin
- * in all twelve palettes: at rest deltaE00 4.21 (iceberg) to 12.40 (radient).
+ * in every palette: at rest deltaE00 3.90 (rosePineDawn) to 12.40 (radient),
+ * measured over all fifty-nine.
  *
  * THE PULSE IS `animate-pulse-visible`, NOT `animate-pulse`, and that is the
  * same argument one level down. Tailwind's pulse is keyed `1 -> 0.5 -> 1`, and

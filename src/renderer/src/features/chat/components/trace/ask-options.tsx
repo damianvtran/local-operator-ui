@@ -39,11 +39,11 @@
  *
  * So the callout keeps the accent and owns the question, and the options sit
  * directly beneath it on the transcript's own ground with the standard control
- * triple (`surface` fill, `border-control` edge, `ink` label) — the same triple
- * the `secondary` button variant uses. They are one unit with the callout by
- * proximity and a shared left rail, which is what "one card" buys the reader;
- * they are not one element, because the contrast contract says that element
- * cannot exist in all twelve themes.
+ * triple (`surface` fill, `border-control` edge, `ink` label) — the same
+ * triple the `secondary` button variant uses. They are one unit with the
+ * callout by proximity and a shared left rail, which is what "one card" buys
+ * the reader; they are not one element, because the contrast contract says
+ * that element cannot exist in any theme.
  *
  * ## Why this is not the shared `Button`
  *

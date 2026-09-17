@@ -26,7 +26,7 @@ refs above — they record what the implementation already does so the deltas
 § 7.5 lists can be read against it.
 
 Read with `docs/branding.md` open. The roles named here are roles, never
-colours, and the twelve themes make that a promise rather than a preference.
+colours, and a theme set of fifty-nine makes that a promise rather than a preference.
 
 ---
 
