@@ -40,8 +40,10 @@
  *   5. a three-group, mixed-column layout, so the rule is visibly a walk over
  *      row bands rather than a special case for the two groups this picker
  *      happens to render;
- *   6. that the component actually consumes the module, read as source text —
- *      the rule being right in a file nobody imports is not a product fix.
+ *   6. that the component actually consumes the module — its ANSWER, not merely
+ *      a call to it — read as source text, because the rule being right in a
+ *      file nobody imports is not a product fix and neither is a call whose
+ *      answer is thrown away.
  *
  * WHAT IT CANNOT PROVE: that the pixels agree. The rule decides an index; that
  * the index is the tile the eye reads as beneath it is a property of the layout,
@@ -88,6 +90,20 @@ const dark = all.filter((entry) => entry.theme.palette.mode === "dark");
 const light = all.filter((entry) => entry.theme.palette.mode === "light");
 const order = [...dark, ...light].map((entry) => entry.id);
 
+/*
+ * The three indices the finding is about, derived rather than written as
+ * literals (review round 3, NIT-3). `rosewood` is the Dark group's last tile,
+ * `localOperatorLight` the Light group's first, and both ids are asserted in
+ * the registry test below — so a palette added to either group moves these
+ * with it, where a bare `40` would leave the clamp and Home/End cases passing
+ * while meaning something else. The remaining literals (the short-row cases'
+ * offsets, and the interior index in the Home/End case) are written against
+ * these three and depend on the same two group sizes the registry test pins.
+ */
+const ROSE = dark.length - 1;
+const FIRST_LIGHT = dark.length;
+const LAST = order.length - 1;
+
 /** The two group grids as the component measures them, one column count for both. */
 const layout = (columns) => [
 	{ count: dark.length, columns },
@@ -117,22 +133,26 @@ test("the set is the one the boundary finding is about", () => {
 
 test("ArrowDown from the last dark tile lands on the tile beneath it, at 3, 4 and 5 columns", () => {
 	for (const columns of [3, 4, 5]) {
-		const column = 40 % columns;
-		const expected = 41 + column;
-		const landed = move(40, "ArrowDown", columns);
+		const column = ROSE % columns;
+		const expected = FIRST_LIGHT + column;
+		const landed = move(ROSE, "ArrowDown", columns);
 		assert.equal(
 			landed,
 			expected,
 			`${columns} columns: expected the Light group's first row at column ${column}`,
 		);
 		/*
-		 * Stated the other way round as well, because the index is only right if
-		 * it is the same COLUMN one row down: the landed tile must be in the Light
-		 * group's first row, and its column in that row must be rosewood's column
-		 * in the Dark group's last row.
+		 * Stated as a ROW BAND as well as an index, which is the form the rule is
+		 * written in: the landing is inside the Light group's first row.
+		 *
+		 * A second restatement of the column (`(landed - 41) % columns`) sat here
+		 * until review round 3's NIT-2: while `column < columns` it is implied by
+		 * the equality above, so it could not fail on its own and made this case
+		 * read as though it checked more than it did. The band assertion is not a
+		 * restatement — it is what `landed` has to be for the identity to be a
+		 * statement about the picture rather than about the arithmetic.
 		 */
-		assert.ok(landed >= 41 && landed < 41 + columns);
-		assert.equal((landed - 41) % columns, column);
+		assert.ok(landed >= FIRST_LIGHT && landed < FIRST_LIGHT + columns);
 	}
 });
 
@@ -140,9 +160,9 @@ test("ArrowUp from the Light group's first tile lands on the dark tile above it,
 	for (const columns of [3, 4, 5]) {
 		/* The Dark group's last row starts at the last multiple of `columns`
 		 * at or below its own last index: only its first tile is in column 0. */
-		const expected = 40 - (40 % columns);
+		const expected = ROSE - (ROSE % columns);
 		assert.equal(
-			move(41, "ArrowUp", columns),
+			move(FIRST_LIGHT, "ArrowUp", columns),
 			expected,
 			`${columns} columns: expected column 0 of the Dark group's last row`,
 		);
@@ -153,9 +173,9 @@ test("the seam is not the flat offset it used to be", () => {
 	/* The two flat answers the defect produced, asserted as NOT the answer, so
 	 * this file fails if the old arithmetic comes back by any route. */
 	for (const columns of [3, 4, 5]) {
-		assert.notEqual(move(40, "ArrowDown", columns), 40 + columns);
+		assert.notEqual(move(ROSE, "ArrowDown", columns), ROSE + columns);
 	}
-	assert.notEqual(move(41, "ArrowUp", 5), 41 - 5);
+	assert.notEqual(move(FIRST_LIGHT, "ArrowUp", 5), FIRST_LIGHT - 5);
 });
 
 /* ------------------------------------------------------------------ *
@@ -176,8 +196,8 @@ test("ArrowLeft and ArrowRight cross the seam in DOM order", () => {
 	/* DOM order is visual order across the seam, which the round-1 walk measured
 	 * and which the vertical fix must not disturb. */
 	for (const columns of [3, 4, 5]) {
-		assert.equal(move(40, "ArrowRight", columns), 41);
-		assert.equal(move(41, "ArrowLeft", columns), 40);
+		assert.equal(move(ROSE, "ArrowRight", columns), FIRST_LIGHT);
+		assert.equal(move(FIRST_LIGHT, "ArrowLeft", columns), ROSE);
 	}
 });
 
@@ -188,11 +208,11 @@ test("ArrowLeft and ArrowRight cross the seam in DOM order", () => {
 test("a short row answers with its nearest tile rather than stepping off it", () => {
 	/* At 5 columns the Dark group's last row holds one tile, so a column that
 	 * does not exist there clamps to that tile. */
-	assert.equal(move(39, "ArrowDown", 5), 40);
-	assert.equal(move(44, "ArrowUp", 5), 40);
+	assert.equal(move(ROSE - 1, "ArrowDown", 5), ROSE);
+	assert.equal(move(FIRST_LIGHT + 3, "ArrowUp", 5), ROSE);
 	/* At 3 columns it holds two, so column 2 clamps to its second tile. */
-	assert.equal(move(38, "ArrowDown", 3), 40);
-	assert.equal(move(43, "ArrowUp", 3), 40);
+	assert.equal(move(ROSE - 2, "ArrowDown", 3), ROSE);
+	assert.equal(move(FIRST_LIGHT + 2, "ArrowUp", 3), ROSE);
 });
 
 /* ------------------------------------------------------------------ *
@@ -203,16 +223,18 @@ test("the first and last tile are clamps, not wraps", () => {
 	for (const columns of [3, 4, 5]) {
 		assert.equal(move(0, "ArrowLeft", columns), 0);
 		assert.equal(move(0, "ArrowUp", columns), 0);
-		assert.equal(move(58, "ArrowRight", columns), 58);
-		assert.equal(move(58, "ArrowDown", columns), 58);
+		assert.equal(move(LAST, "ArrowRight", columns), LAST);
+		assert.equal(move(LAST, "ArrowDown", columns), LAST);
 	}
 });
 
 test("Home and End reach the ends of the whole set", () => {
+	/* 30 is an interior tile rather than a band boundary: the ends are absolute,
+	 * so any interior index makes the same claim. */
 	assert.equal(move(30, "Home", 5), 0);
-	assert.equal(move(30, "End", 5), 58);
-	assert.equal(move(0, "End", 3), 58);
-	assert.equal(move(58, "Home", 3), 0);
+	assert.equal(move(30, "End", 5), LAST);
+	assert.equal(move(0, "End", 3), LAST);
+	assert.equal(move(LAST, "Home", 3), 0);
 });
 
 /* ------------------------------------------------------------------ *
@@ -327,9 +349,35 @@ const stripComments = (text) => {
 const component = stripComments(readFileSync(join(ROOT, COMPONENT), "utf8"));
 
 test("the component consumes the module rather than keeping its own arithmetic", () => {
-	assert.match(component, /nextTileIndex\(/);
 	assert.match(component, /isTileNavKey\(/);
 	assert.match(component, /data-theme-grid=/);
+	/*
+	 * The CONSUMPTION, not the call site (review round 3, M-1). Matching
+	 * `nextTileIndex(` proves a call happened, and an implementation that calls
+	 * the module and then focuses `tiles[index]` or `tiles[index + columns]`
+	 * satisfied that and every other assertion in this case. So the module's
+	 * answer is pinned as a binding and that binding is pinned as the ONLY thing
+	 * the component focuses: `moveFocus` must take the answer into `next`, and
+	 * the only `tiles[…].focus()` in the shipped source must be on `next`.
+	 *
+	 * A wrong implementation cannot satisfy both: focusing a second copy of the
+	 * arithmetic (`tiles[index + columns]`, `tiles[index]`) changes the captured
+	 * expression away from `next`, and keeping the arithmetic but never focusing
+	 * its result fails the binding assertion.
+	 */
+	assert.match(
+		component,
+		/const next = nextTileIndex\(\{[\s\S]*?\}\)/,
+		"`moveFocus` must take the module's answer into `next`",
+	);
+	const focused = [
+		...component.matchAll(/tiles\[([^\]\n]+)\]\??\.focus\(\)/g),
+	].map((match) => match[1].trim());
+	assert.deepEqual(
+		focused,
+		["next"],
+		"the only tile focus must be the module's own answer, not a second copy of the arithmetic",
+	);
 	/* The defect, asserted as an absence in the shipped source: a flat offset
 	 * cannot come back while this holds. */
 	assert.doesNotMatch(component, /index\s*[+-]\s*columns/);

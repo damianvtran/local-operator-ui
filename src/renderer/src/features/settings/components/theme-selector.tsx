@@ -363,11 +363,14 @@ const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
  * `@radix-ui/react-tooltip`), and a focus move that scrolls the picker mounts
  * the panel and immediately unmounts it: measured, open at +2ms and closed at
  * +4ms, still closed 2.9s later, so the description appears on the stops that do
- * not scroll the container and is absent on the ones that do. Nothing is lost —
- * the description is the tile's `aria-describedby` either way — and the behaviour
- * is left alone here: the same root cause is round 1's deferred U4, and the fix
- * (scroll the target into view, then focus it with `preventScroll`) changes when
- * the panel opens, which is a question for a round that can re-shoot frames.
+ * not scroll the container and is absent on the ones that do — and the panel
+ * takes the tile's `aria-describedby` with it, so those stops are the ones
+ * described by name alone (round 3, R3-U1: the sentence here said nothing was
+ * lost "either way" until the trigger's `aria-describedby` was watched — set at
+ * +2ms, removed at +4ms with the content). The behaviour is left alone here: the
+ * same root cause is round 1's deferred U4, and the fix (scroll the target into
+ * view, then focus it with `preventScroll`) changes when the panel opens, which
+ * is a question for a round that can re-shoot frames.
  *
  * ## Why 12px, and what the name's box actually is
  *
