@@ -51,7 +51,7 @@ Two capture surfaces, and the difference matters when reading them:
 | [`trace-gap-boundaries`](trace-gap-boundaries/) | Where that hairline applies and where it does NOT, which a run of identical rows cannot show on its own: a margin carried by every row would photograph the same. Three blocks — a LONE call between two paragraphs (no ledger neighbour, so no hairline, `item` either side); a NOTICE inside a run (`trace`-like, so every adjacent pair takes the same 2px GAP — which is the claim, and all of it: the block measures `22, 23.7, 22`, because the notice's own line box is taller than a 20px tool row. The gap is uniform, the pitch is not, and that difference predates this tier); and a run OPENING a turn (the 24px boundary sits above its first row, the hairline only from the second). |
 | [`spacing-uniformity`](spacing-uniformity/) *(declared, not swept)* | The three runs as they were captured by hand for the spacing round: a short run of settled rows, a `hub`/`send` run, and a longer mixed run. Every inked band in these frames is a ledger row or its trailing timestamp — there is no prose in shot, so the assistant line that sets the middle block's pitch in the story above is NOT part of what this pair evidences. Its sibling above is the same claim as a story; this is the pair the operator's own screenshot was compared against, and what it holds is what those frames show, not the story's fuller set. |
 | [`turn-boundary-and-working-line`](turn-boundary-and-working-line/) | The hierarchy that survives the tightening: two ledger rows, a user turn, an agent reply, and a running row with the working line under it. Tightening a run is only correct if the reader can still see where a turn began. (The older `turn-boundary/` frames were removed: they came from a story title that no longer exists, so no sweep could refresh them.) |
-| [`prose-tool-alignment@1024`](prose-tool-alignment@1024/), [`@1440`](prose-tool-alignment@1440/) | Agent prose and the ledger sharing ONE left rail and ONE right edge, with prose both BETWEEN tool rows and as a final answer. The operator reported the answer as inset and narrower than the tool calls; it was capped at a reading measure and then centred inside the row it owns. Measured here, the answer and the tool row now span the same 102..962 at 1024 and 310..1170 at 1440 — left and right deltas both 0, where they were 156.6px each before. Two widths because a max-width cap only binds on a wide column, so one narrow capture would photograph the defect as absent. The user bubble is in frame as the control: it keeps its own narrower measure. |
+| [`prose-tool-alignment@1024`](prose-tool-alignment@1024/), [`@1440`](prose-tool-alignment@1440/) | Agent prose and the ledger sharing ONE left rail and ONE right edge, with prose both BETWEEN tool rows and as a final answer. The operator reported the answer as inset and narrower than the tool calls; it was capped at a reading measure and then centred inside the row it owns. Measured here, the answer and the tool row now span the same 102..962 at 1024 and 310..1170 at 1440 — left and right deltas both 0, where they were 156.6px each before. Two widths because a max-width cap only binds on a wide column, so one narrow capture would photograph the defect as absent. The user bubble is in frame as the control: it keeps its own narrower measure, and the stamp under it follows that bubble — which, on a user row, is the same right edge as the row's, because the row is `flex w-full justify-end` with no right inset (review round 1, R2/D3: measured 0.0px apart on 420/1024/1440; what § 7 distinguishes on a user turn is the bubble's LEFT inset). |
 | [`streaming-before-first-token`](streaming-before-first-token/) | The gap between `message_start` and the first token. The claim is an ABSENCE: no "Writing" row above the working line, which used to state the same fact a second time in the answer's own register. What must still be here is the liveness — the working line, spinning, reading `thinking`. Losing the row and the signal together would be a regression, not a fix. |
 | [`admitted-send-before-first-frame`](admitted-send-before-first-frame/) | The cold engage: a send the app has admitted and the owner has not answered. One quiet line at the foot, `waiting for the agent`, in the ladder's own register and on its `thinking` phase — the same rail, ink and typeface as every other rung, and the only liveness element on screen. This is the state the operator reported as dead air ("I hit send and nothing happens for three seconds"), so the frame's job is to show that the wait is now ON SCREEN: built by the real `appendPendingUser` echo, nothing hand-written. |
 | [`admitted-send-before-first-frame-baseline`](admitted-send-before-first-frame-baseline/) | The AFTER half's own control, and the reason the pair exists: the same transcript with `starting={false}`, which is exactly the old behaviour — the user's bubble and then nothing until the owner's first frame. The two frames differ by one line and by nothing else, which is what makes the claim checkable rather than asserted. |
@@ -100,6 +100,83 @@ Both brand themes for each. The 12-theme sweep was **not** regenerated — see
 `manifest.json`'s `partialCapture` — but the eight story ids are registered in
 `STORIES` in `scripts/capture-evidence.mjs`, so the next full recapture covers
 them.
+
+## The turn stamps (the `feat/transcript-timestamps` branch)
+
+Two frames are NEW in this set, and the rest of it was re-taken because the same change
+paints in them.
+
+| Frame | What it shows |
+| --- | --- |
+| [`turn-timestamps`](turn-timestamps/) | All four shapes of the formatter in one column — `12:14 PM` for a turn from today, `Yesterday 8:14 AM`, `Aug 27, 2:14 PM` for a day this year, and `Sep 12, 2025, 3:42 PM` for last year — plus an OPEN call whose stamp sits at the foot of its pane, and the CLEAR beside it: a call with nothing to disclose, which is a line with no stamp at all. The last of those is half the design (the operator asked for the time "below the card", and a ledger that stamped every row would undo the quiet the hover model bought), so a frame holding only the stamped rows could not show it. |
+| [`turn-timestamps-narrow`](turn-timestamps-narrow/) | The same stamps in a NARROW COLUMN (420px at `isSmallView={false}`, so the bubble takes the comfortable `max-w-[75%]`; the small view is pictured by [`admitted-send-before-first-frame-small-view`](admitted-send-before-first-frame-small-view/)). It is here because the transcript is a different shape at that width, not because the placement could be confused: a user row has a single right edge, so the bubble's and the row's are the same line. |
+
+The instants in `turn-timestamps` are **relative to the capture** — last year's date is fixed,
+the rest are offsets from `Date.now()` — which is the only way `today` and `Yesterday` can be
+photographed at all: they are calendar facts about the moment of reading, so a fixed fixture
+would photograph a stamp still reading `Sep 12, 2025` a week later. Everything else in this
+set keeps the fixed `TS` fixture for the opposite reason, and the instants here are the only
+part of the two frames that moves between runs. A re-capture therefore reads the same four
+shapes with different numbers, which is correct rather than noise.
+
+### What moved, and what the pair is
+
+Every frame this branch re-took MOVED, and it is worth saying why rather than leaving a
+reviewer to guess at the diff: the stamp adds a line to the block it is under, and the
+transcript is bottom-pinned (`flex-col-reverse`), so a stamp under a user turn shifts every
+row above it. The movement is therefore a layout shift plus about a thousand pixels of text,
+not the text alone. The smallest movements are the surfaces with the least content above the
+change: `expanded-failed-edit` 4,133px, `reader-pending` 5,082px, `roster-members` 5,992px;
+the largest are the dense transcripts (`mixed-run` 271,611px, `mixed-prose-code-and-tables`
+267,907px, `expanded-detail` 226,822px of a 1280x760 frame).
+
+THE BEFORE HALF is [`../turn-stamps-before/`](../turn-stamps-before/), declared as its own
+supplementary set because a sweep captures the current tree and can never produce it: it is
+`expanded-detail` and `prose-tool-alignment` at both widths, captured by this same harness in
+a worktree checked out at this branch's base (`0c04cbb09`), with every frame byte-identical
+to the committed copy of that path. Two stories were chosen and one dropped, and the reason
+is in that set's README: `turn-boundary-and-working-line` carries a live spinner, so its
+frames are not reproducible and a diff there would not separate the stamp from the working
+line.
+
+### Two rules the frames are the evidence for
+
+- **The stamp is OUTSIDE the pane's scrollers.** `ToolDetail` caps each of its two sections
+  and prints a `detailOverflowLabel` under it, deliberately outside the scroller so the
+  report stays true at rest. A stamp inside either section would be off screen on a long
+  payload — visible in the frames as a stamp that sits under the pane's own border, and in
+  `expanded-overflow` where the sections are at their caps.
+- **The footer no longer repeats a clock the turn above it already states.** The
+  transcript's own footer stamp is gated to last rows that paint no stamp of their own: a
+  user turn (its stamp is the line above), or a ledger row the reader has left OPEN, whose
+  stamp sits at the foot of the expanded section. A CLOSED last ledger row keeps the footer,
+  since nothing else on screen states the time there. The gate was raised because a
+  conversation asked and not yet answered printed the same clock twice with nothing between
+  them — which is what these frames caught on their first take and what the `admitted-send-*`
+  frames would otherwise show — and its second half is the open row, found in review round 1
+  (D1/Q-1) and made a membership test in round 2 (R2-1/D2-1).
+- **And it states that time in the same words.** The footer line answers the same question a
+  turn's stamp answers, so it renders the same component; it used to render the HOVER row's
+  `MessageTimestamp`, which formats for a reader already looking at the message, and the two
+  shapes met in one column as `2025-10-09` directly under `Oct 9, 2025, 4:53 AM` — visible in
+  [`../chat-notification-feed-states/cached-paint/`](../chat-notification-feed-states/cached-paint/),
+  where the same frame now carries three stamps in one shape. This is the defect class
+  `date-utils.ts` records in `formatCalendarDate`'s own comment (`August 5, 2026` beside
+  `8/5/2026, 10:40:00 AM`), so it is fixed here rather than left as a follow-up.
+  **What that second pass moved, measured** (`magick compare -metric AE` against the frames the
+  first pass committed): **97 frames, 28px to 50,981px**, every one of them a frame with a footer
+  stamp in it. The two new stories are the one case where the movement is NOT the footer alone:
+  their instants are relative to the capture, so their clock reads a few minutes later than the
+  first pass's (`2:14 PM` against `2:27 PM`) — which is those frames' documented behaviour rather
+  than a defect, and the reason the pair's own comparison is made on the deterministic stories.
+
+### Theme coverage for this pass
+
+Both brand palettes, which is this surface's own rule (see *What these frames do NOT prove*).
+The same change paints in four other surfaces, re-taken in their OWN theme sets rather than
+this one's: `chat-ask-options` (twelve palettes), `chat-notification-feed-states` (three),
+`chat-reconnect-gap` (twelve, and `restored-running` gained the ten it did not have rather
+than being left stale), and `chat-run-panel`'s reader states (two).
 
 ## Measured, not eyeballed
 

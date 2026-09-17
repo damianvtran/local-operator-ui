@@ -119,3 +119,19 @@ read and whose live event was missed while away is recovered by a later trigger
 (another snapshot, an unpainted-anchor `attention` frame, a label-gap retry)
 rather than by this read re-running. Same family as the row bound, and closed by
 the same backend half.
+
+## Re-taken for the turn stamp
+
+These frames were re-shot by `feat/transcript-timestamps`, which puts the date and time under
+a user turn (`3:42 PM`, `Yesterday 3:42 PM`, `Sep 12, 3:42 PM`, `Sep 12, 2025, 3:42 PM`) and at
+the foot of an expanded tool call. Nothing about this surface's own subject changed: the user
+turn at the head of this transcript now carries a stamp, and because the transcript is
+bottom-pinned that addition shifts the rows above it, so the frames move by more than the
+stamp's own pixels. The frames for the change itself, its before/after pair and the four
+shapes of the formatter are in [`../chat-tool-rows/`](../chat-tool-rows/) (see *The turn
+stamps*), with the before half declared in [`../turn-stamps-before/`](../turn-stamps-before/).
+
+ONE STATE GAINED PALETTES IN THIS PASS and it is worth knowing before diffing:
+`restored-running` was committed in the two brand palettes only (an earlier targeted
+refresh), and the twelve-palette run that re-took this surface reached it too, so it now has
+all twelve. The alternative was leaving ten of its frames showing the pre-change pixels.
