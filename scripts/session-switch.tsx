@@ -31,9 +31,10 @@ import "./session-switch.css";
  * than of the product. */
 import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
-import { openConversation } from "@features/chat/open-conversation";
+import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import {
@@ -249,6 +250,26 @@ type Probe = {
 		firstVia: "row" | "palette",
 		secondVia: "row" | "palette",
 	) => Promise<RaceResult>;
+	/**
+	 * THE NEW-CHAT ARM: switch to `first`, then stage a draft mid-read.
+	 *
+	 * Nothing else in this harness moves the view without switching, which is why no
+	 * arm could see it: `stageDraft` bumps the same generation counter a switch bumps
+	 * (so the switch's read reports itself superseded) while it is NOT a newer switch,
+	 * and the refusal branch used to read that as "put the session back".
+	 */
+	raceStageDraft: (
+		first: string,
+		via: "row" | "palette",
+	) => Promise<{
+		active: string | null;
+		path: string;
+		draftKey: string | null;
+		rowStaged: string | null;
+		settled: boolean;
+		error: string | null;
+		samples: RaceSample[];
+	}>;
 	record: () => RecordHandle;
 };
 
@@ -275,7 +296,12 @@ type ClickSpec = {
 	gapAfter: number;
 	/** Wait for this session's URL write instead of for the gap. */
 	when?: string;
-	via?: "row" | "palette";
+	/**
+	 * Which gesture this click is. `draft` is not a switch: it is the New-chat
+	 * gesture (`stageDraft` + `/chat`, exactly as `app.tsx` performs it), here
+	 * because a switch's refusal must not undo it.
+	 */
+	via?: "row" | "palette" | "draft";
 };
 
 type RaceSample = {
@@ -294,6 +320,8 @@ type RaceResult = {
 	/** How long the view had to hold still before the run was read. */
 	quietMs: number;
 	settled: boolean;
+	/** A gesture that threw instead of being dispatched; the arm FAILs when this is set. */
+	error: string | null;
 	active: string | null;
 	path: string;
 	/** Every conversation whose transcript rows were painted, in DOM order. */
@@ -308,7 +336,19 @@ type RaceResult = {
 /** One click sequence: what was clicked, in order, and where the view settled. */
 type RaceTrial = {
 	/** The entrance each click came from, in order. */
-	vias: Array<"row" | "palette">;
+	vias: Array<"row" | "palette" | "draft">;
+	/**
+	 * True when every click after the first is gated on the previous click's URL
+	 * WRITE (`when`) rather than on a deadline.
+	 *
+	 * The distinction is what the arm is worth, and it is printed with every trial:
+	 * the deadline-gated sequences are a regression guard that passes on the tree this
+	 * branch fixes (a deadline can only race the renderer's frame), and the
+	 * write-gated ones settle on the wrong conversation when the deferral is put back.
+	 */
+	writeGated: boolean;
+	/** A gesture that threw instead of being dispatched; the trial FAILs when this is set. */
+	error: string | null;
 	/** Every id clicked, in order - the last one is the one that must win. */
 	clicks: string[];
 	gapsMs: number[];
@@ -418,8 +458,8 @@ const rowFor = (id: string) => {
 
 const probe = window as unknown as { __lopSwitch?: Probe };
 
-/** Set by `NavigationHandle`, for the arms that dispatch a palette pick. */
-let paletteNavigate: NavigateFunction | null = null;
+/** Set by `NavigationHandle`, for the arms that dispatch a gesture which is not a row. */
+let navigateRef: NavigateFunction | null = null;
 
 const latencyOf = () => ({
 	"sessions.get": param("get", 12),
@@ -546,6 +586,26 @@ const bridge = installSwitchBridge({
  * was made against, the route at that moment, and its own call site: the product
  * code is untouched and the answer is an origin rather than an inference.
  */
+/**
+ * One stack frame, reduced to what the question is about.
+ *
+ * The attribution this log exists for is FILE-level - "the second switch arrived
+ * from an effect, not from the click" - and a full Vite dev URL per frame ran past
+ * the string's own cap and hid the second frame, which is exactly the one that says
+ * which file called `openSession`. So each frame keeps its function name and the
+ * basename of its file, with the dev-server path dropped.
+ */
+const shortFrame = (frame: string) => {
+	const match =
+		/^(?<fn>[^(]*?)\s*\(?(?:[^()]*\/)?(?<file>[^/()]+):(?<line>\d+):(?<col>\d+)\)?$/.exec(
+			frame.trim(),
+		);
+	const groups = match?.groups;
+	if (!groups) return frame.trim().slice(0, 120);
+	const fn = groups.fn?.trim() ? `${groups.fn.trim()} ` : "";
+	return `${fn}(${groups.file}:${groups.line}:${groups.col})`;
+};
+
 const openCalls: Array<{
 	id: string;
 	active: string | null;
@@ -564,10 +624,7 @@ const openCalls: Array<{
 				active: store.activeSessionId,
 				path: probePath(),
 				t: Math.round(performance.now()),
-				from: frames
-					.map((frame) => frame.trim().replace(/^\(?/, ""))
-					.join(" <- ")
-					.slice(0, 260),
+				from: frames.map(shortFrame).join(" <- "),
 			});
 			return original(sessionId);
 		},
@@ -596,15 +653,35 @@ const openCalls: Array<{
  * at `sum(gaps) + 10 s`, and a run that hits the bound is REPORTED
  * (`timedOut: true`) rather than read as a settled one.
  */
-const runSequence = (clicks: ClickSpec[]) =>
+const runSequence = (
+	clicks: ClickSpec[],
+	/*
+	 * Whether this sequence ends on a CONVERSATION. A staged draft has no transcript
+	 * rows by definition, so the readiness gate's "the target's content is on screen"
+	 * can never become true for the New-chat arm and it would report a run that hit
+	 * its deadline however correct the view was. The draft arm's claims are about the
+	 * route and the draft key, which it reads at its own readback - so it says so here
+	 * rather than being excused a verdict it never had.
+	 */
+	options: { expectTranscript?: boolean } = {},
+) =>
 	new Promise<{
 		samples: RaceSample[];
 		clickTimes: number[];
 		/** What the store held when each click was dispatched. */
 		activeBefore: Array<string | null>;
 		timedOut: boolean;
+		error: string | null;
 	}>((resolve) => {
 		const samples: RaceSample[] = [];
+		/*
+		 * A DISPATCH THAT THROWS FAILS THE ARM. The sequence used to `void` its
+		 * dispatches, so a gesture that never happened - a palette row that never
+		 * rendered, a row that had been renamed - was silently skipped and the trial
+		 * reported the settled view of a sequence that had not been run. The gate below
+		 * treats the first error as the end of the run, and every arm reports it.
+		 */
+		let dispatchError: string | null = null;
 		let last = "";
 		let lastChangeAt = performance.now();
 		const sample = () => {
@@ -642,30 +719,82 @@ const runSequence = (clicks: ClickSpec[]) =>
 		const activeBefore: Array<string | null> = [];
 		/** Every click in the sequence is dispatched exactly once, by the loop or by a watcher. */
 		let dispatched = 0;
-		const dispatch = (click: ClickSpec) => {
-			const store = useCanonicalSessionsStore.getState();
-			dispatched += 1;
+		/*
+		 * ONE DISPATCH, WHICHEVER GESTURE IT IS.
+		 *
+		 * `row` and `palette` are how a user reaches a switch, and the palette's is
+		 * driven through the PALETTE COMPONENT mounted below: the app's own open action,
+		 * then a click on the palette's own row for the session, so
+		 * `command-palette.tsx`'s handler is what runs. An earlier version of this arm
+		 * called the shared rule directly with the router's `navigate` and the README
+		 * reported the palette as covered - it was not, and a tree where
+		 * `command-palette.tsx` still deferred its write passed it 3/3.
+		 *
+		 * `draft` is the New-chat gesture, which is not a switch and is here because a
+		 * switch's refusal must not undo it.
+		 */
+		const single = () => {
 			clickTimes.push(performance.now());
-			activeBefore.push(store.activeSessionId);
+			activeBefore.push(useCanonicalSessionsStore.getState().activeSessionId);
 			sample();
-			/*
-			 * THE PALETTE'S ENTRANCE IS NOT A ROW. It calls the same rule a row calls,
-			 * with no row in the path, so reaching it any other way would be asking a
-			 * question about a code path the user does not use. The handle is the
-			 * router's own `navigate`, taken from inside the router by
-			 * `NavigationHandle` below.
-			 */
+		};
+		const guarded = async (click: ClickSpec) => {
+			try {
+				await dispatch(click);
+			} catch (error) {
+				dispatchError ??=
+					error instanceof Error ? error.message : String(error);
+			}
+		};
+		const dispatch = async (click: ClickSpec) => {
+			dispatched += 1;
 			if (click.via === "palette") {
-				if (!paletteNavigate)
+				/*
+				 * The row is WAITED FOR, and the clock starts at the click rather than at
+				 * the moment the palette was asked to open: the palette renders its list
+				 * from the catalogue a frame later, and timing from the open would report
+				 * an interval the user never spent.
+				 */
+				const row = await paletteRowFor(click.id);
+				single();
+				row.click();
+				return;
+			}
+			single();
+			if (click.via === "draft") {
+				if (!navigateRef)
 					throw new Error(
-						"the palette entrance needs the router's navigate handle; NavigationHandle mounts inside it",
+						"the New-chat gesture needs the router's navigate handle; NavigationHandle mounts inside it",
 					);
-				void openConversation(paletteNavigate, click.id);
+				useCanonicalSessionsStore.getState().stageDraft(undefined, true);
+				navigateRef("/chat");
 				return;
 			}
 			const row = rowFor(click.id);
 			if (!row) throw new Error(`no sidebar row for ${click.id}`);
 			row.click();
+		};
+		/*
+		 * THE PALETTE'S OWN ROWS. `openCommandPalette` is the store action the app's
+		 * shortcut calls, and these are the palette's `role="option"` rows, so the pick
+		 * is the component's own handler rather than a call to the rule it uses.
+		 */
+		const paletteRows = () =>
+			Array.from(document.querySelectorAll<HTMLElement>('[role="option"]'));
+		const paletteRowFor = async (sessionId: string) => {
+			const name =
+				sessions.find((candidate) => candidate.id === sessionId)?.name ?? "";
+			useUiPreferencesStore.getState().openCommandPalette();
+			const deadline = performance.now() + 3_000;
+			for (;;) {
+				const row = paletteRows().find((candidate) =>
+					candidate.textContent?.includes(name),
+				);
+				if (row) return row;
+				if (performance.now() > deadline)
+					throw new Error(`the palette never listed "${name}"`);
+				await new Promise((resolve) => requestAnimationFrame(resolve));
+			}
 		};
 		/*
 		 * A click can be gated on ANOTHER click's URL write instead of on a
@@ -685,41 +814,81 @@ const runSequence = (clicks: ClickSpec[]) =>
 		 * it - so a few turns is all it can ever need, and the gate can never outlive
 		 * the turn that would have produced the write.
 		 */
-		const atWrite = (sessionId: string, run: () => void) => {
+		const atWrite = (
+			sessionId: string,
+			run: () => void,
+			/*
+			 * Whether the write being waited for comes from a PALETTE pick. A row click
+			 * writes its URL in a microtask of its own turn, so the gate fires a few
+			 * turns later - before the renderer has painted, which is the point of this
+			 * arm. A palette pick writes its URL only after the palette has rendered its
+			 * list, so a loop of pure microtasks would spend its whole budget before that
+			 * frame arrives; that wait goes through the event loop instead.
+			 *
+			 * NOTHING ELSE YIELDS: letting the row case yield measurably cost the arm its
+			 * teeth (the second click then landed after the render the window is made of,
+			 * and `--race-write` went from 4 FAIL to 5 PASS on a tree with the deferral
+			 * put back).
+			 */
+			yieldToEventLoop = false,
+		) => {
 			const target = `/chat/${sessionId}`;
-			let turns = 0;
+			const deadline = performance.now() + 2_000;
 			const step = () => {
-				if (probePath() === target || turns++ > 64) run();
+				if (probePath() === target || performance.now() > deadline) {
+					run();
+					return;
+				}
+				if (yieldToEventLoop) setTimeout(step, 0);
 				else queueMicrotask(step);
 			};
 			queueMicrotask(step);
 		};
 		let at = 0;
-		const watchers: Array<{
-			click: { id: string; when?: string };
-			run: () => void;
-		}> = [];
-		for (const click of clicks) {
-			const row = rowFor(click.id);
-			if (!row) throw new Error(`no sidebar row for ${click.id}`);
-			if (click.when) {
-				watchers.push({ click, run: () => dispatch(click) });
-				continue;
+		const watchers: ClickSpec[] = [];
+		const schedule = async () => {
+			const startedAt = performance.now();
+			for (const click of clicks) {
+				if (click.via !== "draft") {
+					/* The gesture's own row must exist before the sequence starts, not mid-flight. */
+					const row = rowFor(click.id);
+					if (click.via !== "palette" && !row)
+						throw new Error(`no sidebar row for ${click.id}`);
+				}
+				if (click.when) {
+					watchers.push(click);
+					continue;
+				}
+				at += click.gapAfter;
+				/*
+				 * ABSOLUTE OFFSETS from the sequence's start, as before: a palette pick takes
+				 * a frame to render, and measuring the next gap from the END of that pick
+				 * would stretch the interval the reader is told the arm used. A scheduled
+				 * time already past is dispatched at once.
+				 */
+				const wait = startedAt + at - performance.now();
+				if (at > 0 && wait > 0)
+					await new Promise((resolve) => setTimeout(resolve, wait));
+				await guarded(click);
 			}
-			at += click.gapAfter;
-			/*
-			 * The click that a watcher is gated on is dispatched HERE, synchronously,
-			 * rather than through a `setTimeout(0)` like every other one: a watcher
-			 * started during this loop would otherwise be watching for a write whose
-			 * click had not happened yet, run out its turns, and fire the gated click
-			 * FIRST - which is what the first version of this arm did (measured: the
-			 * store went to B and then to A, 10 ms apart).
-			 */
-			if (at === 0) dispatch(click);
-			else setTimeout(() => dispatch(click), at);
-		}
-		for (const watcher of watchers)
-			atWrite(watcher.click.when as string, watcher.run);
+		};
+		/*
+		 * The watchers start once the loop has issued the clicks they are gated on: a
+		 * watcher started first would be watching for a write whose click had not
+		 * happened yet, run out its turns, and fire the gated click FIRST - which is
+		 * what the first version of this arm did (measured: the store went to B and
+		 * then to A, 10 ms apart).
+		 */
+		const viaOf = (id: string) =>
+			clicks.find((click) => click.id === id)?.via ?? "row";
+		void schedule().then(() => {
+			for (const watcher of watchers)
+				atWrite(
+					watcher.when as string,
+					() => void guarded(watcher),
+					viaOf(watcher.when as string) === "palette",
+				);
+		});
 		const deadline = performance.now() + at + 12_000;
 		const tick = () => {
 			sample();
@@ -738,11 +907,17 @@ const runSequence = (clicks: ClickSpec[]) =>
 			const ready =
 				quiet &&
 				dispatched === clicks.length &&
-				transcriptHasContent() &&
+				(options.expectTranscript === false || transcriptHasContent()) &&
 				nothingInFlight();
-			if (ready || performance.now() > deadline) {
+			if (ready || dispatchError !== null || performance.now() > deadline) {
 				sample();
-				resolve({ samples, clickTimes, activeBefore, timedOut: !ready });
+				resolve({
+					samples,
+					clickTimes,
+					activeBefore,
+					timedOut: !ready && dispatchError === null,
+					error: dispatchError,
+				});
 				return;
 			}
 			requestAnimationFrame(tick);
@@ -1021,6 +1196,7 @@ const api: Probe = {
 			secondClickAt,
 			quietMs: QUIET_MS,
 			settled: !run.timedOut,
+			error: run.error,
 			...settledView(),
 			selectedRow: selectedRowText(),
 			/*
@@ -1038,6 +1214,16 @@ const api: Probe = {
 	raceAtWrite: (first, second) =>
 		api.raceEntrances(first, second, "row", "row"),
 	raceEntrances: async (first, second, firstVia, secondVia) => {
+		/*
+		 * BACK TO THE BOOT SESSION FIRST. Each case must start from a settled view on a
+		 * conversation that is NOT the one it is about: a case that follows another one
+		 * would otherwise pick a conversation the view is already on, and the store
+		 * answers a re-selection from its own no-op path (`openSession` reports `true`
+		 * without issuing a read), so there would be no read in flight to supersede and
+		 * the case would pass without reaching the code it is about.
+		 */
+		await api.switchTo(OUTGOING, "reset");
+		await api.settle(OUTGOING);
 		const run = await runSequence([
 			{ id: first, gapAfter: 0, via: firstVia },
 			{ id: second, gapAfter: 0, when: first, via: secondVia },
@@ -1052,6 +1238,7 @@ const api: Probe = {
 			secondClickAt,
 			quietMs: QUIET_MS,
 			settled: !run.timedOut,
+			error: run.error,
 			...settledView(),
 			selectedRow: selectedRowText(),
 			selectedIsSecond: rowFor(second)?.getAttribute("aria-current") === "page",
@@ -1085,11 +1272,18 @@ const api: Probe = {
 			trials.push({
 				clicks: sequence.map((click) => click.id),
 				gapsMs: sequence.map((click) => click.gapAfter),
-				/* Which entrance each click came from; the driver prints it when one was the palette's. */
+				/*
+				 * Which entrance each click came from and whether the sequence's later
+				 * clicks were gated on a WRITE or on a deadline: the driver prints both,
+				 * because an arm whose gate cannot reach the window is a regression guard
+				 * and must not be read as the proof.
+				 */
 				vias: sequence.map((click) => click.via ?? "row"),
+				writeGated: sequence.slice(1).every((click) => Boolean(click.when)),
 				from,
 				activeBefore: run.activeBefore,
 				timedOut: run.timedOut,
+				error: run.error,
 				...settledView(),
 				selectedIsLast:
 					rowFor(last.id)?.getAttribute("aria-current") === "page",
@@ -1097,6 +1291,43 @@ const api: Probe = {
 			});
 		}
 		return trials;
+	},
+	raceStageDraft: async (first, via) => {
+		/*
+		 * THE NEW-CHAT ARM. Switch to `first`, then press New chat the moment `first`'s
+		 * own URL write lands - which is inside `first`'s guard read, the window the
+		 * operator's machine spent 25-32 s in. What must survive is the DRAFT: the read
+		 * that answers is superseded by an intent that is not a switch, so nothing this
+		 * switch owns may be repaired, and the route effect must not be handed a stale
+		 * `/chat/<first>` to re-open.
+		 */
+		/*
+		 * EACH CASE STARTS FROM THE BOOT SESSION. Without this, a case that runs after
+		 * another one picks a conversation the view is ALREADY on - and the store answers
+		 * a re-selection from its own no-op path (`openSession` reports `true` without
+		 * issuing a read), so there is no read in flight to supersede and the case
+		 * passes without ever reaching the code it is about (measured: the palette case
+		 * before this reset, on a tree where the defect was present).
+		 */
+		await api.switchTo(OUTGOING, "reset");
+		await api.settle(OUTGOING);
+		const run = await runSequence(
+			[
+				{ id: first, gapAfter: 0, via },
+				{ id: first, gapAfter: 0, when: first, via: "draft" },
+			],
+			{ expectTranscript: false },
+		);
+		const store = useCanonicalSessionsStore.getState();
+		return {
+			active: store.activeSessionId,
+			path: probePath(),
+			draftKey: store.activeDraftKey,
+			rowStaged: selectedRowText(),
+			settled: !run.timedOut,
+			error: run.error,
+			samples: run.samples,
+		};
 	},
 	record: () => {
 		/*
@@ -1245,7 +1476,7 @@ if (!window.location.hash) window.location.hash = "#/chat";
  * the source test in `session-switch.test.mjs`.
  */
 const NavigationHandle = () => {
-	paletteNavigate = useNavigate();
+	navigateRef = useNavigate();
 	return null;
 };
 
@@ -1260,6 +1491,14 @@ createRoot(document.getElementById("app") as HTMLElement).render(
 		 */}
 		<HashRouter>
 			<NavigationHandle />
+			{/*
+			 * THE REAL PALETTE. The palette arm drives this component: it opens the
+			 * palette the way the app's shortcut does and clicks the palette's own row
+			 * for the session, so the entrance under the arm is the entrance the user
+			 * has. Mounted outside `ShellFrame` because the app renders it from the
+			 * shell, beside the routes rather than inside them.
+			 */}
+			<CommandPalette />
 			<ShellFrame>
 				<Routes>
 					<Route path="/chat" element={<ChatPage />} />

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -892,20 +892,79 @@ test("the pane's single claim, over every combination of the rule's inputs", asy
 });
 
 /*
- * THE ONE-PLACE RULE, PINNED WHERE IT CANNOT ROT.
+ * WHERE EVERY CHAT URL IN THE RENDERER IS WRITTEN, NAMED.
  *
  * The race this branch fixes was never one bug: the sidebar's rows, the command
  * palette and the `/chat` slash rebind each wrote a switch's URL BEHIND the guard
- * read, so fixing one and leaving the others would have left the same defect
- * behind a different finger. They share one rule now
- * (`features/chat/open-conversation.ts`), and the properties that make that true
- * are structural: every entrance calls the shared rule, none of them chains a URL
- * write on the read's answer, and the rule's own delayed write is the REFUSAL
- * path only. A behavioural arm can only ask about the entrance it drives, which
- * is why these are asserted on the source here and the behaviour is asserted by
- * the arms in `session-switch-latency.mjs` (`--race`, `--race-write`,
- * `--race-palette`, `--race-fuzz`).
+ * read, so fixing one and leaving the others would have left the same defect behind
+ * a different finger. All three call one rule now
+ * (`features/chat/open-conversation.ts`), and the properties that keep that true are
+ * structural - a behavioural arm can only ask about the entrance it drives.
+ *
+ * THE FIRST VERSION OF THIS TEST LISTED THE THREE ENTRANCE FILES it knew about and
+ * asserted they call the rule. The reviewer proved both halves of what that misses:
+ * a deferral written in another shape inside a listed file passed (the old assertion
+ * matched one single-expression spelling), and a fourth entrance in a file the list
+ * did not name passed. So the assertion is the inverse: EVERY `navigate(`/chat/...`)`
+ * in the renderer is enumerated here with the reason it is not a switch's URL, and
+ * any change to that set - a new file, or one more write in a file already listed -
+ * fails until someone writes the reason down. The deferral cannot hide in an
+ * unlisted write, because there are no unlisted writes.
+ *
+ * What the listed ones are, and why none of them can defer behind a read: each is a
+ * URL-FIRST destination (an agent created, a chat-with-this-agent button, a send
+ * whose draft session just materialised). They write the route and let `ChatPage`'s
+ * route-to-store effect open it, so there is no read in front of them to answer late.
  */
+const CHAT_URL_WRITES = {
+	"src/renderer/src/app.tsx": {
+		count: 1,
+		why: "the create-agent flow lands on the agent's own chat once the agent exists",
+	},
+	"src/renderer/src/features/agent-hub/hooks/use-download-agent-mutation.ts": {
+		count: 1,
+		why: "the downloaded agent's chat, once the download answered",
+	},
+	"src/renderer/src/features/agents/components/agents-sidebar.tsx": {
+		count: 1,
+		why: "the sidebar's chat-with-this-agent button",
+	},
+	"src/renderer/src/features/agents/components/legacy-agents-page.tsx": {
+		count: 1,
+		why: "the legacy page's chat-with-this-agent button",
+	},
+	"src/renderer/src/features/chat/components/chat-page.tsx": {
+		count: 1,
+		why: "the send path re-pointing the URL once a staged draft's session has materialised - guarded by `activeSessionId === id` in the same expression, so it cannot name a conversation the store is not on",
+	},
+	"src/renderer/src/features/onboarding/components/onboarding-modal.tsx": {
+		count: 1,
+		why: "the onboarding flow landing on the agent it just created",
+	},
+};
+
+/** The renderer's own `/chat/<id>` URL writes, file by file. */
+const chatUrlWrites = () => {
+	/* The trailing slash matters: a URL without one is a FILE, and `new URL(entry, dir)` would drop the last segment. */
+	const root = new URL("../src/renderer/src/", import.meta.url);
+	const found = new Map();
+	const walk = (dir, prefix) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const rel = `${prefix}${entry.name}`;
+			if (entry.isDirectory()) {
+				walk(new URL(`${entry.name}/`, dir), `${rel}/`);
+				continue;
+			}
+			if (!/\.tsx?$/.test(entry.name)) continue;
+			const text = readFileSync(new URL(entry.name, dir), "utf8");
+			const count = (text.match(/navigate\(\s*`\/chat\//g) ?? []).length;
+			if (count > 0) found.set(`src/renderer/src/${rel}`, count);
+		}
+	};
+	walk(root, "");
+	return found;
+};
+
 const ENTRANCE_FILES = {
 	"chat-page.tsx": "src/renderer/src/features/chat/components/chat-page.tsx",
 	"command-palette.tsx":
@@ -914,24 +973,42 @@ const ENTRANCE_FILES = {
 const readSource = (path) =>
 	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
+test("every chat URL in the renderer is a write with a stated reason", () => {
+	const found = chatUrlWrites();
+	assert.deepEqual(
+		[...found.keys()].sort(),
+		Object.keys(CHAT_URL_WRITES).sort(),
+		"a `/chat/<id>` write appeared or vanished; name it in CHAT_URL_WRITES with its reason",
+	);
+	for (const [file, { count, why }] of Object.entries(CHAT_URL_WRITES)) {
+		assert.equal(
+			found.get(file),
+			count,
+			`${file} writes a chat URL ${found.get(file)} time(s), not ${count} (${why})`,
+		);
+	}
+});
+
 test("every entrance writes the switch's URL with the commit, through one rule", () => {
 	const rule = readSource(
 		"src/renderer/src/features/chat/open-conversation.ts",
 	);
 	/* The rule is where a switch's URL is written, and it writes it before the read answers. */
-	assert.match(rule, /navigate\(`\/chat\/\$\{sessionId\}`\)/);
+	assert.match(rule, /navigate\(written\)/);
 	assert.ok(
-		rule.indexOf("navigate(`/chat/${sessionId}`)") <
-			rule.indexOf("void pending.then("),
+		rule.indexOf("navigate(written)") < rule.indexOf("void pending.then("),
 		"the rule must write the URL with the commit, not from the read's answer",
 	);
 	/*
-	 * The rule's only delayed write is the REFUSAL: `replace` back to the store's
-	 * rollback target, so a failed switch cannot leave the address bar on a chat
-	 * nobody is in. Asserted so that moving the deferral into the rule - the shape
-	 * this test exists to catch - fails here rather than passing by construction.
+	 * The rule's only delayed write is the REFUSAL, and it is bounded twice: to this
+	 * call's own write still being the route, and to the draft's own route when a draft
+	 * is what superseded it. Both are asserted so that moving a deferral into the rule -
+	 * the shape this test exists to catch - fails here rather than passing by
+	 * construction.
 	 */
 	assert.match(rule, /if \(ok\) return;/);
+	assert.match(rule, /getCurrentPath\(\) !== written/);
+	assert.match(rule, /activeDraftKey/);
 	assert.match(rule, /\{ replace: true \}/);
 	for (const [name, path] of Object.entries(ENTRANCE_FILES)) {
 		const text = readSource(path);
@@ -940,12 +1017,11 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 			`${name} does not call the shared rule`,
 		);
 		/*
-		 * And no entrance defers its URL write behind the read: the exact shape the
-		 * defect had was `openSession(...).then((ok) => { if (ok) navigate(...) })`,
-		 * so it is asserted as the absence of an `openSession` call chained to a
-		 * `then`. The route-to-store effect's own `store.openSession(id);` is not
-		 * chained and is deliberately still there - it is what makes a deep link and
-		 * Back work.
+		 * And no entrance defers its URL write behind the read: the shape the defect
+		 * had was `openSession(...).then((ok) => { if (ok) navigate(...) })`, so it is
+		 * asserted as the absence of an `openSession` result being navigated on. The
+		 * route-to-store effect's own `store.openSession(id);` is not chained and is
+		 * deliberately still there - it is what makes a deep link and Back work.
 		 */
 		assert.doesNotMatch(
 			text,

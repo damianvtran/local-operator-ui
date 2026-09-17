@@ -87,6 +87,15 @@ const RACE_FUZZ = ARGS.includes("--race-fuzz");
  * from one entrance and left in another is exactly what this checks for.
  */
 const RACE_PALETTE = ARGS.includes("--race-palette");
+/*
+ * The New-chat arm: a switch, then the draft gesture inside its guard read.
+ *
+ * Nothing else the switch can meet mid-read is NOT a newer switch, which is why no
+ * arm saw the refusal branch undo one: `stageDraft` bumps the generation counter a
+ * switch bumps, so the switch's read reports itself superseded and its repair used
+ * to write the session's URL over the draft's route.
+ */
+const RACE_STAGE = ARGS.includes("--race-stage-draft");
 /**
  * The two-click race with the second click dispatched AT the first click's URL
  * write rather than a deadline, so the ordering is taken rather than raced for.
@@ -477,13 +486,41 @@ const PALETTE_RUN = `(async () => {
 	};
 })()`;
 
+const STAGE_RUN = `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const A = meta.raceFirst;
+	const cases = [
+		["row A, then New chat", await probe.raceStageDraft(A, "row")],
+		["palette A, then New chat", await probe.raceStageDraft(A, "palette")],
+	];
+	return {
+		meta,
+		cases,
+		latency: probe.bridge.log.latency,
+		getRequests: probe.bridge.log.requests
+			.filter((request) => request.op === "sessions.get")
+			.map(
+				(request) =>
+					request.sessionId +
+					" @" +
+					Math.round(request.startedAt) +
+					"-" +
+					Math.round(request.settledAt),
+			),
+		openCalls: probe
+			.openCalls()
+			.map((call) => "@" + call.t + " " + call.id + " from " + call.from),
+	};
+})()`;
+
 const FUZZ_RUN = `(async () => {
 	const probe = window.__lopSwitch;
 	const meta = probe.snapshot();
 	const A = meta.raceFirst;
 	const B = meta.raceSecond;
 	const O = meta.outgoing;
-	const click = (id, gapAfter, via) => ({ id, gapAfter, via });
+	const click = (id, gapAfter, via, when) => ({ id, gapAfter, via, when });
 	const sequences = [
 		/*
 		 * ONE CLICK, dispatched the moment the reset switch has COMMITTED.
@@ -515,6 +552,25 @@ const FUZZ_RUN = `(async () => {
 		[click(A, 0, "palette"), click(B, 20)],
 		[click(A, 0), click(B, 20, "palette")],
 		[click(A, 0, "palette"), click(B, 20, "palette")],
+		/*
+		 * AND THE WRITE-GATED ONES, which are the sequences with teeth. Every click
+		 * after the first is dispatched the moment the PREVIOUS click's URL write is
+		 * observable to JavaScript (the "when" field), which is inside the interval the
+		 * deferral used to open: a write-gated sequence settles on the wrong
+		 * conversation when the write is deferred behind the guard read, and a
+		 * gap-gated one does not (a 20 ms deadline either side of a render is a coin
+		 * toss, not a gate).
+		 *
+		 * They differ in the way a user's own clicking differs - a second pick, a third
+		 * pick, a re-click of the row already open, a re-click of the row the page
+		 * booted on, and the palette on either side.
+		 */
+		[click(A, 0), click(B, 0, undefined, A)],
+		[click(A, 0), click(B, 0, undefined, A), click(A, 0, undefined, B)],
+		[click(B, 0), click(B, 0, undefined, B), click(A, 0, undefined, B)],
+		[click(O, 0), click(A, 0, undefined, O), click(B, 0, undefined, A)],
+		[click(A, 0, "palette"), click(B, 0, undefined, A), click(A, 0, undefined, B)],
+		[click(A, 0), click(B, 0, "palette", A)],
 	];
 	const trials = await probe.raceMany(sequences);
 	return {
@@ -1051,7 +1107,7 @@ const main = async () => {
 	for (const [key, value] of Object.entries(SCENARIO))
 		if (value !== null && value !== undefined) query.set(key, value);
 	if (FAIL_GET) query.set("fail", "incoming");
-	if (RACE || RACE_FUZZ || RACE_PALETTE) {
+	if (RACE || RACE_FUZZ || RACE_PALETTE || RACE_STAGE) {
 		query.set("race", "1");
 		query.set("raceGap", String(RACE_GAP));
 		query.set("raceGetA", RACE_GET_A);
@@ -1196,15 +1252,17 @@ const main = async () => {
 		]);
 
 	const { result } = await runWithDeadline(
-		RACE_PALETTE
-			? PALETTE_RUN
-			: RACE_FUZZ
-				? FUZZ_RUN
-				: RACE
-					? RACE_RUN(RACE_WRITE)
-					: FAIL_GET
-						? FAIL_RUN
-						: RUN(SWITCHES),
+		RACE_STAGE
+			? STAGE_RUN
+			: RACE_PALETTE
+				? PALETTE_RUN
+				: RACE_FUZZ
+					? FUZZ_RUN
+					: RACE
+						? RACE_RUN(RACE_WRITE)
+						: FAIL_GET
+							? FAIL_RUN
+							: RUN(SWITCHES),
 		FAIL_GET ? 90_000 : 60_000 + SWITCHES * 25_000,
 	);
 	if (!result.value)
@@ -1212,6 +1270,50 @@ const main = async () => {
 			`the page threw instead of returning a run table: ${result.description ?? JSON.stringify(result)}`,
 		);
 
+	if (RACE_STAGE) {
+		const { meta, cases, latency, getRequests, openCalls } = result.value;
+		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
+		console.log(
+			"new-chat arm - a draft staged inside a switch's guard read must survive it",
+		);
+		console.log(
+			`  A=${meta.raceFirst} ("${meta.raceFirstTitle}")  scripted owner latencies (ms): ${JSON.stringify({ A: RACE_GET_A, B: RACE_GET_B })}  ·  load average ${loads.join(" ")} on ${cpus().length} cores`,
+		);
+		let failures = 0;
+		for (const [label, race] of cases) {
+			/*
+			 * THREE CLAIMS, and the first two are the user's: the route is the draft's
+			 * (`/chat`), and the draft key is still set. The third is that the run
+			 * settled rather than hitting its deadline - a switch whose read never
+			 * answered would pass the first two vacuously.
+			 */
+			const verdict = {
+				"the New chat route stands": race.path === "/chat",
+				"the staged draft is still staged": Boolean(race.draftKey),
+				"the run settled rather than hit its deadline": race.settled,
+				"every gesture reached the page": race.error === null,
+			};
+			const passed = Object.values(verdict).every(Boolean);
+			if (!passed) failures += 1;
+			console.log(
+				`  ${passed ? "PASS" : "FAIL"}  ${label}  (path=${race.path} active=${race.active} draft=${race.draftKey}${race.error ? `  dispatch error: ${race.error}` : ""})`,
+			);
+			for (const [claim, held] of Object.entries(verdict))
+				console.log(`        ${held ? "PASS" : "FAIL"}  ${claim}`);
+			/*
+			 * THE TIMELINE IS PRINTED FOR EVERY CASE, not only the failures: this arm's
+			 * subject is an ORDERING (the draft staged between the write and the read's
+			 * answer), and a PASS that does not show the ordering can be a pass for the
+			 * wrong reason - which is how the palette case first read.
+			 */
+			console.log(`        timeline: ${JSON.stringify(race.samples)}`);
+		}
+		console.log(`  guard reads: ${getRequests.join(", ")}`);
+		console.log("  openSession calls:");
+		for (const call of openCalls) console.log(`    ${call}`);
+		if (failures > 0) process.exitCode = 1;
+		return;
+	}
 	if (RACE_PALETTE) {
 		const { meta, cases, latency, getRequests, openCalls } = result.value;
 		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
@@ -1245,11 +1347,12 @@ const main = async () => {
 				"the sidebar's current row is the second choice's":
 					race.selectedIsSecond,
 				"the run settled rather than hit its deadline": race.settled,
+				"every gesture reached the page": race.error === null,
 			};
 			const passed = Object.values(verdict).every(Boolean);
 			if (!passed) failures += 1;
 			console.log(
-				`  ${passed ? "PASS" : "FAIL"}  ${label}  (active=${race.active} path=${race.path} painted=${JSON.stringify(race.painted)})`,
+				`  ${passed ? "PASS" : "FAIL"}  ${label}  (active=${race.active} path=${race.path} painted=${JSON.stringify(race.painted)}${race.error ? `  dispatch error: ${race.error}` : ""})`,
 			);
 			for (const [claim, held] of Object.entries(verdict))
 				console.log(`        ${held ? "PASS" : "FAIL"}  ${claim}`);
@@ -1284,6 +1387,7 @@ const main = async () => {
 				painted: trial.painted.length === 1 && trial.painted[0] === last,
 				marked: trial.selectedIsLast,
 				settled: !trial.timedOut,
+				dispatched: trial.error === null,
 			};
 			const passed = Object.values(held).every(Boolean);
 			if (!passed) failures += 1;
@@ -1298,10 +1402,18 @@ const main = async () => {
 			const entrances = trial.vias.includes("palette")
 				? `  ·  entrances ${trial.vias.join(",")}`
 				: "";
+			/*
+			 * WHICH GATE, because the two are not the same evidence: a write-gated
+			 * sequence can reach the window the deferral opens and a deadline-gated one
+			 * cannot (it passes on the unfixed tree). Printed for every trial so no
+			 * reader has to infer it from the gap list.
+			 */
+			const gate = trial.writeGated ? "write-gated" : "deadline";
 			console.log(
-				`  ${passed ? "PASS" : "FAIL"}  ${trial.clicks.join(" -> ")}  (gaps ${trial.gapsMs.join(",")}${entrances})  active=${trial.active} path=${trial.path} painted=${JSON.stringify(trial.painted)}${passed ? "" : `  broken: ${broken.join(", ")}`}`,
+				`  ${passed ? "PASS" : "FAIL"}  ${trial.clicks.join(" -> ")}  (${gate}${entrances})  active=${trial.active} path=${trial.path} painted=${JSON.stringify(trial.painted)}${passed ? "" : `  broken: ${broken.join(", ")}`}`,
 			);
 			if (!passed) {
+				if (trial.error) console.log(`        dispatch error: ${trial.error}`);
 				console.log(
 					`        dispatched on: ${JSON.stringify(trial.activeBefore)}`,
 				);
@@ -1313,7 +1425,7 @@ const main = async () => {
 		console.log("  openSession calls:");
 		for (const call of openCalls) console.log(`    ${call}`);
 		console.log(
-			`  ${trials.length - failures}/${trials.length} sequences ended on the row the user clicked last`,
+			`  ${trials.length - failures}/${trials.length} sequences ended on the choice the user made last  ·  ${trials.filter((trial) => trial.writeGated).length} write-gated, ${trials.filter((trial) => !trial.writeGated).length} deadline-gated`,
 		);
 		if (failures > 0) process.exitCode = 1;
 		return;
@@ -1341,6 +1453,8 @@ const main = async () => {
 				race.painted.length === 1 && race.painted[0] === meta.raceSecond,
 			"the sidebar's current row is the second click's": race.selectedIsSecond,
 			"the run settled rather than hit its deadline": race.settled,
+			/* A sequence whose gesture never happened proves nothing; say so rather than pass. */
+			"every gesture reached the page": race.error === null,
 		};
 		const passed = Object.values(verdict).every(Boolean);
 		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
