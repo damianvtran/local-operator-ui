@@ -398,11 +398,7 @@ const ThemeOptionTile: FC<{
 	const Icon = THEME_ICONS[id];
 
 	return (
-		<Tooltip
-			side="bottom"
-			align="start"
-			content={description}
-		>
+		<Tooltip side="bottom" align="start" content={description}>
 			<button
 				type="button"
 				data-theme-tile={id}
@@ -603,7 +599,10 @@ export const ThemeSelector: FC = () => {
 			Home: 0,
 			End: tiles.length - 1,
 		};
-		const next = Math.max(0, Math.min(tiles.length - 1, offsets[event.key] ?? index));
+		const next = Math.max(
+			0,
+			Math.min(tiles.length - 1, offsets[event.key] ?? index),
+		);
 		if (next !== index) tiles[next].focus();
 	};
 
@@ -617,10 +616,7 @@ export const ThemeSelector: FC = () => {
 		 * that renders the list owns the provider, with this surface's own delays.
 		 */
 		<TooltipProvider>
-			<div
-				onKeyDown={moveFocus}
-				className="flex flex-col gap-6"
-			>
+			<div onKeyDown={moveFocus} className="flex flex-col gap-6">
 				{groups.map((group) => (
 					<div key={group.label}>
 						<h3 className="px-1 pb-2 text-meta text-ink-dim">{group.label}</h3>
