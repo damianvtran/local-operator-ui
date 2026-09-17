@@ -100,6 +100,7 @@ let WINDOW_VIEWPORT = { width: 1380, height: 868 };
 
 const transcript = [];
 let failures = 0;
+let skips = 0;
 
 function record(label, body) {
 	transcript.push(`### ${label}\n\n\`\`\`\n${body}\n\`\`\`\n`);
@@ -115,6 +116,31 @@ function check(label, ok, detail) {
 	);
 	record(label, `[${status}] ${detail === undefined ? "" : detail}`);
 	return ok;
+}
+
+/**
+ * A check that could not be TAKEN, reported as one rather than as a failure
+ * (QA round 2, Q1).
+ *
+ * WHY THIS EXISTS AND WHEN IT IS THE HONEST ANSWER: probe P12 samples the
+ * frontmost application through `osascript`, and on this host System Events can
+ * stop answering altogether — QA measured `AppleEvent timed out (-1712)` after
+ * 120.33 s and `-609 Connection is invalid` on a second probe — in which case the
+ * sampler collects ZERO samples and there is no reading to assert against. That
+ * is not a property of the app, so failing the run over it says "the app raised
+ * its window" when nothing was observed at all; but silently passing it would be
+ * worse, because a vacuous pass is exactly the false-green this change exists to
+ * remove. Hence a third status that is neither: printed, counted, and named in a
+ * record, so the transcript says which check was not taken and why.
+ *
+ * IT IS NOT A GENERAL ESCAPE HATCH: only a check whose instrument is OUTSIDE the
+ * harness's control qualifies (the OS declining to answer), never one that
+ * measured the app and disagreed.
+ */
+function skip(label, detail) {
+	skips += 1;
+	say(`[SKIP] ${label}${detail === undefined ? "" : `\n        ${detail}`}`);
+	record(label, `[SKIP] ${detail === undefined ? "" : detail}`);
 }
 
 // ---- the local site the proof drives ---------------------------------------
@@ -1096,9 +1122,21 @@ async function main() {
 		 * copy (this app's sentences since #205, and the pre-#205 "offline" ones, so the
 		 * read works on either tree). The numbers are printed rather than hidden: a
 		 * frame that is prettier than the app is not evidence.
+		 *
+		 * THE WHOLE BAND, NOT THE FIRST NOTICE (review round 2, D15). The shell can carry
+		 * TWO stacked notices at once - the connectivity band (68 CSS px with main's second
+		 * line) and the compatibility band (53) - and `app.tsx` sums exactly that pair
+		 * (68 + 53 = 121) for the case this run is in. The finder used to `find()` the FIRST
+		 * candidate whose copy matched the regex, and the regex did not carry the
+		 * compatibility banner's sentence at all, so the number it printed (68) under-
+		 * reported the band in the frame by 53 px and its `overlaps` compared 68 against a
+		 * strip at 121: ~53 px of headroom that did not exist, on a band that ends 1 px
+		 * above the strip's own top border. Now EVERY matching candidate is collected and
+		 * the reading is the UNION of their boxes, with each notice named beside it, so the
+		 * figure a reader quotes is the band the frame carries.
 		 */
 		const banner = await evaluate(`(() => {
-			const bannerText = /The server is offline|You are offline|A connectivity issue has been detected|Not connected to a Local Operator server|The Local Operator server stopped/i;
+			const bannerText = /The server is offline|You are offline|A connectivity issue has been detected|Not connected to a Local Operator server|The Local Operator server stopped|The Local Operator server is not answering|No Local Operator daemon was found/i;
 			/*
 			 * Shape-independent on purpose: a div.fixed finder read "no banner" over a
 			 * window carrying one the moment the bands moved into flow (D9), which is the
@@ -1119,18 +1157,23 @@ async function main() {
 					strips.push(child);
 				}
 			}
-			const el = strips.find((node) => bannerText.test(node.innerText || '')) ?? null;
+			const notices = strips.filter((node) => bannerText.test(node.innerText || ''));
 			const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
 			const box = (r) => r ? { top: Math.round(r.top), height: Math.round(r.height) } : null;
 			const s = strip ? strip.getBoundingClientRect() : null;
-			if (!el) return { present: false, tabStrip: box(s), overlapsTabStrip: null };
-			const b = el.getBoundingClientRect();
+			const headline = (node) => (node.innerText || '').split('\\n')[0].slice(0, 48);
+			if (!notices.length) return { present: false, tabStrip: box(s), overlapsTabStrip: null };
+			const boxes = notices.map((node) => node.getBoundingClientRect());
+			const top = Math.round(Math.min(...boxes.map((b) => b.top)));
+			const bottom = Math.round(Math.max(...boxes.map((b) => b.bottom)));
 			return {
 				present: true,
-				text: (el.innerText || '').split('\\n')[0].slice(0, 60),
-				banner: box(b),
+				notices: notices.length,
+				text: headline(notices[0]),
+				banner: { top, height: bottom - top },
+				each: notices.map((node) => ({ text: headline(node), ...box(node.getBoundingClientRect()) })),
 				tabStrip: box(s),
-				overlapsTabStrip: s ? b.bottom > s.top : null,
+				overlapsTabStrip: s ? bottom > s.top : null,
 			};
 		})()`);
 		record(
@@ -1140,7 +1183,7 @@ async function main() {
 		check(
 			"the tab strip is present in the layout, whether or not the connectivity banner is up over it",
 			banner.tabStrip !== null && banner.tabStrip.height > 30,
-			`banner ${JSON.stringify(banner.banner ?? null)} (${banner.text ?? "not up in this run"}), tab strip ${JSON.stringify(banner.tabStrip)}, overlaps ${banner.overlapsTabStrip}`,
+			`banner ${JSON.stringify(banner.banner ?? null)}${banner.present ? ` over ${banner.notices} notice(s) ${JSON.stringify(banner.each)}` : ""} (${banner.text ?? "not up in this run"}), tab strip ${JSON.stringify(banner.tabStrip)}, overlaps ${banner.overlapsTabStrip}`,
 		);
 		/*
 		 * The suppression is re-asserted before EVERY frame by `captureRenderer`, so
@@ -1825,14 +1868,26 @@ async function main() {
 		// (design 6.3 — that is the property, not an inconvenience), so the agent's
 		// tab is activated for the frame. Both tabs are in the strip either way, which
 		// is what this frame is about.
+		//
+		// THE RECT IS RE-MEASURED HERE, NOT THE ONE READING TAKEN ON THE EMPTY SURFACE
+		// (QA round 2, Q3). `rect` is this run's first geometry reading, taken before
+		// the band existed, and this frame is composed with the band OPEN: the page
+		// layer is pasted at that older `y`, so it painted over the band's own rows and
+		// the URL bar below the heading — the "heading with no rows under it" Q3 filed.
+		// The app's own rectangle is what `compose` has to paste the page into, which is
+		// what the band's own frame already does (`rectWithActions`). The other
+		// call sites that still pass the stale `rect` are NOT touched here: the frames
+		// they write are this harness's own scratch output, and the set this branch ships
+		// from the run is `09`, `16` and `17`.
 		await activateAgentTab();
 		await sleep(800);
 		const mixedFrame = await captureRenderer("09-strip-user-and-agent");
+		const mixedRect = await contentRect();
 		await compose(
 			"09-strip-user-and-agent",
 			mixedFrame,
 			await capturePage(state, agentToken, "agent-tab-page"),
-			rect,
+			mixedRect,
 		);
 		say(`frame: ${join(OUT_DIR, "09-strip-user-and-agent.png")}`);
 
@@ -3004,13 +3059,20 @@ async function main() {
 		);
 		// ---- 10. focus (probe P12) -------------------------------------------
 		const frontmostAfter = await frontmost();
-		check(
-			"the app's own process never became the frontmost application (probe P12, sampled through the run)",
-			sampler.samples.length > 0 && sampler.appWasFrontmost() === 0,
-			sampler.samples.length === 0
-				? `the OS would not answer (last reading ${frontmostAfter}); the deterministic evidence is the window-mode guard test`
-				: `app pid ${app.child.pid}; ${sampler.samples.length} samples; frontmost was ${sampler.distinct().join(", ")}; the app was frontmost in ${sampler.appWasFrontmost()} of them`,
-		);
+		if (sampler.samples.length === 0) {
+			// See `skip`: with no sample at all there is nothing to assert against, and
+			// the OS declining to answer is not the app's behaviour.
+			skip(
+				"the app's own process never became the frontmost application (probe P12, sampled through the run)",
+				`the OS would not answer at all (last reading ${frontmostAfter}); sampler collected 0 samples, so no reading exists to assert on - System Events is not answering for this session. The deterministic evidence for this property is the window-mode guard test; the two point readings are recorded below.`,
+			);
+		} else {
+			check(
+				"the app's own process never became the frontmost application (probe P12, sampled through the run)",
+				sampler.appWasFrontmost() === 0,
+				`app pid ${app.child.pid}; ${sampler.samples.length} samples; frontmost was ${sampler.distinct().join(", ")}; the app was frontmost in ${sampler.appWasFrontmost()} of them`,
+			);
+		}
 		record(
 			"frontmost application, sampled through the run",
 			`before: ${frontmostBefore}\nafter: ${frontmostAfter}\nsamples: ${sampler.distinct().join(", ")}\nthe app's pid (${app.child.pid}) was frontmost in ${sampler.appWasFrontmost()} of ${sampler.samples.length} samples`,
@@ -3802,7 +3864,7 @@ async function main() {
 	const reportPath = join(OUT_DIR, "proof.md");
 	writeFileSync(reportPath, transcript.join("\n"));
 	say(
-		`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`,
+		`\n${failures === 0 ? `ALL CHECKS PASSED${skips > 0 ? ` (${skips} SKIPPED)` : ""}` : `${failures} CHECK(S) FAILED`}`,
 	);
 	say(`transcript: ${reportPath}`);
 	say(`frames:     ${OUT_DIR}`);
