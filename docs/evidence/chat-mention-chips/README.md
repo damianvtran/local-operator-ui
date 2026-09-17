@@ -16,8 +16,12 @@ to happen for one to exist.
 no surface which talks to a backend; the composer here reaches only the three
 channels below), plus one narrowed run for
 `--only=chat-mention-chips--picker-many-rows` when the row-budget entry was added.
-That pass ran at `c5492ebfb995cc2efda425923a1cae610b865801`, twelve themes: **276
-frames over 23 directories**.
+That pass ran at `561be43e2d71e572c5a140d10cc8e570d7dd090b`, twelve themes: **276
+frames over 23 directories**. (The head is cited in the spelling this branch
+ships: the pass first landed on `c5492ebfb`, and the rebase onto `origin/main`
+replayed that commit as `561be43e2`, so the pre-rebase spelling is one a reviewer
+cannot fetch. The frames themselves are unchanged — a rebase replays this
+branch's own commit content, and no `.webp` here moved.)
 
 **Provenance, stated because it is not a full sweep.** `frames` is re-derived from
 the tree the way `check-evidence.mjs` derives it — every `.webp` under
