@@ -41,7 +41,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText, restoreSubmittedAttachments, adoptRefusedPayload, refusedSplitNotice} from "./src/renderer/src/shared/hooks/use-message-input"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText, restoreSubmittedAttachments, adoptRefusedPayload, refusedSplitNotice, heldClaimCopy, RESTORE_LABEL, STORE_CLAIM_KNOWN_FACT} from "./src/renderer/src/shared/hooks/use-message-input"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -122,6 +122,9 @@ const {
 	restoreSubmittedText,
 	adoptRefusedPayload,
 	refusedSplitNotice,
+	heldClaimCopy,
+	RESTORE_LABEL,
+	STORE_CLAIM_KNOWN_FACT,
 	useConversationInputStore,
 	withholdsRetryHint,
 } = module;
@@ -1253,13 +1256,20 @@ test("a failed store is refused with its own code, and the retry hint it cannot 
 		 */
 		assert.equal(isStoreWriteRefusal(draft.errorCode), true);
 		/*
-		 * And the outcome stays UNKNOWABLE, deliberately. A store failure is not a
-		 * validation refusal: the write that failed may have been the transcript
-		 * append or the completion row, so the renderer cannot claim the message
-		 * never reached the owner. That is why the text does NOT go back in the box
-		 * (the echo stays painted, and Restore replays the claim) - the one part of
-		 * this path that touches ownership, asserted here so a later change cannot
-		 * quietly turn it into a pre-admission refusal.
+		 * And the outcome is KNOWN, which is the sibling contract's own reading of these
+		 * two codes: `local_operator/server/utils/store_failures.py` says the two
+		 * non-retryable codes mean this request was NOT ADMITTED, that no durable row
+		 * exists for the message, and that a client may state that plainly - which is
+		 * what this PR's held claim does ("Nothing was saved ...").
+		 *
+		 * The text does not go back in the box for a reason that is NOT about the
+		 * outcome: the payload is HELD (the box stays empty and `Restore message` puts
+		 * it back byte for byte), and the echo above is this app's own copy rather than
+		 * the agent's. The one thing the claim does not say is that every byte is gone:
+		 * on the `ENOSPC` file-append arm an attachment blob may have been written
+		 * before its sidecar failed, so "nothing was saved" is true of the ADMISSION.
+		 * Asserted here so a later change cannot quietly turn this into a pre-admission
+		 * refusal, which is a different state (echo retracted, text restored).
 		 */
 		assert.equal(
 			isRefusedBeforeAdmission(
@@ -1313,45 +1323,311 @@ test("a failed store is refused with its own code, and the retry hint it cannot 
  * would pass a test that only matched the copy - so the assertion here is the
  * identity of the two readers, not the wording.
  */
-test("the store refusal's held line states the known fact and names the control its sentence needs", () => {
+test("the held claim follows the claim's own verdict, and names the control its sentence needs", () => {
+	/*
+	 * U4 (round 1): underneath a store refusal, the shared held line says the
+	 * outcome is "not knowable" and gates the retry on a reply arriving - false
+	 * here, in the incident's own direction, because a store that could not write
+	 * knows nothing was saved while the transcript above shows the message painted.
+	 *
+	 * U10 (round 2), which is WHICH refusal answers this: the sentence is chosen by
+	 * the failure that LEFT the payload held, never by the refusal on screen. The
+	 * two part company on the operator's own remedy - `Restore message`, drop the
+	 * file, Enter - where the unchanged-payload guard is the refusal, so a line read
+	 * off the live code reverted to the lost-response register one screen after the
+	 * app said "Nothing was saved". The (claim, copy-on-screen) matrix below is the
+	 * whole decision, and the wiring pins after it are the call site.
+	 */
+	for (const claimCode of [STORE_OUT_OF_SPACE_CODE, STORE_UNAVAILABLE_CODE])
+		for (const copyOnScreen of [true, false]) {
+			const line = heldClaimCopy(claimCode, copyOnScreen);
+			assert.ok(
+				line.startsWith(
+					`Choose ${RESTORE_LABEL} to put it back in the composer.`,
+				),
+				`the remedy is not the FIRST thing the claim says for ${claimCode}: the clause is what a narrow window cuts last, and the operator is left with a failure and no statement of what to do about it (QA round 1's Q-1, D5, M1, U11)`,
+			);
+			assert.ok(
+				line.includes(STORE_CLAIM_KNOWN_FACT),
+				`the claim no longer states the known fact for ${claimCode}, which is the one thing a store refusal knows and a lost response does not (UX round 1, U4)`,
+			);
+			assert.doesNotMatch(
+				line,
+				/not knowable/,
+				`the claim calls the outcome unknowable for ${claimCode}, which is the sentence that tells the operator to wait for a reply a failed write makes impossible (UX round 1, U4)`,
+			);
+		}
+	/*
+	 * The other register, unchanged and asserted here so a later edit to the store
+	 * arm cannot quietly restate it: contention really is unknowable, the guard's
+	 * code is not a store verdict at all, and `copyOnScreen` still decides whether
+	 * the sentence points at a copy of the message (UX round 2, U3).
+	 */
+	const unknownNoCopy = heldClaimCopy("store_busy", false);
+	const unknownWithCopy = heldClaimCopy("store_busy", true);
+	assert.match(unknownNoCopy, /not knowable/);
+	assert.doesNotMatch(unknownNoCopy, /in the transcript above/);
+	assert.match(unknownWithCopy, /its copy is in the transcript above/);
+	assert.equal(
+		heldClaimCopy(UNCONFIRMED_SEND_CODE, true),
+		unknownWithCopy,
+		"the guard's own code is being read as a store verdict, so the claim it refuses loses the fact it was holding (UX round 2, U10)",
+	);
+	assert.equal(heldClaimCopy(undefined, false), unknownNoCopy);
+
+	// The wiring, at the two ends the sentence travels between.
 	const source = readFileSync(
 		"src/renderer/src/features/chat/components/message-input.tsx",
 		"utf8",
 	);
-	const heldCopy = source.slice(
-		source.indexOf("const storeWriteRefused ="),
-		source.indexOf("heldCopy,\n", source.indexOf("const storeWriteRefused =")),
-	);
-	assert.ok(heldCopy.length > 0, "the held line is no longer composed at all");
 	assert.match(
-		heldCopy,
+		source,
+		/heldClaimCopy\(\s*sendError\?\.heldClaimCode,\s*heldCopyOnScreen === true,?\s*\)/,
+		"the composer no longer builds the held claim from the CLAIM's verdict, so the refusal on screen decides what the claim may say about a payload it did not produce (UX round 2, U10)",
+	);
+	assert.doesNotMatch(
+		source,
 		/isStoreWriteRefusal\(sendError\?\.code\)/,
-		"the held line no longer consults the store predicate the retry hint is withheld by, so one screen can tell the operator to wait for a reply the code above it says cannot come (UX round 1, U4)",
-	);
-	assert.match(
-		heldCopy,
-		/\$\{RESTORE_LABEL\}/,
-		"the store refusal's sentence no longer names the control, so its own 'send it again' is an instruction the empty box cannot carry out (UX round 1, U1) - and it must be the SAME constant the button is labelled with, not a second copy of the words",
+		"the held line is asking the ACTIVE refusal's code again: on the operator's own remedy that code is the guard's, and the claim reverts to 'not knowable' one screen after the app said nothing was saved (UX round 2, U10)",
 	);
 	assert.match(
 		source,
 		/>\s*\{RESTORE_LABEL\}/,
-		"the restore button is no longer labelled from the shared constant, so the sentence and the control can drift apart",
+		"the restore button is no longer labelled from the shared constant, so the sentence and the control can drift apart (UX round 1, U1)",
 	);
-	// The other arms keep the shared sentence, which is the one thing that must NOT
-	// move: for them the outcome really is unknowable, and `heldCopyOnScreen` still
-	// decides whether it points at a copy of the message.
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
 	assert.match(
-		heldCopy,
-		/heldCopyOnScreen === true/,
-		"the shared held sentence no longer distinguishes the case where the payload's copy is on screen, which is the branch the point-at-the-transcript clause exists for (UX round 2, U3)",
+		page,
+		/heldClaimCode:\s*\n?\s*heldText !== undefined \? draft\?\.heldClaimCode : undefined/,
+		"the claim's verdict no longer travels from the row, so the composer is asked to state a fact it was never given (UX round 2, U10)",
 	);
-	// Behaviour, executed: the predicate is what the wiring above is selected by.
-	assert.equal(isStoreWriteRefusal(STORE_OUT_OF_SPACE_CODE), true);
-	assert.equal(isStoreWriteRefusal(STORE_UNAVAILABLE_CODE), true);
-	assert.equal(isStoreWriteRefusal("store_busy"), false);
+	const storeSource = readFileSync(
+		"src/renderer/src/shared/store/canonical-sessions-store.ts",
+		"utf8",
+	);
+	assert.match(
+		storeSource,
+		/heldClaimCode: failureCode/,
+		"a post-admission failure no longer records its code against the payload it left held",
+	);
+	assert.match(
+		storeSource,
+		/\{ admissionAttempted: false, heldClaimCode: undefined \}/,
+		"a refusal before admission still records a claim verdict for a payload nobody is holding",
+	);
+	assert.match(
+		storeSource,
+		/heldClaimCode: _claimCode/,
+		"`releaseClaim` no longer drops the claim's verdict, so the next held payload can inherit this one's register",
+	);
+});
+
+/*
+ * UX round 2's U10, executed on the row instead of argued from the source.
+ *
+ * The claim's verdict has to outlive the refusal that comes after it, and the
+ * refusal that comes after it on the operator's own remedy is the GUARD's - which
+ * throws before `admitChatDraft`'s catch (its check sits above the function's
+ * `try`), so it never rewrites the row. What it does do is put its own code in
+ * front of the composer (`activeErrorCode`), and that is the code the held line
+ * used to read.
+ */
+test("the claim's verdict survives the guard that refuses the operator's own remedy (U10)", async () => {
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return Promise.reject(
+			new DesktopControlError(
+				507,
+				"This computer is out of disk space, so the message could not be written.",
+				undefined,
+				STORE_OUT_OF_SPACE_CODE,
+			),
+		);
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const session = "222222222222";
+	const text = "look at this screenshot";
+	const file = "/tmp/a.png";
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text, attachments: [file] }, session),
+		(error) => error.code === STORE_OUT_OF_SPACE_CODE,
+	);
+	assert.equal(
+		store.getState().drafts[key].heldClaimCode,
+		STORE_OUT_OF_SPACE_CODE,
+		"the failure that left the payload held no longer records its verdict against the claim",
+	);
+
+	/*
+	 * Restore, drop the file, Enter - the remedy the incident's operator followed.
+	 * The store is healthy again here (the request resolves), so this measures the
+	 * ROW and not the ladder: the press never reaches the wire because the guard
+	 * refuses it first.
+	 */
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return {};
+	};
+	const callsBefore = calls.length;
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text, attachments: [] }, session),
+		(error) => error.code === UNCONFIRMED_SEND_CODE,
+	);
+	assert.equal(
+		calls.length,
+		callsBefore,
+		"the guard's refusal reached the transport, so this is not the state the composer renders",
+	);
+	const refused = store.getState().drafts[key];
+	assert.equal(
+		refused.heldClaimCode,
+		STORE_OUT_OF_SPACE_CODE,
+		"the guard's refusal overwrote the claim's verdict, so the held line reverts to 'not knowable' one screen after the app said nothing was saved (UX round 2, U10)",
+	);
+	assert.equal(
+		isStoreWriteRefusal(refused.heldClaimCode),
+		true,
+		"the claim's verdict is no longer a store write refusal, so the held line cannot state the known fact",
+	);
+	// And the ACTIVE code is the guard's, which is exactly why the held line must
+	// not read it: this is the pair the composer sees on that screen.
 	assert.equal(isStoreWriteRefusal(UNCONFIRMED_SEND_CODE), false);
-	assert.equal(isStoreWriteRefusal(undefined), false);
+
+	/*
+	 * Dismissing the sentence is not abandoning the payload, and the two verdicts
+	 * differ exactly there: `onDismiss` clears `error`/`errorCode` (the ATTEMPT's)
+	 * and must leave the claim's alone, because a keystroke is not evidence about a
+	 * request that may be executing on the owner.
+	 */
+	store.getState().updateDraft(key, { error: undefined, errorCode: undefined });
+	assert.equal(
+		store.getState().drafts[key].heldClaimCode,
+		STORE_OUT_OF_SPACE_CODE,
+	);
+
+	// The claim ends, and its verdict ends with it.
+	store.getState().releaseClaim(key);
+	assert.equal(
+		store.getState().drafts[key].heldClaimCode,
+		undefined,
+		"the released claim kept its verdict, so the next held payload can inherit a failure that is not its own",
+	);
+});
+
+/*
+ * QA round 1's Q-2, the same finding one step further along the same flow: after
+ * the operator drops the file, `Restore message` put the TEXT back and left the chip
+ * row alone, so the payload was still not the held one, the guard refused the next
+ * Enter with the same two controls, and the control that names the operator's
+ * remedy could not deliver it. The only control that worked in that state was the
+ * escape beside it, which does not resolve the state the app itself left.
+ *
+ * Both halves are executed here because both halves are what the guard compares:
+ * the press's own rule writes the held paths into the chip row, and the send that
+ * follows with them is ADMITTED - the same send without them is the refusal the
+ * test above measures.
+ */
+test("Restore hands back both halves of the held payload, so the guard admits it (Q-2)", async () => {
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return Promise.reject(
+			new DesktopControlError(
+				507,
+				"This computer is out of disk space, so the message could not be written.",
+				undefined,
+				STORE_OUT_OF_SPACE_CODE,
+			),
+		);
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const session = "222222222222";
+	const text = "look at this screenshot";
+	const file = "/tmp/a.png";
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text, attachments: [file] }, session),
+		(error) => error.code === STORE_OUT_OF_SPACE_CODE,
+	);
+	const held = store.getState().drafts[key];
+	assert.deepEqual(
+		held.submittedAttachments,
+		[file],
+		"the claim no longer records the files the refused send carried, so there is nothing for Restore to put back",
+	);
+
+	// The press, in the composer's own terms: the row is cleared and the held paths
+	// are written back. (The chip objects are the composer's; only the paths are the
+	// payload, which is why the store records paths.)
+	useConversationInputStore.getState().clearAttachments(session);
+	for (const path of held.submittedAttachments)
+		useConversationInputStore
+			.getState()
+			.addAttachment(session, { id: `chip-${path}`, path });
+	const boxChips = useConversationInputStore
+		.getState()
+		.inputByConversation[session].attachments.map((chip) => chip.path);
+	assert.deepEqual(
+		boxChips,
+		[file],
+		"the press did not put the held file back in the box",
+	);
+
+	// The next Enter, with the payload the press restored: ADMITTED, where the same
+	// send without the file was refused by the guard (measured above).
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return {};
+	};
+	const id = await admitChatDraft(
+		key,
+		{ ...input, text, attachments: boxChips },
+		session,
+	);
+	assert.equal(
+		id,
+		session,
+		"the restored payload was not admitted, so Restore is still a loop",
+	);
+	assert.ok(
+		calls.some((call) => call.op === "sessions.message"),
+		"the restored payload never reached the wire, so the guard refused the retry it had just re-armed",
+	);
+
+	// And the control really does that, rather than the test doing it for it.
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	const press = source.slice(
+		source.indexOf("composerAlert.restore &&"),
+		source.indexOf(
+			"{RESTORE_LABEL}",
+			source.indexOf("composerAlert.restore &&"),
+		),
+	);
+	assert.ok(
+		press.length > 0,
+		"the restore control is no longer rendered at all",
+	);
+	assert.match(
+		press,
+		/const heldChips = sendError\?\.heldAttachments;/,
+		"the press no longer reads the files the claim is holding, so it can only restore half the payload (QA round 1, Q-2)",
+	);
+	assert.match(
+		press,
+		/clearAttachments\(conversationId\);/,
+		"the press no longer reconstitutes the chip row, so it merges the held files into whatever is attached instead of putting the held payload back",
+	);
+	assert.match(
+		press,
+		/for \(const path of heldChips\)\s*\n?\s*addAttachment\(conversationId, \{\s*\n?\s*id: uuidv4\(\),\s*\n?\s*path,\s*\n?\s*\}\);/,
+		"the press no longer writes the held files into the composer's own row, so the box shows a payload the next send will not carry",
+	);
 });
 
 /*
@@ -2038,6 +2314,17 @@ test("the composer adopts a refused payload through the shipped rules, at the en
  * symptom and the DOM order is the cause: the failure and its own controls come
  * first, and the muted line about the draft follows them.
  *
+ * WHAT QA ROUND 1's Q-1 ADDED (design round 2's D5, agent review round 2's M1,
+ * UX round 2's U11 - one defect, four observers). The ORDER was not enough: the
+ * sentence that names the remedy is the one prose on this screen that says what
+ * to do, and at the app's own minimum window it was the part the cap cut, because
+ * the backend's own sentence fills the window first. So the claim that names the
+ * control moved OUT of the cap, to sit with the control it names - the two things
+ * this app writes itself, bounded and under its own tests - while the sentences
+ * that can be arbitrarily long (the backend's copy) keep the cap. Both halves of
+ * that are asserted below: order, and which side of the cap's close each thing
+ * renders on.
+ *
  * The cap is asserted in the same breath, because "make the failure visible"
  * has an easy wrong answer - raising the cap, which moves the composer's top
  * border and takes Send off screen. The region keeps `CAPPED_BLOCK`.
@@ -2091,11 +2378,24 @@ test("the alert region renders the failure before the muted context, and keeps i
 	 * non-whitespace text node anywhere in this region, and the frames it writes
 	 * show it. Run it after any edit to this block.
 	 */
+	/*
+	 * The markers carry their JSX opener (`&& (`), not the bare name: the region's
+	 * own render condition names `composerAlert.message` and `composerAlert.showHeld`
+	 * above the block, so a bare-name index would point at the condition rather than
+	 * at the place each one is painted.
+	 */
 	const order = [
-		["the failure sentence", "composerAlert.message"],
-		["the held-claim statement", "composerAlert.showHeld"],
-		["the split notice", "refusedNotice &&"],
-		["the held notice", "heldNotice &&"],
+		["the failure sentence", "composerAlert.message && ("],
+		["the split notice", "refusedNotice && ("],
+		["the held notice", "heldNotice && ("],
+		/*
+		 * And the CLAIM comes after them, which is where the fix puts it: it is
+		 * pinned outside the cap with the controls below, so its position in this
+		 * list is about the DOM rather than about the window. Read as "the failure
+		 * still leads" - which is what the cap's window shows - and then as "the
+		 * claim that names the remedy follows the prose it explains".
+		 */
+		["the held-claim statement", "composerAlert.showHeld && ("],
 	];
 	let previous = -1;
 	for (const [what, marker] of order) {
@@ -2119,7 +2419,7 @@ test("the alert region renders the failure before the muted context, and keeps i
 	 * a nested `{cond && (<div .../>)}` is balanced within the slice.
 	 */
 	const proseOpen = region.indexOf(
-		'<div className={cn("flex flex-col gap-1", CAPPED_BLOCK)}',
+		'<div className={cn("flex flex-col [&>*+*]:mt-5", CAPPED_BLOCK)}',
 	);
 	assert.ok(
 		proseOpen >= 0 && proseOpen < cappedAt + 1,
@@ -2155,6 +2455,22 @@ test("the alert region renders the failure before the muted context, and keeps i
 	assert.ok(
 		controlsAt > blockEnd,
 		"the remedy controls are inside the capped block, so a long alert scrolls them out of the window at the app's minimum size (UX round 1, U3)",
+	);
+	/*
+	 * And the CLAIM that names them is outside it too, which is QA round 1's Q-1
+	 * stated as structure: the window is the element the cap is on, so a sentence
+	 * outside it cannot be cut off by the backend's own copy filling that window.
+	 * The two are asserted separately because they can fail apart - the control can
+	 * be pinned while the sentence explaining it scrolls.
+	 */
+	const claimAt = region.indexOf("composerAlert.showHeld && (");
+	assert.ok(
+		claimAt >= 0,
+		"the held-claim statement is no longer rendered at all",
+	);
+	assert.ok(
+		claimAt > blockEnd,
+		"the held claim is inside the capped block again, so at the app's minimum window the backend's own sentence can push the clause naming the remedy out of the window - with the control it names still on screen (QA round 1's Q-1, D5, M1, U11)",
 	);
 });
 

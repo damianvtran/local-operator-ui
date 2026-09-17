@@ -14,3 +14,22 @@
 @import "@renderer/styles/index.css";
 
 @source "../src/renderer/src";
+
+/*
+ * THE CARET IS MADE INVISIBLE, because its BLINK PHASE is not part of any claim
+ * these frames make.
+ *
+ * An independent re-run of the committed set differing by 204 bytes in a 2x34px
+ * strip is not a difference of state: that strip is the composer's text caret,
+ * caught lit in one run and dark in the other. A still cannot show a blink, so a
+ * frame that carries one carries the harness's timing instead of the screen - the
+ * same class as the mid-transition send control design round 2's D7 found, and the
+ * reason the driver also parks the pointer and waits before every shot. The real
+ * app paints the caret; what it means is "the box has focus", which the focused
+ * box's own outline states in every frame here.
+ *
+ * Scoped to this page's own root, so nothing about the shipped stylesheet moves.
+ */
+#root textarea {
+	caret-color: transparent;
+}

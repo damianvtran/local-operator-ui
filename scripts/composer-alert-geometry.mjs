@@ -486,6 +486,28 @@ const assertions = (measurement, idle, column) => {
 			`not one line of the failure is visible: it starts at offset ${measurement.children[measurement.failureIndex]?.top - measurement.region.top} of a ${measurement.region.clientHeight}px window (D12)`,
 		);
 	/*
+	 * D6: THE CAP'S WINDOW STILL ENDS ON A LINE, with more than one paragraph in
+	 * the block.
+	 *
+	 * `CAPPED_BLOCK` is a whole number of lines *of the block's leading*, which is
+	 * only true while every child starts on that grid. The `gap-1` this block used to
+	 * carry put a second paragraph 4px off it, so the 120px window cut 4px into a
+	 * line and the last visible line was a row of glyph tops with its descenders
+	 * shaved - the artifact the whole-line cap exists to prevent, measured against
+	 * the wide frame as the control (design round 2, D6). The spacing is one leading
+	 * now, which the cap's arithmetic already accounts for at any number of children,
+	 * and this is the assertion that sees it: a sub-leading offset between children
+	 * fails here rather than being visible only in a still.
+	 */
+	for (const child of measurement.children) {
+		const leading = child.lineHeight || 20;
+		const offset = child.top - measurement.region.top;
+		if (Math.abs(offset - Math.round(offset / leading) * leading) > 0.5)
+			fail(
+				`the prose block's child ${child.index} starts ${offset}px from the block's top, which is not a whole line of its ${leading}px leading: the cap's window then cuts a line rather than ending on one (design round 2, D6)`,
+			);
+	}
+	/*
 	 * The cap's own invariant, and the reason "raise the cap" is not an answer:
 	 * with the same draft, the composer's top border does not move when the alert
 	 * renders - however much the region holds, up to its cap - so the send

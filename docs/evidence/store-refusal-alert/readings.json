@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-09-17T16:30:04.852Z",
+  "capturedAt": "2026-09-17T17:57:05.137Z",
   "theme": "localOperatorDark",
   "comment": "Read out of the live DOM per frame. `failures` is empty for every row by construction: a run with any failure writes neither the frames nor this file (agent review round 1, R-1).",
   "cases": [
@@ -17,8 +17,10 @@
       "rowCode": "store_busy",
       "rowMessage": "Read state is busy right now. It will catch up on its own.",
       "message": "Read state is busy right now. It will catch up on its own.",
+      "heldClaimCode": "store_busy",
       "withholdRetryHint": false,
       "storeWriteRefusal": false,
+      "claimStoreWriteRefusal": false,
       "refusedBeforeAdmission": false,
       "admissionAttempted": true,
       "submittedText": "Here is the screenshot from the failing run.",
@@ -30,6 +32,7 @@
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
       ],
       "alertProse": "Read state is busy right now. It will catch up on its own. Your message is still in the composer. Send it again.",
+      "visibleProse": "Read state is busy right now. It will catch up on its own. Your message is still in the composer. Send it again.",
       "alertText": "Read state is busy right now. It will catch up on its own. Your message is still in the composer. Send it again.Discard this message",
       "region": {
         "top": 505,
@@ -43,6 +46,8 @@
         "height": 20,
         "clientHeight": 20,
         "scrollHeight": 20,
+        "clientWidth": 812,
+        "scrollWidth": 812,
         "overflowY": "auto"
       },
       "controls": {
@@ -51,6 +56,70 @@
         "height": 24,
         "labels": [
           "Discard this message"
+        ],
+        "insideCapped": false
+      },
+      "send": {
+        "top": 752,
+        "bottom": 784,
+        "height": 32
+      },
+      "failures": []
+    },
+    {
+      "file": "busy-held",
+      "case": "busy",
+      "state": "held",
+      "viewport": {
+        "width": 1440,
+        "height": 817
+      },
+      "column": 892,
+      "status": 503,
+      "code": "store_busy",
+      "rowCode": "store_busy",
+      "rowMessage": "Read state is busy right now. It will catch up on its own.",
+      "message": "Read state is busy right now. It will catch up on its own.",
+      "heldClaimCode": "store_busy",
+      "withholdRetryHint": false,
+      "storeWriteRefusal": false,
+      "claimStoreWriteRefusal": false,
+      "refusedBeforeAdmission": false,
+      "admissionAttempted": true,
+      "submittedText": "Here is the screenshot from the failing run.",
+      "submittedAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "boxValue": "",
+      "boxAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "alertProse": "Read state is busy right now. It will catch up on its own. A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives.",
+      "visibleProse": "Read state is busy right now. It will catch up on its own. A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives.",
+      "alertText": "Read state is busy right now. It will catch up on its own.A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives.Restore messageDiscard message",
+      "region": {
+        "top": 462,
+        "bottom": 561,
+        "height": 99,
+        "overflowY": "visible"
+      },
+      "capped": {
+        "top": 462,
+        "bottom": 482,
+        "height": 20,
+        "clientHeight": 20,
+        "scrollHeight": 20,
+        "clientWidth": 812,
+        "scrollWidth": 812,
+        "overflowY": "auto"
+      },
+      "controls": {
+        "top": 486,
+        "bottom": 553,
+        "height": 67,
+        "labels": [
+          "Restore message",
+          "Discard message"
         ],
         "insideCapped": false
       },
@@ -73,10 +142,12 @@
       "status": 507,
       "code": "store_out_of_space",
       "rowCode": "store_out_of_space",
-      "rowMessage": "There is not enough space on this disk to save your message. Free up space, then send it again.",
-      "message": "There is not enough space on this disk to save your message. Free up space, then send it again.",
+      "rowMessage": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.",
+      "message": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.",
+      "heldClaimCode": "store_out_of_space",
       "withholdRetryHint": true,
       "storeWriteRefusal": true,
+      "claimStoreWriteRefusal": true,
       "refusedBeforeAdmission": false,
       "admissionAttempted": true,
       "submittedText": "Here is the screenshot from the failing run.",
@@ -87,20 +158,23 @@
       "boxAttachments": [
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
       ],
-      "alertProse": "There is not enough space on this disk to save your message. Free up space, then send it again.",
-      "alertText": "There is not enough space on this disk to save your message. Free up space, then send it again.Discard this message",
+      "alertProse": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.",
+      "visibleProse": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.",
+      "alertText": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.Discard this message",
       "region": {
-        "top": 505,
+        "top": 485,
         "bottom": 561,
-        "height": 56,
+        "height": 76,
         "overflowY": "visible"
       },
       "capped": {
-        "top": 505,
+        "top": 485,
         "bottom": 525,
-        "height": 20,
-        "clientHeight": 20,
-        "scrollHeight": 20,
+        "height": 40,
+        "clientHeight": 40,
+        "scrollHeight": 40,
+        "clientWidth": 812,
+        "scrollWidth": 812,
         "overflowY": "auto"
       },
       "controls": {
@@ -131,10 +205,12 @@
       "status": 500,
       "code": "store_unavailable",
       "rowCode": "store_unavailable",
-      "rowMessage": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
-      "message": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "rowMessage": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.",
+      "message": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.",
+      "heldClaimCode": "store_unavailable",
       "withholdRetryHint": true,
       "storeWriteRefusal": true,
+      "claimStoreWriteRefusal": true,
       "refusedBeforeAdmission": false,
       "admissionAttempted": true,
       "submittedText": "Here is the screenshot from the failing run.",
@@ -145,20 +221,23 @@
       "boxAttachments": [
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
       ],
-      "alertProse": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
-      "alertText": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.Discard this message",
+      "alertProse": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.",
+      "visibleProse": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.",
+      "alertText": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.Discard this message",
       "region": {
-        "top": 505,
+        "top": 485,
         "bottom": 561,
-        "height": 56,
+        "height": 76,
         "overflowY": "visible"
       },
       "capped": {
-        "top": 505,
+        "top": 485,
         "bottom": 525,
-        "height": 20,
-        "clientHeight": 20,
-        "scrollHeight": 20,
+        "height": 40,
+        "clientHeight": 40,
+        "scrollHeight": 40,
+        "clientWidth": 812,
+        "scrollWidth": 812,
         "overflowY": "auto"
       },
       "controls": {
@@ -189,10 +268,12 @@
       "status": 507,
       "code": "store_out_of_space",
       "rowCode": "store_out_of_space",
-      "rowMessage": "There is not enough space on this disk to save your message. Free up space, then send it again.",
-      "message": "There is not enough space on this disk to save your message. Free up space, then send it again.",
+      "rowMessage": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.",
+      "message": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.",
+      "heldClaimCode": "store_out_of_space",
       "withholdRetryHint": true,
       "storeWriteRefusal": true,
+      "claimStoreWriteRefusal": true,
       "refusedBeforeAdmission": false,
       "admissionAttempted": true,
       "submittedText": "Here is the screenshot from the failing run.",
@@ -203,26 +284,29 @@
       "boxAttachments": [
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
       ],
-      "alertProse": "There is not enough space on this disk to save your message. Free up space, then send it again. Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.",
-      "alertText": "There is not enough space on this disk to save your message. Free up space, then send it again.Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.Restore messageDiscard message",
+      "alertProse": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again. Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.",
+      "visibleProse": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again. Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.",
+      "alertText": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.Restore messageDiscard message",
       "region": {
-        "top": 461,
+        "top": 442,
         "bottom": 561,
-        "height": 100,
+        "height": 119,
         "overflowY": "visible"
       },
       "capped": {
-        "top": 461,
-        "bottom": 525,
-        "height": 64,
-        "clientHeight": 64,
-        "scrollHeight": 64,
+        "top": 442,
+        "bottom": 482,
+        "height": 40,
+        "clientHeight": 40,
+        "scrollHeight": 40,
+        "clientWidth": 812,
+        "scrollWidth": 812,
         "overflowY": "auto"
       },
       "controls": {
-        "top": 529,
+        "top": 486,
         "bottom": 553,
-        "height": 24,
+        "height": 67,
         "labels": [
           "Restore message",
           "Discard message"
@@ -248,10 +332,12 @@
       "status": 500,
       "code": "store_unavailable",
       "rowCode": "store_unavailable",
-      "rowMessage": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
-      "message": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "rowMessage": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.",
+      "message": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.",
+      "heldClaimCode": "store_unavailable",
       "withholdRetryHint": true,
       "storeWriteRefusal": true,
+      "claimStoreWriteRefusal": true,
       "refusedBeforeAdmission": false,
       "admissionAttempted": true,
       "submittedText": "Here is the screenshot from the failing run.",
@@ -262,26 +348,29 @@
       "boxAttachments": [
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
       ],
-      "alertProse": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs. Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.",
-      "alertText": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.Restore messageDiscard message",
+      "alertProse": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on. Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.",
+      "visibleProse": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on. Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.",
+      "alertText": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.Restore messageDiscard message",
       "region": {
-        "top": 461,
+        "top": 442,
         "bottom": 561,
-        "height": 100,
+        "height": 119,
         "overflowY": "visible"
       },
       "capped": {
-        "top": 461,
-        "bottom": 525,
-        "height": 64,
-        "clientHeight": 64,
-        "scrollHeight": 64,
+        "top": 442,
+        "bottom": 482,
+        "height": 40,
+        "clientHeight": 40,
+        "scrollHeight": 40,
+        "clientWidth": 812,
+        "scrollWidth": 812,
         "overflowY": "auto"
       },
       "controls": {
-        "top": 529,
+        "top": 486,
         "bottom": 553,
-        "height": 24,
+        "height": 67,
         "labels": [
           "Restore message",
           "Discard message"
@@ -307,10 +396,12 @@
       "status": null,
       "code": "unconfirmed_send",
       "rowCode": "store_out_of_space",
-      "rowMessage": "There is not enough space on this disk to save your message. Free up space, then send it again.",
+      "rowMessage": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.",
       "message": "The previous send has not been confirmed, and it does not match what is in the composer now.",
+      "heldClaimCode": "store_out_of_space",
       "withholdRetryHint": true,
       "storeWriteRefusal": false,
+      "claimStoreWriteRefusal": true,
       "refusedBeforeAdmission": false,
       "admissionAttempted": true,
       "submittedText": "Here is the screenshot from the failing run.",
@@ -319,26 +410,29 @@
       ],
       "boxValue": "Here is the screenshot from the failing run.",
       "boxAttachments": [],
-      "alertProse": "The previous send has not been confirmed, and it does not match what is in the composer now. A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives.",
-      "alertText": "The previous send has not been confirmed, and it does not match what is in the composer now.A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives.Restore messageStop holding it",
+      "alertProse": "The previous send has not been confirmed, and it does not match what is in the composer now. Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.",
+      "visibleProse": "The previous send has not been confirmed, and it does not match what is in the composer now. Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.",
+      "alertText": "The previous send has not been confirmed, and it does not match what is in the composer now.Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.Restore messageStop holding it",
       "region": {
-        "top": 589,
+        "top": 590,
         "bottom": 689,
-        "height": 100,
+        "height": 99,
         "overflowY": "visible"
       },
       "capped": {
-        "top": 589,
-        "bottom": 653,
-        "height": 64,
-        "clientHeight": 64,
-        "scrollHeight": 64,
+        "top": 590,
+        "bottom": 610,
+        "height": 20,
+        "clientHeight": 20,
+        "scrollHeight": 20,
+        "clientWidth": 812,
+        "scrollWidth": 812,
         "overflowY": "auto"
       },
       "controls": {
-        "top": 657,
+        "top": 614,
         "bottom": 681,
-        "height": 24,
+        "height": 67,
         "labels": [
           "Restore message",
           "Stop holding it"
@@ -360,14 +454,16 @@
         "width": 800,
         "height": 568
       },
-      "column": 340,
+      "column": 236,
       "status": 500,
       "code": "store_unavailable",
       "rowCode": "store_unavailable",
-      "rowMessage": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
-      "message": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "rowMessage": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.",
+      "message": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.",
+      "heldClaimCode": "store_unavailable",
       "withholdRetryHint": true,
       "storeWriteRefusal": true,
+      "claimStoreWriteRefusal": true,
       "refusedBeforeAdmission": false,
       "admissionAttempted": true,
       "submittedText": "Here is the screenshot from the failing run.",
@@ -378,26 +474,93 @@
       "boxAttachments": [
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
       ],
-      "alertProse": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs. Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.",
-      "alertText": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.Restore messageDiscard message",
+      "alertProse": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on. Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.",
+      "visibleProse": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.",
+      "alertText": "The session store could not be read or written. Retrying will not help; check /Users/damian/Library/Application Support/local-operator and the disk it is on.Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.Restore messageDiscard message",
       "region": {
-        "top": 200,
+        "top": 75.7,
         "bottom": 352,
-        "height": 152,
+        "height": 276.3,
         "overflowY": "visible"
       },
       "capped": {
-        "top": 200,
-        "bottom": 320,
+        "top": 75.7,
+        "bottom": 195.7,
         "height": 120,
         "clientHeight": 120,
-        "scrollHeight": 164,
+        "scrollHeight": 160,
+        "clientWidth": 172,
+        "scrollWidth": 172,
         "overflowY": "auto"
       },
       "controls": {
-        "top": 324,
+        "top": 199.7,
         "bottom": 348,
-        "height": 24,
+        "height": 148.3,
+        "labels": [
+          "Restore message",
+          "Discard message"
+        ],
+        "insideCapped": false
+      },
+      "send": {
+        "top": 527,
+        "bottom": 555,
+        "height": 28
+      },
+      "failures": []
+    },
+    {
+      "file": "out-of-space-narrow-held",
+      "case": "out-of-space",
+      "state": "held",
+      "viewport": {
+        "width": 800,
+        "height": 568
+      },
+      "column": 236,
+      "status": 507,
+      "code": "store_out_of_space",
+      "rowCode": "store_out_of_space",
+      "rowMessage": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.",
+      "message": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.",
+      "heldClaimCode": "store_out_of_space",
+      "withholdRetryHint": true,
+      "storeWriteRefusal": true,
+      "claimStoreWriteRefusal": true,
+      "refusedBeforeAdmission": false,
+      "admissionAttempted": true,
+      "submittedText": "Here is the screenshot from the failing run.",
+      "submittedAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "boxValue": "",
+      "boxAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "alertProse": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again. Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.",
+      "visibleProse": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.",
+      "alertText": "This computer is out of disk space, so the message could not be written. Free some space on the volume holding /Users/damian/Library/Application Support/local-operator and send it again.Choose Restore message to put it back in the composer. Nothing was saved, and the copy above is this app's own rather than the agent's.Restore messageDiscard message",
+      "region": {
+        "top": 75.7,
+        "bottom": 352,
+        "height": 276.3,
+        "overflowY": "visible"
+      },
+      "capped": {
+        "top": 75.7,
+        "bottom": 195.7,
+        "height": 120,
+        "clientHeight": 120,
+        "scrollHeight": 200,
+        "clientWidth": 172,
+        "scrollWidth": 172,
+        "overflowY": "auto"
+      },
+      "controls": {
+        "top": 199.7,
+        "bottom": 348,
+        "height": 148.3,
         "labels": [
           "Restore message",
           "Discard message"

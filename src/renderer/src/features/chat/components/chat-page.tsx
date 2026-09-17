@@ -1628,6 +1628,29 @@ function SessionPanel({
 					 */
 					heldAttachments:
 						heldText !== undefined ? draft?.submittedAttachments : undefined,
+					/*
+					 * The CLAIM's own verdict, from the row, and the reason the held line no
+					 * longer reads `code` above.
+					 *
+					 * `code` is about the last ATTEMPT. The flow this PR exists for is
+					 * refusal -> `Restore message` -> drop the file -> Enter, and the last
+					 * attempt there is refused by the unchanged-payload GUARD, whose code is
+					 * `unconfirmed_send`. A held line selected by that code reverted to
+					 * "whether it reached the agent is not knowable ... send again only if no
+					 * reply arrives" one screen after this app said "Nothing was saved",
+					 * with the disk off the screen (UX round 2, U10). The guard throws before
+					 * the row is written, so the store's verdict is still on the row - it was
+					 * simply never recorded against the CLAIM, and `errorCode` is not it:
+					 * `onDismiss` clears that one the moment the operator acknowledges the
+					 * sentence, while the payload it describes is still held. `heldClaimCode`
+					 * travels with the payload for exactly that reason.
+					 *
+					 * Gated on `heldText` like the fields above it: without a claim there is no
+					 * verdict to state, and a stale one would describe a payload the composer
+					 * is not holding.
+					 */
+					heldClaimCode:
+						heldText !== undefined ? draft?.heldClaimCode : undefined,
 					onRestoreHeld:
 						heldText !== undefined ? () => clearError() : undefined,
 					/*

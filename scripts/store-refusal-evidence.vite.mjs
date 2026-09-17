@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { CASE_ALIASES, STORE_FAILURES } from "./store-refusal-copy.mjs";
 
 /**
  * Vite config for the store-refusal evidence harness only.
@@ -17,60 +18,12 @@ import { defineConfig } from "vite";
 const root = resolve(import.meta.dirname, "..");
 
 /**
- * The backend's store-failure ladder, as error bodies.
- *
- * These are the three arms the desktop routes used to collapse into one 503
- * ("Read state is busy right now. It will catch up on its own."), and the split
- * is the change under evidence: the same composer, the same box, the same
- * pipeline, and the code alone deciding whether the alert's "what to do" half is
- * the false "Send it again.".
- *
- * THESE SENTENCES ARE STAND-INS, NOT THE SIBLING PR'S COPY (agent review round 1,
- * R-2). Nothing in the shipped renderer is affected by the difference - it paints
- * `detail.message` verbatim, which is the point of the arm - but the stills are
- * presented as the copy a user reads, and today they are not.
- *
- * What the sibling branch (`~/local-operator-worktrees/store-failure-classes`,
- * `local_operator/server/utils/store_failures.py`) sends is:
- *
- *   store_out_of_space  "This computer is out of disk space, so the message could
- *                        not be written. Free some space on the volume holding
- *                        {root} and send it again."
- *   store_unavailable   "The session store could not be read or written. Retrying
- *                        will not help; check {root} and the disk it is on."
- *
- * where `{root}` is the config root the request actually used. So the two
- * differences are wording AND the named destination: that PR moved both sentences
- * from "this disk"/"its logs" to the path the process touched, which is the copy
- * half of design round 1's D1 and UX round 1's U5. Both arms are routed there, and
- * this file is deliberately not updated ahead of it: a stand-in that changes when
- * the other branch rewords its copy would have to be re-captured for every
- * revision of a string this repository does not own.
- *
- * What is asserted about the sentence here is therefore the MECHANISM, which is
- * true of any wording: the composer renders whatever the wire carried, verbatim,
- * and the code decides the hint. `scripts/canonical-chat.test.mjs` pins the same
- * split against the codes themselves.
+ * The ladder's arms, as error bodies - read from the SAME module the driver takes
+ * its expectations from, so the sentence this server sends and the sentence the
+ * frames assert cannot drift apart. `store-refusal-copy.mjs` carries the why, the
+ * upstream provenance, and the note on why the LENGTH of these strings is the
+ * measurement this rig exists for.
  */
-const STORE_FAILURES = {
-	busy: {
-		status: 503,
-		code: "store_busy",
-		message: "Read state is busy right now. It will catch up on its own.",
-	},
-	"out-of-space": {
-		status: 507,
-		code: "store_out_of_space",
-		message:
-			"There is not enough space on this disk to save your message. Free up space, then send it again.",
-	},
-	unavailable: {
-		status: 500,
-		code: "store_unavailable",
-		message:
-			"This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
-	},
-};
 
 /**
  * Which failure the next `/__desktop` POST answers with.
@@ -81,15 +34,6 @@ const STORE_FAILURES = {
  * One variable, one harness - nothing in the app reads it.
  */
 let selected = "out-of-space";
-
-/**
- * `altered` is not a fourth arm of the backend's ladder; it is the same
- * `store_out_of_space` refusal followed by the operator's own remedy - the text
- * restored, the image dropped, Enter pressed - so its FIRST attempt is that arm
- * and its second never reaches this server at all (the unchanged-payload guard
- * refuses it in the renderer, which is exactly what that frame exists to show).
- */
-const CASE_ALIASES = { altered: "out-of-space" };
 
 const storeFailureServer = () => ({
 	name: "store-refusal-desktop-stub",

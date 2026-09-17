@@ -46,23 +46,31 @@ derivation, copied to the letter: `message: sendError || draft.error`,
 What is substituted is the BACKEND's verdict, at the HTTP boundary — the same
 substitution `send-error-evidence.mjs` documents for its 409.
 
-**The sentences in these frames are STAND-INS, not the sibling PR's copy** (agent
-review round 1, R-2). The renderer paints `detail.message` verbatim, which is the
-point of the arm, so nothing about the mechanism depends on the wording — but the
-stills are read as the copy a user sees, and the sibling branch
-(`~/local-operator-worktrees/store-failure-classes`,
-`local_operator/server/utils/store_failures.py`) sends:
+**The sentences in these frames are the sibling branch's own copy** (agent review
+round 2's M1, and the manager's projection note for PR #307's second
+remediation). They used to be shorter stand-ins (agent review round 1, R-2), on
+the argument that the renderer paints `detail.message` verbatim so nothing about
+the mechanism depends on the wording, and that a stand-in tracking another
+branch's revisions would be re-captured for every reword. That argument held for
+the wording and failed for the LENGTH, which is what this set measures. Taken
+verbatim from `~/local-operator-worktrees/store-failure-classes`,
+`local_operator/server/utils/store_failures.py` at `d4109ed35`, with `{root}`
+filled by the harness's own stand-in for the config root the request used:
 
-| code | the sibling's sentence today |
+| code | the sentence in these frames |
 | --- | --- |
-| `store_out_of_space` | "This computer is out of disk space, so the message could not be written. Free some space on the volume holding `{root}` and send it again." |
-| `store_unavailable` | "The session store could not be read or written. Retrying will not help; check `{root}` and the disk it is on." |
+| `store_out_of_space` | "This computer is out of disk space, so the message could not be written. Free some space on the volume holding `/Users/damian/Library/Application Support/local-operator` and send it again." |
+| `store_unavailable` | "The session store could not be read or written. Retrying will not help; check `/Users/damian/Library/Application Support/local-operator` and the disk it is on." |
 
 `{root}` is the config root the request actually used, so that PR moved both
 sentences from "this disk"/"its logs" to a path — the copy half of design D1 and
-UX U5, routed there. This set is deliberately not updated ahead of it: a stand-in
-that changed whenever the other branch reworded a string would be re-captured for
-every revision of copy this repository does not own.
+UX U5, routed there. The 507 sentence is ~180 characters with a real root in it,
+which is twice the stand-in that used to fit the composer's capped window at the
+app's minimum size: the committed frames showed a state the shipped copy cannot
+reach, and the defect the round-2 reviews found would have returned the moment
+`local-operator#1243` merged. Both sentences now come from ONE module
+(`scripts/store-refusal-copy.mjs`) that the harness *and* the stub server read, so
+the expectation and the answer cannot drift.
 
 ## Three states per arm, because one screen cannot answer every claim
 
@@ -78,8 +86,10 @@ satisfied in.
 | [unavailable-restored.png](unavailable-restored.png) | `store_unavailable` (500) | Same, hint **absent**. |
 | [out-of-space-held.png](out-of-space-held.png) | `store_out_of_space` (507) | **The state the refusal leaves**: the claim holds the text, the box is empty, the chip row still carries the file — and the held line states the known fact ("nothing was saved, and the copy above is this app's own rather than the agent's") and names the control its own sentence needs, `Restore message`. |
 | [unavailable-held.png](unavailable-held.png) | `store_unavailable` (500) | The same screen for the other arm. |
-| [altered-held.png](altered-held.png) | `unconfirmed_send` | **The operator's own remedy from 2026-09-17, one step on**: text restored, image dropped, Enter pressed. The second send is really issued, so the store's unchanged-payload guard really fires and its own code is what the alert renders. The retry hint is **absent** — the guard refuses every resend until the claim is released — and the abandon control reads `Stop holding it`, which is the honest label for a press that keeps the user's text. |
-| [unavailable-narrow-held.png](unavailable-narrow-held.png) | `store_unavailable` (500) | The same state at the app's own minimum window (**800x568**, which it clamps to) with the chat column at **340px**, where the prose is 164px in the 120px block. Both remedy controls are **on screen** — the finding (UX U3) was that at this size the copy filled the window and both controls sat ~90px below the visible area with no cue that the region scrolled. |
+| [busy-held.png](busy-held.png) | `store_busy` (503) | **The contrast frame for the held line's two registers** (design round 2, D8). Same empty box, same claim, same two controls as `out-of-space-held`; the only sentence that differs is the held line, which keeps the shared "whether it reached the agent is not knowable … send again only if no reply arrives" because contention really is retryable and its outcome really is unknown. The hint is absent from the SCREEN for the post-admission reason (the box is empty) while `withholdsRetryHint` is `false` for the code — the two facts are asserted separately. |
+| [altered-held.png](altered-held.png) | `unconfirmed_send` | **The operator's own remedy from 2026-09-17, one step on**: text restored, image dropped, Enter pressed. The second send is really issued, so the store's unchanged-payload guard really fires and its own code is what the alert renders. The retry hint is **absent** — the guard refuses every resend until the claim is released — and the abandon control reads `Stop holding it`, which is the honest label for a press that keeps the user's text. **It is also the U10 frame**: the sentence above is the GUARD's while the claim still carries `store_out_of_space`, so the held line states the known fact ("Nothing was saved …") rather than reverting to the lost-response register — which is what it did until this round, one screen after the app itself said nothing was saved, with the disk off the screen entirely. `readings.json` carries both codes for it (`code: unconfirmed_send`, `heldClaimCode: store_out_of_space`) because that pair is the finding. |
+| [unavailable-narrow-held.png](unavailable-narrow-held.png) | `store_unavailable` (500) | The held state at the app's own minimum window (**800x568**, which it clamps to) with the composer's track at **236px** — the width QA round 1 measured in the DEFAULT layout, where an operator starts. The column is an input (`--viewport=WxH --column=N`), so this is the harness's reproduction of that measurement rather than a re-derivation of the app's layout arithmetic. Both remedy controls are **on screen**, and since this round so is the **clause that names the control**: it is pinned outside the capped block, because at this track the backend's own sentence fills the window and the clause used to be the part cut off. The block itself does not overflow here — the 500 sentence wraps to exactly the six lines the cap shows — so this frame carries the geometry rather than the overflow. |
+| [out-of-space-narrow-held.png](out-of-space-narrow-held.png) | `store_out_of_space` (507) | The same state and window with the **longest** copy the sibling's contract can produce (~180 characters, `{root}` included), which is the projection design round 2's D5 made from the 500 frame's character width — measured here rather than projected. This is the frame where the capped block genuinely overflows: the sentences fill it, the last visible line ends mid-clause, and the claim naming the remedy is still fully painted below it. |
 
 The `-restored` frames are the controlled comparison: the alert gates its hint on
 the box holding something the store would accept, so a frame shot over an empty
@@ -91,22 +101,81 @@ is empty (UX round 1, U7 — which corrected this set's own description of the b
 arm).
 
 `readings.json` is read out of the same live DOM at capture time, per frame: the
-pipeline's `status`/`code`/`message`, the row's own `rowCode`/`rowMessage`,
-`withholdRetryHint`, `isStoreWriteRefusal`, whether the refusal was classed as
-pre-admission, the box's value and chip set, the alert's rendered prose and text,
-and the geometry of the capped block, the region, the controls and the send
-control. The driver **fails** the run on any disagreement — a green capture is an
-assertion that the sentence is the one this state produced, that the code is the
-expected one, that the box and the chip set are the state under test, that the
-hint's presence matches the predicate, that the prose names the control exactly
-when the refusal needs it, and that the controls are outside the scrolling block
-and inside the window.
+pipeline's `status`/`code`/`message`, the row's own `rowCode`/`rowMessage` and
+`heldClaimCode` (the CLAIM's own verdict, which is a different field from the
+attempt's), `withholdRetryHint`, `isStoreWriteRefusal` for both codes, whether the
+refusal was classed as pre-admission, the box's value and chip set, the alert's
+RENDERED prose, the prose the frame actually PAINTS, the text, and the geometry of
+the capped block, the region, the controls and the send control. The driver
+**fails** the run on any disagreement — a green capture is an assertion that the
+sentence is the one this state produced, that the code is the expected one, that
+the box and the chip set are the state under test, that the hint's presence
+matches the predicate, that the claim's register follows the CLAIM's verdict
+rather than the refusal on screen, that the clause naming the control is not only
+written but PAINTED, that the copy wraps rather than overflowing the block
+sideways, and that the controls are outside the scrolling block and inside the
+window.
 
 The frames and `readings.json` are written **only when every case passed** (agent
 review round 1, R-1). They used to be written inside the case loop, so a capture
 taken on a regressed tree silently overwrote the committed frames — the bad ones
 beside a `readings.json` whose `failures` array said so, with only the exit status
 to notice it. A failing run now writes nothing at all.
+
+## The two instruments this round added, and why the old one could not see the defect
+
+**The clause has to be PAINTED, not merely rendered.** `alertProse` reads
+`textContent`, which the cap cannot reach: a sentence the window cuts off still
+reports itself in full. That is how the committed `unavailable-narrow-held` frame
+printed `prose: … Choose Restore message to put it back in the composer.` in its
+PASS line next to a still that did not paint those words, while the same case
+asserted `overflowing: true` — a green run that could not see its own failure
+(QA round 1's Q-1, design round 2's D5, agent review round 2's M1, UX round 2's
+U11). The probe now measures the prose **character by character**, and a
+character counts only if its own client rect sits inside every box that clips it
+(the paragraph's nearest scrolling ancestor, and the region). `namesControl` and
+the known-fact clause are asked of THAT string, so a clipped clause fails the rig.
+`readings.json` keeps both, because "never written" and "written where the
+operator cannot read it" are different findings.
+
+**The copy has to WRAP, and `{root}` proved it did not.** Measuring against the
+sibling's real sentence found a second clip on the other axis, which no frame in
+the set had shown: the failure sentence contains the config root, a real macOS
+root contains one ~34-character path segment, and that segment was wider than the
+whole composer track at the app's minimum window. The sentence's text sat in a
+flex item with no `min-w-0`, so its minimum width was that one word, the item
+could not shrink, and the block — `overflow-y: auto`, with the other axis
+computing to `auto` too — **cut every line mid-word at its right edge** with no
+scrollbar drawn at rest. The clause naming the remedy was beyond that edge on all
+of them. The fix is `min-w-0 break-words` on the item, and the rig now asserts
+`scrollWidth <= clientWidth` on every frame, so the axis that has no cue is
+watched on every capture.
+
+**Nine frames that reproduce byte for byte, after two timing artefacts were
+taken out of the paint.** A still is only evidence if a re-run paints it again.
+Design round 2 (D7) found one frame that did not — 4,004 pixels differing inside
+the send control's own box, because the shot caught it mid-hover-transition — and
+this round found a second: an independent re-run differed by 204 bytes in a 2x34px
+strip, which is the composer's text CARET caught lit in one run and dark in the
+other. Neither is a difference of state, and both are now removed rather than
+recorded: the driver parks the pointer at the origin and waits out the transition
+before every shot, and the harness's own stylesheet makes the caret transparent
+(`caret-color`, page-scoped). A capture from a regressed tree still fails its
+assertions and writes nothing, which is the property that matters; what changed is
+that a capture from an UNCHANGED tree is now bit-identical, so a reviewer diffing
+frames sees state changes only. Two independent runs of this set produce nine
+byte-identical frames and a `readings.json` equal apart from `capturedAt`.
+
+**One residual, stated because it is measured rather than argued.** With the
+sibling's real 507 sentence at the app's minimum window, the capped block shows
+six of its ~eight lines: the failure sentence's tail ("… and send it again") is
+below the fold, and the app's own scrollbar is the only cue. Everything the
+operator has to ACT on is above it — "Free some space on the volume holding
+{root}" is visible in the failure sentence, and the pinned claim names the
+control — and the retry clause that is cut is a step the app cannot perform before
+`Restore message` is pressed anyway. It is the backend's copy length, not this
+renderer's, and #1243 owns it; this set records the measurement so the projection
+is not re-derived from a still.
 
 ## What this set does NOT prove
 
@@ -115,6 +184,13 @@ to notice it. A failing run now writes nothing at all.
   covered by `scripts/desktop-contract.test.mjs`, which drives the real main
   transport over real loopback HTTP and asserts a 507/500/503 body arrives with
   its `detail.code` and `detail.message` intact.
+- **Not the scroll cue.** The harness page does not mount the app's own
+  `global-scrollbar-styles` (`main.tsx`), so no frame here paints the scrollbar
+  the app shows while a capped block overflows — design round 2 measured that
+  injecting that rule into this page changes 0 of 1,817,600 pixels, i.e. the
+  harness CANNOT photograph the cue. In the running app QA round 1 measured the
+  8px gutter present on this state, with `overflow-y: auto`. The cue is real; it
+  is this page that cannot show it.
 - **Not the packaged build**, not a second theme (the light arm was measured
   clean in design round 1 and is not committed here), and not screen-reader
   announcement (the `role="alert"` is present in the DOM, which is not the same
@@ -158,7 +234,10 @@ in the order of least risk to the operator's machine:
    backend's own error ladder picks the status. Never fill the operator's live
    volume to reach this — the incident happened once already.
 
-For the **narrow** frame specifically, the app derives the composer's track from
-the window and whatever panes are open beside it, so no still can pin the width
-of "the minimum window" in the abstract: `--viewport=WxH --column=N` set the two
-the frame was shot at, and the QA round is what walks the real window.
+For the **narrow** frames specifically, the app derives the composer's track from
+the window and whatever panes are open beside it, so no still can pin the width of
+"the minimum window" in the abstract: `--viewport=WxH --column=N` set the two the
+frame was shot at, and the QA round is what walks the real window. Since this
+round the narrow frames use **236px**, the track QA round 1 measured on the real
+app at 800x568 in the default layout, so the reproduction starts from a
+measurement rather than from the harness's own guess.
