@@ -183,7 +183,11 @@ test("a model row only claims `no credential` when its own flag says so", () => 
 	// raises it.
 	const [row] = argumentRows("model", [modelRow({ connected: false })], null);
 	assert.equal(row.description, "anthropic, no credential");
-	const [connected] = argumentRows("model", [modelRow({ connected: true })], null);
+	const [connected] = argumentRows(
+		"model",
+		[modelRow({ connected: true })],
+		null,
+	);
 	assert.equal(connected.description, "anthropic");
 });
 
@@ -258,14 +262,21 @@ test("the inline list's entity ids are exactly the ones the route serves", () =>
 	const declared = [...source.matchAll(/source:\s*"([a-z]+)"/g)].map(
 		(match) => match[1],
 	);
-	assert.deepEqual(
-		[...new Set(declared)].sort(),
-		["agent", "approvals", "effort", "model", "team", "theme"],
-	);
+	assert.deepEqual([...new Set(declared)].sort(), [
+		"agent",
+		"approvals",
+		"effort",
+		"model",
+		"team",
+		"theme",
+	]);
 	// `theme` is the one renderer-local source; the other five are entity
 	// commands and must exactly equal the route's set.
-	assert.deepEqual(
-		declared.filter((id) => id !== "theme").sort(),
-		["agent", "approvals", "effort", "model", "team"],
-	);
+	assert.deepEqual(declared.filter((id) => id !== "theme").sort(), [
+		"agent",
+		"approvals",
+		"effort",
+		"model",
+		"team",
+	]);
 });

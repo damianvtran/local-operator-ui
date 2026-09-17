@@ -11,33 +11,29 @@ import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
  * The quote affordance, on the production transcript and beside the production
  * composer.
  *
- * WHY A STORY AND NOT ONLY A LIVE RUN. The two claims here are about the
- * wiring between three shipped pieces - the row's toolkit, the conversation
- * input store, and the composer's own `ReplyPreview` above it - and that wiring
- * is a property of the components rather than of one session's data. A live run
+ * WHY A STORY AND NOT ONLY A LIVE RUN. The claims here are about the wiring
+ * between three shipped pieces - the row's control, the conversation input
+ * store, and the composer's own `ReplyPreview` above it - and that wiring is a
+ * property of the components rather than of one session's data. A live run
  * proves it too, but only on whatever transcript that run happened to open; a
  * story holds the same claim still, in every palette, from the diff alone.
  *
- * WHAT IS DELIBERATELY NOT SIMULATED HERE. The toolkit's reveal is the parent
- * row's `group-hover`, and a story's `play` cannot produce it: `userEvent.hover`
- * dispatches synthetic pointer events, which do not set CSS `:hover`. So the
- * frames these stories produce show the toolkit HIDDEN at its resting
- * `opacity-0`, which is the correct resting state and the half a design review
- * can judge from a still.
- *
- * THE REVEALED STATE IS PHOTOGRAPHED BY THE EVIDENCE RIG, NOT BY A STORY. The
- * round that judged this surface first read the reveal as unreachable from a
- * still; the UX round corrected that, and the correction is about the rig rather
- * than about these stories - a private headless Chrome driven over CDP with real
- * `Input.dispatchMouseEvent` drives the actual input pipeline, so `:hover` and
- * `group-hover` answer there and the revealed strip is both drivable and
- * photographable. `scripts/capture-evidence.mjs` takes those frames from this
- * same story set, in every theme.
- *
- * The keyboard reveal (`group-focus-within`) is reachable the same way, with
- * real `Input.dispatchKeyEvent` Tab presses rather than a `play` function; what
- * a resting still CAN show is the strip in the tab order, and what it cannot is
- * the ring appearing on it.
+ * WHAT A `play` FUNCTION CAN AND CANNOT DRIVE HERE. `play` cannot produce a
+ * real drag: `userEvent` dispatches synthetic pointer events, and a synthetic
+ * mousedown does not make the browser build a selection. So the stories that
+ * need a highlight to press the control build one through the DOM's own
+ * `Selection` API (`highlightRow`), which is a real selection object read back
+ * by the shipped component - the control only appears if the component agrees a
+ * highlight exists, so a frame from these stories is still a statement about
+ * the gate. What they cannot show is that a READER'S GESTURE raises it: the
+ * mouse path (drag, double-click, shift+click) and the keyboard path
+ * (shift+arrows) are driven by the evidence rig with real
+ * `Input.dispatchMouseEvent` / `Input.dispatchKeyEvent`
+ * (`scripts/capture-evidence.mjs`'s `select` option, over this same story set),
+ * which is the dispatch that exercises the path under test. The resting frames
+ * these stories produce on their own - and the hovered one the rig takes with
+ * its own pointer - are the half that shows the operator's first ask: a turn
+ * under the pointer with nothing highlighted shows nothing at all.
  */
 
 const conversationId = "story";
@@ -77,7 +73,7 @@ const NONEMPTY: Message[] = [
 /**
  * A multi-paragraph answer, as a turn body actually is.
  *
- * The SHAPE is the point of this fixture. `quoteText` deliberately does not
+ * The SHAPE is the point of this fixture. The quote path deliberately does not
  * truncate, so a quoted turn is routinely several paragraphs, and the scan that
  * takes the markup back out has to cross a newline to find the block. A
  * single-line fixture exercises the one shape that worked while the scan was
@@ -108,6 +104,30 @@ const CONVERSATION: TranscriptRecord[] = [
 ];
 
 /**
+ * The same conversation with enough above it to overflow the pane.
+ *
+ * The frame the FLIP is judged from: a highlight on the oldest turn of a
+ * scrolled transcript sits at the pane's own top edge, where there is no room
+ * above it, so the control has to go below the highlight instead. Four turns of
+ * two paragraphs is more than the pane holds at the height these stories ask
+ * for, which is what makes the scroll - and therefore the flip - reachable at
+ * all: on a two-turn fixture every row is on screen and the state cannot be
+ * produced however the rig drives it.
+ */
+const TALL_CONVERSATION: TranscriptRecord[] = [
+	record("u1", "user", "The migration failed on the second row. Why?"),
+	record(
+		"a1",
+		"assistant",
+		`${ANSWER}\n\nSo the answer is the same for the rest.`,
+	),
+	record("u2", "user", "And what about the four hundred after it?"),
+	record("a2", "assistant", `They were fine.\n\n${ANSWER}`),
+	record("u3", "user", "Did the backfill keep the old ids?"),
+	record("a3", "assistant", `It did.\n\n${ANSWER}`),
+];
+
+/**
  * Clear the staged chips before every story.
  *
  * The conversation input store is `persist`ed, so a story that left chips
@@ -120,16 +140,29 @@ function useCleanReplies() {
 	}, []);
 }
 
-const Frame = ({ records }: { records: TranscriptRecord[] }) => {
+/**
+ * The transcript pane at a height that makes its OWN scroller the scrolling
+ * element.
+ *
+ * `height` is the transcript pane's box, not the story's: the composer below it
+ * is a sibling, and the pane takes the rest of the column. That matters for
+ * more than tidiness. The pane's scroller is the element the control is clamped
+ * inside (`quote-anchor.ts`), and a wrapper that scrolled INSTEAD of it would
+ * leave the clamp asking a box as tall as its own content - the story would
+ * then photograph a clamp that the app never applies.
+ */
+const Frame = ({
+	records,
+	height = 620,
+}: {
+	records: TranscriptRecord[];
+	height?: number;
+}) => {
 	useCleanReplies();
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
-		<div className="flex flex-col bg-canvas" style={{ width: 1024 }}>
-			<div
-				className="overflow-y-auto p-6"
-				style={{ height: 420 }}
-				ref={containerRef}
-			>
+		<div className="flex flex-col bg-canvas" style={{ width: 1024, height }}>
+			<div className="flex min-h-0 grow flex-col px-4 pt-4">
 				<CanonicalTranscript
 					transcript={transcriptOf(records)}
 					frontend={null}
@@ -153,7 +186,7 @@ const Frame = ({ records }: { records: TranscriptRecord[] }) => {
 					onReconnect={() => {}}
 				/>
 			</div>
-			<div className="p-6 pt-0">
+			<div className="shrink-0 p-4 pt-0">
 				<MessageInput
 					isLoading={false}
 					messages={NONEMPTY}
@@ -165,13 +198,74 @@ const Frame = ({ records }: { records: TranscriptRecord[] }) => {
 	);
 };
 
+const rowOf = (rowId: string) =>
+	document.querySelector(`[data-record-id="${rowId}"]`);
+
+/** The row's text nodes in document order, as one string with offsets. */
+function rowText(row: Element) {
+	const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+	const nodes: { node: Text; start: number; end: number }[] = [];
+	let at = 0;
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		const text = node as Text;
+		nodes.push({ node: text, start: at, end: at + text.data.length });
+		at += text.data.length;
+	}
+	return { nodes, length: at };
+}
+
+function pointAt(row: Element, offset: number) {
+	const { nodes } = rowText(row);
+	for (const entry of nodes) {
+		if (offset <= entry.end) {
+			return { node: entry.node, offset: offset - entry.start };
+		}
+	}
+	const last = nodes[nodes.length - 1];
+	return { node: last.node, offset: last.node.data.length };
+}
+
+/**
+ * Highlight characters `[from, to)` of a row, the way a `play` function has to.
+ *
+ * A REAL `Selection` object built through the DOM's own API, from the row's
+ * live text nodes - so it is the same thing the shipped component reads back
+ * out of `window.getSelection()`, and the control appears only if the component
+ * agrees it is a highlight of ITS turn. What it is not is a gesture: see this
+ * file's header for why the mouse and keyboard paths are the rig's, not a
+ * `play` function's.
+ */
+async function highlightRow(rowId: string, from = 0, to = 60) {
+	const row = rowOf(rowId);
+	if (!row) throw new Error(`no row ${rowId}`);
+	const range = document.createRange();
+	const start = pointAt(row, from);
+	const end = pointAt(row, to);
+	range.setStart(start.node, start.offset);
+	range.setEnd(end.node, end.offset);
+	const selection = window.getSelection();
+	if (!selection) throw new Error("no Selection API in this browser");
+	selection.removeAllRanges();
+	selection.addRange(range);
+	// Belt and braces: a programmatic selection does fire `selectionchange` in
+	// Chromium, and the component's gate reads the selection itself rather than
+	// trusting the event, so a dispatched one only removes the wait for it.
+	document.dispatchEvent(new Event("selectionchange"));
+	await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+}
+
 /**
  * Press the row's own Quote control, the way a reader does.
  *
  * The button rather than the store action, for the reason `canonical-notice`
  * clicks its disclosure trigger: a story that wrote `addReply` directly would
- * keep passing after the toolkit stopped reaching the store, which is the one
+ * keep passing after the control stopped reaching the store, which is the one
  * thing these frames exist to check.
+ *
+ * IT HIGHLIGHTS FIRST, and it throws if no control appears, because the control
+ * is now raised by a highlight and a missing one would otherwise be a silently
+ * empty frame. A story that pressed a control which was not there would pass
+ * against a component that had stopped staging anything.
  *
  * IT DELIBERATELY DOES NOT CLEAR FIRST (design round 1, D1; QA round 1, Q4).
  * It used to call `clearReplies` before every press, which meant the second
@@ -182,15 +276,16 @@ const Frame = ({ records }: { records: TranscriptRecord[] }) => {
  * `Frame` is what keeps story order from leaking; within a story, presses must
  * append the way the product does.
  */
-function pressQuote(rowId: string) {
-	return () => {
-		const row = document.querySelector(
-			`[data-record-id="${rowId}"] [data-lo-quote-toolkit] button`,
+function pressQuote(rowId: string, from = 0, to = 60) {
+	return async () => {
+		await highlightRow(rowId, from, to);
+		const control = rowOf(rowId)?.querySelector(
+			"[data-lo-quote-toolkit] button",
 		);
-		if (!row) {
-			throw new Error(`no quote control on row ${rowId}`);
+		if (!control) {
+			throw new Error(`no quote control appeared on row ${rowId}`);
 		}
-		(row as HTMLButtonElement).click();
+		(control as HTMLButtonElement).click();
 	};
 }
 
@@ -221,13 +316,13 @@ export const SentTurnQuote: Story = {
 /**
  * The same conversation with the assistant row quoted.
  *
- * `play` presses that row's Quote control, so the frame shows what the reader
- * sees next: the turn's own words staged above the composer, with the remove
- * affordance beside them.
+ * `play` highlights that row and presses its Quote control, so the frame shows
+ * what the reader sees next: the highlighted part staged above the composer,
+ * with the remove affordance beside it.
  */
 export const StagedQuote: Story = {
 	render: () => <Frame records={CONVERSATION} />,
-	play: async () => pressQuote("a1")(),
+	play: async () => pressQuote("a1", 0, 52)(),
 };
 
 /**
@@ -241,7 +336,20 @@ export const StagedQuote: Story = {
 export const TwoQuotesStaged: Story = {
 	render: () => <Frame records={CONVERSATION} />,
 	play: async () => {
-		pressQuote("a1")();
-		pressQuote("u1")();
+		await pressQuote("a1", 0, 52)();
+		await pressQuote("u1", 0, 52)();
 	},
+};
+
+/**
+ * The tall conversation, for the state a short one cannot produce: a highlight
+ * on the pane's own top edge.
+ *
+ * Nothing is highlighted here. The rig scrolls the oldest turn to the top of
+ * the pane and drags across it, which is the frame the flip is judged from -
+ * see this file's header for why that gesture is the rig's rather than a
+ * `play` function's.
+ */
+export const ScrolledToOldestTurn: Story = {
+	render: () => <Frame records={TALL_CONVERSATION} height={520} />,
 };

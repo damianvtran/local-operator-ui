@@ -411,9 +411,8 @@ test("a send inside the read window is refused, and the answer opens it", async 
 
 	// The send, mid-read. Nothing is addressed to the unconfirmed target, and the
 	// refusal carries the code the composer renders and reads back.
-	await assert.rejects(
-		admitChatDraft(SEND_KEY, SEND, TARGET),
-		(error) => refusedByReadWindow(error),
+	await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET), (error) =>
+		refusedByReadWindow(error),
 	);
 	assert.deepEqual(
 		calls.map((request) => request.op),
@@ -445,9 +444,8 @@ test("a live frame opens the read window before the read answers", async () => {
 	 * store as the one above rather than an absent method: the gate is what is
 	 * under test here, and the bound is exercised through it.
 	 */
-	await assert.rejects(
-		admitChatDraft(SEND_KEY, SEND, TARGET),
-		(error) => refusedByReadWindow(error),
+	await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET), (error) =>
+		refusedByReadWindow(error),
 	);
 	/*
 	 * A stale frame cannot vouch for a window it does not belong to - the guard
@@ -456,9 +454,8 @@ test("a live frame opens the read window before the read answers", async () => {
 	 */
 	store.getState().confirmSessionLive(OTHER);
 	assert.equal(store.getState().validatingSessionId, TARGET);
-	await assert.rejects(
-		admitChatDraft(SEND_KEY, SEND, TARGET),
-		(error) => refusedByReadWindow(error),
+	await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET), (error) =>
+		refusedByReadWindow(error),
 	);
 
 	// The session's own stream is the earlier proof: it opens the gate while the
@@ -745,7 +742,7 @@ const STATUSES = ["connecting", "live", "reconnecting", "unavailable"];
 /** Any non-null notice: the rule reads its presence, not its prose. */
 const FAILURE = { statement: "unreadable", action: "reconnect" };
 const MATRIX = [
-// status, failure, pageOwed, records, admitted, reachable, claim
+	// status, failure, pageOwed, records, admitted, reachable, claim
 	["connecting", null, true, 0, false, true, "placeholder"],
 	["connecting", null, true, 2, false, true, "rows"],
 	["connecting", null, false, 0, false, true, "empty"],
@@ -838,7 +835,15 @@ test("the pane's single claim, over every combination of the rule's inputs", asy
 		}
 	}
 
-	for (const [status, failure, owed, records, admitted, reachable, claim] of MATRIX) {
+	for (const [
+		status,
+		failure,
+		owed,
+		records,
+		admitted,
+		reachable,
+		claim,
+	] of MATRIX) {
 		const name = `${key(status, failure, owed, records, admitted)} -> ${claim}`;
 		await t.test(name, () => {
 			const view = {

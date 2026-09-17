@@ -156,7 +156,9 @@ test("headless and inactive arm, and the banner names the frames directory", () 
 });
 
 test("the preload's argument round-trips, and unintelligible is the same as absent", () => {
-	const argv = ["/Applications/Local Operator.app/Contents/MacOS/Local Operator"];
+	const argv = [
+		"/Applications/Local Operator.app/Contents/MacOS/Local Operator",
+	];
 	assert.equal(devDriverArgument(OUT), `${DEV_DRIVER_ARG}=${OUT}`);
 	assert.deepEqual(readDevDriverArgument([...argv, devDriverArgument(OUT)]), {
 		outDir: OUT,
@@ -200,9 +202,17 @@ test("nothing in main registers a dev-driver channel outside the armed branch", 
 	 */
 	const main = readFileSync(join(process.cwd(), "src/main/index.ts"), "utf8");
 	const call = main.indexOf("registerDevDriverIPC({");
-	assert.notEqual(call, -1, "index.ts no longer registers the dev driver at all");
+	assert.notEqual(
+		call,
+		-1,
+		"index.ts no longer registers the dev driver at all",
+	);
 	const guard = main.lastIndexOf("if (devDriverArming.armed", call);
-	assert.notEqual(guard, -1, "registerDevDriverIPC is not behind the arming decision");
+	assert.notEqual(
+		guard,
+		-1,
+		"registerDevDriverIPC is not behind the arming decision",
+	);
 	assert.ok(
 		call - guard < 200,
 		"the arming check and the registration drifted apart; re-read the guard",
@@ -213,14 +223,20 @@ test("nothing in main registers a dev-driver channel outside the armed branch", 
 		"the registration is not the armed branch's",
 	);
 
-	const ipc = readFileSync(join(process.cwd(), "src/main/dev-driver-ipc.ts"), "utf8");
+	const ipc = readFileSync(
+		join(process.cwd(), "src/main/dev-driver-ipc.ts"),
+		"utf8",
+	);
 	// One `handle` per channel, and no third one appearing unnoticed.
 	assert.equal(
 		(ipc.match(/ipcMain\.handle\(/g) ?? []).length,
 		2,
 		"dev-driver-ipc.ts registers a channel count this file does not expect",
 	);
-	const preload = readFileSync(join(process.cwd(), "src/preload/index.ts"), "utf8");
+	const preload = readFileSync(
+		join(process.cwd(), "src/preload/index.ts"),
+		"utf8",
+	);
 	assert.match(
 		preload,
 		/installDevDriverBridge\(\);/,
@@ -306,7 +322,10 @@ test("the launch environment is snapshotted before the .env is folded in", () =>
 
 test("both launch facts are resolved from that snapshot, not the folded process.env", () => {
 	const main = readFileSync(join(process.cwd(), "src/main/index.ts"), "utf8");
-	for (const resolver of ["resolveWindowLaunchPlan({", "resolveDevDriverArming({"]) {
+	for (const resolver of [
+		"resolveWindowLaunchPlan({",
+		"resolveDevDriverArming({",
+	]) {
 		const at = main.indexOf(resolver);
 		assert.notEqual(at, -1, `index.ts no longer calls ${resolver}`);
 		assert.match(

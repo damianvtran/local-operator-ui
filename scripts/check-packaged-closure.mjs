@@ -109,7 +109,10 @@ export function asarPackages(asarPath) {
  * the package that declares it. `rootDir`, not the manifest's directory, is the
  * resolution base for the same reason: the manifest may be a fixture.
  */
-export function productionClosure(manifestPath, rootDir = dirname(manifestPath)) {
+export function productionClosure(
+	manifestPath,
+	rootDir = dirname(manifestPath),
+) {
 	const closure = new Map();
 	const unresolved = [];
 
@@ -168,7 +171,10 @@ export function productionClosure(manifestPath, rootDir = dirname(manifestPath))
  * @returns {{ ok: boolean, lines: string[] }}
  */
 export function checkPackagedClosure({ asarPath, manifestPath, rootDir }) {
-	const { closure, unresolved, declared } = productionClosure(manifestPath, rootDir);
+	const { closure, unresolved, declared } = productionClosure(
+		manifestPath,
+		rootDir,
+	);
 	const shipped = asarPackages(asarPath);
 	const missing = [...closure.entries()].filter(([name]) => !shipped.has(name));
 

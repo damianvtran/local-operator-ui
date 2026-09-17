@@ -535,7 +535,12 @@ test("a rewrite that keeps the document parseable is refused by the integrity di
 	// rejected everything would look identical from the refusal below alone.
 	const honest = dirFor("digest-honest");
 	const honestLog = collector();
-	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), honest, honestLog.log);
+	await savedSnapshot(
+		fakeJar(cookiesFor()),
+		fakeCipher(),
+		honest,
+		honestLog.log,
+	);
 	const honestJar = fakeJar([cookiesFor()[2]]);
 	const restored = await makeVault(
 		honestJar,
@@ -685,8 +690,11 @@ test("a Linux basic_text or unknown keyring backend is refused; a real keyring i
 	// must say that the keychain is there.
 	const keychainPresent = () => true;
 	assert.equal(
-		createSafeStorageCipher(backend("basic_text"), "darwin", keychainPresent)
-			.availability().ok,
+		createSafeStorageCipher(
+			backend("basic_text"),
+			"darwin",
+			keychainPresent,
+		).availability().ok,
 		true,
 	);
 	const missing = {
@@ -1173,7 +1181,9 @@ test("a rejected browser-host stop still quits, instead of cancelling the first 
 		log: (message) => lines.push(message),
 	});
 
-	const held = await holder({ preventDefault: () => calls.push("preventDefault") });
+	const held = await holder({
+		preventDefault: () => calls.push("preventDefault"),
+	});
 
 	// The defect this pins: `await stopBrowserHost()` with no try/finally, so a
 	// rejection skipped the `app.quit()` below it. Measured in Electron 44.3.0, an
@@ -1345,7 +1355,9 @@ test("a second quit during the stop is held until the snapshot lands, so the run
 			};
 			// `app.quit()` re-emits `before-quit` inside the handler that held the
 			// first quit, which is the re-entrant call that must not be held.
-			requit = holder({ preventDefault: () => calls.push("re-preventDefault") });
+			requit = holder({
+				preventDefault: () => calls.push("re-preventDefault"),
+			});
 		},
 		log,
 		budgetMs: 2_000,
@@ -1354,7 +1366,9 @@ test("a second quit during the stop is held until the snapshot lands, so the run
 	const first = holder({ preventDefault: () => calls.push("preventDefault") });
 	await new Promise((resolve) => setTimeout(resolve, 50));
 	// The user presses Quit again, while the stop is still in flight.
-	const second = holder({ preventDefault: () => calls.push("re-preventDefault") });
+	const second = holder({
+		preventDefault: () => calls.push("re-preventDefault"),
+	});
 	const secondHeld = await second;
 
 	// The defect this pins, measured against the shipped module: with a spent flag
@@ -1381,7 +1395,11 @@ test("a second quit during the stop is held until the snapshot lands, so the run
 		false,
 		"the hold's own release still gets through, or the app never exits",
 	);
-	assert.equal(atExit.snapshot, true, "the snapshot is on disk before the quit is let go");
+	assert.equal(
+		atExit.snapshot,
+		true,
+		"the snapshot is on disk before the quit is let go",
+	);
 	assert.equal(
 		atExit.marker,
 		false,
@@ -1416,7 +1434,9 @@ test("a second quit is bounded by the first hold's deadline, not by one of its o
 	await new Promise((resolve) => setTimeout(resolve, 400));
 	// The second quit lands well inside the budget, which is where a per-quit
 	// budget would show: it would hold this one for another 600 ms.
-	const second = holder({ preventDefault: () => calls.push("re-preventDefault") });
+	const second = holder({
+		preventDefault: () => calls.push("re-preventDefault"),
+	});
 	const secondHeld = await second;
 	const elapsed = Date.now() - started;
 
@@ -1531,7 +1551,12 @@ test("a run whose channel never opened reports the channel, not a crash it never
 			throw new Error("no channel");
 		},
 	};
-	const broken = await makeVault(channelDown, fakeCipher(), paths, log).restore();
+	const broken = await makeVault(
+		channelDown,
+		fakeCipher(),
+		paths,
+		log,
+	).restore();
 	assert.equal(broken.outcome, "channel-unavailable");
 	assert.equal(broken.restored, 0);
 	assert.equal(

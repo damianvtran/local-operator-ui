@@ -177,7 +177,14 @@ const COMMANDS = [
 		name: "credential",
 		description: "Type or paste a secret after a space; masked",
 		aliases: ["cred"],
-		arguments: "none",
+		/*
+		 * THE RUNTIME'S OWN MODE, not a simplification: `slash_commands.py`
+		 * declares `ArgumentMode.OPTIONAL` for `/credential`, and the planner reads
+		 * this field as one of its three vocabularies — so a stub saying `none` would
+		 * have the suite assert a shape the app cannot produce (`/credential
+		 * --forget-all` typed whole is a whole-draft command there).
+		 */
+		arguments: "optional",
 		echo: false,
 		consumes_prompt: false,
 		destination: "session.credential",
@@ -976,6 +983,112 @@ test("after an empty-span Escape the leading token is prose, not the command", a
 		frame.sent[0][0],
 		"/credential sk-live-CANARY-4417",
 		"what the notice promised Enter would expose is what was sent",
+	);
+});
+
+test("a token the PICKER wrote is the dispatcher's wherever an edit moves it", async () => {
+	/*
+	 * The PICKED half of the gesture rule, driven rather than asserted: the
+	 * operator's own report kept the pick ("if you don't actually hit enter on the
+	 * suggested command or click it"), so a token the picker wrote is a command
+	 * wherever it sits — and #238's property is what needs it to be one, because
+	 * the dispatcher refuses `/credential`'s arguments, so a secret can never land
+	 * in command text. Tab writes the token without running it (this composer's own
+	 * completing key), and the edit then MOVES it, which is the shape a buffer's
+	 * text cannot tell from one typed there: the pick's own record is the
+	 * difference, and this case is what pins it (review round 10, MINOR-3 —
+	 * deleting the recording lines left the suite green).
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-picked-moved",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/cred");
+	await key(frame, { key: "Tab", text: undefined });
+	assert.match(frame.value(), /^\/(credential|cred) $/);
+	assert.equal(ran.length, 0, "completing the row did not run it");
+	/*
+	 * A SECOND pick, from a fresh draft: the read is a /g `exec`, so a caller that
+	 * did not reset `lastIndex` would answer `null` here and the record would never
+	 * be set (review round 10, MINOR-2). One pick alone cannot tell the two apart.
+	 */
+	await act(async () => writeValue(frame.textarea(), "", 0));
+	await type(frame, "/cred");
+	await key(frame, { key: "Tab", text: undefined });
+	assert.match(frame.value(), /^\/(credential|cred) $/);
+	await act(async () => {
+		const field = frame.textarea();
+		const next = `please ${field.value}SECRET`;
+		writeValue(field, next, next.length);
+	});
+	await settle();
+	await enter(frame);
+	await settle();
+	assert.equal(
+		ran.length,
+		1,
+		"a PICKED token dispatches where an edit moved it, so its arguments are refused",
+	);
+	assert.equal(frame.sent.length, 0, "and the token never travels as prose");
+});
+
+test("a pick does not outlive its conversation as a claim about a later typed draft", async () => {
+	/*
+	 * The switch retires BOTH gesture records (review round 10, MINOR-1). A pick
+	 * that only armed the sibling's clear left `pickedToken` holding `/credential`,
+	 * so the NEXT conversation planned a hand-typed draft containing that text as a
+	 * pick — the reviewer's probe answered `splice` where it must be prose. A second
+	 * `mount` without `remount` IS the switch this rig can express: same instance,
+	 * same refs, a new conversation.
+	 *
+	 * The draft is shaped so the CAPTURE cannot mask the difference: the arm needs
+	 * the token at the end of the buffer, and `please /credential and more` does not
+	 * end with it — so what Enter does here is the planner's answer, which is the
+	 * fact under test.
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-pick-then-switch",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/cred");
+	await key(frame, { key: "Tab", text: undefined });
+	assert.match(frame.value(), /^\/(credential|cred) $/);
+
+	const next = await mount({
+		conversationId: "conv-typed-after-switch",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(next, "please /credential and more");
+	await enter(next);
+	await settle();
+	assert.deepEqual(
+		ran,
+		[],
+		"a typed draft is prose, whatever the last pick wrote",
+	);
+	/*
+	 * WHAT ENTER DID, stated honestly: nothing was dispatched, and the typed token
+	 * opened the CAPTURE — this composer's designed route for a secret after a
+	 * space — so the box holds the masked citation rather than running anything.
+	 * The capture is why this case observes the no-dispatch half rather than the
+	 * plan itself: a typed credential token never reaches the planner, which is the
+	 * property #238 exists to keep.
+	 */
+	assert.match(
+		next.value(),
+		/^please (\/credential and more|\[Credential #1, \d+ chars\] )$/,
+		"the sentence survives, with its secret masked",
 	);
 });
 
@@ -1942,4 +2055,177 @@ test("a retired count cannot ride a minted marker, across the mint and a reload"
 		"a reload restores the marker without raising a claim about plaintext characters",
 	);
 	assert.equal(reloaded.disclosure(), 0, "and re-persists no count");
+});
+
+test("a real keystroke that moves a cancelled token hands it to the dispatcher (Q16)", async () => {
+	/*
+	 * QA round 8's Q16, driven the way the operator drives it: `/credential <secret>`
+	 * typed, Escape, then a REAL keystroke edit that moves the token (Home, then
+	 * characters through the composer's own key pipeline, with the value written the
+	 * way a browser writes it). The dispatch is the assertion — and it is the point,
+	 * because `/credential`'s arguments are REFUSED, so a secret can never land in
+	 * command text; `frame.sent.length === 0` is the property that says the secret
+	 * did not travel as prose.
+	 *
+	 * WHAT THIS CASE DOES NOT PIN, stated because review round 11 measured it: the
+	 * two mutations of the record's lifetime that Q16 is about — restoring the
+	 * arm-time clear, and testing the record's run rather than its word — leave this
+	 * case green, because the harness's edit path never produces the buffer state the
+	 * app reaches (a masked citation, or the token with its trailing space gone). The
+	 * harness proves the gesture survives an edit through the composer's own
+	 * handlers; the app-level half is QA's re-run on this head, and the record's
+	 * lifetime is keyed on the token's WORD for that reason (`message-input.tsx`).
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-q16-moved",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/credential ");
+	await type(frame, "SECRET");
+	await esc(frame);
+	await key(frame, { key: "Home" });
+	for (const ch of "please ") {
+		await key(frame, { key: ch });
+	}
+	const field = frame.textarea();
+	await act(async () => {
+		const next = `please ${field.value}`;
+		writeValue(field, next, next.length);
+	});
+	await settle();
+	assert.equal(frame.value(), "please /credential SECRET");
+	await enter(frame);
+	await settle();
+	assert.equal(ran.length, 1, "the moved token reaches the dispatcher");
+	assert.equal(
+		frame.sent.length,
+		0,
+		"so the secret never travels as message text",
+	);
+
+	/*
+	 * AND WITH THE CARET INSIDE THE TOKEN, which is the state that fires the
+	 * capture's ARM. The record has to survive that re-sync too, because the arm is
+	 * the token's own consequence rather than a new gesture — this is the half the
+	 * app was failing on, and the harness reaches it only with the caret placed by
+	 * hand, which is why the suite stayed green while the app sent. Re-adding the
+	 * arm-time clear (M-Q16) is what this half fails on.
+	 */
+	const armed = await mount({
+		conversationId: "conv-q16-armed",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(armed, "/credential ");
+	await type(armed, "SECRET");
+	await esc(armed);
+	const armField = armed.textarea();
+	await act(async () => {
+		// `please /credential |SECRET` — the caret right after the token, which is
+		// the arm's own precondition.
+		writeValue(
+			armField,
+			"please /credential SECRET",
+			"please /credential ".length,
+		);
+	});
+	await settle();
+	await enter(armed);
+	await settle();
+	assert.equal(ran.length, 2, "the armed caret still reaches the dispatcher");
+	assert.equal(armed.sent.length, 0, "and the secret is not sent as text");
+});
+
+test("a token moved to the END of the buffer still reaches the dispatcher (round 12, MAJOR)", async () => {
+	/*
+	 * The record is built as the token PLUS its separator
+	 * (`credential-capture.ts`: `text: buffer.slice(tokenStart, span.start)`, so
+	 * `"/credential "`), so a draft that ends in the bare token does not contain the
+	 * record's run — and a run-shaped test at the plan seam therefore fell through to
+	 * prose and SENT the secret as message text. This is the moved-token case the
+	 * harness can drive: no arm, no mask, just a buffer and Enter. Removing the
+	 * seam's `.trim()` is what fails it.
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-q16-tail",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/credential ");
+	await type(frame, "SECRET");
+	await esc(frame);
+	const field = frame.textarea();
+	await act(async () => {
+		writeValue(
+			field,
+			"SECRET please /credential",
+			"SECRET please /credential".length,
+		);
+	});
+	await settle();
+	assert.equal(frame.value(), "SECRET please /credential");
+	await enter(frame);
+	await settle();
+	assert.equal(ran.length, 1, "the token moved to the end still dispatches");
+	assert.equal(
+		ran[0]?.name,
+		"credential",
+		"and it is the credential command, whose arguments are refused",
+	);
+	assert.equal(
+		frame.sent.length,
+		0,
+		"so the secret is never sent as message text",
+	);
+});
+
+test("the caret immediately before a moved token does not make it prose (QA round 10)", async () => {
+	/*
+	 * QA round 10's isolated variable: the CARET. Typing a prefix leaves the caret
+	 * immediately BEFORE the token, and `activeSlash`'s claim branch returns the
+	 * running candidate — `null` — when the caret sits exactly at the claiming
+	 * token's `/` (`column > index` is false at equality), so `slashTokenSpan`
+	 * answers null and the planner returns `send` three lines before the gesture,
+	 * the span and the pick rule are consulted. Same draft, same live record, moved
+	 * caret: SENT, with the secret as message text.
+	 *
+	 * The caret placement IS the fact under test, so it is written directly: the
+	 * app leaves it there after a typed prefix, which is the shape every other case
+	 * in this file misses (`writeValue(..., next.length)` always ends at the end).
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-caret-before",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/credential ");
+	await type(frame, "SECRET");
+	await esc(frame);
+	const field = frame.textarea();
+	await act(async () => {
+		// `please |/credential SECRET` — the caret at the token's own slash.
+		writeValue(field, "please /credential SECRET", "please ".length);
+	});
+	await settle();
+	assert.equal(frame.value(), "please /credential SECRET");
+	await enter(frame);
+	await settle();
+	assert.equal(ran.length, 1, "a gesture-owned token dispatches, caret or not");
+	assert.equal(
+		frame.sent.length,
+		0,
+		"so the secret is never sent as message text",
+	);
 });

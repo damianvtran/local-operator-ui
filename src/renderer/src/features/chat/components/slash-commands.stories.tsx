@@ -90,6 +90,16 @@ const COMMANDS: SlashCommandMeta[] = [
 		execution: "owner",
 	},
 	{
+		name: "compact",
+		description: "Compact the context now",
+		aliases: [],
+		arguments: "none",
+		echo: false,
+		consumes_prompt: false,
+		destination: "session.compact",
+		execution: "owner",
+	},
+	{
 		name: "move",
 		description: "Move the session to another working directory",
 		aliases: [],
@@ -346,6 +356,10 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	// A story frame has no dispatcher, so the pane cannot address a session
 	// unless a story says otherwise — the same default the composer takes.
 	paneHasSession: false,
+	// This branch's own vocabulary: the commands whose trailing text is an
+	// argument chosen from a list.
+	valueArgumentCommands: new Set(),
+	argumentCommands: new Set(),
 	nameListCommands: new Set(),
 	argumentWords: [],
 	enabled: true,
@@ -610,19 +624,68 @@ export const ArgumentPhaseNarrowComposer: Story = {
 };
 
 /**
- * The mid-draft frame the whole change is about: a command typed into a
- * sentence, the list open ABOVE the prose, and the draft untouched behind it.
+ * The mid-draft state round-1 D1 judged, and the state this change put in its
+ * place — the two cases of one board, which is the only shape that can show the
+ * AFTER half.
+ *
+ * A lone composer story counts five elements against the rig's floor of nine, so
+ * the honest picture of "nothing is open" could not be taken that way (design
+ * round 2, D5 measured the floor and pointed at `name-list-completed`, a board,
+ * which photographs the same closed state at twenty-one). Paired, both halves
+ * clear it.
+ *
+ * CASE 1 is the reachable state: a command word typed into a sentence, the
+ * popup open above it, the draft untouched behind it. Design round 1 judged this
+ * frame and it was real product behaviour then — the list opened on the tokenizer
+ * alone while the submit planner reads that word as prose, so its footer promised
+ * a run that never happened and the first Enter mutated the draft instead of
+ * sending it.
+ *
+ * CASE 2 is what the app does now: `commandWordOpensDraft` is the positional rule
+ * (`slash-token.ts`), `caretPhase` gates both phases on it, and the composer
+ * stands alone. The rule is pinned in `scripts/slash-token.test.mjs`; this is
+ * what it looks like.
  */
-export const InlineMidDraft: Story = {
+export const InlineMidDraftPair: Story = {
 	render: () => (
-		<Box width={720} draft="fix this /team">
+		<Board caption="A command word inside a sentence: what the list used to offer (case 1) and what the composer does with that draft now (case 2).">
+			<Case width={720} draft="fix this /team" rows={5}>
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "team",
+						inline: { source: "team", nameThenMessage: true, runs: false },
+						matches: argumentRowsFor("team", TEAMS, null),
+					})}
+					onPick={noop}
+				/>
+			</Case>
+			{/* No popup element at all: the real hook's `visible` needs a phase and
+			    `caretPhase` answers none for this draft, so a rendered box saying "No
+			    commands match" would be a picture of a state the app cannot reach. */}
+			<Case width={720} draft="fix this /team" rows={1}>
+				{null}
+			</Case>
+		</Board>
+	),
+};
+
+/**
+ * The row the operator's own gesture lands on: `/compact` in the command list,
+ * with its registry description and its click footer.
+ *
+ * Design round 1's D2: the deleted dialog held the only explanation of what
+ * compaction does, and this row is what carries it now — so the round asked for
+ * a picture of the state a reader actually sees. Both sentences are the
+ * shipped ones: `pointerPickRuns` is false for `session.compact`, so the click
+ * COMPLETES the word and the footer says so rather than promising a run, and
+ * `POINTER_PICK_NEVER_RUNS` is what keeps a stray click from spending a pass.
+ */
+export const CompactRow: Story = {
+	render: () => (
+		<Box width={720} draft="/comp">
 			<SlashSuggestionsPopup
-				state={state({
-					phase: "argument",
-					argumentCommand: "team",
-					inline: { source: "team", nameThenMessage: true, runs: false },
-					matches: argumentRowsFor("team", TEAMS, null),
-				})}
+				state={state({ phase: "command", matches: commandRows("comp") })}
 				onPick={noop}
 			/>
 		</Box>

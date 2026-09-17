@@ -8,8 +8,8 @@ import { v4 as uuidv4 } from "uuid";
  * Two properties here are load-bearing, and the scan was wrong about both.
  *
  * DOTALL. `[\s\S]` rather than `.` because `.` never crosses a newline.
- * `quoteText` deliberately does not truncate (a quote is a claim about what was
- * said), so a quoted turn is routinely several paragraphs; with `.` nothing
+ * The quote path deliberately does not truncate (a quote is a claim about what
+ * was said), so a quoted turn is routinely several paragraphs; with `.` nothing
  * matched, `remainingContent` was the whole payload, and the sent row painted
  * `<reply-to>...</reply-to>` as literal text at reading weight - the exact
  * defect this split exists to remove, in the common case rather than an edge.

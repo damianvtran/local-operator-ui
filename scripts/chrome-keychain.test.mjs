@@ -249,6 +249,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the composer band's empty-chat geometry, chips and tip row from the live DOM (this branch's rig)",
 	),
 	guarded(
+		"scripts/backend-settings-geometry.mjs",
+		"spawn",
+		2,
+		"measures the backend settings region's height, row pitch, full-width controls and focusables from the live DOM; its first spawn is the vite server that serves the page",
+	),
+	guarded(
 		"scripts/chat-alignment-geometry.mjs",
 		"spawn",
 		1,
