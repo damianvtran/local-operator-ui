@@ -31,7 +31,8 @@ import {
 } from "./release-state.mjs";
 import {
 	artifactFiles,
-	checkAssetCollisions,
+	artifactRecords,
+	planAssetUploads,
 	uploadRelease,
 } from "./upload-release.mjs";
 import {
@@ -43,6 +44,13 @@ import {
 const SHA = "3becfb9c462f6adb1f47f9815767f5522755f849";
 const TAG = "v0.14.1";
 const ID = 383131955;
+/**
+ * One artifact as the attach path's reconciliation sees it: the name GitHub
+ * addresses it by and the byte count the size comparison needs. Written as a record
+ * because every decision below is made from the release's asset list and a local
+ * byte size, so a case does not need a file on disk to be a real case.
+ */
+const RECORD = (name, size) => ({ path: name, name, size });
 /**
  * The other spelling of the same release: `node_id` is the GraphQL global id,
  * `id` is the numeric database id. Both are the release under test, and
@@ -266,30 +274,60 @@ test("missing API token fails by name only", () => {
 	});
 });
 test("duplicate artifact filenames fail before upload", () => {
+	// The dedupe is on the basename, because that is the name GitHub addresses an
+	// asset by: macos-artifacts/latest-mac.yml and its like collide under a shared
+	// basename even from different platform directories.
 	assert.throws(
 		() =>
-			checkAssetCollisions(fixture(), ID, ["mac/latest.yml", "win/latest.yml"]),
+			planAssetUploads(
+				fixture(),
+				ID,
+				artifactRecords(
+					["macos-artifacts/latest.yml", "windows-artifacts/latest.yml"],
+					() => 11,
+				),
+			),
 		/Duplicate/,
 	);
 });
-test("existing filename collision rejected", () => {
+test("a complete asset of this name at another size is refused, naming both sizes", () => {
+	// The one case that must stop the run before any write: a name already attached
+	// to this release with different bytes is somebody else's asset (or an older
+	// build's), and replacing it is how a signed installer starts disagreeing with
+	// the update metadata that names its hash.
 	assert.throws(
 		() =>
-			checkAssetCollisions(fixture({ assets: [{ name: "app.dmg" }] }), ID, [
-				"app.dmg",
-			]),
-		/collisions/,
+			planAssetUploads(
+				fixture({
+					assets: [{ name: "app.dmg", state: "uploaded", size: 999 }],
+				}),
+				ID,
+				[{ path: "app.dmg", name: "app.dmg", size: 7 }],
+			),
+		/app\.dmg is already attached to this release with a different size: attached 999 bytes, this build's 7 bytes/,
 	);
 });
-test("collisions on paginated assets rejected", () => {
+test("an asset on a later page is reconciled, not missed", () => {
+	// The release summary truncates its asset list and the endpoint pages at 100, so
+	// the asset that decides whether this name is uploaded again can be on page 2.
 	const api = (path) =>
 		path.endsWith("page=1")
-			? Array.from({ length: 100 }, (_, i) => ({ name: `old-${i}` }))
-			: [{ name: "app.dmg" }];
-	assert.throws(() => checkAssetCollisions(api, ID, ["app.dmg"]), /collisions/);
+			? Array.from({ length: 100 }, (_, i) => ({
+					name: `old-${i}`,
+					state: "uploaded",
+					size: 1,
+				}))
+			: [{ name: "app.dmg", state: "uploaded", size: 7 }];
+	assert.deepEqual(
+		planAssetUploads(api, ID, [RECORD("app.dmg", 7)])[0].verdict,
+		{
+			action: "skip",
+			asset: { name: "app.dmg", state: "uploaded", size: 7 },
+		},
+	);
 });
 test("empty artifact set rejected", () =>
-	assert.throws(() => checkAssetCollisions(fixture(), ID, []), /No artifacts/));
+	assert.throws(() => planAssetUploads(fixture(), ID, []), /No artifacts/));
 for (const [name, overrides, error] of [
 	["missing SHA", { expectedSha: "" }, /EXPECTED_SOURCE_SHA/],
 	["missing ID", { expectedReleaseId: "" }, /EXPECTED_RELEASE_ID/],
@@ -304,14 +342,18 @@ for (const [name, overrides, error] of [
 		/EXPECTED_RELEASE_ID/,
 	],
 	[
-		"collision",
-		{ api: fixture({ assets: [{ name: "app.dmg" }] }) },
-		/collisions/,
+		"a complete asset of this name at another size",
+		{
+			api: fixture({
+				assets: [{ name: "app.dmg", state: "uploaded", size: 999 }],
+			}),
+		},
+		/different size/,
 	],
 ]) {
-	test(`upload rejects ${name} without writes`, () => {
+	test(`upload rejects ${name} without writes`, async () => {
 		let writes = 0;
-		assert.throws(
+		await assert.rejects(
 			() =>
 				uploadRelease({
 					api: fixture(),
@@ -319,7 +361,9 @@ for (const [name, overrides, error] of [
 					expectedSha: SHA,
 					expectedReleaseId: ID,
 					files: ["app.dmg"],
+					fileSize: () => 7,
 					upload: () => writes++,
+					remove: () => writes++,
 					...overrides,
 				}),
 			error,
@@ -327,19 +371,21 @@ for (const [name, overrides, error] of [
 		assert.equal(writes, 0);
 	});
 }
-test("upload addresses validated ID and does not mutate release metadata", () => {
+test("upload addresses validated ID and does not mutate release metadata", async () => {
 	const writes = [];
-	uploadRelease({
+	await uploadRelease({
 		api: fixture(),
 		tag: TAG,
 		expectedSha: SHA,
 		expectedReleaseId: ID,
 		files: ["app.dmg", "app.exe"],
+		fileSize: () => 7,
 		upload: (...args) => writes.push(args),
+		remove: (...args) => writes.push(args),
 	});
 	assert.deepEqual(writes, [
-		[ID, "app.dmg"],
-		[ID, "app.exe"],
+		[ID, RECORD("app.dmg", 7)],
+		[ID, RECORD("app.exe", 7)],
 	]);
 });
 for (const mode of ["complete", "missing-linux", "metadata-only", "symlink"]) {
@@ -377,23 +423,37 @@ for (const mode of ["complete", "missing-linux", "metadata-only", "symlink"]) {
 	});
 }
 
-test("a failed upload stops instead of replacing or retrying assets", () => {
+test("a permanent upload failure stops after one attempt and reports the status", async () => {
+	// A 4xx is an answer rather than a fault to wait out, and a transport that cannot
+	// classify its own failure gets exactly one attempt: retrying something unknown
+	// doubles the time a red run takes to say what went wrong. The report carries the
+	// status and never the word collision, which is the mislabel this replaced -- an
+	// exhausted retry budget or a stalled upload is not a name conflict.
 	let writes = 0;
-	assert.throws(
-		() =>
-			uploadRelease({
-				api: fixture(),
-				tag: TAG,
-				expectedSha: SHA,
-				expectedReleaseId: ID,
-				files: ["app.dmg", "app.exe"],
-				upload: () => {
-					writes++;
-					throw new Error("HTTP 422 duplicate");
-				},
-			}),
-		/422/,
+	let failure;
+	try {
+		await uploadRelease({
+			api: fixture(),
+			tag: TAG,
+			expectedSha: SHA,
+			expectedReleaseId: ID,
+			files: ["app.dmg", "app.exe"],
+			fileSize: () => 7,
+			upload: () => {
+				writes++;
+				throw new Error("HTTP 422 duplicate");
+			},
+			remove: () => writes++,
+		});
+	} catch (error) {
+		failure = error;
+	}
+	assert.ok(failure, "an upload that failed must not report success");
+	assert.match(
+		failure.message,
+		/Asset upload failed on attempt 1 of 3: app\.dmg: HTTP 422 duplicate/,
 	);
+	assert.doesNotMatch(failure.message, /collision/i);
 	assert.equal(writes, 1);
 });
 
