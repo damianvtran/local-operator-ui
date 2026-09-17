@@ -24,7 +24,8 @@
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 const MODULES = [
 	"src/renderer/src/features/chat/canonical/scroll-paging.ts",
@@ -98,14 +99,7 @@ if (arm === "before") {
 	);
 }
 
-const harness = spawnSync(
-	process.execPath,
-	["scripts/scroll-paging-evidence.mjs", ...harnessArgs, arm],
-	{ stdio: "inherit" },
-);
-record.harnessExit = harness.status ?? 1;
-
-if (arm === "before") {
+const restore = () => {
 	// `git checkout <ref> -- <path>` STAGES the ref's bytes, so restoring is a
 	// checkout from the index-independent HEAD and then an index reset; both are
 	// needed or the swap would ride into the next commit.
@@ -114,13 +108,56 @@ if (arm === "before") {
 	const restored = digests();
 	record.md5Restored = restored;
 	record.restored = MODULES.every((path) => restored[path] === before[path]);
-	console.log(
-		`paging-evidence-arms: restored=${record.restored ? "identical" : "DIFFERENT"} ${JSON.stringify(
-			Object.fromEntries(
-				MODULES.map((path) => [path.split("/").pop(), restored[path]]),
-			),
-		)}`,
+	return record.restored;
+};
+
+let harnessExit = 1;
+try {
+	/*
+	 * `finally`, not the happy path (review round 2, R2-11). The before arm's
+	 * bytes are STAGED in the worktree while the rig runs, which is minutes; an
+	 * interrupt (Ctrl-C, a killed rig, an editor detaching) used to leave them
+	 * there for whatever ran next, and the next commit would carry the merge
+	 * base's two modules under this branch's name. The restore is the one thing
+	 * here that must happen on every exit.
+	 */
+	const harness = spawnSync(
+		process.execPath,
+		["scripts/scroll-paging-evidence.mjs", ...harnessArgs, arm],
+		{ stdio: "inherit" },
 	);
-	if (!record.restored) process.exit(1);
+	harnessExit = harness.status ?? 1;
+} finally {
+	if (arm === "before") {
+		const identical = restore();
+		console.log(
+			`paging-evidence-arms: restored=${identical ? "identical" : "DIFFERENT"} ${JSON.stringify(
+				Object.fromEntries(
+					MODULES.map((path) => [
+						path.split("/").pop(),
+						record.md5Restored[path],
+					]),
+				),
+			)}`,
+		);
+	}
+	/*
+	 * The record is written where the run's own artefacts are, because the
+	 * digests were being computed and dropped: R1-4 asked for the swap to be an
+	 * ARTEFACT rather than a claim, and a number that only ever reached stdout of
+	 * a backgrounded process is not one.
+	 */
+	record.harnessExit = harnessExit;
+	const outDir = harnessArgs[harnessArgs.length - 1];
+	const recordPath = join(outDir, "arm-record.json");
+	try {
+		writeFileSync(recordPath, `${JSON.stringify(record, null, "\t")}\n`);
+		console.log(`paging-evidence-arms: record written to ${recordPath}`);
+	} catch (error) {
+		console.error(
+			`paging-evidence-arms: could not write ${recordPath}: ${error.message}`,
+		);
+	}
 }
-process.exit(record.harnessExit === 0 ? 0 : 1);
+if (record.restored === false) process.exit(1);
+process.exit(harnessExit === 0 ? 0 : 1);

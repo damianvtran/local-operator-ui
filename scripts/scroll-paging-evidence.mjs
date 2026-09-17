@@ -962,7 +962,6 @@ function analyse({ events, samples, historyRequests: history, extra = {} }) {
 	 */
 	const lastInputAt = events.length > 0 ? events[events.length - 1].t : 0;
 	const lastSample = samples.length > 0 ? samples[samples.length - 1] : null;
-	const lastInputAtFor = events.length > 0 ? events[events.length - 1].t : 0;
 	let lurch = { px: 0, t: null, to: null, frames: 0 };
 	for (let i = 1; i < samples.length; i++) {
 		const prev = samples[i - 1];
@@ -1013,8 +1012,7 @@ function analyse({ events, samples, historyRequests: history, extra = {} }) {
 		 * about (review round 1, R1-1).
 		 */
 		revealsInsideZoneBeforeLastInput: reveals.filter(
-			(r) =>
-				r.t < lastInputAtFor && r.distanceBefore <= zonePxFor(r.clientHeight),
+			(r) => r.t < lastInputAt && r.distanceBefore <= zonePxFor(r.clientHeight),
 		).length,
 		revealDetail: reveals,
 		slotTransitions,

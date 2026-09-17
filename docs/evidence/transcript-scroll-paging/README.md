@@ -91,19 +91,26 @@ app answers.
 Fixture: 260 rows / 3 backend pages, viewport 489px, `WINDOW` 60 rows,
 `WINDOW_STEP` 60, durable page 100.
 
-| Frame | What it shows |
-| --- | --- |
-| `after-01-at-top/` | After a 60-notch run: history has loaded **without a click**. |
-| `after-02-after-fling/` | After the 40-notch fling under test. |
-| `after-03-clamped/` | After 50 further notches clamped against the top. |
-| `after-04-after-isolated-reveals/` | The end of the isolated-reveal trials. |
+These four directories hold **round 2's capture** of the same probe steps; round
+1's versions of them were superseded and deleted (round 2, D2-2). States are from
+the measurement JSON:
 
-**`after-02` and `after-04` are byte-identical** (`13ebfe0f1d779ae8`), and an
-earlier version of this file named the wrong pair. Both end at the hard top of a
-fully-mounted transcript, which is the same scene by construction: the fling
-step drives the transcript to the end of its history, and the isolated trials
-reload and drive it there again. Nothing further is supposed to happen at that
-point, so the pixels agree.
+| Frame | What it shows | State |
+| --- | --- | --- |
+| `after-01-at-top/` | the probe's first fling, step `at-top-after-first-fling` | `d = 7770`, 160 rows mounted, 40 held back |
+| `after-02-after-fling/` | after the 40-notch fling under test | no probe state recorded for this step |
+| `after-03-clamped/` | after 50 further notches clamped against the top | `d = 1`, 260 rows mounted, none held back, slot `Start of conversation` |
+| `after-04-after-isolated-reveals/` | the end of the isolated-reveal trials | no probe state recorded for this step |
+
+**`after-03` and `after-04` are byte-identical** (`e39037a621ead0f943b6acc432752f99`),
+and on the other arm so are `before-03` and `before-04`
+(`9a4af3138a5cadf2941ed52c32e7dec9`). Both are the hard top of a fully-mounted
+transcript, which is the same scene by construction: the clamp step drives the
+transcript to the end of its history and the isolated trials drive it there
+again. Nothing further is supposed to happen at that point, so the pixels agree.
+An earlier version of this file named `after-02`/`after-04` and cited a hash that
+belonged to the round-1 files; this round re-derived the sentence from the bytes
+that ship (D2-3).
 
 That is a weak thing to have to assert, because it is indistinguishable from
 shipping one file twice — which is exactly what round 1's Q5 was. What
@@ -113,13 +120,10 @@ If you want a frame that cannot be confused this way, capture the second
 mid-sequence; this set does not, and says so rather than leaving a reader to
 hash the files themselves.
 
-All four `after` frames also carry the app's **"server is offline" banner**,
-which no `before` frame has. It is an artefact of the harness reloading the page
-while the backend connection re-establishes, not of the change: the same run
-issued 6 real `sessions.history` ops and mounted 260 rows, so the transport was
-demonstrably working. It is named here because it is a systematic difference
-inside a pair offered as before/after evidence, and an unexplained difference is
-one a reader has to discount on trust.
+**The "server is offline" banner paragraph is deleted.** It described the four
+round-1 `after` frames, which this round's capture superseded; no frame in this
+set carries the banner, so the sentence had no subject left and the D1-6 scoping
+question goes with it.
 
 ### Clause B — one gesture, one page
 
@@ -332,15 +336,22 @@ changes, each answering something this file used to be unable to say:
 5. **The act-end shutter** (review round 1, D1-1): the scenario runner fires a
    `beforeSettle` hook, so the frame that answers "where does the freeze stand
    under the fix?" is taken at the END OF THE ACT rather than after the settle
-   sleep that exists to let reveals unpin the reader. The state at that shutter
-   is recorded with the frame (`actEndState`).
+   sleep that exists to let reveals unpin the reader. **No shutter state is
+   recorded with the frame** — the captions below quote the act's last recorded
+   input event from `phase2Timeline`, which is the same moment, and the frame
+   itself is the picture of it.
 6. **`scripts/paging-evidence-arms.mjs`** (review round 1, R1-4): the mode
    argument names the OUTPUT FILES and the report's arm label; it cannot swap
    the code under test, and the first version's swap was two hand-run `git show`
    commands plus a README sentence claiming an md5 comparison nobody could see.
    The script writes the ref's bytes, asserts the swap by a property the arm
    must have, runs the rig, restores from git and re-reads the hash, printing
-   `restored=identical {...}` or exiting non-zero.
+   `restored=identical {...}` or exiting non-zero. Round 2 added two things it
+   was missing: the restore runs in a `finally`, because the before arm's bytes
+   are STAGED in the worktree for the length of a run and an interrupt used to
+   leave them for whatever ran next; and the digests it computes are written to
+   `<out-dir>/arm-record.json` rather than only printed, so the swap is an
+   artefact of the run instead of a line in a backgrounded process's stdout.
 
 ### The two arms
 
@@ -352,14 +363,19 @@ node scripts/paging-evidence-arms.mjs after -- http://127.0.0.1:5290 <session> /
 node scripts/paging-evidence-arms.mjs before 10d3cd21a -- http://127.0.0.1:5290 <session> /tmp/evidence-before
 ```
 
-`10d3cd21a` is this branch's merge base. The `before` arm's restore printed
+The `before` ref is `10d3cd21a`, the base this branch was cut from — the current
+base after the rebase is `44cb3af3c`, and the two modules are **byte-identical
+between them** (`git diff 10d3cd21a 44cb3af3c -- <the two modules>` is empty), so
+the arm's bytes are the same on either. The `before` arm's restore printed
 `restored=identical {"scroll-paging.ts":"7c36224460d032d0","use-scroll-paging.ts":"08b8184b837dd3f4"}`
 at the end of the run it produced the frames in this directory. **Every scenario
 starts from the arrival state** — the one state the fixture guarantees
 identically on both arms — so no row below inherits a predecessor's leftovers
 (review round 1, D1-2 and R1-3: the earlier capture drove two scenarios "to the
-wall" by fixed gesture and measured `d = 24` on one arm against `d = 7790` on the
-other). The one scenario that cannot start there, the slow approach into the
+wall" by fixed gesture, and its two arms ended up starting `d = 24` and `d = 7790`
+from the top — the first is `resting-finger-at-clamped-top`'s `distanceBefore` in
+round 1's superseded `before-momentum-measurements.json`, the second an `afterQuiet`
+position in this round's `slow-approach-into-zone`). The one scenario that cannot start there, the slow approach into the
 zone, reaches its start state by measurement on both arms and reports the state
 it reached (`setupToZone.distance` 1014 before, 950 after, against a 320px zone).
 
@@ -372,7 +388,7 @@ it reached (`setupToZone.distance` 1014 before, 950 after, against a 320px zone)
 | `slow-approach-into-zone` | 1 reveal, **0 spent inside the zone** while input was still arriving | 1 reveal, **1 spent inside the zone** (`revealsInsideZoneBeforeLastInput`) |
 | `continuous-train-beyond-the-lead` | 0 reveals, 0 pages | 0 reveals, 0 pages |
 | `keyboard-home` | 1 input, 1 reveal (the widen), 0 pages | 1 input, 2 reveals (1 mounting a row), 0 pages |
-| `scrollbar-drag-to-top` | the pointer path fragments into 8 legs, ends **1420px from the top**, 0 reveals, 0 pages | one leg, `d 5694 → 0`, 3 reveals, **1 page** |
+| `scrollbar-drag-to-top` | the pointer path fragments into 8 legs, ends **1420px from the top** — one reveal (the widen) and **0 pages** | one leg, `d 5694 → 0`, 3 reveals (2 mounting rows), **1 page** |
 
 Per act, whole run: **1 page** per fling-shaped act on both arms; 20
 `sessions.history` ops before against 22 after, across eight scenarios. The
@@ -389,9 +405,10 @@ mounted, at `d = 1294`.
 
 ### The lead below its floor, and the trigger above it (R1-1)
 
-The lead is a **window** change below its floor, not a trigger change, and this
-round's review was right that the first version of this file, the module header
-and the PR body said otherwise. What is true, measured three ways:
+The floor bounds the **window**; below it what changes is the **trigger**. That
+inversion is what this round's review caught: the first version of this file, the
+module header and the PR body said the opposite, and both the headline and the
+manifest's `why` said it again after the fix. What is true, measured three ways:
 
 - **Pure case** (`a slow approach inside the zone is spent at its input
   cadence, not at the settle debounce`): at 0.3px/ms, 40ms into the act, 300px
@@ -441,6 +458,12 @@ rather than the distance is the number quoted.)
   `historyRequests = 0`. A single `Home` does not buy a page; the page needs a
   later act. The spec's expected count of "1 page" was wrong and is corrected
   here (QA round 1, Q1-1).
+- **The leg count is load-sensitive, the clause is not.** QA drove the same
+  scenario on this head at load ~200 and saw **4 legs**, still 5385px from the
+  top, then **one `sessions.history` op** — so "a drag spends a page" held on
+  their box and the "one leg" figure is this capture's reading, not a property of
+  the change. The committed pair (1 leg against 8) is load-conditional in the
+  same way and is quoted as the capture's numbers throughout.
 - **The scrollbar drag** (VOID in run 1: run after the history was exhausted, and
   a "negative control" in round 1 because a single drag ended 3555px from the
   top). Measured now from the arrival state: the drag reaches `d = 0` in one leg
@@ -470,12 +493,23 @@ the loading copy is held from the first spend of an act until the rows are
 actually on screen, and the windowed sentence appears once, with the count the
 rows have after the widen.
 
-One residual, disclosed rather than smoothed: a ~180ms `Load earlier messages`
-paint still appears between a widen landing and the fetch it frees (t=5804-5985
-above). In that window nothing is in flight and the policy has no armed demand,
-so the row falls to its idle state — the honest state, and a button the reader
-cannot act on mid-flick. Closing it needs the DOM half to predict the policy's
-next spend, which is the duplication this split exists to avoid.
+One residual, disclosed rather than smoothed, and **measured across every act
+rather than quoted from one**: a `Load earlier messages` paint still appears
+between a widen landing and the fetch it frees, for **27, 181, 184, 310 and
+1657ms** across the fling-shaped acts (`slotTransitions` in the committed
+measurements; the 1657ms is the resting-finger act, nine times the single figure
+an earlier draft of this paragraph quoted). The paint is there because the reader
+is outside both windows when the widen lands — which is exactly when the policy
+has nothing in flight, so the row is telling the truth.
+
+Three things bound it. The paint is honest: the row only claims a load when a
+reveal is in flight, owed, or armed-in-window (`spendWindows`), so a demand
+`decide` has *refused* — a reader following the tail — no longer paints a spinner
+and announces "Loading earlier messages" through the slot's `aria-live` region.
+The paint is off-screen: the slot sits at least **350px above the viewport** in
+every one of those windows, so no reader sees the churn. And the alternative —
+predicting the policy's next spend in the DOM half — is the duplication this
+split exists to avoid.
 
 ### The wait at the wall (U1-1)
 
@@ -504,46 +538,66 @@ to load what is already being fetched.
 
 ### Per-frame captions
 
-Every frame in this directory, arm by arm: what the shutter was, where the
-reader was, and what the slot said (review round 1, D1-4 — round 2 shipped
-fourteen new frames and named none of them).
+Every frame in this directory, arm by arm: what the shutter was, where the reader
+was, and what the slot said. Each directory holds **exactly one file**, named for
+the palette (`localOperatorDark.webp`); round 1's frames of the same steps were
+superseded by this round's capture and deleted rather than left beside the new
+ones, and scenario 10's stale pair went with the directory rename. Every number
+below is read from `before-measurements.json` and `after-measurements.json` beside
+these frames.
 
-**`before` arm — the two paging modules at `10d3cd21a`.**
+**`before` arm** — the paging modules at `10d3cd21a` (byte-identical at the current base, `44cb3af3c`).
 
-- `before-01-at-top`, `before-02-after-fling`, `before-03-clamped`, `before-04-after-isolated-reveals` — the probe phase: the reader at the transcript's own top after the initial load, the state every scenario below starts from (`d = 5694`, rows 60, hidden 40).
-- `before-05-fast-fling-to-top` — scenario `fast-fling-to-top`, shutter after the settle sleep: `d = 193`, rows 100, hidden 100, slot `Scroll up for earlier100 earlier messages ab`; 30 notches, 2 reveals (1 mounting a row), 1 page.
-  - `before-05-fast-fling-to-top-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (review round 1, D1-1).
-- `before-06-fling-crossing-two-walls` — scenario `fling-crossing-two-walls`, shutter after the settle sleep: `d = 6063`, rows 160, hidden 40, slot `Scroll up for earlier40 earlier messages abo`; 50 notches, 3 reveals (2 mounting a row), 1 page.
-  - `before-06-fling-crossing-two-walls-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (review round 1, D1-1).
-- `before-07-page-lands-with-rows-hidden` — scenario `page-lands-with-rows-hidden`, shutter after the settle sleep: `d = 0`, rows 100, hidden 100, slot `Scroll up for earlier100 earlier messages ab`; 160 notches, 2 reveals (1 mounting a row), 1 page.
-  - `before-07-page-lands-with-rows-hidden-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (review round 1, D1-1). The window is AT the transcript top: the slot paints *"100 earlier messages above - scroll up to load"* while 100 fetched rows stay held back (rows 0160-0162 in view) — the operator's freeze, at the shutter.
-- `before-08-resting-finger-at-clamped-top` — scenario `resting-finger-at-clamped-top`, shutter after the settle sleep: `d = 0`, rows 100, hidden 100, slot `Scroll up for earlier100 earlier messages ab`; 200 notches, 2 reveals (1 mounting a row), 1 page.
-  - `before-08-resting-finger-at-clamped-top-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (review round 1, D1-1).
-- `before-09-keyboard-home` — scenario `keyboard-home`, shutter after the settle sleep: `d = 4480`, rows 100, hidden 0, slot `Load earlier messages`; 0 notches, 1 reveals (1 mounting a row), 0 pages.
-- `before-10-scrollbar-drag-to-top` — scenario `scrollbar-drag-to-top`, shutter after the settle sleep: `d = 1420`, rows 100, hidden 0, slot `Load earlier messages`; 0 notches, 1 reveals (1 mounting a row), 0 pages.
+- `before-01-at-top` — the probe step `at-top-after-first-fling`: `d = 5753`, 160 rows mounted, 40 held back.
+- `before-02-after-fling` — the probe step `fling`: no probe state recorded for this step.
+- `before-03-clamped` — the probe step `clamped-at-top`: `d = 1`, 200 rows mounted, 60 held back. byte-identical to `before-04-after-isolated-reveals` (`9a4af3138a5cadf2941ed52c32e7dec9`).
+- `before-04-after-isolated-reveals` — the probe step `isolated-reveals`: no probe state recorded for this step. byte-identical to `before-03-clamped` (`9a4af3138a5cadf2941ed52c32e7dec9`).
+- `before-05-fast-fling-to-top` — scenario `fast-fling-to-top`, shutter after the settle sleep: `d 5694 -> 193`, rows 60 -> 100, held back 40 -> 100; 30 input events, 2 reveals (1 mounting rows, 0 on the approach), 1 page(s).
+  - `before-05-fast-fling-to-top-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (round 1, D1-1). The act ends at `d = 169` with the slot painting "Load earlier messages" — the button, under a reader who has just flicked to the top.
+- `before-06-fling-crossing-two-walls` — scenario `fling-crossing-two-walls`, shutter after the settle sleep: `d 5694 -> 6063`, rows 60 -> 160, held back 40 -> 40; 50 input events, 3 reveals (2 mounting rows, 0 on the approach), 1 page(s).
+  - `before-06-fling-crossing-two-walls-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (round 1, D1-1). Byte-identical to `before-06-fling-crossing-two-walls` (`a8191e906316c43d18a56b56668f70f8`).
+- `before-07-page-lands-with-rows-hidden` — scenario `page-lands-with-rows-hidden`, shutter after the settle sleep: `d 5694 -> 0`, rows 60 -> 100, held back 40 -> 100; 160 input events, 2 reveals (1 mounting rows, 0 on the approach), 1 page(s).
+  - `before-07-page-lands-with-rows-hidden-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (round 1, D1-1). The freeze, at the shutter: the window is AT the transcript top, the slot paints *"100 earlier messages above - scroll up to load"*, and 100 fetched rows stay held back. Byte-identical to `before-07-page-lands-with-rows-hidden` (`c5413b2b13b47ccdc63361017a1db98b`).
+- `before-08-resting-finger-at-clamped-top` — scenario `resting-finger-at-clamped-top`, shutter after the settle sleep: `d 5694 -> 0`, rows 60 -> 100, held back 40 -> 100; 200 input events, 2 reveals (1 mounting rows, 0 on the approach), 1 page(s).
+  - `before-08-resting-finger-at-clamped-top-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (round 1, D1-1). Byte-identical to `before-08-resting-finger-at-clamped-top` (`3370b66b8346a7eb9f35cb59d2757dfc`).
+- `before-09-keyboard-home` — scenario `keyboard-home`, shutter after the settle sleep: `d 5694 -> 4480`, rows 60 -> 100, held back 40 -> 0; 1 input events, 1 reveals (1 mounting rows, 1 on the approach), 0 page(s).
+- `before-10-scrollbar-drag-to-top` — scenario `scrollbar-drag-to-top`, shutter after the settle sleep: `d 5694 -> 1420`, rows 60 -> 100, held back 40 -> 0; 16 input events, 1 reveals (1 mounting rows, 1 on the approach), 0 page(s).
 
-**`after` arm — this branch.**
+**`after` arm** — this branch.
 
-- `after-01-at-top`, `after-02-after-fling`, `after-03-clamped`, `after-04-after-isolated-reveals` — the probe phase: the reader at the transcript's own top after the initial load, the state every scenario below starts from (`d = 5694`, rows 60, hidden 40).
-- `after-05-fast-fling-to-top` — scenario `fast-fling-to-top`, shutter after the settle sleep: `d = 8024`, rows 160, hidden 40, slot `Scroll up for earlier40 earlier messages abo`; 36 notches, 3 reveals (2 mounting a row), 1 page.
-  - `after-05-fast-fling-to-top-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (review round 1, D1-1).
-- `after-06-fling-crossing-two-walls` — scenario `fling-crossing-two-walls`, shutter after the settle sleep: `d = 7736`, rows 160, hidden 40, slot `Scroll up for earlier40 earlier messages abo`; 21 notches, 3 reveals (2 mounting a row), 1 page.
-  - `after-06-fling-crossing-two-walls-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (review round 1, D1-1).
-- `after-07-page-lands-with-rows-hidden` — scenario `page-lands-with-rows-hidden`, shutter after the settle sleep: `d = 1294`, rows 200, hidden 0, slot `Load earlier messages`; 160 notches, 4 reveals (3 mounting a row), 1 page.
-  - `after-07-page-lands-with-rows-hidden-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (review round 1, D1-1). The window is AT the transcript top with the oldest rows in view (row 0000) and no "scroll up to load" sentence anywhere — the fetched rows are mounted.
-- `after-08-resting-finger-at-clamped-top` — scenario `resting-finger-at-clamped-top`, shutter after the settle sleep: `d = 3833`, rows 160, hidden 40, slot `Scroll up for earlier40 earlier messages abo`; 200 notches, 3 reveals (2 mounting a row), 1 page.
-  - `after-08-resting-finger-at-clamped-top-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (review round 1, D1-1).
-- `after-09-keyboard-home` — scenario `keyboard-home`, shutter after the settle sleep: `d = 9444`, rows 100, hidden 0, slot `Load earlier messages`; 0 notches, 2 reveals (1 mounting a row), 0 pages.
-- `after-10-scrollbar-drag-to-top` — scenario `scrollbar-drag-to-top`, shutter after the settle sleep: `d = 6153`, rows 160, hidden 40, slot `Scroll up for earlier40 earlier messages abo`; 0 notches, 3 reveals (2 mounting a row), 1 page.
+- `after-01-at-top` — the probe step `at-top-after-first-fling`: `d = 7770`, 160 rows mounted, 40 held back.
+- `after-02-after-fling` — the probe step `fling`: no probe state recorded for this step.
+- `after-03-clamped` — the probe step `clamped-at-top`: `d = 1`, 260 rows mounted, 0 held back. byte-identical to `after-04-after-isolated-reveals` (`e39037a621ead0f943b6acc432752f99`) — the same scene by construction.
+- `after-04-after-isolated-reveals` — the probe step `isolated-reveals`: no probe state recorded for this step. byte-identical to `after-03-clamped` (`e39037a621ead0f943b6acc432752f99`).
+- `after-05-fast-fling-to-top` — scenario `fast-fling-to-top`, shutter after the settle sleep: `d 5694 -> 8024`, rows 60 -> 160, held back 40 -> 40; 36 input events, 3 reveals (2 mounting rows, 1 on the approach), 1 page(s).
+  - `after-05-fast-fling-to-top-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (round 1, D1-1). This is the frame that STANDS AT THE TRANSCRIPT TOP on this arm: the act's last input event puts the reader at `d = 0` with the slot painting "Loading earlier messages" above the mounted rows.
+- `after-06-fling-crossing-two-walls` — scenario `fling-crossing-two-walls`, shutter after the settle sleep: `d 5694 -> 7736`, rows 60 -> 160, held back 40 -> 40; 21 input events, 3 reveals (2 mounting rows, 3 on the approach), 1 page(s).
+  - `after-06-fling-crossing-two-walls-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (round 1, D1-1). Byte-identical to `after-06-fling-crossing-two-walls` (`9901fac66dd90431bcab8e87f9afe206`): nothing changed between this shutter and the settle in this act.
+- `after-07-page-lands-with-rows-hidden` — scenario `page-lands-with-rows-hidden`, shutter after the settle sleep: `d 5694 -> 1294`, rows 60 -> 200, held back 40 -> 0; 160 input events, 4 reveals (3 mounting rows, 1 on the approach), 1 page(s).
+  - `after-07-page-lands-with-rows-hidden-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (round 1, D1-1). The act ends **1294px below the transcript top**, with rows 0072-0075 on screen and no "scroll up to load" sentence anywhere. The reader is not at the wall in this act — the page that landed moved them off it, which is the fix working. The top-standing frame on this arm is `after-05-fast-fling-to-top-at-act-end`.
+- `after-08-resting-finger-at-clamped-top` — scenario `resting-finger-at-clamped-top`, shutter after the settle sleep: `d 5694 -> 3833`, rows 60 -> 160, held back 40 -> 40; 200 input events, 3 reveals (2 mounting rows, 1 on the approach), 1 page(s).
+  - `after-08-resting-finger-at-clamped-top-at-act-end` — the SAME act, shutter at the END OF THE ACT rather than after the settle sleep (round 1, D1-1). The act ends at `d = 3833`, unpinned with 40 rows held back.
+- `after-09-keyboard-home` — scenario `keyboard-home`, shutter after the settle sleep: `d 5694 -> 9444`, rows 60 -> 100, held back 40 -> 0; 1 input events, 2 reveals (1 mounting rows, 2 on the approach), 0 page(s).
+- `after-10-scrollbar-drag-to-top` — scenario `scrollbar-drag-to-top`, shutter after the settle sleep: `d 5694 -> 6153`, rows 60 -> 160, held back 40 -> 40; 2 input events, 3 reveals (2 mounting rows, 1 on the approach), 1 page(s).
+
+**Not from either arm of this capture, and labelled so:** `before-01-idle`,
+`before-02-top-with-button` and `before-03-after-click` are round 1's frames,
+captured by the QA pass on `origin/main` at `2217ea59a` — the click-route
+comparison in this file's first section. They keep their names, and they are the
+only frames here whose provenance is not this round's two runs.
 
 ### What these numbers do not settle
 
-- **Scenario start states diverge after the first scenario on each arm**, because
-  the two arms leave different content behind: `slow-notches-into-zone` starts
-  24px from the top on `before` and 7790px on `after`, so its 1-vs-0 reveal
-  difference is the start state rather than the change. Every claim above is
-  taken from scenarios that begin at a reloaded arrival state, except that one,
-  which is quoted nowhere. The "a slow reader sees no difference" claim is
+- **Start states are uniform now, by construction.** Every scenario but one begins
+  at the arrival state — `d = 5694`, 60 rows mounted, 40 held back, identical in
+  both measurement files' `opened` step. The exception is `slow-approach-into-zone`,
+  which has to begin inside the zone band and reaches it by measurement on each arm
+  (`setupToZone.distance` 1014 before against 950 after, with a 320px zone), so its
+  1-vs-0 `revealsInsideZoneBeforeLastInput` is read from the same KIND of start
+  state on both arms rather than from the same pixel. The paragraph this replaces
+  named `slow-notches-into-zone` and a `24`/`7790` pair; that scenario exists only
+  in round 1's superseded `before-momentum-measurements.json`, and the numbers now
+  quoted are the ones in the files beside these frames. The "a slow reader sees no difference" claim is
   carried by the pure case `the lead is inert below its velocity floor` instead.
 - **The backend's latency varied by an order of magnitude between runs** (a
   durable page landed 85-100ms after the spend in the diagnosis run, ~900ms under
@@ -579,6 +633,25 @@ fourteen new frames and named none of them).
   arrives in one leg at `d = 0`. The row is a comparison of what the same gesture
   BUYS, not of two pictures of the same place; the frames are captioned that way
   and the `legs`/`journey` fields carry the paths.
+
+- **The full `pnpm check-evidence` sweep has never run on this PR.** It has
+  deferred **six** times, most recently at 22:57Z by QA's pass, each time exit 75
+  with *"another sweep (or its image child) holds the machine lease"*. So the
+  sweep-registry half of that gate is unverified, and so is anything only the
+  sweep would report. What has been checked without it: every frame's painting
+  through the gate's own exported predicate, **31/31 admitted the way the gate
+  derives the theme** (from the palette basename), and the manifest's stamps
+  through `scripts/evidence-manifest.test.mjs` (34/34).
+
+- **The harness cannot complete on this box.** QA ran `scroll-paging-evidence.mjs`
+  twice on this head and it died both times about five minutes in, immediately
+  after the `after-09-keyboard-home` scenario: 13 frames written, **zero bytes on
+  stdout and stderr**, no stack trace, no `after-measurements.json`, Chrome gone.
+  The frames it did write reproduce this set's scenes, so the cost was the drag
+  scenario and the JSON rather than the comparison — but "regenerate with this
+  script" is not a reproducible instruction at load 190-240, and by this box's
+  evidence the death is not attributable to the harness or to the machine. The
+  numbers quoted above come from the capture that DID complete.
 
 - **The rig needs a backend restart between arms**, and that is now a documented
   step rather than a mystery. Each page reload attaches a new session stream
