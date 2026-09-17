@@ -1071,6 +1071,169 @@ export const ProseToolAlignment: Story = {
 };
 
 /**
+ * The turn stamp: the time under a user turn, and inside an open tool call.
+ *
+ * The two surfaces the operator named, in one frame, with the CONTRAST that is
+ * half the design: four user turns carrying four shapes of one formatter
+ * (`today`, `Yesterday`, a dated stamp from this year, and one from last year),
+ * an open tool call with its stamp under the pane, and a call with nothing to
+ * disclose beside it, which is a line with no stamp at all. A frame holding
+ * only the stamped rows could not show that the ledger stays quiet.
+ *
+ * THE INSTANTS ARE RELATIVE TO THE CAPTURE, deliberately, and it is the only
+ * way these shapes can be photographed: `today` and `Yesterday` are calendar
+ * facts about the moment of reading, so a fixed fixture would photograph a
+ * stamp reading `Sep 12, 2025` from the day after it was taken. These frames
+ * are therefore a function of the tree AND of the day they were taken, which
+ * the surface's README states rather than hides. Everything else in this set
+ * keeps the fixed `TS` fixture for the opposite reason: a duration, an outcome
+ * or a summary must not move between two captures of the same tree.
+ */
+export const TurnTimestamps: Story = {
+	render: () => {
+		const now = Date.now();
+		const hours = (count: number) => now - count * 3_600_000;
+		const days = (count: number) => now - count * 86_400_000;
+		// Last year, month and day held: the one shape that carries a year, and a
+		// calendar-year fact rather than "365 days ago".
+		const lastYear = new Date(
+			new Date(now).getFullYear() - 1,
+			8,
+			12,
+			15,
+			42,
+		).getTime();
+		return (
+			<Frame
+				height={760}
+				openRows
+				records={[
+					{
+						kind: "user",
+						id: "s1",
+						ts: lastYear,
+						text: "Which invoices were late last month?",
+						images: [],
+					},
+					{
+						kind: "assistant",
+						id: "s2",
+						ts: lastYear + 1000,
+						text: "Three were late. The list is in the run above.",
+						streaming: false,
+						complete: true,
+						stopReason: null,
+						error: false,
+					},
+					{
+						kind: "user",
+						id: "s3",
+						ts: days(20),
+						text: "Reconcile the ledger against the bank feed.",
+						images: [],
+					},
+					// The open call: its stamp is the last thing in the expansion, below
+					// the pane and outside both of the pane's scrolling sections.
+					tool({
+						id: "s4",
+						ts: days(20) + 2000,
+						toolName: "bash",
+						args: { command: "pnpm reconcile --month 2026-08" },
+						output: "matched 214 of 217 invoices",
+						durationS: 12.4,
+					}),
+					// The quiet row beside it: no readable arguments and no output means no
+					// disclosure to open, so there is nowhere for a stamp to be.
+					tool({
+						id: "s5",
+						ts: days(20) + 3000,
+						toolName: "team",
+						args: {},
+						output: null,
+					}),
+					{
+						kind: "user",
+						id: "s6",
+						ts: hours(30),
+						text: "Now do the same for this month.",
+						images: [],
+					},
+					{
+						kind: "user",
+						id: "s8",
+						ts: hours(2),
+						text: "What is left to check before I send these on?",
+						images: [],
+					},
+				]}
+			/>
+		);
+	},
+};
+
+/**
+ * The same stamps in the NARROW COLUMN.
+ *
+ * Not the small view, and this comment said it was until review round 1 (D4):
+ * `isSmallView` is false here, so the bubble takes the comfortable
+ * `max-w-[75%] px-4 py-3` rather than the small view's `max-w-[92%] px-3 py-2`.
+ * The small view IS pictured with a stamp —
+ * `chat-tool-rows/admitted-send-before-first-frame-small-view/`, where the
+ * bubble's border and the stamp's ink both end at the same x.
+ *
+ * The narrow column is worth a frame because the transcript is a different shape
+ * there: the bubble is a larger fraction of the width, and a reader on a narrow
+ * window is the one most likely to be reading a single long conversation. WHAT
+ * THE FRAME DOES NOT SHOW, because this comment claimed it and the pixels say
+ * otherwise (design round 2, D2-3): nothing about the stamp's line is close to
+ * wrapping. The transcript column ends at x 362 of the 420px frame, so the stamp
+ * sits alone on its own line — ink x 260..362, the rest of that line empty.
+ *
+ * IT IS NOT EVIDENCE OF AN EDGE DISTINCTION, which this comment implied and
+ * which the layout does not have: a user row is `flex w-full justify-end` with no
+ * right inset, so the bubble's right edge and the row content box's are the same
+ * line at every width (measured at 0.0px on 420/1024/1440 in review round 1,
+ * R2/D3). The stamp is right-aligned to the turn's own right edge, which is the
+ * bubble's because the row is right-justified.
+ */
+export const TurnTimestampsNarrow: Story = {
+	render: () => {
+		const now = Date.now();
+		return (
+			<Frame
+				width="420px"
+				height={500}
+				openRows
+				records={[
+					{
+						kind: "user",
+						id: "n1",
+						ts: now - 26 * 3_600_000,
+						text: "Did the reconciliation finish?",
+						images: [],
+					},
+					tool({
+						id: "n2",
+						ts: now - 26 * 3_600_000 + 2000,
+						toolName: "bash",
+						args: { command: "pnpm reconcile --month 2026-09 --dry-run" },
+						output: "3 unmatched, 0 errors",
+						durationS: 8.9,
+					}),
+					{
+						kind: "user",
+						id: "n3",
+						ts: now - 1_800_000,
+						text: "Send the three exceptions to Priya.",
+						images: [],
+					},
+				]}
+			/>
+		);
+	},
+};
+
+/**
  * The gap between `message_start` and the first token, which is the state the
  * transcript used to paint twice.
  *

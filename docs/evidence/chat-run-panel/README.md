@@ -230,3 +230,19 @@ remediation claimed the set covered hover and focus; hover it does for the
 trigger's four grounds (`trigger-idle`/`trigger-hover` and
 `panel-empty`/`trigger-open-hover`), focus it does not, and this paragraph is the
 plain statement `D2-4` asked for in place of that claim.
+
+## Re-taken for the turn stamp
+
+These frames were re-shot by `feat/transcript-timestamps`, which puts the date and time under
+a user turn (`3:42 PM`, `Yesterday 3:42 PM`, `Sep 12, 3:42 PM`, `Sep 12, 2025, 3:42 PM`) and at
+the foot of an expanded tool call. Nothing about this surface's own subject changed: the user
+turn at the head of this transcript now carries a stamp, and because the transcript is
+bottom-pinned that addition shifts the rows above it, so the frames move by more than the
+stamp's own pixels. The frames for the change itself, its before/after pair and the four
+shapes of the formatter are in [`../chat-tool-rows/`](../chat-tool-rows/) (see *The turn
+stamps*), with the before half declared in [`../turn-stamps-before/`](../turn-stamps-before/).
+
+The reader states are in scope because a child's own transcript carries user turns
+(`Continue the reconciliation.`), and `roster-members` renders a child's page as well. The
+parent pane in these stories renders the legacy `MessageItem`, which this change deliberately
+does not touch, so it is unchanged by it: the stamps visible here are the child reader's.
