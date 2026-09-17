@@ -16,15 +16,19 @@
  * idle composer a one-control gap between dictation and Send, which the operator
  * then reported as a defect of its own.
  *
- * THE REFLEX ITSELF IS 120-210ms, and the window is 500 because it is CHOSEN to
- * cover that plus the settle latency around it rather than derived from it: U1/Q1
- * measured a 120ms double press that still hit Stop twice, and this branch's own
- * record puts the re-press it is sized for at 161-170ms after the composer's own
- * flip with the release at 1776ms (`docs/evidence/interrupt-live/
- * interrupt-proof.json`, `slot.repress` and `slot.clusterSettled`). So
- * 170 < 500 < 1776: the window covers the reflex and a press the user makes
- * after seeing the turn end, and ends before the row has been still long enough
- * to read as settled-then-moving again.
+ * THE REFLEX ITSELF IS 120-170ms across the two measurements that carry it, and
+ * the window is 500 because it is CHOSEN to cover that plus the settle latency
+ * around it rather than derived from it: U1/Q1 measured a 120ms double press that
+ * still hit Stop twice, and the shipped record puts the re-press it is sized for
+ * at 161-170ms after the composer's own flip with the release at 1776ms
+ * (`docs/evidence/interrupt-live/interrupt-proof.json`, `slot.repress` and
+ * `slot.clusterSettled`). So 170 < 500 < 1776: the window covers the reflex and a
+ * press the user makes after seeing the turn end, and ends before the row has been
+ * still long enough to read as settled-then-moving again. (An earlier pass of the
+ * same rig measured the same press at 208-210ms; that figure lives in this
+ * branch's history - `git show 043b0b7c3:docs/evidence/interrupt-live/
+ * interrupt-proof.json`, `slot.repress` - and not in the record this head ships,
+ * so it is not carried here.)
  *
  * WHY A GRACE RATHER THAN EITHER EXTREME. The geometry cannot have both: the
  * composer's right cluster is right-justified (`ml-auto`), so the dictation

@@ -168,15 +168,22 @@ constant:
 ### The dictation-in-flight shape, where the arriving control would be destructive
 
 While a recording runs, Send is not rendered at all: the row draws
-`[Confirm recording][Cancel recording]` where the dictation control and Send were.
-With only the grace term that made the release move BOTH of them 36 px right, and
-the control that arrived in the Stop's own box was **Cancel recording** - a press
-more than a window after a turn ended would throw away in-flight audio. Measured,
-on the same rig with that term absent (the previous head, `043b0b7c3`):
+`[Confirm recording][Cancel recording]` where the dictation control and Send were,
+and the held box renders AFTER them. With only the grace term the release would
+move BOTH of them 36 px right, and the control that arrived in the Stop's own box
+was **Cancel recording** - a press more than a window after a turn ended would
+throw away in-flight audio. Every figure below is a committed one; the pair of rows
+is assembled from two records this repository carries, because the term-absent
+shape itself was measured in a scratch run whose record was not retained (the
+"held" row is this record's own `inFlight.grace`, which the recording term holds;
+the "released" row is the previous head's own record of the same row once the box
+is gone, `git show 043b0b7c3:docs/evidence/interrupt-live/interrupt-proof.json`,
+`slot.recordingCancelled.aim.rect.left = 1307`):
 
 ```
-inFlight (term absent)   held      [Confirm x=1235][Cancel x=1271][box x=1307]   ← the Stop renders at 1307 in this shape
-                         released  [Confirm x=1271][Cancel x=1307]               ← both moved +36; Cancel now in the Stop's box
+inFlight.grace           at 205 ms    [Confirm x=1235][Cancel x=1271][box x=1307]  ← the box holds the Stop's own slot
+inFlight.pressed                       the Stop's rect in this shape: left 1307 w 32
+043b0b7c3, released                    [Confirm x=1271][Cancel x=1307]              ← both moved +36, Cancel in the Stop's box
 ```
 
 So `message-input.tsx` holds the box whenever the dictation controls are rendered
@@ -187,6 +194,29 @@ inFlight.grace           at 205 ms    [Confirm 1235 w=32][Cancel 1271 w=32][held
 inFlight.afterWindow     at 1226 ms   identical boxes; the cluster region of the two frames differs by 0 pixels
 inFlight.recordingEnded  the recording is cancelled → [dictation 1271][Send 1307], gap 4
 ```
+
+**What the shape costs, stated because it is not "nothing visible":** for the whole
+recording the row's rightmost *visible* control sits one control-plus-gap short of
+the row's right edge, because the third slot is held empty and the box draws no
+ink - `after-stop-recording-settled.png` decodes to `[✓][✗]` ending at 1302.5 with
+the interior's right edge at 1338.5. It is a **trailing** void rather than the
+operator's defect: both controls are drawn where the right-justified cluster puts
+them, nothing is displaced, and the row's rightmost element is flush to the edge.
+It is also not introduced here - it is `origin/main`'s own recording row, whose
+reservation was unconditional (that half is a source reading: `main` carries no
+frame of the state) - so against `main` this change removes the void from the idle
+row and leaves this one alone, and removing it here would reopen the destructive
+arrival above.
+
+**Starting a recording moves the pair 36 px left**, and that is recorded rather
+than left to be discovered: the third slot fills from the instant `isRecording` is
+true, so `[dictation 1271][Send 1307]` becomes `[Confirm 1235][Cancel 1271][box
+1307]` - the slot that was just pressed (the dictation control's own, 1271) comes
+back as **Cancel recording** where it would otherwise be Confirm. Legible and one
+press from recovery, and the alternative (filling the slot only once a window
+opens under a recording) trades it for a 36 px jump at the moment a turn ends
+under a recording, which is the re-layout class this change exists to bound. It is
+`main`'s own geometry too, at the same 36 px.
 
 `isTranscribing` deliberately gets no such term, and that is a statement rather
 than an omission: `!isTranscribing` gates both the dictation control and Send, so
@@ -228,29 +258,39 @@ of the Stop, the box and the composer's own placeholder for the whole run, from 
 MutationObserver - not a rAF sampler, which can miss a pulse shorter than a frame
 and which measurably slowed the rig's own measurements when it was one.
 
-What that found:
+What that found, and what it does not:
 
-- **In this run: none.** 70 DOM mutations and 26 transitions over 16.0 s, 0
-  pulses - consistent with QA's own 0 of 9 at 1380.
-- **In the immediately preceding run of the same rig** (same head, with the
-  recording term absent - unrelated to this): 2 pulses, 18 ms and 8 ms wide, each
-  of the shape `{stop: true, slot: false}`.
-- **Attribution:** in both, the composer's own placeholder flipped back to the
-  busy string, `"Waiting for the agent"`, in the same transition - so the pulse is
-  the canonical layer re-deriving the turn as active, not this wiring inventing a
-  control: the fold can only follow `active`, and it cannot make the composer say
-  the turn is running.
-- **Effect, bounded by construction:** the box returned 17 ms and 10 ms after the
-  two pulses, and in the first of them it was then released exactly 500 ms after
-  that second edge (20,991 -> 21,491 in the page's clock), so the cost is one extra
-  window of delay and nothing else. During the pulse the point belongs to the
-  Stop control, never to the dictation control, so the hazard stays closed - which
-  is why this is documented rather than debounced: a minimum-hold heuristic would
-  trade a measured, bounded delay for a rule nobody can check against the tree.
+- **In this run: none.** 70 DOM mutations and 26 transitions over 16.0 s, 0 pulses
+  - consistent with QA's own 0 of 9 at 1380 in round 1. The claim is checkable
+  against the timeline rather than asserted: the rig admits 5 turns, and the
+  record's 5 Stop appearances are exactly those 5 admissions, so no
+  `{stop: true, slot: false}` episode stands inside a live window.
+- **The pulse is real, and it is not this wiring's.** QA round 1 saw it in ~4 of 14
+  settlements (a 534-550 ms collapse instead of 500) and UX round 1 sampled one
+  5.8 ms frame of it; in round 2 QA reproduced it on this head at **14 ms after a
+  settle, 165 ms wide**, with the box back at its falling edge and released 501 ms
+  after the second edge (that round's own report, its run 3), and the design round
+  measured **1 in 10 settlements** at 1380 and 0 in 8 at the small-view rung. Those
+  figures are their authors' and are cited as such: the observations behind them
+  are in the PR's review rounds, and this repository ships no record of them.
+- **Attribution, which their reports and this one agree on:** the composer's own
+  placeholder is the busy string, `"Waiting for the agent"`, in the pulse's own
+  transition - so the pulse is the canonical layer re-deriving the turn as active.
+  This wiring cannot make the composer say the turn is running: the fold only
+  follows `active`.
+- **Effect, bounded by construction rather than by a timer.** The pulse drops the
+  live deadline and its falling edge opens a fresh window, so the arrival lands one
+  window after the pulse and no further - QA round 2 measured exactly that (501 ms
+  after the second edge) and found the end state correct. During the pulse the
+  point belongs to the Stop control, never to the dictation control, so the hazard
+  stays closed. That is why this is documented rather than debounced: a
+  minimum-hold heuristic would trade a bounded delay for a rule nobody can check
+  against the tree.
 
-`scripts/interrupt-control.test.mjs` replays that measured sequence through the
-fold as the regression pin ("a one-frame re-derivation of the control's own state
-restarts the window, bounded").
+`scripts/interrupt-control.test.mjs` replays that sequence through the fold as the
+regression pin ("a one-frame re-derivation of the control's own state restarts the
+window, bounded"): the shape, the fresh window and the bound are asserted there
+against the fold, so the property does not depend on any run's record.
 
 ## Reproducibility, stated precisely
 
