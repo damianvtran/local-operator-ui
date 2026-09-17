@@ -1899,6 +1899,22 @@ export const STORIES = [
 	 * can produce the narrow layout. Every other entry is the dialog's own size.
 	 */
 	["panels-analytics--populated", 1140, 980],
+	/* The session-free panel: `/analytics` with no conversation in front of the
+	   user, so the `This session only` check is absent and the scope still reads
+	   `all sessions`. Paired with `populated`, which carries the check.
+
+	   `dir` is named on BOTH session-free entries because this story is now swept
+	   at two widths: the capturer derives a leaf from the story name, and with two
+	   widths it would silently move the committed `session-free` frames to
+	   `session-free@1140`. */
+	["panels-analytics--session-free", 1140, 980, { dir: "session-free" }],
+	/* The same state at 720px, which is the width § 11's narrow row asks for and
+	   the one no committed frame carried in this state (design round 1, D4):
+	   `panels-analytics--narrow` is the SESSION-ful story, so "the removed scope
+	   cluster does not shift the surviving controls" had no frame for the state
+	   this change adds. The toolbar's groups keep their boxes at 720 too, which is
+	   what the frame is for. */
+	["panels-analytics--session-free", 720, 980, { dir: "session-free-narrow" }],
 	/*
 	 * The same payload with the pointer ON THE BAR, which is what this change is
 	 * about: recharts' own cursor for a `BarChart` is a full-height rectangle over
@@ -1982,7 +1998,51 @@ export const STORIES = [
 	   surface needs a signed-in Radient tenant, so this is the honest half. */
 	["panels-settings--usage-chart-tokens", 1140, 560],
 	["panels-settings--usage-chart-credits", 1140, 560],
+	/* The session-free panel: `/info` with no conversation in front of the user,
+	   which is the state the panel is now readable in. No "This conversation"
+	   section, and its description naming the sessions section instead. Paired
+	   with `populated` and `live-half-unmeasured`, which must be untouched.
+
+	   `dir` on both session-free entries for the same reason `/analytics`'s carry
+	   it: the story is swept at two widths now, and the derived leaf would move the
+	   committed frames to `session-free@1140` otherwise. */
+	["panels-info--session-free", 1140, 1040, { dir: "session-free" }],
 	["panels-info--populated", 1140, 1040],
+	/*
+	 * THE TWO FRAMES THAT CARRY THIS CHANGE'S CENTRAL CLAIM (design round 1, D3).
+	 *
+	 * Every other entry in this family is taken at the TOP of a body that folds at
+	 * `min(76vh, 760px)`, and the block this change removes sat at in-body
+	 * y 1427..1650 — 750px below the fold in BOTH states. Measured, the
+	 * `session-free`/`populated` pair differs inside exactly one band (y 127..139,
+	 * the description line) with a stray pixel in four themes, so "no `This
+	 * conversation` heading and no empty notice where it stood" rested on the
+	 * reader taking the author's word for it. Only a scroll can reach that region —
+	 * a taller viewport cannot, it adds margin below a body that is capped — which
+	 * is what `scrollToEnd` exists for, in the shape
+	 * `panels-analytics--unnamed-sessions` already uses and states the reason for.
+	 * Paired, because the claim is about the DIFFERENCE between the two states: the
+	 * session-free end shows the block gone and the 32px section rhythm unbroken,
+	 * the populated end shows the block present in the same place at the same
+	 * rhythm.
+	 */
+	[
+		"panels-info--session-free",
+		1140,
+		1040,
+		{ dir: "session-free-end", scrollToEnd: "[data-panel-body]" },
+	],
+	[
+		"panels-info--populated",
+		1140,
+		1040,
+		{ dir: "populated-end", scrollToEnd: "[data-panel-body]" },
+	],
+	/* The same state at 720px (design round 1, D4): `/info`'s narrow frame is the
+	   session-ful story, so the narrow half of "the removed blocks do not shift the
+	   surviving ones" had no frame in the state this change adds. The install card
+	   grid's 2+1 reflow and the section rhythm are what this is read for. */
+	["panels-info--session-free", 720, 1040, { dir: "session-free-narrow" }],
 	/* The live half null and nothing bound: the payload the desktop's own route
 	   always sends, with the three unknown spellings it must render. */
 	["panels-info--live-half-unmeasured", 1140, 1040],

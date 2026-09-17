@@ -119,12 +119,16 @@ export type PaletteTarget =
 				| "toggle-canvas";
 	  }
 	/**
-	 * A panel the CHAT PANE has to present, named by its picker destination.
+	 * A panel, named by its picker destination.
 	 *
 	 * `/info`, `/usage`, `/analytics` and `/session` are destinations rather than
-	 * routes — the adapters need the live pane's session handle, command catalogue
-	 * and rebind path — so the palette asks for one instead of opening it (see
-	 * `chat-panel-request-store.ts`).
+	 * routes — a route would need its own deep-link, Esc and back/forward story
+	 * for a modal — so the palette asks for one instead of opening it (see
+	 * `panel-presentation-store.ts`). WHICH host answers depends on the
+	 * destination: the chat pane presents all four whenever it is mounted, and the
+	 * shell's `panel-outlet.tsx` presents the three machine panels on the routes
+	 * the pane does not own, which is why the palette no longer routes to chat for
+	 * them.
 	 */
 	| { type: "panel"; destination: string };
 
