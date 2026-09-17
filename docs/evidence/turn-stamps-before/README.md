@@ -67,8 +67,9 @@ This section used to claim the pair was evidence of an edge distinction that "at
 two edges are far apart". It is not, and they are not: the 1440 frame's bubble right edge
 and the ledger's own right rail are the same x (1170). Both widths are still in the set,
 for the reason the after-frames are captured at both — the transcript is a different shape
-in a narrow column (the bubble is a larger fraction of the width, and the stamp is the last
-thing on a line that is already close to wrapping), and a reader on a narrow window is the
+in a narrow column (the bubble is a larger fraction of the width), and the stamp has its own
+line there — ink ends at x 362 of the 420px frame with the rest of that line empty, so
+nothing about it is close to wrapping — and a reader on a narrow window is the
 one most likely to be reading a single long conversation.
 
 ## Declared, not swept

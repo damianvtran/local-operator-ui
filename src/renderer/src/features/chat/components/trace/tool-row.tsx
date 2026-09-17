@@ -415,6 +415,22 @@ export const ToolRow = ({
 	className,
 	media,
 }: ToolRowProps) => {
+	/*
+	 * A row that STARTS OPEN reports it, and every row reports its departure.
+	 *
+	 * `onOpenChange` fires from the trigger's own handlers inside `Disclosure`, so a
+	 * row rendered open - `defaultOpen`, which stories and the evidence harnesses
+	 * use to paint an expansion without clicking - paints its stamp and would never
+	 * be counted. The transcript's footer gate asks a membership question, and a
+	 * member that never announces itself is the gap between the rule and its
+	 * implementation (review round 2, R2-1). The unmount report is the other half:
+	 * rows leave the tree as a transcript pages, and a departed id left in the set
+	 * would suppress the footer for a stamp that is no longer on screen.
+	 */
+	useEffect(() => {
+		if (defaultOpen) onOpenChange?.(true);
+	}, [defaultOpen, onOpenChange]);
+	useEffect(() => () => onOpenChange?.(false), [onOpenChange]);
 	const running = outcome === "running";
 	const failed = outcome === "error";
 	const Icon = toolIcon(toolName);

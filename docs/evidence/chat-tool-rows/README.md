@@ -147,10 +147,14 @@ line.
   payload — visible in the frames as a stamp that sits under the pane's own border, and in
   `expanded-overflow` where the sections are at their caps.
 - **The footer no longer repeats a clock the turn above it already states.** The
-  transcript's own footer stamp is gated to last rows that carry no stamp of their own
-  (`lastRecord.kind !== "user"`), because on a conversation asked and not yet answered it
-  printed the same clock twice with nothing between them — which is what these frames caught
-  on their first take and what the `admitted-send-*` frames would otherwise show.
+  transcript's own footer stamp is gated to last rows that paint no stamp of their own: a
+  user turn (its stamp is the line above), or a ledger row the reader has left OPEN, whose
+  stamp sits at the foot of the expanded section. A CLOSED last ledger row keeps the footer,
+  since nothing else on screen states the time there. The gate was raised because a
+  conversation asked and not yet answered printed the same clock twice with nothing between
+  them — which is what these frames caught on their first take and what the `admitted-send-*`
+  frames would otherwise show — and its second half is the open row, found in review round 1
+  (D1/Q-1) and made a membership test in round 2 (R2-1/D2-1).
 - **And it states that time in the same words.** The footer line answers the same question a
   turn's stamp answers, so it renders the same component; it used to render the HOVER row's
   `MessageTimestamp`, which formats for a reader already looking at the message, and the two

@@ -1182,9 +1182,12 @@ export const TurnTimestamps: Story = {
  * bubble's border and the stamp's ink both end at the same x.
  *
  * The narrow column is worth a frame because the transcript is a different shape
- * there: the bubble is a larger fraction of the width, the stamp is the last
- * thing on a line that is already close to wrapping, and a reader on a narrow
- * window is the one most likely to be reading a single long conversation.
+ * there: the bubble is a larger fraction of the width, and a reader on a narrow
+ * window is the one most likely to be reading a single long conversation. WHAT
+ * THE FRAME DOES NOT SHOW, because this comment claimed it and the pixels say
+ * otherwise (design round 2, D2-3): nothing about the stamp's line is close to
+ * wrapping. The transcript column ends at x 362 of the 420px frame, so the stamp
+ * sits alone on its own line — ink x 260..362, the rest of that line empty.
  *
  * IT IS NOT EVIDENCE OF AN EDGE DISTINCTION, which this comment implied and
  * which the layout does not have: a user row is `flex w-full justify-end` with no
