@@ -326,6 +326,12 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"photographs the chat surface while its session stream is refused",
 	),
+	guarded(
+		"docs/evidence/mcp-auth-complete/harness/capture.mjs",
+		"spawn",
+		1,
+		"photographs the sign-in dialog's footer at a settled MCP grant",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;
