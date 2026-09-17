@@ -35,16 +35,14 @@ export const everforest: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.070, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.58 from `surface`, 4.00 from `elevated` and 7.20 from
-		 * `sunken`.
-		 * This is one of the three casts that overshoot the band's 2.5 top:
-		 * a hex step at this strength is wider than the band, and the step
-		 * below it measures under the rule's own 2.17 floor.
+		 * `surface` cast 0.07 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 3.25 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.17 from `surface`, 3.39 from `elevated` and 9.86 from `sunken`;
+		 * the step is 3.27 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.67:1 the ink that binds it.
 		 */
-		highlight: "#343F40",
+		highlight: "#3B4747",
 
 		// fg D3C6AA is 5.57:1 on `elevated`, under the 7:1 floor; lifted.
 		ink: "#E6DECD",

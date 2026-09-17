@@ -45,12 +45,13 @@ export const highContrastLight: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.33 from `surface`,
-		 * 4.96 from `elevated` and 3.82 from `sunken`.
+		 * `surface` stepped 6.5 on the `L*` axis in the mode's direction — the
+		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
+		 * so the row takes no cast. ΔE00 4.09 from `surface`, 6.72 from
+		 * `elevated` and 2.06 from `sunken`; the step is -6.67 `L*`, and the band
+		 * this branch raised to ΔE00 4.0 is met without a cast.
 		 */
-		highlight: "#E7E7E7",
+		highlight: "#DFDFDF",
 
 		ink: "#0A0A0A",
 

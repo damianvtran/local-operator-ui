@@ -34,12 +34,14 @@ export const ayuLight: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.29 from `surface`,
-		 * 4.92 from `elevated` and 2.61 from `sunken`.
+		 * `surface` cast 0.1 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.12 from `surface`, 7.43 from `elevated` and 2.21 from `sunken`;
+		 * the step is -4.55 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.85:1 the ink that binds it.
 		 */
-		highlight: "#E7EDF1",
+		highlight: "#DFECF5",
 
 		ink: "#45494D",
 		inkMuted: "#505357",

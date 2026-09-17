@@ -62,14 +62,27 @@ const rowStyle =
  * the All chats filter, the New chat row staging an untargeted draft, and the
  * agent or team an untargeted-vs-targeted draft names.
  *
- * WHY THE STEP IS `highlight`. This panel is `bg-surface` (the
- * `nav aria-label="Chats"` root), and a selection needs a step off it that is
- * SEEN and no more than that. `highlight` is the palette role authored for this
- * ground — a shallow step off `surface` in the direction the mode runs, at ΔE00
- * 2.18-2.28 across the twelve palettes the port started from, which is above the
- * perceptual threshold `docs/branding.md` § 3 cites and well under the `sunken`
- * well it replaced (3.75-14.94 from `surface`, the operator's "very dark colour"
- * measured).
+ * WHY THE STEP IS `highlight`, AND WHAT THE STEP IS MADE OF. This panel is
+ * `bg-surface` (the `nav aria-label="Chats"` root), and a selection needs a step
+ * off it that is SEEN. The role was authored at ΔE00 2.18-2.28 from `surface`
+ * across the twelve palettes the port started from, for a selection the operator
+ * had asked to be SUBTLE; he has since seen that
+ * rendered and reported it as invisible beside a hovered neighbour, so the
+ * intent is reversed: the step now lands at ΔE00 4.01-4.15 from `surface` on all
+ * twelve the port started from (and, since the port landed, across the set the
+ * rule now covers), and it is a LIGHTNESS step — the row sits 3.81-6.62 `L*`
+ * away from its panel in the direction the mode runs (lighter on the dark
+ * themes, darker on the light ones), with chroma paying only what is left over.
+ * That ordering is the rule `docs/branding.md` § 2 states in full. The three
+ * palettes the operator's own report is measured on were re-authored to it in
+ * this round — tokyoNight 2.61 -> 5.09 `L*`, localOperatorDark 2.82 -> 3.81,
+ * localOperatorLight 2.52 -> 4.75 — because the values they carried reached
+ * the band on CHROMA alone, at a `L*` step smaller than the ΔE00 2.2 value they
+ * had already reported as invisible: a deeper blue row where he had asked for a
+ * lighter one. `scripts/contrast-contract.mjs` asserts both halves of the
+ * direction (lighter on a dark palette, darker on a light one, and a floor on
+ * the step), so no palette can satisfy the band while landing darker on a dark
+ * theme.
  *
  * WHY NOT THE ACCENT WASH. `accentWash` is ΔE00 **1.05** from `surface` in
  * tokyoNight (#262B3F on #24283B) — the operator's own report, "you can't tell
@@ -100,36 +113,41 @@ const rowStyle =
  * from the one under the pointer — the pair measured ΔE00 0.77 in obsidian when
  * the selection ground was the wash. The contract now asserts `highlight`
  * against `surface`, `elevated` AND `sunken` at the field floor for exactly that
- * reason, with `elevated` the binding pair (worst case 2.52, obsidian).
+ * reason, with `elevated` the binding pair (worst case 2.36, obsidian).
  *
- * AND WHY THE GROUND IS NOT THE ONLY SIGNAL — THE SECOND STEP.
- * The operator asked for a SUBTLE selection, so the step up is bounded: at ΔE00
- * 2.18-2.28 `highlight` is deliberately quieter than the `sunken` box it replaced,
- * and that quietening is what exposed the hazard underneath it. The rows around a
- * current one carry `hover:bg-elevated`, and `elevated` is a LOUDER step off
- * `surface` than `highlight` on the dark palettes — measured in the shipped
- * frames, a hovered neighbour sits ΔE00 2.20-4.58 from the panel while the
- * current row sits 2.18-2.35, so the pointer's transient mark outranked the
- * persistent one (selection over hover: 0.93 / 0.97 / 1.89 before this change,
- * 0.48 / 0.52 / 0.49 after). Raising `highlight` would undo what was asked for,
- * so the current row carries a SECOND, non-colour step instead: `font-medium`,
- * exactly as `features/settings/components/settings-sidebar.tsx` already marks
- * its current destination ("bg-highlight font-medium text-ink
- * hover:bg-highlight"). That makes the two rails agree rather than inventing an
- * idiom, and it gives the persistent state a signal the transient one does not
- * have. The weight is the only thing this adds: the row's box, height, padding
- * and alignment are unchanged, and the measurement that says so is in
- * `docs/evidence/chat-sidebar-current-row/README.md`.
+ * AND WHY THIS MARK HAS NO SECOND, BOUNDARY-SHAPED HALF. An earlier round of
+ * this branch added a 1px `outline-control` ring beside the ground. It is
+ * retired here rather than kept, on three measurements (design round 1, D3):
  *
- * AND WHY IT IS ON TWO ELEMENTS OF THE ENTITY ROW. The mark cannot be carried by
- * one class there: the name button inside the row carries `rowStyle`, so its
- * `hover:bg-elevated` paints over the wrapper's ground and the pointer replaced
- * the mark across the whole row (round 1, the MAJOR this file's entity row was
- * changed for). The wrapper paints the ground — it fills the gaps and the rounded
- * corners the 24px controls leave — the name button paints it too, because its
- * own `hover:` half is the only thing that beats the step it inherits, and the
- * two 24px controls drop their hover step while the row is current. That is one
- * state spread over three elements by the DOM, not three decisions;
+ *   1. It borrowed the wrong object. The search field directly above the list
+ *      is `h-8 w-full rounded-md border border-control`; the ring was that same
+ *      role at the same 1px and the same radius one line below it, and both
+ *      lines measured the same ink in one frame (`#7c809f` against `#7c80a1`)
+ *      — so the current row read as a filled search field. Worst on `iceberg`.
+ *   2. `border-control` is `docs/branding.md` § 2's *sole visual boundary of an
+ *      input, select, checkbox or outlined button*. A nav row is none of those,
+ *      and no other role in the system carries a 3:1 structural floor, so a
+ *      selection boundary has no role to be drawn in.
+ *   3. The operator had already had that same boundary removed from the New
+ *      chat row for the read it produces ("which reads as a control at rest",
+ *      in that row's own comment), and the app rail marks its active item with
+ *      no boundary at all, so a row edge would be this app's third spelling of
+ *      "you are here".
+ *
+ * AND WHAT THE GROUND CANNOT DO, RECORDED RATHER THAN PAPERED OVER. The ink
+ * floors cap the step: `ink-dim` is drawn INSIDE a current row (the `· lopdev`
+ * binding and the key caps) and holds the ground at 4.5:1 plus
+ * `HIGHLIGHT_INK_MARGIN` against itself. On eight of the twelve palettes the
+ * hover step the neighbouring rows carry is therefore still the larger step off
+ * `surface` (radient 6.25 and synth 5.44 against marks of 4.01-4.15), and
+ * `elevated` cannot come down to meet the selection: it is also every menu,
+ * popover and tooltip ground in the app. So the ordering rests on the ground
+ * plus `font-medium` — the weight the app rail and the settings rail already
+ * use for the same fact — and on those eight palettes the mark is still the
+ * only row carrying a state that survives the pointer leaving. Whether the
+ * system needs a third signal for a selection is a design-system question
+ * (it would need a role the system does not have); it is not answered here by
+ * borrowing the input's boundary.
  * `scripts/chat-sidebar-selection.test.mjs` resolves each expression through the
  * shipped `cn` for that reason rather than looking for a name.
  *
@@ -474,6 +492,13 @@ export function ChatSidebar({
 			nested,
 			binding: bindingName(row),
 		});
+		/*
+		 * Whether THIS row is the one the reader is on. Named because two things
+		 * depend on it — the ground and `aria-current` — and writing the predicate
+		 * out twice is how the two drift apart.
+		 */
+		const isCurrent =
+			selectedConversation === row.session_id && !activeDraftKey;
 		return (
 			<button
 				key={row.session_id}
@@ -490,19 +515,13 @@ export function ChatSidebar({
 					rowStyle,
 					"w-full text-left",
 					nested && "pl-7",
-					selectedConversation === row.session_id &&
-						!activeDraftKey &&
-						rowCurrent,
+					isCurrent && rowCurrent,
 					// m4: the unread mark is NOT here. `font-semibold` on this
 					// `flex-1 truncate` title rewrote the visible string when the
 					// mark arrived, re-truncating text under the reader's cursor;
 					// it lives in the reserved status slot instead (see `Status`).
 				)}
-				aria-current={
-					selectedConversation === row.session_id && !activeDraftKey
-						? "page"
-						: undefined
-				}
+				aria-current={isCurrent ? "page" : undefined}
 				/* The tooltip carries the row's binding and its own state — the facts the
 			   row may not be drawing — and deliberately NOT the search mark's words,
 			   which the row announces itself through the `sr-only` span beside it:
@@ -1193,9 +1212,10 @@ export function ChatSidebar({
 							 * `bg-sunken` fill), so the marks it used to need on this one row —
 							 * the `capEdge` outline, which existed because the cap and the row
 							 * were both `sunken` — have nothing left to separate. The row's own
-							 * `rowCurrent` ground carries the state, and the chord is drawn the
-							 * same way on every ground it lands on, which is what makes it one
-							 * idiom rather than one idiom plus an exception.
+							 * `rowCurrent` ground carries the state on the ROW's box, not on the
+							 * caps, and the chord is drawn the same way
+							 * on every ground it lands on, which is what makes it one idiom rather
+							 * than one idiom plus an exception.
 							 *
 							 * Platform: `isMac` above, derived from `navigator.platform` the way
 							 * `chat-header.tsx` and `sidebar-navigation.tsx` derive it, and passed to
