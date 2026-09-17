@@ -1,5 +1,5 @@
 {
-  "head": "0d3af589d89acbacede514a0368cb91c33e91533",
+  "head": "a88c3bdd0bd9c7cb476f3bea319f5d2e1f46ea83",
   "headNote": "RE-DERIVED FOR THIS CHANGE, AND RE-DERIVED AGAIN BY ITS REBASE ONTO `main`, where the frames were RE-TAKEN rather than re-stamped. `srcTree`, `scriptsTree`, `frames` and `surfaces` describe the tree these frames ship in, read from that tree rather than carried forward: the rebase moved `scripts/` (main's evidence passes add rows to the sweep and the driver, and this round adds the `key cap ink step` pin) and `src/`. On the rebased tree the swept count is 3,739 = main's 3,703 plus this branch's 36, and `surfaces` is 468 = main's 465 plus this change's three directories; both were re-derived with `check-evidence.mjs`'s own walker against this tree rather than carried from either side. `srcTree`/`scriptsTree` are `git rev-parse HEAD:src` / `HEAD:scripts` for the commit that carries the evidence, which is the commit this field names. The re-capture that re-derived them is measured in `partialCapture.rebaseMeasurement`: nothing main landed invalidates these frames, and the numbers say what each of the ten frames that moved actually moved by.",
   "srcTree": "b69bcf63c79a9d674a0b3d74fa0d071adc8b0f0a",
   "scriptsTree": "feb1d8f234cd48a04f1b39436a472c804cf7ce5b",
@@ -14,14 +14,36 @@
     "themes": "12 theme names in the merged `capture-evidence.mjs` THEMES literal. Unchanged by this pass, and the baseline set was captured at the same 12 - which is what makes each of its directories a per-theme twin of the swept one beside it. 12 theme names in the `capture-evidence.mjs` THEMES literal, counted the same way. Neither side changes the theme list, so the count is the base's."
   },
   "partialCapture": {
-    "refreshedAt": "2026-09-17T00:30:09.365Z",
-    "refreshedAtHead": "0d3af589d89acbacede514a0368cb91c33e91533",
+    "refreshedAt": "2026-09-17T01:15:52.849Z",
+    "refreshedAtHead": "a88c3bdd0bd9c7cb476f3bea319f5d2e1f46ea83",
     "refreshedFromHead": "0d3af589d89acbacede514a0368cb91c33e91533",
-    "refreshedFrames": 36,
+    "refreshedFrames": 409,
     "refreshedStories": [
       "panels-analytics--session-last-page",
       "panels-analytics--session-sorted-by-session",
-      "panels-analytics--session-page-two"
+      "panels-analytics--session-page-two",
+      "panels-analytics--populated",
+      "panels-analytics--populated-hover",
+      "panels-analytics--populated-hover-shallow",
+      "panels-analytics--refreshing",
+      "panels-analytics--thirty-days",
+      "panels-analytics--this-session-only",
+      "panels-analytics--unpriced",
+      "panels-analytics--partial-cost",
+      "panels-analytics--no-daily-rows",
+      "panels-analytics--unnamed-sessions",
+      "panels-analytics--empty",
+      "panels-analytics--loading",
+      "panels-analytics--unavailable",
+      "panels-analytics--dense",
+      "panels-analytics--narrow",
+      "panels-analytics--session-paginated",
+      "panels-analytics--session-sorted-by-cost",
+      "panels-analytics--session-search-match",
+      "panels-analytics--session-search-empty",
+      "panels-analytics--session-top-level-only",
+      "panels-analytics--session-scale-30-d",
+      "panels-analytics--session-narrow-720"
     ],
     "refreshedThemes": [
       "localOperatorDark",
@@ -37,7 +59,7 @@
       "obsidian",
       "synth"
     ],
-    "addedFrames": 216,
+    "addedFrames": 228,
     "addedSurfaces": [
       "chat-sidebar-current-row/selected-row",
       "chat-sidebar-current-row/new-chat-row-current",
@@ -58,8 +80,8 @@
       "panels-analytics/session-narrow-720",
       "panels-analytics/session-last-page"
     ],
-    "addedAt": "2026-09-17T00:12:48.254Z",
-    "addedAtHead": "1713376e72867d49221696123388c39b5048f16d",
+    "addedAt": "2026-09-17T01:12:11.031Z",
+    "addedAtHead": "a88c3bdd0bd9c7cb476f3bea319f5d2e1f46ea83",
     "note": "THE CAPS AND THE HIGHLIGHT (this change), on top of the record below: the current row's ground became the new `highlight` role, the row gained the settings rail's `font-medium` second signal, and every key cap lost its fill - which is visible on two surfaces and one rail. 60 frames were REWRITTEN in `command-palette-commandpalette/` (all five of its stories draw the legend bar whose keys changed) and 36 in `chat-sidebar-current-row/`: the set's two states plus the 12 ADDED `selected-row-neighbour-hovered/` frames that photograph the pointer's mark beside the selection's, so design D1 / QA Q-2's measurement is a committed frame rather than a one-off. `refreshedFromHead` names this pass's own first commit rather than the branch's base, which is what makes `refreshedFrames` the pass's increment and not the branch's whole diff against main: the guard measures 96 rewritten frames over these seven directories and nothing else. The two baseline sets this change declares hold the same stories rendered by an unmodified tree; a declared set is exactly a frame the sweep does not answer for, so their 84 frames are excluded from both terms here and from `frames` above.",
     "refreshedAtHeadNote": "Re-pointed at the tree this capture ran on - `559327ecf`, the rebased head whose `src/` and `scripts/` trees are the ones stamped below - because a rebase rewrote the spelling the capturer stamped, and the frames were RE-TAKEN at it rather than re-stamped. See `rebaseNote`.",
     "keycapsPass": "This change's own increment, recorded beside the accumulated fields above rather than in place of them: 60 frames REWRITTEN in `command-palette-commandpalette/` (all five stories draw the legend bar whose keys changed) and 36 frames in `chat-sidebar-current-row/` (the set's two states and the 12 the round-1 hover entry added). The two baseline sets this change declares hold 84 frames of the same stories rendered by unmodified `origin/main`; they are declared, and a declared set is exactly a frame the sweep does not answer for. On the rebased tree the swept total is main's 3,703 plus these 36 = `frames` 3,739, and `surfaces` is main's 465 plus this change's three directories = 468.",
