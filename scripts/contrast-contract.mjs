@@ -58,7 +58,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { deltaE, r2 } from "./color.mjs";
+import { deltaE, r2, toLab } from "./color.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1267,13 +1267,15 @@ const STRUCTURAL_CALL_SITES = [
 		 * current one carry `hover:bg-elevated`, which on eight of the twelve palettes
 		 * is still the LARGER step off `surface` than the row's own mark — and that is
 		 * a bound no palette value can lift, since `elevated` is also every menu,
-		 * popover and tooltip ground in the app. The weight is one non-colour step
-		 * against the pointer's mark; the `rowCurrentEdge` pin below is the other, and
-		 * it is the one that does not depend on how much ink headroom a palette has.
-		 * The operator's second report on this row — having asked first for a SUBTLE
-		 * selection and then seen the rendered result — is why the ground itself rose
-		 * from the 2.18-2.28 band to the 4.0-4.4 one, and why the pin now carries both
-		 * halves of the mark rather than the weight alone.
+		 * popover and tooltip ground in the app. The weight is the non-colour step
+		 * against the pointer's mark, and it is the whole of that second step: the 1px
+		 * `outline-control` boundary an earlier round put beside the ground is RETIRED
+		 * (it is § 2's *sole boundary of a control* and rendered as the search field
+		 * above the list — design round 1, D3), so the pin below is what holds this
+		 * half of the mark now. The operator's second report on this row — having
+		 * asked first for a SUBTLE selection and then seen the rendered result — is
+		 * why the ground itself rose from the 2.18-2.28 band to the 4.0-4.4 one, on
+		 * the lightness axis rather than the chroma one.
 		 *
 		 * The `hover:` half is part of the ground, not decoration: `rowStyle`
 		 * carries `hover:bg-elevated`, and the hover variant outranks a bare
@@ -1292,28 +1294,6 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
-		 * The other half of the mark, and the half that is not capped by an ink
-		 * floor: the row's 1px structural edge.
-		 *
-		 * WHY IT IS A SEPARATE PIN FROM THE GROUND ABOVE. The edge is not part of
-		 * `rowCurrent`, deliberately: the entity row paints that constant on its
-		 * wrapper AND its name button, so an outline inside it would draw two rings
-		 * on one row (a second mark rather than a stronger one). The edge therefore
-		 * lives in a constant of its own and is passed at the four row BOXES, which
-		 * means dropping it from any one of them is a one-word edit no palette row
-		 * could see. `scripts/chat-sidebar-selection.test.mjs` resolves each box's
-		 * merged class list and asserts the edge is on all four and NOT on the name
-		 * button; this pin catches the constant itself being weakened (a lost
-		 * `outline-solid`, a `hairline` role in place of `control`, a variant
-		 * prefix that never fires).
-		 */
-		what: "chat sidebar current-row edge",
-		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: '"outline-solid outline-1 -outline-offset-1 outline-control"',
-		why: "the ink floors on `highlight` cap how far the row's ground can climb (the caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`), and on eight of the twelve palettes the neighbouring rows' hover step is still the larger step off `surface` — a bound that cannot be lifted from this panel, because `elevated` is also every menu, popover and tooltip ground in the app. The edge is the half of the mark that does not spend ink headroom: `border-control` clears § 3's 3:1 structural floor against `highlight` in all twelve palettes (asserted as a ROLE in the loop above, not only here), it draws outside the box model so the row's box and its alignment are unchanged, and `features/chat/pickers/picker-host.tsx` carries the same two-part mark for the same measured reason",
-	},
-	{
-		/*
 		 * The row the operator reported, pinned as the EXPRESSION rather than the
 		 * ground: a later reader can leave the shared constant intact and still
 		 * un-mark the conversation — by dropping the reference, or by weakening
@@ -1326,13 +1306,13 @@ const STRUCTURAL_CALL_SITES = [
 		what: "chat session row current-row predicate",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		must: "const isCurrent =\n\t\t\tselectedConversation === row.session_id && !activeDraftKey;",
-		why: "the row the operator reported is marked on three terms — the ground, the structural edge and `aria-current` — and the predicate is named once so the three cannot drift apart. A weakened predicate un-marks the conversation in all three places at once, which is why the pin is on the declaration rather than on one use",
+		why: "the row the operator reported is marked on two terms — the ground and `aria-current` — and the predicate is named once so the two cannot drift apart. A weakened predicate un-marks the conversation in both places at once, which is why the pin is on the declaration rather than on one use",
 	},
 	{
 		what: "chat session row current-row mark",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "isCurrent && rowCurrent,\n\t\t\t\t\tisCurrent && rowCurrentEdge,",
-		why: "this is the TWO-part mark the operator reported on — a ground he first found too loud and then too quiet, and the edge that carries it where the ink floors cap the ground; both halves have to stay on the row together, and `aria-current` on the same predicate is what keeps the accessibility tree claiming what the row paints",
+		must: "isCurrent && rowCurrent,",
+		why: "the mark the operator reported on is the ground plus the weight; the declaration above pins what the constant HOLDS, and this pins that the selected conversation actually reaches it — dropping the reference, or weakening the predicate, is a one-word edit that no palette assertion can see and that leaves the row unmarked while every floor stays green",
 	},
 	{
 		/*
@@ -1398,8 +1378,8 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "settings rail current-row ground",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '"bg-highlight font-medium text-ink outline-solid outline-1 -outline-offset-1 outline-control hover:bg-highlight"',
-		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer, and the `outline-control` edge is in it for the reason the chat panel's own edge pin gives — the ink floors cap the ground's step, and on eight palettes the hover step the rows around it carry is still larger. This rail INLINES the class rather than importing the chat panel's constants, which is why the pin is a string here and the two must be changed together",
+		must: '"bg-highlight font-medium text-ink hover:bg-highlight"',
+		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer, and the weight is in it because the row's mark is the ground plus the weight — there is no longer an `outline-control` half in either panel (design round 1, D3): the ring is retired, because that role is § 2's sole boundary of a control and both rails drew it with the search field's own ink and geometry. This rail INLINES the class rather than importing the chat panel's constants, which is why the pin is a string here and the two must be changed together",
 	},
 	{
 		/*
@@ -1657,11 +1637,13 @@ const REQUIRED_ROLES = [
 	"mode",
 	...GROUNDS,
 	/* The selection ground, and not a fifth STEP on the elevation ladder: it is
-	   the ground of the row a reader is currently ON, a shallow step off
-	   `surface` in the direction the mode runs. Required rather than optional
-	   for the same reason every other role here is: a palette that omits it falls
-	   silently through to MUI's stock palette, and this one is read by a Tailwind
-	   utility (`bg-highlight`) that would then resolve to nothing at all. */
+	   the ground of the row a reader is currently ON, a step off `surface` in the
+	   direction the mode runs — bought on the LIGHTNESS axis first, at the panel's
+	   own hue, with chroma paying only what is left over. Required rather than
+	   optional for the same reason every other role here is: a palette that omits
+	   it falls silently through to MUI's stock palette, and this one is read by a
+	   Tailwind utility (`bg-highlight`) that would then resolve to nothing at
+	   all. */
 	"highlight",
 	"ink",
 	"inkMuted",
@@ -1777,6 +1759,15 @@ const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
  * point where every palette's rule reads as a rule while every hairline stays
  * between 1.16:1 and 1.92:1 against its grounds, which is what keeps it from
  * becoming a border - and that ceiling is asserted, not just described.
+ *
+ * `LINE_SEPARATION_FLOOR`'s 4.0 and `HIGHLIGHT_SEPARATION_FLOOR` below are the
+ * same number for DIFFERENT reasons and are deliberately not collapsed into
+ * one: a rule is a 1px line the eye has to find at all, and the selection ground
+ * is a large plane the reader has to find while the pointer is somewhere else.
+ * They are declared separately because they move for different measurements - a
+ * change to either is a change to one job - and the numbers agree today by
+ * coincidence of scale rather than by derivation. Raising the line floor must
+ * not move the selection band, and vice versa.
  */
 const FIELD_SEPARATION_FLOOR = 2.0;
 const LINE_SEPARATION_FLOOR = 4.0;
@@ -1798,17 +1789,36 @@ const LINE_SEPARATION_FLOOR = 4.0;
  * read as no mark at all beside a hovered neighbour, so the observed threshold
  * for a selection - a large plane the reader has to find while the pointer is
  * somewhere else - is higher than for an elevation step they are comparing with
- * itself. It is where the twelve palettes now land (4.01-4.39, and 3.51 on
- * iceberg behind that palette's well), and it is the number a porting author
- * targets: see `HIGHLIGHT_INK_MARGIN` below and `palette-contract.ts`'s
- * `highlight` doc, which states the derivation rule in full.
+ * itself. It is where the twelve palettes now land (4.01-4.15), and it is the
+ * number a porting author targets: see `HIGHLIGHT_INK_MARGIN` below and
+ * `palette-contract.ts`'s `highlight` doc, which states the derivation rule in
+ * full.
  *
  * The margin is the other half and is why the floor is stated with one: the
  * binding ink on this ground is `ink-dim` (the caps and the `· lopdev` binding
  * inside a current row are drawn in it), and a palette that lands exactly on
  * 4.50:1 has spent its last 0.01 of headroom on the mark.
+ *
+ * `HIGHLIGHT_LIGHTNESS_STEP_FLOOR` beside it is the OTHER half of the same
+ * report, because ΔE00 is a budget that can be spent on the wrong axis. The
+ * three palettes this floor was drawn for - tokyoNight, `localOperatorDark`,
+ * `localOperatorLight` - cleared 4.0 with the whole of the gain bought on
+ * chroma, at `L*` steps of 2.61, 2.82 and 2.52 in a band of ΔE00 4.0-4.4: less
+ * light (on the dark themes) than the 3.26-3.47 steps he had ALREADY reported
+ * as invisible, which is why the same report was answered twice. The floor is
+ * stated as a magnitude and the direction is checked beside it, so a dark
+ * palette can no longer land darker than its panel and a light one lighter.
+ *
+ * WHERE 3.0 COMES FROM, since it is not inherited from a neighbouring constant:
+ * the chroma-only values above measured 2.52-2.82, and the corrected twelve land
+ * 3.81-6.62 - the floor sits between the worst of the defect and the worst of
+ * the fix, with the same order of margin `FIELD_SEPARATION_FLOOR` has. It is a
+ * FLOOR and not a target: the derivation rule asks for the largest `L*` step the
+ * ink floors allow, and the palettes that can afford more (dune 6.44, sage
+ * 6.62) take it.
  */
 const HIGHLIGHT_SEPARATION_FLOOR = 4.0;
+const HIGHLIGHT_LIGHTNESS_STEP_FLOOR = 3.0;
 const HIGHLIGHT_INK_MARGIN = 0.15;
 
 /*
@@ -1926,7 +1936,8 @@ for (const { id, palette: p } of palettes) {
 	 * mistake the browser chip's own row already records (a ground the component
 	 * never sits on is a measurement of the wrong thing).
 	 *
-	 * What it needs instead is three facts the row depends on.
+	 * What it needs instead is four facts the row depends on, and the fourth is
+	 * the one an earlier round of this branch got wrong.
 	 *
 	 * 1. That the step off `surface` is PERCEIVABLE, at its OWN floor. This is a
 	 *    large plane the reader has to find while the pointer is somewhere else
@@ -1934,36 +1945,42 @@ for (const { id, palette: p } of palettes) {
 	 *    states, which is a control compared with itself across two states in the
 	 *    same place (led). The role was authored at ΔE00 2.18-2.28, cleared all
 	 *    of these floors, and the operator still reported it as invisible beside
-	 *    a hovered neighbour; the twelve palettes now land 4.01-4.39, except
-	 *    iceberg at 3.51 - see the second fact, which is what caps it there.
-	 * 2. That it is not the same ground as the two it is drawn against, at the
+	 *    a hovered neighbour; the twelve palettes now land 4.01-4.15.
+	 * 2. That the step is a LIGHTNESS step and that its DIRECTION is the one the
+	 *    mode runs in - lighter than the panel on a dark palette, darker on a
+	 *    light one - with a floor on the magnitude. ΔE00 alone cannot state this:
+	 *    three palettes cleared 4.0 with the entire gain bought on chroma, at
+	 *    `L*` steps of 2.61, 2.82 and 2.52 that were SMALLER than the 3.26-3.47
+	 *    steps the operator had already reported as invisible, so the same report
+	 *    was answered twice. See `HIGHLIGHT_LIGHTNESS_STEP_FLOOR` above; this is
+	 *    `HIGHLIGHT_LIGHTNESS_STEP_FLOOR`'s assertion, and it is the reason the
+	 *    rule is stated as an ORDER (lightness first, chroma for the remainder)
+	 *    rather than as a distance.
+	 * 3. That it is not the same ground as the two it is drawn against, at the
 	 *    FIELD floor, because those really are state-distinctions. The rows it
 	 *    marks carry `hover:bg-elevated`, so a hovered row has to stay visibly
-	 *    different from the current one (worst pair now obsidian, 2.36); and the
-	 *    panel's wells are `sunken`, which is the role this one replaced and must
-	 *    not collapse onto (worst pair now localOperatorLight, 2.35).
-	 * 3. That the row's own structural EDGE clears the 3:1 floor of the role it
-	 *    is drawn in, because the edge is the half of the mark that is not capped
-	 *    by fact 1's ink floors.
+	 *    different from the current one (worst pair now localOperatorDark, 2.25);
+	 *    and the panel's wells are `sunken`, which is the role this one replaced
+	 *    and must not collapse onto (worst pair now localOperatorLight, 2.36).
 	 *
 	 * The ink floors on it are the other half, and they are what makes "one ink
 	 * for every cap" a claim this file holds up rather than a preference: the
 	 * caps inside a current row sit on this ground at `ink-dim` (in the authored
-	 * set now 4.69-5.61:1 against the 4.5:1 floor, i.e. `HIGHLIGHT_INK_MARGIN`
+	 * set now 4.68-5.61:1 against the 4.5:1 floor, i.e. `HIGHLIGHT_INK_MARGIN`
 	 * or more of headroom everywhere), and their ground changes when the row
-	 * becomes the current one. THAT floor, not the field one, is what caps the
-	 * step on every palette that stops short of the band's top, so it is named in
-	 * the failure below rather than left for a reader to derive.
+	 * becomes the current one. THAT floor is what caps the step on the palettes
+	 * where it stops short of the band's top, so it is named in the failure below
+	 * rather than left for a reader to derive. It is also the reason the step is
+	 * taken on lightness to the ink cap rather than further: the caps and the
+	 * `· lopdev` binding drawn inside a current row are body ink, and they are
+	 * not what the mark may spend.
 	 *
 	 * WHAT A FAILURE HERE MEANS. It is a statement about a palette that has not
-	 * been re-authored, not a gate to relax: the largest step that keeps every ink
-	 * floor with `HIGHLIGHT_INK_MARGIN` of headroom and stays ΔE00 2.2 clear of
-	 * `elevated` and `sunken` is the value to author. On the two palettes where
-	 * `elevated` blocks that (dracula and obsidian - a hover step that is itself
-	 * the larger step off `surface`), the step is bought on the CHROMA axis at the
-	 * surface's own hue, which § 3 of `docs/branding.md` names as the axis that
-	 * costs no ink assertion. `palette-contract.ts`'s `highlight` doc states the
-	 * rule in full for a porting author.
+	 * been re-authored, not a gate to relax: take the largest `L*` step the ink
+	 * floors allow, at the surface's own hue, and buy only the shortfall to this
+	 * floor on the chroma axis at that same hue. `palette-contract.ts`'s
+	 * `highlight` doc states the rule in full for a porting author, including
+	 * which palettes still carry a partly chroma-bought step.
 	 */
 	for (const other of ["elevated", "sunken"]) {
 		if (!isHex(p.highlight) || !isHex(p[other])) continue;
@@ -1987,7 +2004,39 @@ for (const { id, palette: p } of palettes) {
 				ratio(p[role], p.highlight),
 			]).sort((a, b) => a[1] - b[1])[0];
 			fail(
-				`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`surface\` ${p.surface} (need ${HIGHLIGHT_SEPARATION_FLOOR}) — the current row's mark is invisible beside a hovered neighbour below this band. Author the LARGEST step that keeps every ink floor with ${HIGHLIGHT_INK_MARGIN} of headroom and stays ΔE00 2.2 clear of \`elevated\` and \`sunken\`; the binder here is \`${bound[0]}\` at ${r2(bound[1])}:1 on this ground, and where it stops the step short the row's structural edge carries the mark instead. A step bought on the CHROMA axis at the surface's own hue costs no ink assertion (docs/branding.md § 3)`,
+				`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`surface\` ${p.surface} (need ${HIGHLIGHT_SEPARATION_FLOOR}) — the current row's mark is invisible beside a hovered neighbour below this band. Author the LARGEST \`L*\` step the ink floors allow at the surface's own hue, and buy only the shortfall to ${HIGHLIGHT_SEPARATION_FLOOR} on the chroma axis at that hue. It must also stay ΔE00 ${FIELD_SEPARATION_FLOOR} clear of \`elevated\` and \`sunken\` (that bound, not ${HIGHLIGHT_SEPARATION_FLOOR}, is what the field loop above enforces); the binder here is \`${bound[0]}\` at ${r2(bound[1])}:1 on this ground, and the direction is asserted in the block below, because ΔE00 is a budget a chroma-only step can spend while moving the wrong way in lightness`,
+			);
+		}
+	}
+	/*
+	 * The step's AXIS and its DIRECTION, which ΔE00 cannot state.
+	 *
+	 * The operator's sentence is "on dark mode it should be a bit lighter and on
+	 * light mode it should be dark enough to contrast" - a lightness fact. ΔE00 is
+	 * a budget with a chroma term in it, so at a fixed `L*` a step can be made as
+	 * large as you like by warming it, and the three palettes this floor was drawn
+	 * for proved it is not a hypothetical: tokyoNight, `localOperatorDark` and
+	 * `localOperatorLight` all cleared the band with the whole of the gain bought
+	 * on chroma at `L*` steps of 2.61, 2.82 and 2.52 - less light on the two dark
+	 * themes than the 3.26 and 3.47 steps he had already reported as invisible, so
+	 * the report was answered twice and the mark read as a deeper blue row rather
+	 * than a lighter one.
+	 *
+	 * The sign is the half that matters and the magnitude is the other: a token
+	 * step in the right direction is still a step a reader cannot find. See
+	 * `HIGHLIGHT_LIGHTNESS_STEP_FLOOR` for where 3.0 comes from.
+	 */
+	{
+		assertions++;
+		const step = toLab(p.highlight)[0] - toLab(p.surface)[0];
+		const wanted = p.mode === "dark" ? step : -step;
+		if (wanted < HIGHLIGHT_LIGHTNESS_STEP_FLOOR) {
+			const wrongSide =
+				wanted <= 0
+					? ` — and it is on the WRONG SIDE of \`surface\` for this mode, which is the half of the operator's sentence ΔE00 cannot state`
+					: "";
+			fail(
+				`${id}: \`highlight\` ${p.highlight} sits ${r2(step)} \`L*\` from \`surface\` ${p.surface}, so the current row is ${p.mode === "dark" ? "LIGHTER" : "DARKER"} than its panel by ${r2(wanted)} against a floor of ${HIGHLIGHT_LIGHTNESS_STEP_FLOOR})${wrongSide}. Author the step as a LIGHTNESS step at the surface's own hue - the largest one the ink floors allow - and buy only the shortfall to ΔE00 ${HIGHLIGHT_SEPARATION_FLOOR} on the chroma axis at that hue: \`palette-contract.ts\`'s \`highlight\` doc states the rule in full`,
 			);
 		}
 	}
@@ -2002,19 +2051,16 @@ for (const { id, palette: p } of palettes) {
 		);
 	}
 	/*
-	 * The row's structural edge, asserted as a ROLE on this ground rather than
-	 * only as a class string below. `picker-host.tsx` records why: its class
-	 * string stayed green while the role collapsed, and the edge is that row's
-	 * only mark in the themes where the wash it sits on is not perceivable.
+	 * NO `border-control`-on-`highlight` pair here, and its absence is a
+	 * decision rather than an oversight: it existed for the 1px structure
+	 * boundary an earlier round drew around a current row, which is RETIRED
+	 * (design round 1, D3, and § 2's definition of that role: the sole boundary
+	 * of an input, select, checkbox or outlined button). `picker-host.tsx` still
+	 * draws that ring on the command palette's POINTER row, where the ring means
+	 * "the row under the pointer" rather than "you are here", and the pair is
+	 * asserted there by that component's own rows. A row mark drawn in a role
+	 * that has no floor for it should not have one asserted on its behalf.
 	 */
-	assertPair(
-		id,
-		p,
-		"borderControl",
-		"highlight",
-		FLOOR.nonText,
-		"the current row's structural edge",
-	);
 
 	/* Structural borders. */
 	for (const role of STRUCTURAL) {

@@ -7,19 +7,30 @@
  *       /tmp/frame.png 180 265 380 560
  *
  * Why this exists as a separate instrument. `pnpm check-themes` measures the
- * PALETTE — it proves `highlight` is ΔE00 4.01-4.39 from `surface` and that every
- * ink clears its floor on it. It cannot prove the row is painted with that role,
- * whether the browser composited what the class string asked for, or whether the
- * row's BOX moved when the structural edge was added. All three are claims about
- * a rendered frame, so all three are read back from one: the column at `x` is
- * walked from `y0` to `y1`, the panel's own ground is sampled above the list, and
- * the contiguous run that differs from it is the current row.
+ * PALETTE — it proves `highlight` is ΔE00 4.0 or better from `surface`, that every
+ * ink clears its floor on it and that the ground steps the right way in `L*`. It
+ * cannot prove the row is painted with that role, whether the browser composited
+ * what the class string asked for, or whether the row's BOX sits where the panel
+ * put it. All three are claims about a rendered frame, so all three are read back
+ * from one: the column at `x` is walked from `y0` to `y1`, the panel's own ground
+ * is sampled above the list, and the contiguous run that differs from it is the
+ * current row.
  *
- * The extent is the reason the edge is in this harness at all: an `outline`
- * draws outside the box model, so the run's top and bottom MUST be the same
- * before and after. A run that grew is the row reflowing against its neighbours,
- * which is the defect an outline was chosen to avoid and the one a still image
- * makes obvious only if somebody measures it.
+ * The extent is reported because a mark is not allowed to MOVE the row: the box's
+ * top and bottom have to sit in the same place against the neighbouring rows on
+ * both sides of a before/after pair, and a run that changed height is the row
+ * reflowing. The frames are WebP q88, so read the numbers as the encoder's
+ * version of the paint — the set's README states what that costs, and the
+ * palette's own numbers are always the contract's.
+ *
+ * There is no `edge` field any more. It reported the run's first interior row,
+ * which is what a 1px `outline-control` ring painted there — and that ring was
+ * retired in round 2's remediation (design round 1, D3). It was also the wrong
+ * pixel for the thing it was named after: the first row of an
+ * `-outline-offset-1` ring is a partial-coverage blend (measured `#24273f`
+ * against a panel of `#24283b`), not the ring's own line, so a reader taking it
+ * as proof the ring rendered was taking it on a value the instrument does not
+ * measure.
  *
  * The decoder is deliberately not in here: PNG is decoded with `zlib`, and the
  * frame is WebP, so a decoder step precedes it — `sips` on macOS, `dwebp`
@@ -62,7 +73,11 @@ const decodePng = (path) => {
 			const depth = body[8];
 			colourType = body[9];
 			const interlace = body[12];
-			if (depth !== 8 || interlace !== 0 || (colourType !== 2 && colourType !== 6)) {
+			if (
+				depth !== 8 ||
+				interlace !== 0 ||
+				(colourType !== 2 && colourType !== 6)
+			) {
 				throw new Error(
 					`unsupported PNG: depth ${depth}, colour type ${colourType}, interlace ${interlace}. Re-encode as 8-bit RGB/RGBA without interlacing.`,
 				);
@@ -85,7 +100,8 @@ const decodePng = (path) => {
 			row * (stride + 1) + 1 + stride,
 		);
 		const out = pixels.subarray(row * stride, (row + 1) * stride);
-		const above = row === 0 ? null : pixels.subarray((row - 1) * stride, row * stride);
+		const above =
+			row === 0 ? null : pixels.subarray((row - 1) * stride, row * stride);
 		for (let i = 0; i < stride; i += 1) {
 			const a = i >= channels ? out[i - channels] : 0;
 			const b = above ? above[i] : 0;
@@ -163,20 +179,17 @@ for (const entry of column) {
 		current.bottom = entry.y;
 	}
 }
-const longest = runs.sort(
-	(a, b) => b.bottom - b.top - (a.bottom - a.top),
-)[0];
+const longest = runs.sort((a, b) => b.bottom - b.top - (a.bottom - a.top))[0];
 const top = longest?.top ?? null;
 const bottom = longest?.bottom ?? null;
 /*
- * The row's GROUND is read at the CENTRE of the run, not at its first pixel:
- * since the structural edge is drawn inside the box (`-outline-offset-1`), the
- * run's first and last rows are the ring, and a reader asking "what ground is
- * this row painted on" wants the middle. The ring is reported separately, and
- * its presence is what the extent difference between the halves measures.
+ * The row's GROUND is read at the CENTRE of the run rather than at its first
+ * pixel: the run's edges are where the browser blends the ground into the panel
+ * over a fractional device pixel (the row's box is 32 CSS px at a 2x device
+ * pixel ratio, so an edge can land half a pixel into the row beside it), and the
+ * question here is what ground the row is painted on.
  */
 const row = top === null ? null : modeOf(Math.round((top + bottom) / 2));
-const edge = top === null ? null : modeOf(top);
 console.log(
 	JSON.stringify(
 		{
@@ -185,7 +198,6 @@ console.log(
 			span: `x=${x0}-${x1}, y=${y0}-${y1}`,
 			panel,
 			row,
-			edge,
 			runs: runs.map((run) => run.bottom - run.top + 1),
 			extent: top === null ? null : { top, bottom, height: bottom - top + 1 },
 			deltaE00: row === null ? null : r2(deltaE(row, panel)),
