@@ -342,7 +342,6 @@ export const StreamingMessage = ({
 							key={`${messageId}-${file}`}
 							file={file}
 							src={getUrl(file)}
-							onClick={handleFileClick}
 							conversationId={conversationId ?? ""}
 						/>
 					))}

@@ -277,7 +277,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 								key={`${message.id}-${file}`}
 								file={file}
 								src={getUrl(file)}
-								onClick={handleFileClick}
 								conversationId={conversationId}
 							/>
 						))}
