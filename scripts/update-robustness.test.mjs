@@ -5242,6 +5242,35 @@ const backendManagerStub = (startupMode, service) => ({
 	isUsingExternalBackend: () => false,
 });
 
+/**
+ * A synthetic install on disk: everything the readers actually consult.
+ *
+ * `resolveDistributionMarkers` reads the version out of the dist-info directory's
+ * own NAME, the `pyvenv.cfg` is what makes the prefix a venv at all, and the
+ * console script in `bin/` is what `readInstallIdentity` resolves a prefix from.
+ * No interpreter, no `local-operator` package, no `pip show`: which is the point
+ * of the read under test as well as of this fixture.
+ */
+const syntheticInstall = (root, version) => {
+	mkdirSync(join(root, "bin"), { recursive: true });
+	mkdirSync(
+		join(
+			root,
+			"lib",
+			"python3.12",
+			"site-packages",
+			`local_operator-${version}.dist-info`,
+		),
+		{ recursive: true },
+	);
+	writeFileSync(
+		join(root, "bin", "local-operator"),
+		"#!/usr/bin/env python3\n",
+	);
+	writeFileSync(join(root, "pyvenv.cfg"), "home = /usr/bin\n");
+	return root;
+};
+
 const loAggregateCheck = async ({
 	appCheck,
 	serverVersion,
@@ -5307,6 +5336,18 @@ const loAggregateCheck = async ({
 	 * have to interrupt. Its return value comes back as `probeResult`.
 	 */
 	probe = null,
+	/*
+	 * The install the SERVER reports it runs from (`/health`'s `prefix`), for the
+	 * cases about the install that actually serves the app rather than the one
+	 * `local-operator` resolves to on `PATH`.
+	 *
+	 * `appOwned` plants the synthetic root under the app's own managed tree in
+	 * this fixture's home, which is the whole of what `update-service` reads
+	 * ownership from; `kind` is the backend's own `install_kind`, echoed into the
+	 * payload. Omitted means a server that names no install - the shape every case
+	 * from before this parameter declares, and the shape an older backend answers.
+	 */
+	servingInstall = null,
 }) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-verdict-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-verdict-userdata-"));
@@ -5316,6 +5357,30 @@ const loAggregateCheck = async ({
 		appData: userData,
 		temp: tmpdir(),
 	};
+	/*
+	 * The synthetic serving install, planted BEFORE the service is constructed so
+	 * the check reads a world that is already in place. Under the managed tree when
+	 * the case says the app owns it, and beside it otherwise - because ownership is
+	 * decided by WHERE the root is, and a fixture that planted every root in one
+	 * place could not tell the two remedies apart.
+	 */
+	const servingRoot = servingInstall
+		? syntheticInstall(
+				servingInstall.appOwned
+					? join(
+							home,
+							"Library",
+							"Application Support",
+							"Local Operator",
+							"managed-python",
+							"packaged",
+							"environments",
+							"synthetic-runtime-env",
+						)
+					: join(home, "synthetic-external-install"),
+				servingInstall.version,
+			)
+		: null;
 	const { service, serviceDir } = await loadUpdateServiceModule();
 	const sent = [];
 	let interval = null;
@@ -5331,7 +5396,22 @@ const loAggregateCheck = async ({
 			response.writeHead(200, { "Content-Type": "application/json" });
 			response.end(
 				JSON.stringify({
-					result: serverAnswersVersion ? { version: serverVersion } : {},
+					result: serverAnswersVersion
+						? {
+								version: serverVersion,
+								/*
+								 * The two fields a serving install is identified by, sent only when
+								 * this case declared one: the install root, and the backend's own
+								 * classification of the environment it runs in.
+								 */
+								...(servingRoot
+									? {
+											prefix: servingRoot,
+											install_kind: servingInstall.kind ?? "pip",
+										}
+									: {}),
+							}
+						: {},
 				}),
 			);
 		});
@@ -5907,7 +5987,17 @@ test("the check follows the install, and names the running backend beside it", a
 		installVersion: "0.54.44",
 		publishedVersion: "0.54.44",
 	});
-	assert.equal(installCurrent.verdict.server, "current");
+	/*
+	 * `restart-required`, NOT `current`: the install is at the published release
+	 * and the server actually serving this app is not, so there is nothing to
+	 * install and nothing to affirm either. The status was `current` here, which
+	 * let the whole check earn "The application and server are up to date" in the
+	 * same turn as the skew notice below - the reported contradiction, one sentence
+	 * further on. `restart-required` is the state the panel's notice is about, and
+	 * it is what keeps the affirmation off this machine.
+	 */
+	assert.equal(installCurrent.verdict.server, "restart-required");
+	assert.equal(installCurrent.verdict.affirmation, null);
 	assert.ok(
 		!installCurrent.sent.some(
 			({ channel }) => channel === "backend-update-available",
@@ -5938,6 +6028,218 @@ test("the check follows the install, and names the running backend beside it", a
 	 * numbers. The renderer picks between them from this flag.
 	 */
 	assert.equal(notAvailable.payload.restartable, true);
+});
+
+/**
+ * THE REPORTED DEFECT, as a case: the install that is JUDGED is the one serving
+ * the app.
+ *
+ * The operator's machine reported "The application and server are up to date"
+ * while the panel's own Settings row printed a different version, because the
+ * check classified the install `local-operator` resolves to - a uv tool install
+ * at the published release - and compared THAT against PyPI, while an app-managed
+ * environment three releases behind answered `/health`.
+ *
+ * The fixture's world is exactly that: the shim's install is at the published
+ * release (so a check that judged it affirms the installation current), and the
+ * server reports a DIFFERENT root, older than that, in `/health`'s `prefix`.
+ */
+test("the check judges the install that serves the app, not the one the shim names", async () => {
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.56.8",
+		publishedVersion: "0.56.11",
+		// The install on PATH: current, and NOT the one answering this app.
+		installVersion: "0.56.11",
+		// The install the running server says it is serving from.
+		servingInstall: { version: "0.56.8", appOwned: true, kind: "pip" },
+	});
+
+	assert.equal(verdict.server, "available");
+	assert.equal(verdict.affirmation, null);
+
+	const offer = sent.find(
+		({ channel }) => channel === "backend-update-available",
+	);
+	assert.ok(offer, JSON.stringify(sent.map(({ channel }) => channel)));
+	// The SERVING install's version, not the shim install's 0.56.11.
+	assert.equal(offer.payload.currentVersion, "0.56.8");
+	assert.equal(offer.payload.runningVersion, "0.56.8");
+	assert.equal(offer.payload.latestVersion, "0.56.11");
+	/*
+	 * AND NO PACKAGE-MANAGER COMMAND, because this install is the app's own: the
+	 * `pip install --upgrade local-operator` line a pip-classified venv would get
+	 * would rewrite `site-packages` under the daemon serving this app, and the
+	 * command that owns the GLOBAL install moves an install that is already
+	 * current. An offer that told the reader to run either would be actionable and
+	 * wrong, which is worse than the silence it replaces.
+	 */
+	assert.equal(offer.payload.canManageUpdate, false);
+	assert.equal(offer.payload.updateCommand, "");
+	assert.match(offer.payload.remedy, /managed environment/);
+	assert.doesNotMatch(offer.payload.remedy, /pip install|lop update/);
+	// The install it judged, named for the panel's Details line.
+	assert.match(offer.payload.detail, /managed-python/);
+	assert.match(offer.payload.detail, /0\.56\.8/);
+
+	/*
+	 * The mirror, and the reason this had to be the SERVING install rather than
+	 * "whichever install is oldest": the shim's install is a release BEHIND while
+	 * the server serving this app is at the published one. Nothing is behind on the
+	 * machine the user is using, so there is nothing to offer - a check that judged
+	 * the install on PATH would offer an update for an install nothing is running.
+	 */
+	const serving = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.56.11",
+		publishedVersion: "0.56.11",
+		installVersion: "0.56.8",
+		servingInstall: { version: "0.56.11", appOwned: true, kind: "pip" },
+	});
+	assert.equal(serving.verdict.server, "current");
+	/*
+	 * The literal rather than `UP_TO_DATE_AFFIRMATION`: this case never loads the
+	 * rule module, and the sentence is the thing on screen - a value import here
+	 * would make the assertion a comparison of the module with itself.
+	 */
+	assert.equal(
+		serving.verdict.affirmation,
+		"The application and server are up to date",
+	);
+	assert.ok(
+		!serving.sent.some(({ channel }) => channel === "backend-update-available"),
+		JSON.stringify(serving.sent.map(({ channel }) => channel)),
+	);
+});
+
+/**
+ * The four states of the server channel, decided by the rule that owns them.
+ *
+ * Driven through the pure module with no fixture, because these are the rule's own
+ * cases: the whole defect was a check that reached the wrong CONCLUSION from the
+ * right readings, and the rule is now the only place a conclusion is drawn.
+ */
+test("the server channel's rule names its four states from the readings", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		/*
+		 * The service's comparator, narrowed to what these readings need: the
+		 * triple-by-triple ordering `isNewerVersion` performs, without its pre-release
+		 * tail - which none of these versions carries. Written here rather than
+		 * imported because the rule's own contract is the INJECTED comparison: it
+		 * decides, and the app keeps one ordering for that decision.
+		 */
+		const isNewer = (candidate, subject) => {
+			const parts = (value) => value.split(".").map(Number);
+			const left = parts(candidate);
+			const right = parts(subject);
+			for (let i = 0; i < 3; i++) {
+				const a = left[i] ?? 0;
+				const b = right[i] ?? 0;
+				if (a !== b) return a > b;
+			}
+			return false;
+		};
+
+		const behind = rule.serverChannelVerdict({
+			installVersion: "0.56.8",
+			runningVersion: "0.56.8",
+			publishedVersion: "0.56.11",
+			isNewer,
+		});
+		assert.deepEqual(behind, { status: "available", state: "install-behind" });
+
+		/*
+		 * The install is current and the process serving it is not: nothing to
+		 * install, nothing to offer, and NOTHING TO AFFIRM either. The status was
+		 * `current` in this state, which is what let "The application and server are up
+		 * to date" be rendered beside a notice saying the server was on an older build.
+		 */
+		const stale = rule.serverChannelVerdict({
+			installVersion: "0.56.11",
+			runningVersion: "0.56.8",
+			publishedVersion: "0.56.11",
+			isNewer,
+		});
+		assert.deepEqual(stale, {
+			status: "restart-required",
+			state: "restart-required",
+		});
+		assert.equal(
+			rule.updateCheckVerdict({ app: "current", server: stale.status })
+				.affirmation,
+			null,
+		);
+
+		const current = rule.serverChannelVerdict({
+			installVersion: "0.56.11",
+			runningVersion: "0.56.11",
+			publishedVersion: "0.56.11",
+			isNewer,
+		});
+		assert.deepEqual(current, { status: "current", state: "current" });
+
+		/*
+		 * An unreachable server is `unreadable`, and never `current`: the defect this
+		 * rule's own module was written for is a surface treating "we could not find
+		 * out" as an answer.
+		 */
+		for (const readings of [
+			{
+				installVersion: null,
+				runningVersion: null,
+				publishedVersion: "0.56.11",
+			},
+			{
+				installVersion: "0.56.8",
+				runningVersion: "Unknown",
+				publishedVersion: "0.56.11",
+			},
+			{
+				installVersion: "0.56.8",
+				runningVersion: "0.56.8",
+				publishedVersion: null,
+			},
+			{
+				installVersion: "0.56.8",
+				runningVersion: "0.56.8",
+				publishedVersion: "999.invalid",
+			},
+		]) {
+			assert.deepEqual(
+				rule.serverChannelVerdict({ ...readings, isNewer }),
+				{ status: "unavailable", state: "unreadable" },
+				JSON.stringify(readings),
+			);
+		}
+
+		/*
+		 * And the fallback the subject picks: when the install's own metadata could not
+		 * be read, the running process's reading stands in for it - the same install,
+		 * since the process executes the code in the prefix it named. It is NOT a
+		 * licence to affirm: a running build that trails the release is still behind.
+		 */
+		assert.deepEqual(
+			rule.serverChannelVerdict({
+				installVersion: null,
+				runningVersion: "0.56.8",
+				publishedVersion: "0.56.11",
+				isNewer,
+			}),
+			{ status: "available", state: "install-behind" },
+		);
+		assert.deepEqual(
+			rule.serverChannelVerdict({
+				installVersion: null,
+				runningVersion: "0.56.11",
+				publishedVersion: "0.56.11",
+				isNewer,
+			}),
+			{ status: "current", state: "current" },
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 /**
@@ -6064,7 +6366,22 @@ const driveGlobalUpdate = async ({
 				command: consolePath,
 			};
 		};
-		updateService.getInstalledBackendVersion = async () => daemonReports;
+		/*
+		 * THE CHECK'S OWN READ, which is `readRunningBackend` since the check began
+		 * judging the install that serves the app: `/health` carries the version and
+		 * the install root in ONE answer, so the seam is the whole reading rather
+		 * than its version. `prefix: null` is the server that does not name its
+		 * install - the plan's own subject then stands, which this fixture stubs
+		 * above - and every case here declares that shape.
+		 *
+		 * `getInstalledBackendVersion` still exists and delegates to this, so the
+		 * cases that stub IT for the paths that ask only for a version are unchanged.
+		 */
+		updateService.readRunningBackend = async () => ({
+			version: daemonReports,
+			prefix: null,
+			installKind: null,
+		});
 		if (stubWait) {
 			updateService.waitForBackendVersion = async () => daemonReports;
 		}
