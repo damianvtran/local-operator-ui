@@ -295,7 +295,19 @@ const SessionTable: FC<{
 			const nextKey = asSessionSortKey(key);
 			if (nextKey === null) return;
 			setChange("sort");
-			dispatch({ type: "sort", key: nextKey });
+			dispatch({
+				type: "sort",
+				key: nextKey,
+				/*
+				 * The EFFECTIVE order, so a first press on the column that is ranking
+				 * the table flips the way that column's own chevron says instead of
+				 * re-deriving the order already on screen — which changed nothing
+				 * visible while silently taking ownership of it (UX round 2, U5).
+				 * This is the same pair the header renders, which is exactly why it
+				 * is read here: the reducer does not know the metric.
+				 */
+				ranking: { key: sortKey, direction: sortDirection },
+			});
 		},
 	};
 

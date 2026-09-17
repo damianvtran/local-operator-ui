@@ -104,7 +104,26 @@ export type SessionTableState = {
 export type SessionTableAction =
 	| { type: "search"; query: string }
 	| { type: "filter"; topLevelOnly: boolean }
-	| { type: "sort"; key: SessionSortKey }
+	| {
+			type: "sort";
+			key: SessionSortKey;
+			/*
+			 * The order the table is ALREADY in — the effective key and direction the
+			 * section is rendering under — carried on the action because the first
+			 * press on the column that is ranking the table has to do what that
+			 * column's own indicator advertises (UX round 2, U5).
+			 *
+			 * `state.sort` is `null` in exactly that state: `null` is "follow the
+			 * panel's metric", which is what keeps a metric change re-ranking the
+			 * table, so the reducer cannot work the effective order out for itself —
+			 * it does not know the metric — and the section, which does, hands it over
+			 * with the press. Without it a first press on the ranking column set
+			 * `{key, direction: firstDirection(key)}`, which IS the order already on
+			 * screen: nothing moved, nothing was announced, and the press had silently
+			 * taken ownership, after which a `Spend` press stopped re-ranking.
+			 */
+			ranking: { key: SessionSortKey; direction: SortDirection };
+	  }
 	| { type: "page"; page: number }
 	/**
 	 * The window moved under the reader (metric, window or scope changed).
@@ -189,7 +208,14 @@ export function sessionTableReducer(
 		case "sort":
 			return {
 				...state,
-				sort: nextSort(state.sort, action.key),
+				/*
+				 * `state.sort ?? action.ranking`: the reader's press seeds from the order
+				 * they were being given, so the press the indicator advertises is the
+				 * press that takes ownership. `action.ranking` alone would let a second
+				 * press on a column the reader already owns flip against the METRIC
+				 * rather than against their own order once the metric has moved.
+				 */
+				sort: nextSort(state.sort ?? action.ranking, action.key),
 				page: 0,
 			};
 		case "page":
@@ -218,6 +244,12 @@ export function sessionTableReducer(
  * Activating the active column flips the direction; activating any other column
  * takes `firstDirection` — the model's policy, not the primitive's, because a
  * primitive that guessed would have to know which columns are numbers.
+ *
+ * `current` is the order the press is measured against, which is `state.sort`
+ * when the reader owns one and the EFFECTIVE order the section handed over when
+ * they do not: the first press on the column that is ranking the table has to
+ * flip the order its own chevron advertises, not re-derive the order it is
+ * already showing (U5).
  */
 function nextSort(
 	current: SessionTableState["sort"],
