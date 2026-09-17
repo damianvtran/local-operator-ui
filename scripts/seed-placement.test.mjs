@@ -629,28 +629,78 @@ test("the snapshot's seed is refused again on every later snapshot", async () =>
 	);
 });
 
-test("a seed that arrives mid-turn still settles the calls it names", async () => {
+test("a mid-turn join paints the rows the page names and refuses the ones nothing dates", async () => {
 	const page = fixture.page.entries;
 	const { handle } = await open({
 		entries: page,
 		liveEvents: fixture.seed.live_events,
 		streaming: true,
+		durable: durableTail,
 	});
 
-	/*
-	 * The behaviour the seed exists for, and the one the fix must not take
-	 * away: a viewer that joins while the turn runs is the only reader those
-	 * rows have, so they are painted — after the page, which is where an
-	 * in-flight turn's rows belong.
-	 */
 	const painted = ids(handle.transcript);
-	assert.notEqual(handle.transcript.records.at(-1).id, FINAL_MESSAGE);
-	for (const callId of unlabelledCalls) {
+	const labelled = new Set(
+		page.flatMap((entry) =>
+			(entry.payload.tool_calls ?? []).map((call) => call.id),
+		),
+	);
+	/*
+	 * What the seed exists for, kept: every call the PAGE names keeps its row, so
+	 * a viewer that joins while the turn runs still sees the turn's own work.
+	 */
+	for (const callId of labelled) {
 		assert.ok(
 			painted.includes(`tool:${callId}`),
-			`the mid-turn join still paints ${callId}`,
+			`the page named ${callId}, so its row is painted`,
 		);
 	}
+	/*
+	 * And what the in-flight exemption used to add, taken away on purpose: a
+	 * settled frame whose call the page cannot name states no time of its own. The
+	 * exemption is a claim about WORK, not about time — a call that ended is not
+	 * work waiting for the reader — so the frame is refused here exactly as it is
+	 * when the turn is over. The call does not vanish: the read-back the client
+	 * fires for exactly these calls (`reconcileLimit`) paints it as a DURABLE row
+	 * at its own instant where that read reaches it (`durableInstant` here is
+	 * `older` + `page`), and where it does not, the row waits for the reader's own
+	 * `load older` — absent, never painted at the arrival with no command to show.
+	 */
+	const paintedInstant = new Map(
+		handle.transcript.records
+			.filter((record) => record.kind === "tool")
+			.map((record) => [record.toolCallId, record.ts]),
+	);
+	for (const callId of unlabelledCalls) {
+		const durable = durableInstant.get(callId);
+		if (durable === undefined) {
+			assert.equal(
+				paintedInstant.has(callId),
+				false,
+				`nothing dates ${callId} and no read reaches it, so nothing paints it`,
+			);
+			continue;
+		}
+		assert.equal(
+			paintedInstant.get(callId),
+			durable,
+			`${callId} is painted where its durable row states, not at the arrival`,
+		);
+	}
+	/*
+	 * The stronger reading of the same claim: mid-turn and finished now paint the
+	 * SAME conversation, so the pane cannot depend on a flag for its integrity.
+	 */
+	const finished = await open({
+		entries: page,
+		liveEvents: fixture.seed.live_events,
+		streaming: false,
+		durable: durableTail,
+	});
+	assert.deepEqual(
+		painted,
+		ids(finished.handle.transcript),
+		"an in-flight turn and a finished one fold the same settled rows",
+	);
 });
 
 test("a seed naming calls the page already holds folds onto those rows", async () => {
