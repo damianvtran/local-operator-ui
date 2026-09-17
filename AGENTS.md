@@ -1199,6 +1199,27 @@ and that refusal is load-bearing: a repair must not move `latest` onto an old ta
 It is also not gated on the writeup, because an old Release's body is whatever it
 shipped with.
 
+**Attaching an asset is repairable by re-running the job, and the rule that makes
+that true is about the asset, not about its name.** `scripts/upload-release.mjs`
+streams each installer to the pinned release ID — nothing is buffered, since the mac
+dmg alone is 158 MB — with a per-attempt timeout and a bounded backoff retry on a
+transient failure (a timeout, a reset connection, a 5xx), because a stall nothing
+bounds is a job that hangs until the runner kills it. The recoverability lives in how
+what is already attached is reconciled, decided per artifact by name and size: an
+absent name is uploaded; a complete asset at **our** byte count is skipped, so a
+re-run over an intact release writes nothing at all; a complete asset at a
+**different** byte count is refused, naming both sizes, because that is a genuine
+collision with somebody else's asset; and an asset still in the `starter` state — the
+record the upload endpoint creates when an upload *starts* — is deleted and
+re-uploaded, because it is the wreckage of an attempt that never finished, not an
+asset. **Never replace a complete asset; never treat a `starter` record as a
+collision.** That last case is what cost three releases on 2026-09-16: after v0.26.5
+published, a stalled POST of the 158 MB arm64 dmg left a `starter` record, and every
+later attempt — a re-run, a repair dispatch — was refused over the name that record
+held, so the release could not be repaired without hand-surgery on the API. A failure
+reports the HTTP status and the endpoint's own message for the file that failed, and
+calls something a collision only when the reconciliation really found one.
+
 **What this deliberately gave up.** The deleted `scripts/derive-release.mjs` carried
 `assertVersionSurface`, an assertion that `main`'s `package.json` version was itself
 a released tag before any derivation ran — the check that caught a merged PR
