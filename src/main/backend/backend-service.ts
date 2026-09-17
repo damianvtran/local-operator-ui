@@ -32,6 +32,7 @@ import type {
 	DesktopResponse,
 } from "../../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../../shared/desktop-session-contract";
+import { serveRecordVersion } from "../backend-version-drift";
 import { DesktopFeedRelay } from "../desktop-feed";
 import {
 	type DesktopMediaResponse,
@@ -2899,6 +2900,44 @@ export class BackendServiceManager {
 	 */
 	getOwnedPid(): number | null {
 		return this.process?.pid ?? null;
+	}
+
+	/**
+	 * The version the daemon serving this app BOOTED with, from its own record.
+	 *
+	 * WHAT THIS IS NOT, and the mistake it exists to prevent: it is not
+	 * `getStatusSnapshot().version` and it is not `/health`'s `version`. Both carry
+	 * what the daemon computes from the metadata installed ON DISK when it answers,
+	 * so a process running old code out of memory reports the NEWER version and the
+	 * skew disappears exactly when a reader needs to see it. The serve record
+	 * (`server/registry.py`) is written once at process start and never re-read, so
+	 * its `version` is the build the running process actually loaded.
+	 *
+	 * Two arms, because the record is reached two ways: a daemon discovery ADOPTED
+	 * keeps its parsed record on this manager, while one this app SPAWNED is keyed by
+	 * its own pid in the record directory. Both are the same field of the same
+	 * document.
+	 *
+	 * A record that carries no version (an install predating the field), a record
+	 * that cannot be read, and no daemon at all are all `null` - an absence to be
+	 * reported, never a version to be compared.
+	 */
+	getAttachedBootVersion(): string | null {
+		const adopted = this.attachedRecord?.record.version?.trim() ?? "";
+		if (adopted !== "") return adopted;
+		return serveRecordVersion(this.process?.pid ?? null, serveRunDir());
+	}
+
+	/**
+	 * Whether the renderer holds any session stream open right now.
+	 *
+	 * The only in-flight-ish evidence main has: it counts conversations being
+	 * VIEWED, not turns running (a mounted chat holds its subscription while idle),
+	 * which is why the drift restart treats an open stream as a reason to wait one
+	 * check cycle rather than as proof that nothing is in flight.
+	 */
+	hasOpenSessionStreams(): boolean {
+		return (this.streamRelay?.openStreamCount() ?? 0) > 0;
 	}
 
 	/**

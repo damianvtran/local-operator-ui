@@ -20,6 +20,11 @@ import { basename, join } from "node:path";
 import { promisify } from "node:util";
 import { net, type BrowserWindow, app, ipcMain, powerMonitor } from "electron";
 import { type UpdateInfo, autoUpdater } from "electron-updater";
+import {
+	type DriftRestartHold,
+	backendVersionDrift,
+	driftRestartDecision,
+} from "./backend-version-drift";
 import type { BackendServiceManager } from "./backend/backend-service";
 
 import {
@@ -321,6 +326,24 @@ type HealthCheckResult = {
 	 * of evidence the app cannot derive from a path alone.
 	 */
 	install_kind?: string;
+};
+
+/**
+ * Why a version-drift restart is not running, in the log's own words.
+ *
+ * A table rather than a ternary chain at the log site, so every hold the pure
+ * decision can return has a sentence: a hold that rendered as an empty fragment
+ * would leave a log line whose second half is missing, which is how "the server is
+ * behind" becomes unreadable in the one file that has to explain it.
+ */
+const DRIFT_HOLD_REPORT: Record<DriftRestartHold, string> = {
+	"no-drift": "nothing to do",
+	"not-app-owned":
+		"this app does not restart a server it did not start, so the skew is reported and the process is left alone",
+	"update-in-flight":
+		"an update of this server is already running and will restart it",
+	"session-stream-open":
+		"a conversation stream is open, so the restart waits for the next check",
 };
 
 /**
@@ -813,6 +836,26 @@ export class UpdateService {
 	/** A failed install detected from the marker on this start, if any. */
 	private pendingInstallFailure: InstallFailurePayload | null = null;
 	private installFailureDelivered = false;
+
+	/**
+	 * Consecutive checks that deferred a version-drift restart.
+	 *
+	 * See `DRIFT_DEFERRALS_BEFORE_RESTART`: the hold exists so a restart does not
+	 * land while a conversation is being watched, and this is what stops the hold
+	 * from lasting for the rest of the session. Reset whenever the readings agree.
+	 */
+	private driftDeferrals = 0;
+
+	/**
+	 * The `booted -> installed` pair already restarted for, if any.
+	 *
+	 * A restart for a skew that did not move is the one failure mode with no natural
+	 * end: the periodic check would restart the daemon every five minutes forever,
+	 * which is worse than the skew it is chasing. A successful restart changes the
+	 * boot reading (a new process, a new record) and therefore the pair, so this
+	 * blocks only the repeats.
+	 */
+	private driftRestartedFor: string | null = null;
 
 	/**
 	 * A refusal this process found at start-up, if any.
@@ -4234,6 +4277,20 @@ export class UpdateService {
 				);
 			}
 
+			/*
+			 * The third reading, and the one nothing used to compare: what the process
+			 * SERVING this app booted with. `installVersion` is the install on disk (the
+			 * plan's own reading, never `/health`'s - see `backend-version-drift.ts` for
+			 * why that field cannot see a stale process), and when the two disagree with
+			 * the process older, the installed code is not what is serving.
+			 *
+			 * Before the offer below, because the drift is about the code that is
+			 * INSTALLED and is true whether or not a newer release is also published: a
+			 * machine can be offered an update it will not press while the daemon goes on
+			 * serving a build the disk left behind.
+			 */
+			await this.settleBackendVersionDrift(installVersion);
+
 			if (shouldUpdate) {
 				logger.info(
 					`New backend version available: ${latestVersion} (installed: ${installedVersion})`,
@@ -4404,6 +4461,123 @@ export class UpdateService {
 			return null;
 		}
 		return parsePipShowVersion(probe.stdout);
+	}
+
+	/**
+	 * Do something about a daemon that booted from a build older than the install.
+	 *
+	 * The defect: the process serving this app can be running code the disk has
+	 * already replaced, and nothing in the check used to look. The install moved, the
+	 * daemon kept serving its in-memory build, and the app reported the install up to
+	 * date - so a fix that had shipped was not in effect (see
+	 * `backend-version-drift.ts` for the incident, and for why `/health`'s version
+	 * cannot see this).
+	 *
+	 * The action is the lifecycle's own restart, gated by the pure decision next to
+	 * the readings: only a daemon this app started is restarted, nothing is touched
+	 * while the update flow is mid-flight or while a conversation is being watched
+	 * (for one cycle - see `DRIFT_DEFERRALS_BEFORE_RESTART`), and a pair already
+	 * restarted for is not restarted again, because a skew a restart did not fix
+	 * would otherwise become a five-minute kill loop.
+	 *
+	 * Incapable of failing the check: every branch logs and returns. A check whose
+	 * verdict is "the install is current" must not become an error because the
+	 * daemon could not be moved onto it.
+	 */
+	private async settleBackendVersionDrift(
+		installVersion: string | null,
+	): Promise<void> {
+		const bootVersion = this.backendService?.getAttachedBootVersion() ?? null;
+		const drift = backendVersionDrift(bootVersion, installVersion);
+		if (drift.kind !== "stale") {
+			// Nothing to act on: the readings agree, or one of them is missing and the
+			// pure decision has already said which. The deferral count belongs to a
+			// skew, so it resets here.
+			this.driftDeferrals = 0;
+			return;
+		}
+
+		const pair = `${drift.bootVersion} -> ${drift.installVersion}`;
+		if (this.driftRestartedFor === pair) {
+			logger.warn(
+				`The server is still on ${drift.bootVersion} after being restarted for install ${drift.installVersion}; not restarting it again (a restart that does not move it would become a kill loop every check).`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
+
+		const decision = driftRestartDecision({
+			drift,
+			appOwned: this.backendIsAppOwned(),
+			sessionStreamOpen: this.backendService?.hasOpenSessionStreams() ?? false,
+			updateInFlight: this.backendService?.checkIsAutoUpdating() ?? false,
+			deferrals: this.driftDeferrals,
+		});
+
+		if (!decision.restart) {
+			// Only the stream hold is a deferral; the other two are refusals, and a
+			// refusal must not leave a count that makes the next check restart anyway.
+			this.driftDeferrals =
+				decision.because === "session-stream-open"
+					? this.driftDeferrals + 1
+					: 0;
+			logger.info(
+				`The server serving this app booted on ${drift.bootVersion} while the install on disk is ${drift.installVersion}; ${DRIFT_HOLD_REPORT[decision.because]}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
+
+		this.driftDeferrals = 0;
+		this.driftRestartedFor = pair;
+		logger.info(
+			`The server serving this app booted on ${drift.bootVersion} while the install on disk is ${drift.installVersion}; restarting the server this app started so the installed build serves.`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		await this.restartBackendForVersionDrift(drift);
+	}
+
+	/**
+	 * Restart the daemon this app owns so the install on disk takes effect.
+	 *
+	 * `restart()` rather than `start()`, and that is not a style choice:
+	 * `startOwned` returns the running state untouched when a generation is already
+	 * owned, so a `start()` here would report success while the old process kept
+	 * serving - which is the defect, not the repair. `restart()` is the same
+	 * stop-then-start the post-install path uses.
+	 */
+	private async restartBackendForVersionDrift(drift: {
+		bootVersion: string;
+		installVersion: string;
+	}): Promise<void> {
+		try {
+			const restarted = await this.backendService?.restart();
+			if (!restarted) {
+				logger.error(
+					`The server did not come back after being restarted to pick up install ${drift.installVersion}; it booted on ${drift.bootVersion} and is not serving.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return;
+			}
+			/*
+			 * What was OBSERVED after, not what was hoped for: the settled reading is the
+			 * successor process's own record, and the health probe is a separate fact
+			 * from it. A restart that came back on the same build is the case this line
+			 * exists to make visible in the log rather than in a claim.
+			 */
+			const settledBoot = this.backendService?.getAttachedBootVersion() ?? null;
+			const healthy = await this.checkBackendHealth();
+			logger.info(
+				`Restarted the server onto the installed build: it booted on ${settledBoot ?? "a reading that could not be taken"} (was ${drift.bootVersion}, install is ${drift.installVersion}) and its health probe ${healthy ? "answered" : "did not answer"}.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		} catch (error) {
+			logger.error(
+				"Could not restart the server to pick up the installed build:",
+				LogFileType.UPDATE_SERVICE,
+				error,
+			);
+		}
 	}
 
 	/**

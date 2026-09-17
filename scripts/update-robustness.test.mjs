@@ -5242,10 +5242,38 @@ test("a failed update-backend reports on backend-update-error and resolves false
  * Operator or says the app will not touch a server it did not start
  * (review R1-3, UX U1).
  */
-const backendManagerStub = (startupMode, service) => ({
+const backendManagerStub = (
+	startupMode,
+	service,
+	/*
+	 * What the manager's version-drift surface answers, and where a restart is
+	 * recorded.
+	 *
+	 * The boot reading comes from the daemon's own serve record, which is a file no
+	 * case in this fixture plants - so `null` ("the reading could not be taken") is
+	 * what every existing case's world contains, and the drift decision does nothing
+	 * there. A case about the skew names a `bootVersion` and reads `restarts` back.
+	 */
+	{ bootVersion = null, restarts = [] } = {},
+) => ({
 	getStartupMode: () => startupMode,
 	getBackendUrl: () => service().backendUrl,
 	isUsingExternalBackend: () => false,
+	getAttachedBootVersion: () => bootVersion,
+	// No conversation is being watched in a fixture with no renderer, and no update
+	// is in flight: both holds would otherwise defer a restart these cases assert.
+	hasOpenSessionStreams: () => false,
+	checkIsAutoUpdating: () => false,
+	/*
+	 * The real manager's own stop-then-start. Recorded rather than performed: what a
+	 * case can assert here is that the check ASKED for the restart, on the reading it
+	 * was given - the lifecycle itself is `backend-service`'s, and the observation
+	 * after it (a new boot reading, a health probe) is not reachable from a fixture.
+	 */
+	restart: async () => {
+		restarts.push(bootVersion);
+		return true;
+	},
 });
 
 /**
@@ -5324,6 +5352,15 @@ const loAggregateCheck = async ({
 	 * absence cases mean - and a case that wants the skew passes its own version.
 	 */
 	installVersion = serverAnswersVersion ? (serverVersion ?? null) : null,
+	/*
+	 * The version the daemon BOOTED with, from its own serve record, when a case is
+	 * about a process serving older code than the install. Omitted leaves the
+	 * reading absent, which is every other case in this file (see
+	 * `backendManagerStub`).
+	 */
+	bootVersion = null,
+	/** Restarts the check asked the manager for, in order. */
+	restarts = [],
 	npxVersion = null,
 	/*
 	 * The backoff between attempts at one app-channel feed fetch. The SHIPPED
@@ -5472,6 +5509,7 @@ const loAggregateCheck = async ({
 			backendManagerStub(
 				service.LocalOperatorStartupMode.GLOBAL_INSTALL,
 				() => updateService,
+				{ bootVersion, restarts },
 			),
 		);
 		interval = updateService.updateCheckInterval;
@@ -5558,7 +5596,14 @@ const loAggregateCheck = async ({
 			clearTimeout(updateService.postWakeCheckTimer);
 			updateService.postWakeCheckTimer = null;
 		}
-		return { verdict, sent, probeResult, rejected, service: updateService };
+		return {
+			verdict,
+			sent,
+			probeResult,
+			rejected,
+			service: updateService,
+			restarts,
+		};
 	} finally {
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestAppCheck;
@@ -5718,6 +5763,58 @@ test("a check that proved both channels current earns the affirmation", async ()
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+/**
+ * The defect that cost the operator a day, as one case.
+ *
+ * The install on disk had moved to 0.54.44 while the daemon serving the app kept
+ * running the build it booted with, 0.54.43 - and nothing acted on it, because the
+ * check compared the install against the PUBLISHED release and never the process
+ * against the install. The two readings here are the same pair, and the assertion
+ * is that the check now asks the manager to restart the daemon onto the install.
+ */
+test("a server that booted from an older build is restarted onto the install", async () => {
+	const { verdict, restarts } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		// The install is current, so no update is offered - the state the operator's
+		// log was in all day - and the daemon is still on the build it booted with.
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.43",
+	});
+
+	assert.deepEqual(
+		restarts,
+		["0.54.43"],
+		"the check did not restart the server serving older code than the install",
+	);
+	// Nothing is claimed about the installation from a skew in the process: the
+	// check's own verdict is still that the install is current.
+	assert.equal(verdict.server, "current");
+});
+
+/**
+ * The same fixture with the readings agreeing, which is every ordinary machine.
+ *
+ * A restart here would be a process bounced for no reason on every check, and the
+ * boot reading is what decides it - not the presence of a daemon.
+ */
+test("a server on the installed build is left alone", async () => {
+	const { restarts } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.44",
+	});
+
+	assert.deepEqual(
+		restarts,
+		[],
+		"a server on the installed build was restarted",
+	);
 });
 
 /**
@@ -6665,6 +6762,18 @@ const driveGlobalUpdate = async ({
 			calls.starts += 1;
 			return true;
 		},
+		/*
+		 * The drift surface (`backend-version-drift.ts`), answered the way this
+		 * fixture's world contains it: this adapter stands in for a manager attached to
+		 * a daemon whose `/health` it scripts, and it plants no serve RECORD - so the
+		 * boot reading is the absence a record-less daemon gives, and no case here
+		 * changes behaviour because of it. A case about the skew names a `bootVersion`
+		 * where the fixture builds one (`loAggregateCheck`, and the two cases below it);
+		 * `restarts` above is the same call recorder those cases read.
+		 */
+		getAttachedBootVersion: () => null,
+		hasOpenSessionStreams: () => false,
+		checkIsAutoUpdating: () => false,
 	};
 	const updateService = new service.UpdateService(
 		{
