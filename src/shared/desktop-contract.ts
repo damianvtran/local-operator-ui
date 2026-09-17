@@ -550,6 +550,33 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			completionToken: z.string().uuid(),
 		})
 		.strict(),
+	/*
+	 * Pin or unpin a conversation, in the SHARED pin store the terminal's `f10`
+	 * writes (`local_operator/tui/sidebar_pins.py`), so a conversation pinned in
+	 * the TUI is pinned in this app and the other way round.
+	 *
+	 * DESIRED STATE ON THE WIRE (`pinned: true|false`), never a bare toggle, and
+	 * this is the decision the op exists to carry. The TUI's verb is a toggle
+	 * because it is a keypress; over HTTP a toggle is not idempotent - a request
+	 * retried after a dropped response flips the pin back, and the user reports
+	 * "the pin keeps un-pinning itself" in the one feature whose whole value is
+	 * reliability. The route makes the call idempotent BY CONSTRUCTION instead of
+	 * putting it on the receipt ladder: re-pinning an already-pinned conversation
+	 * is a no-op that does not reorder, and unpinning an unpinned one writes
+	 * nothing. That is also why there is no `requestId` here - at-most-once is
+	 * bought only for calls that ADMIT WORK (`sessions.warm` carries no receipt
+	 * for the same reason), and a call that is already idempotent needs none.
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`):
+	 * a boolean and a 12-char id are not prose, so this costs the control budget.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.pin"),
+			sessionId,
+			pinned: z.boolean(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.watch"),
@@ -2260,6 +2287,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/notified`,
 				method: "POST",
 				body: { completion_token: request.completionToken },
+			};
+		case "sessions.pin":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/pin`,
+				method: "POST",
+				// The route's own closed model (`{pinned: bool}`, `extra="forbid"`),
+				// and the one field: the DESIRED state, never a toggle. See the op's
+				// own comment for why a retried toggle is the bug this avoids.
+				body: { pinned: request.pinned },
 			};
 		case "sessions.watch":
 			return {

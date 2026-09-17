@@ -14,6 +14,25 @@ export type SessionCatalogueRow = {
 	live_state: string;
 	pending: string | null;
 	active: boolean;
+	/**
+	 * Whether this conversation is pinned, as the BACKEND's pin store holds it.
+	 *
+	 * ALWAYS PRESENT, both values, on EVERY row - the one field on this shape that
+	 * may not be omitted. `replaceSessionRows` -> `mergeRow` in
+	 * `canonical-sessions-store.ts` is `{...current, ...incoming}` under the rule
+	 * "an absent key is not a claim", so a backend that omitted `pinned` on an
+	 * unpinned row would leave a stale optimistic `true` immortal: the row would
+	 * keep its glyph and its section membership after a successful unpin
+	 * somewhere else. Sending both values is what makes a list read settle the
+	 * field.
+	 *
+	 * The store behind it is shared with the terminal: it is the TUI's
+	 * `sidebar-pins.json` in the backend's own config root
+	 * (`local_operator/tui/sidebar_pins.py`), which is why `pinned` is the
+	 * backend's answer rather than this client's - a pin made with `f10` in a
+	 * terminal and a pin made here are the same pin.
+	 */
+	pinned: boolean;
 	status: SessionCatalogueStatus;
 	binding: SessionBinding;
 	attention?: CompletionAttention;
