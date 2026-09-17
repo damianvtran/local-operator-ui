@@ -170,6 +170,11 @@ const rowStyle =
  */
 const rowCurrent = "bg-highlight font-medium text-ink hover:bg-highlight";
 
+import {
+	type FocusedSlot,
+	holdFocusedRow,
+	refreshFocusedInside,
+} from "../sidebar-focus-hold";
 import { ChatSessionStatus } from "./chat-session-status";
 
 /**
@@ -191,208 +196,6 @@ const LEGACY_CATALOGUE_POLL_MS = 5_000;
  * event is unambiguously doing the work when the two disagree.
  */
 const CATALOGUE_SAFETY_POLL_MS = 30_000;
-
-/**
- * Where a scroll container last saw the row that held keyboard focus.
- *
- * `inside` is the row's OWN containment as of the last time this record was
- * refreshed - this effect's own run, or the container's last scroll - and it is
- * what separates "the completion took the cursor's row out of the panel" from
- * "the reader scrolled it out themselves". Both leave the row outside the panel,
- * and only the first is this rule's to correct: a record carrying the slot alone
- * cannot tell them apart, which is how the first version of the rule moved a
- * reader who had deliberately scrolled away from their own cursor (round 2: U5,
- * R2-4, D2).
- */
-type FocusedSlot = { node: HTMLElement | null; index: number; inside: boolean };
-
-/**
- * A scroller's CLIP box: its padding box, not its border box.
- *
- * `getBoundingClientRect()` reports the border box and a scroll container clips at
- * its padding box, so a row aligned to the border box sits one border-width above
- * the clip - on the list, which carries `border-t border-hairline`, the row's own
- * first pixel is painted over by the container (design round 3, D1).
- */
-const clipBox = (container: HTMLElement) => {
-	const box = container.getBoundingClientRect();
-	const top = box.top + container.clientTop;
-	return { top, bottom: top + container.clientHeight };
-};
-
-/**
- * Is the focused row FULLY inside its panel right now?
- *
- * Fully, and that is the load-bearing half: a row that is already partly clipped
- * when a change lands is indistinguishable from a reader who scrolled it half out
- * themselves, so the correction may only run for a transition it can attribute to
- * the re-file (see `holdFocusedRow`).
- */
-const rowInsidePanel = (node: HTMLElement, container: HTMLElement) => {
-	const clip = clipBox(container);
-	const box = node.getBoundingClientRect();
-	return box.top >= clip.top && box.bottom <= clip.bottom;
-};
-
-/**
- * The band the focused row's own ring needs outside its box, in px.
- *
- * Focus is an `outline` here (the branding contract forbids a `box-shadow` ring on
- * these scroll containers, which clip it), so the row's PAINTED extent is larger
- * than its box: correcting the box flush to the clip edge ships a ring with a
- * segment cut off (D1). Read from the computed style rather than hard-coded so a
- * change to the focus treatment moves this with it.
- */
-const ringBand = (node: HTMLElement) => {
-	const style = getComputedStyle(node);
-	if (style.outlineStyle === "none") return 0;
-	const width = Number.parseFloat(style.outlineWidth);
-	const offset = Number.parseFloat(style.outlineOffset);
-	return (
-		(Number.isFinite(width) ? width : 0) +
-		(Number.isFinite(offset) ? offset : 0)
-	);
-};
-
-/**
- * Hold the row that holds FOCUS inside its scroll container across a re-file.
- *
- * `overflow-anchor: none` on the two scrollers this panel owns is what stops a
- * completion dragging a reader who is somewhere else in the list (see the note at
- * each declaration). This is that rule's one cost, and it is paid by the reader
- * who is NOT somewhere else: a keyboard cursor is an ELEMENT, so the row the
- * cursor is on can re-file to a slot outside the panel while the container
- * correctly holds its position - and the cursor leaves the screen. The next arrow
- * press focuses the neighbouring row, the browser's own scroll-into-view pays for
- * the distance, and the jump measured as 386 px to the top of the band on the
- * operator's roster (UX round 1, U1).
- *
- * So when the row that holds focus changes SLOT, the container follows it, by the
- * minimum that puts it back inside the panel. Two properties are what make this
- * the honest shape rather than a re-introduction of the drag the declaration
- * removes: the row followed is the one the cursor is on, which is the argument the
- * transcript's sibling rule already makes for following content a reader is pinned
- * to (`canonical-transcript.tsx` sets `overflow-anchor: auto` for exactly that),
- * and it is one instantaneous `scrollTop` assignment - no transition, no
- * animation, nothing at all for a reader whose focus is not inside the list.
- *
- * The other shape the finding offered - move focus to the row that takes the
- * departed row's place - is rejected rather than untried: the DOM node IS the
- * session, so transferring focus would retarget the cursor to a DIFFERENT
- * conversation under an unchanged ring, and `Enter` would open a chat the reader
- * never chose without anything on screen saying so. A bounded viewport adjustment
- * is the smaller surprise of the two, and the row it reveals is the one the
- * reader's own cursor moved with.
- *
- * GATED ON THE FOCUSED ROW LEAVING THE PANEL, not on the slot changing and not on
- * any re-order. Three facts have to hold together, and each of them is a case this
- * rule got wrong before it was written down:
- *
- *  1. the row's SLOT changed, so a reader who scrolled the panel away from their
- *     cursor and watches an arrival re-file some OTHER row keeps the position they
- *     scrolled to;
- *  2. the row was INSIDE the panel when the record was last refreshed, so the
- *     reader's own scroll put it outside rather than this change (U5);
- *  3. the row is OUTSIDE the panel now, so there is something to correct.
- *
- * Facts 2 and 3 are why `FocusedSlot` carries `inside` rather than the slot alone.
- * A record refreshed only here could not see a wheel scroll at all - scrolling does
- * not commit - so a reader who scrolled their cursor away would have been followed
- * by the next completion: the drag this rule exists to remove, reintroduced by its
- * own remedy. The record is therefore refreshed on the containers' own scroll too
- * (`refreshFocusedInside`), and the correction only ever fires for a row that was
- * inside the panel and left it as this change landed.
- *
- * The NODE is the identity, not an attribute: React keys each row by session id,
- * so an intra-section re-file moves the same element and no row carries a session
- * id for a rig to read (see `scripts/attach-frame-evidence.mjs` on why not). A
- * focus change between two commits (`previous.node !== active`) is the reader
- * moving rather than the row, and is left alone for the same reason.
- */
-const holdFocusedRow = (
-	container: HTMLElement | null,
-	slot: { current: FocusedSlot },
-) => {
-	if (!container) {
-		slot.current = { node: null, index: -1, inside: false };
-		return;
-	}
-	/*
-	 * `rowNodes`, not `rows`. `scripts/clear-search.test.mjs` slices this file from
-	 * the arrow-key handler down to the sidebar's own rows array literal, so a
-	 * local sharing that name one module above the component makes the slice empty
-	 * and turns a green-looking file into a red guard - which is how CI's Desktop
-	 * Tests step found this (round 1). The same applies to quoting those two
-	 * declarations here: the slice is found by source text, so the names have to
-	 * appear only where they are declared.
-	 */
-	const rowNodes = [
-		...container.querySelectorAll<HTMLElement>("[data-chat-row]"),
-	];
-	const active =
-		document.activeElement instanceof HTMLElement
-			? document.activeElement
-			: null;
-	const index = active ? rowNodes.indexOf(active) : -1;
-	const previous = slot.current;
-	if (!active || index < 0) {
-		slot.current = { node: null, index: -1, inside: false };
-		return;
-	}
-	const insideNow = rowInsidePanel(active, container);
-	if (
-		previous.node !== active ||
-		previous.index < 0 ||
-		previous.index === index ||
-		!previous.inside ||
-		insideNow
-	) {
-		slot.current = { node: active, index, inside: insideNow };
-		return;
-	}
-	const clip = clipBox(container);
-	const rowBox = active.getBoundingClientRect();
-	const above = rowBox.top - clip.top;
-	const below = clip.bottom - rowBox.bottom;
-	/*
-	 * The row enters from the edge it is off past, and the correction leaves the
-	 * ring's own band as clearance there rather than landing the box flush: the
-	 * minimum that puts the row - not just its box - inside the panel.
-	 */
-	const band = ringBand(active);
-	container.scrollTop = Math.min(
-		Math.max(
-			container.scrollTop + (above < 0 ? above - band : -below + band),
-			0,
-		),
-		container.scrollHeight - container.clientHeight,
-	);
-	slot.current = {
-		node: active,
-		index,
-		inside: rowInsidePanel(active, container),
-	};
-};
-
-/**
- * Refresh a record's containment on the reader's OWN scroll.
- *
- * The reader scrolling is the one input to `holdFocusedRow`'s gate that never
- * commits, so without this the record keeps saying "inside" after a wheel scroll
- * has taken the row out of the panel - which is exactly the state U5 reproduced
- * (three times, in both containers). Cheap by construction: one focused row's box
- * against its container's clip box, and only while a row is recorded.
- */
-const refreshFocusedInside = (
-	container: HTMLElement | null,
-	slot: { current: FocusedSlot },
-) => {
-	const node = slot.current.node;
-	if (!container || !node || !node.isConnected || !container.contains(node))
-		return;
-	if (node !== document.activeElement) return;
-	slot.current = { ...slot.current, inside: rowInsidePanel(node, container) };
-};
 
 export function ChatSidebar({
 	selectedConversation,
@@ -1084,19 +887,21 @@ export function ChatSidebar({
 	 * was inside and left as this commit landed. A commit is not the only thing that
 	 * can take the row out of the panel, so the containers refresh the record on
 	 * their own scroll as well - without that the gate would read a wheel-scrolled
-	 * row as still inside and follow it (U5).
+	 * row as still inside and follow it (U5). The record is three-valued rather
+	 * than a boolean so a row that was PARTLY on screen when the change landed is
+	 * still followed; `sidebar-focus-hold.ts` carries both arguments.
 	 */
 	const entityPanelRef = useRef<HTMLDivElement | null>(null);
 	const listPanelRef = useRef<HTMLDivElement | null>(null);
 	const entitySlotRef = useRef<FocusedSlot>({
 		node: null,
 		index: -1,
-		inside: false,
+		visibility: "outside",
 	});
 	const listSlotRef = useRef<FocusedSlot>({
 		node: null,
 		index: -1,
-		inside: false,
+		visibility: "outside",
 	});
 	useLayoutEffect(() => {
 		holdFocusedRow(entityPanelRef.current, entitySlotRef);
@@ -1409,11 +1214,13 @@ export function ChatSidebar({
 
 			    One cost is not paid by the reader who is nowhere near the row: the
 			    keyboard cursor is an ELEMENT, so a focused row that re-files out of the
-			    panel would leave the cursor off screen. `holdFocusedRow` above is the
-			    other half of this rule - the container follows the row the CURSOR is on,
-			    by the minimum, which is the case the transcript's rule is about. It
-			    follows it only when the RE-FILE is what took it out of the panel: a
-			    reader who scrolled their cursor away keeps the position they chose. */}
+			    panel would leave the cursor off screen. `holdFocusedRow`
+			    (`sidebar-focus-hold.ts`) is the other half of this rule - the container
+			    follows the row the CURSOR is on, by the minimum, which is the case the
+			    transcript's rule is about. It follows it only when the RE-FILE is what
+			    took it out of the panel - a reader who scrolled their cursor away keeps
+			    the position they chose, and so does the reader whose cursor row was not
+			    on screen at all when the change landed. */}
 			{showList && (
 				<div
 					ref={listPanelRef}
