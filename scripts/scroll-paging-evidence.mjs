@@ -4,7 +4,19 @@
  *
  *     node scripts/scroll-paging-evidence.mjs <cdp-port> <session-id> <out-dir> <mode>
  *
- * Modes: `before` (main's click-only behaviour), `after` (this branch).
+ * Modes: `before` and `after` NAME THE OUTPUT FILES AND THE REPORT's arm label.
+ * They do NOT swap the code under test — this harness cannot, and pretending
+ * otherwise cost a review round (R1-4): a reader who runs `before` on this
+ * branch measures this branch and gets a report labelled `before`.
+ *
+ * To produce the before arm, take the two paging modules back to the revision
+ * you mean and record the swap:
+ *
+ *     node scripts/paging-evidence-arms.mjs before <ref> -- <harness args>
+ *
+ * which prints the md5 pair it restored. `docs/evidence/transcript-scroll-paging/
+ * README.md` carries the two-command recipe as well, for a reader who would
+ * rather do it by hand.
  *
  * Drives the app already running under `electron-vite dev` over raw CDP, the
  * same way `scripts/send-error-evidence.mjs` does: Node's built-in WebSocket
@@ -264,6 +276,27 @@ const PROBE = `(() => {
   };
 })()`;
 
+/**
+ * Wait for the transcript to mount, and report how long it took.
+ *
+ * Polled rather than slept (review round 1, Q1-4). The harness used a fixed
+ * `sleep(9000)`, which is not enough on a cold vite module graph: the run died
+ * with `transcript not mounted: no transcript` in ~21s, which reads like a fault
+ * in the code under test rather than a warm-up, and the identical command run
+ * again completed. Measured three times by QA, once per cold rig.
+ */
+async function awaitTranscriptMount({ attempts = 60, gapMs = 500 } = {}) {
+	for (let i = 0; i < attempts; i++) {
+		const state = await probe();
+		if (state.ok && state.rows > 0)
+			return { waitedMs: i * gapMs, attempts: i + 1 };
+		await sleep(gapMs);
+	}
+	throw new Error(
+		`transcript did not mount within ${(attempts * gapMs) / 1000}s of the reload — the rig is probably still warming; re-run and it will pass (see this function's comment)`,
+	);
+}
+
 const probe = () =>
 	evaluate(PROBE).then((state) => ({
 		...state,
@@ -471,6 +504,118 @@ async function flingWithMomentum({
 	return emitted;
 }
 
+/*
+ * The prefetch zone, restated here because the harness has to know it to say
+ * whether a reveal happened INSIDE it. The formula is the policy's own
+ * (`prefetchZonePx`: half the viewport, floored at 320, capped at 900); the
+ * harness reads `clientHeight` from the page and never imports the module, so a
+ * change to the policy's zone shows up here as a disagreement rather than as a
+ * silent agreement with a copy that no longer matches.
+ */
+const ZONE_FRACTION = 0.5;
+const ZONE_MIN_PX = 320;
+const ZONE_MAX_PX = 900;
+const zonePxFor = (clientHeight) =>
+	Math.min(
+		ZONE_MAX_PX,
+		Math.max(ZONE_MIN_PX, Math.round(clientHeight * ZONE_FRACTION)),
+	);
+
+/**
+ * Send notches, one at a time, until the page says the reader is where the
+ * scenario needs them — or the cap is reached.
+ *
+ * A SETUP, never a measurement, and it exists so that a scenario's measured act
+ * begins in the same place on both arms. The alternative (which this harness
+ * shipped first) is a fixed number of notches in a gesture, whose end position
+ * depends on how much the arm loaded on the way — measured: `resting-finger-at
+ * -clamped-top` began at `d = 24` on one arm and `d = 7790` on the other, so the
+ * row was comparing two different scenes (review round 1, R1-3 and D1-2).
+ *
+ * The cap is a refusal, not a timeout: a setup that cannot reach its state says
+ * so in the report rather than measuring something else.
+ */
+async function notchUntil(
+	where,
+	{ deltaY = -200, gapMs = 40, maxNotches = 400 } = {},
+) {
+	for (let i = 0; i < maxNotches; i++) {
+		const state = await probe();
+		if (where(state)) return { notches: i, state, reached: true };
+		await wheel(deltaY);
+		await sleep(gapMs);
+	}
+	const state = await probe();
+	return { notches: maxNotches, state, reached: false };
+}
+
+/**
+ * The pinned-at-the-hard-top state the two freeze scenarios are about.
+ *
+ * Distance only, deliberately: adding "and nothing is loading" would make the
+ * setup wait for the arm's own reveals and stop in a different place on each
+ * arm, which is the defect this helper exists to remove. The reader is at the
+ * wall the moment the wall says so, on both arms, whatever is in flight.
+ */
+const atTheWall = (state) => state.ok && state.distanceFromTop <= HARD_TOP_PX;
+
+/**
+ * Where a slow approach begins: close enough that the measured act reaches the
+ * zone, far enough that it does not reach the wall.
+ *
+ * The act travels 900px (30 notches of 30px), so a start band of 580-700px
+ * outside the zone leaves the reader inside it with a couple of hundred pixels
+ * to go when the act ends — approaching, never arrived. The setup reaches the
+ * band in two passes (a coarse one at 420px a notch, a fine one at 120px) so the
+ * overshoot from a single coarse step cannot land the reader at the wall.
+ */
+const ZONE_BAND_PX = 700;
+const justOutsideTheZone = (state) =>
+	state.ok &&
+	state.distanceFromTop > 0 &&
+	state.distanceFromTop <= zonePxFor(state.clientHeight) + ZONE_BAND_PX;
+
+/** The coarse half of the approach, before the fine notches take over. */
+const approachingTheZone = (state) =>
+	state.ok &&
+	state.distanceFromTop > 0 &&
+	state.distanceFromTop <= zonePxFor(state.clientHeight) + ZONE_BAND_PX + 600;
+
+/**
+ * Drive to a state, let the app finish answering, and check the reader is still
+ * there — repeating until they are, or refusing to measure.
+ *
+ * The check after the quiet period is not belt-and-braces, it is the whole
+ * helper. A landing inserts its rows ABOVE the reader and holds their view, so
+ * the reader's distance from the top jumps by the inserted extent (measured: a
+ * page's widen moved `d` from 1013 to 7190 while the reader's eyes did not
+ * move). A setup that stops the instant the reader touches the top therefore
+ * measures an act that begins thousands of pixels away — which is exactly the
+ * defect round 1 found in these two scenarios (R1-3, D1-2), reproduced one
+ * layer in. `reached: false` is reported rather than hidden: a scenario whose
+ * start state could not be reached says so and its row is not quoted as if it
+ * had been.
+ */
+async function driveTo(
+	where,
+	{ attempts = 4, settleMs = 1400, ...notchOpts } = {},
+) {
+	const tries = [];
+	for (let i = 0; i < attempts; i++) {
+		const pass = await notchUntil(where, notchOpts);
+		await sleep(settleMs);
+		const state = await probe();
+		tries.push({
+			notches: pass.notches,
+			at: Math.round(pass.state.distanceFromTop),
+			afterQuiet: Math.round(state.distanceFromTop),
+			held: where(state),
+		});
+		if (where(state)) return { reached: true, tries, state };
+	}
+	return { reached: false, tries, state: await probe() };
+}
+
 /**
  * One real keystroke, at the focused element.
  *
@@ -504,6 +649,53 @@ const focusTranscript = () =>
     el.focus();
     return document.activeElement === el ? 'focused' : 'not focusable';
   })()`);
+
+/**
+ * A real scrollbar journey: drag, look, drag again — in the direction that made
+ * progress last time.
+ *
+ * Why a journey rather than one drag. This scenario shipped as a single drag
+ * that ended 3555px from the top of a 5694px overflow, i.e. it never entered the
+ * zone it names, and the PR declared the clause unproven on that basis. The
+ * clause is reachable: on this surface four drags took the reader to `d = 560`
+ * and the fourth spent a page (UX round 1, flow 5e), and this journeys to the
+ * same place so the claim is reproduced here rather than quoted from another
+ * agent's run. Every leg is reported, which is what makes the ending a
+ * measurement instead of a hope.
+ */
+async function dragJourney({ maxLegs = 8 } = {}) {
+	const legs = [];
+	let direction = "up"; // "up" = toward older content, along the gutter
+	for (let i = 0; i < maxLegs; i++) {
+		const before = await probe();
+		if (!before.ok) break;
+		if (before.distanceFromTop <= HARD_TOP_PX) break;
+		const from = direction === "up" ? AIM.bottom - 6 : AIM.top + 40;
+		const to = direction === "up" ? AIM.top + 40 : AIM.bottom - 6;
+		await dragScrollbar(from, to, 14);
+		await sleep(700);
+		const after = await probe();
+		const travelled = Math.round(
+			before.distanceFromTop - after.distanceFromTop,
+		);
+		legs.push({
+			direction,
+			from: Math.round(before.distanceFromTop),
+			to: Math.round(after.distanceFromTop),
+			travelled,
+		});
+		// A leg that moved the reader the wrong way is a leg pointed the wrong
+		// way: the gutter's mapping is the app's (`column-reverse`), and this is
+		// how the harness finds it instead of asserting it.
+		if (travelled <= 0) direction = direction === "up" ? "down" : "up";
+	}
+	const end = await probe();
+	return {
+		legs: legs.length,
+		journey: legs,
+		endDistance: Math.round(end.distanceFromTop),
+	};
+}
 
 /** A real scrollbar drag: press in the gutter, move, release. */
 async function dragScrollbar(fromY, toY, steps = 14) {
@@ -682,6 +874,7 @@ function analyse({ events, samples, historyRequests: history, extra = {} }) {
 			continue;
 		reveals.push({
 			t: now.t,
+			clientHeight: now.ch,
 			rowsBefore: prev.rows,
 			rowsAfter: now.rows,
 			hiddenBefore: hiddenOf(prev.slot),
@@ -769,6 +962,7 @@ function analyse({ events, samples, historyRequests: history, extra = {} }) {
 	 */
 	const lastInputAt = events.length > 0 ? events[events.length - 1].t : 0;
 	const lastSample = samples.length > 0 ? samples[samples.length - 1] : null;
+	const lastInputAtFor = events.length > 0 ? events[events.length - 1].t : 0;
 	let lurch = { px: 0, t: null, to: null, frames: 0 };
 	for (let i = 1; i < samples.length; i++) {
 		const prev = samples[i - 1];
@@ -803,7 +997,25 @@ function analyse({ events, samples, historyRequests: history, extra = {} }) {
 		inputEvents: events.length,
 		wheelNotches: wheels.length,
 		notchesAtHardTop: wheels.filter((e) => e.d <= HARD_TOP_PX).length,
+		// Every reveal, and the subset a reader can actually SEE. The two differ
+		// because a landed durable page changes the slot without mounting a row
+		// (`rows 100 -> 100`, `hidden 0 -> 100`), which is invisible and was
+		// inflating the headline count (review round 1, R1-9). A scenario's claim
+		// names which of the two it is about.
 		reveals: reveals.length,
+		revealsMountedRows: reveals.filter((r) => r.kind === "rows-mounted").length,
+		/*
+		 * The lead's own trigger, measured live: a reveal that arrived while the
+		 * reader was still INSIDE the prefetch zone and still sending input. On the
+		 * replaced module this is 0 for a moving reader — its only triggers are the
+		 * settle debounce, which cannot elapse mid-train, and the hard top — so the
+		 * number is the difference between the two arms in the terms the change is
+		 * about (review round 1, R1-1).
+		 */
+		revealsInsideZoneBeforeLastInput: reveals.filter(
+			(r) =>
+				r.t < lastInputAtFor && r.distanceBefore <= zonePxFor(r.clientHeight),
+		).length,
 		revealDetail: reveals,
 		slotTransitions,
 		// `null` rather than 0 on the approach: a reveal that arrived while the
@@ -840,11 +1052,23 @@ function analyse({ events, samples, historyRequests: history, extra = {} }) {
  * gesture bought has to appear; it is the reveal budget plus a wide margin, not
  * a timeout the numbers depend on.
  */
-async function scenario(name, run, { settleMs = 1600, note = null } = {}) {
+async function scenario(
+	name,
+	run,
+	{ settleMs = 1600, note = null, beforeSettle = null } = {},
+) {
 	const before = await probe();
 	const historyBefore = historyRequests.length;
 	const cursor = await recCursor();
 	const out = await run();
+	/*
+	 * The state the act itself left behind, captured BEFORE the settle sleep.
+	 * Design round 1 (D1-1): every `after` frame used to be taken after the
+	 * settle, i.e. after the reveal that unpins the reader, so no `after` frame
+	 * showed the transcript at the top — which is the only place the freeze and
+	 * its fix both happen. The shutter fires here instead.
+	 */
+	if (beforeSettle) await beforeSettle(out);
 	await sleep(settleMs);
 	const after = await probe();
 	const { events, samples } = await recSince(cursor);
@@ -1023,7 +1247,8 @@ await send("Page.navigate", { url: `${APP}/#/chat/${SESSION}` });
 await sleep(500);
 // A real document load, so the store re-hydrates from what was just written.
 await send("Page.reload", { ignoreCache: false });
-await sleep(9000);
+report.mount = await awaitTranscriptMount();
+await sleep(2500);
 
 // Refuse to measure a locked page. `data-scroll-locked` is what
 // react-remove-scroll sets on the body; an open dialog is the other half of the
@@ -1204,7 +1429,8 @@ await shot(`${MODE}-04-after-isolated-reveals`);
  * ------------------------------------------------------------------------- */
 await send("Page.addScriptToEvaluateOnNewDocument", { source: RECORDER });
 await send("Page.reload", { ignoreCache: false });
-await sleep(9000);
+report.recorderMount = await awaitTranscriptMount();
+await sleep(2500);
 {
 	const lock = JSON.parse(
 		await evaluate(
@@ -1234,11 +1460,7 @@ await aim();
  */
 async function freshArrival() {
 	await send("Page.reload", { ignoreCache: false });
-	for (let i = 0; i < 40; i++) {
-		await sleep(500);
-		const state = await probe();
-		if (state.ok && state.rows > 0) break;
-	}
+	await awaitTranscriptMount();
 	await sleep(2500);
 	await aim();
 	report.reloads = (report.reloads ?? 0) + 1;
@@ -1285,6 +1507,10 @@ phase2.push(
 				tailStart: -700,
 			}),
 		settleMs: 2200,
+		// The frame that shows the state this whole PR is about: the reader at the
+		// hard top with the slot painted, taken at ACT END rather than after the
+		// settle (design round 1, D1-1).
+		beforeSettle: () => shot(`${MODE}-05-fast-fling-to-top-at-act-end`),
 		note: "one flick with a real momentum tail, from the arrival state: the page must be spent on the way to the wall, not at it",
 	}),
 );
@@ -1306,6 +1532,7 @@ phase2.push(
 				tailStart: -800,
 			}),
 		settleMs: 2400,
+		beforeSettle: () => shot(`${MODE}-06-fling-crossing-two-walls-at-act-end`),
 		note: "one act, two walls: at least two reveals, and no stretch at the hard top longer than the lead",
 	}),
 );
@@ -1314,59 +1541,134 @@ await shot(`${MODE}-06-fling-crossing-two-walls`);
 /*
  * THE FREEZE, in the state that produces it: a reader who has just been
  * answered at the hard top, with rows still held back by the window, who keeps
- * pushing. The diagnosis run measured 62 notches and 1.45s here with a free
- * local reveal sitting one clause away.
+ * pushing.
+ *
+ * The state is REACHED BY MEASUREMENT, not by a fixed gesture, and that is the
+ * fix for round 1's R1-3/D1-2: the scenario used to inherit whatever the
+ * previous act left behind, so the two arms measured different scenes (`d = 24`
+ * on one, `d = 7790` on the other). `notchUntil` drives to the hard top and
+ * refuses to measure anything if it cannot get there.
  */
+let pinnedSetupResult = null;
+let slowSetupResult = null;
+
+const pinnedSetup = async () => {
+	/*
+	 * ONE attempt, deliberately.
+	 *
+	 * A second attempt would drive the AFTER arm past the state this row is
+	 * about: on that arm each arrival at the wall is answered, so "notch until
+	 * the wall holds" keeps going until the whole conversation is loaded and the
+	 * measured act then finds nothing left to reveal — a vacuous row that would
+	 * hide the fix. One arrival plus a quiet period is the state the operator's
+	 * report is about ("I get stuck ... I need to scroll jitter down a bit and
+	 * back up"), and it is the state the before arm reproduces: at the wall, rows
+	 * held back, nothing coming.
+	 *
+	 * What the arms then differ in at the START of the measured act is disclosed
+	 * in the README rather than smoothed over — on this branch a landing pushes
+	 * the reader off the wall (`d` jumps by the inserted extent, ~6153px) because
+	 * the app answered them, which is the change, not a confound to remove.
+	 */
+	const journey = await driveTo(atTheWall, {
+		deltaY: -420,
+		gapMs: 24,
+		maxNotches: 200,
+		attempts: 1,
+	});
+	pinnedSetupResult = {
+		reached: journey.reached,
+		tries: journey.tries,
+		distance: Math.round(journey.state.distanceFromTop),
+		hiddenRows: journey.state.hiddenRows,
+		slot: journey.state.slotText,
+	};
+	await sleep(1200);
+};
+
 phase2.push(
 	await arrivalScenario("page-lands-with-rows-hidden", {
-		setup: async () => {
-			await fling(40, -420, 10);
-			await sleep(1800);
+		setup: pinnedSetup,
+		gesture: async () => {
+			await fling(120, -80, 10);
+			// The setup's own outcome, reported so a reader can see that both arms
+			// began the measured act at the hard top.
+			return { setupToWall: pinnedSetupResult };
 		},
-		gesture: () => fling(120, -80, 10),
 		settleMs: 2200,
-		note: "pinned at the wall with rows held back: the widen that makes the page visible must arrive, and it must not be a second page",
+		beforeSettle: () =>
+			shot(`${MODE}-07-page-lands-with-rows-hidden-at-act-end`),
+		note: "pinned at the wall by measurement on both arms, with rows held back: the widen that makes the page visible must arrive, and it must not be a second page",
 	}),
 );
 await shot(`${MODE}-07-page-lands-with-rows-hidden`);
 
 /*
  * The bound rule 4 exists for, on the real surface: 200 notches held against the
- * clamped top in one act. A resting finger's notches move the content by zero,
- * so the latch must refuse every one of them however long the finger rests.
+ * clamped top in one act. The reader is driven to the wall first, so the whole
+ * measured act is the resting finger — round 1 measured this scenario from
+ * 7,790px away on one arm, where it never reached the top at all (R1-3).
  */
 phase2.push(
 	await arrivalScenario("resting-finger-at-clamped-top", {
-		setup: async () => {
-			await fling(40, -420, 10);
-			await sleep(1800);
+		setup: pinnedSetup,
+		gesture: async () => {
+			await fling(200, -80, 10);
+			return { setupToWall: pinnedSetupResult };
 		},
-		gesture: () => fling(200, -80, 10),
 		settleMs: 2400,
+		beforeSettle: () =>
+			shot(`${MODE}-08-resting-finger-at-clamped-top-at-act-end`),
 		note: "a finger resting on the top edge: the page count must not grow with the notch count",
 	}),
 );
 await shot(`${MODE}-08-resting-finger-at-clamped-top`);
 
 /*
- * A deliberate scroll: six notches, 320ms apart, each its own act, into the
- * prefetch zone. Unchanged by this change and measured to say so — the lead is
- * inert below its velocity floor, so a slow reader sees exactly what they had.
+ * A DELIBERATE SLOW APPROACH INTO THE ZONE — the scenario the review asked for
+ * (R1-1, R1-2): the same start state on both arms, and the one gesture that
+ * separates the two modules' triggers.
+ *
+ * The reader is placed just outside the prefetch zone by measurement, then moves
+ * at 0.3px/ms (a deliberate scroll) in a single act — the notches are 100ms
+ * apart, inside `SETTLE_MS`, so the debounce never elapses while they move. On
+ * the replaced module the only triggers are that debounce and the hard top, so
+ * nothing is spent until the train stops; on this branch the demand is spent as
+ * the reader reaches the threshold, while they are still moving, with about a
+ * second of travel left before the wall.
+ *
+ * The number that reads it out is `revealsInsideZoneBeforeLastInput`.
  */
 phase2.push(
-	await arrivalScenario("slow-notches-into-zone", {
+	await arrivalScenario("slow-approach-into-zone", {
 		setup: async () => {
-			await fling(30, -420, 10);
-			await sleep(1600);
+			const coarse = await notchUntil(approachingTheZone, {
+				deltaY: -420,
+				gapMs: 24,
+			});
+			const fine = await driveTo(justOutsideTheZone, {
+				deltaY: -120,
+				gapMs: 40,
+				maxNotches: 220,
+			});
+			slowSetupResult = {
+				coarseNotches: coarse.notches,
+				reached: fine.reached,
+				tries: fine.tries,
+				distance: Math.round(fine.state.distanceFromTop),
+				zonePx: zonePxFor(fine.state.clientHeight),
+			};
+			await sleep(1200);
 		},
 		gesture: async () => {
-			for (let i = 0; i < 6; i++) {
-				await wheel(-200);
-				await sleep(320);
+			for (let i = 0; i < 30; i++) {
+				await wheel(-30);
+				await sleep(100);
 			}
+			return { setupToZone: slowSetupResult };
 		},
-		settleMs: 1800,
-		note: "a deliberate scroll into the zone: the lead must be inert here, so one reveal per act",
+		settleMs: 2000,
+		note: "0.3px/ms into the zone from a measured start: detected motion, spent while the reader is still moving",
 	}),
 );
 
@@ -1390,15 +1692,6 @@ phase2.push(
  * and the recorded event count is reported, so a zero here says which half
  * refused rather than reading as a clause that never fires.
  */
-/*
- * The focus happens INSIDE the scenario, after the reload.
- *
- * Focusing once before the phase looked right and measured nothing: every
- * scenario reloads the page, the scroller is a new element, and the key went to
- * the document — the same shape as the diagnosis run's BLOCKED zero, one layer
- * further in. `setup` runs after the reload and before the gesture, so the
- * focused element is the one the key is delivered to.
- */
 let focused = "not attempted";
 phase2.push(
 	await arrivalScenario("keyboard-home", {
@@ -1413,25 +1706,26 @@ phase2.push(
 			return { focus: await focusTranscriptAgain(focused) };
 		},
 		settleMs: 2000,
-		note: "one Home keystroke on the transcript, focused after the reload",
+		note: "one Home keystroke on the transcript, focused after the reload: one reveal, and a page only if one was already owed",
 	}),
 );
 await shot(`${MODE}-09-keyboard-home`);
 
-/** A real scrollbar drag, from a state that still HAS history. */
+/*
+ * A real scrollbar JOURNEY, from a state that still has history: dragging until
+ * the reader is near the top, because a single drag cannot reach the clause it
+ * is named for (review round 1, Q1-2; UX round 1 flow 5e took four drags to
+ * `d = 560` and spent the fourth).
+ */
 const dragArrival = await freshArrival();
 phase2.push(
-	await scenario(
-		"scrollbar-drag-to-top",
-		() => dragScrollbar(AIM.top + 60, AIM.bottom - 6, 14),
-		{
-			settleMs: 2000,
-			note: `press, 14 moves, release, from ${Math.round(dragArrival.distanceFromTop)}px of overflow`,
-			startDistance: Math.round(dragArrival.distanceFromTop),
-		},
-	),
+	await scenario("scrollbar-drag-to-top", () => dragJourney(), {
+		settleMs: 2000,
+		note: `dragging the gutter until the reader is near the top, from ${Math.round(dragArrival.distanceFromTop)}px of overflow`,
+		startDistance: Math.round(dragArrival.distanceFromTop),
+	}),
 );
-await shot(`${MODE}-10-scrollbar-drag`);
+await shot(`${MODE}-10-scrollbar-drag-to-top`);
 
 report.scenarios = report.steps.filter(
 	(step) => step.expectation !== undefined || step.note !== undefined,
