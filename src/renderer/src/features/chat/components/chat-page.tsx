@@ -1066,7 +1066,7 @@ function SessionPanel({
 			 * would then show one message twice, under copy that names only the box
 			 * (design round 1's D1) - so the answer is `SEND_HELD`, the box stays
 			 * empty, and the retry travels through the store's claim and its own
-			 * "Restore unsent message" control. One predicate, exported from the
+			 * "Restore message" control. One predicate, exported from the
 			 * store, so this cannot drift from the echo's retraction rule.
 			 */
 			return isRefusedBeforeAdmission(error) ? false : SEND_HELD;

@@ -468,7 +468,7 @@ function owesRefusedPayload(draft: ChatDraft | undefined): draft is ChatDraft {
  * The STORE loses nothing (`submittedText` is written before the request and the
  * row, with `activeDraftKey`, survives a reload), but no route put it back in the
  * box: the user was told to "move it below your text, or send it on its own" for
- * text no longer on screen, with only "Discard unsent message" to act on. That is
+ * text no longer on screen, with only "Discard message" to act on. That is
  * real loss of a two-line message, reported live (UX round 3 U14, QA round 3 Q7).
  *
  * So the retention record is the source and the composer adopts it, which is one
