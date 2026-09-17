@@ -33,12 +33,14 @@ export const rosePineMoon: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped +7 on every channel toward white — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.23 from `surface`,
-		 * 3.04 from `elevated` and 7.30 from `sunken`.
+		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 5.75 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.01 from `surface`, 2.03 from `elevated` and 8.99 from `sunken`;
+		 * the step is 5.71 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.82:1 the ink that binds it.
 		 */
-		highlight: "#312e46",
+		highlight: "#38334B",
 
 		ink: "#e0def4",
 		inkMuted: "#c9c6e0",

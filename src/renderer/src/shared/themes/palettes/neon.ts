@@ -22,12 +22,30 @@ export const neon: ThemeDefinition = {
 		surface: "#0F1524",
 		elevated: "#182036",
 		sunken: "#03040A",
+
 		/*
-		 * The current row's own ground: `surface` stepped +8/+7/+7 on R/G/B
-		 * toward white. ΔE00 2.24 from `surface`, 3.37 from `elevated` and 8.83
-		 * from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own blue
+		 * ramp 6.39 `L*`, at 0.95x the panel's chroma. ΔE00 4.04 from `surface`,
+		 * 3.44 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 9.94 from `sunken`. The row is 1.147x the panel's relative
+		 * luminance.
+		 *
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#171c2b)
+		 * stepped 3.55 `L*` off the panel, and this one steps 6.39. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
+		 *
+		 * Ink on this ground: `ink` 12.03:1, `ink-muted` 6.16:1, `ink-dim` 4.69:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 4.69:1.
 		 */
-		highlight: "#171c2b",
+		highlight: "#1c2231",
 
 		ink: "#E0E0E0",
 		inkMuted: "#A0A0B0",

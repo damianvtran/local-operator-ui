@@ -32,13 +32,14 @@ export const lavender: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.110, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.27 from `surface`, 3.03 from `elevated` and 7.80 from
-		 * `sunken`.
+		 * `surface` cast 0.13 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.11 from `surface`, 2.08 from `elevated` and 10.24 from `sunken`;
+		 * the step is 4.46 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.73:1 the ink that binds it.
 		 */
-		highlight: "#221D31",
+		highlight: "#2C263C",
 
 		ink: "#E6E2F0",
 		inkMuted: "#B3ADC6",
