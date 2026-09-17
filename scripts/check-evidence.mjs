@@ -623,15 +623,12 @@ export const stampFailures = (manifest, git = gitOut) => {
 	 * than imported because importing the capture script pulls in its whole
 	 * browser-driving surface for one number.
 	 */
-	const capture = gitOut(["show", "HEAD:scripts/capture-evidence.mjs"]);
-	if (capture !== null && typeof manifest.surfaces === "number") {
-		const block = capture.slice(capture.indexOf("const STORIES = ["));
-		const declared = (
-			block.slice(0, block.indexOf("\n];")).match(/^\t\[/gm) ?? []
-		).length;
-		if (declared > 0 && declared !== manifest.surfaces)
+	const capture = git(["show", "HEAD:scripts/capture-evidence.mjs"]);
+	const stories = capture === null ? 0 : declaredStoryRows(capture);
+	if (stories > 0 && typeof manifest.surfaces === "number") {
+		if (stories !== manifest.surfaces)
 			out.push(
-				`manifest.json: \`surfaces\` is ${manifest.surfaces} but capture-evidence.mjs declares ${declared} stories - a narrowed run carried the old value forward`,
+				`manifest.json: \`surfaces\` is ${manifest.surfaces} but capture-evidence.mjs declares ${stories} stories - a narrowed run carried the old value forward`,
 			);
 	}
 
@@ -642,14 +639,11 @@ export const stampFailures = (manifest, git = gitOut) => {
 	 * the story count above rather than imported, so both halves of the
 	 * manifest's self-description are falsifiable by one mechanism.
 	 */
-	if (capture !== null && typeof manifest.themes === "number") {
-		const block = capture.slice(capture.indexOf("const THEMES = ["));
-		const declared = (
-			block.slice(0, block.indexOf("\n];")).match(/^\t"/gm) ?? []
-		).length;
-		if (declared > 0 && declared !== manifest.themes)
+	const themes = capture === null ? 0 : declaredThemeNames(capture);
+	if (themes > 0 && typeof manifest.themes === "number") {
+		if (themes !== manifest.themes)
 			out.push(
-				`manifest.json: \`themes\` is ${manifest.themes} but capture-evidence.mjs declares ${declared} themes - a narrowed run carried the old value forward`,
+				`manifest.json: \`themes\` is ${manifest.themes} but capture-evidence.mjs declares ${themes} themes - a narrowed run carried the old value forward`,
 			);
 	}
 
@@ -695,6 +689,176 @@ export const stampFailures = (manifest, git = gitOut) => {
 	 * fast suite stayed green. `partialCaptureFailures` states the arithmetic.
 	 */
 	out.push(...partialCaptureFailures(manifest, git));
+
+	/*
+	 * And the PROSE the fields are explained by, which is what a reader checks a
+	 * fold against (round 3, R3-1).
+	 */
+	out.push(...countsMeanFailures(manifest, git));
+
+	return out;
+};
+
+/**
+ * The story rows `capture-evidence.mjs` declares, counted from its source.
+ *
+ * One function rather than two copies of the same parse: the number is asked
+ * about by the `surfaces` field AND by the prose that explains it, and two
+ * mechanisms reading one literal is how they drift.
+ */
+const declaredStoryRows = (capture) => {
+	const block = capture.slice(capture.indexOf("const STORIES = ["));
+	return (block.slice(0, block.indexOf("\n];")).match(/^\t\[/gm) ?? []).length;
+};
+
+/** The theme names `capture-evidence.mjs` declares, counted the same way. */
+const declaredThemeNames = (capture) => {
+	const block = capture.slice(capture.indexOf("const THEMES = ["));
+	return (block.slice(0, block.indexOf("\n];")).match(/^\t"/gm) ?? []).length;
+};
+
+/*
+ * The form each `countsMean` paragraph leads in, and the reading it names, in
+ * the order the paragraph writes them.
+ */
+const FRAMES_READING =
+	/([\d,]+)\s+committed WebP files outside the ([\d,]+)\s+declared supplementary sets[\s\S]*?\bof\s+([\d,]+)\s+on disk\s*\(([\d,]+)\s+of them inside the sets\)/;
+const SURFACES_READING =
+	/([\d,]+)\s+rows in `HEAD:scripts\/capture-evidence\.mjs`'s STORIES literal/;
+const THEMES_READING = /([\d,]+)\s+theme names in the `THEMES` literal/;
+
+/** `1,234` -> `1234`, for comparing prose against a count. */
+const proseCount = (text) =>
+	Number.parseInt(String(text).replaceAll(",", ""), 10);
+
+/**
+ * The numbers `countsMean` explains must be the numbers the walk finds.
+ *
+ * WHY THIS HALF EXISTS. The fields beside the prose are guarded - `frames`
+ * against the frames on disk outside every declared set, `surfaces`/`themes`
+ * against the literals they name - and the paragraphs that EXPLAIN those fields
+ * were not, because prose cannot be compared by reading a number. So the
+ * paragraph went stale at three consecutive folds (round 1 R5, round 2 R2-1,
+ * round 3 R3-1), the third time in the very commit that moved the stamps: the
+ * re-derivation is a step the fold author has to run and copy, and a step nobody
+ * re-runs is a step nobody has. The walk is the authority for both readings, so
+ * it is asked about the prose here, in the fast half of the gate - the half
+ * `test:desktop` runs - and a fold that moves the stamps and leaves the
+ * paragraph behind now breaks CI instead of waiting for a reviewer to re-walk
+ * 3,400 lines of JSON.
+ *
+ * Only the LEADING paragraph of each field is checked. The paragraphs under it
+ * are historical by construction - each says in its own words that it describes
+ * an older tree - and demanding this tree's numbers of them would force history
+ * to be deleted rather than kept, which is the practice `citationConvention`
+ * group (4) exists to protect.
+ *
+ * The failure message carries the paragraph to lead with, derived from the same
+ * walk, because the fix is a paste and a check that only says "stale" is one the
+ * next fold author has to solve by hand.
+ */
+export const countsMeanFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
+	const out = [];
+	const mean = manifest.countsMean;
+	if (!mean || typeof mean !== "object") return out;
+
+	const sets = (manifest.supplementary ?? []).filter(
+		(set) => typeof set.path === "string" && set.path.length > 0,
+	);
+	const declaredDirs = sets.map((set) => join(dir, set.path));
+	const onDisk = frames(dir);
+	const outside = onDisk.filter(
+		(file) => !declaredDirs.some((declared) => file.startsWith(`${declared}/`)),
+	).length;
+
+	/**
+	 * Compare one field's leading paragraph against the walk.
+	 *
+	 * `said` is `{}` when the paragraph does not match the form at all, which
+	 * falls out of the same comparison rather than needing its own branch: every
+	 * reading is then wrong, and the message prints the paragraph to paste.
+	 */
+	const check = (field, prose, said, derived, form) => {
+		if (typeof prose !== "string" || prose.trim().length === 0) return;
+		const wrong = Object.keys(derived).filter(
+			(key) => said[key] !== derived[key],
+		);
+		if (wrong.length === 0) return;
+		out.push(
+			`manifest.json: \`countsMean.${field}\`'s leading paragraph is stale (${wrong
+				.map(
+					(key) =>
+						`${key} says ${said[key] ?? "nothing this check can read"}, the walk finds ${derived[key]}`,
+				)
+				.join(
+					"; ",
+				)}) - the paragraph and the field describe different trees. Lead the field with: "${form}"`,
+		);
+	};
+
+	const stories = (() => {
+		const capture = git(["show", "HEAD:scripts/capture-evidence.mjs"]);
+		return capture === null ? null : declaredStoryRows(capture);
+	})();
+	const themes = (() => {
+		const capture = git(["show", "HEAD:scripts/capture-evidence.mjs"]);
+		return capture === null ? null : declaredThemeNames(capture);
+	})();
+
+	const leading = (field) =>
+		String(mean[field] ?? "")
+			.trim()
+			.split(/\n\s*\n/)[0];
+
+	const framesProse = leading("frames");
+	const framesMatch = framesProse.match(FRAMES_READING);
+	check(
+		"frames",
+		framesProse,
+		framesMatch
+			? {
+					"/committed WebP files outside the declared sets/": proseCount(
+						framesMatch[1],
+					),
+					"/declared supplementary sets/": proseCount(framesMatch[2]),
+					"/committed WebP files/": proseCount(framesMatch[3]),
+					"/inside the declared sets/": proseCount(framesMatch[4]),
+				}
+			: {},
+		{
+			"/committed WebP files outside the declared sets/": outside,
+			"/declared supplementary sets/": sets.length,
+			"/committed WebP files/": onDisk.length,
+			"/inside the declared sets/": onDisk.length - outside,
+		},
+		`RE-DERIVED FOR THIS FOLD (this branch folded onto \`origin/main\` = \`<base>\`): ${outside} committed WebP files outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside} of them inside the sets).`,
+	);
+
+	const surfacesProse = leading("surfaces");
+	const surfacesMatch = surfacesProse.match(SURFACES_READING);
+	if (stories !== null && stories > 0)
+		check(
+			"surfaces",
+			surfacesProse,
+			surfacesMatch
+				? { "/rows in the STORIES literal/": proseCount(surfacesMatch[1]) }
+				: {},
+			{ "/rows in the STORIES literal/": stories },
+			`RE-DERIVED FOR THIS FOLD: ${stories} rows in \`HEAD:scripts/capture-evidence.mjs\`'s STORIES literal, counted the way \`check-evidence.mjs\` counts them (\`^\t\\[\` rows inside the block, parsed from the tree rather than taken from the writer).`,
+		);
+
+	const themesProse = leading("themes");
+	const themesMatch = themesProse.match(THEMES_READING);
+	if (themes !== null && themes > 0)
+		check(
+			"themes",
+			themesProse,
+			themesMatch
+				? { "/theme names in the THEMES literal/": proseCount(themesMatch[1]) }
+				: {},
+			{ "/theme names in the THEMES literal/": themes },
+			`RE-DERIVED FOR THIS FOLD: ${themes} theme names in the \`THEMES\` literal, counted the same way.`,
+		);
 
 	return out;
 };

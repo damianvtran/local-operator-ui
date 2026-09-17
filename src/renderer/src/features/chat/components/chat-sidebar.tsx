@@ -31,6 +31,7 @@ import {
 import {
 	type KeyboardEvent,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -169,6 +170,11 @@ const rowStyle =
  */
 const rowCurrent = "bg-highlight font-medium text-ink hover:bg-highlight";
 
+import {
+	type FocusedSlot,
+	holdFocusedRow,
+	refreshFocusedInside,
+} from "../sidebar-focus-hold";
 import { ChatSessionStatus } from "./chat-session-status";
 
 /**
@@ -858,6 +864,49 @@ export function ChatSidebar({
 				disclosure.click();
 		}
 	};
+	/*
+	 * The two scrollers this panel owns keep the focused row in view across a
+	 * re-file - `holdFocusedRow` carries the argument and the two rejected shapes.
+	 *
+	 * BOTH containers, because both draw rows that re-file on the same order-key
+	 * event: the entity region's entities are disclosure rows whose CHILDREN are
+	 * session rows (`children()` over the catalogue's own array), so a nested row
+	 * changes slot on a completion exactly as a list row does (round 1, R1).
+	 *
+	 * A plain `useLayoutEffect` with no dependency list, because the signal is a
+	 * SLOT CHANGE rather than any one value, and the order the rows are in is not
+	 * something this component re-renders on: React re-uses each keyed node, so the
+	 * DOM's own order is the only place the move is visible. Running after every
+	 * commit is what makes the correction land in the same frame as the re-file -
+	 * the same reason `use-scroll-paging.ts` corrects its anchor in a layout effect
+	 * rather than a passive one, where a correction arriving one frame late is
+	 * still a jump.
+	 *
+	 * The record this hands over is also the gate: each run states whether the
+	 * focused row is inside its panel, and the correction only fires for a row that
+	 * was inside and left as this commit landed. A commit is not the only thing that
+	 * can take the row out of the panel, so the containers refresh the record on
+	 * their own scroll as well - without that the gate would read a wheel-scrolled
+	 * row as still inside and follow it (U5). The record is three-valued rather
+	 * than a boolean so a row that was PARTLY on screen when the change landed is
+	 * still followed; `sidebar-focus-hold.ts` carries both arguments.
+	 */
+	const entityPanelRef = useRef<HTMLDivElement | null>(null);
+	const listPanelRef = useRef<HTMLDivElement | null>(null);
+	const entitySlotRef = useRef<FocusedSlot>({
+		node: null,
+		index: -1,
+		visibility: "outside",
+	});
+	const listSlotRef = useRef<FocusedSlot>({
+		node: null,
+		index: -1,
+		visibility: "outside",
+	});
+	useLayoutEffect(() => {
+		holdFocusedRow(entityPanelRef.current, entitySlotRef);
+		holdFocusedRow(listPanelRef.current, listSlotRef);
+	});
 	return (
 		<nav
 			aria-label="Chats"
@@ -998,7 +1047,31 @@ export function ChatSidebar({
 						? `Nothing in your chats matches ${query.trim()}.`
 						: ""}
 			</p>
-			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
+			{/* The entity region, and the SECOND container that needs the rule below.
+			    An entity is a disclosure row whose CHILDREN are session rows drawn from
+			    the same catalogue array the list draws (`children()`), so a nested row's
+			    slot is the same backend order key: a completion re-files it on the same
+			    event, inside a container that scrolls. The region was "deliberately not
+			    touched" in the first pass on the premise that nothing in it re-files,
+			    and that premise was false (round 1, R1) - the measurement is in
+			    `scripts/sidebar-resort-geometry.mjs`, which walks this container from a
+			    NESTED row rather than from the list's.
+
+			    The trade is not the list's, and it is stated rather than implied: this is
+			    the one region where content genuinely GROWS above the reader - a
+			    catalogue arriving, or a query expanding every entity at once - and
+			    `overflow-anchor: none` gives up Chrome's compensation for that case to
+			    buy the re-file case. The growth is user-initiated or at load (the search
+			    box re-renders the region it filters), while the re-file is involuntary
+			    and arrives on every completion, which is the exchange this side of the
+			    declaration takes. */}
+			<div
+				ref={entityPanelRef}
+				onScroll={() =>
+					refreshFocusedInside(entityPanelRef.current, entitySlotRef)
+				}
+				className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none]"
+			>
 				{capabilities.isLoading && (
 					<p aria-live="polite" className="text-meta text-ink-dim">
 						Connecting to chats…
@@ -1100,9 +1173,62 @@ export function ChatSidebar({
 			{/* The global partition is NAVIGATION, not a peer of the entity lists.
 			    Sharing one scroll flow pushed Previous below the fold at 16+ sessions
 			    and its disclosure became easy to miss, so it is pinned below the
-			    scrolling entity region and owns its own scroll area. */}
+			    scrolling entity region and owns its own scroll area.
+
+			    `overflow-anchor: none` IS LOAD-BEARING ON THIS CONTAINER, and it is a
+			    property of the ROWS this panel draws rather than a style choice. A
+			    session's slot is the backend's order key, so a completion re-files the
+			    row - within the same section when it was already Active - and the feed
+			    now invalidates the client's list read on that change rather than on a
+			    section move, so the re-file happens on every completion instead of on
+			    the next poll.
+
+			    Chrome's scroll anchoring (`overflow-anchor: auto`, the initial value)
+			    picks the element that moved as the anchor and pays for its move by
+			    moving THIS container's `scrollTop` by exactly the row's travel -
+			    measured on the overflowing story at -96 px for a 3-row travel
+			    (`scripts/sidebar-resort-geometry.mjs`; before/after frames on the pull
+			    request). The reader is not following the row: they are somewhere else in
+			    the list, and the whole viewport slides under them by the travel, which is
+			    the jitter this change is about. Refusing to anchor holds `scrollTop`
+			    through the re-file and leaves the one-row shift the re-file itself
+			    produces - the rows redrawn in their new order - which is the row moving
+			    rather than the reader being moved.
+
+			    The sibling rule is the transcript's, and the two are opposite on
+			    purpose: `canonical-transcript.tsx` sets `overflow-anchor: auto` because
+			    ITS content grows under a reader pinned to the end, where following the
+			    content is the feature.
+
+			    THIS CONTAINER IS THE RE-ORDER CASE, AND IT IS NOT THE ONLY ONE - the
+			    entity region above carries the same declaration for the same reason,
+			    and the two are a pair. What it gives up is stated rather than denied:
+			    a row inserted ABOVE a reader who is scrolled down, or a list read that
+			    adds rows above the viewport, is no longer compensated for, so the
+			    reader's content shifts by the insertion - the trade this declaration
+			    accepts for holding the position through a re-file, which arrives on
+			    every completion rather than on an edit the reader made. (The claim in
+			    the first pass ran the other way - "nothing here grows; the list only
+			    re-orders" - and it was both false for the entity region and false
+			    here: round 1, N2.)
+
+			    One cost is not paid by the reader who is nowhere near the row: the
+			    keyboard cursor is an ELEMENT, so a focused row that re-files out of the
+			    panel would leave the cursor off screen. `holdFocusedRow`
+			    (`sidebar-focus-hold.ts`) is the other half of this rule - the container
+			    follows the row the CURSOR is on, by the minimum, which is the case the
+			    transcript's rule is about. It follows it only when the RE-FILE is what
+			    took it out of the panel - a reader who scrolled their cursor away keeps
+			    the position they chose, and so does the reader whose cursor row was not
+			    on screen at all when the change landed. */}
 			{showList && (
-				<div className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2">
+				<div
+					ref={listPanelRef}
+					onScroll={() =>
+						refreshFocusedInside(listPanelRef.current, listSlotRef)
+					}
+					className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2 [overflow-anchor:none]"
+				>
 					<section>
 						<button
 							type="button"
