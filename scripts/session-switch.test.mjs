@@ -892,34 +892,44 @@ test("the pane's single claim, over every combination of the rule's inputs", asy
 });
 
 /*
- * WHERE EVERY CHAT URL IN THE RENDERER IS WRITTEN, NAMED.
+ * WHERE EVERY CHAT URL IN THE RENDERER IS BUILT, AND WHO COMMITS A SWITCH.
  *
  * The race this branch fixes was never one bug: the sidebar's rows, the command
  * palette and the `/chat` slash rebind each wrote a switch's URL BEHIND the guard
  * read, so fixing one and leaving the others would have left the same defect behind
  * a different finger. All three call one rule now
- * (`features/chat/open-conversation.ts`), and the properties that keep that true are
- * structural - a behavioural arm can only ask about the entrance it drives.
+ * (`features/chat/open-conversation.ts`), and what keeps that true has to be
+ * structural, because a behavioural arm can only ask about the entrance it drives.
  *
- * THE FIRST VERSION OF THIS TEST LISTED THE THREE ENTRANCE FILES it knew about and
- * asserted they call the rule. The reviewer proved both halves of what that misses:
- * a deferral written in another shape inside a listed file passed (the old assertion
- * matched one single-expression spelling), and a fourth entrance in a file the list
- * did not name passed. So the assertion is the inverse: EVERY `navigate(`/chat/...`)`
- * in the renderer is enumerated here with the reason it is not a switch's URL, and
- * any change to that set - a new file, or one more write in a file already listed -
- * fails until someone writes the reason down. The deferral cannot hide in an
- * unlisted write, because there are no unlisted writes.
+ * TWO RULES, CHOSEN SO THAT SPELLING CANNOT EVADE THEM.
  *
- * What the listed ones are, and why none of them can defer behind a read: each is a
- * URL-FIRST destination (an agent created, a chat-with-this-agent button, a send
- * whose draft session just materialised). They write the route and let `ChatPage`'s
- * route-to-store effect open it, so there is no read in front of them to answer late.
+ *   A. Every file that BUILDS a chat URL by interpolation (`/chat/${…}`) is listed
+ *      with its count and a reason. A URL has to be built by naming the id
+ *      somewhere, so an entrance cannot hide by assigning the string to a local
+ *      first - the reviewer proved the previous version of this test, which matched
+ *      `navigate(`/chat/…)` only, passed for exactly that alias spelling.
+ *   B. Every file that calls the store's `openSession(` is listed too. A switch has
+ *      to COMMIT through the store, so a new entrance that defers a write behind a
+ *      read cannot appear without a store call - and a new entrance that reads
+ *      without listing itself fails here by name.
+ *
+ * WHAT NEITHER RULE SEES, said rather than implied: both scan SPELLINGS in this
+ * tree. A caller that imported a shared chat-URL helper or a `/chat/` prefix
+ * constant from another module would build a URL without naming the path itself,
+ * and the helper's own file would be the one listed. There is no static check here
+ * that would catch that shape, and the behavioural arms - which drive the shipped
+ * page - remain the only check on a new entrance's TIMING. What these two rules
+ * buy is that a new entrance cannot arrive silently: it has to build the URL, or
+ * commit the switch, in a file whose entry has to be written down with a reason.
+ *
+ * The entrances themselves are asserted by name too, below: the rule is called by
+ * both entrances in `chat-page.tsx` (the sidebar's row and the `/chat` rebind) and
+ * by the palette.
  */
-const CHAT_URL_WRITES = {
+const CHAT_URL_BUILDERS = {
 	"src/renderer/src/app.tsx": {
 		count: 1,
-		why: "the create-agent flow lands on the agent's own chat once the agent exists",
+		why: "the create-agent flow's landing URL",
 	},
 	"src/renderer/src/features/agent-hub/hooks/use-download-agent-mutation.ts": {
 		count: 1,
@@ -927,7 +937,7 @@ const CHAT_URL_WRITES = {
 	},
 	"src/renderer/src/features/agents/components/agents-sidebar.tsx": {
 		count: 1,
-		why: "the sidebar's chat-with-this-agent button",
+		why: "the chat-with-this-agent button",
 	},
 	"src/renderer/src/features/agents/components/legacy-agents-page.tsx": {
 		count: 1,
@@ -935,17 +945,44 @@ const CHAT_URL_WRITES = {
 	},
 	"src/renderer/src/features/chat/components/chat-page.tsx": {
 		count: 1,
-		why: "the send path re-pointing the URL once a staged draft's session has materialised - guarded by `activeSessionId === id` in the same expression, so it cannot name a conversation the store is not on",
+		why: "the send path re-pointing the URL once a staged draft's session has materialised - guarded by `activeSessionId === id` in the same expression",
+	},
+	"src/renderer/src/features/chat/open-conversation.ts": {
+		count: 2,
+		why: "the rule itself: the switch's own URL, and the refusal's restore",
+	},
+	"src/renderer/src/features/command-palette/use-palette-sources.ts": {
+		count: 1,
+		why: "the palette's chat-panel entry (a URL-first `path` target, navigated by the palette's own `path` case)",
 	},
 	"src/renderer/src/features/onboarding/components/onboarding-modal.tsx": {
 		count: 1,
-		why: "the onboarding flow landing on the agent it just created",
+		why: "the onboarding flow's landing URL",
 	},
 };
 
-/** The renderer's own `/chat/<id>` URL writes, file by file. */
-const chatUrlWrites = () => {
-	/* The trailing slash matters: a URL without one is a FILE, and `new URL(entry, dir)` would drop the last segment. */
+/** The files that commit a switch, and why each is allowed to. */
+const OPEN_SESSION_CALLERS = {
+	"src/renderer/src/features/chat/components/chat-page.tsx": {
+		count: 1,
+		why: "the route-to-store effect's own call - unchained and deliberate, since it is what makes a deep link and Back work",
+	},
+	"src/renderer/src/features/chat/open-conversation.ts": {
+		count: 1,
+		why: "the rule's commit",
+	},
+};
+
+/**
+ * A source-tree scan over the renderer, counting matches per file.
+ *
+ * `pattern` is scanned with the `g` flag and counted, so the assertion is about
+ * how many times each file does it rather than only whether it does: one more
+ * interpolated chat URL in a listed file is a new entrance in a file that already
+ * had a reason, which is the case a file-set-only check would miss.
+ */
+const scanRenderer = (pattern) => {
+	/* A URL without a trailing slash is a FILE, so `new URL(entry, dir)` would drop the last segment. */
 	const root = new URL("../src/renderer/src/", import.meta.url);
 	const found = new Map();
 	const walk = (dir, prefix) => {
@@ -957,12 +994,27 @@ const chatUrlWrites = () => {
 			}
 			if (!/\.tsx?$/.test(entry.name)) continue;
 			const text = readFileSync(new URL(entry.name, dir), "utf8");
-			const count = (text.match(/navigate\(\s*`\/chat\//g) ?? []).length;
+			const count = (text.match(pattern) ?? []).length;
 			if (count > 0) found.set(`src/renderer/src/${rel}`, count);
 		}
 	};
 	walk(root, "");
 	return found;
+};
+
+const expectListed = (found, listed, what) => {
+	assert.deepEqual(
+		[...found.keys()].sort(),
+		Object.keys(listed).sort(),
+		`a file that ${what} appeared or vanished; name it in the table with its reason`,
+	);
+	for (const [file, { count, why }] of Object.entries(listed)) {
+		assert.equal(
+			found.get(file),
+			count,
+			`${file} does it ${found.get(file)} time(s), not ${count} (${why})`,
+		);
+	}
 };
 
 const ENTRANCE_FILES = {
@@ -973,20 +1025,20 @@ const ENTRANCE_FILES = {
 const readSource = (path) =>
 	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("every chat URL in the renderer is a write with a stated reason", () => {
-	const found = chatUrlWrites();
-	assert.deepEqual(
-		[...found.keys()].sort(),
-		Object.keys(CHAT_URL_WRITES).sort(),
-		"a `/chat/<id>` write appeared or vanished; name it in CHAT_URL_WRITES with its reason",
+test("every chat URL in the renderer is built in a file that says why", () => {
+	expectListed(
+		scanRenderer(/\/chat\/\$\{/g),
+		CHAT_URL_BUILDERS,
+		"builds a chat URL by interpolation",
 	);
-	for (const [file, { count, why }] of Object.entries(CHAT_URL_WRITES)) {
-		assert.equal(
-			found.get(file),
-			count,
-			`${file} writes a chat URL ${found.get(file)} time(s), not ${count} (${why})`,
-		);
-	}
+});
+
+test("every file that commits a switch is named", () => {
+	expectListed(
+		scanRenderer(/\.openSession\(/g),
+		OPEN_SESSION_CALLERS,
+		"commits a switch through the store",
+	);
 });
 
 test("every entrance writes the switch's URL with the commit, through one rule", () => {
