@@ -138,8 +138,9 @@ docs/evidence/settings-appearance-before` is empty, and it could not have —
 those twelve frames render the merge base's own twelve-card `ThemeSelector`,
 which this change does not touch.
 
-The FIRST re-shoot is a different pass, and the byte-identity claim below belongs
-to it rather than to the frames shipping here. At the head that fold named —
+The FIRST re-shoot is a different pass, and the byte-identity claim that follows
+belongs to it rather than to the frames shipping here. At the head that fold
+named —
 `manifest.json`'s `themePortCapture.reCaptureAtTheRebasedHead` is where that
 citation lives, and the spelling it names is a pre-fold one this branch no longer
 contains — both halves were re-taken rather than re-stamped, after the `highlight`
@@ -150,8 +151,8 @@ values did not move when the role was authored, the miniature paints
 the one upstream `src/` change in this story's path is four *added* lines in
 `styles/index.css`. The value of that pass was therefore the record — `head`,
 `srcTree` and `scriptsTree` in `manifest.json` named the tree those frames ship
-in — and that is why the re-shoot below, where the bytes were supposed to move,
-is documented the same way.
+in — and that is why the round-1 re-shoot above, where the bytes were supposed to
+move, is documented the same way.
 
 The bundle this round shot from is **not** left in place: the box was short of
 both disk and memory, and a stale `storybook-static` is what round 1's own
