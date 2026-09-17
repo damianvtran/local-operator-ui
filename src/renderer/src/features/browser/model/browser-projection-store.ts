@@ -218,9 +218,15 @@ function stop(): void {
 	// never render a projection nobody is currently being told about.
 	readOnStart = false;
 	if (snapshot !== NO_SNAPSHOT) publish(NO_SNAPSHOT);
-	// The generations go with it: the next read is the first of a new subscription, so
-	// it has nothing to be older than.
-	publishedGeneration = 0;
+	// The generations go with it, but the reset is `readGeneration`, NOT zero (review
+	// round 1, A6): zero re-opened the cross-subscription publish this guard exists to
+	// close. A read still in flight when the last consumer left carries a generation
+	// below `readGeneration`, and it must not publish into the NEXT subscription's
+	// snapshot — the note above says a mount can never render a projection nobody is
+	// currently being told about, and a straggler from the previous subscription is
+	// exactly that. Seeding the floor at the current counter drops it while still
+	// admitting every read the new subscription starts (whose generations are higher).
+	publishedGeneration = readGeneration;
 }
 
 /** The React binding: one subscription, one snapshot, however many consumers. */

@@ -1281,12 +1281,31 @@ async function sceneBrowserMark(cdp) {
 		`(() => document.querySelector('[data-chat-row][aria-current="page"]')?.getAttribute('title') ?? location.hash)()`,
 	);
 	note("the conversation the walk opened", String(conversation));
+	/** The conversation's session id, which is the key every mark and every projection
+	 * field is written under: `#/chat/<id>` is the route's own spelling of it. */
+	const sessionId = await cdp.evaluate(
+		"(() => location.hash.split('/')[2] ?? '')()",
+	);
 
 	const absent = await markReading(cdp);
+	/** The walked conversation's own mark, read BEFORE anything is open in it: the pair of
+	 * readings below (this one and the one after a tab exists) is what pins the label's
+	 * grammar without this scene having to know how the app spells the row's name. */
+	const quietLabel =
+		absent.marks.find((mark) => mark.sessionId === sessionId)?.label ?? "";
 	check(
-		"a conversation with nothing open draws NO mark, rather than an inert one (R2)",
-		absent.count === 0 && absent.labels.length === 0,
-		`${absent.count} mark(s) on the rows: ${JSON.stringify(absent.labels)}`,
+		"EVERY conversation row draws the mark, and a conversation with nothing open draws it in its quiet state (R2's first row; review round 1, D2/A4)",
+		absent.marks.length > 0 &&
+			absent.rows > 0 &&
+			absent.marks.length === absent.rows &&
+			absent.marks.every(
+				(mark) =>
+					mark.label.startsWith('Open the browser for "') &&
+					mark.label.endsWith('"'),
+			) &&
+			quietLabel !== "" &&
+			!quietLabel.includes(" — "),
+		`${absent.marks.length} mark(s) on ${absent.rows} row(s): ${JSON.stringify(absent.marks)}`,
 	);
 	const absentFrame = await captureSettled(cdp, "browser-mark-absent");
 	note("frame", JSON.stringify(absentFrame));
@@ -1296,6 +1315,16 @@ async function sceneBrowserMark(cdp) {
 		selector: '[data-tour-tag="browser-pane-trigger"]',
 	});
 	await wait(700);
+	/** The pool before the press, so the attribution below is about ONE new tab rather
+	 * than about the whole pool. Needed because the host opens a blank tab of its own on
+	 * a fresh profile (`host.ts:803`: a first run gets one unattributed tab), which is
+	 * why this check used to require a pool of exactly one and could never pass (review
+	 * round 1, Q1a). */
+	const poolBefore = JSON.parse(
+		await cdp.evaluate(
+			`window.api.browser.state().then((s) => JSON.stringify(s.tabs.map((tab) => tab.tabId)))`,
+		),
+	);
 	await verb(cdp, "press", {
 		selector: '[data-tour-tag="browser-surface-new-tab"]',
 	});
@@ -1304,13 +1333,18 @@ async function sceneBrowserMark(cdp) {
 		`window.api.browser.state().then((s) => JSON.stringify({ tabs: s.tabs.map((tab) => ({ id: tab.tabId, sessionId: tab.sessionId })), scope: document.querySelector('[data-tour-tag="browser-pane-scope-conversation"]')?.getAttribute('data-state') }))`,
 	);
 	const openedTabs = JSON.parse(opened);
+	/** The tab this press created: the one in the pool that was not there before. */
+	const createdTab = openedTabs.tabs.find(
+		(tab) => !poolBefore.includes(tab.id),
+	);
 	check(
 		"a tab opened from the pane belongs to the conversation the pane is for (R1 — the whole point of the attribution fix)",
-		openedTabs.tabs.length === 1 &&
-			typeof openedTabs.tabs[0].sessionId === "string" &&
-			openedTabs.tabs[0].sessionId.length > 0 &&
+		createdTab !== undefined &&
+			openedTabs.tabs.length === poolBefore.length + 1 &&
+			typeof createdTab.sessionId === "string" &&
+			createdTab.sessionId === sessionId &&
 			openedTabs.scope === "active",
-		`tab(s) ${JSON.stringify(openedTabs.tabs)}, scope=conversation is ${openedTabs.scope}`,
+		`created ${JSON.stringify(createdTab)}; pool ${JSON.stringify(openedTabs.tabs)} (was ${JSON.stringify(poolBefore)}), scope=conversation is ${openedTabs.scope}`,
 	);
 
 	// Close the pane, so the mark is read on a resting list rather than beside the
@@ -1320,13 +1354,13 @@ async function sceneBrowserMark(cdp) {
 	});
 	await wait(700);
 	const drawn = await markReading(cdp);
+	const walked = drawn.marks.find((mark) => mark.sessionId === sessionId);
 	check(
-		"with a tab open in it, the row carries a mark that counts that tab (R2)",
-		drawn.count === 1 &&
-			drawn.labels.length === 1 &&
-			drawn.labels[0].includes("1 tab") &&
-			drawn.labels[0].includes("Open the browser for"),
-		`${drawn.count} mark(s): ${JSON.stringify(drawn.labels)}`,
+		"with a tab open in it, that row's mark counts it — and the other rows stay quiet (R2)",
+		walked !== undefined &&
+			walked.label === quietLabel.replace(/"$/, ' — 1 tab"') &&
+			drawn.marks.filter((mark) => mark.label.includes("tab")).length === 1,
+		`quiet ${JSON.stringify(quietLabel)} then ${JSON.stringify(walked)}; all ${JSON.stringify(drawn.marks)}`,
 	);
 	const drawnFrame = await captureSettled(cdp, "browser-mark-drawn");
 	note("frame", JSON.stringify(drawnFrame));
@@ -1339,7 +1373,7 @@ async function sceneBrowserMark(cdp) {
 		scope: document.querySelector('[data-tour-tag="browser-pane-scope-conversation"]')?.getAttribute('data-state'),
 		allScope: document.querySelector('[data-tour-tag="browser-pane-scope-all"]')?.getAttribute('data-state'),
 		scopeKey: document.querySelector('[data-tour-tag="browser-pane-scope-track"]')?.getAttribute('data-scope'),
-		tabs: [...document.querySelectorAll('[role="tab"]')].length,
+		tabs: [...document.querySelectorAll('[data-tour-tag="browser-tab"]')].length,
 	}))()`);
 	check(
 		"the press opens the pane with the lens ON that conversation, not on whatever it was left showing (open question 7)",
@@ -1357,13 +1391,18 @@ async function sceneBrowserMark(cdp) {
 	);
 }
 
-/** Every mark on the sidebar, with the words each one would announce. */
+/** Every mark on the sidebar, with the words each one would announce, the conversation
+ * it belongs to, and how many rows the list holds — so a check can say "one mark per row"
+ * rather than "one mark". */
 async function markReading(cdp) {
 	return await cdp.evaluate(`(() => {
 		const marks = [...document.querySelectorAll('[data-browser-mark]')];
 		return {
-			count: marks.length,
-			labels: marks.map((mark) => mark.getAttribute('aria-label') ?? ''),
+			rows: document.querySelectorAll('[data-chat-row]').length,
+			marks: marks.map((mark) => ({
+				sessionId: mark.getAttribute('data-browser-mark') ?? '',
+				label: mark.getAttribute('aria-label') ?? '',
+			})),
 		};
 	})()`);
 }

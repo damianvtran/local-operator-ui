@@ -2472,6 +2472,40 @@ test("the bulk closes resolve to the tabs the labels name", () => {
 	});
 });
 
+test("the strip feeds `close others` the POOL, not the list it is showing (design R5; review round 1, A3)", () => {
+	/*
+	 * WHY THIS IS A SOURCE ASSERTION rather than an input to the model: the model takes
+	 * whatever list it is handed, and the defect was never in it — it was the call site.
+	 * The pane's strip is scoped to a conversation, so `tabs` there is the host's visible
+	 * list; passing that to `closeOthersIntent` made the item read `Close 1 other tab` in
+	 * a pane holding two of the pool's eight while this file's test above, the model's own
+	 * docstring and the design's R5 all promised the pool. A frame cannot catch it (the
+	 * label is honest about what the press does) and no unit input can either, so the
+	 * call site is pinned where it is written.
+	 */
+	const strip = shippedSource(
+		"src/renderer/src/features/browser/components/browser-tab-strip.tsx",
+	);
+	assert.match(
+		strip,
+		/closeOthersIntent\(poolTabs, actionsTabId\)/,
+		"`Close N other tabs` must be built from the strip's `poolTabs` prop: the pool is what the label counts and what the press closes",
+	);
+	assert.match(
+		strip,
+		/poolTabs\?: BrowserTabView\[\]/,
+		"and the prop is declared, so the pane has something to pass",
+	);
+	const surface = shippedSource(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	assert.match(
+		surface,
+		/poolTabs=\{allTabs \?\? \[\]\}/,
+		"the pane — the one host whose visible list is not the pool — passes it",
+	);
+});
+
 test("a conversation is named by its title, or by its id when it has none", () => {
 	const sessions = [
 		{ session_id: "alice", title: "Reports" },
@@ -2878,6 +2912,17 @@ test("every floor rung leaves the title the width the strip promises (R4, fix 1)
 		return out;
 	};
 	// MEASURED PILL WIDTHS, the same table the component's comment carries.
+	//
+	// AND THE ASSUMPTION THE LADDER BELOW RESTS ON, stated here because it is invisible
+	// from this file (review round 1, A9): the widest TWO-pill set is `{Request, Agent}`
+	// (105px), not the wider `{Request, Failed}` (110px), only because `waitingOrdinals`
+	// gates the wait marker on `owner === "agent"` — a tab the user opened is never
+	// parked, which the case "a parked tab's Waiting chip carries the ordinal of the
+	// request its origin is on" pins above ("only on the agent's own tabs"). So a
+	// `Request` pill always sits on an agent tab. If a user tab could ever be parked, the
+	// middle tier's exactly-85px rung (`min-w-60`: 240 − 32 − 110 − 18 = 80) would be
+	// under the promise this file makes, and both this table and the rung would have to
+	// change.
 	const PILL = {
 		request: 62,
 		agent: 43,

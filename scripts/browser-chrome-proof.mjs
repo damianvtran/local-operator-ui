@@ -3332,19 +3332,22 @@ async function main() {
 		record("the pooled strip", JSON.stringify(poolSeen, null, 2));
 		check(
 			"the pooled strip groups 20 tabs into their 6 conversations plus the unattributed run, LAST (R3)",
-			poolSeen.chips.length === 7 &&
+			poolSeen !== null &&
+				poolSeen.chips.length === 7 &&
 				poolSeen.groupIds.slice(0, 6).join("|") ===
 					POOL_CONVERSATIONS.join("|") &&
 				poolSeen.groupIds[6] === "" &&
 				poolSeen.chips[6].startsWith("No conversation"),
-			`labels ${JSON.stringify(poolSeen.chips)}; group ids ${JSON.stringify(poolSeen.groupIds)}`,
+			poolSeen === null
+				? "the strip never settled with 20 rows and 7 labels, so this check FAILS by the guard above rather than by a TypeError the run cannot report (review round 1, A5)"
+				: `labels ${JSON.stringify(poolSeen.chips)}; group ids ${JSON.stringify(poolSeen.groupIds)}`,
 		);
 		check(
-			"each label carries its conversation's name and its tab count (the count is what lets the bulk close carry no number)",
-			poolSeen.chips.every((label) =>
+			"each label carries its conversation's name and its tab count (the count is what lets a bulk close count the conversation it names)",
+			poolSeen?.chips.every((label) =>
 				/\d+$/.test(label.replace(/\s+/g, " ").trim()),
 			),
-			JSON.stringify(poolSeen.chips),
+			JSON.stringify(poolSeen?.chips ?? null),
 		);
 		/*
 		 * THE 85px TITLE FLOOR, measured on the rows that are actually on screen. The
@@ -3354,14 +3357,17 @@ async function main() {
 		 */
 		check(
 			"every tab title that is on screen keeps the 85px floor the file promises, with the group labels in the strip",
-			poolSeen.visibleTitleWidths.length > 0 &&
+			poolSeen !== null &&
+				poolSeen.visibleTitleWidths.length > 0 &&
 				poolSeen.visibleTitleWidths.every((width) => width >= 85),
-			`visible ${JSON.stringify(poolSeen.visibleTitleWidths)} of all ${JSON.stringify(poolSeen.titleWidths)}`,
+			`visible ${JSON.stringify(poolSeen?.visibleTitleWidths ?? null)} of all ${JSON.stringify(poolSeen?.titleWidths ?? null)}`,
 		);
 		check(
 			"the pool overflows the strip, so the pinned control says how many tabs are off screen",
-			typeof poolSeen.pin === "string" && /^\+\d+$/.test(poolSeen.pin),
-			`pinned control reads ${JSON.stringify(poolSeen.pin)}`,
+			poolSeen !== null &&
+				typeof poolSeen.pin === "string" &&
+				/^\+\d+$/.test(poolSeen.pin),
+			`pinned control reads ${JSON.stringify(poolSeen?.pin ?? null)}`,
 		);
 		say(`frame: ${join(OUT_DIR, "19-strip-pooled-20-over-6.png")}`);
 
@@ -3468,6 +3474,7 @@ async function main() {
 		check(
 			"the pinned control opens with a row for every tab in the pool, in the band rather than over the page",
 			pinReading !== null &&
+				poolSeen !== null &&
 				pinReading.rows.length > 0 &&
 				pinReading.rowCount === poolSeen.rows + 1 &&
 				pinReading.box !== null &&
@@ -3583,6 +3590,133 @@ async function main() {
 			`${eventsAfter - eventsBefore} browser-state-changed event(s) for ${basket.before - batchAfter.tabs.length} closed tab(s)`,
 		);
 		say(`frame: ${join(OUT_DIR, "19c-batch-close-one-event.png")}`);
+
+		/*
+		 * ---- 19d. WHERE THE CARET IS AFTER A BATCH CLOSE ------------------------
+		 *
+		 * Review round 1 found the same bug three times (A2, U1, Q4): after a batch close
+		 * the caret fell to `<body>`, which is the outcome the strip's own comment says
+		 * the pending-focus path exists to prevent — "so a batch close does not strand the
+		 * keyboard user out of the strip". The diagnosis was that the flag was consumed on
+		 * the render caused by `setActionsTabId(null)`, before `chrome.closeTabs`'s IPC
+		 * landed, so it resolved to the tab being closed; the tab then unmounted and took
+		 * the caret with it.
+		 *
+		 * SO THE READING IS TAKEN TWICE, and the second one is the contract: at the first
+		 * reading the projection may still be in flight, and what must hold there is only
+		 * that the caret is IN THE STRIP (the parked position) rather than on `<body>`.
+		 * The later reading is the promise — the surviving active tab's `[role="tab"]`,
+		 * or the strip's scroller when the batch took every tab.
+		 *
+		 * BOTH BATCH SHAPES, because they fail differently: the conversation close usually
+		 * takes the ACTIVE tab (so the fallback target is a different row), while `Close N
+		 * other tabs` keeps its anchor alive (so the fallback target is on screen and the
+		 * old code still focused the closing tab instead).
+		 */
+		const focusReading = async () => {
+			return await evaluate(`(() => {
+				const el = document.activeElement;
+				return {
+					tag: el ? el.tagName : null,
+					tour: el ? el.getAttribute('data-tour-tag') : null,
+					role: el ? el.getAttribute('role') : null,
+					inStrip: Boolean(el && el.closest('[data-tour-tag="browser-tab-strip-row"]')),
+				};
+			})()`);
+		};
+		/*
+		 * `caretInStripSoon` polls for up to a second rather than reading once, because
+		 * the parked placement happens in React's effect phase a few milliseconds after
+		 * the click and this process's own round trip is of the same order. The window is
+		 * still what distinguishes the fix from the defect by an order of magnitude: the
+		 * finding measured `<body>` at 300ms, 1.3s and 2.8s.
+		 */
+		const caretInStripSoon = async (ms = 1000) => {
+			const started = Date.now();
+			let reading = await focusReading();
+			while (!reading.inStrip && Date.now() - started < ms) {
+				await sleep(50);
+				reading = await focusReading();
+			}
+			return reading;
+		};
+		const caretAfterConversationClose = await caretInStripSoon();
+		await sleep(1300);
+		const caretSettledAfterConversationClose = await focusReading();
+		check(
+			"after closing a conversation's tabs the caret is in the STRIP, then on the surviving tab (review round 1, A2/U1/Q4)",
+			caretAfterConversationClose.inStrip === true &&
+				caretSettledAfterConversationClose.tag !== "BODY" &&
+				caretSettledAfterConversationClose.inStrip === true &&
+				(caretSettledAfterConversationClose.role === "tab" ||
+					caretSettledAfterConversationClose.tour === "browser-tab-strip-row"),
+			`immediately ${JSON.stringify(caretAfterConversationClose)}, settled ${JSON.stringify(caretSettledAfterConversationClose)}`,
+		);
+
+		// The other shape: a batch that keeps its anchor tab, so the tab the caret must
+		// land on is not a tab the batch removed.
+		const othersMenu = await evaluate(`(() => {
+			const row = document.querySelector('[data-tab-id]');
+			const trigger = row?.querySelector('[data-tour-tag="browser-tab-menu"]');
+			if (!trigger) return 'missing';
+			trigger.click();
+			return 'clicked';
+		})()`);
+		const othersItem = await waitFor(
+			async () =>
+				(await evaluate(
+					`(() => {
+						const item = document.querySelector('[data-tour-tag="browser-tab-close-others"]');
+						return item ? item.innerText.replace(/\\s+/g, ' ').trim() : null;
+					})()`,
+				)) ?? null,
+			"the `close other tabs` item to be offered",
+			10_000,
+		).catch(() => null);
+		const beforeOthers = await chromeState();
+		await evaluate(
+			`document.querySelector('[data-tour-tag="browser-tab-close-others"]')?.click()`,
+		);
+		const afterOthers = await waitFor(async () => {
+			const current = await chromeState();
+			return current.tabs.length < beforeOthers.tabs.length ? current : null;
+		}, "the others close to land").catch(() => null);
+		const caretAfterOthers = await caretInStripSoon();
+		await sleep(1300);
+		const caretSettledAfterOthers = await focusReading();
+		record(
+			"the caret after the two batch shapes",
+			JSON.stringify(
+				{
+					conversation: {
+						immediately: caretAfterConversationClose,
+						settled: caretSettledAfterConversationClose,
+					},
+					others: {
+						menu: othersMenu,
+						item: othersItem,
+						before: beforeOthers.tabs.length,
+						after: afterOthers?.tabs.length ?? null,
+						immediately: caretAfterOthers,
+						settled: caretSettledAfterOthers,
+					},
+				},
+				null,
+				2,
+			),
+		);
+		check(
+			"`Close N other tabs` leaves the caret on the surviving tab, not on the one it closed (review round 1, A2/U1)",
+			othersItem !== null &&
+				afterOthers !== null &&
+				afterOthers.tabs.length === 1 &&
+				caretAfterOthers.inStrip === true &&
+				caretSettledAfterOthers.tag !== "BODY" &&
+				caretSettledAfterOthers.inStrip === true &&
+				(caretSettledAfterOthers.role === "tab" ||
+					caretSettledAfterOthers.tour === "browser-tab-strip-row"),
+			`${othersItem}: ${beforeOthers.tabs.length} tab(s) -> ${afterOthers?.tabs.length ?? null}; immediately ${JSON.stringify(caretAfterOthers)}, settled ${JSON.stringify(caretSettledAfterOthers)}`,
+		);
 	} finally {
 		sampler?.stop();
 		for (const timer of held) clearTimeout(timer);

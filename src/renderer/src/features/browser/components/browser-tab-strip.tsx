@@ -92,6 +92,18 @@ import {
 
 export interface BrowserTabStripProps {
 	tabs: BrowserTabView[];
+	/** The WHOLE pool, for `Close N other tabs` (design R5).
+	 *
+	 * `tabs` is the host's visible list — the pane's strip is scoped to a
+	 * conversation — and the design's `others` intent is the whole pool, not that
+	 * list: in the pane, scoped to two tabs of eight, the item has to read
+	 * `Close 7 other tabs`. The two are the same array in the route's strip, so a
+	 * host that shows everything passes nothing (review round 1, A3: the call site
+	 * passed the scoped list while this file and the model both claimed the pool).
+	 *
+	 * `Close N tabs to the right` deliberately stays scoped: "to the right" is a
+	 * fact about the order on screen. */
+	poolTabs?: BrowserTabView[];
 	/** The conversation list, for a group chip's name.
 	 *
 	 * PASSED IN RATHER THAN READ HERE, the same choice the hand-over dialog and the
@@ -320,6 +332,7 @@ const NARROW_REVEAL =
 
 export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	tabs,
+	poolTabs = tabs,
 	sessions = [],
 	activeTabId,
 	waiting,
@@ -345,6 +358,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	/** The list itself, so opening it can move focus INTO the band (D4's rule, applied
 	 * to the second band row rather than re-derived for it). */
 	const overflowRowRef = useRef<HTMLDivElement | null>(null);
+	/** The list's own scroller, for the reveal below. */
+	const overflowScrollerRef = useRef<HTMLDivElement | null>(null);
 
 	/** One ref per tab's actions trigger, so dismissing the row can hand focus back
 	 * to the tab it belonged to (UX round 2, U9: both dismissal paths unmount the
@@ -395,23 +410,79 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	useEffect(() => {
 		if (!overflowOpen) return;
 		overflowRowRef.current?.focus();
-	}, [overflowOpen]);
+		/*
+		 * AND THE ROW THAT SAYS "you are here" IS REVEALED (review round 1, U2). The
+		 * control exists to reach a tab the strip has pushed off screen, and it opened at
+		 * `scrollTop: 0` — so with the newest tab active (the usual case) the current tab
+		 * sat below the fold of the list that was opened to show it, and the frame showed
+		 * the last row clipped at the box's edge. The strip itself already scrolls its
+		 * active tab into view, so this is the list catching up with the row above it
+		 * rather than a second rule.
+		 *
+		 * MANUAL, NOT `scrollIntoView`: that walks every scrollable ancestor, and this
+		 * list sits inside the app's own scroller and the sidebar — centring one row would
+		 * move the sidebar and the chat behind the band. The arithmetic moves the list's
+		 * own `scrollTop` by the overlap it measured, and nothing else.
+		 */
+		const scroller = overflowScrollerRef.current;
+		if (activeTabId === null || !scroller) return;
+		const row = scroller.querySelector<HTMLElement>(
+			`[data-tab-id="${activeTabId}"]`,
+		);
+		if (!row) return;
+		const rowBox = row.getBoundingClientRect();
+		const box = scroller.getBoundingClientRect();
+		if (rowBox.bottom > box.bottom)
+			scroller.scrollTop += rowBox.bottom - box.bottom;
+		else if (rowBox.top < box.top) scroller.scrollTop -= box.top - rowBox.top;
+	}, [overflowOpen, activeTabId]);
 
 	/**
-	 * Where a BATCH close leaves the caret, and why it needs its own path.
+	 * Where a close that takes its own trigger with it leaves the caret, and why it needs
+	 * its own path.
 	 *
-	 * A single close hands focus back to the tab it belonged to (`closeActions`). A batch
-	 * usually closes that tab — `Close all tabs in this conversation` names the menu's own
-	 * tab too — so `menuRefs` has no target and focus would fall to `<body>`, dropping a
-	 * keyboard user out of the strip entirely (the UX round 2 U9 class of defect). So the
-	 * flag is set by the batch paths below and consumed AFTER the projection lands, when
-	 * there is a new active tab to focus: its `[role="tab"]` if the strip holds it, else
-	 * the scroller itself — which is why the scroller is focusable.
+	 * A dismissal that does NOT remove the tab (`closeActions`, used by Watch, hand-over,
+	 * revoke and Copy URL) hands focus back to the tab its trigger belonged to. A close
+	 * can't: the band's own element is inside the row that is about to be gone, so the
+	 * caret has nowhere to return to and would fall to `<body>` — dropping a keyboard user
+	 * out of the strip entirely (the UX round 2 U9 class of defect).
+	 *
+	 * SO THE CLOSE NAMES ITS OWN TARGETS. `closingTabIds` is what the batch asked for: the
+	 * ids it sent (`mode: "ids"`) or the conversation's own tabs as the strip last saw them
+	 * (`mode: "conversation"`, which main resolves against the live registry so a tab an
+	 * agent opens meanwhile is closed too — the ids here are only the ones this side can
+	 * wait for). While any of them is still in `tabs` THE CLOSE HAS NOT LANDED, and the
+	 * effect below parks the caret in the strip without spending the flag: the projection
+	 * that removes them is what re-runs it.
+	 *
+	 * WHY THE FLAG HAS TO SURVIVE THE FIRST RENDER (review round 1, A2 — one bug, three
+	 * reports): `setActionsTabId(null)` renders BEFORE `chrome.closeTabs`'s IPC round trip
+	 * lands, so the first run of this effect after a press still sees every pre-close tab.
+	 * Resolving the selection there focuses the tab that is being removed, which unmounts
+	 * milliseconds later and drops the caret to `<body>` with the flag already spent —
+	 * measured in the app (QA Q4, UX U1: `<body>` at 300ms/1.3s/2.8s) and reproduced in a
+	 * jsdom probe against this component (reviewer, A2). Neither `activeTabId` nor the
+	 * props carry "the close has landed", so the ids do.
+	 *
+	 * THE TWO PLACEMENTS, in order: while the close is in flight the caret sits on the
+	 * scroller — the one element in the strip that survives every close, which is exactly
+	 * why it is focusable — and once the projection lands, on the new active tab's
+	 * `[role="tab"]`, or the scroller again when there is no tab left to hold it.
 	 */
-	const batchFocusPending = useRef(false);
+	const closingTabIds = useRef<number[]>([]);
+	const closeFocusPending = useRef(false);
 	useEffect(() => {
-		if (!batchFocusPending.current || actionsTabId !== null) return;
-		batchFocusPending.current = false;
+		if (!closeFocusPending.current || actionsTabId !== null) return;
+		const pending = closingTabIds.current;
+		const landed = !pending.some((tabId) =>
+			tabs.some((tab) => tab.tabId === tabId),
+		);
+		if (!landed) {
+			scrollerRef.current?.focus();
+			return;
+		}
+		closeFocusPending.current = false;
+		closingTabIds.current = [];
 		const next =
 			activeTabId === null
 				? null
@@ -419,17 +490,36 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						`[data-tab-id="${activeTabId}"] [role="tab"]`,
 					);
 		(next ?? scrollerRef.current)?.focus();
-	}, [actionsTabId, activeTabId]);
+	}, [actionsTabId, activeTabId, tabs]);
 
-	/** One batch close, whatever it closes: drop the row, ask for the intent, and leave
-	 * the caret to the effect above. */
+	/** One batch close, whatever it closes: drop the row, name what it will take, ask for
+	 * the intent, and leave the caret to the effect above. */
 	const runBatchClose = useCallback(
 		(intent: CloseTabsIntent): void => {
-			batchFocusPending.current = true;
+			closingTabIds.current =
+				intent.mode === "ids"
+					? [...intent.tabIds]
+					: poolTabs
+							.filter((tab) => tab.sessionId === intent.sessionId)
+							.map((tab) => tab.tabId);
+			closeFocusPending.current = true;
 			setActionsTabId(null);
 			onCloseTabs(intent);
 		},
-		[onCloseTabs],
+		[onCloseTabs, poolTabs],
+	);
+
+	/** A single close from the band takes the same path, for the same reason the batch
+	 * does: `closeActions` returns the caret to the closing tab's own trigger, which is
+	 * inside the row being removed (review round 1, A2's "while in here"). */
+	const runClose = useCallback(
+		(tabId: number): void => {
+			closingTabIds.current = [tabId];
+			closeFocusPending.current = true;
+			setActionsTabId(null);
+			onClose(tabId);
+		},
+		[onClose],
 	);
 
 	// The activated tab scrolls into view (spec §6's last row). With the width
@@ -518,20 +608,23 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 */
 	const showGroupLabels = groups.length > 1;
 	/**
-	 * The two BULK CLOSES whose labels carry a count, computed from the POOL rather than
-	 * from the host's visible list — `closeOthersIntent` takes the whole list on purpose,
-	 * so in the pane scoped to 2 tabs of 8 the item reads `Close 7 other tabs`, which is
-	 * the truth about what it does. `null` means "do not offer the item", which is the
-	 * design's rule for a press that would close nothing.
+	 * The two BULK CLOSES whose labels carry a count, and the one difference between
+	 * them: `others` counts the POOL (`poolTabs`, design R5 — in the pane scoped to two
+	 * tabs of eight the item reads `Close 7 other tabs`, which is the truth about what it
+	 * does), while `to the right` counts the order ON SCREEN, because that is what "to the
+	 * right" means. `null` means "do not offer the item", which is the design's rule for
+	 * a press that would close nothing.
 	 */
 	const closeOthers =
-		actionsTabId === null ? null : closeOthersIntent(tabs, actionsTabId);
+		actionsTabId === null ? null : closeOthersIntent(poolTabs, actionsTabId);
 	const closeRight =
 		actionsTabId === null ? null : closeToTheRightIntent(ordered, actionsTabId);
-	/** How many tabs a conversation holds, for the group item's `>= 2` gate: closing
-	 * "all" of a conversation's single tab is `Close "X"` under a longer label. */
+	/** How many tabs a conversation holds, for the group item's count and its `>= 2`
+	 * gate: closing "all" of a conversation's single tab is `Close "X"` under a longer
+	 * label. Read from the POOL for the same reason `others` is — the item presses
+	 * against the conversation, not against what this host happens to be showing. */
 	const conversationTabCount = (sessionId: string): number =>
-		groups.find((group) => group.sessionId === sessionId)?.tabs.length ?? 0;
+		poolTabs.filter((tab) => tab.sessionId === sessionId).length;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when the ordered pool changes even though the body never reads it.
 	useEffect(() => {
 		const strip = scrollerRef.current;
@@ -752,9 +845,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 									 * which is what makes the label look like it belongs to the run rather
 									 * than to the row.
 									 *
-									 * THE COUNT IS WHAT LETS THE BULK CLOSE CARRY NO NUMBER (design R5): the
-									 * group's size is on screen here, so `Close all tabs in this conversation`
-									 * in the band's menu does not have to repeat it.
+									 * THE COUNT DOES NOT REPLACE THE BAND'S OWN (review round 1, U3/Q3): it used
+									 * to be the reason `Close all tabs in this conversation` carried no number,
+									 * and the chip is drawn only when the pool holds TWO conversations — so in
+									 * the host this feature adds (the pane opened from a sidebar mark, one
+									 * conversation in the pool) the band named no size at all and its most
+									 * destructive item was the only uncounted one. The chip still states the
+									 * run's size where it is drawn; the band counts its own items.
 									 */
 									<div
 										data-tour-tag="browser-tab-group"
@@ -766,7 +863,22 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											className="size-3.5 shrink-0 text-ink-dim"
 										/>
 										<span
-											className="max-w-24 shrink-0 truncate text-meta text-ink-dim"
+											className={cn(
+												"shrink-0 text-meta text-ink-dim",
+												/*
+												 * THE ONE LABEL THAT IS A CONSTANT IS THE ONE THAT IS NOT CAPPED (review
+												 * round 1, D6). `max-w-24` is a budget for USER DATA — a session id or a
+												 * title can be any length and truncating one is honest, which is what the
+												 * `title` attribute beside it is for. `"No conversation"` is this file's
+												 * own string: a fixed label that clips to `No conv…` at every width the
+												 * strip has looks like a broken chip rather than a shortened one, and
+												 * nothing about it is unpredictable. So the unattributed run's chip is
+												 * sized by its text, and every named run keeps the cap.
+												 */
+												groupLabel.sessionId === null
+													? "whitespace-nowrap"
+													: "max-w-24 truncate",
+											)}
 											title={groupLabel.name}
 										>
 											{groupLabel.name}
@@ -1165,29 +1277,24 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							closeOverflow();
 						}
 					}}
-					className="flex flex-col border-control border-t bg-surface py-1 focus:outline-none"
+					className="relative flex flex-col border-control border-t bg-surface py-1 focus:outline-none"
 					data-tour-tag="browser-tab-overflow-list"
 				>
-					<div className="flex items-center gap-2 px-2">
+					{/* THE HEADING IS TEXT ONLY, AND THE DISMISS COMES LAST (review round 1, U4):
+					    in DOM order the dismiss used to precede every row, so the first Tab a
+					    keyboard user pressed after opening the list reached the control that
+					    CLOSES it rather than the first tab — and the whole point of the control is
+					    to reach the tabs. It keeps the top-right geometry it had (`absolute`) so
+					    the band's pixels do not move, and it keeps its own place in the tab order
+					    by being the last thing the band renders. */}
+					<div className="flex h-7 items-center px-2">
 						<span className="text-meta text-ink-dim">
 							{tabsOffScreen === 1
 								? "All tabs, 1 not shown"
 								: `All tabs, ${tabsOffScreen} not shown`}
 						</span>
-						<div className="grow" />
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Hide all tabs"
-							onClick={closeOverflow}
-							data-tour-tag="browser-tab-overflow-dismiss"
-						>
-							{/* The same chevron the actions row uses to close itself: one shape for
-							    "this band row goes away", on both rows. */}
-							<ChevronUp aria-hidden className="size-3.5" />
-						</Button>
 					</div>
-					<div className="max-h-36 overflow-y-auto">
+					<div ref={overflowScrollerRef} className="max-h-36 overflow-y-auto">
 						{groups.map((group) => (
 							<div
 								key={group.sessionId ?? "unattributed"}
@@ -1216,6 +1323,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											onActivate(tab.tabId);
 										}}
 										aria-current={tab.tabId === activeTabId}
+										data-tab-id={tab.tabId}
 										className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-elevated hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
 										data-tour-tag="browser-tab-overflow-row"
 									>
@@ -1235,6 +1343,18 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							</div>
 						))}
 					</div>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Hide all tabs"
+						onClick={closeOverflow}
+						className="absolute top-1 right-2"
+						data-tour-tag="browser-tab-overflow-dismiss"
+					>
+						{/* The same chevron the actions row uses to close itself: one shape for
+						    "this band row goes away", on both rows. */}
+						<ChevronUp aria-hidden className="size-3.5" />
+					</Button>
 				</div>
 			)}
 			{/*
@@ -1352,10 +1472,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					<Button
 						variant="ghost"
 						size="sm"
-						onClick={() => {
-							closeActions();
-							onClose(actionsTab.tabId);
-						}}
+						onClick={() => runClose(actionsTab.tabId)}
 						data-tour-tag="browser-tab-actions-close"
 					>
 						Close "{tabLabel(actionsTab.title)}"
@@ -1364,11 +1481,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					 * THE FOUR BULK ACTIONS (design R5), and the COUNTS IN THEIR LABELS ARE THE
 					 * DISCLOSURE. Each is destructive with no undo — closing a tab is not
 					 * recoverable, because the session file records the current set rather than a
-					 * history — and two of them reach beyond the list a scoped host is showing:
-					 * in the pane, scoped to 2 tabs of 8, `Close 7 other tabs` is the truth about
-					 * what the press does, and `paneApprovalHeaderLabel`'s sibling rule applies —
-					 * the words have to agree with the scope. No dialog, and that is the design's
-					 * ruling: the count is the disclosure, and a single close has no undo either.
+					 * history — and three of the four reach beyond the list a scoped host is
+					 * showing: in the pane, scoped to 2 tabs of 8, `Close 7 other tabs` is the
+					 * truth about what the press does (the pool, not the visible list), and the
+					 * conversation item counts the pool's tabs in that conversation, both for the
+					 * reason `paneApprovalHeaderLabel`'s sibling rule gives — the words have to
+					 * agree with the scope, and the number in the label is the disclosure. No
+					 * dialog, and that is the design's ruling: the count is the disclosure, and a
+					 * single close has no undo either.
 					 */}
 					{closeOthers !== null && (
 						<Button
@@ -1398,9 +1518,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					)}
 					{actionsTab.sessionId !== null &&
 						conversationTabCount(actionsTab.sessionId) >= 2 && (
-							// NO NUMBER ON THIS ONE, and the group chip is why: the strip and the
-							// pinned list both show the group's size, so repeating it here would be
-							// the third copy of a fact already on screen.
+							// THE COUNT IS ON THIS ONE TOO (review round 1, U3, Q3). It used to rely
+							// on the group chip stating the size, and the band's own arithmetic says
+							// otherwise: the chip is drawn only when the pool holds more than one
+							// conversation (`showGroupLabels`), and the host this feature adds — the
+							// pane opened from a sidebar mark — is the single-conversation case. So
+							// beside `Close 5 other tabs` the most destructive item on the row carried
+							// no number and nothing on screen said the group's size. Three counted
+							// items, one grammar.
 							<Button
 								variant="ghost"
 								size="sm"
@@ -1411,7 +1536,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 								}
 								data-tour-tag="browser-tab-close-conversation"
 							>
-								Close all tabs in this conversation
+								Close all {conversationTabCount(actionsTab.sessionId)} tabs in
+								this conversation
 							</Button>
 						)}
 					{HTTP_URL.test(actionsTab.url) && (
