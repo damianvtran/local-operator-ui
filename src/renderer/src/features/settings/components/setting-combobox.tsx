@@ -145,6 +145,15 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 		staleTime: 60_000,
 	});
 
+	/** Provider id → display name, for the sub-lines the catalogue cannot spell. */
+	const providerNames = useMemo(
+		() =>
+			Object.fromEntries(
+				(providers.data ?? []).map((provider) => [provider.id, provider.name]),
+			),
+		[providers.data],
+	);
+
 	const options = useMemo(() => {
 		if (kind === "provider")
 			return providers.data ? providerOptions(providers.data) : [];
@@ -152,8 +161,22 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 			kind,
 			hosting: kind === "model" ? effectiveHosting : "",
 			current: value,
+			/*
+			 * The registry is fetched for these rows too (one IPC call under the key
+			 * the hosting row already uses), so the sub-line can carry the brand's
+			 * own spelling rather than a capitalised id: `xAI`, not `Xai` (UX round
+			 * 2, U11).
+			 */
+			providerNames,
 		});
-	}, [kind, providers.data, catalogue.data, effectiveHosting, value]);
+	}, [
+		kind,
+		providers.data,
+		catalogue.data,
+		effectiveHosting,
+		value,
+		providerNames,
+	]);
 
 	const listing = catalogueListing(catalogue.data, catalogue, (error) =>
 		backendLoadErrorMessage("Could not list models.", error),
@@ -267,8 +290,10 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 			customRowLabel={(text) => `Use "${text}"`}
 			listNotice={listNotice}
 			/* Clearing is an explicit gesture rather than an empty buffer, so that
-			   "unset" (which `empty_unsets` writes as null) stays distinct from
-			   "typed something that matched nothing" (which is a value). */
+			   "unset" - which `empty_unsets` writes as the EMPTY STRING, the spelling
+			   the route reads as a reset (`server/routes/settings.py`) - stays
+			   distinct from "typed something that matched nothing", which is a
+			   value. */
 			onClear={() => onValueChange("")}
 			emptyText={emptyText}
 			helperText={helper ? <span {...helperProps}>{helper}</span> : undefined}

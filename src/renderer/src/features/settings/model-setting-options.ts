@@ -222,7 +222,20 @@ export function scopedModelRows(
  */
 export function modelOptions(
 	catalogue: CatalogueInput,
-	options: { kind: ComboKind; hosting: string; current: string },
+	options: {
+		kind: ComboKind;
+		hosting: string;
+		current: string;
+		/**
+		 * Provider id → the registry's display name, when the caller has the
+		 * registry. The catalogue names providers only by id, and a mechanical
+		 * capitalisation of an id is not a brand: `xai` is `xAI`, `openai` is
+		 * `OpenAI`, and the page shows those spellings in the list above it. Falls
+		 * back to the capitalised id when the registry is not to hand (UX round 2,
+		 * U11).
+		 */
+		providerNames?: Readonly<Record<string, string>>;
+	},
 ): SearchableOption[] {
 	const known = catalogue?.credentials_known !== false;
 	const rows = scopedModelRows(catalogue, options);
@@ -266,9 +279,9 @@ export function modelOptions(
 								? "Signed in"
 								: "Needs sign-in"
 							: undefined
-						: `${providerLabel(row.provider)}${row.aggregated ? ", aggregated" : ""}${
-								known && !row.connected ? ", no credential" : ""
-							}`,
+						: `${options.providerNames?.[row.provider] ?? providerLabel(row.provider)}${
+								row.aggregated ? ", aggregated" : ""
+							}${known && !row.connected ? ", no credential" : ""}`,
 				group: groupOf(row),
 			});
 		}
@@ -340,7 +353,20 @@ export function modelScopeNotice(
 function currentValueRows(
 	scoped: readonly CatalogueModelRow[],
 	catalogue: CatalogueInput,
-	options: { kind: ComboKind; hosting: string; current: string },
+	options: {
+		kind: ComboKind;
+		hosting: string;
+		current: string;
+		/**
+		 * Provider id → the registry's display name, when the caller has the
+		 * registry. The catalogue names providers only by id, and a mechanical
+		 * capitalisation of an id is not a brand: `xai` is `xAI`, `openai` is
+		 * `OpenAI`, and the page shows those spellings in the list above it. Falls
+		 * back to the capitalised id when the registry is not to hand (UX round 2,
+		 * U11).
+		 */
+		providerNames?: Readonly<Record<string, string>>;
+	},
 ): SearchableOption[] {
 	const current = options.current.trim();
 	if (!current) return [];
@@ -367,7 +393,7 @@ function currentValueRows(
 			id: current,
 			name: real?.selector ?? current,
 			description: real
-				? `${providerLabel(real.provider)}${
+				? `${options.providerNames?.[real.provider] ?? providerLabel(real.provider)}${
 						catalogue?.credentials_known === false
 							? ""
 							: real.connected
