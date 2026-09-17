@@ -15,27 +15,34 @@ The operator's second report of 2026-09-17 is what they answer:
 | --- | --- | --- |
 | [`prose-tool-alignment@1024`](prose-tool-alignment@1024/), [`@1440`](prose-tool-alignment@1440/) | A transcript ending on the agent's answer. The prose shares one left rail with the ledger and carries **no time of its own** — the timestamp under the call belongs to a CLOSED row, so it is not painted at all. | [`../chat-tool-rows/prose-tool-alignment@1024/`](../chat-tool-rows/prose-tool-alignment@1024/), [`@1440`](../chat-tool-rows/prose-tool-alignment@1440/) — the same transcript with `Oct 9, 2025, 4:53 AM` under the answer, left-aligned on the rail. |
 
-## Where these came from, and why they are a capture rather than a copy
+## Where these came from
 
-`node scripts/capture-evidence.mjs http://127.0.0.1:6119 --only=chat-tool-rows--prose-tool-alignment
+`node scripts/capture-evidence.mjs http://127.0.0.1:6121 --only=chat-tool-rows--prose-tool-alignment
 --themes=localOperatorDark,localOperatorLight --allow-backend`, run in a **second git worktree
-checked out at this branch's own pre-caption head** (`ebaa85c83`, the footer-removal commit) with its
-own Storybook build. It is a capture of that tree by the same harness, not a hand-picked copy of the
-committed frames.
+checked out at this branch's own pre-caption head** (`4cf34e95b`, the footer-removal commit on the
+rebased base) with its own Storybook build. It is a capture of that tree by the same harness, not a
+hand-picked copy of the committed frames, and the after halves are the same story and the same
+fixture at the same viewport.
 
-**And all four came back byte-identical to the committed frames of the same paths** — `magick compare
--metric AE` = 0 for both widths in both themes. That is the measurement worth reporting rather than
-the procedure: this branch's committed frames at that head ARE the state before the caption, so the
-pair's before half is reproducible from the tree it names, and the two halves differ by the caption
-and by nothing else on this story.
+**The head is the point, and it is worth one sentence:** a before half taken against `main` would
+have differed by every other lane's merged work as well as by this change, and a before half taken
+from this branch's own tip would have contained the caption. `4cf34e95b` is the commit where this
+branch's tree still had the footer removed and no answer caption.
 
-## The change the pair measures, on the width that isolates it
+## The change the pair measures
 
-At 1024 the two trees differ inside one box, and that box is the caption: `magick compare -metric AE`
-reports **2,721** changed pixels in `138x26+838+358` — the removed transcript footer's own box from
-the previous round, which is where this caption now lands, at the opposite alignment. At 1440 the
-same box is `138x26+1046+358`, AE 2,673 (dark) / 2,431 (light). Nothing else in those four frames
-moved.
+`magick compare -metric AE` reports **88,996** changed pixels between the halves at 1024 in
+`localOperatorDark` (0.124 of the frame), and the thresholded difference localises them to the
+answer's own block rather than to the frame: `842x134+103+262` at a 15% threshold, which is the
+ledger rows the caption sits under plus the caption itself. Read as pictures, the two halves differ
+by the caption: the user turn, the call the answer narrates and the prose above it are in the same
+place in both, and the extra ink is `Oct 9, 2025, 4:53 AM` at x 102..224, y 388..394.
+
+What the residual is made of is worth stating rather than hiding: the two halves are separate
+lossy-WebP encodes of the same glyphs, and the box the threshold returns covers the ledger rows
+whose thin strokes re-encode differently at any threshold that still keeps a 12px caption legible.
+The claim this pair supports is the one a reader can check by eye and by the ink rows — the caption
+is the difference at the foot of the answer — not a claim that every other pixel is bit-identical.
 
 ## What this pair does NOT carry
 
