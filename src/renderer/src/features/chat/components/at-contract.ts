@@ -191,6 +191,32 @@ export function atCandidateKey(rows: readonly { path: string }[]): string {
 }
 
 /**
+ * WHY THE `@` AFFORDANCE IS ABSENT, in the composer's own voice (UX round 2,
+ * U12).
+ *
+ * THE GATE WAS SILENT, and silence is its own failure for a user who types `@`
+ * expecting something: no list, no chip, no tip and no sentence, with no path from
+ * "nothing happened" to "this install's backend is older". The sibling gate in
+ * the same band does name its reason (`MOVE_UNAVAILABLE_REASON`, on the
+ * read-only working-directory chip), so this is the app's own vocabulary for the
+ * same class of fact rather than a new register.
+ *
+ * THE ONE THING IT MAY NOT DO IS PROMISE, and that is why it does not read like the
+ * other capability sentences in this app ("Update the backend to …"). Those
+ * offers are true because the capability they name is one a newer backend has; the
+ * `references` key is one NO harness advertises - not the released ones, and not
+ * the half in review - so telling the user to update would be a promise nothing on
+ * the other side can keep. What is true, and all this says, is what the harness in
+ * use cannot do.
+ *
+ * One sentence, in the picker's own notice register ("This folder is empty."),
+ * because the picker's one-row notice is where this composer already says why a
+ * gesture has nothing behind it.
+ */
+export const AT_UNAVAILABLE_REASON =
+	"This backend cannot carry file references.";
+
+/**
  * The footer's left line, read off the ACTIVE ROW.
  *
  * The slash popup reads its footer off the active row so the key and the row
@@ -202,12 +228,16 @@ export function atCandidateKey(rows: readonly { path: string }[]): string {
  * the one Enter inserts.
  *
  * With no active row — a listing that failed, or a query that matched nothing —
- * the Escape clause stands alone. The line is there to say what a key will do,
- * and there is no row for Enter to act on; promising "inserts" over a notice row
- * is exactly the class of lie this repository's copy tables exist to prevent.
- * Enter is HELD in that state rather than passed to the submit
- * (`atKeyIntent`), so the clause is also the whole truth about the key: nothing
- * will be sent, and Escape is the way back to the composer's own Enter.
+ * the Escape clause is joined by the statement that Enter has nothing to take
+ * (UX round 2, U13). The line is there to say what a key will do, and there is no
+ * row for Enter to act on; promising "inserts" over a notice row is exactly the
+ * class of lie this repository's copy tables exist to prevent. Enter is HELD in
+ * that state rather than passed to the submit (`atKeyIntent`), so the line is also
+ * the whole truth about the key: nothing will be sent, and Escape is the way back
+ * to the composer's own Enter. It used to read `Esc closes` alone, which answered a
+ * press of Enter with nothing at all — the one gesture a user reaches for after
+ * typing a file name — while round 1's remedy had offered the two ways to close
+ * that gap and only the swallowing half was taken.
  *
  * "Enter"/"Esc" are capitalised because they name KEYS. The slash popup in the
  * same slot over the same field reads `Enter needs a row you pick: ↓ then Enter`,
@@ -217,7 +247,7 @@ export function atCandidateKey(rows: readonly { path: string }[]): string {
 export function atFooter(
 	row: { path: string; directory: boolean } | undefined,
 ): string {
-	if (!row) return "Esc closes";
+	if (!row) return "Nothing to insert · Esc closes";
 	const verb = row.directory
 		? `Enter opens ${row.path}`
 		: `Enter inserts ${atFooterToken(row.path)}`;

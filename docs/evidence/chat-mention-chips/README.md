@@ -44,14 +44,27 @@ keystroke, every measure and every paint after that boundary is the shipped code
 | --- | --- | --- |
 | a listing's entries | what the picker does with a listing — ranking, the drill, the parent column, the budget | that a particular directory contains those entries |
 | a probe's answer | the rule `chip <=> the token resolves`, the two fills, the outside-workspace state | that `stat` agrees, or that the containment test is right (that is `scripts/directory-listing.test.mjs`, against real symlinks) |
-| the connected harness's **capabilities** | that the composer's `@` affordance is offered exactly when the shipped `desktopFeatureEnabled` says the harness expands a mention — `harness-cannot-expand` is the state every release carries today | how the capability fetch itself behaves against a live backend (that is main's `/v1/capabilities` path, already exercised by every other gated surface) |
+| the connected harness's **capabilities** | that the composer's `@` affordance is offered exactly when the shipped `desktopFeatureEnabled` says the harness expands a mention — `harness-cannot-expand` is the state every release carries today — and that the withheld state says WHY in one sentence (UX round 2, U12), which the frame carries | how the capability fetch itself behaves against a live backend (that is main's `/v1/capabilities` path, already exercised by every other gated surface) |
 
 The live half of both is `scripts/renderer-driver.mjs --scene mentions`, written
-in this branch and **not run here**: the composer only exists on a pane with a
-live backend, and on a backend-less run the chat route paints its offline card
-with no `textarea[aria-label="Message"]` at all (measured — that run is what the
-scene's own refusal message records). It needs `--backend` / `--backend-records`
-per `docs/agent-driver.md`, which is the QA pass's job, not this set's.
+in this branch and **not run when this set was committed**: the composer only
+exists on a pane with a live backend, and on a backend-less run the chat route
+paints its offline card with no `textarea[aria-label="Message"]` at all (measured
+— that run is what the scene's own refusal message records). It needs
+`--backend` / `--backend-records` per `docs/agent-driver.md`, which is the QA
+pass's job, not this set's.
+
+**And it now states its two preconditions instead of failing at the first one**
+(UX round 2, U14b). It used to throw its "this scene needs a live backend"
+refusal while the app was in fact attached to one: `/chat` mounts no composer
+without a session or a staged draft, so the scene now presses the app's own ⌘N
+chord (the gesture `sceneNewChat` drives) and reaches the field, and it then reads
+`/v1/capabilities` and refuses with the rig named in full unless the backend
+advertises `features.references` — which no released harness does, so the live half
+of this set needs a loopback proxy that injects that one field in front of a live
+daemon this run owns (the shape QA round 2 ran). Its notice assertion was also
+still checking the pre-remediation copy (`No files match "zzzz".` against a notice
+that now names its scope); that is fixed with it.
 
 ## The surfaces
 
@@ -61,6 +74,7 @@ per `docs/agent-driver.md`, which is the QA pass's job, not this set's.
 | `mention-at-rest` | one chip mid-sentence | 1380x872 |
 | `mentions-at-the-edges` | a mention opening the draft and one closing it | 1380x872 |
 | `adjacent-mentions` | two mentions on one line | 1380x872 |
+| `quoted-mention` | the quoted form `@"my file.txt"`: one fill over a name with a space | 1380x872 |
 | `unresolved-stays-prose` | `@src/ap.py` (one character from a real file) beside a resolved one | 1380x872 |
 | `chip-needs-approval` | a path outside the workspace beside one inside it | 1380x872 |
 | `caret-inside-token` | the caret inside a mention: the list opens on the token | 1380x872 |
@@ -71,11 +85,11 @@ per `docs/agent-driver.md`, which is the QA pass's job, not this set's.
 | `picker-no-match` | nothing matches: the notice row, the list still open | 1380x768 |
 | `picker-empty-folder` | an empty directory | 1380x768 |
 | `picker-unreadable` | a directory that cannot be read | 1380x768 |
-| `picker-many-rows` | ten entries: the budget at 7 rows, and the footer's count saying so | 1380x768 |
+| `picker-many-rows` | eleven entries: the budget at 7 rows, and the footer's count saying so | 1380x768 |
 | `budget-800x600` | the same story at the design's narrow case: 4 rows | 800x600 |
 | `ceiling-1380x872` | the same story at the band's own window: the 8-row ceiling | 1380x872 |
 | `floor-768x520` | the same story at the clamp's own window: the 3-row floor binds | 768x520 |
-| `harness-cannot-expand` | a harness that advertises no `references`: no list, no chip, the path plain | 1380x872 |
+| `harness-cannot-expand` | a harness that advertises no `references`: no list, no chip, one sentence saying why, the path plain | 1380x872 |
 | `small-view-mention` | the small view, a 520px column: the fill reaches the field's 6px inset edge | 1380x872 |
 | `scrolled-draft` | a draft past `max-h-28`: the fills travel with the field's own scroll | 1380x872 |
 | `atomic-delete` | one Backspace at a chip's edge, with real arrow keys onto it | 1380x872 |
@@ -135,6 +149,16 @@ number below; the frames are the picture of them):
    row by construction" defect the measured budget exists to prevent. The last
    frame below the ceiling is now a whole row.
 
+   **And the region must not spend that cap on a horizontal bar** (QA round 2,
+   Q-5). The same check asserts `region.scrollWidth <= region.clientWidth` at every
+   viewport, because an `overflow-x` bar takes **8px** off the region's CLIENT box:
+   measured at 800x600, the cap was right to the half pixel and the painted region
+   was still four rows plus 28px of a fifth while the footer counted five. The
+   fixture's own 58-character name is what makes that measurable in a frame rather
+   than in an argument, and the row's name is the column that yields — it is the
+   thing being scanned, so it keeps every pixel until the row cannot fit at all and
+   only then ellipsises.
+
 ### One prediction the frames falsify, and the fix that came out of it
 
 The design's prediction 10 is that two adjacent mentions leave **≈16.5px** of
@@ -155,10 +179,22 @@ rather than merely reading quiet: the quoted form `@"my file.txt"` paints ONE fi
 over a space, so two merged chips were indistinguishable from a single token
 (design round 1, D2).
 
-A side that **faces another mention now takes 0 overhang**, so the whole 3.8px
-space is unpainted ground between two fills and the outer 6px stands on both
-chips, which is where the container reading lives. `adjacent-mentions` is the
-frame of the result. The rule and its numbers are asserted in
+A side that **faces another mention keeps a full space's advance of ground
+unpainted and splits whatever is left of the ground with the chip it faces**, so at
+one space apart the whole 3.8px space is unpainted ground between two fills and the
+outer 6px stands on both chips, which is where the container reading lives.
+`adjacent-mentions` is the
+frame of the result. **The rule has a DISTANCE term, and dropping it was itself a
+defect (design round 2, D9):** a facing side now keeps the ground it can see and
+splits the rest with the chip it faces, so the overhang ramps from 0 at one space
+to the full 6px at 15.8px of ground and stays there. The first correction returned
+0 at 3.8px and at 150px alike, which took 5-6px off `mentions-at-the-edges` across
+149px of prose and put `chip-needs-approval`'s new 1px edge rule through the first
+ink column of its own `@`. Both of those frames are re-captured here, and the
+trade the rule cannot fix is recorded in the design record rather than left to be
+inferred: three mentions on one line at one space each leave the middle chip flush
+at both ends, because the only alternative is painting the space.
+The rule and its numbers are asserted in
 `scripts/at-mentions.test.mjs` only as far as they are pure (the
 reference/directory/space rules); the geometry itself is measured here, and § 5
 state 10 of the design record carries the correction rather than the prediction.
@@ -170,7 +206,8 @@ state 10 of the design record carries the correction rather than the prediction.
   `damianvtran/local-operator#1220`. A frame is evidence about the composer.
 - **A mid-turn steer's own frame.** The composer now WITHHOLDS the whole
   affordance while the send this draft would make is a steer (no list, no chip, no
-  `@` tip), because the harness's steer path bypasses `Session.prompt` and leaves
+  `@` tip AND no sentence, because the backend is not the reason), because the
+  harness's steer path bypasses `Session.prompt` and leaves
   an `@path` as inert prose. That decision is exercised by the same gate
   `harness-cannot-expand` photographs — a fixture capability answer — and not by a
   frame of a live mid-turn composer: a story cannot put the app in a live turn, and

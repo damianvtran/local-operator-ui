@@ -2240,9 +2240,14 @@ export const STORIES = [
 	 * read at the width the app ships; `wrapped-mention` narrows the COLUMN to
 	 * 420px inside that viewport, which is the frame the fill's per-line-fragment
 	 * behaviour is read from, and `picker-rows` is captured TWICE because the row
-	 * budget is a claim about two frames: 1380x768 for the ceiling and 768x372 for
+	 * budget is a claim about two frames: 1380x768 for the ceiling and 768x520 for
 	 * the floor, where the region must show fewer rows rather than push the shell
 	 * off the bottom.
+	 *
+	 * `quoted-mention` is design round 1's D2 and review round 2's own note: the
+	 * quoted form `@"my file.txt"` paints ONE fill over a space, which is the shape a
+	 * merged pair used to have, so it is the pair to `adjacent-mentions` and the last
+	 * state on this surface that was argued rather than photographed.
 	 *
 	 * `before-no-mentions` is the pair's other half on purpose: it is the same
 	 * sentence with the same file named as prose, which is what `origin/main` paints
@@ -2252,6 +2257,7 @@ export const STORIES = [
 	["chat-mention-chips--mention-at-rest", 1380, 872],
 	["chat-mention-chips--mentions-at-the-edges", 1380, 872],
 	["chat-mention-chips--adjacent-mentions", 1380, 872],
+	["chat-mention-chips--quoted-mention", 1380, 872],
 	["chat-mention-chips--unresolved-stays-prose", 1380, 872],
 	["chat-mention-chips--chip-needs-approval", 1380, 872],
 	["chat-mention-chips--caret-inside-token", 1380, 872],

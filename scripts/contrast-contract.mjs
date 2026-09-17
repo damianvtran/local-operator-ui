@@ -1069,6 +1069,48 @@ const PERCEPTIBLE = [
 		maxWeightChange: 2.0,
 		against: "surface",
 	},
+	{
+		/*
+		 * THE OUTSIDE-WORKSPACE CHIP'S EDGE, which is the state's ONLY signal in the
+		 * three palettes whose washes do not separate (review round 2, R2).
+		 *
+		 * The row above pins the fill pair, and in `kanagawaLotus` (0.72), `sage`
+		 * (1.44) and `paper` (1.61) it passes on a pinned exception, because those
+		 * three washes are within the perceptual floor of `sunken`. What carries the
+		 * state there is the 1px `border-warning-border` the chip paints as its second
+		 * channel - and until this row existed, nothing asserted it: the numbers were
+		 * in the component's comment and the call site was pinned as a string, so a
+		 * palette re-authoring that flattened `warningBorder` toward `warningWash`
+		 * kept every gate green while the state disappeared in exactly the palettes
+		 * the exception list exists for.
+		 *
+		 * Measured over the 59 palettes: ΔE00(edge, its own fill) is **23.40** at
+		 * worst (`catppuccinMocha`) and ΔE00(edge, `sunken`) **28.06** at worst
+		 * (`sage`), against the **4.0** floor this row sets - branding § 3's floor for
+		 * a 1px rule, which is the same floor the D1 remedy cites for this edge.
+		 *
+		 * THE FLOOR IS ΔE00 RATHER THAN A CONTRAST RATIO, and that is a measurement
+		 * rather than a preference: measured over the same 59 palettes, the edge clears
+		 * 3:1 against its own fill in only **34** of them (1.78:1 at worst,
+		 * `catppuccinMocha`) and against `sunken` in **55** (2.75:1 at worst, `sage`). So a
+		 * 3:1 non-text floor would fail on twenty-five palettes for a hairline whose job
+		 * is to be *seen* beside its own wash rather than to be a control's boundary. The
+		 * chip is not a control, and `CONTROLS`' shape — a fill OR a border clearing 3:1
+		 * against the ground behind it, with an ink on the fill — would assert a quota
+		 * this edge was never drawn to meet.
+		 *
+		 * NO `pairedWith`: this row has no second state to weigh against. The parity
+		 * half of this table is about ONE component in two states, and a rule that
+		 * exists only in the outside state has nothing to be parity with - inventing a
+		 * ceiling here would be an assertion that cannot bind. The loop below states
+		 * that shape explicitly instead of skipping a row whose parity fields are
+		 * absent, which is what it used to do silently.
+		 */
+		name: "mention chip outside-workspace edge",
+		role: "warningBorder",
+		on: ["warningWash", "sunken"],
+		minDeltaE: 4.0,
+	},
 ];
 
 /**
@@ -2251,9 +2293,7 @@ for (const { id, palette: p } of palettes) {
 	/* Decorative lines: seen rather than contrasted, and stable across states. */
 	for (const item of PERCEPTIBLE) {
 		const role = p[item.role];
-		const sibling = p[item.pairedWith];
-		const ground = p[item.against];
-		if (!isHex(role) || !isHex(sibling) || !isHex(ground)) continue;
+		if (!isHex(role)) continue;
 		for (const g of item.on) {
 			if (!isHex(p[g])) continue;
 			assertions++;
@@ -2267,7 +2307,19 @@ for (const { id, palette: p } of palettes) {
 				);
 			}
 		}
-		/* One component, two states: the weight may not jump. */
+		/*
+		 * ONE COMPONENT, TWO STATES: the weight may not jump. OPT-IN, because a row
+		 * can state a separation with no second state to weigh against — the mention
+		 * chip's edge is the first (review round 2, R2) — and the shape it used to
+		 * have was worse than either: a row missing `pairedWith`/`against` was skipped
+		 * WHOLE, so a row written without them looked like an assertion and was none
+		 * at all. A row that declares them gets the parity check; a row that does not
+		 * says so by leaving them out.
+		 */
+		if (!item.pairedWith || !item.against) continue;
+		const sibling = p[item.pairedWith];
+		const ground = p[item.against];
+		if (!isHex(sibling) || !isHex(ground)) continue;
 		assertions++;
 		const a = ratio(role, ground);
 		const b = ratio(sibling, ground);

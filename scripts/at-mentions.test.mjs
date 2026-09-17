@@ -71,6 +71,7 @@ const {
 	atCandidateKey,
 	atChipSpans,
 	AT_ROW_PITCH,
+	AT_UNAVAILABLE_REASON,
 } = contract;
 
 /* ---------------------------------------------------------------- grammar -- */
@@ -565,10 +566,24 @@ test("the footer reads off the active row", () => {
 		atFooter({ path: "my file.txt", directory: false }),
 		'Enter inserts @"my file.txt" · Esc closes',
 	);
-	// No row to act on: the Escape clause stands alone rather than promising an
-	// insertion over a notice row — and Enter is held in that state, so the clause
-	// is the whole truth about the keys.
-	assert.equal(atFooter(undefined), "Esc closes");
+	// No row to act on: the Escape clause is joined by the statement that there is
+	// NOTHING FOR ENTER TO TAKE (UX round 2, U13). It used to read `Esc closes`
+	// alone, which answered a press of Enter with no response of any kind — the one
+	// gesture a user reaches for after typing a file name — while Enter is held in
+	// this state rather than passed to the submit.
+	assert.equal(atFooter(undefined), "Nothing to insert · Esc closes");
+});
+
+test("the harness's own refusal is one sentence that promises nothing", () => {
+	// UX round 2, U12: the state every released install is in said NOTHING, and the
+	// sentence has to name the backend as the reason. Two things are asserted about
+	// it because two things make it honest: it says what the harness cannot do, and
+	// it does not carry the `@` it is refusing (the composer may not teach a gesture
+	// its backend cannot serve) or an offer to update (the capability it lacks is one
+	// no harness advertises, so that promise has nothing behind it).
+	assert.match(AT_UNAVAILABLE_REASON, /^This backend cannot /);
+	assert.ok(!AT_UNAVAILABLE_REASON.includes("@"));
+	assert.ok(!/update/i.test(AT_UNAVAILABLE_REASON));
 });
 
 test("the count appears only when it adds something", () => {

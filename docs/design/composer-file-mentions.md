@@ -42,6 +42,17 @@ today the key is absent, the affordance is withheld, and `@path` stays plain tex
 add for this feature to appear, and that dependency is stated on the PR rather
 than assumed here.
 
+**The withheld state says why, in one sentence (UX round 2, U12).** Nothing is a
+worse answer than silence here — a user who types `@` and sees nothing has no path
+to "this install's backend is older" — so a mention-shaped token under the caret
+brings the picker's own one-row notice up with `This backend cannot carry file
+references.` It is the state's answer, not an advertisement: it makes no promise
+(a newer harness is not something the user can install their way into — the key
+does not exist yet), it never carries the `@` it is refusing, and it costs the
+composer no geometry because it stands in the list's own `absolute bottom-full`
+slot. `Nothing to insert` and this sentence are the two places the picker states a
+key's state rather than a row's.
+
 ---
 
 ## 1. What is there now, measured
@@ -487,7 +498,7 @@ per line fragment, so a token that wraps paints two fills.
 | Edge at rest | **none** | The fill is the boundary. See the fallback below before reaching for a line. |
 | Radius | `rounded-sm` (**6px**) | Branding § 5: 6px is the control radius. The fill is 17.7px tall, so 6px is a corner and not a lozenge. |
 | Fill height | **17.7px** = the 21.7px line box − 4px (2px top, 2px bottom) | 2px of inset each side leaves consecutive lines' fills **4px apart**, so a chip on line 2 cannot merge with a chip on line 1; and 17.7px still covers the field's ~16.5px glyph content box at 14px. |
-| Fill width | the token run's measured width + **12px** (2 x 6px overhang), where a side that FACES another mention takes **0** overhang instead | The overhang is what makes the fill read as a container rather than as highlighting: it is wider than the glyphs at both ends. It is deliberately **6px and not 8px** — the field's own inset is `px-2` (8px) at ≥550px and `px-1.5` (6px) in the small view, so a mention at the very start of a draft paints inside the field at every size and reaches the field's inset edge with nothing to spare in the small view, never the box's own 16px padding. Facing side: see state 10 below — the overhang is spent from the ground BETWEEN two mentions, so where there is a neighbour the whole gap is the separator. |
+| Fill width | the token run's measured width + **12px** (2 x 6px overhang), where a side that faces another mention takes *up to* the full ground instead, and the ground itself is the budget | The overhang is what makes the fill read as a container rather than as highlighting: it is wider than the glyphs at both ends. It is deliberately **6px and not 8px** — the field's own inset is `px-2` (8px) at ≥550px and `px-1.5` (6px) in the small view, so a mention at the very start of a draft paints inside the field at every size and reaches the field's inset edge with nothing to spare in the small view, never the box's own 16px padding. Facing side: see state 10 below — the overhang is spent from the ground BETWEEN two mentions, never from the space itself, and it is the *distance* to the neighbour that decides how much of the 6px is available. |
 | Fill y | the line box's top + 2px | Derived from the same rect, so it is 8px below the field's top edge (its `py-1.5` plus the 2px inset). |
 | Token ink | **unchanged** — the field's own `text-ink` | The glyphs are the textarea's. See § 4.2 for why that is a feature. |
 | Scroll | the fill layer is translated by the field's `scrollTop` | The field is `overflow-y-auto` and caps at `max-h-28` (112px, about 5 lines). Past that the field scrolls itself, and a fill that does not scroll with it detaches from its own text. |
@@ -601,12 +612,12 @@ CLI's `>` glyph; see the row below and § 9.)
 | Property | Value | Why |
 | --- | --- | --- |
 | Header | the directory being listed, `font-mono` at the `text-meta` step, `text-ink-dim`, `truncate`, path on `title` | Drilling is disorienting without it, and the Codex CLI gives the *rows* a parent column while leaving the listing's own location implicit — which works in a terminal whose prompt shows the cwd and fails here, where the cwd chip is in the composer's control row and can be icon-only below a 240px column (`CHAT_CHIP_ICON_ONLY_PX`). |
-| Name | `font-mono text-body-sm text-ink`, `shrink-0` | Same shape as the slash popup's own `/{label}`. The name is the thing being scanned. |
+| Name | `font-mono text-body-sm text-ink`, `min-w-0 shrink truncate` | Same shape as the slash popup's own `/{label}` — the name is the thing being scanned, so it is the LAST column to give, and with `nowrap` and a zero minimum width it keeps every pixel until the row cannot fit and only then ellipsises. It was `shrink-0`, which is the same priority order taken literally, and a name wider than the region then made the ROW wider than the region: a horizontal scrollbar takes **8px** off the region's own client box, so the whole-row cap below painted four rows and 28px of a fifth while the footer counted five (QA round 2, Q-5, measured at 800x600 against a 58-character name inside a 242px region). A row that fits is unchanged — every committed frame at every width still shows it. |
 | Parent | `font-mono text-body-sm text-ink-muted`, `min-w-0 flex-1 truncate` | The Codex CLI's second column, at the role the slash popup already gives its long dim string (the desktop app instead *trails* the directory label after the name — 2.1 — which reads as a caption rather than a column and is not the shape this list uses). **Not** `ink-dim`: that pair measures **4.51:1** at its worst on `elevated` (`dracula`), 0.01 above the floor, and a new long string has no business starting there. |
 | Tag | right-aligned, `text-meta text-ink-dim`, one word | `File` or `Directory`. Not `Dir` — the abbreviation is a terminal economy, and this app's own composer already says "Working directory". Not a lucide glyph: the row already carries two paths, and the tag answers the one question a path cannot. The **same slot** also carries `Needs approval`, which is the only place the picker can say *why* a row will ask (§ 5). |
 | Column alignment | no fixed name column, plain `gap-3` | The Codex CLI pads its name column so the parent column starts at one x across rows. That pays when a search spans depths; in the common listing every row's parent is the same string, so it aligns one repeated value — and a fixed column cannot hold a long name, which is the field the user is scanning. |
 | Selected row | the app's own wash + 2px accent bar; **no `>` marker** | The Codex CLI's marker exists because a terminal has no ground step worth using (the desktop app's marker is a filled row — 2.1). Adding one here would put two selection signals in one list, and the bar is already there for a measured reason (`slash-commands.tsx:900-911`: the wash alone is 1.000:1 in `dune`). |
-| Footer, left | one line, read off **the active row**: `Enter inserts @src/components/button.tsx` or `Enter opens src/components`, then ` · Esc closes` | The slash popup already reads its footer off the active row so the key and the row cannot describe different things. Here Enter means two different things depending on the row kind, which is exactly the case that footer pattern exists for. The key names are capitalised because they name KEYS, and because the popup sharing this footer slot over this same field spells them that way. |
+| Footer, left | one line, read off **the active row**: `Enter inserts @src/components/button.tsx` or `Enter opens src/components`, then ` · Esc closes`; with no row to act on, `Nothing to insert · Esc closes` | The slash popup already reads its footer off the active row so the key and the row cannot describe different things. Here Enter means two different things depending on the row kind, which is exactly the case that footer pattern exists for. The key names are capitalised because they name KEYS, and because the popup sharing this footer slot over this same field spells them that way. The no-row line names what Enter has to take as well as how to leave (UX round 2, U13): `Esc closes` alone answered a press of Enter with no response of any kind, in the one state a user reaches after typing a file name, and Enter is HELD there rather than passed to the submit — so the line is the whole truth about the keys at the width the strip already has. |
 | Footer, right | `n of m`, `text-meta text-ink-dim`, only when the region shows fewer rows than the listing holds | The Codex CLI's right-aligned footer column, spent on the one fact a scrolled list cannot show: how much of it there is. `n` is the rows the REGION draws (`min(rows, budget)`) and `m` is the entries the listing holds, so the column is absent exactly when the reader is looking at everything — including when a query has filtered most of a directory away, and, the case this row was written for, when the region itself is truncating. |
 | Visible rows | **measured**, `clamp(3, floor((boxTop − columnTop − 4 − chrome) / 35.5), 8)`, and the row region's max-height is that whole multiple of the measured pitch | The row budget is not a taste call: the popup spends the space between the box's top edge and what clips, which is least on an empty chat at the app's minimum window. This is `suggestionStackCapFor`'s argument, ported — "a cap in px cannot be aligned to a row by construction" (`suggestion-stack.ts:19-27`) — with the same off-by-a-slice defect to avoid. 8 is the ceiling because the TUI's own `@` picker uses `MAX_VISIBLE_ROWS = 8` (`command_picker.py`), so the two surfaces agree; 3 is the floor so the picker is never a stub. **35.5 and not 36**: a row is `py-2` (16) plus the `text-body-sm` line box at 0.8125rem x 1.5, i.e. 19.5px, measured at 35.5 in the built app at every window size; the 36 this row used to state was a belief about the line box, and it made the cap overflow by `budget x 0.5px`. |
 | Total height at the ceiling | 2 (edge) + 25.4 (header) + 8 x 36 = 288 (region) + 25.4 (footer) = **340.8px** | Derived. At 8 rows the region is 72px taller than the slash popup's 216px, which is the one number to check on a frame at the minimum window (§ 5, "narrow window"). |
@@ -896,12 +907,37 @@ marking the link *as a link* would be marking something the model never sees.
 **10. Two adjacent mentions.** The grammar makes true adjacency impossible: a
 token opens only at a boundary, so `@a.py@b.py` is one unresolvable span and not
 two chips. The reachable case is `@a.py @b.py`, and its rule is that **the fill
-covers the token and never the separator**: on a side that faces the other
-mention the overhang is **0**, so the whole space advance — measured on this
-field at **3.8px**, not the 4.5px this paragraph used to assume — is unpainted
-ground between two fills, and the outer 6px overhangs stand on both chips, which
-is where the container reading lives. The measurement to check on a frame is that
-the fills never touch.
+covers the token and never the separator**: a side facing another mention keeps a
+full space's advance of ground unpainted — measured on this field at **3.8px**,
+not the 4.5px this paragraph used to assume — and the two facing sides split
+whatever is left of the ground between them, never more than the 6px overhang
+each. At one space apart that spends the whole space as separator, and the outer
+6px overhangs stand on both chips, which is where the container reading lives.
+The measurement to check on a frame is that the fills never touch.
+
+**The distance term is load-bearing, and dropping it was a defect (design
+round 2, D9).** The first correction returned 0 for any neighbour on the line,
+at 3.8px exactly as at 150px, so a chip that merely shared a line with another
+mention lost its fill on that side: `mentions-at-the-edges` gave up 5–6px across
+149px of prose, and in `chip-needs-approval` the outside chip's 1px rule came to
+render in columns 441–442 against the token's own first ink column at 441 — 6px
+of air on its free side and none on that one, in the state whose whole job is to
+be readable at a glance. The rule now spends the ground it can see: the overhang
+ramps continuously from 0 at one space to the full 6px at **15.8px** of ground
+(`3.8 + 2 x 6`) and stays there, so nothing outside the token's own neighbourhood
+can reshape its fill. The separator is never smaller than `min(ground, 3.8px)`,
+so the two fills cannot merge whatever a font or a zoom does to the advance.
+
+**Three mentions on one line at one space each, and one thing the rule cannot
+do.** The middle chip is flush at both ends — § 3.1's "wider than the glyphs at
+both ends" does not hold for it. That is not a gap in the implementation but the
+arithmetic of its own rule: one space on each side cannot be split between two
+facing fills and still leave a space unpainted, and painting the space is the one
+thing the rule forbids (it is how the two fills of the quoted form became
+indistinguishable from a single token). § 3.1's claim is therefore a claim about
+a side with room to spend, and the standing exception to it is this state; no
+committed frame covers it yet, and the case is reachable by the grammar
+(`@a.py @b.py @c.py`).
 
 **What this paragraph used to predict, and why it was wrong.** It said the gap
 would be "the space's own advance — about 4.5px at 14px — plus 12px of overhang",
@@ -1060,7 +1096,7 @@ are what the frame decides):
 | Band height with the picker open vs closed | — | identical in every state | **0px** |
 | Chip fill height | — | **17.7px** (line box 21.7 − 4) | — |
 | Chip fill overhang | — | **6px** each side | — |
-| Gap between two adjacent chips' fills | — | **the whole space advance, 3.8px measured**, with 0 overhang on each facing side | — |
+| Gap between two adjacent chips' fills | — | **the whole space advance, 3.8px measured** — a facing side keeps that much ground and splits the rest of it, so at one space apart the separator is the whole space | — |
 | Picker gap to the box | — | **4px** (`mb-1`) | — |
 | Picker shell at 8 rows | — | **340.8px** | — |
 | Picker region, 8 rows | — | **288px**, scrolling | — |

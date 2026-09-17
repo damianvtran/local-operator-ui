@@ -86,6 +86,22 @@ export function useAtResolution({
 	 * states this folds and why it fails closed. FALSE HERE MEANS NO SPANS: no
 	 * probe is issued, no fill is painted AND the atomic delete is inert, because
 	 * the delete asks this hook which tokens are chips.
+	 *
+	 * A CHIP ALREADY IN THE BOX WITHDRAWS WHEN THE TURN STARTS, and that is the
+	 * intended half of the same rule rather than an oversight (UX round 2, U14).
+	 * The flag's two false states are not alike here: while a turn is in flight the
+	 * next Enter is a STEER, the steer path bypasses `Session.prompt`, and an
+	 * `@path` in one is inert prose the harness never expands — so the fill would be
+	 * asserting an expansion that will not happen, which is the exact claim this
+	 * gate exists to refuse, and a fill is not less of a claim because the user
+	 * typed the token a second earlier. Two consequences follow from the same
+	 * expression and both are the honest reading: the fill goes, and the atomic
+	 * Backspace stops taking the whole token, because the text IS prose for the
+	 * length of that turn. What does NOT change is the user's sentence — not one
+	 * character of the draft is touched, and the fill reappears, measured from the
+	 * same text, when the turn ends. The alternative (keep painting the spans the box
+	 * last had) would leave a chip on screen claiming a reference the model will not
+	 * receive, which is the one thing this whole feature refuses to do.
 	 */
 	enabled?: boolean;
 }): AtResolution {

@@ -47,6 +47,7 @@ import {
 import {
 	AT_ROWS_MIN,
 	AT_ROW_PITCH,
+	AT_UNAVAILABLE_REASON,
 	type AtKeyInput,
 	type AtKeyIntent,
 	atCount,
@@ -135,6 +136,18 @@ export type AtCompletionState = {
 	loading: boolean;
 	/** True once the user has arrowed onto a row in THIS list. */
 	close(): void;
+	/**
+	 * WHY THIS COMPOSER HAS NOTHING TO OFFER, when the reason is the harness itself.
+	 *
+	 * The one state the gate used to leave completely silent (UX round 2, U12): a
+	 * backend that does not advertise `references` gets no list, no chip, no tip and
+	 * no sentence, so a user who typed `@` is left believing the app has no such
+	 * gesture. This is the sentence, and `null` in every other state — including the
+	 * mid-turn one, where the harness CAN carry a reference and the reason is the
+	 * turn (`at-mention-overlay.tsx` and `chat-page.tsx` fold both into `enabled`,
+	 * which is why the reason cannot be derived from it).
+	 */
+	unavailable: string | null;
 	setActive(index: number): void;
 	setActiveHover(index: number): void;
 	/** Record an accepted reference, so it ranks first next time. */
@@ -165,6 +178,17 @@ export type UseAtPickerArgs = {
 	 * behaviour for exactly this draft.
 	 */
 	enabled?: boolean;
+	/**
+	 * Whether the harness itself cannot carry a reference, as a fact of its own.
+	 *
+	 * SEPARATE FROM `enabled` because the two false states of that flag are not the
+	 * same fact (UX round 2, U12): a turn in flight withholds the affordance from a
+	 * harness that CAN expand a mention, and saying "this backend cannot carry file
+	 * references" there would be false. Only the caller can tell them apart — it owns
+	 * the capability answer — so it hands the harness half down and the turn half
+	 * stays in `enabled`.
+	 */
+	unsupported?: boolean;
 };
 
 /**
@@ -187,6 +211,7 @@ export function useAtPicker({
 	caret,
 	cwd,
 	enabled = false,
+	unsupported = false,
 }: UseAtPickerArgs): AtCompletionState {
 	const listId = useId();
 	const available = enabled && bridge() !== null;
@@ -425,6 +450,14 @@ export function useAtPicker({
 	return {
 		available,
 		open: state.open && tokenKey !== null && available,
+		/*
+		 * The caret has to be in a mention-shaped token for the sentence to be worth
+		 * saying, and that is the whole of its condition: it answers the user's own
+		 * gesture ("I typed `@`, and nothing happened") rather than decorating a
+		 * composer that is idle, so an ordinary draft never carries it.
+		 */
+		unavailable:
+			tokenKey !== null && unsupported ? AT_UNAVAILABLE_REASON : null,
 		active: state.active,
 		rows,
 		token,
@@ -580,6 +613,49 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 		activeRef.current?.scrollIntoView({ block: "nearest" });
 	}, [state.active]);
 
+	/*
+	 * THE ONE STATE WHERE THE COMPOSER SAYS WHY IT HAS NOTHING TO OFFER (UX round 2,
+	 * U12), in the same one-row notice register the empty states use.
+	 *
+	 * NOT a `listbox`, and deliberately not the same element: there are no options
+	 * here and no key acts on anything, so claiming a listbox would be a second lie
+	 * on top of the silence this replaces (the field's `aria-expanded` stays false,
+	 * which is what "there is no list" means). `role="status"` is what makes the
+	 * sentence arrive for a screen-reader user the moment the token under the caret
+	 * brings it on screen — the same polite-announcement role the composer's own
+	 * notices use.
+	 *
+	 * ONE ROW, NO HEADER AND NO FOOTER, because neither has anything to say: the
+	 * header names a directory that is not being listed, and the footer names keys
+	 * that would do nothing. It costs the composer NOTHING — the shell is
+	 * `absolute bottom-full` like the list it stands in for — which is why the
+	 * sentence can be said at all in a band whose whole design is about not moving.
+	 *
+	 * `<output>` IS THE STATUS REGION, not a `div` with `role="status"` on it: the
+	 * element IS the role, and it is the one the composer's other notice already
+	 * uses (`message-input.tsx`'s credential sentence), so the two read as one
+	 * mechanism rather than two spellings of one thing.
+	 */
+	if (state.unavailable !== null) {
+		return (
+			<output
+				ref={shellRef}
+				className={cn(
+					"@container/at absolute bottom-full left-0 right-0 z-20 mb-1",
+					"overflow-hidden rounded-md border border-control bg-elevated",
+					"shadow-lg",
+				)}
+			>
+				<span
+					data-mention-notice
+					className="block px-3 py-2 text-body-sm text-ink-muted"
+				>
+					{state.unavailable}
+				</span>
+			</output>
+		);
+	}
+
 	if (!state.open) return null;
 
 	/*
@@ -627,9 +703,17 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 			 * The row region owns the scroller, and its max-height is a whole number of
 			 * ROW_PITCH rows: a list that rests on a half-row slice reads as a clipped
 			 * glyph rather than as "there is more", which the 2px thumb already says.
+			 *
+			 * AND IT NEVER SCROLLS SIDEWAYS (QA round 2, Q-5). A horizontal bar is not
+			 * free here: it takes **8px** off the region's own CLIENT box, so the cap
+			 * above — the whole-row arithmetic this region exists to honour — painted
+			 * four rows and 28px of a fifth while the footer counted five (measured at
+			 * 800x600 against the row below, which was 789px wide inside a 242px
+			 * region). The row is bounded at its source; this is the belt, because the
+			 * cap and the count must never disagree again whatever a future row holds.
 			 */}
 			<div
-				className="overflow-y-auto"
+				className="overflow-y-auto overflow-x-hidden"
 				style={{ maxHeight: `${budget * AT_ROW_PITCH}px` }}
 			>
 				{state.rows.length === 0 ? (
@@ -640,8 +724,16 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 					 * keystroke that stopped matching (PR #1220). A notice row holds the
 					 * picker up and distinguishes the four empty facts from each other,
 					 * which a closed list cannot do at all.
+					 *
+					 * `data-mention-notice` is the hook the stories assert this row by: the
+					 * notice is the one thing a frame can be about in the empty states, and a
+					 * selector that went through the listbox's role could not reach the
+					 * harness-cannot-expand sentence, which has no listbox by design.
 					 */
-					<div className="px-3 py-2 text-body-sm text-ink-muted">
+					<div
+						data-mention-notice
+						className="px-3 py-2 text-body-sm text-ink-muted"
+					>
 						{state.notice}
 					</div>
 				) : (
@@ -681,7 +773,24 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 								onClick={() => onPick(row)}
 								onMouseEnter={() => state.setActiveHover(index)}
 							>
-								<span className="shrink-0 font-mono text-body-sm text-ink">
+								{/*
+								 * THE NAME YIELDS, and the design's `shrink-0` is the reason this
+								 * comment is longer than the class it explains. A name wider than the
+								 * region made the whole ROW wider than the region, which summoned a
+								 * horizontal scrollbar and cost the cap above a row's worth of its
+								 * whole-row arithmetic (QA round 2, Q-5: a 200-character name
+								 * measured `scrollWidth` 789 against a 242px `clientWidth`).
+								 *
+								 * The shape is the design's own PRIORITY ORDER rather than its literal
+								 * `shrink-0`: the name is the thing being scanned, so it is the last
+								 * column to give — the parent column beside it is `flex-1 min-w-0`
+								 * `truncate` and already yields, and with `nowrap` and a zero minimum
+								 * width this one keeps every pixel until the row cannot fit at all and
+								 * only then ellipsises. A row that fits is byte-identical to the
+								 * frames taken before it, which is every committed frame at every
+								 * width: only a name too long for the region changes.
+								 */}
+								<span className="min-w-0 shrink truncate font-mono text-body-sm text-ink">
 									{row.name}
 								</span>
 								{/*

@@ -494,6 +494,27 @@ function SessionPanel({
 	const mentionsEnabled =
 		desktopFeatureEnabled(capabilities.data, "references") && !busy;
 	/*
+	 * AND WHETHER THE HARNESS ITSELF IS THE REASON, which is a different fact from
+	 * `mentionsEnabled`'s false (UX round 2, U12). That flag is false for a turn in
+	 * flight over a backend that CAN expand a mention, and the composer's sentence
+	 * for this state ("this backend cannot carry file references") would be a lie
+	 * there — so only this page, which owns the capability answer, can hand down the
+	 * half that names the harness.
+	 *
+	 * `isSuccess` AND `desktop_available` ARE BOTH LOAD-BEARING, and both are there
+	 * to stop a FALSE claim rather than a missing one: `desktopFeatureEnabled` fails
+	 * closed, so a capabilities read that is still in flight, errored or answered by
+	 * nothing would otherwise be reported to the user as "this backend cannot carry
+	 * file references" — a statement about the backend made on the strength of an
+	 * answer the app never received. An answer that arrived and says the harness is
+	 * available without the key is the only evidence the sentence may rest on, and it
+	 * is exactly the state every released install is in today.
+	 */
+	const mentionsUnsupported =
+		capabilities.isSuccess &&
+		Boolean(capabilities.data?.desktop_available) &&
+		!desktopFeatureEnabled(capabilities.data, "references");
+	/*
 	 * Moving a LIVE session's directory, which is the one composer control whose
 	 * write path is a lifecycle operation rather than a draft field.
 	 *
@@ -1967,6 +1988,7 @@ function SessionPanel({
 					mcpRemedy={mcpRemedy}
 					childrenOpenable={childrenOpenable}
 					mentionsEnabled={mentionsEnabled}
+					mentionsUnsupported={mentionsUnsupported}
 					pulses={canonical.subagentPulses}
 					canonical={{
 						view,

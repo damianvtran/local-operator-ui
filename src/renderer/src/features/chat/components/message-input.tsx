@@ -504,6 +504,18 @@ type MessageInputProps = {
 	 */
 	mentionsEnabled?: boolean;
 	/**
+	 * Whether the HARNESS is why the affordance above is absent, which the composer
+	 * has to be told separately.
+	 *
+	 * The flag above is false for two different facts — a turn in flight, and a
+	 * harness that does not carry references — and only the page owns the answer to
+	 * the second, because the capability read is its. The composer's sentence for it
+	 * ("this backend cannot carry file references", UX round 2's U12) must not be
+	 * said over a turn: that would be a claim about the backend made from a fact
+	 * about the turn.
+	 */
+	mentionsUnsupported?: boolean;
+	/**
 	 * The conversation is not on this machine (M6), so nothing typed here could
 	 * be sent anywhere.
 	 *
@@ -827,6 +839,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isHydrating = false,
 			unavailable = false,
 			mentionsEnabled = false,
+			mentionsUnsupported = false,
 			sessionStatus,
 			onSlashCommand,
 			onSlashNote,
@@ -1539,6 +1552,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			caret,
 			cwd,
 			enabled: mentionsEnabled,
+			unsupported: mentionsUnsupported,
 		});
 		const atMentions = useAtResolution({
 			text: newMessage,
