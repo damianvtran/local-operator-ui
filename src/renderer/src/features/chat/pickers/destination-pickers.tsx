@@ -80,6 +80,13 @@ import {
 	PickerSegment,
 } from "./picker-host";
 import {
+	GOAL_CLEAR_ARGS,
+	GOAL_COMMAND,
+	LOOP_COMMAND,
+	LOOP_STOP_ARGS,
+	loopIsRunning,
+} from "./session-commands";
+import {
 	errorText,
 	isNativeAction,
 	useOperation,
@@ -1849,7 +1856,7 @@ export const GoalPicker: FC<PickerContext> = ({
 					/>
 				</PickerField>
 			}
-			onSubmit={() => void command.run("goal", goal.trim())}
+			onSubmit={() => void command.run(GOAL_COMMAND, goal.trim())}
 			submitLabel="Set goal"
 			submitDisabled={!goal.trim()}
 			actions={
@@ -1858,7 +1865,7 @@ export const GoalPicker: FC<PickerContext> = ({
 						variant="danger"
 						size="sm"
 						type="button"
-						onClick={() => void command.run("goal", "clear")}
+						onClick={() => void command.run(GOAL_COMMAND, GOAL_CLEAR_ARGS)}
 						disabled={command.busy}
 					>
 						Clear goal
@@ -2055,12 +2062,18 @@ export const LoopPicker: FC<PickerContext> = ({
 	const [count, setCount] = useState("3");
 	const [goal, setGoal] = useState(action.args || "");
 	const loop = (canonical.frontend?.loop ?? null) as DesktopLoopState | null;
-	const running = loop?.status === "running" || loop?.status === "judging";
+	/*
+	 * The moving-loop predicate, imported rather than restated: the composer's status
+	 * row gates the same two states with the same function, and a second copy of the
+	 * truth table is a second answer to "can this loop be stopped" (agent review
+	 * round 1, MINOR 1).
+	 */
+	const running = loop !== null && loopIsRunning(loop.status);
 	const standingGoal = canonical.frontend?.goal ?? "";
 	const submit = useCallback(async () => {
 		const args = mode === "count" ? count.trim() : goal.trim();
 		if (!args) return;
-		await command.run("loop", args);
+		await command.run(LOOP_COMMAND, args);
 	}, [command, mode, count, goal]);
 	return (
 		<PickerHost
@@ -2137,7 +2150,7 @@ export const LoopPicker: FC<PickerContext> = ({
 						variant="danger"
 						size="sm"
 						type="button"
-						onClick={() => void cancel.run("loop", "cancel")}
+						onClick={() => void cancel.run(LOOP_COMMAND, LOOP_STOP_ARGS)}
 						disabled={cancel.busy}
 					>
 						Cancel loop
