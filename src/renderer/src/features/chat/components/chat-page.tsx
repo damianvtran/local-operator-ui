@@ -2075,6 +2075,27 @@ export function ChatPage() {
 		2,
 	);
 	const active = useCanonicalSessionsStore((state) => state.activeSessionId);
+	/*
+	 * WHICH CONVERSATION'S BROWSER IS UP (design review round 2, U8).
+	 *
+	 * The sidebar's mark TOGGLES (round 2, U6, ruled), so it needs the state of the thing
+	 * it toggles: only the pane's own lens says whether a press will close it. It is read
+	 * ONCE here and handed down as the id the pane is open on, for the same reason the
+	 * summaries are (see `browserMarkFor`): forty rows subscribing to the pane's store is
+	 * the cost that read exists to remove, and a story can photograph either state from a
+	 * prop.
+	 *
+	 * THE EXPRESSION IS THE HANDLER'S OWN ("open AND scoped to the conversation AND that
+	 * conversation current"), so the mark's `aria-expanded` and the press's effect cannot
+	 * disagree: a pane left on `All tabs` is open but not open HERE, and a press there
+	 * normalises the lens instead of closing.
+	 */
+	const browserPaneOpen = useUiPreferencesStore((s) => s.isBrowserPaneOpen);
+	const browserPaneScope = useUiPreferencesStore((s) => s.browserPaneScope);
+	const browserPaneOpenOn =
+		browserPaneOpen && browserPaneScope === "conversation"
+			? (active ?? undefined)
+			: undefined;
 	const draftKey = useCanonicalSessionsStore((state) => state.activeDraftKey);
 	const draft = useCanonicalSessionsStore((state) =>
 		draftKey ? state.drafts[draftKey] : undefined,
@@ -2221,6 +2242,7 @@ export function ChatPage() {
 					onSelectConversation={select}
 					onStageDraft={stage}
 					browserSummaries={browserSummaries}
+					browserPaneOpenOn={browserPaneOpenOn}
 					onOpenConversationBrowser={openConversationBrowser}
 				/>
 			}

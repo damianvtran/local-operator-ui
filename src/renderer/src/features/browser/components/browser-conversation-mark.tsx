@@ -18,6 +18,20 @@ export interface BrowserConversationMarkProps {
 	 * 1, A7: the sidebar comment claimed this behaviour and the code did not do it).
 	 * Defaults to `false`, which is the resting case every story renders. */
 	current?: boolean;
+	/** Whether the browser pane is OPEN ON THIS CONVERSATION right now — i.e. whether a
+	 * press on this mark will CLOSE it rather than open it (design review round 2, U8).
+	 *
+	 * WHY IT IS A PROP AND NOT SOMETHING THIS COMPONENT READS: the only thing that knows
+	 * is the pane's own lens, which lives in the UI-preferences store, and the sidebar's
+	 * rows deliberately do not subscribe to it (see `browserMarkFor`'s note on the shared
+	 * projection). The caller reads it once and hands it down, so the mark stays a
+	 * presentational control and a story can photograph either state.
+	 *
+	 * It is the SAME expression the press's own handler branches on
+	 * (`chat-page.tsx`'s `openConversationBrowser`): open AND scoped to the conversation
+	 * AND that conversation current. A pane left on `All tabs` is not "open here" in the
+	 * sense either the press or this attribute means, so it is NOT expanded. */
+	expanded?: boolean;
 	onOpen: (sessionId: string) => void;
 }
 
@@ -67,9 +81,12 @@ export interface BrowserConversationMarkProps {
  * mark that could not open anything would be an affordance that lies.
  */
 export const BrowserConversationMark: FC<BrowserConversationMarkProps> = memo(
-	({ sessionId, name, summary, current = false, onOpen }) => {
+	({ sessionId, name, summary, current = false, expanded = false, onOpen }) => {
 		const approvals = summary.pendingApprovals;
 		const tabs = summary.tabCount;
+		/** ONE sentence per state, so the tooltip and the accessible name cannot drift, and
+		 * so the words name the action the press will actually take. */
+		const label = markLabel(name, summary, expanded);
 		/** NOTHING TO SAY: the design's quietest state, and the one that has to exist for
 		 * the mark to be an entry point on every row (D2/A4). */
 		const quiet = tabs === 0 && approvals === 0;
@@ -78,11 +95,19 @@ export const BrowserConversationMark: FC<BrowserConversationMarkProps> = memo(
 		 * tooltip, which are read rather than glanced at. */
 		const badgeText = approvals > 9 ? "9+" : String(approvals);
 		return (
-			<Tooltip content={markLabel(name, summary)} side="top">
+			<Tooltip content={label} side="top">
 				<button
 					type="button"
 					onClick={() => onOpen(sessionId)}
-					aria-label={markLabel(name, summary)}
+					aria-label={label}
+					/*
+					 * THE TOGGLE'S OWN STATE (design review round 2, U8): this control does two
+					 * opposite things, and in the state where the press closes, the copy names the
+					 * close and the state says so too. `aria-expanded` rather than `aria-pressed`
+					 * because the thing it governs is a DISCLOSURE — a pane that is revealed or
+					 * hidden — not a setting being toggled on and off.
+					 */
+					aria-expanded={expanded}
 					/*
 					 * NO `data-chat-row` HERE (and that is a hard rule, not a style choice):
 					 * three committed harnesses select rows on `[data-chat-row]` —
@@ -109,6 +134,19 @@ export const BrowserConversationMark: FC<BrowserConversationMarkProps> = memo(
 						 * `current` is read from the same expression that paints it.
 						 */
 						quiet ? "text-ink-dim" : "text-ink-muted",
+						/*
+						 * THE EXPANDED STEP IS INK, NOT A FILL (design review round 2, U8). A second
+						 * press on this mark closes the pane, and before this it left the row — and the
+						 * control in it — looking exactly as it had one press earlier, which is
+						 * indistinguishable from a press that did not register. The step is the
+						 * app's own vocabulary for a state on a control that has no ground of its
+						 * own: it is the top of the same ink ramp the quiet state starts at
+						 * (`ink-dim` -> `ink-muted` -> `ink`), never a fill (this is a 24px control
+						 * inside a row that paints its own ground, and a fill here would be the
+						 * "ground plus text for one state" doubling branding.md section 2 rules
+						 * out), and never opacity.
+						 */
+						expanded && "text-ink",
 						!current && "hover:bg-elevated hover:text-ink",
 						"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 					)}
@@ -172,8 +210,18 @@ BrowserConversationMark.displayName = "BrowserConversationMark";
  * live here and are read by BOTH `aria-label` and the tooltip's content — which is the
  * reverse of the rule the row follows, and for the same reason: the mark has no visible
  * text of its own beyond a number, so it needs one channel that says everything.
+ *
+ * THE VERB FOLLOWS THE STATE (design review round 2, U8; the toggle itself is round 2's
+ * U6, ruled). A press while the pane is already open ON THIS conversation closes it, so
+ * "Open the browser for …" was the wrong tense on screen and in the accessibility tree
+ * for exactly the press that closes. The detail half is unchanged in both states: the
+ * counts are a fact about the conversation, not about the pane.
  */
-function markLabel(name: string, summary: ConversationBrowserSummary): string {
+function markLabel(
+	name: string,
+	summary: ConversationBrowserSummary,
+	expanded = false,
+): string {
 	const parts: string[] = [];
 	if (summary.tabCount > 0) {
 		parts.push(
@@ -187,5 +235,5 @@ function markLabel(name: string, summary: ConversationBrowserSummary): string {
 		);
 	}
 	const detail = parts.length > 0 ? ` — ${parts.join(", ")}` : "";
-	return `Open the browser for "${name}"${detail}`;
+	return `${expanded ? "Close" : "Open"} the browser for "${name}"${detail}`;
 }
