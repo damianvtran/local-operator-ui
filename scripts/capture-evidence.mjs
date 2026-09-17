@@ -4726,6 +4726,27 @@ const main = async () => {
 	 *      neither side. `countsMean` is in this group because it restates
 	 *      `frames`/`surfaces` - its prose says what each field counts and where
 	 *      to read it, and carries no number of its own for a fold to falsify.
+	 *      The stamps in group (4) - `srcTree` and `scriptsTree` - are derived
+	 *      from the MERGED tree, which means AFTER the merge commit exists.
+	 *      Deriving them while the merge is still uncommitted asks
+	 *      `git rev-parse HEAD:src` and gets the PRE-merge head's trees: real
+	 *      trees, so nothing looks wrong in the diff, just not this one's. Fold 11
+	 *      shipped exactly that to `main` and the desktop suite's own stamp test
+	 *      caught it. Fold 10 was stale from the OTHER side one commit earlier for
+	 *      the same underlying reason: `a5d81f0af`'s manifest declared
+	 *      `7072b9d21`/`3e32dcbe4`, which are its second parent `013aad424`'s
+	 *      (then-main's) trees, against the merged tree's `aca12e400`/`311c0b6a2`,
+	 *      and the correction came only in the follow-up `3fdee3e53`. The class is
+	 *      therefore "a merge resolution that does not re-derive at the commit it
+	 *      produces", and it reaches a shipping branch when nothing re-derives
+	 *      before that merge lands.
+	 *      Two things follow for a change that also touches `scripts/`, and only
+	 *      one of them is about this file: the `scripts` stamp cannot include the
+	 *      edit until the edit is COMMITTED (`HEAD:scripts` does not see a working
+	 *      -tree change), so a value written before that commit describes a tree
+	 *      that is not the one it rides in; and the `--amend` after writing the
+	 *      values in keeps the value and the tree it names inside ONE commit -
+	 *      the amendment moves `docs/` only, so the value stays true.
 	 *   5. And NO FIELD THAT SPELLS OUT WHAT A CITATION NAMES is carried from
 	 *      main's side under any name: main's manifest still has
 	 *      `refreshedAtHeadNote`, the spelling this branch deleted, and carrying
