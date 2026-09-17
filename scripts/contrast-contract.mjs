@@ -242,6 +242,28 @@ const CONTROLS = [
 		ink: "ink",
 	},
 	{
+		/*
+		 * The searchable combobox's ACTIVE row — the same problem as the picker's
+		 * pointer mark above, on the same ground, and it arrived here for the same
+		 * reason: `bg-accent-wash` on `elevated` is dE00 0.77 in obsidian (1.014:1),
+		 * so a highlight built from the wash alone is no highlight at all in that
+		 * theme and under dE00 4 in three more. The row is listed under its own name
+		 * rather than left to the picker's, because "green output about a component
+		 * nobody listed is not evidence about that component" (`AGENTS.md`): the
+		 * control owns a fill-and-border pair now, and this is where it is asserted.
+		 *
+		 * `fill` is null because the wash is the TINT, not the boundary the floor is
+		 * about: what has to be perceivable is the structural edge, and asserting the
+		 * wash as a fill here would be asserting the pairing that is known to
+		 * collapse.
+		 */
+		name: "combobox option active mark",
+		on: ["elevated"],
+		fill: null,
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
 		name: "accent wash chip",
 		on: ["canvas", "surface"],
 		fill: "accentWash",
@@ -1186,6 +1208,21 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/session-status/context-wheel.tsx",
 		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
 		why: "PERCEPTIBLE measures hairline against sunken; nothing otherwise proves the component renders those two roles, and one token here reproduces D7 behind a green gate",
+	},
+	{
+		/*
+		 * The combobox's active row, on the same ground and for the same reason
+		 * the picker's mark above carries one: `accent-wash` is dE00 0.77 on
+		 * `elevated` in obsidian, so the keyboard's selected row had no visible
+		 * mark there. The role lives in the CONTROLS row
+		 * `combobox option active mark`; this pin is what proves the component
+		 * still paints it, because a palette assertion cannot see a class that
+		 * was dropped at the call site.
+		 */
+		what: "combobox option row structural mark",
+		file: "src/renderer/src/shared/components/ui/searchable-select.tsx",
+		must: '"bg-accent-wash outline-solid outline-1 -outline-offset-1 outline-control"',
+		why: "the active row must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `combobox option active mark` above, and this pin is what proves the row renders it",
 	},
 	{
 		/*

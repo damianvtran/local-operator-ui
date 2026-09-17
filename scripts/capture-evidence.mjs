@@ -1214,10 +1214,68 @@ export const STORIES = [
 	["settings-backend--read-only-and-redacted", 1380, 900],
 	["settings-backend--gated-children", 1380, 900],
 	["settings-backend--deep-link", 1380, 900],
+	/*
+	 * The registry's provider and model rows, which are the operator's report.
+	 *
+	 * `provider-model-rows` is the five rows at rest — `hosting` and `model_name`
+	 * from the configured fixture, a placeholder on the three subagent tiers —
+	 * and the two `*-list-open` frames are the feature itself: the WHOLE login
+	 * registry with its credential state shown, and the model list narrowed by
+	 * the hosting beside it (with the field's own stored value rescued into its
+	 * own group, which is the state the configured fixture is in by itself).
+	 * `catalogue-deferred` and `catalogue-unknown-credentials` are the two
+	 * degradations: a per-provider failure, which is a note over a list that
+	 * still has rows, and an unreadable credential store, where nothing may be
+	 * badged.
+	 *
+	 * `provider-model-rows` is also the BEFORE frame's counterpart in
+	 * `docs/evidence/settings-model-combobox/`, which carries the driver pair
+	 * from the real app; these frames are the same states under a stubbed
+	 * transport, which is what makes them reproducible across twelve themes.
+	 */
+	["settings-backend--provider-model-rows", 1380, 900],
+	["settings-backend--hosting-list-open", 1380, 900],
+	/*
+	 * The same open list at the narrowest window the product can render
+	 * (`WINDOW_MIN_WIDTH` 800, so the settings column is ~688px by the arithmetic
+	 * the section's own stories record). The design checklist asks for exactly
+	 * this frame - a popover anchored to a 384px field must not overflow the
+	 * window - and the only narrow frame before it was a 620px column, which is
+	 * below the app's own minimum (design round 1, D5.2).
+	 */
+	["settings-backend--hosting-list-open", 800, 900],
+	["settings-backend--model-list-open", 1380, 900],
+	["settings-backend--catalogue-partial", 1380, 900],
+	["settings-backend--catalogue-in-flight", 1380, 900],
+	["settings-backend--catalogue-unknown-credentials", 1380, 900],
 	["settings-backend--dirty", 1380, 900],
 	["settings-backend--saving", 1380, 900],
 	["settings-backend--save-failed", 1380, 900],
 	["settings-backend--narrow", 620, 900],
+	/*
+	 * And the control those rows are built on, which had never been photographed
+	 * in ANY theme or state before this change — its own story was in no row of
+	 * this table since it was written. It arrives in `ui/` with the frames it
+	 * never had, including the one that is the whole feature: the list OPEN.
+	 *
+	 * `open-grouped` is the whole registry as the component sees it, headings and
+	 * all; `open-filtered` is a query narrowing model rows by their selector;
+	 * `no-matches` is the message that must not read as an error; and
+	 * `unknown-value` is a stored value no listing contains, which must render
+	 * rather than blank — with the clear affordance, which only exists on a field
+	 * that is set.
+	 */
+	["settings-model-combobox--labelled", 560, 240],
+	["settings-model-combobox--chrome-less", 560, 200],
+	["settings-model-combobox--open-grouped", 560, 420],
+	["settings-model-combobox--open-filtered", 560, 420],
+	["settings-model-combobox--no-matches", 560, 300],
+	["settings-model-combobox--unknown-value", 560, 240],
+	["settings-model-combobox--active-row", 560, 460],
+	["settings-model-combobox--loading", 560, 240],
+	["settings-model-combobox--scoped-notice", 560, 300],
+	["settings-model-combobox--unresolved-scope", 560, 300],
+	["settings-model-combobox--disabled", 560, 240],
 	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the

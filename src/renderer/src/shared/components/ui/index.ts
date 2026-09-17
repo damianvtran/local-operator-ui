@@ -74,6 +74,16 @@ export { Progress } from "./progress";
 export type { ProgressProps } from "./progress";
 export { ScrollArea, ScrollBar } from "./scroll-area";
 export {
+	SearchableSelect,
+	filterSearchableOptions,
+	fold,
+	resolveEnter,
+} from "./searchable-select";
+export type {
+	SearchableOption,
+	SearchableSelectProps,
+} from "./searchable-select";
+export {
 	Select,
 	SelectContent,
 	SelectGroup,

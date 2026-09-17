@@ -34,7 +34,9 @@ import {
 	Textarea,
 } from "@shared/components/ui";
 import type { KeyboardEvent } from "react";
+import { settingComboSource } from "../backend-setting-combos";
 import { CASCADE_SENTINEL, serialize } from "./backend-settings-drafts";
+import { SettingCombobox } from "./setting-combobox";
 
 /**
  * The width each kind's control occupies.
@@ -183,12 +185,27 @@ export type SettingControlProps = {
 	setting: BackendSetting;
 	/** The serialized draft, or the cascade sentinel for the cascade kind. */
 	value: string;
+	/**
+	 * The `hosting` this row will boot on: the hosting row's draft while it is
+	 * unsaved, the server's value otherwise. Only the model rows read it, and
+	 * only to narrow their list.
+	 */
+	effectiveHosting?: string;
 	/** The cascade chains, when the kind is `cascade`. */
 	chains?: Record<string, string[]>;
 	/** True while the row is saving, or gated off by another setting. */
 	disabled?: boolean;
 	onValueChange: (value: string) => void;
 	onChainsChange?: (chains: Record<string, string[]>) => void;
+	/**
+	 * The id of the row's help sentence, WHEN the row is rendering one.
+	 *
+	 * It comes from the row rather than being derived here because only the row
+	 * knows its tier: an advanced row keeps its help behind a disclosure, and an
+	 * `aria-describedby` that names an element nobody rendered is a worse failure
+	 * than no association at all.
+	 */
+	helpId?: string;
 };
 
 export const SettingControl = ({
@@ -198,7 +215,37 @@ export const SettingControl = ({
 	disabled = false,
 	onValueChange,
 	onChainsChange,
+	effectiveHosting = "",
+	helpId,
 }: SettingControlProps) => {
+	/*
+	 * The searchable combobox branch, keyed on the setting's KEY rather than on
+	 * its kind, and placed before the switch so it cannot be reached by a later
+	 * arm.
+	 *
+	 * WHY A KEY: every one of these rows IS `Kind.TEXT`, on the server and on the
+	 * wire, and stays that way — the suggestions assist a deliberately open value
+	 * space rather than constraining it to a closed set. A new `kind` would force
+	 * `coerce`, `validate` and the CLI to grow a branch for that open space, which
+	 * is the argument the TUI recorded when it shipped the same feature
+	 * (`_SUGGEST_KEYS` in `settings_view.py`). The row's own behaviour — its
+	 * `text` slot width, its deep-link reveal seam — therefore stays as it is.
+	 */
+	const comboSource = settingComboSource(setting.key);
+	if (comboSource) {
+		return (
+			<SettingCombobox
+				setting={setting}
+				kind={comboSource}
+				value={value}
+				disabled={disabled}
+				onValueChange={onValueChange}
+				effectiveHosting={effectiveHosting}
+				helpId={helpId}
+			/>
+		);
+	}
+
 	switch (setting.kind) {
 		case "bool":
 			return (

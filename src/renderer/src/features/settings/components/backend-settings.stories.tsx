@@ -43,6 +43,10 @@
  * RENDERER over a fixture shaped like the wire. Whether the real backend serves
  * that payload - and `warning`/`gated_by` in particular, which the current
  * server does NOT project - is QA's job against a running app, not a frame's.
+ * The provider and model rows added two ops to this stub
+ * (`providers.list`, `models.catalogue`); their option lists come from
+ * `setting-combobox.fixtures.ts`, and the hosting registry there is the
+ * committed real projection rather than a hand-written one.
  */
 
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
@@ -53,6 +57,7 @@ import configuredJson from "../../../../../../scripts/fixtures/backend-settings-
 import fixtureJson from "../../../../../../scripts/fixtures/backend-settings-registry.json";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 import { BackendSettingsSection } from "./backend-settings-section";
+import { PROVIDER_ROWS, catalogue } from "./setting-combobox.fixtures";
 
 type Setting = BackendSettings["settings"][number];
 
@@ -79,9 +84,11 @@ type BridgeMode = "ok" | "hang" | "fail";
  * `desktopRequest` prefers `window.api.desktop.request` and falls back to
  * `fetch("/__desktop")`, which Storybook's dev server does not serve - so
  * without this every frame would photograph a transport error instead of the
- * section. It answers the four operations this surface issues and refuses
- * anything else BY NAME, so a story that starts issuing a fifth read fails
- * loudly rather than hanging on a promise nothing resolves.
+ * section. It answers the six operations this surface issues - the four it has
+ * always issued plus `providers.list` and `models.catalogue`, which the provider
+ * and model rows added - and refuses anything else BY NAME, so a story that
+ * starts issuing a seventh read fails loudly rather than hanging on a promise
+ * nothing resolves.
  *
  * `settings.edit`/`settings.reset` mutate the live payload the way the backend
  * does (the value, then `is_default`), because a saved or reset row is a state
@@ -90,7 +97,27 @@ type BridgeMode = "ok" | "hang" | "fail";
 let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 	null;
 
-const installBridge = (payload: BackendSettings, mode: BridgeMode = "ok") => {
+/**
+ * How the stubbed transport answers the two ops the provider and model rows
+ * issue.
+ *
+ * `ok` is the shipped behaviour. The other three are states of this surface no
+ * happy payload can photograph: a model catalogue that came back with a
+ * per-provider failure (`errors` non-empty, which still carries `models`), one
+ * whose credential store could not be read, where every row's `connected` is
+ * the listing's own default and must not be turned into a badge, and one that
+ * has not answered yet — the state the list's own loading row exists for, and
+ * the one this surface's first open is ALWAYS in for a moment. All are asserted
+ * in the option builders' test; these stories exist so a reader can SEE what
+ * they produce in the row.
+ */
+type CatalogueMode = "ok" | "partial" | "unknown-credentials" | "in-flight";
+
+const installBridge = (
+	payload: BackendSettings,
+	mode: BridgeMode = "ok",
+	catalogueMode: CatalogueMode = "ok",
+) => {
 	const ok = (result: unknown): DesktopResponse => ({
 		status: 200,
 		body: { status: 200, message: "ok", result },
@@ -104,10 +131,41 @@ const installBridge = (payload: BackendSettings, mode: BridgeMode = "ok") => {
 					desktop_available: true,
 					desktop_auth: "bearer",
 					// `settings` is the gate this surface sits behind.
-					features: { settings: 1 },
+					/*
+					 * `auth` and `catalogues` are granted because this surface ISSUES the
+					 * two ops they gate: without them the provider registry and the model
+					 * catalogue are both disabled, so the rows render their
+					 * "unavailable" fallbacks, the in-flight story's never-settling
+					 * promise is never created and its frame is a picture of a settled
+					 * list (design round 2, D6).
+					 */
+					features: { settings: 1, auth: 1, catalogues: 1 },
 				});
 			case "settings.list":
 				return ok(payload);
+			case "providers.list":
+				// The committed real projection of `/v1/auth/providers`, so the frames
+				// show the seventeen rows the shipped backend returns.
+				return ok({ providers: PROVIDER_ROWS });
+			case "models.catalogue":
+				if (catalogueMode === "in-flight") {
+					// A promise that never settles, which is what a fetch in flight IS
+					// from the renderer's side. Without this state the list can only be
+					// photographed with rows in it, and the claim it makes before they
+					// arrive goes unexamined (design round 1, D1).
+					return new Promise<DesktopResponse>(() => {});
+				}
+				if (catalogueMode === "partial") {
+					return ok(
+						catalogue({
+							errors: { lmstudio: "unreachable", ollama: "unreachable" },
+						}),
+					);
+				}
+				if (catalogueMode === "unknown-credentials") {
+					return ok(catalogue({ credentials_known: false }));
+				}
+				return ok(catalogue());
 			case "settings.edit": {
 				if (mode === "hang") return new Promise<DesktopResponse>(() => {});
 				if (mode === "fail") {
@@ -526,14 +584,16 @@ const mount = ({
 	focusKey,
 	script,
 	mode,
+	catalogueMode,
 }: {
 	state?: string;
 	initialFilter?: string;
 	focusKey?: string | null;
 	script?: Script;
 	mode?: BridgeMode;
+	catalogueMode?: CatalogueMode;
 } = {}) => {
-	installBridge(payloadFor(state), mode);
+	installBridge(payloadFor(state), mode, catalogueMode);
 	if (script) {
 		return (
 			<Driven
@@ -553,6 +613,163 @@ const meta: Meta = {
 export default meta;
 
 type Story = StoryObj;
+
+/**
+ * The registry's own provider and model rows, and the list one of them offers.
+ *
+ * WHAT THESE FRAMES ARE FOR. `hosting` and `model_name` were two bare `<Input>`s
+ * with no placeholder and no affordance (`settings-backend--arrival` is the
+ * before frame), and they are the operator's report. They are now the only
+ * searchable fields in the registry, so three things need to be photographable:
+ * the rows at rest, the list open over the whole login registry, and the model
+ * list narrowed by the hosting beside it — which is the state the CONFIGURED
+ * fixture produces by itself, because it holds
+ * `model_name: "deepseek/deepseek-chat"`, a selector-shaped value no catalogue
+ * row carries.
+ *
+ * The option payloads come from `setting-combobox.fixtures.ts`; the registry
+ * payload is the committed projection, as everywhere in this file.
+ */
+const comboboxInput = (key: string) =>
+	document.querySelector<HTMLInputElement>(
+		`[data-setting-key="${key}"] input[role="combobox"]`,
+	);
+
+const listboxOpen = () => Boolean(document.querySelector('ul[role="listbox"]'));
+
+/**
+ * Open the row's own list, and hold the shutter until the list is really up.
+ *
+ * A combobox whose options are fetched lazily has no rows until the first open,
+ * so a frame taken before that answers is a picture of an empty field — the
+ * state this whole change exists to remove.
+ */
+const openCombobox = (key: string) => async () => {
+	await waitFor(() => Boolean(comboboxInput(key)));
+	comboboxInput(key)?.focus();
+	await waitFor(listboxOpen);
+};
+
+const PROVIDER_ROWS_SCRIPT: Script = {
+	run: async () => {},
+	expect: () =>
+		Boolean(comboboxInput("hosting")) && Boolean(comboboxInput("model_name")),
+};
+
+const HOSTING_LIST: Script = {
+	run: () => openCombobox("hosting")(),
+	expect: () =>
+		listboxOpen() &&
+		(document.querySelector('ul[role="listbox"]')?.textContent ?? "").includes(
+			"Ollama",
+		),
+};
+
+const MODEL_LIST: Script = {
+	run: () => openCombobox("model_name")(),
+	expect: () =>
+		listboxOpen() &&
+		(document.querySelector('ul[role="listbox"]')?.textContent ?? "").includes(
+			"openrouter/",
+		),
+};
+
+/**
+ * The model list opened over a catalogue that never answers.
+ *
+ * The expectation deliberately stops at "the popover is open": waiting for a row
+ * would wait forever, and the frame's subject is what the list says in the
+ * absence of one.
+ */
+const MODEL_LIST_IN_FLIGHT: Script = {
+	run: () => openCombobox("model_name")(),
+	expect: () => listboxOpen(),
+};
+
+/**
+ * The five rows at rest: the configured fixture's values, and a placeholder on
+ * every row that is unset.
+ */
+export const ProviderModelRows: Story = {
+	render: () => mount({ state: "changed", script: PROVIDER_ROWS_SCRIPT }),
+};
+
+/**
+ * The hosting list open: the WHOLE login registry — every provider the app
+ * knows, signed in or not — grouped by what it would take to use it.
+ *
+ * This is the operator's "tied to the centralised login state" claim as a
+ * picture rather than a sentence, and the credential state is SHOWN rather than
+ * used to filter: `hosting` is where a user names the provider they intend to
+ * boot on, which may be one they have not logged into yet.
+ */
+export const HostingListOpen: Story = {
+	render: () => mount({ state: "changed", script: HOSTING_LIST }),
+};
+
+/**
+ * The model list open, narrowed by the hosting beside it.
+ *
+ * `hosting` is `openrouter` in this fixture, so the list is the aggregator's
+ * rows — and the row at the bottom is the field's own value, rescued into its
+ * own group because no listing contains `deepseek/deepseek-chat`. A stored
+ * value that renders as a blank field is a lie the user cannot debug.
+ */
+export const ModelListOpen: Story = {
+	render: () => mount({ state: "changed", script: MODEL_LIST }),
+};
+
+/**
+ * A catalogue that came back with providers missing.
+ *
+ * `errors` is a partial-failure map and the answer still carries `models`, so
+ * this is a NOTE under the field rather than an error state — collapsing the
+ * two is a measured defect (1450 usable rows replaced by a wall of 21 provider
+ * names), and `catalogueListing` is the module that exists to keep them apart.
+ *
+ * Named for what it renders. It was `catalogue-deferred`, which promised an
+ * in-flight fetch this story has never shown — a partial failure answers
+ * immediately, with rows — and the name is what made the in-flight state look
+ * covered while no frame showed it (design round 1, D5.3).
+ */
+export const CataloguePartial: Story = {
+	render: () =>
+		mount({ state: "changed", catalogueMode: "partial", script: MODEL_LIST }),
+};
+
+/**
+ * The catalogue still on its way: the first open of a model field.
+ *
+ * This is the state four of the five rows this PR adds are in for a moment on
+ * every first open — a lazy ~460 KB fetch — and it is the state the list must
+ * not answer with "Nothing matches that model", a claim about a query that has
+ * not run. The field shows its placeholder and stays typeable; the list says it
+ * is loading.
+ */
+export const CatalogueInFlight: Story = {
+	render: () =>
+		mount({
+			state: "changed",
+			catalogueMode: "in-flight",
+			script: MODEL_LIST_IN_FLIGHT,
+		}),
+};
+
+/**
+ * A catalogue whose credential store could not be read.
+ *
+ * Every row's `connected` is then the listing's own default — "show everything
+ * rather than claim the user owns no models" — so the list is grouped under one
+ * heading and nothing is badged as signed in.
+ */
+export const CatalogueUnknownCredentials: Story = {
+	render: () =>
+		mount({
+			state: "changed",
+			catalogueMode: "unknown-credentials",
+			script: MODEL_LIST,
+		}),
+};
 
 /* ------------------------------------------------------------------ */
 /* Arrival                                                            */
