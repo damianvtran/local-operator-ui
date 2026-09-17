@@ -36,6 +36,10 @@ import { screen, userEvent } from "@storybook/test";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 import { ChatSidebar } from "./chat-sidebar";
 
+/* Hoisted out of the play callback: a regex literal inside a callback is what
+ * `useTopLevelRegex` reports, and this file is being touched anyway. */
+const INSTALLING_FOURTH = /Installing 4 of 6/;
+
 /* --------------------------------------------------------------- the bridge */
 
 type BridgeRequest = {
@@ -93,6 +97,14 @@ type InstallBehaviour = {
 	answers?: Record<string, "ok" | "already" | "collision">;
 	/** Never settle the first install, so the progress line is the subject. */
 	hold?: boolean;
+	/**
+	 * Answer the first N installs and never settle the one after them, so a frame
+	 * can photograph a bar with a FILL in it. `hold` alone photographs the bar at
+	 * its starting position, which is the only moment the set used to capture —
+	 * and the reason the determinate treatment was never actually seen (design
+	 * round 1, D2).
+	 */
+	holdAfter?: number;
 };
 
 const installBridge = ({
@@ -102,7 +114,7 @@ const installBridge = ({
 	profiles: WireProfile[];
 	install?: InstallBehaviour;
 }) => {
-	const { answers = {}, hold = false } = install ?? {};
+	const { answers = {}, hold = false, holdAfter } = install ?? {};
 	let installed = 0;
 	const ok = <T,>(result: T): DesktopResponse => ({
 		status: 200,
@@ -130,11 +142,13 @@ const installBridge = ({
 				return ok({ profiles });
 			case "profiles.install": {
 				const name = request.name ?? "";
-				if (hold && installed === 0) {
-					installed += 1;
+				installed += 1;
+				if (
+					(hold && installed === 1) ||
+					(holdAfter !== undefined && installed === holdAfter + 1)
+				) {
 					return await new Promise(() => {});
 				}
-				installed += 1;
 				switch (answers[name]) {
 					case "already":
 						// The additive field, and the only thing that distinguishes an
@@ -273,6 +287,27 @@ export const Installing: Story = {
 			}),
 		);
 		await screen.findByTestId("install-builtins-progress");
+	},
+};
+
+/**
+ * The batch MID-RUN, which is the frame the set was missing: three installs
+ * answered and the fourth never settles, so the bar is at 4 of 6 — the step the
+ * sentence beside it reports — rather than at its starting position. `Installing`
+ * photographs the moment the two used to disagree about (design round 1, D2).
+ */
+export const InstallingMidRun: Story = {
+	render: () => {
+		installBridge({ profiles: BUILTINS, install: { holdAfter: 3 } });
+		return <Page />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", {
+				name: "Install all built-in agents",
+			}),
+		);
+		await screen.findByText(INSTALLING_FOURTH);
 	},
 };
 

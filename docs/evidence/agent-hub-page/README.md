@@ -14,18 +14,34 @@ Storybook, from this branch, driven by the repo's own evidence rig:
 `STORIES` (`1280x900` for each, except that the capture expands a frame to the
 content height the story declares).
 
-Seven states, because the surface has six and the grid alone was the only one
-with a frame:
+Thirteen states: the seven this surface had, plus the six states INSIDE this
+change that no frame had rendered — the search miss, the scope switched, a
+non-default sort, the focused control, the refused viewer read and the grid at
+its narrowest supported column (design round 1, D8).
 
 | story | what it is |
 | --- | --- |
 | `grid` | twelve records, signed out |
 | `signed-in` | the same grid with the viewer's own likes and favourites filled from one batched read |
+| `viewer-state-unknown` | the same grid with the batched viewer read REFUSED (500): the line that says so above the count, and cards whose heart and star are unavailable rather than unfilled |
 | `loading` | the first paint, before the list answers |
 | `empty` | a hub with nothing published |
 | `load-failed` | the list read failed — the backend did not answer, so the read is not retried and the state is on screen from the first paint |
 | `empty-category` | a category that holds nothing, reached by clicking the rail |
+| `search-miss` | a search that matches nothing, typed into the box |
+| `scope-switched` | the search scope switched to description |
+| `sorted-by-name` | a non-default sort |
+| `focused-search` | the search box focused, so the group's ring and the boundary that binds the scope to the box are both visible |
 | `page-change-keeps-the-grid` | page 2 in flight over page 1's records |
+| `narrow-columns` | the same grid at `920x900` — the width where the page's own `minmax(17.5rem,1fr)` lands on two columns beside the rail — with counts in the six- and seven-character range (`1,204,583`), which is the width the card's footer has to survive |
+
+The six added here, and `installing-mid-run` on the sidebar beside them, are the
+frames design round 1 asked for by name; the four control states are driven by
+their stories' own `play` functions, so they are pictures of the controls
+reacting rather than of a prop that fakes a state.
+
+All but the last were captured at `1280x900`; `narrow-columns` declares `920x900`
+in `STORIES`, and that is the only place a story's viewport is stated.
 
 `agent-hub-page-baseline/grid/` is the same story captured from
 **unmodified `origin/main`** — see that directory's own README for what was
@@ -63,9 +79,16 @@ moment has arrived.
   `GET /v1/agents` and `agents.statuses`. Their FIELD NAMES are the wire's,
   checked against the live public endpoint; their values are invented.
 - **Not that the real backend serves the batched op.** `agents.statuses` is
-  additive, and a backend older than it answers 404 — which the hub reads as
-  "no viewer state", the degradation the `grid` frame shows (it is the same
-  rendering as a signed-out view). The op's own end-to-end proof is the
+  additive, and the status an older backend answers is **422, not 404**: an op
+  the server does not know fails `RadientRequest`'s `Literal` at validation, and
+  `local_operator/server/app.py:337-347` flattens every `/v1/desktop/*`
+  validation failure to `422 {"detail": "The request has invalid fields."}`. 404
+  is this app's `outdated` signal (`backend-error.ts:49-60` classifies 404 alone
+  as outdated), and the earlier text here claimed it for a response that never
+  arrives — which a future maintainer would have built the degradation on. The
+  hub reads ANY failure of this read as "no viewer state", renders that as
+  unknown rather than as unliked (`viewer-state-unknown` is that frame), and
+  says so once above the count with a retry. The op's own end-to-end proof is the
   local-operator PR's `tests/e2e/test_desktop_radient_statuses.py`.
 - **Not the request counts.** They are the ledger reading above, not a picture of
   it; a frame of a grid looks the same at 3 requests and at 63.

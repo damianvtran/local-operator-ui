@@ -2361,6 +2361,19 @@ export const STORIES = [
 	["agent-hub-page--empty-category", 1280, 900],
 	["agent-hub-page--page-change-keeps-the-grid", 1280, 900],
 	/*
+	 * The states design round 1 asked for by name (D8) plus the width D5 is
+	 * about: the search miss, the scope switched to description, a non-default
+	 * sort, the focused control, and the grid at 920px — which is where the
+	 * page's own `minmax(17.5rem,1fr)` lands on two columns beside the rail, with
+	 * counts in the six- and seven-character range.
+	 */
+	["agent-hub-page--viewer-state-unknown", 1280, 900],
+	["agent-hub-page--search-miss", 1280, 900],
+	["agent-hub-page--scope-switched", 1280, 900],
+	["agent-hub-page--sorted-by-name", 1280, 900],
+	["agent-hub-page--focused-search", 1280, 900],
+	["agent-hub-page--narrow-columns", 920, 900],
+	/*
 	 * The chat sidebar's Agents section, at the width that column actually is:
 	 * the frame is the 360px panel inside a little ground, because the section is
 	 * three rows and an action, and a 1280px frame of it would be a picture of the
@@ -2371,6 +2384,11 @@ export const STORIES = [
 	["chat-sidebar-agents--installed-with-builtins", 420, 760],
 	["chat-sidebar-agents--all-installed", 420, 760],
 	["chat-sidebar-agents--installing", 420, 760],
+	/*
+	 * The mid-run frame: a bar with a fill in it, which is the state the
+	 * determinate treatment exists for and the one the set could not show.
+	 */
+	["chat-sidebar-agents--installing-mid-run", 420, 760],
 	["chat-sidebar-agents--install-summary", 420, 760],
 
 	/*

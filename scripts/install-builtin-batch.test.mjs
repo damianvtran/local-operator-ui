@@ -34,7 +34,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { installBuiltin, installBuiltins, summariseInstalls, summarySentence } from "./src/renderer/src/features/agents/install-builtin-batch";
+			export { installBuiltin, installBuiltins, summariseInstalls, summarySentence, summaryExceptionSentence } from "./src/renderer/src/features/agents/install-builtin-batch";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 		`,
 		resolveDir: process.cwd(),
@@ -156,5 +156,40 @@ test("a batch of one reports one, and the sentence never claims a missing bucket
 			failed: [],
 		}),
 		"Nothing to install.",
+	);
+});
+
+test("the skip line leads with its count and reads as one sentence", async () => {
+	const { installBuiltins, summaryExceptionSentence, DesktopControlError } =
+		await load();
+	const taken = () =>
+		new DesktopControlError(
+			409,
+			"That name belongs to another agent. Choose a different name to extend the packaged profile.",
+		);
+	const summary = await installBuiltins(["coder", "reviewer"], async (name) => {
+		if (name === "reviewer") throw taken();
+		return { name };
+	});
+	assert.deepEqual(summary.skipped, ["reviewer"]);
+	assert.equal(
+		summaryExceptionSentence(summary),
+		'Skipped 1: you already have an agent called "reviewer".',
+		"one skip is one sentence with the count first",
+	);
+	assert.equal(
+		summaryExceptionSentence({ ...summary, skipped: ["a", "b"] }),
+		'Skipped 2: you already have agents called "a", "b".',
+		"the count is the sentence's subject, not a separate line",
+	);
+	// And a batch with nothing skipped adds no line at all.
+	assert.equal(
+		summaryExceptionSentence({
+			installed: 6,
+			alreadyPresent: 0,
+			skipped: [],
+			failed: [],
+		}),
+		null,
 	);
 });

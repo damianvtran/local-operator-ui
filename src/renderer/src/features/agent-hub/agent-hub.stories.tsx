@@ -31,14 +31,16 @@
  *
  * That Radient answers these payloads, that a real account's likes are what the
  * fixtures say, or that the real backend serves `agents.statuses` at all: a
- * backend older than the batched op answers 404 and the hub degrades to "no
- * viewer state" (the `SignedOut` story is the frame for that rendering, not for
- * that backend). The fixtures are the wire's SHAPE, verified against the live
- * public endpoint; the values in them are invented.
+ * backend older than the batched op answers **422** (an unknown `operation`
+ * fails `RadientRequest`'s `Literal`, and `local_operator/server/app.py`
+ * flattens every `/v1/desktop/*` validation failure to 422), so the hub
+ * reports the viewer state as UNKNOWN rather than claiming it — `SignedOut` and
+ * `ViewerStateUnknown` are the frames for that rendering, not for that backend.
+ * The fixtures are the wire's SHAPE, verified against the live public endpoint;
+ * the values in them are invented.
  */
-
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent } from "@storybook/test";
+import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
 import "../../styles/index.css";
 import { AgentHubPage } from "./agent-hub-page";
@@ -62,8 +64,17 @@ const publishLedger = () => {
 	];
 };
 
-/** The fixture records, in `GET /v1/agents`'s own field names. */
-const buildAgents = (count: number) =>
+/**
+ * The fixture records, in `GET /v1/agents`'s own field names.
+ *
+ * `longCounts` lifts every count into the six- and seven-character range a
+ * popular agent actually reaches, which is the width the card's footer has to
+ * survive: the widest count any frame carried before this was five characters
+ * (`1,693`), while the card's own comment justifies its 17.5rem minimum width
+ * with the claim that the footer "holds three counters and a labelled action on
+ * one line" — a claim nothing had photographed (design round 1, D5).
+ */
+const buildAgents = (count: number, longCounts = false) =>
 	Array.from({ length: count }, (_, index) => ({
 		id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
 		account_id: "acct-1",
@@ -83,9 +94,9 @@ const buildAgents = (count: number) =>
 		// records carry, so a frame with sixteen rows would be a frame of the
 		// hardcoded list this change removes.
 		categories: [AGENT_CATEGORIES[index % AGENT_CATEGORIES.length]],
-		like_count: 12 + index * 7,
-		favourite_count: 4 + index * 3,
-		download_count: 120 + index * 143,
+		like_count: longCounts ? 121_408 + index * 7 : 12 + index * 7,
+		favourite_count: longCounts ? 84_903 + index * 3 : 4 + index * 3,
+		download_count: longCounts ? 1_204_583 + index * 143 : 120 + index * 143,
 	}));
 
 const AGENT_NAMES = [
@@ -113,8 +124,10 @@ const AGENT_CATEGORIES = [
 type BridgeBehaviour = {
 	/** Records the list answers with. Zero is the empty hub. */
 	records?: number;
-	/** Records for a list request that carries a `categories` filter. */
+	/** Records for a list request that carries a filter. */
 	filteredRecords?: number;
+	/** Lift the counts into the six- and seven-character range (D5). */
+	longCounts?: boolean;
 	/**
 	 * Fail the list read at the TRANSPORT rather than with a status.
 	 *
@@ -132,6 +145,11 @@ type BridgeBehaviour = {
 	holdAfterFirst?: boolean;
 	/** Answer the account read, which is what makes the viewer signed in. */
 	signedIn?: boolean;
+	/**
+	 * Refuse the batched viewer read while the list answers — the state that used
+	 * to render as "you have liked nothing" for every card (R1).
+	 */
+	failStatuses?: boolean;
 	/** Viewer state to report for the ids the page asks about. */
 	liked?: string[];
 	favourited?: string[];
@@ -141,10 +159,12 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 	const {
 		records = 12,
 		filteredRecords = 0,
+		longCounts = false,
 		failList = false,
 		holdList = false,
 		holdAfterFirst = false,
 		signedIn = false,
+		failStatuses = false,
 		liked = [],
 		favourited = [],
 	} = behaviour;
@@ -209,7 +229,17 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 					if (failList) {
 						throw new Error("The desktop backend did not answer.");
 					}
-					const filtered = Boolean(request.control?.query?.categories);
+					/*
+					 * A FILTERED read is any read the page sent a filter to, which is what
+					 * makes the search-miss and category-miss states photographable: the
+					 * box sends `name` or `description` (whichever the scope selects) and
+					 * the rail sends `categories`.
+					 */
+					const filtered = Boolean(
+						request.control?.query?.categories ??
+							request.control?.query?.name ??
+							request.control?.query?.description,
+					);
 					const shown = filtered ? filteredRecords : records;
 					return proxy({
 						msg: "Agents listed successfully",
@@ -221,11 +251,23 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 							// it photographed as one.
 							total_pages: shown === 0 ? 1 : 3,
 							total_records: shown === 0 ? 0 : 30,
-							records: buildAgents(shown),
+							records: buildAgents(shown, longCounts),
 						},
 					});
 				}
 				case "agents.statuses": {
+					/*
+					 * The refusal R1 is about: the page asks for a whole page of ids and
+					 * the read fails, so every card's viewer state is unknown at once.
+					 * A 500 rather than a transport failure, because a refused read is
+					 * retried once and then settles into the state the frame shows.
+					 */
+					if (failStatuses) {
+						return {
+							status: 500,
+							body: { detail: "The status read failed." },
+						};
+					}
 					const ids = String(request.control?.query?.agent_ids ?? "")
 						.split(",")
 						.filter(Boolean);
@@ -380,5 +422,131 @@ export const PageChangeKeepsTheGrid: Story = {
 			await screen.findByRole("button", { name: "Next page" }),
 		);
 		await screen.findByText("Updating…");
+	},
+};
+
+/**
+ * The viewer's own state failed to read, which is the state that used to render
+ * as "you have liked nothing" on every card.
+ *
+ * The `agents.statuses` read is refused with a 500 while the list answers, and
+ * the frame shows the two things that make the failure visible instead of
+ * silent: the line above the grid that says the read failed and offers the
+ * retry the hook deliberately does not run on its own, and cards whose heartbeat
+ * and star are UNAVAILABLE (`data-viewer-state="unknown"`) rather than unfilled
+ * (agent review round 1, R1).
+ */
+export const ViewerStateUnknown: Story = {
+	render: () => {
+		installBridge({ records: 12, signedIn: true, failStatuses: true });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status-unknown");
+	},
+};
+
+/**
+ * A search that matches nothing. The code has had its own headline for this
+ * state all along and no frame had ever rendered it, so its panel, its count
+ * line and its action were unreviewed — and its body sentence was the one
+ * written for a category, which reads wrong for a query the user typed (design
+ * round 1, D8a).
+ */
+export const SearchMiss: Story = {
+	render: () => {
+		installBridge({ records: 12, filteredRecords: 0 });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await userEvent.type(
+			await screen.findByTestId("agent-hub-search"),
+			"quarterly ledger",
+		);
+		await screen.findByText("No agents match that search.");
+	},
+};
+
+/**
+ * The scope switched to description: the half of the control row whose only
+ * photographed value was the default, and the value whose label ("Search name")
+ * used to restate the search box's own placeholder beside it (D4, D8b).
+ */
+export const ScopeSwitched: Story = {
+	render: () => {
+		installBridge({ records: 12 });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await userEvent.click(await screen.findByTestId("agent-hub-search-scope"));
+		await userEvent.click(
+			await screen.findByRole("option", { name: "Description" }),
+		);
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-search-scope")).toHaveTextContent(
+				"Description",
+			),
+		);
+	},
+};
+
+/**
+ * A non-default sort, which is the other half of D8b: "Most downloaded" was the
+ * only sort value anyone had looked at, and it is also the only value whose
+ * label reads unambiguously.
+ */
+export const SortedByName: Story = {
+	render: () => {
+		installBridge({ records: 12 });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await userEvent.click(await screen.findByTestId("agent-hub-sort"));
+		await userEvent.click(
+			await screen.findByRole("option", { name: "Name (A to Z)" }),
+		);
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-sort")).toHaveTextContent(
+				"Name (A to Z)",
+			),
+		);
+	},
+};
+
+/**
+ * The search box focused, so the frame carries the one state of this row that
+ * only exists while a keyboard user is in it: the group draws the ring for the
+ * box it frames and the `focus-within` boundary that binds the scope to the
+ * box is visible (D4, D8b).
+ */
+export const FocusedSearch: Story = {
+	render: () => {
+		installBridge({ records: 12 });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		const box = await screen.findByTestId("agent-hub-search");
+		await userEvent.click(box);
+		await waitFor(() => expect(box).toHaveFocus());
+	},
+};
+
+/**
+ * The card at its narrowest supported column, with counts in the six- and
+ * seven-character range.
+ *
+ * `minmax(17.5rem,1fr)` is justified in the page by the claim that a card footer
+ * at that width "holds three counters and a labelled action on one line", and no
+ * frame had ever rendered a card narrower than 306px or a count longer than five
+ * characters (design round 1, D5). The viewport for this story is the one in
+ * `scripts/capture-evidence.mjs`'s `STORIES` — 920px, which is where the grid's
+ * own auto-fill lands on two 17.5rem columns beside the rail.
+ */
+export const NarrowColumns: Story = {
+	render: () => {
+		installBridge({ records: 12, longCounts: true });
+		return <AgentHubPage />;
 	},
 };
