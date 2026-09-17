@@ -54,8 +54,20 @@ completion.
   (`chat-layout.tsx`; 280 is the default preference), and the widths at which the
   action's label SHEDS so the group's own name never breaks to make room for it.
   The shed fires on the header ROW's width — 271px and 223px here — against the
-  264px measured break for a two-digit section badge. A set captured only at
-  360px, the clamp's maximum, cannot photograph this state at all.
+  253px row a two-digit section badge leaves the name (design round 2's own sweep:
+  at 250/251/252px rows the name was ellipsised with the action fully spelled).
+  A set captured only at 360px, the clamp's maximum, cannot photograph this state
+  at all.
+
+  The shed is `sr-only`, never `hidden`, and that is the whole of review R2-1 /
+  UX U2-1: `display: none` would take the label out of the accessibility tree,
+  leaving the `sr-only` scope suffix as the control's entire computed name
+  (", including 4 in Previous chats", with the `title` demoted to a description),
+  which is the width the operator shrinks the panel to. The readout's
+  `Action label:` line is the instrument for that fact and says which of the two
+  it found: it asks the sheet whether the span is laid out, because `textContent`
+  reads the same either way — which is how a frame claiming an intact name survived
+  review round 1.
 - **`mark-all-read-in-flight/`** — the interval between the click and the receipt,
   which is the only progress cue an irreversible write has. The label keeps its
   readable ink and only the glyph steps down, and the control stays focusable and
@@ -103,9 +115,10 @@ jsdom has no layout engine, so that file says nothing about pixels — which is
 exactly why the widths and the shed are photographs.
 
 The readout panel beside the sidebar is not decoration: it subscribes to the
-same store the panel reads, and its last line is measured off the DOM (the
-element the control stamps itself with) so a caption cannot claim a control that
-is not on screen.
+same store the panel reads, and its last two lines are measured off the DOM (the
+element the control stamps itself with, and the shed span's own tree membership)
+so a caption cannot claim a control that is not on screen — or a name no assistive
+technology can see.
 
 ## Re-running the gates a reviewer of this set needs
 

@@ -69,12 +69,20 @@ export const markAllReadCopy = (
 	const elsewhere = ackable.filter((row) => !row.active).length;
 	const chat = count === 1 ? "chat" : "chats";
 	/*
-	 * A mark the batch cannot name: `unseen` with no token. Named only when one
-	 * exists, because the clause is noise in the ordinary case and the invariant
-	 * it protects is that the label's number is the whole set the click sends.
+	 * A mark the batch cannot name: `unseen` with no token, which is what the batch
+	 * request has nothing to send for. Named only when one exists, because the
+	 * clause is noise in the ordinary case and the invariant it protects is that the
+	 * label's number is the whole set the click sends.
+	 *
+	 * DERIVED from the shared predicate rather than re-spelling its complement
+	 * (review R2-5): `unseen && !completion_token` is that complement today, but the
+	 * two would drift the moment `unreadAckableRows` tightens — a `kind ===
+	 * "complete"` filter, say — and the row would then be counted in both buckets,
+	 * which is the same two-literals class round 1 removed from the count above.
 	 */
 	const tokenless = rows.filter(
-		(row) => row.attention?.unseen === true && !row.attention?.completion_token,
+		(row) =>
+			row.attention?.unseen === true && unreadAckableRows([row]).length === 0,
 	).length;
 	return {
 		count,
