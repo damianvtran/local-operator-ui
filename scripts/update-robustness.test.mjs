@@ -6083,6 +6083,39 @@ test("the check judges the install that serves the app, not the one the shim nam
 	assert.match(offer.payload.detail, /0\.56\.8/);
 
 	/*
+	 * AND AN INSTALL THE APP DOES NOT OWN KEEPS THE COMMAND THAT OWNS IT. The
+	 * exemption above is about WHERE the root is, not about the backend's
+	 * self-report: an ordinary virtualenv elsewhere is still the reader's to
+	 * update in their own terminal, and `resolveGlobalInstallPlan` names the pip
+	 * line for it exactly as before. A check that answered "the app owns this"
+	 * from the install's `pip` kind alone would refuse a remedy that works.
+	 */
+	const external = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.56.8",
+		publishedVersion: "0.56.11",
+		installVersion: "0.56.11",
+		servingInstall: { version: "0.56.8", appOwned: false, kind: "pip" },
+	});
+	const externalOffer = external.sent.find(
+		({ channel }) => channel === "backend-update-available",
+	);
+	assert.ok(
+		externalOffer,
+		JSON.stringify(external.sent.map(({ channel }) => channel)),
+	);
+	assert.equal(externalOffer.payload.currentVersion, "0.56.8");
+	assert.equal(
+		externalOffer.payload.updateCommand,
+		"pip install --upgrade local-operator",
+	);
+	assert.match(
+		externalOffer.payload.remedy,
+		/pip install, so update it from your terminal/,
+	);
+	assert.doesNotMatch(externalOffer.payload.detail, /managed-python/);
+
+	/*
 	 * The mirror, and the reason this had to be the SERVING install rather than
 	 * "whichever install is oldest": the shim's install is a release BEHIND while
 	 * the server serving this app is at the published one. Nothing is behind on the
