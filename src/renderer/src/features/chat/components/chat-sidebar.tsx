@@ -227,12 +227,23 @@ const holdFocusedRow = (
 		slot.current = { node: null, index: -1 };
 		return;
 	}
-	const rows = [...container.querySelectorAll<HTMLElement>("[data-chat-row]")];
+	/*
+	 * `rowNodes`, not `rows`. `scripts/clear-search.test.mjs` slices this file from
+	 * the arrow-key handler down to the sidebar's own rows array literal, so a
+	 * local sharing that name one module above the component makes the slice empty
+	 * and turns a green-looking file into a red guard - which is how CI's Desktop
+	 * Tests step found this (round 1). The same applies to quoting those two
+	 * declarations here: the slice is found by source text, so the names have to
+	 * appear only where they are declared.
+	 */
+	const rowNodes = [
+		...container.querySelectorAll<HTMLElement>("[data-chat-row]"),
+	];
 	const active =
 		document.activeElement instanceof HTMLElement
 			? document.activeElement
 			: null;
-	const index = active ? rows.indexOf(active) : -1;
+	const index = active ? rowNodes.indexOf(active) : -1;
 	const previous = slot.current;
 	slot.current = { node: active, index };
 	if (
