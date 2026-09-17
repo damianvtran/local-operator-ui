@@ -4270,6 +4270,27 @@ const main = async () => {
 	 * `partialCapture`, which is the field a reader consults to tell a narrowed
 	 * set from a swept one.
 	 */
+	/*
+	 * A FOLD'S RESOLVER READS THIS BLOCK. When `main` and this branch have both
+	 * rewritten this file, the merge is a PER-FIELD decision and NOT "keep main's
+	 * record":
+	 *
+	 *   - `head`, `headNote` and every `partialCapture` field describe THIS
+	 *     branch's own pass. Main's values for them name main's pass, and taking
+	 *     them sends a verifier to a tree that does not carry this branch's frames
+	 *     - review rounds 4, 5 and 6 each found that, the third time inside the
+	 *     round that had just fixed it. Keep this branch's.
+	 *   - `supplementary` and the `refreshed*` fields are the UNION of the two
+	 *     sides, because the merged tree carries both; `refreshedFrames` is then
+	 *     re-derived against `HEAD` rather than added up, since the gate asks
+	 *     those fields about the tree that ships.
+	 *   - `frames`, `surfaces`, `themes`, `srcTree` and `scriptsTree` are
+	 *     RE-DERIVED from the merged tree, never taken from either side.
+	 *
+	 * The gate cannot catch a `head` that names the wrong tree: it asks whether
+	 * the citation resolves and is reachable, and main's own commit does both.
+	 * The same rule is stated for readers in the manifest's `citationConvention`.
+	 */
 	const manifestPath = join(OUT, "manifest.json");
 	let previous = {};
 	try {
