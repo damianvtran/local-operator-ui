@@ -24,8 +24,8 @@ Storybook story cannot answer any of them:
 | `12-approvals-queue.webp` | the band with a numbered queue: the count, the chips, the selected request's card |
 | `17-tab-actions-in-band.webp` | the tab actions row and the badge in situ (D3, D4) |
 | `18-approvals-dock.webp` | the dock open, the page still visible and narrowed, no suppression (D2, D9) |
-| `19-strip-marked-tab-at-rest.webp` | the strip at rest with an agent-marked row, so D12's marker visibility has a frame that can show it |
-| `20-strip-failed-and-agent-markers.webp` | the `Failed` and `Agent` markers painted together, the pair D11 re-framed |
+| `19-strip-marked-tab-at-rest.webp` | the strip at rest with a user and an agent-marked row, **and on this head the strip is not in the picture**: the top ~67 CSS px of the frame is the no-daemon banner's fill, and the strip sits under it (see the D9 note below). What IS in the frame is the surface the strip belongs to — the app's own sidebar with `Browser` selected and the page the tabs point at — which is coverage of the composition and NOT of the markers |
+| `20-strip-failed-and-agent-markers.webp` | the same occlusion over the surface with the band OPEN: the band's items (`Let an agent use "Proof page one"…`, `Close "Proof page one"`, `Close 1 other tab`, `Copy URL`) and the URL bar are visible below the banner, and the strip's own row — the only place the `Failed` and `Agent` chips exist — is behind it. The markers are NOT visible here; the pair is evidenced in `browser-conversation-mark/*` and `chat-sidebar-status-feed/browser-marks/*`, which photograph the mark on a row that is not under a banner |
 
 Source, exactly:
 
@@ -44,7 +44,7 @@ what keeps the sweep's own frame count honest.
 
 ## What these frames are photographs of, and the one bounded delta left
 
-`12`, `17`, `18`, `19` and `20` were re-taken at `937d99822` (this branch's spelling
+`12`, `17`, `18`, `19` and `20` were re-taken at `25ad52c33` (this branch's spelling
 of the round that re-shaped the tab strip's overlaid chrome cluster, the band's busy
 cue, the dock's notice sentence and waiting row, and the URL bar's label reserve).
 That re-shoot is done: the deferral the earlier revision of this file carried is
@@ -72,3 +72,37 @@ agent-marked tab) and `20-strip-failed-and-agent-markers` is its
 `16-surface-strip-failed-agent-tab` (the `Failed` and `Agent` markers painted
 together). `17` is the frame that carries review round 2's D7 band — one item per row,
 `Copy URL` last behind the rule — in the running app.
+
+## The two frames named for the strip's markers do not contain the strip (review round 2, D9)
+
+**MEASURED, IN THE COMMITTED PIXELS.** In both `19` and `20` the frame's top 133
+device px (≈67 CSS at dpr 2) is a fill that ends in a rule at device y 134, and it is
+the no-daemon banner: `20` shows it verbatim — "Not connected to a Local Operator
+server…" with its `Retry`. Underneath it `20` shows the band and the URL bar and `19`
+shows the page, so the banner is not merely at the top of the window: it is lying over
+the strip's own row, which is why neither frame contains a chip-coloured pixel in the
+pane: against the chips' own `#67C674`, a 5% fuzz finds 11,250 px in the frame that
+DOES show them (`browser-pane-live/browser-pane-strip-four.png`) and 0 in `19` and 5 in
+`20`, all of the latter inside the pane's own x-range. That is what the two captions
+above now state — what these frames can and cannot show — rather than what they were
+taken for.
+
+**THE RE-TAKE IS OWED, AND THE MECHANISM FOR IT IS ALREADY IN THIS TREE.** Both frames
+come from `captureRenderer` (`browser-chrome-proof.mjs:1777` and `:1905`), and that
+wrapper calls `exposeStrip()` before every single frame — the round-3 fix that hides
+EVERY element in the hit chain at the strip's centre, by geometry rather than by a
+banner's name, in a `<style>` the app cannot re-render away, and then ASSERTS the strip
+is topmost. So the harness that produced these files knows how to put the strip in the
+frame, and the committed bytes predate or bypass that path. Which of the two it is has
+not been established: proving it needs the run itself, and the re-take is the same
+command — `pnpm build` (or the app already built) and
+
+```
+env -u NO_COLOR LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_NO_TERMINAL_TITLE=1 \
+  node scripts/browser-chrome-proof.mjs --keep
+```
+
+with the `09-strip-user-and-agent` and `16-surface-strip-failed-agent-tab` scratch PNGs
+encoded to `.webp` at quality 90 as before. Until that runs, this set claims the
+markers nowhere: the claim lives in the frames that show them, and these two state
+plainly that the strip's row is behind the banner.
