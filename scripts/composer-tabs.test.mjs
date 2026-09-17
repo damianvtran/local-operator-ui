@@ -59,6 +59,13 @@ const bundle = await build({
 				ComposerStatusRow,
 				shouldRestoreComposerFocus,
 				goalDisclosureLabel,
+				goalClearLabel,
+				loopActionLabel,
+				loopAffordance,
+				loopProgress,
+	loopStatusWord,
+				loopClause,
+				loopIsRunning,
 				planChipLabel,
 				subagentChipLabel,
 				jobChipLabel,
@@ -81,7 +88,7 @@ const bundle = await build({
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
 			export const renderWakes = (props) =>
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
-			export { ComposerStatusRow, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
+			export { ComposerStatusRow, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -141,6 +148,13 @@ const {
 	shouldRestoreComposerFocus,
 	renderWakes,
 	goalDisclosureLabel,
+	goalClearLabel,
+	loopActionLabel,
+	loopAffordance,
+	loopProgress,
+	loopStatusWord,
+	loopClause,
+	loopIsRunning,
 	planChipLabel,
 	subagentChipLabel,
 	jobChipLabel,
@@ -163,6 +177,32 @@ await unlink(bundlePath);
 
 /** A frontend snapshot carrying only the field this row reads. */
 const frontend = (goal) => ({ goal });
+
+/**
+ * A frontend snapshot carrying a GOAL and a LOOP, which are the two fields the
+ * dismiss controls and the loop chip are gated on.
+ *
+ * `session_id` is real here rather than cast away: the dismiss controls address
+ * the owner command to the session the row is drawn for, so the id the row reads
+ * is part of what a markup assertion about the named goal is looking at.
+ */
+const frontendWith = (fields) => ({ goal: "", session_id: "s-1", ...fields });
+
+/**
+ * One wire loop state, in `DesktopLoopState`'s own shape.
+ *
+ * `idle` and a null field are both "no loop" for this row, so the fixture keeps
+ * every field present and lets a case say `null` where it means absent — the
+ * distinction the contract makes and the one the gate has to read.
+ */
+const wireLoop = (status, extra = {}) => ({
+	status,
+	completed: 0,
+	iterations: null,
+	goal: "",
+	reason: "",
+	...extra,
+});
 
 /**
  * A phase-shaped plan, from the wire shapes the backend publishes — the same
@@ -518,9 +558,9 @@ test("both chips, goal first in the DOM so paint order and tab order agree", () 
 	);
 });
 
-test("the row's chips are ordered goal, plan, wakes, subagents, jobs, in paint and tab order alike", () => {
+test("the row's chips are ordered goal, loop, plan, wakes, subagents, jobs, in paint and tab order alike", () => {
 	/*
-	 * Five chips on one row and one DOM order, which the stacked arrangement at the
+	 * Six chips on one row and one DOM order, which the stacked arrangement at the
 	 * column floor inherits: the row is a `flex-col` there, so the vertical order IS
 	 * the DOM order. The two activity chips sit AFTER the plan chip, which is the
 	 * operator's placement ("in the same row as the todos") and the reason their
@@ -528,9 +568,17 @@ test("the row's chips are ordered goal, plan, wakes, subagents, jobs, in paint a
 	 * and the WAKE chip sits between them and the plan, because the goal, the plan
 	 * and the wakes are the session's standing facts while the subagents and jobs
 	 * are what is moving now (`composer-status-row.tsx`'s `wakesFirst`).
+	 *
+	 * The LOOP chip is the sixth and it sits second, between the goal and the plan:
+	 * it is the session's mode rather than a count of rows, it is paired with the goal
+	 * (a count loop works the standing goal, a goal loop carries its own), and the two
+	 * rejected placements are recorded in `docs/composer-status-tabs.md` § 13.
 	 */
 	const markup = renderRow({
-		frontend: frontend("Ship it"),
+		frontend: frontendWith({
+			goal: "Ship it",
+			loop: wireLoop("running", { completed: 2, iterations: 5 }),
+		}),
 		runDetails: deriveRunDetails({
 			jobs: [
 				wireJob("c1", "task", "running", "Audit the invoices"),
@@ -545,6 +593,7 @@ test("the row's chips are ordered goal, plan, wakes, subagents, jobs, in paint a
 	});
 	const order = [
 		markup.indexOf("Goal:"),
+		markup.indexOf("data-status-loop-item"),
 		markup.indexOf("data-status-plan"),
 		markup.indexOf("data-status-wakes"),
 		markup.indexOf("data-status-subagents"),
@@ -552,7 +601,7 @@ test("the row's chips are ordered goal, plan, wakes, subagents, jobs, in paint a
 	];
 	assert.ok(
 		order.every((at) => at > -1),
-		"all five chips render",
+		"all six chips render",
 	);
 	assert.deepEqual(
 		order,
@@ -1357,6 +1406,7 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * (below), where "first" is a question about the group's own leading edge.
 	 */
 	assert.match(source, /groupIsFirst \? FIRST_CHIP : undefined/);
+	assert.match(source, /loopFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /wakesFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /subagentsFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /jobsFirst \? FIRST_CHIP : undefined/);
@@ -1386,8 +1436,28 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 */
 	assert.match(source, /min-w-\[140px\] flex-1/);
 	assert.doesNotMatch(source, /cn\("min-w-0 flex-1", COLUMN_GOAL\)/);
+	/*
+	 * The goal's item is the WRAPPER now, because the dismiss lives inside it: the
+	 * floor and the column switch are properties of the item, and the disclosure
+	 * inside it is the part that yields (`min-w-0 flex-1`) with its trigger still
+	 * `w-fit` so the hover ground stays chip-sized. The floor and the switch moved
+	 * together rather than one at a time, which is what the two pins below say.
+	 */
+	assert.match(
+		source,
+		/cn\(\s*"group flex min-w-\[140px\] flex-1 items-center",\s*COLUMN_GOAL,/,
+	);
+	assert.match(source, /className=\{cn\("min-w-0 flex-1"\)\}/);
+	/*
+	 * The first-chip chain, which had to grow an item: the loop chip is the second
+	 * ITEM on the row (its own chip plus its dismiss, one wrapper), so the count group
+	 * is first only when neither the goal nor the loop rendered. Six chips, five
+	 * items, and the group's own leading chip is still decided inside the group.
+	 */
+	assert.match(source, /const loopFirst = !showGoal;/);
+	assert.match(source, /const groupIsFirst = !showGoal && !showLoop;/);
+	assert.match(source, /const wakesFirst = groupIsFirst && !showPlan;/);
 	assert.match(source, /const subagentsFirst = wakesFirst && !showWakes;/);
-	assert.match(source, /const wakesFirst = !showGoal && !showPlan;/);
 	assert.match(source, /const jobsFirst = subagentsFirst && !children;/);
 
 	/*
@@ -1403,15 +1473,18 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	// The shared horizontal inset is the alert's own, not a second number.
 	tokens("isSmallView ?", '"px-2 pb-1"', '"px-4 pb-2"', "CHAT_MEASURE");
 	/*
-	 * The plan chip is the readings' own control box, IMPORTED rather than
-	 * restated: two chips over one box with two class strings is how two hover
-	 * grounds and two focus offsets arrive.
+	 * The plan chip — and now the two dismiss controls — are the readings' own
+	 * control box, IMPORTED rather than restated: two chips over one box with two
+	 * class strings is how two hover grounds and two focus offsets arrive. The loop
+	 * chip is the same story one box over, on the INERT form (`READING_LABEL as
+	 * CHIP_READOUT`): a readout is not a control, and the difference between them is
+	 * the ink role and the cursor rather than a second box.
 	 */
 	assert.match(
 		source,
-		/import \{ READING_BUTTON as CHIP_CONTROL \} from "\.\.\/session-status\/session-status-strip"/,
+		/READING_BUTTON as CHIP_CONTROL,[\s\S]*?READING_LABEL as CHIP_READOUT,[\s\S]*?} from "\.\.\/session-status\/session-status-strip"/,
 	);
-	tokens("CHIP_CONTROL");
+	tokens("CHIP_CONTROL", "CHIP_READOUT");
 	assert.doesNotMatch(source, /bg-surface|border-control|bg-elevated/);
 	/*
 	 * The count's visible affordance mark (design review round 1, D1): the run
@@ -1419,7 +1492,7 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * accessible name already states the action.
 	 */
 	tokens(
-		"import { AlarmClock, Info } from",
+		"import { AlarmClock, Info, Repeat, X } from",
 		"<Info aria-hidden={true}",
 		"size-3.5",
 	);
@@ -1466,12 +1539,21 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	assert.doesNotMatch(source, /childClause\(runDetails\./);
 	assert.doesNotMatch(source, /jobClause\(runDetails\./);
 	/*
-	 * And nothing here counts: no filtering to an open slice, no status word compared
-	 * to "running", no length turned into a number. The row chooses which of the
-	 * model's functions to print, which is the rule the plan chip already follows.
+	 * And nothing here counts: no filtering to an open slice and no length turned
+	 * into a number. The row chooses which of the model's functions to print, which
+	 * is the rule the plan chip already follows. The row's ONE status comparison is
+	 * the loop chip's own predicate (`loopIsRunning`, whose truth table the loop
+	 * section of this file asserts): the activity chips read no status word at all,
+	 * which is what makes D1 unrepeatable rather than merely fixed, and the pin holds
+	 * the line at one so a second status vocabulary here has to be argued for.
 	 */
 	assert.doesNotMatch(source, /\.filter\(/);
-	assert.doesNotMatch(source, /=== "running"/);
+	assert.equal(
+		(source.match(/=== "(running|judging)"/g) ?? []).length,
+		2,
+		"one predicate compares a status word, and it is the loop's own",
+	);
+	assert.match(source, /export const loopIsRunning = /);
 });
 
 test("the expanded body caps itself, keeps the author's breaks, and carries its own tab stop", () => {
@@ -2117,4 +2199,416 @@ test("the Jobs section draws the partition's rows, and nothing in it is pressabl
 		roster,
 		/<SubagentRowBody row=\{row\} detail=\{<DetailLine row=\{row\} \/>\} \/>/,
 	);
+});
+
+/* ---------------------------------------------------------------- */
+/* The loop chip, and the row's two dismiss controls                 */
+/* ---------------------------------------------------------------- */
+
+/*
+ * `docs/composer-status-tabs.md` § 12-13. Three instruments, on the file's own
+ * division of labour: markup for what renders and what it says, the exported
+ * derivations for the copy's own truth table, and a DRIVEN press for the one
+ * claim no shape can make — that pressing a dismiss runs the owner's command,
+ * with the flag the affordance's own word promises, and leaves the disclosure it
+ * sits beside untouched.
+ *
+ * What none of these can see is the REVEAL: `:hover` and `:focus-within` are
+ * browser state, and jsdom evaluates neither. So the classes that carry it are
+ * asserted here as strings and the pixels are asserted in the frames
+ * (`docs/evidence/chat-composer-status-row/goal-clear-hovered/`,
+ * `…-focused/`), which is this repo's rule for every other hover claim.
+ */
+
+test("a session with no loop renders no loop chip, and an idle loop is the same absence", () => {
+	// Absent: the wire omits the field on a session that has never run a loop.
+	const absent = renderRow({
+		frontend: frontendWith({ goal: "Ship it" }),
+		runDetails: null,
+	});
+	assert.doesNotMatch(absent, /data-status-loop/);
+	/*
+	 * Idle: the loop ran and was cleared, or never started on this connection. The
+	 * row renders NOTHING for a session with an idle loop and no goal — the same
+	 * branch, and the reason the gate is the status rather than the field's
+	 * presence.
+	 */
+	const idle = renderRow({
+		frontend: frontendWith({ goal: "", loop: wireLoop("idle") }),
+		runDetails: null,
+	});
+	assert.equal(idle, "");
+});
+
+test("the loop chip states the wire's own status word, with the progress the wire carries", () => {
+	/*
+	 * The clause's truth table, over the exported derivation, because the chip's own
+	 * sentence is the claim and a markup match would only be a second reading of it.
+	 */
+	assert.equal(
+		loopClause(wireLoop("running", { completed: 2, iterations: 5 })),
+		"running, 2 of 5 turns",
+	);
+	assert.equal(
+		loopClause(wireLoop("running", { completed: 3 })),
+		"running, 3 turns",
+	);
+	assert.equal(
+		loopClause(wireLoop("running", { completed: 1 })),
+		"running, 1 turn",
+	);
+	/*
+	 * `judging` carries no count at all, deliberately: the judge is deciding the turn
+	 * that just ended, so `completed` has already moved and a number beside the word
+	 * would be a figure the reader cannot date.
+	 */
+	assert.equal(
+		loopClause(wireLoop("judging", { completed: 4, iterations: 5 })),
+		"judging",
+	);
+	/*
+	 * The settled states print the wire's word and nothing else: they are the same
+	 * vocabulary the picker's own `Status` row prints, and a prettier word here would
+	 * be a second vocabulary for one fact.
+	 */
+	for (const status of [
+		"achieved",
+		"completed",
+		"cancelled",
+		"interrupted",
+		"failed",
+	]) {
+		assert.equal(loopClause(wireLoop(status)), status);
+	}
+});
+
+test("the loop's affordance is the state's own: Stop while it moves, Clear once it settles", () => {
+	assert.deepEqual(loopAffordance(wireLoop("running")), {
+		text: "Stop loop",
+		flag: "--stop",
+	});
+	assert.deepEqual(loopAffordance(wireLoop("judging")), {
+		text: "Stop loop",
+		flag: "--stop",
+	});
+	for (const status of [
+		"achieved",
+		"completed",
+		"cancelled",
+		"interrupted",
+		"failed",
+	]) {
+		assert.deepEqual(
+			loopAffordance(wireLoop(status)),
+			{ text: "Clear loop", flag: "--clear" },
+			`${status} is settled, so it is cleared rather than stopped`,
+		);
+	}
+	/*
+	 * The BOUNDARY, stated as a case: the running set is the wire's own two words,
+	 * and a status this build cannot read is not claimed to be moving. Clearing is
+	 * the command that is safe on a state the row does not recognise; offering
+	 * `Stop` on one would be a claim the row cannot check.
+	 */
+	assert.equal(loopIsRunning("idle"), false);
+	assert.equal(loopIsRunning("paused"), false);
+});
+
+test("the two dismisses are named with the action first and the value it will throw away", () => {
+	// ONE derived string per control, for the tooltip AND the accessible name, and
+	// the control's own printed word leads it — so the name a screen reader
+	// announces contains what the control says (WCAG 2.5.3).
+	assert.equal(goalClearLabel("Ship it"), "Clear goal — Ship it");
+	assert.equal(
+		loopActionLabel(wireLoop("running", { completed: 2, iterations: 5 })),
+		"Stop loop — running, 2 of 5 turns",
+	);
+	assert.equal(
+		loopActionLabel(wireLoop("failed", { completed: 4 })),
+		"Clear loop — failed",
+	);
+});
+
+test("the goal chip carries a dismiss that says which goal it clears", () => {
+	const markup = renderRow({
+		frontend: frontend("Reconcile the March invoices"),
+		runDetails: null,
+	});
+	assert.match(markup, /data-status-goal-dismiss=""/);
+	assert.match(
+		markup,
+		new RegExp(`aria-label="Clear goal — Reconcile the March invoices"`),
+	);
+	assert.match(markup, /Clear goal<\/span>/);
+	// The X is the mark, not the name: the glyph is `aria-hidden` and the word is
+	// the control's own text, so the button has one accessible name and it is the
+	// derived string.
+	assert.match(markup, /lucide-x/);
+});
+
+test("the loop chip is a READOUT and its dismiss is the row's only loop control", () => {
+	const markup = renderRow({
+		frontend: frontendWith({
+			goal: "Ship it",
+			loop: wireLoop("running", { completed: 2, iterations: 5 }),
+		}),
+		runDetails: null,
+	});
+	const item = markup.match(/data-status-loop-item[\s\S]*?<\/div>/)?.[0] ?? "";
+	assert.notEqual(item, "", "the loop item renders");
+	/*
+	 * The chip itself is a `<span>`, in the readings' INERT box: the loop's standing
+	 * state is a readout, and the only thing this row can DO with a loop is stop or
+	 * clear it. So the item holds exactly one button, and it is the dismiss.
+	 */
+	assert.match(item, /<span data-status-loop=""/);
+	assert.equal(
+		(item.match(/<button/g) ?? []).length,
+		1,
+		"one control on the loop item, and it is the dismiss",
+	);
+	assert.match(item, /data-status-loop-dismiss=""/);
+	// The mark is the one glyph whose meaning is fixed to this fact, and it does not
+	// move: the row's motion is the roster's state mark on the activity chips.
+	assert.match(item, /lucide-repeat/);
+	assert.doesNotMatch(item, /animate-spin|animate-pulse/);
+	// The readout's own box: no hover ground and no pointer, which is what keeps it
+	// legible as a readout beside the controls on the same line.
+	assert.match(item, /cursor-default/);
+	// The word the state earns, printed on the control.
+	assert.match(item, /Stop loop<\/span>/);
+});
+
+test("both dismisses hold their box and are revealed by hover and by keyboard focus", () => {
+	const markup = renderRow({
+		frontend: frontendWith({
+			goal: "Ship it",
+			loop: wireLoop("running", { completed: 2, iterations: 5 }),
+		}),
+		runDetails: null,
+	});
+	const dismisses =
+		markup.match(/<button[^>]*data-status-(goal|loop)-dismiss=""[^>]*>/g) ?? [];
+	assert.equal(
+		dismisses.length,
+		2,
+		"the goal's dismiss and the loop's both render",
+	);
+	for (const dismiss of dismisses) {
+		/*
+		 * Held, not hidden: `opacity-0` with pointer events off rather than `hidden`,
+		 * so the control keeps its box and the chip's snippet does not move under the
+		 * pointer on every hover (`branding.md` § 5: hover is a colour step).
+		 */
+		assert.match(dismiss, /pointer-events-none/);
+		assert.match(dismiss, /opacity-0/);
+		assert.doesNotMatch(dismiss, /\shidden/);
+		/*
+		 * And REVEALED by both halves — `group-hover` for the pointer and
+		 * `group-focus-within` for the keyboard. The second is not optional: a
+		 * hover-only control is unusable by keyboard (WCAG 2.1.1), and taking focus on
+		 * the chip is what reveals it.
+		 */
+		assert.match(dismiss, /group-hover:pointer-events-auto/);
+		assert.match(dismiss, /group-hover:opacity-100/);
+		assert.match(dismiss, /group-focus-within:pointer-events-auto/);
+		assert.match(dismiss, /group-focus-within:opacity-100/);
+		// The readings' own control box, so the dismiss is the same species as the
+		// chips beside it rather than a second hover ground on one line.
+		assert.match(dismiss, /hover:bg-accent-wash/);
+		assert.match(dismiss, /focus-visible:outline-offset-1/);
+	}
+});
+
+test("the dismiss's word is dropped at the row's stacked band, and its name is not", () => {
+	const markup = renderRow({
+		frontend: frontendWith({
+			goal: "Ship it",
+			loop: wireLoop("achieved", { completed: 5, iterations: 5 }),
+		}),
+		runDetails: null,
+	});
+	/*
+	 * At and below 240px the row is a column and the goal item takes the row's whole
+	 * content box, so the word `Clear goal` beside the chip's own fixed ink would
+	 * leave the snippet nothing: the X is the affordance's irreducible part and the
+	 * word is what yields. The accessible name keeps it at every width, which is the
+	 * half that decides whether the control is still describable.
+	 */
+	assert.match(markup, /@max-\[240px\]\/chatcol:hidden/);
+	assert.match(markup, /aria-label="Clear loop — achieved"/);
+});
+
+test("the shipped dismisses run the owner's own command, and the goal's does not toggle the disclosure", async () => {
+	/*
+	 * THE DRIVEN HALF, and it is the half that decides whether the feature works:
+	 * the markup says a button exists with a name, and only a press says what the
+	 * press does. `jsdom` is this repo's existing instrument for that
+	 * (`suggestion-stack-react.test.mjs`, and this file's own refocus test), and the
+	 * bridge is stubbed at the seam the product uses — `window.api.desktop.request`,
+	 * which is what `desktop-api.ts` reads first and the same seam
+	 * `scripts/mcp-auth-complete-no-retry.test.mjs` stubs.
+	 */
+	const { window: dom, root, cleanup } = await rowInDom();
+	const quiet = [];
+	const realError = console.error;
+	console.error = (...args) => void quiet.push(String(args[0]));
+	try {
+		const h = createElement;
+		const requests = [];
+		let answer = {
+			status: 200,
+			body: {
+				result: {
+					command: "goal",
+					result: {
+						kind: "notice",
+						text: "Goal cleared.",
+						style: "success",
+						data: {},
+					},
+				},
+			},
+		};
+		dom.api = {
+			desktop: {
+				request: async (request) => {
+					requests.push(request);
+					return answer;
+				},
+			},
+		};
+		const element = (loop) =>
+			h(ComposerStatusRow, {
+				frontend: frontendWith({
+					goal: "Reconcile the March invoices",
+					loop,
+				}),
+				runDetails: null,
+			});
+		const press = async (node) => {
+			await act(async () => {
+				node.click();
+			});
+		};
+
+		await act(async () =>
+			void root.render(element(wireLoop("running", { completed: 2, iterations: 5 }))),
+		);
+		const trigger = dom.document.querySelector(
+			"[data-composer-status-row] button[aria-expanded]",
+		);
+		assert.equal(trigger.getAttribute("aria-expanded"), "false");
+
+		const goalClearButton = dom.document.querySelector(
+			"[data-status-goal-dismiss]",
+		);
+		assert.ok(goalClearButton, "the goal chip renders its dismiss");
+		await press(goalClearButton);
+		assert.equal(requests.length, 1, "one press, one command");
+		assert.equal(requests[0].op, "sessions.command");
+		assert.equal(
+			requests[0].sessionId,
+			"s-1",
+			"the command is addressed to the session the row is drawn for",
+		);
+		assert.equal(requests[0].command, "goal");
+		assert.equal(requests[0].args, "--clear");
+		/*
+		 * THE PRESS THE CONTROL SITS NEXT TO IS UNTOUCHED. This is the property the
+		 * sibling structure exists for: the dismiss is not a child of the disclosure's
+		 * trigger, so the press cannot reach it and does not need
+		 * `stopPropagation` — and the control on the other side of the chip still
+		 * toggles, which is the half that says the assertion is about the structure
+		 * rather than about a button that does nothing.
+		 */
+		assert.equal(
+			trigger.getAttribute("aria-expanded"),
+			"false",
+			"the X does not open the goal",
+		);
+		await press(trigger);
+		assert.equal(trigger.getAttribute("aria-expanded"), "true");
+		assert.equal(
+			requests.length,
+			1,
+			"and the disclosure's own press runs no command",
+		);
+
+		const stop = dom.document.querySelector("[data-status-loop-dismiss]");
+		assert.match(stop.textContent, /Stop loop/);
+		await press(stop);
+		assert.equal(requests.length, 2);
+		assert.equal(requests[1].command, "loop");
+		assert.equal(requests[1].args, "--stop");
+
+		/*
+		 * The loop SETTLES under the same wire the chip reads, so the affordance is
+		 * re-derived rather than remembered: the word on the control and the flag the
+		 * press sends both move to `clear`, off one `loopAffordance` call.
+		 */
+		answer = {
+			status: 200,
+			body: {
+				result: {
+					command: "loop",
+					result: {
+						kind: "notice",
+						text: "Loop cleared.",
+						style: "success",
+						data: {},
+					},
+				},
+			},
+		};
+		await act(async () =>
+			void root.render(element(wireLoop("achieved", { completed: 5 }))),
+		);
+		const clearLoop = dom.document.querySelector("[data-status-loop-dismiss]");
+		assert.match(clearLoop.textContent, /Clear loop/);
+		await press(clearLoop);
+		assert.equal(requests.length, 3);
+		assert.equal(requests[2].command, "loop");
+		assert.equal(requests[2].args, "--clear");
+
+		/*
+		 * A REFUSAL goes to the app's toast channel rather than nowhere, and the case
+		 * is here because the failure path is the one a stub can reach and a frame
+		 * cannot easily: the transport answers 503 and the control must survive it —
+		 * no throw out of the click handler, and the row still standing.
+		 */
+		answer = { status: 503, body: { detail: "the backend is not running" } };
+		await press(dom.document.querySelector("[data-status-goal-dismiss]"));
+		assert.equal(requests.length, 4, "the refused press still reached the owner");
+		assert.ok(
+			dom.document.querySelector("[data-status-goal-dismiss]"),
+			"and a refusal leaves the row as it was",
+		);
+	} finally {
+		console.error = realError;
+		cleanup();
+	}
+	assert.ok(
+		quiet.every((message) => message.includes("not wrapped in act")),
+		`React reported something the harness does not expect: ${quiet.join(" | ")}`,
+	);
+});
+
+test("a refusal is the only outcome that speaks, and it speaks in the backend's words", () => {
+	/*
+	 * A SOURCE pin, and the weakest instrument here, deliberately: the success path is
+	 * visible (the wire clears the goal and the chip goes; the loop settles and its
+	 * word changes) and needs no announcement, a live region is refused on this row
+	 * (§ 7), and whether sonner paints a toast in a bare jsdom document is not a fact
+	 * about the row. What the pin buys is that a revert has to come here and say what
+	 * replaced the refusal path — and the frame set's own `…-refused/` capture is
+	 * where the toast is photographed (docs/evidence/…/README.md).
+	 */
+	const row = code(ROW);
+	assert.match(row, /if \(result\.tone === "error"\) showErrorToast\(result\.text\);/);
+	// One hook for both controls, addressed by the session the row is drawn for.
+	assert.match(row, /const command = useSessionCommand\(frontend\?\.session_id \?\? ""\);/);
+	// The pair the two controls dispatch, and neither of them is a label.
+	assert.match(row, /runDismiss\(GOAL_COMMAND, GOAL_CLEAR_FLAG\)/);
+	assert.match(row, /runDismiss\(LOOP_COMMAND, loopAction\.flag\)/);
 });
