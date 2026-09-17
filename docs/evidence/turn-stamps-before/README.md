@@ -67,10 +67,13 @@ This section used to claim the pair was evidence of an edge distinction that "at
 two edges are far apart". It is not, and they are not: the 1440 frame's bubble right edge
 and the ledger's own right rail are the same x (1170). Both widths are still in the set,
 for the reason the after-frames are captured at both — the transcript is a different shape
-in a narrow column (the bubble is a larger fraction of the width), and the stamp has its own
-line there — ink ends at x 362 of the 420px frame with the rest of that line empty, so
-nothing about it is close to wrapping — and a reader on a narrow window is the
-one most likely to be reading a single long conversation.
+in a narrow column, where the bubble is a larger fraction of the width, and a reader on a
+narrow window is the one most likely to be reading a single long conversation. The stamp's
+own line in that column is shown and measured in the AFTER set, which holds the 420px
+frame (`chat-tool-rows/turn-timestamps-narrow`: ink ends at x 362 with the rest of the
+line empty); this pair's two widths are 1024 and 1440, and nothing in either is close to
+wrapping — an earlier sentence here claimed otherwise (design round 2, D2-3; review round
+3, R3-4).
 
 ## Declared, not swept
 
