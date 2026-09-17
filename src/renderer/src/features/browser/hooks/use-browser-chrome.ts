@@ -277,7 +277,6 @@ export function useBrowserProjection(): BrowserProjection {
 		refresh: refreshBrowserProjection,
 		clearReadError: clearBrowserProjectionReadError,
 	};
-
 }
 
 export function useBrowserChrome(): BrowserChrome {
@@ -471,9 +470,7 @@ export function useBrowserChrome(): BrowserChrome {
 	);
 }
 
-
 /** The prefix Electron adds to an `ipcRenderer.invoke` rejection, and the unwrap
  * itself, live in `@shared/utils/ipc-error-message` now: the update surfaces
  * unwrap the same envelope for the same reason, and two spellings of one rule
  * is how the two answers drift apart. */
-

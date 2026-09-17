@@ -3366,7 +3366,7 @@ async function main() {
 			"the pool overflows the strip, so the pinned control says how many tabs are off screen",
 			poolSeen !== null &&
 				typeof poolSeen.pin === "string" &&
-				/^\+\d+$/.test(poolSeen.pin),
+				/^\d+$/.test(poolSeen.pin),
 			`pinned control reads ${JSON.stringify(poolSeen?.pin ?? null)}`,
 		);
 		say(`frame: ${join(OUT_DIR, "19-strip-pooled-20-over-6.png")}`);

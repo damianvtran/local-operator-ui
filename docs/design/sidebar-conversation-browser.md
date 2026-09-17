@@ -437,13 +437,18 @@ the tab.
 
 **And the row-level chip is not the only `+` in the strip (review round 2, U5,
 ruled).** The pinned control's count was a bare `+N` sitting immediately left of the
-new-tab control's `+`, so at a glance "add N" and "open one" were one glyph apart.
-The count now carries the chip grammar (`border-control`, `ink-dim`, tabular) with the
-words `N more tabs` in its accessible name and its tooltip, the new-tab control is a
-bounded icon button (`variant="outline"`, its own `New tab …` tooltip) rather than a
-second bare plus, and the strip's own `hairline` rule is drawn between them while the
-count is on screen. `N not shown` remains the pinned LIST's heading, where the
-sentence is about the rows below it.
+new-tab control's `+`, so at a glance "add N" and "open one" were one glyph apart. The
+count now carries the chip grammar (`border-control`, `ink-dim`, tabular), **without a
+plus of its own** — the requirement is that the two affordances must not be
+distinguishable only by whether a digit follows the plus, and the one character that
+kept this one a second plus sign was the `+` itself, so the chip carries the number and
+the only plus in that corner is the control that opens one more tab. `N more tabs` is
+in the count's accessible name and its tooltip; the new-tab control is a bounded icon
+button (`variant="outline"`, its own `New tab …` tooltip) rather than a second bare
+plus; and the strip's own `hairline` rule is drawn between them while the count is on
+screen. `N not shown` remains the pinned LIST's heading, where the sentence is about
+the rows below it. The row-level `+n` chip keeps its plus: it hides STATE chips rather
+than tabs, never sits beside this control, and its tooltip names the states it hides.
 
 **Fix 2: the pinned control becomes an in-band list, sectioned by conversation.**
 Per §6's rule and `browser-view-policy.ts:34-38`, a menu inside the band paints
