@@ -88,8 +88,9 @@ export const obsidian: ThemeDefinition = {
 		// ΔE00 1.0 away, and more chroma falls below the accent's own ground ratio.
 		chartBarHover: "#FCFCE4",
 		tokenCommand: "#FAFAFA",
-		/* Monochrome: pinned to `ink` with the semibold carrying the run (see the
-		   role's note in `palette-contract.ts`). */
+		/* Monochrome: pinned to `ink` with the painted weight step carrying the run
+		   (see the role's note in `palette-contract.ts`) — no semibold, and the
+		   step's width tracks the raster, so it renders at 1x as well. */
 		accentWash: "#262628",
 		onAccent: "#09090B",
 

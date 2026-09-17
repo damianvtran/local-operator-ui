@@ -169,6 +169,17 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 	disabled = false,
 	children,
 }) => {
+	/*
+	 * TWO nodes, and the split is the point rather than tidiness. `mirrorRef` is
+	 * the GLYPH LAYER: the text column, scrolled by the transform. The element
+	 * above it (`data-composer-mirror`) is the CLIP WINDOW, and it is the box the
+	 * textarea's own viewport is. They used to be one node, and a transform moves
+	 * the clipped box along with the paint: at `scrollTop S` the window sat `S` px
+	 * above the field, so the field's bottom `S` px were never painted — the line
+	 * the caret was on, i.e. the text the user was typing — while the mirror
+	 * painted `S` px over the composer's top edge. Clipping therefore belongs to a
+	 * node that does not move, and the paint to one that does.
+	 */
 	const mirrorRef = useRef<HTMLDivElement | null>(null);
 	const paints = highlightPaints(runs);
 	const segments = useMemo(
@@ -193,6 +204,13 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 		const textarea = textareaRef.current;
 		const mirror = mirrorRef.current;
 		if (!textarea || !mirror) return;
+		/*
+		 * `mirror` is the GLYPH layer, not the clip window: the transform must move
+		 * what is painted while the window stays the field's viewport. Writing it to
+		 * the clip node is the round-2 Q1 defect (the caret's line unpainted, the
+		 * mirror painting above the field), and the probes now assert the invariant
+		 * directly — the clip box's top against the textarea's own.
+		 */
 		const sync = () => {
 			mirror.style.transform = `translateY(-${textarea.scrollTop}px)`;
 		};
@@ -243,50 +261,60 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 				 * `aria-hidden` because the textarea already carries the accessible
 				 * text and a screen reader must not read the draft twice;
 				 * `pointer-events-none` so a click lands in the textarea and therefore
-				 * puts the caret where the user aimed. `overflow-hidden` clips the
-				 * translated copy to the box the textarea shows.
+				 * puts the caret where the user aimed. This node is the clip window and
+				 * carries NO transform — see the two-node note above — and no text
+				 * layout either, so the only box that decides what is visible is the
+				 * field's own.
 				 */
 				<div
-					ref={mirrorRef}
 					aria-hidden="true"
 					data-composer-mirror=""
 					className={cn(
 						"pointer-events-none absolute inset-0 select-none overflow-hidden",
-						"whitespace-pre-wrap break-words",
-						fieldClassName,
 						disabled ? "text-ink-disabled" : "text-ink",
 					)}
 				>
 					{/*
-					 * Keyed by the segment's OFFSET in the draft rather than by its
-					 * index: the same character range keeps the same key across a
-					 * keystroke, so React moves the span instead of re-creating it
-					 * (the index key turned every edit into a full re-mount of the
-					 * painted runs, which is what a caret inside a highlighted word
-					 * would feel).
+					 * The glyph layer: `fieldClassName` sits here because it is what the
+					 * text metrics and the text column come from, and the transform and
+					 * the scrollbar gutter are written to this node by the effect.
 					 */}
-					{segments.map((segment) =>
-						segment.kind === "prose" ? (
-							<span key={`prose:${segment.start}`}>{segment.text}</span>
-						) : (
-							<span
-								key={`${segment.kind}:${segment.start}`}
-								data-slash-run={segment.kind}
-								/*
-								 * The disabled step reaches the RUNS too: the mirror's container
-								 * already steps to `text-ink-disabled`, but a descendant span wins,
-								 * so a field that cannot accept input was painting an
-								 * enabled-strength command word (design D2 — measured ΔE00 0.8-1.5
-								 * against the enabled frame in five themes, i.e. no step at all).
-								 * Branding's rule is "disabled changes colour, never opacity", so
-								 * the run's colour becomes the disabled ink rather than fading.
-								 */
-								className={cn(runInkClass(segment.kind, disabled))}
-							>
-								{segment.text}
-							</span>
-						),
-					)}
+					<div
+						ref={mirrorRef}
+						data-composer-mirror-paint=""
+						className={cn("whitespace-pre-wrap break-words", fieldClassName)}
+					>
+						{/*
+						 * Keyed by the segment's OFFSET in the draft rather than by its
+						 * index: the same character range keeps the same key across a
+						 * keystroke, so React moves the span instead of re-creating it
+						 * (the index key turned every edit into a full re-mount of the
+						 * painted runs, which is what a caret inside a highlighted word
+						 * would feel).
+						 */}
+						{segments.map((segment) =>
+							segment.kind === "prose" ? (
+								<span key={`prose:${segment.start}`}>{segment.text}</span>
+							) : (
+								<span
+									key={`${segment.kind}:${segment.start}`}
+									data-slash-run={segment.kind}
+									/*
+									 * The disabled step reaches the RUNS too: the mirror's container
+									 * already steps to `text-ink-disabled`, but a descendant span wins,
+									 * so a field that cannot accept input was painting an
+									 * enabled-strength command word (design D2 — measured ΔE00 0.8-1.5
+									 * against the enabled frame in five themes, i.e. no step at all).
+									 * Branding's rule is "disabled changes colour, never opacity", so
+									 * the run's colour becomes the disabled ink rather than fading.
+									 */
+									className={cn(runInkClass(segment.kind, disabled))}
+								>
+									{segment.text}
+								</span>
+							),
+						)}
+					</div>
 				</div>
 			)}
 			{children}

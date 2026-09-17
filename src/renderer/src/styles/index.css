@@ -485,7 +485,30 @@ html .Mui-focusVisible {
  * A plain rule beside `.caret-ink` for the same reason as that one: this is a
  * vendor-prefixed paint property with no Tailwind utility, and it must not depend
  * on which chunk happened to load first.
+ *
+ * THE WIDTH IS A RASTER QUERY RATHER THAN A CONSTANT (design round 2 D6), because
+ * a stroke is painted in DEVICE pixels and Blink does not paint one narrower than
+ * a device pixel: `0.5px` is one device px at dsf 2 — the width the design round
+ * measured — and half of one at a 1x raster, where it renders as NOTHING. The run
+ * then paints at prose weight, and in obsidian (whose `tokenCommand` IS its `ink`)
+ * that removed the run's only separation: the command word pixel-identical to the
+ * sentence while the NAME beside it stayed tinted, i.e. the line reading
+ * backwards. So the default is the raster floor — one CSS px is one device px at
+ * 1x — and the >=2dppx band takes the finer width. Both branches are one device
+ * pixel of added stem, and a stroke never moves an advance, so the mirror's line
+ * breaking stays the textarea's in either band (QA round 1 Q1).
+ *
+ * Measured at BOTH rasters rather than argued: the Storybook row at dsf 2 reads
+ * `command=400+0.5px`, and the rig's own frames (`scripts/capture-evidence.mjs`,
+ * headless Chrome at `deviceScaleFactor: 1`) read `command=400+1px` with the run
+ * visibly heavier than the same-coloured name beside it.
  */
 .slash-run-bold {
-	-webkit-text-stroke: 0.5px currentColor;
+	-webkit-text-stroke: 1px currentColor;
+}
+
+@media (min-resolution: 2dppx) {
+	.slash-run-bold {
+		-webkit-text-stroke: 0.5px currentColor;
+	}
 }

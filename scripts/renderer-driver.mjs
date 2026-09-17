@@ -4455,32 +4455,82 @@ async function sceneComposer(cdp) {
 	 * readback into the frame) — and this branch records the fact rather than an
 	 * empty pass.
 	 *
-	 * WITH `--backend` the composer DOES mount, and this branch still stands aside:
-	 * that flag's contract is that the renderer was built against the same
-	 * `VITE_LOCAL_OPERATOR_API_URL` and that the run OWNS the daemon, so a
-	 * measurement taken here is a measurement of whichever build is on disk. Point
-	 * an isolated daemon at a matching build and the geometry checks below fire for
-	 * real — they assert the numbers the Storybook readback already prints.
+	 * WITH `--backend` THE COMPOSER MOUNTS, and the scene now REACHES that state
+	 * rather than describing it. QA round 2 Q2 is the reason this is code and not a
+	 * comment: the flag's contract is that the renderer was built against the same
+	 * `VITE_LOCAL_OPERATOR_API_URL` and that the run OWNS the daemon, but a fresh
+	 * profile in front of a fresh daemon sits on `/chat` with NO session — and the
+	 * chat pane mounts no composer until one is open, so `composerPresent` was false
+	 * by construction, the geometry below was unreachable from this rig's own entry
+	 * points, and a 30px clip-window displacement (also QA round 2, Q1) shipped
+	 * through a green scene claiming to measure exactly that state. The round-1
+	 * correction landed in this comment; it belongs in the path, so with `--backend`
+	 * the scene now does what a user does: create a conversation on the run's OWN
+	 * daemon, open the chat route, widen the sidebar's list and press the
+	 * conversation's row.
 	 *
-	 * SO THE GEOMETRY EVIDENCE IS MOSTLY STORYBOOK'S, and this is stated rather than
-	 * implied: a fresh profile in front of a fresh backend is an app with NO SESSION,
-	 * and the chat pane mounts no composer until one exists (measured — the run
-	 * recorded `composerPresent: false` with its daemon admitted, QA round 1 Q2).
-	 * QA round 1 then measured the other half, which is what the earlier form of this
-	 * note got wrong: create a session on the run's own backend and route the app to
-	 * `/chat/<id>` and the composer DOES mount, with a real vocabulary and a real
-	 * tint, so a scene with `--backend` must not stand aside from the numbers below
-	 * — it runs them, and they are the assertions the deferred Storybook sweep would
-	 * otherwise be the only witness to.
-	 *
-	 * The scene's own value is otherwise the opposite of a measurement: it proves the
-	 * absence branch and the window-mode checks, and it holds the predicates the
-	 * Storybook readback's numbers must satisfy so the two rigs cannot drift. Its
-	 * two predicates were rewritten after that round, because each could never pass
-	 * where this scene runs: `mirrorClientWidth === textareaClientWidth` is false by
-	 * exactly the scrollbar gutter, and the run-top origin was `paddingTop` rather
-	 * than the line's own inline box.
+	 * The scene's other value is unchanged: it proves the absence branch and the
+	 * window-mode checks, and it holds the predicates the Storybook readback's
+	 * numbers must satisfy so the two rigs cannot drift. Its two predicates were
+	 * rewritten after round 1, because each could never pass where this scene runs:
+	 * `mirrorClientWidth === textareaClientWidth` is false by exactly the scrollbar
+	 * gutter, and the run-top origin was `paddingTop` rather than the line's own
+	 * inline box.
 	 */
+	if (BACKEND) {
+		/*
+		 * The conversation is created over the desktop API the app itself uses, with
+		 * the run's own bearer: a session that already exists is fine too, which is
+		 * why the row press below is guarded on the row being there rather than on
+		 * the POST's shape.
+		 */
+		const created = await createBackendSession();
+		note("a conversation on this run's own backend", JSON.stringify(created));
+		check(
+			"the composer's own state is reachable: a conversation exists on this run's backend",
+			Boolean(created.id),
+			JSON.stringify(created),
+		);
+		await verb(cdp, "navigate", "/chat");
+		/*
+		 * Asked of the DOM before pressing: `press` throws on a selector that matches
+		 * nothing, and a scene that died here would report nothing about the state it
+		 * was trying to reach. These are the two controls the browser-pane scene
+		 * already opens a conversation with, so this is the app's own path rather than
+		 * a test door.
+		 */
+		const visible = async (selector) =>
+			cdp.evaluate(`Boolean(document.querySelector(${JSON.stringify(selector)}))`);
+		const row = '[data-tour-tag="chat-session-row"]';
+		if (await visible('[data-tour-tag="chat-all-chats"]')) {
+			await verb(cdp, "press", { selector: '[data-tour-tag="chat-all-chats"]' });
+		}
+		/*
+		 * AND THE ROW IS WAITED FOR, which the first form of this path got wrong: the
+		 * conversation was created (status 200, an id) and the app had it in its
+		 * catalogue (`sessionCount: 1`) while the list had not painted a row yet, so a
+		 * single 400ms look found nothing, nothing was pressed, and the scene quietly
+		 * took the absence branch with `activeSessionId: null` — the exact failure QA
+		 * round 2 Q2 named, one layer in. The list is fed by the app's own poll, so the
+		 * wait is bounded and its expiry is REPORTED rather than silently passing.
+		 */
+		let rowPressed = false;
+		const deadline = Date.now() + 20_000;
+		while (Date.now() < deadline) {
+			if (await visible(row)) {
+				await verb(cdp, "press", { selector: row });
+				rowPressed = true;
+				break;
+			}
+			await wait(500);
+		}
+		if (!rowPressed) note("not pressed", `${row} never appeared within 20s`);
+		else await wait(600);
+		note(
+			"state (chat, after the conversation press)",
+			JSON.stringify(await verb(cdp, "state")),
+		);
+	}
 	const composerPresent = await cdp.evaluate(
 		`Boolean(document.querySelector('textarea[aria-label="Message"]'))`,
 	);
@@ -4529,12 +4579,23 @@ async function sceneComposer(cdp) {
 				scrollTop: ta.scrollTop,
 			};
 			const mirror = document.querySelector('[data-composer-mirror]');
-			if (!mirror) return out;
-			const m = getComputedStyle(mirror);
-			const box = mirror.getBoundingClientRect();
+			/*
+			 * The GLYPH layer, one node in from the clip window. The split is the fix for
+			 * QA round 2 Q1 and this readback has to keep the two apart: the transform and
+			 * the text metrics belong to the glyph layer, the box that clips belongs to
+			 * the window, and moving the transform onto the clip node displaces the window
+			 * with the paint (the field's bottom line unpainted, the mirror painting above
+			 * the composer's top edge).
+			 */
+			const paint = document.querySelector('[data-composer-mirror-paint]');
+			if (!mirror || !paint) return out;
+			const m = getComputedStyle(paint);
+			const box = paint.getBoundingClientRect();
+			const clip = mirror.getBoundingClientRect();
+			const field = ta.getBoundingClientRect();
 			let before = "";
 			const runs = [];
-			for (const node of mirror.childNodes) {
+			for (const node of paint.childNodes) {
 				if (node.nodeType === 3) { before += node.textContent || ""; continue; }
 				const text = node.textContent || "";
 				if (node.dataset && node.dataset.slashRun) {
@@ -4553,10 +4614,21 @@ async function sceneComposer(cdp) {
 			return {
 				...out,
 				mirrorRendered: true,
-				mirrorClientWidth: mirror.clientWidth,
-				mirrorOffsetWidth: mirror.offsetWidth,
+				mirrorClientWidth: paint.clientWidth,
+				mirrorOffsetWidth: paint.offsetWidth,
 				mirrorPaddingRight: Number.parseFloat(m.paddingRight),
 				mirrorPaddingTop: Number.parseFloat(m.paddingTop),
+				/*
+				 * WHICH BOX CLIPS WHAT IS PAINTED, the assertion the old one-node reading
+				 * could not make (QA round 2 Q1): the clip window's top against the field's
+				 * own, and the paint's top against the clip window's (the transform, i.e.
+				 * glyphs moving inside a window that does not). A displaced window satisfies
+				 * translateY == -scrollTop and equal content heights while hiding the line
+				 * the caret is on.
+				 */
+				clipBoxOffsetFromField: clip.top - field.top,
+				paintBoxOffsetFromClip: box.top - clip.top,
+				mirrorClipHeight: clip.height,
 				/*
 				 * The inline box the runs are measured AGAINST. paddingTop is the
 				 * wrong origin and this scene asserted against it: an inline element's
@@ -4569,7 +4641,7 @@ async function sceneComposer(cdp) {
 				 * literal.)
 				 */
 				mirrorFirstLineTop: (() => {
-					const node = mirror.firstChild;
+					const node = paint.firstChild;
 					if (!node) return null;
 					const range = document.createRange();
 					range.selectNodeContents(node);
@@ -4577,10 +4649,10 @@ async function sceneComposer(cdp) {
 					return rect.top - box.top;
 				})(),
 				mirrorFont: m.font,
-				mirrorRows: Math.round((mirror.scrollHeight - Number.parseFloat(m.paddingTop) - Number.parseFloat(m.paddingBottom)) / Number.parseFloat(m.lineHeight)),
-				mirrorScrollHeight: mirror.scrollHeight,
+				mirrorRows: Math.round((paint.scrollHeight - Number.parseFloat(m.paddingTop) - Number.parseFloat(m.paddingBottom)) / Number.parseFloat(m.lineHeight)),
+				mirrorScrollHeight: paint.scrollHeight,
 				textareaScrollHeight: ta.scrollHeight,
-				mirrorTransform: m.transform,
+				mirrorTransform: getComputedStyle(paint).transform,
 				runs,
 			};
 		})()`);
@@ -4742,11 +4814,16 @@ async function sceneComposer(cdp) {
 	 * scrolled, and this probe writes the offset explicitly because a caret-driven
 	 * scroll can land at the bottom with the tinted first row already out of view.
 	 *
-	 * The draft is one logical line, which is the shape that both paints (`whole`
-	 * at a caret anywhere inside it) and wraps past the box's own `max-h-28`.
+	 * The draft is one logical line of the shape that PAINTS — a start command with
+	 * its name list — because the check below is about the MIRROR's window and a
+	 * draft the planner sends as written mounts no mirror at all (`/compact` with
+	 * text after it is prose: measured in this scene's own Enter-parity table, QA
+	 * round 2 Q4; a probe that dropped the mirror here would silently take the
+	 * no-vocabulary branch instead of asserting anything). It wraps past the box's
+	 * own `max-h-28`.
 	 */
 	await setDraft(
-		"/compact please summarise the failing tests in the TUI crash report in the order they were filed, note which of them are flaky and which are deterministic, call out the two wrappers that disagree about the line they paint and say which one of them is right, then hand the whole summary to the reviewer together with the commands that reproduce each of the failing cases so that nothing is lost in the handover",
+		"/team frontend-guild review every file in this queue, note which of the failing cases are flaky and which are deterministic, summarise the crash reports from the TUI in the order they were filed and say which of them share a cause, call out the two wrappers that disagree about the line they paint and say which one of them is right, then hand the whole summary to the reviewer together with the commands that reproduce each of the failing cases, the backend version each of those commands was taken against, and the theme that was active at the time, so that nothing is lost in the handover and the next reader can start where this one left off without asking a question about what came before it or which of the two wrappers was telling the truth, and keep the instruction short enough that the box scrolls only a little rather than to its end",
 	);
 	const scrolled = await cdp.evaluate(`(() => {
 		const ta = document.querySelector('textarea[aria-label="Message"]');
@@ -4835,6 +4912,16 @@ async function sceneComposer(cdp) {
 		 * what wrap parity needs, is that the mirror spans the textarea's box plus
 		 * its gutter, with the padding-right correction asserted just below.
 		 */
+		check(
+			`${where}: the layer that clips is the field's own viewport`,
+			Math.abs(geometry.clipBoxOffsetFromField) <= 0.5,
+			`clip box ${geometry.clipBoxOffsetFromField}px off the field's top (the box the window is: ${geometry.mirrorClipHeight}px) — the transform belongs to the glyph layer, or the scroll moves the clip window with the paint (QA round 2 Q1)`,
+		);
+		check(
+			`${where}: the paint moves inside a window that does not`,
+			Math.abs(geometry.paintBoxOffsetFromClip + geometry.scrollTop) <= 0.5,
+			`paint box ${geometry.paintBoxOffsetFromClip}px from the clip box at scrollTop ${geometry.scrollTop}`,
+		);
 		check(
 			`${where}: the mirror spans the textarea's content box, gutter included`,
 			geometry.mirrorFirstLineTop === null ||

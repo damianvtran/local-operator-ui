@@ -254,10 +254,15 @@ export type ThemePalette = {
 	 * exception, and it is the app's recorded monochrome case: its `info` IS its
 	 * `ink`, so `code-mirror-theme.ts` already separates tokens by WEIGHT there
 	 * and `tokenCommand` is bound to `ink` with the composer's own painted weight
-	 * step carrying the run (`slash-run-bold` — a 0.5px text stroke, which
-	 * thickens the glyph without moving its advance; a real `font-weight` here
-	 * moved the MIRROR's wrap points off the textarea's and hid the tail of the
-	 * draft behind the mirror's overflow, QA round 1 Q1).
+	 * step carrying the run (`slash-run-bold` — a text stroke, which thickens the
+	 * glyph without moving its advance; a real `font-weight` here moved the
+	 * MIRROR's wrap points off the textarea's and hid the tail of the draft behind
+	 * the mirror's overflow, QA round 1 Q1). The stroke's width tracks the raster
+	 * (`index.css`: 0.5px above 2dppx, one CSS px below it) because Blink paints no
+	 * stroke narrower than a device pixel — at a 1x raster the 0.5px form rendered
+	 * as nothing, and on this row that was the run's ONLY separation, so the
+	 * command word read exactly like prose while the name beside it stayed tinted
+	 * (design round 2 D6).
 	 *
 	 * The TUI port's palettes author it as their own `info` where that value
 	 * clears the floors, which is most of them; the five that missed by a hair

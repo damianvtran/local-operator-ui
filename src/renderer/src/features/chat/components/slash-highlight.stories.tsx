@@ -1047,6 +1047,16 @@ const GeometryProbe = ({
 		let settled = "";
 		/** Bounded re-tries of the settled pass, for the caret race above. */
 		let settleRetries = 0;
+		/**
+		 * The scroll parity's OWN retry budget, because the two races are unrelated and
+		 * the shared counter was a trap: the caret race can spend the whole budget
+		 * before the scroll pass ever runs, and the parity guard then THROWS on its
+		 * first look — a capture failing for a reason that has nothing to do with the
+		 * window it asserts. Measured on this file's own `scrolled-parity` row, which
+		 * threw `scrollTop 12px, translateY 0.00px` on a cold load: the transform had
+		 * not been written yet, not been written wrongly.
+		 */
+		let scrollRetries = 0;
 		/*
 		 * THE GUTTER IS FORCED BEFORE THE FIRST MEASURE, and the ordering is the point:
 		 * the injection used to run in the same tick as the measurement, so the settled
@@ -1084,6 +1094,19 @@ const GeometryProbe = ({
 				Math.abs(textarea.scrollTop - scrollTopPx) > 0.5
 			) {
 				textarea.scrollTop = scrollTopPx;
+				/*
+				 * AND THE SIGNAL THE WRITER LISTENS FOR, delivered explicitly. The mirror's
+				 * writer runs on the textarea's own `scroll` event, which the platform
+				 * dispatches asynchronously and may coalesce away when an offset is written
+				 * twice inside one frame — so a pass that read the transform immediately after
+				 * the write could see the PREVIOUS scroll's value and redden a guard about a
+				 * window that was merely a frame behind. Dispatching the event the app already
+				 * handles makes the measurement a question about the app's answer (does the
+				 * window follow the box?) rather than about the event loop's timing, and the
+				 * assertion is unchanged: a transform that still disagrees with `scrollTop`
+				 * after the retries fails the capture.
+				 */
+				textarea.dispatchEvent(new Event("scroll"));
 				if (settleRetries < MAX_SETTLE_RETRIES) {
 					settleRetries += 1;
 					setTimeout(() => measure("settled"), 150);
@@ -1092,7 +1115,20 @@ const GeometryProbe = ({
 			}
 			const t = getComputedStyle(textarea);
 			const lineHeight = Number.parseFloat(t.lineHeight);
+			/*
+			 * TWO NODES, and the probe reads them apart because the defect class it now
+			 * guards lives exactly in their difference (QA round 2 Q1):
+			 * `[data-composer-mirror]` is the CLIP WINDOW — the box the textarea's own
+			 * viewport is — and `[data-composer-mirror-paint]` is the GLYPH LAYER,
+			 * which is what the scroll transform moves. Reading the transform off the
+			 * clip box, or the text metrics off the glyph layer, was each half of the
+			 * old one-node reading and neither can tell a displaced window from a
+			 * correct one.
+			 */
 			const mirror = box.querySelector<HTMLElement>("[data-composer-mirror]");
+			const paint = box.querySelector<HTMLElement>(
+				"[data-composer-mirror-paint]",
+			);
 			const entry: Record<string, string> = {
 				// WHICH PASS this frame carries. The story measures three times because
 				// the composer's vocabulary arrives over a promise, and a frame whose
@@ -1125,6 +1161,10 @@ const GeometryProbe = ({
 				),
 				"textarea caret": t.caretColor,
 				"mirror rendered": String(Boolean(mirror)),
+				// The glyph layer, apart from the window: a frame with one and not the
+				// other is a mirror that cannot both clip and paint, and the rows below
+				// would be reading the wrong box either way.
+				"mirror paint rendered": String(Boolean(paint)),
 				"textarea clientWidth": `${textarea.clientWidth}px`,
 				/*
 				 * The column the wrap is measured against: the client box less its own
@@ -1155,10 +1195,12 @@ const GeometryProbe = ({
 				"textarea scrollTop": `${textarea.scrollTop}px`,
 				font: t.font,
 			};
-			if (mirror) {
-				const m = getComputedStyle(mirror);
-				const box0 = mirror.getBoundingClientRect();
-				entry["mirror clientWidth"] = `${mirror.clientWidth}px`;
+			if (mirror && paint) {
+				const m = getComputedStyle(paint);
+				const box0 = paint.getBoundingClientRect();
+				const clip = mirror.getBoundingClientRect();
+				const field = textarea.getBoundingClientRect();
+				entry["mirror clientWidth"] = `${paint.clientWidth}px`;
 				entry["fonts equal"] = String(m.font === t.font);
 				/*
 				 * THE WEIGHT CHANNEL, as numbers. It is the whole of obsidian's
@@ -1176,7 +1218,7 @@ const GeometryProbe = ({
 				 * is the fix, and `fontWeight 600` here would be the defect returning.
 				 */
 				entry["run fontWeight+stroke"] =
-					[...mirror.querySelectorAll<HTMLElement>("[data-slash-run]")]
+					[...paint.querySelectorAll<HTMLElement>("[data-slash-run]")]
 						.map((el) => {
 							const s = getComputedStyle(el);
 							return `${el.dataset.slashRun}=${s.fontWeight}+${s.webkitTextStrokeWidth || "0px"}`;
@@ -1186,13 +1228,13 @@ const GeometryProbe = ({
 					`${m.fontWeight}+${m.webkitTextStrokeWidth || "0px"}`;
 				entry["mirror rows"] = String(
 					Math.round(
-						(mirror.scrollHeight -
+						(paint.scrollHeight -
 							Number.parseFloat(m.paddingTop) -
 							Number.parseFloat(m.paddingBottom)) /
 							Number.parseFloat(m.lineHeight),
 					),
 				);
-				entry["mirror scrollHeight"] = `${mirror.scrollHeight}px`;
+				entry["mirror scrollHeight"] = `${paint.scrollHeight}px`;
 				/*
 				 * THE PARITY CLAIM ITSELF, in the terms QA round 1 measured it: the mirror's
 				 * content height against the textarea's. A mirror even one row taller is a
@@ -1202,9 +1244,9 @@ const GeometryProbe = ({
 				 * (below, beside the caret guard, for the same reason).
 				 */
 				entry["scrollHeight parity"] =
-					mirror.scrollHeight === textarea.scrollHeight
-						? `${mirror.scrollHeight}px == ${textarea.scrollHeight}px`
-						: `${mirror.scrollHeight}px vs ${textarea.scrollHeight}px MISMATCH`;
+					paint.scrollHeight === textarea.scrollHeight
+						? `${paint.scrollHeight}px == ${textarea.scrollHeight}px`
+						: `${paint.scrollHeight}px vs ${textarea.scrollHeight}px MISMATCH`;
 				entry["paddingRight (mirror vs textarea+gutter)"] =
 					`${Number.parseFloat(m.paddingRight)}px vs ${Number.parseFloat(t.paddingRight) + (textarea.offsetWidth - textarea.clientWidth)}px`;
 				/*
@@ -1217,13 +1259,29 @@ const GeometryProbe = ({
 				 * when nobody asked for an offset — the failure it rules out is a tint frozen
 				 * by whole lines while its own glyphs keep moving.
 				 */
-				const translateY = readTranslateY(mirror);
+				const translateY = readTranslateY(paint);
 				entry["mirror translateY"] =
-					`${mirror.style.transform || "none"} / ${translateY.toFixed(2)}px vs -${textarea.scrollTop}px expected`;
+					`${paint.style.transform || "none"} / ${translateY.toFixed(2)}px vs -${textarea.scrollTop}px expected`;
 				entry["scroll parity"] =
 					Math.abs(translateY + textarea.scrollTop) <= 0.5
 						? `${textarea.scrollTop}px scrolled, the two windows in step`
 						: `MISMATCH: scrollTop ${textarea.scrollTop}px, translateY ${translateY.toFixed(2)}px`;
+				/*
+				 * WHICH BOX CLIPS WHAT IS PAINTED (QA round 2 Q1), as two rows because the
+				 * defect needed both halves visible at once: the clip window's own top against
+				 * the field's (`0px` — the window IS the field's viewport), and the glyph
+				 * layer's top against the clip window's (the transform, i.e. the paint moving
+				 * INSIDE a static window). One node cannot satisfy the first row and the
+				 * second at once, which is what made the old reading — the transform's value
+				 * alone, on the clipping node — green through a 30px displacement.
+				 */
+				const clipOffset = clip.top - field.top;
+				entry["clip box vs field"] =
+					Math.abs(clipOffset) <= 0.5
+						? "0px offset, the window is the field's own"
+						: `MISMATCH: the clip box sits ${clipOffset.toFixed(2)}px off the field`;
+				entry["paint box vs clip box"] =
+					`${(box0.top - clip.top).toFixed(2)}px vs ${(-textarea.scrollTop).toFixed(2)}px expected`;
 				let before = "";
 				/*
 				 * The reference the runs are measured AGAINST: the mirror's own first
@@ -1237,11 +1295,11 @@ const GeometryProbe = ({
 				 * the honest origin for that.
 				 */
 				const range = document.createRange();
-				range.selectNodeContents(mirror);
+				range.selectNodeContents(paint);
 				const firstLineTop =
 					(range.getClientRects()[0]?.top ?? box0.top) - box0.top;
 				entry["first line top"] = `${firstLineTop.toFixed(2)}px`;
-				for (const node of mirror.childNodes) {
+				for (const node of paint.childNodes) {
 					if (node.nodeType === Node.ELEMENT_NODE) {
 						const el = node as HTMLElement;
 						if (el.dataset.slashRun) {
@@ -1274,8 +1332,8 @@ const GeometryProbe = ({
 				 * matrix's `f` term as resolved, because the claim is about both: the writer
 				 * is what runs per scroll frame, the matrix is what the compositor lays out.
 				 */
-				const transform = mirror.style.transform;
-				const matrix = getComputedStyle(mirror).transform;
+				const transform = paint.style.transform;
+				const matrix = getComputedStyle(paint).transform;
 				const translated =
 					matrix === "none"
 						? 0
@@ -1343,13 +1401,34 @@ const GeometryProbe = ({
 				entry["scroll parity"]?.startsWith("MISMATCH") &&
 				(entry["textarea scrollTop"] ?? "0px") !== "0px"
 			) {
-				if (settleRetries < MAX_SETTLE_RETRIES) {
-					settleRetries += 1;
+				if (scrollRetries < MAX_SETTLE_RETRIES) {
+					scrollRetries += 1;
 					setTimeout(() => measure("settled"), 150);
 					return;
 				}
 				throw new Error(
 					`geometry readback: ${entry["scroll parity"]} for ${JSON.stringify(draft)} - the mirror's window has to be the textarea's, or the frame shows the tint displaced against its own glyphs (code review round 1 MINOR 1)`,
+				);
+			}
+			/*
+			 * AND THE WINDOW THAT CLIPS HAS TO BE THE FIELD'S OWN (QA round 2 Q1), a
+			 * different assertion from the parity above and the one the old gate lacked: a
+			 * window displaced by the scroll still satisfies `translateY == -scrollTop`
+			 * and still measures equal content heights, because the transform is correct
+			 * and insufficient — it moved the CLIP with the paint, so the field's bottom
+			 * line was never painted and the mirror painted above the composer's top
+			 * edge. Measured on the one-node head at `scrollTop 30`: 52 characters outside
+			 * the clip box and a caret character with no text on it. The window is a box,
+			 * so the assertion is geometric, and a displaced window fails the capture
+			 * rather than shipping a frame of the user's own line missing.
+			 */
+			if (
+				pass === "settled" &&
+				entry["mirror rendered"] === "true" &&
+				entry["clip box vs field"]?.startsWith("MISMATCH")
+			) {
+				throw new Error(
+					`geometry readback: ${entry["clip box vs field"]} for ${JSON.stringify(draft)} - the layer that clips must be the field's own viewport, or the scroll transform moves the clip window with the paint and the caret's line is never painted (QA round 2 Q1)`,
 				);
 			}
 			/*
@@ -1559,6 +1638,61 @@ export const Geometry: Story = {
 					}
 				/>
 			</div>
+		</Frame>
+	),
+};
+
+/**
+ * The SCROLLED composer on its own, so a published frame carries the rows the
+ * scroll claims are made in.
+ *
+ * WHY A ROW RATHER THAN A SIXTH PROBE IN `geometry`: that panel is a viewport
+ * shot of a page taller than the window, so only its first probe's readback has
+ * ever been in a frame (code review round 2 MINOR 4) — the scrolled rows the PR
+ * body quotes (`textarea scrollTop`, `mirror translateY`, `mirror rows` against
+ * `textarea rows`) were in NO picture, and the clip-window rows added for QA
+ * round 2 Q1 would have joined them there. One probe to a page keeps the whole
+ * readback inside the frame, and it is the same draft and the same offset the
+ * driver scene's `scrolled` probe writes, so the two rigs' numbers are
+ * comparable line for line.
+ *
+ * The draft is ONE logical line of the shape the run rule PAINTS (`/team` plus
+ * its name list; `/compact` with text after it is a draft the planner sends as
+ * written and therefore paints nothing — QA round 2 Q4), and it wraps past the
+ * field's own `max-h-28`, so the box arrives scrolled to its caret and
+ * `scrollTopPx` then asks for less. The offset is one line rather than the
+ * maximum, so the tinted first row stays in the frame — which is what makes the
+ * clip-window offset visible as a number AND as a picture.
+ */
+export const ScrolledParity: Story = {
+	name: "scrolled-parity",
+	/*
+	 * `narrowTo` is an ARG rather than a second story, because the two columns QA
+	 * round 2 measured the defect at (a wide box, and a box narrow enough to wrap the
+	 * same draft many times over) have to be the same page: one probe to a page is
+	 * what keeps the whole readback inside the frame, and a copy of the story per
+	 * column would be two pages free to drift apart. The sweep declares it with no
+	 * args, so the published row is the wide column.
+	 */
+	args: { narrowTo: undefined },
+	/*
+	 * The arg is read through a local signature rather than the story's `{}`: this is
+	 * the one story in the file that takes a knob, and the alternative is widening
+	 * every story's args for one column width.
+	 */
+	render: (args: { narrowTo?: number }) => (
+		<Frame
+			label="scrolled-parity — the clip window against the field, and the paint moving inside it (QA round 2 Q1), read from the live DOM under this theme"
+			width={1000}
+		>
+			<GeometryProbe
+				label="geometry-scrolled"
+				scrollTopPx={12}
+				narrowTo={args.narrowTo}
+				draft={
+					"/team frontend-guild review every file in this queue, note which of the failing cases are flaky and which are deterministic, summarise the crash reports from the TUI in the order they were filed and say which of them share a cause, call out the two wrappers that disagree about the line they paint and say which one of them is right, then hand the whole summary to the reviewer together with the commands that reproduce each of the failing cases, the backend version each of those commands was taken against, and the theme that was active at the time, so that nothing is lost in the handover and the next reader can start where this one left off without asking a question about what came before it or which of the two wrappers was telling the truth, and keep the instruction short enough that the box scrolls only a little rather than to its end"
+				}
+			/>
 		</Frame>
 	),
 };

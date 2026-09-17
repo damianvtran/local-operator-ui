@@ -357,10 +357,27 @@ test("the command run's weight step is painted, so the mirror still wraps where 
 		);
 	}
 	const styles = readFileSync("src/renderer/src/styles/index.css", "utf8");
+	/*
+	 * THE WIDTH IS PINNED IN BOTH RASTER BANDS (design round 2 D6), because the
+	 * defect was a stroke that existed only in one of them: a stroke is painted in
+	 * DEVICE pixels and Blink paints none narrower than one, so `0.5px` renders at
+	 * dsf 2 (one device px — the design round's measurement) and as NOTHING at a 1x
+	 * raster, where obsidian's command run then lost its only separation and read
+	 * exactly like prose while the name beside it stayed tinted. The default is the
+	 * raster floor and the `>=2dppx` band takes the finer width, so an assertion on
+	 * either half alone would let the other one regress. Both are measured on the
+	 * heads this file ships: the rig's own frames render at `deviceScaleFactor: 1`
+	 * and read `command=400+1px`; the Storybook row at dsf 2 reads `400+0.5px`.
+	 */
 	assert.match(
 		styles,
-		/\.slash-run-bold\s*\{[^}]*-webkit-text-stroke:\s*0\.5px currentColor/,
-		"the painted weight step lives in the stylesheet, at the width the design round measured",
+		/\.slash-run-bold\s*\{[^}]*-webkit-text-stroke:\s*1px currentColor/,
+		"the painted weight step's default is the raster floor: one CSS px is one device px at 1x, where a 0.5px stroke renders as nothing at all (design round 2 D6)",
+	);
+	assert.match(
+		styles,
+		/@media \(min-resolution: 2dppx\)[\s\S]*?\.slash-run-bold\s*\{[^}]*-webkit-text-stroke:\s*0\.5px currentColor/,
+		"above 2dppx the painted weight step takes the width the design round measured (0.5 CSS px = one device px)",
 	);
 });
 
@@ -551,6 +568,21 @@ test("the composer and the mirror both make the calls these pins describe", () =
 		flatComposer,
 		/over:\s*\{\s*enabled/,
 		"`planFor` must not accept an `enabled` override",
+	);
+	/*
+	 * AND THE VALUE IS THE MOUNT'S OWN (review round 2 MINOR 1). The absence pins
+	 * above guard the override's SHAPE — no call site passes one, `planFor` takes
+	 * none — and neither reads the value the override used to be: replacing
+	 * `planFor`'s own `enabled:` line with a constant left this file 17/17 green,
+	 * which is code review round 1 MAJOR 1's counterfactual, recreated with a green
+	 * suite. So the source is pinned POSITIVELY, and positively is the only form
+	 * that works here: a negative `/enabled:\s*true/` would match the commentary
+	 * above (which quotes the removed override to explain why it is gone).
+	 */
+	assert.match(
+		flatComposer,
+		/enabled:\s*slash\.available\s*&&\s*Boolean\(onSlashCommand\)/,
+		"the plan must answer from this mount's own capability: the tint and Enter have to agree, and a constant here is the override returning",
 	);
 	/*
 	 * AND THE HARNESS SUPPLIES THE HALF IT WAS MISSING instead. The bridge already
