@@ -277,116 +277,122 @@
 }
 
 /*
- * Reading measure — the USER ASIDE's box, and nothing else's.
+ * Reading measure — retired from `.lo-markdown` on BOTH branches.
+ *
+ * There is no cap and no centring on the rendered markdown root anywhere in the
+ * transcript now. This block keeps both removals and the reports behind them, in
+ * order, because the second one took away the assumption the first had been
+ * resting on: that the user bubble shrink-wraps its content.
+ *
+ * ## Agent prose: no cap and no centring (earlier operator report)
  *
  * This rule used to apply to agent answers too, capping them at 62 characters
- * and then centring them with `margin-inline: auto`. It no longer does, and
- * the reason is a direct operator instruction that outranks the measure
- * argument this comment used to make: agent prose must share the LEFT EDGE and
- * the WIDTH of the tool rows it sits among.
+ * and then centring them with `margin-inline: auto`. It no longer does, and the
+ * reason is a direct operator instruction that outranks the measure argument
+ * this comment used to make: agent prose must share the LEFT EDGE and the WIDTH
+ * of the tool rows it sits among.
  *
- * ## Why tool-row parity beats the reading measure here
- *
- * The transcript is not a reading pane. It is a ledger the reader scans, and
- * an agent turn interleaves two registers in one row content box — prose to
- * the user, and tool rows recording what was done. The operator's report is
- * about the seam between them: "the agent messages ... have too much left
- * padding and are not the same width in the view as the tool calls", naming
- * both prose BETWEEN tool rows and a final answer.
+ * The transcript is not a reading pane. It is a ledger the reader scans, and an
+ * agent turn interleaves two registers in one row content box — prose to the
+ * user, and tool rows recording what was done. The operator's report is about
+ * the seam between them: "the agent messages ... have too much left padding and
+ * are not the same width in the view as the tool calls", naming both prose
+ * BETWEEN tool rows and a final answer.
  *
  * The cap and the centring each produced one half of that. Measured in
  * Storybook at 1024x620 (`chat-tool-rows--prose-tool-alignment`), the tool row
  * spanned 102..962 and the answer 258.6..805.4: `margin-inline: auto` pushed
  * its left edge 156.6px inboard of the ledger's, and the 62ch cap — 546.7px at
- * the body step — stopped it 156.6px short of the ledger's right edge. Two
- * left rails in one column, which the eye reads as a mistake rather than as a
+ * the body step — stopped it 156.6px short of the ledger's right edge. Two left
+ * rails in one column, which the eye reads as a mistake rather than as a
  * decision, and at 1440x900 the same two numbers because the cap binds harder
  * the more room there is.
  *
- * So the measure is now a property of the thing that IS an aside. A user turn
- * is a quotation of the reader's own words: it takes a bubble, a right
- * alignment and a narrower box, and that box is what makes the agent's answer
- * read as the document. Agent output takes the full row content box instead,
- * which is the same box the ledger resolves against — one edge, structurally,
- * rather than two that have to be kept in agreement.
+ * Losing the cap costs line length, and the number is recorded rather than
+ * argued again next round: measured at the 14px body step (design review round
+ * 1, D2), the answer runs 98.1 characters a line at 1024, 1440 AND 1920, and
+ * 66.6 at 700 — above the 45-75 the typographic guidance cites. That 98.1 is a
+ * CEILING rather than a slope is what makes the trade acceptable: the column is
+ * capped at 900px by `CHAT_MEASURE` (`chat-measure.ts`), so the line length
+ * stops growing with the window and 1920 reads exactly as 1024 does. The
+ * failure a reading cap exists to prevent — prose stretching across a wide
+ * display — cannot happen on this surface.
  *
- * ## What the removal costs, stated rather than deleted
+ * ## The user bubble: the CARD is the measure (operator report, 2026-09-16)
  *
- * This comment used to justify the cap with a measurement — "at 900px a
- * paragraph runs past 100 characters a line" — and that measurement is still
- * TRUE, so answering it is better than deleting it. Measured at the 14px body
- * step (design review round 1, D2): 98.1 characters a line at 1024, 1440 AND
- * 1920, and 66.6 at 700. Above the 45-75 the typographic guidance cites.
+ * The report: "I noticed on some wider attachments that the text in the user
+ * message component doesn't expand all the way across, can you review why that
+ * is ... the text should expand with the width of the user message card if the
+ * card width is expanded instead of ending up center constrained". The frame
+ * that carried it showed a card holding a truncated "Replying to" quote, the
+ * message prose floating inside as a narrower column, and equal slack on each
+ * side of it.
  *
- * Two facts make the trade acceptable, and both are why the number is recorded
- * here instead of being argued again next round:
+ * That was this rule doing exactly what it was written to do, on a box it was
+ * wrong about. The centring is inert only while the prose is the bubble's
+ * WIDEST child, and the bubble is a flex item of the right-aligned row, so its
+ * width is shrink-to-fit: as wide as its widest child, up to `max-w-[75%]`.
+ * Two of its children are routinely wider than a 62ch column — the sent
+ * `ReplyPreview` chip, whose line is `flex-1 truncate` and whose max-content is
+ * the whole quoted text, and `CanonicalImage`, an inline-block sized by the
+ * file — so either one drives the card past 546.7px, and the prose stayed a
+ * 62ch column with `margin-inline: auto` splitting the remainder evenly. The
+ * centred-column defect that had already been removed from the agent's answer
+ * survived here, on the one branch whose card and ink are meant to be one box.
  *
- *  - **98.1 is a CEILING, not a slope.** The column is capped at 900px by
- *    `CHAT_MEASURE` (`chat-measure.ts`), so the line length stops growing with
- *    the window — 1920 reads exactly as 1024 does. The failure mode a reading
- *    cap exists to prevent, prose stretching across a wide display, cannot
- *    happen on this surface.
- *  - **This is a ledger, not a reading pane** (branding.md § 7). The reader
- *    scans it and matches an answer against the rows that produced it, so the
- *    two registers sharing one pair of edges is worth more than a comfortable
- *    measure on one of them.
+ * The measure now belongs to the card, and the card's own width is what makes a
+ * user turn read as an aside. `.lo-markdown` inside a user turn takes no
+ * `max-width` and no `margin-inline: auto`, so the prose fills the card's
+ * content box and tracks it as a long quote or a wide attachment widens the
+ * card. The narrower box the aside relies on is still there; it is the card's
+ * rather than the prose's.
  *
- * If a measure is ever wanted back, the ONLY version that survives this is one
- * that narrows the whole row content box — prose and ledger together, i.e.
- * `CHAT_MEASURE` — never one applied to prose alone, which puts the second
- * left edge straight back. That rule is in branding.md § 7 as contract.
+ * What that leaves, in numbers: `CHAT_MEASURE` caps the column at 900px
+ * (`chat-measure.ts`) and the transcript scroller insets it by its own `p-4`,
+ * so the row content box is 868px; `max-w-[75%]` caps the card at 651px, i.e.
+ * 619px of content inside its `px-4`, about 70 characters at the body step —
+ * against the agent answer's 868px and 98.1. The user turn is still the narrow
+ * register and the answer still reads as the document, with no cap on either
+ * one's prose.
  *
- * DO NOT reinstate `margin-inline: auto` or a max-width on agent prose. The
- * centring was itself a fix for an earlier report (design round 2, D4) that
- * the prose looked "shoved left" when the cap left 40px on one side and 245px
- * on the other — but the asymmetry it balanced was CREATED by the cap, and
- * removing the cap removes both the symptom and the need for the remedy. A
- * future change that restores either one re-opens this report.
+ * ## Why no measure is coming back to this root
  *
- * ## Why the rule stays on the `.lo-markdown` ROOT
+ * Two rounds of review established that a measure applied anywhere SMALLER than
+ * the whole rendered answer breaks alignment inside it, and with nothing left
+ * here to cap, that argument now stands against any FUTURE cap rather than
+ * defending the removed one:
  *
- * Unchanged, and still load-bearing for the user bubble. Two rounds of review
- * established that a measure applied anywhere smaller than the whole rendered
- * answer breaks alignment inside it:
- *
- *  - On each block, `62ch` resolves against that block's OWN font, so it is a
- *    different pixel width per type step — 546.7px at the body step, 624.8px
- *    at the heading step, 781px at the title — and centring each block
- *    independently gave each one a different left edge: h2 hung 39.1px left
- *    of its own body text, h1 117.1px, dragging its full-width border-bottom
+ *  - On each block, `62ch` resolved against that block's OWN font, so it was a
+ *    different pixel width per type step — 546.7px at the body step, 624.8px at
+ *    the heading step, 781px at the title — and centring each block
+ *    independently gave each one a different left edge: h2 hung 39.1px left of
+ *    its own body text, h1 117.1px, dragging its full-width border-bottom
  *    off-axis with it (code review round 3, R1).
- *  - Excluding `<pre>`/`<table>` from the cap left them on the column edge
- *    while the prose centred, so one mixed message started its code block
- *    122.6px left of the paragraph around it at 1380, and the column showed
- *    four different left edges (design round 3, D13).
+ *  - Excluding `<pre>`/`<table>` from the cap left them on the column edge while
+ *    the prose centred, so one mixed message started its code block 122.6px
+ *    left of the paragraph around it at 1380, and the column showed four
+ *    different left edges (design round 3, D13).
  *
- * On the root, `ch` resolves ONCE against the root's own body-size font, so
- * headings, prose, lists, blockquotes, code and tables inherit one box and
- * therefore one left edge at every type step.
+ * So if a measure is ever wanted back, the ONLY version that survives is one
+ * that narrows the whole row content box — prose and ledger together, i.e.
+ * `CHAT_MEASURE` — never one applied to prose alone, which puts the second left
+ * edge straight back. That rule is in branding.md § 7 as contract.
  *
- * ## Why `margin-inline: auto` stays here, given the warning above
+ * DO NOT reinstate `margin-inline: auto` or a `max-width` on `.lo-markdown`, on
+ * either branch. On the agent side the centring was itself a fix for an earlier
+ * report (design round 2, D4) that the prose looked "shoved left" when the cap
+ * left 40px on one side and 245px on the other — but the asymmetry it balanced
+ * was CREATED by the cap, so removing the cap removed both the symptom and the
+ * need for the remedy. On the user side a cap smaller than the card re-creates
+ * the report of 2026-09-16 the moment anything wider than the prose widens the
+ * card. A future change that restores either one re-opens a report, and
+ * `scripts/tool-row.test.mjs` asserts that neither comes back.
  *
- * It is INERT on the user branch, and that is the point. The bubble
- * shrink-wraps its capped content, so there is almost nothing for the centring
- * to distribute: measured at 1440 with a long user message, the frame is
- * 589.3..1170 and the markdown 606.3..1153, leaving 1.0px of slack on each
- * side (design review round 1, D3). It survives as the second half of the pair
- * that makes `62ch` mean "this box is 62ch wide" rather than "this box is at
- * most 62ch wide, aligned however the flow happens to leave it".
- *
- * So the declaration the paragraph above forbids on AGENT prose is still
- * present on the USER bubble, and that is not a contradiction: on a
- * shrink-wrapped aside it moves a pixel, while on a full-width answer it moved
- * 156.6px and created the second rail. The rule is about the box it lands on,
- * not about the property.
- *
- * The class is applied by `canonical-transcript.tsx` and `message-paper.tsx`,
- * on their USER branches only.
+ * The `lo-measured` class that opted a box into this rule is gone with it, so
+ * there is no opt-in left to apply from `canonical-transcript.tsx` or
+ * `message-paper.tsx` either — the two user-turn surfaces have to keep agreeing,
+ * and the test above holds both of them to the same absence.
  */
-.lo-measured .lo-markdown {
-	max-width: 62ch;
-	margin-inline: auto;
-}
 
 /*
  * The in-flight block.

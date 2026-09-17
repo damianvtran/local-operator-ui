@@ -129,15 +129,15 @@ import type { AttachmentScope } from "./use-attachment-url";
 import { useScrollPaging } from "./use-scroll-paging";
 import { deriveWorkingLine, workingLineInputFor } from "./working-line-model";
 
-/**
- * Opts the USER bubble into the reading measure defined in `markdown.css`.
+/*
+ * The user bubble takes no measure class any more.
  *
- * Agent-side prose deliberately does not take it. It resolves against the row
- * content box instead, so it shares one left edge and one right edge with the
- * tool rows of the same turn — see the measure comment in `markdown.css` for
- * the operator report that requires it and the numbers behind it.
+ * Its prose used to be centre-constrained at 62ch inside a card that a reply
+ * quote or a wide attachment had widened — the operator report of 2026-09-16.
+ * The card's own width is the measure now, so there is nothing to opt into;
+ * `markdown.css`'s measure comment carries the report and the numbers, and the
+ * rule that also keeps a cap off the agent's answer.
  */
-const MEASURE = "lo-measured";
 
 const WINDOW = 60;
 const WINDOW_STEP = 60;
@@ -374,7 +374,15 @@ const UserRow = memo(function UserRow({
 							isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
 						)}
 					>
-						<div className={cn("relative", MEASURE)}>
+						{/*
+							* The bubble's body takes no measure class any more: its prose used to be
+							* centre-constrained at 62ch inside a card that a reply quote or a wide
+							* attachment had widened (the operator report of 2026-09-16), and the card's
+							* own width is the measure now, so there is nothing to opt into.
+							* `markdown.css`'s measure comment carries the report and the numbers, and
+							* the rule that also keeps a cap off the agent's answer.
+							*/}
+						<div className={cn("relative")}>
 							{/* The quote a quoted turn was sent with, rendered as the same
 							    recessed block the composer stages it in - the reader sees one
 							    idiom for "this is quoted" whether it is pending or sent. */}
