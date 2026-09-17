@@ -82,6 +82,44 @@ before(async () => {
 			res.end();
 			return;
 		}
+		/*
+		 * The backend's store-failure ladder, at the boundary this hop exists to
+		 * cross.
+		 *
+		 * A CODED error body on a non-2xx status has to arrive intact, because the
+		 * renderer classifies the send from `detail.code` and renders `detail.message`
+		 * verbatim: a hop that parsed a body only for 2xx would turn an out-of-space
+		 * 507 into "the backend could not complete this request", and the composer's
+		 * retry hint would be the only advice on screen - which is the incident this
+		 * ladder was split for.
+		 *
+		 * Keyed on the session id so no other case in this file changes shape, and it
+		 * uses the statuses and codes the backend's error ladder raises
+		 * (`store_busy` 503, `store_out_of_space` 507, `store_unavailable` 500).
+		 */
+		const storeFailure = {
+			503503503503: [
+				503,
+				"store_busy",
+				"Read state is busy right now. It will catch up on its own.",
+			],
+			507507507507: [
+				507,
+				"store_out_of_space",
+				"There is not enough space on this disk to save your message. Free up space, then send it again.",
+			],
+			500500500500: [
+				500,
+				"store_unavailable",
+				"This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+			],
+		}[req.url.match(/\/sessions\/([a-f0-9]{12})\/messages/)?.[1]];
+		if (storeFailure) {
+			const [status, code, message] = storeFailure;
+			res.writeHead(status, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ detail: { code, message } }));
+			return;
+		}
 		res.setHeader("Content-Type", "application/json");
 		res.end(
 			JSON.stringify({
@@ -126,6 +164,44 @@ test("unpaired desktop fails closed but public negotiation explains unavailable 
 	);
 	const response = await requestDesktop({ op: "capabilities" }, url, null);
 	assert.equal(response.body.result.desktop_available, false);
+});
+
+test("a store-failure envelope crosses this hop with its status, code and sentence intact", async () => {
+	const requestId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+	/*
+	 * The renderer reads the send's category off `detail.code` and shows
+	 * `detail.message` as the sentence, so the three store arms of the backend's
+	 * error ladder have to survive this hop whole - on 507 and 500 as much as on
+	 * the 503 the composer used to see for all of them. Measured through real
+	 * loopback HTTP, not a stubbed `fetch`: the assertion is about what MAIN hands
+	 * the renderer after a non-2xx status.
+	 */
+	for (const [sessionId, status, code] of [
+		["503503503503", 503, "store_busy"],
+		["507507507507", 507, "store_out_of_space"],
+		["500500500500", 500, "store_unavailable"],
+	]) {
+		const response = await requestDesktop(
+			{
+				op: "sessions.message",
+				sessionId,
+				requestId,
+				text: "look at this screenshot",
+			},
+			url,
+			token,
+		);
+		assert.equal(response.status, status);
+		assert.equal(response.body.detail.code, code);
+		// The sentence is the backend's own, untouched: it names the volume and the
+		// remedy, which is a fact only the process that touched the store has.
+		assert.match(response.body.detail.message, /\S/);
+		assert.equal(
+			response.body.detail.message.startsWith("The backend could not"),
+			false,
+			"a classified store failure must not arrive as the transport's generic sentence",
+		);
+	}
 });
 
 test("arbitrary URL, injected headers, path traversal and wrong body types never reach HTTP", async () => {
