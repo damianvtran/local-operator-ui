@@ -19,12 +19,17 @@
  * next reader does not restore parity: a typed command word is PROSE unless the
  * user meant it, and it is meant only when it is the ENTIRE draft, or when it
  * OPENS the draft and the command consumes what follows as its argument.
- * Everything else goes to the model, untouched, with no note and nothing eaten.
+ * Everything else goes to the model, untouched, with no note and nothing eaten —
+ * with ONE carve-out the operator's later report added, stated as rule 0b: a word
+ * whose argument is a secret is spliced instead, because there the model is
+ * exactly where it must not go.
  *
  * WHAT STILL RUNS, exhaustively: the whole-draft command (`/compact`, `/usage`,
- * `/model gpt-5`, `/goal ship it`), and a draft-OPENING command whose
- * destination consumes its trailing text (`/model gpt-5` above a paragraph, or
- * `/goal ship it`). The explicit-pick path is untouched: Enter on a highlighted
+ * `/model gpt-5`, `/goal ship it`), a draft-OPENING command whose destination
+ * consumes its trailing text (`/model gpt-5` above a paragraph, or `/goal ship
+ * it`), and — rule 0b — a COMMAND-LOCKED word's token wherever it sits, which
+ * runs so that its own route refuses the typed secret instead of the draft
+ * reaching the model. The explicit-pick path is untouched: Enter on a highlighted
  * row completes the word, a pointer pick that runs still runs, and
  * `POINTER_PICK_NEVER_RUNS` still keeps a stray click from spending a
  * compaction.
@@ -71,6 +76,13 @@
  *
  *   0. The capability is off → send. Nothing is spliced on a host that could not
  *      run the command it was deleted for.
+ *   0b. The draft holds an invocation of a COMMAND-LOCKED word
+ *      (`commandLockedWords`, today `/credential` and its alias) that carries an
+ *      argument, and the rest of the draft survives its removal → the splice.
+ *      Asked of the DRAFT rather than of the caret, and asked BEFORE rule 1,
+ *      because this is the one half of the rule a careless caret cannot answer —
+ *      the reading it replaces is exactly what that caret produces.
+ *      `lockedWordSplice` states the asymmetry that decides the direction.
  *   1. The token at the CARET (`slashTokenSpan`, which is what
  *      `_run_command_from_buffer` itself calls first) defines the span the run
  *      owns. No token at the caret → prose; send it. The whole-draft shape is
@@ -100,7 +112,7 @@
  *   5. Anything else — mid-sentence, on a later line, or a leading token with
  *      text after a command that takes no argument (`please /compact this`, or
  *      a `/usage` line above prose) → send. The draft reaches the model as
- *      written.
+ *      written, for every word rule 0b did not except.
  *
  * TWO DELIBERATE DEVIATIONS FROM THE TUI, and the only two in this file, each
  * landed by a different round and both stated here rather than in the parser. The
