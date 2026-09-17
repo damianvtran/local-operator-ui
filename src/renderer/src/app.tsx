@@ -93,14 +93,17 @@ const App: FC = () => {
 	 * policy is one boolean, and this is where the app-level half of it is
 	 * declared: the store flags below already decide whether each overlay is up.
 	 *
-	 * THE TWO FIXED BANNERS ARE DELIBERATELY ABSENT, and the reason is geometry
-	 * rather than taste: they are a single-line strip pinned to the window's top
-	 * edge, which the browser route's own tab strip and URL bar already occupy, so
-	 * they do not reach the page rectangle. Hiding the page every time a
-	 * connectivity banner appeared would take the page away for as long as the
-	 * backend was down, which is worse than the banner being partially covered.
-	 * The rect and the banner's own box are both in the PR's evidence frames, so
-	 * this is a measured claim rather than a reasoned one.
+	 * THE TWO FULL-BLEED BANDS ARE DELIBERATELY ABSENT, and the reason is geometry
+	 * rather than taste: they are this shell's FIRST CHILDREN now, in flow above the
+	 * route's own chrome, so they take their height out of the app's region instead
+	 * of painting over it - and the page rectangle this renderer hands main
+	 * (`use-browser-chrome`, whose `ResizeObserver` on the content element reports
+	 * it) moves with the region. Hiding the page every time a connectivity banner
+	 * appeared would take the page away for as long as the backend was down, which
+	 * is worse than a banner. The content rect either side of that report is recorded
+	 * on the `/browser` route with no band, with one and with both
+	 * (`docs/evidence/band-occlusion/after/after-browser-*.png` and the rects in
+	 * `after-geometry.json`), so this is a measured claim rather than a reasoned one.
 	 *
 	 * `ModelsInitializer` renders nothing, so it has nothing to register.
 	 */
@@ -273,16 +276,26 @@ const App: FC = () => {
 			 * here rather than at each label keeps one rule instead of one per
 			 * `sr-only` call site.
 			 *
-			 * The app's EIGHT `position: fixed` elements are unaffected, and the
-			 * reason is the rule rather than the count: `position: relative`
-			 * establishes a containing block for `absolute` descendants only.
-			 * `fixed` resolves against the viewport unless an ancestor carries
-			 * `transform`, `filter`, `perspective`, `backdrop-filter`, `contain`
-			 * or `will-change` of one of those - none of which is added here - so
-			 * the banners, the floating alert, the update notification, and the
-			 * dialog and sheet overlays keep covering the window exactly as
-			 * before. An earlier draft of this comment claimed there was one such
-			 * element; there are eight, and the guarantee does not depend on how
+			 * There is one more thing this element now does: the two full-bleed bands are
+			 * its first children, in flow (D9), so it is a flex COLUMN whose first
+			 * children may or may not be there and whose region keeps the rest of the
+			 * window. The `relative` above is still exactly the job it was.
+			 *
+			 * The app's `position: fixed` elements are otherwise unaffected, and the
+			 * reason is the rule rather than a count: `position: relative` establishes a
+			 * containing block for `absolute` descendants only. `fixed` resolves against
+			 * the viewport unless an ancestor carries `transform`, `filter`,
+			 * `perspective`, `backdrop-filter`, `contain` or `will-change` of one of
+			 * those - none of which is added here - so the floating alert, the update
+			 * notification, the dialogs, the sheets and the command palette keep
+			 * covering the window exactly as before. The two bands have LEFT that set: each
+			 * one's own root `div` is a child of this column now rather than a `fixed`
+			 * strip, which is the whole point of the change. Measured on the chat route in
+			 * the
+			 * running app (`docs/evidence/band-occlusion/`): two `fixed` elements with
+			 * no band up, four with both bands up before this change - and the two bands
+			 * are the difference. An earlier draft of this comment claimed there was one
+			 * such element; there were eight, and the guarantee does not depend on how
 			 * many.
 			 *
 			 * The `sr-only` utility itself is NOT at fault and must not be "fixed":
@@ -294,69 +307,119 @@ const App: FC = () => {
 			 * labels stay 1x1 and rendered afterwards, so screen readers still
 			 * announce them; nothing is hidden, it is merely contained.
 			 */}
-			<div className="relative flex h-screen overflow-hidden">
-				{isCommandPaletteOpen && <CommandPalette />}
-
+			<div className="relative flex h-screen flex-col overflow-hidden">
 				{/*
-				 * The shell's presenter for the machine panels, so `/info`, `/usage` and
-				 * `/analytics` are readable from any page: the chat pane presents them
-				 * whenever it is mounted (it is the claimant), and this is the host for
-				 * every route the pane does not own. Mounted here rather than inside the
-				 * chat route because that is the whole point — a panel that needs no
-				 * conversation must not need a pane either.
+				 * THE TWO FULL-BLEED BANDS ARE THE SHELL'S FIRST CHILDREN, and this
+				 * container is a COLUMN for exactly that reason (D9).
+				 *
+				 * They used to be `fixed inset-x-0 top-0`, rendered in here like every
+				 * other child and painted OVER the layout. A fixed band does not displace
+				 * the rows it covers - it makes them ABSENT - and the rows it covered were
+				 * not decoration: measured on `main` with the compatibility band up, the
+				 * pane's own first row (device y 29-68 for a 1380x868 viewport, dpr 2) and
+				 * the sidebar search control's top rows (device y 96-106 of its 96-160)
+				 * were band paint, and with the daemon-absent copy up the band covered
+				 * device y 0-136 of the same window.
+				 *
+				 * A RESERVING INSET WAS THE OTHER CANDIDATE and lost on measurement rather
+				 * than taste: the band's height follows its COPY (53 CSS px with one line
+				 * against 68 with two, in the same window), so an inset would have to be
+				 * measured from the band rather than chosen, and TWO bands can be up at
+				 * once - both at the top of the window, both `fixed`, so the inset would
+				 * have to sum 68 + 53 = 121 CSS px for the case
+				 * `docs/evidence/band-occlusion/before/before-two-bands.png` photographs.
+				 * In flow, a band takes its height out of this container instead: nothing
+				 * can be covered at any band height, by construction, and the region below
+				 * keeps the rest of the window.
+				 *
+				 * The trade-off, accepted knowingly: an in-flow band shifts the app down at
+				 * the moment it appears, which is the moment the app is already announcing a
+				 * state change. What that buys is that the band can never be the reason a
+				 * row is missing.
+				 *
+				 * The frames and the rects behind every number above are in
+				 * `docs/evidence/band-occlusion/`; the rig that takes them is
+				 * `scripts/band-occlusion-evidence.mjs`.
 				 */}
-				<PanelOutlet />
-
-				<ModelsInitializer />
-
-				<OnboardingModal open={isOnboardingActive} />
-
 				<ConnectivityBanner />
 
 				<BackendCompatibilityBanner />
 
-				<UpdateNotification />
+				{/*
+				 * The app itself, in the space the bands leave. `flex-1 min-h-0` rather
+				 * than `h-screen`: this element's height is the window MINUS whatever the
+				 * bands above it took, and `min-h-0` is what lets it be smaller than its
+				 * own content instead of pushing the shell past the window.
+				 */}
+				<div className="flex min-h-0 flex-1 overflow-hidden">
+					{isCommandPaletteOpen && <CommandPalette />}
 
-				<LowCreditsDialog
-					open={isLowCreditsDialogOpen}
-					onClose={onLowCreditsDialogClose}
-					onGoToConsole={openRadientConsole}
-				/>
+					{/*
+					 * The shell's presenter for the machine panels, so `/info`, `/usage` and
+					 * `/analytics` are readable from any page: the chat pane presents them
+					 * whenever it is mounted (it is the claimant), and this is the host for
+					 * every route the pane does not own. Mounted here rather than inside the
+					 * chat route because that is the whole point — a panel that needs no
+					 * conversation must not need a pane either.
+					 *
+					 * It lives in the REGION rather than in the column above it, because the
+					 * thing it presents is app content and not a band: it renders `null`
+					 * with no panel up, and with one up it renders a Radix `Dialog`, which
+					 * portals to `document.body` — so the region's `overflow-hidden` cannot
+					 * clip it. What the placement does have to preserve is that this host
+					 * mounts BEFORE `<main>`: effects fire child-first in tree order, and
+					 * the ordering is what keeps a panel request from being decided before
+					 * the pane's own claim runs (see `panel-outlet.tsx`).
+					 */}
+					<PanelOutlet />
 
-				<CreateAgentDialog
-					open={isCreateAgentDialogOpen}
-					onClose={closeCreateAgentDialog}
-					onAgentCreated={handleAgentCreated}
-				/>
+					<ModelsInitializer />
 
-				<SidebarNavigation />
+					<OnboardingModal open={isOnboardingActive} />
 
-				<main className="flex grow flex-col overflow-hidden">
-					<Suspense
-						fallback={
-							<div className="flex grow items-center justify-center">
-								<Spinner size="lg" label="Loading page" />
-							</div>
-						}
-					>
-						<Routes>
-							<Route path="/" element={<Navigate to="/chat" replace />} />
-							<Route path="/chat" element={<ChatPage />} />
-							<Route path="/chat/:agentId" element={<ChatPage />} />
-							<Route path="/agents" element={<AgentsPage />} />
-							<Route path="/agents/:agentId" element={<AgentsPage />} />
-							<Route path="/settings" element={<SettingsPage />} />
-							<Route path="/agent-hub" element={<AgentHubPage />} />
-							<Route
-								path="/agent-hub/:agentId"
-								element={<AgentDetailsPage />}
-							/>
-							<Route path="/schedules" element={<SchedulesPage />} />
-							<Route path="/browser" element={<BrowserPage />} />
-							<Route path="*" element={<Navigate to="/chat" replace />} />
-						</Routes>
-					</Suspense>
-				</main>
+					<UpdateNotification />
+
+					<LowCreditsDialog
+						open={isLowCreditsDialogOpen}
+						onClose={onLowCreditsDialogClose}
+						onGoToConsole={openRadientConsole}
+					/>
+
+					<CreateAgentDialog
+						open={isCreateAgentDialogOpen}
+						onClose={closeCreateAgentDialog}
+						onAgentCreated={handleAgentCreated}
+					/>
+
+					<SidebarNavigation />
+
+					<main className="flex grow flex-col overflow-hidden">
+						<Suspense
+							fallback={
+								<div className="flex grow items-center justify-center">
+									<Spinner size="lg" label="Loading page" />
+								</div>
+							}
+						>
+							<Routes>
+								<Route path="/" element={<Navigate to="/chat" replace />} />
+								<Route path="/chat" element={<ChatPage />} />
+								<Route path="/chat/:agentId" element={<ChatPage />} />
+								<Route path="/agents" element={<AgentsPage />} />
+								<Route path="/agents/:agentId" element={<AgentsPage />} />
+								<Route path="/settings" element={<SettingsPage />} />
+								<Route path="/agent-hub" element={<AgentHubPage />} />
+								<Route
+									path="/agent-hub/:agentId"
+									element={<AgentDetailsPage />}
+								/>
+								<Route path="/schedules" element={<SchedulesPage />} />
+								<Route path="/browser" element={<BrowserPage />} />
+								<Route path="*" element={<Navigate to="/chat" replace />} />
+							</Routes>
+						</Suspense>
+					</main>
+				</div>
 			</div>
 		</OnboardingProvider>
 	);

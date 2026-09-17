@@ -251,11 +251,22 @@ export const ConnectivityBanner = ({
 
 	return (
 		/*
-		 * Fixed and full-bleed: the banner spans the window rather than sitting
-		 * inside the layout, so it is square-cornered and borderless on the left,
-		 * right and top edges. The z-index clears the app chrome it covers.
+		 * IN FLOW, as the shell's first child, rather than `fixed inset-x-0 top-0` (D9).
+		 *
+		 * The full-bleed styling is unchanged and is still the point: the banner spans
+		 * the shell rather than sitting inside a page, so it is square-cornered and
+		 * borderless on the left, right and top edges. What changed is the
+		 * positioning, because a `fixed` band is painted OVER the layout: the rows it
+		 * covered were absent rather than displaced, and the rows it covered were the
+		 * pane's own first row and the top border of the sidebar search control
+		 * (measured in `docs/evidence/band-occlusion/`). Its height follows its copy -
+		 * 68 CSS px with main's second line, 53 with the title alone - so a
+		 * reservation would have had to be measured from the band rather than chosen.
+		 * In flow it takes that height out of the shell instead (`app.tsx` carries the
+		 * rationale), and the z-index that existed only to clear the chrome it covered
+		 * goes with the positioning it belonged to.
 		 */
-		<div className="fixed inset-x-0 top-0 z-2200 w-full">
+		<div className="w-full">
 			<Alert
 				variant={bannerVariant}
 				// The banner appears in response to connectivity dropping while the
