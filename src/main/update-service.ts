@@ -36,6 +36,13 @@ import {
 	managedSupportRoot,
 	managedVenvPath,
 } from "./backend/venv-paths";
+import {
+	GROUP_EXIT_WAIT_MS,
+	isInstallGroupAlive,
+	readProcessStartStamp,
+	runInOwnProcessGroup,
+	waitForInstallGroupGone,
+} from "./install-group-run";
 import { withPythonBytecodeCache } from "./python-bytecode-cache";
 import {
 	type UpdateChannelStatus,
@@ -66,6 +73,7 @@ import {
 	didUpgradeLand,
 	evaluateBundleSeal,
 	evaluatePendingInstall,
+	evaluatePendingServerUpdateMarker,
 	healPythonBytecode,
 	installFailurePayload,
 	installInFlightPayload,
@@ -104,6 +112,18 @@ import {
 const VERSION_LINE_REGEX = /Version:\s*([^\n]+)/;
 const VERSION_CLEAN_REGEX = /^v/i;
 const BETA_VERSION_REGEX = /v\d+\.\d+\.\d+\.beta\.\d+/;
+
+/**
+ * How long one `<resolved console path> update` may take before it is stopped.
+ *
+ * A cold `lop update` on this machine is ~47s of install plus ~15s of daemon
+ * refresh; the budget is the point at which the app stops WAITING, not the point
+ * at which the updater stops working - which is why the verdict keeps its own
+ * honesty about a group that survived the stop (`runInOwnProcessGroup`). It is
+ * also what the durable record's deadline is derived from, so the two cannot
+ * drift apart.
+ */
+const GLOBAL_UPDATE_TIMEOUT_MS = 15 * 60 * 1000;
 
 /** A reverse-DNS bundle identifier, and nothing else. */
 const BUNDLE_ID_REGEX = /^[\w.-]+$/;
@@ -4538,11 +4558,22 @@ export class UpdateService {
 	 * cannot land inside the sealed bundle. `shell: true` is never used - this is a
 	 * resolved shim path, not a command line.
 	 */
-	private async runGlobalUpdate(consolePath: string): Promise<{
-		exitCode: number;
+	private async runGlobalUpdate(
+		consolePath: string,
+		/**
+		 * Called with the group leader the moment it exists, so the caller's record can
+		 * carry the pid and the stamp that make it identifiable later. Optional because
+		 * the run itself does not need it.
+		 */
+		onSpawn?: (pid: number) => void,
+	): Promise<{
+		exitCode: number | null;
 		stdout: string;
 		stderr: string;
 		ran: boolean;
+		groupPid: number | null;
+		timedOut: boolean;
+		groupStillRunning: boolean;
 	}> {
 		// The same bytecode-cache discipline the pip path uses (`pythonSpawnEnv`),
 		// because the child is another Python process this app is responsible for -
@@ -4553,9 +4584,31 @@ export class UpdateService {
 			`Executing the install's own updater: ${consolePath} update (PATH: ${updatePath})`,
 			LogFileType.UPDATE_SERVICE,
 		);
-		const run = await runCommand(consolePath, ["update"], {
-			timeoutMs: 15 * 60 * 1000,
+		/*
+		 * ITS OWN PROCESS GROUP, NOT `runCommand`'s TIMEOUT (review round 3, M1).
+		 * `runCommand` is `execFile` with a `timeout`, and that timeout signals the
+		 * direct child - which here is a front end that runs `uv`/`pipx`/`pip` as its
+		 * own child. So an expired budget signalled the front end and left the real
+		 * installer replacing the install tree while the app declared the update
+		 * failed. `runInOwnProcessGroup` signals the group and takes its verdict on the
+		 * timer; see that module for the measurements this shape comes from.
+		 */
+		const run = await runInOwnProcessGroup({
+			command: consolePath,
+			args: ["update"],
+			timeoutMs: GLOBAL_UPDATE_TIMEOUT_MS,
+			// A neutral working directory, never the app's resources dir, so an updater
+			// that resolves a relative path from where it stands cannot land inside the
+			// sealed bundle.
+			cwd: homedir(),
 			env: { ...this.pythonSpawnEnv(), PATH: updatePath },
+			onSpawn,
+			log: (line, level) => {
+				if (level === "error") logger.error(line, LogFileType.UPDATE_SERVICE);
+				else if (level === "warn")
+					logger.warn(line, LogFileType.UPDATE_SERVICE);
+				else logger.info(line, LogFileType.UPDATE_SERVICE);
+			},
 		});
 		// Both streams, both to the update service log: the installer's own output is
 		// the only thing that can say WHY it refused, and the panel's error line is a
@@ -4605,6 +4658,54 @@ export class UpdateService {
 		plan: { installedInstallVersion: string | null },
 		target: string | null,
 	): Promise<boolean> {
+		/*
+		 * THE RECORD IS CONSULTED HERE, NOT ONLY WRITTEN (review round 3, Q-3's
+		 * sibling). `globalUpdateInFlight` is one process's memory, and the durable
+		 * record beside it was written for the case the memory cannot cover: a second
+		 * app instance, or a relaunch after a crash, where the updater the last launch
+		 * started is still replacing the install tree. Nothing read it before deciding
+		 * whether to start another, so a relaunch could put a second `lop update` on
+		 * one install root - the collision the guard exists to prevent.
+		 *
+		 * Two evidences decide whether the record names a run that is really still
+		 * going, because a pid alone does not: the stamp the kernel reports for the
+		 * recorded group leader (a recycled pid answers with a different one, and
+		 * `EPERM` counts as alive in `isInstallGroupAlive`), and the record's own
+		 * deadline, which bounds a record that carries no identity at all. A record
+		 * that fails either test EXPIRES here rather than refusing for ever.
+		 */
+		const recorded = readPendingServerUpdateMarker(this.markerDir());
+		const recordedPid = recorded?.groupPid ?? null;
+		const recordedGroupAlive =
+			recordedPid !== null && isInstallGroupAlive(recordedPid);
+		const outcome = evaluatePendingServerUpdateMarker({
+			marker: recorded,
+			groupAlive: recordedGroupAlive,
+			liveGroupStamp:
+				recordedGroupAlive && recordedPid !== null
+					? readProcessStartStamp(recordedPid)
+					: null,
+		});
+		if (outcome.kind === "expired") {
+			logger.warn(
+				`A recorded server update (${outcome.marker.startedAt}) is not running any more (${outcome.reason}); clearing the record so this attempt can proceed`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			clearPendingServerUpdateMarker(this.markerDir());
+		}
+		if (outcome.kind === "running") {
+			logger.warn(
+				`A server update recorded by an earlier launch is still running (group ${outcome.marker.groupPid}, ${outcome.reason}); refusing to start a second beside it`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-error", {
+				message:
+					"A server update is already running. Let it finish before starting another.",
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
 		if (this.globalUpdateInFlight) {
 			logger.warn(
 				"A global install update is already running; refusing to start a second beside it",
@@ -4619,11 +4720,70 @@ export class UpdateService {
 			return false;
 		}
 		this.globalUpdateInFlight = true;
+		let handedOff = false;
 		try {
-			return await this.runGlobalUpdateAttempt(backend, plan, target);
+			const landed = await this.runGlobalUpdateAttempt(backend, plan, target);
+			/*
+			 * THE GUARD IS HANDED OFF, NOT DROPPED, WHEN A STOPPED GROUP IS STILL
+			 * ALIVE. The attempt left its record on disk in that case, because the run it
+			 * names has not ended; the watcher below holds this process's guard until the
+			 * group really goes, so a second press cannot put another updater beside the
+			 * one still writing into the install root.
+			 */
+			const stillRunning = this.recordedUpdateStillRunning();
+			if (stillRunning !== null) {
+				handedOff = true;
+				void this.holdGlobalInstallGuardUntilGroupGone(stillRunning);
+			}
+			return landed;
 		} finally {
-			this.globalUpdateInFlight = false;
+			if (!handedOff) this.globalUpdateInFlight = false;
 		}
+	}
+
+	/**
+	 * The group a record on disk still names, or null when nothing is running.
+	 *
+	 * Read rather than passed, because it is the SAME evidence the next launch reads:
+	 * a guard that decided from an in-memory value would disagree with the launch
+	 * that follows a crash, which is the whole class this pass is closing.
+	 */
+	private recordedUpdateStillRunning(): number | null {
+		const recorded = readPendingServerUpdateMarker(this.markerDir());
+		const pid = recorded?.groupPid ?? null;
+		if (pid === null) return null;
+		const alive = isInstallGroupAlive(pid);
+		const outcome = evaluatePendingServerUpdateMarker({
+			marker: recorded,
+			groupAlive: alive,
+			liveGroupStamp: alive ? readProcessStartStamp(pid) : null,
+		});
+		return outcome.kind === "running" ? pid : null;
+	}
+
+	/**
+	 * Hold the install guard until a signalled group is really gone.
+	 *
+	 * Fire-and-forget on purpose: the verdict has already been delivered to the user,
+	 * and awaiting this would put a descendant that outlived its stop signal back in
+	 * the panel's path. The record is cleared only once the group is gone, because
+	 * until then it is the evidence that an updater is still writing into the install
+	 * root - the thing another launch has to see.
+	 */
+	private async holdGlobalInstallGuardUntilGroupGone(
+		groupPid: number,
+	): Promise<void> {
+		let gone = await waitForInstallGroupGone(groupPid, GROUP_EXIT_WAIT_MS);
+		while (!gone) {
+			logger.warn(
+				`The updater's process group ${groupPid} outlived the stop signal and the ${Math.round(GROUP_EXIT_WAIT_MS / 1000)}s wait; another server update will not be started until it exits`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			await new Promise((resolve) => setTimeout(resolve, 5_000));
+			gone = !isInstallGroupAlive(groupPid);
+		}
+		clearPendingServerUpdateMarker(this.markerDir());
+		this.globalUpdateInFlight = false;
 	}
 
 	/** The attempt itself, under the guard above. */
@@ -4668,23 +4828,53 @@ export class UpdateService {
 		 * is cleared as soon as this attempt reaches its own verdict, which is the
 		 * only thing that makes it mean "nobody saw this end".
 		 */
-		writePendingServerUpdateMarker(this.markerDir(), {
+		const marker = {
 			before,
 			target,
 			startedAt: new Date().toISOString(),
+			// The record's own budget, so a reader can tell a run that is going from a
+			// record that outlived it without consulting a clock the app chose later.
+			deadlineAt: new Date(Date.now() + GLOBAL_UPDATE_TIMEOUT_MS).toISOString(),
+			groupPid: null,
+			groupStartedAt: null,
+		};
+		writePendingServerUpdateMarker(this.markerDir(), marker);
+		const run = await this.runGlobalUpdate(consolePath, (pid) => {
+			/*
+			 * THE IDENTITY, TAKEN WHILE THE LEADER IS CERTAINLY ALIVE. A pid outlives its
+			 * meaning once the process is gone - the number is handed to anything - so the
+			 * record carries the stamp the kernel reports for the group it started, and a
+			 * later reader compares the two rather than asking whether some pid answers
+			 * `kill -0` (review round 3, Q-3's sibling).
+			 */
+			writePendingServerUpdateMarker(this.markerDir(), {
+				before,
+				target,
+				startedAt: marker.startedAt,
+				deadlineAt: marker.deadlineAt,
+				groupPid: pid,
+				groupStartedAt: readProcessStartStamp(pid),
+			});
 		});
-		const run = await this.runGlobalUpdate(consolePath);
 		const after = this.readGlobalInstallVersion();
-		// The verdict is in THIS process, so the marker's remaining job is gone: the
-		// panel carries the outcome, and a later launch must not report it twice.
-		clearPendingServerUpdateMarker(this.markerDir());
+		/*
+		 * A STOPPED GROUP THAT IS STILL ALIVE KEEPS ITS RECORD. The verdict is in this
+		 * process, so on every other path the record's job is done and the panel carries
+		 * the outcome; but when the stop signal left a live group behind, a real installer
+		 * may still be replacing the install tree, and the record is what makes the next
+		 * launch (or the next press) see that before starting a second one. The watcher
+		 * clears it when the group goes.
+		 */
+		const groupSurvived =
+			run.timedOut && run.groupStillRunning && run.groupPid !== null;
+		if (!groupSurvived) clearPendingServerUpdateMarker(this.markerDir());
 		const landed =
 			run.exitCode === 0 && didUpgradeLand({ before, after, target });
 		if (!landed) {
 			const running = await this.getInstalledBackendVersion();
 			const tail = stderrTail(run.stderr);
 			logger.error(
-				`Global install update did not land (exited ${run.exitCode}, ran ${run.ran}): ${before ?? "unknown"} -> ${after ?? "unknown"}, running backend reports ${running ?? "no reading"}`,
+				`Global install update did not land (exited ${run.exitCode}, ran ${run.ran}${groupSurvived ? `, group ${run.groupPid} still alive` : ""}): ${before ?? "unknown"} -> ${after ?? "unknown"}, running backend reports ${running ?? "no reading"}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			// Nothing moved, so nothing is restarted: the daemon that was serving is
@@ -4696,6 +4886,10 @@ export class UpdateService {
 						: run.exitCode !== 0
 							? `The server update did not install: \`lop update\` exited ${run.exitCode}.`
 							: `The server update to ${target ?? "the new release"} did not take effect: the install still reports ${after ?? before ?? "its previous version"}.`
+				}${
+					groupSurvived
+						? " The updater was stopped, and something it started may still be running - it may still be replacing the install, and another update will not be started until it exits."
+						: ""
 				} The running backend is still serving${running ? ` version ${running}` : ""}; see the update service log for the installer's output.${tail ? `\n\n${tail}` : ""}`,
 				phase: "update",
 				logPath: serverUpdateLogPath(),
@@ -4827,6 +5021,33 @@ export class UpdateService {
 	private async reportUnattendedServerUpdate(): Promise<void> {
 		const marker = readPendingServerUpdateMarker(this.markerDir());
 		if (!marker) return;
+		/*
+		 * A RECORD WHOSE GROUP IS STILL OURS IS LEFT ALONE. This path exists to report
+		 * an update that landed while nothing was watching, and it clears the record as
+		 * it reports; but a record naming a live, unexpired group is a run that has not
+		 * ended, and clearing it here would take away the evidence the next press reads
+		 * before it refuses to start a second updater (review round 3, Q-3's sibling).
+		 * The generation's own workspaces are the other half of this: nothing here
+		 * signals anything.
+		 */
+		const recordedPid = marker.groupPid ?? null;
+		const recordedAlive =
+			recordedPid !== null && isInstallGroupAlive(recordedPid);
+		const outcome = evaluatePendingServerUpdateMarker({
+			marker,
+			groupAlive: recordedAlive,
+			liveGroupStamp:
+				recordedAlive && recordedPid !== null
+					? readProcessStartStamp(recordedPid)
+					: null,
+		});
+		if (outcome.kind === "running") {
+			logger.warn(
+				`A server update recorded at ${marker.startedAt} is still running (group ${recordedPid}, ${outcome.reason}); leaving its record in place`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
 		const after = this.readGlobalInstallVersion();
 		clearPendingServerUpdateMarker(this.markerDir());
 		if (!after || after === marker.before) {

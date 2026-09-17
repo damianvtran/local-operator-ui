@@ -1009,6 +1009,24 @@ export type PendingServerUpdateMarker = {
 	target: string | null;
 	/** ISO timestamp of the attempt. */
 	startedAt: string;
+	/**
+	 * When the attempt's own budget expires, ISO, or null when the writer could not
+	 * date it.
+	 *
+	 * It is what BOUNDS the record: a marker whose budget passed long ago is not
+	 * evidence that anything is still running, and treating it as if it were is how
+	 * a record survives its run for ever (QA round 2's finding on the withdrawn
+	 * model: 8.5 hours past the deadline, every later update on every later launch
+	 * refused).
+	 */
+	deadlineAt: string | null;
+	/** The updater's process-group leader, written once it exists. */
+	groupPid: number | null;
+	/**
+	 * The start stamp the kernel reports for that leader, taken while it is certainly
+	 * alive - see `readProcessStartStamp` for why liveness alone is not identity.
+	 */
+	groupStartedAt: string | null;
 };
 
 export function pendingServerUpdateMarkerPath(dir: string): string {
@@ -1056,6 +1074,16 @@ export function parsePendingServerUpdateMarker(
 			before: typeof parsed.before === "string" ? parsed.before : null,
 			target: typeof parsed.target === "string" ? parsed.target : null,
 			startedAt: parsed.startedAt,
+			// The three identity fields are additive: a record written before they
+			// existed parses as "no evidence", which is exactly what the evaluator
+			// bounds by the deadline rather than by a pid.
+			deadlineAt:
+				typeof parsed.deadlineAt === "string" ? parsed.deadlineAt : null,
+			groupPid: typeof parsed.groupPid === "number" ? parsed.groupPid : null,
+			groupStartedAt:
+				typeof parsed.groupStartedAt === "string"
+					? parsed.groupStartedAt
+					: null,
 		};
 	} catch {
 		return null;
@@ -1079,6 +1107,88 @@ export function clearPendingServerUpdateMarker(dir: string): boolean {
 	if (!existsSync(path)) return false;
 	rmSync(path, { force: true });
 	return true;
+}
+
+/** What a pending-update marker means for a NEW attempt asking to run. */
+export type PendingServerUpdateOutcome =
+	| { kind: "none" }
+	| {
+			kind: "running";
+			marker: PendingServerUpdateMarker;
+			reason: "owned" | "unproven";
+	  }
+	| {
+			kind: "expired";
+			marker: PendingServerUpdateMarker;
+			reason: "gone" | "foreign-pid" | "expired";
+	  };
+
+/**
+ * How long past a run's own budget a record with no identity evidence may still be
+ * called running.
+ *
+ * Not zero, because the last minutes of a run are exactly when a crash leaves the
+ * record behind and the updater carries on unwatched - the case the record exists
+ * for. Not unlimited, because that is the permanent refusal QA measured on the
+ * withdrawn model: a record whose pid was recycled held every later update for
+ * ever.
+ */
+export const PENDING_SERVER_UPDATE_GRACE_MS = 10 * 60_000;
+
+/**
+ * Read a pending-update record against what can be known about its process group.
+ *
+ * THE DECISION TABLE, in order, because the failure mode of getting it wrong is a
+ * permanent refusal rather than a wrong sentence:
+ *
+ * 1. no group alive -> `expired/gone`. The pid is the fact the record was written
+ *    from, and it is not there any more.
+ * 2. the group is alive AND the stamp the record carries still matches the stamp
+ *    the kernel reports for that pid -> `running/owned`. This is the only case
+ *    allowed to claim a run is going without an age bound, because it is the only
+ *    one with evidence the process is the one this app started: the app's own
+ *    budget stops it WAITING, but nothing stops a detached updater from finishing
+ *    after its app died.
+ * 3. the group is alive and the stamps DIFFER -> `expired/foreign-pid`. Some
+ *    process is running under that pid and it is not our updater; the number was
+ *    recycled. Reported as expired so the record expires with it.
+ * 4. the group is alive and there is no evidence either way - a record written
+ *    before the identity fields existed, or a pid `ps` will not report ->
+ *    `running` only while the record's own deadline plus `graceMs` has not
+ *    passed, and `expired/expired` after it. `EPERM` counts as alive in
+ *    `isInstallGroupAlive`, deliberately (a group this app may not signal is still
+ *    a group), which is the other half of why the age bound has to exist.
+ *
+ * `now` is an input rather than `Date.now()` so the expiry is a case in a test
+ * rather than a sleep.
+ */
+export function evaluatePendingServerUpdateMarker(input: {
+	marker: PendingServerUpdateMarker | null;
+	groupAlive: boolean;
+	/** What `readProcessStartStamp` answers for the record's pid now, or null. */
+	liveGroupStamp?: string | null;
+	now?: number;
+	graceMs?: number;
+}): PendingServerUpdateOutcome {
+	const marker = input.marker;
+	if (!marker) return { kind: "none" };
+	if (marker.groupPid === null || !input.groupAlive) {
+		return { kind: "expired", marker, reason: "gone" };
+	}
+	const recorded = marker.groupStartedAt;
+	const live = input.liveGroupStamp ?? null;
+	if (recorded && live) {
+		return recorded === live
+			? { kind: "running", marker, reason: "owned" }
+			: { kind: "expired", marker, reason: "foreign-pid" };
+	}
+	const deadline = Date.parse(marker.deadlineAt ?? "");
+	const now = input.now ?? Date.now();
+	const grace = input.graceMs ?? PENDING_SERVER_UPDATE_GRACE_MS;
+	if (Number.isFinite(deadline) && now > deadline + grace) {
+		return { kind: "expired", marker, reason: "expired" };
+	}
+	return { kind: "running", marker, reason: "unproven" };
 }
 
 /**
