@@ -128,3 +128,26 @@ export const summarySentence = (summary: InstallSummary): string => {
 	if (parts.length === 0) parts.push("Nothing to install");
 	return `${parts.join(", ")}.`;
 };
+
+/**
+ * The one line that names the skipped names, count first, as a sentence.
+ *
+ * `summarySentence` counts a skip; this says WHICH, and it is one sentence
+ * rather than a lower-case fragment per name: the previous rendering began
+ * `skipped: you have an agent called "reviewer"` under a line that had already
+ * counted the skip, which is one sentence broken across two paragraphs and the
+ * reason the block read as an afterthought (design round 1, D7). Kept here,
+ * beside the counting rules, so the wording a test can hold is the wording the
+ * user reads.
+ *
+ * Returns null when nothing was skipped, which is the common case: a batch
+ * where everything landed needs one sentence, not two.
+ */
+export const summaryExceptionSentence = (
+	summary: InstallSummary,
+): string | null => {
+	if (summary.skipped.length === 0) return null;
+	const names = summary.skipped.map((name) => `"${name}"`).join(", ");
+	const noun = summary.skipped.length === 1 ? "an agent" : "agents";
+	return `Skipped ${summary.skipped.length}: you already have ${noun} called ${names}.`;
+};
