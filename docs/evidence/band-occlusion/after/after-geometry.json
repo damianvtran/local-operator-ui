@@ -1,5 +1,5 @@
 {
-  "label": "before",
+  "label": "after",
   "viewport": {
     "w": 1380,
     "h": 868,
@@ -7,8 +7,8 @@
   },
   "states": {
     "none": {
-      "frame": "docs/evidence/band-occlusion/before/before-none.png",
-      "out": "docs/evidence/band-occlusion/before",
+      "frame": "docs/evidence/band-occlusion/after/after-none.png",
+      "out": "docs/evidence/band-occlusion/after",
       "route": "#/chat",
       "requests": {
         "/health": 2,
@@ -106,7 +106,7 @@
         }
       },
       "region": {
-        "cls": "relative flex h-screen overflow-hidden",
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -119,7 +119,7 @@
         "clientHeight": 868
       },
       "outer": {
-        "cls": "",
+        "cls": "relative flex h-screen flex-col overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -144,8 +144,8 @@
       }
     },
     "browser-none": {
-      "frame": "docs/evidence/band-occlusion/before/before-browser-none.png",
-      "out": "docs/evidence/band-occlusion/before",
+      "frame": "docs/evidence/band-occlusion/after/after-browser-none.png",
+      "out": "docs/evidence/band-occlusion/after",
       "route": "#/browser",
       "requests": {
         "/health": 2,
@@ -153,7 +153,7 @@
         "/v1/desktop/sessions": 1,
         "/v1/capabilities": 5,
         "/v1/config": 2,
-        "/v1/desktop/radient": 13,
+        "/v1/desktop/radient": 12,
         "/v1/auth/providers": 2,
         "/v1/agents": 4
       },
@@ -195,7 +195,7 @@
         },
         "browserContent": {
           "selector": ".relative.min-h-0.min-w-0.grow.bg-canvas",
-          "text": "",
+          "text": "Loading browser",
           "rect": {
             "x": 220,
             "y": 78,
@@ -215,7 +215,7 @@
         }
       },
       "region": {
-        "cls": "relative flex h-screen overflow-hidden",
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -228,7 +228,7 @@
         "clientHeight": 868
       },
       "outer": {
-        "cls": "",
+        "cls": "relative flex h-screen flex-col overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -253,8 +253,8 @@
       }
     },
     "one-line": {
-      "frame": "docs/evidence/band-occlusion/before/before-one-line.png",
-      "out": "docs/evidence/band-occlusion/before",
+      "frame": "docs/evidence/band-occlusion/after/after-one-line.png",
+      "out": "docs/evidence/band-occlusion/after",
       "route": "#/chat",
       "requests": {
         "/health": 4,
@@ -265,16 +265,16 @@
         "/v1/desktop/radient": 13,
         "/v1/auth/providers": 2,
         "/v1/agents": 4,
-        "/v1/desktop/profiles": 1,
-        "/v1/desktop/teams": 1
+        "/v1/desktop/teams": 1,
+        "/v1/desktop/profiles": 1
       },
       "bandCount": 1,
       "bandTotal": 53,
       "bands": [
         {
           "text": "The Local Operator server is missing auth, settings, commands, catalogues, lifecycle, mcp,",
-          "position": "fixed",
-          "zIndex": "2100",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
             "y": 0,
@@ -295,66 +295,60 @@
           "text": "",
           "rect": {
             "x": 228,
-            "y": 48,
+            "y": 101,
             "w": 264,
             "h": 32,
-            "top": 48,
-            "bottom": 80
+            "top": 101,
+            "bottom": 133
           },
           "device": {
-            "top": 96,
-            "bottom": 160
+            "top": 202,
+            "bottom": 266
           },
           "relativeToRegion": 48,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "The Local Operator server is missing aut"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "chatListHeader": {
           "selector": "nav[aria-label=\"Chats\"] h2",
           "text": "Chats",
           "rect": {
             "x": 232,
-            "y": 14.25,
+            "y": 67.25,
             "w": 36.04,
             "h": 19.5,
-            "top": 14.25,
-            "bottom": 33.75
+            "top": 67.25,
+            "bottom": 86.75
           },
           "device": {
-            "top": 29,
-            "bottom": 68
+            "top": 135,
+            "bottom": 174
           },
           "relativeToRegion": 14.25,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "The Local Operator server is missing aut"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "paneFirstRow": {
           "selector": "the pane's first h1/h2/h3/p outside nav[aria-label=Chats]",
           "text": "Start a chat",
           "rect": {
             "x": 524,
-            "y": 24,
+            "y": 77,
             "w": 832,
             "h": 26,
-            "top": 24,
-            "bottom": 50
+            "top": 77,
+            "bottom": 103
           },
           "device": {
-            "top": 48,
-            "bottom": 100
+            "top": 154,
+            "bottom": 206
           },
           "relativeToRegion": 24,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "The Local Operator server is missing aut"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "railSearch": {
           "selector": "[data-command-palette-trigger]",
@@ -371,27 +365,27 @@
             "top": 1568,
             "bottom": 1632
           },
-          "relativeToRegion": 784,
+          "relativeToRegion": 731,
           "bandReachable": false,
           "coveredByBand": false,
           "coveredBy": []
         }
       },
       "region": {
-        "cls": "relative flex h-screen overflow-hidden",
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
         "rect": {
           "x": 0,
-          "y": 0,
+          "y": 53,
           "w": 1380,
-          "h": 868,
-          "top": 0,
+          "h": 815,
+          "top": 53,
           "bottom": 868
         },
-        "scrollHeight": 868,
-        "clientHeight": 868
+        "scrollHeight": 815,
+        "clientHeight": 815
       },
       "outer": {
-        "cls": "",
+        "cls": "relative flex h-screen flex-col overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -403,7 +397,7 @@
         "scrollHeight": 868,
         "clientHeight": 868
       },
-      "fixedCount": 1,
+      "fixedCount": 0,
       "documentScroll": {
         "scrollHeight": 868,
         "clientHeight": 868,
@@ -417,8 +411,8 @@
       "pixels": {
         "shiftRows": 106,
         "rowsCompared": 1630,
-        "rowsBelowShiftEqual": 941,
-        "firstDivergentRow": 106,
+        "rowsBelowShiftEqual": 1166,
+        "firstDivergentRow": 165,
         "firstRowsBelowShiftEqual": false
       },
       "paint": {
@@ -437,8 +431,8 @@
       }
     },
     "browser-one-line": {
-      "frame": "docs/evidence/band-occlusion/before/before-browser-one-line.png",
-      "out": "docs/evidence/band-occlusion/before",
+      "frame": "docs/evidence/band-occlusion/after/after-browser-one-line.png",
+      "out": "docs/evidence/band-occlusion/after",
       "route": "#/browser",
       "requests": {
         "/health": 4,
@@ -449,16 +443,16 @@
         "/v1/desktop/radient": 13,
         "/v1/auth/providers": 2,
         "/v1/agents": 4,
-        "/v1/desktop/profiles": 1,
-        "/v1/desktop/teams": 1
+        "/v1/desktop/teams": 1,
+        "/v1/desktop/profiles": 1
       },
       "bandCount": 1,
       "bandTotal": 53,
       "bands": [
         {
           "text": "The Local Operator server is missing auth, settings, commands, catalogues, lifecycle, mcp,",
-          "position": "fixed",
-          "zIndex": "2100",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
             "y": 0,
@@ -501,7 +495,7 @@
             "top": 1568,
             "bottom": 1632
           },
-          "relativeToRegion": 784,
+          "relativeToRegion": 731,
           "bandReachable": false,
           "coveredByBand": false,
           "coveredBy": []
@@ -511,14 +505,14 @@
           "text": "",
           "rect": {
             "x": 220,
-            "y": 78,
+            "y": 131,
             "w": 1160,
-            "h": 790,
-            "top": 78,
+            "h": 737,
+            "top": 131,
             "bottom": 868
           },
           "device": {
-            "top": 156,
+            "top": 262,
             "bottom": 1736
           },
           "relativeToRegion": 78,
@@ -528,20 +522,20 @@
         }
       },
       "region": {
-        "cls": "relative flex h-screen overflow-hidden",
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
         "rect": {
           "x": 0,
-          "y": 0,
+          "y": 53,
           "w": 1380,
-          "h": 868,
-          "top": 0,
+          "h": 815,
+          "top": 53,
           "bottom": 868
         },
-        "scrollHeight": 868,
-        "clientHeight": 868
+        "scrollHeight": 815,
+        "clientHeight": 815
       },
       "outer": {
-        "cls": "",
+        "cls": "relative flex h-screen flex-col overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -553,7 +547,7 @@
         "scrollHeight": 868,
         "clientHeight": 868
       },
-      "fixedCount": 1,
+      "fixedCount": 0,
       "documentScroll": {
         "scrollHeight": 868,
         "clientHeight": 868,
@@ -587,8 +581,8 @@
       }
     },
     "two-bands": {
-      "frame": "docs/evidence/band-occlusion/before/before-two-bands.png",
-      "out": "docs/evidence/band-occlusion/before",
+      "frame": "docs/evidence/band-occlusion/after/after-two-bands.png",
+      "out": "docs/evidence/band-occlusion/after",
       "route": "#/chat",
       "requests": {
         "/health": 4,
@@ -599,16 +593,16 @@
         "/v1/desktop/radient": 13,
         "/v1/auth/providers": 2,
         "/v1/agents": 4,
-        "/v1/desktop/profiles": 1,
-        "/v1/desktop/teams": 1
+        "/v1/desktop/teams": 1,
+        "/v1/desktop/profiles": 1
       },
       "bandCount": 2,
       "bandTotal": 121,
       "bands": [
         {
           "text": "Not connected to a Local Operator server. If one is still running, the app reconnects to i",
-          "position": "fixed",
-          "zIndex": "2200",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
             "y": 0,
@@ -624,19 +618,19 @@
         },
         {
           "text": "The Local Operator server is missing auth, settings, commands, catalogues, lifecycle, mcp,",
-          "position": "fixed",
-          "zIndex": "2100",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
-            "y": 0,
+            "y": 68,
             "w": 1380,
             "h": 53,
-            "top": 0,
-            "bottom": 53
+            "top": 68,
+            "bottom": 121
           },
           "device": {
-            "top": 0,
-            "bottom": 106
+            "top": 136,
+            "bottom": 242
           }
         }
       ],
@@ -646,69 +640,60 @@
           "text": "",
           "rect": {
             "x": 228,
-            "y": 48,
+            "y": 169,
             "w": 264,
             "h": 32,
-            "top": 48,
-            "bottom": 80
+            "top": 169,
+            "bottom": 201
           },
           "device": {
-            "top": 96,
-            "bottom": 160
+            "top": 338,
+            "bottom": 402
           },
           "relativeToRegion": 48,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "Not connected to a Local Operator server",
-            "The Local Operator server is missing aut"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "chatListHeader": {
           "selector": "nav[aria-label=\"Chats\"] h2",
           "text": "Chats",
           "rect": {
             "x": 232,
-            "y": 14.25,
+            "y": 135.25,
             "w": 36.04,
             "h": 19.5,
-            "top": 14.25,
-            "bottom": 33.75
+            "top": 135.25,
+            "bottom": 154.75
           },
           "device": {
-            "top": 29,
-            "bottom": 68
+            "top": 271,
+            "bottom": 310
           },
           "relativeToRegion": 14.25,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "Not connected to a Local Operator server",
-            "The Local Operator server is missing aut"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "paneFirstRow": {
           "selector": "the pane's first h1/h2/h3/p outside nav[aria-label=Chats]",
           "text": "The backend could not complete this request. Check its conne",
           "rect": {
             "x": 500,
-            "y": 0,
+            "y": 121,
             "w": 880,
             "h": 35.5,
-            "top": 0,
-            "bottom": 35.5
+            "top": 121,
+            "bottom": 156.5
           },
           "device": {
-            "top": 0,
-            "bottom": 71
+            "top": 242,
+            "bottom": 313
           },
           "relativeToRegion": 0,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "Not connected to a Local Operator server",
-            "The Local Operator server is missing aut"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "railSearch": {
           "selector": "[data-command-palette-trigger]",
@@ -725,27 +710,27 @@
             "top": 1568,
             "bottom": 1632
           },
-          "relativeToRegion": 784,
+          "relativeToRegion": 663,
           "bandReachable": false,
           "coveredByBand": false,
           "coveredBy": []
         }
       },
       "region": {
-        "cls": "relative flex h-screen overflow-hidden",
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
         "rect": {
           "x": 0,
-          "y": 0,
+          "y": 121,
           "w": 1380,
-          "h": 868,
-          "top": 0,
+          "h": 747,
+          "top": 121,
           "bottom": 868
         },
-        "scrollHeight": 868,
-        "clientHeight": 868
+        "scrollHeight": 747,
+        "clientHeight": 747
       },
       "outer": {
-        "cls": "",
+        "cls": "relative flex h-screen flex-col overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -757,7 +742,7 @@
         "scrollHeight": 868,
         "clientHeight": 868
       },
-      "fixedCount": 2,
+      "fixedCount": 0,
       "documentScroll": {
         "scrollHeight": 868,
         "clientHeight": 868,
@@ -771,8 +756,8 @@
       "pixels": {
         "shiftRows": 242,
         "rowsCompared": 1494,
-        "rowsBelowShiftEqual": 746,
-        "firstDivergentRow": 242,
+        "rowsBelowShiftEqual": 881,
+        "firstDivergentRow": 267,
         "firstRowsBelowShiftEqual": false
       },
       "paint": {
@@ -780,20 +765,19 @@
           "#292215"
         ],
         "rules": [
-          "#82713f",
-          "#292215"
+          "#82713f"
         ],
         "shiftRows": 242,
         "rowsChecked": 242,
-        "rowsNotBandPaint": 106,
-        "firstRowNotBandPaint": 136,
+        "rowsNotBandPaint": 0,
+        "firstRowNotBandPaint": null,
         "firstRowPastBandsIsBandPaint": false,
         "appFirstPaintedRow": 242
       }
     },
     "browser-two-bands": {
-      "frame": "docs/evidence/band-occlusion/before/before-browser-two-bands.png",
-      "out": "docs/evidence/band-occlusion/before",
+      "frame": "docs/evidence/band-occlusion/after/after-browser-two-bands.png",
+      "out": "docs/evidence/band-occlusion/after",
       "route": "#/browser",
       "requests": {
         "/health": 4,
@@ -804,16 +788,16 @@
         "/v1/desktop/radient": 13,
         "/v1/auth/providers": 2,
         "/v1/agents": 4,
-        "/v1/desktop/profiles": 1,
-        "/v1/desktop/teams": 1
+        "/v1/desktop/teams": 1,
+        "/v1/desktop/profiles": 1
       },
       "bandCount": 2,
       "bandTotal": 121,
       "bands": [
         {
           "text": "Not connected to a Local Operator server. If one is still running, the app reconnects to i",
-          "position": "fixed",
-          "zIndex": "2200",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
             "y": 0,
@@ -829,19 +813,19 @@
         },
         {
           "text": "The Local Operator server is missing auth, settings, commands, catalogues, lifecycle, mcp,",
-          "position": "fixed",
-          "zIndex": "2100",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
-            "y": 0,
+            "y": 68,
             "w": 1380,
             "h": 53,
-            "top": 0,
-            "bottom": 53
+            "top": 68,
+            "bottom": 121
           },
           "device": {
-            "top": 0,
-            "bottom": 106
+            "top": 136,
+            "bottom": 242
           }
         }
       ],
@@ -873,7 +857,7 @@
             "top": 1568,
             "bottom": 1632
           },
-          "relativeToRegion": 784,
+          "relativeToRegion": 663,
           "bandReachable": false,
           "coveredByBand": false,
           "coveredBy": []
@@ -883,14 +867,14 @@
           "text": "",
           "rect": {
             "x": 220,
-            "y": 78,
+            "y": 199,
             "w": 1160,
-            "h": 790,
-            "top": 78,
+            "h": 669,
+            "top": 199,
             "bottom": 868
           },
           "device": {
-            "top": 156,
+            "top": 398,
             "bottom": 1736
           },
           "relativeToRegion": 78,
@@ -900,20 +884,20 @@
         }
       },
       "region": {
-        "cls": "relative flex h-screen overflow-hidden",
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
         "rect": {
           "x": 0,
-          "y": 0,
+          "y": 121,
           "w": 1380,
-          "h": 868,
-          "top": 0,
+          "h": 747,
+          "top": 121,
           "bottom": 868
         },
-        "scrollHeight": 868,
-        "clientHeight": 868
+        "scrollHeight": 747,
+        "clientHeight": 747
       },
       "outer": {
-        "cls": "",
+        "cls": "relative flex h-screen flex-col overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -925,7 +909,7 @@
         "scrollHeight": 868,
         "clientHeight": 868
       },
-      "fixedCount": 2,
+      "fixedCount": 0,
       "documentScroll": {
         "scrollHeight": 868,
         "clientHeight": 868,
@@ -948,20 +932,19 @@
           "#292215"
         ],
         "rules": [
-          "#82713f",
-          "#292215"
+          "#82713f"
         ],
         "shiftRows": 242,
         "rowsChecked": 242,
-        "rowsNotBandPaint": 106,
-        "firstRowNotBandPaint": 136,
+        "rowsNotBandPaint": 0,
+        "firstRowNotBandPaint": null,
         "firstRowPastBandsIsBandPaint": false,
         "appFirstPaintedRow": 242
       }
     },
     "two-bands-danger": {
-      "frame": "docs/evidence/band-occlusion/before/before-two-bands-danger.png",
-      "out": "docs/evidence/band-occlusion/before",
+      "frame": "docs/evidence/band-occlusion/after/after-two-bands-danger.png",
+      "out": "docs/evidence/band-occlusion/after",
       "route": "#/chat",
       "requests": {
         "/health": 4,
@@ -972,16 +955,16 @@
         "/v1/desktop/radient": 13,
         "/v1/auth/providers": 2,
         "/v1/agents": 4,
-        "/v1/desktop/profiles": 1,
-        "/v1/desktop/teams": 1
+        "/v1/desktop/teams": 1,
+        "/v1/desktop/profiles": 1
       },
       "bandCount": 2,
       "bandTotal": 121,
       "bands": [
         {
           "text": "The Local Operator server stopped. The app keeps looking for one and attaches to it when i",
-          "position": "fixed",
-          "zIndex": "2200",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
             "y": 0,
@@ -997,19 +980,19 @@
         },
         {
           "text": "The Local Operator server is missing auth, settings, commands, catalogues, lifecycle, mcp,",
-          "position": "fixed",
-          "zIndex": "2100",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
-            "y": 0,
+            "y": 68,
             "w": 1380,
             "h": 53,
-            "top": 0,
-            "bottom": 53
+            "top": 68,
+            "bottom": 121
           },
           "device": {
-            "top": 0,
-            "bottom": 106
+            "top": 136,
+            "bottom": 242
           }
         }
       ],
@@ -1019,69 +1002,60 @@
           "text": "",
           "rect": {
             "x": 228,
-            "y": 48,
+            "y": 169,
             "w": 264,
             "h": 32,
-            "top": 48,
-            "bottom": 80
+            "top": 169,
+            "bottom": 201
           },
           "device": {
-            "top": 96,
-            "bottom": 160
+            "top": 338,
+            "bottom": 402
           },
           "relativeToRegion": 48,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "The Local Operator server stopped. The a",
-            "The Local Operator server is missing aut"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "chatListHeader": {
           "selector": "nav[aria-label=\"Chats\"] h2",
           "text": "Chats",
           "rect": {
             "x": 232,
-            "y": 14.25,
+            "y": 135.25,
             "w": 36.04,
             "h": 19.5,
-            "top": 14.25,
-            "bottom": 33.75
+            "top": 135.25,
+            "bottom": 154.75
           },
           "device": {
-            "top": 29,
-            "bottom": 68
+            "top": 271,
+            "bottom": 310
           },
           "relativeToRegion": 14.25,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "The Local Operator server stopped. The a",
-            "The Local Operator server is missing aut"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "paneFirstRow": {
           "selector": "the pane's first h1/h2/h3/p outside nav[aria-label=Chats]",
           "text": "The backend could not complete this request. Check its conne",
           "rect": {
             "x": 500,
-            "y": 0,
+            "y": 121,
             "w": 880,
             "h": 35.5,
-            "top": 0,
-            "bottom": 35.5
+            "top": 121,
+            "bottom": 156.5
           },
           "device": {
-            "top": 0,
-            "bottom": 71
+            "top": 242,
+            "bottom": 313
           },
           "relativeToRegion": 0,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "The Local Operator server stopped. The a",
-            "The Local Operator server is missing aut"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "railSearch": {
           "selector": "[data-command-palette-trigger]",
@@ -1098,27 +1072,27 @@
             "top": 1568,
             "bottom": 1632
           },
-          "relativeToRegion": 784,
+          "relativeToRegion": 663,
           "bandReachable": false,
           "coveredByBand": false,
           "coveredBy": []
         }
       },
       "region": {
-        "cls": "relative flex h-screen overflow-hidden",
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
         "rect": {
           "x": 0,
-          "y": 0,
+          "y": 121,
           "w": 1380,
-          "h": 868,
-          "top": 0,
+          "h": 747,
+          "top": 121,
           "bottom": 868
         },
-        "scrollHeight": 868,
-        "clientHeight": 868
+        "scrollHeight": 747,
+        "clientHeight": 747
       },
       "outer": {
-        "cls": "",
+        "cls": "relative flex h-screen flex-col overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -1130,7 +1104,7 @@
         "scrollHeight": 868,
         "clientHeight": 868
       },
-      "fixedCount": 2,
+      "fixedCount": 0,
       "documentScroll": {
         "scrollHeight": 868,
         "clientHeight": 868,
@@ -1144,29 +1118,30 @@
       "pixels": {
         "shiftRows": 242,
         "rowsCompared": 1494,
-        "rowsBelowShiftEqual": 746,
-        "firstDivergentRow": 242,
+        "rowsBelowShiftEqual": 881,
+        "firstDivergentRow": 267,
         "firstRowsBelowShiftEqual": false
       },
       "paint": {
         "grounds": [
-          "#2b1c19"
+          "#2b1c19",
+          "#292215"
         ],
         "rules": [
           "#955e54",
-          "#2b1c19"
+          "#82713f"
         ],
         "shiftRows": 242,
         "rowsChecked": 242,
-        "rowsNotBandPaint": 106,
-        "firstRowNotBandPaint": 136,
+        "rowsNotBandPaint": 0,
+        "firstRowNotBandPaint": null,
         "firstRowPastBandsIsBandPaint": false,
         "appFirstPaintedRow": 242
       }
     },
     "none-reattached": {
-      "frame": "docs/evidence/band-occlusion/before/before-none-reattached.png",
-      "out": "docs/evidence/band-occlusion/before",
+      "frame": "docs/evidence/band-occlusion/after/after-none-reattached.png",
+      "out": "docs/evidence/band-occlusion/after",
       "route": "#/chat",
       "requests": {
         "/health": 5,
@@ -1177,8 +1152,8 @@
         "/v1/desktop/radient": 20,
         "/v1/auth/providers": 6,
         "/v1/agents": 6,
-        "/v1/desktop/profiles": 1,
-        "/v1/desktop/teams": 1
+        "/v1/desktop/teams": 1,
+        "/v1/desktop/profiles": 1
       },
       "bandCount": 0,
       "bandTotal": 0,
@@ -1266,7 +1241,7 @@
         }
       },
       "region": {
-        "cls": "relative flex h-screen overflow-hidden",
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -1279,7 +1254,7 @@
         "clientHeight": 868
       },
       "outer": {
-        "cls": "",
+        "cls": "relative flex h-screen flex-col overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -1304,8 +1279,8 @@
       }
     },
     "two-line": {
-      "frame": "docs/evidence/band-occlusion/before/before-two-line.png",
-      "out": "docs/evidence/band-occlusion/before",
+      "frame": "docs/evidence/band-occlusion/after/after-two-line.png",
+      "out": "docs/evidence/band-occlusion/after",
       "route": "#/chat",
       "requests": {
         "/health": 5,
@@ -1316,16 +1291,16 @@
         "/v1/desktop/radient": 20,
         "/v1/auth/providers": 6,
         "/v1/agents": 6,
-        "/v1/desktop/profiles": 1,
-        "/v1/desktop/teams": 1
+        "/v1/desktop/teams": 1,
+        "/v1/desktop/profiles": 1
       },
       "bandCount": 1,
       "bandTotal": 68,
       "bands": [
         {
           "text": "Not connected to a Local Operator server. If one is still running, the app reconnects to i",
-          "position": "fixed",
-          "zIndex": "2200",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
             "y": 0,
@@ -1346,66 +1321,60 @@
           "text": "",
           "rect": {
             "x": 228,
-            "y": 48,
+            "y": 116,
             "w": 264,
             "h": 32,
-            "top": 48,
-            "bottom": 80
+            "top": 116,
+            "bottom": 148
           },
           "device": {
-            "top": 96,
-            "bottom": 160
+            "top": 232,
+            "bottom": 296
           },
           "relativeToRegion": 48,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "Not connected to a Local Operator server"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "chatListHeader": {
           "selector": "nav[aria-label=\"Chats\"] h2",
           "text": "Chats",
           "rect": {
             "x": 232,
-            "y": 14.25,
+            "y": 82.25,
             "w": 36.04,
             "h": 19.5,
-            "top": 14.25,
-            "bottom": 33.75
+            "top": 82.25,
+            "bottom": 101.75
           },
           "device": {
-            "top": 29,
-            "bottom": 68
+            "top": 165,
+            "bottom": 204
           },
           "relativeToRegion": 14.25,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "Not connected to a Local Operator server"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "paneFirstRow": {
           "selector": "the pane's first h1/h2/h3/p outside nav[aria-label=Chats]",
           "text": "The backend could not complete this request. Check its conne",
           "rect": {
             "x": 500,
-            "y": 0,
+            "y": 68,
             "w": 880,
             "h": 35.5,
-            "top": 0,
-            "bottom": 35.5
+            "top": 68,
+            "bottom": 103.5
           },
           "device": {
-            "top": 0,
-            "bottom": 71
+            "top": 136,
+            "bottom": 207
           },
           "relativeToRegion": 0,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "Not connected to a Local Operator server"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "railSearch": {
           "selector": "[data-command-palette-trigger]",
@@ -1422,27 +1391,27 @@
             "top": 1568,
             "bottom": 1632
           },
-          "relativeToRegion": 784,
+          "relativeToRegion": 716,
           "bandReachable": false,
           "coveredByBand": false,
           "coveredBy": []
         }
       },
       "region": {
-        "cls": "relative flex h-screen overflow-hidden",
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
         "rect": {
           "x": 0,
-          "y": 0,
+          "y": 68,
           "w": 1380,
-          "h": 868,
-          "top": 0,
+          "h": 800,
+          "top": 68,
           "bottom": 868
         },
-        "scrollHeight": 868,
-        "clientHeight": 868
+        "scrollHeight": 800,
+        "clientHeight": 800
       },
       "outer": {
-        "cls": "",
+        "cls": "relative flex h-screen flex-col overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -1454,7 +1423,7 @@
         "scrollHeight": 868,
         "clientHeight": 868
       },
-      "fixedCount": 1,
+      "fixedCount": 0,
       "documentScroll": {
         "scrollHeight": 868,
         "clientHeight": 868,
@@ -1468,8 +1437,8 @@
       "pixels": {
         "shiftRows": 136,
         "rowsCompared": 1600,
-        "rowsBelowShiftEqual": 769,
-        "firstDivergentRow": 136,
+        "rowsBelowShiftEqual": 979,
+        "firstDivergentRow": 161,
         "firstRowsBelowShiftEqual": false
       },
       "paint": {
@@ -1488,8 +1457,8 @@
       }
     },
     "scrim": {
-      "frame": "docs/evidence/band-occlusion/before/before-scrim.png",
-      "out": "docs/evidence/band-occlusion/before",
+      "frame": "docs/evidence/band-occlusion/after/after-scrim.png",
+      "out": "docs/evidence/band-occlusion/after",
       "route": "#/chat",
       "requests": {
         "/health": 5,
@@ -1500,16 +1469,16 @@
         "/v1/desktop/radient": 24,
         "/v1/auth/providers": 7,
         "/v1/agents": 6,
-        "/v1/desktop/profiles": 2,
-        "/v1/desktop/teams": 2
+        "/v1/desktop/teams": 2,
+        "/v1/desktop/profiles": 2
       },
       "bandCount": 2,
       "bandTotal": 121,
       "bands": [
         {
           "text": "Not connected to a Local Operator server. If one is still running, the app reconnects to i",
-          "position": "fixed",
-          "zIndex": "2200",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
             "y": 0,
@@ -1525,19 +1494,19 @@
         },
         {
           "text": "The Local Operator server is missing settings, commands, catalogues, lifecycle, mcp, radie",
-          "position": "fixed",
-          "zIndex": "2100",
+          "position": "static",
+          "zIndex": "auto",
           "rect": {
             "x": 0,
-            "y": 0,
+            "y": 68,
             "w": 1380,
             "h": 53,
-            "top": 0,
-            "bottom": 53
+            "top": 68,
+            "bottom": 121
           },
           "device": {
-            "top": 0,
-            "bottom": 106
+            "top": 136,
+            "bottom": 242
           }
         }
       ],
@@ -1547,69 +1516,60 @@
           "text": "",
           "rect": {
             "x": 228,
-            "y": 48,
+            "y": 169,
             "w": 264,
             "h": 32,
-            "top": 48,
-            "bottom": 80
+            "top": 169,
+            "bottom": 201
           },
           "device": {
-            "top": 96,
-            "bottom": 160
+            "top": 338,
+            "bottom": 402
           },
           "relativeToRegion": 48,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "Not connected to a Local Operator server",
-            "The Local Operator server is missing set"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "chatListHeader": {
           "selector": "nav[aria-label=\"Chats\"] h2",
           "text": "Chats",
           "rect": {
             "x": 232,
-            "y": 14.25,
+            "y": 135.25,
             "w": 36.04,
             "h": 19.5,
-            "top": 14.25,
-            "bottom": 33.75
+            "top": 135.25,
+            "bottom": 154.75
           },
           "device": {
-            "top": 29,
-            "bottom": 68
+            "top": 271,
+            "bottom": 310
           },
           "relativeToRegion": 14.25,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "Not connected to a Local Operator server",
-            "The Local Operator server is missing set"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "paneFirstRow": {
           "selector": "the pane's first h1/h2/h3/p outside nav[aria-label=Chats]",
           "text": "Start a chat",
           "rect": {
             "x": 524,
-            "y": 24,
+            "y": 145,
             "w": 832,
             "h": 26,
-            "top": 24,
-            "bottom": 50
+            "top": 145,
+            "bottom": 171
           },
           "device": {
-            "top": 48,
-            "bottom": 100
+            "top": 290,
+            "bottom": 342
           },
           "relativeToRegion": 24,
           "bandReachable": true,
-          "coveredByBand": true,
-          "coveredBy": [
-            "Not connected to a Local Operator server",
-            "The Local Operator server is missing set"
-          ]
+          "coveredByBand": false,
+          "coveredBy": []
         },
         "railSearch": {
           "selector": "[data-command-palette-trigger]",
@@ -1626,27 +1586,27 @@
             "top": 1568,
             "bottom": 1632
           },
-          "relativeToRegion": 784,
+          "relativeToRegion": 663,
           "bandReachable": false,
           "coveredByBand": false,
           "coveredBy": []
         }
       },
       "region": {
-        "cls": "relative flex h-screen overflow-hidden",
+        "cls": "flex min-h-0 flex-1 overflow-hidden",
         "rect": {
           "x": 0,
-          "y": 0,
+          "y": 121,
           "w": 1380,
-          "h": 868,
-          "top": 0,
+          "h": 747,
+          "top": 121,
           "bottom": 868
         },
-        "scrollHeight": 868,
-        "clientHeight": 868
+        "scrollHeight": 747,
+        "clientHeight": 747
       },
       "outer": {
-        "cls": "",
+        "cls": "relative flex h-screen flex-col overflow-hidden",
         "rect": {
           "x": 0,
           "y": 0,
@@ -1658,7 +1618,7 @@
         "scrollHeight": 868,
         "clientHeight": 868
       },
-      "fixedCount": 4,
+      "fixedCount": 2,
       "documentScroll": {
         "scrollHeight": 868,
         "clientHeight": 868,
@@ -1678,26 +1638,20 @@
       },
       "paint": {
         "grounds": [
-          "#292215"
+          "#100e08"
         ],
         "rules": [
-          "#82713f",
-          "#292215"
+          "#342d19"
         ],
         "shiftRows": 242,
         "rowsChecked": 242,
-        "rowsNotBandPaint": 106,
-        "firstRowNotBandPaint": 136,
+        "rowsNotBandPaint": 0,
+        "firstRowNotBandPaint": null,
         "firstRowPastBandsIsBandPaint": false,
         "appFirstPaintedRow": 242
       }
     }
   },
   "windowMode": "[window-mode] window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile",
-  "noneFrameDiff": {
-    "rows": 1736,
-    "differingRows": 0,
-    "identical": true
-  },
   "failures": []
 }
