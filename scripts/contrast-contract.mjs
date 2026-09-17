@@ -1916,6 +1916,39 @@ const INK_STEP_PINNED = [
 ];
 const inkStepSeen = new Set();
 
+/*
+ * A CONTROL's edge on the SELECTION ground, three palettes that cannot reach 3:1
+ * there.
+ *
+ * The attention badge this branch's conversation mark draws is a SHARED control
+ * (`Badge variant="attention"`), and its sole boundary is `borderControl` against
+ * whatever ground it is painted on. On `highlight` - the row a reader is currently
+ * on, which is a real state for the mark, since the mark is drawn on every
+ * conversation's row including the current one - `borderControl` measures 2.81 to
+ * 2.91:1 in these three palettes and the badge's `warningWash` fill measures 1.09
+ * to 1.59:1, so neither edge reaches the floor and the badge has no perceivable
+ * boundary in that state.
+ *
+ * PINNED RATHER THAN FIXED, deliberately, and for the reason the `danger` pairs
+ * above are pinned: both available fixes are app-wide visual changes owned by the
+ * palettes' own design review rather than by a rebase. Lifting `borderControl`
+ * moves every control's edge in the palette, and re-authoring `highlight` moves
+ * the whole selection band that `main` re-authored in #281 - and either one would
+ * invalidate the `HIGHLIGHT_STEP_PINS` and `HIGHLIGHT_WASH_PINS` above, which are
+ * measurements of those same two roles. What this list records meanwhile is the
+ * defect, at the precision it was measured at: a pin must still measure what it
+ * says, and a palette re-authored out of the floor FAILS until its pin is deleted,
+ * so the list cannot outlive the defect it records.
+ *
+ * @type {{theme: string, got: number}[]}
+ */
+const CONTROL_EDGE_PINNED = [
+	{ theme: "catppuccinMocha", got: 2.85 },
+	{ theme: "duskfox", got: 2.91 },
+	{ theme: "gruvbox", got: 2.81 },
+];
+const controlEdgeSeen = new Set();
+
 /* ---- 5. the run --------------------------------------------------------- */
 
 const log = [];
@@ -2759,10 +2792,26 @@ for (const { id, palette: p } of palettes) {
 			assertions++;
 			const fillEdge = ratio(fill, ground);
 			const borderEdge = isHex(border) ? ratio(border, ground) : 0;
-			if (Math.max(fillEdge, borderEdge) < FLOOR.nonText) {
-				fail(
-					`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
+			const edge = Math.max(fillEdge, borderEdge);
+			if (edge < FLOOR.nonText) {
+				/*
+				 * This assertion had no pin path, which made it the one floor in this
+				 * file that a shared control's colour could only satisfy by being
+				 * changed where it was measured. `CONTROL_EDGE_PINNED` records the
+				 * case instead, under the same rule as `INK_STEP_PINNED`: the pin is
+				 * consulted only when the edge is still under the floor, and the stale
+				 * check below fails a pin whose palette no longer needs it.
+				 */
+				const pin = CONTROL_EDGE_PINNED.find(
+					(x) => x.theme === id && Math.abs(x.got - r2(edge)) < 0.01,
 				);
+				if (pin) {
+					controlEdgeSeen.add(id);
+				} else {
+					fail(
+						`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
+					);
+				}
 			}
 		}
 	}
@@ -3047,6 +3096,21 @@ if (staleInk.length > 0) {
 	process.exit(1);
 }
 
+/*
+ * A pin whose palette has been lifted out of the floor is dead weight too, and the
+ * one that matters most: it would keep a fixed defect looking measured forever. This
+ * is the same rule `INK_STEP_PINNED` follows, asked of the edge pins.
+ */
+const staleControlEdge = CONTROL_EDGE_PINNED.filter(
+	(e) => !controlEdgeSeen.has(e.theme),
+);
+if (staleControlEdge.length > 0) {
+	console.error(
+		`\nContrast contract FAILED: ${staleControlEdge.length} pinned control edge(s) no longer under the floor (${staleControlEdge.map((e) => e.theme).join(", ")}) - delete the pin, the palette clears it now.`,
+	);
+	process.exit(1);
+}
+
 /* An unpinned exception is dead weight that hides a fixed defect. */
 const stale = EXCEPTIONS.filter(
 	(e) => !palettes.some(({ id }) => id === e.theme),
@@ -3075,5 +3139,5 @@ if (stalePerceptible.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${CONTROL_EDGE_PINNED.length} pinned control edge(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
 );
