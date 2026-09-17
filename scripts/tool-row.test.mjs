@@ -726,38 +726,169 @@ test("the transcript no longer renders a Writing row", () => {
 	);
 });
 
-test("agent prose takes no reading cap, and the user bubble keeps one", () => {
-	// The operator's report: agent prose must share the tool rows' left edge and
-	// width, so it carries no `lo-measured` and therefore no 62ch cap and no
-	// `margin-inline: auto`. The user bubble is deliberately unchanged — it is
-	// an aside, and widening it is the unrequested half of this change.
-	// The bare `MEASURE` token only — `CHAT_MEASURE` is the column's shared
-	// width and a different thing entirely, so a substring match would count it.
-	const measured = (path) =>
-		readFileSync(path, "utf8")
-			.split("\n")
-			.filter(
-				(line) => /(?<![A-Z_])MEASURE\b/.test(line) && line.includes("cn("),
-			);
-	// The canonical transcript: exactly one application, on the user row.
-	const canonical = measured(
+test("no reading measure survives on either surface, by property not by name", () => {
+	// The operator's report of 2026-09-16: a user card widened by a reply quote
+	// or a wide attachment left the message floating as a centre-constrained
+	// column inside it, with equal slack on each side. The 62ch cap and the
+	// centring that produced it are gone, and so is the class that opted a box
+	// into them.
+	//
+	// This test used to assert the opposite for the user bubble — "agent prose
+	// takes no reading cap, and the user bubble keeps one" — on the reading that
+	// the bubble's narrower box is what makes a turn an aside, and that widening
+	// it was the unrequested half of the earlier change. The report above
+	// reversed that call: the aside is the CARD's own `max-w-[75%]` inside
+	// `CHAT_MEASURE`, and the prose fills the card. The agent half is unchanged —
+	// no cap there either, so it shares the tool rows' edges.
+	//
+	// IT ASKS ABOUT THE PROPERTY, NOT THE SPELLINGS (code review round 1, MAJOR
+	// 4). The first version looked for `.lo-measured .lo-markdown {` and for a
+	// bare `MEASURE` token sharing a line with `cn(`, so it passed for a
+	// DESCENDANT cap (`.lo-measured .lo-markdown > :is(p, ul) { max-width: 62ch
+	// }`), for a selector-list cap, for the class re-applied through a `cn(` call
+	// split over several lines, for a renamed class, and for a Tailwind
+	// `max-w-[62ch]` on the body div. Each of the four questions below fails for
+	// every one of those, because each asks what a reading measure IS rather than
+	// what it was called: a stylesheet cap (`max-width` other than `100%`, and no
+	// `ch` unit left at all), centring by margin (`auto` never appears in a margin
+	// declaration), a cap or an inline style in either component (`max-w-*` only
+	// the card's own two steps, no `maxWidth`) and re-centring by text alignment.
+	//
+	// SCOPE WIDENED IN ROUND 2, AND TWO FALSE POSITIVES REMOVED (code review
+	// round 2, MINOR 1). Round 1's version asked the right questions of too few
+	// files. A cap re-applied where `.lo-markdown` is RENDERED - the renderer's own
+	// `cn("lo-markdown", className)` - passed all five assertions, and injected
+	// live it put the reported defect straight back: card 675, prose 351.1..897.9,
+	// 47.1px of slack on each side. A non-`auto` `width: 546px` on the root passed
+	// too, and that is a column which does not fill the card, i.e. the report's
+	// literal words. And a Tailwind `w-[62ch] mx-auto` on the body div passed,
+	// which returns the text-only card to its pre-fix 580.7px. So the render site
+	// is read as well, `width` is asserted beside `max-width`, and the body wrapper
+	// is asserted on its own.
+	//
+	// The two false positives are gone with that scope: a file-wide token check
+	// made a legitimate `max-w-full` fail - images use it, in both surfaces - as
+	// though the contract had broken, and a file-wide `mx-auto` ban fails on the
+	// comment at `canonical-transcript.tsx:1490` that merely quotes the utility.
+	// The token question is therefore asked of ARBITRARY-VALUE caps (`max-w-[…]`,
+	// `w-[…]`) and the centring question of the body wrapper, which is the only
+	// place a centring could hide.
+	//
+	// WHAT IT STILL DOES NOT CATCH, stated so this is not read as a guarantee: a
+	// cap in a stylesheet OTHER than `markdown.css` (these component files and the
+	// renderer are read, the rest of the tree is not), a width applied at runtime
+	// by something other than a class string or this stylesheet, and a cap written
+	// in a unit and a property no declaration here uses. And the deliberate cost
+	// stands: any future non-`100%` `width`/`max-width` in `markdown.css` is a
+	// failing test, because that file is the one place such a measure could retire
+	// to and a new cap there should be an argued act rather than a silent one.
+	const source = (path) => readFileSync(path, "utf8");
+	// Comments stripped first: this file's own measure argument QUOTES `max-width:
+	// 62ch` and `margin-inline: auto` while explaining why they are gone, and a
+	// test that read the prose as a rule would fail on its own explanation.
+	const css = source(
+		"src/renderer/src/features/chat/components/markdown.css",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.deepEqual(
+		[...css.matchAll(/max-width\s*:\s*([^;}]+)/g)]
+			.map(([, value]) => value.trim())
+			.filter((value) => value !== "100%"),
+		[],
+		"markdown.css declares no width cap beyond `100%`",
+	);
+	// `width` as well as `max-width` (code review round 2, MINOR 1): a fixed
+	// `width: 546px` on the root needs no `max-width`, no `ch` unit and no `auto`
+	// margin, and it leaves a column inside the card that never reaches the card's
+	// right edge - the left-aligned half of the same report. `100%` is the allowed
+	// value and is in use: `.lo-markdown pre` and `.lo-markdown table` wrap to
+	// their container rather than to a measure.
+	assert.deepEqual(
+		[...css.matchAll(/(?<!max-)\bwidth\s*:\s*([^;}]+)/g)]
+			.map(([, value]) => value.trim())
+			.filter((value) => value !== "100%"),
+		[],
+		"markdown.css declares no `width` other than `100%`",
+	);
+	// A reading measure is a `ch` cap — 62ch was the number — so one re-added
+	// under another name still has to spell a `ch` unit in this file.
+	assert.deepEqual(
+		css.match(/[\d.]+ch\b/g) ?? [],
+		[],
+		"markdown.css keeps no `ch` unit: the reading measure has no spelling left",
+	);
+	assert.ok(
+		!/(?:^|[;{\s])margin[a-z-]*\s*:[^;}]*\bauto\b/.test(css),
+		"no margin in markdown.css centres a block",
+	);
+	assert.ok(
+		!/text-align\s*:\s*(?:center|justify)/.test(css),
+		"markdown.css centres nothing by text alignment either",
+	);
+	// The two user-turn surfaces, because the two have to keep agreeing, plus the
+	// file that renders `.lo-markdown` itself.
+	const SURFACES = [
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
-	);
-	assert.equal(canonical.length, 1, "one measured box in the canonical path");
-	// The legacy path must not keep the old behaviour either, or the same defect
-	// returns on whichever surface still renders through it.
-	const legacy = measured(
 		"src/renderer/src/features/chat/components/message-item/message-paper.tsx",
+	];
+	// An arbitrary-value cap or a centring utility - never a `max-w-*` allowlist
+	// over the whole file. `max-w-full` is legitimate here (images use it, in both
+	// surfaces), so the round-1 version failed for adding one anywhere in either
+	// file, which is a false positive on a change that has nothing to do with this
+	// contract.
+	const CAP_OR_CENTRING =
+		/max-w-|w-\[|mx-auto|maxWidth|minWidth|\bwidth\s*[=:]/;
+	for (const path of SURFACES) {
+		const file = source(path);
+		assert.deepEqual(
+			[...new Set(file.match(/\b(?:max-)?w-\[[^\]]+\]/g) ?? [])].sort(),
+			["max-w-[75%]", "max-w-[92%]"],
+			`${path}: the only arbitrary-value widths are the card's two steps`,
+		);
+		// The BODY wrapper - the div inside the card that holds the quote chip and
+		// the rendered markdown, found as the last opening tag before the chip. A
+		// Tailwind width here (`w-[62ch]`), or a centring (`mx-auto`), is the third
+		// shape the reviewer injected, and it returns the text-only card to its
+		// pre-fix 580.7px.
+		const chip = file.indexOf("{replies.length > 0");
+		assert.ok(
+			chip > 0,
+			`${path}: the chip that marks the body wrapper is still there`,
+		);
+		const wrapper = [
+			...file.slice(0, chip).matchAll(/<div\b[^>]*?>/g),
+		].pop()?.[0];
+		assert.ok(
+			wrapper,
+			`${path}: the user-turn body wrapper is still reachable`,
+		);
+		assert.ok(
+			!CAP_OR_CENTRING.test(wrapper),
+			`${path}: the body wrapper caps and centres nothing of its own - ${wrapper}`,
+		);
+	}
+	// And the render site. `MarkdownRenderer` emits `cn("lo-markdown", className)`
+	// with a style built from a font size and a line height, so there is nothing in
+	// that file to cap with - and a width added here would land on every markdown
+	// surface at once, which is what made it the sharpest of the three shapes.
+	//
+	// SCOPED LIKE THE TWO SURFACES ABOVE (code review round 3, NIT C): round 2
+	// widened the scope to this file but kept the BROAD `max-w-` token here, so a
+	// legitimate `max-w-full` in it failed a contract that change had not touched -
+	// the same false positive the round-2 fix removed from the other two files. An
+	// ARBITRARY-VALUE cap (`w-[…]`, which `max-w-[62ch]` matches), a centring
+	// utility and a style width still fail, so nothing that put the defect back
+	// live is let through.
+	const renderer = source(
+		"src/renderer/src/features/chat/components/markdown-renderer.tsx",
 	);
-	assert.equal(legacy.length, 1, "one measured box in the legacy path");
-	// The cap itself still exists, for the bubble that still wants it.
-	assert.match(
-		readFileSync(
-			"src/renderer/src/features/chat/components/markdown.css",
-			"utf8",
-		),
-		/\.lo-measured \.lo-markdown \{\s*max-width: 62ch;/,
-		"the reading measure is still defined for the user bubble",
+	assert.deepEqual(
+		[...new Set(renderer.match(/\b(?:max-)?w-\[[^\]]+\]/g) ?? [])],
+		[],
+		"markdown-renderer.tsx adds no arbitrary-value width where `.lo-markdown` is rendered",
+	);
+	assert.ok(
+		!/(?:mx-auto|maxWidth|minWidth|\bwidth\s*[=:])/.test(renderer),
+		"markdown-renderer.tsx caps and centres nothing where `.lo-markdown` is rendered",
 	);
 });
 
