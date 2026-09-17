@@ -1358,7 +1358,10 @@ const PANEL_READ_OPS: ReadonlySet<string> = new Set([
  * order `panel-states.tsx` sets for panel copy. The seconds figure is the APP'S
  * OWN LIMIT and says so: it is checkable, it explains an otherwise inexplicable
  * "nothing happened", and it does not read as a measurement of how long the
- * read needed (design round 1, D5).
+ * read needed (design round 1, D5). And the subject is named in all three —
+ * "the app stopped waiting", never "it" (design round 2, D10): the nearest
+ * noun to that verb is the read, so the pronoun made the READ the thing that
+ * gave up, which is the one actor in the sentence that cannot.
  */
 export function desktopRequestDeadlineDetail(
 	op: DesktopRequest["op"],
@@ -1370,7 +1373,7 @@ export function desktopRequestDeadlineDetail(
 		return {
 			code,
 			message: PANEL_READ_OPS.has(op)
-				? `The app waits up to ${seconds} seconds for this panel's data, and the read was still running when it stopped waiting. Nothing was read; reopen the panel to ask again.`
+				? `The app waits up to ${seconds} seconds for this panel's data, and the read was still running when the app stopped waiting. Nothing was read; reopen the panel to ask again.`
 				: `The app waits up to ${seconds} seconds for this read, and it was still running when the app stopped waiting. Nothing was read; ask again.`,
 		};
 	}
