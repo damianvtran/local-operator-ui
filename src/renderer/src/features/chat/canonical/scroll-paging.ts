@@ -39,8 +39,9 @@
  *    a 489px viewport the zone below is 13ms of travel at a measured 25px/ms
  *    while a reveal needs ~100ms, so a MOVING reader is also spent for inside
  *    the LEAD window — the distance they will cover in `LEAD_TIME_MS` at the
- *    speed they are actually travelling, floored at the zone so a slow reader
- *    behaves exactly as before, and capped at `LEAD_MAX_VIEWPORTS` so one
+ *    speed they are actually travelling, floored at the zone so a slow reader's
+ *    WINDOW is unchanged (the trigger inside it moves to their input cadence —
+ *    see the note on `decide`'s lead), and capped at `LEAD_MAX_VIEWPORTS` so one
  *    spiky sample cannot arm a page from screens away. Dispatching mid-fling
  *    is what makes paging feel like a stutter: rows mount while the viewport
  *    is travelling and every correction lands a frame late — which is why the
@@ -562,9 +563,15 @@ const spend = (
 		// release the record guards is bounded per ACT rather than per latch — see
 		// `travelledSinceLatch` — and an act that has already been released once
 		// must not be released again by the next arrival inside it.
-		// A page's owed widen is consumed by the widen it authorises; a spend of
-		// any other kind supersedes it (the widen path is the only one that reads
-		// it, and `decide` refuses a fetch while rows are hidden).
+		//
+		// A WIDEN is the only spend that settles the rule-6 debt, because a widen is
+		// the only action that puts the page's held-back rows on screen: a widen
+		// therefore clears `pageWidenOwed` whether it was the debt itself or an
+		// ordinary armed widen. A `fetch` cannot reach here with the flag set —
+		// `decide` only offers `fetch` when `hiddenRows === 0`, and the flag is set
+		// only when rows are held back — so this expression's effect on a fetch is
+		// unreachable rather than meaningful, which is what the comment here used to
+		// get the wrong way round (review round 1, R1-8).
 		pageWidenOwed: state.pageWidenOwed && action !== "widen",
 		chainWiden: action === "widen" ? state.chainWiden + 1 : state.chainWiden,
 		chainFetch: action === "fetch" ? state.chainFetch + 1 : state.chainFetch,
@@ -632,12 +639,29 @@ export const decide = (
 	 * fast approach is the hard top itself - and by then the reader has stopped
 	 * moving, which is exactly the dead stop this lead removes.
 	 *
-	 * The floor is what keeps the change honest: below
+	 * The floor bounds the WINDOW, not the trigger, and the difference is worth
+	 * stating because the first cut of this comment claimed otherwise: below
 	 * `MIN_LEAD_VELOCITY_PX_PER_MS`, and whenever `velocity * LEAD_TIME_MS` is
-	 * smaller than the zone, `leadPx === zonePx` and this window is bit-for-bit
-	 * today's behaviour for a deliberate or slow scroll. The ceiling bounds a
-	 * spike: 4 viewports is where a fast flick's projection is cut, so a spiky
-	 * sample can buy latency but never a spend from screens away.
+	 * smaller than the zone, `leadPx === zonePx`, so a slow reader's window is the
+	 * same 320px it always was — but a reader who is INSIDE that window while
+	 * still moving has their demand spent at their input cadence rather than at
+	 * the settle debounce.
+	 *
+	 * That is deliberate, and it is what the operator asked for: "load in a page
+	 * each time I'm reaching a threshold ... check that we detect the scroll motion
+	 * and momentum ... to keep the loading going before we get stuck". Measured on
+	 * the real surface, a slow approach (0.3px/ms) that enters the zone has ~1s of
+	 * travel left before the wall while a reveal costs 85-100ms, so the spend
+	 * lands with the reader still moving and long before they arrive — it removes
+	 * the dead stop at the wall instead of moving it somewhere else. The claim
+	 * this replaces ("bit-for-bit today's behaviour for a deliberate or slow
+	 * scroll") was false for the trigger, and the reviewer was right to call it:
+	 * the behaviour is the fix, the sentence was the defect. `transcript-paging
+	 * .test.mjs`'s `a slow approach inside the zone is spent at its input cadence,
+	 * not at the settle debounce` pins it, and fails if the trigger is changed.
+	 *
+	 * The ceiling bounds a spike: 4 viewports is where a fast flick's projection is
+	 * cut, so a spiky sample can buy latency but never a spend from screens away.
 	 */
 	const velocity =
 		now - state.lastInputAt > VELOCITY_TTL_MS ? 0 : state.velocity;
