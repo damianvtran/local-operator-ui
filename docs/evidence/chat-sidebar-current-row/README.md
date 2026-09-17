@@ -129,7 +129,7 @@ stories (the same instrument the frames come from):
 | A palette legend GLYPH cap (`>` `#` `@` `,`) | **15.2** × 21.39 px, fill `sunken`, ink `ink-dim` | 20 × 20 px floor, no fill, ink `ink-dim` |
 | The palette's WORD cap (`esc`, the same legend bar) | **29** × 21.39 px (29.61 × 20 after), fill `sunken` | **29.61** × 20 px, no fill |
 | The current row's ground | `rgb(15,12,8)` = `sunken` | `rgb(37,33,27)` = `highlight` `#25211b` |
-| The current row's weight | **400** (the same as every other row) | **500** (`font-medium`), the step the settings rail's active row carries |
+| The current row's weight | **500** (`font-medium`) — inherited from #255, so it is in BOTH halves | **500**, unchanged: this pair isolates the GROUND change, not the weight, and the title's ink ends at the same x in both halves |
 | The panel behind it | `rgb(30,26,20)` = `surface` | unchanged |
 
 So the claims are each a pair of numbers. **One bar carried caps 14px and 21.39px
@@ -148,8 +148,12 @@ recorded rather than papered over.** The ink floors cap how far the ground can c
 — `ink-dim` is drawn inside a current row (the caps and the `· lopdev` binding) —
 while the hover step the rows around it carry is `elevated`, which is also every
 menu, popover and tooltip ground in the app, so it cannot come down to meet the
-selection. On eight of the twelve palettes `elevated` is therefore still the LARGER
-step off `surface` (radient 6.25 and synth 5.44 against marks of 4.01–4.15). The
+selection. Measured over all **59** themes, `elevated` is still the LARGER step off `surface` on
+**11 of them**, and the mark leads the pointer on **none**: the ground this change authors
+is quieter than the hover it has to outrank wherever a pointer rests on a neighbour. The
+`4.63 > 4.48` this set quoted in round 1 was a q88 reading of the frame set against a
+`magick`-sampled value, so the two numbers were never the same measurement — the lossless
+pair is `4.58 > 4.09` on `tokyoNight`. The
 second step is `font-medium`, which `settings-sidebar.tsx` already carried and which
 the app rail's active item carries — and it is the ONLY second step: round 2's
 remediation retired the 1px `outline-control` edge this set was first shot with,
@@ -164,6 +168,52 @@ line-height and its alignment are unchanged — nothing reflows and no title
 truncates a character earlier. In the hovered pairs you can see both at once: the
 neighbour carries `elevated` and weight 400, the current row carries `highlight` and
 weight 500.
+
+## The wash pair, and the six pins that make this change deviate
+
+**The wash readings (design round 4, D3).** The committed `wash-swatches/` files are WebP at
+`quality: 88` like every other frame here, and the pair this frame shows is a LOW-contrast
+one — which is exactly where the encoder's quantisation costs the most, so the committed
+reading is not the palette's:
+
+| palette | contract (`highlight` vs `accentWash`) | committed q88 | \|q88 − contract\| |
+| --- | --- | --- | --- |
+| oneLight | 2.92 | **1.92** | 1.00 |
+| rosePine | 2.75 | 2.01 | 0.74 |
+| tokyoNightDay | 2.13 | 2.12 | 0.01 |
+| rosePineDawn | **0.93** (the pin) | 0.42 | 0.51 |
+
+Read the band off the contract and the swatch off the frame, as the section below says for
+every other reading in this set: `oneLight`'s committed file reads **below the 2.0 floor the
+palette itself clears** (2.92) for the encoder's reason, not the palette's. Three of the four
+were re-authored to clear the floor when the theme port landed; **`rosePineDawn` could not
+clear it and is the one pin** — its ink caps the route, and 0.93 is the band-point optimum,
+pinned at that measured separation with a **1.75 ceiling** on the field (`ceiling: 1.75,` in
+`scripts/contrast-contract.mjs`, which re-derives the number rather than trusting it).
+
+**The six pinned palettes.** A pin is a palette the contract holds at a NAMED value instead
+of asserting a floor, and each one is pinned because its own ink — the ink drawn ON the
+current row — caps the ground's route before the band or the field floor is reached:
+
+| palette | what binds | the ink number that caps it |
+| --- | --- | --- |
+| catppuccinFrappe | the `L*` route stops short of the band | `inkDim` 4.68:1 on the ground |
+| catppuccinMacchiato | same wall, one step lower | `inkDim` 4.78:1 |
+| nord | same wall | `inkDim` 4.83:1 |
+| palenight | same wall | `inkDim` 4.71:1 |
+| solarizedDark | same wall | `inkDim` 4.78:1 |
+| rosePineDawn | the field floor (wash pair) — 0.93, ceiling 1.75 | `inkDim` 4.75:1 |
+
+Every other one of the 59 variants clears the 4.0 band on the `L*` axis, with chroma paying
+only the remainder.
+
+## Two rows that still share a mark, recorded rather than rediscovered (QA's Q5)
+
+With `All chats` pressed, the filter row and the current conversation row wear the same
+GROUND and the same WEIGHT, differing in the role they carry (`aria-pressed="true"` on one,
+`aria-current="page"` on the other). That collision is pre-existing and this branch does not
+change it — it is recorded here so the next reader does not meet it as a defect of this
+change. The retired 1px ring had amplified it, which is how it was found.
 
 ## The numbers, read back out of the frames — and what the encoder costs
 
@@ -291,12 +341,22 @@ of them is not a screen:
   the first cut of this state demonstrated by capturing the ground with no ring at all — so
   the rig presses the real Tab key until the row holds focus (`{ tabTo }` in
   `scripts/capture-evidence.mjs`) and throws rather than filing an unfocused frame under it.
+  **Known omission, stated rather than implied (design round 4, D9):** the ring is shot on a
+  MID-LIST row only — the first and last rows of the list and the New chat row under focus
+  are not photographed, so whether the ring clips at the panel's edges is not settled by a
+  frame.
 - **`wash-swatches/`** — the current row's `highlight` beside the app's active-row
-  `accentWash`, as a **colour-only** frame: the picture says so in its own caption, and no
-  state in this set can hold both in one view, because every call site that paints
-  `accentWash` is in a different panel from the one these states photograph. What the frame
-  settles is the ΔE00 between the two grounds, which is the contract's `HIGHLIGHT`/wash
-  assertion; the numbers are in the tables below. Shot on the four palettes the port's
+  `accentWash`, as a **colour-only** frame: the picture says so in its own caption, and the
+  frame's own ground is `bg-canvas` (named here because the caption names roles and not
+  grounds). What it settles is the ΔE00 between the two grounds, which is the contract's
+  `HIGHLIGHT`/wash assertion; the readings are in the table below.
+  **Can the two ever share a screen? Yes — and that is why the pair is measured.** The app
+  rail is persistent and paints `accentWash` on its active item, so with the chat sidebar on
+  screen a reader sees the current conversation row's `highlight` and the rail's wash in the
+  same window, in panels that do not touch. A reader should expect the two marks to look like
+  two grounds there, which is what the contract's floor is for. The rig cannot frame that
+  pair because none of its seven states renders the app rail — which is the reason this frame
+  is a swatch rather than a screen, and not a claim that the two cannot co-occur. Shot on the four palettes the port's
   collision was measured on (`oneLight`, `rosePineDawn`, `rosePine`, `tokyoNightDay`).
 
 **The cause is the encoder, not the compositor**: re-encoding a lossless capture of
