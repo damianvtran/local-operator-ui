@@ -299,14 +299,13 @@ async function streamUpload({
 	artifact,
 	token,
 	timeoutMs = UPLOAD_ATTEMPT_TIMEOUT_MS,
-	fetchImpl = fetch,
 }) {
 	const url = `${baseUrl}/repos/${repo}/releases/${releaseId}/assets?name=${encodeURIComponent(artifact.name)}`;
 	const body = createReadStream(artifact.path);
 	try {
 		let response;
 		try {
-			response = await fetchImpl(url, {
+			response = await fetch(url, {
 				method: "POST",
 				headers: {
 					authorization: `Bearer ${token}`,
@@ -562,20 +561,10 @@ if (isEntryPoint(import.meta.url)) {
 export {
 	PLATFORM_INSTALLERS,
 	PLATFORM_UPDATE_METADATA,
-	ASSET_STATE_STARTER,
-	ASSET_STATE_UPLOADED,
-	UPLOAD_ATTEMPTS,
-	UPLOAD_ATTEMPT_TIMEOUT_MS,
-	UPLOAD_BACKOFF_MS,
-	UploadAttemptError,
 	artifactFiles,
 	artifactRecords,
-	classifyAsset,
-	describeError,
-	endpointMessage,
 	listAssets,
 	planAssetUploads,
-	removeAsset,
 	streamUpload,
 	uploadArtifact,
 	uploadRelease,
