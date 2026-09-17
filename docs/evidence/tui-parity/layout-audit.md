@@ -190,15 +190,6 @@ prose at:
 .lo-measured .lo-markdown > :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6),
 .lo-measured .lo-stream-tail { max-width: 62ch; }
 ```
-**Retired 2026-09-16 — a dated note beside this record, not a rewrite of it.** The
-rule quoted above no longer exists. `.lo-measured` and its 62ch cap were removed on
-2026-09-16 by the change that answers a later operator report (a user card widened by a
-reply quote or an attachment left its prose centre-constrained inside it). The contract
-now reads: the measure is the user card's own `max-w-[75%]` inside `CHAT_MEASURE`, and
-`.lo-markdown` takes no cap and no centring on either branch. It lives in the
-reading-measure comment at `markdown.css:280` and in `branding.md` § 7 (`:422`). Every
-line number, class name and measurement ABOVE this note is what this audit found on its
-own date and has deliberately been left as it was written.
 62ch at the 14px `text-body` step (`index.css:77`) is roughly **465px**. Agent rows are
 additionally indented by `AGENT_GUTTER = "pl-10"` = 40px
 (`message-container.tsx:26`, applied at `:52`). So agent prose occupies x≈40→505 of a
@@ -227,6 +218,21 @@ adopt a wider one — not whether to delete the cap.
 (`chat-content.tsx:371`). The column can easily be 500px wide while `md:` is active. If
 the measure is respecified, use container queries (`@container`, already used at
 `wysiwyg-markdown-editor.tsx:1701`) rather than viewport breakpoints.
+
+**Retired 2026-09-16 — a dated note on THIS WHOLE SECTION (§ 2b), not a rewrite of it.**
+Everything this section states is the audit's own record of its own date, **above and below
+this note**: the `lo-measured` class and the `62ch` rule it quotes, the 546.738px / "roughly
+465px" arithmetic, the "~395px permanently empty on the right" figure, and the choice it
+puts to the designer. **The rule no longer exists.** `.lo-measured` and its cap were removed
+on 2026-09-16 by the change answering a later operator report — a user card widened by a
+reply quote or an attachment left its prose centre-constrained inside it, the same class of
+defect on the user side of the column — and the removal answers this section's own question
+too: agent output now takes the full row content box, so there is no second left rail and
+nothing for the composer to adopt. The contract reads: the measure is the user card's own
+`max-w-[75%]` inside `CHAT_MEASURE`, and `.lo-markdown` takes no cap and no centring on
+either branch. The authority for it is the reading-measure comment at `markdown.css:280` and
+`branding.md` § 7 (`:422`); every line number and measurement in this section is left as it
+was written.
 
 ---
 
