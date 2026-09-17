@@ -304,7 +304,55 @@ function cases(root) {
 			stdout: /check-scripts-lint: no file under scripts\/ changed since main/,
 			stderr: /^$/,
 		},
+		{
+			// `ci.yml`'s Change Scope job, which runs the classifier from a COPY placed
+			// outside the checkout. That copy is the whole reason this module resolves its
+			// repository from the INVOCATION directory instead of from its own path, and a
+			// workflow-invoked script has to answer through both spellings or a silent
+			// no-op hides in one of them: a copy whose git calls all failed answers "run
+			// everything" while its log says it classified something, which is the shape
+			// the backend repository shipped and only noticed under review. The diff here
+			// is prose-only, so the answer this case pins is the one where every flag is
+			// FALSE - and a broken root would answer true for all of them.
+			script: "ci-scope.mjs",
+			args: ["--event", "pull_request", "--base", "HEAD^1"],
+			cwd: classifierRepo(root),
+			env: {},
+			status: 0,
+			stdout: /`lint` = \*\*false\*\*[\s\S]*`pack` = \*\*false\*\*/,
+			stderr: /^$/,
+		},
 	];
+}
+
+/**
+ * The second case in this table that needs a git checkout, and it needs one for
+ * the opposite reason to `scriptsScopeRepo`: the change-scope classifier diffs a
+ * BASE revision against HEAD, so it needs history rather than a single commit.
+ *
+ * `HEAD^1` is a prose-only change, which is the interesting answer - every flag
+ * false, the version guard and the classifier as the whole run - and it is the
+ * same answer whatever the working directory is, because the module resolves the
+ * repository from its invocation directory and this case passes no `--root`.
+ */
+function classifierRepo(root) {
+	const dir = join(root, "change-scope");
+	mkdirSync(join(dir, "docs"), { recursive: true });
+	writeFileSync(join(dir, "package.json"), packageJson("0.24.1"));
+	writeFileSync(join(dir, "docs", "BUILD.md"), "# build\n");
+	const git = (...args) =>
+		execFileSync("git", args, {
+			cwd: dir,
+			encoding: "utf8",
+			env: caseEnv(join(root, "unused")),
+		});
+	git("init", "--quiet", "-b", "main");
+	git("add", "-A");
+	git("commit", "--quiet", "-m", "the base revision");
+	writeFileSync(join(dir, "docs", "BUILD.md"), "# build\n\nmore prose\n");
+	git("add", "-A");
+	git("commit", "--quiet", "-m", "a prose-only change");
+	return dir;
 }
 
 /**
