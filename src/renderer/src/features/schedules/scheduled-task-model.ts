@@ -335,6 +335,23 @@ export type ScheduledTaskInput = {
 	 * moment on the common path.
 	 */
 	hasConversationChoices: boolean;
+	/**
+	 * Whether `Every`'s interval field is EMPTY (as opposed to holding a number).
+	 *
+	 * A separate field for the same reason `hasConversationChoices` is one above:
+	 * the empty field used to be NOTHING - no refusal, because the floor only
+	 * judges a number the form actually has, and the request omitted `every` on the
+	 * very expression the form used to decide it HAD one. So "may this be
+	 * submitted" and "what is sent" disagreed on one control, and the press armed a
+	 * ONE-SHOT while the form still said `Every` and offered `Ends` - a recurring
+	 * wake silently becoming a single fire whose row then leaves the page (QA round
+	 * 1, Q1).
+	 *
+	 * The sentence it produces names the absence; a count that is merely too small
+	 * (`0`) is still a number the floor can judge, and keeps the floor's sentence.
+	 * The two are complements, so a user never reads both and never reads neither.
+	 */
+	repeatIntervalEmpty: boolean;
 	/** `null` when the form is not naming a repeat. */
 	repeatMs: number | null;
 	/** The `After N runs` bound, or `null`. */
@@ -351,6 +368,8 @@ export type ScheduledTaskRefusals = {
 	prompt: string;
 	/** Under the conversation picker. */
 	conversation: string;
+	/** Under the Repeat control's interval field, for the empty field. */
+	repeatInterval: string;
 	/** Under the Repeat control. */
 	repeat: string;
 	/** Under the Ends control. */
@@ -376,6 +395,15 @@ export const validateScheduledTask = (
 		input.needsConversation && input.hasConversationChoices
 			? "Pick a conversation."
 			: "";
+	/*
+	 * The refusal is STATED rather than substituted: falling back to `1` would
+	 * leave the form claiming a repeat while sending a different one, which is the
+	 * defect one layer down. Its own key, so it can never collide with the floor -
+	 * an unarmable count produces no interval for the floor to judge.
+	 */
+	const repeatInterval = input.repeatIntervalEmpty
+		? "Every needs an interval — how many minutes, hours, days or weeks between runs."
+		: "";
 	const repeat =
 		input.repeatMs !== null && input.repeatMs < MIN_WAKE_INTERVAL_MS
 			? "Wakes repeat no more often than once a minute."
@@ -393,11 +421,13 @@ export const validateScheduledTask = (
 			length === 0 ||
 			length > WAKE_MESSAGE_MAX_CHARS ||
 			input.needsConversation ||
+			input.repeatIntervalEmpty ||
 			repeat !== "" ||
 			ends !== "" ||
 			ceiling !== "",
 		prompt,
 		conversation: ceiling || conversation,
+		repeatInterval,
 		repeat,
 		ends,
 	};
@@ -632,6 +662,22 @@ export const repeatEveryString = (
 	count: number,
 	unit: "minutes" | "hours" | "days" | "weeks",
 ): string => `${count}${unit.charAt(0)}`;
+
+/**
+ * Whether the request may carry the `every` the form is showing.
+ *
+ * ONE rule, read by the request bodies and by nothing else, because the defect Q1
+ * reports was exactly two readings of one condition: `repeatCount !== ""` was true
+ * for the VALIDATOR's question (nothing refused an empty field) and false for the
+ * REQUEST's (the body omitted `every`), so the two answers the same control owed
+ * disagreed and the press armed a one-shot under a form that said `Every`.
+ *
+ * The non-positive case is included because `min={1}` is a hint the DOM does not
+ * enforce, and `0` is not an interval either - though for `0` the refusal the user
+ * actually reads is the floor's, since the form does have a number to judge.
+ */
+export const isRepeatCountArmable = (count: number | ""): count is number =>
+	count !== "" && Number.isFinite(count) && count > 0;
 
 /**
  * Whether a wake WRITE may be sent a second time.

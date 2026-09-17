@@ -40,11 +40,13 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import { useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+	invalidateLegacySchedules,
 	useEditSchedule,
 	useListAllSchedules,
 	useRemoveSchedule,
@@ -99,6 +101,19 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 	);
 
 	const listing = useWakesListing();
+	const queryClient = useQueryClient();
+	/*
+	 * ONE refresh for the page rather than one reader's, and every control that
+	 * offers a refresh calls it. The header control used to reload the wake listing
+	 * alone, so the fenced legacy annex - its own query - did not move with it and
+	 * a legacy row added in another window appeared only on the page's next mount
+	 * (QA round 1, Q2). A second refresh that covers one read is the defect, not the
+	 * redundancy: there is nothing to keep in step if there is one call.
+	 */
+	const refreshAll = () => {
+		void listing.refetch();
+		void invalidateLegacySchedules(queryClient);
+	};
 	const legacy = useListAllSchedules();
 	const cancelWake = useCancelWake();
 	const editLegacy = useEditSchedule();
@@ -276,7 +291,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 						aria-label="Refresh scheduled tasks"
 						title="Refresh scheduled tasks"
 						disabled={listing.isFetching}
-						onClick={() => void listing.refetch()}
+						onClick={refreshAll}
 						data-tour-tag="refresh-schedules-button"
 					>
 						<RefreshCw />
@@ -322,11 +337,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 						{(rows.length > 0 || legacyRows.length > 0) && (
 							<p className="text-body-sm text-ink-muted">{STALE_ROWS_CLAUSE}</p>
 						)}
-						<Button
-							variant="secondary"
-							size="sm"
-							onClick={() => void listing.refetch()}
-						>
+						<Button variant="secondary" size="sm" onClick={refreshAll}>
 							Try again
 						</Button>
 					</div>
@@ -345,11 +356,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 						    was to leave the page and return (the designer's D6). Same
 						    `refetch` the total-failure branch uses, because it is the same
 						    recovery. */}
-						<Button
-							variant="secondary"
-							size="sm"
-							onClick={() => void listing.refetch()}
-						>
+						<Button variant="secondary" size="sm" onClick={refreshAll}>
 							Try again
 						</Button>
 					</div>

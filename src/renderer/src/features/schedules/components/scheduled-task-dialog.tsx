@@ -90,7 +90,11 @@ import {
 	validateScheduledTask,
 	workspaceName,
 } from "../scheduled-task-model";
-import { repeatEveryString, wakePromptHead } from "../scheduled-task-model";
+import {
+	isRepeatCountArmable,
+	repeatEveryString,
+	wakePromptHead,
+} from "../scheduled-task-model";
 
 /** Which conversation the task runs in. */
 type Destination = "new" | "existing";
@@ -297,10 +301,24 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 		listing.data?.entries.find((entry) => entry.session_id === conversationId)
 			?.schedules.length ?? 0;
 
-	const repeatMs =
-		repeatMode === "every" && repeatCount !== ""
-			? repeatCount * REPEAT_UNIT_MS[repeatUnit]
-			: null;
+	/*
+	 * Two questions, each named and each read ONCE, because Q1 was the two of them
+	 * sharing one expression: `repeatCount !== ""` was true for "may this be
+	 * submitted" and false for "what is sent", so the form claimed `Every` and the
+	 * request armed a one-shot.
+	 *
+	 * `repeatNamesAnInterval` - does the form hold a number at all, i.e. is there
+	 * something for the floor to judge.
+	 * `armableRepeat` - may the request carry `every`; false for an empty field AND
+	 * for a non-positive count, both of which a refusal covers (the interval
+	 * sentence for the absence, the floor's for the number).
+	 */
+	const repeatNamesAnInterval = repeatMode === "every" && repeatCount !== "";
+	const armableRepeat =
+		repeatNamesAnInterval && isRepeatCountArmable(repeatCount);
+	const repeatMs = repeatNamesAnInterval
+		? Number(repeatCount) * REPEAT_UNIT_MS[repeatUnit]
+		: null;
 
 	const needsConversation =
 		!isEdit && destination === "existing" && !conversationId;
@@ -331,6 +349,7 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 		 */
 		needsConversation,
 		hasConversationChoices: conversations.length > 0,
+		repeatIntervalEmpty: repeatMode === "every" && repeatCount === "",
 		repeatMs,
 		endsRuns: ends === "runs" && endsRuns !== "" ? endsRuns : null,
 		existingWakeCount,
@@ -395,8 +414,8 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 					 * recurrence the user did change is re-bounded by whatever the
 					 * `Ends` control says (`keep` omits both bounds).
 					 */
-					...(repeatMode === "every" && repeatCount !== ""
-						? { every: repeatEveryString(repeatCount, repeatUnit) }
+					...(armableRepeat
+						? { every: repeatEveryString(Number(repeatCount), repeatUnit) }
 						: {}),
 					...(repeatMode === "every" && ends === "date" && endsAt
 						? { until: endsAt }
@@ -417,8 +436,8 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				message: prompt.trim(),
 				/* A create always names a first run; `keep` is unreachable here. */
 				firstRun: when ?? { in: "1h" },
-				...(repeatMode === "every" && repeatCount !== ""
-					? { every: repeatEveryString(repeatCount, repeatUnit) }
+				...(armableRepeat
+					? { every: repeatEveryString(Number(repeatCount), repeatUnit) }
 					: {}),
 				...(repeatMode === "every" && ends === "date" && endsAt
 					? { until: endsAt }
@@ -730,10 +749,19 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 							</Select>
 						</div>
 					)}
+					{/*
+						Both sentences come from the derivation rather than being
+						restated here: the floor's copy was hard-coded at this site
+						until QA round 1 (Q1), which is precisely how a sentence and
+						the condition that produces it drift apart. The interval
+						refusal sits above the floor's because it is about the field
+						the user is looking at; the two cannot both apply.
+					*/}
+					{refusals.repeatInterval && (
+						<p className="text-meta text-danger">{refusals.repeatInterval}</p>
+					)}
 					{refusals.repeat && (
-						<p className="text-meta text-danger">
-							Wakes repeat no more often than once a minute.
-						</p>
+						<p className="text-meta text-danger">{refusals.repeat}</p>
 					)}
 				</div>
 

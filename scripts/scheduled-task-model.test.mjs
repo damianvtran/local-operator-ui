@@ -69,6 +69,7 @@ const {
 	supervisorLead,
 	toScheduledTaskRow,
 	SCHEDULES_CONVERSATION_READ,
+	isRepeatCountArmable,
 	retryWakeWrite,
 	validateScheduledTask,
 	DesktopControlError,
@@ -461,6 +462,7 @@ test("the dialog's refusals are inline, named, and independent", () => {
 		message: "read my email",
 		needsConversation: false,
 		hasConversationChoices: true,
+		repeatIntervalEmpty: false,
 		repeatMs: null,
 		endsRuns: null,
 		existingWakeCount: 0,
@@ -505,6 +507,44 @@ test("the dialog's refusals are inline, named, and independent", () => {
 		true,
 		"and the refusal does NOT yield with it: an empty picker must stop the save",
 	);
+	/*
+	 * Q1, as the invariant: `Every` with a cleared interval is refused with its
+	 * own sentence and cannot be saved. The shipped defect was the opposite on both
+	 * counts - `Create` enabled, no sentence - and the store then held a wake whose
+	 * `every_ms` was null while the form said `Every` (measured by QA on the built
+	 * app, with frames). Refusing rather than substituting `1` is deliberate: the
+	 * fallback would leave the form claiming one repeat while sending another.
+	 */
+	assert.equal(
+		validateScheduledTask({ ...quiet, repeatIntervalEmpty: true })
+			.repeatInterval,
+		"Every needs an interval — how many minutes, hours, days or weeks between runs.",
+	);
+	assert.equal(
+		validateScheduledTask({ ...quiet, repeatIntervalEmpty: true }).invalid,
+		true,
+		"Every with no interval must refuse the save, not arm a one-shot",
+	);
+	assert.equal(
+		validateScheduledTask({ ...quiet, repeatIntervalEmpty: true }).repeat,
+		"",
+		"an unarmable count leaves the floor nothing to judge, so the two never collide",
+	);
+	/*
+	 * The armability rule itself, which the refusal, the interval arithmetic and
+	 * both request bodies all read - the two-readings-of-one-condition shape Q1
+	 * found, now one function.
+	 */
+	assert.equal(isRepeatCountArmable(1), true);
+	assert.equal(isRepeatCountArmable(90), true);
+	assert.equal(isRepeatCountArmable(""), false, "the cleared field");
+	assert.equal(
+		isRepeatCountArmable(0),
+		false,
+		"min={1} is a hint the DOM does not enforce",
+	);
+	assert.equal(isRepeatCountArmable(-5), false);
+
 	/* The ceiling still outranks the picker's sentence when both apply. */
 	assert.equal(
 		validateScheduledTask({
