@@ -1,8 +1,8 @@
 {
-  "head": "5a06609dc04d945ee764756603fe4ecfb048968a",
+  "head": "df9803d81a2306429d1bc9928e79cd299910c516",
   "headNote": "The merge this evidence rides: `5a06609dc`. `head` names it rather than the evidence commit because the evidence commit after it moves `docs/` only - which is the same statement the fold rule makes for every other pass in this file.",
   "srcTree": "1820d272f5401a7d493eca80cc6a2cf952876777",
-  "scriptsTree": "8375a3d6f6236113dfae4751b18854dba7c461c0",
+  "scriptsTree": "7a03ac02bf6b50b29e1e745a3074f56dd4b6d25d",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-16T20:05:00.000Z",
   "frames": 4990,
