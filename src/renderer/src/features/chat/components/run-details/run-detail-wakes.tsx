@@ -44,7 +44,7 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { AlarmClock } from "lucide-react";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import {
 	type RunDetails,
 	type WakeRow,
@@ -54,6 +54,21 @@ import {
 
 /**
  * One armed schedule: when it next fires, how often, and what it will say.
+ *
+ * Exported, and shared with the Schedules page's wake lines, because one object
+ * must not read two ways on two surfaces that can be on screen together: the
+ * page renders the same mark, the same due label, the same cadence and the same
+ * clamped prompt, so a change to this row lands on both or on neither. The two
+ * callers differ in exactly two things, and both are props rather than a fork:
+ *
+ * - `trailingClause` is a clause the PAGE's wire carries and this one does not
+ *   (`Ran 3 times`, from the listing's `fired_count`); it renders as one more
+ *   ` · ` segment in the same dim ink;
+ * - `action` is the page's `Cancel wake` control. It is deliberately absent
+ *   here: `docs/composer-wakes.md` section 8 argues the pane's rows are a
+ *   readout - a schedule is read here and cancelled by the agent - and that
+ *   argument is about the PANE, not about every surface that shows a wake. A
+ *   management page whose job is creating these has to be able to stop one.
  *
  * The mark column is the pane's grid — `pl-3`, a 16px box, an 8px gap, the same
  * one the plan's items and the roster's rows put their own marks in — so the
@@ -77,8 +92,21 @@ import {
  * reader's trust boundary is the payload, and a duplicate id is a backend defect
  * that a de-duplicating hook would HIDE from the rig that exists to notice it.
  */
-const WakeRowView = ({ row }: { row: WakeRow }) => (
-	<li data-run-panel-row={row.id} className={cn("flex gap-2 px-3 py-0.5")}>
+export const WakeRowView = ({
+	row,
+	trailingClause,
+	action,
+}: {
+	row: WakeRow;
+	/** One more ` · ` clause after the cadence (`Ran 3 times`), or omit. */
+	trailingClause?: string;
+	/** The row's own control, when the surface offering it is a management one. */
+	action?: ReactNode;
+}) => (
+	<li
+		data-run-panel-row={row.id}
+		className={cn("group/wake flex items-start gap-2 px-3 py-0.5")}
+	>
 		<span className={cn("pt-0.5")}>
 			<span
 				aria-hidden={true}
@@ -116,6 +144,7 @@ const WakeRowView = ({ row }: { row: WakeRow }) => (
 				)}
 				<span className={cn("shrink-0 text-ink-dim text-meta")}>
 					{row.dueLabel ? `· ${row.cadence}` : row.cadence}
+					{trailingClause ? ` · ${trailingClause}` : ""}
 				</span>
 			</div>
 			{/*
@@ -146,6 +175,9 @@ const WakeRowView = ({ row }: { row: WakeRow }) => (
 				</>
 			)}
 		</div>
+		{action && (
+			<div className={cn("flex shrink-0 items-center gap-0.5")}>{action}</div>
+		)}
 	</li>
 );
 

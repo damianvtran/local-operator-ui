@@ -959,6 +959,10 @@ const CHAT_URL_BUILDERS = {
 		count: 1,
 		why: "the onboarding flow's landing URL",
 	},
+	"src/renderer/src/features/schedules/components/schedules-page.tsx": {
+		count: 1,
+		why: "the Schedules row's own `Open conversation`, which is also the cancel toast's path back to the conversation the confirm just promised stays",
+	},
 };
 
 /** The files that commit a switch, and why each is allowed to. */
@@ -970,6 +974,10 @@ const OPEN_SESSION_CALLERS = {
 	"src/renderer/src/features/chat/open-conversation.ts": {
 		count: 1,
 		why: "the rule's commit",
+	},
+	"src/renderer/src/features/schedules/components/schedules-page.tsx": {
+		count: 1,
+		why: "the Schedules row's own `Open conversation`, through the same rule - a wake's conversation is one the user may never have opened, so the row that names it has to be able to reach it",
 	},
 };
 

@@ -84,6 +84,11 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session.ts";',
+			// The `resync` door, which reaches the identical hazard as the Retry
+			// control above: it must cancel a pending stream retry before connecting,
+			// or it opens a second subscription over one dispose closure and orphans
+			// the first (round 2, M2).
+			'export { resyncCanonicalSession } from "./src/renderer/src/shared/hooks/use-canonical-session.ts";',
 			// The notice module is the ONE authority for the sentence the reader sees.
 			// Exported through the same bundle so this test compares the shipping mapping
 			// rather than a copy of it (design round 1, D1).
@@ -764,6 +769,105 @@ test("Retry during a pending stream retry opens ONE subscription and leaves no o
 		live,
 		1,
 		"exactly one subscription may be live after Retry settles",
+	);
+	// And draining every remaining timer cannot resurrect the orphan.
+	await runTimers();
+	assert.equal(
+		test_state.streams.filter((s) => !s.disposed).length,
+		1,
+		"no queued timer may open a stream the effect can no longer dispose",
+	);
+});
+
+test("resync during a pending stream retry opens ONE subscription and leaves no orphan (round 2, M2)", async () => {
+	/*
+	 * The sibling case above pins the Retry control's cancellation; this pins the
+	 * other door into the same effect. `resync` is called after every wake write
+	 * (create, edit, cancel) to make the affected conversation's snapshot re-read
+	 * the index, and it reaches `closeStream(); connect()` from exactly the state
+	 * the retry window is in - `dispose === null` with a queued `connect()`. If it
+	 * does not cancel that timer first, the queued retry opens a second
+	 * subscription and overwrites the single dispose closure, orphaning the first.
+	 *
+	 * Setup mirrors the sibling case deliberately, so the two differ in one line:
+	 * the history read fails for good, the reconcile's retries are drained, and the
+	 * stream then dies so its retry is the newest timer while Retry/resync is the
+	 * state on screen.
+	 */
+	test_state.streams.length = 0;
+	test_state.historyRequests.length = 0;
+	timerQueue.length = 0;
+	rafQueue.length = 0;
+	test_state.network = async () => {
+		throw new Error("history unavailable");
+	};
+	const known = new Set();
+	const freshRetries = () => {
+		const out = timerQueue
+			.filter((entry) => !known.has(entry.id) && entry.delay >= 500)
+			.sort((a, b) => a.id - b.id);
+		for (const entry of timerQueue) known.add(entry.id);
+		return out;
+	};
+	const fire = (entry) => {
+		const at = timerQueue.indexOf(entry);
+		if (at >= 0) timerQueue.splice(at, 1);
+		entry.callback();
+	};
+
+	const hook = await loadHook("resync");
+	mountHook(hook, SESSION);
+	await settle();
+	freshRetries();
+	send(openFrame());
+	await settle();
+	send(cursorMissingSnapshotFrame());
+	await settle();
+	const reconcileRetry1 = freshRetries();
+	assert.equal(
+		reconcileRetry1.length,
+		1,
+		"the reconcile armed its first retry",
+	);
+
+	fire(reconcileRetry1[0]);
+	await settle();
+	const reconcileRetry2 = freshRetries();
+	assert.equal(
+		reconcileRetry2.length,
+		1,
+		"the reconcile armed its second retry",
+	);
+
+	// The stream dies AFTER that, so its retry is the newest timer - the window
+	// `resync` has to survive.
+	fail("The event stream was refused (401).");
+	await settle();
+	const streamRetry = freshRetries();
+	assert.equal(streamRetry.length, 1, "the stream armed its own retry");
+
+	// Drain the reconcile's retry so the surface offering both doors is on screen.
+	fire(reconcileRetry2[0]);
+	await settle();
+	assert.ok(
+		timerQueue.includes(streamRetry[0]),
+		"a stream retry is still pending when resync is pressed",
+	);
+
+	const before = test_state.streams.length;
+	const resynced = hook.resyncCanonicalSession(SESSION);
+	await settle();
+	assert.equal(resynced, true, "resync found the mounted session");
+	assert.equal(test_state.streams.length, before + 1, "resync opened a stream");
+	assert.equal(
+		timerQueue.includes(streamRetry[0]),
+		false,
+		"resync must CANCEL the pending retry timer; leaving it queued is what opened a second subscription - and overwrote the single dispose closure, orphaning the first",
+	);
+	assert.equal(
+		test_state.streams.filter((s) => !s.disposed).length,
+		1,
+		"exactly one subscription may be live after resync settles",
 	);
 	// And draining every remaining timer cannot resurrect the orphan.
 	await runTimers();
