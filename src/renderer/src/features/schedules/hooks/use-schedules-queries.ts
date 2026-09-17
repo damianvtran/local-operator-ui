@@ -7,9 +7,25 @@ import {
 	SchedulesApi,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config/api-config"; // Corrected import path for useApiConfig
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 
 const SCHEDULE_QUERY_KEY = "schedules";
+/**
+ * Ask every legacy schedule read on this page to reload.
+ *
+ * Beside the key it covers, because the prefix IS the contract: the Schedules
+ * page's refresh control used to reload only the wake listing, so the fenced
+ * legacy annex - served by its own query - did not move with it and a legacy row
+ * added in another window appeared only on the page's next mount (QA round 1,
+ * Q2). One call, so a caller cannot refresh half of the page by omission.
+ */
+export const invalidateLegacySchedules = (queryClient: QueryClient) =>
+	queryClient.invalidateQueries({ queryKey: [SCHEDULE_QUERY_KEY] });
 const AGENT_SCHEDULE_QUERY_KEY = "agentSchedules";
 
 /**
