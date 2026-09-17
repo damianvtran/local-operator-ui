@@ -46,6 +46,33 @@ import {
 
 const TS = 1_760_000_000_000;
 
+/**
+ * Two screenshots for the rows that carry one, as INLINE base64 — the live wire
+ * shape (`TranscriptImage.data`), which `useAttachmentUrl` turns into a `data:`
+ * URI on the first render with no relay request, so these stories need no backend.
+ *
+ * They exist because the surface the operator actually reported had no frame
+ * anywhere: `grep` for a non-empty `images: [...]` across every `.stories.tsx`
+ * found nothing, so `CanonicalImage` was exercised only through the shared
+ * component's own story and never through the row that mounts it — including the
+ * `Screenshot 1` / `Screenshot 2` labels a row with two images derives (QA round 1,
+ * Q-3). Small and flat so the literal stays in the source file: 480x360 and
+ * 320x480, 12 bands each, no anti-aliasing.
+ */
+const SHOT_B64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAeAAAAFoBAMAAAB9GTUTAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAnUExURZ48PJ5tPJ48np48bZ6ePG2ePDyePDyebTyenjxtnjw8nm08nv7+/gsvuucAAAABYktHRAyBs1FjAAAAB3RJTUUH6gkQExID2Z+b6gAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyNi0wOS0xNlQxOToxODowMyswMDowMI0ybT8AAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjYtMDktMTZUMTk6MTg6MDMrMDA6MDD8b9WDAAAAKHRFWHRkYXRlOnRpbWVzdGFtcAAyMDI2LTA5LTE2VDE5OjE4OjAzKzAwOjAwq3r0XAAAABBjYU52AAAAKAAAAWgAAAAAAAAAALIy97YAAAGISURBVHja7c/BAIBAAADBU0ghhRRSSCGFU0ghhRSSS2C//WYMZoywhDVsYQ9HOMMMV7jDE94whIWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYX/Cn/nxUt2nZ0bsgAAAABJRU5ErkJggg==";
+
+const TALL_B64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAUAAAAHgCAMAAADjUkR2AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAACBUExURZ48PJ47PJ5MPJ5vPJ5tPJ5vOZ5Mfp47oJ48np48m548cJ48bZ46bp5cXZ6hOp6ePKCePH2ePGyePG2ePGqePD+ePDyePDyeOzyeTDyebzyebTyeazyejjyenzyenjybnjxwnjxtnjxunjxdnjw6njw8njo8nl08nm48nm08nv7+/sp8UqYAAAABYktHRCpTvtSeAAAAB3RJTUUH6gkQExIER/sOSQAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyNi0wOS0xNlQxOToxODowMyswMDowMI0ybT8AAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjYtMDktMTZUMTk6MTg6MDMrMDA6MDD8b9WDAAAAKHRFWHRkYXRlOnRpbWVzdGFtcAAyMDI2LTA5LTE2VDE5OjE4OjA0KzAwOjAwbt3K0gAAABBjYU52AAAAGwAAAeAAAAAAAAAAANUM1AAAAALsSURBVHja7dAFAQJRAAWwjzuHuzv9C5LgJWCLsFKSWr3RDFrtTjfo9QfBcDSugsl0Ng8Wy1Ww3mx3wf5wPAXnyzW43R/P4PX+fJMiUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKBAgQIFChQoUKDAfw38AUgMDtEyr1dZAAAAAElFTkSuQmCC";
+
+/** One image block, in the shape the reducer's `images` array holds. */
+const image = (id: string, data: string, mimeType = "image/png") => ({
+	id,
+	data,
+	attachment: null,
+	mimeType,
+});
+
 type ToolRecord = Extract<TranscriptRecord, { kind: "tool" }>;
 
 const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
@@ -2604,6 +2631,72 @@ export const MixedRun: Story = {
 					output: "Written 1 line to scripts/tool-row.test.mjs",
 					durationS: 0.03,
 				}),
+			]}
+		/>
+	),
+};
+
+/** A canonical tool row carrying ONE screenshot — the operator's own report. */
+export const Screenshots: Story = {
+	render: () => (
+		<Frame
+			height={420}
+			records={[
+				tool({
+					id: "tool:shot:1",
+					toolName: "read",
+					args: { path: "/Users/damian/local-operator-ui/docs/branding.md" },
+					durationS: 0.04,
+					output: "# Branding and design system",
+					images: [image("tool:shot:1:0", SHOT_B64)],
+				}),
+			]}
+		/>
+	),
+};
+
+/** Two screenshots in ONE row, which is where the `Screenshot 1`/`2` labels appear. */
+export const ScreenshotsTwo: Story = {
+	render: () => (
+		<Frame
+			height={700}
+			records={[
+				tool({
+					id: "tool:shot:2",
+					toolName: "read",
+					args: { path: "/tmp/frames" },
+					durationS: 1.2,
+					output: "2 images",
+					images: [
+						image("tool:shot:2:0", SHOT_B64),
+						image("tool:shot:2:1", TALL_B64),
+					],
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * A USER turn carrying two attachments, which is the other label family
+ * (`Attached image 1` / `2`) and the other call site of the same component
+ * (`canonical-transcript.tsx`). One story, because the labels are the surface.
+ */
+export const UserAttachments: Story = {
+	render: () => (
+		<Frame
+			height={700}
+			records={[
+				{
+					kind: "user",
+					id: "user:shots:1",
+					ts: TS,
+					text: "Here are the two frames I rendered.",
+					images: [
+						image("user:shots:1:0", SHOT_B64),
+						image("user:shots:1:1", TALL_B64),
+					],
+				},
 			]}
 		/>
 	),

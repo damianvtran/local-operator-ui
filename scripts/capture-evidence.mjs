@@ -71,6 +71,13 @@ const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
  * narrowed set from a swept one.
  */
 const ONLY = flag("only");
+
+/*
+ * Selectors the round-1 image-expand tuples drive, named once because two of them
+ * are the same button seen from a pointer and from the keyboard.
+ */
+const IMAGE_EXPAND_PICTURE = 'button[title^="Click to expand"]';
+const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label="File actions"]';
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
 const PARTIAL = Boolean(ONLY || THEME_FILTER);
 
@@ -599,6 +606,14 @@ export const STORIES = [
 	   to reach live — an interrupted call needs a turn stopped at the right
 	   moment, an MCP name needs a server connected — and captured NARROW as
 	   well as wide, because the shed order under pressure is half the design. */
+	/* The canonical rows that CARRY the pictures, which no frame held before this
+	   round: `CanonicalImage` was exercised only through the shared component's own
+	   story, never through the tool row that mounts it, and a row with two images
+	   (the `Screenshot 1`/`2` labels) was rendered nowhere at all (QA round 1, Q-3).
+	   `user-attachments` is the other call site and the other label family. */
+	["chat-tool-rows--screenshots", 1280, 900],
+	["chat-tool-rows--screenshots-two", 1280, 900],
+	["chat-tool-rows--user-attachments", 1280, 900],
 	["chat-tool-rows--states", 1280, 900],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
 	/* The reported defect, and the only new surface this set added: a viewer that
@@ -831,6 +846,101 @@ export const STORIES = [
 	["chat-run-panel--back-to-roster", 1280, 900],
 	["chat-run-panel--back-pop", 1280, 900],
 	["chat-run-panel--close-from-reader", 1280, 900],
+
+	/* A conversation image, expanded. The operator's report was that a `read` row's
+	   screenshot could not be read at the ceiling the transcript gives a picture,
+	   and that on a canonical row clicking one did nothing at all. Three states:
+	   `in-thread` is what the press acts on, `expanded` is the overlay with the app
+	   still visible behind its scrim, and `expanded-small-image` is the SIZE RULE —
+	   a 240x180 picture offered nearly the whole viewport stays 240x180, where a
+	   fit-to-viewport rule would smear it. That last frame is sized to itself for
+	   the reason the notification states are: the scrim covers the whole viewport,
+	   so at 1280x900 the frame would be one colour over `check-evidence`'s
+	   uniformity ceiling and a picture of nothing. `expanded` and
+	   `expanded-small-image` reach the overlay by pressing the picture; `in-thread`
+	   is the at-rest state that press acts on, and the story's own note says so.
+	   (Review round 3, R3-5: this said "the first three", which counted the state
+	   the press acts on among the states the press produces.) */
+	["chat-image-expand--in-thread", 1280, 900],
+	["chat-image-expand--expanded", 1280, 900, { press: IMAGE_EXPAND_PICTURE }],
+	[
+		"chat-image-expand--expanded-small-image",
+		640,
+		420,
+		{ press: IMAGE_EXPAND_PICTURE },
+	],
+	/* THE ROUND-1 REVIEW'S SETS (design D1-3/D1-4/D1-5, review R1-1, UX U1-1, QA
+	   Q-3/Q-5), and why each is a tuple rather than a story. `expanded-small-window`
+	   is the STORY `expanded` at the smallest shape the app enforces (800x760, the
+	   floor UX round 1 measured on the built app) — the same surface, one window
+	   smaller. The two new aspect stories photograph what design D1-3 could only
+	   reach by arithmetic: a picture at the viewport's own aspect, whose corner lands
+	   as close to the close button as the geometry allows, and the phone-aspect
+	   capture the same file's sizing note names as a real input. `expanded-failed`
+	   carries its own latch — the story withholds the shutter until the failure copy
+	   is painted, so a frame of an overlay whose picture merely had not decoded yet
+	   cannot ship. `legacy` is ONE story the rig drives FOUR ways, because the four
+	   frames are one surface in four states: at rest, under a real pointer, focused
+	   by real Tab presses, and then ACTIVATED by Enter, whose capture fails if the
+	   menu's items never appear — the keyboard half of review R1-1, in the engine
+	   the finding is about. */
+	[
+		"chat-image-expand--expanded-near-viewport",
+		1280,
+		900,
+		{ press: IMAGE_EXPAND_PICTURE },
+	],
+	[
+		"chat-image-expand--expanded-portrait",
+		1280,
+		900,
+		{ press: IMAGE_EXPAND_PICTURE },
+	],
+	/* NOT press-driven, and that is the state's own reason rather than an oversight:
+	   the transcript's copy of a picture that failed to decode is `BrokenAttachment`
+	   and not a button, so no press can reach this overlay — the story mounts it and
+	   holds the shutter until the failure copy paints. Its close button therefore
+	   carries the same `:focus-visible` artifact the other five no longer do; the
+	   README names it per frame rather than leaving a reader to guess. */
+	["chat-image-expand--expanded-failed", 1280, 900],
+	[
+		"chat-image-expand--expanded",
+		800,
+		760,
+		{ dir: "expanded-small-window", press: IMAGE_EXPAND_PICTURE },
+	],
+	["chat-image-expand--legacy", 1280, 900],
+	[
+		"chat-image-expand--legacy",
+		1280,
+		900,
+		/*
+		 * `hoverSettleMs` because the reveal is a real transition, not a class
+		 * swap: the control fades in over `duration-fast`, so the shutter waits for
+		 * the fade instead of trusting that it landed after it. On this machine the
+		 * frame came out complete either way — the trigger's brightest pixel reads
+		 * `inkMuted` (measured 179,175,170 against the palette's `#b5afa2`), which is
+		 * the ghost glyph at full opacity — and the wait is kept so a slower machine
+		 * cannot photograph a half-faded control.
+		 */
+		{ dir: "legacy-hovered", hover: IMAGE_EXPAND_PICTURE, hoverSettleMs: 400 },
+	],
+	[
+		"chat-image-expand--legacy",
+		1280,
+		900,
+		{ dir: "legacy-tabbed", tabTo: IMAGE_EXPAND_FILE_ACTIONS },
+	],
+	[
+		"chat-image-expand--legacy",
+		1280,
+		900,
+		{
+			dir: "legacy-tabbed-open",
+			tabTo: IMAGE_EXPAND_FILE_ACTIONS,
+			pressKey: { key: "Enter", reveals: '[role="menu"]' },
+		},
+	],
 	/* The MCP section, whose states a live session cannot produce on demand: an
 	   expired grant, a dead process, a word from a runtime this build has not been
 	   taught, and the cold payload of a session with no runtime. */
@@ -3142,6 +3252,90 @@ const main = async () => {
 			 * that tolerates a legitimate scrim over a modal, something no
 			 * equality test on a ground colour can do.
 			 */
+			/*
+			 * A REAL POINTER PRESS, for the frames whose claim is the state a MOUSE
+			 * user gets — and it runs BEFORE the readiness probe, unlike the other
+			 * interactions.
+			 *
+			 * Why the order matters: the probe is what enforces a story's
+			 * `data-capture-pending` latch, so a press that produces the state the
+			 * latch waits for has to happen first or the two deadlock — a story that
+			 * holds the shutter until the EXPANDED picture decodes can never clear it
+			 * while nothing has pressed the picture. Hover, selection and key presses
+			 * stay after the probe because they change how an already-ready state
+			 * looks; a press here is part of ARRIVING at the state, which is why the
+			 * element lookup below waits for the selector instead of demanding it.
+			 *
+			 * `press: <selector>` moves the pointer to the element's centre and sends
+			 * `mousePressed` + `mouseReleased` there, so the click arrives through the
+			 * input pipeline rather than through a script call. That distinction is the
+			 * whole reason this exists (design round 2, D2-4): a programmatic
+			 * `element.click()` is treated as keyboard-ish by Blink for
+			 * `:focus-visible`, so an overlay opened that way photographs the close
+			 * button wearing a focus ring a mouse user never sees. Every overlay frame
+			 * in the image-expand set used to carry one; the five press-reachable
+			 * tuples press instead. A selector that matches nothing THROWS, for the
+			 * same reason `hover`'s does: a rig that cannot find its target must fail
+			 * rather than photograph the resting state under a name that claims
+			 * otherwise.
+			 *
+			 * `pressSettleMs` is for a target whose open state is animated; the
+			 * stories' own `data-capture-pending` latch is what holds the shutter until
+			 * the overlay's picture has decoded, which is a different job.
+			 */
+			if (options?.press) {
+				let target = { value: null };
+				for (let i = 0; i < 100 && !target.value; i++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(options.press)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							if (r.width === 0 || r.height === 0) return null;
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					target = result;
+					if (!target.value) await sleep(150);
+				}
+				if (!target.value) {
+					throw new Error(
+						`${story} @ ${theme}: the press selector \`${options.press}\` never appeared (15s) - a press that finds nothing must fail rather than photograph the resting state under a name that claims otherwise`,
+					);
+				}
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: target.value.x,
+					y: target.value.y,
+					button: "none",
+					buttons: 0,
+					clickCount: 0,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mousePressed",
+					x: target.value.x,
+					y: target.value.y,
+					button: "left",
+					buttons: 1,
+					clickCount: 1,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseReleased",
+					x: target.value.x,
+					y: target.value.y,
+					button: "left",
+					buttons: 0,
+					clickCount: 1,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				if (options?.pressSettleMs) await sleep(options.pressSettleMs);
+			}
 			// `let`, and biome must not be allowed to talk you out of it: line
 			// 620 reassigns this. A formatter once rewrote it to `const` while
 			// the file was briefly unparseable - a stray backtick had ended the
@@ -3373,6 +3567,7 @@ const main = async () => {
 				 */
 				if (options?.hoverSettleMs) await sleep(options.hoverSettleMs);
 			}
+
 			/*
 			 * A REAL HIGHLIGHT, for the frames whose claim is a selection-driven
 			 * control.
@@ -3953,6 +4148,60 @@ const main = async () => {
 					);
 				}
 			}
+			/*
+			 * A KEY PRESS on whatever holds focus, for the frames whose claim is not
+			 * only that a control is REACHABLE by keyboard but that reaching it DOES
+			 * something. `tabTo` above lands the focus; a focus ring in a still proves
+			 * that and nothing about activation, so this presses a key on the focused
+			 * element through the input pipeline and requires `reveals` to match
+			 * afterwards — a press that opened nothing fails the capture instead of
+			 * shipping an unchanged surface under a name that claims an activation.
+			 *
+			 * Both edges are sent, because a Radix menu trigger opens on the DOWN
+			 * edge of Enter and a caller sending only the up edge would be testing a
+			 * key the product ignores — the same reason the desktop suite's
+			 * `pressEscape` twin sends `keydown`.
+			 *
+			 * Deliberately not a general key-press API: it exists so one frame in this
+			 * repository can carry "reached by keyboard AND opened by keyboard".
+			 */
+			if (options?.pressKey) {
+				const { key, reveals } = options.pressKey;
+				const code = key === "Enter" ? 13 : key === " " ? 32 : null;
+				if (code === null) {
+					throw new Error(
+						`${story} @ ${theme}: pressKey only knows Enter and Space, got \`${key}\``,
+					);
+				}
+				for (const type of ["rawKeyDown", "keyUp"]) {
+					await cdp.send("Input.dispatchKeyEvent", {
+						type,
+						key,
+						code: key === " " ? "Space" : key,
+						windowsVirtualKeyCode: code,
+						nativeVirtualKeyCode: code,
+					});
+				}
+				if (reveals) {
+					const shown = async () =>
+						(
+							await cdp.send("Runtime.evaluate", {
+								returnByValue: true,
+								expression: `document.querySelectorAll(${JSON.stringify(reveals)}).length`,
+							})
+						).result.value > 0;
+					let visible = false;
+					for (let i = 0; i < 20 && !visible; i++) {
+						await sleep(50);
+						visible = await shown();
+					}
+					if (!visible) {
+						throw new Error(
+							`${story} @ ${theme}: pressing ${key} did not reveal \`${reveals}\` — the frame would be the resting state under a name that claims an activation`,
+						);
+					}
+				}
+			}
 			if (options?.scrollToEnd) {
 				const { result: scrolled } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
@@ -4348,6 +4597,52 @@ const main = async () => {
 	 * preserves the existing totals and records what it refreshed under
 	 * `partialCapture`, which is the field a reader consults to tell a narrowed
 	 * set from a swept one.
+	 */
+	/*
+	 * A FOLD'S RESOLVER READS THIS BLOCK. When `main` and this branch have both
+	 * rewritten this file, the merge is a PER-FIELD decision and NOT "keep main's
+	 * record" - and per FIELD rather than per entry, for the same reason: a union
+	 * taken at entry granularity silently replaces an authored field inside an
+	 * entry both sides have, which is how this branch's `why` clauses on two
+	 * `supplementary` entries vanished on the ninth fold (review round 8, R8-2).
+	 *
+	 *   1. `head`, `headNote` and the `partialCapture` fields that DESCRIBE a pass
+	 *      - `refreshedAt`, `refreshedAtHead`, `refreshedFromHead`, `addedAt`,
+	 *      `addedAtHead`, `addedFrames`, `note`, `passScopeNote` and every
+	 *      per-pass `*Note` - are THIS branch's. Main's values name main's pass,
+	 *      and taking them sends a verifier to a tree that does not carry this
+	 *      branch's frames (rounds 4, 5 and 6 each found that, the third time
+	 *      inside the round that had just fixed it).
+	 *   2. The fields that LIST what both sides touched - `supplementary`'s
+	 *      ENTRIES, and `refreshedStories`, `refreshedThemes`, `addedSurfaces` -
+	 *      are the UNION of the two sides' entries or values, because the merged
+	 *      tree carries both and either side's list alone would claim a pass that
+	 *      did not run in it.
+	 *   3. INSIDE a `supplementary` entry that exists on both sides, this pass's
+	 *      AUTHORED keys - `why`, `capturedAt`, `capturedAtHead` and any note -
+	 *      are KEPT and only the listings are unioned. An entry is a record this
+	 *      branch wrote, not a listing, and taking main's whole entry loses
+	 *      exactly the field a reader follows the rule to find.
+	 *   4. `refreshedFrames` is RE-DERIVED against `HEAD` rather than added up,
+	 *      and `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and
+	 *      `scriptsTree` are re-derived from the merged tree and taken from
+	 *      neither side. `countsMean` is in this group because it restates
+	 *      `frames`/`surfaces` - its prose says what each field counts and where
+	 *      to read it, and carries no number of its own for a fold to falsify.
+	 *   5. And NO FIELD THAT SPELLS OUT WHAT A CITATION NAMES is carried from
+	 *      main's side under any name: main's manifest still has
+	 *      `refreshedAtHeadNote`, the spelling this branch deleted, and carrying
+	 *      main's keys this branch lacks re-introduces it.
+	 *
+	 * The gate cannot catch a `head` that names the wrong tree, and BOTH halves of
+	 * what it does ask are worth naming so this is auditable rather than a summary:
+	 * `citationFailures` asks whether the sha RESOLVES, and
+	 * `citationAncestryFailures` asks whether it is an ANCESTOR OF `HEAD` - named by
+	 * symbol rather than by line, since a line number is one more thing a later pass
+	 * has to keep true. Main's own commit satisfies both, which is exactly why
+	 * the gate could not see the round-6 defect; neither half asks whether the tree
+	 * a citation names carries the frames this record declares. The same rule is
+	 * stated for readers in the manifest's `citationConvention`.
 	 */
 	const manifestPath = join(OUT, "manifest.json");
 	let previous = {};
