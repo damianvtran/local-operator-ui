@@ -64,10 +64,10 @@ filled by the harness's own stand-in for the config root the request used:
 
 `{root}` is the config root the request actually used, so that PR moved both
 sentences from "this disk"/"its logs" to a path — the copy half of design D1 and
-UX U5, routed there. The 507 sentence is ~180 characters with a real root in it,
-which is twice the stand-in that used to fit the composer's capped window at the
-app's minimum size: the committed frames showed a state the shipped copy cannot
-reach, and the defect the round-2 reviews found would have returned the moment
+UX U5, routed there. The 507 sentence is ~180 characters with a real root in it —
+roughly twice the stand-in the committed frames used, which fitted the capped
+window comfortably: those frames showed a state the shipped copy cannot reach, and
+the defect the round-2 reviews found would have returned the moment
 `local-operator#1243` merged. Both sentences now come from ONE module
 (`scripts/store-refusal-copy.mjs`) that the harness *and* the stub server read, so
 the expectation and the answer cannot drift.
@@ -88,8 +88,8 @@ satisfied in.
 | [unavailable-held.png](unavailable-held.png) | `store_unavailable` (500) | The same screen for the other arm. |
 | [busy-held.png](busy-held.png) | `store_busy` (503) | **The contrast frame for the held line's two registers** (design round 2, D8). Same empty box, same claim, same two controls as `out-of-space-held`; the only sentence that differs is the held line, which keeps the shared "whether it reached the agent is not knowable … send again only if no reply arrives" because contention really is retryable and its outcome really is unknown. The hint is absent from the SCREEN for the post-admission reason (the box is empty) while `withholdsRetryHint` is `false` for the code — the two facts are asserted separately. |
 | [altered-held.png](altered-held.png) | `unconfirmed_send` | **The operator's own remedy from 2026-09-17, one step on**: text restored, image dropped, Enter pressed. The second send is really issued, so the store's unchanged-payload guard really fires and its own code is what the alert renders. The retry hint is **absent** — the guard refuses every resend until the claim is released — and the abandon control reads `Stop holding it`, which is the honest label for a press that keeps the user's text. **It is also the U10 frame**: the sentence above is the GUARD's while the claim still carries `store_out_of_space`, so the held line states the known fact ("Nothing was saved …") rather than reverting to the lost-response register — which is what it did until this round, one screen after the app itself said nothing was saved, with the disk off the screen entirely. `readings.json` carries both codes for it (`code: unconfirmed_send`, `heldClaimCode: store_out_of_space`) because that pair is the finding. |
-| [unavailable-narrow-held.png](unavailable-narrow-held.png) | `store_unavailable` (500) | The held state at the app's own minimum window (**800x568**, which it clamps to) with the composer's track at **236px** — the width QA round 1 measured in the DEFAULT layout, where an operator starts. The column is an input (`--viewport=WxH --column=N`), so this is the harness's reproduction of that measurement rather than a re-derivation of the app's layout arithmetic. Both remedy controls are **on screen**, and since this round so is the **clause that names the control**: it is pinned outside the capped block, because at this track the backend's own sentence fills the window (120 of 160px shown) and the clause used to be the part cut off. This is the frame QA measured the finding on — the composer's track, the clip and the controls are the app's own numbers. |
-| [out-of-space-narrow-held.png](out-of-space-narrow-held.png) | `store_out_of_space` (507) | The same state and window with the **longest** copy the sibling's contract can produce (~180 characters, `{root}` included), which is the projection design round 2's D5 made from the 500 frame's character width — measured here rather than projected. This is the frame where the capped block genuinely overflows: the sentences fill it, the last visible line ends mid-clause, and the claim naming the remedy is still fully painted below it. |
+| [unavailable-narrow-held.png](unavailable-narrow-held.png) | `store_unavailable` (500) | The held state at the app's own minimum window (**800x568**, which it clamps to), shot with `--column=236` — the composer track QA round 1 measured in the DEFAULT layout, where an operator starts. **The column is an input, and this frame does not prove the real app's width**: inside that 236px column the harness's own capped block measures `clientWidth` **172px** (its own reading), because the harness page is not the app shell, so the block here is narrower than the app's and the overflow it shows is the harness's. What the frame proves is the state and its ordering at that width: the backend's own sentence fills the capped window (**120 of 160px** shown), both remedy controls are **on screen** (`200..348` in a 568px window), and the **clause that names the control is painted** — pinned outside the capped block, where it used to be the part cut off. The app's own block width at this window is QA's measurement to make, not this page's to claim. |
+| [out-of-space-narrow-held.png](out-of-space-narrow-held.png) | `store_out_of_space` (507) | The same state, column and caveat as the frame above — **the harness's block, not the app's width** — with the **longest** copy the sibling's contract can produce (~180 characters, `{root}` included), which is the projection design round 2's D5 made from the 500 frame's character width, measured here rather than projected. Its block overflows further (**120 of 200px**, i.e. 6 of 10 lines), the last painted line ends mid-clause (`… on the volume holding`), and the claim naming the remedy is still fully painted below it. |
 
 The `-restored` frames are the controlled comparison: the alert gates its hint on
 the box holding something the store would accept, so a frame shot over an empty
@@ -142,7 +142,9 @@ operator cannot read it" are different findings.
 sibling's real sentence found a second clip on the other axis, which no frame in
 the set had shown: the failure sentence contains the config root, a real macOS
 root contains one ~34-character path segment, and that segment was wider than the
-whole composer track at the app's minimum window. The sentence's text sat in a
+block that had to hold it at the narrow column this set shoots (the block's own
+`clientWidth` is 172px there, and the reading for the frame was
+`scrollWidth > clientWidth`). The sentence's text sat in a
 flex item with no `min-w-0`, so its minimum width was that one word, the item
 could not shrink, and the block — `overflow-y: auto`, with the other axis
 computing to `auto` too — **cut every line mid-word at its right edge** with no
@@ -166,16 +168,24 @@ that a capture from an UNCHANGED tree is now bit-identical, so a reviewer diffin
 frames sees state changes only. Two independent runs of this set produce nine
 byte-identical frames and a `readings.json` equal apart from `capturedAt`.
 
-**One residual, stated because it is measured rather than argued.** With the
-sibling's real 507 sentence at the app's minimum window, the capped block shows
-six of its ~eight lines: the failure sentence's tail ("… and send it again") is
-below the fold, and the app's own scrollbar is the only cue. Everything the
-operator has to ACT on is above it — "Free some space on the volume holding
-{root}" is visible in the failure sentence, and the pinned claim names the
-control — and the retry clause that is cut is a step the app cannot perform before
-`Restore message` is pressed anyway. It is the backend's copy length, not this
-renderer's, and #1243 owns it; this set records the measurement so the projection
-is not re-derived from a still.
+**One residual, stated with the numbers the readings carry rather than the ones a
+projection implies.** At the harness's narrow column the 507 frames' capped block
+shows **6 of its 10 lines** (`clientHeight 120 / scrollHeight 200`); the 500 frames'
+shows **6 of 8** (`120/160`). What is painted of the backend's sentence therefore
+stops inside it — `… Free some space on the volume holding` on the 507, and
+`… check /Users/damian/Library/Application` on the 500 — so the config root, which
+is the sentence's destination, is the part the cap cuts, not a part it shows. (An
+earlier version of this paragraph claimed the root was visible; the reading says
+otherwise, and the frame is the authority.) Everything the operator has to *act* on
+is above that cut: "Free some space" is painted, and the pinned claim names the
+control. The reply half of the sentence ("… and send it again") is cut too, and it
+is a step the app cannot perform before `Restore message` is pressed anyway. How
+much of this is the APP's copy length rather than this harness's narrower block is
+**not** established here: the app's block at this window is QA's measurement (their
+round-1 pass measured the app's own block clipping their shorter stand-in, 120/184),
+and #1243 owns the copy. What this set establishes is the ordering — the line the
+operator must act on is painted, the backend's tail is what is lost — and it
+records the measured counts above rather than a line estimate.
 
 ## What this set does NOT prove
 
@@ -195,8 +205,11 @@ is not re-derived from a still.
   clean in design round 1 and is not committed here), and not screen-reader
   announcement (the `role="alert"` is present in the DOM, which is not the same
   as hearing it).
-- **Not the backend's own ladder**, which is the sibling PR's subject, and not
-  its copy (see the stand-in note above).
+- **Not the backend's own ladder**, which is the sibling PR's subject, and not the
+  fact that the sibling still sends these words: the sentences here are taken
+  verbatim from that branch (see the copy note above), so what they prove is how
+  THIS renderer paints and wraps them — re-check the strings against
+  `store_failures.py` before reading a frame as today's copy.
 - **Not the retention behaviour.** The refusal is driven through
   `admitChatDraft` directly rather than through `chat-page`'s `send` wrapper, so
   the frames show the alert and the box, not the echo/turn machinery around a
@@ -237,7 +250,12 @@ in the order of least risk to the operator's machine:
 For the **narrow** frames specifically, the app derives the composer's track from
 the window and whatever panes are open beside it, so no still can pin the width of
 "the minimum window" in the abstract: `--viewport=WxH --column=N` set the two the
-frame was shot at, and the QA round is what walks the real window. Since this
-round the narrow frames use **236px**, the track QA round 1 measured on the real
-app at 800x568 in the default layout, so the reproduction starts from a
-measurement rather than from the harness's own guess.
+frame was shot at, and the QA round is what walks the real window. Since this round
+the narrow frames use **236px**, the track QA round 1 measured on the real app at
+800x568 in the default layout — but that number is the COLUMN the harness page is
+handed, and the harness's own capped block inside it measures 172px (`clientWidth`
+in those frames' readings), which is narrower than the app's block at the same
+window. So the reproduction starts from a measurement instead of a guess and still
+does not stand in for the app's own layout: the block's overflow counts in these
+frames are the harness's, and the app's are what a QA pass on the running app
+measures.
