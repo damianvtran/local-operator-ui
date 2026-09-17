@@ -38,7 +38,7 @@
  * Usage: node scripts/browser-chrome-proof.mjs [--keep]
  */
 
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -898,11 +898,29 @@ async function waitFor(predicate, label, timeoutMs = 30_000) {
 
 /** The frontmost application's name and pid, for probe P12. Returns null when the
  * OS will not answer (no accessibility permission), which is reported rather than
- * guessed. */
-async function frontmost() {
-	try {
-		const { execFileSync } = await import("node:child_process");
-		return execFileSync(
+ * guessed.
+ *
+ * ASYNC, AND THAT IS THE POINT. This was `execFileSync`, called once a second by
+ * the sampler below, and `osascript` reaching System Events is not fast: measured
+ * on this host at 5.31 / 7.01 / 10.91 / 19.98 s per call, with one
+ * `-609 Connection is invalid` after 42.86 s. A SYNCHRONOUS call of that length
+ * blocks the event loop for its whole duration, and the timer that scheduled it
+ * is overdue by the time the block ends, so it fires again the moment the loop is
+ * free: the process spends effectively all of its time inside `osascript` and no
+ * other timer in it gets to run.
+ *
+ * The consequence was measured, not theorised: with the synchronous sampler
+ * running, the 250 ms poll in `waitForState` was scheduled out past its own 60 s
+ * deadline and the run died with `no LIVE host answered /health` on 6 of 6
+ * attempts while the host's record sat on disk the entire time - and it still did
+ * so on a quiet machine (load1 ~14, pageouts flat), which is what rules load out
+ * as the cause. The probe was reading the state file outside its own deadline. A
+ * timer that cannot fire cannot time out. `execFile` keeps the wait off the loop;
+ * a reject (including the OS refusing to answer) is still reported as null.
+ */
+function frontmost() {
+	return new Promise((resolve) => {
+		execFile(
 			"osascript",
 			[
 				"-e",
@@ -911,12 +929,9 @@ async function frontmost() {
 				'tell application "System Events" to return (name of p) & "|" & (unix id of p)',
 			],
 			{ stdio: ["ignore", "pipe", "ignore"] },
-		)
-			.toString()
-			.trim();
-	} catch {
-		return null;
-	}
+			(error, stdout) => resolve(error ? null : String(stdout).trim()),
+		);
+	});
 }
 
 /**
@@ -928,16 +943,32 @@ async function frontmost() {
  * "the browser raised the window". What the property actually claims is that THIS
  * app's process never becomes frontmost, so the sampler records the frontmost pid
  * once a second and the check is against the app's own pid.
+ *
+ * WHY THE LOOP RE-ARMS ITSELF INSTEAD OF USING `setInterval`: one sample can take
+ * tens of seconds (see `frontmost`), so a fixed-rate timer would stack an
+ * `osascript` child per tick and a 40 s answer at 1 Hz would leave roughly forty
+ * of them alive at once. Re-arming one second AFTER each answer keeps exactly one
+ * sample in flight, and the price is only the cadence: on a host where the OS
+ * answers slowly the run collects a sample every few tens of seconds rather than
+ * every second. That is the honest rate, and it is still what the property needs
+ * - the claim is that THIS app's pid never appears among the frontmost ones, not
+ * how many times it was looked at.
  */
 function startFrontmostSampler(appPid) {
 	const samples = [];
-	const timer = setInterval(() => {
-		void frontmost().then((value) => {
-			if (value) samples.push(value);
-		});
-	}, 1000);
+	let stopped = false;
+	let timer = null;
+	const tick = async () => {
+		const value = await frontmost();
+		if (value) samples.push(value);
+		if (!stopped) timer = setTimeout(tick, 1000);
+	};
+	timer = setTimeout(tick, 1000);
 	return {
-		stop: () => clearInterval(timer),
+		stop: () => {
+			stopped = true;
+			if (timer) clearTimeout(timer);
+		},
 		samples,
 		appWasFrontmost: () =>
 			samples.filter((sample) => sample.endsWith(`|${appPid}`)).length,
@@ -2974,7 +3005,7 @@ async function main() {
 		// ---- 10. focus (probe P12) -------------------------------------------
 		const frontmostAfter = await frontmost();
 		check(
-			"the app's own process never became the frontmost application (probe P12, sampled once a second)",
+			"the app's own process never became the frontmost application (probe P12, sampled through the run)",
 			sampler.samples.length > 0 && sampler.appWasFrontmost() === 0,
 			sampler.samples.length === 0
 				? `the OS would not answer (last reading ${frontmostAfter}); the deterministic evidence is the window-mode guard test`
