@@ -1,0 +1,16 @@
+/*
+ * The stylesheet entry for the store-refusal evidence harness.
+ *
+ * `@import "@renderer/styles/index.css"` is the app's own stylesheet, so nothing
+ * about the palette, the type scale or the alert region's classes can differ
+ * between this surface and the shipped one.
+ *
+ * `@source` is the part that is easy to omit and fails SILENTLY: a vite root
+ * outside the renderer tree (`scripts/`, here) leaves the renderer's own classes
+ * out of Tailwind's scan, so the composer would render as unstyled boxes and the
+ * frames would be pictures of a page the product does not have. See
+ * `composer-alert-geometry.css`, where the same trap is recorded.
+ */
+@import "@renderer/styles/index.css";
+
+@source "../src/renderer/src";
