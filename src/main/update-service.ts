@@ -585,6 +585,21 @@ type BackendCheckReport = {
 };
 
 /**
+ * The platform/home/userData triple an ownership question is asked with.
+ *
+ * Named rather than repeated, because there are two callers now: the check's own
+ * classification below, and the test that has to ask the SAME question for the
+ * platforms this fix newly covers but a darwin host cannot run (review round 2,
+ * R6).
+ */
+type OwnedInstallInput = {
+	platform: NodeJS.Platform;
+	home: string;
+	appDataPath: string;
+	packaged: boolean;
+};
+
+/**
  * Every root an install can live in and still be the APP'S OWN, for one
  * platform/home/userData triple.
  *
@@ -595,11 +610,24 @@ type BackendCheckReport = {
  *    a PARENT: the environments and runtimes live in generations beneath it.
  * 2. `legacyVenvPaths(support)` - the pre-split venvs an older build created and
  *    left on disk. Each entry is a venv root ITSELF, not a parent.
- * 3. `managedVenvPath(...)` - this instance's own environment. On darwin it is a
- *    generation under shape 1, but on Windows it is `userData`'s and on Linux
- *    `<home>/.config/local-operator`'s: a venv root outside the support root
- *    entirely. Asking `managedVenvPath` is what keeps that from becoming a
- *    second copy of the split rule here.
+ * 3. `managedVenvPath(...)` - the app's environments by NAME, BOTH of them. On
+ *    darwin these are generations under shape 1, but on Windows they are
+ *    `userData`'s and on Linux `<home>/.config/local-operator`'s: venv roots
+ *    outside the support root entirely. Asking `managedVenvPath` is what keeps
+ *    that from becoming a second copy of the split rule here.
+ *
+ * BOTH NAMES RATHER THAN THIS INSTANCE'S, because which flavour owns an install
+ * is a property of the INSTALL and not of the instance asking - the same
+ * asymmetry shapes 2 and 3 exist for. `managedVenvPath` answers one name per
+ * call, chosen by `packaged`, so listing one flavour's name made the app's own
+ * OTHER environment read as external on win32 and linux: their venv roots are
+ * not under `managed-python`, where shapes 1 and 2 cover the sibling by being a
+ * parent, and the arm that resolves for an install the app does not own offers
+ * `pip install --upgrade local-operator` into the app's own tree. That is exactly
+ * the instruction shape 2/3 exist to remove, surviving where the parent shape
+ * cannot reach it (review round 2, R6) - and on those platforms the SIBLING name
+ * is also the pre-split location, whose install scripts fall back to the packaged
+ * name (`venv-paths.ts`).
  *
  * Exported and platform-parameterised because the guard below is only as good as
  * this list, and a test that can pass `platform` is the only way to check the
@@ -608,18 +636,42 @@ type BackendCheckReport = {
  * 3 - the two that are roots rather than parents - so the app offered
  * `pip install --upgrade local-operator` for a tree no package manager owns).
  */
-export function appOwnedInstallRoots(input: {
-	platform: NodeJS.Platform;
-	home: string;
-	appDataPath: string;
-	packaged: boolean;
-}): string[] {
+export function appOwnedInstallRoots(input: OwnedInstallInput): string[] {
 	const support = managedSupportRoot(input.home);
 	return [
 		join(support, "managed-python"),
 		...legacyVenvPaths(support),
 		managedVenvPath(input),
+		managedVenvPath({ ...input, packaged: !input.packaged }),
 	];
+}
+
+/**
+ * Whether an install root is one the app manages, or lives under one.
+ *
+ * The APP'S OWN TREE, not a package manager's: `managed-python` is where the app
+ * builds and owns its runtime and its pinned environments, nothing outside it may
+ * be read, walked or removed, and no install tool knows about it. The packaged
+ * and dev scopes are both matched, because which one owns an install is a
+ * property of the install rather than of the instance asking - a packaged
+ * environment outlives the build that made it, and a check that asked only about
+ * this instance's own scope would offer a package-manager command for a tree the
+ * app owns.
+ *
+ * The roots and the containment rule live in `appOwnedInstallRoots` and
+ * `isWithinAnyRoot` above, where a test can reach them: this verdict is what stops
+ * the app offering a package-manager command for a tree no package manager owns,
+ * so "which roots, and is the root ITSELF inside" is a question that has to be
+ * answerable off the machine's own platform. Exported for the same reason and
+ * taking the triple as an argument rather than reading `process.platform`, so the
+ * win32 and linux verdicts - the ones a darwin host cannot reach - are asserted
+ * rather than inferred from the root list (review round 2, R6).
+ */
+export function appOwnsInstallRoot(
+	input: OwnedInstallInput,
+	prefix: string,
+): boolean {
+	return isWithinAnyRoot(appOwnedInstallRoots(input), prefix);
 }
 
 /**
@@ -3587,38 +3639,25 @@ export class UpdateService {
 			prefix,
 			version,
 			installKind: reading.installKind,
-			appOwned: this.appOwnsInstallRoot(prefix),
+			appOwned: appOwnsInstallRoot(this.ownedInstallInput(), prefix),
 		};
 	}
 
 	/**
-	 * Whether an install root is one the app manages, or lives under one.
+	 * This instance's own ownership triple.
 	 *
-	 * The APP'S OWN TREE, not a package manager's: `managed-python` is where the
-	 * app builds and owns its runtime and its pinned environments, nothing outside
-	 * it may be read, walked or removed, and no install tool knows about it. The
-	 * packaged and dev scopes are both matched, because which one owns an install
-	 * is a property of the install rather than of the instance asking - a packaged
-	 * environment outlives the build that made it, and a check that asked only
-	 * about this instance's own scope would offer a package-manager command for a
-	 * tree the app owns.
-	 *
-	 * The roots and the containment rule live in `appOwnedInstallRoots` and
-	 * `isWithinAnyRoot` above, where a test can reach them: this verdict is what
-	 * stops the app offering a package-manager command for a tree no package
-	 * manager owns, so "which roots, and is the root ITSELF inside" is a question
-	 * that has to be answerable off the machine's own platform.
+	 * `packaged` is the build this process IS, not the environment it is asking
+	 * about: a packaged build pointed at a dev server still owns the environment
+	 * its bundle carries, and the sibling name is in the root list for the
+	 * question the other way round.
 	 */
-	private appOwnsInstallRoot(prefix: string): boolean {
-		return isWithinAnyRoot(
-			appOwnedInstallRoots({
-				platform: process.platform,
-				home: app.getPath("home"),
-				appDataPath: app.getPath("appData"),
-				packaged: app.isPackaged,
-			}),
-			prefix,
-		);
+	private ownedInstallInput(): OwnedInstallInput {
+		return {
+			platform: process.platform,
+			home: app.getPath("home"),
+			appDataPath: app.getPath("appData"),
+			packaged: app.isPackaged,
+		};
 	}
 
 	/**

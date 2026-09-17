@@ -4765,8 +4765,14 @@ const loadUpdateServiceModule = async () => {
 	const fixture = (contents) => ({ contents, loader: "js" });
 	const bundle = await build({
 		stdin: {
+			/*
+			 * `venv-paths` is re-exported so a case can ask for the name the app gives an
+			 * environment rather than re-deriving it: the sibling flavour's name is the
+			 * subject of review round 2's R6, and a case that hard-coded the path would
+			 * pass while the function the app calls answered something else.
+			 */
 			contents:
-				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service";',
+				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/venv-paths";',
 			resolveDir: process.cwd(),
 		},
 		bundle: true,
@@ -6291,7 +6297,9 @@ test("the comparison's subject is the serving install, not a stale number or the
 });
 
 /**
- * The ownership guard itself, over every shape it claims to cover. Its own case rather than another branch of the check above, because the guard is
+ * The ownership guard itself, over every shape it claims to cover - and over the
+ * verdict that decides the remedy, not just the list it is taken from. Its own case
+ * rather than another branch of the check above, because the guard is
  * the thing that was wrong and two of its three shapes are not reachable by
  * planting a tree on a darwin host: `managedVenvPath` answers under `userData` on
  * Windows and under `~/.config` on Linux, so the only way to assert those shapes
@@ -6299,6 +6307,18 @@ test("the comparison's subject is the serving install, not a stale number or the
  * `platform` and is exported at all. A case that planted a darwin tree would have
  * covered one shape out of three and passed while the other two stayed broken,
  * which is precisely how this shipped (review round 1, R1).
+ *
+ * BOTH FLAVOURS, and the verdict rather than the list (review round 2, R6): the
+ * app's environment is named by `packaged`, so a list carrying only the asking
+ * instance's name covered the sibling by accident on darwin - where both names sit
+ * under `managed-python`, which shape 1 already contains - and not at all on win32
+ * and linux, where the venv root is the platform's own and nothing else names it.
+ * A daemon serving from the app's OTHER environment was therefore judged external
+ * there, and the arm that resolves for an external install is the pip one: exactly
+ * the instruction the guard exists to remove, offered for the app's own tree. The
+ * verdict is asserted through `appOwnsInstallRoot`, the function the check itself
+ * calls, because "which arm resolves" is the finding and the root list is only
+ * how it was reached.
  */
 test("the app's own install roots cover every shape, and a root is inside itself", async () => {
 	/*
@@ -6316,7 +6336,12 @@ test("the app's own install roots cover every shape, and a root is inside itself
 		temp: tmpdir(),
 	};
 	const { service } = await loadUpdateServiceModule();
-	const { appOwnedInstallRoots, isWithinAnyRoot } = service;
+	const {
+		appOwnedInstallRoots,
+		appOwnsInstallRoot,
+		isWithinAnyRoot,
+		managedVenvPath,
+	} = service;
 	const support = join(
 		home,
 		"Library",
@@ -6324,55 +6349,93 @@ test("the app's own install roots cover every shape, and a root is inside itself
 		"Local Operator",
 	);
 	for (const platform of ["darwin", "win32", "linux"]) {
-		const roots = appOwnedInstallRoots({
-			platform,
-			home,
-			appDataPath: appData,
-			packaged: true,
-		});
 		/*
-		 * Four entries, three shapes: the post-split parent, the two pre-split venv
-		 * names, and this instance's own environment. Asserted as a count so a root
-		 * list that quietly lost one cannot pass by covering the others.
+		 * Every platform under BOTH flavours, because that pair is what R6 turned on:
+		 * `managedVenvPath` answers one name per call, chosen by `packaged`, and the
+		 * app's OTHER environment is the one the server actually reports on the
+		 * machines where a dev instance adopts the installed app's daemon.
 		 */
-		assert.equal(roots.length, 4, `${platform}: ${JSON.stringify(roots)}`);
-		for (const root of roots) {
-			assert.ok(
-				isWithinAnyRoot(roots, root),
-				`${platform}: the root ITSELF is not read as inside: ${root}`,
+		for (const packaged of [true, false]) {
+			const input = { platform, home, appDataPath: appData, packaged };
+			const roots = appOwnedInstallRoots(input);
+			/*
+			 * Five entries, four shapes: the post-split parent, the two pre-split venv
+			 * names, and the app's own environment under each flavour name. Asserted as a
+			 * count so a root list that quietly lost one cannot pass by covering the
+			 * others.
+			 */
+			assert.equal(
+				roots.length,
+				5,
+				`${platform}/${packaged}: ${JSON.stringify(roots)}`,
 			);
-			assert.ok(
-				isWithinAnyRoot(
-					roots,
-					join(root, "lib", "python3.12", "site-packages"),
-				),
-				`${platform}: a tree under ${root} is not read as inside`,
-			);
-		}
-		/*
-		 * Named this way round rather than by index, so a reordered list still has to
-		 * contain each shape: the two pre-split names, a generation under the
-		 * post-split parent, and this instance's own environment on the platform whose
-		 * answer is NOT under the parent.
-		 */
-		for (const owned of [
-			join(support, "managed-python"),
-			join(support, "managed-python", "packaged", "environments", "x-y"),
-			join(support, "local-operator-venv"),
-			join(support, "local-operator-venv-dev"),
-			join(
-				platform === "win32"
-					? appData
-					: platform === "linux"
-						? join(home, ".config", "local-operator")
-						: join(support, "managed-python"),
-				"local-operator-venv",
-			),
-		]) {
-			assert.ok(
-				isWithinAnyRoot(roots, owned),
-				`${platform}: ${owned} is the app's own and is not read as inside`,
-			);
+			for (const root of roots) {
+				assert.ok(
+					isWithinAnyRoot(roots, root),
+					`${platform}/${packaged}: the root ITSELF is not read as inside: ${root}`,
+				);
+				assert.ok(
+					isWithinAnyRoot(
+						roots,
+						join(root, "lib", "python3.12", "site-packages"),
+					),
+					`${platform}/${packaged}: a tree under ${root} is not read as inside`,
+				);
+			}
+			/*
+			 * Named this way round rather than by index, so a reordered list still has to
+			 * contain each shape: the two pre-split names, a generation under the
+			 * post-split parent, and the app's own environment on the platform whose answer
+			 * is NOT under the parent - both flavours of it.
+			 */
+			for (const owned of [
+				join(support, "managed-python"),
+				join(support, "managed-python", "packaged", "environments", "x-y"),
+				join(support, "local-operator-venv"),
+				join(support, "local-operator-venv-dev"),
+				managedVenvPath(input),
+				managedVenvPath({ ...input, packaged: !packaged }),
+			]) {
+				assert.ok(
+					isWithinAnyRoot(roots, owned),
+					`${platform}/${packaged}: ${owned} is the app's own and is not read as inside`,
+				);
+			}
+			/*
+			 * The CONSEQUENCE, asked of the function the check itself calls. Ownership
+			 * is what decides the remedy, so the app's own environment under EITHER
+			 * flavour name has to answer owned - that is the arm where no package
+			 * manager's command is offered for the app's tree (R6) - while a tree the app
+			 * does not own, and a shared-prefix neighbour of the name beside it, answer
+			 * false. The neighbour is the case a substring test would have matched: the
+			 * same stem with one more component.
+			 */
+			for (const flavour of [true, false]) {
+				const sibling = managedVenvPath({ ...input, packaged: flavour });
+				assert.equal(
+					appOwnsInstallRoot(input, sibling),
+					true,
+					`${platform}/${packaged}: the app's own environment (packaged=${flavour}) at ${sibling} must read as owned, or the check offers a package manager for the app's tree`,
+				);
+			}
+			for (const external of [
+				join(home, "synthetic-external-install"),
+				/*
+				 * The shared-prefix neighbour only discriminates where the venv root is the
+				 * platform's OWN directory - `%APPDATA%\local-operator-venv-dev` on Windows,
+				 * `~/.config/local-operator/...` on Linux - because the same stem with one
+				 * more component is then a directory BESIDE it. On darwin the name lives
+				 * under `managed-python`, which the app owns wholesale, so a name that
+				 * merely starts with one of its children is genuinely inside.
+				 */
+				...(platform === "darwin" ? [] : [`${managedVenvPath(input)}-other`]),
+			]) {
+				assert.equal(
+					appOwnsInstallRoot(input, external),
+					false,
+					`${platform}/${packaged}: ${external} is not the app's own and is read as inside`,
+				);
+			}
 		}
 	}
 
@@ -6387,8 +6450,7 @@ test("the app's own install roots cover every shape, and a root is inside itself
 	 * containment rule's own comment is about, which a substring test would have
 	 * matched, and a tree that shares no root with any of them, where `path.relative`
 	 * echoes its input back.
-	 */
-	for (const outside of [
+	 */ for (const outside of [
 		join(home, "synthetic-external-install"),
 		`${join(support, "managed-python")}-other`,
 		join(support, "elsewhere"),

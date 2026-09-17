@@ -2056,11 +2056,19 @@ export const STORIES = [
 	 * the app is current and the server trails, so one press of Check for updates
 	 * offers the server release. The story scripts the whole answer - both
 	 * channels' own events and the verdict the check returns - because the defect
-	 * is the panel and the snackbar disagreeing, and it is captured on two trees
-	 * (this one and a worktree at the pre-fix commit) so the pair shows the
-	 * contradiction rather than arguing it. Captured from a PRODUCTION Storybook
-	 * build, because the button does not check at all when import.meta.env.DEV is
-	 * true; see the story's own note.
+	 * is the panel and the snackbar disagreeing.
+	 *
+	 * ONE TREE, NOT TWO (design round 2, D3). This comment used to say the pair was
+	 * captured on two trees, "this one and a worktree at the pre-fix commit". It is
+	 * not, and the set contains no pre-fix-tree capture: every frame here is a frame
+	 * of THIS build, and the `before-the-fix` half is the same build rendering the
+	 * verdict `origin/main` produced for this machine's readings - the producer's
+	 * answer quoted, which is what `before-the-fix/`'s own section in this set's
+	 * README says and why a panel-copy change moves that half too. The stale sentence
+	 * was left by the round that rewrote that README for the same finding.
+	 *
+	 * Captured from a PRODUCTION Storybook build, because the button does not check
+	 * at all when import.meta.env.DEV is true; see the story's own note.
 	 */
 	[
 		"settings-app-updates-section--server-update-offered",

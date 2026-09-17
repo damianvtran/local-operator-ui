@@ -169,4 +169,23 @@ check judged, runs past the fold and is reached by scrolling the card. Before
 this round it was 609px of `overflow-y: visible` with no scroll container
 anywhere, so the tail was painted outside a window the app permits and could not
 be read or copied at all (design round 1, D1). The frames show the bounded card:
-its bottom edge is inside the frame, with the scrollbar the fix introduces.
+its bottom edge inside the frame at its cap, with the tail of the Details value
+below the fold and the card's own scroll container as what reaches it.
+
+**No frame in this set shows that card's scrollbar, and none can** (design round
+2, D1). An earlier version of the paragraph above claimed the frames show "the
+scrollbar the fix introduces"; that is withdrawn rather than argued, because two
+properties of the capture path put a scrollbar out of reach of this rig and the
+round-2 scan of the card's right edge down its full height in all twelve themes
+finds no thumb. The rig spawns its one Chrome with `--hide-scrollbars`, so no
+frame it has ever taken contains one. And these frames are Storybook's, while the
+app's scrollbar styling arrives from `GlobalScrollbarStyles` — an inline `<style>`
+carrying `*::-webkit-scrollbar { width: 8px }`, thumb `border-control` — which
+`src/renderer/src/main.tsx` mounts and `.storybook/preview.tsx` does not: the
+preview imports `@renderer/styles/index.css`, which carries no scrollbar rule, so
+a frame here differs from the app on exactly the element this fix adds. What the
+committed pixels do prove is the **geometry** — a card closed at its cap inside
+the window, which is also the proof that its content overflows and that the card's
+own scroll container is what reaches the tail — and that is what the round
+measured in all twelve themes. Whether the overflowing tail is discoverable
+follows from the app's own stylesheet, not from these bytes.
