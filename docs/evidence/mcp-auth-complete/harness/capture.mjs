@@ -126,7 +126,18 @@ let viteLog = "";
 
 const teardown = () => {
 	if (vite) {
-		vite.kill("SIGKILL");
+		/*
+		 * The GROUP, not the wrapper this handle names. `pnpm` is a shim that execs
+		 * the Vite server as a child, so a signal to the wrapper alone leaves the
+		 * server running and holding the port — and the run that ends on the error
+		 * path is exactly the one that has to clean up after itself. See the spawn's
+		 * own note.
+		 */
+		try {
+			process.kill(-vite.pid, "SIGKILL");
+		} catch {
+			vite.kill("SIGKILL");
+		}
 		vite = null;
 	}
 	if (chrome) {
@@ -237,6 +248,16 @@ async function main() {
 			cwd: ROOT,
 			env: { ...process.env, MCP_AUTH_EVIDENCE_PORT: String(PORT) },
 			stdio: ["ignore", "pipe", "pipe"],
+			/*
+			 * `detached` puts the wrapper and the Vite server it execs into a process
+			 * group of their own, which is the only handle that reaches the server:
+			 * `vite.kill()` alone signals the `pnpm` shim and leaves the server
+			 * holding the port, so a run that ends on its error path (a page that
+			 * never reports its state) used to leak one and make the next run fail
+			 * for a reason that reads as a state failure (QA round 1, Q3). The
+			 * teardown signals the group for the same reason.
+			 */
+			detached: true,
 		},
 	);
 	const collect = (chunk) => {
