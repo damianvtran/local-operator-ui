@@ -265,6 +265,7 @@ const SCROLL_BUTTON =
 	"src/renderer/src/features/chat/components/scroll-to-bottom-button.tsx";
 const PANEL =
 	"src/renderer/src/features/chat/components/run-details/run-panel.tsx";
+const CONTENT = "src/renderer/src/features/chat/components/chat-content.tsx";
 
 /* ---------------------------------------------------------------- */
 /* The nothing state                                                 */
@@ -1645,6 +1646,72 @@ test("the pane consumes the request: leave a reader, scroll the plan in, retire 
 	);
 	assert.doesNotMatch(reveal, /\.focus\(/, "focus is never taken by a reveal");
 	assert.doesNotMatch(reveal, /behavior/, "a reveal never animates the scroll");
+	/*
+	 * Focus is never taken and the move is never animated: `branding.md` § 5
+	 * reserves motion for entrances, and a pane that glided its own reading
+	 * position under someone already reading would move the text they are on. What
+	 * is left to pin here is the smooth-scroll spelling that would not need
+	 * `scrollIntoView` at all — `scroll-behavior: smooth` on the region, or a
+	 * `behavior: "smooth"` option. The assertion that named
+	 * `scrollIntoView({ block: "start", behavior… })` was dead weight once the ban
+	 * above went in (round 1, N2): it could never fire.
+	 */
+	assert.doesNotMatch(source, /smooth/);
+});
+
+test("the escape ladder accepts the chip, which is a third way in", () => {
+	const source = code(PANEL);
+	/*
+	 * Three controls open this pane: the header trigger, the composer's plan chip
+	 * (the reveal path this change is about) and anything inside the pane. The
+	 * ladder's guard named two of them, so the user who opened the pane the way
+	 * this flow opens it had no `Escape` out of it at all (round 1, U2) — measured
+	 * with the chip's own close control off-screen at 1024x673 in the round's
+	 * frames. The composer's own `Escape` is untouched: the chip is a button in the
+	 * status row, not the textarea that owns that key.
+	 */
+	assert.match(source, /closest\("\[data-status-plan\]"\)/);
+	assert.match(source, /const mine = fromTrigger \|\| fromChip \|\| inPane;/);
+});
+
+test("the pane's floor is its contract minimum, not the user's preference", () => {
+	const content = code(CONTENT);
+	/*
+	 * A preference pinned as a floor is not a floor: the pane asked for 420 and
+	 * refused to render narrower, so at any window the row could not host 420 the
+	 * pane's right edge - its close control and its scrollbar - sat past the window
+	 * with the row's `overflow-hidden` hiding the difference (116px at 1024x673 with
+	 * the rail expanded, 340px at the app's 800x600 floor; round 1, D1/U1). The fix
+	 * is the canvas dock's own rule from this file, applied to this slot: the
+	 * preference is the `width`, the rendered box has NO floor (`minWidth: 0`, which
+	 * is also what lets a flex item shrink below its content minimum), and the 320
+	 * stays where it belongs - as the divider's drag floor.
+	 *
+	 * Round 2 (U6) added the other half of that rule, because a drag floor the pane
+	 * cannot render is a floor that lies: with the wrapper floored at 0, the pane
+	 * renders `min(preference, what the row leaves)`, so a drag in a row that could
+	 * not host the preference moved a stored number while the pane stood still. The
+	 * divider's value is now the MEASURED width and its floor is the 320 only when
+	 * the row can host it - otherwise the range collapses onto the drawn width and a
+	 * write is refused (measured: seven real drags moved the preference 420 -> 360 ->
+	 * 320 -> 440 -> 640 while the pane stayed 303px and the separator never moved).
+	 */
+	assert.match(content, /const RUN_PANEL_MIN_PX = 320;/);
+	assert.match(
+		content,
+		/minWidth=\{\s*runPanelResizable \? RUN_PANEL_MIN_PX : runPanelDividerValue,?\s*\}/,
+	);
+	assert.match(content, /sidebarWidth=\{runPanelDividerValue\}/);
+	assert.match(content, /minWidth: 0,/);
+	assert.doesNotMatch(content, /minWidth: effectiveRunPanelWidth/);
+	/*
+	 * And the pane's width-derived layout (`tallyBudget`) is handed the width the
+	 * pane is DRAWN at, measured on the wrapper, not the preference it asked for:
+	 * a shrunk pane budgeted against 420 sheds for a width it does not have and
+	 * truncates at the width it does.
+	 */
+	assert.match(content, /paneWidth=\{renderedRunPanelWidth\}/);
+	assert.match(content, /new ResizeObserver\(measure\)/);
 });
 
 test("the reveal moves ONE region, and its arithmetic is the region's own", () => {

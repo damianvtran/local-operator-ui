@@ -392,7 +392,14 @@ export type RunPanelReveal = {
  */
 const DEFAULT_CANVAS_WIDTH = 800;
 const DEFAULT_CHAT_SIDEBAR_WIDTH = 280;
-const DEFAULT_RUN_PANEL_WIDTH = 420;
+/**
+ * Exported because the pane's reset path needs the NUMBER, not the write: a
+ * double-click on the divider stores this width directly, and the divider's own
+ * contract is that the value it stores is one the pane will render. Read here so
+ * the reset can be routed through the same clamped write a drag goes through,
+ * instead of around it (`chat-content.tsx`).
+ */
+export const DEFAULT_RUN_PANEL_WIDTH = 420;
 /** The browser pane's default, and the design's number rather than a fit: see
  * `browserPanelWidth` for why a page wants 640 where a roster wants 420. */
 const DEFAULT_BROWSER_PANEL_WIDTH = 640;

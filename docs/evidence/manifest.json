@@ -1,9 +1,9 @@
 {
-  "head": "be66aa4650ac7350d8ca490e27820b4352b6ab42",
+  "head": "afad580bf833ffda12e53aedb1ad4a57fdab3864",
   "headNote": "RE-CAPTURED, NOT RE-STAMPED: all thirty-three `panels-analytics` states were re-taken in all twelve themes (396 frames) at `be66aa465`, on the merged tree. Two of them were wrong before this pass and one set had never been uniform since the rebase: `session-free` and `session-free-narrow` predated `readAt` entering the stories' base args, so they rendered `· all sessions` where the app renders `· all sessions · as of 12:00` (design round 4, D13); `no-daily-rows`, `this-session-only` and `unpriced` carried a pre-#266 by-session table, so one directory held two applications - the frames against main's own `README.md` rows for the strip and the pager beside them (D15); and the other nine populated states were this branch's pre-merge capture beside main's post-#266 ones. Re-taking the whole directory set is what makes the set uniform again rather than moving the seam. `srcTree`/`scriptsTree` are `git rev-parse HEAD:src`/`HEAD:scripts` for the commit this file ships in; `frames`/`surfaces`/`themes` are re-derived on this tree with `check-evidence.mjs`'s own walkers. `head`/`refreshedAtHead` name this lineage's own commits: a pre-rebase spelling is an ancestor of no ref, and a citation a reviewer cannot resolve is not a citation. What the rebase folded is recorded in `partialCapture.rebaseOntoSessionTablePass`; what this pass re-took, and how it was verified, in `partialCapture.roundFourRecaptureNote`.",
-  "srcTree": "6701889b58516a4e8a9c3d6bf780b2c3ff782396",
-  "scriptsTree": "5ab603e0bebdb7356ba67367bbfe5ac73aeed9c2",
-  "dirtyWorkingTree": false,
+  "srcTree": "a7efeb06ab320f8f71c325c4d78069278e055d98",
+  "scriptsTree": "09eabfab364db57010c8558ab59a9c14c65197c5",
+  "dirtyWorkingTree": true,
   "capturedAt": "2026-09-16T20:05:00.000Z",
   "frames": 4930,
   "surfaces": 547,
@@ -14,10 +14,10 @@
     "themes": "RE-DERIVED FOR THE SEVENTH FOLD: 12 theme names in the `THEMES` literal, counted the same way, and unchanged by the fold - neither side changes the theme list, so the base's, main's and this tree's all read 12.\n\nRE-DERIVED FOR THE SIXTH FOLD: 12 theme names in the `THEMES` literal, counted the same way, and unchanged by the fold - neither side changes the theme list, so the base's, main's and this tree's all read 12.\n\nRE-DERIVED FOR THE FIFTH FOLD: 12 theme names in the `THEMES` literal, counted the same way, and unchanged by the fold - neither side changes the theme list, so the base's, main's and this tree's all read 12.\n\n12 theme names in the `capture-evidence.mjs` THEMES literal, unchanged by this pass and by the fold with `origin/main` - which is what keeps each of the twelve per-directory frames a like-for-like pair.\n\nMAIN'S OWN RECORD FOR THIS FIELD, DISPLACED BY THIS FOLD AND KEPT HERE UNALTERED (main's tip at the fold was `eac9f8754`, PR #275): RE-DERIVED ON THE THIRD FOLD (the merge of `efa8b2fab` into `11271f643`): 12 theme names in the `THEMES` literal, counted the same way. Neither side of the fold changes the theme list - `main`'s window adds stories, not themes - so 12 is the base's, `main`'s and this tree's alike. Earlier: RE-DERIVED ON THE THIRD FOLD (the merge of `efa8b2fab` into `11271f643`): 12 theme names in the `THEMES` literal, counted the same way. Neither side of the fold changes the theme list - `main`'s window adds stories, not themes - so 12 is the base's, `main`'s and this tree's alike. Earlier: RE-DERIVED ON THE SECOND FOLD (the merge of `e5e39de55` into `5f6b8d14d`): 12 theme names in the `THEMES` literal, counted the same way `check-evidence.mjs` counts them (`^\\t\"` inside the block). Neither side of the fold changes the theme list, so 12 is the base's, `main`'s and this tree's alike. RE-DERIVED ON THE FOLDED TREE (`2322eb114`): 12 theme names in the `THEMES` literal, counted the same way `check-evidence.mjs` counts them (`^\\t\"` inside the block). Neither side of the fold changes the theme list, so 12 is the base's, `main`'s and this tree's alike. Earlier: 12 theme names in the merged `capture-evidence.mjs` THEMES literal. Unchanged by this pass, and the baseline set was captured at the same 12 - which is what makes each of its directories a per-theme twin of the swept one beside it. 12 theme names in the `capture-evidence.mjs` THEMES literal, counted the same way. Neither side changes the theme list, so the count is the base's.\n\nMAIN'S OWN RECORD FOR THIS FIELD, DISPLACED BY THIS FOLD AND KEPT HERE UNALTERED (main's tip at the fold was `e89142ac6`, PR #275): What `themes` counts: the palettes in `capture-evidence.mjs`'s THEMES literal - the set that keeps each per-directory frame a like-for-like pair across the declared palettes. THE NUMBER IS NOT RESTATED HERE; read the `themes` field, which the gate re-checks. Unlike the two above this one has not moved since the sets were declared, and it is still written this way, because \"stable so far\" is the argument that produced the other two."
   },
   "partialCapture": {
-    "refreshedAt": "2026-09-17T06:05:26.764Z",
-    "refreshedAtHead": "be66aa4650ac7350d8ca490e27820b4352b6ab42",
+    "refreshedAt": "2026-09-17T07:24:30.989Z",
+    "refreshedAtHead": "afad580bf833ffda12e53aedb1ad4a57fdab3864",
     "refreshedFromHead": "166b3f1244a71ef84e89da341b9ec2bcb72649e5",
-    "refreshedFrames": 2778,
+    "refreshedFrames": 3174,
     "collapseGuardRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by the `Collapse all` guard's CI wiring (`test(settings): run the Collapse all guard in CI, and make it exit when it fails`), a scripts-only follow-up to this set: `scriptsTree` 11f234964 -> 1eafe2fc2. A commit that moves `scripts/` invalidates the stamp for every frame that ships in it whatever the branch's own delta is, and this delta is one test file plus its wiring and the list that runs it - no file under `src/` moves, no frame is re-taken, and no surface this set captures is touched, so the frames remain pictures of the tree they ship in. `srcTree`, `head`, `capturedAt`, `frames`, `surfaces` and `themes` are unchanged. Recorded here because the next author's alternative is rediscovering a red desktop suite with the cause in a file they did not open. RE-STAMPED ONCE MORE BY THAT PR'S ROUND-1 REMEDIATION (`test(settings): arm the collapse guard's teardown before it mounts`), which moves `scripts/` for the same reason this field exists in the first place: `scriptsTree` 1eafe2fc2 -> 526abb73. The delta is still one file under `scripts/` - the guard's teardown is armed before the mount creates anything rather than after the render, its three cases carry a per-test `timeout`, and its prose is corrected - together with `.github/workflows/ci.yml`, which no stamp in this file covers. No file under `src/` moves, no frame is re-taken, and `srcTree`, `head`, `capturedAt`, `frames`, `surfaces` and `themes` are unchanged.",
     "refreshedStories": [
       "chat-sidebar-current-row--selected-row",
@@ -1707,6 +1707,33 @@
       },
       "framesStillValid": "THE RE-CAPTURED FRAMES ARE STILL PICTURES OF THIS TREE, and that is a measurement rather than an assumption, because the fold moves `src/`: nine files of the three panels' import CLOSURE (walked from `analytics-panel.stories.tsx`, `failovers-panel.stories.tsx` and `info-panel.stories.tsx`, 59 files) are files main moved. Eight of the nine are COMMENT-ONLY - `picker-host.tsx` (30 lines: \"all twelve themes\" reflowed to \"every one of the palettes\"), `failovers-panel.tsx`, `proportion-bar.tsx`, `destination-pickers.tsx`, `usage-view.tsx`, `slash-commands.tsx`, `chart-frame.tsx`, `index.css` - and `message-input.tsx`, the send card's own file, likewise: its 8/9-line diff moves one comment's line breaks and nothing else. The ninth is `styles/themes.generated.css`, which gained 1,599 lines and lost one: an APPENDED `[data-theme=\"alucard\"]` block, so no existing palette's token values move and the twelve themes this set photographs are untouched. Nothing in the closure therefore repaints a frame, and no frame was re-taken by this fold.",
       "note": "The PR went `CONFLICTING`/`DIRTY` on this push - a conflicted PR receives no CI run at all - which is the whole reason the fold is here rather than deferred to the next round."
+    },
+    "foldOntoRunPanelReveal": {
+      "what": "The fold of `origin/main` = `f1de2eb21` (the run panel's reveal fix, #207, and the evidence that came with it) into the round-4 head `afad580bf`. `main` moved 50 files. Two conflicted and both are resolved by meaning rather than by side; this is a MERGE, not a rebase, so every sha the review rounds read still stands.",
+      "base": "f1de2eb211d895937c499fccaac03661420548b4",
+      "branchHeadBeforeMerge": "afad580bf833ffda12e53aedb1ad4a57fdab3864",
+      "conflicted": [
+        "docs/evidence/manifest.json",
+        "package.json"
+      ],
+      "autoMerged": [
+        "src/renderer/src/features/chat/components/chat-content.tsx",
+        "src/renderer/src/features/chat/components/run-details/*",
+        "src/renderer/src/features/chat/pickers/panels/story-scroll.ts",
+        "src/renderer/src/shared/lib/scroll.ts",
+        "src/renderer/src/shared/store/ui-preferences-store.ts"
+      ],
+      "resolution": {
+        "package.json": "`test:desktop`'s hand-written list, resolved as the union again: main's 130 files with this branch's `scripts/panel-read-policy.test.mjs` in its own place, 131 entries, no duplicate. `version` stays main's `0.26.0`; the branch still carries no bump of its own.",
+        "docs/evidence/manifest.json": "Same rules as the previous fold, which `capture-evidence.mjs` states for itself: `head`, `headNote` and the pass-describing fields are THIS branch's, the listing fields are the union, `frames`/`surfaces`/`themes` and both tree stamps are re-derived from the merged tree, and main's `refreshedAtHeadNote` is not carried back in. Main's own pass numbers are under `preFoldPass`."
+      },
+      "frameImpact": "MEASURED, because the fold moves `src/` and the round-4 re-capture is what the design round signed off - a fold that repainted a frame would invalidate that sign-off silently. Two surfaces, two methods, both run rather than argued. PANELS: the three story files' import closure (164 files) intersects main's movement in four - `pickers/panels/story-scroll.ts`, `shared/lib/scroll.ts`, `run-details/run-detail-model.ts` and `shared/store/ui-preferences-store.ts`. `story-scroll.ts` is a REAL change (`scrollRegionToTop` instead of `scrollIntoView`) but it is reachable only from the PLAY of `info-panel.stories.tsx` and `session-panel.stories.tsx`, and the only panels frame this branch ships for either is `panels-info/unavailable`, whose story has no play and therefore never scrolls; `shared/lib/scroll.ts` is imported by `story-scroll.ts` and `run-panel.tsx` and by no panel; `ui-preferences-store.ts` only exports a constant it already declared; and the panels read no preferences at all (`grep -rl ui-preferences-store src/renderer/src/features/chat/pickers/panels` is empty). Then the measurement rather than the argument: all 396 frames were RE-CAPTURED on the folded tree, and 57 differ from the committed bytes at all - max RMSE 0.00125, and at most 43 pixels above a 4% threshold, against 1,407 at the smallest drawn change this set contains. No frame was redrawn. Those 57 encoding-level bytes were then REVERTED rather than committed, so the fold's diff stays about the fold; the measurement above is the record that the frames still hold. SEND CARD: `chat-content.tsx` IS a real change (103 lines, the pane's rendered-width budget) and it sits in the card's closure, so it could not be settled by inspection. The worktree was BUILT at the folded tree and the round-4 rig was re-run against it: it reaches the same state with the same alert text and the same `Restore message` / `Discard message` controls, and the frame it produced differs from the committed one only by the clock in the transcript (`2:08 AM` -> `3:27 AM`) and 1,294 pixels at a 4% fuzz on a mean absolute difference of 0.028/255 - so the committed frame stands and nothing was re-shot."
+    },
+    "preFoldPass": {
+      "refreshedAt": "2026-09-16T23:57:46.424Z",
+      "refreshedAtHead": "4cd055f875a85f739e304e7ba2d5d40a14e6811a",
+      "refreshedFromHead": "166b3f1244a71ef84e89da341b9ec2bcb72649e5",
+      "refreshedFrames": 2429
     }
   },
   "supplementary": [
@@ -2507,6 +2534,21 @@
         "It also makes the legacy surface agree with the canonical one, which has always hugged its picture (`canonical-image.tsx` wraps it in `inline-block`), so the change reads as a consistency gain rather than obviously as a regression. The frame pair is the evidence; the decision (one class on the wrapper either way) belongs to the design round, not to a re-statement of the after frame.",
         "And it settles what the round-1 re-take's drift is: the re-captured `in-thread` frame is geometry-identical to the round-1 commit (the picture's edges measure the same at y=300 in every theme re-checked), so the sub-percent pixel differences that pass reported are re-rasterisation inside the picture's own box rather than a moved row."
       ]
+    },
+    {
+      "path": "run-panel-reveal",
+      "frames": 13,
+      "surfaces": 9,
+      "themes": 2,
+      "source": "The BUILT app (`pnpm build` + `npx electron .`, `LOCAL_OPERATOR_UI_WINDOW_MODE=headless`, its own `--user-data-dir` under the OS temp dir, every inherited `CMUX_*` stripped) driven over raw CDP by the committed `scripts/run-panel-reveal-proof.mjs`, against a real `local_operator` backend on an isolated `LOCAL_OPERATOR_CONFIG_DIR` whose session was seeded by the committed `scripts/seed-plan-session.mjs`. The press is a real `Input.dispatchMouseEvent` at the chip's painted centre; CDP focus emulation is enabled (a window that is never shown cannot be focused, and Escape - the pane's own ladder - is dropped without it), which is why every frame shows the composer's focus ring. Frames are lossless WebP of the app's own window at devicePixelRatio 2.",
+      "why": [
+        "The defect is a MOVEMENT, and a movement is what a moving picture would show - these are stills of the frame before and after one real press of the composer's plan chip. `before-fix` is the BUILT app of unmodified origin/main (8f80697c8, the v0.24.0 the operator runs); `after-fix` is this branch's build of the same tree plus the container-scoped scroll. Both are the same window sizes, the same seeded session and the same gesture.",
+        "One fact is written in the readme beside this set rather than into a frame, because no frame carries it: the vertical axis of the operator's report is NOT reproduced. No ancestor of the pane ever had vertical scrollable overflow (scrollHeight - clientHeight was 0 for every box outside the pane at 1380x900, 1024x673 and 800x600, in both builds), so the walk could not scroll the frame vertically. What moved is the chat column's slot row, horizontally: 108px at the operator's own 1024x673 and 221px at 800x600, taking the column, the transcript and the composer with it.",
+        "The 800x600 and 1380x900 pairs are not decoration. 800x600 is the app's own window floor, where the same walk moves the column 221px; 1380x900 is the default window the app opens in, where NOTHING moved in either build, because the row fits there - which is why a defect that only appears at a narrower window survived every frame this repository had.",
+        "A set no sweep can re-derive: a sweep photographs Storybook stories with `scripts/capture-evidence.mjs`, and this claim is about the app's whole frame in a real window at three sizes, over a real backend. The readme beside the frames names the three commands that stand the rig up, and the proof driver (`scripts/run-panel-reveal-proof.mjs`) is committed beside them.",
+        "What these frames do NOT show, and what this change DOES do: the pane's own FIT. The frames are the pre-fit build's, so in them the pane sits at left: 721 and is clipped at 1024, exactly as it is when opened from the header trigger on unmodified origin/main - the reveal was masking that clipping, not causing it. The fit is part of this change rather than a separate decision (the wrapper takes the preference as its width with no floor, so the pane takes what the row has left), and the numbers it produces are not in these frames: they are in the readbacks committed under `readbacks/` and tabulated in the readme's *Round 2's verification* section, which carries 303/419/251/79 with clip 0 in every one. Corrected in the design round 3 (D15), where this paragraph still described the branch as it was before the fit landed."
+      ],
+      "capturedAt": "2026-09-15, from the base build at 8f80697c8 and this branch's build in one sitting"
     }
   ],
   "remediationRecord": {
@@ -3119,7 +3161,20 @@
       "srcTree": "0e6364f02151ff409919e0e89bd91b492ea0b4de",
       "scriptsTree": "e8f08c852f321f80cd627dd3fba5e6d2cd58e804",
       "dirtyWorkingTree": true
-    }
+    },
+    "reStamps": [
+      {
+        "at": "2026-09-17, on `fix/run-panel-reveal-view-shift`, on the fold onto `origin/main` at `562bc5837` (head `6cb1445b5`)",
+        "by": "PR #207",
+        "why": "The branch's fold onto a moved `main`, and the only thing this branch adds to this file is its own `run-panel-reveal` declaration, re-applied once at the head. The replay takes the incoming base's file at every conflict - it is a derived aggregate, and main's fold chain owns the counts, the stamps and the note - so the commits this branch had stacked on top of it replay as empty and are dropped rather than fighting the base for the same fields. The stamps below are re-derived from the tree this head carries, and the values this entry replaces were main's own: `head` `4cd055f87`, `srcTree` `7e0a96b69`, `scriptsTree` `34e8bc0be`. No swept frame was re-taken and none is claimed to describe this tree.",
+        "replaced": {
+          "head": "4cd055f875a85f739e304e7ba2d5d40a14e6811a",
+          "srcTree": "7e0a96b69fc218432b2d170121f654005a43783c",
+          "scriptsTree": "34e8bc0be45896ee0e0fa9788248855ec2604bdf",
+          "capturedAt": "2026-09-16T20:05:00.000Z"
+        }
+      }
+    ]
   },
   "upstreamComposerCapture": {
     "sourceManifest": "a8f6bc4b9:docs/evidence/manifest.json",
