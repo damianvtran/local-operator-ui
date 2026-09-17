@@ -15,8 +15,12 @@ press-800x600-before-fix/localOperatorLight.webp    press-800x600-after-fix/loca
 press-1380x900-before-fix/localOperatorDark.webp    press-1380x900-after-fix/localOperatorDark.webp
 ```
 
-`before-fix` is the BUILT app of unmodified `origin/main` (`8f80697c8`), which is
-the v0.24.0 the operator runs; `after-fix` is this branch's own build.
+`before-fix` is the BUILT app of unmodified `origin/main` at `8f80697c8` — the
+branch's ORIGINAL base and the v0.24.0 the operator reported the defect from;
+`after-fix` is this branch's own build. The current merge base is `5c53e1c75`,
+which has since landed the same region-scoped reveal from another branch: read
+*Re-derived on the merge base* below before treating the `before-fix` half as
+"the tree this lands on".
 
 **The readings are committed with the frames.** Each directory carries the
 `<theme>.json` the driver wrote, byte for byte — every scroll box's
@@ -114,17 +118,26 @@ directions, and its sign depends on the width the column had before the press:
 
 | window | rail | column before → after | band top | band height |
 | --- | --- | --- | --- | --- |
-| 1024x673 | expanded | 500 → 220 | 483 → 457 (**26 up**) | 158 → 184 |
-| 1024x673 | collapsed | 696 → 276 | 441 → 483 (**42 down**) | 200 → 158 |
-| 800x600 | either | 500 or 328 → 220 | 410 → 384 (**26 up**) | 158 → 184 |
-| 1380x900 | expanded | 640 → 460 | 700 → 710 (**10 down**) | 168 → 158 |
+| 1024x673 | expanded | 524 → 220 | 483 → 457 (**26 up**) | 158 → 184 |
+| 1024x673 | collapsed | 696 → 276 | 441 → 457 (**16 down**) | 200 → 184 |
+| 800x600 | expanded | 300 → 220 | 410 → 384 (**26 up**) | 158 → 184 |
+| 800x600 | collapsed | 472 → 220 | 410 → 384 (**26 up**) | 158 → 184 |
+| 1380x900 | expanded | 880 → 460 | 700 → 710 (**10 down**) | 168 → 158 |
 
-The measured band heights are 158px at a 276px and a 524px column, 184px at
+The measured band heights are 158px at a 524px and a 460px column, 184px at
 220px, and 200px at 696px. So "the composer also moves up 26px in both builds"
-was true of one row of that table and false of the others — and in the
+was true of one row of that table and false of the others — in the
 rail-collapsed state the operator is in, the band moves the other way. The band's
 move is the pane opening, not the reveal: it is identical on both builds and on
 the header-trigger path, and it is unchanged by this fix.
+
+**Re-derived on the merge base `5c53e1c75` and on this head**, after the pane's
+fit change moved the rows. The first version of this table read `696 → 276 /
+441 → 483 (42 down) / 200 → 158` for the collapsed row and `640 → 460` for the
+1380 column, which were the pre-fit and pre-`5c53e1c75` arithmetic; both are
+corrected against the runs above rather than carried, and the collapsed row now
+agrees with the pane's own fit (the pane takes its full 419px preference there,
+so the column loses 420px and the band's tallest step is 184, not 158).
 
 ## What the fix is
 
@@ -137,6 +150,15 @@ ancestor is touched either way. The reader-first, request-holding, nonce-retirem
 and focus-stays-put behaviours the effect encoded are unchanged. The Escape
 ladder now also accepts a press that came from the composer's plan chip, which is
 the third control that opens this pane and the one this whole flow is reached by.
+
+**The Escape half, measured on both ends** (round 1, U2). One press of the chip
+with focus left on it, then one `Escape`, on the same rig at 1024x673 with the
+rail expanded: on the merge base the pane is still open afterwards (`paneOpen:
+true`, focus still on the chip — the ladder's guard refused it, which is the
+finding); on this head the pane is closed (`paneOpen: false`) and focus is back on
+the chip. The ban is deliberately narrow: the composer's own `Escape` is
+untouched, because the chip is a button in the status row and not the textarea
+that owns that key.
 
 ## The pane's fit, which the same change had to settle
 
@@ -202,6 +224,15 @@ with the rail expanded agrees. So the two `focus()` calls are left as they are,
 and this is the measurement that deferral rests on rather than the argument that
 used to carry it.
 
+**This reading is carried, not re-taken, and it is one of the heavy verifications
+the machine hold at the foot of this file stopped.** It was measured on the
+pre-fit base, where the geometry it is about (116px of the focused row outside a
+1024px window) actually existed; on this head the pane fits, that row is inside
+the window, and there is no clipping left for a focus to scroll into view. A fresh
+`--focus-probe` pass on this head is owed — see *What was NOT re-run* — so the
+finding is closed on this measurement plus the fit change that removes its
+premise, not on a run of the new head.
+
 The full gesture the review asked for — press the chip WITH a child reader open —
 is not reachable with a seeded fixture, and that is worth stating plainly: the
 plan chip only exists once a runtime is engaged, and engaging it replaces the job
@@ -246,21 +277,69 @@ own `--user-data-dir` under the system temp dir and strips any inherited
 backend is a real `local_operator` server; only its conversation content is
 synthetic.
 
-## Re-checked on the rebased base
+## Re-derived on the merge base `5c53e1c75`, which is not the tree these frames were shot against
 
-This branch was rebased onto `d0f86ffaf` (the 0.24.1 bump and #169's
-draft-splash/hydration fix, which touches `run-child-reader.tsx` — no overlap
-with the three files this change edits, and no scroll behaviour added upstream).
-The rebased build was re-driven at all three sizes and the readings are
-identical to the table above: no mover, chat column at `left: 500`, composer at
-`500`, pane at `721` (1024, 800) and `961` (1380).
+This branch was re-integrated onto `origin/main` at `5c53e1c75` (the 0.25.18
+release, ~14 PRs and 709 commits past `64c3283cb`). **Both ends were rebuilt and
+re-driven: the merge base and this head.** That changed what this set can claim,
+and the change is the important part of this section.
 
-The frames were re-taken and compared against these committed ones rather than
-assumed valid: at 1024x673 / 800x600 / 1380x900 the layout is identical and the
-only differing pixels are the content this set already declares as live — the
-transcript's clock and the MCP section's rows and tally (2.0% / 1.3% / 4.4% of
-pixels, all inside those regions; the dark ground and every rect measure the
-same). No frame was replaced for the rebase.
+**The frame shift this branch was opened for no longer reproduces on the merge
+base.** `#228`'s composer work (`c25a0a4e9`, "state-aware activity clauses, a
+region-scoped reveal and the chip group") landed the SAME region-scoped reveal
+upstream — `shared/lib/scroll.ts` and the `scrollRegionToTop(region, target)`
+assignment in `run-panel.tsx` are main's now, and this branch imports them rather
+than carrying a second copy. So the `before-fix` frames below are pictures of
+`8f80697c8` (v0.24.0, the build the operator reported the defect from — which is
+what they were always shot against); they are NOT pictures of the current merge
+base, and the `0 → 108` / `0 → 221` rows in the table above are a defect this
+branch fixed and the base has since fixed independently.
+
+Measured, both ends, on one rig: `movers: []` on the merge base at all four
+states driven, exactly as on this head.
+
+| state (1024x673 unless noted) | build | `movers` | pane rect | clip px | close control inside / hit | rows cut at a hard edge | `todosOffsetInRegion` |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| expanded, dark | base `5c53e1c75` | **0** | 721..1140 | **116** | no / no | **4** | n/a |
+| expanded, dark | this head | 0 | 721..**1024** | **0** | yes / yes | **0** | 0 |
+| expanded, light | this head | 0 | 721..1024 | 0 | yes / yes | 0 | 0 |
+| collapsed, dark | base `5c53e1c75` | 0 | 605..1024 | 0 | yes / yes | 0 | n/a |
+| collapsed, dark | this head | 0 | 605..1024 | 0 | yes / yes | 0 | 0 |
+| 800x600 expanded, dark | base `5c53e1c75` | 0 | 721..1140 | **340** | no / no | **4** | n/a |
+| 800x600 expanded, dark | this head | 0 | 721..**800** | **0** | yes / yes | **0** | 0 |
+| 800x600 expanded, light | this head | 0 | 721..800 | 0 | yes / yes | 0 | 0 |
+| 800x600 collapsed, dark | this head | 0 | 549..800 | 0 | yes / yes | 0 | 0 |
+| 1380x900 expanded, dark | base `5c53e1c75` | 0 | 961..1380 | 0 | yes / yes | 0 | n/a |
+| 1380x900 expanded, dark | this head | 0 | 961..1380 | 0 | yes / yes | 0 | 0 |
+
+Every reading in the table above still holds as a reading; what moved is what it
+is evidence FOR. On the merge base this PR's remaining user-visible delta is the
+pane's fit — 116px of clipped pane and four rows cut at a hard screen edge at the
+operator's own size, 340px and four rows at the app's floor, with the pane's own
+close control off-screen and not hit-testable in both — and that is what the
+`after-fix` half of the set now shows. The band's move is unchanged between the
+two ends, row for row.
+
+`todosOffsetInRegion` is `n/a` on the base because the region is NAMED by this
+change (`data-run-panel-region`); the base's own region still lands the section
+at its head, which `movers: []` and the pane rects show, but it carries no
+attribute to measure against.
+
+## What was NOT re-run, and why
+
+The machine these runs came from went into a declared hold (load average 465–635,
+swap 21.7 GB of 22.5 GB used) after the runs above, so three heavy verifications
+are owed rather than done:
+
+- a fresh `--focus-probe` pass on this head (the M1 reading below was taken on
+the base build and is carried, not re-taken);
+- a fresh `--reader=first` pass (the last one is on `8bd51bd03`);
+- re-capturing the frames. **No frame in this set was re-taken for the
+  re-integration.** The `after-fix` frames already show this head's post-fit
+  geometry (they were shot at `8bd51bd03`, which carries the fit change), and
+  the `before-fix` frames are `8f80697c8` by construction, so nothing in the set
+  is contradicted by the re-derived numbers above — but the two runs that would
+  refresh the readings that are not in this table are owed.
 
 ## Provenance and the limits of these frames
 
@@ -285,12 +364,11 @@ same). No frame was replaced for the rebase.
   Storybook stories, and this claim is about the app's whole frame in a real
   window at three sizes, over a backend. That is why the set is declared
   `supplementary` rather than swept.
-- **Not everything here is evidence about a fix.** The pane's own fit at these
-  widths is unchanged and unfixed: with the walk removed, the pane sits at
-  `left: 721` and its right 116px is clipped at 1024 (340px at 800). That is the
-  pane's existing behaviour on its other opening path too — opening it from the
-  header trigger on unmodified `origin/main` leaves the row at `scrollLeft 0`
-  with the pane at `left: 721, right: 1140` in a 1024px viewport — so the reveal
-  used to MASK the clipping rather than cause it. Making the pane fit is a
-  layout decision of its own (the pane's 320/420/640 width contract, and the chat
-  column's own minimum), and it is not this change.
+- **Not everything here is evidence about a fix.** This section used to say the
+  pane's own fit was "unchanged and unfixed" at these widths; the fit change in
+  this PR is what fixed it, and the numbers are in *The pane's fit* above and
+  re-derived in the table below (clip 116 → 0 at the operator's size, 340 → 0 at
+  the app's floor, rows cut at a hard edge 4 → 0, close control reachable in both).
+  What remains unfixed is the pane's WIDTH where the row cannot host it: 79px at
+  800x600 with the rail expanded, which is the chrome decision the record states
+  as open rather than made (`docs/run-sidebar.md` § 8).
