@@ -42,6 +42,7 @@ const {
 	SIGN_IN_UNKNOWN_GROUP,
 	compareModelRows,
 	modelOptions,
+	modelScopeNotice,
 	providerOptions,
 	scopedModelRows,
 	selectedOption,
@@ -274,7 +275,9 @@ test("a row the narrowing EXCLUDED is rescued with its real facts", () => {
 	const rescued = options.find((option) => option.id === "claude-opus-5");
 	assert.ok(rescued, "the current value must be listed");
 	assert.equal(rescued.name, "anthropic/claude-opus-5");
-	assert.equal(rescued.description, "anthropic, no credential");
+	// Sentence case, like the `Signed in` / `Needs sign-in` sub-lines it sits
+	// beside (design round 1, N1).
+	assert.equal(rescued.description, "Anthropic, no credential");
 	assert.equal(rescued.group, CURRENT_VALUE_GROUP);
 });
 
@@ -370,4 +373,124 @@ test("the field shows its stored value, or the value itself when unknown", () =>
 		id: "something-else",
 		name: "something-else",
 	});
+});
+
+/* --------------------------------------------------- the scope, said out loud */
+
+test("a narrowed model list says which provider it is narrowed to", () => {
+	// U2: the narrowing is right, and it was silent. A user who types a model
+	// they know and reads "Nothing matches that model" concludes the app does
+	// not have it, when the reason is a scope nobody named.
+	assert.equal(
+		modelScopeNotice(
+			{ kind: "model", hosting: "anthropic", hostingLabel: "Anthropic" },
+			CATALOGUE,
+		),
+		"Models for Anthropic",
+	);
+});
+
+test("a scope that could not be resolved says so, in the same line", () => {
+	// U3: seven of the seventeen providers in the reviewed registry have no
+	// catalogue rows at all, and in those states the list silently becomes the
+	// whole catalogue — where a model from another provider is pickable for a
+	// field that stores a bare id resolved against `hosting`. The user has to be
+	// able to see that from the list, not infer it from row prefixes.
+	assert.equal(
+		modelScopeNotice(
+			{ kind: "model", hosting: "lmstudio", hostingLabel: "LM Studio" },
+			CATALOGUE,
+		),
+		"No models listed for LM Studio. Showing all models.",
+	);
+	// An aggregator that carries no rows of its own - OpenRouter in the
+	// reviewed environment - is the same state, and so is a hosting id the
+	// catalogue spells differently.
+	assert.equal(
+		modelScopeNotice({ kind: "model", hosting: "zzz" }, CATALOGUE),
+		"No models listed for Zzz. Showing all models.",
+	);
+});
+
+test("there is nothing to say when nothing is scoped", () => {
+	// The subagent tiers store a selector, so their list is not narrowed; an
+	// empty hosting is not a scope that failed but no scope at all; and a
+	// catalogue that has not arrived yet is not evidence that the scope failed.
+	assert.equal(
+		modelScopeNotice({ kind: "model", hosting: "" }, CATALOGUE),
+		null,
+	);
+	assert.equal(
+		modelScopeNotice(
+			{ kind: "tier", hosting: "anthropic", hostingLabel: "Anthropic" },
+			CATALOGUE,
+		),
+		null,
+	);
+	assert.equal(
+		modelScopeNotice({ kind: "model", hosting: "anthropic" }, undefined),
+		null,
+	);
+});
+
+test("a provider id the catalogue names reads in sentence case, like its neighbours", () => {
+	// N1: the sub-line sits beside "Signed in" and "Needs sign-in", and one
+	// lowercase prefix among them reads as a different kind of fact.
+	const options = modelOptions(CATALOGUE, {
+		kind: "model",
+		hosting: "anthropic",
+		current: "",
+	});
+	const opus = options.find((entry) => entry.id === "claude-opus-5");
+	assert.equal(opus?.description, "Anthropic, no credential");
+});
+
+test("a picked row keeps its own label when two rows share one stored id", () => {
+	// R1-5: `model_name` stores a bare id, and a direct provider and an
+	// aggregator can both carry it. Resolving by id alone shows whichever row
+	// comes first, so the field's text visibly swaps a moment after the pick.
+	const shared = {
+		credentials_known: true,
+		models: [
+			row({
+				provider: "anthropic",
+				model_id: "claude-opus-5",
+				selector: "anthropic/claude-opus-5",
+				connected: true,
+			}),
+			row({
+				provider: "openrouter",
+				model_id: "claude-opus-5",
+				selector: "openrouter/anthropic/claude-opus-5",
+				connected: true,
+				aggregated: true,
+			}),
+		],
+	};
+	const options = modelOptions(shared, {
+		kind: "model",
+		hosting: "",
+		current: "",
+	});
+	assert.equal(options.length, 2);
+	// Both carry the same id, which is what the field stores …
+	assert.equal(options[0].id, options[1].id);
+	// … so the shown name is what has to break the tie.
+	assert.equal(
+		selectedOption(options, "claude-opus-5")?.name,
+		"anthropic/claude-opus-5",
+	);
+	assert.equal(
+		selectedOption(
+			options,
+			"claude-opus-5",
+			"openrouter/anthropic/claude-opus-5",
+		)?.name,
+		"openrouter/anthropic/claude-opus-5",
+	);
+	// A preference for a row that is not in the list does not hide the value.
+	assert.equal(
+		selectedOption(options, "claude-opus-5", "something-else")?.name,
+		"anthropic/claude-opus-5",
+	);
 });

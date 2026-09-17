@@ -103,7 +103,12 @@ export type SearchableSelectProps = {
 	 */
 	onCustomSubmit?: (text: string) => void;
 	helperText?: ReactNode;
-	/** Swaps the chevron for a spinner. */
+	/**
+	 * Swaps the chevron for a spinner, and makes the LIST say so: while the
+	 * options are on their way the list carries a loading row instead of the
+	 * empty text, because "nothing matches" is a claim about a query that has
+	 * not answered yet. See the list's own rendering below.
+	 */
 	busy?: boolean;
 	/** What `busy` means. The spinner has no adjacent text to borrow. */
 	busyLabel: string;
@@ -138,6 +143,26 @@ export type SearchableSelectProps = {
 	showLabel?: boolean;
 	/** What the list says when the filter matches nothing. */
 	emptyText?: string;
+	/**
+	 * A line at the TOP of the list saying what the list is a list OF.
+	 *
+	 * The filter is not the only thing that can narrow a list: an owner may
+	 * narrow it on its own (the settings model field is narrowed by the provider
+	 * above it), and a narrowing nobody states is a narrowing the user has to
+	 * infer from row text. Silent when the scope is obvious, which is what makes
+	 * it worth reading when it is there.
+	 */
+	listNotice?: ReactNode;
+	/**
+	 * Renders a LAST row carrying the text in the field, and names it. Opt-in,
+	 * because committing free text is the owner's decision (`onCustomSubmit`) and
+	 * a field that rejects free text must not offer the row.
+	 *
+	 * It exists so that "assist, never constrain" stays true without the trap it
+	 * otherwise sets: Enter takes the row the list is showing, so the typed value
+	 * needs a row of its own to be committable deliberately.
+	 */
+	customRowLabel?: (text: string) => string;
 };
 
 /**
@@ -176,29 +201,131 @@ export function filterSearchableOptions(
 }
 
 /**
- * What Enter does to the text in the field.
+ * One row of the listbox: a heading, an option, or the row that carries the
+ * text the user typed.
  *
- * `highlighted` is the row the arrow keys are on, or null. An exact name match
- * beats free text, so typing a model's full name selects that model rather
- * than saving the name as a custom id; anything else is the caller's to
- * interpret, and an empty buffer is nobody's - committing it would turn
- * "delete the text and press Enter" into a write of the empty string, which is
- * `onClear`'s job to do deliberately.
+ * `index` is the row's position in the KEYBOARD's own numbering — options
+ * first, the typed-text row last — which is what `aria-activedescendant` names
+ * and what every resolver below is written in. Headings carry no index because
+ * the keyboard cannot land on one.
+ */
+/** A row the keyboard can land on, which is every row but a heading. */
+export type ComboboxOptionRow =
+	| { kind: "option"; option: SearchableOption; index: number }
+	| { kind: "custom"; text: string; index: number };
+
+export type ComboboxRow = { kind: "group"; label: string } | ComboboxOptionRow;
+
+/**
+ * The rows the listbox draws, in order: the options the filter admits, grouped,
+ * then - when this field commits free text - one LAST row carrying the typed
+ * text.
+ *
+ * ## Why the typed value is a row of its own, and not just a fallback
+ *
+ * "Assist, never constrain" means a value no listing knows must still be
+ * committable, and Enter is how this control commits. That makes Enter
+ * ambiguous on exactly the gesture a searchable list exists for: type `ant`,
+ * see one row, press Enter. The row is the answer the user is looking at, so
+ * that is what Enter takes - and the typed text gets its own row at the END, so
+ * committing it stays a visible, deliberate act rather than the invisible
+ * consequence of a keystroke nobody could see the effect of.
+ *
+ * The row is built only when the caller sets `customRow` (a field that rejects
+ * free text has nothing for it to carry) and only when the text is not already
+ * an option's own name, because then the option's row IS the typed value.
+ */
+export function buildComboboxRows(
+	options: SearchableOption[],
+	query: string,
+	selectedName: string,
+	customRow: boolean,
+): ComboboxRow[] {
+	const visible = filterSearchableOptions(options, query, selectedName);
+	const out: ComboboxRow[] = [];
+	let currentGroup: string | undefined;
+	visible.forEach((option, index) => {
+		if (option.group && option.group !== currentGroup) {
+			currentGroup = option.group;
+			out.push({ kind: "group", label: option.group });
+		}
+		out.push({ kind: "option", option, index });
+	});
+	const typed = query.trim();
+	if (
+		customRow &&
+		typed &&
+		!visible.some((option) => fold(option.name) === fold(typed))
+	) {
+		out.push({ kind: "custom", text: typed, index: visible.length });
+	}
+	return out;
+}
+
+/** How many rows the keyboard can reach. A heading is not a row. */
+export const navigableRowCount = (rows: ComboboxRow[]): number =>
+	rows.reduce((count, row) => (row.kind === "group" ? count : count + 1), 0);
+
+/**
+ * The row the keyboard is on: the stored highlight, or the row this filter's
+ * own gesture implies.
+ *
+ * `activeIndex` is what the arrow keys last set and it is -1 until they do, and
+ * that -1 must not be resolved blindly into "row 0", because two states look
+ * alike and mean opposite things:
+ *
+ * - **the field at rest** - opened with its own value in it, so the filter is
+ *   showing every row. The first row of an unnarrowed list is arbitrary, and
+ *   resolving Enter to it would let "click the field, press Enter" silently
+ *   replace the value. Nothing is resolved: no row is marked, Enter is nobody's.
+ * - **a query narrowing the list** - typed text that is not the current
+ *   selection's own name. Whatever the user is looking at is the answer, so the
+ *   first row is resolved; an exact name match wins instead, because typing a
+ *   whole name is a deliberate act and the filter can admit a longer name ahead
+ *   of the shorter one that matches exactly.
+ *
+ * This is the half of the fix the keyboard contract rests on: it is what makes
+ * "type three characters, press Enter" commit the row the list is showing
+ * rather than the three characters.
+ */
+export function resolveActiveIndex(
+	rows: ComboboxRow[],
+	query: string,
+	selectedName: string,
+	activeIndex: number,
+): number {
+	const navigable = navigableRowCount(rows);
+	if (navigable === 0) return -1;
+	if (activeIndex >= 0 && activeIndex < navigable) return activeIndex;
+	const typed = query.trim();
+	if (!typed || fold(typed) === fold(selectedName)) return -1;
+	const exact = rows.find(
+		(row): row is ComboboxOptionRow =>
+			row.kind === "option" && fold(row.option.name) === fold(typed),
+	);
+	return exact ? exact.index : 0;
+}
+
+/**
+ * What Enter commits: the resolved active row, whether that is an option or the
+ * row carrying the typed text. The rules that decide WHICH row that is live in
+ * `buildComboboxRows` and `resolveActiveIndex` above; this reads the answer.
  */
 export function resolveEnter(
-	options: SearchableOption[],
-	typed: string,
-	highlighted: SearchableOption | null,
+	rows: ComboboxRow[],
+	activeIndex: number,
 ):
 	| { kind: "option"; option: SearchableOption }
 	| { kind: "custom"; text: string }
 	| { kind: "none" } {
-	if (highlighted) return { kind: "option", option: highlighted };
-	const text = typed.trim();
-	if (!text) return { kind: "none" };
-	const match = options.find((option) => fold(option.name) === fold(text));
-	if (match) return { kind: "option", option: match };
-	return { kind: "custom", text };
+	if (activeIndex < 0) return { kind: "none" };
+	const row = rows.find(
+		(candidate) =>
+			candidate.kind !== "group" && candidate.index === activeIndex,
+	);
+	if (!row || row.kind === "group") return { kind: "none" };
+	if (row.kind === "custom") return { kind: "custom", text: row.text };
+	return { kind: "option", option: row.option };
 }
 
 export const SearchableSelect: FC<SearchableSelectProps> = ({
@@ -220,6 +347,8 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 	ariaDescribedBy,
 	showLabel = true,
 	emptyText = "No matches",
+	listNotice,
+	customRowLabel,
 }) => {
 	const baseId = useId();
 	const inputId = `${baseId}-input`;
@@ -256,40 +385,53 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 		setQuery(selectedName);
 	}, [selectedName]);
 
-	const visible = useMemo(
-		() => filterSearchableOptions(options, query, selectedName),
-		[options, query, selectedName],
+	/*
+	 * The rows on screen, and the two numbers the keyboard is written in:
+	 * `navigable` counts the rows it can reach (a heading is not a row, and the
+	 * typed-text row is one), and `resolvedIndex` is the row it is ON - the
+	 * stored highlight, or the first row of a list a query has narrowed.
+	 */
+	const rows = useMemo(
+		() =>
+			buildComboboxRows(
+				options,
+				query,
+				selectedName,
+				Boolean(onCustomSubmit && customRowLabel),
+			),
+		[options, query, selectedName, onCustomSubmit, customRowLabel],
+	);
+	const navigable = navigableRowCount(rows);
+	/*
+	 * The rows that are MATCHES, which is not the same as the rows the keyboard
+	 * can reach: the typed-value row is a fallback offered BESIDE the filter's
+	 * result, not a result. The empty message is keyed on this rather than on
+	 * `navigable`, so a query that matched nothing still says so above the row
+	 * that offers to commit it - otherwise adding that row would silently delete
+	 * the one sentence the list exists to say.
+	 */
+	const optionCount = rows.filter((row) => row.kind === "option").length;
+	const resolvedIndex = resolveActiveIndex(
+		rows,
+		query,
+		selectedName,
+		activeIndex,
 	);
 
-	optionRefs.current.length = visible.length;
+	optionRefs.current.length = navigable;
 
 	// A stale highlight after the list narrows would put Enter on a row the user
-	// can no longer see.
+	// can no longer see. Only the STORED highlight is dropped here; what the
+	// keyboard is on afterwards is the resolver's answer, not this reset's.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the list
 	useEffect(() => {
 		setActiveIndex(-1);
-	}, [visible]);
+	}, [rows]);
 
 	useEffect(() => {
-		if (!open || activeIndex < 0) return;
-		optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
-	}, [open, activeIndex]);
-
-	const rows = useMemo(() => {
-		const out: Array<
-			| { kind: "group"; label: string }
-			| { kind: "option"; option: SearchableOption; index: number }
-		> = [];
-		let currentGroup: string | undefined;
-		visible.forEach((option, index) => {
-			if (option.group && option.group !== currentGroup) {
-				currentGroup = option.group;
-				out.push({ kind: "group", label: option.group });
-			}
-			out.push({ kind: "option", option, index });
-		});
-		return out;
-	}, [visible]);
+		if (!open || resolvedIndex < 0) return;
+		optionRefs.current[resolvedIndex]?.scrollIntoView({ block: "nearest" });
+	}, [open, resolvedIndex]);
 
 	const commit = useCallback(
 		(option: SearchableOption) => {
@@ -300,17 +442,26 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 		[onSelect, setOpenState],
 	);
 
+	/** Committing the typed text, which is the row at the end of the list. */
+	const commitCustom = useCallback(
+		(text: string) => {
+			setOpenState(false);
+			if (onCustomSubmit && text !== selectedName) onCustomSubmit(text);
+		},
+		[onCustomSubmit, selectedName, setOpenState],
+	);
+
 	const revert = useCallback(() => {
 		setOpenState(false);
 		setQuery(selectedName);
 	}, [selectedName, setOpenState]);
 
 	const move = (delta: number) => {
-		if (visible.length === 0) return;
+		if (navigable === 0) return;
 		setActiveIndex((previous) => {
 			const next = previous + delta;
-			if (next < 0) return visible.length - 1;
-			if (next >= visible.length) return 0;
+			if (next < 0) return navigable - 1;
+			if (next >= navigable) return 0;
 			return next;
 		});
 	};
@@ -329,32 +480,31 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 			}
 			case "Home":
 			case "End": {
-				if (!open || visible.length === 0) return;
+				if (!open || navigable === 0) return;
 				event.preventDefault();
-				setActiveIndex(event.key === "Home" ? 0 : visible.length - 1);
+				setActiveIndex(event.key === "Home" ? 0 : navigable - 1);
 				return;
 			}
 			case "Enter": {
 				// Unconditional: this control lives inside forms, and a bare Enter
 				// that submits one while the list is open is not what was meant.
 				event.preventDefault();
-				const outcome = resolveEnter(
-					options,
-					query,
-					open && activeIndex >= 0 ? (visible[activeIndex] ?? null) : null,
-				);
+				/*
+				 * `resolvedIndex` rather than `activeIndex`: the row Enter takes is the
+				 * row the list is SHOWING as active, so a filter that admits one row
+				 * commits that row instead of the text that found it. `open`
+				 * gates it, because a closed list has nothing on screen to take -
+				 * which is what keeps Enter on a closed field inert rather than a
+				 * silent re-pick of whatever row happens to be first.
+				 */
+				const outcome = resolveEnter(rows, open ? resolvedIndex : -1);
 				if (outcome.kind === "option") {
 					commit(outcome.option);
 					return;
 				}
 				// The field is a text mode, not a popup that happens to accept
 				// typing. A popup that was open closes on a free-text commit.
-				if (outcome.kind === "custom") {
-					setOpenState(false);
-					if (onCustomSubmit && outcome.text !== selectedName) {
-						onCustomSubmit(outcome.text);
-					}
-				}
+				if (outcome.kind === "custom") commitCustom(outcome.text);
 				return;
 			}
 			case "Escape": {
@@ -371,7 +521,9 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 	};
 
 	const activeOptionId =
-		open && activeIndex >= 0 ? `${baseId}-option-${activeIndex}` : undefined;
+		open && resolvedIndex >= 0
+			? `${baseId}-option-${resolvedIndex}`
+			: undefined;
 
 	/**
 	 * The accessible name, and the two ways it can be supplied.
@@ -470,7 +622,16 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 									size="icon-sm"
 									type="button"
 									className="pointer-events-auto"
-									aria-label={`Clear ${name ?? "value"}`}
+									aria-label={
+										/*
+										 * Named for what the gesture does to THIS row, in the row's own
+										 * vocabulary. "Clear Default provider" reads as a command about a
+										 * noun; the clear button only ever renders where a row passes
+										 * `onClear`, which is the settings rows and their sentence-case
+										 * labels, so lowering the first word is safe here.
+										 */
+										name ? `Clear the ${name.toLowerCase()}` : "Clear value"
+									}
 									onMouseDown={(event) => event.preventDefault()}
 									onClick={() => {
 										onClear?.();
@@ -484,7 +645,16 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 								<Spinner size="sm" label={busyLabel} />
 							) : (
 								<ChevronDown
-									className="size-4 text-ink-dim"
+									/*
+									 * Steps to `ink-disabled` with the field it belongs to. The sibling
+									 * `Select` in the same rows does exactly this (`select.tsx`), and a
+									 * chevron that keeps its enabled ink on a disabled field is the one
+									 * part of the control that still looks live.
+									 */
+									className={cn(
+										"size-4",
+										disabled ? "text-ink-disabled" : "text-ink-dim",
+									)}
 									aria-hidden="true"
 								/>
 							)}
@@ -522,17 +692,51 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 						// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the listbox role is the WAI-ARIA combobox pattern for a popup driven from a text input.
 						role="listbox"
 						aria-label={name}
+						/*
+						 * The cap is deliberately the SHARED one (`max-h-72`, 288px, ~5.9 two-line
+						 * rows) and NOT the chat picker's `min(50vh,420px)`. Those pickers open
+						 * inside a dialog that owns the viewport; these rows sit in the settings
+						 * page's own scroll column, where a taller list pushes the rows under it -
+						 * the tier fields, `Save` and `Save all` - off the screen. The TUI caps its
+						 * own suggestions for exactly this reason and at eight rows
+						 * (`settings_ui`'s `_SUGGEST_ROWS`): a settings list is a field's picker,
+						 * not a browsing surface. Recorded here because the next reader will
+						 * compare the two caps and needs the reason the difference is deliberate.
+						 */
 						className="max-h-72 overflow-y-auto"
 					>
-						{rows.length === 0 && (
-							// `role="presentation"`: this is a message, not an option
-							// that cannot be chosen, and announcing it as one is a dead
-							// end for a screen reader.
+						{listNotice ? (
+							// The list's own scope, above its first row: what this list is a
+							// list OF, when the owner narrowed it for a reason the rows cannot
+							// show. Same register as a group heading, because that is what it
+							// is - the heading of everything under it.
+							<li
+								role="presentation"
+								className="px-2 pt-2 pb-1 text-meta text-ink-dim"
+							>
+								{listNotice}
+							</li>
+						) : null}
+						{optionCount === 0 && (
+							/*
+							 * One slot, two facts, and they must not read as each other. While the
+							 * options are on their way the list says SO, because "nothing matches"
+							 * is a claim about a query that has not answered yet - the shape
+							 * `docs/branding.md` records as "a loading state is not an empty
+							 * state". Once the query has answered, the empty text is chosen from
+							 * the OUTCOME by the owner (nothing matched / nothing listed yet /
+							 * the listing failed), which is why it is a prop rather than a
+							 * constant here.
+							 *
+							 * `role="presentation"`: this is a message, not an option that
+							 * cannot be chosen, and announcing it as one is a dead end for a
+							 * screen reader.
+							 */
 							<li
 								role="presentation"
 								className="px-2 py-1.5 text-body-sm text-ink-dim"
 							>
-								{emptyText}
+								{busy ? `${busyLabel}…` : emptyText}
 							</li>
 						)}
 						{rows.map((row) =>
@@ -544,7 +748,7 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 								>
 									{row.label}
 								</li>
-							) : (
+							) : row.kind === "option" ? (
 								/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the combobox input; the active option is announced through aria-activedescendant. */
 								/* biome-ignore lint/a11y/useKeyWithClickEvents: Arrow keys, Enter and Escape are handled on the combobox input, not on the option. */
 								<li
@@ -572,7 +776,7 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 										 * pointer mark carries - and `pnpm check-themes` asserts both the role
 										 * (the `combobox option active mark` row) and this call site (its pin).
 										 */
-										row.index === activeIndex &&
+										row.index === resolvedIndex &&
 											"bg-accent-wash outline-solid outline-1 -outline-offset-1 outline-control",
 									)}
 									onMouseEnter={() => setActiveIndex(row.index)}
@@ -589,6 +793,52 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 											{row.option.description}
 										</div>
 									) : null}
+								</li>
+							) : (
+								/*
+								 * The typed-text row: last in the list, the only row that commits what is
+								 * IN THE FIELD rather than an option, and the reason "assist, never
+								 * constrain" can hold without the trap it otherwise sets - Enter taking
+								 * the visible match would otherwise take away the only way to save a value
+								 * no listing knows.
+								 *
+								 * Styled as a row rather than as a button on purpose: it is reached by the
+								 * same Arrow keys as every other row, and it is announced as the option it
+								 * is.
+								 */
+								/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the combobox input; this row is announced through aria-activedescendant. */
+								/* biome-ignore lint/a11y/useKeyWithClickEvents: Arrow keys, Enter and Escape are handled on the combobox input, not on the row. */
+								<li
+									key={`custom-${row.text}`}
+									id={`${baseId}-option-${row.index}`}
+									// A hook rather than a class: a scene that counts "the rows the filter
+									// produced" must exclude this one, and excluding it by copy would break the
+									// day the copy changes.
+									data-combobox-row="typed"
+									// biome-ignore lint/a11y/useSemanticElements: a combobox option cannot be a native <option>.
+									// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the option role is part of the combobox listbox pattern.
+									role="option"
+									aria-selected={false}
+									ref={(node) => {
+										optionRefs.current[row.index] = node;
+									}}
+									className={cn(
+										"cursor-pointer rounded-sm px-2 py-1.5",
+										"transition-colors duration-fast ease-out-quart",
+										row.index === resolvedIndex &&
+											"bg-accent-wash outline-solid outline-1 -outline-offset-1 outline-control",
+									)}
+									onMouseEnter={() => setActiveIndex(row.index)}
+									onClick={() => commitCustom(row.text)}
+								>
+									<div className="flex items-center gap-2">
+										<span className="text-body-sm text-ink">
+											{customRowLabel ? customRowLabel(row.text) : row.text}
+										</span>
+									</div>
+									<div className="text-meta text-ink-muted">
+										Not in any listing; saved as typed.
+									</div>
 								</li>
 							),
 						)}

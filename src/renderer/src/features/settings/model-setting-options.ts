@@ -74,6 +74,19 @@ const SIGNED_IN_GROUP = "Signed in";
 const NEEDS_SIGN_IN_GROUP = "Needs sign-in";
 
 /**
+ * A provider id as the sub-line writes it.
+ *
+ * Sentence case, because the sub-line sits beside `Signed in` and
+ * `Needs sign-in` and one lowercase prefix among them reads as a different kind
+ * of fact rather than the same one (design N1). The id is all the CATALOGUE
+ * carries - the registry holds a display name, but it is a second fetch this
+ * row does not make, and inventing a table of names here would be a second
+ * source of truth for them.
+ */
+const providerLabel = (provider: string): string =>
+	provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : provider;
+
+/**
  * The order the provider groups are drawn in, which is the usable-first order
  * and not the registry's own.
  *
@@ -253,7 +266,7 @@ export function modelOptions(
 								? "Signed in"
 								: "Needs sign-in"
 							: undefined
-						: `${row.provider}${row.aggregated ? ", aggregated" : ""}${
+						: `${providerLabel(row.provider)}${row.aggregated ? ", aggregated" : ""}${
 								known && !row.connected ? ", no credential" : ""
 							}`,
 				group: groupOf(row),
@@ -263,6 +276,50 @@ export function modelOptions(
 
 	out.push(...currentValueRows(rows, catalogue, options));
 	return out;
+}
+
+/**
+ * What the model list says about the scope it is in, or null when there is
+ * nothing to say.
+ *
+ * The narrowing itself is right (`scopedModelRows` above): a bare model id is
+ * resolved against `hosting` at boot. What was missing was the sentence - the
+ * list is narrowed with nothing on screen saying so, so a user who types a
+ * model they know and reads "Nothing matches that model" concludes the app does
+ * not have it, when the real reason is a scope they were never told about
+ * (UX round 1, U2). And when the narrowing CANNOT map the hosting it silently
+ * becomes the whole catalogue, where a model from another provider is pickable
+ * for a field that stores a bare id (U3): 7 of 17 providers in the reviewed
+ * environment have no catalogue rows at all, so that state is ordinary rather
+ * than exotic.
+ *
+ * Two states, one line each, and the distinction is the point: a list that IS
+ * scoped says WHICH provider it is for, and a list whose scope could not be
+ * resolved says so in the user's own terms rather than leaving them to infer it
+ * from row prefixes.
+ */
+export function modelScopeNotice(
+	options: { kind: ComboKind; hosting: string; hostingLabel?: string },
+	catalogue: CatalogueInput,
+): string | null {
+	// The subagent tiers store a selector, so their list is not narrowed by
+	// anything and has no scope to state.
+	if (options.kind !== "model") return null;
+	const hosting = options.hosting.trim();
+	// No hosting is not a scope that failed; it is no scope at all, and a line
+	// about it would be noise on a field the user has not filled in yet.
+	if (!hosting) return null;
+	// A scope line is a statement ABOUT a list, so it needs one. Before the
+	// first fetch lands there is nothing to be scoped and nothing to say - the
+	// same rule as the list's own empty state, which must not claim an outcome
+	// a query has not produced.
+	const rows = catalogue?.models ?? [];
+	if (rows.length === 0) return null;
+	const name = options.hostingLabel ?? providerLabel(hosting);
+	const known = rows.some((row) => row.provider === hosting);
+	return known
+		? `Models for ${name}`
+		: `No models listed for ${name}. Showing all models.`;
 }
 
 /**
@@ -310,7 +367,7 @@ function currentValueRows(
 			id: current,
 			name: real?.selector ?? current,
 			description: real
-				? `${real.provider}${
+				? `${providerLabel(real.provider)}${
 						catalogue?.credentials_known === false
 							? ""
 							: real.connected
@@ -333,17 +390,28 @@ function currentValueRows(
  * selector of whichever row carries the stored bare id, and a value that
  * appears in no option is shown as itself. Returning null for an empty draft is
  * what makes the placeholder visible on a row that is unset.
+ *
+ * `preferredName` is the shown name of the row the user JUST picked, and it is
+ * needed because a bare id is not unique: a direct provider and an aggregator
+ * can carry one model id (`anthropic/claude-opus-5` and
+ * `openrouter/anthropic/claude-opus-5` both store `claude-opus-5`), so the first
+ * id match can be a different row than the one clicked and the field's text
+ * visibly swaps under the user a moment after the pick (review round 1, R1-5).
+ * The stored value is never affected - only which of two rows with that value is
+ * shown - so an unknown name falls back to the first match rather than hiding
+ * the value.
  */
 export function selectedOption(
 	options: readonly SearchableOption[],
 	value: string,
+	preferredName?: string,
 ): SearchableOption | null {
 	const wanted = value.trim();
 	if (!wanted) return null;
-	return (
-		options.find((option) => option.id === wanted) ?? {
-			id: wanted,
-			name: wanted,
-		}
-	);
+	const matches = options.filter((option) => option.id === wanted);
+	if (preferredName) {
+		const picked = matches.find((option) => option.name === preferredName);
+		if (picked) return picked;
+	}
+	return matches[0] ?? { id: wanted, name: wanted };
 }

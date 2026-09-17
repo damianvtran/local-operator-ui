@@ -47,6 +47,7 @@ import type { DesktopModelCatalogue } from "../../../../../shared/desktop-contro
 import { COMBO_PLACEHOLDER, type ComboKind } from "../backend-setting-combos";
 import {
 	modelOptions,
+	modelScopeNotice,
 	providerOptions,
 	selectedOption,
 } from "../model-setting-options";
@@ -105,8 +106,7 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 	 * screen at arrival and page open IS the intent there: one local IPC call
 	 * for a list of tens of rows.
 	 */
-	const providersEnabled =
-		kind === "provider" && desktopFeatureEnabled(capabilities.data, "auth");
+	const providersEnabled = desktopFeatureEnabled(capabilities.data, "auth");
 	const providers = useDesktopProviders(providersEnabled);
 
 	/*
@@ -129,6 +129,11 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 		kind !== "provider" &&
 		desktopFeatureEnabled(capabilities.data, "catalogues");
 	const [opened, setOpened] = useState(false);
+	/**
+	 * The shown name of the row the user last picked, used only to break the tie
+	 * between two options that carry one stored id.
+	 */
+	const [pickedName, setPickedName] = useState<string | undefined>(undefined);
 	const catalogue = useQuery({
 		queryKey: ["desktop", "models", false],
 		queryFn: () =>
@@ -171,7 +176,58 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 		? { title: listing.noticeDetail }
 		: {};
 
-	const selected = selectedOption(options, value);
+	const selected = selectedOption(options, value, pickedName);
+
+	/*
+	 * What the list says about its own scope. Only the model list has one - the
+	 * subagent tiers store a selector and the provider list is the registry
+	 * itself - and "Models for OpenRouter" needs the registry's own display name
+	 * rather than the id, which is why the registry is fetched for these rows
+	 * too: it is one IPC call under the key the hosting row already uses, so the
+	 * page pays for it once either way.
+	 */
+	const listNotice = useMemo(() => {
+		if (kind === "provider") return null;
+		return modelScopeNotice(
+			{
+				kind,
+				hosting: kind === "model" ? effectiveHosting : "",
+				hostingLabel: providers.data?.find(
+					(provider) => provider.id === effectiveHosting,
+				)?.name,
+			},
+			catalogue.data,
+		);
+	}, [kind, effectiveHosting, providers.data, catalogue.data]);
+
+	/*
+	 * The empty text is chosen from the OUTCOME, not from the capability. Three
+	 * facts can leave this list with no rows and they must not read as each
+	 * other: a query that matched nothing, a backend that cannot be asked at all
+	 * (no `catalogues` capability - an older server, where the field falls back
+	 * to what it was), and a listing that FAILED. The last one is why the row's
+	 * own danger helper and the list now say the same thing instead of the list
+	 * contradicting the sentence under it (design round 1, D1).
+	 *
+	 * The fourth no-rows state - still fetching - never reaches here: the list
+	 * says so itself while `busy`.
+	 */
+	const emptyText = useMemo(() => {
+		if (kind === "provider") {
+			if (providers.isError) return "Could not list providers";
+			return providersEnabled ? "No providers" : "Provider list unavailable";
+		}
+		if (listing.loadError) return "Could not list models";
+		return modelsEnabled
+			? "Nothing matches that model"
+			: "Model list unavailable";
+	}, [
+		kind,
+		providers.isError,
+		providersEnabled,
+		listing.loadError,
+		modelsEnabled,
+	]);
 
 	return (
 		<SearchableSelect
@@ -191,29 +247,30 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 			onOpenChange={(open) => {
 				if (open) setOpened(true);
 			}}
-			onSelect={(option) => onValueChange(option.id)}
+			onSelect={(option) => {
+				/*
+				 * The shown name is remembered beside the value, because a bare model id
+				 * can belong to two rows at once: a direct provider and an aggregator.
+				 * Without it the field re-renders with the FIRST row carrying that id,
+				 * which is not always the row just clicked (review round 1, R1-5).
+				 */
+				setPickedName(option.name);
+				onValueChange(option.id);
+			}}
 			/* The free-text escape hatch, and the whole of "suggestions assist,
 			   they do not constrain": what is committed is exactly what was
-			   typed, whether or not any catalogue has heard of it. */
+			   typed, whether or not any catalogue has heard of it. The row that
+			   carries it sits at the bottom of the list, so pressing Enter after
+			   typing a filter takes the row the list is SHOWING instead of
+			   silently storing the filter itself. */
 			onCustomSubmit={(text) => onValueChange(text)}
+			customRowLabel={(text) => `Use "${text}"`}
+			listNotice={listNotice}
 			/* Clearing is an explicit gesture rather than an empty buffer, so that
 			   "unset" (which `empty_unsets` writes as null) stays distinct from
 			   "typed something that matched nothing" (which is a value). */
 			onClear={() => onValueChange("")}
-			emptyText={
-				/*
-				 * Three different reasons for an empty list, and they must not read
-				 * as each other: a provider registry with nothing in it, a backend
-				 * that cannot be asked for a catalogue at all (no `catalogues`
-				 * capability — an older server, where the field falls back to what
-				 * it was), and a query that simply matched nothing.
-				 */
-				kind === "provider"
-					? "No providers"
-					: modelsEnabled
-						? "Nothing matches that model"
-						: "Model list unavailable"
-			}
+			emptyText={emptyText}
 			helperText={helper ? <span {...helperProps}>{helper}</span> : undefined}
 		/>
 	);
