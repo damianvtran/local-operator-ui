@@ -44,8 +44,8 @@ import {
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import {
 	PANEL_REQUEST_TTL_MS,
-	useChatPanelRequestStore,
-} from "@shared/store/chat-panel-request-store";
+	usePanelPresentationStore,
+} from "@shared/store/panel-presentation-store";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -63,7 +63,10 @@ import type {
 	DraftPickerSession,
 	PickerContext,
 } from "../pickers/destination-pickers";
-import { DESTINATIONS } from "../pickers/picker-registry";
+import {
+	DESTINATIONS,
+	destinationNeedsSession,
+} from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
 import { commandBudgetRefusal } from "../utils/message-budget";
@@ -287,6 +290,22 @@ export function useSlashDispatch({
 	// The one active presentation request. A new command replaces it; Esc or
 	// Done clears it. Consumed once per command receipt, never per reconnect.
 	const [picker, setPicker] = useState<PickerContext | null>(null);
+	/*
+	 * This hook IS the chat pane's presentation slot — `SessionPanel` in
+	 * `chat-page.tsx` is its only caller, and mounting that component is what
+	 * claiming the slot means. The shell's `PanelOutlet` reads the claim to decide
+	 * whether a machine panel has any other host to go to, so a pane that owned
+	 * the slot without saying so would leave the shell presenting over a live
+	 * conversation.
+	 *
+	 * Deliberately an effect rather than a render-time call: the claim is a
+	 * subscription's lifetime, and React's own double-invocation in development
+	 * must not leave it set after the component is gone.
+	 */
+	const claimPresenter = usePanelPresentationStore(
+		(state) => state.claimPresenter,
+	);
+	useEffect(() => claimPresenter(), [claimPresenter]);
 	/**
 	 * The control that opened the current picker, so Escape can give focus back.
 	 *
@@ -600,11 +619,109 @@ export function useSlashDispatch({
 				return "consumed";
 			}
 
+			/*
+			 * Present a MACHINE panel in the pane's own slot — `/info`, `/usage`,
+			 * `/analytics`.
+			 *
+			 * The one thing this does NOT do is post to `sessions.command` (design § 3,
+			 * § 13): for these destinations the endpoint's whole answer is a
+			 * `native_action` asking this surface to mount the same component, and its
+			 * path needs a session id the sessionless pane does not have. Measured, not
+			 * assumed — see the call sites below.
+			 *
+			 * `presentedSessionId` is a parameter rather than read from the hook,
+			 * because the two callers pass different things on purpose: `""` from a
+			 * pane with no conversation, which is what drops the panel's conversation
+			 * half, and the live id otherwise, which is what keeps the scope control
+			 * and the conversation section intact (§ 5-§ 7).
+			 *
+			 * Declared here rather than beside the other callbacks because it is
+			 * THIS dispatch's own branch: a machine panel is presented exactly where
+			 * a typed command is routed, and nowhere else.
+			 */
+			const presentMachinePanel = (
+				spec: SlashCommandMeta,
+				commandArgs: string,
+				presentedSessionId: string,
+			) => {
+				/*
+				 * The ONE place this branch records its invoker. Both of its call sites used
+				 * to set the same ref from the same expression immediately before calling
+				 * in here, which is idempotent and therefore harmless but reads as two
+				 * rules — code review round 1 (n4). A path whose invoker is not the focused
+				 * element should say so at its own call site rather than inherit a
+				 * second, contradictory assignment.
+				 */
+				invoker.current =
+					document.activeElement instanceof HTMLElement
+						? document.activeElement
+						: null;
+				setPicker({
+					action: {
+						kind: "native_action",
+						destination: spec.destination,
+						session_id: presentedSessionId,
+						/* `/usage <provider>` is the destination's only argument, and
+						 * the adapter reads it as the provider filter. */
+						args: commandArgs,
+						fields: [],
+						data: {},
+					},
+					spec,
+					sessionId: presentedSessionId,
+					canonical,
+					commands,
+					onClose: closePicker,
+					note,
+					dispatch: (invocation) => void dispatch(invocation),
+					rebind,
+				});
+			};
+
+			/*
+			 * A destination that addresses no conversation cannot be refused for
+			 * lacking one (design § 3.1). The predicate is exported from the
+			 * destination table rather than written here because the composer quotes
+			 * this same refusal before the keypress (`stagedNote`), and two copies of
+			 * it disagree the moment one of them learns about a machine panel.
+			 *
+			 * Written as a nested test rather than `!sessionId && …` deliberately:
+			 * everything BELOW this point was written under the invariant that the
+			 * pane addresses a session — the owner round trip, the
+			 * `PRESENT_DIRECTLY` adapters, the `/move` chip — and a conjunction
+			 * silently widens the type instead of leaving that invariant in place.
+			 */
 			if (!sessionId) {
-				note(
-					`/${spec.name} needs an open conversation. Start one first.`,
-					true,
-				);
+				if (destinationNeedsSession(spec.destination)) {
+					note(
+						`/${spec.name} needs an open conversation. Start one first.`,
+						true,
+					);
+					return "consumed";
+				}
+				presentMachinePanel(spec, args, "");
+				return "consumed";
+			}
+
+			/*
+			 * A MACHINE panel is presented here and never posted, with a session on
+			 * screen as well as without one.
+			 *
+			 * It describes the machine rather than a conversation, so it needs no
+			 * session and reads none — and the round trip it would otherwise take is
+			 * not a read: `sessions.command` answers a destination outside
+			 * `OWNER_COMMANDS` with a `native_action` this branch would then have to
+			 * mount, and its own path needs a session id a sessionless pane does not
+			 * have. Measured against a running backend (design § 13): `GET
+			 * /v1/desktop/analytics?days=7` and `GET /v1/desktop/info` both answer 200
+			 * with real data on a backend that has served no `sessions.command` POST
+			 * at all, so skipping the round trip loses nothing the user can see.
+			 *
+			 * Above the POST for that reason: the point is not to send the request in
+			 * the first place.
+			 */
+			if (entry?.kind === "machine-panel") {
+				presentMachinePanel(spec, args, sessionId);
 				return "consumed";
 			}
 
@@ -851,12 +968,16 @@ export function useSlashDispatch({
 	/*
 	 * A panel asked for from OUTSIDE this pane — the command palette.
 	 *
-	 * The palette owns no picker: `/info`, `/usage`, `/analytics` and `/session`
-	 * are destinations whose adapters need this pane's session handle, command
-	 * catalogue and rebind path, so the palette writes a REQUEST and this hook —
-	 * the one owner of the presentation slot — consumes it exactly the way a typed
-	 * command is consumed. Same destinations table, same adapters, same close
-	 * path; the palette's whole contribution is naming one.
+	 * The palette owns no picker: a destination's adapter needs this pane's session
+	 * handle, command catalogue and rebind path, so the palette writes a REQUEST
+	 * and this hook — the owner of the pane's presentation slot — consumes it
+	 * exactly the way a typed command is consumed. Same destinations table, same
+	 * adapters, same close path; the palette's whole contribution is naming one.
+	 *
+	 * The machine panels (`/info`, `/usage`, `/analytics`) are listed here BECAUSE
+	 * this pane is the claimant when it is mounted: they read no conversation, so
+	 * `PanelOutlet` presents them whenever no pane is up, but on a live
+	 * conversation the pane is the host that renders their conversation half.
 	 *
 	 * Two deliberate details:
 	 *
@@ -870,8 +991,8 @@ export function useSlashDispatch({
 	 *   it later would open a panel the user asked for in another context with
 	 *   nothing on screen to explain it (see the store's TTL note).
 	 */
-	const panelRequest = useChatPanelRequestStore((state) => state.request);
-	const consumePanelRequest = useChatPanelRequestStore(
+	const panelRequest = usePanelPresentationStore((state) => state.request);
+	const consumePanelRequest = usePanelPresentationStore(
 		(state) => state.consumePanel,
 	);
 	useEffect(() => {
@@ -879,7 +1000,15 @@ export function useSlashDispatch({
 		consumePanelRequest(panelRequest.nonce);
 		if (Date.now() - panelRequest.requestedAt > PANEL_REQUEST_TTL_MS) return;
 		const target = DESTINATIONS[panelRequest.destination];
-		if (target?.kind !== "picker") return;
+		/*
+		 * Both kinds a pane can present: a `picker` (every session-scoped
+		 * destination) and a `machine-panel` (`/info`, `/usage`, `/analytics`).
+		 * The pane is the claimant whenever it is mounted, so the machine panels
+		 * still land HERE when the user asked from a live conversation — which is
+		 * what keeps the scoped rendering (design § 7) rather than the shell's
+		 * machine-wide one.
+		 */
+		if (target?.kind !== "picker" && target?.kind !== "machine-panel") return;
 		/*
 		 * No invoking control: the row that asked for this closed with the palette,
 		 * and the palette restores focus to its own door. Leaving a stale element in
@@ -890,8 +1019,9 @@ export function useSlashDispatch({
 			action: {
 				kind: "native_action",
 				destination: panelRequest.destination,
-				// Empty on a draft pane, which the two session-scoped panels are never
-				// offered from; `info` and `usage` do not read it.
+				// Empty on a draft pane, which the session-scoped panels are never
+				// offered from; the machine panels read it as "no conversation in front
+				// of the user" and drop their conversation half for it.
 				session_id: sessionId ?? "",
 				args: "",
 				fields: [],
