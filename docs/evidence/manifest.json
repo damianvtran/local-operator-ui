@@ -1,7 +1,7 @@
 {
   "head": "2f3a77cd60bfe3df3f28de46e557adf5c302ca20",
   "headNote": "The merge this evidence rides: `2f3a77cd6`. `head` names it rather than the evidence commit after it, because that commit moves `docs/` only - the same statement the fold rule makes for every other pass in this file. The fold brought main's own frames and records with it (two declared sets, five swept story entries), so `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and `scriptsTree` are RE-DERIVED on the fused tree in this commit: the counts beside this note describe the tree that ships rather than either side's, which is group (4) of `citationConvention` and the fix for the stale `countsMean` round 1 filed as R5.",
-  "srcTree": "04e6b06b7a0fcbc9834c257b43bf6ca6924163cc",
+  "srcTree": "d81bb9365fbe5bb8161fcc537378fa41d79cfdb4",
   "scriptsTree": "0f3dd03469dc0ca033b0c3911ec2af054858731c",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-16T20:05:00.000Z",
