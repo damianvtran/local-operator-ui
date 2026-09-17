@@ -92,6 +92,7 @@ import {
 } from "../scheduled-task-model";
 import {
 	isRepeatCountArmable,
+	parseRepeatCount,
 	repeatEveryString,
 	wakePromptHead,
 } from "../scheduled-task-model";
@@ -198,7 +199,13 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 	const [preset, setPreset] = useState<FirstRunPreset>("in-an-hour");
 	const [pickedAt, setPickedAt] = useState<string | null>(null);
 	const [repeatMode, setRepeatMode] = useState<RepeatMode>("never");
-	const [repeatCount, setRepeatCount] = useState<number | "">(1);
+	/*
+	 * TEXT, not a number: the field is the thing the user is typing into, so the
+	 * state holds what it holds and the model parses it. Parsing at the change site
+	 * is what admitted `NaN` (`.5`) and truncated `1.5` - a value space wider than
+	 * the form's vocabulary, which is how R5-M1 and R5-M2 reached the store.
+	 */
+	const [repeatCount, setRepeatCount] = useState("1");
 	const [repeatUnit, setRepeatUnit] = useState<RepeatUnit>("hours");
 	const [ends, setEnds] = useState<Ends>("never");
 	const [endsAt, setEndsAt] = useState<string | null>(null);
@@ -256,7 +263,7 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 		setPreset(isEdit ? "keep" : "in-an-hour");
 		setPickedAt(null);
 		setRepeatMode(isEdit ? "keep" : "never");
-		setRepeatCount(1);
+		setRepeatCount("1");
 		setRepeatUnit("hours");
 		setEnds(isEdit ? "keep" : "never");
 		setEndsAt(null);
@@ -313,12 +320,20 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 	 * for a non-positive count, both of which a refusal covers (the interval
 	 * sentence for the absence, the floor's for the number).
 	 */
-	const repeatNamesAnInterval = repeatMode === "every" && repeatCount !== "";
+	const repeatCountValue = parseRepeatCount(repeatCount);
+	const repeatNamesAnInterval =
+		repeatMode === "every" && repeatCountValue !== null;
+	/*
+	 * `armableRepeat` stays gated on `repeatNamesAnInterval` rather than reading the
+	 * parse alone: on `never` the field still holds text, and the request must not
+	 * carry an `every` the form is not showing.
+	 */
 	const armableRepeat =
-		repeatNamesAnInterval && isRepeatCountArmable(repeatCount);
-	const repeatMs = repeatNamesAnInterval
-		? Number(repeatCount) * REPEAT_UNIT_MS[repeatUnit]
-		: null;
+		repeatNamesAnInterval && isRepeatCountArmable(repeatCountValue);
+	const repeatMs =
+		repeatNamesAnInterval && repeatCountValue !== null
+			? repeatCountValue * REPEAT_UNIT_MS[repeatUnit]
+			: null;
 
 	const needsConversation =
 		!isEdit && destination === "existing" && !conversationId;
@@ -349,7 +364,7 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 		 */
 		needsConversation,
 		hasConversationChoices: conversations.length > 0,
-		repeatIntervalEmpty: repeatMode === "every" && repeatCount === "",
+		repeatIntervalNotWhole: repeatMode === "every" && repeatCountValue === null,
 		repeatMs,
 		endsRuns: ends === "runs" && endsRuns !== "" ? endsRuns : null,
 		existingWakeCount,
@@ -414,8 +429,8 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 					 * recurrence the user did change is re-bounded by whatever the
 					 * `Ends` control says (`keep` omits both bounds).
 					 */
-					...(armableRepeat
-						? { every: repeatEveryString(Number(repeatCount), repeatUnit) }
+					...(armableRepeat && repeatCountValue !== null
+						? { every: repeatEveryString(repeatCountValue, repeatUnit) }
 						: {}),
 					...(repeatMode === "every" && ends === "date" && endsAt
 						? { until: endsAt }
@@ -436,8 +451,8 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				message: prompt.trim(),
 				/* A create always names a first run; `keep` is unreachable here. */
 				firstRun: when ?? { in: "1h" },
-				...(armableRepeat
-					? { every: repeatEveryString(Number(repeatCount), repeatUnit) }
+				...(armableRepeat && repeatCountValue !== null
+					? { every: repeatEveryString(repeatCountValue, repeatUnit) }
 					: {}),
 				...(repeatMode === "every" && ends === "date" && endsAt
 					? { until: endsAt }
@@ -718,17 +733,16 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 						<div className="flex items-center gap-2">
 							<Input
 								type="number"
+								// Hints for the field's own affordances, not the guard: the
+								// guard is `parseRepeatCount`, because the DOM enforces
+								// neither (`min` does not stop a cleared field and `step`
+								// does not stop a typed decimal).
 								min={1}
+								step={1}
 								aria-label="Repeat interval"
 								className="w-24"
 								value={repeatCount}
-								onChange={(event) =>
-									setRepeatCount(
-										event.target.value === ""
-											? ""
-											: Number.parseInt(event.target.value, 10),
-									)
-								}
+								onChange={(event) => setRepeatCount(event.target.value)}
 								disabled={pending}
 							/>
 							<Select

@@ -70,6 +70,7 @@ const {
 	toScheduledTaskRow,
 	SCHEDULES_CONVERSATION_READ,
 	isRepeatCountArmable,
+	parseRepeatCount,
 	retryWakeWrite,
 	validateScheduledTask,
 	DesktopControlError,
@@ -462,7 +463,7 @@ test("the dialog's refusals are inline, named, and independent", () => {
 		message: "read my email",
 		needsConversation: false,
 		hasConversationChoices: true,
-		repeatIntervalEmpty: false,
+		repeatIntervalNotWhole: false,
 		repeatMs: null,
 		endsRuns: null,
 		existingWakeCount: 0,
@@ -508,42 +509,100 @@ test("the dialog's refusals are inline, named, and independent", () => {
 		"and the refusal does NOT yield with it: an empty picker must stop the save",
 	);
 	/*
-	 * Q1, as the invariant: `Every` with a cleared interval is refused with its
-	 * own sentence and cannot be saved. The shipped defect was the opposite on both
-	 * counts - `Create` enabled, no sentence - and the store then held a wake whose
-	 * `every_ms` was null while the form said `Every` (measured by QA on the built
-	 * app, with frames). Refusing rather than substituting `1` is deliberate: the
-	 * fallback would leave the form claiming one repeat while sending another.
+	 * Q1, as the invariant: `Every` with no whole number in the interval field is
+	 * refused with its own sentence and cannot be saved. The shipped defect was the
+	 * opposite on both counts - `Create` enabled, no sentence - and the store then
+	 * held a wake whose `every_ms` was null while the form said `Every` (measured by
+	 * QA on the built app, with frames). Refusing rather than substituting `1` is
+	 * deliberate: the fallback would leave the form claiming one repeat while
+	 * sending another.
 	 */
 	assert.equal(
-		validateScheduledTask({ ...quiet, repeatIntervalEmpty: true })
+		validateScheduledTask({ ...quiet, repeatIntervalNotWhole: true })
 			.repeatInterval,
-		"Every needs an interval — how many minutes, hours, days or weeks between runs.",
+		"Every needs a whole number — how many minutes, hours, days or weeks between runs.",
 	);
 	assert.equal(
-		validateScheduledTask({ ...quiet, repeatIntervalEmpty: true }).invalid,
+		validateScheduledTask({ ...quiet, repeatIntervalNotWhole: true }).invalid,
 		true,
-		"Every with no interval must refuse the save, not arm a one-shot",
+		"Every with no whole number must refuse the save, not arm a one-shot",
 	);
 	assert.equal(
-		validateScheduledTask({ ...quiet, repeatIntervalEmpty: true }).repeat,
+		validateScheduledTask({ ...quiet, repeatIntervalNotWhole: true }).repeat,
 		"",
-		"an unarmable count leaves the floor nothing to judge, so the two never collide",
+		"a field holding no number leaves the floor nothing to judge, so the two never collide",
 	);
+
 	/*
-	 * The armability rule itself, which the refusal, the interval arithmetic and
-	 * both request bodies all read - the two-readings-of-one-condition shape Q1
-	 * found, now one function.
+	 * The value space the field's PARSER admits, which is the question QA's matrix
+	 * could not answer: it drove the integer neighbours, while the app's own engine
+	 * committed `.5` as text and `Number.parseInt` turned it into `NaN` - a value
+	 * that passed every guard reading the count, so `Create` was enabled, no
+	 * sentence was stated and the request omitted `every` (review round 5, R5-M1).
+	 * `1.5` truncated to `1h` on the same line (R5-M2).
+	 *
+	 * These cells assert the PARSE and the decision that reaches the store, never
+	 * the rendering: a value either cannot be submitted, or it is submitted with the
+	 * cadence the form states.
 	 */
-	assert.equal(isRepeatCountArmable(1), true);
-	assert.equal(isRepeatCountArmable(90), true);
-	assert.equal(isRepeatCountArmable(""), false, "the cleared field");
-	assert.equal(
-		isRepeatCountArmable(0),
-		false,
-		"min={1} is a hint the DOM does not enforce",
-	);
-	assert.equal(isRepeatCountArmable(-5), false);
+	for (const [text, expected] of [
+		["1", 1],
+		["2", 2],
+		["+5", 5],
+		[" 7 ", 7],
+		["1000", 1000],
+	]) {
+		assert.equal(
+			parseRepeatCount(text),
+			expected,
+			`"${text}" parses to a count`,
+		);
+		assert.equal(
+			isRepeatCountArmable(parseRepeatCount(text)),
+			true,
+			`"${text}" is armable`,
+		);
+	}
+	for (const text of [
+		"",
+		".5",
+		"1.5",
+		"0.5",
+		"abc",
+		"1e3",
+		"0x10",
+		"100000000000000000000",
+		"0",
+		"-5",
+	]) {
+		const parsed = parseRepeatCount(text);
+		assert.equal(
+			isRepeatCountArmable(parsed),
+			false,
+			`"${text}" must not be armable`,
+		);
+		/*
+		 * And the state the user meets: refused, with a sentence, from the same
+		 * derivation rather than from a control that merely looks disabled. `0` is the
+		 * one value in this list the parser admits, so it takes the floor's sentence
+		 * while every other takes the interval's - one predicate, two complementary
+		 * sentences, so a user never reads both and never reads neither.
+		 */
+		const refusals = validateScheduledTask({
+			...quiet,
+			repeatIntervalNotWhole: parsed === null,
+			repeatMs: parsed === null ? null : parsed * 3_600_000,
+		});
+		assert.equal(refusals.invalid, true, `"${text}" cannot be submitted`);
+		const sentence = refusals.repeatInterval || refusals.repeat;
+		assert.ok(
+			sentence.length > 0,
+			`"${text}" states why it cannot be submitted`,
+		);
+	}
+	/* `1.5` is not silently `1`: that substitution was R5-M2. */
+	assert.equal(parseRepeatCount("1.5"), null);
+	assert.notEqual(parseRepeatCount("1.5"), 1);
 
 	/* The ceiling still outranks the picker's sentence when both apply. */
 	assert.equal(

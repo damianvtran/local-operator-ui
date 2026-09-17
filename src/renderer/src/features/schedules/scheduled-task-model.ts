@@ -336,7 +336,7 @@ export type ScheduledTaskInput = {
 	 */
 	hasConversationChoices: boolean;
 	/**
-	 * Whether `Every`'s interval field is EMPTY (as opposed to holding a number).
+	 * Whether `Every`'s interval field holds something that is not a whole number.
 	 *
 	 * A separate field for the same reason `hasConversationChoices` is one above:
 	 * the empty field used to be NOTHING - no refusal, because the floor only
@@ -347,11 +347,14 @@ export type ScheduledTaskInput = {
 	 * wake silently becoming a single fire whose row then leaves the page (QA round
 	 * 1, Q1).
 	 *
-	 * The sentence it produces names the absence; a count that is merely too small
-	 * (`0`) is still a number the floor can judge, and keeps the floor's sentence.
-	 * The two are complements, so a user never reads both and never reads neither.
+	 * The sentence it produces says what the field wants; a whole number that is
+	 * merely too small (`0`, a negative) is still a number the floor can judge, and
+	 * keeps the floor's sentence. The two are complements, so a user never reads
+	 * both and never reads neither - and the parse behind this field is the same one
+	 * the request bodies read, which is what stops the form claiming a repeat while
+	 * the request arms a one-shot (QA round 1 Q1, review round 5 R5-M1).
 	 */
-	repeatIntervalEmpty: boolean;
+	repeatIntervalNotWhole: boolean;
 	/** `null` when the form is not naming a repeat. */
 	repeatMs: number | null;
 	/** The `After N runs` bound, or `null`. */
@@ -368,7 +371,7 @@ export type ScheduledTaskRefusals = {
 	prompt: string;
 	/** Under the conversation picker. */
 	conversation: string;
-	/** Under the Repeat control's interval field, for the empty field. */
+	/** Under the Repeat control's interval field, when it holds no whole number. */
 	repeatInterval: string;
 	/** Under the Repeat control. */
 	repeat: string;
@@ -401,8 +404,8 @@ export const validateScheduledTask = (
 	 * defect one layer down. Its own key, so it can never collide with the floor -
 	 * an unarmable count produces no interval for the floor to judge.
 	 */
-	const repeatInterval = input.repeatIntervalEmpty
-		? "Every needs an interval — how many minutes, hours, days or weeks between runs."
+	const repeatInterval = input.repeatIntervalNotWhole
+		? "Every needs a whole number — how many minutes, hours, days or weeks between runs."
 		: "";
 	const repeat =
 		input.repeatMs !== null && input.repeatMs < MIN_WAKE_INTERVAL_MS
@@ -421,7 +424,7 @@ export const validateScheduledTask = (
 			length === 0 ||
 			length > WAKE_MESSAGE_MAX_CHARS ||
 			input.needsConversation ||
-			input.repeatIntervalEmpty ||
+			input.repeatIntervalNotWhole ||
 			repeat !== "" ||
 			ends !== "" ||
 			ceiling !== "",
@@ -664,20 +667,52 @@ export const repeatEveryString = (
 ): string => `${count}${unit.charAt(0)}`;
 
 /**
+ * What an `Every` interval field's text stands for, as a number, or `null` when it
+ * stands for something this model cannot express as an interval.
+ *
+ * WHY THE PARSE IS HERE AND WHY THE FIELD KEEPS ITS TEXT. The admission rule used
+ * to be `Number.parseInt(event.target.value, 10)` at the change site, and it was
+ * wider than the form's own vocabulary in two ways that both reached the store: a
+ * leading dot parsed to `NaN` (`.5`), and a decimal truncated (`1.5` became `1h`).
+ * `NaN` then passed every guard that read the count, because it is neither `""`
+ * nor `< 60_000` - so `Create` was enabled, no sentence was stated and the request
+ * omitted `every`, arming a one-shot under a form that said `Every` (review round
+ * 5, R5-M1). The truncation was a silent substitution, the same defect one layer
+ * down (R5-M2).
+ *
+ * So a whole number is the admitted value space, `NaN` is not a state the field
+ * can hold, and the refusal, the floor and the request bodies all read THIS answer
+ * instead of parsing the text again. A leading `+` is admitted because it is the
+ * same number and the DOM's own number field offers it; anything outside the safe
+ * integer range is refused here rather than exported as `every: "1e+21h"`.
+ */
+/** The admitted shape of an interval field: digits, optionally led by `+`. Hoisted
+ * to module scope so the pattern is compiled once - which is what the lint rule
+ * that guards this module enforces, and why the repo's baseline of warnings does
+ * not grow with this file. */
+const REPEAT_COUNT_PATTERN = /^\+?\d+$/;
+
+export const parseRepeatCount = (text: string): number | null => {
+	const trimmed = text.trim();
+	if (!REPEAT_COUNT_PATTERN.test(trimmed)) return null;
+	const value = Number(trimmed);
+	return Number.isSafeInteger(value) ? value : null;
+};
+
+/**
  * Whether the request may carry the `every` the form is showing.
  *
- * ONE rule, read by the request bodies and by nothing else, because the defect Q1
- * reports was exactly two readings of one condition: `repeatCount !== ""` was true
- * for the VALIDATOR's question (nothing refused an empty field) and false for the
- * REQUEST's (the body omitted `every`), so the two answers the same control owed
- * disagreed and the press armed a one-shot under a form that said `Every`.
- *
- * The non-positive case is included because `min={1}` is a hint the DOM does not
- * enforce, and `0` is not an interval either - though for `0` the refusal the user
- * actually reads is the floor's, since the form does have a number to judge.
+ * ONE rule, read by the request bodies, by the interval arithmetic and by the
+ * refusal alike, because both defects in this control are the same mistake: two
+ * readings of one condition - `repeatCount !== ""` deciding "may this be
+ * submitted" while a different expression decided "what is sent" (Q1), and the
+ * count being admitted before anything judged whether the model could express it
+ * (R5-M1). A whole number that is not positive is refused too (`min={1}` is a hint
+ * the DOM does not enforce); the sentence the user reads for that case is the
+ * floor's, since the parser did produce a number for the floor to judge.
  */
-export const isRepeatCountArmable = (count: number | ""): count is number =>
-	count !== "" && Number.isFinite(count) && count > 0;
+export const isRepeatCountArmable = (count: number | null): boolean =>
+	count !== null && count > 0;
 
 /**
  * Whether a wake WRITE may be sent a second time.
