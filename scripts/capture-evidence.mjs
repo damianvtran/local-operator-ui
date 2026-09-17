@@ -4623,6 +4623,17 @@ const main = async () => {
 	 *      are KEPT and only the listings are unioned. An entry is a record this
 	 *      branch wrote, not a listing, and taking main's whole entry loses
 	 *      exactly the field a reader follows the rule to find.
+	 *      AND THEY ARE DERIVED FROM THE MERGED TREE, WHICH MEANS AFTER THE MERGE
+	 *      COMMIT EXISTS. A resolver that stages its resolution and then asks
+	 *      `git rev-parse HEAD:src` while the merge is still uncommitted gets the
+	 *      trees of the PRE-merge head, and those values look entirely plausible
+	 *      in the diff - they are real trees, just not this one's. Folds 10 and 11
+	 *      differ only in that fold 10 derived after it committed and fold 11
+	 *      derived before, and fold 11 shipped stale stamps to `main` where the
+	 *      desktop suite's own test caught them. When `scripts/` is part of the
+	 *      change, the same trap binds twice: commit, derive, write the values in,
+	 *      then `--amend` - the amendment moves `docs/` only, so the `scripts`
+	 *      tree the values name is unchanged and they stay true.
 	 *   4. `refreshedFrames` is RE-DERIVED against `HEAD` rather than added up,
 	 *      and `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and
 	 *      `scriptsTree` are re-derived from the merged tree and taken from
