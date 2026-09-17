@@ -511,7 +511,7 @@ them. Cite them at their own heads:
 | `docs/evidence/draft-splash-browser/after-draft-1380x872-frame2.png` | the full band, 7 chips in 4 rows | `docs/evidence/draft-splash-browser/README.md` names the instrument (the operator's own paired browser via the `browser` tool) and the head, `8f764cb83` |
 | `docs/evidence/draft-splash-browser/after-draft-830x572-frame2.png` | the capped band at the app's minimum window, 5 painted + 2 inert | same |
 | `docs/evidence/chat-shell-empty-centre/after-empty-1380x872.png` | the same band with the geometry readback beside it | `after-measurements.json` |
-| `docs/evidence/chat-composer-states/idle` | the composer alone, 1024px | that set's README |
+| `docs/evidence/chat-message-input/idle` | the composer alone, 1024px | `docs/evidence/chat-message-input/README.md` |
 
 I did **not** re-shoot these and the numbers in § 1 come from their readbacks, not
 from a fresh run: taking a fresh frame means an isolated `local-operator serve`
