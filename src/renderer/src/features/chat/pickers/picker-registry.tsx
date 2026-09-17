@@ -7,16 +7,23 @@
  * new registry row fails loudly here (unknown destination -> honest note)
  * instead of silently doing nothing.
  *
- * Three kinds of answer:
+ * Four kinds of answer:
  *   - `picker`: a component from `destination-pickers` rendered in the host —
  *     either a decision picker or, for the read-only diagnostics, one of the
  *     panel views (`destination-pickers` re-exports them from `./panels`).
+ *   - `machine-panel`: a view that describes the MACHINE rather than a
+ *     conversation. Its context is a strict subset of `PickerContext`, which is
+ *     what lets either presenter mount it: the chat pane when one is up (so a
+ *     conversation on screen keeps its own scope) and the shell's `PanelOutlet`
+ *     when none is. `/info`, `/usage` and `/analytics`.
  *   - `navigate`: an existing settings surface; the picker would duplicate it.
  *   - `direct`: an immediate local action with no UI (clear, exit, compact -
  *     the last one runs the owner command itself; see its row below).
  */
 
 import type { FC } from "react";
+import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
+import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import type { ArgumentSource } from "../components/slash-argument-rows";
 import { runMoveSessionFromDispatch } from "../move-session";
 import type { MoveRunContext } from "../move-session";
@@ -75,11 +82,25 @@ type ArgsBehavior = {
 	runArgs?: (context: MoveRunContext) => Promise<void>;
 };
 
+export type MachinePanelContext = {
+	/** The registry's own action, with `args` — UsageView's provider filter. */
+	action: NativeDesktopAction;
+	/** "" when the shell presents it; the live id when the chat pane does. */
+	sessionId: string;
+	/** The conversation in front of the user, or null when there is none. */
+	frontend: CanonicalFrontendState | null;
+	onClose: () => void;
+};
+
 export type DestinationEntry =
 	| ({
 			kind: "picker";
 			component: FC<PickerContext>;
 			inline?: InlineArgumentSource;
+	  } & ArgsBehavior)
+	| ({
+			kind: "machine-panel";
+			component: FC<MachinePanelContext>;
 	  } & ArgsBehavior)
 	| ({
 			kind: "navigate";
@@ -250,10 +271,23 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		 */
 		inline: { source: "theme", nameThenMessage: false, runs: false },
 	},
-	info: { kind: "picker", component: InfoView },
+	/*
+	 * The three MACHINE panels, and why each one is in this kind.
+	 *
+	 * `/info` and `/analytics` are the two the operator's requirement names: both
+	 * are pure reads — `/info` describes the install and every runtime on the
+	 * machine, `/analytics` the ledger across every conversation — so neither may
+	 * be refused for want of a conversation, and both must be viewable from a page
+	 * that is not chat. `/usage` joins them because the codebase already treats it
+	 * as session-free in one of its two doors: the palette offers "Provider usage"
+	 * on a draft pane, and the dispatcher's own request path already passed it an
+	 * empty session id. Leaving it a `picker` would be two doors disagreeing about
+	 * one destination, which is the defect class this table exists to prevent.
+	 */
+	info: { kind: "machine-panel", component: InfoView },
 	skills: { kind: "picker", component: SkillsPicker },
-	usage: { kind: "picker", component: UsageView },
-	analytics: { kind: "picker", component: AnalyticsView },
+	usage: { kind: "machine-panel", component: UsageView },
+	analytics: { kind: "machine-panel", component: AnalyticsView },
 	"auth.login": { kind: "picker", component: LoginPicker },
 	"auth.logout": { kind: "picker", component: LogoutPicker },
 	// Existing surfaces: navigate, never duplicate.
@@ -272,13 +306,70 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	mcp: { kind: "picker", component: McpPicker },
 };
 
+/**
+ * Whether this destination addresses a conversation at all.
+ *
+ * ONE derivation, because two surfaces quote the same refusal: the dispatcher's
+ * `!sessionId` gate and the composer's staged line, which prints the dispatcher's
+ * own sentence as a promise about the next Enter. Two copies of this predicate
+ * disagree the moment one of them learns about a machine panel — the composer
+ * would promise a refusal the dispatcher no longer gives, or print one for a
+ * command that then runs.
+ *
+ * `undefined` (and any destination the catalogue has no row for) answers `true`:
+ * an unknown destination is refused for the same reason the dispatcher's gate
+ * refuses one.
+ */
+export function destinationNeedsSession(
+	destination: string | undefined,
+): boolean {
+	if (!destination) return true;
+	return DESTINATIONS[destination]?.kind !== "machine-panel";
+}
+
+/**
+ * The component for a MACHINE panel destination, or nothing if it is not one.
+ *
+ * The shell host's resolver. `PickerOutlet` answers the same question for the
+ * pane by mapping the pane's `PickerContext` down to `MachinePanelContext`, and
+ * both read the component from THIS table rather than from a list of names —
+ * which is what keeps "what does this destination mean" one answer.
+ */
+export function machinePanelFor(
+	destination: string,
+): FC<MachinePanelContext> | undefined {
+	const entry = DESTINATIONS[destination];
+	return entry?.kind === "machine-panel" ? entry.component : undefined;
+}
+
 /** Mounts the adapter for the active presentation request. */
 export const PickerOutlet: FC<{ context: PickerContext | null }> = ({
 	context,
 }) => {
 	if (!context) return null;
 	const entry = DESTINATIONS[context.action.destination];
-	if (!entry || entry.kind !== "picker") return null;
+	if (!entry) return null;
+	if (entry.kind === "machine-panel") {
+		const Component = entry.component;
+		return (
+			<Component
+				key={`${context.action.destination}:${context.action.args}`}
+				action={context.action}
+				sessionId={context.sessionId}
+				/*
+				 * The ONE field the pane has and a machine panel must not: mapped down
+				 * from the handle rather than passed, so the panel's contract stays a
+				 * subset of the picker's. A machine panel renders its own notices in its
+				 * body — `note` writes into a transcript, and a pane that is not on
+				 * screen has none — so it is dropped here along with `commands`,
+				 * `dispatch`, `rebind` and `draft`.
+				 */
+				frontend={context.canonical.frontend ?? null}
+				onClose={context.onClose}
+			/>
+		);
+	}
+	if (entry.kind !== "picker") return null;
 	const Component = entry.component;
 	// Keyed by destination + args so a second `/model` after the first closes
 	// mounts fresh state rather than reusing a settled picker.
