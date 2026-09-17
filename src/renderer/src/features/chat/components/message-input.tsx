@@ -2809,14 +2809,26 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * was `isLoading || (!trim && !attachments)`, `handleSubmit` had no guard,
 				 * and a press therefore submitted for a conversation this machine does not
 				 * have and cleared the reader's sentence (measured, all twelve head pick
-				 * runs). So the refusal is carried by every path that MUTATES this
-				 * composer or reaches `applyPlan`/`submitMessage`, and the band says one
-				 * story: the Send control's own predicate (it is `disabled` while the box
-				 * refuses), `handleSubmit` (the form's submit, whatever focused it), the
-				 * slash popup's pick, the dictation button and its manager gate, and
-				 * `handlePaste` - which `readOnly` newly made reachable, because a
-				 * read-only textarea is still a paste target. The chips and the attach
-				 * button carried it already.
+				 * runs). So the refusal is carried by every path that TYPES INTO or SUBMITS
+				 * this composer, and the band says one story: the Send control's own
+				 * predicate (it is `disabled` while the box refuses), `handleSubmit` (the
+				 * form's submit, whatever focused it), the slash popup's pick, the
+				 * dictation button and its manager gate, and `handlePaste` - which
+				 * `readOnly` newly made reachable, because a read-only textarea is still a
+				 * paste target. The chips and the attach button carried it already.
+				 *
+				 * THREE WRITERS LIE OUTSIDE THAT CLAIM ON PURPOSE (review round 2, MINOR 3),
+				 * because a sentence wider than the code is the one thing this comment has
+				 * already cost a round: the composer alert's Restore (`setNewMessage(
+				 * composerAlert.restore ?? "")`) and Discard (`setNewMessage("")`), and the
+				 * store-to-box adoption effect. The claim above is about the paths a user
+				 * TYPE or SUBMIT gesture reaches while the box refuses: none of these three
+				 * is such a gesture and none of them submits. Two are the reader's own
+				 * explicit intent over the words this state is deliberately HOLDING -
+				 * refusals that swallow them would destroy the very text the refusal exists
+				 * to keep - and the third is the draft-identity family this change excludes
+				 * by design (the deferred C5). Guarding them would need that design decided,
+				 * not a term added here, so they are named rather than covered.
 				 */
 				if (isInputDisabled) return;
 				/*
@@ -3040,12 +3052,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * The dictation button's own gate, beside the button's `disabled` and the
 			 * manager's `busy` term: a transcript is written into the composer with
 			 * `setNewMessage`, so it is a mutation of the box and it answers to the
-			 * same refusal (review round 1, MAJOR 2). Today the two are already
-			 * closed by `canEnableRecordingFeature` (`hasRadientApiKey &&
-			 * !isUnavailable`) and by `isLoading` in the button and the manager, so
-			 * this term changes no reachable state - it is here so the refusal is
-			 * stated once, where the path is, rather than inferred from two other
-			 * predicates that only happen to cover it.
+			 * same refusal (review round 1, MAJOR 2).
+			 *
+			 * THE REFUSAL TERM IS LOAD-BEARING, AND IT IS THE ONLY THING CLOSING THIS
+			 * PATH (review round 2, MINOR 2). This comment used to say the two were
+			 * "already closed by `canEnableRecordingFeature` and by `isLoading`", i.e.
+			 * that the term changed no reachable state. Driven, that was FALSE, and a
+			 * reader who trusted it would have deleted the guard as dead code:
+			 * `canEnableRecordingFeature` is `hasRadientApiKey && !isUnavailable`,
+			 * where `isUnavailable` is the CREDENTIAL PROBE's own flag - offline or no
+			 * key (`useRadientCredentialProbe`, above) - which is a different fact from
+			 * the composer's refusal. On the `view.missing` arm this term exists for,
+			 * `isLoading` is `canonical.admitting || canonical.starting`
+			 * (`chat-content.tsx:1001`), false for a notification click onto a deleted
+			 * conversation, and `hasRadientApiKey` is true for a configured user - so
+			 * the button was live in a refused band and this handler reached its own
+			 * `setNewMessage(newMessage + newText)` write, into a box the app has just
+			 * told the user takes nothing. `isInputDisabled` is what
+			 * closes it, in the button's `disabled` and here; neither of the other two
+			 * predicates covers the refusal.
 			 */
 			if (isInputDisabled || !canEnableRecordingFeature) return;
 			if (navigator?.mediaDevices?.getUserMedia) {

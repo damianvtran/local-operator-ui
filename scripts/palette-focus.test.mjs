@@ -150,7 +150,13 @@ test("the rail door: a captured node that SURVIVED the switch still loses to the
 	 * Both cells of the cell pair are pinned, because they are the two states that
 	 * door can be in when the restore runs: the composer has not taken the caret
 	 * yet (hand it over), or it already has (leave it alone). Neither may be
-	 * `captured`, and `captured` is what the old rule returned for both.
+	 * `captured`. Driven against the pre-fix rule (review round 2, MINOR 1), only
+	 * the SECOND of the two was: `{viewMoved: true, capturedUsable: true,
+	 * caretUntouched: false}` answered `captured`, the measured steal this rule
+	 * was rewritten to stop. The first already answered `composer` there - the
+	 * old rule's opening arm was `viewMoved && caretUntouched` - so it moved to a
+	 * differently-named arm with the SAME destination, and only one of the two
+	 * assertions below has a behaviour change behind it.
 	 */
 	assert.equal(
 		closeTimeFocusOutcome({
