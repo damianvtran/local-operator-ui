@@ -1920,7 +1920,7 @@ const HIGHLIGHT_STEP_PINS = [
  * cast at every step the ink floor allows), with the shipped value at 0.93. The
  * other three palettes this finding named - oneLight 0.70, rosePine 0.98,
  * tokyoNightDay 1.54 - were re-authored out of the collision and clear the floor
- * at 2.92, 2.76 and 2.13.
+ * at 2.92, 2.75 and 2.13.
  *
  * @type {{theme: string, got: number, ceiling: number, why: string}[]}
  */

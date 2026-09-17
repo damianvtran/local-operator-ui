@@ -44,7 +44,7 @@ export const rosePine: ThemeDefinition = {
 		 * this port's selection rule, with the cast sized by the same rule as `oneLight`'s:
 		 * the row has to clear the palette's own `accentWash` by the contract's field floor,
 		 * and the value that carried only the band measured ΔE00 **0.98** against it. Here
-		 * the wash separation is 2.76, at the cost of the louder total (ΔE00 5.97 from
+		 * the wash separation is 2.75, at the cost of the louder total (ΔE00 5.97 from
 		 * `surface`, 5.73 from `elevated`, 9.41 from `sunken`, `inkDim` 4.65:1) — a
 		 * deliberate trade of loudness for two distinguishable selected-row idioms, and the
 		 * frame in the window's pixel list is where it is judged.
