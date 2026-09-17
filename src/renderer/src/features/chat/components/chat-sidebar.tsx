@@ -24,6 +24,7 @@ import {
 	List,
 	MessageSquarePlus,
 	MoreHorizontal,
+	Pin,
 	Plus,
 	Users,
 	X,
@@ -45,6 +46,7 @@ import {
 	searchAnswerIsClipped,
 	searchChats,
 } from "../chat-search";
+import { pinnedRows, unpinnedRows } from "../chat-sections";
 import { clearSearch } from "../clear-search";
 import { newChatShortcutCap } from "../new-chat-shortcut";
 import { catalogueGate } from "../sidebar-catalogue-gate";
@@ -206,6 +208,22 @@ export function ChatSidebar({
 	 * the report it answers and why the withdrawn case is not the error case.
 	 */
 	const searchRef = useRef<HTMLInputElement>(null);
+	/*
+	 * Whether this backend can hold pins at all, read from the same capability
+	 * answer the catalogue gate above uses rather than from a second negotiation.
+	 *
+	 * FAIL-CLOSED MEANS NO AFFORDANCE, not a disabled one: absent `session_pins`
+	 * this is false, `pinnedRows` returns nothing, the section renders no heading
+	 * and the row mounts no pin slot - so the panel's DOM and class set are
+	 * byte-identical to the one that never knew about pins. A disabled pin would
+	 * be worse than an absent one, because the row's other 24px control slot is
+	 * right there and the user would read pinning as a feature they have not
+	 * unlocked, while a permanently reserved empty slot costs every row width to
+	 * advertise nothing.
+	 */
+	const pinsEnabled = desktopFeatureEnabled(capabilities.data, "session_pins");
+	const pinFailure = useCanonicalSessionsStore((s) => s.pinFailure);
+	const setSessionPin = useCanonicalSessionsStore((s) => s.setSessionPin);
 	const wasReady = useRef(false);
 	if (ready) wasReady.current = true;
 	const { stale, showList, notice } = catalogueGate({
@@ -376,6 +394,22 @@ export function ChatSidebar({
 				? row.binding?.team === name
 				: !row.binding?.team && row.binding?.agent === name,
 		);
+	/*
+	 * The pinned partition, applied to the FILTERED list and to nothing else: the
+	 * Pinned section draws `matching ∩ pinned` (a pinned row the search excludes is
+	 * simply absent), and the sections below it draw the rest, so one conversation
+	 * is drawn once. Both calls take `pinsEnabled`, and `unpinnedRows` returning
+	 * every row when it is false is what keeps a withdrawn capability from erasing
+	 * a row that still carries a flag - see that function's own comment.
+	 *
+	 * `children` above reads `matching` rather than `rest` deliberately: sections
+	 * and agent groups are two axes, and this panel already draws one chat in two
+	 * places on two axes (in `Active chats` and under its agent when expanded).
+	 * Lifting a pinned row out of its group would also move the group's own count
+	 * badge, which is `children().length`.
+	 */
+	const pinned = pinnedRows(matching, pinsEnabled);
+	const rest = unpinnedRows(matching, pinsEnabled);
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
@@ -474,36 +508,60 @@ export function ChatSidebar({
 			nested,
 			binding: bindingName(row),
 		});
+		const pinned = row.pinned === true;
+		const label = row.title || "Untitled chat";
 		return (
-			<button
+			/*
+			 * A `div.group` holding two SIBLING buttons, not one button wrapping
+			 * everything. That is the entity row's shape (see `entity` below) and it is
+			 * the reason for it: a `<button>` inside a `<button>` is invalid HTML,
+			 * unfocusable, and fires the outer row's `onClick` as well as its own, so a
+			 * pin control nested in the conversation button would either be unreachable
+			 * or would open the conversation it was trying to pin.
+			 *
+			 * `data-chat-row` stays on the conversation button, so the arrow-key ring
+			 * (`querySelectorAll("[data-chat-row]")` plus `.focus()`) is unchanged, and
+			 * the wrapper is the hover GROUP the pin's reveal hangs off. The wrapper
+			 * carries no ground and no hover step of its own: the conversation button's
+			 * `rowStyle`/`rowCurrent` still paint the row, and a `hover:` on the wrapper
+			 * would put a second ground in the same 32px box.
+			 */
+			<div
 				key={row.session_id}
-				type="button"
-				data-chat-row
-				/* Named for the driver, which has to OPEN a conversation before the chat
+				className="group flex h-8 items-center gap-1 rounded-md"
+			>
+				<button
+					type="button"
+					data-chat-row
+					/* Named for the driver, which has to OPEN a conversation before the chat
 				   header - and so the right slot's three triggers - exists at all
 				   (`renderer-driver.mjs`'s `browser-pane` scene). A tour tag rather than a
 				   class: it is the same hook every other drivable control in this app
 				   carries, and it is inert outside a driver run. */
-				data-tour-tag="chat-session-row"
-				data-child={nested || undefined}
-				className={cn(
-					rowStyle,
-					"w-full text-left",
-					nested && "pl-7",
-					selectedConversation === row.session_id &&
-						!activeDraftKey &&
-						rowCurrent,
-					// m4: the unread mark is NOT here. `font-semibold` on this
-					// `flex-1 truncate` title rewrote the visible string when the
-					// mark arrived, re-truncating text under the reader's cursor;
-					// it lives in the reserved status slot instead (see `Status`).
-				)}
-				aria-current={
-					selectedConversation === row.session_id && !activeDraftKey
-						? "page"
-						: undefined
-				}
-				/* The tooltip carries the row's binding and its own state — the facts the
+					data-tour-tag="chat-session-row"
+					data-child={nested || undefined}
+					className={cn(
+						rowStyle,
+						// `min-w-0 flex-1`, not `w-full`: this button is now a flex item in the
+						// row's wrapper, sharing it with the pin slot. `w-full` would still
+						// resolve (flex-basis wins on the main axis) but it would state the
+						// wrong thing about a box that no longer spans the row.
+						"min-w-0 flex-1 text-left",
+						nested && "pl-7",
+						selectedConversation === row.session_id &&
+							!activeDraftKey &&
+							rowCurrent,
+						// m4: the unread mark is NOT here. `font-semibold` on this
+						// `flex-1 truncate` title rewrote the visible string when the
+						// mark arrived, re-truncating text under the reader's cursor;
+						// it lives in the reserved status slot instead (see `Status`).
+					)}
+					aria-current={
+						selectedConversation === row.session_id && !activeDraftKey
+							? "page"
+							: undefined
+					}
+					/* The tooltip carries the row's binding and its own state — the facts the
 			   row may not be drawing — and deliberately NOT the search mark's words,
 			   which the row announces itself through the `sr-only` span beside it:
 			   both channels saying "matched in conversation" would be one fact
@@ -513,11 +571,11 @@ export function ChatSidebar({
 			   and ", not sent yet" are appended in every case, so on a row that
 			   draws one of those the tooltip repeats it rather than omitting it
 			   (review round 6, R33). */
-				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
-				onClick={() => onSelectConversation(row.session_id)}
-			>
-				<ChatSessionStatus row={row} />
-				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
+					title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
+					onClick={() => onSelectConversation(row.session_id)}
+				>
+					<ChatSessionStatus row={row} />
+					{/* ONE trailing statement per row, decided by `rowTrailingStatement`
 				    in `features/chat/chat-search.ts` — which is also where the three
 				    failed layouts that led to it are written down (an orphan `·` from
 				    a single truncating span, a starved title from unbounded slots, and
@@ -531,17 +589,17 @@ export function ChatSidebar({
 				    which is that cap doing the work a floor used to. The two literal
 				    statements below cannot truncate anything: they are fixed strings
 				    with no width to run out of. */}
-				<span className="min-w-0 flex-1 truncate">
-					{row.title || "Untitled chat"}
-				</span>
-				{/* In a flat list nothing else names the profile answering, so two
+					<span className="min-w-0 flex-1 truncate">
+						{row.title || "Untitled chat"}
+					</span>
+					{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
 			    rows already inherit the identity from their parent, and a row that
 			    has something more important to say (the paragraph above) says that
 			    instead. The row's `title` carries the binding in every case, so the
 			    accessible description is never narrower than the pixels. */}
-				{trailing === "binding" && (
-					/* Bounded, unlike the two literals below. `bindingName` is a
+					{trailing === "binding" && (
+						/* Bounded, unlike the two literals below. `bindingName` is a
 					   user-authored agent or team name and the agent-name field
 					   accepts 64 characters, so `shrink-0` with no `truncate` left an
 					   UNBOUNDED slot: the title (floor of zero) absorbed all of it,
@@ -552,16 +610,16 @@ export function ChatSidebar({
 					   it scales with the panel, and `truncate` clips inside it. The
 					   other two are literals and stay `shrink-0`: they cannot grow,
 					   so they cannot starve anything. */
-					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-						· {bindingName(row)}
-					</span>
-				)}
-				{trailing === "not_sent" && (
-					<span className="ml-1 shrink-0 text-meta text-ink-muted">
-						· Not sent yet
-					</span>
-				)}
-				{/* Says WHY a row is in a filtered list when its visible text does not
+						<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
+							· {bindingName(row)}
+						</span>
+					)}
+					{trailing === "not_sent" && (
+						<span className="ml-1 shrink-0 text-meta text-ink-muted">
+							· Not sent yet
+						</span>
+					)}
+					{/* Says WHY a row is in a filtered list when its visible text does not
 			    contain the query. Without it a row appears in a filtered list with
 			    nothing in common with the query, which is worse than no filter: the
 			    user cannot tell a real match from a bug. Rendered in the row's own
@@ -569,18 +627,87 @@ export function ChatSidebar({
 			    element so it can never be clipped, and on the rows that carry it.
 			    The visible words are `aria-hidden` and the sentence is carried by
 			    the `sr-only` span after them, so a screen reader hears it once. */}
-				{trailing === "conversation" && (
-					<>
-						<span
+					{trailing === "conversation" && (
+						<>
+							<span
+								aria-hidden="true"
+								className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
+							>
+								· in conversation
+							</span>
+							<span className="sr-only">, matched in conversation</span>
+						</>
+					)}
+				</button>
+				{/*
+				 * The pin, revealed by the pointer or by focus inside the row and RESERVED
+				 * AT REST whenever the capability is present, so the reveal cannot reflow
+				 * the row: a row that reflows under the pointer is worse than no affordance
+				 * (the rule the entity row's own reveal is written under). Only `opacity`
+				 * moves here - nothing lifts, scales or translates on hover - and the whole
+				 * control is absent, not disabled, when the backend advertises no pin store
+				 * (`pinsEnabled`).
+				 *
+				 * 24px and `shrink-0`, matching the entity row's manage control beside it,
+				 * which is this panel's established shape for a row's secondary action: Tab
+				 * reaches it and the arrow-key traversal does not, because `data-chat-row`
+				 * is deliberately absent from it.
+				 *
+				 * THE STATE MUST READ WITHOUT HOVERING, or the user cannot find what is
+				 * pinned: a pinned row's glyph is `text-ink` and FILLED (the `fill` idiom
+				 * `agent-details-page.tsx` uses for its own filled/outline state), while an
+				 * unpinned one is an outline in `ink-dim` that exists once revealed.
+				 *
+				 * The hover GROUND is dropped while this row is the current one, exactly as
+				 * the entity row's two controls drop theirs: a child's background paints
+				 * over the row's own ground, so keeping it would let the pointer's
+				 * transient mark replace the mark that says where the reader is.
+				 *
+				 * `aria-pressed` carries the state. It is also the FAILURE channel: the
+				 * store reverts a refused press, and the flip back on the focused control
+				 * is what a screen reader announces - which is why the sentence beside the
+				 * list carries no `role="alert"` and does not compete with the catalogue
+				 * alert at the foot of this panel.
+				 */}
+				{pinsEnabled && (
+					<button
+						type="button"
+						data-session-pin
+						aria-pressed={pinned}
+						/* The action, never the state: `Pin "X"` is what pressing does, and
+						   the pressed state is `aria-pressed`'s to report. */
+						aria-label={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						/* The same string as the accessible name, matching the entity row's
+						   manage control: it is the affordance a pointer user gets, and it
+						   duplicates the name without being announced twice. */
+						title={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						onClick={() => void setSessionPin(row.session_id, !pinned)}
+						className={cn(
+							"flex size-6 shrink-0 items-center justify-center rounded-md",
+							"transition-opacity duration-base ease-out-quart",
+							// The duration governs the transition INTO the current state, so
+							// the unpinned value is the fade-OUT and the revealed value the
+							// fade-IN: quick to appear, gentler to leave. The reveal is
+							// `opacity` alone - the box, the glyph's size and the row's
+							// height are the same in both states, which is what makes the
+							// reserved slot unable to reflow the row.
+							pinned
+								? "text-ink"
+								: "text-ink-dim opacity-0 group-hover:opacity-100 group-hover:text-ink-muted group-hover:duration-fast group-focus-within:opacity-100 group-focus-within:duration-fast",
+							// Colour step only, and only while this row is NOT the current
+							// one - see the block comment above.
+							!(selectedConversation === row.session_id && !activeDraftKey) &&
+								"hover:bg-elevated",
+						)}
+					>
+						<Pin
 							aria-hidden="true"
-							className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
-						>
-							· in conversation
-						</span>
-						<span className="sr-only">, matched in conversation</span>
-					</>
+							className="size-4"
+							fill={pinned ? "currentColor" : "none"}
+						/>
+					</button>
 				)}
-			</button>
+			</div>
 		);
 	};
 	const entity = (kind: ChatTarget["kind"], name: string) => {
@@ -1082,8 +1209,51 @@ export function ChatSidebar({
 			    Sharing one scroll flow pushed Previous below the fold at 16+ sessions
 			    and its disclosure became easy to miss, so it is pinned below the
 			    scrolling entity region and owns its own scroll area. */}
+			{/* The pin failure, in the panel's own register rather than a toast.
+			    One sentence and one action, the shape the withdrawn-gate notice
+			    above already uses - and NO `role="alert"`, so it cannot compete with
+			    the catalogue alert below about a different failure. What announces
+			    it is `aria-pressed` flipping back on the control the user just
+			    pressed; this sentence is the durable half. `warning` and not `danger`:
+			    the list is intact and only this row's pin did not move. */}
+			{pinFailure && (
+				<p className="pb-2 text-meta text-warning">
+					Could not {pinFailure.pinned ? "pin" : "unpin"} “{pinFailure.title}”.
+					{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
+					<button
+						type="button"
+						className="underline"
+						onClick={() =>
+							void setSessionPin(pinFailure.sessionId, pinFailure.pinned)
+						}
+					>
+						Retry
+					</button>
+				</p>
+			)}
 			{showList && (
 				<div className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2">
+					{/*
+					 * Pinned chats, at the TOP of this scroll region.
+					 *
+					 * Above the `All chats` row rather than between it and `Active chats`,
+					 * and the stronger half of the reason is the second one: the `All chats`
+					 * and `New chat` rows are NAVIGATION rather than chats, and in flat
+					 * ("All chats") mode there is no `Active chats` anchor for the section
+					 * to sit above at all - a placement that worked only in the split view
+					 * would make pins vanish for anyone using the flat list. This placement
+					 * is still a rendered decision, so the design round may overrule it.
+					 *
+					 * ZERO PINS RENDERS NOTHING - no heading, no empty section - which is
+					 * the TUI's own rule (an empty section contributes no header).
+					 */}
+					{pinned.length > 0 && (
+						<section>
+							{heading("pinned", "Pinned chats", true, pinned.length)}
+							{(query || isOpen("pinned", true)) &&
+								pinned.map((row) => sessionRow(row))}
+						</section>
+					)}
 					<section>
 						<button
 							type="button"
@@ -1213,7 +1383,7 @@ export function ChatSidebar({
 						</button>
 					</section>
 					{all ? (
-						<section>{matching.map((row) => sessionRow(row))}</section>
+						<section>{rest.map((row) => sessionRow(row))}</section>
 					) : (
 						<>
 							<section>
@@ -1221,11 +1391,18 @@ export function ChatSidebar({
 									"active",
 									"Active chats",
 									true,
-									matching.filter((row) => row.active).length,
+									rest.filter((row) => row.active).length,
 								)}
 								{(query || isOpen("active", true)) &&
+									/*
+									 * The empty sentence reads the WHOLE filtered set, not `rest`:
+									 * a running chat that is pinned is drawn in the section above,
+									 * and "Nothing running right now."` beside it would be a claim
+									 * the panel itself contradicts. The rows are `rest`'s, so the
+									 * section still holds none of the pinned ones.
+									 */
 									(matching.some((row) => row.active) ? (
-										matching
+										rest
 											.filter((row) => row.active)
 											.map((row) => sessionRow(row))
 									) : (
@@ -1241,10 +1418,10 @@ export function ChatSidebar({
 									"previous",
 									"Previous chats",
 									false,
-									matching.filter((row) => !row.active).length,
+									rest.filter((row) => !row.active).length,
 								)}
 								{(query || isOpen("previous")) &&
-									matching
+									rest
 										.filter((row) => !row.active)
 										.map((row) => sessionRow(row))}
 							</section>

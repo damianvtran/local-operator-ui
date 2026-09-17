@@ -298,6 +298,33 @@ const CURRENT = [
 		notCurrent: { staged: false },
 	},
 	{
+		/*
+		 * The conversation row's pin control, added with the pinned section. It sits
+		 * INSIDE a row that can be current, which is exactly the case this table's
+		 * count exists to force somebody to notice: it carries `hover:bg-elevated`
+		 * like the two 24px controls above, and it drops it while the row is the
+		 * current one, so the pointer cannot paint over the ground that says where
+		 * the reader is. Stubbed on a row that is NOT pinned, because that is the
+		 * state in which the control is revealed and the pointer is over it.
+		 */
+		what: "the conversation row's pin control",
+		file: SIDEBAR,
+		expression: () => expressionAfter(SIDEBAR, "data-session-pin"),
+		stubs: {
+			pinned: false,
+			selectedConversation: "s1",
+			row: { session_id: "s1" },
+			activeDraftKey: "",
+		},
+		ground: false,
+		notCurrent: {
+			pinned: false,
+			selectedConversation: "other",
+			row: { session_id: "s1" },
+			activeDraftKey: "",
+		},
+	},
+	{
 		what: "the settings rail's current section",
 		file: SETTINGS_RAIL,
 		expression: () =>
@@ -429,10 +456,12 @@ test("the file accounts for every hover ground the two panels declare", () => {
 			SIDEBAR,
 			{
 				// `rowStyle` (1), resolved through every expression that carries it; the two
-				// 24px controls' `!staged` guards (2); and the disclosure HEADING row
-				// (1), which is never a current row — it holds a section, and the panel
-				// marks the row the reader is IN, not the heading above it.
-				"hover:bg-elevated": 4,
+				// 24px controls' `!staged` guards (2); the conversation row's pin control
+				// (1), whose own guard is `!current` (its `CURRENT` entry above resolves
+				// it); and the disclosure HEADING row (1), which is never a current row —
+				// it holds a section, and the panel marks the row the reader is IN, not
+				// the heading above it.
+				"hover:bg-elevated": 5,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				"hover:bg-highlight": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no

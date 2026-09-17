@@ -36,6 +36,19 @@ export type CanonicalSessionRow = {
 	live_state?: string;
 	pending?: string | null;
 	active?: boolean;
+	/**
+	 * The backend's pin state for this conversation, as the catalogue row carried
+	 * it. Declared explicitly beside `active`/`status` because this row type's
+	 * index signature would otherwise type every read of it `unknown` at the one
+	 * place that writes it optimistically (`setSessionPin`).
+	 *
+	 * The wire row's `pinned` is ALWAYS present (`SessionCatalogueRow` in
+	 * `desktop-session-contract.ts` says why that matters here): the merge below
+	 * is `{...current, ...incoming}`, so an omitted key would leave this app's
+	 * optimistic `true` immortal after an unpin made somewhere else - the
+	 * terminal, or another window.
+	 */
+	pinned?: boolean;
 	status?: SessionCatalogueStatus;
 	/**
 	 * The feed's stamp for `status`, as the catalogue row carried it.
@@ -56,6 +69,34 @@ type BackendSessionRow = Omit<CanonicalSessionRow, "session_id"> & {
 	id: string;
 	name: string;
 	mtime: number;
+};
+/**
+ * A pin press the backend did not accept, and what to say about it.
+ *
+ * Carries the INTENT rather than the row, so the retry re-sends the same desired
+ * state the user asked for and nothing else: a retry that re-read the row would
+ * send whatever the catalogue says NOW, which after a merge could be the value
+ * the failed press failed to change.
+ */
+export type PinFailure = {
+	sessionId: string;
+	/** The desired state that was refused, not the state on screen. */
+	pinned: boolean;
+	/**
+	 * The conversation's title as the row carried it when the user pressed, so the
+	 * sentence names the row they pressed rather than one a later catalogue read
+	 * has retitled or dropped.
+	 */
+	title: string;
+	/**
+	 * The backend's own sentence for the refusal, EMPTY when the failure was not
+	 * one either this transport or the backend authored - a runtime exception's
+	 * `message` is a stack-trace fragment, and putting it on screen states the
+	 * failure in the language of the crash (`userFacingMessage` says the same
+	 * thing for the same reason). Empty means the store's own sentence is the
+	 * whole truth about what happened.
+	 */
+	detail: string;
 };
 export type ChatDraft = {
 	key: string;
@@ -967,6 +1008,30 @@ type CanonicalSessionsState = {
 	 */
 	navigationError: string | null;
 	/**
+	 * A pin press that did not survive, held until the user presses again.
+	 *
+	 * The optimistic write is reverted with this, and both halves are the point:
+	 * a glyph left lit on a failed write is a claim about durable state the store
+	 * does not hold, and a SILENT revert is the "the pin keeps un-pinning itself"
+	 * report all over again. It is one record rather than a log because there is
+	 * one row under the pointer: a second failure replaces the first, which is
+	 * what that user is looking at.
+	 */
+	pinFailure: PinFailure | null;
+	/**
+	 * Apply the backend's pin state to one row, optimistically.
+	 *
+	 * Optimistic rather than refetch-and-wait: `sessions.list` is a WHOLE
+	 * catalogue read (measured at ~120 ms median for 200 rows, and the sidebar
+	 * asks for 500), so a refetch per press would be visibly slower than the
+	 * state change it is confirming. On success the row is reconciled with the
+	 * answer's own `pinned`, so a response that disagreed would still win; on
+	 * failure the row is put back and `pinFailure` says what happened.
+	 *
+	 * Returns whether the press stands, for a caller that wants to act on it.
+	 */
+	setSessionPin: (sessionId: string, pinned: boolean) => Promise<boolean>;
+	/**
 	 * Which reads the daemon could not answer on the last successful session
 	 * list, in the daemon's own vocabulary (`liveness`, `wakes`, `attention`), or
 	 * empty when it answered every one of them.
@@ -1327,6 +1392,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			sessionByAgent: {},
 			validatingSessionId: null,
 			navigationError: null,
+			pinFailure: null,
 			loading: false,
 			truncated: false,
 			statusUnavailable: [],
@@ -1854,6 +1920,63 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				}),
 			bindSession: (_legacyAgentId, sessionId) =>
 				get().setActiveSession(sessionId),
+			/*
+			 * The pin press, in the order the two writes have to happen: the row moves
+			 * first (the feedback IS the state, and a spinner on a 24px control in a
+			 * list reads as a stall), then the backend answers, then the answer is
+			 * what the row holds.
+			 *
+			 * WHAT THE ANSWER BEING AUTHORITATIVE BUYS, given the optimistic write
+			 * already put the value on screen: a backend that refused to move - the
+			 * 51st pin dropping the oldest instead of this one, a store that
+			 * could not write - is not something this client can predict, so the
+			 * reconcile below is not a no-op check, it is the only place the row can
+			 * learn it was wrong. Both directions on failure: the value goes back to
+			 * what the row held BEFORE the press (read here, not derived from the
+			 * incoming state, so a concurrent catalog read cannot make the revert
+			 * write a third value), and `pinFailure` states it.
+			 */
+			setSessionPin: async (sessionId, pinned) => {
+				const before = get().sessions.find(
+					(row) => row.session_id === sessionId,
+				);
+				set((state) => ({
+					sessions: state.sessions.map((row) =>
+						row.session_id === sessionId ? { ...row, pinned } : row,
+					),
+					// A press retires the previous press's sentence: the notice is about the
+					// row under the pointer, and two of them would be a log.
+					pinFailure: null,
+				}));
+				try {
+					const answer = await desktopResult<{
+						session_id: string;
+						pinned: boolean;
+					}>({ op: "sessions.pin", sessionId, pinned });
+					set((state) => ({
+						sessions: state.sessions.map((row) =>
+							row.session_id === sessionId
+								? { ...row, pinned: answer.pinned === true }
+								: row,
+						),
+					}));
+					return true;
+				} catch (error) {
+					const held = before?.pinned === true;
+					set((state) => ({
+						sessions: state.sessions.map((row) =>
+							row.session_id === sessionId ? { ...row, pinned: held } : row,
+						),
+						pinFailure: {
+							sessionId,
+							pinned,
+							title: before?.title || "this chat",
+							detail: userFacingMessage(error, ""),
+						},
+					}));
+					return false;
+				}
+			},
 			upsertSession: (row) =>
 				set((state) => {
 					const present = state.sessions.some(
