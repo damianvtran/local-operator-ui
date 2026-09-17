@@ -39,6 +39,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
 import { cn } from "@shared/lib/utils";
+import type { DesktopLoopState } from "../../../../../../src/shared/desktop-control-contract";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
 import { ComposerStatusRow } from "./composer-status-row";
 import { type RunDetails, deriveRunDetails } from "./run-details";
@@ -50,8 +51,31 @@ import { type RunDetails, deriveRunDetails } from "./run-details";
  * device: `CanonicalFrontendState` carries around thirty required fields and this
  * row touches one of them.
  */
-const frontend = (goal: string): CanonicalFrontendState =>
-	({ goal }) as CanonicalFrontendState;
+const frontend = (
+	goal: string,
+	loop: DesktopLoopState | null = null,
+): CanonicalFrontendState => ({ goal, loop }) as CanonicalFrontendState;
+
+/**
+ * One wire loop state, in `DesktopLoopState`'s own shape.
+ *
+ * Every field the row reads is a parameter with a resting value, so a band says only
+ * what it is about: the STATUS is the affordance's whole input, `completed`/
+ * `iterations` are the clause's progress, and `goal`/`reason` are carried because the
+ * wire carries them (the row deliberately prints neither — see
+ * `docs/composer-status-tabs.md` § 13).
+ */
+const loopOf = (
+	status: DesktopLoopState["status"],
+	extra: Partial<DesktopLoopState> = {},
+): DesktopLoopState => ({
+	status,
+	completed: 0,
+	iterations: null,
+	goal: "",
+	reason: "",
+	...extra,
+});
 
 /** A plan in the wire shape the backend publishes: phases holding items. */
 const planOf = (statuses: string[]): Array<Record<string, unknown>> => [
@@ -584,20 +608,94 @@ const RowFacts = ({ children }: { children: React.ReactNode }) => {
 				 */
 				const goalItem = row.querySelector<HTMLElement>("[aria-expanded]");
 				const goalText = goalItem?.querySelector<HTMLElement>("span.truncate");
+				/*
+				 * The DISMISS controls' boxes, in the order they appear, which is the number
+				 * this row's two affordances cost: they hold their box at rest so that a hover
+				 * cannot move the text beside them (`docs/composer-status-tabs.md` § 12), and a
+				 * held box is invisible in a still. Printing the widths is the only way the
+				 * frame can say how wide the thing nobody can see is.
+				 */
+				const dismissWidths = [
+					...row.querySelectorAll<HTMLElement>(
+						"[data-status-goal-dismiss], [data-status-loop-dismiss]",
+					),
+				].map((box) => `${Math.round(box.getBoundingClientRect().width)}px`);
+				/*
+				 * The DISTANCE from each dismiss to the words it acts on, which is design review
+				 * round 1's D1 as a number: the review measured the same control at 132px, 414px
+				 * and 532px from its chip while it sat at the flex ITEM's trailing edge, and the
+				 * ruling was that it belongs at the chip's own. A still cannot show a distance
+				 * between two boxes, and the fix is a property of that distance — so the frames
+				 * print it, beside the held width that makes it visible at all.
+				 *
+				 * Measured off the chip's own box rather than a class name: the claim is about
+				 * geometry, and the chip is whichever element the dismiss's line carries
+				 * (`aria-expanded` for the goal's disclosure, `data-status-loop` for the readout).
+				 */
+				const dismissGaps = [
+					...row.querySelectorAll<HTMLElement>(
+						"[data-status-goal-dismiss], [data-status-loop-dismiss]",
+					),
+				].map((box) => {
+					const chip = box.parentElement?.querySelector<HTMLElement>(
+						"[aria-expanded], [data-status-loop]",
+					);
+					return chip
+						? `${Math.round(
+								box.getBoundingClientRect().left -
+									chip.getBoundingClientRect().right,
+							)}px`
+						: "?";
+				});
 				const goal =
 					goalItem && goalText
 						? ` · goal ${Math.round(
 								goalItem.getBoundingClientRect().width,
 							)}px (text ${goalText.clientWidth}/${goalText.scrollWidth})`
 						: "";
+				/*
+				 * The CHIPS, counted by their own hooks rather than by `button`.
+				 *
+				 * It used to count buttons, which was the same number while every chip was a
+				 * button and nothing else was: the row now also carries one DISMISS control per
+				 * item that has one, so a button count would state a chip count that includes
+				 * controls a reader can see are not chips. The dismiss count is printed
+				 * BESIDE it instead, because holding an invisible box is exactly what those
+				 * controls do and the number is how a still can say how much room they hold.
+				 */
+				/*
+				 * The LOOP item's own numbers, which is the fit rule's instrument (QA round 2,
+				 * Q4): the item's painted width against the row's content box, plus the clause it
+				 * actually painted. A reader of a still cannot measure either box, and the two
+				 * together are the claim — the figure rides along only while the box carries the
+				 * item, and the width the item gives up is the figure's own.
+				 */
+				const loopChip = row.querySelector<HTMLElement>("[data-status-loop]");
+				const loopItem = loopChip?.parentElement;
+				const loopFacts =
+					loopChip && loopItem
+						? ` · loop item ${Math.round(
+								loopItem.getBoundingClientRect().width,
+							)}px in ${row.clientWidth}px: “${(loopChip.textContent ?? "").trim()}”`
+						: "";
+				const chips = row.querySelectorAll(
+					"[aria-expanded], [data-status-plan], [data-status-wakes], [data-status-subagents], [data-status-jobs], [data-status-loop]",
+				).length;
+				const dismisses = row.querySelectorAll(
+					"[data-status-goal-dismiss], [data-status-loop-dismiss]",
+				).length;
 				setFacts(
 					`${Math.round(
 						row.getBoundingClientRect().width,
 					)}px column · row ${Math.round(
 						row.getBoundingClientRect().height,
-					)}px tall · overflowX ${row.scrollWidth - row.clientWidth}px · ${
-						row.querySelectorAll("button").length
-					} chips${goal}`,
+					)}px tall · overflowX ${row.scrollWidth - row.clientWidth}px · ${chips} chips · ${dismisses} dismiss${
+						dismissWidths.length > 0 ? ` (${dismissWidths.join("+")})` : ""
+					}${
+						dismissGaps.length > 0
+							? ` · dismiss gap ${dismissGaps.join("+")}`
+							: ""
+					}${goal}${loopFacts}`,
 				);
 			}
 			if (!cancelled) {
@@ -971,6 +1069,365 @@ export const WakeWidths: Story = {
 					width={FLOOR_COLUMN_PX}
 					label="172 (the app's real floor): the row stacks, and the chips follow the goal"
 					frontend={frontend(SHORT_GOAL)}
+					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * The goal chip's DISMISS: the `X` and its word, held at rest and revealed by hover
+ * or by focus.
+ *
+ * The state a still can carry is the RESTING one — `:hover` and `:focus-within` are
+ * browser state and no story can force either — so this story pairs a resting band
+ * with the three bands the revealed states were captured from
+ * (`docs/evidence/composer-status-clear/`, which says plainly that the reveal was
+ * captured through FOCUS-within and that no `:hover` frame exists in this set: the
+ * `browser` tool has no hover verb, and a press in this host produces focus without
+ * hover, measured).
+ *
+ * What the resting band is FOR, and it is the half a hover frame cannot show: the
+ * control is invisible and STILL THERE, holding its box, so the chip's snippet does
+ * not move under the pointer when the affordance appears (`branding.md` § 5: hover is
+ * a colour step). The band's own numbers (`RowFacts`) print the goal item's width
+ * against the snippet's `clientWidth`/`scrollWidth`, which is the truncation that
+ * the held box costs, as a number rather than as an ellipsis.
+ *
+ * The last two bands are the STACKED arrangement (240px and the app's real 172px
+ * column floor), where the word is dropped and the X is what is left: the affordance
+ * has to survive the one width where the row has least room, and the accessible name
+ * is unchanged there.
+ */
+export const GoalClear: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					label="The goal's dismiss at rest: nothing painted, its box held so hover cannot move the snippet"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+			<Band
+				label="The goal alone on the row: the control stays beside the words, at the chip's trailing edge"
+				frontend={frontend(SHORT_GOAL)}
+				runDetails={null}
+			/>
+			<RowFacts>
+				<Band
+					label="A long goal with a plan: the held box is what the snippet yields to, and the count does not move"
+					frontend={frontend(LONG_GOAL)}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={240}
+					label="240: the goal keeps its line AND its word — the drop is strictly below this width, so this band is the layout rule rather than the X-alone state"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={FLOOR_COLUMN_PX}
+					label="172 (the app's real floor): the row stacks, the word is dropped, the X keeps its own box and its accessible name, and nothing overflows"
+					frontend={frontend(LONG_GOAL)}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * The LOOP chip: the sixth chip, its STOP/CLEAR affordance, and the two absences.
+ *
+ * Seven bands, and the pair structure is the point rather than the count:
+ *
+ * 1. a loop alone — no goal, no plan — so the chip takes the row's content edge and
+ *    the first-chip rule falls to it;
+ * 2. the ordinary pair: a goal, a loop and the plan, which is the band the loop's own
+ *    control was captured revealed on (`docs/evidence/composer-status-clear/`,
+ *    through FOCUS-within — see that set's README for what a press can and cannot
+ *    produce in this host);
+ * 3. `judging`, the wire's other moving state, where the clause prints its own word
+ *    and no figure;
+ * 4. `achieved` — SETTLED, so the same control says `Clear loop`;
+ * 5. `failed`, the second settled spelling, because the affordance reads the state and
+ *    not a count of successes;
+ * 6. the CONTROL band pair: `idle` beside no loop at all, which render the same
+ *    nothing — a session with no loop grows no chip, and `Loop: idle` is not a line
+ *    above anybody's composer;
+ * 7. the row at its WIDEST now: the goal, the loop and all four counts at 900px, with
+ *    its own numbers — the state the wrap and the ordinal first-chip rule have to
+ *    survive one chip further than `WakeChip` measured.
+ */
+export const LoopChip: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<Band
+				label="A loop alone: 2 of 5 turns, at the row's start, with its own affordance"
+				frontend={frontend(
+					"",
+					loopOf("running", { completed: 2, iterations: 5 }),
+				)}
+				runDetails={null}
+			/>
+			<Band
+				label="The pair: the goal, the loop and the plan — Stop loop while it moves"
+				frontend={frontend(
+					SHORT_GOAL,
+					loopOf("running", { completed: 2, iterations: 5 }),
+				)}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="Judging: the same chip, the other moving state, and no figure beside the word"
+				frontend={frontend(SHORT_GOAL, loopOf("judging", { completed: 5 }))}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="Settled: the loop met the goal, and the control now says Clear loop"
+				frontend={frontend(SHORT_GOAL, loopOf("achieved", { completed: 5 }))}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="Settled, the other spelling: a loop that failed is cleared, not stopped"
+				frontend={frontend(SHORT_GOAL, loopOf("failed", { completed: 3 }))}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="The control: an idle loop draws no chip at all"
+				frontend={frontend(SHORT_GOAL, loopOf("idle"))}
+				runDetails={IN_FLIGHT}
+			/>
+			<Band
+				label="The control: the same session with the field absent, which is the same absence"
+				frontend={frontend(SHORT_GOAL)}
+				runDetails={IN_FLIGHT}
+			/>
+			<RowFacts>
+				<Band
+					label="All six chips at 900: the goal and the loop on the first line, the four counts wrapped to the second"
+					frontend={frontend(
+						SHORT_GOAL,
+						loopOf("running", { completed: 2, iterations: 5 }),
+					)}
+					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={FLOOR_COLUMN_PX}
+					label="172 (the app's real floor): six chips stacked, the loop's own line under the goal"
+					frontend={frontend(
+						SHORT_GOAL,
+						loopOf("running", { completed: 2, iterations: 5 }),
+					)}
+					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * Focus one control and hold the shutter until the reveal it produces is up.
+ *
+ * WHY AN EFFECT AND NOT A PRESS, which is the whole reason these two states had no
+ * frame (design review round 2's D9): the settled loop's `Clear loop` cannot be
+ * photographed by pressing it — the press is what takes the chip away — and the two
+ * states exist only under FOCUS, which the `browser` tool can produce (it has no hover
+ * verb; `../README.md` states that cost). The existing story frames reach a revealed
+ * state by CLICKING the trigger, which is exactly what these two cannot survive, so
+ * they focus their own control instead and mark the shutter pending until the browser
+ * agrees it is focused — the `useOpenLastGoal` convention below, one activator over.
+ */
+const useFocusLastDismiss = (selector: string) => {
+	useEffect(() => {
+		const nodes = document.querySelectorAll<HTMLElement>(selector);
+		const node = nodes[nodes.length - 1];
+		if (!node) return;
+		document.documentElement.dataset.capturePending = "1";
+		node.focus();
+		const poll = window.setInterval(() => {
+			if (document.activeElement !== node) return;
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		}, 40);
+		return () => {
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, [selector]);
+};
+
+/**
+ * THE BAND QA ROUND 2's Q4 LIVES IN, at both clause shapes and on both sides of every
+ * boundary the round named.
+ *
+ * The widths are the ones the defect was measured at, and they are two steps with a
+ * pixel on each side: **241/240/239**, the `@max-[240px]` step the copy rules fire on
+ * (where the row read `overflowX 19px` for a goal loop and `52px` for a count loop at
+ * 240 and 241, and 0 one pixel below), and **173/172/171**, the app's floor with the
+ * canvas open. The two clause shapes are the wire's own: a count loop prints its target
+ * (`, 0 of 25 turns`), a goal loop prints a count (`, 0 turns`) — and the count loop is
+ * the WIDER of the two, which is why a rule sized on the narrower one is a rule that
+ * paints past its column.
+ *
+ * FOUR STORIES RATHER THAN ONE, and the constraint is the frame: a band's label and its
+ * printed numbers wrap inside the narrow column they describe, so a band is ~215px of
+ * page, the capture viewport is 720 CSS px, and a band below the fold is a claim its
+ * own frame does not carry. Three bands per frame, one shape per frame.
+ *
+ * Every band prints its own numbers (`RowFacts`): the item's painted width in the row's
+ * content box, and the clause it actually painted. The claim is the pair — the figure
+ * rides along only while the box carries the item — and neither number can be measured
+ * by a reader of a still.
+ */
+const COUNT_CLAUSE = {
+	label: "count loop, `0 of 25 turns`",
+	loop: loopOf("running", { completed: 0, iterations: 25 }),
+};
+const GOAL_CLAUSE = {
+	label: "goal loop, `0 turns`",
+	loop: loopOf("running", { completed: 0 }),
+};
+
+/** One shape at three widths, stacked: a frame holds three of these and no more. */
+const bandFit = (
+	clause: { label: string; loop: DesktopLoopState },
+	widths: number[],
+) => (
+	<div className={cn("flex flex-col gap-3")}>
+		{widths.map((width) => (
+			<RowFacts key={`${width}-${clause.label}`}>
+				<Band
+					width={width}
+					label={`${width}px column, ${clause.label}`}
+					frontend={frontend("", clause.loop)}
+					runDetails={null}
+				/>
+			</RowFacts>
+		))}
+	</div>
+);
+
+/** The `@max-[240px]` step, count loop: the widths the reading was taken at, and a pixel either side. */
+export const LoopBandFit: Story = {
+	render: () => bandFit(COUNT_CLAUSE, [241, 240, 239]),
+};
+
+/** The same step, goal loop: the NARROWER clause, which is where the step looked sufficient. */
+export const LoopBandFitGoal: Story = {
+	render: () => bandFit(GOAL_CLAUSE, [241, 240, 239]),
+};
+
+/** The app's floor with the canvas open, count loop, and a pixel either side of it. */
+export const LoopBandFitFloor: Story = {
+	render: () => bandFit(COUNT_CLAUSE, [173, 172, 171]),
+};
+
+/** The floor, goal loop. */
+export const LoopBandFitFloorGoal: Story = {
+	render: () => bandFit(GOAL_CLAUSE, [173, 172, 171]),
+};
+
+/**
+ * The SETTLED loop's own dismiss, painted — the state design review round 2's D9 found
+ * unpainted, because the only way to reach it was a press that removes the chip.
+ *
+ * One band, revealed by focus, so the word `Clear loop` and the settled clause
+ * (`Loop: achieved`) are both in the picture beside the 86px box the control holds.
+ */
+export const LoopSettledFocus: Story = {
+	render: () => {
+		useFocusLastDismiss("[data-status-loop-dismiss]");
+		return (
+			<div className={cn("flex flex-col gap-4")}>
+				<RowFacts>
+					<Band
+						label="Settled: the loop met the goal, and the control says Clear loop — revealed"
+						frontend={frontend(
+							SHORT_GOAL,
+							loopOf("achieved", { completed: 5 }),
+						)}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+			</div>
+		);
+	},
+};
+
+/**
+ * A LONG goal's dismiss, painted — the clamp's own paint (design review round 2's D7/D9).
+ *
+ * `TOOLTIP_CLAMP` is `line-clamp-4`, and the frame the set already carried for it was a
+ * two-line tooltip over a short goal: the class was true and its clamp was not shown.
+ * This band is the 300-character goal with its dismiss focused, which is the state D9
+ * named as capturable — four lines at most, with the ellipsis that says so.
+ *
+ * THE TOOLTIP ITSELF IS NOT IN THE PICTURE, and the label says so (design review round
+ * 3, `D12`). A programmatic focus paints the reveal but does not open a Radix tooltip —
+ * `:focus-visible` is what the primitive waits for, and this instrument has no keyboard
+ * — so a label promising "the tooltip clamps to four lines" was a still asserting a state
+ * its own pixels contradict. The clamp is declared by the class and by the tooltip the
+ * control owns; what this frame is evidence of is the held box and the word beside it.
+ */
+export const LongGoalDismissFocus: Story = {
+	render: () => {
+		useFocusLastDismiss("[data-status-goal-dismiss]");
+		return (
+			<div className={cn("flex flex-col gap-4")}>
+				<RowFacts>
+					<Band
+						label="A 300-character goal, its dismiss revealed: the box and the word are painted, and the clamped tooltip is declared rather than shown"
+						frontend={frontend(LONG_GOAL)}
+						runDetails={IN_FLIGHT}
+					/>
+				</RowFacts>
+			</div>
+		);
+	},
+};
+
+/**
+ * The two bands whose printed numbers `docs/composer-status-tabs.md` cites, on their own
+ * page so a frame can carry them (agent review round 2, MINOR 3).
+ *
+ * The `LoopChip` story carries both — the six-chip band at 900px and the 172px floor —
+ * but every frame committed for it photographs bands 1-4, because the two `RowFacts`
+ * bands sit below the fold and a story page cannot be scrolled by the capture tool. The
+ * numbers those frames do not carry are the ones the record quotes (`2 dismiss
+ * (89px+86px) · dismiss gap 0px+0px` for the loop half of D1's geometry, and the 158px
+ * floor height of § 3.1), so they are shot here instead of cited to pixels that do not
+ * contain them.
+ */
+export const LoopChipFacts: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					label="All six chips at 900: the goal and the loop on the first line, the four counts wrapped to the second"
+					frontend={frontend(
+						SHORT_GOAL,
+						loopOf("running", { completed: 2, iterations: 5 }),
+					)}
+					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={FLOOR_COLUMN_PX}
+					label="172 (the app's real floor): six chips stacked, the loop's own line under the goal"
+					frontend={frontend(
+						SHORT_GOAL,
+						loopOf("running", { completed: 2, iterations: 5 }),
+					)}
 					runDetails={ALL_FIVE}
 				/>
 			</RowFacts>

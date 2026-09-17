@@ -62,8 +62,10 @@ different, and why the caption's `No echo` no longer describes the after:
   in the transcript - and the composer deliberately does NOT put the text back,
   because the same message in both places, under copy that names only the
   composer, reads as one message delivered twice. The retry is the composer's
-  own **Restore unsent message** control, whose resend replays the same request
-  id, and the held-claim sentence beside it now says the outcome is not knowable.
+  own **Restore message** control, whose resend replays the same request id, and
+  the held-claim sentence beside it now says the outcome is not knowable. (Both
+  that control and the discard label used to say "unsent"; #278's design round 2
+  renamed them — see the note at the end of this section.)
 - A **refusal before admission** (413/422) still retracts the echo and DOES put
   the text back in the box - that half of the old behaviour survives, and this is
   the case the frame's caption is still true for.
@@ -99,8 +101,10 @@ Captured alongside the frames by `scripts/send-error-evidence.mjs`:
   alert repeats the textarea's contents.
 - Editing clears the alert (`alertBeforeEdit: true` -> `alertAfterEdit: false`)
   while keeping the amended text.
-- "Discard unsent message" clears the alert, empties the textarea, and drops the
-  store's retained claim (`clicked: true, alertGone: true, value: ""`).
+- "Discard message" ("Discard this message" when the payload is on screen)
+  clears the alert, empties the textarea, and drops the store's retained claim
+  (`clicked: true, alertGone: true, value: ""`). Measured under the old label,
+  "Discard unsent message"; the control is the same one.
 - "Choose agent" opens the real agent picker (`pickerOpen: true`), so the remedy
   is usable where it now lives rather than merely rendered there.
 
@@ -155,10 +159,11 @@ is the one thing `admitChatDraft` throws on, producing a loop (U2/F1/D4).
 The claim is now **stated whenever it is held and not visible in the box**, and
 the two remedies are controls rather than instructions:
 
-- **Restore unsent message** puts the exact held payload back, so an unchanged
+- **Restore message** (measured as "Restore unsent message"; renamed by #278's
+  design round 2) puts the exact held payload back, so an unchanged
   retry is one keypress. The guard demands a byte-identical resend of a message
   the user can no longer see; asking them to retype it was asking the impossible.
-- **Discard unsent message** / **Stop holding it** — one control, two behaviours.
+- **Discard message** / **Stop holding it** — one control, two behaviours.
   With the box empty or holding the payload it discards the draft. With
   *different* text typed it releases only the store's claim, because discarding
   there would silently destroy what the user just typed (U3).

@@ -1,7 +1,10 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { UpdateCheckVerdict } from "../main/update-check-verdict";
-import type { BackendUpdateErrorReport } from "../main/update-service";
+import type {
+	BackendUpdateCompletion,
+	BackendUpdateErrorReport,
+} from "../main/update-service";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	DesktopAPI,
@@ -179,25 +182,71 @@ declare global {
 						canManageUpdate?: boolean;
 						remedy?: string;
 						startupMode?: string;
-						/** How the install was classified, for the details line. */
+						/**
+						 * How the install was classified, for the details line. Never carries
+						 * the running/install skew: the two readings are structured fields so
+						 * the panel can say both in prose (review D3).
+						 */
 						detail?: string;
 						/** True when the install follows a source tree, not the release. */
 						sourceBuild?: boolean;
+						/**
+						 * The version the daemon SERVING this app reports, when it was
+						 * readable. `currentVersion` above is the install on disk, which an
+						 * update is what moves; the two differ between a landed install and
+						 * the restart, and on every daemon this app did not start.
+						 */
+						runningVersion?: string | null;
 						/**
 						 * True when this event answers a check the user asked for, as
 						 * opposed to the periodic or start-up check. The by-hand panel
 						 * is only dismissed by the user's own check (review U12).
 						 */
 						manual?: boolean;
+						/**
+						 * Whether the app may restart the daemon serving this app.
+						 *
+						 * The reading that decides the managed arm's consequence sentence: the plan
+						 * states it from the INSTALL's layout and cannot know who started the
+						 * server, so an adopted daemon's offer used to promise a restart that
+						 * cannot happen (UX U9). False means the server keeps running the old
+						 * build until it restarts on its own, and nothing in flight is dropped.
+						 */
+						restartable?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateDevMode: (
 					callback: (message: string) => void,
 				) => () => void;
 				onBackendUpdateNotAvailable: (
-					callback: (info: { version: string }) => void,
+					callback: (info: {
+						/** The version the INSTALL on disk reports. */
+						version: string;
+						/**
+						 * The version the daemon serving this app reports, when readable.
+						 *
+						 * Carried on this state because it is the one QA Q-1 found: an
+						 * install already at the published version whose daemon still serves
+						 * the old build makes no offer, so the offer's own detail was never
+						 * rendered and the user was told nothing at all.
+						 */
+						runningVersion?: string | null;
+						/** Whether the app may restart the daemon that is behind. */
+						restartable?: boolean;
+					}) => void,
 				) => () => void;
-				onBackendUpdateCompleted: (callback: () => void) => () => void;
+				onBackendUpdateCompleted: (
+					callback: (completion: BackendUpdateCompletion | null) => void,
+				) => () => void;
+				/**
+				 * Which phase the running update is in, announced as it changes.
+				 *
+				 * The install and the restart are one unchanging panel otherwise, and on a
+				 * cold cache they are ~47 s and ~15 s of it (UX U4).
+				 */
+				onBackendUpdateProgress: (
+					callback: (progress: { phase: "installing" | "restarting" }) => void,
+				) => () => void;
 				/**
 				 * A server update that failed: the reason from the main process, and the
 				 * phase that wrote it (`check` for a version check the user may have
@@ -214,6 +263,9 @@ declare global {
 						/** The version the panel is waiting for, and what is running. */
 						latestVersion?: string | null;
 						currentVersion?: string | null;
+						/** The version the INSTALL reports, when it is not the running one. */
+						installVersion?: string | null;
+						runningVersion?: string | null;
 						sourceBuild?: boolean;
 					}) => void,
 				) => () => void;

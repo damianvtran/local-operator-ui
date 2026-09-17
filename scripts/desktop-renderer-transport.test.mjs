@@ -1258,3 +1258,46 @@ test("the backstop 413 speaks the language of the surface it fired on", async ()
 		/^This request is too large to send\. Shorten the text in this form\.$/,
 	);
 });
+
+// The renderer half of the expired-read outcome.
+//
+// Main answers 504 plus `deadline_exceeded` when a request runs out of its own
+// budget. This pins that the renderer reads BOTH halves, because the callers
+// that act on it are deciding whether to run an expensive read again
+// (`panel-queries.ts`), and a check that only understood the status would go
+// quiet the moment the status changed.
+test("an expired read is recognisable as its own failure, and a dead backend is not", async () => {
+	const { desktopResult, DesktopControlError, isDeadlineExceeded } =
+		await loadTransport(async () => ({
+			status: 504,
+			body: {
+				detail: {
+					code: "deadline_exceeded",
+					message: "The ledger read did not finish within 90 seconds.",
+				},
+			},
+		}));
+
+	const expired = await desktopResult({ op: "analytics.get", days: 30 }).then(
+		() => null,
+		(error) => error,
+	);
+	assert.ok(expired instanceof DesktopControlError);
+	assert.equal(expired.status, 504);
+	assert.equal(expired.code, "deadline_exceeded");
+	assert.equal(isDeadlineExceeded(expired), true);
+
+	// The failure a retry DOES repair, and the one this must not swallow: a
+	// backend that never answered is a 503 with no code.
+	const unreachable = new DesktopControlError(
+		503,
+		"The backend could not complete this request. Check its connection and try again.",
+	);
+	assert.equal(isDeadlineExceeded(unreachable), false);
+	// The renderer's own stalled-IPC rejection carries no status at all and must
+	// stay distinguishable from the expired read it exists to bound.
+	assert.equal(
+		isDeadlineExceeded(new DesktopControlError(null, "stalled")),
+		false,
+	);
+});

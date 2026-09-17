@@ -1,0 +1,24 @@
+<!doctype html>
+<!--
+  Evidence harness for the composer row's two dismiss affordances.
+
+  Mounts the SHIPPED `ComposerStatusRow` behind a REAL desktop bridge — an injected
+  `window.api.desktop` — so the row takes the Electron IPC branch that actually
+  ships (`desktopResult` -> `window.api.desktop.request`) rather than the
+  browser-dev `/__desktop` HTTP branch, and so a press on a dismiss control has a
+  wire to move.
+
+  Not part of the app and not part of `pnpm test:desktop`: a capture surface, served
+  by `harness/composer-status-clear.vite.mjs` (see the README for the command, the
+  port and the interaction).
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Composer status row — clearing the goal, and stopping or clearing a loop</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./composer-status-clear.tsx"></script>
+	</body>
+</html>

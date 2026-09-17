@@ -423,17 +423,26 @@ equally important**, and the interface must not present them as though they are.
 - **Agent output shares the tool rows' edges.** Prose and the ledger are two
   registers of one turn and resolve against the same row content box, so they
   take one left rail and one right edge. Agent prose therefore carries **no
-  reading cap and no centring** — the reading measure belongs to the user
-  bubble, whose narrower box is what makes a user turn read as an aside and the
-  agent's answer read as the document. A cap on the answer puts a second left
-  edge in the column, which reads as a mistake rather than as a decision.
+  reading cap and no centring** — the reading aside belongs to the user card,
+  whose narrower width inside the shared measure is what makes a user turn read
+  as an aside and the agent's answer read as the document. A cap on the answer
+  puts a second left edge in the column, which reads as a mistake rather than as
+  a decision. **The user card is an aside by its own width, not by a cap on its
+  text**: the prose inside the card fills it and follows it as a reply quote or
+  an attachment widens it. A measure on the text instead of on the box leaves
+  the words centre-constrained inside a wider card, with equal slack on each
+  side — an operator report from 2026-09-16.
   **If a reading measure is ever wanted back on agent output, it must narrow
   the whole row content box — prose and the ledger together, i.e. the shared
   `CHAT_MEASURE` container — never `max-width` on `.lo-markdown` alone.**
   Narrowing prose by itself re-creates the two rails this rule removes. The
-  cost of not having one is recorded rather than hidden: measured 98.1
-  characters a line, which is the ceiling and not a slope, because the column
-  is capped at 900px and so reads the same at 1920 as at 1024.
+  cost of not having one is recorded rather than hidden: 98.1 `ch` at the body
+  step — an INHERITED figure, quoted as the arithmetic that argued the original
+  removal rather than re-derived here; the same column carries 131 real
+  characters on an 832.6px line — which is the ceiling and not a slope, because
+  the content measure is capped at 900px and so reads the same at 1920 as at
+  1024. The `ch`/character distinction is not pedantry: it is a 2.6× difference
+  in what the number describes.
 - A security notice is **retrospective** — it records that a risk was reviewed
   and averted. It must not be styled as a prompt, because nothing consumes a
   response to it.

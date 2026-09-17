@@ -6,6 +6,24 @@ Storybook built at this branch's head. The stories render the PRODUCTION
 `AnalyticsPanel` over fixtures, so what these frames show is what ships;
 `analytics-panel.stories.tsx`'s own header says what to look for on each state.
 
+**Every frame in this directory is a picture of the MERGED tree**, re-taken in
+one pass at `be66aa465` (all thirty-three states, all twelve themes) rather than
+left as the union of the two passes the rebase onto `62c673adb` had produced.
+The union was real and it was visible in the pixels: two states rendered the
+Totals line without the `· as of HH:MM` read-time cue (`session-free`,
+`session-free-narrow`), and three carried a pre-`#266` by-session table
+(`no-daily-rows`, `this-session-only`, `unpriced`) while the thirteen
+`session-*` frames beside them carried the strip, the chevrons and the pager -
+one directory showing two applications. A stale frame is cleared by a
+**re-capture and by nothing else**: `pnpm check-evidence` reads each frame's
+modal colour against its theme's ground and cannot see content, so it passes a
+frame of the previous build and will keep passing it. This pass needed an
+isolated `VITE_LOCAL_OPERATOR_API_URL` on a free port because
+`capture-evidence` refuses to start while a backend answers on its configured
+origin - the operator's own app, on this machine - and stopping that app is not
+the fix. `docs/evidence/manifest.json`'s `partialCapture.roundFourRecaptureNote`
+carries the frame counts, the per-frame measurements and the verification.
+
 The by-session table added in this change adds two things the earlier set had no
 frame for: a strip of controls above the table (a search field, the one filter,
 and — only while something is narrowing — the match line on a row of its own

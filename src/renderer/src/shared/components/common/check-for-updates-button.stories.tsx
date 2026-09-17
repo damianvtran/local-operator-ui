@@ -4,7 +4,10 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useEffect, useState } from "react";
 import { updateCheckVerdict } from "../../../../../main/update-check-verdict";
-import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
+import type {
+	BackendUpdateCompletion,
+	BackendUpdateErrorReport,
+} from "../../../../../main/update-service";
 import { CheckForUpdatesButton } from "./check-for-updates-button";
 import { FloatingAlert } from "./floating-alert";
 
@@ -60,6 +63,7 @@ const createEmptyUpdaterMethods = () => {
 			onBackendUpdateDevMode: () => () => {},
 			onBackendUpdateNotAvailable: () => () => {},
 			onBackendUpdateCompleted: () => () => {},
+			onBackendUpdateProgress: () => () => {},
 			/*
 			 * A failed server update, which the panel now leaves its in-flight state on.
 			 * The stub has to exist or the panel's own subscription throws before the
@@ -164,11 +168,13 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
-		onBackendUpdateCompleted: (callback: () => void) => {
+		onBackendUpdateCompleted: (
+			callback: (completion: BackendUpdateCompletion | null) => void,
+		) => {
 			// For stories that need to trigger this callback
 			if (window.triggerBackendUpdateCompleted) {
-				// Immediately trigger the callback
-				callback();
+				// Immediately trigger the callback. Null is the plain success payload.
+				callback(null);
 			}
 			return () => {};
 		},
@@ -246,6 +252,7 @@ const mockUpdaterApi = () => {
 		onUpdateInstallInFlight: () => {
 			return () => {};
 		},
+		onBackendUpdateProgress: () => () => {},
 		onBeforeQuitForUpdate: () => {
 			return () => {};
 		},
@@ -771,8 +778,8 @@ export const BackendUpdateCompleted: Story = {
 				const originalOnBackendUpdateCompleted =
 					window.api.updater.onBackendUpdateCompleted;
 				window.api.updater.onBackendUpdateCompleted = (callback) => {
-					// Call it immediately
-					callback();
+					// Call it immediately, with the plain success payload
+					callback(null);
 					return () => {};
 				};
 

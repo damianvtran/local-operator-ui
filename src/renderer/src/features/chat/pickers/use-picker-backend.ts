@@ -99,7 +99,21 @@ export function useSessionCommand(sessionId: string) {
 	const [outcome, setOutcome] = useState<SlashOutcome | null>(null);
 
 	const run = useCallback(
-		async (command: string, args: string): Promise<CommandRun> => {
+		async (
+			command: string,
+			args: string,
+			/**
+			 * The CALLER'S own words for a call that never reached the owner, used as the
+			 * prefix of the failure line. Omitted, the line names the slash command
+			 * (`/goal did not run: …`), which is right for a picker whose field takes that
+			 * command and wrong for a control whose press is not a slash command at all:
+			 * the composer's status row is a button labelled `Clear goal`, and telling a
+			 * person who pressed it that `/goal` failed names a surface they were never at
+			 * (UX round 1, U2). Only the FIRST half of the line changes; the reason after
+			 * the colon is still whatever the transport or the owner said.
+			 */
+			failure?: string,
+		): Promise<CommandRun> => {
 			setBusy(true);
 			setResult(null);
 			try {
@@ -117,7 +131,7 @@ export function useSessionCommand(sessionId: string) {
 			} catch (error) {
 				const result: PickerResult = {
 					tone: "error",
-					text: `/${command} did not run: ${errorText(error)}`,
+					text: `${failure ?? `/${command} did not run`}: ${errorText(error)}`,
 				};
 				setResult(result);
 				return { outcome: null, result };

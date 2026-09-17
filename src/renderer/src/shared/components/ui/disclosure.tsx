@@ -149,6 +149,48 @@ export type DisclosureProps = {
 	 */
 	triggerTooltip?: ReactNode;
 	/**
+	 * A control that belongs to the TRIGGER'S OWN LINE, rendered after it inside
+	 * this component's ROOT — so the disclosed body stays below both.
+	 *
+	 * WHY THE ROOT AND NOT THE TRIGGER. A second control on the trigger's line cannot
+	 * be a child of the trigger (a `<button>` inside a `<button>` is invalid markup
+	 * and unreachable in some engines), and it cannot be the caller's own sibling of
+	 * this component either: the body is rendered HERE, so any box that wrapped the
+	 * trigger and the control would wrap the body too, and the caller then has a
+	 * choice between a line that wraps (which tears the control off the words the
+	 * moment the trigger is clamped — measured: the ✕ landed beside the body) and one
+	 * that does not (which cannot give the body its own line at all).
+	 *
+	 * So the pair shares a row INSIDE the root, the row is the smallest common
+	 * ancestor of the trigger and its control, and the row — not the caller's flex
+	 * item — is therefore what a hover/focus reveal is keyed to: `group` is applied
+	 * here, which is what keeps a revealed control appearing beside the words it acts
+	 * on instead of at the item's far edge (design review round 1's D1, UX's U4/U5).
+	 *
+	 * Opt-in, so every call site that passes nothing renders exactly the DOM it
+	 * rendered before. The caller owns the control's own reveal classes, its tooltip
+	 * and its label; this prop only decides WHERE it sits.
+	 *
+	 * IT IS DROPPED BY THE `disabled` BRANCH, and that is stated here rather than left
+	 * to be discovered (agent review round 2, NIT 3): that branch returns early with
+	 * no trigger to sit beside, and a caller passing both would lose its control with
+	 * no type error and no warn. No call site does today and the composer never sets
+	 * `disabled` — the branch exists for rows with nothing to disclose, which have no
+	 * trailing control either — so the pair is documented rather than made exclusive:
+	 * a type-level refusal would have to name a shape this prop genuinely does not
+	 * care about, and the honest statement is that `trailing` belongs to the
+	 * interactive branch only.
+	 *
+	 * THE NO-OVERLAP CLAIM IS CHECKED, and the check is two greps rather than a trust
+	 * in this comment (agent review round 3, NIT 3): `grep -rn 'trailing=' src/renderer/src`
+	 * returns exactly one call site — this row's goal chip, which passes no `disabled` —
+	 * and `disabled=` on a `<Disclosure>` appears only in the trace rows and the
+	 * run-detail rows, none of which has a `trailing` control. Re-run those two before
+	 * relying on the pair, and if a third caller ever genuinely needs both, this is
+	 * where the guard belongs rather than a third paragraph of prose.
+	 */
+	trailing?: ReactNode;
+	/**
 	 * Reports the open state, for copy that has to state its VERB.
 	 *
 	 * A caller whose `triggerLabel`/`triggerTooltip` names the action needs the
@@ -224,6 +266,7 @@ export const Disclosure = ({
 	disabled = false,
 	triggerLabel,
 	triggerTooltip,
+	trailing,
 	onOpenChange,
 }: DisclosureProps) => {
 	const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -411,44 +454,75 @@ export const Disclosure = ({
 		<ChevronRight className="size-3.5" aria-hidden={true} />
 	);
 
+	/*
+	 * The trigger, built ONCE and placed by `trailing` below rather than written in
+	 * both branches: two copies of a control this dense is how one of them stops
+	 * receiving a fix.
+	 */
+	const trigger = (
+		<Tooltip content={triggerTooltip} side="top">
+			<button
+				type="button"
+				aria-expanded={isOpen}
+				aria-controls={children != null ? contentId : undefined}
+				aria-label={triggerLabel}
+				ref={buttonRef}
+				onMouseDown={onMouseDown}
+				onClick={onClick}
+				onKeyDown={onKeyDown}
+				className={cn(
+					ROW,
+					rowAlign,
+					"cursor-pointer select-none",
+					"text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink-muted",
+					rowClassName,
+					triggerClassName,
+				)}
+			>
+				{chevron === "leading" && (
+					<span
+						className={cn("flex text-ink-disabled", mark, chevronClassName)}
+					>
+						{glyph}
+					</span>
+				)}
+				<span className="min-w-0 flex-1">{summary}</span>
+				{chevron === "trailing" && (
+					<span
+						className={cn("flex text-ink-disabled", mark, chevronClassName)}
+					>
+						{glyph}
+					</span>
+				)}
+			</button>
+		</Tooltip>
+	);
+
 	return (
 		<div className={className}>
-			<Tooltip content={triggerTooltip} side="top">
-				<button
-					type="button"
-					aria-expanded={isOpen}
-					aria-controls={children != null ? contentId : undefined}
-					aria-label={triggerLabel}
-					ref={buttonRef}
-					onMouseDown={onMouseDown}
-					onClick={onClick}
-					onKeyDown={onKeyDown}
-					className={cn(
-						ROW,
-						rowAlign,
-						"cursor-pointer select-none",
-						"text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink-muted",
-						rowClassName,
-						triggerClassName,
-					)}
-				>
-					{chevron === "leading" && (
-						<span
-							className={cn("flex text-ink-disabled", mark, chevronClassName)}
-						>
-							{glyph}
-						</span>
-					)}
-					<span className="min-w-0 flex-1">{summary}</span>
-					{chevron === "trailing" && (
-						<span
-							className={cn("flex text-ink-disabled", mark, chevronClassName)}
-						>
-							{glyph}
-						</span>
-					)}
-				</button>
-			</Tooltip>
+			{/*
+			 * ONE ROW WHEN THERE IS A TRAILING CONTROL, the trigger alone otherwise — and
+			 * the branch is on `trailing` rather than always wrapping so that every other
+			 * call site's markup is byte-identical to what it was.
+			 *
+			 * `group` is here, on the trigger's own line, and not on the caller's wrapper: the
+			 * pair is what a hover or a focus reveals together, and this row is the smallest
+			 * box that holds both. Read it for what it is (design review round 2, D8, which
+			 * corrected the claim this comment first made): the row is a BLOCK-level box
+			 * inside the caller's root, so its box IS the caller's item content box when that
+			 * root fills the item — which is the composer's case — and the reveal still
+			 * reaches the item's blank stretch. What the placement guarantees is that the
+			 * SCOPE is the primitive's own markup rather than whatever wrapper a caller
+			 * happens to draw: no call site can widen it without changing this component.
+			 */}
+			{trailing ? (
+				<div className={cn("group flex items-center")}>
+					{trigger}
+					{trailing}
+				</div>
+			) : (
+				trigger
+			)}
 			{/*
 			 * NO CONTENT BOX WITHOUT CONTENT, and that is a fix rather than a
 			 * tidiness pass. `isOpen` alone used to render the box: a caller with

@@ -3,6 +3,7 @@ import type {
 	DesktopUsagePeriod,
 } from "../../../../../../shared/desktop-contract";
 import {
+	formatClock,
 	formatDayBucket,
 	formatMicroUsd,
 	formatPercent,
@@ -97,12 +98,29 @@ export function spanLabel(win: AnalyticsWindow): string {
 	return `${first}–${last}`;
 }
 
-/** `Last 7 days · Sep 7–Sep 13 · this session` — the Totals section's qualifier. */
+/**
+ * `Last 7 days · Sep 7–Sep 13 · this session` — the Totals section's qualifier.
+ *
+ * `readAtMs` appends the sentence's one time CLAIM: when the read that produced
+ * these numbers finished. It exists because these panels stopped refreshing
+ * themselves (`SNAPSHOT_READ_POLICY` in query-client.ts): the query answers once
+ * per open, the user's next ask is reopening the panel, and a panel left up for
+ * an hour would otherwise hold numbers of unknowable age next to a window title
+ * that names only a date range (design round 1, D6).
+ *
+ * The clause is `as of HH:MM` — the same clock the session panel's request rows
+ * use, so the app states one time of day one way. Omitted when no read has
+ * landed, because a panel with no data has nothing whose age needs stating.
+ */
 export function windowMeta(
 	win: AnalyticsWindow,
 	scope: "this session" | "all sessions",
+	readAtMs?: number | null,
 ): string {
-	return `${windowTitle(win.days)} · ${spanLabel(win)} · ${scope}`;
+	const base = `${windowTitle(win.days)} · ${spanLabel(win)} · ${scope}`;
+	return readAtMs === null || readAtMs === undefined
+		? base
+		: `${base} · as of ${formatClock(readAtMs)}`;
 }
 
 /**
