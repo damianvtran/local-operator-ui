@@ -4412,21 +4412,45 @@ const main = async () => {
 			 * the press - so a second copy of the dispatch (with its own opinion about
 			 * `modifiers`/`buttons`) cannot drift from this one.
 			 */
+			/**
+			 * Evaluate until the expression answers something, or fail after a bounded wait.
+			 *
+			 * WHY A WAIT AND NOT A THROW. `press` has always retried (`for (let i = 0; i
+			 * < 100 && !target.value; i++)`); the moves did not, so a story that had not
+			 * finished painting - which is the normal shape on a loaded machine - ended
+			 * the whole sweep with "the selector matched nothing". Measured 2026-09-17 at
+			 * load ~200: `hover-same-turn-second-link` failed on a selector that four
+			 * earlier entries in the SAME run had already matched, i.e. the story was
+			 * simply not painted yet. A frame that cannot be taken is worth ten seconds
+			 * before it is worth a failed sweep, and the message still names the
+			 * selector when the wait runs out.
+			 */
+			const evaluateUntil = async (expression, what) => {
+				for (let attempt = 0; attempt < 50; attempt++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression,
+					});
+					if (result.value) return result.value;
+					await sleep(200);
+				}
+				throw new Error(
+					`${story} @ ${theme}: ${what} matched nothing after 10s`,
+				);
+			};
+
 			const movePointerTo = async (selector, what) => {
-				const { result: target } = await cdp.send("Runtime.evaluate", {
-					returnByValue: true,
-					expression: `(() => {
+				const target = {
+					value: await evaluateUntil(
+						`(() => {
 						const el = document.querySelector(${JSON.stringify(selector)});
 						if (!el) return null;
 						const r = el.getBoundingClientRect();
 						return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
 					})()`,
-				});
-				if (!target.value) {
-					throw new Error(
-						`${story} @ ${theme}: the ${what} selector \`${selector}\` matched nothing`,
-					);
-				}
+						`the ${what} selector \`${selector}\``,
+					),
+				};
 				await cdp.send("Input.dispatchMouseEvent", {
 					type: "mouseMoved",
 					x: target.value.x,
@@ -4454,9 +4478,9 @@ const main = async () => {
 			 * under a hovered name.
 			 */
 			if (options?.hoverText) {
-				const { result: target } = await cdp.send("Runtime.evaluate", {
-					returnByValue: true,
-					expression: `(() => {
+				const target = {
+					value: await evaluateUntil(
+						`(() => {
 						const wanted = ${JSON.stringify(options.hoverText)};
 						const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
 						for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -4472,12 +4496,9 @@ const main = async () => {
 						}
 						return null;
 					})()`,
-				});
-				if (!target.value) {
-					throw new Error(
-						`${story} @ ${theme}: no text run matching ${JSON.stringify(options.hoverText)} outside a link or a button`,
-					);
-				}
+						`no text run matching ${JSON.stringify(options.hoverText)} outside a link or a button`,
+					),
+				};
 				await cdp.send("Input.dispatchMouseEvent", {
 					type: "mouseMoved",
 					x: target.value.x,
@@ -4548,9 +4569,8 @@ const main = async () => {
 				const { legs, stepSettleMs = 16 } = options.hoverPath;
 				const pointFor = async (leg, index) => {
 					if (leg.text) {
-						const { result } = await cdp.send("Runtime.evaluate", {
-							returnByValue: true,
-							expression: `(() => {
+						return evaluateUntil(
+							`(() => {
 								const wanted = ${JSON.stringify(leg.text)};
 								const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
 								for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -4566,29 +4586,18 @@ const main = async () => {
 								}
 								return null;
 							})()`,
-						});
-						if (!result.value) {
-							throw new Error(
-								`${story} @ ${theme}: hoverPath leg ${index} matches no prose run`,
-							);
-						}
-						return result.value;
+							`hoverPath leg ${index} matches no prose run`,
+						);
 					}
-					const { result } = await cdp.send("Runtime.evaluate", {
-						returnByValue: true,
-						expression: `(() => {
+					return evaluateUntil(
+						`(() => {
 							const el = document.querySelector(${JSON.stringify(leg.to)});
 							if (!el) return null;
 							const r = el.getBoundingClientRect();
 							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
 						})()`,
-					});
-					if (!result.value) {
-						throw new Error(
-							`${story} @ ${theme}: hoverPath leg ${index} selector \`${leg.to}\` matched nothing`,
-						);
-					}
-					return result.value;
+						`hoverPath leg ${index} selector \`${leg.to}\``,
+					);
 				};
 				const move = async (x, y) => {
 					await cdp.send("Input.dispatchMouseEvent", {
