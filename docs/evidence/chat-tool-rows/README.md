@@ -240,6 +240,71 @@ its foot. Both end on a row whose own affordance is the disclosure, and that is 
 operator asked for; it is also why the render tests' footer assertions were **inverted rather than
 deleted** (`scripts/turn-timestamp.test.mjs`), the working line's own case among them.
 
+## The agent's answer gets a caption (the same day, the same branch)
+
+The operator reported the other half of the same surface hours later:
+
+> "The agent responses (just the final responses, not the in-progress tool intent/response) don't
+> have a time displayed on them — that would be helpful to show too. It should probably be on the
+> left under the agent message instead of on the right."
+
+So every SETTLED agent answer carries an always-visible stamp under it, left-aligned on the agent
+rail — the mirror of the user side's caption, with the same `TurnTimestamp`, the same caption roles
+and the same 4px of air. Two things about it are decisions rather than consequences:
+
+- **`streaming` is the discriminator, not "the last row" and not the stop reason.** A record still
+  arriving is the working line's job (§ 7's one liveness element per turn), and a stamp on it would
+  state a time for a message that has not finished being one. A settled answer in the MIDDLE of a
+  turn is still an answer the agent gave, so it keeps its caption; and a durable entry may carry a
+  null stop reason, which is why `stopReason === "toolUse"` is not the test either.
+- **It is a sibling of the answer's content box, not a line inside it.** `turnRef` is what the quote
+  toolkit reads, so a selection drag over an answer must not be able to sweep a clock into a quote.
+
+### The two frames that carry the claims
+
+| Story | What it shows |
+| --- | --- |
+| [`answer-in-progress`](answer-in-progress/) | The frame that separates the two halves of the operator's sentence. A user turn with its caption, a SETTLED answer with its caption under it, the call it narrated, then an answer still arriving (`Four were late, and the oldest is 41 days`) with **no caption**, above a working line that also carries none. The absence is meaningful because the row above it has one. |
+| [`prose-between-calls@1024`](prose-between-calls@1024/), [`@420`](prose-between-calls@420/) | The shape the caption's COUNT has to survive: three intermediate paragraphs interleaved with the calls they narrate, plus a closing answer. Four captions in one turn, at two widths. |
+
+### The noise question, answered on the pixels rather than in prose
+
+`prose-between-calls` is in this set because the operator asked, in the same message that requested
+the caption, what that shape looks like — and the honest answer is in the frame rather than in a
+rule:
+
+- **Four captions in one turn, and in this fixture they read as noise.** The four are literally the
+  same string (`Oct 9, 2025, 4:53 AM`), because the story's records share one `ts`; in a live turn
+  they would differ by the seconds between the paragraphs, which is a slightly different annoyance
+  rather than a smaller one. Between two of them sits a ledger row, so the turn reads as
+  caption-line-caption-ledger-caption — a stamp between every paragraph, at the same visual weight
+  as the durations it sits beside.
+- **The count is bounded by the content, not by the rows.** A record with nothing to say paints
+  nothing (`paintsSomething`), so a turn that goes quiet between calls adds no caption — the
+  `working`, `streaming-before-first-token` and `compacting-*` frames are that case. The noise is
+  therefore specific to a turn that TALKS between its calls, which is the shape a chatty agent
+  produces routinely and this fixture reproduces.
+- **What would remove it:** captioning only the LAST settled prose row of a turn rather than every
+  one. That is not implemented, and deliberately: the operator's request names the row ("the agent
+  responses", plural) and the in-progress exception is stated as a property of the record rather
+  than of its position, so the narrower reading is a decision for the reader of these frames and not
+  one this change makes on their behalf. The frame exists so that decision is made on pixels.
+
+### Where the caption's left edge is, measured rather than assumed
+
+The caption shares the answer's left rail because it is a sibling inside the same `pl-10` box the
+prose starts at — structural, not a second measurement. The frame is what checks the structure:
+
+| Story | Prose ink's left edge | Caption ink's left edge |
+| --- | --- | --- |
+| `prose-tool-alignment@1024`, `localOperatorDark` | 103, at y 364..375 | 102, at y 388..394 |
+| `prose-between-calls@1024`, `localOperatorDark` | 103, at y 182..194 | 102, at y 314..326 |
+
+A one-pixel difference is the glyph's own side bearing at 12px versus 16px, not a rail: which is the
+point, since a caption placed by its own rule would be off by whatever the two rules disagreed about.
+(The rows above exclude the agent turn's 28px avatar, which sits at x 68..70 in the gutter those two
+edges are measured past — the measurement is the prose and the caption, not the icon.)
+
 ## Measured, not eyeballed
 
 The stills show the symptom; the geometry shows the cause. Read out of the live
