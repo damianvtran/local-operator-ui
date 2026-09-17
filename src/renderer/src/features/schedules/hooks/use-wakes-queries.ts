@@ -45,7 +45,10 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { retryWakeWrite } from "../scheduled-task-model";
+import {
+	SCHEDULES_CONVERSATION_READ,
+	retryWakeWrite,
+} from "../scheduled-task-model";
 
 /**
  * How often the listing re-reads, and why this number.
@@ -107,7 +110,7 @@ export const useConversationChoices = (enabled: boolean) => {
 	 */
 	return useSessionRows({
 		enabled: enabled && !!baseUrl,
-		refetchOnWindowFocus: true,
+		...SCHEDULES_CONVERSATION_READ,
 	});
 };
 

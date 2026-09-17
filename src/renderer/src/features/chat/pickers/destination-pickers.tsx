@@ -1528,10 +1528,16 @@ export type SessionRow = {
  * copy of the query: the Schedules dialog must ask what exists NOW when it opens
  * (it is mounted for the page's whole life, so a query with no `enabled` gate
  * answered once per page load and a conversation created since was missing from
- * the list), while the stop picker is happy with the default.
+ * the list), while the stop picker is happy with the default. `staleTime` is one
+ * of those differences and not a knob for its own sake - see
+ * `SCHEDULES_CONVERSATION_READ`.
  */
 export function useSessionRows(
-	options: { enabled?: boolean; refetchOnWindowFocus?: boolean } = {},
+	options: {
+		enabled?: boolean;
+		refetchOnWindowFocus?: boolean;
+		staleTime?: number;
+	} = {},
 ) {
 	return useQuery({
 		queryKey: SESSION_ROWS_KEY,
@@ -1541,7 +1547,7 @@ export function useSessionRows(
 				limit: 200,
 			}).then((result) => result.sessions ?? []),
 		enabled: options.enabled ?? true,
-		staleTime: 5_000,
+		staleTime: options.staleTime ?? 5_000,
 		refetchOnWindowFocus: options.refetchOnWindowFocus,
 	});
 }

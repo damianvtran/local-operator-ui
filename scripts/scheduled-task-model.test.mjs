@@ -68,6 +68,7 @@ const {
 	scheduledTaskRows,
 	supervisorLead,
 	toScheduledTaskRow,
+	SCHEDULES_CONVERSATION_READ,
 	retryWakeWrite,
 	validateScheduledTask,
 	DesktopControlError,
@@ -544,6 +545,29 @@ test("the dialog's refusals are inline, named, and independent", () => {
 	assert.equal(
 		validateScheduledTask({ ...quiet, endsRuns: 4, alreadyRun: 3 }).ends,
 		"",
+	);
+});
+
+test("the conversation picker never serves a stale list (the merged-backend drive's finding)", () => {
+	/*
+	 * The pin is the OPTION, because the option is the defect: with a stale window
+	 * here, the dialog is mounted for the page's whole life and reopens through
+	 * `enabled`, so nothing remounts and `refetchOnMount` would never fire - the
+	 * picker renders the list it cached. Measured on the drive against the merged
+	 * backend: `(none)` while `sessions.list` already held the conversation the page
+	 * had just created, and the options appearing only once the window had passed.
+	 * With the destination guard now refusing a save that has nowhere to write, the
+	 * user's state is a dialog with no destination and no way forward.
+	 */
+	assert.equal(
+		SCHEDULES_CONVERSATION_READ.staleTime,
+		0,
+		"a zero window is what makes every open ask again; a short one is the bug",
+	);
+	assert.equal(
+		SCHEDULES_CONVERSATION_READ.refetchOnWindowFocus,
+		true,
+		"a dialog left open across a conversation made in another window still re-reads",
 	);
 });
 

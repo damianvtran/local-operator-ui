@@ -682,3 +682,29 @@ export const repeatEveryString = (
  */
 export const retryWakeWrite = (failureCount: number, error: Error): boolean =>
 	isServerUnreachable(error) ? failureCount < 1 : false;
+
+/**
+ * How the dialog reads the conversations it offers, named here so the one option
+ * that was wrong can be pinned by a test rather than remembered.
+ *
+ * `staleTime: 0` AND NOT `refetchOnMount: "always"`, and the difference is the
+ * whole reason a user could be stuck. The dialog is mounted for the page's whole
+ * life and asks for this read through `enabled: open`, so nothing REMOUNTS when
+ * it reopens: `refetchOnMount` never fires on the reopen that matters. Flipping
+ * `enabled` false -> true DOES re-observe the query, and with a zero window the
+ * data is stale the moment it arrives, so every open asks again - which is the
+ * question this picker is for.
+ *
+ * What it fixes, measured on the live drive against the merged backend: with the
+ * five-second window, a dialog reopened inside it rendered the list it had
+ * CACHED - no options at all, while `sessions.list` already held the
+ * conversation the page had just created ("the picker's options: (none)";
+ * waiting past the window made it appear). Combined with the guard that now
+ * refuses a save with no destination, that state is a dialog offering no
+ * destination and no way forward, on the common path of creating a second
+ * scheduled task straight after the first.
+ */
+export const SCHEDULES_CONVERSATION_READ = {
+	staleTime: 0,
+	refetchOnWindowFocus: true,
+} as const;
