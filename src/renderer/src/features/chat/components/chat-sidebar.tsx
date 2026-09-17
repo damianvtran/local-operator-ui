@@ -66,6 +66,13 @@ type Props = {
 	 * passes a fixture, which is also how the mark's states get frames.
 	 */
 	browserSummaries?: ReadonlyMap<string, ConversationBrowserSummary>;
+	/** The conversation the browser pane is OPEN ON right now, or absent when the pane is
+	 * shut (or left on `All tabs`). It is what makes a mark's press a toggle rather than a
+	 * one-way door (design review round 2, U8): the row whose browser is already up has to
+	 * say so, because the same press there CLOSES it. One id rather than a set, because the
+	 * pane has one lens — see `openConversationBrowser`, which branches on the same
+	 * expression. */
+	browserPaneOpenOn?: string;
 	/** Open a conversation's browser: select it, scope the pane to the conversation and
 	 * bring the pane up. One press, three effects, batched into one render (design R2). */
 	onOpenConversationBrowser?: (sessionId: string) => void;
@@ -229,6 +236,7 @@ export function ChatSidebar({
 	onSelectConversation,
 	onStageDraft,
 	browserSummaries,
+	browserPaneOpenOn,
 	onOpenConversationBrowser,
 }: Props) {
 	const navigate = useNavigate();
@@ -555,6 +563,7 @@ export function ChatSidebar({
 				name={row.title || "Untitled chat"}
 				summary={summary}
 				current={isCurrent}
+				expanded={browserPaneOpenOn === row.session_id}
 				onOpen={onOpenConversationBrowser ?? (() => {})}
 			/>
 		);

@@ -212,7 +212,7 @@ Non-negotiable details, each because something already depends on it:
 **The mark's states.** A new component,
 `features/browser/components/browser-conversation-mark.tsx`, entirely derived from
 the shared model (§7) — it holds no tab list of its own, so it cannot become a
-second browser implementation. Props: `{ sessionId: string; summary: ConversationBrowserSummary; onOpen: (sessionId: string) => void }`.
+second browser implementation. Props: `{ sessionId: string; name: string; summary: ConversationBrowserSummary; current?: boolean; expanded?: boolean; onOpen: (sessionId: string) => void }`.
 
 | State | Visible | Role of the count | Accessible label |
 |---|---|---|---|
@@ -222,6 +222,19 @@ second browser implementation. Props: `{ sessionId: string; summary: Conversatio
 | approvals pending | the same accent `Badge` the header uses (`chat-header.tsx:343-359`), positioned for this box | an ask gets a count and the accent, per §5.1 | `Open the browser for "Reports" — 2 approvals waiting` |
 | a tab failed to load | glyph keeps a `text-danger`… **no.** See below | | |
 | unavailable outside Electron | **not rendered** | — | — |
+| **the pane is open on THIS row's conversation** (`expanded`) | the same mark, ink stepped to `text-ink` (the top of the same ramp; never a fill, never opacity) | unchanged — a count is a fact about the conversation, not about the pane | `Close the browser for "Reports" …` |
+
+**The `expanded` axis is not a sixth content state; it is the toggle's own.** A press on
+the mark while the pane is already open ON THAT CONVERSATION closes it (review round 2,
+U6, ruled), so the control has two opposite effects and both channels have to say which
+one the next press is: the verb in the label follows the state, and the button carries
+`aria-expanded` (the disclosure primitive — the thing it governs is a pane being
+revealed, not a setting being switched). The rule is the press's own condition — open AND
+scoped to `conversation` AND that conversation current — so a pane left on `All tabs`
+reads `expanded: false`, matching what a press there does (it normalises the lens rather
+than closing). The header Globe needs no counterpart: it is mounted only while the pane is
+shut (`chat-header.tsx`, `onOpenBrowser && !isBrowserPaneOpen`), so "Open browser" is the
+action it takes in every state it exists in (design review round 2, U8).
 
 Two of those rows need the reasoning written down:
 
