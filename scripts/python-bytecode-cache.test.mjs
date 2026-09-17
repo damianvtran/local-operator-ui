@@ -2524,6 +2524,20 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		why: "the dead-metadata contenders, which override HOME/TMPDIR on top of that env",
 	},
 	{
+		file: "scripts/harvest-trace-order-fixture.mjs",
+		name: "execFileSync",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\)/,
+		why: "the import probe that resolves WHICH interpreter can import the runtime; it starts the candidates this machine has, one of which is the installed app's copy",
+	},
+	{
+		file: "scripts/harvest-trace-order-fixture.mjs",
+		name: "execFileSync",
+		index: 2,
+		env: /env:\s*pythonChildEnv\(\)/,
+		why: "the runtime's own `read_transcript_page`, driven against the isolated session copy; this is the site review R1 / QA Q0 caught inheriting the ambient environment, and it was run on the operator's machine to produce the fixture",
+	},
+	{
 		file: "scripts/owned-serve-lifecycle.test.mjs",
 		name: "spawnSync",
 		index: 1,

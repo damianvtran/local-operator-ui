@@ -56,6 +56,18 @@
  * the interpreter that can import it is not always the `python3` on PATH (the
  * script probes each candidate with a real import rather than assuming).
  *
+ * BOTH SPAWNS STATE THE CHILD'S WHOLE PYTHON ENVIRONMENT, and that is not
+ * bookkeeping: this script runs on the operator's machine, and on 2026-09-15 a
+ * control run in `scripts/` that spread `process.env` into a real interpreter
+ * mirrored 19 `.pyc` into his installed app through an ambient
+ * `PYTHONPYCACHEPREFIX`, which failed the app's code-seal check. So every
+ * interpreter this file starts — the import probe below and the reader under
+ * `readPages` — is handed `pythonChildEnv()`, which drops every inherited
+ * `PYTHON*` variable and points the cache at this process's own scratch
+ * directory. `scripts/python-bytecode-cache.test.mjs` scans `scripts/` and
+ * `bin/` for exactly this, so a third spawn added here fails there rather than
+ * inheriting quietly.
+ *
  * THE TRANSFORMS APPLIED TO WHAT IT READS, all of them, in
  * `narrowPage`/`narrowSeed`: ids, `ts`, entry `type`, roles, tool call ids,
  * tool names, `stop_reason`, `duration_s`, `is_error` and ORDER are untouched.
@@ -87,6 +99,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ARGS = process.argv.slice(2);
@@ -159,6 +172,9 @@ function resolvePython(explicit) {
 		try {
 			execFileSync(candidate, ["-c", "import local_operator"], {
 				stdio: "ignore",
+				// The probe's own environment, not this shell's: an inherited
+				// `PYTHONPYCACHEPREFIX` is what wrote `.pyc` into the operator's app.
+				env: pythonChildEnv(),
 			});
 			return candidate;
 		} catch {
@@ -239,7 +255,13 @@ function readPages({ python, dir, cursor, olderLimit }) {
 			String(PAGE_LIMIT),
 			String(olderLimit),
 		],
-		{ encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+		{
+			encoding: "utf8",
+			maxBuffer: 64 * 1024 * 1024,
+			// The runtime's own reader, under an environment this script states
+			// rather than the one it was started in (see the header).
+			env: pythonChildEnv(),
+		},
 	);
 	return JSON.parse(stdout);
 }

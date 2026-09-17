@@ -2299,11 +2299,14 @@ export const STORIES = [
 	   operator's report is that state — opening session `c1c7072b735c` mid-turn
 	   painted the OPENING turn's eight `bash` calls, an hour earlier, under the
 	   running `wait`, each showing its output's first line where the command
-	   belongs. Both frames are built by the SHIPPED reducer from the real journal
-	   and the real snapshot seed of that session
-	   (`scripts/fixtures/trace-order.json`, harvested by
-	   `scripts/harvest-trace-order-fixture.mjs`): `Report` folds the eight calls
-	   the report proves by an output string that occurs once, over the in-flight
+	   belongs. The `After` frames are built by the SHIPPED reducer from the real
+	   journal and the real snapshot seed of that session (`scripts/fixtures/
+	   trace-order.json`, harvested by `scripts/harvest-trace-order-fixture.mjs`);
+	   the `Before` frames by a story-local re-implementation of the pre-fix fold,
+	   because the state they are evidence about no longer exists in the shipped
+	   code and a pair shot from two trees cannot be re-captured once the base
+	   moves. `Report` folds the eight calls the report proves — the page at that
+	   moment names none of them (`page_names_ghosts: []`) — over the in-flight
 	   frame; `Live` folds the unmodified harvest — 100 retained ends, 59 of them
 	   naming a call the page cannot label. The pane is pinned here for the same
 	   reason as the pair above, and the arrival stamp is derived from the
