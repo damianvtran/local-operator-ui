@@ -40,17 +40,17 @@ export const oneLight: ThemeDefinition = {
 		surface: "#F4F4F4",
 		elevated: "#FFFFFF",
 		sunken: "#E1E0E0",
-
 		/*
 		 * The current row's own ground:
-		 * `surface` cast 0.03 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.01 from `surface`, 6.01 from `elevated` and 2.39 from `sunken`;
-		 * the step is -5.65 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.77:1 the ink that binds it.
+		 * `surface` cast 0.05 toward `accent` and stepped 3.18 on the `L*` axis — branch H
+		 * of this port's selection rule. The cast is not decoration here: this palette's
+		 * `accentWash` (the app's active-row tint, `bg-accent-wash`) sits close enough to its
+		 * panel that a ground carrying only the band was ΔE00 **0.70** from the wash — the
+		 * same mark as the app's other selected row — so the row ground has to separate from
+		 * it by the contract's field floor: measured 2.92 here. ΔE00 4.03 from `surface`,
+		 * 5.44 from `elevated`, 4.62 from `sunken`, `inkDim` 5.09:1.
 		 */
-		highlight: "#E2E4E8",
+		highlight: "#E5ECF1",
 
 		ink: "#383A42",
 		// Canonical mono-2 696C77 is 3.97:1 on `sunken` (< 4.5) — darkened along the same

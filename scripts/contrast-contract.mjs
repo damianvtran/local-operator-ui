@@ -58,7 +58,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { deltaE, r2, toLab } from "./color.mjs";
+import { deltaE, labToHex, r2, toLab } from "./color.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1827,28 +1827,36 @@ const HIGHLIGHT_INK_MARGIN = 0.15;
  *
  * The rule asks for the largest `L*` step the ink floors allow, and for six of
  * the fifty-nine the ink on the row's ground reaches its floor with the 0.15 of
- * headroom at 2.2-3.3 `L*` — their `ink` or `ink-dim` is only just clear of the
- * floor on the panel itself, so the row cannot rise the 3 `L*` the direction
- * floor asks for without putting text under its floor. Those six pay the band on
- * the accent cast instead (measured 4.00-4.09 ΔE00) and are recorded here with
- * the ink number that caps them, in the same shape as `EXCEPTIONS`: a pin, not a
- * mute. Move one of those palettes' inks and the pin stops matching and fails.
+ * headroom within 2.25-3.25 `L*` of the panel - their `ink-dim` is only just
+ * clear of the floor on the panel itself, so the row cannot rise the 3 `L*` the
+ * direction floor asks for without putting text under its floor. Those six pay
+ * the band on the accent cast instead (measured 4.00-4.87 ΔE00) and are recorded
+ * here in the same pin-not-mute shape as `EXCEPTIONS`.
+ *
+ * WHAT THE GATE RE-DERIVES, because a pin whose reason is only prose is a number
+ * that can rot (design round 3, D2): the assertion below recomputes the panel's
+ * own ink cap - the largest `L*` step from `surface`'s own hue and chroma that
+ * keeps every ink floor with this file's margin - and the binding ink's ratio
+ * there, and fails if either has moved away from the pin's record. So a palette
+ * whose inks change, or whose value drifts off the cap, re-opens its own pin.
  *
  * Why this is a pin rather than a smaller floor for everybody: on the other
- * fifty-three the step IS what carries the mark and the floor is reachable, so a
+ * fifty-three the step IS what carries the mark and 3 `L*` is reachable, so a
  * floor lowered to fit six palettes would stop asserting anything about them.
+ * The designer re-derived the sub-floor set independently (design round 3, A1)
+ * and got exactly these six, no seventh.
  *
- * @type {{theme: string, step: number, cap: number, inkRole: string, onGround: number, why: string}[]}
+ * @type {{theme: string, step: number, cap: number, inkRole: string, onGround: number, capInk: number, why: string}[]}
  */
 const HIGHLIGHT_STEP_PINS = [
 	{
 		theme: "catppuccinFrappe",
-		step: 0.31,
+		step: 2.52,
 		cap: 2.75,
 		inkRole: "inkDim",
-		onGround: 5.06,
+		onGround: 4.68,
 		capInk: 4.66,
-		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 2.75 L* on this panel (4.66:1), so the band is paid on the accent cast (ΔE00 4.04) and the step lands at 0.31 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+		why: "inkDim reaches its floor with the 0.15 of headroom at 2.75 L* on this panel, so the band is paid on the cast; the value now runs the step to that cap (2.52 L*) rather than stopping at 0.31 as the first cut did (design round 3, D2)",
 	},
 	{
 		theme: "catppuccinMacchiato",
@@ -1857,7 +1865,7 @@ const HIGHLIGHT_STEP_PINS = [
 		inkRole: "inkDim",
 		onGround: 4.78,
 		capInk: 4.67,
-		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 2.5 L* on this panel (4.67:1), so the band is paid on the accent cast (ΔE00 4) and the step lands at 1.74 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+		why: "inkDim reaches its floor with the 0.15 of headroom at 2.5 L* here, so the band is paid on the accent cast",
 	},
 	{
 		theme: "nord",
@@ -1866,16 +1874,16 @@ const HIGHLIGHT_STEP_PINS = [
 		inkRole: "inkDim",
 		onGround: 4.83,
 		capInk: 4.72,
-		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 2.25 L* on this panel (4.72:1), so the band is paid on the accent cast (ΔE00 4.35) and the step lands at 1.53 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+		why: "inkDim reaches its floor with the 0.15 of headroom at 2.25 L* on this panel, so the band is paid on the accent cast",
 	},
 	{
 		theme: "palenight",
-		step: 0.73,
+		step: 2.22,
 		cap: 2.25,
 		inkRole: "inkDim",
-		onGround: 4.95,
+		onGround: 4.71,
 		capInk: 4.7,
-		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 2.25 L* on this panel (4.7:1), so the band is paid on the accent cast (ΔE00 4.09) and the step lands at 0.73 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+		why: "inkDim reaches its floor with the 0.15 of headroom at 2.25 L* here; the value now runs the step to that cap rather than stopping at 0.73 with the cap to spare (design round 3, D2)",
 	},
 	{
 		theme: "rosePineDawn",
@@ -1884,7 +1892,7 @@ const HIGHLIGHT_STEP_PINS = [
 		inkRole: "inkDim",
 		onGround: 4.75,
 		capInk: 4.67,
-		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 2.75 L* on this panel (4.67:1), so the band is paid on the accent cast (ΔE00 4.09) and the step lands at 2.11 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+		why: "inkDim reaches its floor with the 0.15 of headroom at 2.75 L* here, so the band is paid on the accent cast; this palette also carries a wash pin below",
 	},
 	{
 		theme: "solarizedDark",
@@ -1893,7 +1901,35 @@ const HIGHLIGHT_STEP_PINS = [
 		inkRole: "inkDim",
 		onGround: 4.78,
 		capInk: 4.71,
-		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 3.25 L* on this panel (4.71:1), so the band is paid on the accent cast (ΔE00 4.04) and the step lands at 2.65 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+		why: "inkDim reaches its floor with the 0.15 of headroom at 3.25 L* on this panel, so the band is paid on the accent cast",
+	},
+];
+
+/*
+ * The one palette whose current row cannot be separated from its own accent
+ * wash, pinned to the measured pair (design round 3, D3).
+ *
+ * `accentWash` is the app's active-row tint (`bg-accent-wash` in the agents
+ * sidebar, the category rail, the spreadsheet's selected row), and `highlight`
+ * is by construction a step toward the same family - so on a palette whose wash
+ * already sits close to `surface` the two marks converge. The row ground is
+ * held to the field floor (2.0) against that wash like any other pair this file
+ * measures, and on `rosePineDawn` it cannot be reached: the palette's own ink
+ * caps the darker route at 2.75 `L*`, and along the delivered cast family the
+ * BEST separation available inside the band is 1.75 (measured by sweeping the
+ * cast at every step the ink floor allows), with the shipped value at 0.93. The
+ * other three palettes this finding named - oneLight 0.70, rosePine 0.98,
+ * tokyoNightDay 1.54 - were re-authored out of the collision and clear the floor
+ * at 2.92, 2.76 and 2.13.
+ *
+ * @type {{theme: string, got: number, ceiling: number, why: string}[]}
+ */
+const HIGHLIGHT_WASH_PINS = [
+	{
+		theme: "rosePineDawn",
+		got: 0.93,
+		ceiling: 1.75,
+		why: "the ink floor caps the darker route at 2.75 L*, and the accent-cast family's best separation from this palette's own accentWash inside the band measured 1.75 against the 2.0 field floor - the pair is recorded with its ceiling rather than dropped, and the window's pixel list shoots the two grounds in one frame",
 	},
 ];
 
@@ -2108,14 +2144,41 @@ for (const { id, palette: p } of palettes) {
 		const wanted = p.mode === "dark" ? step : -step;
 		const pin = HIGHLIGHT_STEP_PINS.find((x) => x.theme === id);
 		if (pin) {
-			/* A pinned palette: the assertion becomes that the recorded step and the
-			   ink that caps it are still what this palette does. */
+			/*
+			 * A pinned palette, and the pin is a claim about three things rather
+			 * than a note beside the value: the step it ships, the ink ratio on
+			 * that ground, and - re-derived here, because prose cannot go stale
+			 * but a number the gate never recomputes can - the panel's own ink
+			 * cap and the binding ink's ratio at that cap.
+			 */
+			const [capL, capA, capB] = toLab(p.surface);
+			let cap = 0;
+			let capInk = null;
+			for (let step = 0.25; step <= 8; step += 0.25) {
+				const at = labToHex([
+					capL + (p.mode === "dark" ? step : -step),
+					capA,
+					capB,
+				]);
+				if (!at) break;
+				if (
+					INKS.every(
+						([role, floor]) =>
+							ratio(p[role], at) >= floor + HIGHLIGHT_INK_MARGIN,
+					)
+				) {
+					cap = step;
+					capInk = ratio(p[pin.inkRole], at);
+				}
+			}
 			if (
 				Math.abs(wanted - pin.step) > 0.05 ||
-				ratio(p[pin.inkRole], p.highlight) < pin.onGround - 0.05
+				ratio(p[pin.inkRole], p.highlight) < pin.onGround - 0.05 ||
+				Math.abs(cap - pin.cap) > 0.5 ||
+				(capInk !== null && Math.abs(capInk - pin.capInk) > 0.15)
 			) {
 				fail(
-					`${id}: the pinned highlight step no longer matches — recorded ${pin.step} L* with ${pin.inkRole} at ${pin.onGround}:1 on the row's ground, measured ${r2(wanted)} L* with ${r2(ratio(p[pin.inkRole], p.highlight))}:1. Re-measure the cap, re-author the value if the inks moved, and update the pin`,
+					`${id}: the pinned highlight step no longer matches — recorded ${pin.step} L* with ${pin.inkRole} at ${pin.onGround}:1 on the row's ground and a ${pin.cap} L* cap at ${pin.capInk}:1, measured ${r2(wanted)} L* at ${r2(ratio(p[pin.inkRole], p.highlight))}:1 with a ${r2(cap)} L* cap at ${capInk === null ? "no measurable" : r2(capInk)}:1. Re-measure the cap, re-author the value if the inks moved, and update the pin`,
 				);
 			}
 		} else if (wanted < HIGHLIGHT_LIGHTNESS_STEP_FLOOR) {
@@ -2126,6 +2189,39 @@ for (const { id, palette: p } of palettes) {
 			fail(
 				`${id}: \`highlight\` ${p.highlight} sits ${r2(step)} \`L*\` from \`surface\` ${p.surface}, so the current row is ${p.mode === "dark" ? "LIGHTER" : "DARKER"} than its panel by ${r2(wanted)} — the floor is ${HIGHLIGHT_LIGHTNESS_STEP_FLOOR} \`L*\` in that direction${wrongSide}. Author the step as a LIGHTNESS step at the surface's own hue - the largest one the ink floors allow - and buy only the shortfall to ΔE00 ${HIGHLIGHT_SEPARATION_FLOOR} on the chroma axis at that hue: \`palette-contract.ts\`'s \`highlight\` doc states the rule in full`,
 			);
+		}
+	}
+	/*
+	 * The row's ground against the app's OTHER selected-row mark.
+	 *
+	 * `accentWash` is what the app paints for an active or selected row elsewhere
+	 * (`bg-accent-wash`), and `highlight` is a step toward the same family by
+	 * construction - so on a palette whose wash sits close to `surface` the two
+	 * marks describe the same state in two different panels. This file measured
+	 * `highlight` against `surface`, `elevated`, `sunken` and the inks and never
+	 * against the wash, which is how the port integration landed four palettes
+	 * under this floor without a single assertion moving (design round 3, D3).
+	 *
+	 * One palette is pinned below because the floor is unreachable there rather
+	 * than merely missed; the pin records the best separation the palette can
+	 * reach, so the measurement is kept even where the floor is not met.
+	 */
+	{
+		assertions++;
+		const pin = HIGHLIGHT_WASH_PINS.find((x) => x.theme === id);
+		if (isHex(p.highlight) && isHex(p.accentWash)) {
+			const got = deltaE(p.highlight, p.accentWash);
+			if (pin) {
+				if (Math.abs(got - pin.got) > 0.05) {
+					fail(
+						`${id}: the pinned highlight/wash pair moved — recorded ΔE00 ${pin.got} against the ${FIELD_SEPARATION_FLOOR} field floor, measured ${r2(got)}. Re-measure the ceiling and update the pin`,
+					);
+				}
+			} else if (got < FIELD_SEPARATION_FLOOR) {
+				fail(
+					`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`accentWash\` ${p.accentWash} (need ${FIELD_SEPARATION_FLOOR}) — the current row's ground and the app's active-row wash read as the same mark below this floor, and they are two states, so they have to be two grounds. Steer the cast away from the wash's own family or move the step, and if the palette's inks cap that route, pin the pair with its measured ceiling rather than dropping the assertion`,
+				);
+			}
 		}
 	}
 	for (const [inkRole, floor] of INKS) {
@@ -2553,5 +2649,5 @@ if (stale.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
 );

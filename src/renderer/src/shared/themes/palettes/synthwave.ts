@@ -45,17 +45,14 @@ export const synthwave: ThemeDefinition = {
 		surface: "#2D2A41",
 		elevated: "#35314C",
 		sunken: "#1E1B2A",
-
 		/*
 		 * The current row's own ground:
-		 * `surface` cast 0.06 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 3 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.52 from `surface`, 3.2 from `elevated` and 9.39 from `sunken`;
-		 * the step is 3.04 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.69:1 the ink that binds it.
+		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule —
+		 * and stepped 3.27 on the `L*` axis, which is the whole of what the band needed:
+		 * ΔE00 4.02 from `surface` (4.52 before design round 3's D1 re-derivation), 2.43
+		 * from `elevated`, 9.24 from `sunken`, `inkDim` 4.65:1.
 		 */
-		highlight: "#3A2E4A",
+		highlight: "#392F4B",
 
 		ink: "#F2EFF8",
 		inkMuted: "#BCB3D4",

@@ -93,7 +93,7 @@ export type ThemePalette = {
 	 * rendered and reported the current row as lost beside a hovered neighbour,
 	 * so the intent is reversed and the step now lands at **ΔE00 4.0 or better on
 	 * every palette in the tree** — the twelve this change was authored against at
-	 * 4.01-4.15, and the forty-seven the theme port added at 4.00-10.35, re-authored
+	 * 4.01-4.15, and the forty-seven the theme port added at 4.00-4.87, re-authored
 	 * to this rule in the same round. It is a LIGHTNESS step first — the row sits
 	 * **3.81 to 6.62 `L*`** from its panel on those twelve, and **3.0 or better**
 	 * across the rest except six palettes whose OWN ink caps the lightness route
@@ -129,6 +129,14 @@ export type ThemePalette = {
 	 * in it. That floor is what caps the step on the palettes where it stops
 	 * short of the band's top, and it is the reason the row's ground cannot simply
 	 * be made louder on those palettes.
+	 *
+	 * Against the app's other selected-row mark: `accentWash` is what an active or
+	 * selected row wears elsewhere (`bg-accent-wash`), and this role is a step toward
+	 * the same family, so the two converge on a palette whose wash sits close to
+	 * `surface` — four of the port's palettes landed under the field floor that way and
+	 * were re-authored, and `rosePineDawn` cannot reach it at all (its ink caps the
+	 * route and the best cast it can afford measures 1.75), recorded as a pinned
+	 * exception. That pair is asserted beside the separations below.
 	 *
 	 * Beside it: a row's `hover:` step is `elevated`, so a hovered row must STILL
 	 * be a different ground from the current one — worst pair ΔE00 2.25
