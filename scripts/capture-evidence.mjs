@@ -817,8 +817,11 @@ export const STORIES = [
 	   fit-to-viewport rule would smear it. That last frame is sized to itself for
 	   the reason the notification states are: the scrim covers the whole viewport,
 	   so at 1280x900 the frame would be one colour over `check-evidence`'s
-	   uniformity ceiling and a picture of nothing. The first three reach the overlay
-	   by pressing the picture; see the story's own note. */
+	   uniformity ceiling and a picture of nothing. `expanded` and
+	   `expanded-small-image` reach the overlay by pressing the picture; `in-thread`
+	   is the at-rest state that press acts on, and the story's own note says so.
+	   (Review round 3, R3-5: this said "the first three", which counted the state
+	   the press acts on among the states the press produces.) */
 	["chat-image-expand--in-thread", 1280, 900],
 	["chat-image-expand--expanded", 1280, 900, { press: IMAGE_EXPAND_PICTURE }],
 	[

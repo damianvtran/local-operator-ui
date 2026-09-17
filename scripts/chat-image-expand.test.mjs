@@ -716,25 +716,57 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 			 * And the OPEN state, which is a different route to the same loss:
 			 * opening this menu by keyboard moves focus into the Radix portal, so
 			 * `group-focus-within` stops matching while the menu is on screen and the
-			 * trigger vanishes from under it (UX round 2, U2-1). The class is the half
-			 * an engine without layout can check, exactly as above; the frame that
-			 * shows it is `chat-image-expand--legacy-tabbed-open`, where the trigger
-			 * must still be drawn behind the open menu.
+			 * trigger vanishes from under it (U2-1).
+			 *
+			 * WHICH ATTRIBUTE these two tokens key on is the whole finding of round 3
+			 * (U3-1, Q3-1), and this list is deliberately written so a wrong hook CANNOT
+			 * pass it: the round-2 tokens keyed on `data-state=open`, and on this
+			 * subtree that attribute belongs to the Tooltip —
+			 * `file-actions-menu.tsx` nests `<Tooltip><DropdownMenuTrigger asChild>`
+			 * and `ui/tooltip.tsx`'s `TooltipTrigger asChild` owns it — so it reads
+			 * "closed" while the menu is genuinely open and the rule could never fire.
+			 * The assertions below pin the attribute the dropdown DOES own, and the two
+			 * DOM facts that make the difference measurable in an engine with no
+			 * stylesheet: `aria-expanded` is on the trigger (false at rest), and the
+			 * Tooltip's own `data-state` is on the same node, which is why keying on it
+			 * was inert. The engine proof is the `legacy-tabbed-open` frame and its
+			 * measurement, recorded in `docs/evidence/chat-image-expand/README.md`.
 			 */
-			"has-[[data-state=open]]:pointer-events-auto",
-			"has-[[data-state=open]]:opacity-100",
+			"has-[[aria-expanded=true]]:pointer-events-auto",
+			"has-[[aria-expanded=true]]:opacity-100",
 		]) {
 			assert.ok(
 				wrapper.className.includes(token),
 				`the reveal must keep \`${token}\` — the four actions in it became pointer-only when the picture's click stopped opening the file (review round 1, R1-1)`,
 			);
 		}
+		assert.ok(
+			!wrapper.className.includes("data-state"),
+			`the open-state reveal must not key on \`data-state\`: on this subtree that attribute is the Tooltip's and reads "closed" while the menu is open, which is why the round-2 pair was inert (UX round 3 U3-1, QA round 3 Q3-1)`,
+		);
 		/*
 		 * And the control itself is real: enabled, focusable, and not hidden from a
 		 * reader while it is hidden from the pointer.
 		 */
 		const trigger = api.document.querySelector(FILE_ACTIONS);
 		assert.ok(trigger, `the actions have a trigger (${FILE_ACTIONS})`);
+		/*
+		 * The two attributes that made the round-2 pair inert, asserted rather than
+		 * described: the dropdown's own signal is present and false at rest (so a
+		 * reveal keyed on it is a real hook), while the Tooltip's `data-state` is on
+		 * the same node — the value it takes while the menu is open ("closed") is the
+		 * reason the earlier tokens could not match.
+		 */
+		assert.equal(
+			trigger.getAttribute("aria-expanded"),
+			"false",
+			"the reveal keys on the dropdown's own `aria-expanded`, which is present and false at rest",
+		);
+		assert.equal(
+			trigger.getAttribute("data-state"),
+			"closed",
+			"and the Tooltip's `data-state` sits on that same node — which is why a reveal keyed on it was inert (U3-1)",
+		);
 		assert.equal(
 			trigger.disabled,
 			false,

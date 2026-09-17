@@ -313,33 +313,53 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					 * that click became the expansion (review round 1, R1-1).
 					 *
 					 * This is the reveal the repo already uses for a hovering toolbar —
-					 * `quote-toolkit.tsx`, `directory-indicator.tsx`,
-					 * `browser-tab-strip.tsx`, `agents-sidebar.tsx`,
-					 * `schedule-list-item.tsx` and the three canvas views
-					 * (`canvas-file-viewer`, `canvas-tabs`, `canvas-variables-viewer`) —
-					 * where the control is hidden with `pointer-events-none opacity-0`
-					 * (paint and pointer only) and both `group-hover` and
-					 * `group-focus-within` bring it back, so being hidden and being
-					 * unreachable stopped being the same thing. (Twelve files under
-					 * `src/renderer/src` carry `group-focus-within`; those eight are the
-					 * nearest analogues, and the count is greppable rather than recalled —
-					 * review round 2, R2-3, corrected this list.) `group` is this component's own wrapper, so
+					 * `directory-indicator.tsx`, `browser-tab-strip.tsx`,
+					 * `agents-sidebar.tsx`, `schedule-list-item.tsx`, `chat-sidebar.tsx`,
+					 * `editable-field.tsx`, `sidebar-navigation.tsx` and the three
+					 * canvas views (`canvas-file-viewer`, `canvas-tabs`,
+					 * `canvas-variables-viewer`) — where the control is hidden with
+					 * `pointer-events-none opacity-0` (paint and pointer only) and both
+					 * `group-hover` and `group-focus-within` bring it back, so being
+					 * hidden and being unreachable stopped being the same thing.
+					 * **Thirteen files under `src/renderer/src` carry
+					 * `group-focus-within`**, this one included, and the nine above are
+					 * the nearest analogues. The count and the names are greppable rather
+					 * than recalled, and the list has now been corrected twice for exactly
+					 * that reason: round 2 dropped `message-controls.tsx` (no such class),
+					 * and round 3 dropped `quote-toolkit.tsx` — whose only match is its own
+					 * comment saying it has neither class, which is the trap a grep for
+					 * the token walks straight into (review round 3, R3-3). `group` is this component's own wrapper, so
 					 * focusing the picture reveals the menu the same way hovering it
 					 * does, and Tab walks picture -> menu.
 					 */
 					<div
 						/*
-						 * `has-[[data-state=open]]` for the OPEN state, and it is not
-						 * decoration: opening this menu by KEYBOARD moves focus into the
-						 * Radix portal, so `group-focus-within` stops matching while the
-						 * menu is on screen and the trigger vanishes from under it — the
-						 * menu reads as hanging off an empty focus ring (UX round 2,
-						 * U2-1). A pointer user never saw it, because the pointer is still
-						 * hovering the wrapper. The trigger carries `data-state` from
-						 * Radix, so the wrapper can hold its own reveal for exactly as
-						 * long as its menu is open, on either input.
+						 * `has-[[aria-expanded=true]]` for the OPEN state, and WHICH
+						 * attribute it keys on was measured rather than assumed.
+						 *
+						 * Opening this menu by keyboard moves focus into the Radix portal,
+						 * so `group-focus-within` stops matching while the menu is on
+						 * screen and the trigger vanishes from under it — the menu reads
+						 * as hanging off an empty focus ring (U2-1). A pointer user never
+						 * saw it, because the pointer is still hovering the wrapper.
+						 *
+						 * Round 2 first keyed this on `data-state=open` and it never
+						 * fired: the only descendant of this wrapper holding `data-state`
+						 * is the trigger, and that attribute is the TOOLTIP's, not the
+						 * dropdown's — `file-actions-menu.tsx` nests
+						 * `<Tooltip><DropdownMenuTrigger asChild>` and
+						 * `ui/tooltip.tsx`'s `TooltipTrigger asChild` owns it. Measured
+						 * with the menu genuinely open (`div[role="menu"][data-state=
+						 * "open"]`, four entries, focus in the portal): the trigger read
+						 * `data-state="closed"` with `aria-expanded="true"`, and the
+						 * wrapper stayed at `opacity: 0` at 0, 60, 120, 250, 500 and
+						 * 900ms. The dropdown's OWN attribute on that node is
+						 * `aria-expanded`, so that is the one to key on — it is `true`
+						 * exactly while the menu is open and `false` at rest, which is the
+						 * state the reveal is for (UX round 3 U3-1, QA round 3 Q3-1; the
+						 * frame and the frame measurement are in the evidence README).
 						 */
-						className="file-actions-menu pointer-events-none absolute top-1 right-1 z-[2] opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100"
+						className="file-actions-menu pointer-events-none absolute top-1 right-1 z-[2] opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}

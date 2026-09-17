@@ -52,8 +52,11 @@ const PICTURE_BOX =
  * where the app background is still visible behind it". So the panel clothes are
  * removed by the `className` below rather than by a second dialog implementation:
  * the primitive is still `@shared/components/ui`'s `Dialog`, the scrim is still
- * its `bg-scrim` (a per-theme role — a hardcoded black alpha is wrong in the six
- * light themes, where the scrim is a warm near-black at a lower alpha), and
+ * its `bg-scrim` (a per-theme role — a hardcoded black alpha is wrong in the
+ * THREE light themes, `iceberg`, `localOperatorLight` and `sage`, whose scrims
+ * are their own near-blacks at 0.35 alpha against the other nine themes' 0.6-0.65;
+ * only `localOperatorLight`'s is warm, `iceberg`'s being a cool blue-grey — design
+ * round 3, D3-2), and
  * Escape, the outside click, the focus trap and the close button are all Radix's
  * rather than a hand-rolled overlay, key handler or backdrop click.
  *
