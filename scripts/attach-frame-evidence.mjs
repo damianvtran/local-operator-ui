@@ -531,9 +531,36 @@ const READ_PAGE = `(async () => {
 		 * carrying one, which is how a frame that was correct got reported as missing
 		 * the statement it was showing.
 		 */
-		band: ([...document.querySelectorAll(".fixed.inset-x-0.top-0")]
-			.map((node) => node.innerText.replace(/\\s+/g, " ").trim())
-			.filter(Boolean)[0] ?? null),
+		band: (() => {
+			/*
+			 * The band is a LAYOUT sibling of the app's region, not a strip at the top
+			 * of the window: since D9 both bands are the shell's first children in
+			 * flow, so the ".fixed.inset-x-0.top-0" spelling this field used read "no
+			 * band" over a window carrying one. The shape-independent question is the
+			 * one scripts/band-occlusion-evidence.mjs measures - the shell's own
+			 * children that sit at or above the region's top, are strip-sized, and are
+			 * not the region - and it is asked the same way here.
+			 */
+			const main = document.querySelector("main");
+			const region = main ? main.parentElement : null;
+			const outer = region ? region.parentElement : null;
+			const regionTop = region ? region.getBoundingClientRect().top : 0;
+			const strips = [];
+			for (const level of [region, outer]) {
+				if (!level) continue;
+				for (const el of level.children) {
+					const r = el.getBoundingClientRect();
+					if (r.height <= 16 || r.height > 200 || r.top > regionTop + 8) continue;
+					if (main && el.contains(main)) continue;
+					strips.push(el);
+				}
+			}
+			return (
+				strips
+					.map((node) => node.innerText.replace(/\\s+/g, " ").trim())
+					.filter(Boolean)[0] ?? null
+			);
+		})(),
 		first_lines: text.split("\\n").filter(Boolean).slice(0, 14),
 	});
 })()`;

@@ -67,8 +67,9 @@ import {
 } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { inflateSync } from "node:zlib";
 import { withNotificationsOff } from "./notifications-off.mjs";
 
 const REPO = fileURLToPath(new URL("..", import.meta.url));
@@ -85,6 +86,35 @@ if (!OUT) {
 	);
 	process.exit(1);
 }
+/**
+ * Which states to record, and what the tree under test is.
+ *
+ * `--expect uncovered` is the fixed tree: the run then ASSERTS the acceptance
+ * claims (no anchor covered at any band height, the region keeping exactly the
+ * window minus the bands, the bands stacked in order) and FAILS rather than
+ * recording a `coveredByBand: true` for a reader to notice. The pre-fix tree
+ * passes `--expect covered`, which asserts the opposite - a band up means a row
+ * gone - so neither half is a mere reading (review round 1, B1/N4).
+ */
+const ONLY = (argValue("--only", "all") || "all")
+	.split(",")
+	.map((name) => name.trim());
+const EXPECT = argValue("--expect", "uncovered");
+if (!["uncovered", "covered"].includes(EXPECT)) {
+	console.error(`--expect expects uncovered|covered (got "${EXPECT}")`);
+	process.exit(2);
+}
+const wanted = (name) => ONLY.includes("all") || ONLY.includes(name);
+/**
+ * A committed no-band frame from the OTHER half of the pair, diffed against this
+ * run's own no-band frame.
+ *
+ * The designer's must-not-move check, and the one claim the rest of this rig cannot
+ * make: with no band up the restructure must cost the layout nothing, which is a
+ * pixel fact about two trees rather than a rect fact about one. Pass the other
+ * half's `*-none.png` and the run FAILS on any differing row.
+ */
+const COMPARE_AGAINST = argValue("--compare-against", null);
 const WIDTH = Number(
 	(argValue("--window-size", "1380x900") || "").split("x")[0],
 );
@@ -522,18 +552,21 @@ const MEASURE = `(() => {
 	const main = document.querySelector("main");
 	const region = main ? main.parentElement : null;
 	const outer = region ? region.parentElement : null;
+	const regionTop = region ? box(region).top : 0;
 	/*
-	 * A band is a child of the shell that paints at the top of the window. The
-	 * DOM order is the z order here, so the LAST match is the one a reader sees
-	 * where two overlap.
-	 */
-	/*
-	 * The band wrappers are children of the element that holds the app's own
-	 * layout, and WHICH element that is depends on the shape under test: before
-	 * this change the bands are children of main's own parent, after it they are
-	 * siblings of the wrapper that holds main. Both levels are read rather than
-	 * one being named, because a rig that assumed either depth reported "no band"
-	 * over a window carrying one - which is what its first run did.
+	 * A BAND IS A LAYOUT SIBLING OF THE APP'S REGION, not a strip at the top of the
+	 * WINDOW. That distinction is the whole of review round 1's B1: the first
+	 * version filtered on "top <= 8", which is the PRE-FIX shape written into the
+	 * tool - on the fixed tree the second band's top is the first band's bottom (68
+	 * or 53), so it was dropped, a two-band state was unreachable, and the case that
+	 * decided this change's shape could not be photographed at all.
+	 *
+	 * The candidate set is the shell's own children at both levels that hold them
+	 * (before the fix the bands are children of main's parent, after it they are
+	 * siblings of the wrapper that holds main), with the region excluded by
+	 * contains(main) and anything region-sized excluded by the height window. Where
+	 * a band sits is then relative to the REGION's top, which is true of a fixed
+	 * strip at y 0 and of the column's first children alike.
 	 */
 	const levels = [region, outer].filter(Boolean);
 	const seen = new Set();
@@ -547,19 +580,15 @@ const MEASURE = `(() => {
 	}
 	const bands = candidates
 		.map((el) => ({ el, style: getComputedStyle(el), b: box(el) }))
-		/*
-		 * A strip at the top of the window, and NOT the app's own region: the region
-		 * contains main and is the whole window tall, which is the one thing a band
-		 * never is.
-		 */
 		.filter(
 			(entry) =>
 				entry.b.h > 16 &&
 				entry.b.h <= 200 &&
-				entry.b.top <= 8 &&
+				entry.b.top <= regionTop + 8 &&
 				text(entry.el) &&
 				!(main && entry.el.contains(main)),
 		)
+		.sort((a, b) => a.b.top - b.b.top)
 		.map((entry) => ({
 			text: text(entry.el),
 			position: entry.style.position,
@@ -567,25 +596,91 @@ const MEASURE = `(() => {
 			rect: entry.b,
 			device: device(entry.b),
 		}));
-	const search = document.querySelector('[aria-label^="Search"]');
+	/*
+	 * THE ANCHORS ARE NAMED, and each match is asserted unique. querySelector picks
+	 * the first match in document order, so a selector that happens to match two
+	 * controls reads whichever the DOM puts first - which is how the first version of
+	 * this file measured the chat list's filter while its comment called it the
+	 * rail's search, and how a probe can silently drift onto a control no band can
+	 * reach and read "not covered" as a pass (review round 1, M1).
+	 *
+	 * relativeToRegion is the drift guard: an anchor a band at the top of the region
+	 * can cover starts within 200 CSS px of the region's top in EVERY state, because
+	 * the region itself translates by the band height. The rail's search control is
+	 * recorded as the opposite control - it sits at the rail's foot, so no top band
+	 * can reach it - and the run fails if it is ever covered, which would mean the
+	 * band is not a strip.
+	 */
 	const anchors = {};
-	if (search) {
-		const b = box(search);
-		anchors.search = {
+	const coveredBy = (b) =>
+		bands.filter((band) => band.rect.bottom > b.top && band.rect.top < b.bottom);
+	const at = (selector, where = document) => {
+		const found = [...where.querySelectorAll(selector)];
+		return { el: found.length === 1 ? found[0] : null, matches: found.length };
+	};
+	const record1 = (name, el, selector, bandReachable) => {
+		if (!el) {
+			anchors[name] = {
+				selector,
+				error: "matched 0 element(s), expected exactly 1",
+			};
+			return;
+		}
+		const b = box(el);
+		anchors[name] = {
+			selector,
+			text: text(el).slice(0, 60),
 			rect: b,
 			device: device(b),
-			coveredByBand: bands.some((band) => band.rect.bottom > b.top && band.rect.top < b.bottom),
+			relativeToRegion: region ? round(b.top - regionTop) : null,
+			bandReachable,
+			coveredByBand: coveredBy(b).length > 0,
+			coveredBy: coveredBy(b).map((band) => band.text.slice(0, 40)),
 		};
-	}
-	const paneFirst = main ? main.querySelector("h1, h2, h3, p") : null;
-	if (paneFirst) {
-		const b = box(paneFirst);
-		anchors.paneFirst = {
-			text: text(paneFirst),
-			rect: b,
-			device: device(b),
-			coveredByBand: bands.some((band) => band.rect.bottom > b.top && band.rect.top < b.bottom),
-		};
+	};
+	const anchor = (name, selector, bandReachable) => {
+		const probe = at(selector);
+		record1(
+			name,
+			probe.el,
+			probe.matches === 1
+				? selector
+				: selector + " (" + probe.matches + " matches)",
+			bandReachable,
+		);
+	};
+	anchor("chatSearch", 'input[aria-label="Search chats and agents"]', true);
+	anchor("chatListHeader", 'nav[aria-label="Chats"] h2', true);
+	/*
+	 * The CONVERSATION PANE's own first row, which is not one selector: a draft
+	 * shows its own h1, a live session shows its header row, and main's first heading
+	 * is the CHAT LIST's "Chats" (named above) rather than the pane's. So the pane is
+	 * located as the chat list's parent and the first text row OUTSIDE the chat list
+	 * is taken - the same row the D9 brief measures as the pane's page title.
+	 */
+	const chatList = document.querySelector('nav[aria-label="Chats"]');
+	const pane = chatList ? chatList.parentElement : main;
+	const paneRows = pane
+		? [...pane.querySelectorAll("h1, h2, h3, p")].filter(
+				(el) => !(chatList && chatList.contains(el)),
+			)
+		: [];
+	record1(
+		"paneFirstRow",
+		paneRows[0] ?? null,
+		'the pane\'s first h1/h2/h3/p outside nav[aria-label="Chats"]',
+		true,
+	);
+	anchor("railSearch", "[data-command-palette-trigger]", false);
+	/*
+	 * The element use-browser-chrome measures on /browser, reported so the native
+	 * view's bounds can be read either side of a band rather than reasoned about
+	 * (review round 1, M2). Its class string is the selector because the component
+	 * gives the element no hook; it must match exactly once or the state reports an
+	 * error, so a rename fails the run loudly instead of reading nothing.
+	 */
+	if (location.hash.startsWith("#/browser")) {
+		anchor("browserContent", ".relative.min-h-0.min-w-0.grow.bg-canvas", true);
 	}
 	const fixed = [...document.querySelectorAll("*")].filter(
 		(el) => getComputedStyle(el).position === "fixed" && el.getBoundingClientRect().height > 0,
@@ -596,19 +691,19 @@ const MEASURE = `(() => {
 			h: window.innerHeight,
 			dpr: window.devicePixelRatio,
 		},
+		route: location.hash || "#/",
 		bandCount: bands.length,
 		bands,
-		bandTotal: bands.reduce((sum, band) => sum + band.rect.h, 0),
+		bandTotal: round(bands.reduce((sum, band) => sum + band.rect.h, 0)),
 		region: region ? { cls: String(region.className || "").slice(0, 60), rect: box(region), scrollHeight: region.scrollHeight, clientHeight: region.clientHeight } : null,
 		outer: outer ? { cls: String(outer.className || "").slice(0, 60), rect: box(outer), scrollHeight: outer.scrollHeight, clientHeight: outer.clientHeight } : null,
 		/*
-		 * Every child of the shell, and every alert, with its class, box and copy.
+		 * Every child of each level, with its class, box, position and copy.
 		 *
 		 * WHY this is here rather than only the detected bands: when a rig waits for a
-		 * band that never comes, the question is "is it not rendered, or is it
-		 * rendered somewhere this detector does not look", and the two have opposite
-		 * answers. This is the read that separates them - it is how the first run
-		 * found its own detector looking one level too high.
+		 * band that never comes, the question is "is it not rendered, or is it rendered
+		 * somewhere this detector does not look", and the two have opposite answers.
+		 * This is the read that separates them.
 		 */
 		levels: levels.map((el) => ({
 			cls: String(el.className || "").slice(0, 56),
@@ -622,6 +717,18 @@ const MEASURE = `(() => {
 		})),
 		alerts: [...document.querySelectorAll('[role="alert"]')].map((el) =>
 			text(el).slice(0, 80),
+		),
+		/*
+		 * Whether the first-run wizard is up. It is portaled to document.body, so it
+		 * is invisible to every read scoped to the shell - which is why the scrim
+		 * state waited 120 s for a predicate it could never satisfy.
+		 */
+		onboardingVisible: Boolean(
+			[...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].find((el) =>
+				/Connect a provider|Choose your provider|Welcome to Local Operator/i.test(
+					el.innerText || "",
+				),
+			),
 		),
 		anchors,
 		fixedCount: fixed.length,
@@ -652,7 +759,23 @@ async function holdFor(label, predicate, timeoutMs = 180_000) {
 	let last = null;
 	let tick = 0;
 	while (Date.now() < deadline) {
-		last = await measure();
+		try {
+			last = await measure();
+		} catch (error) {
+			/*
+			 * A read that lands while the page is mid-navigation, or while a boot under
+			 * load is still painting, answers nothing at all - the same fact as "this
+			 * state is not here yet", so it is waited out rather than thrown. Measured:
+			 * a host-hold retry died on the FIRST read of a boot that was still painting,
+			 * which is the one failure here that is not a statement about the app.
+			 */
+			streak = 0;
+			if (tick % 10 === 0)
+				console.log(`#   waiting for ${label}: read failed (${error.message})`);
+			tick += 1;
+			await wait(1_000);
+			continue;
+		}
 		streak = predicate(last) ? streak + 1 : 0;
 		if (streak >= 3) return last;
 		if (tick % 10 === 0)
@@ -683,11 +806,177 @@ function requestCounts() {
 	return counts;
 }
 
+/**
+ * A PNG's rows, so a claim about pixels can be made about pixels.
+ *
+ * WHY this is here rather than in a shell command: the acceptance list asks for
+ * one check the rects cannot make - that everything above the region is band
+ * paint, so the app's own first painted row starts exactly at the bands' device
+ * height - and a still that "looks right" is not that check. PNG's filters are
+ * implemented rather than pulled in: this repository has no image dependency, and
+ * Electron writes an RGBA8 surface for every capture of this window (Page.
+ * captureScreenshot of a `show: false` window, measured; the reader accepts 0/2/4/6
+ * colour types and refuses anything else by name).
+ */
+function pngRows(file) {
+	const buf = readFileSync(file);
+	let pos = 8;
+	let width = 0;
+	let height = 0;
+	let bitDepth = 0;
+	let colorType = 0;
+	const idat = [];
+	while (pos + 8 <= buf.length) {
+		const length = buf.readUInt32BE(pos);
+		const type = buf.toString("ascii", pos + 4, pos + 8);
+		const data = buf.subarray(pos + 8, pos + 8 + length);
+		if (type === "IHDR") {
+			width = data.readUInt32BE(0);
+			height = data.readUInt32BE(4);
+			bitDepth = data[8];
+			colorType = data[9];
+		} else if (type === "IDAT") idat.push(data);
+		else if (type === "IEND") break;
+		pos += 12 + length;
+	}
+	if (bitDepth !== 8)
+		throw new Error(
+			`${file}: bit depth ${bitDepth} is not what this reader handles`,
+		);
+	const channels =
+		colorType === 6
+			? 4
+			: colorType === 2
+				? 3
+				: colorType === 4
+					? 2
+					: colorType === 0
+						? 1
+						: 0;
+	if (!channels)
+		throw new Error(
+			`${file}: colour type ${colorType} is not what this reader handles`,
+		);
+	const raw = inflateSync(Buffer.concat(idat));
+	const stride = width * channels;
+	const rows = [];
+	let previous = Buffer.alloc(stride);
+	let offset = 0;
+	for (let y = 0; y < height; y++) {
+		const filter = raw[offset++];
+		const line = Buffer.from(raw.subarray(offset, offset + stride));
+		offset += stride;
+		for (let x = 0; x < stride; x++) {
+			const a = x >= channels ? line[x - channels] : 0;
+			const b = previous[x];
+			const c = x >= channels ? previous[x - channels] : 0;
+			let value = line[x];
+			if (filter === 1) value += a;
+			else if (filter === 2) value += b;
+			else if (filter === 3) value += (a + b) >> 1;
+			else if (filter === 4) {
+				const p = a + b - c;
+				const pa = Math.abs(p - a);
+				const pb = Math.abs(p - b);
+				const pc = Math.abs(p - c);
+				value += pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+			}
+			line[x] = value & 0xff;
+		}
+		rows.push(line);
+		previous = line;
+	}
+	return { width, height, channels, rows };
+}
+
+/** Whether two device rows carry the same RGB. */
+function sameRow(a, b, channels) {
+	if (a.length !== b.length) return false;
+	for (let x = 0; x < a.length; x += channels) {
+		if (a[x] !== b[x] || a[x + 1] !== b[x + 1] || a[x + 2] !== b[x + 2])
+			return false;
+	}
+	return true;
+}
+
+/**
+ * The pixel half of the acceptance list, measured against the no-band frame of the
+ * SAME run, so the comparison cannot be about the tree, the theme or the window -
+ * only about the bands.
+ *
+ * `rowsBelowShiftEqual` walks down from the bands' own device height and reports
+ * how far the frame equals the no-band frame translated by exactly that many device
+ * rows: the "the region translates" claim as a pixel fact rather than as a rect
+ * one. `firstDivergentRow` is where content that depends on the region's height (a
+ * centred statement, a bottom-anchored control) stops matching, which is reported
+ * rather than asserted - reflow below the fold is expected, and it is not the
+ * claim. `firstRowsBelowShiftEqual` is the assertion: the first 100 device rows
+ * below the bands match the no-band frame's first 100 translated, which is "the
+ * app's first painted row starts exactly at the bands' device height".
+ */
+function compareWithNone(file, noneFile, shift) {
+	const frame = pngRows(file);
+	const none = pngRows(noneFile);
+	if (frame.width !== none.width || frame.height !== none.height)
+		return {
+			error: `frame is ${frame.width}x${frame.height}, none is ${none.width}x${none.height}`,
+		};
+	let equal = 0;
+	let firstDivergentRow = null;
+	for (let y = shift; y < frame.height; y++) {
+		if (sameRow(frame.rows[y], none.rows[y - shift], frame.channels))
+			equal += 1;
+		else if (firstDivergentRow === null) firstDivergentRow = y;
+	}
+	return {
+		shiftRows: shift,
+		rowsCompared: frame.height - shift,
+		rowsBelowShiftEqual: equal,
+		firstDivergentRow,
+		firstRowsBelowShiftEqual:
+			firstDivergentRow === null || firstDivergentRow >= shift + 100,
+	};
+}
+
+/** Compare two frames of the same viewport pixel for pixel (the before/after control). */
+function diffFrames(fileA, fileB) {
+	const a = pngRows(fileA);
+	const b = pngRows(fileB);
+	if (a.width !== b.width || a.height !== b.height)
+		return { error: `${a.width}x${a.height} against ${b.width}x${b.height}` };
+	let differing = 0;
+	for (let y = 0; y < a.height; y++)
+		if (!sameRow(a.rows[y], b.rows[y], a.channels)) differing += 1;
+	return {
+		rows: a.height,
+		differingRows: differing,
+		identical: differing === 0,
+	};
+}
+
+/** The checks this run makes, so a state that violates one fails rather than reports. */
+const failures = [];
+function check(what, ok, detail) {
+	console.log(
+		`# ${ok ? "PASS" : "FAIL"} ${what}${detail === undefined ? "" : ` - ${detail}`}`,
+	);
+	if (!ok)
+		failures.push(`${what}${detail === undefined ? "" : ` (${detail})`}`);
+}
+
 async function record(name, m) {
 	const file = join(FRAMES, `${LABEL}-${name}.png`);
 	await capture(file);
-	summary.states[name] = {
-		frame: file,
+	/*
+	 * The COMMITTED name when the run writes inside the repository, so a reader can
+	 * map a state to a frame without knowing the scratch `--out` of the run that
+	 * produced it (review round 1, N3).
+	 */
+	const inside = relative(REPO, file);
+	const entry = {
+		frame: inside.startsWith("..") ? file : inside,
+		out: FRAMES,
+		route: m.route,
 		requests: requestCounts(),
 		bandCount: m.bandCount,
 		bandTotal: m.bandTotal,
@@ -697,16 +986,170 @@ async function record(name, m) {
 		outer: m.outer,
 		fixedCount: m.fixedCount,
 		documentScroll: m.documentScroll,
+		viewport: m.viewport,
 	};
+	if (noneFrame && m.bandCount > 0)
+		entry.pixels = compareWithNone(
+			file,
+			noneFrame,
+			Math.round(m.bandTotal * m.viewport.dpr),
+		);
+	summary.states[name] = entry;
 	console.log(
-		`# ${name}: bands=${m.bandCount} total=${m.bandTotal} css px, region height=${m.region?.rect.h}, asked=${JSON.stringify(
-			requestCounts(),
+		`# ${name}: route=${m.route} bands=${m.bandCount} total=${m.bandTotal} css px, region=${JSON.stringify(
+			m.region?.rect,
 		)}, covered=${JSON.stringify(
 			Object.fromEntries(
-				Object.entries(m.anchors).map(([k, v]) => [k, v.coveredByBand]),
+				Object.entries(m.anchors).map(([key, value]) => [
+					key,
+					value.coveredByBand,
+				]),
 			),
 		)}`,
 	);
+	if (entry.pixels && !entry.pixels.error)
+		console.log(
+			`# ${name}: pixels - ${entry.pixels.rowsBelowShiftEqual}/${entry.pixels.rowsCompared} rows equal to the no-band frame shifted ${entry.pixels.shiftRows} device rows, first divergent row ${entry.pixels.firstDivergentRow}`,
+		);
+	return entry;
+}
+
+/** Where the no-band frame of this run lives, once one has been taken. */
+let noneFrame = null;
+/** Whether this tree is the fixed one, which decides the direction of every assertion. */
+const expectUncovered = EXPECT === "uncovered";
+/** The anchor offsets a band may not move: measured on the pre-fix tree, in CSS px. */
+const CHAT_SEARCH_TOP = 48;
+const CHAT_LIST_HEADER_TOP = 14.25;
+
+/**
+ * The acceptance claims, asserted per state, in the direction the tree under test
+ * should satisfy them.
+ *
+ * `--expect uncovered` is the fixed tree: nothing may be covered at any band
+ * height, the region must be exactly the window minus the bands, the anchors must
+ * keep their offsets (the region translates; the contents do not reflow), the bands
+ * must stack in order and the app's first painted row must start at the bands'
+ * device height. `--expect covered` is the pre-fix tree, whose defect is the first
+ * of those, so it asserts that a band up means the rows are gone.
+ */
+function assertState(name, m) {
+	check(
+		`${name}: nothing scrolls above the region`,
+		m.documentScroll.scrollHeight === m.documentScroll.clientHeight,
+		`${m.documentScroll.scrollHeight}/${m.documentScroll.clientHeight} ${m.documentScroll.overflowY}`,
+	);
+	/*
+	 * Direction-aware, like every claim here: the pre-fix tree's fixed bands take
+	 * NO height from the layout, so its region is the whole window while a band is up
+	 * - which is exactly the defect - and the fixed tree's region is the window minus
+	 * the bands. Both are asserted, in their own direction, so neither half can be
+	 * read as the other's evidence.
+	 */
+	check(
+		expectUncovered
+			? `${name}: region is the window minus the bands`
+			: `${name}: region is the whole window (a fixed band takes no height)`,
+		Math.abs(
+			m.region.rect.h -
+				(expectUncovered ? m.viewport.h - m.bandTotal : m.viewport.h),
+		) <= 0.5,
+		`region ${m.region.rect.h}, viewport ${m.viewport.h}, bandTotal ${m.bandTotal}`,
+	);
+	for (const [anchor, value] of Object.entries(m.anchors)) {
+		if (value.error) {
+			check(
+				`${name}: anchor ${anchor} resolves exactly once`,
+				false,
+				value.error,
+			);
+			continue;
+		}
+		const reachable = value.bandReachable;
+		if (reachable)
+			check(
+				`${name}: anchor ${anchor} is band-reachable (not a drifted probe)`,
+				Math.abs(value.relativeToRegion) <= 200,
+				`${value.relativeToRegion} CSS px below the region's top`,
+			);
+		if (expectUncovered && reachable)
+			check(
+				`${name}: anchor ${anchor} is not covered`,
+				!value.coveredByBand,
+				value.coveredByBand
+					? `covered by ${JSON.stringify(value.coveredBy)}`
+					: "clear",
+			);
+		if (!expectUncovered && m.bandCount > 0 && reachable)
+			check(
+				`${name}: anchor ${anchor} is covered (pre-fix tree)`,
+				value.coveredByBand,
+			);
+		if (!reachable)
+			check(
+				`${name}: the rail's own control is never covered (a band is a strip)`,
+				!value.coveredByBand,
+				`rect ${JSON.stringify(value.rect)}`,
+			);
+	}
+	if (expectUncovered) {
+		check(
+			`${name}: the chat list's filter keeps its offset`,
+			Math.abs(
+				(m.anchors.chatSearch?.relativeToRegion ?? -1) - CHAT_SEARCH_TOP,
+			) <= 0.5,
+			`${m.anchors.chatSearch?.relativeToRegion} against ${CHAT_SEARCH_TOP}`,
+		);
+		check(
+			`${name}: the chat list's header keeps its offset`,
+			Math.abs(
+				(m.anchors.chatListHeader?.relativeToRegion ?? -1) -
+					CHAT_LIST_HEADER_TOP,
+			) <= 0.5,
+			`${m.anchors.chatListHeader?.relativeToRegion} against ${CHAT_LIST_HEADER_TOP}`,
+		);
+	}
+	if (m.bandCount === 2) {
+		const [first, second] = m.bands;
+		check(
+			expectUncovered
+				? `${name}: the two bands stack in order`
+				: `${name}: the two bands overlap at the window's top (the pre-fix shape)`,
+			expectUncovered
+				? Math.abs(second.rect.top - first.rect.bottom) <= 0.5
+				: Math.abs(second.rect.top - first.rect.top) <= 0.5,
+			`${first.rect.top}+${first.rect.h} then ${second.rect.top}`,
+		);
+		check(
+			`${name}: bandTotal is the sum of the two`,
+			Math.abs(m.bandTotal - (first.rect.h + second.rect.h)) <= 0.5,
+			`${m.bandTotal}`,
+		);
+	}
+	if (expectUncovered && m.bandCount > 0 && m.pixels && !m.pixels.error)
+		check(
+			`${name}: the app's first painted row starts at the bands' device height`,
+			m.pixels.firstRowsBelowShiftEqual,
+			`shift ${m.pixels.shiftRows} device rows, first divergent row ${m.pixels.firstDivergentRow}`,
+		);
+}
+
+/** Go to a route and wait for the page under test to be the one on screen. */
+async function goto(route, expectPresent, timeoutMs = 60_000) {
+	await evaluate(
+		`(() => { location.hash = ${JSON.stringify(route)}; return location.hash; })()`,
+	);
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		try {
+			const m = await measure();
+			if (m.route.startsWith(route) && expectPresent(m)) return m;
+		} catch {
+			/* mid-navigation */
+		}
+		if (Date.now() > deadline) throw new Error(`never reached ${route}`);
+		await wait(1_000);
+	}
 }
 
 /** Every stub this run started, oldest first: a phase closes the one in force. */
@@ -721,9 +1164,9 @@ let recordFile = null;
 let heartbeat = null;
 /*
  * A writer that arms a timer around itself is a rig that saturates itself - see
- * `attach-frame-evidence.mjs`'s account of the 290,382 pending timers it left -
- * and a timer that fires after the scratch tree is gone is a crash after a
- * finished run. So the callback checks the flag the teardown clears.
+ * `attach-frame-evidence.mjs`'s account of the 290,382 pending timers it left - and
+ * a timer that fires after the scratch tree is gone is a crash after a finished
+ * run. So the callback checks the flag the teardown clears.
  */
 let heartbeatArmed = false;
 
@@ -735,7 +1178,9 @@ try {
 		if (heartbeatArmed) writeRecord(process.pid);
 	}, 5_000);
 	const app = launch();
-	console.log(`# ${LABEL}: app frames, scratch ${ROOT}, stub on ${PORT}`);
+	console.log(
+		`# ${LABEL}: app frames, scratch ${ROOT}, stub on ${PORT}, expect ${EXPECT}, only ${ONLY.join(",")}`,
+	);
 
 	/*
 	 * Wait for the app's own page, and keep its stdout: the `[window-mode]` line is
@@ -758,53 +1203,136 @@ try {
 		.text()
 		.split("\n")
 		.find((line) => line.includes("[window-mode]"));
-	if (!modeLine) {
+	if (!modeLine)
 		throw new Error(
 			`the app printed no [window-mode] line, so this rig cannot say which mode it launched in. Output so far:\n${app.text().slice(-2_000)}`,
 		);
-	}
-	if (!/headless/.test(modeLine)) {
+	if (!/headless/.test(modeLine))
 		throw new Error(
 			`the app launched in a mode this rig does not allow: ${modeLine}`,
 		);
-	}
 	console.log(`# window mode: ${modeLine.trim()}`);
+	summary.windowMode = modeLine.trim();
+
+	/*
+	 * The first-run wizard is a modal over the whole window and one of the two
+	 * baseline `fixed` elements, so leaving it up on one half and seeding it away on
+	 * the other makes the halves incomparable (review round 1, M4). It is seeded away
+	 * here, on every half, and the reload is waited out before anything is measured.
+	 * The `scrim` state at the end puts it back on purpose.
+	 */
+	await evaluate(`(() => {
+		localStorage.setItem("onboarding-storage", JSON.stringify({
+			state: { isModalComplete: true, isTourComplete: true, currentStep: "congratulations" },
+			version: 0,
+		}));
+		localStorage.setItem("chat-sidebar-disclosures", JSON.stringify({ previous: true }));
+		location.reload();
+		return "seeded";
+	})()`).catch(() => {});
+	await wait(4_000);
 
 	// 1. Attached, every required capability advertised: no band at all.
 	const none = await holdFor("none", noBand);
 	summary.viewport = none.viewport;
-	await record("none", none);
+	if (wanted("none")) {
+		await record("none", none);
+		assertState("none", none);
+		noneFrame = join(FRAMES, `${LABEL}-none.png`);
+		if (COMPARE_AGAINST) {
+			const diff = diffFrames(noneFrame, COMPARE_AGAINST);
+			summary.noneFrameDiff = diff;
+			check(
+				`none: the no-band frame is pixel-identical to ${COMPARE_AGAINST}`,
+				diff.identical === true,
+				diff.error ??
+					`${diff.differingRows} of ${diff.rows} device rows differ`,
+			);
+		}
+	}
+	if (wanted("browser")) {
+		const browserNone = await goto("#/browser", (m) =>
+			Boolean(m.anchors.browserContent?.rect),
+		);
+		await record("browser-none", browserNone);
+		await evaluate(`(() => { location.hash = "#/chat"; return "back"; })()`);
+		await wait(2_000);
+	}
 
 	// 2. Six of the seven withdrawn: the compatibility band alone.
 	state.features = PARTIAL_FEATURES;
-	await record("one-line", await holdFor("one-line", oneBand));
+	const one = await holdFor("one-line", oneBand);
+	if (wanted("one-line")) {
+		await record("one-line", one);
+		assertState("one-line", one);
+	}
+	if (wanted("browser")) {
+		const browserOne = await goto("#/browser", (m) =>
+			Boolean(m.anchors.browserContent?.rect),
+		);
+		await record("browser-one-line", browserOne);
+		await evaluate(`(() => { location.hash = "#/chat"; return "back"; })()`);
+		await wait(2_000);
+	}
 
 	/*
 	 * 3. The address goes quiet while the narrowed capability answer is still the
 	 * last one the app holds, so BOTH bands are up at once: the daemon status
-	 * detaches (a two-line band) and the compatibility band's own reason is still
-	 * on screen. This is the case a reserving inset would have to measure and sum,
-	 * and the case that decides this change's shape.
+	 * detaches (a two-line band) and the compatibility band's own reason is still on
+	 * screen. This is the case a reserving inset would have to measure and sum, and
+	 * the case that decides this change's shape.
 	 *
-	 * WHY the answer survives the address going away: React Query keeps the last
-	 * data across a failed refetch, which this rig relies on and measures - the
+	 * WHY the answer survives the address going away: React Query keeps the last data
+	 * across a failed refetch, which this rig relies on and measures - the
 	 * reproduction would be a rig that restarted the daemon instead, and a daemon
-	 * that ANSWERS /health re-attaches the app, taking the connectivity band with
-	 * it (measured: one 180 s wait for two bands that ended with the compatibility
-	 * band alone).
+	 * that ANSWERS /health re-attaches the app, taking the connectivity band with it
+	 * (measured: one 180 s wait for two bands that ended with the compatibility band
+	 * alone).
 	 */
 	clearInterval(heartbeat);
 	heartbeatArmed = false;
 	heartbeat = null;
 	rmSync(recordFile, { force: true });
 	server.close();
-	await record("two-bands", await holdFor("two-bands", twoBands));
+	const two = await holdFor("two-bands", twoBands);
+	if (wanted("two-bands")) {
+		await record("two-bands", two);
+		assertState("two-bands", two);
+	}
+	if (wanted("browser")) {
+		const browserTwo = await goto("#/browser", (m) =>
+			Boolean(m.anchors.browserContent?.rect),
+		);
+		await record("browser-two-bands", browserTwo);
+		await evaluate(`(() => { location.hash = "#/chat"; return "back"; })()`);
+		await wait(2_000);
+	}
 
 	/*
-	 * 4. And a daemon that can be attached to answers completely again: both bands
-	 * clear, and then the address goes quiet one more time - so the connectivity
-	 * band is photographed ALONE, with the capability answer complete and no
-	 * compatibility band beside it. That state is the one the D9 brief measures as
+	 * 4. The danger variant of the connectivity band, stacked over the compatibility
+	 * band. `detached` carries TWO copies: the app's own "reconnecting on its own"
+	 * warning while it is still working, and "the server stopped" once it has given
+	 * up (about 90 s, `serverBannerCopy`). The designer asked for the pair seen
+	 * together, and this is the only state in which the danger variant and a second
+	 * band are both up.
+	 */
+	if (wanted("two-bands-danger")) {
+		const danger = await holdFor(
+			"two-bands-danger",
+			(m) =>
+				m.bandCount === 2 &&
+				m.bands.some((band) => band.text.includes("server stopped")),
+			240_000,
+		);
+		await record("two-bands-danger", danger);
+		assertState("two-bands-danger", danger);
+	}
+
+	/*
+	 * 5. A daemon that can be attached to answers completely again: both bands clear,
+	 * and then the address goes quiet one more time - so the connectivity band is
+	 * photographed ALONE, with the capability answer complete and no compatibility
+	 * band beside it. That state is the one the D9 brief measures as
 	 * "daemon-absent", and it is reachable only from an attachment: a fresh boot
 	 * against a dead address carries the compatibility band too (see phase 3).
 	 */
@@ -815,31 +1343,76 @@ try {
 	heartbeat = setInterval(() => {
 		if (heartbeatArmed) writeRecord(process.pid);
 	}, 5_000);
-	await holdFor("re-attached", noBand);
+	const reattached = await holdFor("re-attached", noBand);
+	if (wanted("none")) {
+		await record("none-reattached", reattached);
+		assertState("none-reattached", reattached);
+	}
 	clearInterval(heartbeat);
 	heartbeatArmed = false;
 	heartbeat = null;
 	rmSync(recordFile, { force: true });
 	const second = stubServers.at(-1);
 	if (second?.listening) second.close();
-	await record("two-line", await holdFor("two-line", oneBand));
+	if (wanted("two-line")) {
+		const twoLine = await holdFor("two-line", oneBand);
+		await record("two-line", twoLine);
+		assertState("two-line", twoLine);
+	}
+
+	/*
+	 * 6. The band under the first-run wizard's scrim, which is the one overlay that
+	 * covers the whole window on a first launch. Cheap here (the app is already
+	 * driven) and it answers the "with the wizard up" half: the band is IN FLOW now,
+	 * so the scrim dims it like everything else rather than the band painting over
+	 * the scrim.
+	 */
+	if (wanted("scrim")) {
+		await evaluate(`(() => {
+			localStorage.removeItem("onboarding-storage");
+			location.reload();
+			return "unseeded";
+		})()`).catch(() => {});
+		await wait(6_000);
+		const scrim = await holdFor(
+			"scrim",
+			(m) => m.onboardingVisible === true && m.bandCount >= 1,
+			150_000,
+		);
+		await record("scrim", scrim);
+	}
+	/*
+	 * A state that violated an acceptance claim fails the RUN, so the exit status
+	 * carries the verdict: a rig whose only throws are state timers and window mode
+	 * leaves a `coveredByBand: true` in the JSON for a reader to notice (review
+	 * round 1, N4). Raised here rather than in the `finally` below, where a throw
+	 * would mask whatever the teardown was doing.
+	 */
+	if (failures.length)
+		throw new Error(
+			`${failures.length} acceptance check(s) failed on ${LABEL}`,
+		);
 } finally {
 	heartbeatArmed = false;
 	if (heartbeat) clearInterval(heartbeat);
 	for (const started of stubServers) if (started.listening) started.close();
 	for (const child of children) await stop(child);
 	reapScratchProfiles();
-	writeFileSync(
-		join(FRAMES, `${LABEL}-geometry.json`),
-		`${JSON.stringify(summary, null, 2)}\n`,
-	);
 	const logFile = join(PROFILE, "logs", "backend-service.log");
-	if (existsSync(logFile)) {
+	if (existsSync(logFile))
 		writeFileSync(
 			join(FRAMES, `${LABEL}-backend-service.log`),
 			readFileSync(logFile),
 		);
-	}
 	rmSync(ROOT, { recursive: true, force: true });
+	if (failures.length) {
+		console.log(`# FAILURES (${failures.length})`);
+		for (const failure of failures) console.log(`#   ${failure}`);
+	}
+	summary.failures = failures;
+	writeFileSync(
+		join(FRAMES, `${LABEL}-geometry.json`),
+		`${JSON.stringify(summary, null, 2)}\n`,
+	);
 	console.log(`# states written to ${FRAMES}/${LABEL}-geometry.json`);
 }

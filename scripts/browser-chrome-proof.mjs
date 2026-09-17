@@ -1057,16 +1057,38 @@ async function main() {
 		/*
 		 * The connectivity banner, measured before it is hidden.
 		 *
-		 * It is `fixed inset-x-0 top-0 z-2200` and its own comment says the z-index
-		 * "clears the app chrome it covers" — so covering the route's top is its
-		 * documented behaviour, on every route, and this run has no backend by design.
-		 * It overlaps the tab strip in the frames below, so it is hidden for the
-		 * captures with the numbers printed here rather than silently: a frame that is
-		 * prettier than the app is not evidence.
+		 * It was `fixed inset-x-0 top-0 z-2200` until D9 and is the shell's first child
+		 * in flow now, so it no longer reaches the tab strip — but this run has no
+		 * backend by design and a band of SOME shape is expected on every route, so the
+		 * measurement stays and the finder is shape-independent: the shell's own
+		 * children sitting at or above the app region's top, matched on the banner's
+		 * copy (this app's sentences since #205, and the pre-#205 "offline" ones, so the
+		 * read works on either tree). The numbers are printed rather than hidden: a
+		 * frame that is prettier than the app is not evidence.
 		 */
 		const banner = await evaluate(`(() => {
-			const isBanner = (el) => /The server is offline|You are offline|A connectivity issue has been detected/i.test(el.innerText || '');
-			const el = [...document.querySelectorAll('div.fixed')].find(isBanner) ?? null;
+			const bannerText = /The server is offline|You are offline|A connectivity issue has been detected|Not connected to a Local Operator server|The Local Operator server stopped/i;
+			/*
+			 * Shape-independent on purpose: a div.fixed finder read "no banner" over a
+			 * window carrying one the moment the bands moved into flow (D9), which is the
+			 * pre-fix spelling this rig's own comment used to justify. See
+			 * scripts/band-occlusion-evidence.mjs for the measured version of this read.
+			 */
+			const main = document.querySelector('main');
+			const region = main ? main.parentElement : null;
+			const outer = region ? region.parentElement : null;
+			const regionTop = region ? region.getBoundingClientRect().top : 0;
+			const strips = [];
+			for (const level of [region, outer]) {
+				if (!level) continue;
+				for (const child of level.children) {
+					const r = child.getBoundingClientRect();
+					if (r.height <= 16 || r.height > 200 || r.top > regionTop + 8) continue;
+					if (main && child.contains(main)) continue;
+					strips.push(child);
+				}
+			}
+			const el = strips.find((node) => bannerText.test(node.innerText || '')) ?? null;
 			const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
 			const box = (r) => r ? { top: Math.round(r.top), height: Math.round(r.height) } : null;
 			const s = strip ? strip.getBoundingClientRect() : null;
