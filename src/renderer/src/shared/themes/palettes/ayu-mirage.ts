@@ -28,13 +28,14 @@ export const ayuMirage: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.065, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.19 from `surface`, 4.09 from `elevated` and 8.43 from
-		 * `sunken`.
+		 * `surface` cast 0.08 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.14 from `surface`, 2.95 from `elevated` and 11.3 from `sunken`;
+		 * the step is 4.02 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.73:1 the ink that binds it.
 		 */
-		highlight: "#2A3646",
+		highlight: "#313F50",
 
 		ink: "#D6D5CE",
 		// upstream's blue-tinted muted rung.

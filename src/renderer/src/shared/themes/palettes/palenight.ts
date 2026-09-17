@@ -30,16 +30,17 @@ export const palenight: ThemeDefinition = {
 		surface: "#2F3446",
 		elevated: "#353B4E",
 		sunken: "#232736",
-
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.050, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.38 from `surface`, 3.47 from `elevated` and 5.10 from
-		 * `sunken`.
+		 * `surface` cast 0.10 toward `accent`, then stepped 2.22 on the `L*` axis — branch H
+		 * of this port's selection rule, capped by this palette's OWN ink: `inkDim` reaches
+		 * its floor with the 0.15 of headroom at 2.25 `L*` here (4.70:1), so the band is paid
+		 * on the cast. Design round 3 (D2) found the first cut stopping at 0.73 `L*` with cap
+		 * to spare, so the step now runs to the cap: ΔE00 4.87 from `surface`, 4.85 from
+		 * `elevated`, 7.74 from `sunken`. The step is under the 3 `L*` floor and is pinned
+		 * against the cap, which the gate re-derives.
 		 */
-		highlight: "#313348",
+		highlight: "#383750",
 
 		ink: "#EEFFFF",
 		inkMuted: "#BBC2E3",

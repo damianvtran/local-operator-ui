@@ -34,16 +34,14 @@ export const forest: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.075, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.84 from `surface`, 3.53 from `elevated` and 8.52 from
-		 * `sunken`.
-		 * This is one of the three casts that overshoot the band's 2.5 top:
-		 * a hex step at this strength is wider than the band, and the step
-		 * below it measures under the rule's own 2.17 floor.
+		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4.75 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.19 from `surface`, 2.26 from `elevated` and 10.55 from `sunken`;
+		 * the step is 4.88 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.68:1 the ink that binds it.
 		 */
-		highlight: "#162417",
+		highlight: "#1F2E21",
 
 		ink: "#DDE8DD",
 		inkMuted: "#A8BBA9",
