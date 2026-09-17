@@ -18,25 +18,37 @@ import { useMemo } from "react";
  * focus, and none of it was the list's doing.
  *
  * The op is `agents.statuses` (one call for a bounded id list, see
- * `shared/api/radient/proxy.ts`). It is additive: a backend older than this app
- * answers 404, which is this app's standing signal for "this server predates
- * that control" (`DesktopControlError.status === 404`, read the same way by the
- * compatibility banner).
+ * `shared/api/radient/proxy.ts`). It is additive, and the status an older
+ * backend answers is **422, not 404**: `RadientRequest.operation` is a
+ * `Literal`, so an op the server does not know fails VALIDATION rather than
+ * routing, and `local_operator/server/app.py` flattens every `/v1/desktop/*`
+ * validation failure to `422 {"detail": "The request has invalid fields."}`.
+ * 404 is this app's standing signal for "this server predates that control"
+ * (`shared/api/local-operator/backend-error.ts`, whose classifier returns
+ * `outdated` for 404 alone and `unknown` for this), which is why nothing here
+ * may be written against a 404 that never arrives: the absent op is one more
+ * way this read can fail, not a distinct state with its own handling.
  *
- * ## Why a 404 is not an error state here
+ * ## What an absent entry means, and why the caller has to know
  *
- * A hub card with no viewer state still works. The upstream like and favourite
- * endpoints are idempotent — liking an already-liked agent answers 200
- * `already_liked: true` rather than 409 — so an unfilled heart on an agent the
- * viewer has liked costs a no-op request, not a wrong write. That is what makes
- * failing open safe here, and it is why this hook reports `statuses` rather
- * than an error to render: nothing the user did is broken, so nothing says it
- * is.
+ * The read fails as a WHOLE, so a caller cannot recover per card: a 500 from
+ * the proxy, a 401/403/429, the 422 above, a dead transport, or a 200 that
+ * carries fewer entries than ids all leave the same hole. An absent entry is
+ * NOT `liked: false` — it is "no answer", and the two render differently:
+ * `isKnown` (`query.isSuccess`) is the discriminator, and every consumer is
+ * expected to read it rather than treat `statuses[id]` as a boolean.
  *
- * `retry: false` is deliberate for the same reason. The read is a courtesy; a
- * retry spends a second round trip to learn the same thing, and a stale
- * unfilled heart is corrected by the next page fetch rather than by a retry
- * loop.
+ * The degradation is otherwise safe: the upstream like and favourite endpoints
+ * are idempotent (an already-liked agent answers 200 `already_liked: true`
+ * rather than 409), so not KNOWING a viewer state costs at worst a no-op
+ * request. What is not safe is STATING one, which is why this hook hands the
+ * caller the fact that it does not know instead of an empty map dressed as
+ * "nothing is liked".
+ *
+ * `retry: false` is deliberate. The read is a courtesy; a retry spends a second
+ * round trip to learn the same thing, and the caller can offer the user the
+ * choice (`refetch`, in the page's own failure line) rather than a loop paying
+ * it silently.
  */
 
 /** Query keys for the batched viewer status read, one entry per id set. */
@@ -95,14 +107,33 @@ export const useAgentStatusesQuery = ({
 	return {
 		...query,
 		/**
-		 * The map to read per card. Empty while loading and when the op is
-		 * unavailable, which the card renders as "no viewer state known".
+		 * The map to read per card — meaningful ONLY where `isKnown` is true. It is
+		 * empty while the read is in flight and after it fails, and `{}` is not a
+		 * claim that nothing is liked.
 		 */
 		statuses: (query.data ?? {}) as AgentStatusMap,
-		/** True only once the read has actually answered. */
+		/**
+		 * Whether the read ANSWERED. False before it settles and after it fails,
+		 * so a consumer renders "unknown" rather than `liked: false`.
+		 */
 		isKnown: query.isSuccess,
 	};
 };
+
+/**
+ * Whether this one agent's viewer state is known.
+ *
+ * Two ways to be unknown, and the entry-level check is the part that is easy to
+ * miss: a 200 that carries fewer entries than ids leaves those ids with no
+ * answer, so "the read succeeded" is not the same as "this id was answered".
+ * Both consumers (the grid's cards and the details page) ask this rather than
+ * spreading the map and defaulting each card to `false`.
+ */
+export const isAgentStatusKnown = (
+	isKnown: boolean,
+	statuses: AgentStatusMap,
+	agentId: string | undefined,
+): boolean => (agentId ? isKnown && statuses[agentId] !== undefined : false);
 
 /**
  * Apply one agent's new viewer state to every cached status page.

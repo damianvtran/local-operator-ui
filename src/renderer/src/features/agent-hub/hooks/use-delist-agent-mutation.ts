@@ -1,6 +1,6 @@
 import { deleteAgent } from "@shared/api/radient/agents-api";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { agentDetailsKeys } from "./use-agent-details-query";
@@ -59,8 +59,14 @@ export const useDelistAgentMutation = () => {
 			navigate("/agent-hub");
 		},
 		onError: (error) => {
-			// @ts-ignore TODO: Improve error typing
-			showErrorToast(`Failed to delist agent: ${error.message}`); // Use toast.error
+			/*
+			 * No toast. The details page renders this failure in the surface,
+			 * under the control that produced it (`FAILURE_TITLES.delist`), and
+			 * raising a toast as well reported one failure twice in two
+			 * languages — which is the thing this change set is named for. The
+			 * hook's only caller is that page, so nothing is left without a
+			 * surface.
+			 */
 			console.error("Delist agent error:", error);
 		},
 	});

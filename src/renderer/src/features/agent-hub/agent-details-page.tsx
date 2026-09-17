@@ -1,4 +1,4 @@
-import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -29,7 +29,10 @@ import { CommentsSection } from "./components/comments-section";
 import { useAgentDetailsQuery } from "./hooks/use-agent-details-query";
 import { useAgentFavouriteMutation } from "./hooks/use-agent-favourite-mutation";
 import { useAgentLikeMutation } from "./hooks/use-agent-like-mutation";
-import { useAgentStatusesQuery } from "./hooks/use-agent-statuses-query";
+import {
+	isAgentStatusKnown,
+	useAgentStatusesQuery,
+} from "./hooks/use-agent-statuses-query";
 import { useDelistAgentMutation } from "./hooks/use-delist-agent-mutation";
 import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
 
@@ -73,6 +76,7 @@ export const AgentDetailsPage: React.FC = () => {
 	const {
 		data: agent,
 		isLoading,
+		isFetching,
 		error,
 		refetch,
 	} = useAgentDetailsQuery({
@@ -85,11 +89,30 @@ export const AgentDetailsPage: React.FC = () => {
 	 * cannot disagree about what the viewer has liked; its ids are just a list of
 	 * one here.
 	 */
-	const { statuses } = useAgentStatusesQuery({
+	const {
+		statuses,
+		isKnown: viewerStateIsKnown,
+		isError: viewerStateFailed,
+		isFetching: viewerStateIsFetching,
+		refetch: refetchViewerState,
+	} = useAgentStatusesQuery({
 		agentIds: agentId ? [agentId] : [],
 	});
-	const isLiked = statuses[agentId ?? ""]?.liked ?? false;
-	const isFavourited = statuses[agentId ?? ""]?.favourited ?? false;
+	/*
+	 * The same unknown state the grid renders, for the same reason: this read is
+	 * the batched op and it fails as a whole, so an absent entry here is "no
+	 * answer" about THIS agent, not "not liked". The entry-level check is the
+	 * one that matters for a list of one, and a 200 carrying no entry for this id
+	 * is a case the request count does not distinguish from a failure.
+	 */
+	const viewerStateKnown = isAgentStatusKnown(
+		viewerStateIsKnown,
+		statuses,
+		agentId,
+	);
+	const isLiked = viewerStateKnown && statuses[agentId ?? ""]?.liked === true;
+	const isFavourited =
+		viewerStateKnown && statuses[agentId ?? ""]?.favourited === true;
 	/*
 	 * The three counts come from the document this page already fetched. Each
 	 * used to be a separate request for a number that arrived with the agent.
@@ -186,12 +209,20 @@ export const AgentDetailsPage: React.FC = () => {
 				<Alert variant="danger" className="max-w-2xl">
 					<AlertTitle>This agent could not be loaded</AlertTitle>
 					<AlertDescription>
-						{error.message ||
-							"The Radient agent catalogue did not answer. Try again."}
+						{backendLoadErrorMessage(
+							"The Radient agent catalogue did not answer.",
+							error,
+						)}
 					</AlertDescription>
 					<div className="mt-2">
-						<Button variant="outline" size="sm" onClick={() => void refetch()}>
-							Try again
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => void refetch()}
+							disabled={isFetching}
+							aria-busy={isFetching}
+						>
+							{isFetching ? "Trying…" : "Try again"}
 						</Button>
 					</div>
 				</Alert>
@@ -237,8 +268,18 @@ export const AgentDetailsPage: React.FC = () => {
 								variant="ghost"
 								size="sm"
 								onClick={handleLikeToggle}
-								disabled={!isAuthenticated || likeMutation.isPending}
-								aria-label={isLiked ? "Unlike agent" : "Like agent"}
+								disabled={
+									!isAuthenticated ||
+									likeMutation.isPending ||
+									!viewerStateKnown
+								}
+								aria-label={
+									!viewerStateKnown
+										? "Like state unavailable"
+										: isLiked
+											? "Unlike agent"
+											: "Like agent"
+								}
 								className={cn(isLiked && "text-danger")}
 							>
 								<Heart fill={isLiked ? "currentColor" : "none"} />
@@ -255,9 +296,17 @@ export const AgentDetailsPage: React.FC = () => {
 								variant="ghost"
 								size="sm"
 								onClick={handleFavouriteToggle}
-								disabled={!isAuthenticated || favouriteMutation.isPending}
+								disabled={
+									!isAuthenticated ||
+									favouriteMutation.isPending ||
+									!viewerStateKnown
+								}
 								aria-label={
-									isFavourited ? "Unfavourite agent" : "Favourite agent"
+									!viewerStateKnown
+										? "Favourite state unavailable"
+										: isFavourited
+											? "Unfavourite agent"
+											: "Favourite agent"
 								}
 								className={cn(isFavourited && "text-warning")}
 							>
@@ -307,6 +356,40 @@ export const AgentDetailsPage: React.FC = () => {
 				</div>
 			</div>
 
+			{/*
+			 * The viewer's own state failed to read, which is the one thing that can
+			 * make these two controls look unfilled for a reason that is not the
+			 * viewer's: they render "unavailable" rather than "not liked", and this
+			 * line says why once, with the retry the hook deliberately does not run on
+			 * its own. It stands down while an ACTION's failure is on screen, so the
+			 * two sentences never stack.
+			 */}
+			{isAuthenticated && viewerStateFailed && !failedAction && (
+				/*
+				 * `<output>` rather than a `div` with `role="status"`: the element
+				 * carries that role itself, which is why a measurement of the `role`
+				 * attribute reads null on a region that is in fact announced.
+				 */
+				<output
+					className="mb-6 flex flex-wrap items-center gap-2 text-meta text-warning"
+					data-testid="agent-details-status-unknown"
+				>
+					<span>
+						Your likes and favourites could not be read, so this agent's viewer
+						state is not shown.
+					</span>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => void refetchViewerState()}
+						disabled={viewerStateIsFetching}
+						aria-busy={viewerStateIsFetching}
+					>
+						{viewerStateIsFetching ? "Trying…" : "Try again"}
+					</Button>
+				</output>
+			)}
+
 			{failure && failedAction && (
 				/*
 				 * The failure sits under the controls that produced it and names which
@@ -320,9 +403,9 @@ export const AgentDetailsPage: React.FC = () => {
 				>
 					<AlertTitle>{FAILURE_TITLES[failedAction]}</AlertTitle>
 					<AlertDescription>
-						{userFacingMessage(
+						{backendLoadErrorMessage(
+							"The action did not complete.",
 							failure.error,
-							"The action did not complete. Try again.",
 						)}
 					</AlertDescription>
 					{/* A sibling, never a child: `AlertDescription` is a `<p>`. */}

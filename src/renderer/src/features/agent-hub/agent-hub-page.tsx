@@ -1,3 +1,4 @@
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import type { Agent } from "@shared/api/radient/types";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
 import { PageHeader } from "@shared/components/common/page-header";
@@ -15,14 +16,18 @@ import {
 	Skeleton,
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { cn } from "@shared/lib/utils";
 import { Store } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentCardContainer } from "./components/agent-card-container";
 import { AgentCategoriesSidebar } from "./components/agent-categories-sidebar";
 import { categoryEntry } from "./components/agent-tags-and-categories";
-import { useAgentStatusesQuery } from "./hooks/use-agent-statuses-query";
+import {
+	isAgentStatusKnown,
+	useAgentStatusesQuery,
+} from "./hooks/use-agent-statuses-query";
 import { useDebouncedValue } from "./hooks/use-debounced-value";
 import {
 	type PublicAgentSort,
@@ -94,21 +99,45 @@ const SEARCH_SCOPES = [
 const SEARCH_DEBOUNCE_MS = 300;
 
 /**
- * Six placeholder cards, which is the count a grid at the hub's narrowest
- * supported width shows. It replaced a full-region spinner: a spinner says
- * "something is happening somewhere", while a placeholder of the shape that is
- * coming says what is about to be there and holds the layout still when it
- * arrives.
+ * The placeholder card, at the SETTLED card's own geometry.
+ *
+ * It is a placeholder of the shape that is coming, which only works if the
+ * shape is the one that arrives: the previous version drew a title and three
+ * text lines and then jumped to the footer, omitting the tag row and the author
+ * line that make a settled card 37px taller, so every first paint moved the
+ * grid twice — the first row down, then each row growing (design round 1, D1:
+ * placeholder box 220px against the settled card's 257px, row pitch 248 against
+ * 283). The blocks below mirror `AgentCard`'s own: same `p-4`, same `gap-2`,
+ * title, three clamped description lines, the tag row and author line where the
+ * card's `mt-auto` group puts them, then the same divider above the same footer
+ * with the counters and the action in their real sizes.
+ *
+ * Six of them, which is what a grid at the hub's narrowest supported column
+ * shows; the count is a deliberate choice of its own and not this comment's
+ * subject.
  */
 const AgentCardSkeleton: React.FC = () => (
-	<div className="flex h-full min-h-56 flex-col gap-3 rounded-lg border border-hairline bg-surface p-4">
-		<Skeleton className="h-5 w-2/3" />
-		<Skeleton className="h-3.5 w-full" />
-		<Skeleton className="h-3.5 w-full" />
-		<Skeleton className="h-3.5 w-1/2" />
-		<div className="mt-auto flex items-center gap-2 pt-2">
-			<Skeleton className="h-4 w-10" />
-			<Skeleton className="h-4 w-10" />
+	<div className="flex h-full flex-col overflow-hidden rounded-lg border border-hairline bg-surface">
+		<div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
+			<Skeleton className="h-5 w-2/3" />
+			<Skeleton className="h-3.5 w-full" />
+			<Skeleton className="h-3.5 w-full" />
+			<Skeleton className="h-3.5 w-1/2" />
+			{/* The `mt-auto` group: tag row, then the author line. */}
+			<div className="mt-auto flex flex-col gap-2 pt-2">
+				<div className="flex flex-wrap items-center gap-1.5">
+					<Skeleton className="h-5 w-16" />
+					<Skeleton className="h-5 w-20" />
+				</div>
+				<Skeleton className="h-4 w-32" />
+			</div>
+		</div>
+		{/* The settled card's own footer: same divider, same padding, same sizes. */}
+		<div className="flex items-center gap-2 border-t border-hairline px-3 py-2">
+			<Skeleton className="size-4" />
+			<Skeleton className="h-4 w-6" />
+			<Skeleton className="size-4" />
+			<Skeleton className="h-4 w-6" />
 			<Skeleton className="ml-auto h-7 w-16" />
 		</div>
 	</div>
@@ -179,9 +208,35 @@ export const AgentHubPage: React.FC = () => {
 	 * twenty-four requests for the records below at the moment the signed-in
 	 * hub opens; this is one, keyed on exactly the ids on screen.
 	 */
-	const { statuses } = useAgentStatusesQuery({
+	const {
+		statuses,
+		isKnown: viewerStateIsKnown,
+		isError: viewerStateFailed,
+		isFetching: viewerStateIsFetching,
+		refetch: refetchViewerState,
+	} = useAgentStatusesQuery({
 		agentIds: agents.map((agent) => agent.id),
 	});
+
+	/*
+	 * The search box, so a cleared filter can put focus back in it: the panel the
+	 * button lived in is gone by the time the press is handled, and the browser's
+	 * own answer to that is to drop focus on the document body (UX round 1, U2).
+	 */
+	const searchRef = useRef<HTMLInputElement>(null);
+	const publishRef = useRef<HTMLButtonElement>(null);
+	const [clearFocusNonce, setClearFocusNonce] = useState(0);
+	useEffect(() => {
+		if (clearFocusNonce === 0) return;
+		/*
+		 * Read AFTER the re-render, and read defensively: clearing the LAST filter
+		 * on a hub with nothing published reveals the empty hub, which hides the
+		 * controls row, so the search box is not always the target that exists. The
+		 * empty panel's own action is the other one, and it is where the user is
+		 * standing after the panel changes under them.
+		 */
+		(searchRef.current ?? publishRef.current)?.focus();
+	}, [clearFocusNonce]);
 
 	// Accumulated rather than derived per render: see `seenCategories`.
 	const presentCategories = useMemo(
@@ -204,6 +259,32 @@ export const AgentHubPage: React.FC = () => {
 	}, [presentCategories]);
 
 	const hasFilters = selectedCategory !== null || debouncedSearch !== "";
+
+	const handleClearFilters = () => {
+		setSelectedCategory(null);
+		setSearchText("");
+		setPage(1);
+		setClearFocusNonce((nonce) => nonce + 1);
+	};
+
+	/*
+	 * The cold-load state: the list read is in flight and there is nothing to
+	 * show yet. That is the first paint AND a retry after a failure — the same
+	 * state from the user's side, which is why the alert below is gated on the
+	 * complement rather than on `isLoading` alone: a retry that left the alert's
+	 * own skeleton state unshown was measured as "nothing happened" 150ms and
+	 * 4.5s after the press (UX round 1, U1).
+	 */
+	const isColdLoading = (isLoading || isFetching) && agentsData === undefined;
+	/*
+	 * Nothing to browse, so the controls cannot change anything: three filter
+	 * controls over zero records crowd the one action that matters, "Publish an
+	 * agent" (UX round 1, U3). A filter that IS active keeps them — else the
+	 * user could not clear it — and the loading state keeps them too, so the
+	 * grid does not reflow when the records land.
+	 */
+	const hasNothingToBrowse =
+		!isColdLoading && !error && agents.length === 0 && !hasFilters;
 
 	const handlePageChange = (newPage: number) => {
 		setPage(newPage);
@@ -247,64 +328,89 @@ export const AgentHubPage: React.FC = () => {
 				</div>
 				<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
 					{/*
-					 * The controls row. The scope selector sits with the search box
-					 * rather than inside it because it changes what the box means,
-					 * and it is only rendered once there is something to search:
-					 * a search form over an empty catalogue is a control that
-					 * cannot change anything.
+					 * The controls row, and its hierarchy.
+					 *
+					 * The scope is a SEGMENT INSIDE the search box's own edge rather than a peer
+					 * trigger beside it. As a separate 32px select at the same 8px gap and the
+					 * same trigger weight as the sort, the row read as three controls of equal
+					 * authority with nothing to say which one qualified the box — and the box's
+					 * scope-derived placeholder restated the scope's own label immediately
+					 * beside it ("Search by agent name" next to "Search name"), so one concept
+					 * appeared twice and only clicking resolved it (design round 1, D4). One
+					 * bordered group with one placeholder, and the sort left as the only
+					 * free-standing control on the right.
+					 *
+					 * The group draws the focus ring for both of its controls, and that is
+					 * deliberate rather than the composer's scoped form: the composer frames a
+					 * toolbar of independent controls, where a box-wide ring points at the wrong
+					 * thing, while these two are the two halves of one field.
 					 */}
-					<div className="mb-4 flex flex-wrap items-center gap-2">
-						<div className="relative min-w-56 flex-1">
-							<Input
-								type="search"
-								value={searchText}
-								onChange={(event) => handleSearchChange(event.target.value)}
-								placeholder={
-									searchScope === "name"
-										? "Search by agent name"
-										: "Search descriptions"
-								}
-								aria-label={
-									searchScope === "name"
-										? "Search agents by name"
-										: "Search agents by description"
-								}
-								data-testid="agent-hub-search"
-							/>
+					{!hasNothingToBrowse && (
+						<div className="mb-4 flex flex-wrap items-center gap-2">
+							<div
+								className={cn(
+									"flex min-w-56 flex-1 items-center rounded-sm border border-control bg-surface",
+									"transition-colors duration-fast ease-out-quart",
+									"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
+									"has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2",
+								)}
+							>
+								<Input
+									ref={searchRef}
+									type="search"
+									value={searchText}
+									onChange={(event) => handleSearchChange(event.target.value)}
+									/*
+									 * ONE placeholder, and it does not name the scope: the segment to its
+									 * right already says which field is searched, and a placeholder
+									 * derived from it was the same sentence twice.
+									 */
+									placeholder="Search agents"
+									aria-label="Search agents"
+									className="h-8 min-w-0 flex-1 border-0 bg-transparent outline-none"
+									data-testid="agent-hub-search"
+								/>
+								<Select value={searchScope} onValueChange={handleScopeChange}>
+									<SelectTrigger
+										/*
+										 * Borderless except for the hairline that separates the segment
+										 * from the text: a decorative divider inside one control, not a
+										 * control's own boundary — the group's `border-control` edge is
+										 * that. `w-auto` because the trigger's own variant is full-width.
+										 */
+										className="w-auto shrink-0 border-y-0 border-l border-hairline border-r-0 bg-transparent pl-2 outline-none"
+										aria-label="Search in"
+										data-testid="agent-hub-search-scope"
+									>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{SEARCH_SCOPES.map((scope) => (
+											<SelectItem key={scope.value} value={scope.value}>
+												{scope.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<Select value={sortValue} onValueChange={setSortValue}>
+								<SelectTrigger
+									className="w-48"
+									aria-label="Sort agents"
+									data-testid="agent-hub-sort"
+								>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{SORT_OPTIONS.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
-						<Select value={searchScope} onValueChange={handleScopeChange}>
-							<SelectTrigger
-								className="w-40"
-								aria-label="Search field"
-								data-testid="agent-hub-search-scope"
-							>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{SEARCH_SCOPES.map((scope) => (
-									<SelectItem key={scope.value} value={scope.value}>
-										Search {scope.label.toLowerCase()}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						<Select value={sortValue} onValueChange={setSortValue}>
-							<SelectTrigger
-								className="w-48"
-								aria-label="Sort agents"
-								data-testid="agent-hub-sort"
-							>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{SORT_OPTIONS.map((option) => (
-									<SelectItem key={option.value} value={option.value}>
-										{option.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
+					)}
 					{/*
 					 * One line for "how many" and "still loading", announced rather
 					 * than animated: a page change that keeps the previous records on
@@ -316,9 +422,18 @@ export const AgentHubPage: React.FC = () => {
 						className="mb-3 text-meta text-ink-dim"
 						data-testid="agent-hub-status"
 					>
-						{pagination
-							? `${pagination.totalRecords} ${pagination.totalRecords === 1 ? "agent" : "agents"}`
-							: ""}
+						{/*
+						 * The line holds its own height from the first paint. It rendered empty
+						 * while loading, which is a line box less of layout — measured as the
+						 * first row of cards landing 17px higher than settled (design round 1,
+						 * D1) — and "Loading agents…" is also the honest thing for a reader
+						 * waiting on the read.
+						 */}
+						{isColdLoading
+							? "Loading agents…"
+							: pagination
+								? `${pagination.totalRecords} ${pagination.totalRecords === 1 ? "agent" : "agents"}`
+								: ""}
 						{/*
 						 * `{" "}` rather than `ml-2` alone: the gap is a layout decision, but
 						 * the SPACE is what stops the live region announcing
@@ -326,7 +441,41 @@ export const AgentHubPage: React.FC = () => {
 						 */}
 						{isRefreshing ? <> Updating…</> : null}
 					</p>
-					{isLoading && (
+					{/*
+					 * The viewer's own state failed to load, and it is one read for the
+					 * whole page: without this line every card would be the only evidence,
+					 * and twelve cards showing "not liked" is exactly what a failed read
+					 * must not look like. The cards say "unavailable" per control
+					 * (`AgentCard`); this says why, once, and offers the retry the hook
+					 * deliberately does not run on its own.
+					 */}
+					{isAuthenticated && viewerStateFailed && (
+						/*
+						 * `<output>` rather than a `div` with `role="status"`: the element
+						 * carries that role itself, which is the same reason the card's own
+						 * action failure uses it — and the reason a reader measuring the
+						 * `role` ATTRIBUTE sees nothing while the region is still announced.
+						 */
+						<output
+							className="mb-3 flex flex-wrap items-center gap-2 text-meta text-warning"
+							data-testid="agent-hub-status-unknown"
+						>
+							<span>
+								Your likes and favourites could not be read, so no card shows a
+								viewer state.
+							</span>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => void refetchViewerState()}
+								disabled={viewerStateIsFetching}
+								aria-busy={viewerStateIsFetching}
+							>
+								{viewerStateIsFetching ? "Trying…" : "Try again"}
+							</Button>
+						</output>
+					)}
+					{isColdLoading && (
 						<div
 							data-testid="agent-hub-loading"
 							className="grid grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] gap-6"
@@ -338,21 +487,47 @@ export const AgentHubPage: React.FC = () => {
 						</div>
 					)}
 					{/*
-					 * A failed read is a sentence and the control that retries it, in
-					 * the surface, in the same voice the card's failed action uses. It
-					 * replaces "Failed to load agents: <message>" with no next step,
-					 * which left the only recovery a page reload.
+					 * The pager's own height, reserved while the page count is unknown.
+					 *
+					 * `CompactPagination` is 52px tall and absent at one page, so without
+					 * this the settled grid is a bar taller than the placeholder that
+					 * preceded it and the first paint moves a second time (design round 1,
+					 * D1: "no pagination bar once the list lands"). Decorative here, so it
+					 * is hidden from assistive tech rather than announced as a pager.
 					 */}
-					{!isLoading && error && (
+					{isColdLoading && pagination === undefined && (
+						<div
+							aria-hidden="true"
+							className="mt-6 flex min-h-13 items-center justify-center"
+							data-testid="agent-hub-pager-placeholder"
+						>
+							<Skeleton className="h-4 w-24" />
+						</div>
+					)}
+					{/*
+					 * A failed read is a sentence and the control that retries it, in
+					 * the surface, in the same voice the card's failed action uses.
+					 * The description is the SHARED backend sentence rather than
+					 * `error.message`, which for a transport failure is the internal
+					 * "Desktop controls could not reach the backend process." — a
+					 * sentence about the app's own plumbing, and the reason this
+					 * component's user-facing fallback was unreachable (UX round 1, U5).
+					 * `backendLoadErrorMessage` is the app's own answer and names the
+					 * server in the user's words.
+					 */}
+					{!isColdLoading && error && (
 						<Alert
 							variant="danger"
 							className="max-w-2xl"
+							aria-busy={isFetching}
 							data-testid="agent-hub-error"
 						>
 							<AlertTitle>The hub could not be loaded</AlertTitle>
 							<AlertDescription>
-								{error.message ||
-									"The Radient agent catalogue did not answer. Try again."}
+								{backendLoadErrorMessage(
+									"The Radient agent catalogue did not answer.",
+									error,
+								)}
 							</AlertDescription>
 							{/*
 							 * The retry is a SIBLING of the description, not a child of it:
@@ -360,19 +535,26 @@ export const AgentHubPage: React.FC = () => {
 							 * block inside a paragraph — invalid nesting React reports and the
 							 * browser silently re-parents. Both of this surface's error
 							 * treatments had it.
+							 *
+							 * It reports its own in-flight state. Measured before this: the
+							 * alert and the button were byte-identical 150ms after the press and
+							 * still identical at 4.5s, while the ledger grew by one request —
+							 * the hub's only recovery control looked dead (UX round 1, U1).
 							 */}
 							<div className="mt-2">
 								<Button
 									variant="outline"
 									size="sm"
 									onClick={() => void refetch()}
+									disabled={isFetching}
+									aria-busy={isFetching}
 								>
-									Try again
+									{isFetching ? "Trying…" : "Try again"}
 								</Button>
 							</div>
 						</Alert>
 					)}
-					{!isLoading && !error && (
+					{!isColdLoading && !error && (
 						/*
 						 * The column count comes from the room the grid actually has,
 						 * not from the window. Viewport breakpoints asked for four
@@ -387,9 +569,16 @@ export const AgentHubPage: React.FC = () => {
 							aria-busy={isRefreshing}
 						>
 							{agents.length === 0 ? (
+								/*
+								 * `max-w-2xl`, and centred, because the OTHER "nothing here" panel —
+								 * the load-failure alert that can occupy this same slot — is capped at
+								 * the same width. Two panels for the same moment, 295px apart, one of
+								 * which was a full-bleed 967px slab holding two centred sentences
+								 * (design round 1, D6).
+								 */
 								<div
 									data-testid="agent-hub-empty"
-									className="col-span-full flex flex-col items-center gap-2 rounded-lg border border-hairline bg-surface px-6 py-10 text-center"
+									className="col-span-full w-full max-w-2xl justify-self-center flex flex-col items-center gap-2 rounded-lg border border-hairline bg-surface px-6 py-10 text-center"
 								>
 									<p className="text-heading text-ink">
 										{selectedCategory
@@ -399,24 +588,33 @@ export const AgentHubPage: React.FC = () => {
 												: "The hub is empty."}
 									</p>
 									<p className="max-w-md text-body-sm text-ink-muted">
-										{hasFilters
-											? "Nothing here carries that filter yet. Clear it to see the whole hub."
-											: "Nobody has published an agent to the hub yet. Yours would be the first one."}
+										{/*
+										 * Three sentences, not two. The category miss and the text miss
+										 * shared one — "Nothing here carries that filter yet" — which is
+										 * written for a category a user switched to and reads wrong for a
+										 * query they TYPED: nothing "carries" what they searched for
+										 * (design round 1, D8a).
+										 */}
+										{selectedCategory
+											? "Nothing in this category yet. Clear the filter to see the whole hub."
+											: hasFilters
+												? "No agent's name or description carries that. Clear it to see the whole hub."
+												: "Nobody has published an agent to the hub yet. Yours would be the first one."}
 									</p>
 									<div className="mt-2 flex flex-wrap items-center justify-center gap-2">
 										{hasFilters ? (
-											<Button
-												variant="secondary"
-												onClick={() => {
-													setSelectedCategory(null);
-													handleSearchChange("");
-													setPage(1);
-												}}
-											>
+											/*
+											 * Focus is moved deliberately rather than left to the browser:
+											 * the panel this button lives in is unmounted by the press, and
+											 * the browser drops the user on `document.body`, restarting
+											 * their Tab from the top of the window (UX round 1, U2).
+											 */
+											<Button variant="secondary" onClick={handleClearFilters}>
 												Clear filter
 											</Button>
 										) : (
 											<Button
+												ref={publishRef}
 												variant="secondary"
 												onClick={() => navigate("/agents")}
 											>
@@ -430,17 +628,35 @@ export const AgentHubPage: React.FC = () => {
 									<AgentCardContainer
 										key={agent.id}
 										agent={agent}
-										// Signed out, the viewer has no state to show and the
-										// batched read does not run: passing the map through
-										// unchanged would render a false "not liked" for a
-										// signed-out look at someone else's hub.
+										/*
+										 * Signed out, the viewer has no state to show and the batched
+										 * read does not run: passing the map through unchanged would
+										 * render a false "not liked" for a signed-out look at
+										 * someone else's hub.
+										 */
 										status={isAuthenticated ? statuses[agent.id] : undefined}
+										/*
+										 * And signed IN, the card only claims a state the read actually
+										 * answered — for this id, not just for the page: a 200 that
+										 * carries fewer entries than ids leaves the ids it omits with
+										 * no answer, which `isAgentStatusKnown` states as the one
+										 * thing they are, `liked: false` does not.
+										 */
+										viewerStateKnown={
+											isAuthenticated &&
+											isAgentStatusKnown(viewerStateIsKnown, statuses, agent.id)
+										}
 									/>
 								))
 							)}
 						</div>
 					)}
-					{pagination && pagination.totalPages > 1 && (
+					{/*
+					 * The pager, and it is absent while the list is cold: the placeholder
+					 * above already holds its height, and a bar over placeholder cards would
+					 * be a real control for a page count nobody knows yet.
+					 */}
+					{!isColdLoading && pagination && pagination.totalPages > 1 && (
 						<div className="mt-6 flex justify-center">
 							<CompactPagination
 								count={pagination.totalPages}

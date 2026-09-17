@@ -19,6 +19,7 @@ import type {
 	AgentComment,
 	AgentFavourite,
 	AgentLike,
+	AgentReactionResult,
 	AgentViewerStatus,
 	CountResponse,
 	CreateAgentCommentRequest,
@@ -104,8 +105,8 @@ export async function deleteAgent(
 
 export async function likeAgent(
 	agentId: string,
-): Promise<RadientApiResponse<APIResponse>> {
-	return radientProxyEnvelope<APIResponse>({
+): Promise<RadientApiResponse<AgentReactionResult>> {
+	return radientProxyEnvelope<AgentReactionResult>({
 		operation: "agents.like",
 		agentId,
 		requestId: requestId(),
@@ -134,8 +135,8 @@ export async function getAgentLikeCount(
 
 export async function favouriteAgent(
 	agentId: string,
-): Promise<RadientApiResponse<APIResponse>> {
-	return radientProxyEnvelope<APIResponse>({
+): Promise<RadientApiResponse<AgentReactionResult>> {
+	return radientProxyEnvelope<AgentReactionResult>({
 		operation: "agents.favourite",
 		agentId,
 		requestId: requestId(),
