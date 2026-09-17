@@ -145,11 +145,35 @@ export function editOutcome(
 			break;
 		}
 		default:
-			// A hotkey is a string on the wire like any other text field, and
-			// `empty_unsets` is how the registry spells "an empty value means the
-			// default": both are properties of the FIELD, not of the kind.
+			/*
+			 * An emptied field is the EMPTY STRING on the wire, never `null`.
+			 *
+			 * A hotkey is a string on the wire like any other text field, and
+			 * `empty_unsets` is how the registry spells "an empty value means the
+			 * default": both are properties of the FIELD, not of the kind. The
+			 * route owns which of the two an empty string MEANS - it resets a key
+			 * whose registry row sets `empty_unsets` and stores the empty string on
+			 * one that does not - so this layer's job is only to spell "empty" the
+			 * way the route reads it (`server/routes/settings.py`'s `edit_setting`
+			 * tests `edit.value == ""`), which is also how the TUI clears a
+			 * setting (`settings_io.reset_setting`).
+			 *
+			 * This arm used to write `null` for an `empty_unsets` row. `null` is not
+			 * a value the text validator accepts - it answers "expected text" - so
+			 * an emptied field was rejected by the backend with a raw validator
+			 * string, on EVERY `empty_unsets` text row, long before the settings
+			 * comboboxes existed and by the plain `<Input>` these rows shipped
+			 * with. What the comboboxes changed is how easy the empty state is to
+			 * reach: they added a one-click clear affordance, so a path that was
+			 * previously "select all, delete" became a button that always lands in
+			 * it. Fixed here, in the layer every `empty_unsets` row passes through,
+			 * rather than at the call site that made it visible (QA round 1, Q1).
+			 *
+			 * The two outcomes stay distinct: this is the CLEAR, and text that
+			 * simply matched no listing is committed as itself by the branch below.
+			 */
 			if (setting.empty_unsets && draft.value.trim() === "") {
-				value = null;
+				value = "";
 			} else {
 				value = draft.value;
 			}
