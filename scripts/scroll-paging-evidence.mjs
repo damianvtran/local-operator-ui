@@ -65,6 +65,15 @@ if (!SESSION) {
  * the Electron main/preload IPC transport and the packaged build; the README
  * states that explicitly rather than implying coverage this does not have.
  */
+/*
+ * Hoisted out of the two closures that use them: `biome` refuses a regex literal
+ * in a per-event or per-frame path, and both of these run once per Chrome log
+ * chunk and once per recorded slot string.
+ */
+const DEBUG_WS_RE = /ws:\/\/[^\s]+/;
+/** The windowed slot's own count of the rows it is holding back. */
+const EARLIER_COUNT_RE = /(\d+)\s+earlier/;
+
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const dataDir = join(tmpdir(), `lo-paging-cdp-${process.pid}`);
 mkdirSync(dataDir, { recursive: true });
@@ -76,7 +85,7 @@ const chrome = spawn(
 		"--disable-gpu",
 		// Scrollbars are left ON: a scrollbar drag is one of the four input kinds
 		// the behaviour under test must honour, and hiding them would remove it.
-		`--window-size=1380,872`,
+		"--window-size=1380,872",
 		`--user-data-dir=${dataDir}`,
 		"--remote-debugging-port=0",
 		"about:blank",
@@ -90,7 +99,7 @@ const browserWs = await new Promise((resolve, reject) => {
 	);
 	chrome.stderr.on("data", (chunk) => {
 		buf += chunk.toString();
-		const hit = buf.match(/ws:\/\/[^\s]+/);
+		const hit = buf.match(DEBUG_WS_RE);
 		if (hit) {
 			clearTimeout(timer);
 			resolve(hit[0]);
@@ -162,7 +171,9 @@ ws.onmessage = (event) => {
 			: resolve(msg.result);
 	}
 };
-await new Promise((r) => (ws.onopen = r));
+await new Promise((resolve) => {
+	ws.onopen = resolve;
+});
 
 const send = (method, params = {}) =>
 	new Promise((resolve, reject) => {
@@ -232,12 +243,32 @@ const PROBE = `(() => {
     clientHeight: el.clientHeight,
     distanceFromTop: Math.max(0, el.scrollHeight - el.clientHeight - Math.abs(el.scrollTop)),
     rows: el.querySelectorAll('[data-record-id]').length,
-    slotText: (el.querySelector('button, [data-lo-canonical-transcript] span')?.textContent ?? '').trim().slice(0, 60),
+    slotText: (() => {
+      const hint = el.querySelector('#lo-older-history-hint');
+      if (hint) return hint.textContent.trim().slice(0, 60);
+      const button = el.querySelector('button');
+      if (button) return button.textContent.trim().slice(0, 60);
+      const start = [...el.querySelectorAll('span')].find((node) =>
+        /Start of conversation/i.test(node.textContent ?? ''),
+      );
+      return start ? start.textContent.trim().slice(0, 60) : '';
+    })(),
+    /*
+     * The windowed slot's OWN words, and the count in them. Separate from
+     * slotText above rather than replacing it: that field's selector is what
+     * the steps below this one already assert on, and a probe field whose
+     * meaning changes quietly is how a comparison stops comparing anything.
+     */
+    hintText: (el.querySelector('#lo-older-history-hint')?.textContent ?? '').trim().slice(0, 70),
     topText: el.querySelector('[data-record-id]')?.textContent?.trim().slice(0, 40) ?? null,
   };
 })()`;
 
-const probe = () => evaluate(PROBE);
+const probe = () =>
+	evaluate(PROBE).then((state) => ({
+		...state,
+		hiddenRows: hiddenOf(state.hintText),
+	}));
 
 /**
  * Sample the anchor row every animation frame for `ms`, with NO input being
@@ -357,7 +388,15 @@ async function aim() {
     const el = document.querySelector('[data-lo-canonical-transcript]');
     if (!el) return null;
     const r = el.getBoundingClientRect();
-    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+    return {
+      x: Math.round(r.left + r.width / 2),
+      y: Math.round(r.top + r.height / 2),
+      top: Math.round(r.top),
+      bottom: Math.round(r.bottom),
+      // The scrollbar gutter: the wheel steps above aim at the middle of the
+      // transcript, and the drag below needs the last few pixels of it.
+      right: Math.round(r.right) - 6,
+    };
   })()`);
 	if (!AIM) throw new Error("no transcript to aim at");
 	return AIM;
@@ -390,6 +429,449 @@ async function fling(count, deltaY, gapMs = 10) {
 		await wheel(deltaY);
 		await sleep(gapMs);
 	}
+}
+
+/*
+ * A real trackpad flick, which `fling` cannot express.
+ *
+ * A flick has two phases: a short finger phase with large deltas, then a
+ * MOMENTUM phase that keeps emitting after the fingers lift, with a decaying
+ * delta. The operator's report is about exactly that second phase ("if I scroll
+ * a bit too fast I get stuck"), and the state machine's own act boundary
+ * (`GESTURE_GAP_MS`) is defined against it — so a train of equal notches is a
+ * finger walking a wheel, not the gesture under test.
+ *
+ * The tail is bounded by TIME rather than by a notch count, and that is a
+ * correction this file owes its own method note. A count-bounded decay spaced
+ * its last, smallest notches 733ms apart in the diagnosis run — past
+ * `GESTURE_GAP_MS`, i.e. a gap the harness invented and no hardware produces —
+ * while a real trackpad's momentum keeps emitting at frame rate until it runs
+ * out. Emitting for the requested duration at frame cadence, with the delta
+ * decaying on the clock, is the shape that leaves no such gap.
+ */
+async function flingWithMomentum({
+	burstCount = 5,
+	burstDelta = -400,
+	burstGap = 8,
+	tailMs = 600,
+	tailStart = -320,
+	frameMs = 16,
+} = {}) {
+	await fling(burstCount, burstDelta, burstGap);
+	const started = Date.now();
+	let emitted = 0;
+	for (;;) {
+		const elapsed = Date.now() - started;
+		if (elapsed >= tailMs) break;
+		const decay = 1 - elapsed / tailMs;
+		await wheel(Math.round(tailStart * decay * decay));
+		emitted++;
+		await sleep(frameMs);
+	}
+	return emitted;
+}
+
+/**
+ * One real keystroke, at the focused element.
+ *
+ * The phase-1 run of this PR could not exercise the keyboard clause at all: the
+ * app's listener is on the SCROLLER (`use-scroll-paging.ts`, `onKeyDown`), the
+ * browser surface never focuses it on its own, and a keystroke delivered to
+ * nothing is recorded as zero input events — which reads exactly like a clause
+ * that never fires. So the scroller is focused first and the harness checks
+ * afterwards that the page's own event log saw the key, which is the difference
+ * between "proven" and "BLOCKED".
+ */
+async function key(k, { windowsVirtualKeyCode = 36 } = {}) {
+	await send("Input.dispatchKeyEvent", {
+		type: "rawKeyDown",
+		key: k,
+		code: k,
+		windowsVirtualKeyCode,
+	});
+	await send("Input.dispatchKeyEvent", { type: "keyUp", key: k, code: k });
+}
+
+/** Re-read the focus after the key: a keystroke that moves focus would be invisible otherwise. */
+const focusTranscriptAgain = async (before) =>
+	`${before} -> ${await evaluate("(() => document.activeElement === document.querySelector('[data-lo-canonical-transcript]') ? 'still focused' : 'focus lost')()")}`;
+
+/** Focus the transcript, and say whether it took. */
+const focusTranscript = () =>
+	evaluate(`(() => {
+    const el = document.querySelector('[data-lo-canonical-transcript]');
+    if (!el) return 'no transcript';
+    el.focus();
+    return document.activeElement === el ? 'focused' : 'not focusable';
+  })()`);
+
+/** A real scrollbar drag: press in the gutter, move, release. */
+async function dragScrollbar(fromY, toY, steps = 14) {
+	const x = Math.round(AIM.right);
+	await send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x,
+		y: fromY,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	for (let i = 1; i <= steps; i++) {
+		const y = Math.round(fromY + ((toY - fromY) * i) / steps);
+		await send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x,
+			y,
+			button: "left",
+			buttons: 1,
+		});
+		await sleep(16);
+	}
+	await send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x,
+		y: toY,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+}
+
+/*
+ * The page-side recorder: an OBSERVER, never instrumentation of the code under
+ * test.
+ *
+ * What the shipped steps above cannot answer is the operator's question. "It
+ * loads the next section but I still get stuck" is a claim about a TIMELINE —
+ * how many notches arrived at the hard top, with a free reveal available, before
+ * anything appeared — and a before/after pair of probes either side of a
+ * gesture cannot see it: the reader arrives pinned either way. Two probes a
+ * second apart report the same state whether the page took 0ms or 96ms, and
+ * "96ms" is the whole difference between paging that feels continuous and a
+ * dead stop at the wall.
+ *
+ * So this records two things, from the page's own perspective: every input event
+ * the scroller's listeners could see, with the geometry at that instant, and the
+ * geometry once per animation frame. Nothing under `src/` is touched and no
+ * state is read out of React.
+ */
+const RECORDER = `(() => {
+  if (window.__loPagingRecorder) return 'already installed';
+  const rec = { events: [], samples: [], t0: performance.now(), targetSeen: false };
+  window.__loPagingRecorder = rec;
+  const hint = (el) => {
+    const h = el.querySelector('#lo-older-history-hint');
+    if (h) return h.textContent.trim();
+    const b = el.querySelector('button');
+    return b ? b.textContent.trim() : '';
+  };
+  const geometry = (el) => {
+    /*
+     * The row at the top of the viewport, and its offset from the scroller's top
+     * edge. It is the same observation clause E is measured on in phase 1, taken
+     * per FRAME here rather than once before and once after, because the number
+     * that matters for a lurch is frame-to-frame and not the net drift: a reveal
+     * can end exactly where it started and still have jumped twice on the way.
+     */
+    const scroller = el.getBoundingClientRect();
+    const top = [...el.querySelectorAll('[data-record-id]')].find(
+      (node) => node.getBoundingClientRect().bottom > scroller.top,
+    );
+    const rect = top ? top.getBoundingClientRect() : null;
+    return {
+      t: Math.round(performance.now() - rec.t0),
+      d: Math.round(Math.max(0, el.scrollHeight - el.clientHeight - Math.abs(el.scrollTop))),
+      rows: el.querySelectorAll('[data-record-id]').length,
+      sh: el.scrollHeight,
+      st: Math.round(el.scrollTop * 100) / 100,
+      ch: el.clientHeight,
+      anchorId: top ? top.getAttribute('data-record-id') : null,
+      anchorOffset: rect ? Math.round((rect.top - scroller.top) * 100) / 100 : null,
+      slot: hint(el).slice(0, 70),
+    };
+  };
+  const attach = () => {
+    const el = document.querySelector('[data-lo-canonical-transcript]');
+    if (!el) { requestAnimationFrame(attach); return; }
+    rec.targetSeen = true;
+    const record = (kind) => (event) => {
+      rec.events.push({
+        ...geometry(el),
+        kind,
+        deltaY: typeof event.deltaY === 'number' ? Math.round(event.deltaY) : null,
+        key: event.key ?? null,
+      });
+    };
+    for (const kind of ['wheel', 'keydown', 'touchmove']) {
+      el.addEventListener(kind, record(kind), { capture: true, passive: true });
+    }
+    el.addEventListener('pointerdown', record('pointerdown'), { capture: true, passive: true });
+    window.addEventListener('pointerup', record('pointerup'), { capture: true, passive: true });
+    const tick = () => { rec.samples.push(geometry(el)); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  };
+  attach();
+  return 'installed';
+})()`;
+
+/** How many recorded events and frames exist so far (the per-step cursor). */
+const recCursor = () =>
+	evaluate(
+		"(() => (window.__loPagingRecorder ? { events: window.__loPagingRecorder.events.length, samples: window.__loPagingRecorder.samples.length } : null))()",
+	);
+
+/** Everything recorded since that cursor. */
+const recSince = async (cursor) => {
+	if (!cursor) return { events: [], samples: [] };
+	return {
+		events: await evaluate(
+			`window.__loPagingRecorder.events.slice(${cursor.events})`,
+		),
+		samples: await evaluate(
+			`window.__loPagingRecorder.samples.slice(${cursor.samples})`,
+		),
+	};
+};
+
+/** The hard top the app itself clamps against, restated here independently. */
+const HARD_TOP_PX = 2;
+
+/** Rows the windowed slot is reporting as held back, out of its own words. */
+const hiddenOf = (slot) => {
+	const m = EARLIER_COUNT_RE.exec(slot ?? "");
+	return m ? Number(m[1]) : 0;
+};
+
+/**
+ * The numbers a gesture has to answer for.
+ *
+ * Four questions, and none of them is visible in a before/after probe pair:
+ *
+ * 1. HOW MANY reveals did this gesture buy, and were they local widens or
+ *    durable pages? One page per act is rule 2; a chain is what round 1
+ *    measured at four widens and two pages from one flick.
+ * 2. WHERE was the reader when each reveal became visible — already pinned at
+ *    the wall, or still travelling? "Already pinned, 96ms after arriving" is
+ *    the dead stop; "while still approaching" is the fix.
+ * 3. HOW LONG did the reader keep pushing at the wall with nothing appearing?
+ *    The longest run of notches at the hard top with no reveal between them is
+ *    the freeze, as a number the two runs can be compared on.
+ * 4. What did the NETWORK do — counted from the CDP log, never from the page.
+ */
+function analyse({ events, samples, historyRequests: history, extra = {} }) {
+	const reveals = [];
+	const slotTransitions = [];
+	for (let i = 1; i < samples.length; i++) {
+		const prev = samples[i - 1];
+		const now = samples[i];
+		/*
+		 * A reveal is a change in what the reader can SEE: rows mounted, or rows
+		 * the window is holding back. The slot's own words are recorded separately
+		 * — they change on transitions that reveal nothing (an affordance becoming
+		 * a hint), and counting those as reveals would double-count the very state
+		 * this change is about.
+		 */
+		if (prev.slot !== now.slot)
+			slotTransitions.push({
+				t: now.t,
+				from: prev.slot,
+				to: now.slot,
+				hiddenAfter: hiddenOf(now.slot),
+			});
+		if (prev.rows === now.rows && hiddenOf(prev.slot) === hiddenOf(now.slot))
+			continue;
+		reveals.push({
+			t: now.t,
+			rowsBefore: prev.rows,
+			rowsAfter: now.rows,
+			hiddenBefore: hiddenOf(prev.slot),
+			hiddenAfter: hiddenOf(now.slot),
+			// One frame before the change: where the reader was when the growth
+			// began to be visible to them.
+			distanceBefore: prev.d,
+			distanceAfter: now.d,
+			slotAfter: now.slot,
+			// Local widen or durable page: the slot only reports held-back rows,
+			// so a fall in that number with no rise in `rows` is a widen, and rows
+			// arriving is a page (or the page's own widen).
+			kind:
+				now.rows > prev.rows
+					? "rows-mounted"
+					: now.rows < prev.rows
+						? "rows-unmounted"
+						: "hidden-rows-changed",
+		});
+	}
+
+	for (const r of reveals) {
+		/*
+		 * Was the reader already pinned at the hard top when this became visible?
+		 * If so, how long had they been there — the number that decides whether a
+		 * reveal was a response or a rescue. `null` means it arrived on the way.
+		 */
+		const arrival = samples.find((s) => s.t < r.t && s.d <= HARD_TOP_PX);
+		r.msAfterArrival =
+			arrival === undefined ? null : Math.round(r.t - arrival.t);
+	}
+
+	// The freeze, as a number: the longest run of notches that arrived at the
+	// hard top with nothing revealed between them.
+	const wheels = events.filter((e) => e.kind === "wheel");
+	let longest = { notches: 0, ms: 0, hiddenRows: 0 };
+	let streak = null;
+	for (let i = 0; i < wheels.length; i++) {
+		const e = wheels[i];
+		const next =
+			i + 1 < wheels.length ? wheels[i + 1].t : Number.POSITIVE_INFINITY;
+		const revealed = reveals.some((r) => r.t > e.t && r.t <= next);
+		if (e.d <= HARD_TOP_PX && !revealed) {
+			if (!streak) streak = { notches: 0, start: e.t, end: e.t, hidden: 0 };
+			streak.notches += 1;
+			streak.end = e.t;
+			streak.hidden = Math.max(streak.hidden, hiddenOf(e.slot));
+			if (streak.notches > longest.notches)
+				longest = {
+					notches: streak.notches,
+					ms: Math.round(streak.end - streak.start),
+					hiddenRows: streak.hidden,
+				};
+		} else {
+			streak = null;
+		}
+	}
+
+	const waited = reveals
+		.map((r) => r.msAfterArrival)
+		.filter((ms) => ms !== null);
+
+	/*
+	 * The lurch, as the frame-to-frame number rather than the net drift.
+	 *
+	 * Risk 1 of this change: rule 3's mid-fling refusal existed because mounting
+	 * rows while the viewport travels used to stutter, and the lead spends the page
+	 * during exactly that travel. The number that settles it is the largest
+	 * single-frame change of the HELD ROW's viewport offset — measured across the
+	 * whole act, because the landing frame is not the only one that can move the
+	 * reader.
+	 *
+	 * Only frames watching the SAME row are compared: a change of row means the
+	 * anchor unmounted, and differencing across that compares two different things.
+	 * (Phase 1's isolated trials sample the row by identity for the same reason.)
+	 */
+	/*
+	 * Measured over the frames AFTER the last input, which is phase 1's own
+	 * method and the only window in which the number means what it is quoted for.
+	 * A row's viewport offset moves whenever the READER moves too, so a figure
+	 * taken across the gesture measures their wheel as much as the app's
+	 * correction — measured: the largest "lurch" in a whole momentum train was
+	 * 136px on a frame where `scrollTop` moved 136px and no reveal was in flight.
+	 * After the last notch, nothing but the app can move it.
+	 */
+	const lastInputAt = events.length > 0 ? events[events.length - 1].t : 0;
+	const lastSample = samples.length > 0 ? samples[samples.length - 1] : null;
+	let lurch = { px: 0, t: null, to: null, frames: 0 };
+	for (let i = 1; i < samples.length; i++) {
+		const prev = samples[i - 1];
+		const now = samples[i];
+		if (prev.t <= lastInputAt) continue;
+		if (!prev.anchorId || prev.anchorId !== now.anchorId) continue;
+		if (prev.anchorOffset === null || now.anchorOffset === null) continue;
+		lurch.frames += 1;
+		const delta = Math.abs(now.anchorOffset - prev.anchorOffset);
+		if (delta > lurch.px)
+			lurch = {
+				...lurch,
+				px: delta,
+				t: now.t,
+				to: Math.round(now.anchorOffset),
+			};
+	}
+
+	// And the same frame-to-frame figure on the DISTANCE from the top, which is
+	// what the reader sees move when content is inserted above them.
+	let largestJump = { px: 0, t: null, from: null, to: null };
+	for (let i = 1; i < samples.length; i++) {
+		const prev = samples[i - 1];
+		const now = samples[i];
+		const delta = Math.abs(now.d - prev.d);
+		if (delta > largestJump.px)
+			largestJump = { px: delta, t: now.t, from: prev.d, to: now.d };
+	}
+
+	return {
+		historyRequests: history,
+		inputEvents: events.length,
+		wheelNotches: wheels.length,
+		notchesAtHardTop: wheels.filter((e) => e.d <= HARD_TOP_PX).length,
+		reveals: reveals.length,
+		revealDetail: reveals,
+		slotTransitions,
+		// `null` rather than 0 on the approach: a reveal that arrived while the
+		// reader was still moving is the fix, and reporting it as "0ms after
+		// arrival" would read as a very fast rescue instead.
+		revealsOnApproach: reveals.filter((r) => r.msAfterArrival === null).length,
+		worstMsAfterArrival: waited.length === 0 ? null : Math.max(...waited),
+		longestClampedStretchWithoutReveal: longest,
+		/*
+		 * The operator's end state, as a flag rather than something a reader has to
+		 * work out from three numbers: the reader is AT the hard top, with rows the
+		 * app has fetched (or already holds) and is not showing them. It is the state
+		 * the report describes ("I get stuck ... I need to scroll jitter down a bit
+		 * and back up").
+		 */
+		endsPinnedWithHiddenRows: lastSample
+			? lastSample.d <= HARD_TOP_PX && hiddenOf(lastSample.slot) > 0
+			: null,
+		// Clause E, per frame rather than net: see `lurch` above.
+		maxAnchorFrameDeltaPx: lurch.px,
+		maxAnchorFrameDeltaAt: lurch,
+		postInputFramesSampled: lurch.frames,
+		maxDistanceFrameDeltaPx: largestJump.px,
+		maxDistanceFrameDeltaAt: largestJump,
+		framesSampled: samples.length,
+		...extra,
+	};
+}
+
+/**
+ * One measured act: probe, gesture, settle, probe, and the timeline between.
+ *
+ * `settleMs` is the quiet window after the gesture in which the reveal the
+ * gesture bought has to appear; it is the reveal budget plus a wide margin, not
+ * a timeout the numbers depend on.
+ */
+async function scenario(name, run, { settleMs = 1600, note = null } = {}) {
+	const before = await probe();
+	const historyBefore = historyRequests.length;
+	const cursor = await recCursor();
+	const out = await run();
+	await sleep(settleMs);
+	const after = await probe();
+	const { events, samples } = await recSince(cursor);
+	const measured = {
+		step: name,
+		note,
+		...analyse({
+			events,
+			samples,
+			historyRequests: historyRequests.length - historyBefore,
+			extra: out && typeof out === "object" ? out : {},
+		}),
+	};
+	report.steps.push({
+		step: name,
+		note,
+		rowsBefore: before.rows,
+		rowsAfter: after.rows,
+		hiddenRowsBefore: before.hiddenRows,
+		hiddenRowsAfter: after.hiddenRows,
+		distanceBefore: Math.round(before.distanceFromTop),
+		distanceAfter: Math.round(after.distanceFromTop),
+		slotBefore: before.slotText,
+		slotAfter: after.slotText,
+		...measured,
+	});
+	return { before, after, events, samples, measured };
 }
 
 // ------------------------------------------------------------------ run
@@ -674,7 +1156,7 @@ for (let trial = 0; trial < 5; trial++) {
 	// from the app's.
 	await wheel(-400);
 	await evaluate(
-		`(() => { window.__loPagingInputEndedAt = performance.now(); return true; })()`,
+		"(() => { window.__loPagingInputEndedAt = performance.now(); return true; })()",
 	);
 	const result = await trace;
 	const after = await probe();
@@ -704,6 +1186,271 @@ report.steps.push({
 	detail: isolated,
 });
 await shot(`${MODE}-04-after-isolated-reveals`);
+
+/* ---------------------------------------------------------------------------
+ * PHASE 2 — the gestures this change is about.
+ *
+ * Phase 1 drives the transcript to the end of its history, which is why this
+ * phase starts from a reload: the same seeded fixture, the same arrival state,
+ * and three durable pages behind it for the gestures that need history
+ * remaining. The diagnosis run measured its scrollbar drag AFTER history was
+ * exhausted and its `Home` keystroke against an unfocused scroller, so both
+ * clauses came back void or blocked; the reload and the focus below exist to
+ * give them something to say rather than to re-run the same nothing.
+ *
+ * The recorder is registered as a new-document script here, so it re-installs
+ * itself on that reload and every reload after it. Everything it records is
+ * read from the page and never from the app's own state.
+ * ------------------------------------------------------------------------- */
+await send("Page.addScriptToEvaluateOnNewDocument", { source: RECORDER });
+await send("Page.reload", { ignoreCache: false });
+await sleep(9000);
+{
+	const lock = JSON.parse(
+		await evaluate(
+			`JSON.stringify({ locked: document.body.getAttribute('data-scroll-locked'), dialogs: document.querySelectorAll('[role=dialog][data-state=open]').length, recorder: Boolean(window.__loPagingRecorder), target: window.__loPagingRecorder ? window.__loPagingRecorder.targetSeen : false })`,
+		),
+	);
+	if (lock.locked || lock.dialogs > 0)
+		throw new Error(
+			`scroll is locked by an open layer: ${JSON.stringify(lock)}`,
+		);
+	if (!lock.recorder || !lock.target)
+		throw new Error(
+			`the page-side recorder did not attach to the transcript: ${JSON.stringify(lock)}`,
+		);
+	report.recorder = lock;
+}
+await aim();
+
+/**
+ * Reload to the arrival state and wait for the transcript to mount again.
+ *
+ * Every scenario that needs history starts here, because a scenario that begins
+ * where the last one ended is a scenario whose numbers depend on the ones above
+ * it: the diagnosis run drove the transcript to `hiddenRows = 0` and then
+ * measured a scrollbar drag against a scroller with nothing left to load, which
+ * is a void rather than a pass.
+ */
+async function freshArrival() {
+	await send("Page.reload", { ignoreCache: false });
+	for (let i = 0; i < 40; i++) {
+		await sleep(500);
+		const state = await probe();
+		if (state.ok && state.rows > 0) break;
+	}
+	await sleep(2500);
+	await aim();
+	report.reloads = (report.reloads ?? 0) + 1;
+	return probe();
+}
+
+/**
+ * One scenario: a fresh arrival, an optional SETUP the measurement does not
+ * include, and then the gesture under test.
+ *
+ * The setup is outside the measurement on purpose. "A reader parked at the top
+ * who keeps pushing" is a state, not a gesture, and rolling the approach that
+ * reaches it into the act being measured would credit the approach's reveals to
+ * the gesture and hide the very thing the scenario is about.
+ */
+async function arrivalScenario(
+	name,
+	{ setup = null, gesture, settleMs = 1800, note = null },
+) {
+	const arrival = await freshArrival();
+	if (setup) await setup();
+	await sleep(800);
+	const result = await scenario(name, gesture, { settleMs, note });
+	const last = report.steps[report.steps.length - 1];
+	last.arrival = {
+		rows: arrival.rows,
+		hiddenRows: arrival.hiddenRows,
+		distanceFromTop: Math.round(arrival.distanceFromTop),
+		slot: arrival.slotText,
+	};
+	last.expectation = note;
+	return result;
+}
+
+const phase2 = [];
+phase2.push(
+	await arrivalScenario("fast-fling-to-top", {
+		gesture: () =>
+			flingWithMomentum({
+				burstCount: 8,
+				burstDelta: -600,
+				burstGap: 8,
+				tailMs: 1000,
+				tailStart: -700,
+			}),
+		settleMs: 2200,
+		note: "one flick with a real momentum tail, from the arrival state: the page must be spent on the way to the wall, not at it",
+	}),
+);
+await shot(`${MODE}-05-fast-fling-to-top`);
+
+/*
+ * A flick that crosses two walls inside ONE act: twelve loud notches plus 1.6s
+ * of momentum tail. This is the shape that left the diagnosis run pinned with
+ * rows hidden and 62 further notches producing nothing at all.
+ */
+phase2.push(
+	await arrivalScenario("fling-crossing-two-walls", {
+		gesture: () =>
+			flingWithMomentum({
+				burstCount: 12,
+				burstDelta: -600,
+				burstGap: 8,
+				tailMs: 1600,
+				tailStart: -800,
+			}),
+		settleMs: 2400,
+		note: "one act, two walls: at least two reveals, and no stretch at the hard top longer than the lead",
+	}),
+);
+await shot(`${MODE}-06-fling-crossing-two-walls`);
+
+/*
+ * THE FREEZE, in the state that produces it: a reader who has just been
+ * answered at the hard top, with rows still held back by the window, who keeps
+ * pushing. The diagnosis run measured 62 notches and 1.45s here with a free
+ * local reveal sitting one clause away.
+ */
+phase2.push(
+	await arrivalScenario("page-lands-with-rows-hidden", {
+		setup: async () => {
+			await fling(40, -420, 10);
+			await sleep(1800);
+		},
+		gesture: () => fling(120, -80, 10),
+		settleMs: 2200,
+		note: "pinned at the wall with rows held back: the widen that makes the page visible must arrive, and it must not be a second page",
+	}),
+);
+await shot(`${MODE}-07-page-lands-with-rows-hidden`);
+
+/*
+ * The bound rule 4 exists for, on the real surface: 200 notches held against the
+ * clamped top in one act. A resting finger's notches move the content by zero,
+ * so the latch must refuse every one of them however long the finger rests.
+ */
+phase2.push(
+	await arrivalScenario("resting-finger-at-clamped-top", {
+		setup: async () => {
+			await fling(40, -420, 10);
+			await sleep(1800);
+		},
+		gesture: () => fling(200, -80, 10),
+		settleMs: 2400,
+		note: "a finger resting on the top edge: the page count must not grow with the notch count",
+	}),
+);
+await shot(`${MODE}-08-resting-finger-at-clamped-top`);
+
+/*
+ * A deliberate scroll: six notches, 320ms apart, each its own act, into the
+ * prefetch zone. Unchanged by this change and measured to say so — the lead is
+ * inert below its velocity floor, so a slow reader sees exactly what they had.
+ */
+phase2.push(
+	await arrivalScenario("slow-notches-into-zone", {
+		setup: async () => {
+			await fling(30, -420, 10);
+			await sleep(1600);
+		},
+		gesture: async () => {
+			for (let i = 0; i < 6; i++) {
+				await wheel(-200);
+				await sleep(320);
+			}
+		},
+		settleMs: 1800,
+		note: "a deliberate scroll into the zone: the lead must be inert here, so one reveal per act",
+	}),
+);
+
+/*
+ * A train that stops well outside every window. THE NEGATIVE CONTROL for the
+ * lead: 4 viewports is 1956px on this fixture and the row is about a train that
+ * ends 2000px+ away, so the fixed behaviour here is ZERO requests — a lead that
+ * spent from there would be arming a page for a reader with screens to go.
+ */
+phase2.push(
+	await arrivalScenario("continuous-train-beyond-the-lead", {
+		gesture: () => fling(6, -200, 12),
+		settleMs: 1600,
+		note: "800px of travel that neither settles in the zone nor reaches the wall, and stays beyond the lead: nothing may be spent",
+	}),
+);
+
+/*
+ * The keyboard clause, which the diagnosis run could not reach at all. The
+ * scroller is focused first (the app's listener is on it, not on the document)
+ * and the recorded event count is reported, so a zero here says which half
+ * refused rather than reading as a clause that never fires.
+ */
+/*
+ * The focus happens INSIDE the scenario, after the reload.
+ *
+ * Focusing once before the phase looked right and measured nothing: every
+ * scenario reloads the page, the scroller is a new element, and the key went to
+ * the document — the same shape as the diagnosis run's BLOCKED zero, one layer
+ * further in. `setup` runs after the reload and before the gesture, so the
+ * focused element is the one the key is delivered to.
+ */
+let focused = "not attempted";
+phase2.push(
+	await arrivalScenario("keyboard-home", {
+		setup: async () => {
+			focused = await focusTranscript();
+		},
+		gesture: async () => {
+			await key("Home");
+			// Returned rather than closed over: the focus result is only known
+			// after `setup` has run, and `extra` is read from what the gesture
+			// returns.
+			return { focus: await focusTranscriptAgain(focused) };
+		},
+		settleMs: 2000,
+		note: "one Home keystroke on the transcript, focused after the reload",
+	}),
+);
+await shot(`${MODE}-09-keyboard-home`);
+
+/** A real scrollbar drag, from a state that still HAS history. */
+const dragArrival = await freshArrival();
+phase2.push(
+	await scenario(
+		"scrollbar-drag-to-top",
+		() => dragScrollbar(AIM.top + 60, AIM.bottom - 6, 14),
+		{
+			settleMs: 2000,
+			note: `press, 14 moves, release, from ${Math.round(dragArrival.distanceFromTop)}px of overflow`,
+			startDistance: Math.round(dragArrival.distanceFromTop),
+		},
+	),
+);
+await shot(`${MODE}-10-scrollbar-drag`);
+
+report.scenarios = report.steps.filter(
+	(step) => step.expectation !== undefined || step.note !== undefined,
+);
+/*
+ * The full per-frame timeline of every scenario, beside the summary above.
+ *
+ * Why the raw timeline is committed into the JSON rather than only summarised:
+ * the summary is where the reader looks, and the timeline is what makes the
+ * summary falsifiable. A clamp verdict is exactly the kind the object being
+ * measured can produce, and a reader who wants to check "no reveal for 866ms at
+ * the hard top" against the frames rather than against my arithmetic needs the
+ * frames.
+ */
+report.phase2Timeline = phase2.map((entry) => ({
+	name: entry.measured.step,
+	events: entry.events,
+	samples: entry.samples.slice(-1400),
+}));
 
 report.historyRequestsTotal = historyRequests.length;
 // The positive control: if this is 0 the harness saw no traffic at all and
