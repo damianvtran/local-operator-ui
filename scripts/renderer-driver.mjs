@@ -372,13 +372,20 @@ function record(label, body) {
 	transcript.push(`### ${label}\n\n\`\`\`\n${body}\n\`\`\`\n`);
 }
 
-function check(label, ok, detail) {
+function check(label, ok, detail, observed) {
 	if (!ok) failures += 1;
 	const status = ok ? "PASS" : "FAIL";
-	say(
-		`[${status}] ${label}${detail === undefined ? "" : `\n        ${detail}`}`,
-	);
-	record(label, `[${status}] ${detail ?? ""}`);
+	/*
+	 * `detail` says what went WRONG, so it is printed only when something did.
+	 * It used to print unconditionally, which put a failure explanation on a PASS
+	 * line - a reader grepping the log for the reason a check failed could not
+	 * tell the two apart, and the tell was the sentence itself (QA round 1, Q3).
+	 * What a PASS observed belongs in `observed`, which is where a check states
+	 * the thing it actually read rather than the thing it would have said.
+	 */
+	const extra = ok ? observed : detail;
+	say(`[${status}] ${label}${extra === undefined ? "" : `\n        ${extra}`}`);
+	record(label, `[${status}] ${extra ?? detail ?? ""}`);
 	return ok;
 }
 
@@ -2777,14 +2784,23 @@ async function sceneSettingsModel(cdp) {
 	 * rows is if the draft holds the bare id `anthropic`. That is the whole reason
 	 * this control separates `option.id` from `option.name`, and the reason the
 	 * scoping is draft-aware at all — the draft is dirty and unsaved.
+	 *
+	 * The predicate is the row's SAVE control, and it is read by its label rather
+	 * than by "does this row contain a button". The old predicate was satisfied by
+	 * any button at all — the clear affordance a picked value always renders, and
+	 * the advanced-row disclosure chevron — so it passed on a row that had saved
+	 * on select, which is the one thing it existed to rule out (QA round 1, Q2).
+	 * `Save` is rendered only when the row is dirty (`backend-setting-row.tsx`),
+	 * which is exactly the claim.
 	 */
-	const dirtyHosting = await cdp.evaluate(
-		`Boolean(document.querySelector('[data-setting-key="hosting"] button'))`,
+	const hostingButtons = await cdp.evaluate(
+		`Array.from(document.querySelectorAll('[data-setting-key="hosting"] button')).map((b) => b.textContent.trim())`,
 	);
 	check(
 		"the pick wrote a draft rather than saving",
-		dirtyHosting === true,
+		hostingButtons.includes("Save"),
 		"no Save control appeared on the hosting row, so the pick saved on select",
+		`the hosting row's controls read ${JSON.stringify(hostingButtons)}`,
 	);
 
 	/* ---------------------------------------------------------------- */
@@ -2834,22 +2850,93 @@ async function sceneSettingsModel(cdp) {
 	const modelFrame = await captureSettled(cdp, "settings-model-open");
 
 	/* ---------------------------------------------------------------- */
-	/* 6. Text that matches nothing still commits                         */
+	/* 6. Enter takes the row the list is showing, not the query           */
 	/* ---------------------------------------------------------------- */
 
+	/*
+	 * The reported gesture, end to end: type a filter that leaves rows on
+	 * screen, press Enter, and see which value is committed. It used to be the
+	 * three characters — a stored hosting no registry had ever heard of, with
+	 * nothing on the page saying so (UX round 1, U1).
+	 *
+	 * The list is read BEFORE the key so the check can name what the answer
+	 * should have been, rather than asserting "not the query".
+	 */
+	const beforeEnter = await readSettingField(cdp, "model_name");
+	await cdp.send("Input.insertText", { text: "clau" });
+	const narrowedForFilter = await waitForScene(
+		cdp,
+		`document.querySelector('ul[role="listbox"]') !== null`,
+	);
+	const filterRead = await readSettingField(cdp, "model_name");
+	/*
+	 * The mark is the visible half of the fix: with no arrow key pressed, the
+	 * first row the query admits already carries it, so the user can see what
+	 * Enter is about to take.
+	 */
+	const markedCount = await cdp.evaluate(
+		`document.querySelectorAll('ul[role="listbox"] li[role="option"].outline-control').length`,
+	);
+	check(
+		"a narrowed list already marks the row Enter would take",
+		narrowedForFilter === true && markedCount === 1,
+		`marked rows: ${markedCount}`,
+		`${filterRead.options.length} rows offered, ${markedCount} marked`,
+	);
+	const typedRowFrame = await captureSettled(cdp, "settings-model-typed-row");
+
+	await keystroke("Enter", "Enter", 13);
+	const afterEnter = await waitForScene(
+		cdp,
+		`(() => {
+			const input = document.querySelector('[data-setting-key="model_name"] input[role="combobox"]');
+			return Boolean(input) && input.value !== "clau" && input.value !== "";
+		})()`,
+	);
+	const enterRead = await readSettingField(cdp, "model_name");
+	note("model_name after Enter on a filter", JSON.stringify(enterRead));
+	check(
+		"Enter on a filter commits the row the list was showing",
+		afterEnter === true &&
+			enterRead.listOpen === false &&
+			filterRead.options.includes(enterRead.value) &&
+			enterRead.value !== "clau",
+		`committed ${JSON.stringify(enterRead.value)} from ${JSON.stringify(filterRead.options.slice(0, 3))}`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 7. Text that matches nothing still commits                         */
+	/* ---------------------------------------------------------------- */
+
+	await verb(cdp, "press", settingField("model_name"));
+	await waitForScene(
+		cdp,
+		`document.querySelector('ul[role="listbox"]') !== null`,
+	);
 	await cdp.send("Input.insertText", { text: "zzzz-no-such-model" });
+	/*
+	 * The typed-text row is a `role="option"` too, so the wait is for a list
+	 * whose ONLY row is that one — which is the state this check is about: no
+	 * listing knows the query, and the list offers to commit it as typed
+	 * instead of closing or claiming a result.
+	 */
 	const empty = await waitForScene(
 		cdp,
-		`document.querySelectorAll('ul[role="listbox"] [role="option"]').length === 0`,
+		`(() => {
+			const rows = document.querySelectorAll('ul[role="listbox"] li[role="option"]');
+			const typed = document.querySelectorAll('ul[role="listbox"] li[data-combobox-row="typed"]');
+			return rows.length === 1 && typed.length === 1 && typed[0].textContent.includes("zzzz-no-such-model");
+		})()`,
 	);
 	const emptyRead = await readSettingField(cdp, "model_name");
 	note("model_name with no matches", JSON.stringify(emptyRead));
 	check(
-		"a query matching nothing says so instead of closing",
+		"a query matching nothing still commits, through a row that says so",
 		empty === true &&
 			emptyRead.listOpen === true &&
-			emptyRead.headings.join(" ").includes("Nothing matches"),
-		`list open=${emptyRead.listOpen} headings=${JSON.stringify(emptyRead.headings)}`,
+			emptyRead.options.length === 0,
+		`list open=${emptyRead.listOpen} rows=${JSON.stringify(emptyRead.options)}`,
+		`the only row reads ${JSON.stringify(emptyRead.headings.slice(-1))}`,
 	);
 	const noMatchFrame = await captureSettled(cdp, "settings-model-no-match");
 
