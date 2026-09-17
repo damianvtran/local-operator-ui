@@ -42,13 +42,17 @@ npx storybook dev -p 6317 --no-open
 node scripts/capture-evidence.mjs http://localhost:6317 \
   --only=chat-notification-feed-states --themes=localOperatorDark,localOperatorLight,obsidian --allow-backend
 node scripts/capture-evidence.mjs http://localhost:6317 \
-  --only=chat-composer-states --themes=localOperatorDark,localOperatorLight,obsidian --allow-backend
+  --only=chat-message-input --themes=localOperatorDark,localOperatorLight,obsidian --allow-backend
 ```
 
 ## What each frame proves, with the numbers
 
 The readings below were taken from the live DOM of the same stories in the same
-headless Chromium the capture uses (1280x600 / 720x260 / 900x160, DPR 1).
+headless Chromium the capture uses (1280x600 / 720x260 / 900x160, DPR 1). The
+three composer rows at the foot of the table are the exception and say so: they
+are the `chat-message-input` set's own frames at its **1024x300** measure, and
+their readings are that set's (`docs/evidence/chat-message-input/README.md`),
+taken at that viewport.
 
 | frames | what it proves | measured |
 | --- | --- | --- |
@@ -60,9 +64,9 @@ headless Chromium the capture uses (1280x600 / 720x260 / 900x160, DPR 1).
 | `conversation-gone-with-paint/*` | the same state reached **the way a click reaches it**, with this window's cached rows seeded — the half the empty-rows frame cannot cover | DOM reads: `saysGone` true, `saysStartOfConversation` **false**, `hasTimestamp` **false**. Both gates are the fix: the history slot and the footer timestamp used to render over the seeded rows, painting "Start of conversation" and an orphaned date under a statement that the conversation does not exist |
 | `the-two-misses/*` | "this may be behind" and "this is gone" side by side, so the two are judged for whether they read apart | 760x200 |
 | `cached-paint-narrow/*` | the same caption at 420x600, the narrow end of the supported range | 420x600 |
-| `chat-composer-states--idle` | the ordinary composer, for comparison | `placeholder` `Ask me for help`, `disabled` false, placeholder colour `rgb(145,139,125)` = `#918B7D` = `--lo-ink-dim`, `opacity: 1` |
-| `chat-composer-states--busy` | a turn in flight keeps a truthful placeholder (`Agent is busy`), and in THIS state the composer is disabled | `disabled` is **true**: the predicate is `isInputDisabled = unavailable \|\| isBusy` (`message-input.tsx:639`), bound straight to the textarea at `:1427`. **Source-verified, not re-measured from this frame** — see the correction below. The earlier reading of `disabled: false` described a different state |
-| `chat-composer-states--conversation-gone` | the composer under a conversation this machine does not have | `placeholder` `This conversation is gone`, `disabled` **true**, placeholder colour **`rgb(95,90,78)`** = `#5F5A4E` = `--lo-ink-disabled`, `opacity: 1`. The colour step is the point: disabled changes colour, never opacity, and before this pass the only signal was `cursor: not-allowed` after the user had typed |
+| `chat-message-input--idle` | the ordinary composer, for comparison | `placeholder` `Ask me for help`, `disabled` false, placeholder colour `rgb(145,139,125)` = `#918B7D` = `--lo-ink-dim`, `opacity: 1` — the composer set's reading at 1024x300 |
+| `chat-message-input--awaiting-reply` | **not the frame the band used to carry, and it does not claim to be.** The retired `chat-composer-states--busy` frame photographed `Agent is busy` with the field **disabled**; this one is `awaitingReply` with no load, so `Waiting for the agent` with the box **live**. See the correction below | `placeholder` `Waiting for the agent`; the field is enabled and takes a keystroke — the same state the transcript's own wait line is about, and the nearest reachable one to the retired frame |
+| `chat-message-input--conversation-gone` | the composer under a conversation this machine does not have | `placeholder` `This conversation is gone`, `disabled` **true**, placeholder colour **`rgb(95,90,78)`** = `#5F5A4E` = `--lo-ink-disabled`, `opacity: 1`. The colour step is the point: disabled changes colour, never opacity, and before this pass the only signal was `cursor: not-allowed` after the user had typed |
 
 Two defects in this set were found by *looking* at frames rather than by a test,
 and both are in the table above: the three rowless states rendered as blank
@@ -90,6 +94,30 @@ cannot be rendered in isolation for a markup assertion (see
 browser, so no fresh DOM reading is offered here. The frame remains the record
 of the captured state; the predicate above is the record of the behaviour, and
 the two now agree.
+
+### The band's composer rows, repointed (remediation round 1)
+
+The three rows above used to name `chat-composer-states--{idle,busy,conversation-gone}`,
+ids no story ever answered. `7550bf1ae` did not retitle the composer's stories: it
+ADDED `message-input.stories.tsx` already titled `Chat/Message input`, and the ids
+were born dangling 316 commits later in `cb0d55dc6`'s rebase resolution — the
+commit whose own note says the `Busy` and second `Idle` stories were deliberately
+NOT re-added, because `isBusy` needs a non-null `currentJobId` and every call site
+passes null (`chat-page.tsx:1931`, `chat-content.tsx:1128`). A full sweep aborts
+at the unknown-id check before it captures anything; a narrowed `--only=` run
+naming other stories never tripped it, since the check validates only the ids a
+run will visit.
+
+They are now the `chat-message-input` rows above, swept at that set's own
+**1024x300**. The stories' `Frame` is a fixed 1024px column, so the band's
+900x160 left 124px of it — the box's right border and the send control — off the
+edge, and the capture came out 900x213 rather than the tuple's 160 because the
+story's own height governs. `--busy` is the one row not carried over: its state
+is unreachable, so there is no story to point at and no frame of it, and the
+middle row photographs the nearest reachable state instead — the different state
+the correction above describes. The frames under
+`docs/evidence/chat-composer-states/` are claimed by no row from here on; they
+stay committed until the next sweep's `clearSweptFrames` removes them.
 
 ## What this set does NOT contain, and why
 
