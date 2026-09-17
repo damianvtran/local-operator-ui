@@ -241,14 +241,21 @@ Two of those rows need the reasoning written down:
 **Hit area and focus.** `size-6` (24px) matching the entity row's controls, inside
 the row's `h-8`, `shrink-0`, `rounded-md`, the same `focus-visible:outline
 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2`
-the row uses. Reveal is `opacity` only (`group-hover` / `group-focus-within`), never
-a layout shift — and on the session row the slot is **reserved at rest
-list-wide**, because unlike the search mark (`chat-sidebar.tsx:438-451`, whose 39%
-title cost was measured and rejected) this control is on *every* row: a slot that
-appears on hover reflows the row under the pointer, which is the defect the entity
-row's comment already names (`:637-642`). The cost is 28px of a 280px sidebar for
-every title; the title truncates and `title` carries the full string, so nothing is
-lost, and the trade is the same one the entity rows already make.
+the row uses. On the session row the slot is **reserved at rest list-wide**, and
+**drawn in the state table's first row rather than revealed on hover** (settled at
+implementation; review round 1, D2/A4). The earlier wording here — "reveal is
+`opacity` only" — described the search mark's treatment, which this section already
+distinguishes: that mark appears on the rows that carry it, so a reveal is how it
+stays out of the way, while this control is on *every* row, its first state is a
+fact a user needs ("does this conversation have a browser?"), and `opacity-0` at
+rest would put the entry point back behind the pointer on exactly the rows where
+nothing is open yet. So the slot is always occupied and the quiet state is a dim
+`Globe` (`text-ink-dim`), which is what the state table above has said all along.
+The cost is 28px of a 280px sidebar for every title — measured in the slot-cost
+frame (`docs/evidence/browser-conversation-mark/slot-cost/`, `browser-conversation-mark--slot-cost`),
+which prints the two rows' title widths and their difference; the title truncates
+and `title` carries the full string, so nothing is lost, and the trade is the same
+one the entity rows already make.
 
 **Where the mark's data comes from, and the rows that are not in the store.**
 `sessionRow` is rendered from four places — the nested and flat lists and three
@@ -308,8 +315,15 @@ conversation scope and every existing story are visually unchanged):
   (`browser-tab-strip.tsx:48-60`), and a group label is not a control either;
 - `MessagesSquare` 14px + the conversation's name, `text-meta text-ink-dim`,
   `shrink-0`, `max-w-24`, `truncate`, `title` = the full name;
-- the group's tab count, `tabular-nums`, `text-ink-dim` — this is what lets
-  `Close all tabs in this conversation` carry no number (R5);
+- the group's tab count, `tabular-nums`, `text-ink-dim` — the strip and the pinned
+  list both state the run's size here;
+  *it is NOT what lets `Close all tabs in this conversation` carry no number*: that
+  was the shipped reasoning, and review round 1 (U3/Q3) measured it false in the host
+  this feature adds. The chip is drawn only when the pool holds more than one
+  conversation, and the pane opened from a sidebar mark is the single-conversation
+  case — so beside `Close 5 other tabs` the most destructive item on the row carried
+  no number and nothing on screen stated the group's size. The item is counted now:
+  `Close all 6 tabs in this conversation`.
 - a 1px `bg-hairline` divider after it, `my-2 self-stretch`, the same rule the
   per-tab divider uses (`:487-492`);
 - **inside the scroller**, so the tiers keep reading the strip row's width and the
@@ -436,12 +450,25 @@ already exists:
 
 **Why the counts are in the labels.** Each of these is destructive, has no undo
 (closing a tab is not recoverable — the session file records the current set, not a
-history: `host.ts:716-746`), and two of them ("others", "to the right") reach
-beyond the list a scoped host is showing. A number is the disclosure. This is also
+history: `host.ts:716-746`), and three of them ("others", and the conversation
+item's own count) read the **pool** while a scoped host is showing a list — a number
+is the disclosure. This is also
 why `Close other tabs` means **the whole pool**, not the host's visible list: in
 the pane, scoped to 2 tabs of 8, the item reads `Close 7 other tabs`, which is the
 truth about what it does. `paneApprovalHeaderLabel`'s sibling rule applies here
 too — the words have to agree with the scope.
+
+*Implemented at the call site, and that is where it had gone wrong* (review round 1,
+A3): the model always took the list it was handed, and the pane's strip is scoped, so
+the item counted the visible list while this section, the model's docstring and the
+band's comment all said the pool. The strip now takes a `poolTabs` prop (defaulting
+to `tabs`, which is the route's own case) and hands *that* to `closeOthersIntent`;
+`Close N tabs to the right` stays scoped, because "to the right" is a fact about the
+order on screen.
+
+**Every bulk label carries a count** (review round 1, U3): the four items read
+`Close "X"`, `Close N other tabs`, `Close N tabs to the right` and
+`Close all N tabs in this conversation`.
 
 **Why the closes are one intent, not N `closeTab` calls.** From the code (§1.4):
 `closeTab` is one tab per intent, and each `destroy` fires `onChanged` per tab,
@@ -578,15 +605,20 @@ one module".
 | 3 | **User `New tab`** on the route | `user` | `null` | `null` | no — `No conversation` group |
 | 4 | **Hand over** tab #2 to A (`handOver`) | `agent` | `A` (`:370-373`) | re-minted | yes — and now drivable |
 | 5 | **Hand over** tab #3 to A | `agent` | `A` | re-minted | **yes** — it joins A's group |
-| 6 | **Revoke** the hand-over of #2 (`revokeHandOver`) | `user` | `null` (`:386`) | `null` | **no** — see the open question |
+| 6 | **Revoke** the hand-over of #2 (`revokeHandOver`) | `user` | `A` (its `homeSessionId`; `:386`) | `null` | **no** — and this is the settled answer to open question 2 |
 | 7 | **Restore** at launch (`restoreTabs`) | `user` | `null` (`:230-231`) | `null` | no — `No conversation`, by design 7.3 |
 | 8 | **A session's tab closed by the user** | — | — | — | gone from every list; the agent's handle gets `tab_closed` |
-| 9 | **Revoke the hand-over of #1** (an agent tab) | `user` | `null` | `null` | no — it becomes the user's, unattributed |
+| 9 | **Revoke the hand-over of #1** (an agent tab) | `user` | `A` (its `homeSessionId`) | `null` | no — it becomes the user's, still in the conversation it was opened in |
 
-Row 6 is the one place the current code produces a surprise, and it is reachable
-in two clicks from the pane: a tab the user opened in A's pane (#2), handed to A,
-then revoked, leaves A's scope and lands in `No conversation`. Open question 2
-recommends fixing it with one additive field.
+Row 6 was the one place the code produced a surprise: a tab the user opened in A's
+pane (#2), handed to A, then revoked, left A's scope and landed in `No conversation`
+— revoking a hand-over silently deleted the conversation the user opened the tab in
+(review round 1, Q2). It is settled in the direction open question 2 recommended:
+`TabRecord.homeSessionId` is set once at `create` (and is `null` for a restored tab,
+which is nobody's) and restored by `revokeHandOver`, `sessionId` stays the scoping
+field, and the wire is unchanged. Rows 3 and 9 therefore differ only by
+`homeSessionId`: a tab opened on the route has no conversation to return to, while a
+tab revoked out of a hand-over still has one.
 
 ---
 
@@ -596,7 +628,7 @@ recommends fixing it with one additive field.
 
 | File | Change |
 |---|---|
-| `src/main/browser/registry.ts` | `destroyMany(tabIds)`; extract private `drop(tabId)` from `forget`; *(open question 2)* `TabRecord.homeSessionId`, set at `create` (`:231`), restored by `revokeHandOver` (`:386`) |
+| `src/main/browser/registry.ts` | `destroyMany(tabIds)`; extract private `drop(tabId)` from `forget`; `TabRecord.homeSessionId`, set at `create` (`:231`), restored by `revokeHandOver` (`:386`) — open question 2, settled (b) and implemented |
 | `src/main/browser/host.ts` | `newTab(sessionId?)` (`:650`); `closeTabs(intent)` — resolve, `registry.destroyMany`, ONE `onChanged()`, return `chromeState()`; `chromeState()` unchanged |
 | `src/main/browser/ipc.ts` | `browser-new-tab` takes an optional `sessionId` (validated as a non-empty string or absent); new channel `browser-close-tabs` with a validator for the two intent modes; add `"browser-close-tabs"` to `BROWSER_IPC_CHANNELS` (`:47-65`) |
 | `src/preload/index.ts` | `newTab(sessionId?)`, `closeTabs(intent)` (`:495`) |
@@ -650,7 +682,7 @@ in-band list needs no suppression), no new store field, and no change to
 4. an `ids` intent naming an already-gone tab closes the rest and does not throw;
 5. `browser-new-tab` with an empty or non-string session id is refused at the
    boundary (the IPC validator's contract);
-6. *(open question 2)* revoke restores a tab's conversation attribution.
+6. revoke restores a tab's conversation attribution (open question 2, settled (b): `homeSessionId`).
 
 ### 6.2 `scripts/browser-chrome.test.mjs` (pure model, shipped TypeScript)
 
@@ -790,8 +822,10 @@ commit that moves `src/` costs every open branch two commits).
 7. **The in-band tab list grows the band and shrinks the page.** It must stay
    bounded (`max-h-36` + internal scroll) or 20 tabs push the page off screen —
    which is the failure the dock's design exists to avoid.
-8. **Revoke and attribution** (open question 2): under today's code a tab opened in
-   a conversation and then revoked leaves that conversation's list.
+8. **Revoke and attribution** (open question 2): under the pre-implementation code a
+   tab opened in a conversation and then revoked left that conversation's list. Settled
+   (b) and implemented — `homeSessionId` restores it, and the host test pins both the
+   restored case and the tab that has no conversation to return to.
 9. **Twelve themes**: the mark's hover ground, the group chip's rule and the `+n`
    chip are the new triples; `pnpm check-themes` is the gate, and a failure after
    frames exist means recapturing.
@@ -813,12 +847,15 @@ commit that moves `src/` costs every open branch two commits).
    — the same fix was already accepted for the row menu, and the in-band list is
    also what makes 20 tabs reachable.**
 2. **Does revoking a hand-over return a tab to the conversation it was opened in?**
-   *Two answers:* (a) today's behaviour — `sessionId = null`, so the tab moves to
-   `No conversation` (reachable in two clicks from the pane, and it reads as the
+   *Two answers:* (a) the behaviour that shipped — `sessionId = null`, so the tab moves
+   to `No conversation` (reachable in two clicks from the pane, and it reads as the
    tab leaving its conversation); (b) add `TabRecord.homeSessionId`, set once at
    `create` and restored by `revokeHandOver`, so revoke is a true inverse.
-   **Recommendation: (b) — one additive field, no wire change (the scoping field
-   stays `sessionId`), and it removes a surprise.**
+   **SETTLED (b), and implemented** — one additive field, no wire change (the scoping
+   field stays `sessionId`), and it removes a surprise. Review round 1's Q2 raised it
+   as a `major` because the behaviour and this line disagreed; the code moved.
+   `scripts/browser-host.test.mjs` pins both halves: a revoked tab returns to its
+   conversation, and a tab opened with no conversation is still nobody's.
 3. **Do groups collapse past N?** *Two answers:* (a) not now — the pane's
    conversation scope is the collapse and the pooled view stays complete;
    (b) make each group chip a disclosure that hides its run. **Recommendation:
