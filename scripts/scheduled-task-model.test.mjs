@@ -46,7 +46,11 @@ const model = await import(
 );
 const {
 	MAX_WAKE_SCHEDULES,
+	PARK_FOOTER_CLAUSE,
 	PARKED_CLAUSE,
+	STALE_ROWS_CLAUSE,
+	isEmptyListing,
+	workspaceName,
 	WAKE_LINE_CAP,
 	hiddenWakesLabel,
 	keepEndsLabel,
@@ -136,7 +140,11 @@ test("a stopped conversation states the fact instead of an instant", () => {
 	);
 	assert.equal(row.parked, true);
 	assert.equal(row.meta, PARKED_CLAUSE);
-	assert.ok(!row.meta.includes("next"));
+	/* The clause itself, and no INSTANT anywhere: `next 2:14 PM EDT` is what the
+	   parked row must not print, and the clause now says `after its next turn`,
+	   so the crude word test is replaced by the shape it was reaching for. */
+	assert.equal(row.meta, PARKED_CLAUSE);
+	assert.equal(/next \d/.test(row.meta), false);
 	/* And the wake LINES drop their instants too: the stored instant is neither
 	   when it fires nor when it will fire after a re-open, so the line keeps its
 	   prompt and its cadence and loses the time. */
@@ -333,8 +341,24 @@ test("the supervisor sentence is one truth, picked by three states", () => {
 			detail: "",
 			verifiable: false,
 		}),
-		/^Nothing supervises this store's scheduled tasks/,
+		/^Nothing supervises the wakes above/,
 	);
+	/* Each lead scopes itself to the wake rows it sits above, because the fenced
+	   legacy group renders BELOW the strip and the engine it runs on is not what
+	   the strip is talking about (round-2 U7). */
+	for (const lead of [
+		supervisorLead({ supported: true, running: false, detail: "" }),
+		supervisorLead({ supported: false, running: false, detail: "" }),
+		supervisorLead({
+			supported: true,
+			running: false,
+			detail: "",
+			verifiable: false,
+		}),
+	]) {
+		assert.match(lead, /wakes above/);
+		assert.equal(/scheduled tasks/.test(lead), false);
+	}
 });
 
 test("the editor's keep options state the value they keep", () => {
@@ -368,6 +392,54 @@ test("the editor's keep options state the value they keep", () => {
 		keepEndsLabel({ ...wakeRow, until_at: minutes(60 * 24) }, NOW),
 		/^Keep ending /,
 	);
+});
+
+test("a listing that could not be READ is never the empty state", () => {
+	/* The one predicate behind the empty state, and the round-2 MAJOR (D13/U8):
+	   `read_error` is a 200, so a store whose index could not be listed satisfied
+	   `!error` and the page told a user with thirty schedules that they had none,
+	   directly under a strip saying the list may be incomplete. */
+	const settled = {
+		loading: false,
+		error: false,
+		readError: false,
+		wakeRows: 0,
+		legacyLoading: false,
+		legacyRows: 0,
+	};
+	assert.equal(isEmptyListing(settled), true);
+	assert.equal(isEmptyListing({ ...settled, readError: true }), false);
+	/* And the other four terms keep their own cases. */
+	assert.equal(isEmptyListing({ ...settled, loading: true }), false);
+	assert.equal(isEmptyListing({ ...settled, error: true }), false);
+	assert.equal(isEmptyListing({ ...settled, wakeRows: 1 }), false);
+	assert.equal(isEmptyListing({ ...settled, legacyLoading: true }), false);
+	assert.equal(isEmptyListing({ ...settled, legacyRows: 1 }), false);
+});
+
+test("the workspace clause names a directory, never a shell token", () => {
+	/* Round-2 U1: the store's staged cwd is literally `~` until a workspace is
+	   chosen, and the sentence printed it. */
+	assert.equal(workspaceName("~"), "your home folder");
+	assert.equal(workspaceName("~/"), "your home folder");
+	assert.equal(workspaceName(""), "your home folder");
+	assert.equal(workspaceName("~/invoices"), "invoices");
+	assert.equal(workspaceName("/Users/someone/work/reports"), "reports");
+	assert.equal(workspaceName("~other"), "your home folder");
+});
+
+test("the parking copy names the stop that parks and what resumes them", () => {
+	/* Both halves were measured false in the running app (round-2 U9): a desktop
+	   stop writes no durable marker, so it does not park, and opening a parked
+	   conversation does not resume its wakes - a turn does. */
+	for (const text of [PARKED_CLAUSE, PARK_FOOTER_CLAUSE]) {
+		assert.equal(/when you open it/.test(text), false);
+	}
+	assert.match(PARKED_CLAUSE, /next turn/);
+	assert.match(PARK_FOOTER_CLAUSE, /terminal stop parks/);
+	assert.match(PARK_FOOTER_CLAUSE, /from this window leaves them armed/);
+	/* The rows under a failed read are marked for what they are (U4). */
+	assert.match(STALE_ROWS_CLAUSE, /last one that loaded/);
 });
 
 test("the dialog's refusals are inline, named, and independent", () => {

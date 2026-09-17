@@ -88,6 +88,7 @@ import {
 	keepFirstRunLabel,
 	keepRepeatLabel,
 	validateScheduledTask,
+	workspaceName,
 } from "../scheduled-task-model";
 import { repeatEveryString, wakePromptHead } from "../scheduled-task-model";
 
@@ -349,10 +350,11 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 	 * The workspace a NEW conversation starts in, which is the store's staged cwd
 	 * - the same value the chat pane sends on its first message, so the two
 	 * cannot disagree about where a fresh conversation lives. The name shown is
-	 * the directory's own, because a path is not a name.
+	 * the directory's own, because a path is not a name - and `~` is a shell
+	 * token rather than a name, which is what the sentence used to print
+	 * (round-2 U1; `workspaceName` names the home folder instead).
 	 */
-	const workspaceDirectory =
-		newConversationCwd.split("/").filter(Boolean).pop() || newConversationCwd;
+	const workspaceDirectory = workspaceName(newConversationCwd);
 
 	/**
 	 * The first-run the form names, or `null` when it names none.

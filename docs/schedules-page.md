@@ -98,10 +98,11 @@ buys, and the record says so rather than claiming a win it cannot show.
 | Loading | The header and the panel stay, `Spinner` centred in the panel, `Loading scheduled tasks`. No skeleton rows: the length is not knowable before the load. |
 | Empty | `No scheduled tasks yet`, the operator's body copy with typographic quotes, and the second `New scheduled task` button. |
 | Error | `Could not load scheduled tasks.` · the backend's own message · `Try again` (a refetch). Three parts, where the alert it replaces had one and no way back. |
-| Unreadable store | `read_error: true` is a 200 that could not read the index: a warning strip, because "could not read" and "nothing is scheduled" are different sentences — with the same `Try again` the total-failure branch has, since the recovery is the same one (design round 1, D6). |
-| Supervisor down | A warning strip, with the lead sentence picked by three states (`supported`, `verifiable`, `running`) and the backend's own `detail` on its own line in `text-mono`, because a daemon's words are a bug report's sentence rather than a user's (design round 1, D6). The strip is the ONE place the page states whether anything can fire: the panel footer's "wakes fire whether or not this window is open" is gated on the same verdict, and when nothing can fire **no row prints an instant either** — the parked rule applied one state over, because a stored instant is equally wrong there (design round 1, D2). |
+| Unreadable store | `read_error: true` is a 200 that could not read the index: a warning strip, because "could not read" and "nothing is scheduled" are different sentences — with the same `Try again` the total-failure branch has, since the recovery is the same one (design round 1, D6). **And the empty state is suppressed in this state**: it is `read_error` plus both lists settled and both empty, which is what `isEmptyListing` encodes — the strip said the list may be incomplete while the state beneath it told a user with thirty schedules that they had none and offered a button to make one (round 2, D13/U8). |
+| Failed read with rows on screen | React Query keeps serving the last answer, so the rows under a failure are the last list that LOADED: the strip names them (`The list below is the last one that loaded, so it may be out of date.`) rather than letting each row go on asserting `1 wake` as if it were a claim about now (round 2, U4). |
+| Supervisor down | A warning strip, with the lead sentence picked by three states (`supported`, `verifiable`, `running`) and the backend's own `detail` on its own line in `text-mono`, because a daemon's words are a bug report's sentence rather than a user's (design round 1, D6). Every lead names the rows it covers (`the wakes above`) and none of them says `scheduled tasks`: the fenced legacy group renders below the strip and runs on another engine, so a sentence scoped to the whole page claimed more than it knew (round 2, U7). The strip is the ONE place the page states whether anything can fire: the panel footer's "wakes fire whether or not this window is open" is gated on the same verdict, and when nothing can fire **no row prints an instant either** — the parked rule applied one state over, because a stored instant is equally wrong there (design round 1, D2). |
 | Listing truncated | `truncated: true` (beyond the backend's own page cap) adds `Showing N of M conversations with wakes.` rather than silently under-reporting (review round 1, R7). |
-| Parked | A conversation whose session was stopped (or whose transcript is gone) drops its instants everywhere and states the fact: `Parked — wakes resume when you open it`. A stored instant would be wrong twice over — it will not fire then, and it will be re-anchored when someone opens the session. |
+| Parked | A conversation whose session was stopped (or whose transcript is gone) drops its instants everywhere and states the fact: `Parked — wakes resume after its next turn`. A stored instant would be wrong twice over — it will not fire then, and it will be re-anchored when the conversation runs again. **The earlier clause said "when you open it", and round 2 measured that as false**: pressing a parked row's `Open conversation` leaves the index's `stopped_at` set (the warm correctly refuses a session reporting stopped), and only a turn clears it and re-arms the wakes (U9). |
 | Spent | Absence, deliberately: a one-shot that has fired retires out of the schedule list, and a recurring wake that has fired shows `Ran 3 times` so a row that is working does not read as untouched. |
 | Legacy | The fenced group below, present only when a legacy row exists. |
 
@@ -271,7 +272,11 @@ thing is managed.
 
 Nothing pushes the wake index — the supervisor is a separate process writing
 files, and the app's only event stream is per session — so the listing polls at
-30 s (three supervisor re-reads of lag) with `refetchOnWindowFocus`. After every
+30 s (three supervisor re-reads of lag) with `refetchOnWindowFocus`, and the
+header carries a `Refresh scheduled tasks` control for the case the user knows it
+moved: round 2 caught the page up to a poll behind on a conversation un-parked by
+a turn in the same window (U3). The poll stays; the control is the press, not a
+replacement. After every
 write the page invalidates the listing **and** asks the affected conversation's
 canonical snapshot to re-read (`resyncCanonicalSession`,
 `shared/hooks/use-canonical-session.ts`): a live session pushes its own frame when
@@ -318,6 +323,18 @@ cancel it, show the row gone" is the real page against a real route.
 
 ### Deferred, with the reason
 
+- `deferred — the desktop stop route's contract, not this feature's`: this page's
+  copy now says which stop parks a conversation, and the reason it has to is
+  that `POST /v1/desktop/stop` answers `stop_requested` and writes no durable
+  `stopped_at` (the marker has exactly one writer, the control ladder in
+  `session/runtime/control.py`). Whether the desktop route SHOULD stamp it is a
+  decision about the stop contract, larger than this page, and deliberately not
+  taken here (round 2, U9).
+- `deferred — the wake model's gap, not this page's`: `Repeat` is a count and a
+  unit, so "not on weekends" cannot be expressed and nothing on the dialog says
+  the model holds no weekly shape. `WakeSchedule` is `every_ms` + `until_at` +
+  `limit` with no day-of-week field, so the control is honest about what exists
+  (round 2, U5).
 - `deferred — the wire carries no model on a session row`: the existing-
   conversation consequence sentence says where the wake runs but not whose model
   runs it. `sessions.list`'s row is `id, name, mtime, preview` plus decorations

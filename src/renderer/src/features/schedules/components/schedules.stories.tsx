@@ -1081,6 +1081,13 @@ export const CreateDialogExisting: Story = {
 					steps={[
 						{ selector: 'button[aria-pressed="false"]' },
 						{ selector: CONVERSATION_SELECTOR },
+						/*
+						 * One step past the open picker: the CONSEQUENCE line only
+						 * renders once a conversation is chosen, so a story that stopped
+						 * at the open list left the sentence this branch exists for with
+						 * no committed frame (the designer's round-2 D10 evidence gap).
+						 */
+						{ selector: '[role="listbox"]', option: "Weekly finance digest" },
 					]}
 				/>
 			</>

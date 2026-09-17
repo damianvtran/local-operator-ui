@@ -40,7 +40,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays, Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -51,8 +51,11 @@ import {
 } from "../hooks/use-schedules-queries";
 import { useCancelWake, useWakesListing } from "../hooks/use-wakes-queries";
 import {
+	PARK_FOOTER_CLAUSE,
+	STALE_ROWS_CLAUSE,
 	type ScheduledTaskRow,
 	type WakeLine,
+	isEmptyListing,
 	scheduledTaskRows,
 	supervisorLead,
 	wakePromptHead,
@@ -139,11 +142,22 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 		if (!pendingCancel) return;
 		const { row, wake } = pendingCancel;
 		try {
+			const sessionId = row.sessionId;
 			await cancelWake.mutateAsync({
-				sessionId: row.sessionId,
+				sessionId,
 				wakeId: wake.id,
 			});
-			showSuccessToast("Wake cancelled");
+			/*
+			 * The toast carries the way back. The confirm says "The conversation
+			 * stays." and, when this was the last wake, the row that held the door
+			 * open is gone - leaving the promise with no path to it (round-2 U6).
+			 */
+			showSuccessToast("Wake cancelled", {
+				action: {
+					label: "Open conversation",
+					onClick: () => openConversation(sessionId),
+				},
+			});
 			setPendingCancel(null);
 		} catch (error) {
 			showErrorToast(
@@ -211,16 +225,23 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 	};
 
 	/*
-	 * Empty means BOTH lists settled and both are empty. The legacy half is
-	 * awaited too, or a page whose wake listing answered first would flash "No
-	 * scheduled tasks yet" over a machine that still has legacy rows to load.
+	 * Empty means BOTH lists settled, both are genuinely empty, AND the wake
+	 * listing could be READ. The legacy half is awaited too, or a page whose wake
+	 * listing answered first would flash "No scheduled tasks yet" over a machine
+	 * that still has legacy rows to load. `read_error` is the third condition and
+	 * the one that was missing: it is a 200, so the strip above could say the list
+	 * was unreadable while the state beneath it told a user with thirty schedules
+	 * that they had none (round-2 D13/U8). The predicate lives in the model so a
+	 * test can hold it.
 	 */
-	const isEmpty =
-		!listing.isLoading &&
-		!listing.error &&
-		!legacy.isLoading &&
-		rows.length === 0 &&
-		legacyRows.length === 0;
+	const isEmpty = isEmptyListing({
+		loading: listing.isLoading,
+		error: listing.error !== null,
+		readError: listing.data?.read_error === true,
+		wakeRows: rows.length,
+		legacyLoading: legacy.isLoading,
+		legacyRows: legacyRows.length,
+	});
 
 	return (
 		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
@@ -230,6 +251,25 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				icon={CalendarDays}
 				subtitle="Work your conversations do on a schedule, repeating or once."
 			>
+				{/*
+				 * A way to ask for a fresh read, because the listing's own poll is a
+				 * 30 s interval and a state a user changed in another pane of this
+				 * window can be up to a poll behind (round-2 U3: a conversation
+				 * un-parked by a turn still read `Parked` at the next read). The
+				 * interval stays - the poll is what keeps the page honest without a
+				 * press - and this is the press for when the user knows it moved.
+				 */}
+				<Button
+					variant="secondary"
+					size="icon"
+					aria-label="Refresh scheduled tasks"
+					title="Refresh scheduled tasks"
+					disabled={listing.isFetching}
+					onClick={() => void listing.refetch()}
+					data-tour-tag="refresh-schedules-button"
+				>
+					<RefreshCw />
+				</Button>
 				<Button
 					variant="secondary"
 					size="md"
@@ -256,13 +296,20 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 					   means, and what to do about it. The bare `Error fetching
 					   schedules: <exception>` this replaces had one of the three and
 					   no way back. */
-					<div className="flex flex-col items-start gap-2 p-4">
+					<div className="flex flex-col items-start gap-2 border-hairline border-b p-4">
 						<p className="text-body text-ink">
 							Could not load scheduled tasks.
 						</p>
 						<p className="text-body-sm text-ink-muted">
 							{listing.error.message}
 						</p>
+						{/* React Query keeps serving the last answer, so rows under this
+						    strip are the last list that LOADED rather than a claim about
+						    now - and they used to assert `1 wake` each with nothing saying
+						    so (round-2 U4). */}
+						{(rows.length > 0 || legacyRows.length > 0) && (
+							<p className="text-body-sm text-ink-muted">{STALE_ROWS_CLAUSE}</p>
+						)}
 						<Button
 							variant="secondary"
 							size="sm"
@@ -426,12 +473,14 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				    The FIRE half is gated on the supervisor, because when nothing can
 				    fire that sentence is false on this screen - the strip below the
 				    header carries that truth instead (the designer's D2). The PARK
-				    half is true in every state: it is what stopping a conversation
-				    does, whatever is supervising. */}
+				    half names the stop that parks and the stop that does not, because
+				    the app's own `POST /v1/desktop/stop` writes no durable marker, and
+				    says a TURN resumes them rather than the act of opening (round-2
+				    U9; the two measurements are in `PARK_FOOTER_CLAUSE`'s own note). */}
 				{(rows.length > 0 || legacyRows.length > 0) && (
 					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
 						{canFire ? "Wakes fire whether or not this window is open. " : ""}
-						Stopping a conversation parks its wakes until you open it again.
+						{PARK_FOOTER_CLAUSE}
 					</p>
 				)}
 			</div>

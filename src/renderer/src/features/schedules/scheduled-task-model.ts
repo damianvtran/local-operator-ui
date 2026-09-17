@@ -143,8 +143,16 @@ export type ScheduledTaskRow = {
 export const wakeCountClause = (count: number): string =>
 	count === 1 ? "1 wake" : `${count} wakes`;
 
-/** The parked clause, which replaces BOTH the due label and the count. */
-export const PARKED_CLAUSE = "Parked — wakes resume when you open it";
+/**
+ * The parked clause, which replaces BOTH the due label and the count.
+ *
+ * "when you open it" was false, and it was measured false: pressing a parked
+ * row's `Open conversation` leaves the index's `stopped_at` set for as long as it
+ * was polled, because the warm correctly refuses a session that reports stopped -
+ * a TURN is what clears the marker and re-arms the wakes (round-2 U9). The clause
+ * says the thing that actually resumes them.
+ */
+export const PARKED_CLAUSE = "Parked — wakes resume after its next turn";
 
 /**
  * The disclosure's label, singular at one.
@@ -211,13 +219,85 @@ export const keepEndsLabel = (
  */
 export const supervisorLead = (supervisor: DesktopWakeSupervisor): string => {
 	if (!supervisor.supported) {
-		return "Wakes are not supervised on this platform yet, so they only fire while a conversation is running.";
+		return "Wakes are not supervised on this platform yet, so the wakes above only fire while a conversation is running.";
 	}
 	if (supervisor.verifiable === false) {
-		return "Nothing supervises this store's scheduled tasks, so they only fire while their conversation is running.";
+		return "Nothing supervises the wakes above, so they only fire while their conversation is running.";
 	}
-	return "The wake supervisor is installed but not running, so scheduled tasks will not fire.";
+	return "The wake supervisor is installed but not running, so the wakes above will not fire.";
 };
+
+/**
+ * The footer's parking half, which had two false claims in it (round-2 U9).
+ *
+ * Both were measured in the running app. **Which stop parks:** the durable
+ * `stopped_at` marker has exactly one writer, the control ladder
+ * (`session/runtime/control.py::_mark_wakes_dormant`, reached by `lop stop` and
+ * the TUI's `/stop`); `POST /v1/desktop/stop` answers `stop_requested` and writes
+ * nothing, so a conversation stopped from this window keeps its wakes armed and a
+ * supervised store will still fire them. **What resumes them:** a TURN, not the
+ * act of opening - a parked session's warm refuses it, and the index's marker
+ * survives until a runtime runs the conversation again.
+ *
+ * The sentence names the surface that parks, the surface that does not, and what
+ * actually resumes, because those are the three things a reader is deciding
+ * between. The first clause of the footer (that wakes fire with the window shut)
+ * stays gated on the supervisor, where it belongs.
+ */
+export const PARK_FOOTER_CLAUSE =
+	"A terminal stop parks a conversation's wakes until its next turn; stopping one from this window leaves them armed.";
+
+/**
+ * What the rows say when the listing that drew them is no longer answering.
+ *
+ * A failed read is not an empty store and it is not a fresh store either: React
+ * Query keeps serving the last answer, so the rows under an error strip are the
+ * last list that loaded rather than a claim about now. Round 2 caught the page
+ * admitting the failure while the rows beneath went on asserting `1 wake` each
+ * (U4).
+ */
+export const STALE_ROWS_CLAUSE =
+	"The list below is the last one that loaded, so it may be out of date.";
+
+/**
+ * The workspace's NAME, as the sentence under `Run in` prints it.
+ *
+ * `~` is a shell token rather than a directory name, and the store's staged cwd
+ * is literally `~` until a workspace is chosen (`canonical-sessions-store.ts`),
+ * which printed `Starts in ~ with your default model.` to every user who never
+ * picked one (round-2 U1). The token means the home folder - the backend expands
+ * it - so it is named rather than shown, and a real directory keeps its own name.
+ */
+export const workspaceName = (cwd: string): string => {
+	const last = cwd.split("/").filter(Boolean).pop() ?? "";
+	if (last === "" || last.startsWith("~")) return "your home folder";
+	return last;
+};
+
+/**
+ * Whether the page may say "nothing is scheduled here".
+ *
+ * The one predicate behind the empty state, and the reason it is a function
+ * rather than five terms inline: `read_error` is a 200, so a listing that could
+ * not READ the store satisfied `!error` and the page told a user with thirty
+ * schedules that they had none and invited them to make one (round-2 D13/U8).
+ * Both lists must have settled, both must be genuinely empty, and the wake
+ * listing must have been readable.
+ */
+export const isEmptyListing = (input: {
+	loading: boolean;
+	error: boolean;
+	readError: boolean;
+	wakeRows: number;
+	legacyLoading: boolean;
+	legacyRows: number;
+}): boolean =>
+	!input.loading &&
+	!input.error &&
+	!input.readError &&
+	!input.legacyLoading &&
+	input.wakeRows === 0 &&
+	input.legacyRows === 0;
 
 /**
  * The dialog's inline refusals, derived rather than scattered through the JSX.
