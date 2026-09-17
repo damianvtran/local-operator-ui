@@ -54,22 +54,36 @@ const summary = (
  * The row strings are the sidebar's own (`h-8`, `gap-1`, `rounded-md`, `px-1` from
  * `chat-sidebar.tsx`), so the frames are about the product's geometry.
  */
-const Row: FC<BrowserConversationMarkProps & { current?: boolean }> = ({
-	current,
-	...mark
-}) => (
+const Row: FC<
+	BrowserConversationMarkProps & {
+		current?: boolean;
+		/** The row's one trailing statement, in the sidebar's own markup: a second slot the
+		 * title shares the row with, which is the case the reserved slot has to justify
+		 * itself in (design R2's cost note, D8). */
+		trailing?: string;
+		/** The row as the base tree drew it, with no mark at all. Only the slot-cost pair
+		 * uses it: it is the BEFORE half of the before/after the reserved slot is judged
+		 * on. */
+		withoutMark?: boolean;
+		/** Drop the ledger row above, for the pair whose subject is the browser row. */
+		compact?: boolean;
+	}
+> = ({ current, trailing, withoutMark, compact, ...mark }) => (
 	<nav aria-label="Chats" className="flex w-64 flex-col gap-0.5 bg-surface p-1">
-		<div className="flex h-8 items-center gap-1 rounded-md">
-			<button
-				type="button"
-				className="flex h-8 min-w-0 grow items-center gap-1 rounded-md px-1 text-left text-body-sm leading-5 hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
-			>
-				<span className="min-w-0 flex-1 truncate">
-					Reconcile the supplier ledger
-				</span>
-			</button>
-		</div>
+		{!compact && (
+			<div className="flex h-8 items-center gap-1 rounded-md">
+				<button
+					type="button"
+					className="flex h-8 min-w-0 grow items-center gap-1 rounded-md px-1 text-left text-body-sm leading-5 hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+				>
+					<span className="min-w-0 flex-1 truncate">
+						Reconcile the supplier ledger
+					</span>
+				</button>
+			</div>
+		)}
 		<div
+			data-slot={withoutMark ? "without" : "with"}
 			className={cn(
 				"flex h-8 items-center gap-1 rounded-md",
 				current && "bg-sunken",
@@ -85,8 +99,16 @@ const Row: FC<BrowserConversationMarkProps & { current?: boolean }> = ({
 				<span className="min-w-0 flex-1 truncate">
 					{current ? "Quarterly reports (current)" : "Quarterly reports"}
 				</span>
+				{trailing && (
+					<span className="ml-1 shrink-0 text-meta text-ink-muted">
+						{trailing}
+					</span>
+				)}
 			</button>
-			<BrowserConversationMark {...mark} />
+			{/* THE MARK'S OWN `current` IS PASSED, not left to its default: a mark on the
+			    selected row must not paint its hover fill over that row's ground, and the
+			    story is where that pair is photographed (review round 1, A7). */}
+			{!withoutMark && <BrowserConversationMark {...mark} current={current} />}
 		</div>
 	</nav>
 );
@@ -111,16 +133,34 @@ type Story = StoryObj<typeof meta>;
 /**
  * Nothing open and nothing waiting: a bare Globe.
  *
- * THE SIDEBAR DOES NOT DRAW THIS ONE (`chat-sidebar.tsx`'s `browserMarkFor` returns null
- * when both counts are zero), so this frame is the mark's own floor rather than a row a
- * user meets: a conversation with nothing to say gets no control, which is the rule the
- * strip's pinned control follows too. It is here because the component has to answer the
- * question, and its answer — no badge, no count, one sentence — is what makes the
- * "nothing to say" case in the sidebar consistent with it.
+ * THE SIDEBAR DRAWS THIS ONE NOW, and that is the whole of review round 1's D2/A4. It
+ * used to be the mark's own floor — a state `chat-sidebar.tsx`'s `browserMarkFor`
+ * returned `null` for, which left the sidebar without a browser entry point until a
+ * conversation already had one, i.e. exactly where it is least needed. The design's R2 is
+ * titled "a corner affordance on every conversation row" and its state table's first row
+ * is this one: `Globe`, `text-ink-dim`, and the label `Open the browser for "Reports"`.
+ * The frame is therefore a row a user MEETS rather than a component's own floor.
  */
 export const NothingOpen: Story = {
 	args: { summary: summary() },
 	render: (args) => <Row {...args} />,
+};
+
+/**
+ * The QUIETEST STATE beside a row's trailing statement, and beside the current row's
+ * ground (review round 1, D8).
+ *
+ * WHY THIS STORY EXISTS: the design justifies the reserved slot with a cost — "28px of a
+ * 280px sidebar for every title" — and until this frame no story combined a mark with
+ * any of the statements a row already spends its width on (`· Not sent yet`, `· binding`,
+ * `· in conversation`). The reviewer could only do arithmetic from two frames that never
+ * appear together. The state is one draft away from any row that has a browser open, so
+ * it is photographed rather than argued: the mark, the statement and the title are in one
+ * row at the sidebar's own 256px.
+ */
+export const TrailingStatement: Story = {
+	args: { summary: summary({ tabCount: 1 }) },
+	render: (args) => <Row {...args} trailing="· Not sent yet" />,
 };
 
 /** Open tabs, no approvals: the count is the mark's own text. */
@@ -222,4 +262,44 @@ export const OnBothGrounds: Story = {
 			<Row {...args} current />
 		</>
 	),
+};
+
+/**
+ * THE RESERVED SLOT, MEASURED: the same row twice, on a tree that reserves it and on one
+ * that does not (review round 1, D2/A4 — "check the reserved slot against the title width
+ * in a before/after pair and report the title cost in pixels").
+ *
+ * The upper row is the base tree's shape (no mark, no slot reserved), the lower is this
+ * branch's. The caption is measured from `getBoundingClientRect` in the story's own `play`
+ * rather than typed, so the number in the frame is the number the two rows measured — the
+ * same discipline `scripts/chat-alignment-geometry.mjs` uses for the transcript's edges,
+ * applied to the one claim a still could otherwise only assert.
+ */
+export const SlotCost: Story = {
+	args: { summary: summary({ tabCount: 3 }) },
+	render: (args) => (
+		<>
+			<Row {...args} withoutMark compact />
+			<Row {...args} compact />
+			<div className="px-1 pt-1 text-meta text-ink-dim" data-slot-cost>
+				measuring…
+			</div>
+		</>
+	),
+	play: async ({ canvasElement }) => {
+		const titleWidth = (which: string): number | null => {
+			const span = canvasElement.querySelector(
+				`[data-slot="${which}"] span.min-w-0`,
+			);
+			return span
+				? Math.round(span.getBoundingClientRect().width * 10) / 10
+				: null;
+		};
+		const before = titleWidth("without");
+		const after = titleWidth("with");
+		const caption = canvasElement.querySelector("[data-slot-cost]");
+		if (caption && before !== null && after !== null) {
+			caption.textContent = `title ${before}px without the mark, ${after}px with it: the reserved slot costs ${Math.round((before - after) * 10) / 10}px`;
+		}
+	},
 };

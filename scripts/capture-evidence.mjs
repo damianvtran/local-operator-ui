@@ -664,6 +664,16 @@ export const STORIES = [
 	["browser-conversation-mark--everything", 320, 64],
 	["browser-conversation-mark--focused", 320, 64],
 	["browser-conversation-mark--on-both-grounds", 320, 128],
+	/*
+	 * THE TWO ADDED BY REVIEW ROUND 1. `trailing-statement` is D8's coverage gap: the
+	 * design justifies the reserved slot with a 28px cost per title, and no frame put the
+	 * mark in a row that already spends width on `· Not sent yet`. `slot-cost` is D2/A4's
+	 * before/after pair: the same row in the base tree's shape (no slot at all) and on
+	 * this branch's, with the two measured title widths printed in the frame so the cost
+	 * is read rather than argued.
+	 */
+	["browser-conversation-mark--trailing-statement", 320, 64],
+	["browser-conversation-mark--slot-cost", 320, 128],
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],

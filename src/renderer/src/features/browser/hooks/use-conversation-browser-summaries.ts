@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useBrowserProjection } from "../hooks/use-browser-chrome";
+import {
+	browserBridgeAvailable,
+	useBrowserProjection,
+} from "../hooks/use-browser-chrome";
 import {
 	type ApprovalRequestInput,
 	type ApprovalTabInput,
@@ -16,9 +19,20 @@ const NO_REQUESTS: readonly ApprovalRequestInput[] = [];
 const NO_TABS: readonly ApprovalTabInput[] = [];
 
 export interface ConversationBrowserSummaries {
-	/** Per-conversation counts, keyed by session id. Entry-wise identity reuse: an
-	 * unchanged conversation keeps its object across ticks. */
-	summaries: ReadonlyMap<string, ConversationBrowserSummary>;
+	/**
+	 * Per-conversation counts, keyed by session id. Entry-wise identity reuse: an
+	 * unchanged conversation keeps its object across ticks.
+	 *
+	 * `undefined` MEANS THE BROWSER DOES NOT EXIST HERE (Storybook, a renderer outside
+	 * Electron), and the sidebar reads it as "draw no mark on any row" — the same rule
+	 * `BrowserConversationMark` documents under ruling 5(a): no bridge means no
+	 * projection means no summary, and a mark that could not open anything would be an
+	 * affordance that lies. It is deliberately NOT an empty map: since the mark is now
+	 * drawn on every row in its quiet state (design R2's first row), an empty map would
+	 * mean "every conversation has nothing open", which is a different fact and would
+	 * put forty inert controls on rows in a surface with no browser at all.
+	 */
+	summaries: ReadonlyMap<string, ConversationBrowserSummary> | undefined;
 	/** The shared approval clock, so a caller that renders an expiry ("expires in
 	 * 4 minutes") reads the same instant the tray does (design §3.2). */
 	now: number;
@@ -47,6 +61,7 @@ export interface ConversationBrowserSummaries {
  */
 export function useConversationBrowserSummaries(): ConversationBrowserSummaries {
 	const { state } = useBrowserProjection();
+	const available = browserBridgeAvailable();
 	const requests = state?.pendingConsent ?? NO_REQUESTS;
 	const tabs = state?.tabs ?? NO_TABS;
 	const { now } = useApprovalQueue(requests, NO_TABS);
@@ -55,8 +70,11 @@ export function useConversationBrowserSummaries(): ConversationBrowserSummaries 
 		ReadonlyMap<string, ConversationBrowserSummary> | undefined
 	>(undefined);
 	const summaries = useMemo(
-		() => summariseConversations(tabs, requests, now, previous.current),
-		[tabs, requests, now],
+		() =>
+			available
+				? summariseConversations(tabs, requests, now, previous.current)
+				: undefined,
+		[tabs, requests, now, available],
 	);
 	// Written after the render that produced it, so the NEXT projection tick can reuse
 	// the entries that did not change. A `useMemo` that wrote this inside itself would be
@@ -64,6 +82,5 @@ export function useConversationBrowserSummaries(): ConversationBrowserSummaries 
 	useEffect(() => {
 		previous.current = summaries;
 	}, [summaries]);
-
 	return { summaries, now };
 }

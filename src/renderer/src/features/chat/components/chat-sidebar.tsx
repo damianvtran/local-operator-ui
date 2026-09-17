@@ -190,6 +190,18 @@ import {
 	holdFocusedRow,
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
+
+/** A conversation with nothing open, as a stable value: the mark is drawn on every row
+ * now (design R2's first state, review round 1 D2/A4), and a fresh object per row would
+ * re-render every mark on every projection tick — the exact cost the entry-wise identity
+ * reuse in `summariseConversations` exists to avoid. */
+const NO_BROWSER_ACTIVITY: ConversationBrowserSummary = {
+	tabCount: 0,
+	loadingCount: 0,
+	failedCount: 0,
+	pendingApprovals: 0,
+};
+
 import { ChatSessionStatus } from "./chat-session-status";
 
 /**
@@ -511,25 +523,38 @@ export function ChatSidebar({
 	/*
 	 * WHICH CONVERSATIONS HAVE A BROWSER, AND HOW LOUD (design R2).
 	 *
-	 * The mark is drawn only where there is something to say — a conversation with no
-	 * tabs and no waiting request gets no control, the same rule the strip's pinned
-	 * control follows. `detail` is the row's own name, resolved through the ONE rule for
-	 * it, because the mark's label has to name the conversation it would open.
+	 * EVERY ROW DRAWS ONE, including a conversation with nothing open (review round 1,
+	 * D2/A4). The rule used to be "only where there is something to say — no tabs and no
+	 * waiting request gets no control", which left the sidebar without an entry point
+	 * until something was already open: the operator's ask is a corner control on EACH
+	 * conversation so a browser can be OPENED from the sidebar, and a conversation with
+	 * nothing open is exactly the case where that press is useful (it opens the pane
+	 * scoped to the conversation, which then offers `New tab in this conversation`). The
+	 * quiet state is the dim `Globe`, not an absent slot.
+	 *
+	 * THAT IS ALSO WHY THE SLOT IS RESERVED LIST-WIDE: the mark is a sibling of the row
+	 * button on every row rather than something inserted on hover or on the first tab, so
+	 * a conversation gaining a tab re-truncates nothing (the m4 defect this file records)
+	 * and the row does not reflow under the pointer. The cost is the mark's own 28px on
+	 * every title, which is the trade the design's R2 measures and accepts at 280px.
+	 *
+	 * `browserSummaries` ABSENT IS A DIFFERENT RULE (ruling 5(a)): no bridge means no
+	 * projection means no summary, and a mark that could not open anything would be an
+	 * affordance that lies. So the caller passes the map only where the browser exists,
+	 * and a missing ENTRY inside it is the quiet state — not a reason to draw nothing.
+	 * The zero summary is a module constant so every quiet row shares one object and the
+	 * `memo` on the mark still buys something.
 	 */
-	const browserMarkFor = (row: CanonicalSessionRow) => {
-		const summary = browserSummaries?.get(row.session_id);
-		if (
-			!summary ||
-			(summary.tabCount === 0 && summary.pendingApprovals === 0)
-		) {
-			return null;
-		}
+	const browserMarkFor = (row: CanonicalSessionRow, isCurrent: boolean) => {
+		if (!browserSummaries) return null;
+		const summary = browserSummaries.get(row.session_id) ?? NO_BROWSER_ACTIVITY;
 		return (
 			<BrowserConversationMark
 				key={`browser:${row.session_id}`}
 				sessionId={row.session_id}
 				name={row.title || "Untitled chat"}
 				summary={summary}
+				current={isCurrent}
 				onOpen={onOpenConversationBrowser ?? (() => {})}
 			/>
 		);
@@ -541,13 +566,11 @@ export function ChatSidebar({
 			nested,
 			binding: bindingName(row),
 		});
-		/*
-		 * Whether THIS row is the one the reader is on. Named because two things
-		 * depend on it — the ground and `aria-current` — and writing the predicate
-		 * out twice is how the two drift apart.
-		 */
-		const isCurrent =
-			selectedConversation === row.session_id && !activeDraftKey;
+		/** The row is the CURRENT one, read ONCE and shared by the wrapper, the button and
+		 * the mark: three elements paint one state, so three copies of this expression
+		 * would be three chances for them to disagree (review round 1, A7 — the mark's own
+		 * copy is what told it whether it may paint its hover fill). */
+		const current = selectedConversation === row.session_id && !activeDraftKey;
 		/*
 		 * THE ROW IS A WRAPPER PLUS A BUTTON NOW (design R2), and the shape is the entity
 		 * row's, which is the only other row here that carries a sibling control: the
@@ -561,9 +584,12 @@ export function ChatSidebar({
 		 *
 		 * THE MARK IS A SIBLING, NOT A CHILD OF THE BUTTON. A button cannot contain a
 		 * button, and a row whose whole box is one target has nowhere to put a second
-		 * action. Its slot is RESERVED list-wide by the reveal's opacity rule rather than
-		 * inserted on hover: a row that reflows under the pointer is worse than no
-		 * affordance, which is the same reason the entity row reserves its glyph.
+		 * action. Its 24px slot is RESERVED list-wide by the mark being rendered on every
+		 * row — including the quiet state (see `browserMarkFor`), which is what stops a row
+		 * from reflowing under the pointer or a title from re-truncating when the
+		 * conversation's first tab opens. (The earlier note here described a
+		 * `group-hover` reveal that was never implemented beside the "no mark at all for a
+		 * quiet row" rule; both halves were the D2/A4 finding.)
 		 *
 		 * WHAT THE BUTTON KEEPS: `data-chat-row` on exactly one element per row, and with
 		 * it `title` and `aria-current` — three committed harnesses select on those and the
@@ -576,7 +602,7 @@ export function ChatSidebar({
 					"group flex h-8 items-center gap-1 rounded-md",
 					// The wrapper's ground, under the same condition as the button's, so the
 					// 4px the mark leaves is not a notch in the selected row's fill.
-					isCurrent && rowCurrent,
+					current && rowCurrent,
 				)}
 			>
 				<button
@@ -595,13 +621,13 @@ export function ChatSidebar({
 						// button shares it with the mark.
 						"min-w-0 grow text-left",
 						nested && "pl-7",
-						isCurrent && rowCurrent,
+						current && rowCurrent,
 						// m4: the unread mark is NOT here. `font-semibold` on this
 						// `flex-1 truncate` title rewrote the visible string when the
 						// mark arrived, re-truncating text under the reader's cursor;
 						// it lives in the reserved status slot instead (see `Status`).
 					)}
-					aria-current={isCurrent ? "page" : undefined}
+					aria-current={current ? "page" : undefined}
 					/* The tooltip carries the row's binding and its own state — the facts the
 			   row may not be drawing — and deliberately NOT the search mark's words,
 			   which the row announces itself through the `sr-only` span beside it:
@@ -680,7 +706,7 @@ export function ChatSidebar({
 						</>
 					)}
 				</button>
-				{browserMarkFor(row)}
+				{browserMarkFor(row, current)}
 			</div>
 		);
 	};

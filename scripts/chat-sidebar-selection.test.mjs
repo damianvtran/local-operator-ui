@@ -71,6 +71,14 @@ const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const SETTINGS_RAIL =
 	"src/renderer/src/features/settings/components/settings-sidebar.tsx";
+/* The conversation row's browser mark. It is a DIFFERENT FILE from the row it sits in —
+ * which is exactly why it is in this table (review round 1, A7): the mark is a second
+ * interactive control inside a current row, the sidebar's own comment claimed it "drops
+ * its hover fill while the row is current", and nothing resolved the claim because the
+ * class expression lives in the component rather than at the call site. Design R2 asks
+ * for this pair by name. */
+const MARK =
+	"src/renderer/src/features/browser/components/browser-conversation-mark.tsx";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 /*
@@ -152,6 +160,7 @@ const stripComments = (text) => {
 const code = new Map([
 	[SIDEBAR, stripComments(read(SIDEBAR))],
 	[SETTINGS_RAIL, stripComments(read(SETTINGS_RAIL))],
+	[MARK, stripComments(read(MARK))],
 ]);
 
 /** The argument list of the `cn(...)` a `className` is built from. */
@@ -322,6 +331,24 @@ const CURRENT = [
 		stubs: { staged: true },
 		ground: false,
 		notCurrent: { staged: false },
+	},
+	{
+		/*
+		 * THE CONVERSATION ROW'S BROWSER MARK (design R2's "on the wrapper AND the row
+		 * button" pair, one control along — review round 1, A7). `current` is stubbed
+		 * rather than read from the sidebar because the component decides it: the row
+		 * passes the same expression that paints its own ground, and the mark may only
+		 * take the pointer's step when that is false. Without this entry the mark's
+		 * `hover:bg-elevated` painted over `highlight` on the selected row and no
+		 * instrument in the repository could see it.
+		 */
+		what: "the conversation row's browser mark",
+		file: MARK,
+		expression: () =>
+			expressionBefore(MARK, 'data-tour-tag="chat-session-browser"'),
+		stubs: { quiet: false, current: true },
+		ground: false,
+		notCurrent: { quiet: false, current: false },
 	},
 	{
 		what: "the settings rail's current section",
