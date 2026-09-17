@@ -21,7 +21,7 @@ import {
  *
  * THE ROW-CONTEXT SPECIMEN AT THE END IS THE ONE THAT MATTERS MOST, because the mark is
  * never seen alone: it sits in a row that paints its own ground, and the question "does
- * the mark read on `surface` and on `sunken`" cannot be answered by a frame of the mark
+ * the mark read on `surface` and on `highlight`" cannot be answered by a frame of the mark
  * on a blank page.
  */
 
@@ -46,7 +46,7 @@ const summary = (
  * EVERY STORY RENDERS THROUGH THIS, and for two reasons. The first is the design's: a
  * frame of a 24px control on a blank page answers no question a reviewer has, because the
  * row's ground and the neighbouring row are the things that decide whether the mark reads
- * — `surface` at rest, `sunken` when the row is current, `elevated` under the pointer.
+ * — `surface` at rest, `highlight` when the row is current, `elevated` under the pointer.
  * The second is mechanical and was measured: the capture harness refuses a story whose DOM
  * is too thin to be a drawn surface (`storyDrew`'s element floor), and a lone control
  * trips it — the first run of this file failed with "the element floor rejected it".
@@ -84,16 +84,25 @@ const Row: FC<
 		)}
 		<div
 			data-slot={withoutMark ? "without" : "with"}
+			/*
+			 * THE SELECTION GROUND IS `highlight`, WHICH IS WHAT THE PRODUCT PAINTS. This
+			 * specimen carried `bg-sunken` until design round 3's D17: `main` moved the current
+			 * row to `highlight` on 2026-09-16 (`d8833cd8e`, `8a8658345`, the role re-authored
+			 * in #281) and this branch folded that, so a specimen left on the retired ground
+			 * photographed a row the app no longer draws — and left the badge state the round
+			 * had to rule on unverifiable from committed evidence, because no band in the set
+			 * named `highlight`.
+			 */
 			className={cn(
 				"flex h-8 items-center gap-1 rounded-md",
-				current && "bg-sunken",
+				current && "bg-highlight",
 			)}
 		>
 			<button
 				type="button"
 				className={cn(
 					"flex h-8 min-w-0 grow items-center gap-1 rounded-md px-1 text-left text-body-sm leading-5",
-					current ? "hover:bg-sunken" : "hover:bg-elevated",
+					current ? "hover:bg-highlight" : "hover:bg-elevated",
 				)}
 			>
 				<span className="min-w-0 flex-1 truncate">
@@ -235,22 +244,26 @@ export const Focused: Story = {
 
 /**
  * THE ROW-CONTEXT SPECIMEN, on both grounds a row can paint: the resting `surface` and
- * the current row's `sunken`.
+ * the current row's `highlight`.
  *
  * WHY BOTH. The mark is a 24px control inside a row that owns the current-state ground,
- * so "the badge is legible" is a claim about a `nav`-grounded panel and a recessed row at
- * once — and the badge's ring is the worst case, because it paints `canvas` on whatever
- * the row's ground is. The row shapes here are the sidebar's own strings (`h-8`, `gap-1`,
- * `rounded-md`, `px-1`), so the frame is about the product's geometry rather than about a
- * story-only arrangement.
+ * so "the badge is legible" is a claim about a `nav`-grounded panel and a selection-grounded
+ * row at once — and the badge's ring is the worst case, because it paints `canvas` on
+ * whatever the row's ground is. The row shapes here are the sidebar's own strings (`h-8`,
+ * `gap-1`, `rounded-md`, `px-1`), so the frame is about the product's geometry rather than
+ * about a story-only arrangement.
  */
 /**
  * THE TWO-GROUND PAIR, in one frame: the mark on a resting row and on the current one.
  *
- * The current row's ground is the recessed step (`sunken`) rather than the raised one, so
- * the mark's own hover fill (`elevated`) and the badge's `canvas` ring are read against
- * the opposite side of the panel's ground here — which is the pair a reader needs, and the
- * one thing a single-row frame cannot show.
+ * The current row's ground is `highlight` — `chat-sidebar.tsx`'s `rowCurrent`, the role
+ * `main` re-authored in #281 as a lightness step off `surface` in the direction the mode
+ * runs. That is the pair a reader needs and the one thing a single-row frame cannot show:
+ * the badge's `canvas` ring and the mark's own ink ramp drawn on the panel's resting
+ * ground and on the selection ground in the same frame. THE ROW'S OWN HOVER PAIR IS THE
+ * SAME ROLE (`hover:bg-highlight`), which is the other half of the mark's `!current`
+ * guard: on this row the mark drops its hover fill rather than painting `elevated` over
+ * the selection.
  */
 export const OnBothGrounds: Story = {
 	args: {

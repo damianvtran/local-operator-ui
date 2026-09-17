@@ -922,9 +922,44 @@ async function waitFor(predicate, label, timeoutMs = 30_000) {
 	}
 }
 
+/**
+ * How long the OS may take to answer "who is frontmost" before the sample is
+ * abandoned.
+ *
+ * A BOUND RATHER THAN A WAIT, and it is deliberately a generous one: the measured
+ * answers on this host run 5.31 to 19.98 s with one `-609 Connection is invalid`
+ * after 42.86 s, and QA measured a single `osascript` returning after 120.33 s
+ * (round 2). The property P12 asserts is that THIS app's pid never appears among
+ * the frontmost ones, so an answer slower than this is not a reading the check
+ * needs - and the run has a SKIP path for the case where the OS will not answer
+ * at all, which is a truthful verdict where a tail nobody bounded is not. Thirty
+ * seconds sits above every answer measured here that was an answer and below the
+ * tail that held the process open past the end of the run (review round 3, A-3).
+ */
+const FRONTMOST_TIMEOUT_MS = 30_000;
+
+/**
+ * The `osascript` children currently asking the OS the frontmost question.
+ *
+ * Held at module scope because the sampler's `stop()` has to be able to END them:
+ * clearing the timer stops the NEXT sample, and without this an in-flight child
+ * keeps the event loop alive after `main()` has finished its work - the process
+ * then exits on the OS's own AppleEvent timeout rather than on its own schedule.
+ * A SET rather than one slot because the run's last reading is taken directly
+ * (`frontmostAfter`) while the sampler's timer may still be armed, so two calls
+ * can legitimately overlap in the tail this exists to bound.
+ */
+const frontmostChildren = new Set();
+
+/** Kill any in-flight `osascript`, so a stopped sampler stops costing wall time. */
+function cancelFrontmost() {
+	for (const child of frontmostChildren) child.kill();
+	frontmostChildren.clear();
+}
+
 /** The frontmost application's name and pid, for probe P12. Returns null when the
- * OS will not answer (no accessibility permission), which is reported rather than
- * guessed.
+ * OS will not answer (no accessibility permission) or takes longer than
+ * `FRONTMOST_TIMEOUT_MS`, which is reported rather than guessed.
  *
  * ASYNC, AND THAT IS THE POINT. This was `execFileSync`, called once a second by
  * the sampler below, and `osascript` reaching System Events is not fast: measured
@@ -946,7 +981,7 @@ async function waitFor(predicate, label, timeoutMs = 30_000) {
  */
 function frontmost() {
 	return new Promise((resolve) => {
-		execFile(
+		const child = execFile(
 			"osascript",
 			[
 				"-e",
@@ -954,9 +989,13 @@ function frontmost() {
 				"-e",
 				'tell application "System Events" to return (name of p) & "|" & (unix id of p)',
 			],
-			{ stdio: ["ignore", "pipe", "ignore"] },
-			(error, stdout) => resolve(error ? null : String(stdout).trim()),
+			{ stdio: ["ignore", "pipe", "ignore"], timeout: FRONTMOST_TIMEOUT_MS },
+			(error, stdout) => {
+				frontmostChildren.delete(child);
+				resolve(error ? null : String(stdout).trim());
+			},
 		);
+		frontmostChildren.add(child);
 	});
 }
 
@@ -994,6 +1033,9 @@ function startFrontmostSampler(appPid) {
 		stop: () => {
 			stopped = true;
 			if (timer) clearTimeout(timer);
+			// The timer only stops the NEXT sample; an in-flight `osascript` would keep
+			// the loop alive past the end of the run (see `cancelFrontmost`).
+			cancelFrontmost();
 		},
 		samples,
 		appWasFrontmost: () =>
