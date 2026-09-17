@@ -1045,9 +1045,28 @@ function readStrip(cdp) {
 		const control = document.querySelector(
 			'[data-tour-tag="browser-tab-overflow"]',
 		);
+		/*
+		 * THE TITLES, MEASURED RATHER THAN INFERRED (design review round 2, D1). The
+		 * floor is a promise about the box the title span gets, so it is read from that
+		 * box: the narrow tier's rungs were raised for exactly this number, and a frame
+		 * can show a squeezed title while a check that only counts rows stays green.
+		 */
+		const titles = rows.map((row) => {
+			const title = row.querySelector('[data-tour-tag="browser-tab-title"]');
+			return title
+				? {
+						text: title.textContent.trim(),
+						width: Math.round(title.getBoundingClientRect().width),
+					}
+				: null;
+		});
 		return {
 			rows: rows.length,
 			whole,
+			titles,
+			narrowestTitle: Math.min(
+				...titles.filter(Boolean).map((title) => title.width),
+			),
 			scroller: {
 				clientWidth: Math.round(scroller.clientWidth),
 				scrollWidth: Math.round(scroller.scrollWidth),
@@ -2303,6 +2322,13 @@ async function sceneBrowserPane(cdp) {
 		 * is on screen, and the count it carries is the difference.
 		 */
 		check(
+			"every title in the pane's own strip keeps the 85px floor the ruling was written for (D1)",
+			four.rows >= 4 &&
+				Number.isFinite(four.narrowestTitle) &&
+				four.titles.filter(Boolean).every((title) => title.width >= 85),
+			`measured at the pane's own width: ${JSON.stringify(four.titles)}`,
+		);
+		check(
 			"four tabs overflow the pane's OWN width now, and the pinned control is what makes them reachable (D1's accepted cost)",
 			four.rows >= 4 &&
 				four.whole < four.rows &&
@@ -2324,7 +2350,7 @@ async function sceneBrowserPane(cdp) {
 		check(
 			"past that, the pinned control appears and its own text is the count of tabs that are not shown",
 			six.control !== null &&
-				/\(\+\d+\)|\+\d+/.test(six.control.text) &&
+				/^\d+$/.test(six.control.text.trim()) &&
 				(six.control.label ?? "").includes("more tab"),
 			JSON.stringify({ six, control: six.control }),
 		);

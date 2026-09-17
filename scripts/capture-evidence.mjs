@@ -614,12 +614,20 @@ export const STORIES = [
 	// which is how both of round 6's majors stayed invisible.
 	["browser-tab-strip--worst-case", 1280, 140],
 	["browser-tab-strip--worst-case-widest", 1280, 140],
-	["browser-tab-strip--actions-expanded", 1280, 180],
+	["browser-tab-strip--actions-expanded", 1280, 260],
 	/* The pin's band list and a row's band with the four bulk closes (design R4 fix 2,
 	   R5). `pinned-list` is declared taller by the list's own bounded height
 	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the same row
 	   height the other expanded band uses. */
-	["browser-tab-strip--actions-expanded-batch", 1280, 180],
+	["browser-tab-strip--actions-expanded-batch", 1280, 360],
+	/*
+	 * THE TWO EXPANDED BANDS ARE TALLER SINCE THE ROUND-2 RULING (D7): the band is a
+	 * column now, one item per row, so the batch's seven rows are 196px of buttons
+	 * plus the hairline and the heading row - 241px of band where the wrapping row
+	 * took 28. The declared heights are sized to the band the story actually draws, so
+	 * `Copy URL` (the last item) is inside the frame rather than below it, which is the
+	 * item D7 is about.
+	 */
 	/* THE GROUPING AND THE CHIP CAP (design R3, R4 - the conversation-browser
 	   change). `grouped` is three conversations plus the unattributed run at the
 	   route's own 1280; `grouped-overflow` is 20 tabs over 6 conversations at
