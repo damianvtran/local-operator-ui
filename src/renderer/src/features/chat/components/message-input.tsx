@@ -96,6 +96,12 @@ import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
+/*
+ * The composer's syntax highlight. `ComposerHighlight` owns the mirror, the
+ * scroll write and the geometry correction; the gate below decides whether the
+ * transparent-text technique is in play at all.
+ */
+import { ComposerHighlight, highlightPaints } from "./composer-highlight";
 import { ComposerStatusRow } from "./composer-status-row";
 /*
  * The composer's inline credential capture (design §1-§9). The pure module owns
@@ -240,6 +246,11 @@ import {
  * command runs.
  */
 import type { SlashDispatchOutcome } from "./slash-dispatch";
+/*
+ * The TUI's own slash-run rule, ported (`slash-highlight.ts`), and the
+ * narrowing that makes a painted run mean what Enter does (`runsMatchingPlan`).
+ */
+import { runsMatchingPlan, slashHighlightRuns } from "./slash-highlight";
 import { planSlashArming, planSlashSubmission } from "./slash-submit";
 import type {
 	SlashCommandInvocation,
@@ -1689,6 +1700,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		// textarea's own onChange rather than deriving position from the value.
 		const [caret, setCaret] = useState(0);
 		/*
+		 * An IME composition is in flight.
+		 *
+		 * The composition string is drawn by the BROWSER and is not in the
+		 * highlight's mirror, so under `text-transparent` it would be invisible
+		 * while it is being typed. This is the one bit of state the highlight adds,
+		 * and it exists to switch the technique OFF: see the runs gate below, which
+		 * reads it together with the runs themselves.
+		 */
+		const [composing, setComposing] = useState(false);
+		/*
 		 * The live session this composer addresses, or undefined for a draft.
 		 *
 		 * `sessionStatus` is supplied by the page only when a canonical session
@@ -2477,7 +2498,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * is ever spliced on a path that could not run it.
 		 */
 		const planFor = useCallback(
-			(draft: string, at: number, gesture: "typed" | "pick" = "typed") =>
+			(
+				draft: string,
+				at: number,
+				gesture: "typed" | "pick" = "typed",
+				/*
+				 * `enabled` may be OVERRIDDEN by a caller asking a question about the
+				 * DRAFT rather than about this mount: the syntax highlight wants "is
+				 * this word a command in this draft" (`enabled: true`), not "can the
+				 * dispatcher run it here", which is false in every harness that
+				 * mounts the composer without a dispatcher — the story frames did
+				 * exactly that and the tint vanished from all of them.
+				 */
+				over: { enabled?: boolean } = {},
+			) =>
 				planSlashSubmission({
 					gesture,
 					draft,
@@ -2529,6 +2563,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							: undefined,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
+					/* LAST, so a caller asking about the DRAFT (`enabled: true`) wins
+					   over this mount's own capability. */
+					...over,
 				}),
 			[
 				slash.commandNames,
@@ -2541,6 +2578,66 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				onSlashCommand,
 			],
 		);
+
+		/*
+		 * The composer's syntax highlight, and the ONE gate that decides whether the
+		 * transparent-text technique is in play.
+		 *
+		 * `slashHighlightRuns` is the pure port of the TUI's own rule
+		 * (`editor.py:4232-4359`), fed the vocabularies this component already holds
+		 * for the planner plus the roster snapshot the completion list's query already
+		 * holds (`slash.nameChoices`) — no second vocabulary, no new request on the
+		 * render path. `picking` is the list's own open state, which is what
+		 * suppresses the "unknown word" tint while a word is still being chosen.
+		 *
+		 * `composing` is the IME half, and it is why this is one predicate rather than
+		 * two: the composition string is drawn by the BROWSER, is not in the mirror,
+		 * and would therefore be invisible under `text-transparent` while it is being
+		 * typed. Zero runs turns both the mirror and the transparency off together, so
+		 * the native path — including a squiggle the operator never asked to lose — is
+		 * what an ordinary draft gets.
+		 */
+		const slashRuns = useMemo(() => {
+			if (composing) return [];
+			const runs = slashHighlightRuns({
+				draft: newMessage,
+				commandNames: slash.commandNames,
+				nameListCommands: slash.nameListCommands,
+				nameChoices: slash.nameChoices,
+				picking: slash.open && slash.matches.length > 0,
+			});
+			if (runs.length === 0) return runs;
+			/*
+			 * THE TINT HAS TO MEAN WHAT ENTER DOES. The run rule is the TUI's, and it
+			 * paints a word that OPENS the line whether or not this host will run it:
+			 * on this composer a single-line draft whose trailing text the command does
+			 * not own is SENT as a message (design D6 / QA Q4 — `/compact hello` wore the
+			 * command tint while Enter posted it to the model). So the plan is asked
+			 * here, once, and a draft Enter will not run paints nothing — which also
+			 * makes two line counts of the same prose agree, since the multi-line rule
+			 * below already paints nothing.
+			 *
+			 * The `unknown` run is narrowed the same way: `/teem` is a word whose own
+			 * line the app refuses (the "unknown command" note keeps the draft), so its
+			 * documented meaning — "inert text that WILL be sent" — only holds where the
+			 * word is the whole line. With text after it nothing is painted.
+			 */
+			const plan = planFor(newMessage, caret, "typed", { enabled: true });
+			return runsMatchingPlan(runs, newMessage, {
+				sendsAsWritten: plan.kind === "send",
+			});
+		}, [
+			newMessage,
+			caret,
+			composing,
+			planFor,
+			slash.commandNames,
+			slash.nameListCommands,
+			slash.nameChoices,
+			slash.open,
+			slash.matches.length,
+		]);
+		const highlighting = highlightPaints(slashRuns);
 
 		/**
 		 * Put a line in the box and say what the key DID NOT do.
@@ -5155,20 +5252,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									isSmallView={isSmallView}
 								/>
 								{/*
-								 * The mention chips, in the same `isolate` wrapper and at the same depth as
-								 * the credential pill: both draw behind the glyphs the textarea paints, and
-								 * neither takes the pointer. The two never overlap in practice — a chip is a
-								 * path token and a pill is a credential marker — but if they ever did, the
-								 * chip's fill would sit under the pill's, which is the right way round: the
-								 * pill marks a value the app holds and the chip marks a file the text names.
+								 * The highlight's two layers. `ComposerHighlight` owns the mirror, the
+								 * scroll write and the geometry correction; this JSX owns the input, so
+								 * the composer's key handling, its autosize and its refs are untouched by
+								 * the paint. The wrapper adds no size of its own — the mirror is
+								 * `absolute` — so the band's layout is exactly what the bare textarea
+								 * produced, and the credential overlay above stays a SIBLING of it
+								 * rather than an ancestor.
 								 */}
-								<AtMentionOverlay
-									text={newMessage}
-									spans={atMentions.spans}
-									resolved={atMentions.resolved}
-									fieldRef={textareaRef}
-									isSmallView={isSmallView}
-								/>
+								<ComposerHighlight
+									draft={newMessage}
+									runs={slashRuns}
+									textareaRef={textareaRef}
+									fieldClassName={composerTextBox(isSmallView)}
+									disabled={isInputDisabled}
+								>
 								<textarea
 									ref={textareaRef}
 									className={cn(
@@ -5192,7 +5290,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										"block",
 										isSmallView ? "max-h-24" : "max-h-28",
 										"resize-none overflow-y-auto bg-transparent",
-										"text-ink outline-none placeholder:text-ink-dim",
+										/*
+										 * THE HIGHLIGHT'S OWN SWITCH. `caret-ink` is explicit because
+										 * `caret-color: auto` follows `color`, which is transparent here —
+										 * an invisible caret in the app's primary input. The ink comes
+										 * back the moment no run is painted, so an ordinary draft keeps its
+										 * native rendering (and its spellcheck squiggle).
+										 */
+										highlighting ? "text-transparent caret-ink" : "text-ink",
+										"outline-none placeholder:text-ink-dim",
 										// A composer that REFUSES input STEPS COLOUR rather than fading
 										// (branding: disabled changes colour, never opacity), and without
 										// this the only signal was `cursor: not-allowed` after the user
@@ -5340,21 +5446,34 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												pendingCaret.current = null;
 											return;
 										}
-										setCaret(field.selectionStart);
+										value={newMessage}
 										/*
-										 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
-										 * caret move may do: it may keep a latched arm, re-anchor it, and
-										 * RE-OPEN a span the caret has returned to — but it may never ARM
-										 * by itself. The TUI asks both questions at the same reactive
-										 * (`watch_selection`), because a mouse click, an app-set
-										 * selection and a completion's caret all move the caret with no
-										 * caret key pressed: without the re-open, leaving and coming back
-										 * left an armed token whose next typed character landed in
-										 * PLAINTEXT; without the "may not arm" half, a click at the end of
-										 * a restored draft would swallow the next paste.
+										 * The IME half of the highlight: the composition string is drawn by
+										 * the BROWSER, is not in the mirror, and would be invisible under
+										 * `text-transparent`, so `composing` turns both the runs and the
+										 * transparency off while it is being typed.
 										 */
-										setCapture(
-											syncCapture(
+										onCompositionStart={() => setComposing(true)}
+										onCompositionEnd={() => setComposing(false)}
+										onChange={(e) => {
+											/*
+											 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
+											 * intercepted keystroke arrives here — Backspace, Delete, a
+											 * selection, a drop, an IME commit, and any paste that fell through
+											 * — and `applyDomEdit` maps the edit onto the held value at the
+											 * index the operator sees. The first door is the printable-key
+											 * branch of `handleCredentialKeyDown`, which never lets the
+											 * character reach the DOM at all; this one is the belt for the
+											 * routes a keyboard gate cannot see.
+											 *
+											 * `origin` is "typing" because a change IS a keystroke-shaped
+											 * event on this control — an arrival (a restored draft, a seed) is
+											 * written through `setNewMessage` by its own caller, never through
+											 * the DOM's change event for a textarea the user is in.
+											 */
+											const next = e.target.value;
+											const at = e.target.selectionStart ?? next.length;
+											const applied = applyDomEdit(
 												captureRef.current,
 												newMessage,
 												field.selectionStart,
@@ -5463,6 +5582,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											: at.activeDescendantId) ?? undefined
 									}
 								/>
+								</ComposerHighlight>
 							</div>
 						)}
 

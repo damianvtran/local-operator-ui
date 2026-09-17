@@ -233,6 +233,35 @@ export type ThemePalette = {
 	 */
 	chartBarHover: string;
 
+	/**
+	 * The composer's STRUCTURED-TOKEN ink: the leading `/word` a user typed.
+	 *
+	 * Its own role rather than `info`, and the reason is measured rather than
+	 * stylistic: the token sits INSIDE the draft, beside prose `ink`, and the
+	 * composer already spends `accent` three times on the same screen (focus
+	 * ring, send button, popup selection). Across the palettes that shipped when
+	 * this role was authored, `info` is the accent's twin in three of them (dune,
+	 * neon, radient read ΔE00 0.0) and `ink`'s twin in a fourth (obsidian, also
+	 * 0.0), so no shipped text role could carry this run. It is the desktop's
+	 * counterpart of the TUI's `$lo-signal`, whose own file states the rule
+	 * ("`$lo-accent` is deliberately NOT used here … a recognized command word is
+	 * structure, not activity").
+	 *
+	 * FLOORS (`scripts/contrast-contract.mjs`, the "command token" block): at
+	 * least 4.5:1 as text on `surface` and on `elevated`; at least ΔE00 8 from
+	 * `ink`, from `accent` and from `success` — the three inks this run is read
+	 * against in one line of the composer. obsidian is the single pinned
+	 * exception, and it is the app's recorded monochrome case: its `info` IS its
+	 * `ink`, so `code-mirror-theme.ts` already separates tokens by WEIGHT there
+	 * and `tokenCommand` is bound to `ink` with the semibold carrying the run.
+	 *
+	 * The TUI port's palettes author it as their own `info` where that value
+	 * clears the floors, which is most of them; the five that missed by a hair
+	 * record a lift of that signal and its measured cost in the palette file.
+	 * Re-measure before changing a value here.
+	 */
+	tokenCommand: string;
+
 	/* ---- semantic: each with a wash and a border ------------------------ */
 
 	/**

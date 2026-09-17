@@ -56,6 +56,10 @@ export const rosePineMoon: ThemeDefinition = {
 		// ΔE00 10.3 from `accent` and 10.8:1 on surface, where the accent is
 		// 7.5:1.
 		chartBarHover: "#FFD6D2",
+		tokenCommand: "#A0D4DD",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#382b38",
 		onAccent: "#232136",
 

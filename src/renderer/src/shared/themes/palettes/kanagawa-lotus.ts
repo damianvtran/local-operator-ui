@@ -57,6 +57,10 @@ export const kanagawaLotus: ThemeDefinition = {
 		// ΔE00 10.4 from `accent` and 10.6:1 on surface, where the accent is
 		// 6.6:1.
 		chartBarHover: "#1A2C4E",
+		tokenCommand: "#5F4A7F",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#CFCEA9",
 		onAccent: "#F2ECBC",
 

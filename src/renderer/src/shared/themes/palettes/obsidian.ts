@@ -87,6 +87,9 @@ export const obsidian: ThemeDefinition = {
 		// measuring ΔE00 10.0 from it. The window is narrow by construction: brighter is
 		// ΔE00 1.0 away, and more chroma falls below the accent's own ground ratio.
 		chartBarHover: "#FCFCE4",
+		tokenCommand: "#FAFAFA",
+		/* Monochrome: pinned to `ink` with the semibold carrying the run (see the
+		   role's note in `palette-contract.ts`). */
 		accentWash: "#262628",
 		onAccent: "#09090B",
 
