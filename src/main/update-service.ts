@@ -21,9 +21,13 @@ import { promisify } from "node:util";
 import { net, type BrowserWindow, app, ipcMain, powerMonitor } from "electron";
 import { type UpdateInfo, autoUpdater } from "electron-updater";
 import {
+	type DriftAbsence,
 	type DriftRestartHold,
+	type ServingWorkState,
 	backendVersionDrift,
+	driftInstallReading,
 	driftRestartDecision,
+	servingInstallReadings,
 } from "./backend-version-drift";
 import type { BackendServiceManager } from "./backend/backend-service";
 
@@ -342,8 +346,37 @@ const DRIFT_HOLD_REPORT: Record<DriftRestartHold, string> = {
 		"this app does not restart a server it did not start, so the skew is reported and the process is left alone",
 	"update-in-flight":
 		"an update of this server is already running and will restart it",
+	"serving-install-unknown":
+		"the install the serving process runs from cannot be told, so there is no comparison to act on here and the readings are left as they are",
+	"work-in-flight":
+		"a turn is running in the server, so the restart waits - it is never landed mid-turn, and it does not wait longer than the turn does",
+	"work-state-unknown":
+		"the server's own work state could not be read, so the restart waits rather than interrupting a turn it cannot see",
 	"session-stream-open":
-		"a conversation stream is open, so the restart waits for the next check",
+		"nothing is running in the server, but a conversation is open, so the restart waits for the next check",
+};
+
+/**
+ * Why there was nothing to compare, in the log's own words.
+ *
+ * The other half of "every branch logs": a check that cannot act has to say
+ * WHICH reading was missing, because "no drift" and "no reading" are the two
+ * states a reader has to be able to tell apart - the second is a machine where
+ * this repair is inert, which is exactly what went unnoticed for a day (review
+ * round 1, R1 and R7).
+ */
+const DRIFT_ABSENCE_REPORT: Record<DriftAbsence, string> = {
+	"no-boot-reading":
+		"the serving process's own record carries no boot version, so which build it loaded cannot be told",
+	"no-install-reading": "no install version could be read for the comparison",
+	"unreadable-boot":
+		"the boot version the record carries cannot be parsed as a version",
+	"unreadable-install": "the install version cannot be parsed as a version",
+	equal: "the server loaded the installed build",
+	"running-ahead":
+		"the server is running a build NEWER than the install on disk (a downgrade on disk), so it is left alone",
+	unorderable:
+		"the two readings cannot be ordered against each other, so nothing is restarted on a guess",
 };
 
 /**
@@ -3774,7 +3807,23 @@ export class UpdateService {
 		 * again" (review round 1, UX U1; R5).
 		 */
 		appOwned: boolean;
-	}> {
+		/**
+		 * The prefix that install's own interpreter runs from, or "" when it has none.
+		 *
+		 * `identity.venvPrefix` - set only when a `pyvenv.cfg` sits in the prefix
+		 * (uv tools and pip venvs both write one), which is exactly the form the
+		 * serving daemon's own record publishes as its `sys.prefix`. Beside the
+		 * version for the one comparison the version alone cannot make: whether the
+		 * install an update would MOVE is the install the serving process RUNS FROM.
+		 * They are the same install in `GLOBAL_INSTALL`, and they can be two
+		 * different ones the moment discovery adopts a daemon - the operator's log
+		 * pairs the uv tool's 0.56.13 against a bundled daemon's 0.56.8 - and a
+		 * version compared across two installs is a skew that may not exist. Empty
+		 * for the app-owned modes, which have no plan install, and for a global
+		 * install in a non-venv base prefix, where the environment the daemon boots
+		 * from is not this one and the comparison must not be made on a guess.
+		 */
+		installedInstallPrefix: string;	}> {
 		if (
 			startupMode === LocalOperatorStartupMode.EXISTING_SERVER ||
 			startupMode === LocalOperatorStartupMode.GLOBAL_INSTALL
@@ -3860,7 +3909,7 @@ export class UpdateService {
 				sourceBuild: plan.sourceBuild,
 				appOwned: false,
 				installedInstallVersion: serving.version ?? identity.version ?? null,
-			};
+				installedInstallPrefix: identity.venvPrefix ?? "",			};
 		}
 
 		return {
@@ -3883,7 +3932,7 @@ export class UpdateService {
 			 * old build is visible as exactly that rather than as "nothing newer".
 			 */
 			installedInstallVersion: serving.version,
-		};
+			installedInstallPrefix: "",		};
 	}
 
 	/**
@@ -4047,9 +4096,9 @@ export class UpdateService {
 			}
 
 			/*
-			 * A MACHINE THAT REPORTS NO NETWORK IS NOT ASKED ANYTHING. Both reads below
-			 * spend a request - one against the local server, one against the published
-			 * release - and the operator's log has this check's own failure beside the
+			 * A MACHINE THAT REPORTS NO NETWORK IS NOT ASKED FOR RELEASES. The read below
+			 * spends a request against the published release, and the operator's log has
+			 * this check's own failure beside the
 			 * app channel's at the dark-wake instant (`Error fetching from PyPI: Error:
 			 * getaddrinfo ENOTFOUND pypi.org`, same second). Skipping leaves the status
 			 * `unavailable`, which is what a channel that did not find out reports.
@@ -4084,11 +4133,23 @@ export class UpdateService {
 			 * Asked in this order rather than concurrently because both the plan and the
 			 * verdict are statements ABOUT this reading, and a machine can rotate its
 			 * daemon between two requests.
+			 *
+			 * THE DRIFT REPAIR IS SETTLED FROM IT, before the network gate below, because
+			 * it needs neither the network nor a published release (review round 1, R3).
+			 * Both readings it does need are local: the plan classifies an install on
+			 * disk, and `/health` is read from the daemon on this machine. Sitting behind
+			 * both gates - where it used to sit - meant an offline machine or one that
+			 * cannot reach PyPI never repaired a process serving code the disk had already
+			 * replaced, which is a purely local skew and the whole of what this repair is
+			 * for.
 			 */
 			const running = await this.readRunningBackend();
 			const runningVersion = running.version;
 			const serving = this.readServingInstall(running);
 			const plan = await this.resolveBackendUpdatePlan(startupMode, serving);
+			// The two readings are the check's own, so the drift and the offer that
+			// follows are decided from one snapshot rather than two.
+			await this.settleBackendVersionDrift(plan, runningVersion);
 			const latestVersion = await this.getLatestPypiVersion();
 			// Remembered for the by-hand prompt: that event is produced from a click
 			// rather than from a check, and it has to be able to name the published
@@ -4248,8 +4309,7 @@ export class UpdateService {
 			// the daemon that serves it has been restarted - and when they do, the
 			// check has to be answerable from the log. The install ROOT is on the line
 			// too, because the defect this check was reporting on was a comparison
-			// against an install that was not the one answering.
-			logger.info(
+			// against an install that was not the one answering.			logger.info(
 				`Install on disk reports: ${installVersion ?? "no reading"} (at ${serving.prefix ?? "an install the server did not name"}), running backend reports: ${runningVersion ?? "no reading"}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}, Server channel: ${channel.status} (${channel.state}), Startup mode: ${startupMode}`,
 				LogFileType.UPDATE_SERVICE,
 			);
@@ -4276,21 +4336,6 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 			}
-
-			/*
-			 * The third reading, and the one nothing used to compare: what the process
-			 * SERVING this app booted with. `installVersion` is the install on disk (the
-			 * plan's own reading, never `/health`'s - see `backend-version-drift.ts` for
-			 * why that field cannot see a stale process), and when the two disagree with
-			 * the process older, the installed code is not what is serving.
-			 *
-			 * Before the offer below, because the drift is about the code that is
-			 * INSTALLED and is true whether or not a newer release is also published: a
-			 * machine can be offered an update it will not press while the daemon goes on
-			 * serving a build the disk left behind.
-			 */
-			await this.settleBackendVersionDrift(installVersion);
-
 			if (shouldUpdate) {
 				logger.info(
 					`New backend version available: ${latestVersion} (installed: ${installedVersion})`,
@@ -4471,29 +4516,60 @@ export class UpdateService {
 	 * daemon kept serving its in-memory build, and the app reported the install up to
 	 * date - so a fix that had shipped was not in effect (see
 	 * `backend-version-drift.ts` for the incident, and for why `/health`'s version
-	 * cannot see this).
+	 * cannot serve as the RUNNING reading).
 	 *
-	 * The action is the lifecycle's own restart, gated by the pure decision next to
-	 * the readings: only a daemon this app started is restarted, nothing is touched
-	 * while the update flow is mid-flight or while a conversation is being watched
-	 * (for one cycle - see `DRIFT_DEFERRALS_BEFORE_RESTART`), and a pair already
-	 * restarted for is not restarted again, because a skew a restart did not fix
-	 * would otherwise become a five-minute kill loop.
+	 * TWO READINGS, AND WHICH INSTALL EACH DESCRIBES, because the first cut of this
+	 * function compared the wrong pair (review round 1, R1). The boot reading comes
+	 * from the serving process's own record; the install reading comes from
+	 * `driftInstallReading`, which resolves the install the serving process actually
+	 * runs from rather than the plan's install blindly - the plan's reading exists
+	 * only in the modes where the app does not own the environment, and in an
+	 * adopted daemon even that one can be a different install.
 	 *
-	 * Incapable of failing the check: every branch logs and returns. A check whose
-	 * verdict is "the install is current" must not become an error because the
-	 * daemon could not be moved onto it.
+	 * The action is the lifecycle's own restart, gated by the pure decision beside
+	 * the readings: only a daemon this app started is restarted, a process serving
+	 * code the app cannot identify the install of is not compared at all, nothing is
+	 * touched while the update flow is mid-flight, a turn in flight holds the restart
+	 * unboundedly (see `driftRestartDecision`), and a pair already restarted for is
+	 * not restarted again, because a skew a restart did not fix would otherwise
+	 * become a five-minute kill loop.
+	 *
+	 * Incapable of failing the check, and incapable of being SILENT: every branch
+	 * logs, including the ones that do nothing. That last part is not politeness -
+	 * the first cut returned before logging anything for any non-stale reading, which
+	 * is why sixty-six `APP_BUNDLED_VENV` rows in the operator's log said nothing
+	 * while the repair was inert (review round 1, R1 and R7). A check whose verdict
+	 * is "the install is current" must not become an error because the daemon could
+	 * not be moved onto it - and must not become quiet either.
 	 */
 	private async settleBackendVersionDrift(
-		installVersion: string | null,
+		plan: {
+			installedInstallVersion: string | null;
+			installedInstallPrefix: string;
+		},
+		healthVersion: string | null,
 	): Promise<void> {
-		const bootVersion = this.backendService?.getAttachedBootVersion() ?? null;
-		const drift = backendVersionDrift(bootVersion, installVersion);
+		const serving = this.backendService?.servingInstall() ?? null;
+		const readings = serving?.readings ?? servingInstallReadings(null);
+		const installReading = driftInstallReading({
+			planVersion: plan.installedInstallVersion,
+			planPrefix: plan.installedInstallPrefix,
+			servingReadings: readings,
+			servingIsAppManaged: serving?.managedByThisApp ?? false,
+			healthVersion,
+		});
+		const drift = backendVersionDrift(
+			readings.bootVersion,
+			installReading.version,
+		);
 		if (drift.kind !== "stale") {
-			// Nothing to act on: the readings agree, or one of them is missing and the
-			// pure decision has already said which. The deferral count belongs to a
-			// skew, so it resets here.
+			// Nothing to act on - but WHICH nothing, in the log. The deferral count
+			// belongs to a skew, so it resets here.
 			this.driftDeferrals = 0;
+			logger.info(
+				`No server version drift to repair: the serving process booted on ${readings.bootVersion ?? "no reading"} and the install reading is ${installReading.version ?? "no reading"} (${installReading.source}); ${DRIFT_ABSENCE_REPORT[drift.reason]}`,
+				LogFileType.UPDATE_SERVICE,
+			);
 			return;
 		}
 
@@ -4506,23 +4582,44 @@ export class UpdateService {
 			return;
 		}
 
+		/*
+		 * Ordered refusals before the holds, and the work state read ONLY when nothing
+		 * before it has already decided: the read is a request to the daemon, and a
+		 * daemon this app is not going to restart does not need to be asked whether it
+		 * is busy.
+		 */
+		const ownership = serving?.owned ?? {
+			owned: false,
+			because: "there is no server manager to read a record from",
+		};
+		const mustAskForWork =
+			installReading.source !== "unknown" &&
+			ownership.owned &&
+			!(this.backendService?.checkIsAutoUpdating() ?? false);
+		const workState: ServingWorkState = mustAskForWork
+			? ((await this.backendService?.servingWorkState()) ?? "unknown")
+			: "idle";
+
 		const decision = driftRestartDecision({
 			drift,
-			appOwned: this.backendIsAppOwned(),
+			installSource: installReading.source,
+			appOwned: ownership.owned,
+			workState,
 			sessionStreamOpen: this.backendService?.hasOpenSessionStreams() ?? false,
 			updateInFlight: this.backendService?.checkIsAutoUpdating() ?? false,
 			deferrals: this.driftDeferrals,
 		});
 
 		if (!decision.restart) {
-			// Only the stream hold is a deferral; the other two are refusals, and a
-			// refusal must not leave a count that makes the next check restart anyway.
+			// Only the stream hold is a deferral; every other hold is a refusal or an
+			// absence, and one of those must not leave a count that makes the next
+			// check restart anyway.
 			this.driftDeferrals =
 				decision.because === "session-stream-open"
 					? this.driftDeferrals + 1
 					: 0;
 			logger.info(
-				`The server serving this app booted on ${drift.bootVersion} while the install on disk is ${drift.installVersion}; ${DRIFT_HOLD_REPORT[decision.because]}`,
+				`The server serving this app booted on ${drift.bootVersion} while the install reading is ${drift.installVersion} (${installReading.source}); ${DRIFT_HOLD_REPORT[decision.because]}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return;
@@ -4531,7 +4628,7 @@ export class UpdateService {
 		this.driftDeferrals = 0;
 		this.driftRestartedFor = pair;
 		logger.info(
-			`The server serving this app booted on ${drift.bootVersion} while the install on disk is ${drift.installVersion}; restarting the server this app started so the installed build serves.`,
+			`The server serving this app booted on ${drift.bootVersion} while the install reading is ${drift.installVersion} (${installReading.source}); restarting it so the installed build serves. This app owns it because ${ownership.because}, and no turn is running in it.`,
 			LogFileType.UPDATE_SERVICE,
 		);
 		await this.restartBackendForVersionDrift(drift);
@@ -4565,7 +4662,8 @@ export class UpdateService {
 			 * from it. A restart that came back on the same build is the case this line
 			 * exists to make visible in the log rather than in a claim.
 			 */
-			const settledBoot = this.backendService?.getAttachedBootVersion() ?? null;
+			const settledBoot =
+				this.backendService?.servingInstall().readings.bootVersion ?? null;
 			const healthy = await this.checkBackendHealth();
 			logger.info(
 				`Restarted the server onto the installed build: it booted on ${settledBoot ?? "a reading that could not be taken"} (was ${drift.bootVersion}, install is ${drift.installVersion}) and its health probe ${healthy ? "answered" : "did not answer"}.`,
@@ -4665,12 +4763,17 @@ export class UpdateService {
 	 * not (so the sentence says the app will not, which is a fact about what the
 	 * reader should expect). Getting this wrong is not cosmetic - the notice would
 	 * tell a user of an app-owned daemon that nothing will ever move it.
+	 *
+	 * ASKED OF THE SAME RULE THE DRIFT REPAIR USES, and it has to be: this used to be
+	 * `!isUsingExternalBackend()`, which is false for every daemon the app ADOPTED -
+	 * including the daemon a previous app process started, which is the ordinary
+	 * desktop lifecycle. The notice would then tell that reader the app will not
+	 * restart a server it did start, while the repair went on and restarted it
+	 * (review round 1, R1). One question, one answer, one place to read it
+	 * (`servingInstallIsAppOwned`).
 	 */
 	private backendIsAppOwned(): boolean {
-		return (
-			this.backendService !== null &&
-			!this.backendService.isUsingExternalBackend()
-		);
+		return this.backendService?.servingInstall().owned.owned ?? false;
 	}
 
 	/**

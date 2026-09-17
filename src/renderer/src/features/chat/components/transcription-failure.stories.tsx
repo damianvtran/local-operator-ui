@@ -147,13 +147,20 @@ export const SignInRefused: Story = {
 	render: () => <Refusal status={401} detail="Forbidden" />,
 };
 
-/** A cause with no shorter truth: the server's sentence, clipped to one line. */
+/**
+ * The server's own reason, read out of the relayed body and then answered.
+ *
+ * The body here is the shape the first cut photographed as four lines of URL and
+ * JSON punctuation with the answer buried mid-line - the reason is the `message`
+ * INSIDE that document, and the toast now shows it followed by what to do about
+ * it (review round 1, D2).
+ */
 export const ServerMessageClipped: Story = {
 	parameters: { toastDuration: Number.POSITIVE_INFINITY },
 	render: () => <Refusal status={500} detail={LONG_BODY} />,
 };
 
-/** Nothing to quote: a failure with no invented cause. */
+/** Nothing to quote: a failure that states the absence rather than inventing one. */
 export const NoReasonGiven: Story = {
 	parameters: { toastDuration: Number.POSITIVE_INFINITY },
 	render: () => <Refusal status={503} detail="" />,

@@ -27,11 +27,28 @@
  *
  * Pure by construction (no Electron import), so `scripts/*.test.mjs` can bundle
  * the shipped TypeScript and call these decisions directly.
+ *
+ * THE SECOND HALF OF THE DEFECT, and why the readings below are shaped the way
+ * they are. The comparison above is only as good as the two readings handed to
+ * it, and in the operator's own modes both came out wrong. The INSTALL side was
+ * the plan's `installedInstallVersion`, which is null for every mode whose
+ * environment the app owns (`APP_BUNDLED_VENV` - the mode the app spawns its
+ * own daemon in), so the drift was computed against nothing and the check
+ * returned before it logged anything. The OWNER side was
+ * `!isUsingExternalBackend()`, which is true for any daemon this app ADOPTED -
+ * including the daemon a previous app process started, which is the ordinary
+ * desktop lifecycle, so the app refused to restart a server it had started
+ * itself. Sixty-six `APP_BUNDLED_VENV` and 400 `EXISTING_SERVER` rows, zero
+ * `GLOBAL_INSTALL`, is the operator's log: the two modes in which the repair
+ * could not fire, and only those. `driftInstallReading` and
+ * `servingInstallIsAppOwned` are what make each side answerable in those modes:
+ * the install the daemon booted from is read from the daemon's own environment,
+ * and ownership from what actually started the process.
  */
 
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { parseRecord } from "./backend/discovery";
+import { isAbsolute, join, relative, sep } from "node:path";
+import { type ServeRecord, parseRecord } from "./backend/discovery";
 import { isReadableVersion } from "./update-check-verdict";
 import { compareVersions } from "./update-install";
 
@@ -103,31 +120,271 @@ export function backendVersionDrift(
 }
 
 /**
- * The version the daemon with this pid booted with, from its own serve record.
+ * The serve record of the daemon with this pid, or null.
  *
  * A pid that is not a positive integer is an absence, not a lookup: this must never
  * be handed `undefined` and answer with somebody else's record. A missing file, a
  * torn read and a malformed document are the same absence for the same reason the
- * record parser refuses to guess (see `parseRecord`'s own note) - and a record
- * written by an install predating this field parses its `version` as `""`, which is
- * this function's `null`. That case falls to the record's absence handling rather
- * than to `/health`: an old install that cannot say what it booted with has not
- * earned a version comparison.
+ * record parser refuses to guess (see `parseRecord`'s own note).
+ */
+export function serveRecord(
+	pid: number | null | undefined,
+	dir: string,
+): ServeRecord | null {
+	if (typeof pid !== "number" || !Number.isInteger(pid) || pid <= 0)
+		return null;
+	try {
+		const file = join(dir, `${pid}.json`);
+		return parseRecord(JSON.parse(readFileSync(file, "utf8")), file).record;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The version the daemon with this pid booted with, from its own serve record.
+ *
+ * A record written by an install predating this field parses its `version` as
+ * `""`, which is this function's `null`. That case falls to the record's absence
+ * handling rather than to `/health`: an old install that cannot say what it
+ * booted with has not earned a version comparison.
  */
 export function serveRecordVersion(
 	pid: number | null | undefined,
 	dir: string,
 ): string | null {
-	if (typeof pid !== "number" || !Number.isInteger(pid) || pid <= 0)
-		return null;
-	try {
-		const file = join(dir, `${pid}.json`);
-		const entry = parseRecord(JSON.parse(readFileSync(file, "utf8")), file);
-		const version = entry.record?.version?.trim() ?? "";
-		return version === "" ? null : version;
-	} catch {
-		return null;
-	}
+	const version = serveRecord(pid, dir)?.version.trim() ?? "";
+	return version === "" ? null : version;
+}
+
+/**
+ * What the serving process's own record says about the install it booted from.
+ *
+ * This is the reading the whole repair is built on, and it is a reading of the
+ * RECORD rather than of `/health` - see the module docstring for the trap. The
+ * type is deliberately the record's own fields, transcribed once here so both
+ * arms that reach a record (an adopted daemon's parsed record, and this app's
+ * spawned child keyed by pid) produce the same shape.
+ */
+export type ServingInstallReadings = {
+	/** The build the process loaded: the record's `version`, or null when absent. */
+	bootVersion: string | null;
+	/** `sys.prefix` the process runs from - "" when the record does not say. */
+	prefix: string;
+	/** `uv-tool` / `pipx` / `pip` / `editable` / `unknown`. */
+	installKind: string;
+	/**
+	 * Whether the record itself says the APP started this daemon.
+	 *
+	 * `desktop` is the daemon's answer to "is the desktop plane governed", which
+	 * is true both for a daemon the app started and for one the app has merely
+	 * CLAIMED since; `claim_key` is spent by exactly that claim (`registry.py`),
+	 * so an unspent key is the daemon's own word for the first case. Evidence
+	 * rather than proof - a build predating the handshake publishes an empty key
+	 * either way - which is why `servingInstallIsAppOwned` accepts the environment
+	 * test beside it.
+	 */
+	startedByApp: boolean;
+};
+
+/** The readings above, from a record that may be absent. */
+export function servingInstallReadings(
+	record: ServeRecord | null,
+): ServingInstallReadings {
+	const version = record?.version?.trim() ?? "";
+	return {
+		bootVersion: version === "" ? null : version,
+		prefix: record?.prefix?.trim() ?? "",
+		installKind: record?.install_kind?.trim() ?? "",
+		startedByApp: record?.desktop === true && (record.claim_key ?? "") === "",
+	};
+}
+
+/** Whether `path` is `root` itself or below it. Neither has to exist. */
+function isInside(root: string, path: string): boolean {
+	if (root === "" || path === "") return false;
+	const rel = relative(root, path);
+	return (
+		rel === "" ||
+		(!rel.startsWith(`..${sep}`) && rel !== ".." && !isAbsolute(rel))
+	);
+}
+
+/**
+ * Whether a prefix is one of the environments THIS instance manages.
+ *
+ * The roots are the caller's, because they are the one part of this question
+ * that is a fact about this process rather than about the record: the managed
+ * environment tree for this instance's packaged/dev scope, plus the pre-split
+ * venv names. Kept as a parameter so the rule below stays a function of strings
+ * and a test can drive it with the roots it declares.
+ */
+export function servingInstallIsAppManaged(
+	prefix: string,
+	managedEnvironmentRoots: string[],
+): boolean {
+	return managedEnvironmentRoots.some((root) => isInside(root, prefix));
+}
+
+/**
+ * Whether the app may restart the daemon whose record this is.
+ *
+ * Three grounds, each one the daemon's own or this process's own answer:
+ *
+ * 1. This app process started it (the child it still holds). The strongest and
+ *    the pre-existing one.
+ * 2. Its record says the app started it - an unspent claim key (see
+ *    `ServingInstallReadings.startedByApp`). This is the ground that survives
+ *    an app restart, which is the ordinary desktop lifecycle: the daemon
+ *    outlives the app, and the next process adopts it as `EXISTING_SERVER`.
+ * 3. It runs from an environment this instance manages. This is what makes the
+ *    rule hold for a daemon whose record predates the claim handshake, and for
+ *    one booted out of a superseded generation of the same environment tree - a
+ *    daemon the app built and started, even though the pid belongs to a process
+ *    this app process never saw.
+ *
+ * NOT a ground, and the finding this replaces: `!isUsingExternalBackend()`.
+ * Adoption sets that flag, so a daemon this app started and then adopted was
+ * reported to the reader as "a server this app did not start" and refused.
+ */
+export function servingInstallIsAppOwned(input: {
+	spawnedByThisProcess: boolean;
+	readings: ServingInstallReadings;
+	managedEnvironmentRoots: string[];
+}): { owned: boolean; because: string } {
+	if (input.spawnedByThisProcess)
+		return { owned: true, because: "this app process started it" };
+	if (input.readings.startedByApp)
+		return { owned: true, because: "its own record says the app started it" };
+	const root = input.managedEnvironmentRoots.find((candidate) =>
+		isInside(candidate, input.readings.prefix),
+	);
+	if (root !== undefined)
+		return {
+			owned: true,
+			because: `it runs from this app's own environment (${root})`,
+		};
+	return {
+		owned: false,
+		because:
+			input.readings.prefix === ""
+				? "it names no environment this app can identify"
+				: `it runs from ${input.readings.prefix}, which this app does not manage`,
+	};
+}
+
+/**
+ * Which install the install reading describes.
+ *
+ * `unknown` is a first-class answer rather than a quiet fallback: it is what the
+ * decision refuses to restart on, and what the log has to say out loud, because
+ * the alternative - comparing a boot reading against an install the process does
+ * not run from - reports a skew that may not exist and then acts on it.
+ */
+export type DriftInstallSource =
+	/** The install the update plan describes, which this process boots from. */
+	| "plan-install"
+	/** The environment the serving process boots from, read by that process. */
+	| "serving-environment"
+	/** The two readings are not known to describe the same install. */
+	| "unknown";
+
+/**
+ * The install reading the boot reading must be compared against.
+ *
+ * WHY THE PLAN'S OWN READING IS NOT ENOUGH, which is finding R1 of round 1. The
+ * plan describes the install an update would MOVE. For `GLOBAL_INSTALL` that is
+ * the install serving the app, and the comparison is exact. For
+ * `APP_BUNDLED_VENV` the plan has no reading at all (the app owns that
+ * environment), and for an adopted daemon the plan's install can be a DIFFERENT
+ * install from the one the daemon runs - the operator's own log pairs them:
+ * "Install on disk reports: 0.56.13, running backend reports: 0.56.8", where
+ * 0.56.13 is the uv tool the reader's `lop` runs and 0.56.8 is the bundled
+ * environment that daemon boots from.
+ *
+ * The fix for both is the same reading: the one the serving process's own
+ * environment has ON DISK, which `/health` answers, because that payload's
+ * `version` is recomputed from the metadata under the answering process's own
+ * prefix. That is exactly why it must never be used as the RUNNING side - and
+ * exactly why it is the right INSTALL side for the environment it recomputes.
+ *
+ * The order is the order of the evidence:
+ *
+ * 1. The plan's reading, when both prefixes are known and equal: the plan IS a
+ *    statement about the serving install, and its reading is the one the update
+ *    path is held to.
+ * 2. The serving environment's own reading, when that environment is one this
+ *    app manages: same install by construction, and the only reading that can
+ *    exist in the modes where the plan has none.
+ * 3. Otherwise `unknown`, with the plan's reading carried for the log and NO
+ *    comparison made.
+ */
+export function driftInstallReading(input: {
+	planVersion: string | null;
+	planPrefix: string;
+	servingReadings: ServingInstallReadings;
+	servingIsAppManaged: boolean;
+	healthVersion: string | null;
+}): { version: string | null; source: DriftInstallSource } {
+	const { planVersion, planPrefix, servingReadings } = input;
+	if (
+		planVersion !== null &&
+		planPrefix !== "" &&
+		planPrefix === servingReadings.prefix
+	)
+		return { version: planVersion, source: "plan-install" };
+	if (input.servingIsAppManaged)
+		return { version: input.healthVersion, source: "serving-environment" };
+	return { version: planVersion, source: "unknown" };
+}
+
+/**
+ * What the app can tell about the daemon's own work, from its session roster.
+ *
+ * `unknown` is a real state and it is NOT `idle`: a read that failed, or a
+ * daemon whose rows predate `live_state`, must not license a restart that could
+ * land on a running turn. See `servingWorkStateFromSessions`.
+ */
+export type ServingWorkState = "idle" | "busy" | "unknown";
+
+/**
+ * The daemon's work state, read from the roster `sessions.list` answers with.
+ *
+ * WHY THIS SIGNAL. The app has no turn-in-flight signal of its own: the daemon
+ * knows whether a turn is running and main does not. What the daemon does
+ * publish is `live_state` on every session row, set from the session record's
+ * own `busy` bit (`server/utils/desktop_feed.py::_row_for`), which is published
+ * by the runtime's turn-boundary hook and therefore means exactly "a turn is
+ * running in this conversation". That is a real signal about work in flight,
+ * which a count of open renderer subscriptions is not: a mounted chat holds a
+ * subscription while it sits idle, and a background turn in a conversation
+ * nobody has open holds none - the correlation the old guard had backwards.
+ *
+ * WHAT IT DOES NOT COVER, stated rather than implied: work the daemon owns
+ * outside any session (its scheduler's own tick) is not on this roster, and the
+ * daemon's finer-grained predicates are not reachable over the desktop surface.
+ * A `wedged` row does not hold the restart either - a wedged row is a live pid
+ * that stopped reporting, i.e. somebody else's silence rather than this
+ * daemon's work, and holding on it would make the repair inert forever.
+ */
+export function servingWorkStateFromSessions(body: unknown): ServingWorkState {
+	const sessions = (body as { result?: { sessions?: unknown } } | null)?.result
+		?.sessions;
+	if (!Array.isArray(sessions)) return "unknown";
+	const rows = sessions.filter(
+		(row): row is Record<string, unknown> =>
+			typeof row === "object" && row !== null,
+	);
+	if (rows.some((row) => row.live_state === "busy")) return "busy";
+	/*
+	 * No row carrying `live_state` at all is a daemon predating the field, not a
+	 * quiet machine: `_row_for` always sets it ("" for a cold row), so the key's
+	 * absence is a fact about the build rather than about the work. Reading that
+	 * as idle would restart under work this app cannot see.
+	 */
+	if (rows.length > 0 && rows.every((row) => !("live_state" in row)))
+		return "unknown";
+	return "idle";
 }
 
 /**
@@ -137,6 +394,9 @@ export function serveRecordVersion(
  * in the middle of something a reader is watching, but a process serving code that
  * is not the code on disk is the whole defect, so a skew that survives one check
  * cycle (five minutes) is restarted on the next one regardless.
+ *
+ * It bounds the STREAM hold alone. `work-in-flight` is deliberately unbounded - a
+ * count that ran out mid-turn would restart into the turn it was holding for.
  */
 export const DRIFT_DEFERRALS_BEFORE_RESTART = 1;
 
@@ -147,7 +407,21 @@ export type DriftRestartHold =
 	| "not-app-owned"
 	/** The update flow is mid-flight and will restart the daemon itself. */
 	| "update-in-flight"
-	/** Something is watching a conversation; wait one cycle. */
+	/**
+	 * Which install the serving process booted from cannot be told, or the two
+	 * readings describe different installs: nothing is restarted on a comparison
+	 * that does not hold. Logged, never silent - see `driftInstallReading`.
+	 */
+	| "serving-install-unknown"
+	/** A turn is running in the daemon; the restart waits for it to be idle. */
+	| "work-in-flight"
+	/** The daemon's work state could not be read: fail closed rather than guess. */
+	| "work-state-unknown"
+	/**
+	 * Something is watching a conversation and nothing is running in it. A
+	 * courtesy hold for one check cycle, never a safety gate - the safety gate is
+	 * `work-in-flight`.
+	 */
 	| "session-stream-open";
 
 export type DriftRestartDecision =
@@ -157,37 +431,58 @@ export type DriftRestartDecision =
 /**
  * Whether to restart the daemon now, given what the app can observe.
  *
- * WHAT THE APP CAN AND CANNOT SEE, stated here because it is what shapes this
- * rule. There is no turn-in-flight signal in main: the daemon knows whether a turn
- * is running, main does not, and the relay's open subscriptions are a count of
- * conversations being VIEWED (a mounted chat holds one while it sits idle, and a
- * turn in a conversation nobody has open holds none). So the app cannot honour "do
- * not kill a backend mid-turn" exactly. What it can do is the lesser version: hold
- * the restart while a session stream is open - the only in-flight-ish evidence it
- * has - and never hold it for more than one check cycle.
+ * A RESTART KILLS WHATEVER IS RUNNING IN THAT PROCESS, and this rule is what may
+ * not be skipped on the way to the version skew. `stop(true)` is SIGTERM, ten
+ * seconds, SIGKILL (`BackendServiceManager.stopGeneration`), and the daemon's own
+ * `retire.py` declines that exit for the reason this app is deciding blind: its
+ * lifespan shutdown cancels the scheduler work it owns, and a marker is no proof
+ * a successor is ready. So the restart waits, without a bound, while the daemon
+ * says a turn is running - `work-in-flight` - because a bounded wait is a wait
+ * that kills the turn it was waiting for, and killing a live turn to fix a
+ * version skew is the worse of the two defects.
  *
- * `not-app-owned` is not a deferral but a refusal, and it is the existing contract
- * rather than something new: the app does not stop a daemon it did not start (see
- * `BackendServiceManager.backendIsAppOwned` and the skew notice's own sentence).
- * The reader is already told about that case by the update notice; this reports it
- * in the log and leaves the process alone.
+ * The three holds that are not deferrals, and why each is a refusal:
  *
- * `update-in-flight` takes the same shape: the update flow stops the daemon itself
- * and starts it on the new build, so a restart here would race a stop that is
- * already under way.
+ * - `not-app-owned`: not this app's process to bounce. The existing contract - see
+ *   `servingInstallIsAppOwned` for what "owned" now means, which is not what
+ *   `isUsingExternalBackend` meant.
+ * - `update-in-flight`: the update flow stops the daemon itself and starts it on
+ *   the new build, so a restart here would race a stop already under way.
+ * - `serving-install-unknown`: the boot reading and the install reading are not
+ *   known to describe the same install, so there is no skew to repair, only a
+ *   comparison that does not hold.
+ *
+ * `work-state-unknown` is a hold rather than a refusal for the same reason
+ * `work-in-flight` is: a read that could not be taken is not evidence that the
+ * machine is quiet, and the next check will try again.
+ *
+ * The one bounded hold left is `session-stream-open`, and it is a courtesy rather
+ * than a guard: nobody is running anything, but somebody is looking at a
+ * conversation, so the restart waits one cycle and then goes ahead. It is not
+ * what keeps a turn safe - `work-in-flight` is.
  */
 export function driftRestartDecision(input: {
 	drift: BackendVersionDrift;
+	/** Which install the install reading describes, from `driftInstallReading`. */
+	installSource: DriftInstallSource;
 	appOwned: boolean;
+	/** The daemon's own work state, from `servingWorkStateFromSessions`. */
+	workState: ServingWorkState;
 	sessionStreamOpen: boolean;
 	updateInFlight: boolean;
 	deferrals: number;
 }): DriftRestartDecision {
 	if (input.drift.kind !== "stale")
 		return { restart: false, because: "no-drift" };
+	if (input.installSource === "unknown")
+		return { restart: false, because: "serving-install-unknown" };
 	if (!input.appOwned) return { restart: false, because: "not-app-owned" };
 	if (input.updateInFlight)
 		return { restart: false, because: "update-in-flight" };
+	if (input.workState === "unknown")
+		return { restart: false, because: "work-state-unknown" };
+	if (input.workState === "busy")
+		return { restart: false, because: "work-in-flight" };
 	if (
 		input.sessionStreamOpen &&
 		input.deferrals < DRIFT_DEFERRALS_BEFORE_RESTART

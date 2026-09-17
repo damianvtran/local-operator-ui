@@ -32,7 +32,15 @@ import type {
 	DesktopResponse,
 } from "../../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../../shared/desktop-session-contract";
-import { serveRecordVersion } from "../backend-version-drift";
+import {
+	type ServingInstallReadings,
+	type ServingWorkState,
+	serveRecord,
+	servingInstallIsAppManaged,
+	servingInstallIsAppOwned,
+	servingInstallReadings,
+	servingWorkStateFromSessions,
+} from "../backend-version-drift";
 import { DesktopFeedRelay } from "../desktop-feed";
 import {
 	type DesktopMediaResponse,
@@ -54,8 +62,8 @@ import {
 	PROBE_TIMEOUT_MS,
 	type ProbeObservation,
 } from "./daemon-status";
+import type { DiscoveredDaemon, ServeRecord } from "./discovery";
 import {
-	type DiscoveredDaemon,
 	HEALTH_PATH,
 	OWNED_RECORD_WINDOW_MS,
 	OWNED_REGISTRATION_WINDOW_MS,
@@ -78,7 +86,7 @@ import { launchEnv } from "./launch-env";
 import { LogFileType, logger } from "./logger";
 import { isLegacyManagedCommand } from "./managed-python";
 import { resolveNotificationLaunch } from "./notification-launch";
-import { managedVenvPath } from "./venv-paths";
+import { managedEnvironmentRoots, managedVenvPath } from "./venv-paths";
 
 import {
 	consoleInterpreter,
@@ -2903,41 +2911,125 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * The version the daemon serving this app BOOTED with, from its own record.
+	 * The install SERVING this app, read from the serving process's own record.
 	 *
-	 * WHAT THIS IS NOT, and the mistake it exists to prevent: it is not
-	 * `getStatusSnapshot().version` and it is not `/health`'s `version`. Both carry
-	 * what the daemon computes from the metadata installed ON DISK when it answers,
-	 * so a process running old code out of memory reports the NEWER version and the
-	 * skew disappears exactly when a reader needs to see it. The serve record
-	 * (`server/registry.py`) is written once at process start and never re-read, so
-	 * its `version` is the build the running process actually loaded.
+	 * WHAT THIS IS NOT, and the mistake it exists to prevent: the `version` of a
+	 * `/health` payload or of a status snapshot is what the daemon computes from the
+	 * metadata installed ON DISK when it answers, so a process running old code out
+	 * of memory reports the NEWER version and the skew disappears exactly when a
+	 * reader needs to see it. The serve record (`server/registry.py`) is written
+	 * once at process start and never re-read, so its `version` is the build the
+	 * running process actually loaded, and its fields beside it (`prefix`,
+	 * `install_kind`, and the claim handshake's own `desktop`/`claim_key` pair) are
+	 * what the drift decision resolves WHICH INSTALL and WHOSE PROCESS against.
 	 *
 	 * Two arms, because the record is reached two ways: a daemon discovery ADOPTED
-	 * keeps its parsed record on this manager, while one this app SPAWNED is keyed by
-	 * its own pid in the record directory. Both are the same field of the same
-	 * document.
+	 * keeps its parsed record on this manager, while one this app SPAWNED is keyed
+	 * by its own pid in the record directory. Both are the same document.
 	 *
-	 * A record that carries no version (an install predating the field), a record
-	 * that cannot be read, and no daemon at all are all `null` - an absence to be
-	 * reported, never a version to be compared.
+	 * A missing record, a torn read and a record that carries no version (an install
+	 * predating the field) are all absences - reported by the decision, never
+	 * papered over by a reading that cannot see a stale process.
 	 */
-	getAttachedBootVersion(): string | null {
-		const adopted = this.attachedRecord?.record.version?.trim() ?? "";
-		if (adopted !== "") return adopted;
-		return serveRecordVersion(this.process?.pid ?? null, serveRunDir());
+	servingInstall(): {
+		readings: ServingInstallReadings;
+		/** Whether this instance's own managed environment is the one it runs from. */
+		managedByThisApp: boolean;
+		owned: { owned: boolean; because: string };
+	} {
+		const readings = servingInstallReadings(this.servingRecord());
+		const managedEnvironmentRootsForInstance = this.managedEnvironmentRoots();
+		return {
+			readings,
+			managedByThisApp: servingInstallIsAppManaged(
+				readings.prefix,
+				managedEnvironmentRootsForInstance,
+			),
+			owned: servingInstallIsAppOwned({
+				/*
+				 * `?this.process` is the app's own child, whatever the record says: the
+				 * strongest ground, and the one that does not depend on a field a
+				 * predating build may not publish. Adoption sets `isExternalBackend`,
+				 * which is why that flag is no longer the ownership test - see
+				 * `servingInstallIsAppOwned` for the three that are.
+				 */
+				spawnedByThisProcess: this.getOwnedPid() !== null,
+				readings,
+				managedEnvironmentRoots: managedEnvironmentRootsForInstance,
+			}),
+		};
+	}
+
+	/**
+	 * The record of the daemon serving this app, from the arm that reaches it.
+	 *
+	 * `null` for a daemon with no record at all - a legacy fixed-port adoption, or
+	 * a build that predates the record format. The caller reports that absence
+	 * rather than substituting another reading for it.
+	 */
+	private servingRecord(): ServeRecord | null {
+		const adopted = this.attachedRecord?.record ?? null;
+		if (adopted) return adopted;
+		return serveRecord(this.process?.pid ?? null, serveRunDir());
+	}
+
+	/**
+	 * The directories a daemon this app started can have booted from.
+	 *
+	 * The one part of the ownership question that is a fact about this instance
+	 * rather than about the record, so it lives with the layout it names
+	 * (`venv-paths.ts`) and is passed in. Empty on a platform whose managed
+	 * environment that module does not claim - the record's own answer and this
+	 * app's own child still answer there.
+	 */
+	private managedEnvironmentRoots(): string[] {
+		return managedEnvironmentRoots({
+			platform: process.platform,
+			home: app.getPath("home"),
+			packaged: app.isPackaged,
+			venvPath: this.venvPath,
+		});
 	}
 
 	/**
 	 * Whether the renderer holds any session stream open right now.
 	 *
-	 * The only in-flight-ish evidence main has: it counts conversations being
-	 * VIEWED, not turns running (a mounted chat holds its subscription while idle),
-	 * which is why the drift restart treats an open stream as a reason to wait one
-	 * check cycle rather than as proof that nothing is in flight.
+	 * A COUNT OF VIEWS, not of turns: a mounted chat keeps its subscription while
+	 * it sits idle, and a turn in a conversation nobody has open sends nothing. It
+	 * is therefore a courtesy signal for the drift restart - "somebody is looking,
+	 * wait a cycle" - and never the safety gate; the daemon's own work state is
+	 * (`servingWorkState`).
 	 */
 	hasOpenSessionStreams(): boolean {
 		return (this.streamRelay?.openStreamCount() ?? 0) > 0;
+	}
+
+	/**
+	 * Whether the daemon serving this app is running a turn, from its own roster.
+	 *
+	 * WHY THIS IS ASKED OF THE DAEMON: main has no turn-in-flight signal of its own,
+	 * and a restart is `stop(true)` - SIGTERM, ten seconds, SIGKILL - which the
+	 * daemon's own `retire.py` refuses precisely because its shutdown cancels work
+	 * it owns. The roster's `live_state` is the daemon's own answer about a running
+	 * turn (`servingWorkStateFromSessions` states the signal and its limits).
+	 *
+	 * A transport that does not answer, and a non-200, are both `unknown` - which
+	 * the decision treats as a reason to WAIT. A read that could not be taken is
+	 * not evidence that the machine is quiet.
+	 */
+	async servingWorkState(): Promise<ServingWorkState> {
+		try {
+			const response = await this.requestDesktop({
+				op: "sessions.list",
+				// The route's own maximum: a busy turn the reader cannot see in the
+				// first page is still work in flight, so the read asks for the lot.
+				limit: 500,
+			});
+			if (response.status !== 200) return "unknown";
+			return servingWorkStateFromSessions(response.body);
+		} catch {
+			return "unknown";
+		}
 	}
 
 	/**

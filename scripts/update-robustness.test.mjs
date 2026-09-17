@@ -4946,9 +4946,22 @@ const loadUpdateServiceModule = async () => {
 							`);
 						}
 						return fixture(`
+							/*
+							 * Captured when a case asks for it: the __loTestLogs global is set by the
+							 * cases that assert on the LOG rather than on behaviour, and the drift's own
+							 * claim is that every branch says what it did - including the branches that
+							 * do nothing, which is where the first cut was silent (review round 1, R1
+							 * and R7). Absent means the lines go nowhere, which is every other case.
+							 * No backticks in this block either, for the same reason as the one above.
+							 */
+							const record = (level, message) => {
+								if (globalThis.__loTestLogs) globalThis.__loTestLogs.push(level + ": " + String(message));
+							};
 							const logger = () => ({
-								info: () => {}, warn: () => {}, error: () => {}, debug: () => {},
-								verbose: () => {}, silly: () => {},
+								info: (message) => record("info", message),
+								warn: (message) => record("warn", message),
+								error: (message) => record("error", message),
+								debug: () => {}, verbose: () => {}, silly: () => {},
 								transports: {
 									file: { resolvePath: () => "", level: "debug", format: "", maxSize: 0 },
 									console: { level: "info" },
@@ -5246,23 +5259,52 @@ const backendManagerStub = (
 	startupMode,
 	service,
 	/*
-	 * What the manager's version-drift surface answers, and where a restart is
+	 * What the manager's serving-install surface answers, and where a restart is
 	 * recorded.
 	 *
 	 * The boot reading comes from the daemon's own serve record, which is a file no
 	 * case in this fixture plants - so `null` ("the reading could not be taken") is
 	 * what every existing case's world contains, and the drift decision does nothing
 	 * there. A case about the skew names a `bootVersion` and reads `restarts` back.
+	 *
+	 * The other four fields are the rest of what the reading carries:
+	 * `installPrefix` is the `sys.prefix` the record publishes (the fixture's
+	 * synthetic install by default, which is what a `GLOBAL_INSTALL` daemon the app
+	 * spawned reports), `managedByThisApp` says whether that prefix is one of this
+	 * instance's own environments, `owned` is the ownership answer the check reads,
+	 * and `workState`/`sessionStreamOpen` are the two holds - a value or a function,
+	 * because the cases about a DEFERRAL need their second check to see a different
+	 * world from their first.
 	 */
-	{ bootVersion = null, restarts = [] } = {},
+	{
+		bootVersion = null,
+		restarts = [],
+		installPrefix = "",
+		managedByThisApp = true,
+		owned = { owned: true, because: "this app process started it" },
+		workState = "idle",
+		sessionStreamOpen = false,
+	} = {},
 ) => ({
 	getStartupMode: () => startupMode,
 	getBackendUrl: () => service().backendUrl,
 	isUsingExternalBackend: () => false,
-	getAttachedBootVersion: () => bootVersion,
-	// No conversation is being watched in a fixture with no renderer, and no update
-	// is in flight: both holds would otherwise defer a restart these cases assert.
-	hasOpenSessionStreams: () => false,
+	servingInstall: () => ({
+		readings: {
+			bootVersion,
+			prefix: installPrefix,
+			installKind: "pip",
+			startedByApp: false,
+		},
+		managedByThisApp,
+		owned,
+	}),
+	servingWorkState: async () =>
+		typeof workState === "function" ? workState() : workState,
+	hasOpenSessionStreams: () =>
+		typeof sessionStreamOpen === "function"
+			? sessionStreamOpen()
+			: sessionStreamOpen,
 	checkIsAutoUpdating: () => false,
 	/*
 	 * The real manager's own stop-then-start. Recorded rather than performed: what a
@@ -5361,6 +5403,39 @@ const loAggregateCheck = async ({
 	bootVersion = null,
 	/** Restarts the check asked the manager for, in order. */
 	restarts = [],
+	/**
+	 * `sys.prefix` both sides of the fixture's world report, and whether it is one
+	 * of THIS instance's own managed environments.
+	 *
+	 * One value for both sides is the ordinary case and the one the app is built
+	 * around: the app spawned the daemon, so the install the plan would move is the
+	 * install that process boots from (see `resolveInstallIdentity` below, whose stub
+	 * reports this same prefix). A case about an ADOPTED daemon running a different
+	 * install from the plan's names its own, or turns `managedByThisApp` off.
+	 */
+	installPrefix = "/synthetic/venv",
+	/**
+	 * `sys.prefix` the SERVING daemon's own record reports, when it is not the
+	 * plan's. Two names rather than one because the case R1 is about is exactly the
+	 * pair being different: the plan describes the install an update would move, and
+	 * an adopted daemon can be running a different one.
+	 */
+	servingPrefix = installPrefix,
+	managedByThisApp = true,
+	/** The ownership answer the check reads, when a case is about that. */
+	owned = null,
+	/** The daemon's own work state; a function when a DEFERRAL needs it to change. */
+	workState = "idle",
+	/** Whether a conversation stream is open; likewise a value or a function. */
+	sessionStreamOpen = false,
+	/**
+	 * Which startup mode the check runs in, BY NAME, resolved against the module the
+	 * case is driving. `GLOBAL_INSTALL` by default, which is the mode whose plan
+	 * carries an install version; `APP_BUNDLED_VENV` is the mode the app spawns its
+	 * own daemon in, whose plan has none - the mode the repair could not fire in at
+	 * all before review round 1's R1.
+	 */
+	startupMode = "GLOBAL_INSTALL",
 	npxVersion = null,
 	/*
 	 * The backoff between attempts at one app-channel feed fetch. The SHIPPED
@@ -5460,7 +5535,13 @@ const loAggregateCheck = async ({
 				{ editable: servingInstall.editable === true },
 			)
 		: null;
-	const { service, serviceDir } = await loadUpdateServiceModule();
+	 * The log lines the check writes, when a case asserts on them. The drift's own
+	 * claim is that EVERY branch says what it did, including the ones that do nothing
+	 * - the branch the first cut returned silently on (review round 1, R1 and R7) -
+	 * and a claim about a log can only be checked by reading one.
+	 */
+	globalThis.__loTestLogs = [];
+	const logs = globalThis.__loTestLogs;	const { service, serviceDir } = await loadUpdateServiceModule();
 	const sent = [];
 	let interval = null;
 	let health = null;
@@ -5507,9 +5588,20 @@ const loAggregateCheck = async ({
 				},
 			},
 			backendManagerStub(
-				service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+				service.LocalOperatorStartupMode[startupMode],
 				() => updateService,
-				{ bootVersion, restarts },
+				{
+					bootVersion,
+					restarts,
+					installPrefix: servingPrefix,
+					managedByThisApp,
+					owned: owned ?? {
+						owned: true,
+						because: "this app process started it",
+					},
+					workState,
+					sessionStreamOpen,
+				},
 			),
 		);
 		interval = updateService.updateCheckInterval;
@@ -5538,6 +5630,10 @@ const loAggregateCheck = async ({
 		updateService.resolveInstallIdentity = async () => ({
 			path: "/synthetic/bin/local-operator",
 			realPath: "/synthetic/bin/local-operator",
+			// The prefix a daemon spawned from this install reports in its own serve
+			// record, which is what decides that the plan's reading IS the serving
+			// install's reading (`driftInstallReading`).
+			venvPrefix: installPrefix,
 			version: installVersion,
 		});
 		globalThis.__loTestAppCheck = appCheck;
@@ -5603,6 +5699,7 @@ const loAggregateCheck = async ({
 			rejected,
 			service: updateService,
 			restarts,
+			logs,
 		};
 	} finally {
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
@@ -5616,6 +5713,8 @@ const loAggregateCheck = async ({
 		}
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestNetIsOnline;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestLogs;
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
@@ -5773,6 +5872,15 @@ test("a check that proved both channels current earns the affirmation", async ()
  * check compared the install against the PUBLISHED release and never the process
  * against the install. The two readings here are the same pair, and the assertion
  * is that the check now asks the manager to restart the daemon onto the install.
+ *
+ * THIS CASE IS ALSO THE TRAP'S OWN PIN, and it has to stay that way: the reading
+ * that says what the daemon is RUNNING is 0.54.43, while the reading that would be
+ * convenient for it - the daemon's own `/health`, which this fixture scripts to
+ * 0.54.44 - is the one a stale process answers with the on-disk version. If the
+ * wiring ever reached for `/health` on the running side there would be no skew
+ * here and this assertion would fail, which is the only behavioural way to hold
+ * the rule `backend-version-drift.ts` states in prose (review round 1, R8: the
+ * source-text slice that used to assert it failed on a formatter line-wrap).
  */
 test("a server that booted from an older build is restarted onto the install", async () => {
 	const { verdict, restarts } = await loAggregateCheck({
@@ -5814,6 +5922,251 @@ test("a server on the installed build is left alone", async () => {
 		restarts,
 		[],
 		"a server on the installed build was restarted",
+	);
+});
+
+/**
+ * R1 of round 1, which is the mode the app actually runs in.
+ *
+ * `APP_BUNDLED_VENV` is the only mode where the app spawns its own daemon, and it
+ * is the mode the operator's machine logged 66 times. The first cut could not
+ * repair the drift there AT ALL: the install side of the comparison came from
+ * `plan.installedInstallVersion`, which is null for every mode whose environment
+ * the app owns, so the check computed no skew and returned before logging. The
+ * install reading for this mode is the serving process's own environment, which
+ * `/health` answers - and the boot reading below is still older than it, so the
+ * repair fires.
+ */
+test("the app-owned mode repairs the drift, and says so", async () => {
+	const { restarts, logs } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		startupMode: "APP_BUNDLED_VENV",
+		// The daemon answers `/health` with the build installed on disk, which for
+		// its own environment IS the install reading; the process itself booted on
+		// 0.54.43.
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		bootVersion: "0.54.43",
+		managedByThisApp: true,
+	});
+
+	assert.deepEqual(
+		restarts,
+		["0.54.43"],
+		"the app-owned mode left its own stale daemon serving the old build",
+	);
+	assert.ok(
+		logs.some((line) => line.includes("booted on 0.54.43")),
+		`the repair left no trace in the log: ${logs.join(" | ")}`,
+	);
+});
+
+/**
+ * R2 of round 1: a restart may not kill a turn, and the guard has a real signal.
+ *
+ * A turn is running in the daemon when the first check fires (`workState`
+ * "busy" -> the roster's `live_state`), so the restart is held - and the second
+ * check, with the machine idle, is what lands it. The hold is unbounded on
+ * purpose: a count that ran out mid-turn would restart into the turn it was
+ * waiting for.
+ */
+test("a turn in flight defers the restart until the server is idle", async () => {
+	let workState = "busy";
+	const { restarts, logs } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.43",
+		workState: () => workState,
+		probe: async (service) => {
+			workState = "idle";
+			await service.checkForAllUpdates(false);
+		},
+	});
+
+	assert.deepEqual(
+		restarts,
+		["0.54.43"],
+		"the restart did not wait for the turn to finish, or never landed",
+	);
+	assert.ok(
+		logs.some((line) => line.includes("a turn is running in the server")),
+		`the deferred restart was not logged as deferred: ${logs.join(" | ")}`,
+	);
+});
+
+/**
+ * R4 of round 1: the read could not be taken, so nothing is restarted.
+ *
+ * `unknown` is not `idle`. A `sessions.list` that did not answer, or a daemon
+ * too old to publish `live_state`, must not licence a restart that could land on
+ * a turn this app cannot see - and the state is logged rather than passed over.
+ */
+test("an unreadable work state holds the restart instead of assuming quiet", async () => {
+	const { restarts, logs } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.43",
+		workState: "unknown",
+	});
+
+	assert.deepEqual(
+		restarts,
+		[],
+		"a restart was landed on a work state this app could not read",
+	);
+	assert.ok(
+		logs.some((line) => line.includes("work state could not be read")),
+		`the unreadable state was not logged: ${logs.join(" | ")}`,
+	);
+});
+
+/**
+ * R4 of round 1: the deferral count, which had no test at all.
+ *
+ * An open conversation is a VIEW rather than a turn, so it defers exactly one
+ * check and the next one restarts. Both halves of the count are driven here: the
+ * first check increments it (`session-stream-open`), the second - with the
+ * renderer having let go - restarts rather than deferring again forever.
+ */
+test("an open conversation defers one check, and the next one restarts", async () => {
+	let open = true;
+	const { restarts, logs } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.43",
+		sessionStreamOpen: () => open,
+		probe: async (service) => {
+			open = false;
+			await service.checkForAllUpdates(false);
+		},
+	});
+
+	assert.deepEqual(restarts, ["0.54.43"]);
+	assert.ok(
+		logs.some((line) => line.includes("a conversation is open")),
+		`the courtesy deferral was not logged: ${logs.join(" | ")}`,
+	);
+});
+
+/**
+ * R4 of round 1: the branch that stops a restart which did not move anything.
+ *
+ * A skew that survives its own restart would otherwise become a five-minute kill
+ * loop, so the pair restarted for is remembered. Two checks on the same readings:
+ * the first restarts, the second says why it will not do it again.
+ */
+test("a restart that did not move the server is not repeated", async () => {
+	const { restarts, logs } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.43",
+		probe: async (service) => service.checkForAllUpdates(false),
+	});
+
+	assert.deepEqual(
+		restarts,
+		["0.54.43"],
+		"the check restarted again for a skew the first restart did not move",
+	);
+	assert.ok(
+		logs.some((line) =>
+			line.includes("still on 0.54.43 after being restarted"),
+		),
+		`the suppressed repeat was not logged: ${logs.join(" | ")}`,
+	);
+});
+
+/**
+ * R1 and R7 of round 1: the paths that do NOT act, and what they say.
+ *
+ * The first cut returned before logging anything for every non-stale reading,
+ * which is how the repair sat inert on the machine that reported the incident
+ * with nothing in the log to say so. Each of these is a different absence and
+ * each has to name itself: an owned daemon deliberately left alone, a comparison
+ * between two installs nobody has shown to be the same one, and a machine where
+ * the readings simply agree.
+ */
+test("the checks that do not act say which reading they saw", async () => {
+	// Not this app's daemon to bounce.
+	const notOurs = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.43",
+		owned: {
+			owned: false,
+			because: "it runs from /usr/local/venv, which this app does not manage",
+		},
+	});
+	assert.deepEqual(notOurs.restarts, []);
+	assert.ok(
+		notOurs.logs.some((line) =>
+			line.includes("does not restart a server it did not start"),
+		),
+		`the refusal was not logged: ${notOurs.logs.join(" | ")}`,
+	);
+
+	// The plan's install and the daemon's own environment are two different
+	// installs, and nothing ties them together: no comparison is made.
+	const twoInstalls = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.43",
+		installPrefix: "/usr/local/venv",
+		servingPrefix: "/usr/local/venv-other",
+		managedByThisApp: false,
+	});
+	assert.deepEqual(twoInstalls.restarts, []);
+	assert.ok(
+		twoInstalls.logs.some((line) => line.includes("cannot be told")),
+		`an unanswerable comparison was not logged: ${twoInstalls.logs.join(" | ")}`,
+	);
+
+	// The ordinary machine: nothing to repair, stated rather than passed over.
+	const agreeing = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.44",
+	});
+	assert.deepEqual(agreeing.restarts, []);
+	assert.ok(
+		agreeing.logs.some(
+			(line) =>
+				line.includes("No server version drift to repair") &&
+				line.includes("the server loaded the installed build"),
+		),
+		`the agreeing case left no trace: ${agreeing.logs.join(" | ")}`,
+	);
+
+	// And a daemon whose record carries no boot version at all - the state the
+	// rest of this file's cases run in - says THAT, rather than nothing.
+	assert.ok(
+		agreeing.logs.some((line) =>
+			line.includes("No server version drift to repair"),
+		),
+	);
+	const noRecord = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+	});
+	assert.ok(
+		noRecord.logs.some((line) => line.includes("carries no boot version")),
+		`a record-less daemon left no trace: ${noRecord.logs.join(" | ")}`,
 	);
 });
 
@@ -6763,15 +7116,25 @@ const driveGlobalUpdate = async ({
 			return true;
 		},
 		/*
-		 * The drift surface (`backend-version-drift.ts`), answered the way this
-		 * fixture's world contains it: this adapter stands in for a manager attached to
-		 * a daemon whose `/health` it scripts, and it plants no serve RECORD - so the
-		 * boot reading is the absence a record-less daemon gives, and no case here
-		 * changes behaviour because of it. A case about the skew names a `bootVersion`
-		 * where the fixture builds one (`loAggregateCheck`, and the two cases below it);
-		 * `restarts` above is the same call recorder those cases read.
+		 * The serving-install surface (`backend-version-drift.ts`), answered the way this
+		 * fixture's world contains it: this adapter stands in for a manager attached to a
+		 * daemon whose `/health` it scripts, and it plants no serve RECORD - so the boot
+		 * reading is the absence a record-less daemon gives, and no case here changes
+		 * behaviour because of it. A case about the skew names a `bootVersion` where the
+		 * fixture builds one (`loAggregateCheck`, and the cases below it); `restarts`
+		 * above is the same call recorder those cases read.
 		 */
-		getAttachedBootVersion: () => null,
+		servingInstall: () => ({
+			readings: {
+				bootVersion: null,
+				prefix: "",
+				installKind: "",
+				startedByApp: false,
+			},
+			managedByThisApp: false,
+			owned: { owned: !external, because: "this fixture's own answer" },
+		}),
+		servingWorkState: async () => "idle",
 		hasOpenSessionStreams: () => false,
 		checkIsAutoUpdating: () => false,
 	};
