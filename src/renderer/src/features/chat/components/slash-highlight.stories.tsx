@@ -1,4 +1,7 @@
-import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import {
+	desktopFeatureEnabled,
+	desktopKeys,
+} from "@shared/api/local-operator/desktop-hooks";
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 /*
@@ -29,6 +32,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Message } from "../types/message";
 import { MessageInput } from "./message-input";
+import type { SlashDispatchOutcome } from "./slash-dispatch";
+import type { SlashCommandInvocation } from "./slash-submit";
 
 /* ------------------------------------------------------------------ fixtures */
 
@@ -518,6 +523,30 @@ window.electron = {
  * re-render re-seeds the same key.
  */
 /**
+ * The y term of a computed `transform`, in px, and 0 for `none`.
+ *
+ * The mirror's window is kept on the textarea's by writing `translateY(-scrollTop)`
+ * straight to the node, so that term is the value under test: `matrix(a, b, c, d,
+ * tx, ty)` keeps it last, and `translateY(y)` — which Chromium resolves to a matrix
+ * for any non-`none` value — has it first.
+ */
+function readTranslateY(element: HTMLElement): number {
+	const transform = getComputedStyle(element).transform;
+	if (!transform || transform === "none") return 0;
+	const parts = transform
+		.slice(transform.indexOf("(") + 1, transform.lastIndexOf(")"))
+		.split(",");
+	return Number.parseFloat(parts.length >= 6 ? parts[5] : parts[0]) || 0;
+}
+
+/**
+ * The transparent-caret reading the settled pass refuses, as a named constant: a
+ * literal at the call site is what the linter's `useTopLevelRegex` rule flags, and
+ * the reason the pass refuses is easier to read beside the guard anyway.
+ */
+const TRANSPARENT = /^rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)$/;
+
+/**
  * How many times the settled pass may be re-taken when it reads a transparent
  * caret under a rendered mirror (see the guard in `GeometryProbe`). Three attempts
  * over ~450ms is far longer than the theme-CSS race that produces the reading, and
@@ -540,6 +569,34 @@ const EMPTY_INPUT = {
 };
 
 /**
+ * THE HARNESS'S OWN DISPATCHER — half of the capability the tint is gated on.
+ *
+ * The highlight's gate asks the mount's planner whether Enter would run the word,
+ * and this composer's planner needs the feature ON *and* somewhere to hand the
+ * command (`slash.available && Boolean(onSlashCommand)`). The bridge below
+ * advertises the `commands` feature; this is the other half. Without it the gate
+ * is correct and the answer for every harness draft is "send" — nothing paints,
+ * which is why the component briefly took an `enabled` override instead and, in
+ * doing so, let the paint and Enter answer from different capabilities (code
+ * review round 1 MAJOR 1). A harness that wants to photograph the tint therefore
+ * has to BE a mount that would run the command: it supplies a dispatcher.
+ *
+ * It RECORDS rather than runs — the dialog a command opens is the dispatcher's
+ * path, which this surface does not render — and it answers `consumed`, the same
+ * outcome and the same recorder idiom as the composer's own gesture harness
+ * (`message-input.stories.tsx`). No play function in this file presses Enter, so
+ * the record is never read; it exists so the prop is a real dispatcher rather
+ * than a function that would lie if it were called.
+ */
+const dispatchedInHarness: SlashCommandInvocation[] = [];
+const harnessDispatch = async (
+	invocation: SlashCommandInvocation,
+): Promise<SlashDispatchOutcome> => {
+	dispatchedInHarness.push(invocation);
+	return "consumed";
+};
+
+/**
  * The composer with a draft in it, seeded the way the app seeds one.
  *
  * The store write happens in the PARENT's render, before `MessageInput` mounts,
@@ -552,12 +609,43 @@ const Draft = ({
 	label,
 	draft,
 	unavailable = false,
+	narrowTo,
 }: {
 	label: string;
 	draft: string;
 	unavailable?: boolean;
+	/**
+	 * Narrow the composer's own box to this CSS width, by its tour tag — the same
+	 * handle the driver scene narrows for its 360px probe.
+	 *
+	 * HERE rather than in the probe that first needed it, because the boundary case
+	 * is a STATE a frame should show on its own (`clipped-boundary`) as well as a
+	 * readback in the geometry panel, and two copies of a width write is how one of
+	 * them ends up measuring a column the other one sets.
+	 *
+	 * WHY A WIDTH AT ALL. The clipped case QA round 1 Q1 measured is a 78-character
+	 * draft against a 782px column: 780.67px of advance at the textarea's own
+	 * metrics, 782.77px with the command run a real weight heavier. The defect lives
+	 * in that 2.1px window — the same draft is one row at BOTH weights on a wider
+	 * column — so a frame or a guard that has to be able to FAIL when the weight
+	 * comes back has to reproduce the column as well as the draft.
+	 */
+	narrowTo?: number;
 }) => {
 	const conversationId = conversationIdFor(label);
+	const boxRef = useRef<HTMLDivElement | null>(null);
+	useLayoutEffect(() => {
+		if (narrowTo === undefined) return;
+		const target = boxRef.current?.querySelector(
+			'[data-tour-tag="chat-input-textarea"]',
+		) as HTMLElement | null;
+		if (!target) {
+			throw new Error(
+				"the narrow harness found no composer box to size; its frame would show the full-width column and the boundary case it exists for would go unmeasured",
+			);
+		}
+		target.style.width = `${narrowTo}px`;
+	}, [narrowTo]);
 	useConversationInputStore.setState((state) => ({
 		inputByConversation: {
 			...state.inputByConversation,
@@ -568,20 +656,23 @@ const Draft = ({
 		},
 	}));
 	return (
-		<MessageInput
-			isLoading={false}
-			messages={NONEMPTY}
-			conversationId={conversationId}
-			/*
-			 * A session's props, so the slash surface treats this pane as live and
-			 * the roster query is enabled — which is what the NAME run reads. The
-			 * frontend snapshot is null because none of these frames is about the
-			 * status strip.
-			 */
-			sessionStatus={{ frontend: null, onCommand: () => {} }}
-			unavailable={unavailable}
-			onSendMessage={async () => true}
-		/>
+		<div ref={boxRef} className={cn("contents")}>
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId={conversationId}
+				/*
+				 * A session's props, so the slash surface treats this pane as live and
+				 * the roster query is enabled — which is what the NAME run reads. The
+				 * frontend snapshot is null because none of these frames is about the
+				 * status strip.
+				 */
+				sessionStatus={{ frontend: null, onCommand: () => {} }}
+				unavailable={unavailable}
+				onSendMessage={async () => true}
+				onSlashCommand={harnessDispatch}
+			/>
+		</div>
 	);
 };
 
@@ -624,6 +715,7 @@ const TypedDraft = ({ label }: { label: string }) => {
 			conversationId={conversationId}
 			sessionStatus={{ frontend: null, onCommand: () => {} }}
 			onSendMessage={async () => true}
+			onSlashCommand={harnessDispatch}
 		/>
 	);
 };
@@ -827,16 +919,34 @@ export const DisabledAndPlaceholder: Story = {
 	),
 };
 
+export const ClippedBoundary: Story = {
+	name: "clipped-boundary",
+	render: () => (
+		<Frame
+			label="clipped-boundary — the 78-character draft QA round 1 Q1 measured, at that report's own 782px column: both layers are one row, so the whole draft is visible"
+			width={900}
+		>
+			<Draft
+				label="clipped-boundary"
+				narrowTo={832}
+				draft={`/agent coder ${"w".repeat(65)}`}
+			/>
+		</Frame>
+	),
+};
+
 /**
  * The same readback `scripts/renderer-driver.mjs --scene composer` writes, in the
  * one environment that HAS a command vocabulary.
  *
- * WHY IT IS HERE AND NOT IN THE DRIVER: a driver run has no backend by design
- * (it asserts the app holds no connection to the operator's), so the chat pane
- * renders its unreachable-backend state and mounts no composer at all — measured,
- * and the driver scene records that rather than reporting an empty pass. The
- * highlight's vocabulary comes from `commands.list`, so the mirror can only be
- * measured where that op answers: here, with the fixture above.
+ * WHY IT IS HERE AND NOT IN THE DRIVER: a driver run without `--backend` has no
+ * backend by design (it asserts the app holds no connection to the operator's), so
+ * the chat pane renders its unreachable-backend state and mounts no composer at
+ * all — measured, and the driver scene records that rather than reporting an empty
+ * pass. (With `--backend` the composer DOES mount once that backend has a session
+ * — QA round 1 Q2 — and the driver scene measures it there.) The highlight's
+ * vocabulary comes from `commands.list`, so the mirror can only be measured where
+ * that op answers: here, with the fixture above.
  *
  * WHY THE NUMBERS ARE IN THE FRAME: a still shows a tint NEAR a word and only the
  * numbers say whether it is ON it. `mirror/textarea` (client widths), `font`,
@@ -848,6 +958,8 @@ const GeometryProbe = ({
 	label,
 	draft,
 	forceScrollbar = false,
+	scrollTopPx,
+	narrowTo,
 }: {
 	label: string;
 	draft: string;
@@ -859,6 +971,40 @@ const GeometryProbe = ({
 	 * should toggle machine-wide, so the probe states what it did instead.
 	 */
 	forceScrollbar?: boolean;
+	/**
+	 * Park the box at this scroll offset before the settled pass, for the probes
+	 * whose draft is tall enough to scroll.
+	 *
+	 * WHY IT IS WRITTEN RATHER THAN PRODUCED BY THE CARET. The composer scrolls its
+	 * own caret into view, so a tall draft is already scrolled when the probe mounts
+	 * — and for the draft this matters for (a command with a long instruction, one
+	 * logical line that soft-wraps) the caret sits at the END, i.e. the box shows the
+	 * last rows and the tinted first row is out of view. A frame can show the tint or
+	 * the scroll, not both, so the probe nudges the box back up: `scrollTop > 0` with
+	 * the run's own row still visible, which is the state a scrollbar drag lands in
+	 * and the one where the two layers' windows have to agree (code review round 1
+	 * MINOR 1 — the sync was implemented and measured nowhere).
+	 *
+	 * The write is a SCROLL GESTURE, not a caret move: it fires the textarea's own
+	 * `scroll` event, which is what the mirror's writer listens for, and the settled
+	 * pass runs two frames later so the transform under measurement is the one that
+	 * event produced rather than the one before it.
+	 */
+	scrollTopPx?: number;
+	/**
+	 * Narrow the composer's own box to this CSS width before measuring, for the probe
+	 * that has to sit at a WRAP BOUNDARY.
+	 *
+	 * WHY A WIDTH RATHER THAN A LONGER DRAFT. The clipped case QA round 1 Q1 measured
+	 * is a 78-character draft against a 782px column: 780.67px of advance at the
+	 * textarea's own metrics, 782.77px with the run a real weight heavier. The defect
+	 * exists only in that 2.1px window — the same draft is one row at BOTH weights on
+	 * a wider column — so a probe that wants to be able to FAIL when the weight comes
+	 * back has to reproduce the column as well as the draft. `narrowTo` is the box's
+	 * width; the frame reports the resulting content box so the two numbers can be
+	 * compared with QA's rather than assumed to match.
+	 */
+	narrowTo?: number;
 }) => {
 	const conversationId = conversationIdFor(label);
 	const queryClient = useQueryClient();
@@ -886,6 +1032,14 @@ const GeometryProbe = ({
 			);
 		}
 	}, [queryClient, conversationId]);
+	/*
+	 * The deps below are RE-MEASURE TRIGGERS rather than values read in the body —
+	 * the same convention the composer's own autosize effect states: `draft` is what
+	 * the probe measures and `scrollTopPx` is the offset it parks. The capability row
+	 * is read from the query cache at measure time, deliberately: it is the value the
+	 * composer's own gate reads, so re-rendering on it is not what this effect needs.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: deps are re-measure triggers, not values read in the body
 	useLayoutEffect(() => {
 		const box = boxRef.current;
 		if (!box) return;
@@ -912,6 +1066,30 @@ const GeometryProbe = ({
 		const measure = (pass: "settled" | "confirm-400ms" | "confirm-1500ms") => {
 			const textarea = box.querySelector("textarea");
 			if (!textarea) return;
+			/*
+			 * THE SCROLL GESTURE, applied INSIDE the settled pass and verified there.
+			 *
+			 * Writing it once before the first pass is not enough, and this harness
+			 * measured why: the composer autosizes the field in its own layout effect, so
+			 * an offset written a frame early is clamped away when the box it was written
+			 * against changes height — the 7-row draft here read `scrollTop 0px` with the
+			 * write in place. The pass therefore moves the box itself and RETRIES when it
+			 * had to, which is also what gives the mirror's writer (on the textarea's own
+			 * `scroll` event) the frame it needs to land in before the transform is read.
+			 */
+			if (
+				pass === "settled" &&
+				scrollTopPx !== undefined &&
+				textarea.scrollHeight > textarea.clientHeight &&
+				Math.abs(textarea.scrollTop - scrollTopPx) > 0.5
+			) {
+				textarea.scrollTop = scrollTopPx;
+				if (settleRetries < MAX_SETTLE_RETRIES) {
+					settleRetries += 1;
+					setTimeout(() => measure("settled"), 150);
+					return;
+				}
+			}
 			const t = getComputedStyle(textarea);
 			const lineHeight = Number.parseFloat(t.lineHeight);
 			const mirror = box.querySelector<HTMLElement>("[data-composer-mirror]");
@@ -930,9 +1108,31 @@ const GeometryProbe = ({
 					useConversationInputStore.getState().inputByConversation,
 				).join(","),
 				"textarea color": t.color,
+				/*
+				 * THE CAPABILITY THE FRAME PAINTS UNDER, read from the same cache the
+				 * composer's gate reads (`useDesktopCapabilities` -> `desktopKeys.capabilities`
+				 * -> `desktopFeatureEnabled`). It is a row here because it is the half of the
+				 * gate the frames used to take for granted: the highlight once asked the
+				 * planner with `enabled: true` so a dispatcher-less harness would still paint
+				 * (code review round 1 MAJOR 1), and this row is what makes the real value
+				 * visible beside every readback.
+				 */
+				"commands capability": String(
+					desktopFeatureEnabled(
+						queryClient.getQueryData(desktopKeys.capabilities),
+						"commands",
+					),
+				),
 				"textarea caret": t.caretColor,
 				"mirror rendered": String(Boolean(mirror)),
 				"textarea clientWidth": `${textarea.clientWidth}px`,
+				/*
+				 * The column the wrap is measured against: the client box less its own
+				 * padding and any scrollbar gutter. Reported because the boundary probe's whole
+				 * premise is a specific number of pixels (`narrowTo`), and a probe that measured
+				 * a column it did not state would be claiming a case it had not reproduced.
+				 */
+				"textarea content width": `${textarea.clientWidth - Number.parseFloat(t.paddingLeft) - Number.parseFloat(t.paddingRight) - (textarea.offsetWidth - textarea.clientWidth)}px`,
 				"scrollbar gutter": `${textarea.offsetWidth - textarea.clientWidth}px`,
 				"textarea rows": String(
 					Math.round(
@@ -942,6 +1142,17 @@ const GeometryProbe = ({
 							lineHeight,
 					),
 				),
+				/*
+				 * THE TWO HEIGHTS, because they are the whole of QA round 1 Q1: the
+				 * textarea's layout is the one the caret, the selection and
+				 * click-positioning live on, the mirror is the layer that PAINTS the
+				 * draft, and a mirror that wraps one character earlier puts its tail
+				 * behind its own `overflow: hidden` — measured there as 65 of 78 typed
+				 * characters invisible. Read raw as well as in rows, so a frame carries
+				 * the pair the divergence was found in (34px vs 55px).
+				 */
+				"textarea scrollHeight": `${textarea.scrollHeight}px`,
+				"textarea scrollTop": `${textarea.scrollTop}px`,
 				font: t.font,
 			};
 			if (mirror) {
@@ -950,21 +1161,29 @@ const GeometryProbe = ({
 				entry["mirror clientWidth"] = `${mirror.clientWidth}px`;
 				entry["fonts equal"] = String(m.font === t.font);
 				/*
-				 * The WEIGHT channel, as a number. It is the whole of obsidian's
-				 * separation (its `info` IS its `ink` IS its `accent`, so the command
-				 * run is distinguished by the semibold step alone — the pinned case in
-				 * `palette-contract.ts`), and a still cannot show it: the design round
-				 * asked for the run's and the prose's `fontWeight` beside the tint's
-				 * numbers so the claim is read off the frame set rather than argued.
+				 * THE WEIGHT CHANNEL, as numbers. It is the whole of obsidian's
+				 * separation (its `info` IS its `ink` IS its `accent`, so the command run
+				 * is distinguished by the weight step alone — the pinned case in
+				 * `palette-contract.ts`), and a still cannot show it.
+				 *
+				 * READ AS `fontWeight` PLUS `textStroke`, because the step is PAINTED
+				 * rather than laid out: `font-weight` moves the advances, so the mirror
+				 * wrapped where the textarea did not and clipped the user's text (QA
+				 * round 1 Q1), and the run now takes a 0.5px stroke instead — the design
+				 * round's own measurement (a 4px stem against prose's 3px at dsf 2) in a
+				 * channel that changes no advance. The pair is what a frame has to carry
+				 * for the claim to be readable: `fontWeight 400` beside a non-zero stroke
+				 * is the fix, and `fontWeight 600` here would be the defect returning.
 				 */
-				entry["run fontWeights"] =
+				entry["run fontWeight+stroke"] =
 					[...mirror.querySelectorAll<HTMLElement>("[data-slash-run]")]
-						.map(
-							(el) =>
-								`${el.dataset.slashRun}=${getComputedStyle(el).fontWeight}`,
-						)
+						.map((el) => {
+							const s = getComputedStyle(el);
+							return `${el.dataset.slashRun}=${s.fontWeight}+${s.webkitTextStrokeWidth || "0px"}`;
+						})
 						.join(",") || "none";
-				entry["prose fontWeight"] = m.fontWeight;
+				entry["prose fontWeight+stroke"] =
+					`${m.fontWeight}+${m.webkitTextStrokeWidth || "0px"}`;
 				entry["mirror rows"] = String(
 					Math.round(
 						(mirror.scrollHeight -
@@ -973,8 +1192,38 @@ const GeometryProbe = ({
 							Number.parseFloat(m.lineHeight),
 					),
 				);
+				entry["mirror scrollHeight"] = `${mirror.scrollHeight}px`;
+				/*
+				 * THE PARITY CLAIM ITSELF, in the terms QA round 1 measured it: the mirror's
+				 * content height against the textarea's. A mirror even one row taller is a
+				 * mirror wrapping a character the textarea did not, and its own
+				 * `overflow: hidden` then hides the tail of what the user typed — so the
+				 * settled pass THROWS on it rather than printing a number nobody reads
+				 * (below, beside the caret guard, for the same reason).
+				 */
+				entry["scrollHeight parity"] =
+					mirror.scrollHeight === textarea.scrollHeight
+						? `${mirror.scrollHeight}px == ${textarea.scrollHeight}px`
+						: `${mirror.scrollHeight}px vs ${textarea.scrollHeight}px MISMATCH`;
 				entry["paddingRight (mirror vs textarea+gutter)"] =
 					`${Number.parseFloat(m.paddingRight)}px vs ${Number.parseFloat(t.paddingRight) + (textarea.offsetWidth - textarea.clientWidth)}px`;
+				/*
+				 * THE SCROLLED HALF OF THE SAME CLAIM (code review round 1 MINOR 1). The two
+				 * layers show the same window of the draft because the mirror is shifted by
+				 * `translateY(-scrollTop)` on the textarea's own `scroll` event, and that was
+				 * implemented and measured NOWHERE: the probes never scrolled, and the one
+				 * reader in the repo was the deferred driver scene. Read on every probe,
+				 * because a box the composer scrolled to its caret is a scrolled box even
+				 * when nobody asked for an offset — the failure it rules out is a tint frozen
+				 * by whole lines while its own glyphs keep moving.
+				 */
+				const translateY = readTranslateY(mirror);
+				entry["mirror translateY"] =
+					`${mirror.style.transform || "none"} / ${translateY.toFixed(2)}px vs -${textarea.scrollTop}px expected`;
+				entry["scroll parity"] =
+					Math.abs(translateY + textarea.scrollTop) <= 0.5
+						? `${textarea.scrollTop}px scrolled, the two windows in step`
+						: `MISMATCH: scrollTop ${textarea.scrollTop}px, translateY ${translateY.toFixed(2)}px`;
 				let before = "";
 				/*
 				 * The reference the runs are measured AGAINST: the mirror's own first
@@ -1002,10 +1251,37 @@ const GeometryProbe = ({
 								firstLineTop + newlines * Number.parseFloat(m.lineHeight);
 							entry[`run ${el.dataset.slashRun} "${el.textContent}" top`] =
 								`${(rect.top - box0.top).toFixed(2)}px vs ${expected.toFixed(2)}px expected`;
+							/*
+							 * THE RUN'S ROW IS DELIBERATELY TRANSFORM-INVARIANT (it compares the run
+							 * to the mirror's own first line, and the two move together), so the
+							 * SCROLLED half of the parity claim is measured once per mirror below
+							 * instead: the mirror's `translateY` against the textarea's scroll
+							 * position (code review round 1 MINOR 1).
+							 */
 						}
 					}
 					before += node.textContent ?? "";
 				}
+				/*
+				 * THE SYNC MECHANISM, read off the DOM rather than predicted: the mirror is
+				 * shifted by its own `translateY(-scrollTop)`, written on the textarea's
+				 * `scroll` event (`composer-highlight.tsx`). A transform one frame stale
+				 * freezes the tinted word while its glyphs keep moving, by whole lines — the
+				 * failure the claim "the two layers show the same window" rules out and the
+				 * only one of the two layers can produce.
+				 *
+				 * The inline declaration is compared as written (`-Npx`) and the computed
+				 * matrix's `f` term as resolved, because the claim is about both: the writer
+				 * is what runs per scroll frame, the matrix is what the compositor lays out.
+				 */
+				const transform = mirror.style.transform;
+				const matrix = getComputedStyle(mirror).transform;
+				const translated =
+					matrix === "none"
+						? 0
+						: Number.parseFloat(matrix.split(",")[5] ?? "0");
+				entry["mirror translateY"] =
+					`${transform || "none"} / ${translated.toFixed(2)}px vs -${textarea.scrollTop}px expected`;
 			}
 			/*
 			 * The FRAME carries the first pass, and a later pass only WARNS.
@@ -1041,7 +1317,7 @@ const GeometryProbe = ({
 			if (
 				pass === "settled" &&
 				entry["mirror rendered"] === "true" &&
-				/^rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)$/.test(caret)
+				TRANSPARENT.test(caret)
 			) {
 				if (settleRetries < MAX_SETTLE_RETRIES) {
 					settleRetries += 1;
@@ -1050,6 +1326,50 @@ const GeometryProbe = ({
 				}
 				throw new Error(
 					`geometry readback: the caret is transparent (${caret}) while the mirror rendered "${draft}" - a state the composer never rests in, so the frame would describe a moment nothing on screen shows (design round 4 D14)`,
+				);
+			}
+			/*
+			 * AND THE SCROLLED WINDOW IS PART OF THAT SAME CLAIM, failing the capture for the
+			 * same reason a wrap mismatch does: the mirror is the only layer that paints the
+			 * draft, so a transform that has not kept up with the box's scroll shows a
+			 * frame in which the tint sits beside its own glyphs, displaced by whole lines
+			 * (code review round 1 MINOR 1). A bounded re-try first, because the writer runs
+			 * on the textarea's `scroll` event and the probe's own offset is written just
+			 * before the first pass is scheduled.
+			 */
+			if (
+				pass === "settled" &&
+				entry["mirror rendered"] === "true" &&
+				entry["scroll parity"]?.startsWith("MISMATCH") &&
+				(entry["textarea scrollTop"] ?? "0px") !== "0px"
+			) {
+				if (settleRetries < MAX_SETTLE_RETRIES) {
+					settleRetries += 1;
+					setTimeout(() => measure("settled"), 150);
+					return;
+				}
+				throw new Error(
+					`geometry readback: ${entry["scroll parity"]} for ${JSON.stringify(draft)} - the mirror's window has to be the textarea's, or the frame shows the tint displaced against its own glyphs (code review round 1 MINOR 1)`,
+				);
+			}
+			/*
+			 * AND A MIRROR THAT WRAPS WHERE THE TEXTAREA DOES NOT IS NOT A FRAME EITHER, for
+			 * the harder reason: the mirror is the layer that PAINTS the draft, the
+			 * textarea's glyphs are transparent, and the mirror's own `overflow: hidden`
+			 * cuts off whatever it wrapped onto a line it cannot show. Measured on this
+			 * branch before the fix (QA round 1 Q1): `/agent coder ` + 65 characters is one
+			 * row at the textarea's own metrics and two at the mirror's, and the frame showed
+			 * `/agent coder` alone with 65 typed characters invisible behind it. A frame set
+			 * whose numbers say `MISMATCH` would be shipping that state as evidence that the
+			 * highlight works, so the settled pass fails the capture instead.
+			 */
+			if (
+				pass === "settled" &&
+				entry["mirror rendered"] === "true" &&
+				entry["scrollHeight parity"]?.includes("MISMATCH")
+			) {
+				throw new Error(
+					`geometry readback: the mirror's content height is ${entry["mirror scrollHeight"]} against the textarea's ${entry["textarea scrollHeight"]} for ${JSON.stringify(draft)} - the mirror paints every glyph, so a mirror that wraps a character earlier hides the tail of the draft behind its own overflow (QA round 1 Q1)`,
 				);
 			}
 
@@ -1065,6 +1385,20 @@ const GeometryProbe = ({
 			// headless page as well as off the frame.
 			console.log(
 				`[slash-highlight-geometry] ${JSON.stringify({ draft, entry })}`,
+			);
+			/*
+			 * And a ONE-LINE digest beside it, because the object above is long enough
+			 * that a log reader truncates the rows that matter. This is the parity claim
+			 * in four numbers: the two content heights, the two row counts, and the mirror's
+			 * window against the box's scroll position.
+			 */
+			console.log(
+				`[slash-highlight-parity] ${JSON.stringify({
+					label: entry.draft,
+					heights: entry["scrollHeight parity"],
+					rows: `mirror ${entry["mirror rows"] ?? "-"} vs textarea ${entry["textarea rows"]}`,
+					scroll: entry["scroll parity"] ?? "no mirror",
+				})}`,
 			);
 		};
 		/*
@@ -1112,7 +1446,7 @@ const GeometryProbe = ({
 		 * not something this effect writes, so the only inputs the measurement has are
 		 * the draft and the fixtures seeded above.
 		 */
-	}, [draft]);
+	}, [draft, scrollTopPx]);
 	return (
 		<div
 			ref={boxRef}
@@ -1133,7 +1467,7 @@ const GeometryProbe = ({
 [data-force-scrollbar] textarea::-webkit-scrollbar { width: 15px; }
 [data-force-scrollbar] textarea::-webkit-scrollbar-thumb { background: rgb(120,120,120); }`}</style>
 			) : null}
-			<Draft label={label} draft={draft} />
+			<Draft label={label} draft={draft} narrowTo={narrowTo} />
 			<dl
 				className={cn(
 					"grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-ink-dim text-mono-sm",
@@ -1163,13 +1497,44 @@ export const Geometry: Story = {
 		>
 			<div className={cn("flex flex-col gap-8")}>
 				<GeometryProbe label="geometry-command" draft="/compact" />
+				{/*
+				 * The NAME run across a WRAP, in the shape the two layers most easily
+				 * disagree about: a command with a long instruction, one logical line, soft
+				 * wrapped past the field's own `max-h-28`. The caret is at the end of the
+				 * draft (a seeded draft's caret, `message-input.tsx`), which is a plan of
+				 * `whole` here and therefore paints both runs, and the box has scrolled the
+				 * caret into view — so the probe nudges it back up one line, which is where
+				 * the tint is in the frame AND the scroll is non-zero (`scrollTopPx`).
+				 *
+				 * The earlier draft here was a two-line `/team` instruction, which main's
+				 * planner sends (the multi-line shape) and which therefore painted nothing
+				 * at ANY caret — the divergence the state stories declare
+				 * (`name-instruction-multiline`, design round 1 D2) — so the wrapped-run
+				 * geometry was being read off a panel with no runs in it.
+				 */}
 				<GeometryProbe
 					label="geometry-name"
+					scrollTopPx={12}
 					draft={
-						"/team frontend-guild review the queue\nand then send it on to the reviewer"
+						"/team frontend-guild review every file in this queue, note which of the failing cases are flaky and which are deterministic, summarise the crash reports from the TUI in the order they were filed and say which of them share a cause, call out the two wrappers that disagree about the line they paint and say which one of them is right, then hand the whole summary to the reviewer together with the commands that reproduce each of the failing cases, the backend version each of those commands was taken against, and the theme that was active at the time, so that nothing is lost in the handover and the next reader can start where this one left off without asking a question about what came before it or which of the two wrappers was telling the truth, and keep the instruction short enough that the box scrolls only a little rather than to its end"
 					}
 				/>
 				<GeometryProbe label="geometry-prose" draft="fix this /usage" />
+				{/*
+				 * THE CLIPPED CASE ITSELF, at the width and length QA round 1 Q1 measured
+				 * it: `\/agent coder ` + 65 characters is 78 characters, and 780.67px of
+				 * advance at the textarea's own metrics against a 782px column. With the
+				 * command run one real weight step heavier the mirror's line came to
+				 * 782.77px, wrapped, and hid those 65 characters behind its own `overflow:
+				 * hidden`. It is the probe the parity guard was written for: `1 row` against
+				 * `1 row` here, and a capture that throws on `MISMATCH` rather than shipping
+				 * a frame of it.
+				 */}
+				<GeometryProbe
+					label="geometry-clipped"
+					narrowTo={832}
+					draft={`/agent coder ${"w".repeat(65)}`}
+				/>
 				{/*
 				 * The scrollbar case: a wrapped NAME-list draft, which is the only kind of
 				 * multi-line draft the run rule paints (the multi-line kill exempts it),

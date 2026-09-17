@@ -1795,6 +1795,51 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const pendingCaret = useRef<number | null>(null);
 		/*
+		 * THE DRAFT'S OWN CARET, for a draft that arrives without a gesture.
+		 *
+		 * `caret` starts at 0, which is not a position a restored draft ever means
+		 * (design round 1 D1; QA round 1 Q3): the composer mounts holding the store's
+		 * text with no keystroke behind it, the state says 0 while the DOM selection
+		 * sits at the end of the draft, and every caret-anchored reading is then about
+		 * a position the user is not in. Two visible halves: the highlight asks the
+		 * planner, so a restored `/team <name> <instruction>` draft wears no tint where
+		 * the same draft paints the moment it is typed; and Enter consults the same
+		 * state (`planForDraft(newMessage, caret)`), so the restored draft is posted to
+		 * the model as prose where the identical draft a keystroke earlier was run as a
+		 * command.
+		 *
+		 * It reuses the rule this file already has for restored text — the caret goes
+		 * to the END of what was restored (`adoptRefusedPayload`: a composer left at
+		 * position 0 reads a leading line as the command to RUN) — and parks the write
+		 * in `pendingCaret` so the DOM selection and the state agree in this paint
+		 * rather than on the user's next gesture.
+		 *
+		 * ONCE per mount, and that is the whole reason for the ref: every later value
+		 * change re-runs the effect below, and seeding again would drag a caret the
+		 * user had moved to the end of the box.
+		 */
+		const caretSeeded = useRef(false);
+		/*
+		 * THE FIRST NON-EMPTY VALUE IS THE TRIGGER, not the mount, and the difference is
+		 * a real one: `useMessageInput` seeds its own `inputValue` from the store in an
+		 * EFFECT (`useState("")` then "if (storedDraft && !inputValue)"), so on the first
+		 * render this composer is empty even when the store already holds a draft — and
+		 * a mount-only version of this effect took the empty string as its answer and
+		 * left the caret at 0, which is the very state it exists to remove (measured in
+		 * the Storybook probes: the seeded `/agent coder …` draft painted nothing while
+		 * the typed copy of it painted both runs). The ref still makes it ONCE: every
+		 * later edit changes `newMessage` again, and seeding there would drag a caret
+		 * the user had moved to the end of the box.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the first value is the trigger; the ref makes it once
+		useLayoutEffect(() => {
+			if (caretSeeded.current) return;
+			if (!newMessage) return;
+			caretSeeded.current = true;
+			pendingCaret.current = newMessage.length;
+			setCaret(newMessage.length);
+		}, [newMessage]);
+		/*
 		 * The last buffer React committed, so `applyCapture` can tell a write that
 		 * MOVED the box from one that only re-affirmed it. Read by the caret rule
 		 * below, which is the whole of the empty-span Escape fix.
@@ -2496,22 +2541,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * Both halves of `enabled` matter: a command needs the feature ON and
 		 * somewhere to hand it. With neither, the planner answers `send`, so nothing
 		 * is ever spliced on a path that could not run it.
+		 *
+		 * THERE IS NO OVERRIDE, and that is load-bearing (code review round 1 MAJOR 1).
+		 * This used to take an `enabled` override so the syntax highlight could ask
+		 * "is this word a command in this draft" instead of "can this mount run it" —
+		 * because the Storybook harness mounts a composer with no dispatcher. That
+		 * made the paint and Enter answer from DIFFERENT capabilities: with the
+		 * `commands` feature off, a bare `/compact` wore the command tint while Enter
+		 * posted it to the model as prose, which is the exact class this gate exists to
+		 * prevent, one layer up. A mount that paints a run must be a mount that would
+		 * run it, so the harness supplies the missing half of its own capability (a
+		 * recording dispatcher, `slash-highlight.stories.tsx`) and every caller gets
+		 * this mount's answer.
 		 */
 		const planFor = useCallback(
-			(
-				draft: string,
-				at: number,
-				gesture: "typed" | "pick" = "typed",
-				/*
-				 * `enabled` may be OVERRIDDEN by a caller asking a question about the
-				 * DRAFT rather than about this mount: the syntax highlight wants "is
-				 * this word a command in this draft" (`enabled: true`), not "can the
-				 * dispatcher run it here", which is false in every harness that
-				 * mounts the composer without a dispatcher — the story frames did
-				 * exactly that and the tint vanished from all of them.
-				 */
-				over: { enabled?: boolean } = {},
-			) =>
+			(draft: string, at: number, gesture: "typed" | "pick" = "typed") =>
 				planSlashSubmission({
 					gesture,
 					draft,
@@ -2563,9 +2607,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							: undefined,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
-					/* LAST, so a caller asking about the DRAFT (`enabled: true`) wins
-					   over this mount's own capability. */
-					...over,
 				}),
 			[
 				slash.commandNames,
@@ -2622,7 +2663,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * documented meaning — "inert text that WILL be sent" — only holds where the
 			 * word is the whole line. With text after it nothing is painted.
 			 */
-			const plan = planFor(newMessage, caret, "typed", { enabled: true });
+			/*
+			 * THE PLAN IS THIS MOUNT'S OWN, asked once and read by both the tint and
+			 * Enter (code review round 1 MAJOR 1). No capability override here: the
+			 * gate used to ask `enabled: true` so the harness's dispatcher-less
+			 * composer would still paint, which let a commands-off mount show a
+			 * tinted word Enter posts as prose. `planFor` knows this mount's
+			 * capability, and the harness supplies its half of it.
+			 */
+			const plan = planFor(newMessage, caret, "typed");
 			return runsMatchingPlan(runs, newMessage, {
 				sendsAsWritten: plan.kind === "send",
 			});

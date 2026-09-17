@@ -467,3 +467,25 @@ html .Mui-focusVisible {
 .caret-ink {
 	caret-color: var(--lo-ink);
 }
+
+/*
+ * The command run's weight step, PAINTED rather than laid out.
+ *
+ * The mirror behind the composer is the layer that paints every glyph while the
+ * textarea's own text is transparent, so its line breaking must be the
+ * textarea's — and `font-weight` is not a way to say "heavier" there: it moves
+ * the advances, the two layers wrap at different characters, and the mirror's
+ * `overflow: hidden` clips the tail of the draft the user typed (measured: 65
+ * characters of a 78-character draft, QA round 1 Q1). A stroke paints outside
+ * the glyph outline and changes no advance, so the step the design round
+ * measured (a 4px stem against prose's 3px at dsf 2) survives with the layout
+ * untouched. A stroke of width W grows a stem by W, so 0.5px is that measurement
+ * rather than a taste figure; see `RUN_INK` in `slash-highlight.ts`.
+ *
+ * A plain rule beside `.caret-ink` for the same reason as that one: this is a
+ * vendor-prefixed paint property with no Tailwind utility, and it must not depend
+ * on which chunk happened to load first.
+ */
+.slash-run-bold {
+	-webkit-text-stroke: 0.5px currentColor;
+}

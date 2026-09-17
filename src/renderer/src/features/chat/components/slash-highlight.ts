@@ -246,12 +246,36 @@ export function runsMatchingPlan(
  * the theme decides what they are, and the twelve palettes each clear their own
  * contrast floor on the composer's `surface` ground.
  *
- *   - `command` → `text-token-command` + `font-semibold`. The role is the
- *     desktop's counterpart of the TUI's `$lo-signal` (a dedicated cool role,
- *     NOT the accent), added after the design round measured that no shipped text
- *     role separates from both `ink` and `accent` in all twelve palettes. Bold
- *     mirrors the TUI's `text-style: bold`, and in obsidian the weight is the
- *     whole channel (the pinned monochrome case in `palette-contract.ts`).
+ *   - `command` → `text-token-command` + the painted weight step (`slash-run-bold`).
+ *     The role is the desktop's counterpart of the TUI's `$lo-signal` (a dedicated
+ *     cool role, NOT the accent), added after the design round measured that no
+ *     shipped text role separates from both `ink` and `accent` in all twelve
+ *     palettes. The weight step mirrors the TUI's `text-style: bold`, and in
+ *     obsidian it is the whole channel (the pinned monochrome case in
+ *     `palette-contract.ts`, where `tokenCommand` IS `ink`).
+ *
+ *     IT IS `-webkit-text-stroke`, NOT `font-weight`, and that is a correctness
+ *     constraint rather than a style choice. The mirror is the layer that paints
+ *     every glyph while the textarea's own text is transparent, so the mirror's
+ *     line breaking MUST be the textarea's; a real weight change moves the
+ *     advances and the two layers then wrap at different characters, which the
+ *     composer's own `overflow: hidden` turns into a clipped tail — measured on
+ *     this branch before the change: `/agent coder ` + 65 characters is 780.67px
+ *     at weight 400 (one row, inside the field's 782px) and 782.77px with the
+ *     command run at 600, so the mirror wrapped and swallowed **65 typed
+ *     characters** (QA round 1 Q1; the causal proof was injecting
+ *     `[data-slash-run]{font-weight:400}`, which collapsed the mirror back to the
+ *     textarea's height). A stroke paints outside the glyph outline and changes no
+ *     advance, so the weight step survives and the layout does not move — which is
+ *     what the design round asked for in as many words ("keep the weight step … by
+ *     whatever means does not move the line box").
+ *
+ *     STROKE WIDTH, from the design round's own measurement rather than from
+ *     taste: it measured the command run's `t` stem at 4 device px against prose's
+ *     3 at dsf 2, i.e. +1 device px = +0.5 CSS px, and a stroke of width W grows a
+ *     stem by exactly W (W/2 on each side). `slash-run-bold` therefore declares
+ *     0.5px, and the geometry probe reports the computed stroke beside the run's
+ *     weight so a palette or font change re-measures instead of assuming.
  *   - `name` → `text-success`. Mirroring the TUI's `$lo-string`, which borrows its
  *     green for exactly this job; the resolved argument must not collapse into
  *     the command word.
@@ -270,7 +294,7 @@ export function runsMatchingPlan(
  * step at all). Branding's rule is "disabled changes colour, never opacity".
  */
 export const RUN_INK: Record<SlashHighlightRun["kind"], string> = {
-	command: "text-token-command font-semibold",
+	command: "text-token-command slash-run-bold",
 	name: "text-success",
 	unknown: "text-ink-dim",
 };

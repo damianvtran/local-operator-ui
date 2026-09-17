@@ -253,7 +253,11 @@ export type ThemePalette = {
 	 * against in one line of the composer. obsidian is the single pinned
 	 * exception, and it is the app's recorded monochrome case: its `info` IS its
 	 * `ink`, so `code-mirror-theme.ts` already separates tokens by WEIGHT there
-	 * and `tokenCommand` is bound to `ink` with the semibold carrying the run.
+	 * and `tokenCommand` is bound to `ink` with the composer's own painted weight
+	 * step carrying the run (`slash-run-bold` — a 0.5px text stroke, which
+	 * thickens the glyph without moving its advance; a real `font-weight` here
+	 * moved the MIRROR's wrap points off the textarea's and hid the tail of the
+	 * draft behind the mirror's overflow, QA round 1 Q1).
 	 *
 	 * The TUI port's palettes author it as their own `info` where that value
 	 * clears the floors, which is most of them; the five that missed by a hair

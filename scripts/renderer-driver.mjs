@@ -4416,6 +4416,22 @@ async function sceneMentions(cdp) {
  * frame shows that the tint is somewhere near the word and only the numbers say
  * whether it is ON it.
  */
+/**
+ * The y term of a computed `transform`, in px, and 0 for `none`.
+ *
+ * The mirror's window is kept on the textarea's by writing `translateY(-scrollTop)`
+ * straight to the node, so the value under test is that term: `matrix(a, b, c, d,
+ * tx, ty)` keeps it last, and `translateY(y)` — which Chromium resolves to a matrix
+ * for any non-`none` value but need not in principle — has it first.
+ */
+function translateYOf(transform) {
+	if (!transform || transform === "none") return 0;
+	const parts = transform
+		.slice(transform.indexOf("(") + 1, transform.lastIndexOf(")"))
+		.split(",");
+	return Number.parseFloat(parts.length >= 6 ? parts[5] : parts[0]) || 0;
+}
+
 async function sceneComposer(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -4446,11 +4462,18 @@ async function sceneComposer(cdp) {
 	 * an isolated daemon at a matching build and the geometry checks below fire for
 	 * real — they assert the numbers the Storybook readback already prints.
 	 *
-	 * SO THE GEOMETRY EVIDENCE IS STORYBOOK'S, and this is stated rather than
-	 * implied: a fresh profile in front of a fresh backend is an app with no
-	 * session, and the chat pane mounts no composer until one exists (measured —
-	 * the run recorded `composerPresent: false` with its daemon admitted, QA round
-	 * 1 Q2). The scene's own value is the opposite of a measurement: it proves the
+	 * SO THE GEOMETRY EVIDENCE IS MOSTLY STORYBOOK'S, and this is stated rather than
+	 * implied: a fresh profile in front of a fresh backend is an app with NO SESSION,
+	 * and the chat pane mounts no composer until one exists (measured — the run
+	 * recorded `composerPresent: false` with its daemon admitted, QA round 1 Q2).
+	 * QA round 1 then measured the other half, which is what the earlier form of this
+	 * note got wrong: create a session on the run's own backend and route the app to
+	 * `/chat/<id>` and the composer DOES mount, with a real vocabulary and a real
+	 * tint, so a scene with `--backend` must not stand aside from the numbers below
+	 * — it runs them, and they are the assertions the deferred Storybook sweep would
+	 * otherwise be the only witness to.
+	 *
+	 * The scene's own value is otherwise the opposite of a measurement: it proves the
 	 * absence branch and the window-mode checks, and it holds the predicates the
 	 * Storybook readback's numbers must satisfy so the two rigs cannot drift. Its
 	 * two predicates were rewritten after that round, because each could never pass
@@ -4555,6 +4578,8 @@ async function sceneComposer(cdp) {
 				})(),
 				mirrorFont: m.font,
 				mirrorRows: Math.round((mirror.scrollHeight - Number.parseFloat(m.paddingTop) - Number.parseFloat(m.paddingBottom)) / Number.parseFloat(m.lineHeight)),
+				mirrorScrollHeight: mirror.scrollHeight,
+				textareaScrollHeight: ta.scrollHeight,
 				mirrorTransform: m.transform,
 				runs,
 			};
@@ -4704,6 +4729,43 @@ async function sceneComposer(cdp) {
 	})()`);
 
 	readback.frames = frames;
+
+	/*
+	 * THE SCROLLED PARITY (code review round 1 MINOR 1).
+	 *
+	 * The mirror's window is kept on the textarea's by `translateY(-scrollTop)`,
+	 * written per scroll frame, and nothing in either rig read it: the Storybook
+	 * probes measured a box that was not scrolled, and this scene did not run at
+	 * all. The failure it guards is a tint frozen one line behind its own glyphs
+	 * while the user drags the scrollbar, so the state has to be produced — the
+	 * composer scrolls its caret into view, so a draft taller than the box arrives
+	 * scrolled, and this probe writes the offset explicitly because a caret-driven
+	 * scroll can land at the bottom with the tinted first row already out of view.
+	 *
+	 * The draft is one logical line, which is the shape that both paints (`whole`
+	 * at a caret anywhere inside it) and wraps past the box's own `max-h-28`.
+	 */
+	await setDraft(
+		"/compact please summarise the failing tests in the TUI crash report in the order they were filed, note which of them are flaky and which are deterministic, call out the two wrappers that disagree about the line they paint and say which one of them is right, then hand the whole summary to the reviewer together with the commands that reproduce each of the failing cases so that nothing is lost in the handover",
+	);
+	const scrolled = await cdp.evaluate(`(() => {
+		const ta = document.querySelector('textarea[aria-label="Message"]');
+		if (!ta) return { missing: "textarea" };
+		const max = ta.scrollHeight - ta.clientHeight;
+		if (max <= 0) return { canScroll: false, maxScroll: 0, scrollTop: 0 };
+		/* One line down, so the tinted first row is still in the frame. */
+		ta.scrollTop = Math.min(Number.parseFloat(getComputedStyle(ta).lineHeight), max);
+		return { canScroll: true, maxScroll: max, scrollTop: ta.scrollTop };
+	})()`);
+	await wait(150);
+	readback.probes.scrolled = { ...scrolled, geometry: await geometryOf() };
+	const scrolledFrame = await captureSettled(cdp, "composer-scrolled-draft");
+	frames.push({
+		label: "scrolled-draft",
+		path: scrolledFrame.path,
+		stable: scrolledFrame.stable,
+	});
+
 	const readbackPath = join(FRAMES, "composer-geometry.json");
 	writeFileSync(readbackPath, `${JSON.stringify(readback, null, 2)}\n`);
 	note("geometry readback", readbackPath);
@@ -4711,17 +4773,18 @@ async function sceneComposer(cdp) {
 	/*
 	 * The assertions, over the numbers just written.
 	 *
-	 * THE MIRROR IS NOT EXPECTED HERE, and that is a fact about this harness
-	 * rather than about the change: the highlight's vocabulary comes from the
-	 * backend's `commands.list`, a driver run has no backend (see the isolation
-	 * notes at the top), so the composer recognises no command and paints
+	 * THE MIRROR IS NOT EXPECTED IN A BACKEND-LESS RUN, and that is a fact about this
+	 * harness rather than about the change: the highlight's vocabulary comes from the
+	 * backend's `commands.list`, a run without `--backend` has none (see the
+	 * isolation notes at the top), so the composer recognises no command and paints
 	 * nothing. What the scene can hold the app to is the state that follows from
-	 * that — the field keeps its native ink, its own font and its own rows — and
-	 * the mirror's parity is measured where a vocabulary exists: the Storybook
-	 * harness (`Chat/Slash highlight`, whose `geometry` story prints the same
-	 * readback into the frame). A mirror that DOES appear here would mean a
-	 * vocabulary arrived from somewhere this run did not expect, and then its
-	 * geometry is checked rather than excused.
+	 * that — the field keeps its native ink, its own font and its own rows — and the
+	 * mirror's parity is measured where a vocabulary exists: the Storybook harness
+	 * (`Chat/Slash highlight`, whose `geometry` story prints the same readback into
+	 * the frame) and this scene's own probes on a run whose backend HAS a session
+	 * (QA round 1 Q2). A mirror that appears here without a vocabulary would mean one
+	 * arrived from somewhere this run did not expect; its geometry is then checked
+	 * rather than excused.
 	 */
 	const geometryChecks = [];
 	for (const [theme, seen] of Object.entries(readback.themes)) {
@@ -4735,6 +4798,10 @@ async function sceneComposer(cdp) {
 	geometryChecks.push([
 		"localOperatorDark/wrapped-command-line@classic-scrollbar",
 		readback.probes.forcedScrollbar.geometry,
+	]);
+	geometryChecks.push([
+		"localOperatorDark/tall-command-line@scrolled",
+		readback.probes.scrolled.geometry,
 	]);
 
 	let mirrorsSeen = 0;
@@ -4794,6 +4861,30 @@ async function sceneComposer(cdp) {
 			geometry.mirrorRows === geometry.textareaRows,
 			`mirror=${geometry.mirrorRows} textarea=${geometry.textareaRows}`,
 		);
+		/*
+		 * Compare the mirror's CONTENT height, not only its row count: this is the
+		 * pair QA round 1 Q1 was measured in (34px against 55px), and the two can
+		 * disagree inside one row's worth of rounding without the row counts
+		 * differing. The mirror paints every glyph, so a mirror even a fraction of a
+		 * row taller is a mirror wrapping a character the textarea did not.
+		 */
+		check(
+			`${where}: the mirror's content height is the textarea's`,
+			Math.abs(geometry.mirrorScrollHeight - geometry.textareaScrollHeight) <=
+				1,
+			`mirror=${geometry.mirrorScrollHeight} textarea=${geometry.textareaScrollHeight}`,
+		);
+		/*
+		 * And the scrolled half of the same claim: the mirror's window is the
+		 * textarea's, by the transform the writer keeps in step with the scroll.
+		 */
+		check(
+			`${where}: the mirror's window follows the textarea's scroll`,
+			geometry.scrollTop === 0 ||
+				Math.abs(translateYOf(geometry.mirrorTransform) + geometry.scrollTop) <=
+					0.5,
+			`scrollTop=${geometry.scrollTop} transform=${geometry.mirrorTransform}`,
+		);
 		check(
 			`${where}: the right padding is the textarea's plus its scrollbar`,
 			Math.abs(
@@ -4815,7 +4906,7 @@ async function sceneComposer(cdp) {
 	}
 	note(
 		"mirrors painted by this run",
-		`${mirrorsSeen} of ${geometryChecks.length} states — a driver run has no backend, so the composer's command vocabulary is empty by construction and the expected number is 0`,
+		`${mirrorsSeen} of ${geometryChecks.length} states — a run without \`--backend\` has no command vocabulary, so 0 is the expected number there and a run whose backend carries a session paints in all of them`,
 	);
 	note(
 		"scrollbar gutters measured",

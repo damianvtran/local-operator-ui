@@ -199,6 +199,27 @@ placeholders) → `ink-disabled`.
 `ink-disabled` is the only role exempt from a contrast floor, because a disabled
 control that meets 4.5:1 does not read as disabled.
 
+### The structure ink that is not in the ladder
+
+`tokenCommand` is the fifth required ink and it is deliberately outside the
+ladder above: it never carries prose. It is the composer's syntax highlight —
+the slash word the app is about to RUN, the desktop twin of the TUI's
+`$lo-signal` — so its job is to be distinct from the three inks it is read
+against IN ONE LINE (`ink` for the instruction, `accent` for a live turn,
+`success` for a roster name) rather than to sit at a step in a hierarchy. Floors
+are per-palette and measured on the composer's own ground: at least 4.5:1 on
+`surface` and on `elevated`, and at least **ΔE00 8 from `ink`, `accent` and
+`success`**. `obsidian` is the one pinned exception — its `info` IS its `ink`, so
+there the run is separated by the painted weight step alone.
+
+Beside the ink, the run carries that weight step (`slash-run-bold`, a 0.5px
+text stroke). It is a STROKE and not a `font-weight` for a layout reason: the
+mirror paints every glyph while the textarea's own text is transparent, so the
+two layers have to wrap at the same character, and a real weight change moves
+the advances — which wrapped the mirror earlier than the textarea and hid the
+tail of the user's draft behind the mirror's own overflow (measured: 65 of 78
+typed characters). Add a run ink here and give it the same treatment.
+
 ### The two lines — the distinction people get wrong
 
 - **`hairline`** is decorative: section rules, table separators, list dividers.

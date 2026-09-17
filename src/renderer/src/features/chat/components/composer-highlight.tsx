@@ -99,8 +99,15 @@ type Segment = {
  * by a keystroke between the derivation and this render) is clipped to the draft
  * and any overlap is skipped, so the worst case is a tint that does not paint
  * rather than characters that disappear.
+ *
+ * EXPORTED because that totality is the claim that most needs executing and least
+ * can be seen: the mirror is the only painter of the draft whenever a run exists
+ * (the textarea's own glyphs are transparent), so a segment that vanishes takes
+ * the user's characters with it and no frame would show why. `segmentsOf` is pure
+ * and DOM-free, so `scripts/slash-highlight.test.mjs` pins concatenation over a
+ * matrix instead of leaving it asserted here (code review round 1 MINOR 2).
  */
-function segmentsOf(
+export function segmentsOf(
 	draft: string,
 	runs: readonly SlashHighlightRun[],
 ): Segment[] {

@@ -21,8 +21,26 @@ const bundle = await build({
 	stdin: {
 		contents:
 			'export * from "./src/renderer/src/features/chat/components/slash-highlight";\n' +
-			'export { planSlashSubmission } from "./src/renderer/src/features/chat/components/slash-submit";',
+			'export { planSlashSubmission } from "./src/renderer/src/features/chat/components/slash-submit";\n' +
+			/*
+			 * `segmentsOf` is the one layer that could DROP text — it is what the mirror
+			 * paints from, and the textarea's own glyphs are transparent whenever a run
+			 * exists, so a segment that vanishes takes the user's characters with it.
+			 * Exported for this file rather than asserted in a comment (review round 1
+			 * MINOR 2).
+			 */
+			'export { segmentsOf } from "./src/renderer/src/features/chat/components/composer-highlight";',
 		resolveDir: process.cwd(),
+	},
+	/*
+	 * The renderer's own path aliases, because `composer-highlight.tsx` is a real
+	 * renderer module: without them the bundler stops at its `@shared` import and
+	 * the segments assertion below would silently stop running.
+	 */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+		"@assets": "./src/renderer/src/assets",
 	},
 	bundle: true,
 	format: "esm",
@@ -35,6 +53,7 @@ const {
 	runsMatchingPlan,
 	runInkClass,
 	planSlashSubmission,
+	segmentsOf,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -308,12 +327,106 @@ test("every run steps colour when the composer is disabled", () => {
 	for (const kind of ["command", "name", "unknown"]) {
 		assert.equal(runInkClass(kind, true), "text-ink-disabled", kind);
 	}
-	assert.equal(
-		runInkClass("command", false),
-		"text-token-command font-semibold",
-	);
 	assert.equal(runInkClass("name", false), "text-success");
 	assert.equal(runInkClass("unknown", false), "text-ink-dim");
+});
+
+test("the command run's weight step is painted, so the mirror still wraps where the textarea does", () => {
+	/*
+	 * QA round 1 Q1, and the reason this is a test rather than a class string.
+	 *
+	 * The mirror paints every glyph while the textarea's own text is transparent, so
+	 * the mirror's line breaking has to BE the textarea's. A real weight step moves
+	 * the advances: `/agent coder ` + 65 characters is 780.67px at weight 400 and
+	 * wraps inside a 782px column at 600, and the mirror's own `overflow: hidden`
+	 * then swallowed the 65 characters the user had just typed. The step is a stroke
+	 * instead — the design round's own measurement (a 4px stem against prose's 3px
+	 * at dsf 2, i.e. +0.5 CSS px, and a stroke of width W grows a stem by W) in a
+	 * channel that changes no advance, so the tint survives and the layout does not
+	 * move.
+	 */
+	assert.equal(
+		runInkClass("command", false),
+		"text-token-command slash-run-bold",
+	);
+	for (const kind of ["command", "name", "unknown"]) {
+		assert.doesNotMatch(
+			runInkClass(kind, false),
+			/(?:^|\s)font-(?:thin|extralight|light|normal|medium|semibold|bold|extrabold|black)(?:\s|$)/,
+			`${kind} must not carry a weight utility: it moves the advances and the mirror then wraps where the textarea does not (QA round 1 Q1)`,
+		);
+	}
+	const styles = readFileSync("src/renderer/src/styles/index.css", "utf8");
+	assert.match(
+		styles,
+		/\.slash-run-bold\s*\{[^}]*-webkit-text-stroke:\s*0\.5px currentColor/,
+		"the painted weight step lives in the stylesheet, at the width the design round measured",
+	);
+});
+
+test("segmentsOf emits every character of the draft exactly once", () => {
+	/*
+	 * Totality, EXECUTED (review round 1 MINOR 2). The mirror is the only painter of
+	 * the draft whenever a run exists, so a dropped segment is invisible text loss —
+	 * and no frame can show the character that is missing. The defensive branches
+	 * (stale offsets after a keystroke, overlapping and out-of-range runs) cannot be
+	 * produced by the rule, so they are driven directly at the bottom.
+	 */
+	const nameChoices = new Set(["frontend-guild", "ops"]);
+	const paintedRuns = (draft) =>
+		slashHighlightRuns({
+			draft,
+			commandNames: COMMAND_NAMES,
+			nameListCommands: NAME_LIST_COMMANDS,
+			nameChoices,
+			picking: false,
+		});
+	const drafts = [
+		"",
+		"/compact",
+		"/team ops review the queue",
+		"/team frontend-guild review the queue\nand then send it on to the reviewer",
+		"/teem fix this",
+		"fix this /usage",
+		"prose with no token at all",
+		`/agent coder ${"w".repeat(65)}`,
+		"/team ops\r\nbody of the instruction",
+	];
+	for (const draft of drafts) {
+		const segments = segmentsOf(draft, paintedRuns(draft));
+		assert.equal(
+			segments.map((segment) => segment.text).join(""),
+			draft,
+			`the segments must reproduce ${JSON.stringify(draft)} exactly`,
+		);
+		let at = 0;
+		for (const segment of segments) {
+			assert.equal(
+				segment.start,
+				at,
+				"segments are contiguous and in draft order",
+			);
+			assert.ok(segment.text.length > 0, "no empty segment is emitted");
+			at += segment.text.length;
+		}
+		assert.equal(at, draft.length);
+	}
+	/* The branches no rule output reaches: a stale run past the end, a reversed
+	 * offset, an overlap and an empty span. `hel` is the first run clipped to what
+	 * the draft holds, the overlap is skipped rather than re-painting characters a
+	 * run already owns, and `lo` is the prose tail — every character still lands
+	 * exactly once. */
+	const defensive = segmentsOf("hello", [
+		{ start: 2, end: 99, kind: "command" },
+		{ start: 0, end: 3, kind: "unknown" },
+		{ start: -4, end: 1, kind: "name" },
+		{ start: 4, end: 4, kind: "command" },
+	]);
+	assert.equal(defensive.map((segment) => segment.text).join(""), "hello");
+	assert.deepEqual(
+		defensive.map((segment) => segment.text),
+		["hel", "lo"],
+	);
 });
 
 /*
@@ -360,22 +473,99 @@ test("draft -> plan -> runs: the tint follows what Enter will do", () => {
 	assert.ok(painted("/compact").length > 0);
 });
 
+test("with the commands capability off, the tint is withheld as well as Enter", () => {
+	/*
+	 * The falsifier for the override this gate no longer has (review round 1 MAJOR
+	 * 1). `planSlashSubmission` answers `send` for every draft when the capability
+	 * is off, unconditionally and first, so a mount that asked the plan with the
+	 * capability IT has paints nothing — and one that asked with `enabled: true`
+	 * painted a bare `/compact` that Enter posts to the model as prose. Both halves
+	 * are executed here on the real planner, and `slash-highlight.test.mjs`'s source
+	 * assertion keeps the call site from passing an override again.
+	 */
+	const plan = (draft, enabled) =>
+		planSlashSubmission({
+			draft,
+			caret: draft.length,
+			commandNames: COMMAND_NAMES,
+			promptCommands: new Set(["goal", "loop", "btw", "fork", "team", "agent"]),
+			nameListCommands: NAME_LIST_COMMANDS,
+			armedOnlyCommands: new Set(["goal"]),
+			valueArgumentCommands: new Set(VALUE_ARGUMENT_COMMANDS),
+			argumentCommands: new Set(ARGUMENT_COMMANDS),
+			enabled,
+		});
+	const paintedWith = (draft, enabled) =>
+		runsMatchingPlan(runs(draft), draft, {
+			sendsAsWritten: plan(draft, enabled).kind === "send",
+		});
+
+	assert.equal(plan("/compact", false).kind, "send");
+	assert.deepEqual(paintedWith("/compact", false), []);
+	assert.equal(plan("/team ops review the queue", false).kind, "send");
+	assert.deepEqual(paintedWith("/team ops review the queue", false), []);
+
+	assert.equal(plan("/compact", true).kind, "whole");
+	assert.ok(paintedWith("/compact", true).length > 0);
+	assert.deepEqual(
+		paintedWith("/team ops review the queue", true).map((run) => run.kind),
+		["command", "name"],
+	);
+});
+
 test("the composer and the mirror both make the calls these pins describe", () => {
 	/*
-	 * A source assertion, and deliberately so: the gates are called from a React
+	 * Source assertions, and deliberately so: the gates are called from a React
 	 * render, where no unit test can reach the CALL without a DOM harness this repo
-	 * does not have for the composer. It fails on exactly the mutation the reviewer
-	 * used (`return runs;` at the memo, or a mirror that stops asking for the ink),
-	 * which is the property worth pinning.
+	 * does not have for the composer. They fail on exactly the mutations the
+	 * reviewers used (`return runs;` at the memo, a mirror that stops asking for the
+	 * ink, a plan call site that hands itself a capability).
+	 *
+	 * WHITESPACE IS NORMALISED before matching (review round 1 NIT 3): the earlier
+	 * form required three arguments on one line, so a reformat failed the suite with
+	 * no behaviour change — the assertion has to pin the SEMANTICS.
 	 */
 	const composer = readFileSync(
 		"src/renderer/src/features/chat/components/message-input.tsx",
 		"utf8",
 	);
+	const flatComposer = composer.replace(/\s+/g, " ");
 	assert.match(
-		composer,
-		/runsMatchingPlan\(runs, newMessage, \{\s*sendsAsWritten: plan\.kind === "send",/,
+		flatComposer,
+		/runsMatchingPlan\(runs, newMessage, \{ sendsAsWritten: plan\.kind === "send",/,
 		"the composer must consult the plan before painting",
+	);
+	/*
+	 * NO CAPABILITY OVERRIDE (review round 1 MAJOR 1). The highlight briefly asked
+	 * `planFor(..., { enabled: true })` so the dispatcher-less Storybook harness would
+	 * still paint, which let a commands-off mount show a tinted word Enter posts as
+	 * prose. The mount's own value is the only one either consumer may use, so no
+	 * call site may pass one and `planFor` may not take one.
+	 */
+	assert.doesNotMatch(
+		flatComposer,
+		/planFor\([^)]*enabled:/,
+		"a plan call site must not pass a capability override: the tint and Enter have to answer from one capability",
+	);
+	assert.doesNotMatch(
+		flatComposer,
+		/over:\s*\{\s*enabled/,
+		"`planFor` must not accept an `enabled` override",
+	);
+	/*
+	 * AND THE HARNESS SUPPLIES THE HALF IT WAS MISSING instead. The bridge already
+	 * advertises the `commands` feature; the dispatcher is the other half of
+	 * `slash.available && Boolean(onSlashCommand)`, so a harness that paints runs is a
+	 * harness that would run them.
+	 */
+	const stories = readFileSync(
+		"src/renderer/src/features/chat/components/slash-highlight.stories.tsx",
+		"utf8",
+	);
+	assert.match(
+		stories,
+		/onSlashCommand=\{harnessDispatch\}/,
+		"the Storybook harness must hand the composer a dispatcher, so its tint is gated on a capability the mount really has",
 	);
 	const mirror = readFileSync(
 		"src/renderer/src/features/chat/components/composer-highlight.tsx",
