@@ -446,6 +446,30 @@ export function deriveWorkingLine({
 				...(since === null ? {} : { startedAt: since }),
 			};
 		}
+		/*
+		 * The queued rung, split from the composing one because the registry case
+		 * holds two different facts. A row is `composing` while the model is still
+		 * writing its call and `queued` once the producer's terminal dictation frame
+		 * says the writing stopped and the call has not started — it may wait behind
+		 * a sibling's execution group for as long as that sibling runs. Saying
+		 * `composing` under a row whose model stopped writing minutes ago is the
+		 * header agreeing with the stuck row the operator reported, and a queued call
+		 * left behind a long sibling is exactly when this line was wrong longest.
+		 *
+		 * The TUI's own arm, word for word (`app.py::_current_activity`): queued work
+		 * is `waiting to run`, carrying no clock, because the dictation clock these
+		 * rows had ENDED and the call has no start to count from. A `phase` of its
+		 * own rather than `composing` so nothing downstream can mistake the two.
+		 */
+		const queued = records.filter(
+			(record) => record.kind === "tool" && record.phase === "queued",
+		).length;
+		if (queued > 0) {
+			return {
+				activity: `waiting to run ${queued === 1 ? "a call" : `${queued} calls`}`,
+				phase: "queued",
+			};
+		}
 		const tail = records[records.length - 1];
 		if (tail?.kind === "assistant" && tail.streaming) {
 			// Only once prose is ACTUALLY streaming. `message_start` fires from a

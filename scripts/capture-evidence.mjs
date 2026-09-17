@@ -2316,6 +2316,28 @@ export const STORIES = [
 	["chat-stale-seed-order--after-arrival", 1280, 800],
 	["chat-stale-seed-order--before-seam", 1280, 800],
 	["chat-stale-seed-order--after-seam", 1280, 800],
+	/* The phantom compose rows: the four rows the operator photographed stuck at
+	   the bottom of a conversation waiting on subagents — `hub composing 2.0 KB`
+	   and three `wait composing` rows, all of them calls the harness NEVER RAN.
+	   Built by the SHIPPED reducer from the real snapshot's frames
+	   (`scripts/fixtures/phantom-compose-rows.json`), one tree's frames rather
+	   than a base/head pair for the reason the stale-seed set above states:
+	   `Before` spells out the pre-fix fold (`applyEvent` per frame at the reader's
+	   arrival, with nothing reading the terminal verdict) and `After` runs the
+	   shipped `applyLiveSeed`. The `Settled` pair folds the verdict onto the row
+	   its own announcement left, which is the case where the fix has to settle a
+	   row IN PLACE, and `AfterSettledOpen` opens that row so the harness's own
+	   words are on the frame. The `Queued` pair is the other ending — dictation
+	   finished, the call waiting behind a sibling — whose frame is shaped from
+	   the contract because that session emitted none. */
+	["chat-phantom-compose-rows--before-arrival", 1280, 800],
+	["chat-phantom-compose-rows--after-arrival", 1280, 800],
+	["chat-phantom-compose-rows--before-settled", 1280, 800],
+	["chat-phantom-compose-rows--after-settled", 1280, 800],
+	["chat-phantom-compose-rows--after-settled-open", 1280, 800],
+	["chat-phantom-compose-rows--before-queued", 1280, 800],
+	["chat-phantom-compose-rows--after-queued", 1280, 800],
+	["chat-phantom-compose-rows--after-durable-twin", 1280, 800],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
 	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
 	   popup from wire-shaped fixtures — the rows the backend's

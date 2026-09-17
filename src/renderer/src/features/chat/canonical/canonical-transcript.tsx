@@ -534,9 +534,41 @@ const ToolRow = memo(function ToolRow({
 }) {
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
-	const summary = composing
-		? `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`
-		: summaryFromArgs(record.toolName, record.args);
+	/*
+	 * The two terminal compose endings, and why the row needs both.
+	 *
+	 * A call announced by a compose frame may finish its dictation and then wait
+	 * a long while for its turn to start (`queued`), or be told it will never run
+	 * at all (`notRunReason`). Neither call ever gets a `tool_execution_start`,
+	 * so neither settles from anything else — and the frame that says so is the
+	 * harness's own statement, not a guess this view makes. Without the queued
+	 * arm the row went on claiming the model was still writing, with a ticking
+	 * clock, for as long as the call waited; without the never-run arm it stayed
+	 * `composing` for the life of the turn and was then painted as an interrupt.
+	 *
+	 * Both are the TUI's own states (`ToolCard.mark_queued` / `mark_not_run`) and
+	 * the phone's (`queued` / `failed`), so the three surfaces agree on what the
+	 * producer said rather than each inventing a reading of it.
+	 */
+	const queued = record.phase === "queued";
+	// Truthiness rather than `!== null`: a record built by hand (a test fixture, a
+	// story) carries no `notRunReason` key at all, and `undefined !== null` would
+	// paint every one of them as a never-run verdict.
+	const notRun = Boolean(record.notRunReason);
+	const summary = notRun
+		? // `never sent`, not `failed`: the call produced no result to fail, and the
+			// size is the record of how far the model got before it was told nothing
+			// would receive it (`ToolCard.mark_not_run`). An empty payload is named
+			// rather than rendered as `0 B`, which would claim a measurement.
+			`never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`
+		: composing
+			? `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`
+			: queued
+				? // Dictation is over and the call has not started: the byte count stays
+					// (it is how far the model got), and the status word stops claiming work
+					// the model finished writing.
+					`queued${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`
+				: summaryFromArgs(record.toolName, record.args);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
 	// A row that says nothing about its call is the scannability this port
@@ -547,31 +579,50 @@ const ToolRow = memo(function ToolRow({
 		!composing && isBareToolName(summary, record.toolName)
 			? outputFallbackLine(record.output)
 			: null;
-	const body =
-		// The TUI's body-selection case 2 (`_build_content`, tool_card.py:1928-1939):
-		// when a settled, SUCCESSFUL `write`/`edit` reported a diff, the expansion is
-		// the DIFF ALONE. The arguments of a `write` are the whole new file content —
-		// the same change stated a second way — and the output line underneath is
-		// `edited` or `wrote N bytes`, which says nothing the diff does not. The
-		// mobile port drops the same two for the same tools
-		// (mobile/web/src/components/tool-row.tsx:95-96, 179-182).
-		//
-		// The three conditions live in `isDiffBodyRow` so they can be tested: the
-		// tool, the payload, and the call's own state. A row with no diff keeps its
-		// arguments, which is the honest shape for a call that changed nothing
-		// (`_diff_details` omits `diff` entirely when `_line_delta` is zero) and for a
-		// transcript predating `details` on the wire; a row that FAILED keeps them
-		// too, because there the arguments are the only account of what was attempted
-		// and the error only makes sense beside them.
-		isDiffBodyRow(record) ? (
-			<DiffBlock diff={record.diff} />
-		) : hasDetail(record.args, record.output) ? (
-			<ToolDetail
-				args={record.args}
-				output={record.output}
-				isError={record.isError}
-			/>
-		) : undefined;
+	/*
+	 * The TUI's body-selection case 2 (`_build_content`, tool_card.py:1928-1939):
+	 * when a settled, SUCCESSFUL `write`/`edit` reported a diff, the expansion is
+	 * the DIFF ALONE. The arguments of a `write` are the whole new file content —
+	 * the same change stated a second way — and the output line underneath is
+	 * `edited` or `wrote N bytes`, which says nothing the diff does not. The
+	 * mobile port drops the same two for the same tools
+	 * (mobile/web/src/components/tool-row.tsx:95-96, 179-182).
+	 *
+	 * The three conditions live in `isDiffBodyRow` so they can be tested: the
+	 * tool, the payload, and the call's own state. A row with no diff keeps its
+	 * arguments, which is the honest shape for a call that changed nothing
+	 * (`_diff_details` omits `diff` entirely when `_line_delta` is zero) and for a
+	 * transcript predating `details` on the wire; a row that FAILED keeps them
+	 * too, because there the arguments are the only account of what was attempted
+	 * and the error only makes sense beside them.
+	 */
+	const body = notRun ? (
+		// The harness's own words, and the whole content of the fact: this call was
+		// announced and then never sent to a tool, and the reason is what stopped
+		// it (`Invalid arguments: arguments are not valid JSON: …`). Rendered
+		// through the same sunken box idiom as a result body so a row is a row,
+		// and LABELLED `Not run` rather than `Error`: the call produced no error
+		// result, it produced no result at all, and a reader scanning for what
+		// went wrong needs the two kept apart.
+		<div
+			className={cn(
+				"w-full rounded-sm border border-hairline bg-sunken p-3 font-mono text-mono-sm",
+			)}
+		>
+			<span className={cn("text-danger")}>Not run</span>
+			<p className={cn("mt-1 break-words whitespace-pre-wrap text-danger")}>
+				{record.notRunReason}
+			</p>
+		</div>
+	) : isDiffBodyRow(record) ? (
+		<DiffBlock diff={record.diff} />
+	) : hasDetail(record.args, record.output) ? (
+		<ToolDetail
+			args={record.args}
+			output={record.output}
+			isError={record.isError}
+		/>
+	) : undefined;
 	/*
 	 * The stamp at the foot of the EXPANDED section, and the reason it is a
 	 * sibling of the body rather than a line inside `ToolDetail`.
@@ -659,13 +710,15 @@ const ToolRow = memo(function ToolRow({
 				summary={summary}
 				summaryFallback={derived}
 				outcome={
-					running
-						? "running"
-						: record.isError
-							? "error"
-							: record.stopped
-								? "interrupted"
-								: "success"
+					notRun
+						? "not-run"
+						: running
+							? "running"
+							: record.isError
+								? "error"
+								: record.stopped
+									? "interrupted"
+									: "success"
 				}
 				durationS={record.durationS}
 				startedAt={record.startedAt}

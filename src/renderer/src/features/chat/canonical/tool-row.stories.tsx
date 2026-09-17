@@ -89,6 +89,10 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	argumentBytes: 0,
 	output: "ok",
 	isError: false,
+	// The harness's never-run verdict, which only a row settled by a terminal
+	// compose frame carries: every row here but the `not-run` states is a call
+	// that really was sent to a tool.
+	notRunReason: null,
 	durationS: 0.4,
 	startedAt: null,
 	images: [],
