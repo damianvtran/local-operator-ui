@@ -299,7 +299,7 @@ const app = await (async () => {
 			`--window-size=${WIDTH}x${HEIGHT}`,
 		],
 		{
-				cwd: REPO,
+			cwd: REPO,
 			env: (() => {
 				const env = {
 					...process.env,
