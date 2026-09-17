@@ -89,8 +89,8 @@ export const obsidian: ThemeDefinition = {
 		chartBarHover: "#FCFCE4",
 		tokenCommand: "#FAFAFA",
 		/* Monochrome: pinned to `ink` with the painted weight step carrying the run
-		   (see the role's note in `palette-contract.ts`) — no semibold, and the
-		   step's width tracks the raster, so it renders at 1x as well. */
+		   (see the role's note in `palette-contract.ts`) — no semibold, and one
+		   constant stroke width at every raster. */
 		accentWash: "#262628",
 		onAccent: "#09090B",
 

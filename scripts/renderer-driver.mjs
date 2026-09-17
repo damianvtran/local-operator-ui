@@ -4528,8 +4528,22 @@ async function sceneComposer(cdp) {
 			}
 			await wait(500);
 		}
-		if (!rowPressed) note("not pressed", `${row} never appeared within 20s`);
-		else await wait(600);
+		/*
+		 * A ROW THAT NEVER PAINTED IS A FAILURE (review round 3 MINOR 1). It was a
+		 * `note`, and `note` does not fail the run: the scene then fell into the
+		 * absence branch below, wrote a readback that says "no backend" about a run
+		 * whose backend had just answered, and exited 0 with none of the geometry
+		 * checks it exists for executed. That is QA round 2 Q2's failure mode one
+		 * layer in, and it is Q2's own lesson that a path which cannot fail is not a
+		 * gate — so the reachability of the state is asserted here, on the composer
+		 * this time rather than on the POST.
+		 */
+		check(
+			"the conversation catalogue painted a row for this run's conversation, so the composer can mount",
+			rowPressed,
+			`${row} never appeared within 20s — the conversation exists on the backend and the chat pane mounts no composer without an open one`,
+		);
+		if (rowPressed) await wait(600);
 		note(
 			"state (chat, after the conversation press)",
 			JSON.stringify(await verb(cdp, "state")),
@@ -4540,8 +4554,17 @@ async function sceneComposer(cdp) {
 	);
 	if (!composerPresent) {
 		const frame = await captureSettled(cdp, "composer-absent-no-backend");
+		/*
+		 * TWO ABSENCES, TWO SENTENCES (review round 3 MINOR 1). "No backend" and "the
+		 * backend answered but the catalogue never painted a row" leave the same
+		 * `composerPresent: false` behind and had one sentence between them, which is
+		 * how a scene can report the wrong cause on a path it also exited 0 from. The
+		 * difference does not live in the state string above: it is `rowPressed`.
+		 */
 		const readback = {
-			note: "A driver run has no backend: the chat pane renders its unreachable-backend state, no composer is mounted, and no draft can be typed into one. The highlight's geometry is measured in the Storybook harness (`Chat/Slash highlight` -> `geometry`), the only surface with a command vocabulary. Recorded here rather than reported as a pass.",
+			note: BACKEND
+				? "This run HAS an isolated backend and its conversation was created, but the chat pane never painted a conversation row within 20s, so no composer mounted and no draft could be typed into one. That is a failure of the state this scene asserts (see the check above), not an absence of a backend."
+				: "A driver run has no backend: the chat pane renders its unreachable-backend state, no composer is mounted, and no draft can be typed into one. The highlight's geometry is measured in the Storybook harness (`Chat/Slash highlight` -> `geometry`), the only surface with a command vocabulary. Recorded here rather than reported as a pass.",
 			measuredAt: new Date().toISOString(),
 			windowSize: facts.windowSize,
 			composerPresent: false,
@@ -4700,13 +4723,27 @@ async function sceneComposer(cdp) {
 			"/compact please summarise the failing tests in the TUI crash report and then stop",
 		],
 	];
-	/** Which drafts carry a run, and so must render the mirror. */
-	const _EXPECTS_RUN = {
+	/**
+	 * WHICH DRAFTS THE PLAN SAYS CARRY A RUN, and therefore which must render the
+	 * mirror — asserted per state below rather than declared and ignored.
+	 *
+	 * WHY THIS REPLACED A TABLE NOBODY READ (QA round 3 Q1): the old `_EXPECTS_RUN`
+	 * was dead code that claimed two rows paint that do not, and the scene passed
+	 * them with `with no command vocabulary the field keeps its native ink` — a
+	 * message whose stated cause is false wherever a backend answers (39 options are
+	 * offered for a bare `/`). The three `false` rows are the rule's own answers,
+	 * measured on this scene's drafts: `/compact` with text after it is a draft the
+	 * planner sends as written (so nothing paints and Enter posts prose), and
+	 * `/team …` with a newline is the multi-line kill. Asserting paint ⇔ the plan is
+	 * what would have caught the round-2 gap this scene exists to close, so it is
+	 * asserted here instead of tabulated.
+	 */
+	const EXPECTS_PAINT = {
 		"command-alone": true,
-		"start-name-instruction": true,
+		"start-name-instruction": false,
 		"mid-sentence-token": false,
 		"prose-leading-command-word": false,
-		"wrapped-command-line": true,
+		"wrapped-command-line": false,
 	};
 
 	const readback = {
@@ -4897,9 +4934,26 @@ async function sceneComposer(cdp) {
 			/\d+(\.\d+)?px/.test(geometry.textareaFont),
 			geometry.textareaFont,
 		);
+		/*
+		 * PAINT ⇔ PLAN, PER STATE (QA round 3 Q1). The draft's label is the tail of
+		 * `where` (`<theme>/<label>`, or `<theme>/<label>@<probe>` for the derived
+		 * probes), and `EXPECTS_PAINT` above is the plan's own answer for each draft
+		 * this scene types. This is the assertion the scene's dead table should have
+		 * been: a mirror without a run is the tint lying about Enter, and a run
+		 * without a mirror is the defect class QA round 1 Q1 measured.
+		 */
+		const draftLabel = where.split("/")[1]?.split("@")[0] ?? "";
+		const expectsPaint = EXPECTS_PAINT[draftLabel];
+		if (expectsPaint !== undefined) {
+			check(
+				`${draftLabel}: the mirror is mounted exactly where the plan says a run exists`,
+				geometry.mirrorRendered === expectsPaint,
+				`mirrorRendered=${geometry.mirrorRendered} expected=${expectsPaint}`,
+			);
+		}
 		if (!geometry.mirrorRendered) {
 			check(
-				`${where}: with no command vocabulary the field keeps its native ink`,
+				`${where}: an unpainted draft keeps the field's native ink`,
 				geometry.textareaColor !== "rgba(0, 0, 0, 0)" &&
 					geometry.textareaColor !== "transparent",
 				`color=${geometry.textareaColor}`,
@@ -4997,7 +5051,7 @@ async function sceneComposer(cdp) {
 	}
 	note(
 		"mirrors painted by this run",
-		`${mirrorsSeen} of ${geometryChecks.length} states — a run without \`--backend\` has no command vocabulary, so 0 is the expected number there and a run whose backend carries a session paints in all of them`,
+		`${mirrorsSeen} of ${geometryChecks.length} states painted — and the count is NOT the claim: the plan decides per draft, so the states that paint are the ones whose draft carries a run (this scene's \`command-alone\` and its two derived scroll probes), and the rest are prose the planner sends as written or the multi-line kill. A run without \`--backend\` has no vocabulary at all and paints in none`,
 	);
 	note(
 		"scrollbar gutters measured",

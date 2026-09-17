@@ -274,8 +274,12 @@ export function runsMatchingPlan(
  *     taste: it measured the command run's `t` stem at 4 device px against prose's
  *     3 at dsf 2, i.e. +1 device px = +0.5 CSS px, and a stroke of width W grows a
  *     stem by exactly W (W/2 on each side). `slash-run-bold` therefore declares
- *     0.5px, and the geometry probe reports the computed stroke beside the run's
- *     weight so a palette or font change re-measures instead of assuming.
+ *     0.5px — the same width on every raster, which is the point the round-3 D8
+ *     measurement settles: half a device pixel of growth per side is the quiet
+ *     step at 2x, and a floor that made it a whole device pixel at 1x doubled the
+ *     run's stem instead and closed its counters. The geometry probe reports the
+ *     computed stroke beside the run's weight so a palette or font change
+ *     re-measures instead of assuming.
  *   - `name` → `text-success`. Mirroring the TUI's `$lo-string`, which borrows its
  *     green for exactly this job; the resolved argument must not collapse into
  *     the command word.

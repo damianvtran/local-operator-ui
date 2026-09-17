@@ -257,12 +257,13 @@ export type ThemePalette = {
 	 * step carrying the run (`slash-run-bold` — a text stroke, which thickens the
 	 * glyph without moving its advance; a real `font-weight` here moved the
 	 * MIRROR's wrap points off the textarea's and hid the tail of the draft behind
-	 * the mirror's overflow, QA round 1 Q1). The stroke's width tracks the raster
-	 * (`index.css`: 0.5px above 2dppx, one CSS px below it) because Blink paints no
-	 * stroke narrower than a device pixel — at a 1x raster the 0.5px form rendered
-	 * as nothing, and on this row that was the run's ONLY separation, so the
-	 * command word read exactly like prose while the name beside it stayed tinted
-	 * (design round 2 D6).
+	 * the mirror's overflow, QA round 1 Q1). Its width is ONE constant, `0.5px`, at
+	 * every raster: a raster-query floor was tried in round 2 (D6, on a proxy
+	 * measurement that a real 1x build falsified — the 0.5px stroke paints at half
+	 * strength there, not nothing) and withdrawn in round 3, because below 2dppx it
+	 * doubled the run's stem against prose's 1 device pixel and closed this row's
+	 * counters (D8). So this row's separation is the stroke as it has always been,
+	 * at every display.
 	 *
 	 * The TUI port's palettes author it as their own `info` where that value
 	 * clears the floors, which is most of them; the five that missed by a hair

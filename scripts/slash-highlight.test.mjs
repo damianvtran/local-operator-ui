@@ -358,26 +358,26 @@ test("the command run's weight step is painted, so the mirror still wraps where 
 	}
 	const styles = readFileSync("src/renderer/src/styles/index.css", "utf8");
 	/*
-	 * THE WIDTH IS PINNED IN BOTH RASTER BANDS (design round 2 D6), because the
-	 * defect was a stroke that existed only in one of them: a stroke is painted in
-	 * DEVICE pixels and Blink paints none narrower than one, so `0.5px` renders at
-	 * dsf 2 (one device px — the design round's measurement) and as NOTHING at a 1x
-	 * raster, where obsidian's command run then lost its only separation and read
-	 * exactly like prose while the name beside it stayed tinted. The default is the
-	 * raster floor and the `>=2dppx` band takes the finer width, so an assertion on
-	 * either half alone would let the other one regress. Both are measured on the
-	 * heads this file ships: the rig's own frames render at `deviceScaleFactor: 1`
-	 * and read `command=400+1px`; the Storybook row at dsf 2 reads `400+0.5px`.
+	 * ONE CONSTANT WIDTH, PINNED — AND NO RASTER BAND (design round 3 D8). Round 2
+	 * pinned both halves of a raster-query floor; round 3's own author withdrew the
+	 * finding that floor was written for (D6: on a REAL 1x build the 0.5px stroke
+	 * paints at half strength, not nothing — the round-2 proxy rasterised 0.25
+	 * device px, not 0.5) and showed what the floor cost: below 2dppx it took the
+	 * run's stems from prose's 1 device pixel to 2 (+122% ink, counters closed),
+	 * where the 2x band shows +50%. So the width is the design round's own
+	 * measurement at every raster, and the band's ABSENCE is asserted too: a band is
+	 * what let twelve frames of one row print two different widths (review round 3
+	 * MAJOR 1), and a rule that does not vary with the raster cannot.
 	 */
 	assert.match(
 		styles,
-		/\.slash-run-bold\s*\{[^}]*-webkit-text-stroke:\s*1px currentColor/,
-		"the painted weight step's default is the raster floor: one CSS px is one device px at 1x, where a 0.5px stroke renders as nothing at all (design round 2 D6)",
+		/\.slash-run-bold\s*\{[^}]*-webkit-text-stroke:\s*0\.5px currentColor/,
+		"the painted weight step is one constant width — the one the design round measured (0.5 CSS px = one device px at dsf 2)",
 	);
-	assert.match(
+	assert.doesNotMatch(
 		styles,
-		/@media \(min-resolution: 2dppx\)[\s\S]*?\.slash-run-bold\s*\{[^}]*-webkit-text-stroke:\s*0\.5px currentColor/,
-		"above 2dppx the painted weight step takes the width the design round measured (0.5 CSS px = one device px)",
+		/@media[^{]*min-resolution[^{]*\{[\s\S]{0,200}?slash-run-bold/,
+		"the stroke's width must not be a raster band: the floor was withdrawn in round 3 (D8) and a per-raster width is what made one row's frames disagree (review round 3 MAJOR 1)",
 	);
 });
 

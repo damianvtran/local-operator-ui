@@ -213,7 +213,8 @@ are per-palette and measured on the composer's own ground: at least 4.5:1 on
 there the run is separated by the painted weight step alone.
 
 Beside the ink, the run carries that weight step (`slash-run-bold`, a 0.5px
-text stroke). It is a STROKE and not a `font-weight` for a layout reason: the
+text stroke — one constant width at every raster, not a per-display band). It is
+a STROKE and not a `font-weight` for a layout reason: the
 mirror paints every glyph while the textarea's own text is transparent, so the
 two layers have to wrap at the same character, and a real weight change moves
 the advances — which wrapped the mirror earlier than the textarea and hid the
