@@ -2292,6 +2292,24 @@ export const STORIES = [
 	["chat-stale-seed-order--after-arrival", 1280, 800],
 	["chat-stale-seed-order--before-seam", 1280, 800],
 	["chat-stale-seed-order--after-seam", 1280, 800],
+	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
+	   not cover: its fixture is a finished turn (`streaming: false`), where a
+	   clockless frame that would create a row is refused. With a turn in flight
+	   the shipped fold paints it at the reader's arrival instead, and the
+	   operator's report is that state — opening session `c1c7072b735c` mid-turn
+	   painted the OPENING turn's eight `bash` calls, an hour earlier, under the
+	   running `wait`, each showing its output's first line where the command
+	   belongs. Both frames are built by the SHIPPED reducer from the real journal
+	   and the real snapshot seed of that session
+	   (`scripts/fixtures/trace-order.json`, harvested by
+	   `scripts/harvest-trace-order-fixture.mjs`): `Report` folds the eight calls
+	   the report proves by an output string that occurs once, over the in-flight
+	   frame; `Live` folds the unmodified harvest — 100 retained ends, 59 of them
+	   naming a call the page cannot label. The pane is pinned here for the same
+	   reason as the pair above, and the arrival stamp is derived from the
+	   snapshot's own in-flight call so the frames do not move between captures. */
+	["chat-trace-order-while-live--before-report", 1280, 800],
+	["chat-trace-order-while-live--before-live", 1280, 800],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
 	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
 	   popup from wire-shaped fixtures — the rows the backend's
