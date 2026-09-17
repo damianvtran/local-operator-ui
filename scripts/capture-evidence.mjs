@@ -147,21 +147,27 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  * what makes a frame comparable with the ones committed before it, and they
  * span both modes and the two brand ramps. The registry now carries
  * fifty-nine, so a full sweep is a 59/12 multiple of the swept set: from the
- * **4,851** frames committed today — `find docs/evidence -name '*.webp' | wc
- * -l` — holding **195 MB** on disk — `du -sh docs/evidence`, the filesystem
- * figure rather than the 133 MB the files' own bytes sum to — of which **4,110**
- * stand outside the declared supplementary sets (the value `manifest.json`'s own
- * `frames` carries), to roughly **24,000 frames and ~950 MB**. A run goes from
- * about half an hour to several — on a box that several other worktrees are
- * working in at the same time.
+ * **4,925** frames committed today — `find docs/evidence -name '*.webp' | wc -l`
+ * and `git ls-files docs/evidence | grep -c '\.webp$'`, both 4,925 at this head —
+ * holding **196 MB** on disk — `du -sh docs/evidence`, the filesystem figure
+ * rather than the 133.9 MiB the files' own bytes sum to — of which **4,184**
+ * stand outside the 64 declared supplementary sets, to roughly **24,000 frames
+ * and ~950 MB**. A run goes from about half an hour to several — on a box that
+ * several other worktrees are working in at the same time.
  *
  * Re-derive those three numbers from the tree this note ships in rather than
- * carrying them forward, and name the commands: an earlier revision of this note
- * quoted 4,379 / 167 MB / 3,762 and a projection of ~21,000, and none of the
- * four matched any tree in this branch's history (review round 1, M-2; QA round
- * 1, Q-1 — the same defect, found twice). The conclusion survives the correction:
- * a full sweep is roughly five times this set and close to a gigabyte of WebP.
- * The twelve stay the spine because the
+ * carrying them forward, and name the commands. Two earlier revisions of this
+ * note got that wrong in the same way, one fold apart: 4,379 / 167 MB / 3,762 and
+ * a projection of ~21,000 (review round 1, M-2; QA round 1, Q-1 — the same
+ * defect, found twice), then 4,851 / 195 MB / 4,110, which was the second fold's
+ * triple and, worse, attributed 4,110 to `manifest.json`'s own `frames` while the
+ * manifest carried 4,184 (round 2, M-1). The rule that keeps it right is not
+ * "update the number" but "update the number AND the record it points at, from
+ * the tree you are committing": 4,184 is the manifest's `frames` at this head,
+ * 4,925 is what both count commands return, and the 741 difference is the frames
+ * inside the declared sets. The conclusion survives all three corrections: a full
+ * sweep is roughly five times this set and close to a gigabyte of WebP. The
+ * twelve stay the spine because the
  * forty-seven they do not cover are covered where it matters rather than
  * silently dropped:
  *

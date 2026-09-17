@@ -65,8 +65,13 @@ import {
 	Wind,
 	Zap,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { FC, KeyboardEvent } from "react";
+import {
+	type TileGridGroup,
+	isTileNavKey,
+	nextTileIndex,
+} from "../theme-grid-navigation";
 
 /**
  * The mark shown beside each theme's name.
@@ -307,14 +312,23 @@ const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
  *
  * | window | grid column | columns | rows | tile w | grid span | per theme |
  * |---|---|---|---|---|---|---|
+ * | 800 | 460 | 2 | 30 | 226.0 | 2415px | 40.9px |
  * | 1000 | 660 | 3 | 20 | 214.7 | 1621px | 27.5px |
  * | 1020 | 680 | 4 | 16 | 164.0 | 1304px | 22.1px |
  * | 1040 | 528 | 3 | 20 | 170.7 | 1621px | 27.5px |
  * | 1300 | 788 | 4 | 16 | 191.0 | 1304px | 22.1px |
  * | 1380 | 868 | 5 | 13 | 167.2 | 1066px | 18.1px |
  *
- * So the honest figure is 27.5px per theme at 1000px and 18.1px at 1380px,
- * against 92.1px for the twelve. The 1040 row is TALLER than the 1020 row
+ * The 800 row is the app's declared minimum window (`WINDOW_MIN_WIDTH = 800` in
+ * `main/window-mode.ts`), and it is the bottom of the range this table exists to
+ * cover rather than a width a user is unlikely to reach (round 2, U3): the same
+ * column identity gives it a 460px grid column, measured in the story at a
+ * 508px viewport, where the grid is 2 across and 30 rows deep — 2415px, 40.9px
+ * per theme, the most expensive band in the app.
+ *
+ * So the honest figure is 40.9px per theme at the app's 800px minimum, 27.5px at
+ * 1000px and 18.1px at 1380px, against 92.1px for the twelve. The 1040 row is
+ * TALLER than the 1020 row
  * because the window got wider, and that is a known property of the page around
  * this grid rather than something to tune away: crossing 1040 expands the
  * settings rail from 48px to 220px inside the same window
@@ -332,14 +346,28 @@ const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
  * grid change column count at different widths.
  *
  * The description cannot stay in the tile at that size. The registry's
- * descriptions are 241-348px of `text-meta` and the name has 121px of box to
- * share with its icon and its check, so a description line in the tile is an
- * ellipsis with two words of it readable — and the description is the one piece
- * of text that says what the palette is FOR. It moves to the `Tooltip` the app
- * already reveals text with: hovering OR focusing the tile shows the full name
- * and the whole sentence, and the tooltip's own `aria-describedby` is what
- * carries the description to a screen reader. That focus path is the point —
- * a tooltip is not a hover-only affordance here.
+ * descriptions are 241-348px of `text-meta` and the name has 137.2px of box to
+ * share with its icon — the check left this row in round 1's D2 — so a
+ * description line in the tile is an ellipsis with two words of it readable, and
+ * the description is the one piece of text that says what the palette is FOR. It
+ * moves to the `Tooltip` the app already reveals text with: hovering or focusing
+ * the tile shows the whole sentence, and the tooltip's own `aria-describedby` is
+ * what carries the description to a screen reader. The panel deliberately does
+ * NOT repeat the name (round 1, U5): the name is on the tile beside the panel and
+ * the duplicate only made the panel taller.
+ *
+ * The focus path is real but it is not unconditional, and the claim that it
+ * shows the panel "at every stop" was false (round 2, U2). Radix's tooltip
+ * closes itself on any scroll whose target contains its trigger
+ * (`TooltipContentImpl`'s capture-phase `scroll` listener in the installed
+ * `@radix-ui/react-tooltip`), and a focus move that scrolls the picker mounts
+ * the panel and immediately unmounts it: measured, open at +2ms and closed at
+ * +4ms, still closed 2.9s later, so the description appears on the stops that do
+ * not scroll the container and is absent on the ones that do. Nothing is lost —
+ * the description is the tile's `aria-describedby` either way — and the behaviour
+ * is left alone here: the same root cause is round 1's deferred U4, and the fix
+ * (scroll the target into view, then focus it with `preventScroll`) changes when
+ * the panel opens, which is a question for a round that can re-shoot frames.
  *
  * ## Why 12px, and what the name's box actually is
  *
@@ -381,10 +409,36 @@ const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
  * the set, so the picker strengthens its own ground: measured over all 59 with
  * `scripts/color.mjs`'s `deltaE`, the selection's worst separation from `canvas`
  * rises from 2.21 to 3.52 and the ordering margin (selection minus hover) from
- * -1.23 to +1.13, with the hover's own step left exactly as designed. 8% is the
- * smallest step in 2% increments that clears a full ΔE00 of margin everywhere.
- * The mix is stated in `srgb` so the painted colour is the one the measurement
- * computes, and it names two roles rather than a value.
+ * -1.23 to +1.13, with the hover's own step left exactly as designed. The mix is
+ * stated in `srgb` so the painted colour is the one the measurement computes, and
+ * it names two roles rather than a value.
+ *
+ * 8% is the step that was chosen, and it is NOT a threshold — an earlier sentence
+ * here claimed it was and does not reproduce (round 2, M-2). Re-derived over all
+ * fifty-nine with `scripts/color.mjs`'s `deltaE` and the mix in sRGB, which is
+ * the arithmetic `color-mix` performs, the worst ordering margin by 2% step is
+ * 2% -0.14 (`gruvboxLight`), 4% +0.74 (`gruvboxLight`), 6% **+1.02** (`linen`),
+ * 8% +1.13 (`linen`), 10% +2.12 (`paper`) — so 6% already clears a full ΔE00 of
+ * margin and 8% is not the smallest step that does. The ratio is not monotone in
+ * the result either: 7% and 9% land at +1.63 and +1.77, and the binding palette's
+ * own separation from `canvas` dips across the shipped value — `linen` reads 3.01
+ * at 5%, 3.41 at 6%, 4.02 at 7%, **3.52 at 8%**, 4.16 at 9%. A "smallest step that
+ * clears X" claim cannot be true of a function that moves backwards. Recorded as
+ * what it is, then: the step this change measured, captured and had signed off,
+ * inside the 6-10% band where the ordering margin holds above a full ΔE00 while
+ * the loud end stays subordinate to the state it marks — the worst separation
+ * from `canvas` is 26.88 at 8%, up from 19.66 on the bare wash, on `cyberpunk`,
+ * where the state was never in doubt. Moving it to 7% or 9% would buy about 0.5
+ * ΔE00 on the binding palette and cost a re-shoot of all fifty-nine committed
+ * frames, so it stays where both rounds measured it.
+ *
+ * One follow-up is recorded here rather than taken (round 2, M-3): this composite
+ * is stated in `srgb` while the app's other composite of the same pair
+ * (`ui/button.tsx`) uses `in_oklab`, and oklab measures better at both ends — the
+ * worst separation from `canvas` 4.10 against 3.52, on a +1.71 margin against
+ * +1.13. Taking it here would move every one of those fifty-nine frames, so it is
+ * a change with its own re-shoot and its own reviews rather than a constant
+ * edited in this one.
  */
 const ThemeOptionTile: FC<{
 	id: ThemeName;
@@ -394,7 +448,17 @@ const ThemeOptionTile: FC<{
 	/** Whether this tile is the picker's single tab stop (see `ThemeSelector`). */
 	isTabStop: boolean;
 	onSelect: () => void;
-}> = ({ id, name, description, isSelected, isTabStop, onSelect }) => {
+	/** Tells the picker which tile the tab stop should follow (see `ThemeSelector`). */
+	onFocusTile: () => void;
+}> = ({
+	id,
+	name,
+	description,
+	isSelected,
+	isTabStop,
+	onSelect,
+	onFocusTile,
+}) => {
 	const Icon = THEME_ICONS[id];
 
 	return (
@@ -404,6 +468,7 @@ const ThemeOptionTile: FC<{
 				data-theme-tile={id}
 				aria-pressed={isSelected}
 				tabIndex={isTabStop ? 0 : -1}
+				onFocus={onFocusTile}
 				onClick={onSelect}
 				className={cn(
 					"relative flex flex-col gap-1.5 rounded-md p-1 text-left transition-colors duration-fast ease-out-quart",
@@ -485,7 +550,8 @@ const ThemeOptionTile: FC<{
  * treatment — a 16:10 preview per theme — that is a 5,600px scroll, and a
  * picker you cannot take in at a glance is a list you have to search. The tiles
  * are therefore thumbnail-first and compact: the cost falls from 92.1px per
- * theme to 27.5px at a 1000px window and 18.1px at 1380px, and `ThemeOptionTile`
+ * theme to 40.9px at the app's own 800px minimum window, 27.5px at 1000px and
+ * 18.1px at 1380px, and `ThemeOptionTile`
  * carries the measured band table, including the 1040px band where widening the
  * window makes the grid SPARSER rather than denser.
  *
@@ -502,14 +568,33 @@ const ThemeOptionTile: FC<{
  * Fifty-nine native `button`s in a grid are fifty-nine tab stops: measured in
  * the app, the picker cost a keyboard user 28 presses to reach its first tile
  * and 59 to cross it, and ArrowRight/ArrowDown/End did nothing. So the tiles use
- * the roving-tabindex pattern: exactly one tile is in the tab order — the
- * selected one, or the first when nothing is selected yet — and the arrows move
- * focus across the whole grid in visual order (the two groups are one flat list
- * there, because DOM order is visual order and both grids take their column
- * count from the same column width), with Home/End at the ends. Enter and Space
- * still select, because the tile is still a real button, and the column count is
- * measured from the DOM rather than hardcoded: `auto-fill` decides it from the
- * column width, so it is 3, 4 or 5 depending on the window.
+ * the roving-tabindex pattern: exactly one tile is in the tab order and the
+ * arrows move focus across the whole grid in visual order, with Home/End at the
+ * ends. Enter and Space still select, because the tile is still a real button,
+ * and the column count is measured from the DOM rather than hardcoded:
+ * `auto-fill` decides it from the column width, so it is 3, 4 or 5 depending on
+ * the window.
+ *
+ * The tab stop follows FOCUS, not the selection (round 2, M-6): with the arrows
+ * parked on one tile and the selection on another, Tab-away and Shift-Tab-back
+ * return to the tile the user was on, which is what the pattern means by a
+ * roving tabindex. The selected tile is the fallback for the state before
+ * anything here has been focused, and the set's first tile is the fallback when
+ * the stored name is not in the rendered set, so the picker is never
+ * unreachable.
+ *
+ * The arrows' rule is NOT a flat offset, and that is round 2's U1. The Dark
+ * group's last row is short and the Light group begins a new one, so
+ * `index ± columns` stepped off the end of the Dark group's arithmetic and
+ * landed up to four columns into the Light group's first row — `ArrowDown` from
+ * `rosewood` reached `rosePineDawn` 685px away instead of `localOperatorLight`
+ * directly beneath it. The rule that follows the picture (down/up to the tile in
+ * the next/previous visual row nearest this column, a group's first tile
+ * starting a new row) lives in `theme-grid-navigation.ts` as a pure function
+ * over indices and is covered by `scripts/theme-grid-navigation.test.mjs`,
+ * including the boundary at 3, 4 and 5 columns; this component keeps the part
+ * that needs a browser — reading the tiles and each grid's own column count out
+ * of the DOM — and delegates the decision.
  *
  * No role is added to say "grid". A `role="grid"` owes its reader rows and
  * gridcells, which this DOM does not have, and a role that lies about the
@@ -531,15 +616,32 @@ const ThemeOptionTile: FC<{
  * keyboard, and the selected one is marked with `aria-pressed`.
  */
 
-/** The keys the grid answers. Modifiers and everything else are left alone. */
-const GRID_NAV_KEYS = new Set([
-	"ArrowLeft",
-	"ArrowRight",
-	"ArrowUp",
-	"ArrowDown",
-	"Home",
-	"End",
-]);
+/**
+ * The measured shape of the tiles as the DOM has them: one entry per group grid,
+ * in DOM order.
+ *
+ * Both figures this rule needs come from the render rather than from a constant:
+ * the group's tile count is what it actually rendered, and its column count is
+ * read off the group's OWN first row, because `auto-fill` decides that from the
+ * column's width and a count measured in one grid would silently misplace every
+ * row of a grid that turned out narrower. The row test is the one this component
+ * has always used: tiles share a `top` to within a sub-pixel when they are on
+ * one row, and a `gap-2` column step is orders of magnitude larger than that.
+ */
+const measureTileGrids = (root: Element): TileGridGroup[] =>
+	[...root.querySelectorAll<HTMLElement>("[data-theme-grid]")].map((grid) => {
+		const tiles = [...grid.querySelectorAll<HTMLElement>("[data-theme-tile]")];
+		const rowTop = tiles[0]?.getBoundingClientRect().top ?? 0;
+		return {
+			count: tiles.length,
+			columns: Math.max(
+				1,
+				tiles.filter(
+					(tile) => Math.abs(tile.getBoundingClientRect().top - rowTop) < 1,
+				).length,
+			),
+		};
+	});
 
 export const ThemeSelector: FC = () => {
 	const { themeName, setTheme } = useUiPreferencesStore();
@@ -559,24 +661,32 @@ export const ThemeSelector: FC = () => {
 	}, []);
 
 	/*
-	 * The one tile in the tab order. The selected one, which is the tile a
-	 * keyboard user is looking for; the first when the stored name is not in the
-	 * rendered set, so the picker is never unreachable.
+	 * The tile the tab stop follows: the one that has focus, so Tab-away and
+	 * Shift-Tab-back return to where the user left off rather than to the
+	 * selection they arrowed away from (round 2, M-6). The SELECTED tile is the
+	 * fallback for the state before anything here has been focused, and the first
+	 * tile of the set is the fallback when the stored name is not in the rendered
+	 * set — so no state leaves the picker with zero tab stops.
 	 */
+	const [focusedId, setFocusedId] = useState<ThemeName | null>(null);
+
 	const tabStop = useMemo(() => {
 		const order = groups.flatMap((group) => group.items.map((item) => item.id));
+		if (focusedId && order.includes(focusedId)) return focusedId;
 		return order.includes(themeName) ? themeName : order[0];
-	}, [groups, themeName]);
+	}, [groups, focusedId, themeName]);
 
 	/**
-	 * Move focus by arrow, Home or End. Reads the tiles out of the DOM in their
-	 * own order rather than keeping a second copy here, so a group gaining a
-	 * palette needs no change. `columns` is measured from the first row, which is
-	 * always full, because `auto-fill` decides the count from the column width and
-	 * a hardcoded number would be wrong at every width but one.
+	 * Move focus by arrow, Home or End.
+	 *
+	 * The DECISION is `nextTileIndex`'s — a pure function over indices, covered by
+	 * `scripts/theme-grid-navigation.test.mjs` — and this function owns only what
+	 * needs a live DOM: reading the tiles in their own order rather than keeping a
+	 * second copy here (so a group gaining a palette needs no change), measuring
+	 * each grid's column count, and moving focus.
 	 */
 	const moveFocus = (event: KeyboardEvent<HTMLDivElement>) => {
-		if (!GRID_NAV_KEYS.has(event.key)) return;
+		if (!isTileNavKey(event.key)) return;
 		const tiles = [
 			...event.currentTarget.querySelectorAll<HTMLButtonElement>(
 				"[data-theme-tile]",
@@ -586,24 +696,13 @@ export const ThemeSelector: FC = () => {
 		if (index < 0) return;
 		/* Handled: stop ArrowDown/Up from scrolling the page under the grid. */
 		event.preventDefault();
-		const rowTop = tiles[0].getBoundingClientRect().top;
-		const columns =
-			tiles.filter(
-				(tile) => Math.abs(tile.getBoundingClientRect().top - rowTop) < 1,
-			).length || 1;
-		const offsets: Record<string, number> = {
-			ArrowLeft: index - 1,
-			ArrowRight: index + 1,
-			ArrowUp: index - columns,
-			ArrowDown: index + columns,
-			Home: 0,
-			End: tiles.length - 1,
-		};
-		const next = Math.max(
-			0,
-			Math.min(tiles.length - 1, offsets[event.key] ?? index),
-		);
-		if (next !== index) tiles[next].focus();
+		const next = nextTileIndex({
+			index,
+			key: event.key,
+			groups: measureTileGrids(event.currentTarget),
+		});
+		/* `next` is `index` when the press clamps or cannot move. */
+		if (next !== index) tiles[next]?.focus();
 	};
 
 	return (
@@ -640,7 +739,10 @@ export const ThemeSelector: FC = () => {
 						 * (round 1, D2), and raising it drops the grid to four columns
 						 * at the widest band, so it stays.
 						 */}
-						<div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2">
+						<div
+							data-theme-grid={group.label}
+							className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2"
+						>
 							{group.items.map(({ id, name, description }) => (
 								<ThemeOptionTile
 									key={id}
@@ -650,6 +752,7 @@ export const ThemeSelector: FC = () => {
 									isSelected={id === themeName}
 									isTabStop={id === tabStop}
 									onSelect={() => setTheme(id)}
+									onFocusTile={() => setFocusedId(id)}
 								/>
 							))}
 						</div>
