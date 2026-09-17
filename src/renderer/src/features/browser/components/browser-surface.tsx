@@ -493,11 +493,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		>
 			<BrowserTabStrip
 				tabs={tabs}
-				// The pool, for `Close N other tabs` (design R5): the strip's own `tabs` is
-				// the host's visible list, and this is the pane — the one host where the two
-				// differ. Review round 1, A3: the item counted this list while the design,
-				// the model's docstring and the band's comment all said `the pool`.
-				poolTabs={allTabs ?? []}
 				sessions={sessions}
 				activeTabId={state?.activeTabId ?? null}
 				waiting={queue.waiting}
