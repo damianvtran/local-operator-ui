@@ -17,32 +17,51 @@ rather than swept:
   the pinned control opened as the in-band list, the same frame with the page beneath it,
   and the one-event batch close.
 
+  **TWO OF THE FOUR ARE FROM A LATER RUN THAN THE OTHER TWO** (2026-09-17).
+  `19b-pinned-control-open.png` and `19b-pinned-control-open-page.png` were re-taken in
+  the run that closed the D5 and D9 findings below; `19-strip-pooled-20-over-6.png` and
+  `19c-batch-close-one-event.png` are unchanged from the pass before it. Nothing in those
+  two carries a surface the intervening round repainted — `19` shows the strip with the
+  pinned control already reading its bare count (`16`), and `19c` shows the band's list,
+  which the remediation's band changes do not touch — so they are not re-shot for
+  tidiness. Say what each is a picture of rather than implying one run made all four.
+
 ## What this set does NOT show, stated rather than implied
 
-**THE BAND'S HEADING ROW IS RENDERED BUT NOT VISIBLE IN `live/19b-pinned-control-open.png`,
-and the readout beside it is why** (review round 1, D5, resolved after the round). The
-design reviewer measured no ink where the band's own heading (`All tabs, N not shown`,
-`browser-tab-strip.tsx`'s first child of `browser-tab-overflow-list`) belongs, and could
-not tell whether the run had driven a stale bundle, whether a clip hid it, or whether the
-row was missing. It is none of those: this run's app has **no daemon to talk to**, so its
-own reconnect banner ("No Local Operator daemon was found and this app is configured not
-to start one.") is painted across the top of the window, and the band's first 24 CSS px
-sit under it. Measured in the same run, from the DOM rather than from the pixels:
+**THE BAND'S HEADING ROW IS RENDERED AND, ON THIS HEAD, VISIBLE IN
+`live/19b-pinned-control-open.png`** (review round 1, D5, resolved after the round and
+confirmed in this re-take). The design reviewer measured no ink where the band's own
+heading (`All tabs, N not shown`, `browser-tab-strip.tsx`'s first child of
+`browser-tab-overflow-list`) belongs, and could not tell whether the run had driven a
+stale bundle, whether a clip hid it, or whether the row was missing. It was none of
+those: the run's app has **no daemon to talk to**, so its own reconnect banner ("No Local
+Operator daemon was found and this app is configured not to start one.") is painted
+across the top of the window, and on that tree the band began at CSS 44 — under the
+banner's 68 — so the row was drawn and covered. What the proof RECORDS, from the DOM
+rather than from the pixels, at the same moment it takes the frame:
 
 ```
-heading {"text":"All tabs, 16 not shown","top":49,"bottom":77,"left":220,"right":1380,
+banner {"top":0,"height":68}
+heading {"text":"All tabs, 16 not shown","top":170,"bottom":198,"left":220,"right":1380,
          "height":28,"display":"flex","visibility":"visible","overflow":"visible"}
-        inside the band box {"top":44,"bottom":225,"left":220,"right":1380,"height":181}
+        inside the band box {"top":165,"bottom":346,"left":220,"right":1380,"height":181}
 ```
 
-The proof now RECORDS that reading and CHECKS it ("the band paints the heading row the
-source renders, inside the band's own box"), so the frame's silence about the heading is
-answered by a measurement taken at the same moment rather than by inference — and the
-band's own height (181 = the 8px of padding + the 28px heading + the 144px scroller) is
-the second witness that the row is in the box it is drawn in. A frame with no banner in it
-would show the row; the harness deliberately has no daemon reachable (that is the
-"scratch backend port is dead" check at the top of its own transcript), so that frame
-cannot be taken from this harness.
+The heading sits at CSS 170-198 and the band's box at 165-346, both entirely below the
+banner's 68, and the committed frame shows the row: `All tabs, 16 not shown` is legible
+above `conv-alpha 4`. Two checks in the run carry that rather than this paragraph — "the
+band paints the heading row the source renders, inside the band's own box" (the reading
+above) and "the tab strip is present in the layout, whether or not the connectivity
+banner is up over it" (`banner {"top":0,"height":68}, tab strip {"top":121,"height":37},
+overlaps false`). The band's own height is the second witness that the row is inside the
+box it is drawn in: 181 = the 8px of padding + the 28px heading + the 144px scroller.
+
+Why the row sat under the banner before and does not now is the app's own chrome, not a
+change to this harness: the strip and the band lie below the banner's 68 CSS px on this
+head, where the version these frames first replaced put the band at 44. The harness still
+deliberately has no daemon reachable (that is the "scratch backend port is dead" check at
+the top of its own transcript), so no frame it takes is banner-free; what changed is that
+the banner no longer covers the subject.
 
 There is no before half for `live/19b-pinned-control-open.png`, and it cannot be produced:
 the scene is added by this change, and the control it photographs no longer exists on the
