@@ -566,7 +566,15 @@ const availabilityLine = (
 				</p>
 			);
 		case "available":
-			return <p className="text-meta text-ink-muted">This name is free.</p>;
+			/*
+			 * "Looks free", not "is free". The availability route deliberately does
+			 * not consult the seconds-long reservations a publish holds, so a name can
+			 * read as free here and still come back `name_claim_in_flight` on submit —
+			 * the expected shape of the two answers, and the submit's is the
+			 * authoritative one. A promise of "free" here would make that refusal read
+			 * as a bug.
+			 */
+			return <p className="text-meta text-ink-muted">This name looks free.</p>;
 		case "taken":
 			return (
 				<p className="text-meta text-ink">

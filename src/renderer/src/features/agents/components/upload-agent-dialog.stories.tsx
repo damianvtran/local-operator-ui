@@ -90,6 +90,9 @@ const scenarioOf = (over: Partial<Scenario> = {}): Scenario => ({
 
 let scenario: Scenario = scenarioOf();
 
+/** The fold the hub answers by, so a case-variant name gets the same answer. */
+const nameKey = (name: string) => name.trim().toLowerCase();
+
 const json = (body: unknown) =>
 	new Response(JSON.stringify(body), {
 		status: 200,
@@ -131,21 +134,37 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 				message: "ok",
 				result: { system_prompt: scenario.instructions },
 			});
-		case "agent.nameAvailability":
+		case "agent.nameAvailability": {
+			/*
+			 * Answered by `nameKey`, because this is where `ReservedBuiltin`'s
+			 * capital-R "Reviewer" gets the hub's reserved answer: the hub folds the
+			 * way `publicationNameKey` does, and a stub that compared the raw string
+			 * would report a name free that the hub refuses. The fold is the same one
+			 * the dialog's own local checks use, which is the point of the shared
+			 * `name_key` in `src/shared/desktop-contract.ts`.
+			 */
+			const asked = nameKey(String(request.name ?? ""));
+			const builtin = scenario.profiles.find(
+				(profile) => nameKey(profile.name) === asked,
+			);
+			const taken = asked.startsWith("taken");
 			return desktop({
 				status: 200,
 				message: "Name availability checked",
 				result: {
 					name: request.name,
-					available: scenario.availability.available,
-					...(scenario.availability.code
-						? { code: scenario.availability.code }
+					name_key: asked,
+					available: !builtin && !taken,
+					...(builtin
+						? {
+								code: "name_reserved_builtin",
+								details: { builtin_name: builtin.name },
+							}
 						: {}),
-					...(scenario.availability.details
-						? { details: scenario.availability.details }
-						: {}),
+					...(taken ? { code: "name_taken", details: {} } : {}),
 				},
 			});
+		}
 		case "agent.publish":
 		case "agent.republish": {
 			const answer = scenario.publish;
@@ -215,16 +234,25 @@ const waitForText = async (
 	}
 };
 
-/** Presses the consent box and then Publish, in that order, waiting for each to take. */
-const submitPublication = async (canvasElement: HTMLElement): Promise<void> => {
-	const consent = canvasElement.querySelector<HTMLElement>(
+/**
+ * Presses the consent box and then Publish, in that order, waiting for each to take.
+ *
+ * Queried from the DOCUMENT rather than from the story root: the dialog renders
+ * through a Radix portal appended to `document.body`, so nothing inside
+ * `#storybook-root` is on screen at all. The first version of this helper looked
+ * in the root, threw "the consent control is not on screen" inside `play`, and
+ * every refusal story photographed the untouched default state — twelve frames
+ * that looked like evidence and showed nothing.
+ */
+const submitPublication = async (): Promise<void> => {
+	const consent = document.querySelector<HTMLElement>(
 		'[data-testid="publish-consent"]',
 	);
 	if (!consent) throw new Error("the consent control is not on screen");
 	await userEvent.click(consent);
 	const deadline = Date.now() + 5000;
 	for (;;) {
-		const submit = canvasElement.querySelector<HTMLButtonElement>(
+		const submit = document.querySelector<HTMLButtonElement>(
 			'[data-testid="publish-submit"]',
 		);
 		if (submit && !submit.disabled) {
@@ -238,6 +266,24 @@ const submitPublication = async (canvasElement: HTMLElement): Promise<void> => {
 };
 
 /**
+ * Holds the shutter until the named text is on screen, without touching the form.
+ *
+ * The states that need this are the ones an ANSWER produces rather than an
+ * action: the availability line is debounced 400 ms and then fetched, so a frame
+ * taken as soon as the story "drew" lands inside the debounce window and shows
+ * the dialog with no answer under the name field at all. The first capture of
+ * `default` did exactly that, which is how this helper came to exist.
+ */
+const settleOn = (text: string) => async (): Promise<void> => {
+	document.documentElement.dataset.capturePending = "1";
+	try {
+		await waitForText(document.body, text);
+	} finally {
+		delete document.documentElement.dataset.capturePending;
+	}
+};
+
+/**
  * Submits the form and holds the shutter until the named state is on screen.
  *
  * `capturePending` is the harness's own readiness signal (see
@@ -246,17 +292,15 @@ const submitPublication = async (canvasElement: HTMLElement): Promise<void> => {
  * about. Cleared in `finally` so a story that never reaches its state fails the
  * capture by name instead of writing a frame of the form.
  */
-const playTo =
-	(text: string) =>
-	async ({ canvasElement }: { canvasElement: HTMLElement }): Promise<void> => {
-		document.documentElement.dataset.capturePending = "1";
-		try {
-			await submitPublication(canvasElement);
-			await waitForText(canvasElement, text);
-		} finally {
-			delete document.documentElement.dataset.capturePending;
-		}
-	};
+const playTo = (text: string) => async (): Promise<void> => {
+	document.documentElement.dataset.capturePending = "1";
+	try {
+		await submitPublication();
+		await waitForText(document.body, text);
+	} finally {
+		delete document.documentElement.dataset.capturePending;
+	}
+};
 
 const meta: Meta<typeof UploadAgentDialog> = {
 	title: "Agents/Publish dialog",
@@ -301,8 +345,14 @@ const publishDialog = (
 };
 export default meta;
 
-/** The default state: what is published, what is not, and a name field that is free. */
-export const Default: Story = publishDialog();
+/**
+ * The default state: what is published, what is not, and a name field the hub
+ * reports as free.
+ */
+export const Default: Story = {
+	...publishDialog(),
+	play: settleOn("This name looks free."),
+};
 
 /**
  * The rules the dialog can enforce itself, all of them at once.
@@ -362,9 +412,36 @@ export const NameTakenByYou: Story = {
  * `name_key` against the built-in rows `profiles.list` already returns, so this
  * refusal costs no round trip and works with no credential at all.
  */
-export const ReservedBuiltin: Story = publishDialog({
-	agent: { ...AGENT, name: "Reviewer" },
-});
+export const ReservedBuiltin: Story = {
+	...publishDialog({ agent: { ...AGENT, name: "Reviewer" } }),
+	// The reservation is caught locally by name key, so submit is already disabled
+	// here; the live check answers the same thing from the hub, which is what makes
+	// both lines visible in one frame.
+	play: settleOn("is the name of a built-in agent"),
+};
+
+/**
+ * A name another publication holds a seconds-long reservation on.
+ *
+ * The ninth code, and the one that must NOT read as "taken": nothing is
+ * published under the name, so the offer is a retry and the name field is left
+ * alone. Its story is here rather than in a test alone because the difference is
+ * a user-visible one — a wrong treatment sends the author to rename an agent for
+ * a collision that resolves itself.
+ */
+export const NameClaimInFlight: Story = {
+	...publishDialog({
+		publish: {
+			kind: "refused",
+			status: 409,
+			code: "name_claim_in_flight",
+			message:
+				'The name "adverse-media-screener" is being published right now. Try again in a moment.',
+			details: { owned_by_caller: false, retryable: true },
+		},
+	}),
+	play: playTo("being published right now"),
+};
 
 /**
  * The same refusal arriving from the hub instead: a machine whose built-in list
@@ -445,4 +522,7 @@ export const Published: Story = {
  * persisted and a story that depended on a sibling having run would produce a
  * frame nothing could reproduce.
  */
-export const UpdateListing: Story = publishDialog({}, true);
+export const UpdateListing: Story = {
+	...publishDialog({}, true),
+	play: settleOn("This name looks free."),
+};

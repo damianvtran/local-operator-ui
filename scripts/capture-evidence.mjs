@@ -2308,6 +2308,7 @@ export const STORIES = [
 	["agents-publish-dialog--pre-validation-blocked", 980, 860],
 	["agents-publish-dialog--name-taken", 980, 860],
 	["agents-publish-dialog--name-taken-by-you", 980, 860],
+	["agents-publish-dialog--name-claim-in-flight", 980, 860],
 	["agents-publish-dialog--reserved-builtin", 980, 860],
 	["agents-publish-dialog--reserved-builtin-refusal", 980, 860],
 	["agents-publish-dialog--moderation-rejected", 980, 860],

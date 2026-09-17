@@ -224,6 +224,30 @@ export function publicationTreatment(
 				focus: "name",
 			};
 		}
+		case "name_claim_in_flight":
+			/*
+			 * A DIFFERENT FACT FROM `name_taken`, which is why it has its own
+			 * sentence and its own single action: another publication holds the
+			 * seconds-long reservation for this name, nothing is published under it,
+			 * and retrying is usually all it takes. Rendering it as "that name is
+			 * taken" would push an author to abandon a name that is free a moment
+			 * later, and the name field is NOT focused here for the same reason —
+			 * there is nothing to change.
+			 *
+			 * `GET /v1/agent-name-availability` deliberately does not consult the
+			 * reservation collection, so the live check can say "free" and the submit
+			 * can still answer this. That is the expected shape of the two answers,
+			 * not a contradiction: the check is a courtesy and the submit is what
+			 * decides.
+			 */
+			return {
+				variant: "warning",
+				headline: "That name is being published right now",
+				body: `Someone is publishing an agent called "${name}" at this moment. It is not claimed — try again in a moment.`,
+				note: null,
+				actions: ["retry"],
+				focus: null,
+			};
 		case "name_reserved_builtin": {
 			// The built-in's NAME is shown and its source URL is not: the name is what
 			// the author has to stop using, and a link to where the hub's own
