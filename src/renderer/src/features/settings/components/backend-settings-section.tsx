@@ -219,6 +219,29 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	);
 
 	/**
+	 * The `hosting` this page will boot on, which is the value the model rows
+	 * narrow their list by.
+	 *
+	 * DRAFT-AWARE on purpose, including while the draft is unsaved: the two keys
+	 * are read independently at boot, so a model picked against the stored
+	 * hosting and then saved beside an edited hosting names a model the new
+	 * provider does not own. The draft's value is the same string shape the model
+	 * builder compares against `provider`, which is why `draftFromSetting` is the
+	 * one converter used here rather than a second serialization.
+	 *
+	 * An empty string means the user cleared the row to unsaved, and the builder
+	 * treats that as "unknown hosting" and widens to the whole catalogue rather
+	 * than narrowing to nothing.
+	 */
+	const effectiveHosting = useMemo(() => {
+		const hosting = (settings?.settings ?? []).find(
+			(setting) => setting.key === "hosting",
+		);
+		if (!hosting) return "";
+		return (drafts.hosting ?? draftFromSetting(hosting)).value;
+	}, [settings, drafts]);
+
+	/**
 	 * The rows the current filter, tier and chips admit.
 	 *
 	 * THE TIER APPLIES ONLY TO THE UNFILTERED LIST. A search reaches every key at
@@ -860,6 +883,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 											draft={drafts[setting.key] ?? draftFromSetting(setting)}
 											tier={tierFor(setting)}
 											gate={gateFor(setting)}
+											effectiveHosting={effectiveHosting}
 											saving={Boolean(savingKeys[setting.key])}
 											error={errors[setting.key] ?? null}
 											onDraftChange={(draft) =>
