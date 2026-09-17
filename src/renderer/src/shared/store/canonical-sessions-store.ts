@@ -252,17 +252,85 @@ export function isLeadingSlashRefusal(error: unknown, text: string): boolean {
 export const UNREADABLE_ATTACHMENT_CODE = "attachment_read_failed";
 
 /**
+ * A send refused because the backend could not write its store: the disk is
+ * full.
+ *
+ * WHY ONE `sqlite3.Error` HAD TO BECOME THREE ANSWERS. The backend's desktop
+ * routes caught the BASE class - `sqlite3.Error` - and mapped every member of it
+ * to one 503 reading "Read state is busy right now. It will catch up on its
+ * own.", so lock contention, an unopenable database, a corrupted one and a full
+ * volume were a single branch, and the sentence described the only one of them
+ * that is transient. On 2026-09-17 this machine's boot volume hit 0 bytes free
+ * at 09:56; SQLite could not allocate its journal or WAL, and a send carrying an
+ * IMAGE was refused with that sentence plus this composer's own generic hint,
+ * "Your message is still in the composer. Send it again." - the one action that
+ * cannot help on a full disk, and the one the operator repeated. The image is
+ * what crossed the threshold first because it is by far the largest write in the
+ * flow: attachment bytes plus a much bigger transcript append, while a few-KB
+ * text send still landed. It went away when disk space came back, which is the
+ * correlation the report describes.
+ *
+ * A code rather than a reading of the copy, for the same reason as its siblings
+ * above: the sentence is expected to be reworded, and matching prose would
+ * silently stop matching. What the code decides is the one thing the copy cannot
+ * carry - whether the composer's generic retry hint is TRUE.
+ *
+ * The SENTENCE is the BACKEND's, rendered verbatim from the error body's
+ * `message` field (`desktopResult` reads `detail.code`/`detail.message` for any
+ * status). Naming the volume and the remedy is a fact about the machine that only
+ * the process which touched the store has, so authoring a second copy here would
+ * be a second place for it to drift from the one the user is shown. The renderer
+ * half of the fix is that this code SURVIVES to the alert - it is what
+ * `withholdsRetryHint` below reads - and that the sentence is not replaced by a
+ * generic one on the way (pinned in `scripts/canonical-chat.test.mjs`).
+ *
+ * The notice does NOT retire on a timer, and that is deliberate: the read
+ * window's notice can, because the window it names closes on an observable
+ * condition, while a full disk does not heal itself. It clears when the
+ * refusal's remedy actually happened - the next send that lands (`finishDraft`)
+ * - or when the user edits the draft, as every other send refusal does.
+ */
+export const STORE_OUT_OF_SPACE_CODE = "store_out_of_space";
+
+/**
+ * A send refused because the backend's store could not be read or written at all
+ * - unopenable, corrupted, "file is not a database" - which is every
+ * `sqlite3.Error` that is not contention and not a full volume.
+ *
+ * The remedy is NOT a retry: the same store is in the same state on the next
+ * attempt, so resending the same bytes is refused for the same reason, and the
+ * hint the composer would otherwise render under this sentence would be the
+ * incident's own false instruction in a different costume. The sentence the user
+ * reads says so and points at the machine; a code is what withholds the hint
+ * that contradicts it.
+ *
+ * `store_busy` - the third arm, genuine lock contention - deliberately has no
+ * constant in this file: it keeps the backend's existing sentence AND the
+ * composer's retry hint, because there a retry is exactly the right advice. The
+ * split exists so that "send it again" becomes true-for-contention and
+ * false-for-a-failed-store, so nothing in the renderer changes for it.
+ */
+export const STORE_UNAVAILABLE_CODE = "store_unavailable";
+
+/**
  * Whether a refusal's remedy is anything OTHER than "send it again".
  *
  * The composer's generic retry hint is the alert's "what to do" half, and it is
- * only ever rendered where it is true. Three refusals cannot be answered by
+ * only ever rendered where it is true. Five refusals cannot be answered by
  * resending the same bytes: the read window refuses every send for as long as
  * its own notice is on screen, the leading-slash policy refuses this text
- * forever, and an attachment that cannot be read is still unreadable on the
- * next attempt - the same chip is still attached, so the retry is refused for
- * the same reason until the chip is replaced or removed (UX round 3, U9; UX
- * round 2, U13; design round 4, D13). Each carries its own statement of what to
- * do instead, and the composer withholds the hint for all three.
+ * forever, an attachment that cannot be read is still unreadable on the next
+ * attempt - the same chip is still attached, so the retry is refused for the
+ * same reason until the chip is replaced or removed - and a store that is out of
+ * space or unreadable is in the same state on the next attempt too (UX round 3,
+ * U9; UX round 2, U13; design round 4, D13; the store split). Each carries its
+ * own statement of what to do instead, and the composer withholds the hint for
+ * all of them.
+ *
+ * What the two store codes add to that list is a distinction the copy alone
+ * cannot make: the third arm of the same backend ladder, `store_busy`, reads
+ * much like them and IS worth retrying, so this predicate - not the sentence's
+ * shape - is what tells the two apart.
  *
  * One function rather than two call-site comparisons, so the composer reads the
  * rule instead of listing the codes, and so `scripts/canonical-chat.test.mjs`
@@ -272,7 +340,9 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 	return (
 		code === SESSION_UNVALIDATED_CODE ||
 		code === LEADING_SLASH_CODE ||
-		code === UNREADABLE_ATTACHMENT_CODE
+		code === UNREADABLE_ATTACHMENT_CODE ||
+		code === STORE_OUT_OF_SPACE_CODE ||
+		code === STORE_UNAVAILABLE_CODE
 	);
 }
 
