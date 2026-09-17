@@ -32,6 +32,7 @@ import {
 } from "../../../../../shared/desktop-stream-notice";
 import "../../../styles/index.css";
 import { peerFields } from "../components/trace/receipt-row-model";
+import { formatDuration } from "../components/trace/tool-row-model";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalTranscript } from "./canonical-transcript";
 import {
@@ -1624,6 +1625,29 @@ export const ResumedRunningClock: Story = {
 		const now = Date.now();
 		const agoS = (ms: number) => (now - ms) / 1000;
 		/*
+		 * The two ages the fixture states, and the captions DERIVE their spellings
+		 * from them rather than restating them.
+		 *
+		 * WHY DERIVED: a hand-copied number had already drifted from the frame it
+		 * sits over once (design round 1's D3), and the age is the one fact both
+		 * halves of this pair are about — so a caption that repeats it by hand is a
+		 * second description of the fixture, kept in step by nothing.
+		 *
+		 * WHY THE WORDS ARE ARM-NEUTRAL, and why they say the counter "counts on":
+		 * both halves are shot with this same story file (the before half runs it
+		 * against main's reducer and main's working-line model), so a caption
+		 * asserting `not this view's mount` would be contradicted by the before
+		 * half's own pixels, which ARE this view's mount. And because the counter is
+		 * LIVE, the shutter always lands a beat after this story anchored its clock,
+		 * so the frame reads that much more than the age named here — which is the
+		 * fact "counts on" states and a pinned number does not. A caption holding the
+		 * rendered value instead would be wrong on every capture whose shutter was
+		 * slower than the last, which is how the number it replaced went stale.
+		 */
+		const THINKING_MS = 92_000;
+		const RUNNING_MS = 137_000;
+		const age = (ms: number) => formatDuration(Math.round(ms / 1000));
+		/*
 		 * Cast at the boundary rather than built whole, as
 		 * `session-status-strip.stories.tsx` does for the same reason: a full
 		 * `CanonicalFrontendState` is thirty-odd fields of session bookkeeping that
@@ -1643,7 +1667,7 @@ export const ResumedRunningClock: Story = {
 		const resumed = applyLiveSeed(
 			EMPTY_TRANSCRIPT,
 			{
-				...folded("running", agoS(137_000)),
+				...folded("running", agoS(RUNNING_MS)),
 				streaming: true,
 				generation: 1,
 				live_events: [
@@ -1659,7 +1683,7 @@ export const ResumedRunningClock: Story = {
 						tool_name: "bash",
 						intent: "re-running the transport suite",
 						args: { command: "pnpm test:desktop" },
-						started_at_epoch: agoS(137_000),
+						started_at_epoch: agoS(RUNNING_MS),
 					},
 				],
 			},
@@ -1670,13 +1694,15 @@ export const ResumedRunningClock: Story = {
 				<div className="min-w-0 flex-1">
 					<p className="pb-2 text-body-sm text-ink-muted">
 						Resumed on a MODEL CALL: nothing has painted yet for this turn, so
-						the band is the only thing on screen carrying the clock — and it is
-						the producer's own thinking edge, 1m32s in, not this view's mount.
+						the band is the only thing on screen carrying the clock. The
+						snapshot states that this phase began {age(THINKING_MS)} ago; the
+						band resumes that age and counts on, or restarts from this view's
+						mount.
 					</p>
 					<Frame
 						height={240}
 						waiting={true}
-						frontend={folded("thinking", agoS(92_000))}
+						frontend={folded("thinking", agoS(THINKING_MS))}
 						records={[
 							{
 								kind: "user",
@@ -1690,14 +1716,15 @@ export const ResumedRunningClock: Story = {
 				</div>
 				<div className="min-w-0 flex-1">
 					<p className="pb-2 text-body-sm text-ink-muted">
-						Resumed on a RUNNING BATCH: the row and the band count from the
-						oldest card's own start, 2m17s in. Before the fix both read 0s, and
-						the row kept reading it for the life of the view.
+						Resumed on a RUNNING BATCH: the oldest call in the batch. The
+						snapshot states it began {age(RUNNING_MS)} ago; the row and the band
+						resume that age and count on, or count from the moment this view
+						loaded.
 					</p>
 					<Frame
 						height={240}
 						waiting={true}
-						frontend={folded("running", agoS(137_000))}
+						frontend={folded("running", agoS(RUNNING_MS))}
 						records={resumed.records}
 					/>
 				</div>
