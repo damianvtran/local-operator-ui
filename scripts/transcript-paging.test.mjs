@@ -612,9 +612,24 @@ test("a session change discards latch, demand and chain budgets", () => {
  * The lead (rule 3's second trigger), the latch's travel record (rule 4) and
  * the widen a landed page owes (rule 6).
  *
- * Every case below is written against a number MEASURED on the real surface,
- * and every one of them fails against the module this change replaces — which is
- * the only reason they are worth keeping. The measurements they come from:
+ * Every case below is written against a number MEASURED on the real surface.
+ * ELEVEN OF THE SIXTEEN FAIL against the module this change replaces, and that
+ * is what makes them evidence FOR the fix; the other FIVE pass on both modules
+ * and are labelled NEGATIVE GUARD, because what they protect is behaviour the
+ * fix must not break rather than behaviour it introduces. The split was measured
+ * by running this file against the replaced module, not inferred (review round
+ * 1, R1-5 — the earlier version of this paragraph claimed all sixteen failed,
+ * which was false for five of them, and a claim like that is what a later reader
+ * leans on when deciding whether a case is load-bearing).
+ *
+ * NOTE on how strong that instrument is: the base-module run goes red for a
+ * missing SYMBOL as well as for a behaviour difference (the base module has no
+ * `VELOCITY_TTL_MS` and no `pageWidenOwed`), so the discriminating check that
+ * matters is the mutation one — remove a single clause from the CURRENT module
+ * and confirm the case that guards it goes red. The mutation results are listed
+ * per case where a case is load-bearing.
+ *
+ * The measurements they come from:
  *
  *   - 25px/ms at the top of a finger burst (400px in 16ms), 2.4px/ms on a
  *     momentum tail at the wall (80px in 33ms);
@@ -730,6 +745,10 @@ test("a reader who stops outside every window spends nothing", () => {
 	assert.equal(stale.state.armed, false, "and the demand goes with it");
 });
 
+// NEGATIVE GUARD: passes against the replaced module as well. It protects
+// behaviour the fix depends on (a bound, an upper limit, an accident that is now
+// a contract), not behaviour the fix introduces, so it is evidence about the
+// blast radius rather than about the change.
 test("one velocity spike does not lead a page", () => {
 	// The cap cannot catch this one: 4px/ms is well under the 4-viewport ceiling
 	// (1956px here), so the EMA is the whole defence. One notch leaves 2px/ms —
@@ -809,6 +828,10 @@ test("a lead spend does not set the latch, and the arrival then buys a widen", (
 	assert.equal(arrival.action, "widen");
 });
 
+// NEGATIVE GUARD: passes against the replaced module as well. It protects
+// behaviour the fix depends on (a bound, an upper limit, an accident that is now
+// a contract), not behaviour the fix introduces, so it is evidence about the
+// blast radius rather than about the change.
 test("one lead spend per act, however far the reader travels afterwards", () => {
 	// Risk 2: an early spend must not become a second one as the reader keeps
 	// travelling. Two pages' worth of travel happen inside this act (2000px to
@@ -1069,6 +1092,10 @@ test("a reader who travelled since the latch re-arms exactly once", () => {
 	);
 });
 
+// NEGATIVE GUARD: passes against the replaced module as well. It protects
+// behaviour the fix depends on (a bound, an upper limit, an accident that is now
+// a contract), not behaviour the fix introduces, so it is evidence about the
+// blast radius rather than about the change.
 test("travel below TRAVEL_MIN_PX does not re-arm", () => {
 	// 24px is the clamp-follow the browser performs when a landing grows the
 	// extent under a pinned reader, and it is deliberately below the threshold:
@@ -1097,6 +1124,10 @@ test("travel below TRAVEL_MIN_PX does not re-arm", () => {
 	assert.equal(spent, 0, `sub-threshold movement is not travel (got ${spent})`);
 });
 
+// NEGATIVE GUARD: passes against the replaced module as well. It protects
+// behaviour the fix depends on (a bound, an upper limit, an accident that is now
+// a contract), not behaviour the fix introduces, so it is evidence about the
+// blast radius rather than about the change.
 test("extent growth under a clamped reader is not travel", () => {
 	// The case that protects rule 4's memory bound, and the shape it has to
 	// survive: a page lands under a reader pinned at the wall (measured:
@@ -1129,6 +1160,10 @@ test("extent growth under a clamped reader is not travel", () => {
 	);
 });
 
+// NEGATIVE GUARD: passes against the replaced module as well. It protects
+// behaviour the fix depends on (a bound, an upper limit, an accident that is now
+// a contract), not behaviour the fix introduces, so it is evidence about the
+// blast radius rather than about the change.
 test("a demand armed off the wall survives the clamped notches it is swallowed beside", () => {
 	// The load-bearing behaviour that was ACCIDENTAL until this change: a notch
 	// that arrives while the reader is OFF the hard top arms a demand, and the
@@ -1157,35 +1192,65 @@ test("a demand armed off the wall survives the clamped notches it is swallowed b
 	);
 });
 
-test("the lead is inert below its velocity floor", () => {
-	// The claim that bounds this whole change: a reader slower than
-	// MIN_LEAD_VELOCITY_PX_PER_MS, or one whose projection is smaller than the
-	// zone, gets EXACTLY the window they had before it existed. Proved rather
-	// than asserted, by comparing the two windows the code computes.
+test("a slow approach inside the zone is spent at its input cadence, not at the settle debounce", () => {
+	// THE CASE THE REVIEW FOUND MISSING (round 1, R1-2), and the one that makes
+	// the claim in `decide`'s comment true or false. The version this replaces
+	// re-derived the lead formula and asserted a demand outside both windows is
+	// dropped — true of every module, including the one being replaced, so
+	// deleting the floor outright left the whole suite green.
+	//
+	// What actually differs, measured on the module: a slow reader (0.29px/ms)
+	// INSIDE the zone has their demand spent at their input cadence rather than
+	// after `SETTLE_MS` of silence. On the replaced module the same frame returns
+	// none; with the floor deleted from this module it returns none too (the floor
+	// is what makes `leadPx === zonePx`, so a low velocity would otherwise project
+	// a 52px window and fall outside it). Both mutations were run by hand.
+	//
+	// It is deliberately NOT a claim that the window grew: the second half of the
+	// case pins the window at today's zone for the same reader.
 	const clientHeight = 489;
 	const zone = prefetchZonePx(clientHeight);
-	for (const velocity of [0, MIN_LEAD_VELOCITY_PX_PER_MS / 2, 1, 1.5]) {
-		const lead = Math.min(
-			Math.max(velocity * LEAD_TIME_MS, zone),
-			4 * clientHeight,
-		);
-		assert.equal(
-			lead,
-			zone,
-			`at ${velocity}px/ms the window must be the zone, got ${lead}px`,
-		);
+	const slow = 0.3; // px/ms: a deliberate scroll, ~300px/s
+	let state = initialPagingState();
+	for (let i = 0; i < 5; i++) {
+		state = wheelUp(state, 1000 + i * 10, { travelVelocityPxPerMs: slow });
 	}
-	// And the same state machine, driven by a slow approach, still spends where
-	// it always did: inside the zone, once settled.
-	let state = wheelUp(initialPagingState(), 0, { travelVelocityPxPerMs: 1 });
-	state = decide(
-		state,
-		geo({ clientHeight, distanceFromTopPx: zone + 50 }),
-		16,
-	).state;
+	const inside = geo({ clientHeight, distanceFromTopPx: 300, hiddenRows: 40 });
+
+	// 40ms after the last notch: well inside SETTLE_MS (120), so this frame is
+	// the trigger question and nothing else.
+	const midMotion = decide(state, inside, 1080);
 	assert.equal(
-		state.armed,
-		false,
-		"outside both windows the demand is dropped",
+		midMotion.action,
+		"widen",
+		"a moving reader inside the zone is answered at their input cadence",
+	);
+	assert.ok(
+		1080 - state.lastInputAt < SETTLE_MS,
+		"and the frame really is inside the settle debounce",
+	);
+
+	// The window is still the zone for this reader: one pixel outside it, at the
+	// same instant, nothing is spent — and the demand is dropped rather than held
+	// for a later frame to spend, which is today's rule for a demand that landed
+	// without needing a page.
+	const outside = decide(
+		state,
+		geo({ clientHeight, distanceFromTopPx: zone + 1, hiddenRows: 40 }),
+		1080,
+	);
+	assert.equal(outside.action, "none");
+	assert.equal(outside.state.armed, false, "stale demand dropped, not retained");
+
+	// And a reader who is not moving at all in the same place keeps the debounce:
+	// the trigger change is about motion, never about position.
+	let still = initialPagingState();
+	for (let i = 0; i < 5; i++) still = wheelUp(still, 1000 + i * 10, {
+		travelVelocityPxPerMs: 0,
+	});
+	assert.equal(
+		decide(still, inside, 1080).action,
+		"none",
+		"a stationary reader inside the zone still waits for the debounce",
 	);
 });
