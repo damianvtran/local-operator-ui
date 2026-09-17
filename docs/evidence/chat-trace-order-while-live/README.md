@@ -63,8 +63,11 @@ HOW the seed is folded. The story is
   the red `Tool call skipped: interrupted by steering.` — and the running call
   sits immediately above them. The panel under the pane counts every row the fold
   stamped with that arrival (8) and then names them: the `before-report` frame
-  prints all eight ids, and prints a `… N more` line when a moment injects more
-  than eight, which is what the two `live` frames do.
+  prints all eight ids and no `… N more` line, and a `… N more` line appears only
+  on a moment that injects more than eight — which is `before-live` alone (60
+  rows, eight ids and `… 52 more`). `after-live` injects one and prints its header
+  plus that one id, with no more-line, so the sentence that named "the two `live`
+  frames" was one frame too wide (design round 2, D2-4).
 - **`after-report/`** — the same session, the same page, the same frames through
   the shipped fold: the pane still ends at that call, the injected rows are
   refused, and the arrival list is empty. The eight return as durable rows
@@ -81,6 +84,18 @@ HOW the seed is folded. The story is
   RECORD row, with the in-flight `wait` immediately above it. That is #312's half
   of the same `else if` chain rather than this change's, and the caption names its
   id instead of counting it away.
+
+**Each caption is held to TWO lines, and that is a constraint rather than a
+style.** The box above the pane is `h-10` — two lines of `text-body-sm` at its 1.5
+line-height — and it has no `overflow-hidden`, so a longer caption does not
+clip: it PAINTS BELOW ITS OWN BOX and inside the transcript's rectangle.
+`after-live`'s ran to three lines from `ccbf45a61` until remediation round 2
+shortened it (design round 2, D2-1; the third ink band measured (67,79) against a
+box ending at 64 and a pane starting at 72, in both themes), and the two halves
+of a pair have to wrap to the same number of lines for the pair to overlay at
+all. At a 420px column the same text needs four to five lines, which is why this
+set still carries no narrow frame: the gap is recorded rather than papered over
+with a frame invented for it.
 
 **The pane's own liveness element is in every frame.** The transcript stories
 pass the app's `waiting` (`canonical.busy`, i.e.
@@ -120,15 +135,31 @@ row in the wrong place.
 
 ## What is not byte-reproducible, and why
 
-Every frame re-captures within 73 pixels at a 5% fuzz (`magick compare`). The
-residual is the one live cell in each direction: the running row's elapsed figure
-and the working line's age beside it read the call's own producer stamp and count
-to the MACHINE's clock at render, so the pair's two frames state slightly
-different figures (e.g. `1h46m` against `1h47m`) and a re-capture of the same
-commit moves both together. Nothing else moves — the line no longer re-bases to
-the reader's arrival, which is why the two figures agree on this base. The
-frame's own footnote carries the fact, so a reader of the bytes does not have to
-find this file.
+Every frame re-captures with its pixel differences confined to the TWO cells that
+read the machine's clock at render — the running row's elapsed figure and the
+working line's age — and how far they move is a function of the GAP between the
+captures rather than a property of the commit, so the number belongs to the gap
+and not to the frame. Measured at a 5% fuzz (`magick compare -metric AE`), each
+re-capture against the committed bytes of the head it was taken at:
+
+| re-capture | gap | residual, both themes |
+| --- | --- | --- |
+| design round 2 (`af1b1cd70`) | ~42 min | 122–236 px of 1,308,160 |
+| QA round 2 (`af1b1cd70`) | hours | 116–324 px, the dark pair 156/161 |
+| remediation round 2, on the folded base | ~90 min | 87–170 px over the six frames this round does not change |
+
+The set said "within 73 pixels" until design round 2's D2-2 measured it; 73 was
+never a bound those cells could hold. The third row of the table is the six of
+this set's eight frames whose CONTENT this round does not change — `after-live`
+is excluded because its caption was rewritten here (D2-1), which moves ~12,000 px
+and is a change rather than a residual. Every differing pixel on the six sits
+inside the two cells and nowhere else, which is the property the frame's own
+footnote states — the pair count to the same anchor and move together: `4h10m` in
+the committed bytes against `4h52m` in a re-capture 42 minutes later, and the two
+figures agree inside each frame. Nothing else moves, and the line no longer
+re-bases to the reader's arrival, which is why the two figures agree on this
+base. The frame's own footnote carries the fact, so a reader of the bytes does
+not have to find this file.
 
 ## Why the pane's height is pinned
 

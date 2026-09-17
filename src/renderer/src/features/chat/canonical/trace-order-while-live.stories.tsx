@@ -200,15 +200,23 @@ const PANE = 685;
  *
  * DERIVED FROM WHAT IT PRINTS, and that is the point of the constant rather than
  * a `h-*` step: the box it replaces was `h-28` (112px) with the same
- * `overflow-hidden`, which fitted the header, five id lines and nothing else —
- * the sixth line was cut through its glyphs at the box's own bottom edge and the
- * `… N more` line never rendered at all, so the panel's header count and its list
- * said different things and the README claimed all eight ids were named (design
- * round 1, D2). The row pitch is the one the committed frames show (17px), and
- * the terms are: 8px padding, the 17px header line, its 4px `mb-1`, then
- * `PANEL_IDS + 1` lines for the ids plus the `… more` line, then 8px padding.
- * 192 keeps the ninth line inside with room to spare; the numbers are re-measured
- * off the pixels after every re-capture (see the set's README).
+ * `overflow-hidden`, which fitted the header and five id lines and nothing else —
+ * the FIFTH id runs into the box's own bottom border at 876, and the `… N more`
+ * line never rendered at all, so the panel's header count and its list said
+ * different things and the README claimed all eight ids were named (design round
+ * 1, D2). WHICH LINE THE OLD BOX CUT was mis-stated as the sixth until round 2's
+ * D2-3 re-measured the pre-delta frame: its bands are the header (777,787) plus
+ * five id lines (797,808) (816,826) (832,843) (850,861) (868,877) against a box
+ * ending at 876, so five are present, the fifth is the one on the border, and no
+ * sixth line's ink exists anywhere. The row pitch is the one the committed
+ * frames show (17px), and the terms are: 8px padding, the 17px header line, its
+ * 4px `mb-1`, then `PANEL_IDS + 1` lines for the ids plus the `… more` line, then
+ * 8px padding — 8 + 17 + 4 + 17 * 9 + 8 = 190, which puts the ninth line's
+ * bottom edge exactly on the padding boundary and leaves NO slack rather than
+ * "room to spare" (the value this note claimed until round 2's R2-1 read it
+ * against the expression). The box is sized to what it prints and does not round
+ * up; the numbers are re-measured off the pixels after every re-capture (see the
+ * set's README).
  */
 const PANEL_IDS = 8;
 const PANEL = 8 + 17 + 4 + 17 * (PANEL_IDS + 1) + 8;
@@ -265,6 +273,26 @@ const shipped = (
  * clock, so the sort ran, and it is what puts the injected rows after the running
  * call rather than before it — the order the operator photographed (review round
  * 1, R2; fixed at 352a38f30).
+ *
+ * WHERE THIS MODEL IS NOT THE PRE-FIX BODY, SAID RATHER THAN LEFT TO BE FOUND
+ * (review round 2, R2-3). The pre-fix body set its `placed` flag inside
+ * `if (id !== null && !next.index.has(id))` and only when `seededClock` resolved a
+ * clock — and `seededClock` answers from `epochMs` OR from `argsByCall.anchoredAt`,
+ * the durable row that named the call. This model sets the flag on `started_at_epoch`
+ * alone and without asking whether the frame CREATES a row, so it diverges in
+ * exactly two cases: it sorts when a clocked frame's row was ALREADY painted (the
+ * pre-fix body would not — `applyEvent` folds onto the painted row whatever the
+ * clock), and it does NOT sort when a settled end's only clock is the durable row
+ * naming it (the pre-fix body would). Neither moment these four frames render
+ * reaches either case — review round 1's probe measured
+ * `new beforeFix === shipped pre-fix body? true` on both, and design round 2's D1
+ * re-measured `story beforeFix order === base pre-fix order? true` on the reported
+ * moment — so no committed pixel depends on the difference. It is stated rather
+ * than closed because closing it means exporting `seededClock`, `seededRecordId` and
+ * `seededCallId` from the reducer or copying them here, and a second copy of the
+ * placement rule that can drift from the reducer is the worse defect. Worth knowing
+ * only to whoever reuses this model for another seed: run the first frame that
+ * would CREATE a row and state a clock through the real predicate, not this one.
  */
 const beforeFix = (
 	seed: LiveEvent[],
@@ -352,8 +380,9 @@ const injected = (transcript: TranscriptState, arrival: number): string[] =>
  * where the line restarted at the reader's arrival. The panel under the pane is a
  * fixed box, so the pair overlays: it is sized for its header, its eight id lines
  * and the `… N more` line that can follow them, because at the 112px it shipped
- * with the sixth id was cut through its glyphs by the box's own bottom edge and
- * the `… N more` line never rendered at all (design round 1, D2).
+ * with the FIFTH id ran into the box's own bottom border and the `… N more` line
+ * never rendered at all (design round 1, D2; the measured bands are in `PANEL`'s
+ * own note).
  */
 const Frame = ({
 	transcript,
@@ -553,6 +582,14 @@ export const AfterLive: Story = {
 		const inFlight = SEED.find(
 			(event) => event.type === "tool_execution_start",
 		);
+		/*
+		 * TWO LINES, WHICH IS WHAT THE BOX HOLDS (`h-10` at `text-body-sm`'s 1.5
+		 * line-height). This caption ran to three lines until round 2's D2-1, and the
+		 * third band painted below the box and inside the pane on BOTH themes —
+		 * apparatus text inside the surface under test. The clause is the point of the
+		 * sentence, so the clause stays and the rest was shortened until the ink bands
+		 * measured two again.
+		 */
 		// A compose frame never ran, so nothing dates it either — and it is not this
 		// rule's business (#312 refuses a finished-dictation compose frame). Named
 		// here rather than counted away, because "none is painted" would be false.
@@ -561,7 +598,7 @@ export const AfterLive: Story = {
 			.join(", ");
 		return (
 			<Frame
-				caption={`After: the harvested seed (${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} of them unable to name a command) through the shipped fold. The pane's last record row IS the one row still stamped at the arrival (${composing}) — the seed's compose frame, which never ran and is #312's half of the same clause — with the turn's in-flight ${inFlight?.tool_name} immediately above it and no settled call's row painted at the arrival at all.`}
+				caption={`After: the harvested seed (${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} unable to name a command) through the shipped fold. Its last record row IS the one still stamped at the arrival (${composing}) — the compose frame, which never ran and is #312's half of the clause — with the in-flight ${inFlight?.tool_name} immediately above it and no settled call's row painted at the arrival at all.`}
 				transcript={transcript}
 				rows={injected(transcript, ARRIVAL_MS)}
 				waiting={FIXTURE.seed.streaming}
