@@ -2603,13 +2603,40 @@ export function mcpErrorTexts(rows: unknown): Record<string, string> {
  * sees together. Both now call `attentionClause`/`attentionVerb` below, which is
  * the only place the verb is chosen (round 3's last nit).
  */
-export function mcpTally(rows: readonly McpServerRow[]): string {
+export function mcpTally(
+	rows: readonly McpServerRow[],
+	maxChars?: number,
+): string {
 	if (mcpServersAreCold(rows)) return MCP_COLD_LINE;
 	const connected = rows.filter((row) => row.status === "connected").length;
 	const problems = rows.filter((row) => row.problem).length;
 	const base = `${connected} of ${rows.length} connected`;
 	if (problems === 0) return base;
-	return `${base} · ${attentionClause(problems)}`;
+	const full = `${base} · ${attentionClause(problems)}`;
+	/*
+	 * The ATTENTION CLAUSE sheds first, and it is the only term that can: the base
+	 * is the number the reader acts on (`2 of 11 connected`), while the clause says
+	 * which of them are asking for something — useful, and the first thing to give
+	 * when the pane is too narrow to hold both. This is the same eviction rule the
+	 * other sections' tallies follow, applied at the one segment boundary this
+	 * sentence has.
+	 *
+	 * WHY IT NEEDS A BUDGET AT ALL (`§ 8`, design round 2's D8): the warm header is
+	 * the only section header in the pane that never called `tallyBudget`, and it
+	 * shares its line with a `shrink-0` label. At the 303px the fit change renders
+	 * at 1024x673 with the rail expanded, CSS `truncate` cut it mid-word —
+	 * `2 of 11 connected · 8 need atte…` — where the same string is complete at 419.
+	 * A BUDGET cannot make the sentence fit; it makes the SECTION decide what to
+	 * drop, which is the difference between `2 of 11 connected` and a word cut in
+	 * half.
+	 *
+	 * The base is left un-shed even when it exceeds the budget: it is 17 characters
+	 * against a 37-character budget at the pane's own 320px floor, so the case does
+	 * not arise, and inventing a shorter form would replace the count the reader
+	 * wants with one they have to decode.
+	 */
+	if (maxChars !== undefined && full.length > maxChars) return base;
+	return full;
 }
 
 /**
@@ -2746,6 +2773,38 @@ const TALLY_LABEL_PX = 66;
  * mid-word ellipsis this exists to prevent.
  */
 const TALLY_CHAR_PX = 6;
+
+/**
+ * The fewest characters a tally is worth drawing: four, so `2 of …` is the
+ * shortest thing that still carries a count and a denominator. Below this the
+ * header shows its label alone — see `tallyFitsInline`.
+ */
+const MIN_TALLY_CHARS = 4;
+
+/**
+ * Whether the pane can show a section's label AND any tally at all on one line.
+ *
+ * A section header is a `shrink-0` label beside a `min-w-0 flex-1 truncate` tally,
+ * so below the width where the two can share the line the TALLY is the box that
+ * gives: it shrinks to ZERO, which is not an elision the reader can see but a
+ * value that is gone and looks like nothing was ever there. Measured at the app's
+ * own 800x600 floor with the rail expanded (79px pane): `2 of 8 closed` and
+ * `2 of 11 connected` were both `clientWidth 0`. A value that cannot be shown is
+ * therefore NOT DRAWN rather than collapsed — the same rule the row grammar above
+ * applies to a trailing value, one element along.
+ *
+ * The budget is the chart the tallies themselves already use (`tallyBudget`'s own
+ * chrome plus label width), so the two cannot disagree about how much room the
+ * line has: a section that sheds a segment for its budget sheds the whole tally
+ * here for the same reason.
+ */
+export const tallyFitsInline = (paneWidth: number): boolean => {
+	const width =
+		Number.isFinite(paneWidth) && paneWidth > 0 ? paneWidth : FALLBACK_PANE_PX;
+	return (
+		width - TALLY_CHROME_PX - TALLY_LABEL_PX >= MIN_TALLY_CHARS * TALLY_CHAR_PX
+	);
+};
 
 /**
  * The pane's default width, mirrored from `ui-preferences-store`'s
