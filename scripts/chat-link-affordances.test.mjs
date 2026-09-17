@@ -15,8 +15,18 @@
  *      drag-select refusal - had no test that could catch their removal, because
  *      no suite imported the module that carried them (review M3);
  *   4. the toolbar's placement is RE-MEASURED when its subject changes inside one
- *      turn, and Escape and Tab address the subject the reader is on (design D1,
- *      UX U1 and U2).
+ *      turn (design D1), the pointer path between a link and its toolbar keeps the
+ *      subject where every containment test answered "not the turn" (design D1's
+ *      BLOCKER), and `Tab`/`Escape` address the subject the reader is on even when
+ *      the pointer and the keyboard disagree about which link that is (UX U1, U2
+ *      and U8).
+ *
+ * FOUR OF THOSE ARE GATED ON A REAL BROWSER TOO, and the split is deliberate: a
+ * jsdom suite can hold the arithmetic and the wiring, and cannot hold a pointer.
+ * `docs/evidence/chat-canonical-links/` carries the frames for the same claims -
+ * `hover-toolbar-button`, `copy-pressed` and the new `hover-gap-crossing` drive
+ * real `Input.dispatchMouseEvent` samples through the gap - and the rig asserts
+ * them rather than photographing them (`expectAnchored`, `expectKept`).
  *
  * HOW IT STANDS IN FOR A BROWSER. jsdom with React's own scheduler, the harness
  * `chat-image-expand.test.mjs` uses, over the PRODUCTION `MarkdownRenderer` and
@@ -70,8 +80,9 @@ const CACHE = join(ROOT, "node_modules", ".cache", "chat-link-affordances");
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { MarkdownRenderer } from "./src/renderer/src/features/chat/components/markdown-renderer";
+			export { MarkdownRenderer, LINK_URL_TRANSFORM } from "./src/renderer/src/features/chat/components/markdown-renderer";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
+			export { classifyHref } from "./src/renderer/src/features/chat/utils/link-actions";
 		`,
 		resolveDir: ROOT,
 	},
@@ -109,9 +120,12 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "link-affordances.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { MarkdownRenderer, CanonicalTranscript } = await import(
-	pathToFileURL(bundlePath).href
-);
+const {
+	MarkdownRenderer,
+	CanonicalTranscript,
+	LINK_URL_TRANSFORM,
+	classifyHref,
+} = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ the mount */
 
@@ -263,12 +277,18 @@ function mountDom() {
 		 * listeners are jsdom's and read jsdom's own prototypes.
 		 */
 		dispatch: async (target, type, init = {}) => {
+			/*
+			 * Every pointer event is a `MouseEvent`: the row's corridor reads
+			 * `clientX`/`clientY`, and a bare `Event` carries neither - which would
+			 * silently make every sample "outside the corridor" and turn a real
+			 * assertion into an accident.
+			 */
 			const EventCtor =
 				type === "keydown"
 					? window.KeyboardEvent
 					: type === "click" ||
 							type.startsWith("mouse") ||
-							type === "pointerdown"
+							type.startsWith("pointer")
 						? window.MouseEvent
 						: window.Event;
 			const event = new EventCtor(type, {
@@ -702,4 +722,250 @@ test("the strip re-measures when its subject changes inside one turn", async () 
 	/* And the strip really is about the NEW link, so the two halves agree. */
 	const strip = frame.document.querySelector("[data-lo-link-toolbar]");
 	assert.match(strip.getAttribute("aria-label") ?? "", /Screenshot 2026-09-17/);
+});
+
+test("the transform keeps an href only when the classifier calls it a file", async () => {
+	/*
+	 * Round 2's code review MINOR 2, as an invariant rather than a list. The
+	 * preservation rule and the classification rule have to be ONE rule: a `file:`
+	 * shape the transform keeps alive but `classifyHref` calls `other` renders an
+	 * anchor with a live `href` and `target="_blank"`, no `data-lo-*` attributes and
+	 * no click handler - so it leaves through `setWindowOpenHandler` →
+	 * `shell.openExternal` as a string the app never looked at. `/^file:/i` did
+	 * exactly that for `file:/tmp/a.pdf`, `file:javascript:alert(1)` and
+	 * `file:%2F%2Ftmp%2Fa.pdf`, all of which this branch had made LIVE while they
+	 * were blanked before it.
+	 *
+	 * The corpus is asserted on the transform itself rather than through markdown,
+	 * because a markdown destination cannot express a leading space or a control
+	 * character and those are two of the shapes that have to stay blanked.
+	 */
+	const blanked = [
+		"javascript:alert(1)",
+		"JavaScript:alert(1)",
+		"JAVASCRIPT:alert(1)",
+		"data:text/plain,hello",
+		"Data:text/plain,hello",
+		"vbscript:msgbox(1)",
+		"VBScript:msgbox(1)",
+		"ftp://host/a.pdf",
+		"FTP://host/a.pdf",
+		"blob:https://example.com/9f2c1a",
+		"about:blank",
+		"About:Blank",
+		/* Leading whitespace and control characters, which `^scheme:` anchors miss. */
+		" javascript:alert(1)",
+		"\tdata:text/plain,hello",
+		"\u0001vbscript:msgbox(1)",
+		"\u0000ftp://host/a.pdf",
+		/* The `file:`-prefixed shapes the classifier does NOT classify. */
+		"file:/tmp/a.pdf",
+		"FILE:/tmp/a.pdf",
+		"file:%2F%2Ftmp%2Fa.pdf",
+		"file:javascript:alert(1)",
+		" file:///tmp/a.pdf",
+		/* A `file://` URL naming another host: `normalizeFileUrl` declines it. */
+		"file://other-host/share",
+		"file://tmp/a.pdf",
+	];
+	const kept = ["file:///tmp/a.pdf", "File:///tmp/a.pdf", "FILE:///tmp/a.pdf"];
+
+	for (const url of blanked) {
+		assert.equal(
+			LINK_URL_TRANSFORM(url, "href"),
+			"",
+			`${JSON.stringify(url)} must be blanked`,
+		);
+	}
+	for (const url of kept) {
+		assert.equal(LINK_URL_TRANSFORM(url, "href"), url, `${url} must survive`);
+		assert.equal(
+			classifyHref(url)?.kind,
+			"file",
+			`${url} must be a file target`,
+		);
+	}
+	/*
+	 * The invariant, over the whole corpus at once: nothing `file:`-prefixed leaves
+	 * this transform unless the classifier owns it. `mailto:` and `https:` are the
+	 * library's own safe list and are deliberately not covered by it.
+	 */
+	for (const url of [
+		...blanked,
+		...kept,
+		"https://example.com/a",
+		"mailto:x@y",
+	]) {
+		const keptHref = LINK_URL_TRANSFORM(url, "href");
+		if (keptHref !== "" && /^file:/i.test(keptHref)) {
+			assert.equal(
+				classifyHref(keptHref)?.kind,
+				"file",
+				`${JSON.stringify(url)} survives the transform unclassified`,
+			);
+		}
+	}
+	/* `src` is never preserved: this change is about links, not images. */
+	assert.equal(LINK_URL_TRANSFORM("file:///tmp/a.png", "src"), "");
+});
+
+test("the corridor between a link and its toolbar keeps the subject; the prose does not", async () => {
+	/*
+	 * Round 2's BLOCKER (design D1), at the layer that decides it. The toolbar is
+	 * placed 8px clear of the anchor's own box, and those 8px belong to the row's
+	 * WRAPPER - `position: absolute` keeps the strip out of the turn's own box - so
+	 * the element under a pointer crossing the gap is an ANCESTOR of the turn. Every
+	 * containment test answers "not the turn" for it: `turn.contains(related)` is
+	 * false and `closest("[data-lo-kind]")` is null, so the subject was cleared and
+	 * the strip unmounted before the pointer could reach a button. A single teleport
+	 * survived; `2 steps@16ms` did not.
+	 *
+	 * jsdom has no layout, so the boxes are stubbed - and the numbers here are the
+	 * ones round 2 measured in a real browser (anchor `[174,377,806,394]`, strip
+	 * `[174,339,272,369]`), which is what makes this a reading of the same geometry
+	 * rather than an invented one. The pixels are the rig's
+	 * (`docs/evidence/chat-canonical-links/hover-gap-crossing/`), and the rig drives
+	 * the same gesture with real `Input.dispatchMouseEvent` samples.
+	 */
+	await mountTranscript();
+	const anchor = anchorFor(
+		frame.document,
+		"opoint_adverse_media_query_failures_2026-09-17.xlsx",
+	);
+	box(anchor, rect(174, 377, 632, 17));
+	const prose = anchor.closest("p");
+	assert.ok(prose, "the link must live in a paragraph");
+
+	await frame.dispatch(anchor, "focusin");
+	const strip = frame.document.querySelector("[data-lo-link-toolbar]");
+	assert.ok(strip, "the strip must mount for a focused link");
+	box(strip, rect(174, 339, 98, 30));
+
+	/* 1. The gap itself, which is the sample the old code lost it on. */
+	await frame.dispatch(prose, "pointerover", { clientX: 200, clientY: 372 });
+	assert.ok(
+		frame.document.querySelector("[data-lo-link-toolbar]"),
+		"a sample between the link and its toolbar must keep the subject",
+	);
+	/* 2. One pixel off the anchor's top edge, still over the paragraph. */
+	await frame.dispatch(prose, "pointerover", { clientX: 200, clientY: 376 });
+	assert.ok(
+		frame.document.querySelector("[data-lo-link-toolbar]"),
+		"a one-pixel stray off the link's own box must keep the subject",
+	);
+	/*
+	 * 3. The prose, which is the direction that MUST still dismiss: a reader who has
+	 * moved onto the words around the link has left the link, and the corridor is
+	 * bounded by the clearance the toolbar is placed at. Both ways out of that band
+	 * are sampled - BELOW the link's line and to the RIGHT of its last character -
+	 * because either one clearing on its own would leave the other unproven. A sample
+	 * one pixel off the anchor's box is inside the band (sample 2 above); one a line
+	 * away, or one past the link's own right edge, is not.
+	 */
+	await frame.dispatch(prose, "pointerover", { clientX: 200, clientY: 420 });
+	assert.equal(
+		frame.document.querySelector("[data-lo-link-toolbar]"),
+		null,
+		"the strip must go when the pointer moves onto the prose below the link",
+	);
+	await frame.dispatch(anchor, "focusin");
+	assert.ok(
+		frame.document.querySelector("[data-lo-link-toolbar]"),
+		"the strip must come back when the reader returns to the link",
+	);
+	await frame.dispatch(prose, "pointerover", { clientX: 900, clientY: 376 });
+	assert.equal(
+		frame.document.querySelector("[data-lo-link-toolbar]"),
+		null,
+		"and when the pointer moves onto the prose past the link's own right edge",
+	);
+});
+
+test("the keyboard contract: Tab enters the FOCUSED link's toolbar, and Escape hands the reader back", async () => {
+	/*
+	 * UX round 1's U1 and U2, plus round 2's U8 (code review MINOR 1). The strip is
+	 * rendered ONCE per turn, after the whole markdown body, so the DOM's own order
+	 * cannot express "Tab enters the focused link's actions" - it walks link, link,
+	 * link and lands in the LAST link's buttons, which is why the row intercepts the
+	 * key. The reported defect was the MIXED state: the pointer out-ranks the
+	 * keyboard, so a resting pointer re-subjects the strip, and the old code then
+	 * consumed the reader's Tab and focused the strip's first button - the link
+	 * under the POINTER's actions, not the focused link's.
+	 */
+	await mountTranscript();
+	const report = anchorFor(
+		frame.document,
+		"opoint_adverse_media_query_failures_2026-09-17.xlsx",
+	);
+	const shots = anchorFor(
+		frame.document,
+		"Screenshot 2026-09-17 at 10.14.02.png",
+	);
+	lines(report, rect(200, 300, 400, 22));
+	lines(shots, rect(180, 366, 300, 22));
+
+	/* The reader is on the first link; the pointer rests on the second. */
+	await frame.dispatch(report, "focusin");
+	await frame.dispatch(shots, "pointerover", { clientX: 200, clientY: 372 });
+	await new Promise((resolve) => setTimeout(resolve, 200));
+	const pointed = frame.document.querySelector("[data-lo-link-toolbar]");
+	assert.match(
+		pointed.getAttribute("aria-label") ?? "",
+		/Screenshot 2026-09-17/,
+		"the pointer owns the strip while it rests (the dwell is 120ms)",
+	);
+
+	/* Tab, from the FOCUSED link. */
+	const tab = await frame.dispatch(report, "keydown", {
+		key: "Tab",
+		bubbles: true,
+		cancelable: true,
+	});
+	assert.equal(tab.defaultPrevented, true, "the row consumes the Tab");
+	const after = frame.document.querySelector("[data-lo-link-toolbar]");
+	assert.match(
+		after.getAttribute("aria-label") ?? "",
+		/opoint_adverse_media_query_failures/,
+		"the strip must be re-subjected to the FOCUSED link, not the hovered one",
+	);
+	const focused = frame.document.activeElement;
+	assert.equal(
+		focused?.closest("[data-lo-link-toolbar]") !== null,
+		true,
+		"focus must be inside the toolbar",
+	);
+	assert.equal(
+		focused?.getAttribute("aria-label"),
+		"Copy path",
+		"and on the FOCUSED link's own first action",
+	);
+
+	/* Escape, from inside the toolbar: the strip goes and focus returns to the link. */
+	await frame.dispatch(focused, "keydown", {
+		key: "Escape",
+		bubbles: true,
+		cancelable: true,
+	});
+	assert.equal(
+		frame.document.querySelector("[data-lo-link-toolbar]"),
+		null,
+		"Escape must take the strip away",
+	);
+	assert.equal(
+		frame.document.activeElement,
+		report,
+		"and hand focus back to the link the strip was about",
+	);
+	/*
+	 * DRAIN THE TOOLTIP'S TIMERS BEFORE TEARDOWN, and it is not a luxury: this is
+	 * the only test in the file that puts focus on a toolbar BUTTON, which arms the
+	 * Radix tooltip that button carries. Radix schedules its open/close delays with
+	 * `setTimeout`, the harness deliberately leaves node's `setTimeout` alone (see
+	 * `mountDom`), and a callback that fires after teardown reads a global this file
+	 * has already put back - measured as `ReferenceError: Element is not defined`,
+	 * scored against the FILE rather than the test, so a green suite came back red.
+	 * The frame's own rAF work is tracked and dropped by `restore`; only these
+	 * delays need to be let through first, and they are bounded.
+	 */
+	await new Promise((resolve) => setTimeout(resolve, 450));
 });

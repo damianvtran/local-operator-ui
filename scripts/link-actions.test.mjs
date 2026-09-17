@@ -212,7 +212,7 @@ test("the click decision: a file opens, a drag refuses, everything else default"
 const modelFor = (input) =>
 	linkToolbarModel({ quotable: false, probe: null, ...input });
 
-test("a file offers Copy, Open and Open folder", () => {
+test("a file offers Copy, Open, Open folder and Quote", () => {
 	const model = modelFor({
 		kind: "file",
 		target: "~/x/report.xlsx",
@@ -220,7 +220,7 @@ test("a file offers Copy, Open and Open folder", () => {
 	});
 	assert.deepEqual(
 		model.actions.map((action) => action.id),
-		["copy", "open", "open-folder"],
+		["copy", "open", "open-folder", "quote"],
 	);
 	assert.equal(model.note, null);
 	assert.equal(model.label, "Actions for report.xlsx");
@@ -240,7 +240,7 @@ test("a directory offers Open and drops Open folder", () => {
 	});
 	assert.deepEqual(
 		model.actions.map((action) => action.id),
-		["copy", "open"],
+		["copy", "open", "quote"],
 	);
 	assert.equal(model.note, null);
 });
@@ -270,7 +270,7 @@ test("a missing path's reason names the FILE, not the directory", () => {
 	assert.equal(missingNote("report.pdf").note, "No file at report.pdf");
 });
 
-test("a missing path offers Copy only, and says why", () => {
+test("a missing path offers Copy and Quote, and says why", () => {
 	const model = modelFor({
 		kind: "file",
 		target: "~/x/report.xlsx",
@@ -278,7 +278,7 @@ test("a missing path offers Copy only, and says why", () => {
 	});
 	assert.deepEqual(
 		model.actions.map((action) => action.id),
-		["copy"],
+		["copy", "quote"],
 	);
 	assert.equal(model.note, "No file at …/x/report.xlsx");
 	assert.equal(model.noteTitle, "No file at ~/x/report.xlsx");
@@ -294,7 +294,7 @@ test("an unprobed path offers the whole matrix", () => {
 		modelFor({ kind: "file", target: "/tmp/x", probe: null }).actions.map(
 			(action) => action.id,
 		),
-		["copy", "open", "open-folder"],
+		["copy", "open", "open-folder", "quote"],
 	);
 });
 
@@ -302,7 +302,7 @@ test("a URL offers Copy and Open, and never Open folder", () => {
 	const model = modelFor({ kind: "url", target: "https://example.com/a" });
 	assert.deepEqual(
 		model.actions.map((action) => action.id),
-		["copy", "open"],
+		["copy", "open", "quote"],
 	);
 	assert.equal(model.label, "Actions for a");
 	assert.equal(model.actions[0].label, "Copy link");
@@ -313,7 +313,7 @@ test("a target this app does not open has no toolbar at all", () => {
 	assert.equal(modelFor({ kind: "other", target: "mailto:x@y" }), null);
 });
 
-test("Quote leads when the highlight is inside the link, and is absent otherwise", () => {
+test("Quote leads when the highlight is inside the link, and trails when there is none", () => {
 	const quotable = modelFor({
 		kind: "file",
 		target: "/tmp/a.pdf",
@@ -326,8 +326,11 @@ test("Quote leads when the highlight is inside the link, and is absent otherwise
 	);
 	/*
 	 * The reader has already chosen the thing they are acting on, so the press
-	 * that continues their gesture leads; and with nothing highlighted the same
-	 * link offers no Quote at all, because there is nothing to carry.
+	 * that continues their gesture leads. With NOTHING highlighted the same link
+	 * still offers Quote - round 2, UX U4: the highlight-inside-a-link state is
+	 * not reachable with a mouse, so a Quote that waited for it was dead UI - and
+	 * it trails, because a reader who has not chosen is offered the actions on
+	 * the link first and the quote of the link's own words last.
 	 */
 	assert.deepEqual(
 		modelFor({
@@ -335,7 +338,7 @@ test("Quote leads when the highlight is inside the link, and is absent otherwise
 			target: "/tmp/a.pdf",
 			quotable: false,
 		}).actions.map((action) => action.id),
-		["copy", "open", "open-folder"],
+		["copy", "open", "open-folder", "quote"],
 	);
 	assert.deepEqual(
 		modelFor({
@@ -344,6 +347,14 @@ test("Quote leads when the highlight is inside the link, and is absent otherwise
 			quotable: true,
 		}).actions.map((action) => action.id),
 		["quote", "copy", "open"],
+	);
+	assert.deepEqual(
+		modelFor({
+			kind: "url",
+			target: "https://example.com/a",
+			quotable: false,
+		}).actions.map((action) => action.id),
+		["copy", "open", "quote"],
 	);
 });
 

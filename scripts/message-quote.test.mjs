@@ -1006,8 +1006,9 @@ test("a turn with no quote renders its own text untouched", () => {
  * ---------------------------------------------------------------- the link toolbar
  *
  * The transcript gained a SECOND floating control when a link became pressable
- * (Copy / Open / Open folder, plus Quote when the reader's highlight lies inside
- * the link). It wears the same shell - and therefore the same
+ * (Copy / Open / Open folder, plus Quote - leading when the reader's highlight lies
+ * inside the link, trailing on the hover state when it does not). It wears the same
+ * shell - and therefore the same
  * `QUOTE_TOOLKIT_ATTR` - as the turn's Quote control, so the exclusion above is
  * inherited rather than re-derived. That inheritance is asserted here instead of
  * trusted, because it is the difference between one attribute with one meaning

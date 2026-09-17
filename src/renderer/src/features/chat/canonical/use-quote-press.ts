@@ -16,6 +16,17 @@
  *   covered it staged a 132-character quote for a 5px overshoot (UX round 1, U3;
  *   QA round 1, Q3).
  *
+ * A PRESS WITH NOTHING HIGHLIGHTED IS A CALLER'S DECISION, not this hook's. The
+ * turn's own control is only ever raised by a highlight, so for it an empty
+ * selection is a no-op and stays one. The LINK toolbar's Quote is offered on
+ * hover as well (round 2, UX U4: the highlight-inside-a-link state is not
+ * reachable with a mouse, so a Quote that waited for one was dead UI for a
+ * pointer reader), and the link itself is what such a press quotes. That is the
+ * `fallbackText` the link toolbar passes and the quote control does not, and it
+ * is read at press time for the same reason the highlight is: the row re-renders
+ * per delta, and the text that is staged has to be the text on screen when the
+ * reader pressed.
+ *
  * Every one of those is answered here, once, and every caller inherits the
  * answer rather than restating it. The alternative the operator's own rules
  * refuse is a second implementation of "what a Quote press does" that agrees
@@ -26,11 +37,17 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { focusComposer } from "../composer-field";
+import { hasHighlight } from "../utils/link-actions";
 import { quoteSelectionIn } from "./quote-model";
 
 export function useQuotePress(
 	conversationId: string,
 	turnRef: { readonly current: HTMLElement | null },
+	/**
+	 * What a press stages when there is NO highlight, or `undefined` for a control
+	 * whose press is only meaningful over one. Read lazily, like the highlight.
+	 */
+	fallbackText?: () => string | null,
 ): () => void {
 	const addReply = useConversationInputStore((state) => state.addReply);
 
@@ -43,11 +60,22 @@ export function useQuotePress(
 		 * quote what is lit rather than what was lit when the control was placed.
 		 * Nothing to quote is a no-op rather than a fallback, which is the
 		 * boundary that used to widen a quote to the whole turn (code review
-		 * round 2, MINOR 2; UX U8; QA Q8).
+		 * round 2, MINOR 2; UX U8; QA Q8) - and that boundary is unchanged, because
+		 * the fallback is a CALLER's answer (see this module's header) rather than
+		 * this hook's second guess at "what did they mean".
 		 */
 		const selection = quoteSelectionIn(turnRef.current);
-		if (!selection) return;
-		addReply(conversationId, { id: uuidv4(), text: selection.text });
+		/*
+		 * The highlight when there is one, the caller's own text otherwise - and
+		 * NOTHING when a highlight exists that this turn cannot quote. The last
+		 * case is the old no-op, kept: a spanning highlight is the turn control's
+		 * (or nobody's), and answering it with the link's own words would be the
+		 * misattribution this file's history is about.
+		 */
+		const text =
+			selection?.text ?? (hasHighlight() ? null : (fallbackText?.() ?? null));
+		if (!text) return;
+		addReply(conversationId, { id: uuidv4(), text });
 		// The highlight has been answered; leaving it lit over text that is now
 		// also above the composer reads as two live selections.
 		window.getSelection()?.removeAllRanges();
@@ -64,5 +92,5 @@ export function useQuotePress(
 		 * is cleared by the one function that owns it.
 		 */
 		focusComposer();
-	}, [addReply, conversationId, turnRef]);
+	}, [addReply, conversationId, turnRef, fallbackText]);
 }

@@ -104,13 +104,25 @@ const MATH_COMMAND_REGEX = /\\[a-zA-Z]+(\{[^}]*\})?/;
  * the visible text is the URL the agent wrote, and the target is the path it
  * names - and `link-toolkit.tsx` says so where the toolbar's label is built.
  *
- * `draggable={false}` is load-bearing rather than cosmetic: an `<a>` carrying an
- * href is draggable in Chromium, so a mousedown-then-drag on a link starts the
- * browser's own LINK DRAG and suppresses text selection entirely - which is what
- * made the designed "a highlight wholly inside one link" state unreachable with a
- * mouse (round 1, UX U4). Verified in the live story: the same gesture now
- * selects, and `docs/evidence/chat-canonical-links/selection-link-and-prose/`
- * holds a frame of a real drag that produced a highlight across two links.
+ * `draggable={false}` removes the browser's own LINK DRAG from the anchor, and
+ * nothing more than that. It is load-bearing in the sense that matters: an `<a>`
+ * carrying an href is draggable in Chromium, so a mousedown-then-drag on a link
+ * started the browser's own drag instead of a text selection. What it does NOT do
+ * is make the link's own text selectable - Chromium starts no selection from a
+ * mousedown on an `<a href>` either way, which round 2 measured in a windowed
+ * build with focus emulated and re-measured on the story surface (UX round 2,
+ * U4): a drag, a double-click, a triple-click and a click+Shift+click that all
+ * begin and end inside one link produce `getSelection() === ""`, no
+ * `selectstart`, and no `dragstart`, while the same instrument selects in the
+ * prose beside it and selects THROUGH the link from the prose. An earlier version
+ * of this comment claimed the same gesture "now selects" and cited
+ * `docs/evidence/chat-canonical-links/selection-link-and-prose/` as the frame of
+ * a real drag - both untrue, and the set's own README says so: that frame and the
+ * `selection-in-link*` pair are built through the DOM's `Selection` API by the
+ * story, because no pointer gesture reaches them. The consequence is a design
+ * fact rather than a defect to fix here - the link toolbar therefore offers Quote
+ * on hover as well (`link-toolkit.tsx`), so the affordance does not depend on a
+ * selection the browser will not make.
  */
 const MarkdownAnchor: FC<{ href?: string; children?: React.ReactNode }> = ({
 	href,
@@ -149,8 +161,29 @@ const MarkdownAnchor: FC<{ href?: string; children?: React.ReactNode }> = ({
 	);
 };
 
-/** A `file:` scheme, for the one href shape this renderer must keep alive. */
-const FILE_SCHEME = /^file:/i;
+/**
+ * The one href shape this renderer keeps alive, asked of the classifier itself.
+ *
+ * THE PRESERVATION AND THE CLASSIFICATION ARE ONE RULE, and that is the point. A
+ * second spelling of "what a `file:` link is" is a second place for it to be
+ * wrong, and it was: `/^file:/i` kept `file:/tmp/a.pdf` and even
+ * `file:javascript:alert(1)` alive while `classifyHref`'s `FILE_HREF`
+ * (`/^file:\/\//i`) called them `other`, so the anchor carried a live `href` with
+ * `target="_blank"`, no `data-lo-*` attributes and no click handler - and left
+ * through `setWindowOpenHandler` → `shell.openExternal` as a string the app had
+ * never looked at, with no toolbar, no probe, no missing-file sentence and no
+ * `preventDefault` guarantee. Those shapes were blanked before this transform
+ * existed (round 2, code review MINOR 2).
+ *
+ * Asking the classifier covers the same shapes FROM THE OTHER SIDE as well: a
+ * `file://` URL whose host is not this machine (`file://other-host/share`) is
+ * classified `other` by `normalizeFileUrl`'s own rule, so it stays blanked and
+ * inert exactly as it is on `main` - preserving it here would hand the OS another
+ * string the app declines to reason about. The invariant the suites bind is
+ * therefore one sentence: an href survives this transform only if
+ * `classifyHref` makes it a target this app acts on.
+ */
+const isClassifiedFile = (url: string) => classifyHref(url)?.kind === "file";
 
 /** The two attribute names the anchor writes, read back by its own handler. */
 const LINK_TARGET_PATH = LINK_TARGET_PATH_ATTR;
@@ -180,23 +213,34 @@ const handleFileAnchorClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
 };
 
 /**
- * `file:` is preserved, and everything else is the library's own answer.
- *
- * `defaultUrlTransform`'s safe list is `https?|ircs?|mailto|xmpp`, so a
- * HAND-WRITTEN `[report](file:///tmp/a.pdf)` renders as `<a href="">` - an inert
- * anchor with no target attributes and therefore no toolbar, which made
- * `classifyHref`'s `file://` branch unreachable in the app (round 1, review M1).
- * The operator asked for the affordances on markdown-captured links too, so the
- * branch is made real instead of deleted: `file:` survives, and `javascript:`,
- * `data:`, `vbscript:` and every other unlisted scheme still blank out exactly as
- * the library intends (asserted in `scripts/chat-link-affordances.test.mjs`).
+ * `file:` is preserved IN THE ONE FORM `classifyHref` CLASSIFIES, and everything
+ * else is the library's own answer. `defaultUrlTransform`'s safe list is
+ * `https?|ircs?|mailto|xmpp`, so a HAND-WRITTEN `[report](file:///tmp/a.pdf)`
+ * renders as `<a href="">` - an inert anchor with no target attributes and
+ * therefore no toolbar, which made `classifyHref`'s `file://` branch unreachable
+ * in the app (round 1, review M1). The operator asked for the affordances on
+ * markdown-captured links too, so the branch is made real instead of deleted:
+ * `file://` survives, and `javascript:`, `data:`, `vbscript:`, `ftp:`, `blob:`,
+ * `about:blank` and every other unlisted scheme - including the `file:`-prefixed
+ * shapes `classifyHref` does not classify - still blank out exactly as the
+ * library intends (asserted in `scripts/chat-link-affordances.test.mjs`).
  *
  * Only `href` is transformed. An `<img src="file://…">` in a transcript is not a
  * link and nothing here needs it to load - leaving images to the library keeps
  * this change's reach to the surface it is about.
+ *
+ * Exported so the scheme matrix can be asserted directly, on the function rather
+ * than on the handful of shapes a markdown destination can carry: `[x](…)` cannot
+ * express a leading space or a control character, and the two shapes round 2's
+ * code review found preserved-but-unclassified (`file:/tmp/a.pdf`,
+ * `file:javascript:alert(1)`) are exactly the ones a markdown-authoring corpus
+ * would not have produced anyway. `scripts/chat-link-affordances.test.mjs` binds
+ * the invariant that matters: EVERY href this returns unchanged is a shape
+ * `classifyHref` calls a file, so nothing reaches `shell.openExternal`
+ * unclassified.
  */
-const LINK_URL_TRANSFORM: UrlTransform = (url, key) => {
-	if (key === "href" && FILE_SCHEME.test(url)) return url;
+export const LINK_URL_TRANSFORM: UrlTransform = (url, key) => {
+	if (key === "href" && isClassifiedFile(url)) return url;
 	return defaultUrlTransform(url);
 };
 
