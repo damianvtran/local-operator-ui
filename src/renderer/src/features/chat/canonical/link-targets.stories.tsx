@@ -296,6 +296,43 @@ export const DetectedTargetsNarrow: Story = {
 };
 
 /**
+ * Highlight the run BETWEEN two elements, through the DOM's own `Selection` API.
+ *
+ * The same instrument `highlightLink` is, and it is the only one available for
+ * these two states: their highlight has an ENDPOINT INSIDE a link, and a real drag
+ * whose endpoint is inside an anchor produces no highlight at all in the headless
+ * Chromium the evidence rig drives (measured in round 1, UX U4 - and it is still
+ * true on this branch with `draggable={false}`, because the drag loop headless
+ * has is not the one a window has). A real drag over PROSE selects fine and is
+ * what the rig's `select` option drives; a drag that begins or ends inside a link
+ * cannot be produced from a script at all without writing `addRange`, which the
+ * rig refuses to do because it would be evidence about the script rather than
+ * about the component.
+ *
+ * So the frames for these two states state which gesture made them: a real
+ * `Selection` OBJECT built by the story, read back by the shipped component
+ * through `window.getSelection()`. That is a weaker instrument than a drag and a
+ * stronger one than a fixture: the component's own predicate decides whether the
+ * highlight is inside the link, and the frame is the answer it gave.
+ */
+async function highlightBetween(
+	from: Node,
+	to: Node,
+	fromOffset = 0,
+	toOffset = 0,
+) {
+	const range = document.createRange();
+	range.setStart(from.firstChild ?? from, fromOffset);
+	range.setEnd(to.firstChild ?? to, toOffset);
+	const selection = window.getSelection();
+	if (!selection) throw new Error("no Selection API in this browser");
+	selection.removeAllRanges();
+	selection.addRange(range);
+	document.dispatchEvent(new Event("selectionchange"));
+	await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+}
+
+/**
  * A highlight inside a link, which is the operator's second ask: the Quote
  * button appears IN the link's own toolbar, ahead of Copy, rather than as a
  * second strip floating over the same highlight.
@@ -314,6 +351,57 @@ export const SelectionInLink: Story = {
  * frame proves the toolbar reaches the composer the way a reader does - and the
  * link's text is what the staged chip carries.
  */
+/**
+ * The same highlight, and then a press of the toolbar's OWN Quote.
+ *
+ * The press is driven through the button rather than through the store, so the
+ * frame proves the toolbar reaches the composer the way a reader does - and the
+ * link's text is what the staged chip carries.
+ */
+/**
+ * A highlight that SPANS a link and the prose beside it.
+ *
+ * The design's state 3, and the state that decides whether the strip is the
+ * link's or the turn's: it is neither wholly inside the link nor absent from it,
+ * so the TURN's Quote control is the one that must be raised and the link's
+ * toolbar must not mount at all. Round 1 (design D3) found the committed set had
+ * no frame for it, and the design round took one with its own rig.
+ */
+export const SelectionSpanning: Story = {
+	render: () => <Frame />,
+	play: async () => {
+		const link = linkFor(
+			"a1",
+			"opoint_adverse_media_query_failures_2026-09-17.xlsx",
+		);
+		const paragraph = link.closest("p");
+		if (!paragraph?.lastChild) throw new Error("no paragraph to span into");
+		await highlightBetween(link, paragraph.lastChild, 4, 12);
+	},
+};
+
+/**
+ * A highlight ACROSS TWO LINKS in one turn.
+ *
+ * The design's state 4 and the other half of the one-control rule: two links are
+ * two candidates for the strip, and the answer is neither of them - the turn's
+ * Quote control carries the press.
+ */
+export const SelectionAcrossLinks: Story = {
+	render: () => <Frame />,
+	play: async () => {
+		const links = [
+			...document.querySelectorAll(
+				'[data-record-id="a1"] a[data-lo-kind="file"]',
+			),
+		];
+		const first = links[0];
+		const last = links[links.length - 1];
+		if (!first || !last) throw new Error("no file links to span");
+		await highlightBetween(first, last, 3, 6);
+	},
+};
+
 export const SelectionInLinkStaged: Story = {
 	render: () => <Frame composer height={820} />,
 	play: async () => {

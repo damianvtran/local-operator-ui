@@ -114,8 +114,34 @@ export function useFloatingControl(input: {
 	 * effect below.
 	 */
 	lines: () => readonly Box[] | null;
+	/**
+	 * WHAT THE CONTROL IS ABOUT, for a control that stays mounted while its
+	 * subject changes.
+	 *
+	 * The link toolbar is rendered at a stable JSX position inside its row
+	 * (`canonical-transcript.tsx`), so moving the pointer from one link to another
+	 * inside ONE turn RE-RENDERS it rather than re-mounting it - and none of the
+	 * events this hook listens for (scroll, selectionchange, resize, the two
+	 * `ResizeObserver`s) fires when that happens. Round 1 (design D1, confirmed at
+	 * the code level by the code review) measured the result: the strip's contents
+	 * and accessible name followed the new link while its RECT stayed where the
+	 * first link's had been, so it floated over a target it was not about.
+	 *
+	 * A key in the layout effect's dependency list is the fix rather than a
+	 * re-measure bolted onto `pointerover`: the effect that owns "measure once, then
+	 * follow the events" is the one that has to know its subject changed, and any
+	 * other placement would be a second, weaker copy of that rule. The caller
+	 * passes the subject ELEMENT (its identity, not an href - two links can share
+	 * one, and a row re-renders per delta).
+	 */
+	measureKey?: unknown;
+	/**
+	 * Prefer below the anchor when the anchor is not on its row's first line; see
+	 * `QuoteAnchorInput.belowWhenOffFirstLine`. The quote control leaves it off.
+	 */
+	belowWhenOffFirstLine?: boolean;
 }): FloatingControl {
-	const { turnRef, visible, lines } = input;
+	const { turnRef, visible, lines, measureKey, belowWhenOffFirstLine } = input;
 	const controlRef = useRef<HTMLDivElement>(null);
 	const [placement, setPlacement] = useState<QuotePlacement | null>(null);
 
@@ -152,6 +178,13 @@ export function useFloatingControl(input: {
 			// width comes from the buttons inside it, and a hard-coded pair here
 			// is a second definition of the control's own size.
 			size: { width: control.offsetWidth, height: control.offsetHeight },
+			/*
+			 * The ROW box, read here rather than passed in: it is the same box the
+			 * returned offset is already computed against, so the mid-row rule and the
+			 * offset cannot be measured against two different rows.
+			 */
+			row: boxOf(turn.getBoundingClientRect()),
+			belowWhenOffFirstLine,
 		});
 		const row = turn.getBoundingClientRect();
 		const next = placed
@@ -171,7 +204,7 @@ export function useFloatingControl(input: {
 				? previous
 				: next,
 		);
-	}, [turnRef]);
+	}, [turnRef, belowWhenOffFirstLine]);
 
 	/*
 	 * `useLayoutEffect` because the position is measured from the control's own
@@ -179,6 +212,7 @@ export function useFloatingControl(input: {
 	 * sees a frame of the control standing at the row's origin before it is
 	 * placed.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `measureKey` is the trigger, not a value the body reads - the effect re-measures when the control's SUBJECT changes under a stable mount, which is the whole point of the key (`canonical-transcript.tsx` renders this control at one JSX position per row, so a second link is a re-render, never a re-mount).
 	useLayoutEffect(() => {
 		if (!visible) {
 			setPlacement(null);
@@ -208,7 +242,7 @@ export function useFloatingControl(input: {
 			window.removeEventListener("resize", schedule);
 			observer.disconnect();
 		};
-	}, [visible, measure, turnRef]);
+	}, [visible, measure, turnRef, measureKey]);
 
 	return { controlRef, placement };
 }

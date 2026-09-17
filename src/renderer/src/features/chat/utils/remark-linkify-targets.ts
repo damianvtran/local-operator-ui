@@ -26,11 +26,12 @@
  * ## What it admits, and what it deliberately does not
  *
  * The grammar is `link-grammar.ts` — the SAME token grammar the Files panel
- * uses, called with `LINK_POLICY`. The two surfaces differ in exactly one
- * admission (the linkifier does not demand a known extension of a bare token,
- * because a link is a rendering of what was written rather than a claim that a
- * file exists); every other rejection is shared, and `LINK_POLICY`'s own comment
- * says so. Relative tokens (`notes.md`, `src/foo.ts`) are admitted by NEITHER:
+ * uses, called with `LINK_POLICY`. The two surfaces differ in exactly TWO
+ * admissions, both named on `TargetPolicy` and both measured: the known-extension
+ * filter (dropped here, because a link is a rendering of what was written rather
+ * than a claim that a file exists) and the fragment guard (kept here, because a
+ * bare token that stopped inside a longer name renders an anchor whose claim is
+ * wrong). Relative tokens (`notes.md`, `src/foo.ts`) are admitted by NEITHER:
  * with no cwd, admitting one means guessing a root.
  *
  * Two node kinds are rewritten and no others:
@@ -59,19 +60,26 @@
  *
  * ## What the anchor carries
  *
- * `url` is the PATH, never a `file://` URL. react-markdown runs every href
- * through remark-rehype's `defaultUrlTransform`, whose safe list is
- * `https?|ircs?|mailto|xmpp`, so a `file:///…` href is silently replaced with
- * `""` — an anchor that goes nowhere, with nothing in the markup to show it.
- * `LinkTarget.href` carries the reasoning and `scripts/link-targets.test.mjs`
- * asserts it.
+ * `url` is the PATH, never a `file://` URL. The mdast keeps a destination
+ * verbatim, so for a DETECTED target this plugin's `url` is already the decoded
+ * path - assembled from the scanner's own `target`, not from the token's
+ * spelling. What happens AFTER this plugin is react-markdown's business:
+ * `remark-rehype`'s `normalizeUri` percent-encodes the destination on its way
+ * into hast, and `link-actions.ts`'s classifier is the layer that decodes it back
+ * (see that module's header). This plugin knows nothing about that step, which is
+ * why it does not try to pre-encode its way around it.
+ *
+ * A HAND-WRITTEN `[report](file:///tmp/a.pdf)` never reaches this walker at all -
+ * it is a `link` node, which the walker refuses to descend into - and it is the
+ * renderer's own `urlTransform` that keeps its `file:` scheme alive
+ * (`markdown-renderer.tsx`).
  *
  * Pure: no React, no DOM. Asserted by `scripts/link-targets.test.mjs`.
  */
 
 import {
 	LINK_POLICY,
-	type LinkTarget,
+	type TargetSpan,
 	targetsIn,
 } from "@features/chat/utils/link-grammar";
 
@@ -169,7 +177,7 @@ function atomsFor(value: string): MdastNode[] {
  * alternative is an anchor per token inside one code span, i.e. a linkified
  * command line, which is exactly the reading the whole-span rule prevents.
  */
-function wholeSpanTarget(value: string): LinkTarget | null {
+function wholeSpanTarget(value: string): TargetSpan | null {
 	const targets = targetsIn(value, LINK_POLICY);
 	const [only] = targets;
 	if (!only || targets.length > 1) return null;

@@ -14,8 +14,18 @@
  * in by the row (`use-link-subject.ts`), which is what makes "one toolbar at a
  * time" a property of the row's state rather than of five links agreeing with
  * each other. The target and its kind are then read off that element's own
- * attributes, which is also what keeps the rendered text and the acted-on text
- * the same string: what the reader sees underlined is what Copy copies.
+ * attributes - the same decoded value the anchor's href and its click handler
+ * use (`link-actions.ts`'s module header says which layer decodes) - so Copy and
+ * Open act on the string the reader's own press would.
+ *
+ * WHAT THE READER SEES UNDERLINED IS NOT ALWAYS THAT STRING, and the earlier
+ * version of this comment claimed otherwise (round 1, review N1). For a bare
+ * path they are the same characters. For a DETECTED `file://` URL they are not:
+ * the anchor's visible text is the URL the agent wrote, and the target is the
+ * path it names, which is exactly what makes the link worth pressing. The label
+ * therefore names the path's BASENAME (`Actions for report.xlsx`) rather than
+ * repeating either spelling, and the strip's note carries the full path when it
+ * has something to explain.
  *
  * IT IS PLACED BY THE SAME FUNCTION AS THE QUOTE CONTROL, against the link's own
  * boxes rather than the highlight's, through the same hook. That is why the
@@ -46,6 +56,7 @@ import {
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import {
+	LINK_TARGET_PATH_ATTR,
 	type LinkActionId,
 	type LinkKind,
 	type ProbedTarget,
@@ -79,7 +90,7 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	quoteAvailable,
 	onDismiss,
 }) => {
-	const target = subject.getAttribute("data-lo-target") ?? "";
+	const target = subject.getAttribute(LINK_TARGET_PATH_ATTR) ?? "";
 	const kind = (subject.getAttribute("data-lo-kind") ?? "file") as LinkKind;
 	const handleQuote = useQuotePress(conversationId, turnRef);
 	const [copied, setCopied] = useState(false);
@@ -105,6 +116,21 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 				bottom: rect.bottom,
 			}));
 		},
+		/*
+		 * THE SUBJECT IS THE MEASURE KEY. This component is mounted at a stable JSX
+		 * position inside its row, so pointing at another link in the same turn
+		 * RE-RENDERS it with a new subject instead of mounting a new one - and
+		 * without this key the placement kept the first link's coordinates while the
+		 * contents followed the second (round 1, design D1).
+		 */
+		measureKey: subject,
+		/*
+		 * A link can sit anywhere in a paragraph, so the strip is placed BELOW the
+		 * link whenever the link does not begin on the row's first line, where the
+		 * 8px-above placement would cover the line before it (round 1, design D2,
+		 * UX U6: 128px of the very path this change exists to make usable).
+		 */
+		belowWhenOffFirstLine: true,
 	});
 
 	/*
@@ -223,7 +249,19 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 			 * its own Escape.
 			 */
 			onKeyDown={(event) => {
-				if (event.key !== "Escape" || event.defaultPrevented) return;
+				if (event.key !== "Escape") return;
+				/*
+				 * `defaultPrevented` IS NOT THE GUARD HERE, and that is measured rather
+				 * than assumed. A tooltip layer listens on `document` in the CAPTURE
+				 * phase and answers Escape for its own subject, which leaves the event
+				 * `defaultPrevented: true` before this handler sees it - so the old
+				 * guard made the toolbar immune to its own documented dismissal, and a
+				 * keyboard reader who had tabbed into the buttons had no way out at all
+				 * (round 1, UX U2). An Escape whose target is inside THIS toolbar is
+				 * unambiguously this toolbar's, so it is answered whatever another layer
+				 * did with the key first; the hover-raised case (focus elsewhere) is
+				 * answered by `use-link-subject.ts`, which owns the subject.
+				 */
 				/*
 				 * THE HIGHLIGHT GOES FIRST when one is what raised this toolbar, because
 				 * clearing only the row's subject would leave the reader looking at a
@@ -235,6 +273,7 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 				 */
 				window.getSelection()?.removeAllRanges();
 				const anchor = subject as HTMLElement;
+				event.preventDefault();
 				onDismiss();
 				anchor.focus?.();
 			}}
@@ -274,7 +313,7 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 			{model.note && (
 				<span
 					className="max-w-56 truncate pl-1 text-ink-dim text-meta"
-					title={model.note}
+					title={model.noteTitle ?? model.note}
 				>
 					{model.note}
 				</span>
