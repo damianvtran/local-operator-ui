@@ -26,12 +26,13 @@ export const duskfox: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped +7/+7/+6 on R/G/B toward white — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.27 from `surface`,
-		 * 2.68 from `elevated` and 9.50 from `sunken`.
+		 * `surface` stepped 6 on the `L*` axis in the mode's direction — the
+		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
+		 * so the row takes no cast. ΔE00 4.26 from `surface`, 2.18 from
+		 * `elevated` and 11.64 from `sunken`; the step is 6.04 `L*`, and the band
+		 * this branch raised to ΔE00 4.0 is met without a cast.
 		 */
-		highlight: "#34314B",
+		highlight: "#3B3753",
 
 		ink: "#E0DEF4",
 		inkMuted: "#CDCBE0",

@@ -1214,10 +1214,68 @@ export const STORIES = [
 	["settings-backend--read-only-and-redacted", 1380, 900],
 	["settings-backend--gated-children", 1380, 900],
 	["settings-backend--deep-link", 1380, 900],
+	/*
+	 * The registry's provider and model rows, which are the operator's report.
+	 *
+	 * `provider-model-rows` is the five rows at rest — `hosting` and `model_name`
+	 * from the configured fixture, a placeholder on the three subagent tiers —
+	 * and the two `*-list-open` frames are the feature itself: the WHOLE login
+	 * registry with its credential state shown, and the model list narrowed by
+	 * the hosting beside it (with the field's own stored value rescued into its
+	 * own group, which is the state the configured fixture is in by itself).
+	 * `catalogue-deferred` and `catalogue-unknown-credentials` are the two
+	 * degradations: a per-provider failure, which is a note over a list that
+	 * still has rows, and an unreadable credential store, where nothing may be
+	 * badged.
+	 *
+	 * `provider-model-rows` is also the BEFORE frame's counterpart in
+	 * `docs/evidence/settings-model-combobox/`, which carries the driver pair
+	 * from the real app; these frames are the same states under a stubbed
+	 * transport, which is what makes them reproducible across twelve themes.
+	 */
+	["settings-backend--provider-model-rows", 1380, 900],
+	["settings-backend--hosting-list-open", 1380, 900],
+	/*
+	 * The same open list at the narrowest window the product can render
+	 * (`WINDOW_MIN_WIDTH` 800, so the settings column is ~688px by the arithmetic
+	 * the section's own stories record). The design checklist asks for exactly
+	 * this frame - a popover anchored to a 384px field must not overflow the
+	 * window - and the only narrow frame before it was a 620px column, which is
+	 * below the app's own minimum (design round 1, D5.2).
+	 */
+	["settings-backend--hosting-list-open", 800, 900],
+	["settings-backend--model-list-open", 1380, 900],
+	["settings-backend--catalogue-partial", 1380, 900],
+	["settings-backend--catalogue-in-flight", 1380, 900],
+	["settings-backend--catalogue-unknown-credentials", 1380, 900],
 	["settings-backend--dirty", 1380, 900],
 	["settings-backend--saving", 1380, 900],
 	["settings-backend--save-failed", 1380, 900],
 	["settings-backend--narrow", 620, 900],
+	/*
+	 * And the control those rows are built on, which had never been photographed
+	 * in ANY theme or state before this change — its own story was in no row of
+	 * this table since it was written. It arrives in `ui/` with the frames it
+	 * never had, including the one that is the whole feature: the list OPEN.
+	 *
+	 * `open-grouped` is the whole registry as the component sees it, headings and
+	 * all; `open-filtered` is a query narrowing model rows by their selector;
+	 * `no-matches` is the message that must not read as an error; and
+	 * `unknown-value` is a stored value no listing contains, which must render
+	 * rather than blank — with the clear affordance, which only exists on a field
+	 * that is set.
+	 */
+	["settings-model-combobox--labelled", 560, 240],
+	["settings-model-combobox--chrome-less", 560, 200],
+	["settings-model-combobox--open-grouped", 560, 420],
+	["settings-model-combobox--open-filtered", 560, 420],
+	["settings-model-combobox--no-matches", 560, 300],
+	["settings-model-combobox--unknown-value", 560, 240],
+	["settings-model-combobox--active-row", 560, 460],
+	["settings-model-combobox--loading", 560, 240],
+	["settings-model-combobox--scoped-notice", 560, 300],
+	["settings-model-combobox--unresolved-scope", 560, 300],
+	["settings-model-combobox--disabled", 560, 240],
 	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
@@ -1357,6 +1415,18 @@ export const STORIES = [
 	["chat-sidebar-current-row--selected-row", 780, 560],
 	["chat-sidebar-current-row--new-chat-row-current", 780, 560],
 	/*
+	 * The two arrangements where the mark is drawn on an ink no other state here
+	 * reaches, added in round 2's remediation (design round 1, D5; QA's N3 and
+	 * N6): a row carrying a `· lopdev` BINDING inside a current row — `ink-muted`
+	 * on `highlight`, the ink the floors are measured for, and the case in the
+	 * operator's own screenshot — and a NESTED row under its agent, which is the
+	 * one place the mark is drawn at the row's own inset inside a disclosure.
+	 * Before these two, every fixture row was unbound and top-level, so both were
+	 * assertions in `pnpm check-themes` and in no frame at all.
+	 */
+	["chat-sidebar-current-row--bound-row-current", 780, 560],
+	["chat-sidebar-current-row--nested-row-current", 780, 560],
+	/*
 	 * The SAME story with a real pointer on the neighbour row ABOVE the current
 	 * one, because the pair it produces is a state a still at rest cannot hold:
 	 * a hover is browser state, so the rig moves a real pointer through the input
@@ -1387,6 +1457,65 @@ export const STORIES = [
 			hover: '[data-chat-row]:has(+ [data-chat-row][aria-current="page"])',
 		},
 	],
+	/*
+	 * The SETTINGS RAIL's current section, which is the other `surface` panel that
+	 * paints this role and the one two earlier rounds stated as a gap: the shipped
+	 * `settings-appearance` story sets `capturePending` and never clears it offline,
+	 * so the sweep waited out its bound there and every row after it went stale. The
+	 * story renders the rail component directly instead, which needs no bridge and
+	 * no store, so the surface is photographed rather than described.
+	 *
+	 * 1280 wide rather than its siblings' 780: `SettingsSidebar` switches between its
+	 * labelled and its 48px icon-only layouts at `(min-width: 1040px)`, and the
+	 * labelled one is the surface whose current row has to carry text on the ground.
+	 */
+	["chat-sidebar-current-row--settings-rail", 1280, 760],
+	/*
+	 * The same rail with the pointer on the row ABOVE the current one, which is the
+	 * pair the chat panel's own neighbour frame exists for: whether the persistent
+	 * mark still out-ranks the transient one is a fact about two grounds side by side
+	 * in ONE frame. The rail's rows are `li`s wrapping their own button, so the
+	 * selector addresses the neighbouring `li` and lands the pointer on the button
+	 * inside it; `aria-current="page"` is the rail's own marking of its current row.
+	 *
+	 * A NESTED state's neighbour is not in this list on purpose: the row above a
+	 * nested current row is its agent's entity row, which is not `elevated` — the
+	 * entities own their own hover — so a pointer there measures a different pair.
+	 */
+	[
+		"chat-sidebar-current-row--settings-rail",
+		1280,
+		760,
+		{
+			dir: "settings-rail-neighbour-hovered",
+			hover: 'li:has(+ li > button[aria-current="page"]) > button',
+		},
+	],
+	/*
+	 * The current row with the KEYBOARD on it, which is the one arrangement where
+	 * two outline rules meet on one box: the row's `highlight` ground plus the
+	 * app's `focus-visible` ring drawn around it. Design round 2's N3 asked for it
+	 * and it has never been photographed; round 3's N4 kept it open. Shot on the
+	 * ten themes the design named (the six pinned plus the four re-authored
+	 * values), where a mark paid on the cast is the thing most worth looking at.
+	 *
+	 * 780x560 like its siblings: the ring is drawn OUTSIDE the row's box, so the
+	 * frame has to include the margin it sits in.
+	 */
+	[
+		"chat-sidebar-current-row--focused-row-current",
+		780,
+		560,
+		{ tabTo: '[data-chat-row][aria-current="page"]' },
+	],
+	/*
+	 * The two-swatch wash frame (design round 3, D3), labelled in the picture as a
+	 * colour-only frame rather than a screen: this rig's states cannot co-shoot a
+	 * current row and an `accentWash` element, and the claim is about the distance
+	 * between two grounds rather than about a layout. Narrower than its siblings
+	 * because there is no panel to fit - a caption and two blocks.
+	 */
+	["chat-sidebar-current-row--wash-swatches", 780, 260],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is

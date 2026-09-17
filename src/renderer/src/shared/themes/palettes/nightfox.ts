@@ -36,12 +36,14 @@ export const nightfox: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped +7/+7/+6 on R/G/B toward white — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.33 from `surface`,
-		 * 2.86 from `elevated` and 8.79 from `sunken`.
+		 * `surface` cast 0.34 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 3.75 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.11 from `surface`, 2.12 from `elevated` and 10.76 from `sunken`;
+		 * the step is 3.79 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.75:1 the ink that binds it.
 		 */
-		highlight: "#283545",
+		highlight: "#20374F",
 
 		ink: "#CDCECF",
 		inkMuted: "#AEAFB0",

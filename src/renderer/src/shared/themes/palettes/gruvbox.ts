@@ -38,16 +38,13 @@ export const gruvbox: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.035, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.63 from `surface`, 3.33 from `elevated` and 7.60 from
-		 * `sunken`.
-		 * This is one of the three casts that overshoot the band's 2.5 top:
-		 * a hex step at this strength is wider than the band, and the step
-		 * below it measures under the rule's own 2.17 floor.
+		 * `surface` stepped 6.25 on the `L*` axis in the mode's direction — the
+		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
+		 * so the row takes no cast. ΔE00 4.54 from `surface`, 2.24 from
+		 * `elevated` and 10.39 from `sunken`; the step is 6.33 `L*`, and the band
+		 * this branch raised to ΔE00 4.0 is met without a cast.
 		 */
-		highlight: "#34302B",
+		highlight: "#403E3D",
 
 		ink: "#EBDBB2",
 		// Canonical fg2 D5C4A1 is 6.76:1 on `elevated` and only ΔE00 6.3 from fg3, which is

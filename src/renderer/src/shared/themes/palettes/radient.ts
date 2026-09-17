@@ -22,12 +22,30 @@ export const radient: ThemeDefinition = {
 		surface: "#1A1F2F",
 		elevated: "#282D47",
 		sunken: "#0A0D12",
+
 		/*
-		 * The current row's own ground: `surface` stepped +7 on every channel
-		 * toward white. ΔE00 2.21 from `surface`, 5.05 from `elevated` and 10.06
-		 * from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own navy
+		 * ramp 6.24 `L*`, at 1.01x the panel's chroma. ΔE00 4.11 from `surface`,
+		 * 4.09 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 11.72 from `sunken`. The row is 1.182x the panel's relative
+		 * luminance.
+		 *
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#212636)
+		 * stepped 3.37 `L*` off the panel, and this one steps 6.24. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
+		 *
+		 * Ink on this ground: `ink` 12.87:1, `ink-muted` 8.98:1, `ink-dim` 5.61:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 5.61:1.
 		 */
-		highlight: "#212636",
+		highlight: "#272c3d",
 
 		// Pure white was the one value in this file that belonged to no ramp: at
 		// C0 it reads as a hole punched in the navy rather than as the top of the

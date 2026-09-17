@@ -36,12 +36,13 @@ export const mintLight: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.29 from `surface`,
-		 * 4.64 from `elevated` and 6.44 from `sunken`.
+		 * `surface` stepped 6.5 on the `L*` axis in the mode's direction — the
+		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
+		 * so the row takes no cast. ΔE00 4.03 from `surface`, 6.08 from
+		 * `elevated` and 6.24 from `sunken`; the step is -6.65 `L*`, and the band
+		 * this branch raised to ΔE00 4.0 is met without a cast.
 		 */
-		highlight: "#E6EDE8",
+		highlight: "#DEE5E0",
 
 		ink: "#1C2B21",
 

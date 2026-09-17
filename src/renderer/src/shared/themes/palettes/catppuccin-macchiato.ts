@@ -39,13 +39,16 @@ export const catppuccinMacchiato: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.080, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.45 from `surface`, 2.77 from `elevated` and 5.43 from
-		 * `sunken`.
+		 * `surface` cast 0.12 toward `accent`, then stepped 1.75 on the `L*`
+		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
+		 * what put it there: the ink floor on the row's ground caps the lightness route
+		 * at 2.5 `L*` here (inkDim reaches its floor with the 0.15 of
+		 * headroom at 4.67:1 on this ground), so the band is paid on the cast.
+		 * ΔE00 4 from `surface`, 3.38 from `elevated` and 7.23 from
+		 * `sunken`; the step of 1.74 `L*` is short of the 3 `L*` floor and is pinned in
+		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
 		 */
-		highlight: "#2C2C45",
+		highlight: "#312F4B",
 
 		ink: "#CAD3F5",
 		inkMuted: "#B8C0E0",

@@ -29,12 +29,14 @@ export const kanagawaWave: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped +7/+7/+6 on R/G/B toward white — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.31 from `surface`,
-		 * 2.57 from `elevated` and 8.95 from `sunken`.
+		 * `surface` cast 0.14 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4.25 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.04 from `surface`, 2.66 from `elevated` and 10.56 from `sunken`;
+		 * the step is 4.34 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 5.08:1 the ink that binds it.
 		 */
-		highlight: "#31313D",
+		highlight: "#2F3445",
 
 		// fujiWhite, 8.16:1 on the lightest ground.
 		ink: "#DCD7BA",

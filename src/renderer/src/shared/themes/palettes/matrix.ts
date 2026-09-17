@@ -49,12 +49,13 @@ export const matrix: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped +8/+7/+8 on R/G/B toward white — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.30 from `surface`,
-		 * 2.63 from `elevated` and 7.40 from `sunken`.
+		 * `surface` stepped 6.5 on the `L*` axis in the mode's direction — the
+		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
+		 * so the row takes no cast. ΔE00 4.08 from `surface`, 3.35 from
+		 * `elevated` and 8.43 from `sunken`; the step is 6.53 `L*`, and the band
+		 * this branch raised to ΔE00 4.0 is met without a cast.
 		 */
-		highlight: "#131D16",
+		highlight: "#1A231C",
 
 		ink: "#D4E6D6",
 		inkMuted: "#99BD9F",
