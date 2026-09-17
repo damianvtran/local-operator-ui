@@ -1,10 +1,10 @@
 {
-  "head": "afa283aa4055df8d08bab58f61ef98fb324c99d6",
-  "headNote": "RE-STAMPED FOR THE PINS ROUNDS. This branch adds the sidebar's pinned conversations and their frames (`docs/evidence/pins/`: seventeen PNGs from `--scene pins`, four from the state QA measured under `--scene pins-scroll`, plus the four of the capability-withdrawn pair; the set's own README carries the table, the commands, the round-by-round record and what it does not photograph). `head` names this branch's own code commit, the one the frames are pictures of, and the stamps are re-derived AT that commit rather than while a remediation was still uncommitted - which is the trap #295 documents. The manifest is committed by a docs-only re-stamp, so the stamps keep naming the code commit after it.",
-  "srcTree": "cdb645f5651fcded1a64e15d4a685c115df6a480",
-  "scriptsTree": "4c978f0b6b4cfc2f74f95d3728e5063548c3988a",
-  "dirtyWorkingTree": true,
-  "capturedAt": "2026-09-17T05:20:00.000Z",
+  "head": "dbe7ba27dc5cce6090db54b1cd56a9abcccf8669",
+  "headNote": "RE-STAMPED FOR THE PINS ROUNDS, ON THE FOLDED TREE. This branch adds the sidebar's pinned conversations and their frames (`docs/evidence/pins/`: seventeen PNGs from `--scene pins`, four from the state QA measured under `--scene pins-scroll`, plus the four of the capability-withdrawn pair; the set's own README carries the table, the commands, the round-by-round record, the measurement of the fold onto `origin/main` at `ccc3017a3` - which moved the pane and not the sidebar, six frames re-shot on that proof - and what it does not photograph). `head` names the commit the frames are pictures of, and the stamps are re-derived AT it rather than while a remediation or a fold was uncommitted, which is the trap #295 documents.",
+  "srcTree": "e3f4fa676064ea590b9dcc53f3fca4a48b1890e8",
+  "scriptsTree": "e95579d63093ae6ffd885720ce2d254329b46b7e",
+  "dirtyWorkingTree": false,
+  "capturedAt": "2026-09-16T20:05:00.000Z",
   "frames": 4930,
   "surfaces": 547,
   "themes": 12,
@@ -2453,6 +2453,21 @@
         "It also makes the legacy surface agree with the canonical one, which has always hugged its picture (`canonical-image.tsx` wraps it in `inline-block`), so the change reads as a consistency gain rather than obviously as a regression. The frame pair is the evidence; the decision (one class on the wrapper either way) belongs to the design round, not to a re-statement of the after frame.",
         "And it settles what the round-1 re-take's drift is: the re-captured `in-thread` frame is geometry-identical to the round-1 commit (the picture's edges measure the same at y=300 in every theme re-checked), so the sub-percent pixel differences that pass reported are re-rasterisation inside the picture's own box rather than a moved row."
       ]
+    },
+    {
+      "path": "run-panel-reveal",
+      "frames": 13,
+      "surfaces": 9,
+      "themes": 2,
+      "source": "The BUILT app (`pnpm build` + `npx electron .`, `LOCAL_OPERATOR_UI_WINDOW_MODE=headless`, its own `--user-data-dir` under the OS temp dir, every inherited `CMUX_*` stripped) driven over raw CDP by the committed `scripts/run-panel-reveal-proof.mjs`, against a real `local_operator` backend on an isolated `LOCAL_OPERATOR_CONFIG_DIR` whose session was seeded by the committed `scripts/seed-plan-session.mjs`. The press is a real `Input.dispatchMouseEvent` at the chip's painted centre; CDP focus emulation is enabled (a window that is never shown cannot be focused, and Escape - the pane's own ladder - is dropped without it), which is why every frame shows the composer's focus ring. Frames are lossless WebP of the app's own window at devicePixelRatio 2.",
+      "why": [
+        "The defect is a MOVEMENT, and a movement is what a moving picture would show - these are stills of the frame before and after one real press of the composer's plan chip. `before-fix` is the BUILT app of unmodified origin/main (8f80697c8, the v0.24.0 the operator runs); `after-fix` is this branch's build of the same tree plus the container-scoped scroll. Both are the same window sizes, the same seeded session and the same gesture.",
+        "One fact is written in the readme beside this set rather than into a frame, because no frame carries it: the vertical axis of the operator's report is NOT reproduced. No ancestor of the pane ever had vertical scrollable overflow (scrollHeight - clientHeight was 0 for every box outside the pane at 1380x900, 1024x673 and 800x600, in both builds), so the walk could not scroll the frame vertically. What moved is the chat column's slot row, horizontally: 108px at the operator's own 1024x673 and 221px at 800x600, taking the column, the transcript and the composer with it.",
+        "The 800x600 and 1380x900 pairs are not decoration. 800x600 is the app's own window floor, where the same walk moves the column 221px; 1380x900 is the default window the app opens in, where NOTHING moved in either build, because the row fits there - which is why a defect that only appears at a narrower window survived every frame this repository had.",
+        "A set no sweep can re-derive: a sweep photographs Storybook stories with `scripts/capture-evidence.mjs`, and this claim is about the app's whole frame in a real window at three sizes, over a real backend. The readme beside the frames names the three commands that stand the rig up, and the proof driver (`scripts/run-panel-reveal-proof.mjs`) is committed beside them.",
+        "What these frames do NOT show, and what this change DOES do: the pane's own FIT. The frames are the pre-fit build's, so in them the pane sits at left: 721 and is clipped at 1024, exactly as it is when opened from the header trigger on unmodified origin/main - the reveal was masking that clipping, not causing it. The fit is part of this change rather than a separate decision (the wrapper takes the preference as its width with no floor, so the pane takes what the row has left), and the numbers it produces are not in these frames: they are in the readbacks committed under `readbacks/` and tabulated in the readme's *Round 2's verification* section, which carries 303/419/251/79 with clip 0 in every one. Corrected in the design round 3 (D15), where this paragraph still described the branch as it was before the fit landed."
+      ],
+      "capturedAt": "2026-09-15, from the base build at 8f80697c8 and this branch's build in one sitting"
     }
   ],
   "remediationRecord": {
@@ -3066,12 +3081,25 @@
       "scriptsTree": "e8f08c852f321f80cd627dd3fba5e6d2cd58e804",
       "dirtyWorkingTree": true
     },
+    "reStamps": [
+    {
+      "at": "2026-09-17, on `fix/run-panel-reveal-view-shift`, on the fold onto `origin/main` at `562bc5837` (head `6cb1445b5`)",
+      "by": "PR #207",
+      "why": "The branch's fold onto a moved `main`, and the only thing this branch adds to this file is its own `run-panel-reveal` declaration, re-applied once at the head. The replay takes the incoming base's file at every conflict - it is a derived aggregate, and main's fold chain owns the counts, the stamps and the note - so the commits this branch had stacked on top of it replay as empty and are dropped rather than fighting the base for the same fields. The stamps below are re-derived from the tree this head carries, and the values this entry replaces were main's own: `head` `4cd055f87`, `srcTree` `7e0a96b69`, `scriptsTree` `34e8bc0be`. No swept frame was re-taken and none is claimed to describe this tree.",
+      "replaced": {
+        "head": "4cd055f875a85f739e304e7ba2d5d40a14e6811a",
+        "srcTree": "7e0a96b69fc218432b2d170121f654005a43783c",
+        "scriptsTree": "34e8bc0be45896ee0e0fa9788248855ec2604bdf",
+        "capturedAt": "2026-09-16T20:05:00.000Z"
+      }
+    }
+  ],
     "pinsPass": {
       "capturedAt": "2026-09-17T05:20:00.000Z",
       "trees": "the UI tree at this branch's folded head, and `origin/main` at `013aad424` in a second worktree for the withdrawn pair's `main` halves; both built with `VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8977` and both driven by the SAME `--scene pins` (this branch's `renderer-driver.mjs` copied into the main worktree), so the withdrawn pair compares two trees and nothing else",
-      "daemon": "`feat/desktop-session-pins` at `b1dc21980e65d620a5a51e2efd73296adc386855` for every frame but the withdrawn pair, and the same daemon at `feat/desktop-session-pins^` (`6ac627b39`, where `capabilities.features.session_pins` is genuinely absent) for those four",
+      "daemon": "`feat/desktop-session-pins` at `cffdedfbdcffdfcc1bbc5e8846e045516f6dbbfb` for every frame but the withdrawn pair, and the same daemon at `feat/desktop-session-pins^`'s pins-less parent (`6ac627b39`, where `capabilities.features.session_pins` is genuinely absent) for those four",
       "isolation": "`env -i HOME=<scratch> LOCAL_OPERATOR_CONFIG_DIR=<scratch>/.local-operator LOCAL_OPERATOR_DESKTOP_TOKEN=<token>` under `/tmp/pins-evidence`, the app in `--window-mode=headless` (the run asserts visible=false focused=false from main's own window facts before its first frame), and the scene's own store reset between runs",
-      "checks": "65 assertions passed and 0 failed in the pins run; 18 and 0 in each withdrawn run. The scene refuses to run without `--backend`, because a run with no catalogue has no row to pin.",
+      "checks": "43 assertions passed and 0 failed in each pins run; 34 and 0 in each `--scene pins-scroll` run; 15 and 0 in each withdrawn run. Every assertion the scene makes is in the run's own `[PASS]`/`[FAIL]` line, printed beside the frame it precedes.",
       "byteIdentity": "`cmp` prints nothing for `pins-withdrawn-{dark,light}.png` against `pins-withdrawn-main-{dark,light}.png`: the four files carry two hashes, `505e0c608da009704823be2784e4e2b86b8d17e5d262d9ce31893482896fce06` (dark) and `13bc1a1dd37bfb574c6e943eaee85a8bfe34c77a3533e9d6b5de72628c8deeed` (light), one per theme rather than one per tree. `pins-withdrawn-dark.png` is ALSO byte-identical to `pins-unpinned-dark.png` (same dark hash), so with the capability present and nothing pinned the panel paints the same pixels as with the capability absent - the reserved slot costs nothing at rest",
       "reproducibility": "the committed driver, re-run against the same daemon and the same store, reproduced all thirteen frames byte for byte - with the bound stated rather than left to be discovered: the transcript in these frames carries MINUTE-RESOLUTION wall-clock timestamps that the seeder stamps from `Date.now()`, so an exact reproduction is a statement about a re-run inside the same minute, and a later re-run differs in those digits and nowhere else. Measured at the head that folded main's theme port: 782 pixels, identical in every affected frame, in one `42x154+2610+1270` box, which is the render of `12:18 AM` against `1:38 AM` - the transcript's own time, not a class, not a pixel of the sidebar, and not something this branch's code decides.",
       "foldMeasurement": "WHAT THE FOLDS MOVED, MEASURED RATHER THAN ASSERTED. The pins run was re-shot on the tree that first folded `origin/main` (`62c673adb`), and six of the thirteen frames came back different with the SAME delta in every one: 33,490 pixels (0.699% of 4,791,360) inside a single `1663x209+1049+1087` box, which is `832x104` at 2x in the chat pane - the conversation tag chip's FOCUS RING, drawn in the new run and not in the old. That is focus-dependent rendering in a window that is never shown, the class `AGENTS.md` names for headless runs, and it touches no claim this set makes: every frame's claim is about the sidebar, and the three frames captured before any conversation was opened are BYTE-IDENTICAL across the two runs. The later fold of main's theme-port window changed `chat-sidebar.tsx` in COMMENTS only (measured: `git diff 62c673adb..origin/main -- src/renderer/src/features/chat/components/chat-sidebar.tsx` is prose about palette measurements, no class, no markup), so the frames are re-stamped rather than re-shot for it. The SAME WINDOW grew the palette set from twelve to fifty-nine (main's theme port), and that is measured too rather than assumed: the `localOperatorDark` and `localOperatorLight` blocks of `src/renderer/src/styles/themes.generated.css` are BYTE-IDENTICAL between `62c673adb` and `origin/main` (31 variables each, `diff` of the two extracted blocks is empty), so the two themes these frames are shot at did not move while the set around them did.",
