@@ -299,7 +299,11 @@ test("paging arithmetic: pageCount, the range, and the clamp", () => {
 test("the reducer's reset table, including the row that must NOT reset", () => {
 	const sorted = sessionTableReducer(
 		{ ...INITIAL_SESSION_TABLE_STATE, query: "status", page: 4 },
-		{ type: "sort", key: "cost" },
+		{
+			type: "sort",
+			key: "cost",
+			ranking: { key: "tokens", direction: "desc" },
+		},
 	);
 	assert.deepEqual(sorted, {
 		query: "status",
@@ -311,11 +315,19 @@ test("the reducer's reset table, including the row that must NOT reset", () => {
 	// Activating the active column flips the direction, and the Session column
 	// opens ascending rather than descending.
 	assert.deepEqual(
-		sessionTableReducer(sorted, { type: "sort", key: "cost" }).sort,
+		sessionTableReducer(sorted, {
+			type: "sort",
+			key: "cost",
+			ranking: { key: "cost", direction: "desc" },
+		}).sort,
 		{ key: "cost", direction: "asc" },
 	);
 	assert.deepEqual(
-		sessionTableReducer(sorted, { type: "sort", key: "session" }).sort,
+		sessionTableReducer(sorted, {
+			type: "sort",
+			key: "session",
+			ranking: { key: "cost", direction: "desc" },
+		}).sort,
 		{ key: "session", direction: "asc" },
 	);
 	assert.equal(firstDirection("tokens"), "desc");
@@ -845,5 +857,58 @@ test("the window-change reset is a derivation, and it is pinned", () => {
 		moved.query,
 		"status",
 		"the reader's narrowing survives the move",
+	);
+});
+
+/* ----------------------------------------------------------------- 11 */
+test("the first press on the ranking column flips the order that column advertises", () => {
+	/*
+	 * UX round 2, U5. The first state every reader meets ranks by the panel's
+	 * metric, so the metric's own header draws itself active-descending while
+	 * `state.sort` is still `null` - "follow the metric". A press on that column
+	 * therefore has to flip against the order the reader can SEE. Without the
+	 * seed it re-derived the order already on screen: nothing moved, nothing was
+	 * announced (the round measured 0 differing pixels between the pre- and
+	 * post-click header frames), and the press had silently taken ownership, so a
+	 * later `Spend` press stopped re-ranking.
+	 */
+	const ranking = { key: "tokens", direction: "desc" };
+	const pressed = sessionTableReducer(INITIAL_SESSION_TABLE_STATE, {
+		type: "sort",
+		key: "tokens",
+		ranking,
+	});
+	assert.deepEqual(pressed.sort, { key: "tokens", direction: "asc" });
+	assert.equal(pressed.page, 0, "and the press returns the reader to page one");
+	// A column that is NOT ranking the table still opens in its own first
+	// direction: the seed is what the press is measured against, not a policy.
+	assert.deepEqual(
+		sessionTableReducer(INITIAL_SESSION_TABLE_STATE, {
+			type: "sort",
+			key: "cost",
+			ranking,
+		}).sort,
+		{ key: "cost", direction: "desc" },
+	);
+	/*
+	 * And taking ownership is what a metric change now respects - the reason this
+	 * is a seed on the action rather than `state.sort` initialised to a column,
+	 * which would have cost the re-ranking the `null` state exists for.
+	 */
+	assert.equal(effectiveSortKey(pressed, "spend"), "tokens");
+	assert.equal(
+		effectiveSortKey(INITIAL_SESSION_TABLE_STATE, "spend"),
+		"cost",
+		"with no press the metric still re-ranks the table",
+	);
+	// The second press flips the reader's OWN order whatever seed arrives with
+	// it: an explicit sort is consulted first.
+	assert.deepEqual(
+		sessionTableReducer(pressed, {
+			type: "sort",
+			key: "tokens",
+			ranking: { key: "tokens", direction: "desc" },
+		}).sort,
+		{ key: "tokens", direction: "desc" },
 	);
 });
