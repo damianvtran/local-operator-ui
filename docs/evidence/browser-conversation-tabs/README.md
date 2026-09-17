@@ -48,20 +48,42 @@ heading {"text":"All tabs, 16 not shown","top":170,"bottom":198,"left":220,"righ
 ```
 
 The heading sits at CSS 170-198 and the band's box at 165-346, both entirely below the
-banner's 68, and the committed frame shows the row: `All tabs, 16 not shown` is legible
+banner, and the committed frame shows the row: `All tabs, 16 not shown` is legible
 above `conv-alpha 4`. Two checks in the run carry that rather than this paragraph — "the
 band paints the heading row the source renders, inside the band's own box" (the reading
 above) and "the tab strip is present in the layout, whether or not the connectivity
-banner is up over it" (`banner {"top":0,"height":68}, tab strip {"top":121,"height":37},
-overlaps false`). The band's own height is the second witness that the row is inside the
-box it is drawn in: 181 = the 8px of padding + the 28px heading + the 144px scroller.
+banner is up over it" (`banner {"top":0,"height":121} over 2 notice(s), tab strip
+{"top":121,"height":37}, overlaps false`). The band's own height is the second witness
+that the row is inside the box it is drawn in: 181 = the 8px of padding + the 28px heading
++ the 144px scroller.
+
+**THE TWO READINGS DIFFER ON PURPOSE, AND THE SECOND IS THE WHOLE BAND** (review round 2,
+D15). The block above is the reading THAT run took, when the banner finder stopped at the
+first matching notice: 68 CSS px, the connectivity band alone. The window carries TWO
+stacked notices when the app's compatibility check has failed as well (68 + 53 = 121, the
+sum `app.tsx` records for exactly this case, and the pair `browser-composition/19` and `20`
+photograph), and the finder used to under-report that by the second band's 53 px — while
+its `overlaps` compared 68 against a strip at 121, i.e. ~53 px of headroom that does not
+exist on a band ending 1 px above the strip's top border. The finder now collects every
+matching band and reports their union, with each notice named beside it, so the figure a
+reader quotes is the band the frame carries and a future regression at the strip's top
+border cannot pass it.
 
 Why the row sat under the banner before and does not now is the app's own chrome, not a
-change to this harness: the strip and the band lie below the banner's 68 CSS px on this
-head, where the version these frames first replaced put the band at 44. The harness still
-deliberately has no daemon reachable (that is the "scratch backend port is dead" check at
-the top of its own transcript), so no frame it takes is banner-free; what changed is that
-the banner no longer covers the subject.
+change to this harness: the strip and the band lie below the whole band on this head,
+where the version these frames first replaced put the band at 44. What changed is that the
+banner no longer covers the subject.
+
+**NOT "NO FRAME THIS HARNESS TAKES IS BANNER-FREE"** (review round 2, D14). The harness
+still deliberately has no daemon reachable (that is the "scratch backend port is dead"
+check at the top of its own transcript), but the banner is a property of WHEN IN THE RUN a
+frame is taken, not of the harness: the app's own check fails a moment after boot, so a
+frame taken earlier in the same run carries no banner at all. Measured on this head with
+`sharp`: `browser-composition/03-surface-populated.webp`'s top-left is the app's own ground
+`(14,12,8)`, uniform through device y 248 (CSS 124), and this set's own
+`live/19-strip-pooled-20-over-6.png` measures `(15,12,8)` — both from runs whose later
+frames carry the band. An earlier revision of this paragraph said "so no frame it takes is
+banner-free", which those two frames refute.
 
 There is no before half for `live/19b-pinned-control-open.png`, and it cannot be produced:
 the scene is added by this change, and the control it photographs no longer exists on the
