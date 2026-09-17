@@ -28,6 +28,8 @@ import { useConversationBrowserSummaries } from "./use-conversation-browser-summ
  */
 export function useConversationApprovals(sessionId: string | null): number {
 	const { summaries } = useConversationBrowserSummaries();
-	if (!sessionId) return 0;
+	// `undefined` is "no browser here" (see the summaries hook), which is also "no
+	// requests to wait on" — so the badge is zero rather than a second branch.
+	if (!sessionId || !summaries) return 0;
 	return summaries.get(sessionId)?.pendingApprovals ?? 0;
 }

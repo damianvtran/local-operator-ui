@@ -574,6 +574,37 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE SAME BADGE, ON A CONVERSATION ROW (design R2; review round 1, D3).
+		 *
+		 * The row above says the quiet part out loud: when a badge lands on another
+		 * ground, "its ground is a row this file would have to grow rather than quietly
+		 * inherit". PR 2 put an identical `Badge variant="attention"` on the sidebar's
+		 * conversation rows — the mark's approvals badge, which is the one state that
+		 * means "an agent here is blocked on you" — and no row covered it, so the twelve
+		 * palettes were asserting the badge against `canvas` alone.
+		 *
+		 * FOUR GROUNDS, because this control is drawn on all four:
+		 *   - `surface`, the sidebar panel: the mark at rest;
+		 *   - `elevated`, the row's hover step, which a ROW that is not current paints
+		 *     under the pointer;
+		 *   - `highlight`, the CURRENT row's ground (`chat-sidebar.tsx`'s `rowCurrent`,
+		 *     this app's role for it);
+		 *   - `sunken`, which the current row paints in `browser-conversation-mark.
+		 *     stories.tsx`'s row specimen, so the frames reviewers judge cover it too.
+		 * Measured across the twelve palettes when this row was added: `ink` on
+		 * `warningWash` 8.39:1 at worst (tokyoNight) and `borderControl` on the ground
+		 * 3.13:1 at worst (iceberg on `sunken`) — a coverage gap rather than a violation
+		 * (the badge's own `ring-canvas`, added the same round for D4, is a `canvas` ring
+		 * on these grounds and is not part of this triple).
+		 */
+		name: "conversation browser mark badge",
+		on: ["surface", "elevated", "highlight", "sunken"],
+		fill: "warningWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * THE PANE'S SCOPE SWITCH (spec §7.2), which is the one control PR 2 adds, and
 		 * the reason it needs a row of its own: it is the segmented primitive ON A
 		 * `sunken` GROUND, where the primitive's own track role (`sunken`) is the ground
@@ -1517,17 +1548,36 @@ const STRUCTURAL_CALL_SITES = [
 		 * `!activeDraftKey` is in the pin because it is the same term the row's
 		 * `aria-current` reads: the row may not paint a ground the accessibility
 		 * tree does not claim, and it may not claim one it does not paint.
+		 *
+		 * ONE READ, THREE ELEMENTS (review round 1, A7): the predicate used to be
+		 * written out at the wrapper, at the button and at the mark, which is how the
+		 * mark came to paint its own hover step over the selected row's ground while
+		 * the sidebar's comment claimed it dropped it. The name is the pin now — the
+		 * three consumers read `current`, so they cannot disagree — and the ground's
+		 * two home call sites are pinned by the entries below.
 		 */
 		what: "chat session row current-row predicate",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "const isCurrent =\n\t\t\tselectedConversation === row.session_id && !activeDraftKey;",
+		must: "const current = selectedConversation === row.session_id && !activeDraftKey;",
 		why: "the row the operator reported is marked on two terms — the ground and `aria-current` — and the predicate is named once so the two cannot drift apart. A weakened predicate un-marks the conversation in both places at once, which is why the pin is on the declaration rather than on one use",
 	},
 	{
 		what: "chat session row current-row mark",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "isCurrent && rowCurrent,",
-		why: "the mark the operator reported on is the ground plus the weight; the declaration above pins what the constant HOLDS, and this pins that the selected conversation actually reaches it — dropping the reference, or weakening the predicate, is a one-word edit that no palette assertion can see and that leaves the row unmarked while every floor stays green",
+		must: "const current = selectedConversation === row.session_id && !activeDraftKey;",
+		why: "this is the mark the operator reported missing; the predicate and the ground have to stay on the row together, which is what `aria-current` on the same two terms asserts to a screen reader, and the single read is what keeps the wrapper, the button and the mark from disagreeing about it",
+	},
+	{
+		/*
+		 * The row BUTTON's half of that pair, pinned because the ground has two home
+		 * call sites on this row and a reader can delete either one: the button carries
+		 * `rowStyle`, so this is the expression whose `hover:` half has to lose to the
+		 * ground (the same reason the entity row's button is pinned below).
+		 */
+		what: "chat session row current-row ground",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: '"min-w-0 grow text-left",',
+		why: "the button shares the wrapper with the mark and has to carry the ground as well, or the current conversation loses its mark on the element the pointer and the caret land on",
 	},
 	{
 		/*

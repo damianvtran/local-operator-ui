@@ -11,6 +11,13 @@ export interface BrowserConversationMarkProps {
 	/** The conversation's own name, for the one label that has to say "which one". */
 	name: string;
 	summary: ConversationBrowserSummary;
+	/** Whether the conversation's row is the CURRENT one. It decides whether the mark
+	 * may paint its own hover step: a child's `hover:bg-elevated` covers a parent's
+	 * ground, so on the selected row the mark would replace the selection ground with
+	 * the hover step — the collision design R2 names for the row's pair (review round
+	 * 1, A7: the sidebar comment claimed this behaviour and the code did not do it).
+	 * Defaults to `false`, which is the resting case every story renders. */
+	current?: boolean;
 	onOpen: (sessionId: string) => void;
 }
 
@@ -33,6 +40,15 @@ export interface BrowserConversationMarkProps {
  * red count on a sidebar row would say "something is wrong somewhere" and name neither
  * the tab nor the reason.
  *
+ * IT IS DRAWN IN ITS NO-TABS STATE TOO (design R2's state table, row 1; review round 1,
+ * D2/A4). The earlier rule — draw nothing for a conversation with no tabs and no waiting
+ * request — put the entry point on the rows that least needed it: the operator's ask is a
+ * corner control on EACH conversation, because the empty case is exactly when a user
+ * wants to open a browser there (the pane then offers `New tab in this conversation`). So
+ * this component always draws something; the shape of the quietest state is the dim
+ * `Globe`, and the CALLER decides whether the browser exists at all (`browserSummaries`
+ * absent = no bridge = no projection = no mark, ruling 5(a)).
+ *
  * WHY THE BADGE IS A BADGE AND NOT `· 2 approvals` TEXT ON THE ROW. The row is the
  * densest list in the app and every addition costs a title its width. The one state that
  * needs the user's ATTENTION gets the one treatment this app reserves for attention, and
@@ -51,9 +67,12 @@ export interface BrowserConversationMarkProps {
  * mark that could not open anything would be an affordance that lies.
  */
 export const BrowserConversationMark: FC<BrowserConversationMarkProps> = memo(
-	({ sessionId, name, summary, onOpen }) => {
+	({ sessionId, name, summary, current = false, onOpen }) => {
 		const approvals = summary.pendingApprovals;
 		const tabs = summary.tabCount;
+		/** NOTHING TO SAY: the design's quietest state, and the one that has to exist for
+		 * the mark to be an entry point on every row (D2/A4). */
+		const quiet = tabs === 0 && approvals === 0;
 		/** The badge's own grammar, the same cap the header's badge uses: the value is
 		 * bounded so the mark cannot grow, and the exact number stays in the label and the
 		 * tooltip, which are read rather than glanced at. */
@@ -80,7 +99,17 @@ export const BrowserConversationMark: FC<BrowserConversationMarkProps> = memo(
 					 */
 					className={cn(
 						"relative flex size-6 shrink-0 items-center justify-center gap-0.5 rounded-md",
-						"text-ink-muted hover:bg-elevated hover:text-ink",
+						/*
+						 * THE STATE'S OWN INK, THEN THE HOVER STEP — but not on the selected row.
+						 * `hover:bg-elevated` beats the wrapper's `bg-highlight`, so on the current
+						 * row hovering the mark repainted the row's selection ground and the
+						 * sidebar comment claiming it "drops its hover fill while the row is
+						 * current" was describing behaviour that did not exist (review round 1,
+						 * A7). Now the two agree: the current row keeps its own ground, and
+						 * `current` is read from the same expression that paints it.
+						 */
+						quiet ? "text-ink-dim" : "text-ink-muted",
+						!current && "hover:bg-elevated hover:text-ink",
 						"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 					)}
 					data-tour-tag="chat-session-browser"
@@ -112,7 +141,14 @@ export const BrowserConversationMark: FC<BrowserConversationMarkProps> = memo(
 								variant="attention"
 								shape="pill"
 								className={cn(
-									"h-3.5 min-w-3.5 justify-center px-0.5 tabular-nums",
+									// THE RING IS WHAT MAKES IT A BADGE RATHER THAN A PILL (review
+									// round 1, D4): the header's identical badge carries
+									// `ring-2 ring-canvas` (`chat-header.tsx`), and the ring is there to
+									// separate a badge that overlaps a control from that control's own
+									// glyph. Without it the mark's badge walks over the Globe it is
+									// anchored to, and at 24px `∘9+` reads as a pill with a number
+									// rather than as a badge on a corner.
+									"h-3.5 min-w-3.5 justify-center px-0.5 tabular-nums ring-2 ring-canvas",
 								)}
 								data-tour-tag="chat-session-browser-badge"
 							>
