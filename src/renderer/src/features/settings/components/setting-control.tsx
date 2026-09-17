@@ -36,7 +36,7 @@ import {
 import type { KeyboardEvent } from "react";
 import { settingComboSource } from "../backend-setting-combos";
 import { CASCADE_SENTINEL, serialize } from "./backend-settings-drafts";
-import { SettingCombobox, settingHelpId } from "./setting-combobox";
+import { SettingCombobox } from "./setting-combobox";
 
 /**
  * The width each kind's control occupies.
@@ -197,6 +197,15 @@ export type SettingControlProps = {
 	disabled?: boolean;
 	onValueChange: (value: string) => void;
 	onChainsChange?: (chains: Record<string, string[]>) => void;
+	/**
+	 * The id of the row's help sentence, WHEN the row is rendering one.
+	 *
+	 * It comes from the row rather than being derived here because only the row
+	 * knows its tier: an advanced row keeps its help behind a disclosure, and an
+	 * `aria-describedby` that names an element nobody rendered is a worse failure
+	 * than no association at all.
+	 */
+	helpId?: string;
 };
 
 export const SettingControl = ({
@@ -207,6 +216,7 @@ export const SettingControl = ({
 	onValueChange,
 	onChainsChange,
 	effectiveHosting = "",
+	helpId,
 }: SettingControlProps) => {
 	/*
 	 * The searchable combobox branch, keyed on the setting's KEY rather than on
@@ -231,9 +241,7 @@ export const SettingControl = ({
 				disabled={disabled}
 				onValueChange={onValueChange}
 				effectiveHosting={effectiveHosting}
-				/* The row renders its help in a `core` row and behind a disclosure in an
-				   `advanced` one, so the id only names something that is on the page. */
-				helpId={setting.help ? settingHelpId(setting.key) : undefined}
+				helpId={helpId}
 			/>
 		);
 	}
