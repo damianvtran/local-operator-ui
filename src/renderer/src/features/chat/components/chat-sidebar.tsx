@@ -361,8 +361,9 @@ export function ChatSidebar({
 		pointer: { x: number; y: number } | null,
 	) => {
 		const rows = Array.from(
-			listPanelRef.current?.querySelectorAll<HTMLElement>("[data-session-row]") ??
-				[],
+			listPanelRef.current?.querySelectorAll<HTMLElement>(
+				"[data-session-row]",
+			) ?? [],
 		);
 		const index = rows.findIndex(
 			(row) => row.getAttribute("data-session-row") === sessionId,
