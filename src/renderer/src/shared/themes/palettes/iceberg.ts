@@ -31,30 +31,34 @@ export const iceberg: ThemeDefinition = {
 		// sits 1.07:1 under canvas, which is what caps inkDim below.
 		sunken: "#E1E2E7",
 		/*
-		 * The current row's own ground: `surface` stepped down its own cool ramp,
-		 * and carried to 3.0x its chroma at the same hue. ΔE00 4.12 from `surface`,
-		 * 5.88 from `elevated` (the same row's hover step, so the pointer cannot
-		 * erase the selection) and 2.53 from `sunken`.
+		 * The current row's own ground: `surface` stepped down its own cool neutral
+		 * ramp 4.09 `L*`, carrying 3.31x the panel's chroma. ΔE00 4.12 from `surface`,
+		 * 5.88 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 2.53 from `sunken`. The row is 1.111x the panel's relative
+		 * luminance.
 		 *
-		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
-		 * operator first asked to be SUBTLE; he has since seen it rendered and
-		 * reported it as invisible beside a hovered neighbour, so the intent is
-		 * inverted. § 3 of `docs/branding.md` names the CHROMA axis as the cheap one
-		 * — a contrast ratio has no chroma term, so separating two grounds by warmth
-		 * at a fixed L* spends no ink assertion, while separating them by lightness
-		 * spends every one measured against them — and this palette is where that
-		 * matters most, because its light ramp has almost no room below a page
-		 * ground: `sunken` is only 3.75 from `surface`, so a pure lightness step
-		 * stops at ΔE00 1.47 before it collides with the recessed ground. The whole
-		 * step is therefore bought on chroma, 3.0x, which is the largest lift of the
-		 * twelve and is stated here rather than hidden behind a round number.
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#e8e9eb)
+		 * stepped 3.52 `L*` off the panel, and this one steps 4.09. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
 		 *
-		 * Ink on this ground: `ink` 9.51:1, `ink-muted` 6.64:1, `ink-dim` 5.11:1 —
-		 * every floor in § 3 cleared with headroom above it, because the caps and the
-		 * `· lopdev` binding inside a current row are drawn in `ink-dim` and
-		 * legibility is not what the mark may spend. The structural edge the row now
-		 * carries measures 3.29:1 against it, over the 3:1 that role's floor asks
-		 * for.
+		 * Ink on this ground: `ink` 9.51:1, `ink-muted` 6.64:1, `ink-dim` 5.11:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 5.11:1. KNOWN CAST, RECORDED RATHER THAN HIDDEN: this panel is the least chromatic of
+		 * the twelve (C* 1.57), so every step here is a large multiple of it and the row
+		 * reads as a lavender band rather than a darker one (design round 1, D4). It is
+		 * the one palette whose step is bought on chroma rather than lightness — the
+		 * premise that its recessed ground capped the step was wrong (see this file's
+		 * neighbours: `sunken` sits 3.75 from `surface` and the row still clears it by
+		 * 2.53) — and the fix is the ordering the rule states: spend `L*` first. Not
+		 * re-authored in this round, which is scoped to the three palettes the
+		 * operator's report is measured on.
 		 */
 		highlight: "#e5e7f1",
 

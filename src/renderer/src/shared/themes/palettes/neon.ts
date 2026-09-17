@@ -23,26 +23,26 @@ export const neon: ThemeDefinition = {
 		elevated: "#182036",
 		sunken: "#03040A",
 		/*
-		 * The current row's own ground: `surface` stepped up its own desaturated blue ramp. ΔE00 4.04 from `surface`,
-		 * 3.44 from `elevated` (the same row's hover step, so the pointer cannot
-		 * erase the selection) and 9.94 from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own blue
+		 * ramp 6.39 `L*`, at 0.95x the panel's chroma. ΔE00 4.04 from `surface`,
+		 * 3.44 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 9.94 from `sunken`. The row is 1.147x the panel's relative
+		 * luminance.
 		 *
-		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
-		 * operator first asked to be SUBTLE; he has since seen it rendered and
-		 * reported it as invisible beside a hovered neighbour, so the intent is
-		 * inverted and the role now carries unchanged the surface's chroma at the same
-		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
-		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
-		 * a fixed L* spends no ink assertion, while separating them by lightness
-		 * spends every one measured against them. A pure lightness step stops at
-		 * ΔE00 4.05 here because `ink-dim` reaches 4.68:1 there.
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#171c2b)
+		 * stepped 3.55 `L*` off the panel, and this one steps 6.39. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
 		 *
-		 * Ink on this ground: `ink` 12.03:1, `ink-muted` 6.16:1, `ink-dim`
-		 * 4.69:1 — every floor in § 3 cleared with headroom above it, because the
-		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
-		 * and legibility is not what the mark may spend. The structural edge the row
-		 * now carries measures 4.59:1 against it, over the 3:1 that role's floor
-		 * asks for. Lightness alone carries this one: the ramp has enough room above `surface` that the authored chroma is left alone and the step is a pure lightness move.
+		 * Ink on this ground: `ink` 12.03:1, `ink-muted` 6.16:1, `ink-dim` 4.69:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 4.69:1.
 		 */
 		highlight: "#1c2231",
 

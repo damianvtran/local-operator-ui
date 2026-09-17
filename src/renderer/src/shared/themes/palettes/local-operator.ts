@@ -53,28 +53,32 @@ export const localOperatorDark: ThemeDefinition = {
 		elevated: "#282318",
 		sunken: "#0f0c08",
 		/*
-		 * The current row's own ground: `surface` stepped up its own brand ramp, and warmed to 2.0x its chroma. ΔE00 4.14 from `surface`,
-		 * 2.41 from `elevated` (the same row's hover step, so the pointer cannot
-		 * erase the selection) and 8.28 from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own warm
+		 * ramp 3.81 `L*`, carrying 1.87x the panel's chroma. ΔE00 4.15 from `surface`,
+		 * 2.25 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 8.44 from `sunken`. The row is 1.091x the panel's relative
+		 * luminance.
 		 *
-		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
-		 * operator first asked to be SUBTLE; he has since seen it rendered and
-		 * reported it as invisible beside a hovered neighbour, so the intent is
-		 * inverted and the role now carries 2.0x the surface's chroma at the same
-		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
-		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
-		 * a fixed L* spends no ink assertion, while separating them by lightness
-		 * spends every one measured against them. A pure lightness step stops at
-		 * ΔE00 2.51 here because `ink-dim` reaches 4.66:1 against it.
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#25211b)
+		 * stepped 3.46 `L*` off the panel, and this one steps 3.81. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
 		 *
-		 * Ink on this ground: `ink` 14.02:1, `ink-muted` 7.45:1, `ink-dim`
-		 * 4.79:1 — every floor in § 3 cleared with headroom above it, because the
-		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
-		 * and legibility is not what the mark may spend. The structural edge the row
-		 * now carries measures 3.92:1 against it, over the 3:1 that role's floor
-		 * asks for. The brand default, and the palette where the ink floors bind first: `ink-dim` carries 0.29 of headroom at this value, so the step is bought on chroma rather than lightness — 2.0x the surface's own warm chroma at the same hue, which the ramp is already leaning on.
+		 * Ink on this ground: `ink` 13.69:1, `ink-muted` 7.27:1, `ink-dim` 4.68:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 4.68:1. The brand default, and the palette whose ink floor caps the shortest step
+		 * of the twelve: 3.81 `L*` is the last step that keeps `ink-dim` over the bound.
+		 * The chroma-only step this one also replaces (#271f13, ΔE00 4.14) put the row at
+		 * 2.0x the panel's chroma with a 2.82 `L*` step, less light than the 3.46 it
+		 * replaced.
 		 */
-		highlight: "#271f13",
+		highlight: "#292116",
 
 		ink: "#f1eee6",
 		inkMuted: "#b5afa2",
@@ -189,28 +193,31 @@ export const localOperatorLight: ThemeDefinition = {
 		elevated: "#fffefb",
 		sunken: "#efe9db",
 		/*
-		 * The current row's own ground: `surface` stepped down its own brand ramp, and warmed to 2.4x its chroma. ΔE00 4.39 from `surface`,
-		 * 6.57 from `elevated` (the same row's hover step, so the pointer cannot
-		 * erase the selection) and 2.35 from `sunken`.
+		 * The current row's own ground: `surface` stepped down its own warm
+		 * ramp 4.75 `L*`, carrying 1.85x the panel's chroma. ΔE00 4.02 from `surface`,
+		 * 6.15 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 2.36 from `sunken`. The row is 1.129x the panel's relative
+		 * luminance.
 		 *
-		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
-		 * operator first asked to be SUBTLE; he has since seen it rendered and
-		 * reported it as invisible beside a hovered neighbour, so the intent is
-		 * inverted and the role now carries 2.4x the surface's chroma at the same
-		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
-		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
-		 * a fixed L* spends no ink assertion, while separating them by lightness
-		 * spends every one measured against them. A pure lightness step stops at
-		 * ΔE00 2.92 here because `ink-dim` reaches 4.67:1 there.
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#efede6)
+		 * stepped 3.83 `L*` off the panel, and this one steps 4.75. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
 		 *
-		 * Ink on this ground: `ink` 14.67:1, `ink-muted` 6.96:1, `ink-dim`
-		 * 4.97:1 — every floor in § 3 cleared with headroom above it, because the
-		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
-		 * and legibility is not what the mark may spend. The structural edge the row
-		 * now carries measures 3.52:1 against it, over the 3:1 that role's floor
-		 * asks for. The brand light palette, and the second of the two the operator's report is measured on: lightness alone stops at 2.92 behind `ink-dim`, so the step is taken on the warm chroma axis at 2.4x, which is what makes this a cream row rather than a grey one.
+		 * Ink on this ground: `ink` 13.85:1, `ink-muted` 6.57:1, `ink-dim` 4.69:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 4.69:1. The brand light palette, and the third of the three the operator's report is
+		 * measured on. The chroma-only step this one also replaces (#f5f1e0, ΔE00 4.39)
+		 * put the row at 2.4x the panel's chroma with a 2.52 `L*` step, less dark than
+		 * the 3.83 it replaced.
 		 */
-		highlight: "#f5f1e0",
+		highlight: "#ECEBDE",
 
 		ink: "#211e18",
 		inkMuted: "#565147",

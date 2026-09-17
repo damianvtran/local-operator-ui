@@ -21,26 +21,26 @@ export const synth: ThemeDefinition = {
 		elevated: "#2C1D43",
 		sunken: "#06020D",
 		/*
-		 * The current row's own ground: `surface` stepped up its own neon-purple ramp, and warmed to 1.1x its chroma. ΔE00 4.14 from `surface`,
-		 * 2.37 from `elevated` (the same row's hover step, so the pointer cannot
-		 * erase the selection) and 17.33 from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own neon-purple
+		 * ramp 6.08 `L*`, at 1.14x the panel's chroma. ΔE00 4.14 from `surface`,
+		 * 2.37 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 17.33 from `sunken`. The row is 1.133x the panel's relative
+		 * luminance.
 		 *
-		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
-		 * operator first asked to be SUBTLE; he has since seen it rendered and
-		 * reported it as invisible beside a hovered neighbour, so the intent is
-		 * inverted and the role now carries 1.1x the surface's chroma at the same
-		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
-		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
-		 * a fixed L* spends no ink assertion, while separating them by lightness
-		 * spends every one measured against them. A pure lightness step stops at
-		 * ΔE00 3.11 here because `elevated` closes to ΔE00 2.44 of it.
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#231236)
+		 * stepped 3.53 `L*` off the panel, and this one steps 6.08. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
 		 *
-		 * Ink on this ground: `ink` 14.87:1, `ink-muted` 7.54:1, `ink-dim`
-		 * 5.29:1 — every floor in § 3 cleared with headroom above it, because the
-		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
-		 * and legibility is not what the mark may spend. The structural edge the row
-		 * now carries measures 4.23:1 against it, over the 3:1 that role's floor
-		 * asks for. The hover step is 5.44 from `surface`, so this theme's ordering rests on the edge as well; the ground itself is a straight step up the theme's own purple with its chroma barely moved.
+		 * Ink on this ground: `ink` 14.87:1, `ink-muted` 7.54:1, `ink-dim` 5.29:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 5.29:1.
 		 */
 		highlight: "#281641",
 

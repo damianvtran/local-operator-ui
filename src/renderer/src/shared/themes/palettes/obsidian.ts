@@ -30,26 +30,28 @@ export const obsidian: ThemeDefinition = {
 		// a C0 value is the absence of the ramp rather than its bottom rung.
 		sunken: "#030307",
 		/*
-		 * The current row's own ground: `surface` stepped up its own zinc ramp, and warmed to 1.9x its chroma. ΔE00 4.01 from `surface`,
-		 * 2.36 from `elevated` (the same row's hover step, so the pointer cannot
-		 * erase the selection) and 8.37 from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own violet-tinted neutral
+		 * ramp 5.58 `L*`, carrying 1.90x the panel's chroma. ΔE00 4.01 from `surface`,
+		 * 2.36 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 8.37 from `sunken`. The row is 1.134x the panel's relative
+		 * luminance.
 		 *
-		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
-		 * operator first asked to be SUBTLE; he has since seen it rendered and
-		 * reported it as invisible beside a hovered neighbour, so the intent is
-		 * inverted and the role now carries 1.9x the surface's chroma at the same
-		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
-		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
-		 * a fixed L* spends no ink assertion, while separating them by lightness
-		 * spends every one measured against them. A pure lightness step stops at
-		 * ΔE00 2.51 here because `elevated` closes to ΔE00 2.21 of it.
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#1f1f22)
+		 * stepped 3.51 `L*` off the panel, and this one steps 5.58. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
 		 *
-		 * Ink on this ground: `ink` 14.97:1, `ink-muted` 6.10:1, `ink-dim`
-		 * 4.87:1 — every floor in § 3 cleared with headroom above it, because the
-		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
-		 * and legibility is not what the mark may spend. The structural edge the row
-		 * now carries measures 3.28:1 against it, over the 3:1 that role's floor
-		 * asks for. The palette that used to set the band's own ceiling, and the reason the old ceiling existed: `elevated` is only 4.72 above `surface`, so lightness alone runs out at 2.51. The chroma axis is what opens it — 1.9x at the same hue — and the edge covers the hover step at 4.72 that no step off this `surface` can reach.
+		 * Ink on this ground: `ink` 14.97:1, `ink-muted` 6.10:1, `ink-dim` 4.87:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 4.87:1. The step here is still partly chroma-bought (1.90x the panel's, a faint violet
+		 * on a near-black neutral); the ordering above is what a re-authoring should
+		 * follow.
 		 */
 		highlight: "#232329",
 
