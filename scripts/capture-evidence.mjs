@@ -2062,7 +2062,23 @@ export const STORIES = [
 	 * build, because the button does not check at all when import.meta.env.DEV is
 	 * true; see the story's own note.
 	 */
-	["settings-app-updates-section--server-update-offered", 900, 460],
+	[
+		"settings-app-updates-section--server-update-offered",
+		900,
+		/*
+		 * 572, WITH EVERY OTHER STATE OF THIS SURFACE, and it is the app's own
+		 * MINIMUM window rather than a convenient frame: `WINDOW_MIN_HEIGHT = 600`
+		 * minus the 28px of chrome the renderer does not own. This set used to be
+		 * captured at two heights - 460 here and 900x620 for the states the
+		 * serving-install change added - so the baseline could not be laid beside the
+		 * states it has to be told apart from: the pane's geometry differs, and in the
+		 * 460 frames all four version columns and the whole button label are visible
+		 * where the new ones have the card over them (design round 1, D2). One height
+		 * for the whole surface makes the comparison the states exist for possible,
+		 * and 572 is the one that also carries the supported worst case (D1).
+		 */
+		572,
+	],
 
 	/*
 	 * The other half of the same story: both channels proved current, so the
@@ -2073,7 +2089,7 @@ export const STORIES = [
 	 * sentence the fix introduces. Not captured on a pre-fix tree: the
 	 * affirmation exists only on this one.
 	 */
-	["settings-app-updates-section--all-current", 900, 460],
+	["settings-app-updates-section--all-current", 900, 572],
 
 	/*
 	 * THE OPERATOR'S OWN MACHINE, and the pair no existing frame covers: an
@@ -2098,15 +2114,21 @@ export const STORIES = [
 		"settings-app-updates-section--before-the-fix",
 		900,
 		/*
-		 * Taller than its siblings on this surface, and measured rather than
-		 * guessed: at 460 the pane's own fixed panel clipped the Details block - the
-		 * line that names the install the check judged - and a frame whose subject is
-		 * the copy has to include the copy.
+		 * THE APP'S MINIMUM WINDOW, like every other state here (design round 1, D1
+		 * and D2). Measured rather than guessed: this entry was 620 because at 460 the
+		 * pane's own fixed panel clipped the Details block - the line that names the
+		 * install the check judged - and a frame whose subject is the copy has to
+		 * include the copy. 620 was the one height at which the CARD happened to fit,
+		 * which turned the knob on the capture instead of on the card: at 572 the
+		 * unbounded card ran 53px past the window with no scroll container to reach the
+		 * tail, and the committed frame could not show that because it was never taken
+		 * there. The card is bounded to the viewport now (see `UpdateContainer`), so
+		 * the worst case fits the frame as a closed card.
 		 */
-		620,
+		572,
 	],
-	["settings-app-updates-section--server-behind-serving-install", 900, 620],
-	["settings-app-updates-section--serving-server-behind-install", 900, 620],
+	["settings-app-updates-section--server-behind-serving-install", 900, 572],
+	["settings-app-updates-section--serving-server-behind-install", 900, 572],
 
 	/* Canvas: the second-largest surface, and the one with the data grids. */
 	["canvas-workspace--markdown-document", 1280, 900],

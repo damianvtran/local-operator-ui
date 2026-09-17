@@ -525,7 +525,12 @@ const OPERATOR_VERDICT_BEFORE: UpdateCheckVerdict = {
  * The fields are the real payload's, including the two that matter for honesty -
  * `canManageUpdate: false` and an EMPTY `updateCommand`, because this install is
  * the app's own managed environment and no package manager owns it - and the
- * `detail` line naming the install the check judged.
+ * `detail` line naming the install the check judged, VERBATIM: the full 64-character
+ * environment hash and its uuid as `/health` answers them on this host, because
+ * the value is what the Details block wraps and an elided one wraps differently
+ * from the shipped rendering (review round 1, R4). `remedy` and `appOwned` are
+ * the main process's own words and reading for this arm - the same strings
+ * `resolveBackendUpdatePlan` returns, which is what the panel quotes.
  */
 const OPERATOR_OFFER = {
 	currentVersion: "0.56.8",
@@ -533,11 +538,12 @@ const OPERATOR_OFFER = {
 	runningVersion: "0.56.8",
 	updateCommand: "",
 	canManageUpdate: false,
+	appOwned: true,
 	startupMode: "EXISTING_SERVER",
 	remedy:
-		"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. Local Operator updates that environment itself when it starts the server.",
+		"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own.",
 	detail:
-		'The server serving this app runs from Local Operator\'s own managed environment at ~/Library/Application Support/Local Operator/managed-python/packaged/environments/183bbfdc...-7ad511f5..., which the app owns rather than a package manager (the backend reports it as install kind "pip"), at version 0.56.8.',
+		'The server serving this app runs from Local Operator\'s own managed environment at /Users/damian/Library/Application Support/Local Operator/managed-python/packaged/environments/183bbfdc87acd8159e60228c9f91ba254095b0a9d878f4649c67688c82047552-7ad511f5-92ce-41e1-91d7-8dd810d67565, which the app owns rather than a package manager (the backend reports it as install kind "pip"), at version 0.56.8.',
 	sourceBuild: false,
 	restartable: false,
 	manual: true,

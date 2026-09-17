@@ -85,6 +85,15 @@ type BackendUpdateInfo = {
 	latestVersion: string;
 	updateCommand: string;
 	canManageUpdate?: boolean;
+	/**
+	 * Whether the install IS one of the app's own.
+	 *
+	 * The manual panel's closing sentence and the offer card's are chosen by this
+	 * rather than by the absence of a command, because an absent command also means
+	 * "the app could not tell how this was installed" - an arm where the reader does
+	 * have a next step (review round 1, UX U1).
+	 */
+	appOwned?: boolean;
 	startupMode?: string;
 	/** Sentence introducing the manual command, chosen by how the server is installed. */
 	remedy?: string;
@@ -217,6 +226,14 @@ type ManualUpdateInfo = {
 	installVersion?: string | null;
 	/** True when the install follows a source tree on this machine. */
 	sourceBuild?: boolean;
+	/**
+	 * Whether this install is one of the app's own - see `BackendUpdateInfo`.
+	 *
+	 * The manual-required event is the second door into the same state, and the
+	 * closing line is a property of the STATE rather than of the door: both
+	 * producers of an app-owned install have to suppress it (review round 1, UX U1).
+	 */
+	appOwned?: boolean;
 };
 
 /** Headings for the refusal states, sentence case, one line each. */
@@ -262,6 +279,22 @@ export const UpdateContainer = ({
 	 * view paints above all DOM (design 11.3). Registering here rather than at each
 	 * caller is the same funnel argument as `BaseDialog`'s: mounting this wrapper IS
 	 * being visible, so a caller cannot forget.
+	 *
+	 * AND IT IS BOUNDED TO THE VIEWPORT, which `fixed` alone does not do. Every
+	 * panel here was as tall as its content with `overflow-y: visible`, so any
+	 * state taller than the window had its tail painted below the fold with no
+	 * scroll container anywhere that could reach it (design round 1, D1: the
+	 * app-owned offer card measured 609px against a 572px minimum-window viewport,
+	 * and the line naming the install the check judged was unreachable and
+	 * uncopyable on a window the app itself permits). The cap is one margin down
+	 * from the viewport - the same `top-4` the card is pinned by, so the card's own
+	 * bottom edge lands 16px above the window edge instead of past it - and it
+	 * applies to every panel rather than to the one that was measured, because the
+	 * class is a property of a fixed card and not of this state.
+	 *
+	 * `p-4` is what keeps the focus outlines off the scroll edge: `overflow-y: auto`
+	 * makes the cross axis compute to `auto` too, and a ring drawn AT the card's
+	 * padding box would be clipped by it - 16px of padding is wider than the ring.
 	 */
 	useSuppressBrowserView(true, "update-notice");
 	return (
@@ -269,6 +302,7 @@ export const UpdateContainer = ({
 			role={role ?? (tone === "failed" ? "alert" : "status")}
 			className={cn(
 				"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
+				"max-h-[calc(100vh-2rem)] overflow-y-auto",
 				"rounded-lg bg-elevated p-4 shadow-overlay",
 				"[&_a]:text-accent [&_a]:underline-offset-4 [&_a]:hover:underline",
 				className,
@@ -439,11 +473,30 @@ export const RELEASE_NOTES_PROSE = [
 const ManualRemedyNote = ({
 	command,
 	sourceBuild,
+	appOwned = false,
 }: {
 	/** Whether a command well was rendered above this note. */
 	command: boolean;
 	sourceBuild: boolean;
+	/**
+	 * Whether the command-less install is one the APP owns.
+	 *
+	 * The third arm, and the reason it is a field rather than a reading of
+	 * `!command`: an empty command has two producers with opposite next steps. The
+	 * unclassifiable install kept the closing line below, which is honest there -
+	 * the reader has the tool they installed it with, and a re-check observes the
+	 * change. An install under the app's own managed tree has no such step: the
+	 * sentence above it now names the one route that exists (let the app start the
+	 * server itself), and this component used to append the manual panel's
+	 * "then check for updates again to pick up the new server version" under it -
+	 * an instruction whose antecedent had gone and whose action could not move the
+	 * environment, which four presses of either control proved by producing a
+	 * byte-identical screen (review round 1, UX U1; R5). So on this arm: nothing,
+	 * deliberately, rather than a sentence that asks for a press that cannot help.
+	 */
+	appOwned?: boolean;
 }) => {
+	if (appOwned) return null;
 	if (sourceBuild && !command) {
 		return (
 			<p className="mt-2 text-body text-ink">
@@ -1931,6 +1984,7 @@ export const UpdateNotification = ({
 				<ManualRemedyNote
 					command={Boolean(manualUpdateInfo.command)}
 					sourceBuild={manualUpdateInfo.sourceBuild === true}
+					appOwned={manualUpdateInfo.appOwned === true}
 				/>
 				<UpdateActions>
 					<Button
@@ -2236,10 +2290,23 @@ export const UpdateNotification = ({
 						runningVersion: backendUpdateInfo.runningVersion,
 					})}
 				</p>
-				<p className="mt-2 text-body-sm text-ink-muted">
-					Updating the server will improve AI functionality, improve security,
-					and fix bugs.
-				</p>
+				{/*
+				 * NOT ON THE APP-OWNED ARM. "Updating the server will improve AI
+				 * functionality, improve security, and fix bugs" is a benefit claim rather
+				 * than a fact, and this file's own defect was a surface asserting what the
+				 * check had not established (review D5). It is also incoherent on a card
+				 * whose remedy says nothing on this screen moves the environment: it
+				 * promises the reader the upside of an update this panel cannot perform.
+				 * It stays on the arms where the reader (or the button) does perform it, and
+				 * dropping it here is what shortens the tallest state the section has
+				 * (review D1).
+				 */}
+				{!backendUpdateInfo.appOwned && (
+					<p className="mt-2 text-body-sm text-ink-muted">
+						Updating the server will improve AI functionality, improve security,
+						and fix bugs.
+					</p>
+				)}
 
 				{backendUpdateInfo.canManageUpdate ? (
 					<>
@@ -2300,10 +2367,14 @@ export const UpdateNotification = ({
 						{/* The same closing sentence and the same details line as the other
 							    producer of this state: a user who reached it from a version check
 							    used to get the command with no explanation of what was classified,
-							    and no hint that the button below re-reads the server (review U15). */}
+							    and no hint that the button below re-reads the server (review U15).
+						    On the APP-OWNED arm the component renders nothing at all - see its
+							   own note on `appOwned`, which is where the reason lives so both doors
+							   into this state carry it. */}
 						<ManualRemedyNote
 							command={Boolean(backendUpdateInfo.updateCommand)}
 							sourceBuild={backendUpdateInfo.sourceBuild === true}
+							appOwned={backendUpdateInfo.appOwned === true}
 						/>
 						<UpdateActions>
 							<Button
@@ -2312,16 +2383,37 @@ export const UpdateNotification = ({
 								onClick={handleDeferBackendUpdate}
 								disabled={checking}
 							>
-								Update later
+								{/*
+								 * "UNDERSTOOD" RATHER THAN "UPDATE LATER" ON THE APP-OWNED ARM (review
+								 * round 1, U3). There is nothing here to defer: the app will not perform
+								 * this update at all, so "later" promises an update that never arrives
+								 * while the reader is shown no residue of it. The dismissal still
+								 * records a deferral - a fact the reader cannot act on from here must not
+								 * be re-raised by every five-minute check - but the label no longer
+								 * promises a future the app cannot reach.
+								 */}
+								{backendUpdateInfo.appOwned ? "Understood" : "Update later"}
 							</Button>
-							<Button
-								variant="primary"
-								size="sm"
-								onClick={() => void checkForAllUpdates()}
-								disabled={checking}
-							>
-								{checking ? "Checking..." : "Check for updates"}
-							</Button>
+							{/*
+							 * AND ONE CHECK CONTROL, NOT TWO (review round 1, U5). Both this button
+							 * and the pane's own "Check for updates" run the same check and produce
+							 * the same panel, so a reader could reasonably believe one checked the
+							 * app and the other the server. On the command arm the button is what
+							 * the closing sentence tells the reader to press - it stays, and it stays
+							 * where that sentence is. On the app-owned arm the closing sentence is
+							 * gone (U1) and the route is a restart, which re-runs the check anyway, so
+							 * the panel keeps the dismiss and leaves the check to the pane.
+							 */}
+							{!backendUpdateInfo.appOwned && (
+								<Button
+									variant="primary"
+									size="sm"
+									onClick={() => void checkForAllUpdates()}
+									disabled={checking}
+								>
+									{checking ? "Checking..." : "Check for updates"}
+								</Button>
+							)}
 						</UpdateActions>
 						{backendUpdateInfo.detail && (
 							<PanelDetails detail={backendUpdateInfo.detail} />
@@ -2388,9 +2480,22 @@ export const UpdateNotification = ({
 							: `The install is now at ${installVersion ?? "the new version"}, but the server serving this app was started outside Local Operator, so it was left running${runningVersion ? ` on ${runningVersion}` : ""}.`}
 				</p>
 				<p className="mb-2 text-body text-ink-muted">
+					{/*
+					 * WHO CAN MOVE IT, on the arm where nobody here can (review round 1, UX
+					 * U2). This sentence used to be a fact with no actor and no exit -
+					 * "It moves onto the new build when it restarts - Local Operator does
+					 * not restart a server it did not start", where the trigger it named was
+					 * taken away by its own second clause. The reader's two actions both
+					 * reproduced the panel: restarting the app re-adopts the same daemon and
+					 * a re-check re-raises the same reading pair, so the notice was a nag
+					 * with no exit for a state they could not clear. It names the route now
+					 * - the outside process is the thing to restart, and the app starting
+					 * its OWN server is the other half of the same move. Both are real: the
+					 * daemon that comes back reads the environment an update already moved.
+					 */}
 					{restartable
 						? "Restart Local Operator and the server comes back on the new build."
-						: "It moves onto the new build when it restarts - Local Operator does not restart a server it did not start."}
+						: "The server serving this app was started outside Local Operator, which does not restart a server it did not start: stop it and start Local Operator again, or restart whatever started it, and it comes back on the new build."}
 				</p>
 				<UpdateActions>
 					<Button

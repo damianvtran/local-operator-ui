@@ -500,6 +500,17 @@ export type BackendUpdateInfo = {
 	/** Whether the update can be managed by the update service */
 	canManageUpdate: boolean;
 	/**
+	 * Whether the install IS one of the app's own, so the panel may not offer the
+	 * reader a terminal command or imply that anything on screen moves it.
+	 *
+	 * Carried rather than inferred from `updateCommand === ""`: an empty command
+	 * also means "the app could not classify this install", which is an arm where
+	 * the reader DOES have the tool they installed it with and the manual panel's
+	 * "check for updates again" is the right closing line (review round 1, UX U1;
+	 * R5).
+	 */
+	appOwned?: boolean;
+	/**
 	 * Whether the app may restart the daemon serving this app.
 	 *
 	 * The plan states the managed arm's consequence from the INSTALL's layout and
@@ -572,6 +583,79 @@ type BackendCheckReport = {
 	status: UpdateChannelStatus;
 	info: BackendUpdateInfo | null;
 };
+
+/**
+ * Every root an install can live in and still be the APP'S OWN, for one
+ * platform/home/userData triple.
+ *
+ * THREE SHAPES, not one, because the answer changed over time and every one of
+ * them can still be the environment a daemon was started from:
+ *
+ * 1. `<support>/managed-python` - the post-split tree this build manages. It is
+ *    a PARENT: the environments and runtimes live in generations beneath it.
+ * 2. `legacyVenvPaths(support)` - the pre-split venvs an older build created and
+ *    left on disk. Each entry is a venv root ITSELF, not a parent.
+ * 3. `managedVenvPath(...)` - this instance's own environment. On darwin it is a
+ *    generation under shape 1, but on Windows it is `userData`'s and on Linux
+ *    `<home>/.config/local-operator`'s: a venv root outside the support root
+ *    entirely. Asking `managedVenvPath` is what keeps that from becoming a
+ *    second copy of the split rule here.
+ *
+ * Exported and platform-parameterised because the guard below is only as good as
+ * this list, and a test that can pass `platform` is the only way to check the
+ * Windows and Linux shapes on a darwin host (review round 1, R1: the containment
+ * test required the prefix to be a STRICT descendant, which excluded shapes 2 and
+ * 3 - the two that are roots rather than parents - so the app offered
+ * `pip install --upgrade local-operator` for a tree no package manager owns).
+ */
+export function appOwnedInstallRoots(input: {
+	platform: NodeJS.Platform;
+	home: string;
+	appDataPath: string;
+	packaged: boolean;
+}): string[] {
+	const support = managedSupportRoot(input.home);
+	return [
+		join(support, "managed-python"),
+		...legacyVenvPaths(support),
+		managedVenvPath(input),
+	];
+}
+
+/**
+ * The newer of two readings, or whichever of them is readable.
+ *
+ * Used for the SUBJECT of the comparison when the server named no install (see
+ * the call site in the check). The rule's own ordering is handed in rather than
+ * re-implemented, the same way the verdict is handed it, so the app keeps one
+ * answer to "which of two versions is newer".
+ */
+function newerReading(
+	left: string | null,
+	right: string | null,
+	isNewer: (candidate: string, subject: string) => boolean,
+): string | null {
+	if (!isReadableVersion(left)) return right;
+	if (!isReadableVersion(right)) return left;
+	return isNewer(left, right) ? left : right;
+}
+
+/**
+ * Whether `candidate` is one of `roots`, or lives inside one.
+ *
+ * The SAME TREE counts as inside: `path.relative(root, root)` is `""`, which is a
+ * descendant answer rather than the "these share no root" one, and shapes 2 and 3
+ * above are roots a daemon starts FROM. Only a path that leaves the root
+ * (`..`-prefixed) or shares no root with it at all (`path.relative` echoes the
+ * input back, absolute) is outside - which is what keeps a partial or unreadable
+ * prefix from matching by substring.
+ */
+export function isWithinAnyRoot(roots: string[], candidate: string): boolean {
+	return roots.some((root) => {
+		const relative = path.relative(root, candidate);
+		return !relative.startsWith("..") && !path.isAbsolute(relative);
+	});
+}
 
 /**
  * Service to handle application updates using electron-updater
@@ -3452,7 +3536,40 @@ export class UpdateService {
 		}
 		let version: string | null = null;
 		try {
-			version = resolveDistributionMarkers(prefix).version;
+			const markers = resolveDistributionMarkers(prefix);
+			/*
+			 * THE RUNNING READING WINS when the install's own metadata is stale BY
+			 * CONSTRUCTION. `markers.version` is the dist-info directory's NAME, and pip
+			 * writes that once and never refreshes it when the version in
+			 * `pyproject.toml` moves - which the backend already stopped trusting:
+			 * `installed_version()` in the serving environment prefers the checkout's own
+			 * `pyproject.toml` whenever `direct_url.json` proves the editable
+			 * relationship, and says so in its own comment (a checkout at 0.49.0 kept
+			 * reporting the 0.46.23 it had been installed at, and the app showed that
+			 * number in Settings). `resolveDistributionMarkers` returns the two signals
+			 * for exactly this - `editable`, and a `.lop-source` ref, which is the same
+			 * stale-metadata situation for a uv tool install built from a checkout - and
+			 * this call site used to ignore both.
+			 *
+			 * So on an editable serving install the SUBJECT of the comparison would be an
+			 * old number while `/health` carries the real one, and the rule would answer
+			 * `install-behind` for a server that is current: the two-number sentence
+			 * ("The install on this machine is at 0.46.23, and the server you are using is
+			 * running 0.49.0 until it restarts") is the one-screen contradiction this
+			 * change exists to remove, on the machine shape this project develops on
+			 * (review round 1, R2). Not a regression, because the pre-fix subject was a
+			 * version from the same dist-info - but the read now uses the signal it was
+			 * already given.
+			 *
+			 * The dist-info version stays as the fallback: an unreadable `/health`
+			 * version is not evidence that the install is behind, and the `Unknown`
+			 * sentinel an older backend answers must not become the subject here.
+			 */
+			version =
+				(markers.editable || markers.sourceRef) &&
+				isReadableVersion(reading.version)
+					? reading.version
+					: markers.version;
 		} catch (error) {
 			logger.warn(
 				`Could not read the install at ${prefix}: ${(error as Error).message}`,
@@ -3468,7 +3585,7 @@ export class UpdateService {
 	}
 
 	/**
-	 * Whether an install root lives under the environments the app manages.
+	 * Whether an install root is one the app manages, or lives under one.
 	 *
 	 * The APP'S OWN TREE, not a package manager's: `managed-python` is where the
 	 * app builds and owns its runtime and its pinned environments, nothing outside
@@ -3479,44 +3596,22 @@ export class UpdateService {
 	 * about this instance's own scope would offer a package-manager command for a
 	 * tree the app owns.
 	 *
-	 * A relative answer is never inside: `path.relative` returns the input when the
-	 * two paths share no root, and an unreadable/partial prefix must not be read as
-	 * a match by a substring test.
+	 * The roots and the containment rule live in `appOwnedInstallRoots` and
+	 * `isWithinAnyRoot` above, where a test can reach them: this verdict is what
+	 * stops the app offering a package-manager command for a tree no package
+	 * manager owns, so "which roots, and is the root ITSELF inside" is a question
+	 * that has to be answerable off the machine's own platform.
 	 */
 	private appOwnsInstallRoot(prefix: string): boolean {
-		const support = managedSupportRoot(app.getPath("home"));
-		/*
-		 * THREE SHAPES OF "THE APP'S OWN VENV", because the answer changed over
-		 * time and every one of them can still be the environment a daemon was
-		 * started from: the post-split tree this build manages, this instance's own
-		 * environment (which on Windows is not under the support root at all - it is
-		 * `userData`'s, and asking `managedVenvPath` is what keeps that from being a
-		 * second copy of the split rule), and the pre-split venvs an older build
-		 * created and left on disk.
-		 */
-		const roots = [
-			join(support, "managed-python"),
-			...legacyVenvPaths(support),
-			managedVenvPath({
+		return isWithinAnyRoot(
+			appOwnedInstallRoots({
 				platform: process.platform,
 				home: app.getPath("home"),
 				appDataPath: app.getPath("appData"),
 				packaged: app.isPackaged,
 			}),
-		];
-		/*
-		 * A relative answer is never inside: `path.relative` returns the input when
-		 * the two paths share no root, and an unreadable or partial prefix must not
-		 * be read as a match by a substring test.
-		 */
-		return roots.some((root) => {
-			const relative = path.relative(root, prefix);
-			return (
-				relative.length > 0 &&
-				!relative.startsWith("..") &&
-				!path.isAbsolute(relative)
-			);
-		});
+			prefix,
+		);
 	}
 
 	/**
@@ -3575,6 +3670,21 @@ export class UpdateService {
 		 * the reading and nothing else needs one.
 		 */
 		installedInstallVersion: string | null;
+		/**
+		 * Whether this install IS one of the app's own, which changes what the panel
+		 * may tell the reader to do about it.
+		 *
+		 * Travels as a field rather than being inferred from `updateCommand === ""`
+		 * because an empty command has two producers with opposite next steps: this
+		 * arm, where nothing the reader can run - or press - moves the environment,
+		 * and the unclassifiable-install arm (`resolveGlobalInstallPlan`'s `unknown`
+		 * kind), where the reader does have the tool they installed it with and a
+		 * re-check can observe the change. The renderer's closing sentence is not the
+		 * same sentence for both, and inferring it from an absent command is how the
+		 * app-owned arm came to carry the manual panel's "then check for updates
+		 * again" (review round 1, UX U1; R5).
+		 */
+		appOwned: boolean;
 	}> {
 		if (
 			startupMode === LocalOperatorStartupMode.EXISTING_SERVER ||
@@ -3599,6 +3709,19 @@ export class UpdateService {
 			 * own the environment is its own launch (`APP_BUNDLED_VENV`, below). The
 			 * consequence is stated rather than softened: the fix is not a terminal
 			 * command the reader can run.
+			 *
+			 * THE SENTENCE NAMES THE READER'S NEXT STEP RATHER THAN A CAPABILITY (review
+			 * round 1, UX U1). It used to say "Local Operator updates that environment
+			 * itself when it starts the server", which reads as either "it will fix
+			 * itself" or "one more press" - and neither is true from this panel, because
+			 * `prepareManagedPython` REUSES a ready generation and readiness never compares
+			 * the recorded `backendVersion`, so a restart does not move an existing
+			 * environment onto the published release. The route that does exist is the arm
+			 * below: with nothing serving on this app's address, Local Operator starts its
+			 * OWN daemon, and THAT server can be updated from here (`canManageUpdate: true`
+			 * on `APP_BUNDLED_VENV`). Naming the route is the honest interim: the copy must
+			 * not imply an action that does not exist, and it does not have to pretend the
+			 * reader has no move either.
 			 */
 			if (serving.appOwned) {
 				const detail = `The server serving this app runs from Local Operator's own managed environment at ${serving.prefix}, which the app owns rather than a package manager (the backend reports it as install kind "${serving.installKind || "not reported"}")${
@@ -3615,9 +3738,10 @@ export class UpdateService {
 					canManageUpdate: false,
 					updateCommand: "",
 					remedy:
-						"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. Local Operator updates that environment itself when it starts the server.",
+						"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own.",
 					detail,
 					sourceBuild: false,
+					appOwned: true,
 					installedInstallVersion: serving.version,
 				};
 			}
@@ -3645,6 +3769,7 @@ export class UpdateService {
 				remedy: plan.remedy,
 				detail: plan.detail,
 				sourceBuild: plan.sourceBuild,
+				appOwned: false,
 				installedInstallVersion: serving.version ?? identity.version ?? null,
 			};
 		}
@@ -3655,6 +3780,13 @@ export class UpdateService {
 			remedy: "Updating the server will improve AI functionality.",
 			detail: `The app started this server itself (${startupMode}).`,
 			sourceBuild: false,
+			/*
+			 * `false` although this IS the app's own environment: the flag answers
+			 * "may the manual panel tell the reader nothing here can move it", and on
+			 * this arm the app moves it itself with the button above. It is the
+			 * app-owned MANUAL arm that owns the sentence (review round 1, UX U1).
+			 */
+			appOwned: false,
 			/*
 			 * The app-managed environment's own on-disk version when the server named
 			 * it, which is what an update moves: the check compares against the same
@@ -3889,8 +4021,43 @@ export class UpdateService {
 			 * than it, never newer. The gates below are about the absence of a reading,
 			 * so a fallback that answered "up to date" from a version nobody could read
 			 * would be the one misreading they exist to prevent.
+			 *
+			 * AND ONLY WHEN THE SERVER NAMED ITS INSTALL, is the subject the install
+			 * alone. Without a `prefix` the plan's identity fell back to the shim - the
+			 * one install the app can still name a REMEDY for, but not necessarily the
+			 * one answering the user - and this read that fallback's version as the
+			 * subject, so the check offered an update for an install nothing was serving
+			 * while the pane's own row printed the daemon: the reading pair the check
+			 * exists to compare was two different installs (review round 1, R3 - the
+			 * shape needs a backend older than v0.54.38, the release that added `prefix`
+			 * to `/health`).
+			 *
+			 * What stands in is the NEWER of the two readings, not simply the running
+			 * one, and both halves are load-bearing:
+			 *
+			 * - The running reading has to be able to raise the subject, because
+			 *   otherwise the check offers an update while the version the user is
+			 *   actually using is already at the published release - R3's own case
+			 *   (`/health` 0.56.11, published 0.56.11, shim 0.56.8), where the offer
+			 *   contradicted the pane beside it and the remedy it named was for an
+			 *   install nothing was serving.
+			 * - The named install has to be able to raise it too, because a daemon-only
+			 *   subject makes `restart-required` unreachable on this path: with the shim
+			 *   at the published release and the daemon behind it, the honest state is
+			 *   "nothing to install, the process needs a restart" - and answering
+			 *   `available` there offers the reader a remedy (the shim's own installer)
+			 *   that is a no-op at the version it is already at, which is the loop this
+			 *   check exists to keep out of the panel. The named install is also the only
+			 *   reading that can be AHEAD of the published release, which is what keeps a
+			 *   source build from being offered its own release.
 			 */
-			const installVersion = plan.installedInstallVersion;
+			const installVersion = serving.prefix
+				? plan.installedInstallVersion
+				: newerReading(
+						plan.installedInstallVersion,
+						runningVersion,
+						(candidate, subject) => this.isNewerVersion(candidate, subject),
+					);
 			const installedVersion =
 				installVersion && isReadableVersion(installVersion)
 					? installVersion
@@ -4033,6 +4200,7 @@ export class UpdateService {
 					runningVersion,
 					updateCommand: plan.updateCommand,
 					canManageUpdate: plan.canManageUpdate,
+					appOwned: plan.appOwned,
 					startupMode,
 					remedy: plan.remedy,
 					detail: plan.detail,
@@ -4780,6 +4948,13 @@ export class UpdateService {
 						installVersion: plan.installedInstallVersion,
 						runningVersion: installed,
 						sourceBuild: plan.sourceBuild,
+						/*
+						 * The second door into the same state, and it needs the same reading: this
+						 * panel renders `ManualRemedyNote` too, and on an app-owned install the
+						 * closing line it would otherwise append asks for a press that cannot move
+						 * the environment (review round 1, UX U1).
+						 */
+						appOwned: plan.appOwned,
 					});
 					return false;
 				}
