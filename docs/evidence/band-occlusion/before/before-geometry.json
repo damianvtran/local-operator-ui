@@ -1,0 +1,411 @@
+{
+  "label": "before",
+  "viewport": {
+    "w": 1380,
+    "h": 868,
+    "dpr": 2
+  },
+  "states": {
+    "none": {
+      "frame": "/tmp/band-before/before-none.png",
+      "requests": {
+        "/health": 1,
+        "/v1/desktop/claim": 1,
+        "/v1/desktop/sessions": 1,
+        "/v1/capabilities": 4,
+        "/v1/config": 1,
+        "/v1/desktop/radient": 6,
+        "/v1/auth/providers": 1,
+        "/v1/agents": 2
+      },
+      "bandCount": 0,
+      "bandTotal": 0,
+      "bands": [],
+      "anchors": {
+        "search": {
+          "rect": {
+            "x": 228,
+            "y": 48,
+            "w": 264,
+            "h": 32,
+            "top": 48,
+            "bottom": 80
+          },
+          "device": {
+            "top": 96,
+            "bottom": 160
+          },
+          "coveredByBand": false
+        },
+        "paneFirst": {
+          "text": "Chats",
+          "rect": {
+            "x": 232,
+            "y": 14.25,
+            "w": 36.04,
+            "h": 19.5,
+            "top": 14.25,
+            "bottom": 33.75
+          },
+          "device": {
+            "top": 29,
+            "bottom": 68
+          },
+          "coveredByBand": false
+        }
+      },
+      "region": {
+        "cls": "relative flex h-screen overflow-hidden",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1380,
+          "h": 868,
+          "top": 0,
+          "bottom": 868
+        },
+        "scrollHeight": 868,
+        "clientHeight": 868
+      },
+      "outer": {
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1380,
+          "h": 868,
+          "top": 0,
+          "bottom": 868
+        },
+        "scrollHeight": 868,
+        "clientHeight": 868
+      },
+      "fixedCount": 2,
+      "documentScroll": {
+        "scrollHeight": 868,
+        "clientHeight": 868,
+        "overflowY": "hidden"
+      }
+    },
+    "one-line": {
+      "frame": "/tmp/band-before/before-one-line.png",
+      "requests": {
+        "/health": 4,
+        "/v1/desktop/claim": 1,
+        "/v1/desktop/sessions": 2,
+        "/v1/capabilities": 5,
+        "/v1/config": 1,
+        "/v1/desktop/radient": 7,
+        "/v1/auth/providers": 1,
+        "/v1/agents": 2,
+        "/v1/desktop/profiles": 1,
+        "/v1/desktop/teams": 1
+      },
+      "bandCount": 1,
+      "bandTotal": 53,
+      "bands": [
+        {
+          "text": "The Local Operator server is missing auth, settings, commands, catalogues, lifecycle, mcp,",
+          "position": "fixed",
+          "zIndex": "2100",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1380,
+            "h": 53,
+            "top": 0,
+            "bottom": 53
+          },
+          "device": {
+            "top": 0,
+            "bottom": 106
+          }
+        }
+      ],
+      "anchors": {
+        "search": {
+          "rect": {
+            "x": 228,
+            "y": 48,
+            "w": 264,
+            "h": 32,
+            "top": 48,
+            "bottom": 80
+          },
+          "device": {
+            "top": 96,
+            "bottom": 160
+          },
+          "coveredByBand": true
+        },
+        "paneFirst": {
+          "text": "Chats",
+          "rect": {
+            "x": 232,
+            "y": 14.25,
+            "w": 36.04,
+            "h": 19.5,
+            "top": 14.25,
+            "bottom": 33.75
+          },
+          "device": {
+            "top": 29,
+            "bottom": 68
+          },
+          "coveredByBand": true
+        }
+      },
+      "region": {
+        "cls": "relative flex h-screen overflow-hidden",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1380,
+          "h": 868,
+          "top": 0,
+          "bottom": 868
+        },
+        "scrollHeight": 868,
+        "clientHeight": 868
+      },
+      "outer": {
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1380,
+          "h": 868,
+          "top": 0,
+          "bottom": 868
+        },
+        "scrollHeight": 868,
+        "clientHeight": 868
+      },
+      "fixedCount": 3,
+      "documentScroll": {
+        "scrollHeight": 868,
+        "clientHeight": 868,
+        "overflowY": "hidden"
+      }
+    },
+    "two-bands": {
+      "frame": "/tmp/band-before/before-two-bands.png",
+      "requests": {
+        "/health": 4,
+        "/v1/desktop/claim": 1,
+        "/v1/desktop/sessions": 2,
+        "/v1/capabilities": 5,
+        "/v1/config": 1,
+        "/v1/desktop/radient": 7,
+        "/v1/auth/providers": 1,
+        "/v1/agents": 2,
+        "/v1/desktop/profiles": 1,
+        "/v1/desktop/teams": 1
+      },
+      "bandCount": 2,
+      "bandTotal": 121,
+      "bands": [
+        {
+          "text": "Not connected to a Local Operator server. If one is still running, the app reconnects to i",
+          "position": "fixed",
+          "zIndex": "2200",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1380,
+            "h": 68,
+            "top": 0,
+            "bottom": 68
+          },
+          "device": {
+            "top": 0,
+            "bottom": 136
+          }
+        },
+        {
+          "text": "The Local Operator server is missing auth, settings, commands, catalogues, lifecycle, mcp,",
+          "position": "fixed",
+          "zIndex": "2100",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1380,
+            "h": 53,
+            "top": 0,
+            "bottom": 53
+          },
+          "device": {
+            "top": 0,
+            "bottom": 106
+          }
+        }
+      ],
+      "anchors": {
+        "search": {
+          "rect": {
+            "x": 228,
+            "y": 48,
+            "w": 264,
+            "h": 32,
+            "top": 48,
+            "bottom": 80
+          },
+          "device": {
+            "top": 96,
+            "bottom": 160
+          },
+          "coveredByBand": true
+        },
+        "paneFirst": {
+          "text": "Chats",
+          "rect": {
+            "x": 232,
+            "y": 14.25,
+            "w": 36.04,
+            "h": 19.5,
+            "top": 14.25,
+            "bottom": 33.75
+          },
+          "device": {
+            "top": 29,
+            "bottom": 68
+          },
+          "coveredByBand": true
+        }
+      },
+      "region": {
+        "cls": "relative flex h-screen overflow-hidden",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1380,
+          "h": 868,
+          "top": 0,
+          "bottom": 868
+        },
+        "scrollHeight": 868,
+        "clientHeight": 868
+      },
+      "outer": {
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1380,
+          "h": 868,
+          "top": 0,
+          "bottom": 868
+        },
+        "scrollHeight": 868,
+        "clientHeight": 868
+      },
+      "fixedCount": 4,
+      "documentScroll": {
+        "scrollHeight": 868,
+        "clientHeight": 868,
+        "overflowY": "hidden"
+      }
+    },
+    "two-line": {
+      "frame": "/tmp/band-before/before-two-line.png",
+      "requests": {
+        "/health": 5,
+        "/v1/desktop/claim": 1,
+        "/v1/desktop/sessions": 7,
+        "/v1/capabilities": 11,
+        "/v1/config": 1,
+        "/v1/desktop/radient": 11,
+        "/v1/auth/providers": 4,
+        "/v1/agents": 4,
+        "/v1/desktop/profiles": 4,
+        "/v1/desktop/teams": 4
+      },
+      "bandCount": 1,
+      "bandTotal": 68,
+      "bands": [
+        {
+          "text": "Not connected to a Local Operator server. If one is still running, the app reconnects to i",
+          "position": "fixed",
+          "zIndex": "2200",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1380,
+            "h": 68,
+            "top": 0,
+            "bottom": 68
+          },
+          "device": {
+            "top": 0,
+            "bottom": 136
+          }
+        }
+      ],
+      "anchors": {
+        "search": {
+          "rect": {
+            "x": 228,
+            "y": 48,
+            "w": 264,
+            "h": 32,
+            "top": 48,
+            "bottom": 80
+          },
+          "device": {
+            "top": 96,
+            "bottom": 160
+          },
+          "coveredByBand": true
+        },
+        "paneFirst": {
+          "text": "Chats",
+          "rect": {
+            "x": 232,
+            "y": 14.25,
+            "w": 36.04,
+            "h": 19.5,
+            "top": 14.25,
+            "bottom": 33.75
+          },
+          "device": {
+            "top": 29,
+            "bottom": 68
+          },
+          "coveredByBand": true
+        }
+      },
+      "region": {
+        "cls": "relative flex h-screen overflow-hidden",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1380,
+          "h": 868,
+          "top": 0,
+          "bottom": 868
+        },
+        "scrollHeight": 868,
+        "clientHeight": 868
+      },
+      "outer": {
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1380,
+          "h": 868,
+          "top": 0,
+          "bottom": 868
+        },
+        "scrollHeight": 868,
+        "clientHeight": 868
+      },
+      "fixedCount": 3,
+      "documentScroll": {
+        "scrollHeight": 868,
+        "clientHeight": 868,
+        "overflowY": "hidden"
+      }
+    }
+  }
+}
