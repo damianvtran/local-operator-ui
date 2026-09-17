@@ -93,13 +93,17 @@ export type ThemePalette = {
 	 * rendered and reported the current row as lost beside a hovered neighbour,
 	 * so the intent is reversed and the step now lands at **ΔE00 4.0 or better on
 	 * every palette in the tree** — the twelve this change was authored against at
-	 * 4.01-4.15, and the forty-seven the theme port added at 4.00-4.87, re-authored
+	 * 4.01-4.15, and the forty-seven the theme port added at 4.00-5.97 (`rosePine` sets the top),
+	 * re-authored
 	 * to this rule in the same round. It is a LIGHTNESS step first — the row sits
 	 * **3.81 to 6.62 `L*`** from its panel on those twelve, and **3.0 or better**
 	 * across the rest except six palettes whose OWN ink caps the lightness route
 	 * below 3 `L*`: those take the cap, pay the band on the accent cast, and are
 	 * pinned in `scripts/contrast-contract.mjs` with the ink number — and chroma pays
-	 * only what is left over. Three palettes had reached the band on chroma alone
+	 * only what is left over. The cast's OWN cause is narrower than it reads: of the
+	 * forty-one palettes that take it, the hover step is the binding wall for only
+	 * TWO (`kanagawaWave`, `rosePineMoon`); on the other thirty-nine what binds is
+	 * the ink cap and the band, and the cast is how those two are paid together. Three palettes had reached the band on chroma alone
 	 * (tokyoNight, `localOperatorDark`, `localOperatorLight`), at a `L*` step
 	 * *smaller* than the ΔE00 2.2 value they had already reported as invisible;
 	 * they were re-authored to +5.09, +3.81 and −4.75 `L*` respectively, and
