@@ -52,6 +52,7 @@ export const localOperatorDark: ThemeDefinition = {
 		surface: "#1e1a14",
 		elevated: "#282318",
 		sunken: "#0f0c08",
+
 		/*
 		 * The current row's own ground: `surface` stepped up its own warm
 		 * ramp 3.81 `L*`, carrying 1.87x the panel's chroma. ΔE00 4.15 from `surface`,
@@ -192,6 +193,7 @@ export const localOperatorLight: ThemeDefinition = {
 		surface: "#faf8f1",
 		elevated: "#fffefb",
 		sunken: "#efe9db",
+
 		/*
 		 * The current row's own ground: `surface` stepped down its own warm
 		 * ramp 4.75 `L*`, carrying 1.85x the panel's chroma. ΔE00 4.02 from `surface`,

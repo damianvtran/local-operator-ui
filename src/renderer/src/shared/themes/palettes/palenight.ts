@@ -33,13 +33,16 @@ export const palenight: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.050, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.38 from `surface`, 3.47 from `elevated` and 5.10 from
-		 * `sunken`.
+		 * `surface` cast 0.09 toward `accent`, then stepped 0.75 on the `L*`
+		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
+		 * what put it there: the ink floor on the row's ground caps the lightness route
+		 * at 2.25 `L*` here (inkDim reaches its floor with the 0.15 of
+		 * headroom at 4.7:1 on this ground), so the band is paid on the cast.
+		 * ΔE00 4.09 from `surface`, 4.59 from `elevated` and 6.61 from
+		 * `sunken`; the step of 0.73 `L*` is short of the 3 `L*` floor and is pinned in
+		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
 		 */
-		highlight: "#313348",
+		highlight: "#34344C",
 
 		ink: "#EEFFFF",
 		inkMuted: "#BBC2E3",

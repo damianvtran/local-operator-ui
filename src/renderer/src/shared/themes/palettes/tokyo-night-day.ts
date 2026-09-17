@@ -48,12 +48,14 @@ export const tokyoNightDay: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.40 from `surface`,
-		 * 4.39 from `elevated` and 2.35 from `sunken`.
+		 * `surface` cast 0.06 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.05 from `surface`, 5.93 from `elevated` and 2.18 from `sunken`;
+		 * the step is -4.08 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.81:1 the ink that binds it.
 		 */
-		highlight: "#DFE0E3",
+		highlight: "#DAE0E9",
 
 		// Generated foreground 3760BF is 4.19:1 on `sunken` — a syntax blue, not a body ink,
 		// which is what the 7:1 floor is for. Deepened along the same indigo to 7.33:1.

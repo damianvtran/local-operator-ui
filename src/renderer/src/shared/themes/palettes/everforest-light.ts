@@ -39,12 +39,14 @@ export const everforestLight: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.38 from `surface`,
-		 * 4.90 from `elevated` and 2.93 from `sunken`.
+		 * `surface` cast 0.08 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 5.25 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.03 from `surface`, 6.91 from `elevated` and 2.16 from `sunken`;
+		 * the step is -5.21 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.89:1 the ink that binds it.
 		 */
-		highlight: "#E9E2C9",
+		highlight: "#E4DFC0",
 
 		ink: "#394246",
 		inkMuted: "#3D4743",

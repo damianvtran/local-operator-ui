@@ -34,13 +34,14 @@ export const desert: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.080, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.44 from `surface`, 3.35 from `elevated` and 7.25 from
-		 * `sunken`.
+		 * `surface` cast 0.07 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.34 from `surface`, 2.9 from `elevated` and 9.94 from `sunken`;
+		 * the step is 4.41 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.69:1 the ink that binds it.
 		 */
-		highlight: "#342617",
+		highlight: "#3F2F20",
 
 		ink: "#F0E6D5",
 

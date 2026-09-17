@@ -84,7 +84,10 @@ There is a fifth ground role that is **not** a rung on that ladder: `highlight`,
 the ground of a row the reader is currently ON. It is a **lightness** step off
 `surface` in the direction the mode runs — darker on light themes, lighter on
 dark ones — and it is authored to land at **ΔE00 4.0 or better from `surface`**
-(the twelve palettes measure 4.01–4.15). The role was first authored at
+(the twelve palettes this change was authored against measure 4.01–4.15, and the
+forty-seven the theme port added were brought to the same rule in that round:
+4.00–10.35 across the tree, with six palettes' `L*` shortfall pinned where their
+own ink caps the route). The role was first authored at
 **2.0–2.5** for a selection the operator had asked to be subtle; he has since
 seen it rendered and reported the current row as invisible beside a hovered
 neighbour, and the band was raised in the same change.

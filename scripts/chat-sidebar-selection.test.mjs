@@ -43,8 +43,9 @@
  * `highlight` against `surface`, `elevated` and `sunken` at its own band floor of
  * ΔE00 4.0 and the field floor of 2.0 respectively, and it asserts the SIGN of
  * the `L*` step (lighter on a dark palette, darker on a light one, with a floor on
- * the magnitude), because the twelve authored values the port started from land
- * 4.01-4.15 from `surface` and 3.81-6.62 `L*` in that direction. It also cannot
+ * the magnitude), because the authored values across the tree land 4.00-10.35 from
+ * `surface` (the twelve this rule was authored against at 4.01-4.15) and 3.0 or
+ * better `L*` in that direction, the six ink-capped palettes pinned by name. It also cannot
  * prove the row reads as the current one on screen; that is the frames in
  * `docs/evidence/chat-sidebar-current-row/`.
  *

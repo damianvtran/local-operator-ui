@@ -20,6 +20,7 @@ export const synth: ThemeDefinition = {
 		surface: "#1B0A2F",
 		elevated: "#2C1D43",
 		sunken: "#06020D",
+
 		/*
 		 * The current row's own ground: `surface` stepped up its own neon-purple
 		 * ramp 6.08 `L*`, at 1.14x the panel's chroma. ΔE00 4.14 from `surface`,

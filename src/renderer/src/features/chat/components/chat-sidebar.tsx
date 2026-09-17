@@ -69,7 +69,8 @@ const rowStyle =
  * had asked to be SUBTLE; he has since seen that
  * rendered and reported it as invisible beside a hovered neighbour, so the
  * intent is reversed: the step now lands at ΔE00 4.01-4.15 from `surface` on all
- * twelve the port started from, and it is a LIGHTNESS step — the row sits 3.81-6.62 `L*`
+ * twelve the port started from (and, since the port landed, across the set the
+ * rule now covers), and it is a LIGHTNESS step — the row sits 3.81-6.62 `L*`
  * away from its panel in the direction the mode runs (lighter on the dark
  * themes, darker on the light ones), with chroma paying only what is left over.
  * That ordering is the rule `docs/branding.md` § 2 states in full. The three

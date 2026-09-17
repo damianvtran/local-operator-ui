@@ -1822,6 +1822,83 @@ const HIGHLIGHT_LIGHTNESS_STEP_FLOOR = 3.0;
 const HIGHLIGHT_INK_MARGIN = 0.15;
 
 /*
+ * The palettes whose OWN ink caps the lightness route below this file's step
+ * floor, pinned to their measured step and the ink that binds it.
+ *
+ * The rule asks for the largest `L*` step the ink floors allow, and for six of
+ * the fifty-nine the ink on the row's ground reaches its floor with the 0.15 of
+ * headroom at 2.2-3.3 `L*` — their `ink` or `ink-dim` is only just clear of the
+ * floor on the panel itself, so the row cannot rise the 3 `L*` the direction
+ * floor asks for without putting text under its floor. Those six pay the band on
+ * the accent cast instead (measured 4.00-4.09 ΔE00) and are recorded here with
+ * the ink number that caps them, in the same shape as `EXCEPTIONS`: a pin, not a
+ * mute. Move one of those palettes' inks and the pin stops matching and fails.
+ *
+ * Why this is a pin rather than a smaller floor for everybody: on the other
+ * fifty-three the step IS what carries the mark and the floor is reachable, so a
+ * floor lowered to fit six palettes would stop asserting anything about them.
+ *
+ * @type {{theme: string, step: number, cap: number, inkRole: string, onGround: number, why: string}[]}
+ */
+const HIGHLIGHT_STEP_PINS = [
+	{
+		theme: "catppuccinFrappe",
+		step: 0.31,
+		cap: 2.75,
+		inkRole: "inkDim",
+		onGround: 5.06,
+		capInk: 4.66,
+		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 2.75 L* on this panel (4.66:1), so the band is paid on the accent cast (ΔE00 4.04) and the step lands at 0.31 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+	},
+	{
+		theme: "catppuccinMacchiato",
+		step: 1.74,
+		cap: 2.5,
+		inkRole: "inkDim",
+		onGround: 4.78,
+		capInk: 4.67,
+		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 2.5 L* on this panel (4.67:1), so the band is paid on the accent cast (ΔE00 4) and the step lands at 1.74 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+	},
+	{
+		theme: "nord",
+		step: 1.53,
+		cap: 2.25,
+		inkRole: "inkDim",
+		onGround: 4.83,
+		capInk: 4.72,
+		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 2.25 L* on this panel (4.72:1), so the band is paid on the accent cast (ΔE00 4.35) and the step lands at 1.53 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+	},
+	{
+		theme: "palenight",
+		step: 0.73,
+		cap: 2.25,
+		inkRole: "inkDim",
+		onGround: 4.95,
+		capInk: 4.7,
+		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 2.25 L* on this panel (4.7:1), so the band is paid on the accent cast (ΔE00 4.09) and the step lands at 0.73 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+	},
+	{
+		theme: "rosePineDawn",
+		step: 2.11,
+		cap: 2.75,
+		inkRole: "inkDim",
+		onGround: 4.75,
+		capInk: 4.67,
+		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 2.75 L* on this panel (4.67:1), so the band is paid on the accent cast (ΔE00 4.09) and the step lands at 2.11 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+	},
+	{
+		theme: "solarizedDark",
+		step: 2.65,
+		cap: 3.25,
+		inkRole: "inkDim",
+		onGround: 4.78,
+		capInk: 4.71,
+		why: "the panel's own ink caps the lightness route: inkDim reaches its floor with the 0.15 of headroom at 3.25 L* on this panel (4.71:1), so the band is paid on the accent cast (ΔE00 4.04) and the step lands at 2.65 L* — the ink number is recorded rather than the floor lowered for the other fifty-three",
+	},
+];
+
+
+/*
  * The chart's hover mark, and why it is TWO assertions rather than one.
  *
  * Separation from `accent` is what makes the mark findable at all, and the floor
@@ -2030,7 +2107,16 @@ for (const { id, palette: p } of palettes) {
 		assertions++;
 		const step = toLab(p.highlight)[0] - toLab(p.surface)[0];
 		const wanted = p.mode === "dark" ? step : -step;
-		if (wanted < HIGHLIGHT_LIGHTNESS_STEP_FLOOR) {
+		const pin = HIGHLIGHT_STEP_PINS.find((x) => x.theme === id);
+		if (pin) {
+			/* A pinned palette: the assertion becomes that the recorded step and the
+			   ink that caps it are still what this palette does. */
+			if (Math.abs(wanted - pin.step) > 0.05 || ratio(p[pin.inkRole], p.highlight) < pin.onGround - 0.05) {
+				fail(
+					`${id}: the pinned highlight step no longer matches — recorded ${pin.step} L* with ${pin.inkRole} at ${pin.onGround}:1 on the row's ground, measured ${r2(wanted)} L* with ${r2(ratio(p[pin.inkRole], p.highlight))}:1. Re-measure the cap, re-author the value if the inks moved, and update the pin`,
+				);
+			}
+		} else if (wanted < HIGHLIGHT_LIGHTNESS_STEP_FLOOR) {
 			const wrongSide =
 				wanted <= 0
 					? ` — and it is on the WRONG SIDE of \`surface\` for this mode, which is the half of the operator's sentence ΔE00 cannot state`
@@ -2465,5 +2551,5 @@ if (stale.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s).`,
 );

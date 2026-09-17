@@ -47,12 +47,16 @@ export const rosePineDawn: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.28 from `surface`,
-		 * 4.01 from `elevated` and 4.20 from `sunken`.
+		 * `surface` cast 0.12 toward `accent`, then stepped 2.25 on the `L*`
+		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
+		 * what put it there: the ink floor on the row's ground caps the lightness route
+		 * at 2.75 `L*` here (inkDim reaches its floor with the 0.15 of
+		 * headroom at 4.67:1 on this ground), so the band is paid on the cast.
+		 * ΔE00 4.09 from `surface`, 6.3 from `elevated` and 4.64 from
+		 * `sunken`; the step of -2.11 `L*` is short of the 3 `L*` floor and is pinned in
+		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
 		 */
-		highlight: "#F1ECE8",
+		highlight: "#FDEFEA",
 
 		ink: "#4e4970",
 		inkMuted: "#5B5573",
