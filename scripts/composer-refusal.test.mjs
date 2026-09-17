@@ -35,6 +35,8 @@ const code = (path) =>
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
 
 const COMPOSER = "src/renderer/src/features/chat/components/message-input.tsx";
+const STACK =
+	"src/renderer/src/features/chat/components/measured-suggestion-stack.tsx";
 const CONTRAST = "scripts/contrast-contract.mjs";
 const MISSING_NOTICE =
 	"src/renderer/src/features/chat/missing-session-notice.ts";
@@ -168,6 +170,104 @@ test("every path that TYPES INTO or SUBMITS the composer answers to the refusal"
 		source,
 		/!isInputDisabled &&\s*!isLoading/,
 		"and the speech-to-text manager's gate (the hold-Space path) has to refuse too, or the keyboard reaches it around the button",
+	);
+});
+
+test("every control the refusal disables keeps the caret on a press, and only while it refuses", () => {
+	/*
+	 * QA round 3, Q-1: the refusal's `disabled` term is on the Send control, the
+	 * dictation control and the attach control, and a press on ANY of them takes
+	 * the browser's `mousedown` default, which for a control that cannot take focus
+	 * is "move the caret to `document.body`". The suppression therefore belongs on
+	 * each of them, not on the two a measurement happened to land on: QA measured
+	 * the ATTACH control taking the caret to `body` (`attachPress active=body
+	 * isComposer=false`, text intact, no message op) while the fix guarded Send and
+	 * the mic.
+	 *
+	 * THE SECOND HALF IS THE ASSERTION THAT MATTERS, and it is the one a later
+	 * tidy-up deletes. A BLANKET suppression passes every assertion above it and
+	 * breaks a property the refusal never claimed: a press on inert background must
+	 * still clear the caret, and a live control has to be exactly what it was. So
+	 * the handler's body is pinned as `isInputDisabled`-gated and carrying exactly
+	 * one `preventDefault` - the reviewer's four mutations (remove the props, swap
+	 * `onPointerDown` for `onMouseDown`, make the handler unconditional) fail here.
+	 *
+	 * `onPointerDown` RATHER THAN `onMouseDown` is pinned rather than explained: a
+	 * disabled form control dispatches no mouse events at all, so the slash rows'
+	 * technique fixes nothing on these controls.
+	 */
+	const source = code(COMPOSER);
+
+	for (const [control, pattern] of [
+		[
+			"the Send control",
+			/type="submit"[\s\S]{0,240}?onPointerDown=\{holdCaretOnRefusedPress\}/,
+		],
+		[
+			"the dictation control",
+			/onPointerDown=\{holdCaretOnRefusedPress\}[\s\S]{0,240}?aria-label="Start recording"/,
+		],
+		[
+			"the attach control",
+			/onPointerDown=\{holdCaretOnRefusedPress\}[\s\S]{0,240}?aria-label="Attach file"/,
+		],
+	]) {
+		assert.match(
+			source,
+			pattern,
+			`${control} is disabled by the refusal, so its press is one that clears the caret to \`body\``,
+		);
+	}
+	assert.doesNotMatch(
+		source,
+		/onMouseDown=\{holdCaretOnRefusedPress\}/,
+		"a disabled control dispatches no mousedown, so `onMouseDown` is inert here twice over",
+	);
+
+	/*
+	 * The chips carry the same `isInputDisabled` term inside `suggestionsDisabled`,
+	 * and the stack renders on `bandCentred` = `messages.length === 0` - which is
+	 * independent of the refusal - so the suppression is WIRED THROUGH rather than
+	 * argued unreachable. Guarding the predicate is the decision: QA measured an
+	 * empty `controls.chips` on the `view.missing` arm alone, and a guard whose
+	 * absence rests on one arm stops guarding the day another arm draws a chip.
+	 * The handler is pinned as optional and caller-gated, because a component that
+	 * suppressed the press whenever its OWN `disabled` prop was true would silently
+	 * widen the refusal to every caller's reason for disabling a chip - including
+	 * the composer holding a draft, which is a control disabled for its own reason.
+	 */
+	assert.match(
+		source,
+		/onRefusedPress=\{holdCaretOnRefusedPress\}/,
+		"the chips are disabled by the same predicate, so the suppression reaches them",
+	);
+	const stack = code(STACK);
+	assert.match(
+		stack,
+		/onRefusedPress\?: \(event: PointerEvent<HTMLButtonElement>\) => void;/,
+		"the stack takes the suppression from its caller instead of deciding for itself",
+	);
+	assert.match(
+		stack,
+		/disabled=\{disabled \|\| hidden\}\s*\n\s*onPointerDown=\{onRefusedPress\}/,
+		"and puts it on the CHIP: on the stack container it would also swallow an inert press inside the stack, which has to go on clearing the caret",
+	);
+
+	const from = source.indexOf("const holdCaretOnRefusedPress = useCallback(");
+	assert.ok(from > -1, "the suppression has to still be one `useCallback`");
+	const handler = source.slice(
+		from,
+		source.indexOf("[isInputDisabled],", from),
+	);
+	assert.match(
+		handler,
+		/if \(isInputDisabled\) event\.preventDefault\(\);/,
+		"the handler's body IS the gate - an unconditional `event.preventDefault()` swallows the inert-background press the refusal does not claim",
+	);
+	assert.equal(
+		(handler.match(/preventDefault/g) ?? []).length,
+		1,
+		"one `preventDefault`, and it is the gated one: a second, ungated call is the blanket trap",
 	);
 });
 
