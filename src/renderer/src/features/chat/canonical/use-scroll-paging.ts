@@ -21,6 +21,7 @@ import {
 	noteFailed,
 	noteInput,
 	noteSettled,
+	spendWindows,
 } from "./scroll-paging";
 
 /**
@@ -378,17 +379,38 @@ export function useScrollPaging({
 			state.current = next;
 			/*
 			 * The slot's paint follows the policy's own view of what is on its way:
-			 * a reveal just dispatched, one in flight, one owed, or a demand the
-			 * reader has already made and that will be spent on this act — the
-			 * last of those is what closes the window between a widen landing and
-			 * the fetch it frees. Measured with only the first three: the row still
-			 * painted the button for 184ms inside one flick (`Loading earlier
-			 * messages` -> `Load earlier messages` -> `Loading earlier messages`),
-			 * because a settled widen leaves the reader's retained demand armed for
-			 * a frame or two before the pump spends it.
+			 * a reveal just dispatched, one in flight, one owed, or a demand that is
+			 * armed AND inside a window the policy spends from — the same
+			 * computation `decide` makes, taken from `spendWindows` instead of being
+			 * re-derived here.
+			 *
+			 * The window test is not decoration. Without it EVERY armed demand paints
+			 * "Loading earlier messages", spinner and `aria-live` announcement
+			 * included, including one `decide` has already refused: a reader following
+			 * the tail arms a demand that the `followingTail` guard then returns on,
+			 * and it stays armed — measured against this module,
+			 * `{"action":"none","armed":true,"busy":false}`, re-decided every 120ms —
+			 * until a downward input or a session change, so the row claimed a load
+			 * that was not happening. With it, the paint stops at the same edge the
+			 * policy does.
+			 *
+			 * It NARROWS rather than closes the gap between a widen landing and the
+			 * fetch that frees it, and the earlier claim that it closed that gap was
+			 * wrong. The button still paints in that gap — 27, 181, 184, 310 and
+			 * 1657ms across the fling-shaped acts, from the `slotTransitions` in the
+			 * committed measurements — because the reader is outside both windows when
+			 * the widen lands, which is exactly when the policy has nothing in flight.
+			 * What makes it acceptable is where it happens rather than how long it
+			 * lasts: the slot is at least 350px above the viewport in every one of
+			 * those windows, so no reader sees the churn. Both halves are in the set's
+			 * README.
 			 */
+			const windows = spendWindows(geo, next, performance.now());
 			setRevealInFlight(
-				action !== "none" || next.busy || next.pageWidenOwed || next.armed,
+				action !== "none" ||
+					next.busy ||
+					next.pageWidenOwed ||
+					(next.armed && (windows.inZone || windows.inLead)),
 			);
 			if (action === "none") {
 				// An armed demand waiting only on the settle debounce needs someone to

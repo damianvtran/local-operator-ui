@@ -579,6 +579,45 @@ const spend = (
 });
 
 /**
+ * The two windows the policy spends an armed demand from, right now.
+ *
+ * Exported because the DOM half has to answer the same question for the top
+ * row's paint and cannot answer it by re-deriving it. `use-scroll-paging`
+ * mirrored `state.armed` into the slot unconditionally, so any armed demand
+ * painted "Loading earlier messages" at a reader following the tail — a demand
+ * `decide` refuses there (the `followingTail` guard returns before the armed
+ * branch) and keeps refusing until they travel closer. That is a false
+ * statement, and a false `aria-live` announcement, in the one surface this
+ * change exists to stop lying in (review round 2, R2-3a).
+ *
+ * `inZone` is the stopping threshold the settle debounce works against;
+ * `inLead` is the same window projected forward by the reader's own speed. A
+ * demand inside either is one the policy is about to spend. Outside both it is
+ * a demand waiting for the reader to come back, and the row must say so rather
+ * than claim a load.
+ */
+export function spendWindows(
+	geo: PagingGeometry,
+	state: PagingState,
+	now: number,
+	zonePx = prefetchZonePx(geo.clientHeight),
+): { inZone: boolean; inLead: boolean; leadPx: number } {
+	const velocity =
+		now - state.lastInputAt > VELOCITY_TTL_MS ? 0 : state.velocity;
+	const leadPx = Math.min(
+		Math.max(velocity * LEAD_TIME_MS, zonePx),
+		LEAD_MAX_VIEWPORTS * geo.clientHeight,
+	);
+	return {
+		inZone: geo.distanceFromTopPx <= zonePx,
+		inLead:
+			geo.distanceFromTopPx <= leadPx &&
+			velocity >= MIN_LEAD_VELOCITY_PX_PER_MS,
+		leadPx,
+	};
+}
+
+/**
  * Decide whether to spend a demand now, and on what.
  *
  * Called from a rAF-coalesced pump, so it must be cheap and must be safe to
@@ -663,15 +702,10 @@ export const decide = (
 	 * The ceiling bounds a spike: 4 viewports is where a fast flick's projection is
 	 * cut, so a spiky sample can buy latency but never a spend from screens away.
 	 */
-	const velocity =
-		now - state.lastInputAt > VELOCITY_TTL_MS ? 0 : state.velocity;
-	const leadPx = Math.min(
-		Math.max(velocity * LEAD_TIME_MS, zonePx),
-		LEAD_MAX_VIEWPORTS * geo.clientHeight,
-	);
-	const inZone = geo.distanceFromTopPx <= zonePx;
-	const inLead =
-		geo.distanceFromTopPx <= leadPx && velocity >= MIN_LEAD_VELOCITY_PX_PER_MS;
+	// ONE computation of the windows, shared with the DOM half's paint (see
+	// `spendWindows`): a second copy over there is how the slot came to claim a
+	// load the policy had already refused.
+	const { inZone, inLead } = spendWindows(geo, state, now, zonePx);
 	const settled =
 		now - state.lastInputAt >= SETTLE_MS ||
 		geo.distanceFromTopPx <= HARD_TOP_PX;
