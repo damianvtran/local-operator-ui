@@ -37,14 +37,16 @@
  *      four chat call sites, the entity row's three elements, and the settings
  *      rail's row are one fact.
  *
- * WHAT IT CANNOT PROVE: that the ground is *visible*. That is a property of the
- * role against its neighbours across every palette, and it is
- * `scripts/contrast-contract.mjs`'s job — it asserts `highlight` against
- * `surface`, `elevated` and `sunken` at the field floor of ΔE00 2.0, with the
- * authored values measuring 2.18-2.28 from `surface`, 2.52-5.05 from `elevated`
- * (the row's hover step, the binding pair) and 2.15-15.43 from `sunken`. It also
- * cannot prove the row reads as the current one on screen; that is the frames in
- * `docs/evidence/chat-sidebar-selection/`.
+ * WHAT IT CANNOT PROVE: that the ground is *visible*, and that it steps in the
+ * right DIRECTION. Both are properties of the role against its neighbours across
+ * every palette, and they are `scripts/contrast-contract.mjs`'s job — it asserts
+ * `highlight` against `surface`, `elevated` and `sunken` at its own band floor of
+ * ΔE00 4.0 and the field floor of 2.0 respectively, and it asserts the SIGN of
+ * the `L*` step (lighter on a dark palette, darker on a light one, with a floor on
+ * the magnitude), because the twelve authored values the port started from land
+ * 4.01-4.15 from `surface` and 3.81-6.62 `L*` in that direction. It also cannot
+ * prove the row reads as the current one on screen; that is the frames in
+ * `docs/evidence/chat-sidebar-current-row/`.
  *
  * PROCEDURE NOTE. The sidebar cannot be rendered in isolation — it reads the
  * router, the canonical-sessions store and the desktop capability hooks — and
@@ -224,27 +226,28 @@ const literalOf = (file, name) => {
 };
 
 /**
- * Whether a resolved class list carries the current row's structural edge.
  *
- * Both tokens are required: `outline-1` alone leaves `outline-style: none` in
- * Tailwind v4, and `rowStyle` already carries a `focus-visible:outline-*` set
- * that must not be mistaken for the edge.
+ * Whether a resolved class list carries the current row's GROUND.
+ *
+ * A single token, unlike the two it took while the row also carried a 1px
+ * `outline-control` ring beside it: that half is retired (design round 1, D3 —
+ * the role is § 2's *sole boundary of a control* and both rails drew it with the
+ * search field's own ink, radius and height, so the current row read as a filled
+ * field). The mark is the ground plus `font-medium`, and both are asserted here.
  */
-const carriesEdge = (classes) =>
-	classes.includes("outline-solid") && classes.includes("outline-control");
+const carriesGround = (classes) => classes.includes("bg-highlight");
 
 const rowStyle = literalOf(SIDEBAR, "rowStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
-const rowCurrentEdge = literalOf(SIDEBAR, "rowCurrentEdge");
 
 /*
- * The two halves of a current row's mark, and which elements carry which.
+ * The current row's mark, and which elements carry it.
  *
- * `ground` is what makes the row readable as the current one, `edge` is the
- * structural half that survives the palettes where the ink floors cap the
- * ground, and the entity row's name button deliberately carries the first and
- * NOT the second — it already paints the ground inside its wrapper, and a
- * second ring there would be a second mark rather than a stronger one.
+ * `ground` is what makes the row readable as the current one. The entity row's
+ * name button carries it as well as its wrapper, deliberately: it carries
+ * `rowStyle`, so its own `hover:bg-elevated` would otherwise paint over the
+ * wrapper's ground — round 1's MAJOR — and the ground on both is one state spread
+ * over the DOM rather than two decisions.
  */
 const CURRENT = [
 	{
@@ -252,8 +255,8 @@ const CURRENT = [
 		file: SIDEBAR,
 		/*
 		 * Anchored on the row's own tour tag rather than on its predicate: the
-		 * predicate is named ONCE (`isCurrent`) because the ground, the edge and
-		 * `aria-current` all read it, so it no longer sits inside this element's
+		 * predicate is named ONCE (`isCurrent`) because the ground and
+		 * `aria-current` both read it, so it no longer sits inside this element's
 		 * `cn(...)` for a backward search to find.
 		 */
 		expression: () =>
@@ -261,20 +264,17 @@ const CURRENT = [
 		stubs: {
 			rowStyle,
 			rowCurrent,
-			rowCurrentEdge,
 			nested: false,
 			isCurrent: true,
 		},
 		ground: true,
-		edge: true,
 	},
 	{
 		what: "the All chats filter",
 		file: SIDEBAR,
 		expression: () => expressionBefore(SIDEBAR, ">All chats</span>"),
-		stubs: { rowStyle, rowCurrent, rowCurrentEdge, all: true },
+		stubs: { rowStyle, rowCurrent, all: true },
 		ground: true,
-		edge: true,
 	},
 	{
 		what: "the New chat row",
@@ -283,25 +283,22 @@ const CURRENT = [
 		stubs: {
 			rowStyle,
 			rowCurrent,
-			rowCurrentEdge,
 			activeDraftKey: "draft-key",
 			draft: undefined,
 		},
 		ground: true,
-		edge: true,
 	},
 	{
 		what: "the entity row's wrapper",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity>"),
-		stubs: { rowCurrent, rowCurrentEdge, staged: true },
+		stubs: { rowCurrent, staged: true },
 		ground: true,
-		edge: true,
 	},
 	{
 		/* The element round 1's MAJOR was about: it carries `rowStyle`, so its
 		   hover step is what used to paint over the wrapper's ground. It carries
-		   the GROUND and not the EDGE, and that asymmetry is asserted below. */
+		   the GROUND too, which is asserted below. */
 		what: "the entity row's name button",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity-name"),
@@ -335,7 +332,6 @@ const CURRENT = [
 			),
 		stubs: { labelled: true, isActive: true },
 		ground: true,
-		edge: true,
 		notCurrent: { labelled: true, isActive: false },
 	},
 ];
@@ -343,7 +339,7 @@ const CURRENT = [
 test("the current row's ground is a step off its panel, not a wash", () => {
 	assert.ok(
 		rowCurrent.includes("bg-highlight"),
-		`the current row's ground must be the role authored for it — \`highlight\`, a shallow step off \`surface\` in the direction the mode runs (ΔE00 2.18-2.28): above the perceptual threshold, and under the \`sunken\` well it replaced (3.75-14.94, the operator's dark box). Got:\n${rowCurrent}`,
+		`the current row's ground must be the role authored for it — \`highlight\`, a LIGHTNESS step off \`surface\` in the direction the mode runs, larger than the ΔE00 2.18-2.28 band the operator reported as invisible and larger than the well it replaced (\`sunken\`, 3.75-14.94, the dark box he reported). The band's floor, the direction of the step and a floor on its magnitude are asserted in \`scripts/contrast-contract.mjs\`, which is where a colour can be measured. Got:\n${rowCurrent}`,
 	);
 	assert.ok(
 		!rowCurrent.includes("bg-accent-wash"),
@@ -364,19 +360,22 @@ test("the current row's ground is a step off its panel, not a wash", () => {
  * drawn in `ink-dim`), while the hover step the neighbouring rows carry is
  * `elevated`, which is also every menu, popover and tooltip ground in the app
  * and so is not a value this panel can move. On eight of the twelve palettes
- * `elevated` is therefore still the LARGER step off `surface`. Two non-colour
- * steps answer it, and the file asserts both:
+ * `elevated` is therefore still the LARGER step off `surface`, so the row carries
+ * `font-medium` — the non-colour step the settings rail's active row already
+ * carried, now on both rails (the test below). That is the whole of the second
+ * step: an earlier round added a 1px `outline-control` boundary beside the
+ * ground and it is RETIRED (design round 1, D3), because `border-control` is § 2's
+ * *sole boundary of a control* and both rails drew it with the search field's own
+ * ink, height and radius — the current row read as a filled field.
  *
- *   `font-medium` — the step the settings rail's active row already carried,
- *   now on both rails (the test below), and
- *   `rowCurrentEdge` — the 1px `outline-control` ring, asserted in
- *   `the box of a current row carries the structural edge` below.
- *
- * The operator's own report is the reason the ground ITSELF also rose: he asked
- * first for a SUBTLE selection, saw it rendered, and reported the current row as
- * invisible beside a hovered neighbour — so the role now lands ΔE00 4.0-4.4 from
- * `surface` where it was authored at 2.18-2.28. `scripts/contrast-contract.mjs`
- * states that band and asserts it; this file cannot see a colour at all.
+ * The operator's own report is the reason the ground ITSELF also rose, and it is
+ * why the role is a LIGHTNESS step: he asked first for a SUBTLE selection, saw it
+ * rendered, and reported the current row as invisible beside a hovered neighbour
+ * — so the role now lands ΔE00 4.01-4.15 from `surface` and 3.81-6.62 `L*` away
+ * from it in the direction the mode runs, where it was authored at ΔE00
+ * 2.18-2.28. `scripts/contrast-contract.mjs` states that band, asserts the
+ * DIRECTION of the step and floors its magnitude; this file cannot see a colour
+ * at all.
  */
 test("a current row carries a non-colour step, and a row that is not current does not", () => {
 	assert.ok(
@@ -401,84 +400,71 @@ test("a current row carries a non-colour step, and a row that is not current doe
 	);
 });
 
-test("the box of a current row carries the structural edge, and nothing else does", () => {
+test("the entity row's name button paints the ground inside its wrapper, and no element is boxed twice", () => {
 	/*
-	 * The half of the mark the ink floors cannot cap. `outline-control` clears § 3's
-	 * 3:1 floor against every palette's `highlight` (asserted as a ROLE in
-	 * `contrast-contract.mjs`, which is where it can be measured), and this file is
-	 * where the CLASS is resolved: the edge has to be on every box that paints the
-	 * ground, because dropping it from one of them is a one-word edit no palette row
-	 * can see.
-	 *
-	 * The entity row's name button is the deliberate exception and is asserted as
-	 * one: it paints the ground inside its wrapper, so an edge there would draw a
-	 * second ring inside the wrapper's ring — a second mark rather than a stronger
-	 * one. A row that is NOT current must carry no edge at all, which is the same
-	 * property from the other side.
+	 * The element round 1's MAJOR was about: a child's background paints over its
+	 * parent's, so the name button has to carry the ground its wrapper paints. What
+	 * it must NOT carry is a second boundary: with the row's `outline-control` ring
+	 * retired (design round 1, D3) that is a guard on the whole panel rather than on
+	 * one element — a `border-*` or `outline-*` structural role applied to a current
+	 * row's box here would re-open the defect this file's sibling set of frames was
+	 * re-shot for, which is a row that reads as a filled input.
 	 */
 	for (const site of CURRENT) {
 		const classes = merged(site.file, site.expression(), site.stubs);
-		const carries = carriesEdge(classes);
-		if (site.edge) {
+		for (const token of classes.split(" ")) {
+			const structural =
+				(token.startsWith("border-") &&
+					!token.includes("border-transparent")) ||
+				(token.startsWith("outline-") &&
+					!token.startsWith("outline-offset") &&
+					!token.includes("outline-none"));
 			assert.ok(
-				carries,
-				`${site.what} is a current row's BOX and no longer carries the structural half of the mark, so on the eight palettes where the hover step outranks the ground it has no non-luminance signal left:\n${classes}`,
-			);
-		} else {
-			assert.ok(
-				!carries,
-				`${site.what} now carries the row's structural edge; the edge marks the row's box, and an inner element that paints the ground inside that box draws a second ring rather than a stronger mark:\n${classes}`,
+				!structural || token.startsWith("focus-visible:"),
+				`${site.what} now draws a structural boundary (\`${token}\`); the current row's mark is its ground plus its weight, and a boundary in \`border-control\`'s role is the search field's own line one row below it — design round 1, D3, is what retired it:\n${classes}`,
 			);
 		}
 	}
-	const rail = CURRENT.find((site) => site.file === SETTINGS_RAIL);
-	const inactive = merged(rail.file, rail.expression(), rail.notCurrent);
+	const nameButton = CURRENT.find(
+		(site) => site.what === "the entity row's name button",
+	);
+	assert.notEqual(
+		nameButton,
+		undefined,
+		"the entity row's name button is no longer in `CURRENT`",
+	);
+	const inner = merged(
+		nameButton.file,
+		nameButton.expression(),
+		nameButton.stubs,
+	);
 	assert.ok(
-		!carriesEdge(inactive),
-		`a settings row that is NOT current carries the current row's edge:\n${inactive}`,
+		carriesGround(inner),
+		`the entity row's name button no longer paints the current row's ground, so on the row whose pointer is somewhere else the mark is carried by the wrapper alone — and this element's own \`hover:bg-elevated\` is what then paints over it (round 1's MAJOR):\n${inner}`,
 	);
 });
 
-test("the edge is a structural role and a solid 1px ring, not a hairline or a fill", () => {
+test("the mark is colour plus weight, and neither one can move the row", () => {
 	/*
-	 * A guard on the CONSTANT, where the other test guards its placement. Three
-	 * different weakenings all leave a class list that still looks like an edge:
-	 * a `hairline` role (decorative, no floor — § 3 caps it below 2:1 by design),
-	 * a lost `outline-solid` (Tailwind v4's `outline-1` alone leaves
-	 * `outline-style: none`, which is why `credential-overlay.tsx` carries the same
-	 * note), and a lost `-outline-offset-1` (the ring then draws OUTSIDE the row's
-	 * box and the row's own box grows by 2px against its neighbours).
+	 * The guard on the CONSTANT. `bg-highlight` and `font-medium` are both paint,
+	 * and the row's box has to be untouched by the mark: the New chat row's own
+	 * comment records that a 1px `border-control` there stepped its icon and label
+	 * 1px out of line with the row above (the app is `box-sizing: border-box`), and
+	 * the operator asked for that border to go. So no class in the mark may carry
+	 * geometry, which is asserted on the tokens rather than described.
 	 */
-	for (const token of [
-		"outline-solid",
-		"outline-1",
-		"-outline-offset-1",
-		"outline-control",
-	]) {
+	const GEOMETRY =
+		/^-?(m|p|size|w|h|gap|border|inset|top|left|right|bottom|translate|scale)/;
+	for (const token of rowCurrent.split(" ")) {
 		assert.ok(
-			rowCurrentEdge.split(" ").includes(token),
-			`the current row's edge no longer carries \`${token}\`:\n${rowCurrentEdge}`,
+			!GEOMETRY.test(token.replace(/^[a-z-]+:/, "")),
+			`\`${token}\` in the current row's mark is a layout or box class, so the mark can move the row in the current state only — the reflow the New chat row's own comment records as the reason its border was removed:\n${rowCurrent}`,
 		);
 	}
 	assert.ok(
-		!rowCurrentEdge.includes("hairline"),
-		`the current row's edge is drawn in \`hairline\`, which is decorative and has no floor — § 3 caps it below 2:1 against these grounds by design, so it is not a mark anyone can see:\n${rowCurrentEdge}`,
+		!rowCurrent.includes("outline-control"),
+		`the current row is drawn with a \`border-control\`-role boundary again; that role is § 2's *sole boundary of an input, select, checkbox or outlined button*, and the ring rendered as the search field one row below the list (design round 1, D3):\n${rowCurrent}`,
 	);
-	/*
-	 * And the mark cannot move the row, asserted rather than promised: every class
-	 * the edge names has to be in the OUTLINE group, which participates in no box
-	 * model. A `border-*` here (the role this replaced on the New chat row), a
-	 * `p*`/`m*`, or a `size-*` would all change the row's box in the current state
-	 * only — the reflow the row's own comment records as the reason a box was
-	 * rejected for the CAP, one element over. An outline is drawn outside layout,
-	 * so this string cannot move the row wherever it is applied.
-	 */
-	for (const token of rowCurrentEdge.split(" ")) {
-		assert.ok(
-			token.startsWith("outline") || token.startsWith("-outline"),
-			`\`${token}\` in the current row's edge is not an outline class, so the mark can change the row's box in one state only:\n${rowCurrentEdge}`,
-		);
-	}
 });
 
 test("every current-row element keeps the ground under the pointer", () => {
