@@ -635,8 +635,15 @@ function newerReading(
 	right: string | null,
 	isNewer: (candidate: string, subject: string) => boolean,
 ): string | null {
-	if (!isReadableVersion(left)) return right;
-	if (!isReadableVersion(right)) return left;
+	/*
+	 * The `typeof` halves are the narrowing, not belt-and-braces on top of it:
+	 * `isReadableVersion` answers a boolean rather than a type predicate, so
+	 * `!isReadableVersion(left)` leaves `left` as `string | null` and the call below
+	 * would not typecheck. Spelled this way rather than as a local `v is string`
+	 * guard because the guard would re-state the predicate's own contract.
+	 */
+	if (typeof left !== "string" || !isReadableVersion(left)) return right;
+	if (typeof right !== "string" || !isReadableVersion(right)) return left;
 	return isNewer(left, right) ? left : right;
 }
 
