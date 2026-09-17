@@ -194,6 +194,13 @@ The branch was folded three times while this set existed - onto `ccc3017a3` (#29
 `3afcc732f` (#290, the user bubble's measure width) - and each time the question was the same:
 did the fold move anything this set is a picture of?
 
+**One class of difference is named rather than described as noise.** This head's re-shot light
+pair differs from its predecessors by exactly **60 pixels in one `2x30` box** - the search field's
+caret, present in one capture and not the other because a caret blinks. That is the same
+focus-dependent-rendering class as the first fold's tag-chip ring, and it is why the fold record
+below says "twenty of the other 22" rather than "22": a `byte-identical` claim is worth exactly what
+its exceptions are.
+
 **It moved the PANE, not the sidebar, and that is a measurement.** Six frames moved on each
 fold, and they are exactly the frames with a conversation open in the chat pane, where `main`
 changed (`chat-content.tsx` on the first, `markdown.css` + `message-paper.tsx` on the second).
