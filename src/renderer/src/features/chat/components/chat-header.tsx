@@ -137,6 +137,32 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const shortcut = isMac ? "⌘+Shift+C" : "Ctrl+Shift+C";
 
 	/*
+	 * Three facts about the cluster's children, read once because the CLUSTER's
+	 * spacing and each child's own render gate are decisions from the same set.
+	 *
+	 * The badge is anchored 10px past the browser button's corner and paints a 2px
+	 * ring, so a drawn badge needs 12px before the CANVAS BUTTON's box begins
+	 * (design round 1, D5: below that the ring is painted inside a 32px control's
+	 * hover target). That room is the CONTAINER's to give - `docs/branding.md`
+	 * section 5, "a component does not own its outer margin" - so the cluster widens
+	 * its own gap while an overhanging badge is on screen and pays nothing when there
+	 * is none. A `mr-1` on the button used to carry it and could not be conditional
+	 * without being the same anti-pattern: a margin on a component's root element
+	 * stacks with whatever container it is dropped into, which is exactly the
+	 * silent-mis-spacing failure that rule exists to prevent.
+	 *
+	 * Each fact is about a CHILD rather than about the badge alone, and the two pane
+	 * halves are why: while the browser pane is open the browser button is unmounted,
+	 * so there is no badge on screen and no room to reserve, however many approvals
+	 * are waiting; and while the canvas is open the canvas button is unmounted, so the
+	 * badge has no neighbour's box to land in and the room would be spent on a control
+	 * that is not rendered.
+	 */
+	const browserButtonShown = Boolean(onOpenBrowser) && !isBrowserPaneOpen;
+	const browserBadgeDrawn = browserButtonShown && browserAttentionCount > 0;
+	const canvasButtonShown = Boolean(onOpenOptions) && !isCanvasOpen;
+
+	/*
 	 * Closing the canvas put focus back on `<body>`, which is the top of the
 	 * document: a keyboard user who left the panel lost their place entirely. The
 	 * control they came from is this button, and it only exists while the canvas
@@ -269,7 +295,46 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * tooltip; the run trigger stays, because it is a TOGGLE with an `aria-pressed`
 			 * ground and that is exactly what makes the swap reversible.
 			 */}
-			<div className={cn("ml-auto flex items-center gap-2")}>
+			<div
+				className={cn(
+					"ml-auto flex items-center",
+					/*
+					 * THE RULE THIS APPLIES. The container pays only for ink that would
+					 * otherwise land in a NEIGHBOUR'S BOX - not for every child that paints
+					 * outside itself. The badge earns 12px because without it its ring is
+					 * painted inside the canvas button's hover target (design round 1, D5);
+					 * the run trigger's own attention dot overhangs its box by 2px and earns
+					 * nothing, because 6px of the ordinary 8px gap still separates it from the
+					 * next box. So 12px is owed only while BOTH the badge and the box it has to
+					 * clear are on screen; this is 8px in every other arrangement.
+					 *
+					 * 8px is the within-a-component step of branding.md's 4px ramp, and it is
+					 * the state the operator photographed: a `mr-1` on the browser button paid
+					 * the badge's 12px whether or not a badge was drawn, so the badge-free
+					 * cluster read 8px against 12px. The room is the CONTAINER's now
+					 * (branding.md section 5), so neither state is a margin on a component.
+					 *
+					 * WHAT A BADGE COSTS, in the two comparisons that are easy to conflate:
+					 *
+					 *  - THE BADGE APPEARING, this tree against itself. `gap` resolves from 8
+					 *    to 12, and both of the cluster's gaps ARE that one property, so each
+					 *    widens by 4px: cluster width 112 -> 120 (+8px), the run trigger's left
+					 *    edge 432 -> 424 (-8px), the browser button 472 -> 468 (-4px), and the
+					 *    canvas button pinned at 512 by the `ml-auto` right edge (0px). The
+					 *    browser's -4px is the MECHANISM that keeps D5 rather than a detail:
+					 *    its right edge moves 504 -> 500, so the badge's painted ring ends
+					 *    exactly on the canvas box's left edge, at 0px clearance. "The browser
+					 *    and canvas buttons do not move" is NOT what happens here.
+					 *  - THIS BRANCH AGAINST `main`, in a FIXED state. Badge drawn: the run
+					 *    trigger moves -4px and the browser and canvas buttons do not move at
+					 *    all. Badge-free: the run trigger and the browser button both move
+					 *    +4px, and the canvas does not move. The 4px figures this change is
+					 *    otherwise tempted to quote belong to THIS comparison, not the one
+					 *    above.
+					 */
+					browserBadgeDrawn && canvasButtonShown ? "gap-3" : "gap-2",
+				)}
+			>
 				<RunDetailsTrigger
 					details={runDetails}
 					mcpServers={mcpServers}
@@ -280,7 +345,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				    neighbours, and it carries the count when this conversation has a request
 				    outstanding — see `browserAttentionCount` for why a count here and a dot on
 				    the canvas button. */}
-				{onOpenBrowser && !isBrowserPaneOpen && (
+				{browserButtonShown && (
 					<Tooltip
 						content={
 							browserAttentionCount > 0
@@ -301,16 +366,13 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							}
 							data-tour-tag="browser-pane-trigger"
 							/*
-							 * `mr-1` IS THE BADGE'S ROOM, not spacing taste (design round 1, D5): the
-							 * badge is anchored 10px outside this button's corner and its ring paints 2px
-							 * further out again, so it needs 12px before the canvas button's box begins.
-							 * The cluster's own `gap-2` gives 8, and the badge was measured sitting 9px
-							 * INSIDE that neighbour - a 32px `icon` button whose whole box is a hover
-							 * target. Four px here rather than `gap-3` on the cluster: the run trigger and
-							 * the canvas button stay where they have always been, and only the control that
-							 * carries a badge pays for it.
+							 * `relative` for the badge only; the SPACING that makes room for it is the
+							 * cluster's, which is where branding.md section 5 puts it. The reservation
+							 * used to be a `mr-1` here and was paid in every state, badge or not, which
+							 * is the 12px-against-8px asymmetry the operator saw; see the cluster's own
+							 * comment for the two numbers and the reasoning.
 							 */
-							className={cn("relative mr-1")}
+							className={cn("relative")}
 						>
 							<Globe aria-hidden={true} />
 							{/*
@@ -330,7 +392,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 * measured at `-2` the ring's inner edge landed at x=210 while the glyph's
 								 * top-right arc still had ink at 209-210, so the badge cut the stroke it was
 								 * supposed to sit beside. One spacing step buys those two pixels back, and the
-								 * `mr-1` on the button pays for the badge's outward move on the other side.
+								 * cluster widens its own gap so the badge's outward move is paid for on the
+								 * other side (the cluster's own comment carries that half).
 								 *
 								 * THE VISUAL IS CAPPED, THE LABEL IS NOT. `min-w-4 px-1` grows with every digit
 								 * and the badge is right-anchored, so three digits reach ~23px against the 12px
@@ -340,7 +403,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 * ordinal stays in the tooltip and the `aria-label`, which are read rather than
 								 * glanced at (spec 5.1).
 							 */}
-							{browserAttentionCount > 0 && (
+							{browserBadgeDrawn && (
 								<span
 									className={cn(
 										"pointer-events-none absolute -top-2.5 -right-2.5",
@@ -361,7 +424,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						</Button>
 					</Tooltip>
 				)}
-				{onOpenOptions && !isCanvasOpen && (
+				{canvasButtonShown && (
 					<Tooltip
 						content={
 							fileCount > 0
