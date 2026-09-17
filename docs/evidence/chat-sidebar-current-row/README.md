@@ -59,7 +59,8 @@ rather than implying it.
 nothing here is a hand-taken screenshot, and no frame in this set is the
 operator's own data. The story surface is
 `src/renderer/src/features/chat/components/chat-sidebar-current-row.stories.tsx`,
-which carries the chat panel's three states AND the settings rail's two.
+which carries the chat panel's four states and the hover twin of `selected-row`
+(five of this set's seven frame directories) AND the settings rail's two.
 
 The rail — the fourth place a cap is drawn — is a driver frame rather than a
 story: `docs/evidence/renderer-driver/palette-rail-{dark,light}.png`, re-shot
@@ -164,11 +165,24 @@ for. So the frames are read back, one column at a time, through
 `harness/read-current-row.mjs`:
 
 ```sh
-node docs/evidence/chat-sidebar-current-row/harness/read-current-row.mjs \
-  docs/evidence/chat-sidebar-current-row/selected-row/tokyoNight.png 180 265 380 560
-# {"panel":"#24283b","row":"#313342","runs":[32],
-#  "extent":{"top":488,"bottom":519,"height":32},"deltaE00":4.09}
+# The committed frames are WebP, so the decoder runs FIRST: `sips` on macOS,
+# `dwebp` anywhere else. This is the two-step the harness's own docstring states,
+# and it is why no `.png` ships in this set — the lossless captures the table's
+# middle column is read from are taken, measured and thrown away.
+sips -s format png docs/evidence/chat-sidebar-current-row/selected-row/tokyoNight.webp --out /tmp/tokyoNight.png
+node docs/evidence/chat-sidebar-current-row/harness/read-current-row.mjs /tmp/tokyoNight.png 180 265 380 560
+# {"frame":"/tmp/tokyoNight.png","size":"780x560","span":"x=180-265, y=380-560",
+#  "panel":"#24283b","row":"#313343","runs":[32],
+#  "extent":{"top":488,"bottom":519,"height":32},"deltaE00":3.9}
 ```
+
+The reading above is the **committed q88 file's**: `row` `#313343`, ΔE00 **3.9**,
+against the table's lossless `#313342` / **4.09** for the same palette — the same
+pair the table's own columns separate, and the reason the two numbers differ is the
+encoder rather than the harness. Point the harness at anything that is not a PNG
+(a committed frame, say) and it names the file and formats, prints the decode step
+and exits 2; a path that does not exist is named the same way, so a re-shoot gets a
+one-line answer instead of a `zlib` stack trace.
 
 The harness samples the row's ground as the MODE of a horizontal span (one pixel in
 a row of text is a glyph's antialiased edge) and reports the longest run in the
