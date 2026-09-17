@@ -149,6 +149,30 @@ export type DisclosureProps = {
 	 */
 	triggerTooltip?: ReactNode;
 	/**
+	 * A control that belongs to the TRIGGER'S OWN LINE, rendered after it inside
+	 * this component's ROOT — so the disclosed body stays below both.
+	 *
+	 * WHY THE ROOT AND NOT THE TRIGGER. A second control on the trigger's line cannot
+	 * be a child of the trigger (a `<button>` inside a `<button>` is invalid markup
+	 * and unreachable in some engines), and it cannot be the caller's own sibling of
+	 * this component either: the body is rendered HERE, so any box that wrapped the
+	 * trigger and the control would wrap the body too, and the caller then has a
+	 * choice between a line that wraps (which tears the control off the words the
+	 * moment the trigger is clamped — measured: the ✕ landed beside the body) and one
+	 * that does not (which cannot give the body its own line at all).
+	 *
+	 * So the pair shares a row INSIDE the root, the row is the smallest common
+	 * ancestor of the trigger and its control, and the row — not the caller's flex
+	 * item — is therefore what a hover/focus reveal is keyed to: `group` is applied
+	 * here, which is what keeps a revealed control appearing beside the words it acts
+	 * on instead of at the item's far edge (design review round 1's D1, UX's U4/U5).
+	 *
+	 * Opt-in, so every call site that passes nothing renders exactly the DOM it
+	 * rendered before. The caller owns the control's own reveal classes, its tooltip
+	 * and its label; this prop only decides WHERE it sits.
+	 */
+	trailing?: ReactNode;
+	/**
 	 * Reports the open state, for copy that has to state its VERB.
 	 *
 	 * A caller whose `triggerLabel`/`triggerTooltip` names the action needs the
@@ -224,6 +248,7 @@ export const Disclosure = ({
 	disabled = false,
 	triggerLabel,
 	triggerTooltip,
+	trailing,
 	onOpenChange,
 }: DisclosureProps) => {
 	const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -411,44 +436,71 @@ export const Disclosure = ({
 		<ChevronRight className="size-3.5" aria-hidden={true} />
 	);
 
+	/*
+	 * The trigger, built ONCE and placed by `trailing` below rather than written in
+	 * both branches: two copies of a control this dense is how one of them stops
+	 * receiving a fix.
+	 */
+	const trigger = (
+		<Tooltip content={triggerTooltip} side="top">
+			<button
+				type="button"
+				aria-expanded={isOpen}
+				aria-controls={children != null ? contentId : undefined}
+				aria-label={triggerLabel}
+				ref={buttonRef}
+				onMouseDown={onMouseDown}
+				onClick={onClick}
+				onKeyDown={onKeyDown}
+				className={cn(
+					ROW,
+					rowAlign,
+					"cursor-pointer select-none",
+					"text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink-muted",
+					rowClassName,
+					triggerClassName,
+				)}
+			>
+				{chevron === "leading" && (
+					<span
+						className={cn("flex text-ink-disabled", mark, chevronClassName)}
+					>
+						{glyph}
+					</span>
+				)}
+				<span className="min-w-0 flex-1">{summary}</span>
+				{chevron === "trailing" && (
+					<span
+						className={cn("flex text-ink-disabled", mark, chevronClassName)}
+					>
+						{glyph}
+					</span>
+				)}
+			</button>
+		</Tooltip>
+	);
+
 	return (
 		<div className={className}>
-			<Tooltip content={triggerTooltip} side="top">
-				<button
-					type="button"
-					aria-expanded={isOpen}
-					aria-controls={children != null ? contentId : undefined}
-					aria-label={triggerLabel}
-					ref={buttonRef}
-					onMouseDown={onMouseDown}
-					onClick={onClick}
-					onKeyDown={onKeyDown}
-					className={cn(
-						ROW,
-						rowAlign,
-						"cursor-pointer select-none",
-						"text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink-muted",
-						rowClassName,
-						triggerClassName,
-					)}
-				>
-					{chevron === "leading" && (
-						<span
-							className={cn("flex text-ink-disabled", mark, chevronClassName)}
-						>
-							{glyph}
-						</span>
-					)}
-					<span className="min-w-0 flex-1">{summary}</span>
-					{chevron === "trailing" && (
-						<span
-							className={cn("flex text-ink-disabled", mark, chevronClassName)}
-						>
-							{glyph}
-						</span>
-					)}
-				</button>
-			</Tooltip>
+			{/*
+			 * ONE ROW WHEN THERE IS A TRAILING CONTROL, the trigger alone otherwise — and
+			 * the branch is on `trailing` rather than always wrapping so that every other
+			 * call site's markup is byte-identical to what it was.
+			 *
+			 * `group` is here, on the trigger's own line, and not on the caller's wrapper:
+			 * the pair is what a hover or a focus reveals together, and a caller whose
+			 * wrapper is wider than the pair (the composer's goal item is the row's `flex-1`
+			 * box) would otherwise reveal a control with the pointer nowhere near the words
+			 * it acts on.
+			 */}
+			{trailing ? (
+				<div className={cn("group flex items-center")}>
+					{trigger}
+					{trailing}
+				</div>
+			) : (
+				trigger
+			)}
 			{/*
 			 * NO CONTENT BOX WITHOUT CONTENT, and that is a fix rather than a
 			 * tidiness pass. `isOpen` alone used to render the box: a caller with
