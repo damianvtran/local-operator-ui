@@ -25,12 +25,14 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef } from "react";
+import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import {
 	type SessionFailureNotice,
 	streamFailureNotice,
 } from "../../../../../shared/desktop-stream-notice";
 import "../../../styles/index.css";
 import { peerFields } from "../components/trace/receipt-row-model";
+import { formatDuration } from "../components/trace/tool-row-model";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalTranscript } from "./canonical-transcript";
 import {
@@ -40,6 +42,7 @@ import {
 	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
+	applyLiveSeed,
 	compactionSettledLine,
 	dropLiveRecords,
 } from "./transcript-reducer";
@@ -142,6 +145,7 @@ const Frame = ({
 	awaitingHydration = false,
 	openRows = false,
 	keepClosed,
+	frontend = null,
 }: {
 	records: TranscriptRecord[];
 	width?: string;
@@ -202,6 +206,17 @@ const Frame = ({
 	 * review question.
 	 */
 	keepClosed?: number[];
+	/**
+	 * The producer's frontend state, when the frame is about something that only
+	 * exists on it.
+	 *
+	 * Almost every story here is a picture of the ROWS, which carry their own
+	 * facts; the resumed-clock frame below is the exception, because the phase a
+	 * viewer resumes into (`thinking` — a model call in flight, with no row
+	 * behind it at all) is stated nowhere else. So the fold is threaded exactly
+	 * as the reader threads it (`chat-content.tsx`).
+	 */
+	frontend?: CanonicalFrontendState | null;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
@@ -224,6 +239,7 @@ const Frame = ({
 		>
 			<CanonicalTranscript
 				transcript={transcriptOf(records, compacting)}
+				frontend={frontend}
 				gate={null}
 				waiting={waiting}
 				starting={starting}
@@ -324,6 +340,12 @@ export const States: Story = {
 				// captured at `startedAt: now` every running row reads `0s`, which
 				// is indistinguishable from the frozen clock this replaced and is
 				// exactly why the defect survived a review round.
+				//
+				// Hand-set rather than driven, because this story's records are
+				// literals and the anchor is the one thing a literal cannot state.
+				// `ResumedRunningClock` below is the frame that goes through
+				// `applyLiveSeed` and the reducer's `started_at_epoch`, which is
+				// what a resumed viewer actually runs.
 				tool({
 					id: "tool:6",
 					toolName: "web_fetch",
@@ -1560,6 +1582,155 @@ export const WorkingLabels: Story = {
 			<WorkingLine activity="running 3 tools" phase="running" />
 		</div>
 	),
+};
+
+/**
+ * The operator's report: a viewer that RESUMES a turn already in flight.
+ *
+ * THE DEFECT. "Each time I resume it says it's been waiting for 0s regardless
+ * of how long." Both counters on this surface restarted from the moment the
+ * view loaded, because neither was handed the producer's own start:
+ *
+ *   - the ROW read the instant the frame ARRIVED (the seed was applied with
+ *     `now`), so a call that had been running for over two minutes read `0s`
+ *     the moment it was painted;
+ *   - the WORKING LINE had no anchor at all, so a resumed pane always started
+ *     the band at zero.
+ *
+ * WHY A FRAME AND NOT ONLY THE TEST. The counter is what the operator reads,
+ * and the two arms are anchored by DIFFERENT facts, which is exactly the pair a
+ * reviewer needs to see side by side:
+ *
+ *   - the right-hand pane resumes a RUNNING batch. Its clock comes from the
+ *     oldest card's own start, which is finer than any phase edge — a batch
+ *     restarts its phase zero every time a call joins it, so the phase fold
+ *     would restart a clock mid-batch. The card's start is the frame's own
+ *     `started_at_epoch`.
+ *   - the left-hand pane resumes a MODEL CALL, where there is no card at all.
+ *     Its clock can only come from the producer's folded phase, and only when
+ *     the folded phase equals the one derived here (the TUI's gate,
+ *     `OperatorApp._folded_phase_epoch`).
+ *
+ * Both are built through the PRODUCTION reducer, in the order the session hook
+ * applies them, so what is photographed is the wiring and not a record with a
+ * hand-set timestamp — which is what the `States` story above has to do and why
+ * it cannot show this.
+ */
+export const ResumedRunningClock: Story = {
+	render: () => {
+		// Anchored to the capture for the reason `conversationRows` gives in
+		// `reconnect-gap.stories.tsx`: the counter is measured against the real
+		// wall clock at render, so the anchors below are derived from this frame's
+		// own instant and the age photographed is the fixture's, not the shutter's.
+		const now = Date.now();
+		const agoS = (ms: number) => (now - ms) / 1000;
+		/*
+		 * The two ages the fixture states, and the captions DERIVE their spellings
+		 * from them rather than restating them.
+		 *
+		 * WHY DERIVED: a hand-copied number had already drifted from the frame it
+		 * sits over once (design round 1's D3), and the age is the one fact both
+		 * halves of this pair are about — so a caption that repeats it by hand is a
+		 * second description of the fixture, kept in step by nothing.
+		 *
+		 * WHY THE WORDS ARE ARM-NEUTRAL, and why they say the counter "counts on":
+		 * both halves are shot with this same story file (the before half runs it
+		 * against main's reducer and main's working-line model), so a caption
+		 * asserting `not this view's mount` would be contradicted by the before
+		 * half's own pixels, which ARE this view's mount. And because the counter is
+		 * LIVE, the shutter always lands a beat after this story anchored its clock,
+		 * so the frame reads that much more than the age named here — which is the
+		 * fact "counts on" states and a pinned number does not. A caption holding the
+		 * rendered value instead would be wrong on every capture whose shutter was
+		 * slower than the last, which is how the number it replaced went stale.
+		 */
+		const THINKING_MS = 92_000;
+		const RUNNING_MS = 137_000;
+		const age = (ms: number) => formatDuration(Math.round(ms / 1000));
+		/*
+		 * Cast at the boundary rather than built whole, as
+		 * `session-status-strip.stories.tsx` does for the same reason: a full
+		 * `CanonicalFrontendState` is thirty-odd fields of session bookkeeping that
+		 * this frame makes no claim about, and a fixture that spelled them all out
+		 * would be a second description of the wire to keep in step. The two fields
+		 * here are the ones the band reads, and they are DECLARED on the contract
+		 * rather than reached for through its index signature.
+		 */
+		const folded = (phase: string, startedAt: number): CanonicalFrontendState =>
+			({
+				activity_phase: phase,
+				activity_phase_started_at: startedAt,
+			}) as unknown as CanonicalFrontendState;
+		// The snapshot's own seed, applied exactly as the session hook applies it:
+		// a compose frame, then the start that replaces it, both before any
+		// post-snapshot event.
+		const resumed = applyLiveSeed(
+			EMPTY_TRANSCRIPT,
+			{
+				...folded("running", agoS(RUNNING_MS)),
+				streaming: true,
+				generation: 1,
+				live_events: [
+					{
+						type: "tool_call_compose",
+						tool_call_id: "call-resume",
+						tool_name: "bash",
+						argument_bytes: 24,
+					},
+					{
+						type: "tool_execution_start",
+						tool_call_id: "call-resume",
+						tool_name: "bash",
+						intent: "re-running the transport suite",
+						args: { command: "pnpm test:desktop" },
+						started_at_epoch: agoS(RUNNING_MS),
+					},
+				],
+			},
+			now,
+		);
+		return (
+			<div className="flex flex-col gap-6 bg-canvas p-6 lg:flex-row">
+				<div className="min-w-0 flex-1">
+					<p className="pb-2 text-body-sm text-ink-muted">
+						Resumed on a MODEL CALL: nothing has painted yet for this turn, so
+						the band is the only thing on screen carrying the clock. The
+						snapshot states that this phase began {age(THINKING_MS)} ago; the
+						band resumes that age and counts on, or restarts from this view's
+						mount.
+					</p>
+					<Frame
+						height={240}
+						waiting={true}
+						frontend={folded("thinking", agoS(THINKING_MS))}
+						records={[
+							{
+								kind: "user",
+								id: "u-resume",
+								ts: TS,
+								text: "Re-run the transport suite against the resumed clock.",
+								images: [],
+							},
+						]}
+					/>
+				</div>
+				<div className="min-w-0 flex-1">
+					<p className="pb-2 text-body-sm text-ink-muted">
+						Resumed on a RUNNING BATCH: the oldest call in the batch. The
+						snapshot states it began {age(RUNNING_MS)} ago; the row and the band
+						resume that age and count on, or count from the moment this view
+						loaded.
+					</p>
+					<Frame
+						height={240}
+						waiting={true}
+						frontend={folded("running", agoS(RUNNING_MS))}
+						records={resumed.records}
+					/>
+				</div>
+			</div>
+		);
+	},
 };
 
 /**

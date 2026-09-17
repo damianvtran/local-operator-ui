@@ -297,6 +297,12 @@ const CHROME_LAUNCH_SITES = [
 		"photographs scroll-driven history paging in the real renderer",
 	),
 	guarded(
+		"scripts/sidebar-resort-geometry.mjs",
+		"spawn",
+		1,
+		"measures what the sidebar's list container does to its scroll position while a row re-files itself (the `overflow-anchor` rule on that container)",
+	),
+	guarded(
 		"scripts/session-switch-latency.mjs",
 		"spawn",
 		1,

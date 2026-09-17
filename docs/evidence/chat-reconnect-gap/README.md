@@ -61,8 +61,9 @@ The id-set assertions in `scripts/reconnect-page-gap.test.mjs` cannot see any of
 those; they assert which rows are present, not what they look like.
 
 **The running frame is anchored to the capture's clock, not to the fixed instant
-the other two use.** A running row's elapsed counts up to the machine's clock,
-so a frame pinned to a past instant would photograph a call that started then as
+the other two use.** A running row's elapsed counter is measured against the real
+wall clock at render, from the call's own `started_at_epoch`, so a frame pinned to
+a past instant would photograph a call that started then as
 `100d+` — a fixture artefact rather than a state the app can produce. The same
 reason the tool-row stories pin `Date.now()` offsets. `gap/` and `restored/` stay
 on the fixed instant so they re-capture against the same conversation.

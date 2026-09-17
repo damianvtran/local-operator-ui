@@ -431,6 +431,30 @@ export type CanonicalWakeState = {
 	fired_count?: number;
 };
 
+/**
+ * The epoch MILLISECONDS a wire stamp states, or `null` when it states none.
+ *
+ * ONE READER FOR ONE UNIT. The wire states two instants in epoch SECONDS — a
+ * tool `_start` frame's `started_at_epoch` and the frontend state's
+ * `activity_phase_started_at` — and they reach the UI through two modules that
+ * are otherwise unrelated (the transcript reducer and the working-line model).
+ * A `* 1000` in each is how the two would eventually disagree about the unit, so
+ * the conversion lives here, beside the field declarations that say the unit in
+ * the first place.
+ *
+ * `null` is a real answer rather than a missing value to be defaulted, for the
+ * reason the reducer's own reader gives: `> 0` refuses a zeroed field (a producer
+ * that has not stamped one, not an instant in 1970), and a non-numeric or
+ * non-finite value states nothing. A caller with no stated instant must fall back
+ * to its own clock rather than to epoch zero.
+ */
+export function epochMsFromSeconds(value: unknown): number | null {
+	const seconds = Number(value);
+	return Number.isFinite(seconds) && seconds > 0
+		? Math.round(seconds * 1000)
+		: null;
+}
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -528,6 +552,34 @@ export type CanonicalFrontendState = {
 	 * should run.
 	 */
 	activity_started_at?: number | null;
+	/**
+	 * The phase the WORKING LINE is in, as the producer folded it from its own
+	 * events, or `""` when there is no phase (between turns).
+	 *
+	 * Mirrors `FrontendSessionState.activity_phase`, which is declared `str` with
+	 * an empty-string default and is only ever written from the fold's own phase
+	 * names or from `""` at a turn end — so `null` is NOT part of this wire's
+	 * shape and is not accepted here. (It was, briefly, while this field was being
+	 * declared: a nullable type invites a caller to test for a value the producer
+	 * cannot send, and the reader would then carry a branch nothing can reach.)
+	 *
+	 * Declared rather than reached through the index signature for the reason
+	 * `last_usage` gives above: the reader matches this string against the phase
+	 * it derived itself and uses the answer to decide whether a clock may run at
+	 * all, so a rename on the wire has to be a type error here rather than a
+	 * silently never-matching comparison that blanks every resumed clock.
+	 */
+	activity_phase?: string;
+	/**
+	 * When `activity_phase` began, as an epoch in SECONDS, or `null`.
+	 *
+	 * Mirrors `FrontendSessionState.activity_phase_started_at`. This is the
+	 * whole of the resumed working line's clock: the phase's zero is the
+	 * producer's, so a viewer that attaches mid-turn resumes the true age
+	 * instead of counting from its own arrival. Seconds, not milliseconds — the
+	 * conversion happens once, in `epochMsFromSeconds` above.
+	 */
+	activity_phase_started_at?: number | null;
 	// Canonical runtime fields are additive; preserve unknown fields rather
 	// than throwing away newer owner's accounting/roster data on reconnect.
 	[key: string]: unknown;

@@ -951,12 +951,20 @@ test("a genuinely image-free call is not given images it never had", () => {
 	assert.equal(row.images.length, 0, "no images, and none invented");
 });
 
-test("a running row carries the clock its duration cannot", () => {
+test("a running row with no stated start carries the clock its duration cannot", () => {
 	/*
 	 * R4/Q-06. `durationS` is null for the whole life of a running call — it
 	 * only arrives on `tool_execution_end` — so the row rendered `0s` from start
 	 * to finish and a four-minute `bash` looked identical to an instant one.
 	 * The row needs a start timestamp of its own to count from.
+	 *
+	 * THIS FIXTURE STATES NO START, which is the LEGACY-PRODUCER arm and is
+	 * asserted here rather than dropped: a frame with no `started_at_epoch` still
+	 * falls back to the arrival instant. That is a deliberate asymmetry with the
+	 * TUI, which refuses to paint a number it cannot justify
+	 * (`tool_card.py:1437-1441`); keeping it means a stated-nothing frame behaves
+	 * exactly as it did before the resumed-clock fix, and the fix is confined to
+	 * frames that DO state when the call began.
 	 */
 	const state = applyEvent(
 		EMPTY_TRANSCRIPT,
@@ -1007,6 +1015,161 @@ test("a running row carries the clock its duration cannot", () => {
 	const done = settled.records.find((r) => r.kind === "tool");
 	assert.equal(done.startedAt, null, "the row stops counting");
 	assert.equal(done.durationS, 60.2, "and reports what the backend measured");
+});
+
+/*
+ * THE OPERATOR REPORT THIS FILE'S NEXT CASES EXIST FOR. Resuming (or
+ * attaching to) a session whose call is CURRENTLY RUNNING restarted the elapsed
+ * counter from the moment the view loaded: "each time I resume it says it's
+ * been waiting for 0s regardless of how long".
+ *
+ * The caller's arrival instant is what every arrival-stamping path hands
+ * `applyEvent` — the reconnect replay applied before the snapshot lands, the
+ * live seed applied after it, and the ordinary live frame — so the fix is not
+ * in any one of those callers: the frame's OWN clock has to win. These four
+ * cases are the four shapes a resumed call arrives in.
+ */
+
+/** The producer's stamp, in the epoch SECONDS the wire states it in. */
+const START_EPOCH = 1_700_000_000;
+/** How long the call had already been running when the viewer attached. */
+const RESUMED_AFTER_MS = 137_000;
+const ARRIVAL = START_EPOCH * 1000 + RESUMED_AFTER_MS;
+const startedFrame = (callId, over = {}) => ({
+	type: "tool_execution_start",
+	tool_call_id: callId,
+	tool_name: "bash",
+	args: { command: "sleep 300" },
+	started_at_epoch: START_EPOCH,
+	...over,
+});
+
+const ranRow = (state, callId) =>
+	state.records.find((r) => r.kind === "tool" && r.toolCallId === callId);
+
+const expectedStart = START_EPOCH * 1000;
+const showsAge = (row) =>
+	Math.floor((ARRIVAL - row.startedAt) / 1000) === RESUMED_AFTER_MS / 1000;
+
+test("a live frame's own start stamp beats the viewer's arrival instant", () => {
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		startedFrame("c-live-clock"),
+		ARRIVAL,
+	);
+	const row = ranRow(state, "c-live-clock");
+	assert.equal(
+		row.startedAt,
+		expectedStart,
+		"the frame stated when the call began, so the caller's `now` is not it",
+	);
+	assert.ok(showsAge(row), "so the row resumes at 137s, not 0s");
+});
+
+test("a start frame replayed onto an already-painted row still states the start", () => {
+	/*
+	 * The seed-applied-after-the-snapshot path, which is the one the operator
+	 * hits on every resume: the row is already painted (by the durable page, or
+	 * by an earlier replay) when the `_start` frame arrives. The existing-value
+	 * rule is the fallback for a frame that states nothing, NOT a rule that lets
+	 * a painted arrival instant outrank a stated start.
+	 */
+	const painted = applyEvent(
+		EMPTY_TRANSCRIPT,
+		// The legacy arm first: no stamp, so this paints the arrival instant.
+		{ ...startedFrame("c-painted"), started_at_epoch: undefined },
+		ARRIVAL,
+	);
+	assert.equal(
+		ranRow(painted, "c-painted").startedAt,
+		ARRIVAL,
+		"the unstamped frame is the arrival instant, as before",
+	);
+	const corrected = applyEvent(painted, startedFrame("c-painted"), ARRIVAL);
+	assert.equal(
+		ranRow(corrected, "c-painted").startedAt,
+		expectedStart,
+		"the stated stamp corrects the arrival instant rather than losing to it",
+	);
+});
+
+test("a live seed resumes the true age instead of the seed's own arrival", () => {
+	/*
+	 * `applyLiveSeed` smuggles the stated clock in through its `now` parameter
+	 * ONLY for a frame that would CREATE the row, so a compose-then-start seed —
+	 * a call the snapshot announces while it is still being dictated, then the
+	 * start that replaces it — is the shape where the row already exists and the
+	 * seed's arrival instant used to stick. Asserted for the whole seed rather
+	 * than for the reducer arm, because that is what a resumed viewer runs.
+	 */
+	const seeded = applyLiveSeed(
+		EMPTY_TRANSCRIPT,
+		{
+			streaming: true,
+			generation: 1,
+			live_events: [
+				{
+					type: "tool_call_compose",
+					tool_call_id: "c-seed",
+					tool_name: "bash",
+					argument_bytes: 24,
+				},
+				startedFrame("c-seed"),
+			],
+		},
+		ARRIVAL,
+	);
+	const row = ranRow(seeded, "c-seed");
+	assert.equal(row.phase, "running", "the start replaced the composing row");
+	assert.equal(
+		row.startedAt,
+		expectedStart,
+		"the stated start survived the seed",
+	);
+	assert.ok(showsAge(row), "so the resumed row reads 2m17s, not 0s");
+});
+
+test("a replay folded before the snapshot does not freeze the arrival instant", () => {
+	/*
+	 * The path the operator actually hits (`use-canonical-session.ts`): replayed
+	 * `event` frames are applied with `now = Date.now()` BEFORE the snapshot's
+	 * seed lands, so the row exists by the time the seed arrives. The pre-fix
+	 * reducer made that first arrival instant STICKY, and the resumed call read
+	 * `0s` for the whole life of the view — no later frame could correct it.
+	 */
+	let state = applyEvent(EMPTY_TRANSCRIPT, startedFrame("c-replay"), ARRIVAL);
+	state = applyLiveSeed(
+		state,
+		{
+			streaming: true,
+			generation: 1,
+			live_events: [startedFrame("c-replay")],
+		},
+		ARRIVAL + 1_500,
+	);
+	const row = ranRow(state, "c-replay");
+	assert.equal(
+		row.startedAt,
+		expectedStart,
+		"the row counts from the call's start, not from either arrival",
+	);
+});
+
+test("a frame stating nothing still refuses to move a running clock", () => {
+	// The existing-value arm, kept honest by the fix: a replayed `_start` with no
+	// stamp must not restart a clock that is already counting. Preserved rather
+	// than replaced, because a reconnect cursor can replay an older frame shape.
+	const started = applyEvent(EMPTY_TRANSCRIPT, startedFrame("c-keep"), ARRIVAL);
+	const replayed = applyEvent(
+		started,
+		{ ...startedFrame("c-keep"), started_at_epoch: undefined },
+		ARRIVAL + 9_999,
+	);
+	assert.equal(
+		ranRow(replayed, "c-keep").startedAt,
+		expectedStart,
+		"the unpainted clock keeps the original start, not the replay's arrival",
+	);
 });
 
 /* ---------------------------------------------------------------------- *
