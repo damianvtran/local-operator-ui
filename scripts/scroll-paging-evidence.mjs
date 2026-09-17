@@ -1478,12 +1478,19 @@ async function freshArrival() {
  */
 async function arrivalScenario(
 	name,
-	{ setup = null, gesture, settleMs = 1800, note = null },
+	{ setup = null, gesture, settleMs = 1800, note = null, beforeSettle = null },
 ) {
 	const arrival = await freshArrival();
 	if (setup) await setup();
 	await sleep(800);
-	const result = await scenario(name, gesture, { settleMs, note });
+	// `beforeSettle` is FORWARDED, not swallowed: it is the act-end shutter (D1-1),
+	// and a scenario that asks for one and silently gets it nowhere is how the
+	// first cut of this shipped five `after` frames still taken after the settle.
+	const result = await scenario(name, gesture, {
+		settleMs,
+		note,
+		beforeSettle,
+	});
 	const last = report.steps[report.steps.length - 1];
 	last.arrival = {
 		rows: arrival.rows,
