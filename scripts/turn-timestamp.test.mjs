@@ -102,6 +102,8 @@ const bundle = await build({
 			'export { formatTurnTimestamp, formatMessageDateTime } from "./src/renderer/src/shared/utils/date-utils";',
 			'export { TurnTimestamp } from "./src/renderer/src/features/chat/components/message-item/turn-timestamp";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
+			'export { ToolRow } from "./src/renderer/src/features/chat/components/trace/tool-row";',
+			'export { useStampNow, msUntilNextLocalDay, localDayStart } from "./src/renderer/src/shared/hooks/use-calendar-day";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -144,6 +146,9 @@ const {
 	formatMessageDateTime,
 	TurnTimestamp,
 	CanonicalTranscript,
+	ToolRow,
+	useStampNow,
+	msUntilNextLocalDay,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -738,4 +743,214 @@ test("assistant prose carries no stamp of its own", async () => {
 		"the footer is not a turn stamp",
 	);
 	unmount();
+});
+
+test("the footer stays away when an EARLIER row is opened after the last one", async () => {
+	/*
+	 * The gate is a MEMBERSHIP question - does the LAST row currently paint a stamp
+	 * - and the first attempt at it answered a different one: it held a single id,
+	 * assigned on every report, so opening any earlier row overwrote the last row's
+	 * id and the footer came back beside a stamp that was still on screen. Two
+	 * clicks reach it, and both review streams reproduced it (review round 2, R2-1;
+	 * design round 2, D2-1: `mixed-run` paints three open rows). The four states
+	 * below are the rule in both orders.
+	 */
+	const first = toolRecord("tool:first", {
+		args: { command: "pnpm test:desktop" },
+		output: "tests 40\npass 40\n",
+	});
+	const last = toolRecord("tool:last", {
+		args: { command: "pnpm build" },
+		output: "built\n",
+	});
+	const { container, unmount } = mount([first, last]);
+	const triggers = () => [
+		...container.querySelectorAll("button[aria-expanded]"),
+	];
+	assert.equal(triggers().length, 2, "both rows offer their disclosure");
+
+	// The order the frames can show, and the one the gate was written for.
+	await act(async () => {
+		triggers()[1].click();
+	});
+	assert.equal(
+		stamps(container, "turn").length,
+		1,
+		"the last row paints its stamp",
+	);
+	assert.equal(
+		stamps(container, "footer").length,
+		0,
+		"so the footer stays away",
+	);
+
+	// The order that broke it: an EARLIER row, with the last one still open.
+	await act(async () => {
+		triggers()[0].click();
+	});
+	assert.equal(
+		stamps(container, "turn").length,
+		2,
+		"both open rows paint a stamp",
+	);
+	assert.equal(
+		stamps(container, "footer").length,
+		0,
+		"and the footer still stays away: the LAST row paints one",
+	);
+
+	// Closing the earlier row is the other half: it must take only its own id with
+	// it, leaving the last row's suppression intact.
+	await act(async () => {
+		triggers()[0].click();
+	});
+	assert.equal(stamps(container, "turn").length, 1);
+	assert.equal(
+		stamps(container, "footer").length,
+		0,
+		"closing an earlier row does not restore the footer under the open last row",
+	);
+
+	// And with the last row closed again the footer returns - its job, since nothing
+	// on screen states the time at that point.
+	await act(async () => {
+		triggers()[1].click();
+	});
+	assert.equal(stamps(container, "turn").length, 0);
+	assert.equal(stamps(container, "footer").length, 1);
+	unmount();
+});
+
+test("a row that STARTS open reports it, and reports its departure", () => {
+	/*
+	 * `onOpenChange` fires from the trigger's handlers, so a row rendered open - the
+	 * `defaultOpen` the stories and the evidence harnesses use to paint an expansion
+	 * without clicking - paints its stamp and would never be counted, while the
+	 * transcript's gate asks exactly that question. The transcript itself has no
+	 * start-open path today, which is why this is asserted on the row directly
+	 * rather than through the transcript: the mechanism is meant to be robust to the
+	 * state, not to the one caller that exists now (review round 2, R2-1).
+	 */
+	const seen = [];
+	const container = document.createElement("div");
+	const root = createRoot(container);
+	act(() => {
+		root.render(
+			h(ToolRow, {
+				toolName: "bash",
+				summary: "pnpm build",
+				outcome: "success",
+				durationS: 0.4,
+				defaultOpen: true,
+				onOpenChange: (open) => seen.push(open),
+				details: h(TurnTimestamp, { timestamp: TS, scope: "turn" }),
+			}),
+		);
+	});
+	assert.deepEqual(seen, [true], "a row rendered open says so on mount");
+	assert.equal(
+		container.querySelectorAll("time").length,
+		1,
+		"and the stamp inside its open body is painted, which is what the report is for",
+	);
+	act(() => root.unmount());
+	assert.deepEqual(
+		seen,
+		[true, false],
+		"and a row that leaves the tree leaves the set",
+	);
+});
+
+test("the day store arms one timer to the next midnight, not a tick", async (t) => {
+	/*
+	 * The store's header makes the one-timer / one-render-per-day property
+	 * load-bearing - a stamp that woke every second would put a render behind every
+	 * token of a streaming turn - and the midnight test above pins the day FLIP,
+	 * which a store that re-armed every 1000ms satisfies just as well. This is the
+	 * assertion that decision is for: a minute of ticking costs nothing, and the day
+	 * turning costs exactly one render (review round 2, R2-3).
+	 */
+	const nineAm = new Date(2026, 3, 15, 9, 0, 0, 0).getTime();
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: nineAm });
+	/*
+	 * The TIMER IS WHAT IS COUNTED, not the renders, and that is the whole lesson
+	 * of this assertion: `useSyncExternalStore` skips a re-render when the snapshot
+	 * it reads is unchanged, so a store that re-armed every 1000ms produces the same
+	 * renders as one armed to midnight (measured - the 1000ms mutation left the
+	 * render assertions green). What a tick costs is a wakeup per second for a value
+	 * that changes once a day, so the spy below is the assertion the decision is
+	 * actually for.
+	 */
+	const scheduled = [];
+	const mockedSetTimeout = globalThis.setTimeout;
+	globalThis.setTimeout = (fn, ms, ...rest) => {
+		scheduled.push(ms ?? 0);
+		return mockedSetTimeout(fn, ms, ...rest);
+	};
+	try {
+		let renders = 0;
+		const Probe = () => {
+			useStampNow();
+			renders += 1;
+			return null;
+		};
+		const container = document.createElement("div");
+		const root = createRoot(container);
+		act(() => {
+			root.render(h(Probe));
+		});
+		/*
+		 * Two renders at mount, not one: the store re-reads the day when the first
+		 * subscriber arrives, and here that differs from the value its module
+		 * initialisation took from the real clock. What the decision is about is not
+		 * that number but that it STOPS: a store re-arming on a tick would keep
+		 * rendering while the clock moved.
+		 */
+		const afterMount = renders;
+		assert.ok(
+			afterMount <= 2,
+			`the mount settles in at most two renders (was ${afterMount})`,
+		);
+		const afterMountTimers = scheduled.length;
+		assert.equal(
+			scheduled.filter((ms) => ms >= 60_000).length,
+			1,
+			"exactly one timer is aimed further out than a minute: the next local midnight",
+		);
+
+		// The armed deadline is the next local midnight, so a minute passes silently -
+		// and costs no wakeups beyond whatever React itself scheduled.
+		assert.ok(
+			msUntilNextLocalDay(nineAm) > 60_000,
+			"the deadline is the next midnight rather than a tick",
+		);
+		await act(async () => {
+			t.mock.timers.tick(60_000);
+		});
+		assert.equal(renders, afterMount, "a minute of clock costs no render");
+		assert.ok(
+			scheduled.length - afterMountTimers <= 3,
+			`a minute of clock arms at most a couple of timers, not one per second (armed ${
+				scheduled.length - afterMountTimers
+			})`,
+		);
+
+		// And crossing midnight costs exactly one render, and re-arms for the day after.
+		await act(async () => {
+			t.mock.timers.tick(msUntilNextLocalDay(nineAm));
+		});
+		assert.equal(
+			renders,
+			afterMount + 1,
+			"the day turning re-renders once, not repeatedly",
+		);
+		assert.ok(
+			scheduled.filter((ms) => ms >= 60_000).length >= 2,
+			"and the store arms the NEXT midnight, so the day keeps turning",
+		);
+		act(() => root.unmount());
+	} finally {
+		globalThis.setTimeout = mockedSetTimeout;
+		t.mock.timers.reset();
+	}
 });

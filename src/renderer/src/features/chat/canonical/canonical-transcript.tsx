@@ -1425,18 +1425,37 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * ledger row keeps the footer: it has no stamp of its own, so the footer is the
 	 * only time on screen there, which is its job.
 	 *
-	 * One id rather than a set, because only the last row's disclosure can make the
-	 * footer redundant; a row opened further up the transcript changes this value
-	 * without affecting the gate, which the comparison against `lastRecord.id` is
-	 * what expresses. The callback is stable so the memoised rows keep skipping.
+	 * MEMBERSHIP, NOT IDENTITY, and the first attempt got this wrong in a way that
+	 * mattered (review round 2, R2-1 / design D2-1). It held ONE id, assigned on
+	 * every report, so it answered "which row reported last" rather than "is the
+	 * last row open": with the last row open the footer went away, and opening any
+	 * EARLIER row overwrote the id with its own and brought the footer back beside
+	 * the still-open last row's stamp - both orders, since closing the earlier row
+	 * then nulled the slot too. `Disclosure` owns its state per row, so several rows
+	 * are open at once as a matter of ordinary use (`chat-tool-rows/mixed-run`
+	 * paints three). The set below is what the rule actually needs: the question is
+	 * membership of `lastRecord.id`, and an id that leaves the set takes nothing
+	 * with it.
+	 *
+	 * The callback is stable and returns the SAME set when nothing changed, so the
+	 * memoised rows keep skipping: a row that reports a state it is already in
+	 * (which every `defaultOpen` row does on mount) causes no render.
 	 */
-	const [openStampRowId, setOpenStampRowId] = useState<string | null>(null);
+	const [openStampRowIds, setOpenStampRowIds] = useState<ReadonlySet<string>>(
+		() => new Set<string>(),
+	);
 	const handleToolOpenChange = useCallback((id: string, open: boolean) => {
-		setOpenStampRowId(open ? id : null);
+		setOpenStampRowIds((previous) => {
+			if (previous.has(id) === open) return previous;
+			const next = new Set(previous);
+			if (open) next.add(id);
+			else next.delete(id);
+			return next;
+		});
 	}, []);
 	const lastRowPaintsStamp =
 		lastRecord?.kind === "user" ||
-		(lastRecord?.kind === "tool" && openStampRowId === lastRecord.id);
+		(lastRecord?.kind === "tool" && openStampRowIds.has(lastRecord.id));
 
 	// What the working line says, and which phase it is timing. The derivation
 	// (and its copy contract, including the one branch this app drives from its

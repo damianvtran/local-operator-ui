@@ -64,6 +64,10 @@
  * THE VISIBLE TEXT IS NOT WHAT A SCREEN READER READS: `aria-label` carries the
  * same full instant the tooltip does, because "3:42 PM" alone loses the day for
  * a reader who cannot see which card it sits under (review round 1, R7). The
+ * tooltip is POINTER-ONLY, though - the shared `Tooltip`'s trigger takes no
+ * `tabIndex`, so it cannot be reached from the keyboard - which is why the
+ * `aria-label` above is the accessible path rather than a second way to the same
+ * panel (design round 2, D2-4). The
  * full date and time come from `formatCalendarDateTime` with `hour12` forced,
  * so the tooltip and the label agree with the 12-hour text the operator asked
  * for rather than taking the locale's own clock — on a 24-hour machine the two
