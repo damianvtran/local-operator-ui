@@ -402,44 +402,42 @@ test("a hidden reveal is inert, and the reveal is what makes it operable", () =>
 			block.includes("group-focus-within:pointer-events-auto"),
 		"the hidden reveal must be inert and become operable with the reveal",
 	);
+	/*
+	 * Read as CLASS TOKENS rather than as a whitespace-exact substring (review round 3, NIT 3):
+	 * the old assertion broke on a re-indent and could pass with the token in the wrong branch,
+	 * while the sibling test above parses the class list, which is the form this file already
+	 * uses for the same question.
+	 */
+	const branchMatch = /\n\s*pinned\n/.exec(block);
+	const branchStart = branchMatch ? branchMatch.index : -1;
+	const pinnedBranch =
+		branchStart === -1
+			? ""
+			: block.slice(branchStart, block.indexOf(": cn(", branchStart));
 	assert.ok(
-		!block.includes('pointer-events-none",\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t'),
+		!pinnedBranch.includes("pointer-events-none"),
 		"the pinned glyph must not be made inert",
 	);
 	assert.ok(
-		/pinned\s*\?\s*(\/\/[^\n]*\n\s*)*"text-ink"/.test(block),
-		"the pinned branch is the visible state, not a conditional inert list",
+		/"(?:[^"]*\s)?text-ink(?:\s[^"]*)?"/.test(pinnedBranch),
+		"the pinned branch carries the visible ink role",
 	);
 });
 
-test("a press on a conversation the store does not hold makes the store hold it", () => {
+test("a press on a conversation the store does not hold carries the row it acted on", () => {
 	const source = read(SIDEBAR);
 	/*
-	 * QA round 2's Qr2-1: a pin write against a search-only row reached the backend and the
-	 * store's map was a no-op, because the store had no row for it - so the panel kept drawing
-	 * the cached WIRE hit and the press could never be undone from that row. The press now
-	 * carries enough of the row to be held, and the store inserts when it is absent.
+	 * The press has to carry enough of the row for the store to hold it: `searchChats`
+	 * rebuilds a hit-only row from the answer on every render, so a press that does not hand
+	 * the row over cannot be undone from the control that made it (Qr2-1's first mechanism).
+	 * The behaviour above is what matters; this says the call site keeps the seed.
 	 */
 	assert.match(
 		source,
 		/setSessionPin\(row\.session_id, !pinned, \{/,
 		"the press must carry the row's seed so a store that does not hold it can",
 	);
-	const store = read(
-		"src/renderer/src/shared/store/canonical-sessions-store.ts",
-	);
-	assert.match(
-		store,
-		/seedRow/,
-		"the store must insert a row it does not hold rather than mapping over nothing",
-	);
-	assert.match(
-		store,
-		/setSessionPin: \(\s*sessionId: string,\s*pinned: boolean,\s*seed\?:/,
-		"the action's signature must accept the seed",
-	);
 });
-
 test("the reveal is opacity on a reserved box, so it cannot reflow the row", () => {
 	const source = read(SIDEBAR);
 	// The JSX attribute (newline-terminated), never the effect's selector - see the
@@ -597,6 +595,124 @@ const seed = (over = {}) => {
 };
 
 const held = () => store.getState().sessions[0].pinned;
+
+test("a press on a conversation the store does not hold holds it, and keeps holding it through a page", async () => {
+	/*
+	 * QA round 2's Qr2-1, asserted as BEHAVIOUR rather than as the shape of the source
+	 * (review round 3, MINOR 3). The three facts the fix is made of, each driven through the
+	 * shipped store with only the transport faked:
+	 *
+	 *  1. a press on a conversation the store does not hold makes the store hold it, and the
+	 *     fact that outlives the row;
+	 *  2. the catalogue page that cannot carry it drops the row and leaves the fact alone -
+	 *     which is the mechanism the fix exists for;
+	 *  3. a search answer requested AFTER the press supersedes the fact, and one requested
+	 *     BEFORE it does not (the currency rule).
+	 */
+	const OUTSIDE = "e79ebe96485c";
+	const OTHER = "0a1b2c3d4e5f";
+	store.setState({
+		sessions: [],
+		pinFacts: {},
+		pinFailure: null,
+		answerSeq: 0,
+	});
+	globalThis.__pinRequest = async (request) =>
+		request.op === "sessions.list"
+			? {
+					sessions: [
+						{
+							id: OTHER,
+							name: "A listed chat",
+							mtime: 1_789_000_000,
+							pinned: false,
+						},
+					],
+				}
+			: { session_id: OUTSIDE, pinned: true };
+
+	// 1. the press holds a conversation the store does not list
+	assert.equal(
+		await store.getState().setSessionPin(OUTSIDE, true, {
+			title: "Sweep 001",
+			updated_at: 1_789_639_020,
+		}),
+		true,
+	);
+	assert.deepEqual(
+		store.getState().sessions.map((row) => [row.session_id, row.pinned]),
+		[[OUTSIDE, true]],
+		"the store must hold the row the press acted on",
+	);
+	assert.equal(
+		store.getState().pinFacts[OUTSIDE].pinned,
+		true,
+		"and the fact that outlives it",
+	);
+
+	// 2. a page that cannot carry it drops the row and keeps the fact
+	await store.getState().fetchSessions();
+	assert.deepEqual(
+		store.getState().sessions.map((row) => row.session_id),
+		[OTHER],
+		"the page is the authority on membership, so the row goes",
+	);
+	assert.equal(
+		store.getState().pinFacts[OUTSIDE].pinned,
+		true,
+		"and the fact is what keeps the pin readable for a row the page cannot carry",
+	);
+
+	/*
+	 * 3a. an answer whose REQUEST started BEFORE the press must not supersede it: the
+	 * sequence is taken when the question is asked, so an answer that was in flight across
+	 * the press cannot undo the press it predates. (Comparing arrival times instead would
+	 * let it, which is the flicker this stamp exists to prevent.)
+	 */
+	const beforePress = store.getState().beginAnswer();
+	assert.equal(
+		await store.getState().setSessionPin(OUTSIDE, true, {
+			title: "Sweep 001",
+			updated_at: 1_789_639_020,
+		}),
+		true,
+	);
+	store
+		.getState()
+		.applySearchAnswer(beforePress, [{ id: OUTSIDE, pinned: false }]);
+	assert.equal(
+		store.getState().pinFacts[OUTSIDE]?.pinned,
+		true,
+		"an answer older than the press must not undo it",
+	);
+
+	// 3b. an answer requested AFTER the press supersedes the fact, which is how a pin
+	// removed on the other surface stops reading pinned here
+	const afterPress = store.getState().beginAnswer();
+	store
+		.getState()
+		.applySearchAnswer(afterPress, [{ id: OUTSIDE, pinned: false }]);
+	assert.equal(
+		store.getState().pinFacts[OUTSIDE],
+		undefined,
+		"an answer newer than the press must supersede the fact",
+	);
+
+	/*
+	 * 3c. an answer that says nothing about an id is not a claim: a hit whose backend does
+	 * not describe the pin supersedes nothing, which is the same rule the row's own shape
+	 * follows ("an absent key is not a claim").
+	 */
+	store.setState({ pinFacts: { [OUTSIDE]: { pinned: true, at: 0 } } });
+	store
+		.getState()
+		.applySearchAnswer(store.getState().beginAnswer(), [{ id: OUTSIDE }]);
+	assert.equal(
+		store.getState().pinFacts[OUTSIDE]?.pinned,
+		true,
+		"an answer without a pin state is not a claim",
+	);
+});
 
 test("a press writes the row first, then sends the desired state", async () => {
 	seed({ pinned: false });
