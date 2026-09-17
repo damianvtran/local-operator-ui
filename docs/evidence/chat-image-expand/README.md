@@ -227,8 +227,14 @@ QA induced the old failure and measured the layer collapsing to **1152x38** — 
 strip of label text on an empty scrim, for a canonical row the single word
 "Screenshot". The overlay now draws the caller's own `BrokenAttachment` inside a
 reserved box (`min-h-16 min-w-64` plus the layer's padding), and the frame's
-**drawn card measures 543x38 at +369,+431** in `localOperatorDark` and **544x42 at
-+368,+429** in `iceberg` — centred on both axes, carrying the icon and the store's
+**drawn card measures 542x38 at +369,+431 in both themes** (`localOperatorDark` and
+`iceberg`) — the same box in the two frames, which is what one component at one
+viewport should give. Read at **Δ5**: the hairline's own outer edge is x369/x910 and
+y431/y468, and a deviation sweep over that frame at Δ2 widens it to x369..911 ×
+y430..471, while **x=368 appears in no sweep row at any threshold from Δ1 to Δ36** —
+the earlier `544x42 at +368,+429` was a round-3 reading at that looser bound, and the
+frame does not carry it. Both rows therefore agree with the figure QA measured for
+the same frame. Centred on both axes, carrying the icon and the store's
 own sentence ("Screenshot could not be displayed. Its stored copy is not
 available to this reader."), which is the copy the transcript uses for a digest
 rather than the on-disk "moved, renamed, or deleted" sentence. (QA's own hand
@@ -371,9 +377,16 @@ with the method that produces it, because the next fold moves these numbers.)
 
 **What came back byte-identical, exactly** (same commit pair): all twelve
 `expanded-failed` frames, all twelve `legacy-tabbed-open` frames, 11 of 12
-`legacy`, 9 of 12 `in-thread` (3 themes moved), and 85 of 96 tool-row frames — **11
-of those moved**, the worst `chat-tool-rows/screenshots/dracula.webp` at 95 px with a
-maximum channel delta of 5/255. The earlier sentence named `in-thread` and `legacy`
+`legacy`, 9 of 12 `in-thread` (3 themes moved), and 85 of the **96 tool-row frames
+present at the base** (`git ls-tree -r d7e40012d docs/evidence/chat-tool-rows | grep -c
+'\.webp$'`) — **11 of those moved**, all eleven inside the three directories this
+pass re-shot (`screenshots`, `screenshots-two`, `user-attachments`, 12 frames each:
+25 identical there, 11 moved, which is what makes the 36-frame set below). The
+largest of the eleven is `chat-tool-rows/user-attachments/sage.webp` at **2,948 px
+and a maximum channel delta of 13/255**; the frame this sentence used to call the
+worst, `screenshots/dracula.webp` at 95 px / 5/255, is the fifth largest — the name
+was carried over from the sentence it corrects, where it was the only moved frame
+(review round 4, R4-2 and R4-3). The earlier sentence named `in-thread` and `legacy`
 as byte-identical in the themes checked and spoke of "the one tool-row frame that
 moved": both were wrong, and are corrected here.
 
@@ -386,8 +399,13 @@ byte-comparing every frame this PR ships against its copy at that commit:
 
 | set | frames | byte-identical | changed |
 | --- | --- | --- | --- |
-| `chat-image-expand` | 132 | 108 | 24 |
-| `chat-tool-rows` | 144 | 108 | 36 |
+| `chat-image-expand` (the frames this PR ships in that directory) | 132 | 108 | 24 |
+| `chat-tool-rows` (**present at `fa5708b5a`**, not every frame at head) | 144 | 108 | 36 |
+
+`chat-tool-rows` holds 450 frames at this head, 306 of them added since the base;
+the 144 here are the ones present at `fa5708b5a`, which is the set the comparison is
+defined over — the same clause the fold-4 paragraph above needs, and the reason its
+`88 = 63 + 25` and `80 = 69 + 11` close (review round 4, R4-3).
 
 **Twelve of those 24 moved frames are the fix itself, not the fold.** Round 3's
 two streams (UX U3-1, QA Q3-1) found the round-2 reveal on `has-[[data-state=open]]`
@@ -404,7 +422,7 @@ magick <frame> -crop 20x16+1059+79 +repage -colorspace gray -threshold 15% -form
 at rest            legacy              0 lit px
 focused            legacy-tabbed      13 lit px        <- the ring and the glyph
 menu open, PRE-fix  fa5708b5a          0 lit px        <- U3-1: the trigger is gone
-menu open, POST-fix 43c9cd8cc         14 lit px        <- the fix, in the same box
+menu open, POST-fix da0893bca         14 lit px        <- the fix, in the same box
 ```
 
 The focused frame reads 13 px in **both** trees, which is the control that says the
@@ -415,7 +433,25 @@ nothing — design D3-1). The remaining twelve moved frames (`in-thread` 5,
 `legacy-hovered` 5, `legacy` 2) are main's own range re-rendering this surface, and
 every other frame in both sets came back byte-identical to the pixel.
 
-The fourteen light-theme frames of that tuple read differently under the same
-threshold because their ground is light rather than dark, so the discriminating
-measurement here is the dark theme's; the frames themselves are all committed and
-a reader can crop any of them with the command above.
+**Which themes that lane measurement is checkable in, and which it is not.** The
+tuple holds twelve frames, three of them light themes. Running the command above
+across all twelve, in the four states:
+
+| themes | at rest | focused | menu open PRE-fix | menu open POST-fix |
+| --- | --- | --- | --- | --- |
+| `localOperatorDark` | 0 | 13 | 0 | **14** |
+| `dune`, `neon`, `obsidian`, `synth` | 0 | 12-13 | 0 | 12 |
+| `radient`, `tokyoNight` | 0 | 15, 20 | 0 | 18, 24 |
+| `iceberg`, `localOperatorLight`, `sage` | 320 | 320 | 320 | 320 |
+| `dracula` | 320 | 311 | 320 | 315 |
+| `monokai` | 320 | 274 | 320 | 305 |
+
+So the number is checkable in the seven themes whose ground sits below the 15%
+threshold, `localOperatorDark` chief among them, and saturates in the other five:
+three because a light ground clears the threshold everywhere, and **`dracula` and
+`monokai` because a dark ground can clear it too** — there the lane reads 320/320 in
+*every* state, which would report a hidden control as fully painted. That is the
+reading direction this whole block guards against, so it is named rather than left
+for a reader to trip over (design round 4, D4-2). Every frame is committed and any
+of them can be cropped with the command above; the discriminating measurement is the
+one in a theme from the first three rows.

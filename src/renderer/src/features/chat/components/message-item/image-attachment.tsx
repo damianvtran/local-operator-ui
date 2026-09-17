@@ -322,7 +322,7 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					 * `group-hover` and `group-focus-within` bring it back, so being
 					 * hidden and being unreachable stopped being the same thing.
 					 * **Thirteen files under `src/renderer/src` carry
-					 * `group-focus-within`**, this one included, and the nine above are
+					 * `group-focus-within`**, this one included, and the ten above are
 					 * the nearest analogues. The count and the names are greppable rather
 					 * than recalled, and the list has now been corrected twice for exactly
 					 * that reason: round 2 dropped `message-controls.tsx` (no such class),
