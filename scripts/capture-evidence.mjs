@@ -1461,6 +1461,52 @@ export const STORIES = [
 	   the same three widths as `activity-widths` plus 220, the column floor the wake
 	   change was specified against. */
 	["chat-composer-status-row--wake-widths", 1000, 1200],
+	/* THE DISMISS AFFORDANCES and the loop chip (this change): the resting states are
+	   the two stories below, and the REVEALED states are the rig's own inputs, because
+	   both `:hover` and `:focus-within` are browser state that no story can force —
+	   the same arrangement `activity-stacked` uses for its own two states. Three tuples
+	   per story and not two: the goal's dismiss is reachable two ways (the chip is
+	   focused, or the control itself is), and the second is the one that says the
+	   affordance stays revealed while it holds focus, which is what makes it usable
+	   without a pointer at all. */
+	["chat-composer-status-row--goal-clear", 1000, 760],
+	[
+		"chat-composer-status-row--goal-clear",
+		1000,
+		760,
+		{
+			dir: "goal-clear-hovered",
+			hover: "[data-status-goal] button[aria-expanded]",
+		},
+	],
+	[
+		"chat-composer-status-row--goal-clear",
+		1000,
+		760,
+		{
+			dir: "goal-clear-focused",
+			tabTo: "[data-status-goal] button[aria-expanded]",
+		},
+	],
+	[
+		"chat-composer-status-row--goal-clear",
+		1000,
+		760,
+		{ dir: "goal-clear-dismiss-focused", tabTo: "[data-status-goal-dismiss]" },
+	],
+	["chat-composer-status-row--loop-chip", 1000, 1000],
+	[
+		"chat-composer-status-row--loop-chip",
+		1000,
+		1000,
+		{ dir: "loop-clear-hovered", hover: "[data-status-loop]" },
+	],
+	[
+		"chat-composer-status-row--loop-chip",
+		1000,
+		1000,
+		{ dir: "loop-clear-focused", tabTo: "[data-status-loop-dismiss]" },
+	],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
 	   0.01ms rather than cancelling anything, so the frame has to show that the
