@@ -42,33 +42,38 @@ Driver: `scripts/session-switch-latency.mjs` (the page it drives is
 `scripts/session-switch.tsx`, which mounts the SHIPPED `ChatPage` behind the
 scripted owner in `scripts/session-switch-bridge.ts`).
 
-**No arm is evidence by being green.** Four of these discriminate and the rest are
-regression guards, and which is which is measured, not asserted: every arm was run
-on a tree with the deferral put back (`navigate` returned to the read's answer, the
-only change), and the runs are recorded below with the configuration each used.
+**No arm is evidence by being green.** Some of these discriminate and the rest are
+regression guards, and which is which is measured rather than asserted: every arm was
+run on a tree with the deferral put back (`navigate` returned to the read's answer,
+the only change), and the runs are recorded below with the configuration each used.
+Two of them are RELIABLE discriminators (`--race-write` and the write-gated fuzz
+failures, each reproducing on every run); one can fail on an unfixed shape without
+always doing so (`--race-palette`), and is labelled that way rather than promoted.
 
 - `--race` — two clicks, A and then B, `--race-gap` ms apart, with per-session hop
   latencies (`--race-get-a/b`, and the same for history and stream). **A regression
   guard**: it PASSES on the tree with the deferral put back, at both latency pairs
   tried, because a deadline can only race the renderer's frame.
 - `--race-write` — the same two clicks with the second dispatched AT the first
-  one's URL write. **Discriminating**: on the deferred tree at
+  one's URL write. **A reliable discriminator**: on the deferred tree at
   `--race-get-a=0 --race-get-b=900` it is 4 FAIL of 6 claims (the settled view is
-  the FIRST click's conversation) and 6 PASS on this one. Its discriminating
-  configuration puts the SLOW hop on the second click: the late write belongs to
-  the click the user made first.
+  the FIRST click's conversation) and 6 PASS on this one, and it failed the same way
+  on every run it was tried. Its discriminating configuration puts the SLOW hop on
+  the second click: the late write belongs to the click the user made first.
 - `--race-palette` — the same write-gated race with the palette on the near side,
-  the far side and both. **Discriminating**, and it drives the PALETTE COMPONENT:
-  the harness mounts the real `CommandPalette` and the pick is a click on the
-  palette's own `role="option"` row, so `command-palette.tsx`'s handler runs (the
-  call-site log in its output shows `… <- at openConversation <- (command-palette.tsx…)`).
-  An earlier version called the rule directly and reported the palette as covered;
-  on a tree where the palette still deferred, that version was 3/3 PASS, which is
-  what a claim like that needs to be checked against. **Discriminating at the
-  DEFAULT latencies** (600/40): on the deferred tree 1 of its 3 cases fails
-  (`palette A, then palette B`, settling on the boot session). At
-  `--race-get-a=0 --race-get-b=900` it is 3/3 on the deferred tree, which is why
-  both configurations are recorded instead of one being called "the" run.
+  the far side and both, and it drives the PALETTE COMPONENT: the harness mounts the
+  real `CommandPalette` and the pick is a click on the palette's own `role="option"`
+  row, so `command-palette.tsx`'s handler runs (the call-site log in its output shows
+  `… <- at openConversation <- (command-palette.tsx…)`). An earlier version called
+  the rule directly and reported the palette as covered; on a tree where the palette
+  still deferred, that version was 3/3 PASS, which is what a claim like that needs to
+  be checked against. **Its discrimination is INTERMITTENT, and is not the proof**:
+  independent QA measured 3 failures in 10 runs on unfixed shapes (1 in 6 on the
+  rule-deferral tree, 2 in 4 on the branch-point tree) and none on this head, and the
+  author's own single run at the default latencies caught one case. It is reported
+  here as a run that CAN fail on an unfixed shape, not as a reliable discriminator;
+  the reliable ones are `--race-write` and the write-gated fuzz failures below, both
+  of which reproduced on every run they were tried.
 - `--race-stage-draft` — the New-chat gesture (`stageDraft` + `/chat`, as `app.tsx`
   performs it) staged inside a switch's guard read, by row and by palette.
   **Discriminating against the refusal**, which is the defect it is for: 2/2 FAIL on
@@ -81,11 +86,13 @@ only change), and the runs are recorded below with the configuration each used.
   driver prints each trial's gate, and the distinction is measured: on the deferred
   tree all **thirteen deadline-gated sequences PASS** in both configurations (a
   regression guard, not proof), and 18/20 settle correctly — every failure
-  write-gated, two in each configuration: `A -> B` and `A -> B -> A (palette,row,row)`
-  at `--race-get-a=0 --race-get-b=900`; `B -> B -> A` and the same three-click
+  write-gated, two in each configuration, the same two on both runs of each:
+  `A -> B` and `A -> B -> A (palette,row,row)` at
+  `--race-get-a=0 --race-get-b=900`; `B -> B -> A` and the same three-click
   palette chain at the defaults (600/40). Each latency pair discriminates a
   different sequence, which is why both are recorded rather than one being called
-  "the" configuration.
+  "the" configuration — and these two, not `--race-palette`, are what the README
+  leans on.
 
 Sequence: `scripts/session-switch.test.mjs` pins the store's ordering and the URL
 rule structurally — including an enumeration of every `/chat/<id>` write in the
