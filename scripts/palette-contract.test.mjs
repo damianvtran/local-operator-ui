@@ -312,25 +312,87 @@ test("the key listener owns the field's keys, not the dialog's", () => {
 const PALETTE_SOURCE =
 	"src/renderer/src/features/command-palette/components/command-palette.tsx";
 
-test("the close-time restore consults the caret rule, and the rail is its LAST door", () => {
+test("the close-time restore asks the caret rule BEFORE it moves the caret anywhere", () => {
+	/*
+	 * A DESTINATION PIN, not a statement-order curiosity (review round 1, MINOR
+	 * 2). What the old rule got wrong was not that it focused the rail - it was
+	 * that it focused a node without asking the question that knew about the view
+	 * move. So what this pins is the sequence: the rule is consulted, and only
+	 * then may anything be focused. A restore that focuses first and asks later
+	 * fails here whatever order its arms are written in.
+	 */
 	const palette = withoutComments(read(PALETTE_SOURCE));
 	const from = palette.indexOf("const restoreFocus = useCallback(");
 	assert.ok(from > -1, "the palette's close-time restore is gone");
 	const restore = palette.slice(from, palette.indexOf("}, []);", from));
 	const rule = restore.indexOf("closeTimeFocusOutcome({");
-	const handoff = restore.indexOf("handCaretToComposer()");
-	const trigger = restore.indexOf("[data-command-palette-trigger]");
 	assert.ok(
 		rule > -1,
 		"the restore must ask `closeTimeFocusOutcome`, not only 'is the captured node still connected' - the question that put focus on the rail",
 	);
+	const firstFocus = restore.indexOf(".focus()");
+	assert.ok(firstFocus > -1, "the restore no longer focuses anything at all");
 	assert.ok(
-		handoff > -1,
+		firstFocus > rule,
+		"nothing may be focused before the rule answers - a restore that focuses first is the rail door's defect with a rule bolted on beside it",
+	);
+});
+
+test("each of the rule's three caret outcomes reaches its own destination", () => {
+	/*
+	 * The outcomes are the rule's (`scripts/palette-focus.test.mjs` bundles the
+	 * eight cells); this is the other half of the contract - that the component
+	 * still routes each one somewhere, and somewhere DIFFERENT. Written as one
+	 * test because the claim is relational: `composer` hands over, `leave` moves
+	 * nothing, `captured` is the only arm that focuses a captured node, and the
+	 * rail's Search row is what is left when none of those applies.
+	 */
+	const palette = withoutComments(read(PALETTE_SOURCE));
+	const from = palette.indexOf("const restoreFocus = useCallback(");
+	assert.ok(from > -1, "the palette's close-time restore is gone");
+	const restore = palette.slice(from, palette.indexOf("}, []);", from));
+
+	const composerArm = restore.indexOf('if (outcome === "composer"');
+	const leaveArm = restore.indexOf('if (outcome === "leave")');
+	const capturedArm = restore.indexOf('if (outcome === "captured"');
+	assert.ok(
+		composerArm > -1,
 		"a moved view has to be able to hand the caret to the composer it mounted",
 	);
 	assert.ok(
-		trigger > rule,
-		"the rail's Search row is the fallback, so it must not be the first thing the restore does",
+		leaveArm > composerArm,
+		"the `leave` arm belongs after the hand-off",
+	);
+	assert.ok(
+		capturedArm > leaveArm,
+		"the captured-node restore is the last of the three",
+	);
+
+	assert.match(
+		restore.slice(composerArm, leaveArm),
+		/handCaretToComposer\(\)\) return;/,
+		"`composer` must be answered by the composer's own hand-off, and must return rather than falling through to the rail when the hand-off fails on its own terms",
+	);
+	assert.doesNotMatch(
+		restore.slice(leaveArm, capturedArm),
+		/\.focus\(\)/,
+		"`leave` means the caret is not moved: a `leave` arm that focuses is `captured` under another name",
+	);
+	assert.match(
+		restore.slice(capturedArm),
+		/previous\.focus\(\)/,
+		"`captured` is the arm that puts the caret back where it was",
+	);
+	assert.equal(
+		(restore.match(/previous\.focus\(\)/g) ?? []).length,
+		1,
+		"the captured node is focused in exactly one place, and it is behind the outcome that says so",
+	);
+
+	const trigger = restore.indexOf("[data-command-palette-trigger]");
+	assert.ok(
+		trigger > capturedArm,
+		"the rail's Search row is the fallback - reached after the rule's own arms, never before them",
 	);
 });
 

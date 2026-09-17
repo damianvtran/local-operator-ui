@@ -186,6 +186,22 @@ const CONTROLS = [
 		 * claim that the ink in use IS the exempt one - `EXEMPT_INK` in the loop
 		 * below. The composer keeps its boundary while it refuses, which is what
 		 * keeps the box visible as a box at exactly the moment its ink goes quiet.
+		 *
+		 * WHY THE EXEMPT INK IS RIGHT HERE, since a number this low deserves its
+		 * reason written down (design round 1, D2) and this row is where it becomes
+		 * visible: measured on the shipped palettes, the refusal ink is 2.52:1 in
+		 * the dark brand, 2.84:1 in the light one, median 2.55 across the 59, worst
+		 * 1.80 in `arctic` - and in the EMPTY refusal that ink carries the box's
+		 * only sentence ("This conversation is gone"). Two facts make it still
+		 * correct. The reader can RETRIEVE what is in the box: it keeps focus, and
+		 * its text stays readable, selectable and copyable, which is what `readOnly`
+		 * bought and what a `disabled` box could not give, so nothing is lost at
+		 * this contrast. And the state's MEANING is not carried by the box's ink:
+		 * the transcript above says the sentence in full ("This conversation is no
+		 * longer on this machine.", tied to the control by `aria-describedby`) and
+		 * holds the way out. A refusal that met 4.5:1 would stop reading as a
+		 * refusal, which is the reason `EXEMPT_INK` exists at all. No colour change
+		 * is implied: the ink is byte-identical to the base's `disabled` state.
 		 */
 		name: "composer (read-only)",
 		on: GROUNDS,

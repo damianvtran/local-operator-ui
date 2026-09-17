@@ -28,11 +28,16 @@
  * idiom `scripts/interrupt-control.test.mjs` relies on).
  */
 
-import { COMPOSER_TEXTAREA_SELECTOR, focusComposer } from "./composer-field";
+import { composerField, focusComposer } from "./composer-field";
 
 /** Who the caret belongs to when a close-time restore runs. */
 export type CloseFocusOutcome =
-	/** The element that had it is still here: put it back (the pre-existing rule). */
+	/**
+	 * The element that had it is still here: put it back (the pre-existing rule).
+	 *
+	 * ONLY for a close that did NOT move the view. A moved view never reaches
+	 * this outcome: see `closeTimeFocusOutcome`.
+	 */
 	| "captured"
 	/** The flow moved the view: the caret belongs in the composer it mounted. */
 	| "composer"
@@ -78,17 +83,36 @@ export const caretIsUntouched = (
  * the view from inside the palette (a session row, the New-chat row, any future
  * row that switches) must not each have to remember to set it.
  *
- * The ORDER of the arms is the rule:
+ * THE ORDER OF THE ARMS IS THE RULE, and the moved view decides FIRST.
  *
- * 1. a moved view whose caret nobody has claimed yet hands the caret to the
- *    composer the flow mounted;
- * 2. otherwise, if the captured node is still usable, put the caret back where
- *    it was - which is the whole of the pre-existing behaviour, and the reason
- *    the Escape path and the rail door cannot regress;
+ * 1. `viewMoved` - and a moved view NEVER answers `captured`. When the view
+ *    moved, the captured node is stale by construction in the only sense that
+ *    matters here: it belongs to the pane the user has just left. Whether it is
+ *    still CONNECTED is beside the point, and asking that first is how the rail
+ *    door kept the defect. Open the palette by clicking the sidebar's Search
+ *    row, pick a conversation: the node captured at open is that rail button,
+ *    and the button survives the switch, so a `capturedUsable`-first rule put
+ *    the caret back on the rail 8.6 ms after the destination composer had
+ *    focused ITSELF - and every keystroke afterwards reached a button. So:
+ *    - nobody has claimed the caret (`caretUntouched`) -> `composer`, the box
+ *      the flow mounted takes it, with the rail as `handCaretToComposer`'s own
+ *      fallback when there is nothing there yet;
+ *    - the incoming composer (or any other field) already took it -> `leave`,
+ *      which is the measured ordering in every entrance: the composer focuses
+ *      itself 8-13 ms BEFORE this restore runs, and overriding that is the
+ *      defect rather than the fix.
+ * 2. a close that did NOT move the view is the pre-existing rule, byte for
+ *    byte: the captured node is still usable -> `captured`, put it back. This
+ *    is what preserves the Escape contract and the panel-exit path, and it is
+ *    the arm the rail door used to (wrongly) fall into from a moved view.
  * 3. otherwise, if something else holds the caret, move nothing. This is
  *    strictly FEWER focus moves than the rule it replaces, so it cannot
  *    regress the unproven dialogs that can mount over the palette;
  * 4. otherwise fall through to the rail's Search row, never the body.
+ *
+ * The eight cells of the table are pinned in `scripts/palette-focus.test.mjs`,
+ * including `{viewMoved: true, capturedUsable: true, caretUntouched: false}` -
+ * the rail door's cell, and the one the `capturedUsable`-first rule got wrong.
  */
 export const closeTimeFocusOutcome = (input: {
 	viewMoved: boolean;
@@ -96,7 +120,7 @@ export const closeTimeFocusOutcome = (input: {
 	capturedUsable: boolean;
 	caretUntouched: boolean;
 }): CloseFocusOutcome => {
-	if (input.viewMoved && input.caretUntouched) return "composer";
+	if (input.viewMoved) return input.caretUntouched ? "composer" : "leave";
 	if (input.capturedUsable) return "captured";
 	if (!input.caretUntouched) return "leave";
 	return "trigger";
@@ -117,11 +141,29 @@ export const closeTimeFocusOutcome = (input: {
  * which is the same door the pre-existing rule fell back to. It is not a loss:
  * a mounting composer's own self-focus effect defers only to a focused
  * INPUT/TEXTAREA, and a button is neither.
+ *
+ * THE CHECK AND THE HAND-OFF NAME THE SAME NODE, through `composerField()`
+ * (review round 1, NIT 1). They used to disagree: this read the document for
+ * the first `textarea[aria-label="Message"]` and then focused whatever the
+ * REGISTRY held, so with a second composer mounted anywhere - a story, a rig -
+ * it could report `false` about a focus that had landed, sending the caller to
+ * the rail for no reason. The registry is the single source of "the composer",
+ * and it is the only one that can be focused by name.
+ *
+ * WHERE A REFUSED BOX MAY TAKE THE CARET, AND WHERE IT MAY NOT (UX round 1,
+ * U4). This helper is the gesture's restore: the user picked a row and the flow
+ * moved the view, so the caret has to end somewhere sensible, and `readOnly` is
+ * deliberately not a bail because the refused box holds the reader's own words.
+ * The composer's own MOUNT self-focus keeps its `!isInputDisabled` gate, and the
+ * rule those two halves state is: a gesture-driven restore may land in a box
+ * that refuses input, an UNPROMPTED focus grab may not - pulling the caret into
+ * a box the app has just declared inert is the silent steal this module exists
+ * to remove, and the gate is what stops a refusal landing mid-read from taking
+ * the caret out of the transcript. It is the same rule from every door; what
+ * differs is only whether a gesture asked for the caret.
  */
 export const handCaretToComposer = (): boolean => {
-	const field = document.querySelector<HTMLTextAreaElement>(
-		COMPOSER_TEXTAREA_SELECTOR,
-	);
+	const field = composerField();
 	if (!field || field.disabled) return false;
 	focusComposer();
 	return document.activeElement === field;

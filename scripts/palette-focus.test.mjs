@@ -135,6 +135,97 @@ test("a captured node that is still usable wins over a caret someone else took",
 	);
 });
 
+test("the rail door: a captured node that SURVIVED the switch still loses to the moved view", () => {
+	/*
+	 * THE CELL THIS RULE WAS REWRITTEN FOR (review round 1, MAJOR 1; QA round 1,
+	 * Q-1; UX round 1, U1). The palette's only door whose captured node outlives
+	 * the flow is the rail's Search row: open the palette by CLICKING that row,
+	 * pick a conversation, and the button the palette captured is still connected
+	 * (it is in the shell, not in the pane that was replaced). So the old
+	 * `capturedUsable`-first order answered `captured` here, put the caret back on
+	 * a button 8.6 ms after the destination composer had focused itself, and the
+	 * next keystroke reached nothing - measured, with the new `composer` arm
+	 * firing ZERO times across all twelve pick runs.
+	 *
+	 * Both cells of the cell pair are pinned, because they are the two states that
+	 * door can be in when the restore runs: the composer has not taken the caret
+	 * yet (hand it over), or it already has (leave it alone). Neither may be
+	 * `captured`, and `captured` is what the old rule returned for both.
+	 */
+	assert.equal(
+		closeTimeFocusOutcome({
+			viewMoved: true,
+			capturedUsable: true,
+			caretUntouched: true,
+		}),
+		"composer",
+		"the rail button is stale by construction once the view moved - it belongs to the pane the user left",
+	);
+	assert.equal(
+		closeTimeFocusOutcome({
+			viewMoved: true,
+			capturedUsable: true,
+			caretUntouched: false,
+		}),
+		"leave",
+		"the incoming composer focused itself before this restore runs, so it keeps what it has",
+	);
+});
+
+test("the table is total: every observation triple maps to one outcome", () => {
+	/*
+	 * The eight cells, pinned exhaustively rather than one scenario at a time.
+	 * Three booleans is small enough to enumerate, and enumerating them is what
+	 * makes a reversal anywhere in the arm order fail HERE rather than on a rail
+	 * door a browser run has to be pointed at. `captured` appears for NO row with
+	 * `viewMoved: true` - the fact this rule exists to state.
+	 */
+	const table = [
+		[
+			{ viewMoved: false, capturedUsable: false, caretUntouched: false },
+			"leave",
+		],
+		[
+			{ viewMoved: false, capturedUsable: false, caretUntouched: true },
+			"trigger",
+		],
+		[
+			{ viewMoved: false, capturedUsable: true, caretUntouched: false },
+			"captured",
+		],
+		[
+			{ viewMoved: false, capturedUsable: true, caretUntouched: true },
+			"captured",
+		],
+		[
+			{ viewMoved: true, capturedUsable: false, caretUntouched: false },
+			"leave",
+		],
+		[
+			{ viewMoved: true, capturedUsable: false, caretUntouched: true },
+			"composer",
+		],
+		[{ viewMoved: true, capturedUsable: true, caretUntouched: false }, "leave"],
+		[
+			{ viewMoved: true, capturedUsable: true, caretUntouched: true },
+			"composer",
+		],
+	];
+	for (const [input, expected] of table) {
+		assert.equal(
+			closeTimeFocusOutcome(input),
+			expected,
+			`viewMoved=${input.viewMoved} capturedUsable=${input.capturedUsable} caretUntouched=${input.caretUntouched}`,
+		);
+	}
+	assert.ok(
+		table.every(
+			([input, outcome]) => !(input.viewMoved && outcome === "captured"),
+		),
+		"a moved view may never resolve to `captured`: the captured node belongs to the pane the gesture left",
+	);
+});
+
 /* ------------------------------------------------------------------ */
 /* "Is the caret still where the palette left it?"                      */
 /* ------------------------------------------------------------------ */

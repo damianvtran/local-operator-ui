@@ -442,9 +442,19 @@ export const CommandPalette: FC = () => {
 	 * the captured node is left in the pane the user just left, and the old
 	 * `isConnected` question then answered "the captured element is gone" by
 	 * focusing the rail - 8-13 ms after the incoming composer had focused ITSELF,
-	 * which is the reported "I type and nothing happens". A close that moved the
-	 * view yields to the composer that close mounted, and the four outcomes for
-	 * the three orderings of that race are in `composer-caret.ts`.
+	 * which is the reported "I type and nothing happens".
+	 *
+	 * A MOVED VIEW NEVER TAKES THE `captured` OUTCOME (review round 1, MAJOR 1).
+	 * The first version of this rule only handed the caret over when the caret was
+	 * untouched, and asked about the captured node first otherwise - and the rail is
+	 * the door that punishes it, because the node captured there is the rail's own
+	 * Search button, which survives the switch. So a pick from that door left the
+	 * caret on the rail while its composer had already focused itself (measured: the
+	 * new `composer` arm fired ZERO times across all twelve QA pick runs). The rule
+	 * now decides on the view move FIRST and never answers `captured` for it: an
+	 * unclaimed caret goes to the composer the close mounted, and a caret something
+	 * else already took is left alone. All eight cells are in `composer-caret.ts`,
+	 * with the outcomes they produce.
 	 *
 	 * Note what this does NOT do: it never moves the caret on a background event.
 	 * The rule is consulted only here, from Radix's close-time auto-focus, i.e.
