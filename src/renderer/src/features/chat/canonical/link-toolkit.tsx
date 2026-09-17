@@ -224,6 +224,16 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 			 */
 			onKeyDown={(event) => {
 				if (event.key !== "Escape" || event.defaultPrevented) return;
+				/*
+				 * THE HIGHLIGHT GOES FIRST when one is what raised this toolbar, because
+				 * clearing only the row's subject would leave the reader looking at a
+				 * toolbar that comes straight back: the subject is recomputed from the
+				 * live highlight, and a highlight inside this link IS the subject. This
+				 * is the same thing the turn's Quote control does on Escape, and the
+				 * operator's ask - that the strip goes away "instead of sticking
+				 * around" - is what it is for.
+				 */
+				window.getSelection()?.removeAllRanges();
 				const anchor = subject as HTMLElement;
 				onDismiss();
 				anchor.focus?.();

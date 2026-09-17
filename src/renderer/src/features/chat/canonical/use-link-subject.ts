@@ -176,11 +176,15 @@ export function useLinkSubject(turnRef: {
 			if (!link || !turn.contains(link)) return;
 			event.preventDefault();
 			reveal(link);
+			/*
+			 * The first button rather than merely revealed: a reader who reached for this
+			 * key is asking to ACT, and Tab would otherwise be the next thing they have
+			 * to press. The commit has happened by the next frame, because React flushes
+			 * a discrete event's state update before it yields.
+			 */
 			requestAnimationFrame(() => {
 				turn
-					.querySelector<HTMLButtonElement>(
-						`[${LINK_TOOLBAR_ATTR}] button, button[${LINK_TOOLBAR_ATTR}]`,
-					)
+					.querySelector<HTMLButtonElement>(`[${LINK_TOOLBAR_ATTR}] button`)
 					?.focus();
 			});
 		};
