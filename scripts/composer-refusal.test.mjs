@@ -87,18 +87,28 @@ test("the refused state still steps colour, in the read-only variant", () => {
 	);
 });
 
-test("every path that mutates the composer or submits it answers to the refusal", () => {
+test("every path that TYPES INTO or SUBMITS the composer answers to the refusal", () => {
 	/*
 	 * THE COVERAGE THE COMMENT USED TO CLAIM (review round 1, MAJOR 2; design
 	 * round 1, D3; UX round 1, U2). `readOnly` closes exactly one path - the
-	 * textarea's own edit - and every OTHER way into the box is a separate
-	 * handler that had no notion of the refusal: a press on a `type="submit"`
-	 * control (`handleSubmit`, the form's, which a click reaches with no keydown
-	 * to refuse), the slash popup's pick (`applyPlan`), the dictation button and
-	 * the speech-to-text manager's own gate (both `setNewMessage`), and paste -
-	 * which `readOnly` newly made REACHABLE, because a read-only textarea is
-	 * still a paste target and neither branch below is an edit the attribute can
-	 * suppress.
+	 * textarea's own edit - and every OTHER path a TYPE or SUBMIT gesture can
+	 * reach is a separate handler that had no notion of the refusal: a press on a
+	 * `type="submit"` control (`handleSubmit`, the form's, which a click reaches
+	 * with no keydown to refuse), the slash popup's pick (`applyPlan`), the
+	 * dictation button and the speech-to-text manager's own gate (both
+	 * `setNewMessage`), and paste - which `readOnly` newly made REACHABLE,
+	 * because a read-only textarea is still a paste target and neither branch
+	 * below is an edit the attribute can suppress.
+	 *
+	 * "TYPES INTO OR SUBMITS" IS DELIBERATELY NARROWER THAN "MUTATES" (review
+	 * round 2, MINOR 3). Three writers into this box are NOT covered and must not
+	 * be read as covered: the composer alert's Restore and Discard (the reader's
+	 * own explicit intent over the words the refusal is holding) and the
+	 * store-to-box adoption effect (the draft-identity family the PR excludes by
+	 * design). None of the three is a type or submit gesture, none submits, and
+	 * a refusal that swallowed them would destroy the text the state exists to
+	 * keep - so the claim here is the narrower one, and it is true of every path
+	 * it names.
 	 *
 	 * Each is pinned where it lives, so a later edit that adds a path or drops a
 	 * term has to come here and say so.
