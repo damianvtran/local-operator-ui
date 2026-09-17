@@ -1240,14 +1240,19 @@ test("a slow approach inside the zone is spent at its input cadence, not at the 
 		1080,
 	);
 	assert.equal(outside.action, "none");
-	assert.equal(outside.state.armed, false, "stale demand dropped, not retained");
+	assert.equal(
+		outside.state.armed,
+		false,
+		"stale demand dropped, not retained",
+	);
 
 	// And a reader who is not moving at all in the same place keeps the debounce:
 	// the trigger change is about motion, never about position.
 	let still = initialPagingState();
-	for (let i = 0; i < 5; i++) still = wheelUp(still, 1000 + i * 10, {
-		travelVelocityPxPerMs: 0,
-	});
+	for (let i = 0; i < 5; i++)
+		still = wheelUp(still, 1000 + i * 10, {
+			travelVelocityPxPerMs: 0,
+		});
 	assert.equal(
 		decide(still, inside, 1080).action,
 		"none",
