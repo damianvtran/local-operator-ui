@@ -246,6 +246,15 @@ const seedRememberedListing = (seeded: Scenario) => {
 usePublishedListingsStore.setState({ listings: {} });
 
 /**
+ * How long an awaited state must survive before the shutter is released.
+ *
+ * Longer than the availability line's own 400 ms debounce, so a re-armed window
+ * is inside the beat this waits out, and short enough that sixteen stories pay
+ * it without moving a sweep's cost.
+ */
+const SETTLE_HOLD_MS = 800;
+
+/**
  * Waits for text to appear, so a `play` finishes on the state under test rather
  * than on whatever happened to have painted. A frame captured mid-flight would be
  * evidence of a state nobody asked about.
@@ -295,18 +304,47 @@ const submitPublication = async (): Promise<void> => {
 };
 
 /**
- * Holds the shutter until the named text is on screen, without touching the form.
+ * Holds the shutter until the named text is on screen AND STAYS there.
  *
  * The states that need this are the ones an ANSWER produces rather than an
  * action: the availability line is debounced 400 ms and then fetched, so a frame
  * taken as soon as the story "drew" lands inside the debounce window and shows
  * the dialog with no answer under the name field at all. The first capture of
  * `default` did exactly that, which is how this helper came to exist.
+ *
+ * Why it now waits for the state to HOLD rather than merely to appear. Appearing
+ * is not the same as having settled, and the difference is the whole of a
+ * measured flake: two passes of this family on the same commit disagreed about
+ * whether `default/localOperatorDark` and `published/localOperatorDark` carried
+ * the courtesy line, and the committed set this branch shipped carries the same
+ * disagreement one theme along. Every one of those frames was taken on a run
+ * whose `play` had already seen the text.
+ *
+ * The re-ask is what makes that possible: the answer's own inputs are the name
+ * field (debounced, so a re-seeded or re-typed value re-arms the 400 ms window)
+ * and an enabled flag, so the line can go back to "no answer" after it has been
+ * drawn, and the shutter - which waits out animations after the play returns -
+ * can land in the gap. Nothing about that is visible from the text alone, so the
+ * helper asks again after a beat: the state it photographs is the one that was
+ * still on screen a beat later, not the first one that flicked past.
+ *
+ * It fails loudly rather than quietly when the state will not hold, because the
+ * alternative - releasing the shutter on a state that is on its way out - is the
+ * unreproducible frame this whole apparatus exists to prevent.
  */
 const settleOn = (text: string) => async (): Promise<void> => {
 	document.documentElement.dataset.capturePending = "1";
 	try {
-		await waitForText(document.body, text);
+		const deadline = Date.now() + 20_000;
+		for (;;) {
+			await waitForText(document.body, text);
+			await new Promise((resolve) => setTimeout(resolve, SETTLE_HOLD_MS));
+			if ((document.body.textContent ?? "").includes(text)) return;
+			if (Date.now() > deadline)
+				throw new Error(
+					`the state never held for ${SETTLE_HOLD_MS} ms: ${text}`,
+				);
+		}
 	} finally {
 		delete document.documentElement.dataset.capturePending;
 	}
