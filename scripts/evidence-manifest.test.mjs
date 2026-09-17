@@ -13,6 +13,7 @@ import { after, test } from "node:test";
 import { partialAddedFields, partialFrameCount } from "./capture-evidence.mjs";
 import {
 	citationAncestryFailures,
+	countsMeanFailures,
 	frames as frameFiles,
 	partialCaptureFailures,
 	provenanceFailures,
@@ -216,8 +217,10 @@ test("declared supplementary sets are excluded from the swept count", () => {
  * pass or fail on which commits happen to exist today.
  */
 const fakeGit =
-	({ resolvable = [], reachable = [], src, scripts }) =>
+	({ resolvable = [], reachable = [], src, scripts, show }) =>
 	(args) => {
+		// `show` is the capture script both count checks read their literals from.
+		if (args[0] === "show") return show ?? null;
 		if (args[0] === "rev-parse" && args[1] === "--quiet")
 			return resolvable.includes(args[3].replace("^{commit}", ""))
 				? args[3]
@@ -788,3 +791,122 @@ test(
 		);
 	},
 );
+
+/* ---- the prose beside the counts ---------------------------------------- */
+
+/*
+ * `countsMean` explains `frames`, `surfaces` and `themes`, and it is what a
+ * reader checks a fold against - while the fields beside it are guarded and the
+ * prose was not. It went stale at three consecutive folds (round 1 R5, round 2
+ * R2-1, round 3 R3-1), the third time in the commit that moved the stamps, so the
+ * guard below derives the same numbers from the same walk and reads the
+ * paragraph.
+ *
+ * These cells are what makes THAT guard falsifiable rather than decorative: a
+ * paragraph the check cannot read has to be a failure, not a pass by omission,
+ * because "no numbers found" is exactly the state a fold leaves behind when it
+ * re-writes the field and forgets the sentence around it.
+ */
+
+/** A capture script with a known STORIES/THEMES literal, as `show` returns it. */
+const capture = (stories) =>
+	`const STORIES = [\n${[...Array(stories)]
+		.map((_, i) => `\t["story-${i}"],`)
+		.join("\n")}\n];\nconst THEMES = [\n\t"localOperatorDark",\n];\n`;
+
+const COUNTS_TREE = tree({ "outside-a": 3, "declared-b": 2 });
+const countsGit = fakeGit({ show: capture(2) });
+
+/** A manifest whose `countsMean` reads the numbers of `COUNTS_TREE`. */
+const countsManifest = ({ framesProse = "", surfacesProse = "" } = {}) => ({
+	frames: 3,
+	surfaces: 2,
+	themes: 1,
+	supplementary: [{ path: "declared-b" }],
+	countsMean: {
+		frames: framesProse,
+		surfaces: surfacesProse,
+		themes:
+			"RE-DERIVED FOR THIS FOLD: 1 theme names in the `THEMES` literal, counted the same way.",
+	},
+});
+
+const FRAMES_LEADING =
+	"RE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `<base>`): 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
+
+test("a countsMean paragraph leading with the walk's numbers passes", () => {
+	const manifest = countsManifest({
+		framesProse: FRAMES_LEADING,
+		surfacesProse:
+			"RE-DERIVED FOR THIS FOLD: 2 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
+	});
+	assert.deepEqual(countsMeanFailures(manifest, countsGit, COUNTS_TREE), []);
+});
+
+test("a paragraph left behind by a fold fails, and carries the sentence to paste", () => {
+	const manifest = countsManifest({
+		framesProse: FRAMES_LEADING.replace("3 committed", "2 committed").replace(
+			"of 5 on disk (2 of them",
+			"of 4 on disk (2 of them",
+		),
+	});
+	const [failure] = countsMeanFailures(manifest, countsGit, COUNTS_TREE);
+	assert.match(failure, /countsMean\.frames/);
+	assert.match(failure, /the walk finds 3/);
+	assert.match(
+		failure,
+		/Lead the field with: "RE-DERIVED FOR THIS FOLD \(this branch folded onto `origin\/main` = `<base>`\): 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/,
+		"the message has to carry the reading the fold author pastes, or the next fold solves it by hand again",
+	);
+});
+
+test("a paragraph with no reading in it fails rather than passing by omission", () => {
+	// The state a fold leaves behind when it re-writes the field and forgets the
+	// sentence around it: nothing to compare, and silence would be a pass.
+	const manifest = countsManifest({
+		framesProse:
+			"RE-DERIVED FOR THIS FOLD: the counts beside this note describe the tree that ships.",
+	});
+	const [failure] = countsMeanFailures(manifest, countsGit, COUNTS_TREE);
+	assert.match(failure, /countsMean\.frames/);
+	assert.match(failure, /nothing this check can read/);
+});
+
+test("the older paragraphs under the leading one are not this tree's to answer for", () => {
+	/*
+	 * Every paragraph below the first says in its own words that it describes an
+	 * older tree. Demanding this tree's numbers of them would force the history to
+	 * be deleted rather than kept, which is the practice `citationConvention` group
+	 * (4) protects - so only the leading paragraph is checked.
+	 */
+	const manifest = countsManifest({
+		framesProse: `${FRAMES_LEADING}\n\nRE-DERIVED FOR THE SECOND FOLD: 2 committed WebP files outside the 1 declared supplementary sets below, of 4 on disk (2 of them inside the sets).`,
+		surfacesProse:
+			"RE-DERIVED FOR THIS FOLD: 2 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
+	});
+	assert.deepEqual(countsMeanFailures(manifest, countsGit, COUNTS_TREE), []);
+});
+
+test("a stale surfaces paragraph fails on the literal the field names", () => {
+	const manifest = countsManifest({
+		framesProse: FRAMES_LEADING,
+		surfacesProse:
+			"RE-DERIVED FOR THE FIFTH FOLD: 1 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
+	});
+	const [failure] = countsMeanFailures(manifest, countsGit, COUNTS_TREE);
+	assert.match(failure, /countsMean\.surfaces/);
+	assert.match(failure, /the walk finds 2/);
+});
+
+test("a manifest with no countsMean is not this guard's failure", () => {
+	// The fixture manifests other cells build carry no prose at all; a missing
+	// field is `stampFailures`' business, not a stale paragraph.
+	assert.deepEqual(
+		countsMeanFailures(
+			{ frames: 3, supplementary: [] },
+			countsGit,
+			COUNTS_TREE,
+		),
+		[],
+	);
+});

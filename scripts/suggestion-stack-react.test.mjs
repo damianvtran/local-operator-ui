@@ -38,7 +38,20 @@ const bundle = await build({
 	platform: "node",
 	packages: "external",
 	jsx: "automatic",
-	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
+	/*
+	 * BOTH aliases the renderer's own bundler declares for this graph. `@shared`
+	 * was the only one this test needed while its entries reached the chat feature
+	 * by RELATIVE path - and `use-message-input` now imports the canonical store
+	 * for the predicate its held-claim copy reads, which pulls in
+	 * `use-canonical-session` and with it three `@features/...` specifiers. With
+	 * `packages: "external"` an unaliased bare specifier is left in the output and
+	 * Node cannot resolve it, so the suite failed at import rather than anywhere
+	 * near the behaviour it tests (PR #307's second remediation round).
+	 */
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+	},
 	write: false,
 });
 const bundlePath = new URL(
@@ -71,7 +84,20 @@ const writeBundle = await build({
 	platform: "node",
 	packages: "external",
 	jsx: "automatic",
-	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
+	/*
+	 * BOTH aliases the renderer's own bundler declares for this graph. `@shared`
+	 * was the only one this test needed while its entries reached the chat feature
+	 * by RELATIVE path - and `use-message-input` now imports the canonical store
+	 * for the predicate its held-claim copy reads, which pulls in
+	 * `use-canonical-session` and with it three `@features/...` specifiers. With
+	 * `packages: "external"` an unaliased bare specifier is left in the output and
+	 * Node cannot resolve it, so the suite failed at import rather than anywhere
+	 * near the behaviour it tests (PR #307's second remediation round).
+	 */
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+	},
 	write: false,
 });
 const writeBundlePath = new URL(
