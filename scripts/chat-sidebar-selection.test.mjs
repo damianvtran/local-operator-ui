@@ -264,18 +264,17 @@ const CURRENT = [
 		what: "the selected conversation",
 		file: SIDEBAR,
 		/*
-		 * Anchored on the row's own tour tag rather than on its predicate: the
-		 * predicate is named ONCE (`isCurrent`) because the ground and
-		 * `aria-current` both read it, so it no longer sits inside this element's
-		 * `cn(...)` for a backward search to find.
+		 * ANCHORED ON THE BUTTON'S OWN CLASS EXPRESSION, not on the predicate: the
+		 * predicate is declared once now (review round 1, A7) and the row reads the
+		 * name, so the element to resolve is the one carrying `rowStyle`.
 		 */
 		expression: () =>
-			expressionAfter(SIDEBAR, 'data-tour-tag="chat-session-row"'),
+			expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
 		stubs: {
 			rowStyle,
 			rowCurrent,
 			nested: false,
-			isCurrent: true,
+			current: true,
 		},
 		ground: true,
 	},
@@ -648,48 +647,39 @@ test("no current-row class literal in either panel is on the wash", () => {
 
 test("the selected row's mark and its aria-current read the same terms", () => {
 	const source = code.get(SIDEBAR);
-	const declared = source.indexOf("const isCurrent =");
-	assert.notEqual(
-		declared,
-		-1,
-		"the session row no longer names its current-row predicate, so the ground, the edge and `aria-current` are written out separately and can disagree",
+	/*
+	 * THE PREDICATE IS NAMED ONCE, AND THAT IS THE PROPERTY (review round 1, A7).
+	 * It used to be written out at the wrapper, at the button and at the mark — and
+	 * the mark's own copy is what let it paint `hover:bg-elevated` over the selected
+	 * row's ground while the sidebar's comment claimed it dropped the fill there.
+	 * `current` is now the one read, so this test asserts BOTH halves of the old
+	 * property on the name: the declaration carries the two terms, `aria-current`
+	 * and the row's ground both read the name, and the mark is handed it too.
+	 *
+	 * A row that paints a ground the accessibility tree does not claim misreports
+	 * where the user is for a screen reader; one that claims a ground it does not
+	 * paint does it for everyone else. Two spellings of the predicate is how the
+	 * third element (the mark) came to disagree with both.
+	 */
+	const declaration =
+		"const current = selectedConversation === row.session_id && !activeDraftKey;";
+	assert.ok(
+		source.includes(declaration),
+		`the session row's current-row predicate is no longer one named read, so the wrapper, the button and the mark can disagree about it:\n${declaration}`,
+	);
+	const ariaCurrent = "aria-current={current ? \"page\" : undefined}";
+	assert.ok(
+		source.includes(ariaCurrent),
+		`aria-current no longer reads the named predicate, so it and the row's ground can disagree:\n${ariaCurrent}`,
 	);
 	/*
-	 * Both halves of the predicate, on all three readers: a row that paints a mark
-	 * the accessibility tree does not claim misreports where the user is for a
-	 * screen reader, and one that claims a mark it does not paint does it for
-	 * everyone else. `!activeDraftKey` is what says a staged draft owns the mark
-	 * instead. The declaration is the single place the two terms may live, and the
-	 * other two readers have to READ it — which is why they are asserted against
-	 * the name and the name against the terms, rather than each against the terms.
+	 * Three reads after the declaration: the wrapper's ground, the button's ground
+	 * and the mark's `current` prop. Asserted as a COUNT rather than by anchor,
+	 * because the point is that nothing writes a second predicate.
 	 */
-	const declaration = source.slice(declared, source.indexOf(";", declared));
-	for (const term of [
-		"selectedConversation === row.session_id",
-		"!activeDraftKey",
-	]) {
-		assert.ok(
-			declaration.includes(term),
-			`\`isCurrent\` no longer reads \`${term}\`, so the row's mark and \`aria-current\` can disagree about which row is the current one:\n${declaration}`,
-		);
-	}
-	const ariaCurrent = source.slice(
-		source.indexOf("aria-current=", declared),
-		declared +
-			source
-				.slice(declared)
-				.indexOf("\n", source.indexOf("aria-current=", declared)),
-	);
+	const reads = source.slice(source.indexOf(declaration)).match(/current &&|current=\{|current \?/g) ?? [];
 	assert.ok(
-		ariaCurrent.includes("isCurrent"),
-		`the session row's \`aria-current\` no longer reads the shared predicate:\n${ariaCurrent}`,
-	);
-	const rowClasses = argumentsFrom(
-		source,
-		source.indexOf("className={cn(", declared),
-	);
-	assert.ok(
-		rowClasses.includes("isCurrent"),
-		`the session row's class list no longer reads the shared predicate, so it can paint a mark the accessibility tree does not claim:\n${rowClasses}`,
+		reads.length >= 3,
+		`the named predicate feeds fewer than three elements (${reads.length}), so one of the row's grounds or the mark is deciding for itself:\n${JSON.stringify(reads)}`,
 	);
 });
