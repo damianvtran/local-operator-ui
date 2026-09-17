@@ -112,6 +112,57 @@ test("structured profile repair conflict retains its category and actionable tex
 	);
 });
 
+test("the store's failure ladder arrives classified, on the status each arm raises", async () => {
+	/*
+	 * The renderer's half of the split that took `sqlite3.Error` from one answer to
+	 * three. `desktopResult` reads `detail.code`/`detail.message` for ANY status,
+	 * so a 507 out-of-space refusal reaches the composer with its category intact -
+	 * which is what withholds the generic retry hint
+	 * (`withholdsRetryHint`, driven in `canonical-chat.test.mjs`) - and a 507 is
+	 * deliberately not one of the statuses `isServerUnreachable` (503) or
+	 * `backendErrorKind` classify, so nothing upstream rewrites the sentence.
+	 *
+	 * `store_busy` is asserted here too because it is the contrast: the same shape,
+	 * the same body, a code the renderer names no constant for, and a retry that IS
+	 * worth making. The distinction has to be the code, not the status family.
+	 */
+	for (const [status, code, message] of [
+		[
+			503,
+			"store_busy",
+			"Read state is busy right now. It will catch up on its own.",
+		],
+		[
+			507,
+			"store_out_of_space",
+			"There is not enough space on this disk to save your message. Free up space, then send it again.",
+		],
+		[
+			500,
+			"store_unavailable",
+			"This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+		],
+	]) {
+		const { desktopResult, DesktopControlError } = await loadTransport(
+			async () => ({ status, body: { detail: { code, message } } }),
+		);
+		await assert.rejects(
+			desktopResult({
+				op: "sessions.message",
+				sessionId: "111111111111",
+				requestId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+				text: "look at this screenshot",
+			}),
+			(error) =>
+				error instanceof DesktopControlError &&
+				error.status === status &&
+				error.code === code &&
+				error.message === message,
+			`a ${status} ${code} body did not arrive as ${status}/${code} with the backend's own sentence`,
+		);
+	}
+});
+
 // The image ladder is renderer code with no transport of its own, but it is the
 // reason a message fits: without it, an 8.5 MB Retina screenshot fails at any
 // budget this pipe can offer. It is bundled and driven here rather than mocked,

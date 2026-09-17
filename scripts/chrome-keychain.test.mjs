@@ -279,6 +279,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the composer's alert region at a narrow width; its first spawn is the vite server that serves the page",
 	),
 	guarded(
+		"scripts/store-refusal-evidence.mjs",
+		"spawn",
+		2,
+		"photographs the composer's alert for each arm of the backend's store-failure ladder, on the alert the app's OWN transport, `desktopResult`, `admitChatDraft` and `withholdsRetryHint` produced; its first spawn is the vite server that serves the page",
+	),
+	guarded(
 		"scripts/diff-body-evidence.mjs",
 		"spawn",
 		1,
@@ -295,6 +301,12 @@ const CHROME_LAUNCH_SITES = [
 		"spawn",
 		1,
 		"photographs scroll-driven history paging in the real renderer",
+	),
+	guarded(
+		"scripts/sidebar-resort-geometry.mjs",
+		"spawn",
+		1,
+		"measures what the sidebar's list container does to its scroll position while a row re-files itself (the `overflow-anchor` rule on that container)",
 	),
 	guarded(
 		"scripts/session-switch-latency.mjs",

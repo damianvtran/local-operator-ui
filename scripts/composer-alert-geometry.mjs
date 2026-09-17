@@ -6,16 +6,20 @@
  *     node scripts/composer-alert-geometry.mjs [--json] [--out=<dir>]
  *
  * Why this file exists. Design round 4's D12 is a claim about what SURVIVES the
- * region's own cap: the region renders `max-h-[7.5rem]` with `overflow-y-auto`,
- * the cap is load-bearing (it is what keeps the composer's top border and the
- * send control on screen, measured at CSS y=540 at 892px in the 1-line, 3-line
- * and 4-line states alike), and it is therefore the ORDER of the region's
- * children that decides what a user can read without discovering a thin
+ * alert's own cap: its PROSE block renders `max-h-[7.5rem]` with
+ * `overflow-y-auto`, the cap is load-bearing (it is what keeps the composer's top
+ * border and the send control on screen, measured at CSS y=540 at 892px in the
+ * 1-line, 3-line and 4-line states alike), and it is therefore the ORDER of the
+ * block's children that decides what a user can read without discovering a thin
  * internal scrollbar. At the column the canvas pane leaves at a 1440px window,
  * the block was 388px of content in a 120px window: the muted notice's seven
  * wrapped lines filled the window on their own and the sentence naming the file
  * that failed — and the remedy for it — began at offset 144, entirely below the
- * fold.
+ * fold. UX round 1's U3 then found the cap's other edge: the remedy CONTROLS
+ * were the next child after the state, so a long enough alert scrolled them out
+ * of the window too, and the region was measured at the app's own minimum window
+ * with both controls ~90px below the visible area. They now live outside the cap,
+ * and the assertions below check that structure as well as the order.
  *
  * A number is the only instrument for that claim, and it has to come from a real
  * render: a still shows the symptom and cannot be checked against the sentence
@@ -172,6 +176,7 @@ const PROBE = `(() => {
 		send: null,
 		region: null,
 		children: [],
+		controls: null,
 		failureText: null,
 		failureIndex: null,
 		failureVisibleLines: null,
@@ -188,27 +193,52 @@ const PROBE = `(() => {
 	if (!region) return base;
 	const rr = region.getBoundingClientRect();
 	const regionStyle = getComputedStyle(region);
+	/*
+	 * WHICH ELEMENT IS THE WINDOW, read off the layout rather than named: the
+	 * region's capped PROSE block is its child that scrolls (UX round 1, U3 moved
+	 * the cap one level in so the remedy controls could sit outside it). Everything
+	 * this file used to measure against the region - how many lines of the failure
+	 * are visible, how much content there is - is a question about THAT box, and
+	 * the region's own box is now prose plus the pinned controls.
+	 */
+	const capped = [...region.children].find(
+		(el) => getComputedStyle(el).overflowY === "auto",
+	) ?? region;
+	const cr = capped.getBoundingClientRect();
+	const cappedStyle = getComputedStyle(capped);
 	const regionBox = {
-		top: round(rr.top),
-		bottom: round(rr.bottom),
-		height: round(rr.height),
-		clientHeight: region.clientHeight,
-		scrollHeight: region.scrollHeight,
-		scrollTop: region.scrollTop,
-		overflowY: regionStyle.overflowY,
+		top: round(cr.top),
+		bottom: round(cr.bottom),
+		height: round(cr.height),
+		clientHeight: capped.clientHeight,
+		scrollHeight: capped.scrollHeight,
+		scrollTop: capped.scrollTop,
+		overflowY: cappedStyle.overflowY,
+		/*
+		 * The region's own box as well: the controls' claim is about THIS one - they
+		 * are pinned inside the region and outside its scroll box, so their rect has
+		 * to be inside the region's.
+		 */
+		regionTop: round(rr.top),
+		regionBottom: round(rr.bottom),
+		regionHeight: round(rr.height),
+		regionOverflowY: regionStyle.overflowY,
 		/*
 		 * Text nodes that are not whitespace, as text. JSX has no comment syntax
 		 * of its own: a block comment written between two elements is TEXT, not a
 		 * comment, and it renders as prose inside this region. A stray one is
 		 * invisible to any test that reads the source marker order - this file
 		 * passed its own unit test on the very build where the region carried
-		 * 224px of the comment describing the fix.
+		 * 224px of the comment describing the fix. Checked at both levels now, since
+		 * the prose block is where the copy lives and the region is where the stray
+		 * comment was written.
 		 */
-		strayText: [...region.childNodes]
+		strayText: [region, capped]
+			.flatMap((root) => [...root.childNodes])
 			.filter((n) => n.nodeType === 3 && n.textContent.trim().length > 0)
 			.map((n) => n.textContent.trim().slice(0, 60)),
 	};
-	const children = [...region.children].map((el, index) => {
+	const children = [...capped.children].map((el, index) => {
 		const cs = getComputedStyle(el);
 		return {
 			index,
@@ -222,13 +252,28 @@ const PROBE = `(() => {
 	});
 	const failure = children.find((c) => c.ranked) ?? null;
 	const notice = children.find((c) => c.muted && !c.ranked) ?? null;
+	/*
+	 * THE CONTROLS, and the U3 claim about them: they are the region's children
+	 * that are NOT the scrolling block. The insideCapped flag re-asks the question the
+	 * probe would otherwise assume - if a later edit puts them back under the cap,
+	 * this says so instead of photographing the consequence.
+	 */
+	const controlsEl = [...region.children].find((el) => el !== capped) ?? null;
+	const controls = controlsEl
+		? {
+				...rect(controlsEl),
+				buttons: controlsEl.querySelectorAll("button").length,
+				insideCapped: capped.contains(controlsEl),
+				visible: controlsEl.getBoundingClientRect().height > 0,
+			}
+		: null;
 	if (failure) {
 		const lineHeight = failure.lineHeight || 20;
 		const lines = Math.max(1, Math.round(failure.height / lineHeight));
 		failure.lines = lines;
 		/*
-		 * How much of the actionable sentence is INSIDE the region's visible
-		 * window, in lines. This is the number D12 is about: pre-fix the region
+		 * How much of the actionable sentence is INSIDE the capped block's visible
+		 * window, in lines. This is the number D12 is about: pre-fix the block
 		 * showed 0 of 12 at the narrowest reachable width.
 		 */
 		failure.visibleLines = Math.max(
@@ -245,6 +290,7 @@ const PROBE = `(() => {
 		...base,
 		region: regionBox,
 		children,
+		controls,
 		failureText: failure ? failure.text : null,
 		failureIndex: failure ? failure.index : null,
 		failureVisibleLines: failure ? failure.visibleLines : null,
@@ -383,12 +429,12 @@ const assertions = (measurement, idle, column) => {
 			`the region renders ${measurement.region.strayText.length} stray text node(s), i.e. source prose shown to the user: ${JSON.stringify(measurement.region.strayText)}`,
 		);
 	/*
-	 * D12, first half: the actionable sentence is the FIRST thing in the region.
-	 * The region is capped, so DOM order is the priority order.
+	 * D12, first half: the actionable sentence is the FIRST thing in the window.
+	 * The block is capped, so DOM order is the priority order.
 	 */
 	if (measurement.failureIndex !== 0)
 		fail(
-			`the failure is child ${measurement.failureIndex} of the region, so the cap can show context above it (D12)`,
+			`the failure is child ${measurement.failureIndex} of the capped block, so the cap can show context above it (D12)`,
 		);
 	if (
 		measurement.noticeIndex !== null &&
@@ -398,6 +444,39 @@ const assertions = (measurement, idle, column) => {
 			`the muted context (child ${measurement.noticeIndex}) renders above the failure (D12)`,
 		);
 	/*
+	 * U3: the remedy is OUTSIDE the cap, and that is the whole finding.
+	 *
+	 * At the app's own minimum window (800x568, which it clamps to) the region used
+	 * to be 236px of copy in a 120px window with both controls ~90px below the
+	 * visible area and no cue that the region scrolled - the operator saw a failure
+	 * and no way out of it. The fix is structural rather than a taller cap (raising
+	 * it moves the composer's top border and can take Send off screen), so what is
+	 * asserted here is the structure: whatever element holds the controls is not a
+	 * descendant of the element that scrolls, and it is inside the region's own
+	 * box.
+	 */
+	if (measurement.controls) {
+		if (measurement.controls.insideCapped)
+			fail(
+				"the remedy controls are inside the scrolling prose block, so a long alert scrolls them out of the window (UX round 1, U3)",
+			);
+		if (measurement.region.regionOverflowY === "auto")
+			fail(
+				"the alert REGION scrolls as a whole, so nothing in it can be pinned (UX round 1, U3): the cap belongs to the prose block",
+			);
+		if (
+			measurement.controls.top < measurement.region.regionTop - 0.5 ||
+			measurement.controls.bottom > measurement.region.regionBottom + 0.5
+		)
+			fail(
+				`the controls are not inside the region's own box: ${measurement.controls.top}..${measurement.controls.bottom} against ${measurement.region.regionTop}..${measurement.region.regionBottom}`,
+			);
+		if (measurement.controls.bottom > measurement.viewport.height)
+			fail(
+				`the remedy controls are off screen: their bottom is ${measurement.controls.bottom} in a ${measurement.viewport.height}px window (UX round 1, U3)`,
+			);
+	}
+	/*
 	 * D12, second half: at the NARROWEST reachable width the failure's first line
 	 * is inside the visible window, not below the fold. This is the finding's own
 	 * measurement — pre-fix, the refusal began at offset 144 in a 120px window.
@@ -406,6 +485,28 @@ const assertions = (measurement, idle, column) => {
 		fail(
 			`not one line of the failure is visible: it starts at offset ${measurement.children[measurement.failureIndex]?.top - measurement.region.top} of a ${measurement.region.clientHeight}px window (D12)`,
 		);
+	/*
+	 * D6: THE CAP'S WINDOW STILL ENDS ON A LINE, with more than one paragraph in
+	 * the block.
+	 *
+	 * `CAPPED_BLOCK` is a whole number of lines *of the block's leading*, which is
+	 * only true while every child starts on that grid. The `gap-1` this block used to
+	 * carry put a second paragraph 4px off it, so the 120px window cut 4px into a
+	 * line and the last visible line was a row of glyph tops with its descenders
+	 * shaved - the artifact the whole-line cap exists to prevent, measured against
+	 * the wide frame as the control (design round 2, D6). The spacing is one leading
+	 * now, which the cap's arithmetic already accounts for at any number of children,
+	 * and this is the assertion that sees it: a sub-leading offset between children
+	 * fails here rather than being visible only in a still.
+	 */
+	for (const child of measurement.children) {
+		const leading = child.lineHeight || 20;
+		const offset = child.top - measurement.region.top;
+		if (Math.abs(offset - Math.round(offset / leading) * leading) > 0.5)
+			fail(
+				`the prose block's child ${child.index} starts ${offset}px from the block's top, which is not a whole line of its ${leading}px leading: the cap's window then cuts a line rather than ending on one (design round 2, D6)`,
+			);
+	}
 	/*
 	 * The cap's own invariant, and the reason "raise the cap" is not an answer:
 	 * with the same draft, the composer's top border does not move when the alert
@@ -551,7 +652,7 @@ const main = async () => {
 			`\ncomposer alert geometry — ${THEME}, ${VIEWPORT.width}x${VIEWPORT.height} CSS\n`,
 		);
 		console.log(
-			"column  state       region(client/scroll)  failure  visible/total  notice  chips  box-top  send-bottom",
+			"column  state       block(client/scroll)  failure  visible/total  notice  chips  box-top  send-bottom",
 		);
 		for (const m of measurements) {
 			console.log(

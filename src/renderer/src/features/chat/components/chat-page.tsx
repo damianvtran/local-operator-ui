@@ -27,7 +27,6 @@ import {
 	refusedBeforeAdmissionAttachments,
 	refusedBeforeAdmissionText,
 	useCanonicalSessionsStore,
-	withholdsRetryHint,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1589,16 +1588,23 @@ function SessionPanel({
 					// unreachable registry needs the agents page. Any other code has no
 					// specific remedy, so it offers none rather than a generic button.
 					/*
-					 * The composer's generic retry hint is withheld for the refusals a resend
-					 * cannot answer, which is what `withholdsRetryHint` names. Both carry their
-					 * own "what to do" half instead: the read window's notice lives exactly as
-					 * long as the window does and the window refuses the retry for that same
-					 * span (UX round 3, U9), and the leading-slash policy refuses this text
-					 * forever (UX round 2, U13). The predicate rather than a call-site list of
-					 * codes, because a second place for that rule is a second place for it to
-					 * drift.
+					 * The CODE, not a pre-computed answer drawn from it.
+					 *
+					 * Two questions on this screen are answered by the store's own
+					 * predicates and must not be answered twice: whether the composer's
+					 * generic retry hint is true (`withholdsRetryHint` - the read window
+					 * refuses the retry for exactly as long as its notice is on screen,
+					 * UX round 3, U9; the leading-slash policy refuses this text forever,
+					 * UX round 2, U13), and whether the held line may say the outcome is
+					 * unknowable (`isStoreWriteRefusal` - a store that could not write
+					 * KNOWS nothing was saved, and telling the operator to wait for a
+					 * reply that cannot come contradicts the sentence above it, UX round
+					 * 1, U4). Passing the code lets the composer ask both, in the one
+					 * place that renders them; passing a boolean would put the second
+					 * question's answer here as well, which is how two readers of one
+					 * fact come to disagree about it.
 					 */
-					withholdRetryHint: withholdsRetryHint(activeErrorCode),
+					code: activeErrorCode,
 					actions:
 						// The unconfirmed-send guard's remedies are Restore and the abandon
 						// control, both rendered by the composer from `heldText`. It must
@@ -1654,6 +1660,41 @@ function SessionPanel({
 					 * dropped together.
 					 */
 					refusedAttachments,
+					/*
+					 * The held payload's other half, on the same terms as `heldText` above and
+					 * from the same row: the unchanged-payload guard compares text AND files
+					 * AND images, so the composer's "the held message is back in the box" test
+					 * needs the files as well as the text. Without them it said a box holding
+					 * the text but one chip fewer was the held payload, and rendered
+					 * "Send it again" over the guard that then refused every press (UX round
+					 * 1, U2). The store records both in one update at admission, so the two
+					 * travel together here too rather than one being inferable from the other.
+					 */
+					heldAttachments:
+						heldText !== undefined ? draft?.submittedAttachments : undefined,
+					/*
+					 * The CLAIM's own verdict, from the row, and the reason the held line no
+					 * longer reads `code` above.
+					 *
+					 * `code` is about the last ATTEMPT. The flow this PR exists for is
+					 * refusal -> `Restore message` -> drop the file -> Enter, and the last
+					 * attempt there is refused by the unchanged-payload GUARD, whose code is
+					 * `unconfirmed_send`. A held line selected by that code reverted to
+					 * "whether it reached the agent is not knowable ... send again only if no
+					 * reply arrives" one screen after this app said "Nothing was saved",
+					 * with the disk off the screen (UX round 2, U10). The guard throws before
+					 * the row is written, so the store's verdict is still on the row - it was
+					 * simply never recorded against the CLAIM, and `errorCode` is not it:
+					 * `onDismiss` clears that one the moment the operator acknowledges the
+					 * sentence, while the payload it describes is still held. `heldClaimCode`
+					 * travels with the payload for exactly that reason.
+					 *
+					 * Gated on `heldText` like the fields above it: without a claim there is no
+					 * verdict to state, and a stale one would describe a payload the composer
+					 * is not holding.
+					 */
+					heldClaimCode:
+						heldText !== undefined ? draft?.heldClaimCode : undefined,
 					onRestoreHeld:
 						heldText !== undefined ? () => clearError() : undefined,
 					/*

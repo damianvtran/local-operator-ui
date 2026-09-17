@@ -57,13 +57,23 @@
  * And with NOTHING running: Escape changes nothing and the composer keeps its
  * draft, which is the TUI's hard rule ("do not clear the composer").
  *
+ * And around the composer's right-hand cluster, where the reported hazard lived:
+ * the Stop control's box is held for a grace window after the turn it belonged to
+ * ends (`src/renderer/src/features/chat/interrupt-slot-grace.ts`), so the rig
+ * measures BOTH sides of that window in the real app - the box still holding the
+ * point the press landed in, and, once the window has passed, the collapsed row
+ * with the dictation control beside Send, live at the point it now occupies.
+ * Those claims are verified rather than described: a false one fails the run
+ * (`slot.*` steps, `report.claims` in the record).
+ *
  * Frames land in the output directory: `turn-running.png`, `after-stop.png`,
- * `after-escape.png`, `idle-escape.png`.
+ * `after-stop-settled.png`, `after-stop-settled-recording.png`, `after-escape.png`,
+ * `idle-escape.png`.
  */
 
 import { execFileSync, spawn } from "node:child_process";
 
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
@@ -93,6 +103,20 @@ const report = { backend: BACKEND, out: OUT, steps: [] };
 const record = (step, value) => {
 	report.steps.push({ step, ...value });
 	console.log(`${step}: ${JSON.stringify(value)}`);
+};
+
+/*
+ * A claim, verified rather than described. The record is what a reader cites and
+ * the frames are what they look at, so a claim that does not hold has to be
+ * visible in both: it is recorded with `ok: false` under its own step, collected
+ * here, and the run exits non-zero once every step has finished - failing at the
+ * end rather than at the claim, so one broken step does not hide the state of the
+ * others.
+ */
+const claims = [];
+const verify = (step, hold, detail) => {
+	record(step, { ok: hold === true, ...detail });
+	if (hold !== true) claims.push({ step, ...detail });
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -229,6 +253,19 @@ const app = spawn(
 		 * repo's `window-mode.test.mjs` asserts this switch rather than the variable.
 		 */
 		"--window-mode=headless",
+		/*
+		 * A SYNTHETIC MICROPHONE, because the dictation control is one of the things
+		 * this rig presses. Without it the control is enabled or not depending on the
+		 * machine's capture devices and macOS's microphone grant, so the hazard
+		 * measurement below - that a press at the point the Stop control occupied
+		 * starts NOTHING while the box holds it, and starts a recording once the box
+		 * is gone - would be asserting a property of this laptop rather than of the
+		 * app. Chromium's fake capture device makes the press land on a live control
+		 * deterministically. The backend carries a placeholder `RADIENT_API_KEY` for
+		 * the same reason (the app gates the control on one); both are stated in
+		 * `docs/evidence/interrupt-live/README.md`.
+		 */
+		"--use-fake-device-for-media-stream",
 	],
 	{
 		env: spawnEnv,
@@ -495,6 +532,29 @@ if (!String(capabilities).includes('"session_interrupt":1')) {
 /** The painter the composer's Stop control is found by, and the only handle
  * this rig has on `busy`: the same condition the control is gated on. */
 const STOP = '[aria-label="Stop"]';
+const MIC = '[aria-label="Start recording"]';
+const RECORDING =
+	'[aria-label="Cancel recording"], [aria-label="Confirm recording"]';
+
+/*
+ * THE GRACE WINDOW, read from the module the app ships rather than restated
+ * here. The wait below has to outlast it, and a rig that carried its own copy of
+ * the number would go on passing after the app's own changed - the failure mode
+ * being a settled-row measurement taken while the box was still up, which reads
+ * as a regression that is not there.
+ */
+const INTERRUPT_SLOT_GRACE_MS = (() => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/interrupt-slot-grace.ts",
+		"utf8",
+	);
+	const match = /INTERRUPT_SLOT_GRACE_MS\s*=\s*(\d+)/.exec(source);
+	if (!match)
+		throw new Error(
+			"the grace window is not declared in src/renderer/src/features/chat/interrupt-slot-grace.ts",
+		);
+	return Number(match[1]);
+})();
 const composer = 'textarea[aria-label="Message"]';
 
 const controlPresent = () =>
@@ -516,9 +576,9 @@ const draftValue = () =>
  * control is the one clicked. If no point does, the control is genuinely
  * unreachable by a pointer, and the run fails with what was found there.
  */
-const pressStop = async () => {
+const pressElement = async (selector, what) => {
 	const aim = await cdp.evaluate(`(() => {
-		const el = document.querySelector(${JSON.stringify(STOP)});
+		const el = document.querySelector(${JSON.stringify(selector)});
 		if (!el) return null;
 		const describe = (node) => {
 			if (!node) return "none";
@@ -543,7 +603,7 @@ const pressStop = async () => {
 		}
 		return { rect, target, attempts };
 	})()`);
-	if (!aim) throw new Error("the Stop control is not on screen");
+	if (!aim) throw new Error(`${what} is not on screen`);
 	if (aim.x === undefined)
 		throw new Error(
 			`no painted pixel of ${aim.target} hit-tests to it; rect ${JSON.stringify(aim.rect)}, probes ${JSON.stringify(aim.attempts)}`,
@@ -559,6 +619,8 @@ const pressStop = async () => {
 	return aim;
 };
 
+const pressStop = () => pressElement(STOP, "the Stop control");
+
 /** A REAL Escape, at the level the window listener sees it. */
 const pressEscape = async () => {
 	for (const type of ["keyDown", "keyUp"])
@@ -569,6 +631,48 @@ const pressEscape = async () => {
 			windowsVirtualKeyCode: 27,
 			nativeVirtualKeyCode: 27,
 		});
+};
+
+/*
+ * WHEN THE ROW FLIPPED, from the PAGE's own clock.
+ *
+ * Every claim about the grace window is a claim about time, and the rig cannot
+ * read the app's transition out of a REST poll: `waitForStreaming(false)` returns
+ * up to a poll interval after the composer actually changed, which is a fifth of
+ * the window. So the page timestamps the flip itself, with an observer armed
+ * while the control is still on screen, and every measurement below is stamped
+ * against it. A press that arrived after the window would otherwise be recorded
+ * as "the hazard is back" when the truth is that the rig was late.
+ */
+const armFlipObserver = async (selector) => {
+	const present = await cdp.evaluate(`(() => {
+		window.__loFlip = null;
+		const found = () => document.querySelector(${JSON.stringify(selector)});
+		const observer = new MutationObserver(() => {
+			if (found()) return;
+			if (window.__loFlip === null) window.__loFlip = performance.now();
+			observer.disconnect();
+		});
+		observer.observe(document.body, { childList: true, subtree: true });
+		return found() !== null;
+	})()`);
+	if (present !== true)
+		throw new Error(
+			`${selector} was not on screen when the flip observer was armed`,
+		);
+};
+
+/** The page's clock now, and how long it has been since the row flipped. */
+const stamp = async () => {
+	const value = JSON.parse(
+		await cdp.evaluate(
+			"JSON.stringify({ now: performance.now(), flip: window.__loFlip ?? null })",
+		),
+	);
+	return {
+		sinceFlipMs:
+			value.flip === null ? null : Math.round(value.now - value.flip),
+	};
 };
 
 /**
@@ -588,6 +692,10 @@ const probeSlot = async (point) => {
 		const button = el.closest("button");
 		return (button?.getAttribute("aria-label") ?? el.tagName.toLowerCase()) + "|" + (el.hasAttribute("data-interrupt-slot") ? "reserved" : "not-reserved");
 	})()`);
+	// Stamped either side of the dispatch, so the press is known to have landed
+	// between the two: a claim about the window can be checked against a bound
+	// rather than against an assumption about how fast the rig is.
+	const before = await stamp();
 	for (const type of ["mousePressed", "mouseReleased"])
 		await cdp.send("Input.dispatchMouseEvent", {
 			type,
@@ -596,19 +704,131 @@ const probeSlot = async (point) => {
 			button: "left",
 			clickCount: 1,
 		});
+	const afterPress = await stamp();
 	await sleep(700);
 	const after = await cdp.evaluate(`JSON.stringify({
 		recording: !!document.querySelector('[aria-label="Cancel recording"], [aria-label="Confirm recording"]'),
 		mic: !!document.querySelector('[aria-label="Start recording"]'),
 	})`);
-	return { point, owner, after: JSON.parse(after) };
+	return {
+		point,
+		owner,
+		at: {
+			beforeSinceFlipMs: before.sinceFlipMs,
+			afterSinceFlipMs: afterPress.sinceFlipMs,
+		},
+		after: JSON.parse(after),
+	};
+};
+
+/**
+ * Whether the dictation control is on screen and whether it is pressable.
+ *
+ * A PRECONDITION of everything below rather than a detail of it: the app gates
+ * the control on a Radient credential (`canEnableRecordingFeature`), so on a
+ * backend without one every press in this rig would start nothing for a reason
+ * that has nothing to do with the composer's layout - the hazard measurement
+ * would pass vacuously and the "the control is live where it now sits" claim
+ * would be measuring the credential probe. The backend for this run is given a
+ * placeholder `RADIENT_API_KEY` for exactly that reason (see the README), and the
+ * wait below is what turns "the probe happened to have answered by the time the
+ * press landed" into a fact the run establishes.
+ */
+const dictationState = async () =>
+	JSON.parse(
+		await cdp.evaluate(`(() => {
+			const el = document.querySelector(${JSON.stringify(MIC)});
+			return JSON.stringify(el ? { present: true, disabled: el.disabled === true } : { present: false });
+		})()`),
+	);
+
+const waitForDictationLive = async (budgetMs = 20_000) => {
+	const startedAt = Date.now();
+	let last = null;
+	while (Date.now() - startedAt < budgetMs) {
+		last = await dictationState();
+		if (last.present && last.disabled === false)
+			return { ...last, waitedMs: Date.now() - startedAt };
+		await sleep(250);
+	}
+	return { ...(last ?? {}), waitedMs: Date.now() - startedAt, timedOut: true };
+};
+
+/** Whether a recording is running in the composer, and whether the mic is back. */
+const recordingState = async () =>
+	JSON.parse(
+		await cdp.evaluate(`JSON.stringify({
+			recording: !!document.querySelector(${JSON.stringify(RECORDING)}),
+			mic: !!document.querySelector(${JSON.stringify(MIC)}),
+		})`),
+	);
+
+/**
+ * A control's OWN centre, what owns that point and whether the control is
+ * disabled - the three facts that separate "the control is there" from "the
+ * control is live where it now sits".
+ */
+const controlAt = async (selector) => {
+	const info = await cdp.evaluate(`(() => {
+		const el = document.querySelector(${JSON.stringify(selector)});
+		if (!el) return null;
+		const r = el.getBoundingClientRect();
+		const x = r.left + r.width / 2;
+		const y = r.top + r.height / 2;
+		const at = document.elementFromPoint(x, y);
+		return JSON.stringify({
+			x: Math.round(x),
+			y: Math.round(y),
+			rect: { left: Math.round(r.left), w: Math.round(r.width) },
+			owner: at?.closest("button")?.getAttribute("aria-label") ?? at?.tagName?.toLowerCase() ?? "none",
+			disabled: el.disabled === true,
+		});
+	})()`);
+	return info === null ? null : JSON.parse(info);
+};
+
+/**
+ * The composer's right-hand cluster AND the page's clock in ONE round trip.
+ *
+ * The window is half a second wide and this rig measures inside it, so a
+ * round trip saved here is 20-60ms of margin: the first version measured the
+ * boxes and the clock separately and, on a loaded machine, landed 659ms past the
+ * flip - outside the window it was measuring, which reads as the hazard. One
+ * `Runtime.evaluate` is the difference between measuring the window and
+ * measuring the rig.
+ */
+const clusterBoxesAndStamp = async () => {
+	const value = JSON.parse(
+		await cdp.evaluate(`JSON.stringify({
+			boxes: [...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Confirm recording"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
+				.map((el) => {
+					const r = el.getBoundingClientRect();
+					return {
+						label: el.getAttribute("aria-label") ?? "reserved-slot",
+						x: Math.round(r.left),
+						w: Math.round(r.width),
+						centre: Math.round(r.left + r.width / 2),
+					};
+				})
+				.sort((a, b) => a.x - b.x),
+			now: performance.now(),
+			flip: window.__loFlip ?? null,
+		})`),
+	);
+	return {
+		boxes: value.boxes,
+		at: {
+			sinceFlipMs:
+				value.flip === null ? null : Math.round(value.now - value.flip),
+		},
+	};
 };
 
 /** The composer's right-hand cluster, as boxes, so a frame and a record agree. */
 const clusterBoxes = async () =>
 	JSON.parse(
 		await cdp.evaluate(`JSON.stringify(
-			[...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
+			[...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Confirm recording"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
 				.map((el) => {
 					const r = el.getBoundingClientRect();
 					return {
@@ -621,6 +841,84 @@ const clusterBoxes = async () =>
 				.sort((a, b) => a.x - b.x),
 		)`),
 	);
+
+/*
+ * EVERY TRANSITION OF THE ROW'S TWO INDICATORS, recorded from the page for the
+ * whole run.
+ *
+ * QA round 1 (Q1) and UX round 1 (U4) both saw a single frame, a few
+ * milliseconds after a turn settles, in which the Stop control is re-rendered and
+ * the box is gone - and QA attributed it to a later snapshot re-deriving the turn
+ * as active without being able to prove it. The control and the box are mutually
+ * exclusive by construction in the composer's gate, so such a pulse can only
+ * arrive through `active` itself; this observer is what turns that into a
+ * measurement. It records the Stop's presence, the box's presence AND the
+ * composer's own placeholder string - the cheap page-side proxy for the canonical
+ * layer's busy flag ("Waiting for the agent" versus "Ask me for help") - with the
+ * page's own timestamp, on every DOM change rather than once a frame.
+ *
+ * A MutationObserver and NOT a `requestAnimationFrame` loop, for two reasons that
+ * both matter here: a rAF loop can MISS a pulse shorter than a frame (QA's was
+ * 5.8ms at ~120fps, so a 60Hz sampler would have to be lucky), and a continuous
+ * rAF loop keeps the renderer drawing, which measurably slowed this rig's own
+ * CDP calls - the first version of this sampler pushed the window's own
+ * measurement 659ms past the flip, i.e. past the thing it was measuring. An
+ * observer is event-driven: it costs nothing while the row is still, and it
+ * cannot miss a change.
+ *
+ * The effect it reports is BOUNDED by construction (one fresh window after the
+ * pulse, argued in `interrupt-slot-grace.ts`), so this is recorded and attributed
+ * rather than gated: see the README's account of what the run found.
+ */
+const armSettleSampler = async () =>
+	cdp.evaluate(`(() => {
+		const stop = () => document.querySelector('[aria-label="Stop"]');
+		const slot = () => document.querySelector('[data-interrupt-slot]');
+		const field = () => document.querySelector('textarea[aria-label="Message"]');
+		const read = () => ({
+			t: Math.round(performance.now()),
+			stop: stop() !== null,
+			slot: slot() !== null,
+			placeholder: field()?.getAttribute("placeholder") ?? null,
+		});
+		window.__loSettle = { samples: [read()], changes: 0, startedAt: Math.round(performance.now()) };
+		let last = window.__loSettle.samples[0];
+		const observer = new MutationObserver(() => {
+			const now = read();
+			window.__loSettle.changes += 1;
+			if (
+				last === null ||
+				now.stop !== last.stop ||
+				now.slot !== last.slot ||
+				now.placeholder !== last.placeholder
+			) {
+				window.__loSettle.samples.push(now);
+				last = now;
+			}
+		});
+		observer.observe(document.body, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ["placeholder"],
+		});
+		return true;
+	})()`);
+
+/** The sampler's record: its transitions, the mutations it saw and its span. */
+const readSettleSampler = async () => {
+	const raw = JSON.parse(
+		await cdp.evaluate("JSON.stringify(window.__loSettle ?? null)"),
+	);
+	if (raw === null) return null;
+	const span =
+		raw.samples.length > 0 ? raw.samples.at(-1).t - raw.startedAt : 0;
+	return {
+		changes: raw.changes,
+		sampledMs: Math.round(span),
+		samples: raw.samples,
+	};
+};
 
 /** Open the run details pane from its own trigger, as a user does. */
 const openRunPane = async () => {
@@ -670,25 +968,312 @@ try {
 	await sleep(1500);
 	await cdp.evaluate("window.focus(); document.body.focus(); true");
 
+	// Armed before the first turn, read at the end: every transition of the Stop,
+	// the box and the composer's own placeholder for the whole run (see the sampler
+	// for what that attributes and why it is a record rather than a gate).
+	await armSettleSampler();
+
+	// Established before anything is measured: a run in which the dictation
+	// control is disabled cannot answer either of the questions below, so it says
+	// so rather than measuring the credential probe.
+	const dictation = await waitForDictationLive();
+	record("dictation.live", dictation);
+	verify(
+		"dictation.live",
+		dictation.present === true &&
+			dictation.disabled === false &&
+			dictation.timedOut !== true,
+		{
+			what: "the dictation control never became pressable, so nothing below would be measuring the composer's layout",
+			dictation,
+		},
+	);
+
 	/* ------------------------------------------------ 1. the Stop control */
 	record("turn1.admit", await startTurn(sessionId));
 	record("turn1.streaming", await waitForStreaming(sessionId, true));
 	record("turn1.control", { present: await controlPresent() });
+	// The row the turn runs with, recorded so the window's own claim (that it
+	// reproduces this row rather than inventing its own geometry) can be verified
+	// against it rather than against a number restated here.
+	record("slot.clusterRunning", { boxes: await clusterBoxes() });
 	await cdp.shot("turn-running.png");
+	await armFlipObserver(STOP);
 
 	const box = await pressStop();
 	record("turn1.pressed", box);
 	record("turn1.settled", await waitForStreaming(sessionId, false));
-	record("turn1.controlAfter", { present: await controlPresent() });
+	// THE WINDOW'S OWN MEASUREMENT, taken before anything else that costs a round
+	// trip (see `clusterBoxesAndStamp`): the control being gone and the box being
+	// held are one fact read from one render.
+	const graceReading = await clusterBoxesAndStamp();
 	await cdp.shot("after-stop.png");
 
 	/*
-	 * THE HAZARD, at the point the press landed in: the cluster's own boxes, then
-	 * a second press at the Stop's centre once nothing is running.
+	 * THE HAZARD, at the point the press landed in, measured on BOTH sides of the
+	 * grace window - because the fix is the window and not a standing reservation.
+	 *
+	 * 1. INSIDE the window: the box still holds the Stop control's own
+	 *    coordinates and a second press there starts NOTHING. This is the MAJOR UX
+	 *    round 1's U1 and QA's Q1 found independently, and the reason the window
+	 *    exists at all.
+	 * 2. AFTER it: the box is gone, the row is [dictation][Send] with the row's own
+	 *    gap between them, and the dictation control occupies the point the press
+	 *    landed in - LIVE there, which is why nothing about the recording action
+	 *    was refused to close the gap.
+	 *
+	 * Every state is stamped against the page's own record of the flip, and every
+	 * claim is verified: a claim that does not hold is recorded with `ok: false`
+	 * and fails the run at the end rather than being left for a reader to notice.
 	 */
-	record("slot.clusterIdle", { boxes: await clusterBoxes() });
-	record("slot.repress", await probeSlot({ x: box.x, y: box.y }));
+	const graceBoxes = graceReading.boxes;
+	const graceAt = graceReading.at;
+	record("slot.clusterGrace", {
+		boxes: graceBoxes,
+		at: graceAt,
+		graceMs: INTERRUPT_SLOT_GRACE_MS,
+	});
+	const repress = await probeSlot({ x: box.x, y: box.y });
+	record("slot.repress", repress);
+	record("turn1.controlAfter", { present: await controlPresent() });
 	record("slot.clusterAfterRepress", { boxes: await clusterBoxes() });
+
+	const boxOf = (boxes, label) => boxes.find((entry) => entry.label === label);
+	const gapBetween = (left, right) => Math.round(right.x - (left.x + left.w));
+	const runningBoxes =
+		report.steps.find((step) => step.step === "slot.clusterRunning")?.boxes ??
+		[];
+	const runningMic = boxOf(runningBoxes, "Start recording");
+	const runningStop = boxOf(runningBoxes, "Stop");
+	const runningSend = boxOf(runningBoxes, "Send message");
+	const graceMic = boxOf(graceBoxes, "Start recording");
+	const graceBox = boxOf(graceBoxes, "reserved-slot");
+	const graceSend = boxOf(graceBoxes, "Send message");
+	// The row while the turn runs, and the row inside the window, are the SAME
+	// geometry: the window reproduces the busy position rather than inventing one,
+	// so the row the user is looking at when the turn ends does not move under the
+	// pointer.
+	verify(
+		"slot.graceIsTheBusyRow",
+		Boolean(
+			runningMic &&
+				runningStop &&
+				runningSend &&
+				graceMic &&
+				graceBox &&
+				graceSend,
+		) &&
+			["Start recording", "Send message"].every((label) => {
+				const running = boxOf(runningBoxes, label);
+				const grace = boxOf(graceBoxes, label);
+				return (
+					running && grace && running.x === grace.x && running.w === grace.w
+				);
+			}) &&
+			// The Stop's own box IS the held box: same edges, same centre, so the row
+			// does not move when the control leaves and the box takes its place. Read
+			// from the press's own rect rather than by label, because the child that
+			// stands there inside the window is the box.
+			graceBox.x === box.rect.left &&
+			graceBox.w === box.rect.w &&
+			graceBox.centre === runningStop.centre &&
+			gapBetween(runningMic, runningStop) === gapBetween(graceMic, graceBox) &&
+			gapBetween(runningStop, runningSend) === gapBetween(graceBox, graceSend),
+		{
+			what: "the row inside the grace window is not the row the turn ran with",
+			running: runningBoxes,
+			grace: graceBoxes,
+			stop: box.rect,
+		},
+	);
+	// The press has to have landed INSIDE the window for this to be a measurement
+	// of it, and `afterSinceFlipMs` is a sound upper bound on when it landed: the
+	// clock was read after the dispatch returned.
+	verify(
+		"slot.repressStartsNothing",
+		repress.at?.afterSinceFlipMs !== null &&
+			repress.at?.afterSinceFlipMs < INTERRUPT_SLOT_GRACE_MS &&
+			repress.after?.recording === false,
+		{
+			what: "the second press at the point the first one landed either started something or arrived after the window",
+			graceMs: INTERRUPT_SLOT_GRACE_MS,
+			press: repress,
+		},
+	);
+
+	/*
+	 * Wait the window out - read from the SHIPPED constant, so a change to it
+	 * cannot leave this measurement taken while the box is still up, which would
+	 * read as a regression that is not there - plus the settle a frame needs.
+	 */
+	await sleep(INTERRUPT_SLOT_GRACE_MS + 400);
+	const settledBoxes = await clusterBoxes();
+	const settledAt = await stamp();
+	record("slot.clusterSettled", { boxes: settledBoxes, at: settledAt });
+	await cdp.shot("after-stop-settled.png");
+	const settledMic = boxOf(settledBoxes, "Start recording");
+	const settledSend = boxOf(settledBoxes, "Send message");
+	const rowGap =
+		runningMic && runningStop ? gapBetween(runningMic, runningStop) : null;
+	verify(
+		"slot.settledCollapses",
+		settledBoxes.length === 2 &&
+			settledBoxes.every((entry) =>
+				["Start recording", "Send message"].includes(entry.label),
+			) &&
+			Boolean(settledMic && settledSend && graceBox) &&
+			settledAt.sinceFlipMs !== null &&
+			settledAt.sinceFlipMs > INTERRUPT_SLOT_GRACE_MS &&
+			gapBetween(settledMic, settledSend) === rowGap &&
+			settledMic.x === graceBox.x,
+		{
+			what: "the settled row is not [dictation][Send] with the box gone and the dictation control where the box was held",
+			graceMs: INTERRUPT_SLOT_GRACE_MS,
+			settled: settledBoxes,
+			grace: graceBoxes,
+			rowGap,
+			at: settledAt,
+		},
+	);
+
+	/*
+	 * ... and the collapsed control is LIVE where it now sits: pressed at its own
+	 * centre, by a real pointer, it starts a recording. This is the other half of
+	 * the trade - the gap is gone and nothing was disabled to get rid of it. The
+	 * recording is cancelled afterwards so the rest of the run starts from a
+	 * settled composer.
+	 */
+	const micPoint = await controlAt(MIC);
+	record("slot.micPoint", micPoint);
+	verify(
+		"slot.micLiveAtItsNewCentre",
+		Boolean(micPoint) &&
+			micPoint.owner === "Start recording" &&
+			micPoint.disabled === false &&
+			micPoint.x === settledMic?.centre,
+		{
+			what: "the point the dictation control now occupies is not owned by a live dictation control",
+			point: micPoint,
+			settled: settledMic,
+		},
+	);
+	const liveAim = await pressElement(MIC, "the dictation control");
+	await sleep(1200);
+	const liveAfter = await recordingState();
+	record("slot.livePress", { aim: liveAim, after: liveAfter });
+	verify("slot.livePressStartsRecording", liveAfter.recording === true, {
+		what: "pressing the dictation control where it now sits started no recording",
+		after: liveAfter,
+	});
+	await cdp.shot("after-stop-settled-recording.png");
+	if (liveAfter.recording) {
+		const cancel = await pressElement(
+			'[aria-label="Cancel recording"]',
+			"the recording's own cancel control",
+		);
+		await sleep(800);
+		record("slot.recordingCancelled", {
+			aim: cancel,
+			after: await recordingState(),
+		});
+	}
+
+	/*
+	 * THE DICTATION-IN-FLIGHT SHAPE (design round 1, D2), measured rather than
+	 * argued: start a dictation, settle a turn underneath it, and photograph the row
+	 * on both sides of the window.
+	 *
+	 * WHY IT IS ITS OWN STEP. While a recording runs the row draws
+	 * `[Confirm recording][Cancel recording]` where the dictation control and Send
+	 * were, and the box renders AFTER them - so with only the grace term the release
+	 * moved BOTH of them 36px right, putting Confirm recording in the Stop's own
+	 * box, where a press more than a window after the turn ends sends in-flight
+	 * audio. The composer now holds the box while the dictation controls are
+	 * rendered, and this step is the evidence for that: the same boxes in the same
+	 * places on both sides of the window, and the collapse happening when the
+	 * RECORDING ends instead.
+	 */
+	record("inFlight.start", {
+		aim: await pressElement(MIC, "the dictation control"),
+	});
+	await sleep(1200);
+	record("inFlight.recording", await recordingState());
+	if ((await recordingState()).recording === true) {
+		record("inFlight.admit", await startTurn(sessionId));
+		record("inFlight.streaming", await waitForStreaming(sessionId, true));
+		// Re-armed for THIS settlement: `window.__loFlip` is a single slot, and the
+		// stamp beside the in-flight boxes is meaningless if it still names the first
+		// turn's flip.
+		await armFlipObserver(STOP);
+		const inFlightPressed = await pressStop();
+		record("inFlight.settled", await waitForStreaming(sessionId, false));
+		record("inFlight.pressed", inFlightPressed);
+		const heldBoxes = await clusterBoxes();
+		record("inFlight.grace", {
+			boxes: heldBoxes,
+			at: await stamp(),
+			graceMs: INTERRUPT_SLOT_GRACE_MS,
+		});
+		await cdp.shot("after-stop-recording-held.png");
+		await sleep(INTERRUPT_SLOT_GRACE_MS + 400);
+		const lateBoxes = await clusterBoxes();
+		record("inFlight.afterWindow", { boxes: lateBoxes, at: await stamp() });
+		await cdp.shot("after-stop-recording-settled.png");
+		const labelsOf = (boxes) => boxes.map((entry) => entry.label).join("|");
+		const rowGapInFlight =
+			heldBoxes.length > 1
+				? heldBoxes[1].x - (heldBoxes[0].x + heldBoxes[0].w)
+				: null;
+		verify(
+			"inFlight.holdsTheBox",
+			labelsOf(heldBoxes) ===
+				"Confirm recording|Cancel recording|reserved-slot" &&
+				labelsOf(lateBoxes) === labelsOf(heldBoxes) &&
+				heldBoxes.every(
+					(box, index) =>
+						box.x === lateBoxes[index].x && box.w === lateBoxes[index].w,
+				) &&
+				heldBoxes.at(-1).x === inFlightPressed.rect.left &&
+				heldBoxes.at(-1).w === inFlightPressed.rect.w,
+			{
+				what: "the box is not held while a dictation is in flight, so the release moves the recording's own controls 36px under a press",
+				held: heldBoxes,
+				afterWindow: lateBoxes,
+				stop: inFlightPressed.rect,
+			},
+		);
+		const ended = await pressElement(
+			'[aria-label="Cancel recording"]',
+			"the recording's own cancel control",
+		);
+		await sleep(800);
+		const endedBoxes = await clusterBoxes();
+		record("inFlight.recordingEnded", {
+			aim: ended,
+			boxes: endedBoxes,
+			after: await recordingState(),
+			// Which of the in-flight shapes' controls the dictation control comes back
+			// into, measured rather than described: it is the recording's own control's
+			// box, not the one the box held. That residual is recorded in the PR as
+			// deliberately not fixed - it predates this change and is unchanged by it.
+			takesBack:
+				heldBoxes.find((entry) => entry.x === endedBoxes[0].x)?.label ?? null,
+		});
+		await cdp.shot("after-recording-ends.png");
+		verify(
+			"inFlight.collapsesWithTheRecording",
+			labelsOf(endedBoxes) === "Start recording|Send message" &&
+				rowGapInFlight !== null &&
+				endedBoxes[1].x === endedBoxes[0].x + endedBoxes[0].w + rowGapInFlight,
+			{
+				what: "the row did not collapse to the idle shape when the recording ended",
+				ended: endedBoxes,
+				held: heldBoxes,
+			},
+		);
+	} else {
+		record("inFlight.skipped", { reason: "no recording could be started" });
+	}
 
 	/* ------------------------------------------------------- 2. Escape */
 	record("turn2.admit", await startTurn(sessionId));
@@ -785,5 +1370,27 @@ try {
 	process.exit(1);
 }
 
+record("settle.timeline", await readSettleSampler());
+// A sampler that recorded nothing would report a clean timeline for free, so the
+// record says how fast it ran and that it saw the row change at all.
+const timeline = report.steps.at(-1);
+verify(
+	"settle.sampled",
+	(timeline.changes ?? 0) > 20 && (timeline.samples?.length ?? 0) >= 6,
+	{
+		what: "the settle observer saw too little of the run to attribute anything with it",
+		timeline,
+	},
+);
+
+report.claims = claims;
 await finish(cdp);
+if (claims.length) {
+	console.error(
+		`\n${claims.length} claim(s) did not hold:\n${claims
+			.map((claim) => `- ${claim.step}: ${claim.what}`)
+			.join("\n")}`,
+	);
+	process.exit(1);
+}
 console.log(`\nwrote ${join(OUT, "interrupt-proof.json")}`);

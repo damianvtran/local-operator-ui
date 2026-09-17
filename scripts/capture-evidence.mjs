@@ -737,6 +737,12 @@ export const STORIES = [
 	   NOT run. Added by the round that gave the refusal a row. */
 	["chat-tool-rows--compacting-refused", 1280, 300],
 	["chat-tool-rows--working-labels", 760, 300],
+	/* The operator's own report, in the two arms a resumed pane can be in: a
+	   model call the band can only date from the producer's folded phase, and a
+	   running batch the row and the band both date from its oldest card. Sized
+	   to its content — a taller viewport is mostly ground, which is the
+	   uniformity ceiling this list keeps running into. */
+	["chat-tool-rows--resumed-running-clock", 1280, 400],
 	/* The `write`/`edit` diff body: the expansion the TUI shows in place of the
 	   arguments. Captured at the height the story declares, because the frame IS
 	   the body — a viewport shorter than the content photographs a scrolled
@@ -1376,6 +1382,24 @@ export const STORIES = [
 	["chat-sidebar-status-feed--gate-parked", 780, 560],
 	["chat-sidebar-status-feed--completion-unseen", 780, 560],
 	/*
+	 * A row re-filing INSIDE its section (local-operator #1224's renderer half).
+	 * Five states rather than five transitions: the same four-row roster once with
+	 * the completed row still in the working band (`completion-in-place`, which IS
+	 * the operator's report) and once with it leading the list after the catalogue
+	 * frame and the reordered read (`completion-reordered`), a completed block that
+	 * is already two rows deep, the same row re-filing again when the completion is
+	 * READ, and the overflowing list, where the viewport rather than the row is the
+	 * subject. The last one is taller on purpose: the panel is a window onto a list
+	 * it cannot hold, which is the state the scroll container is asked about, and
+	 * the height is the one its own content produces so the rig measures the layout
+	 * the frame is shot at rather than a shorter one beside it.
+	 */
+	["chat-sidebar-status-feed--completion-in-place", 780, 660],
+	["chat-sidebar-status-feed--completion-reordered", 780, 660],
+	["chat-sidebar-status-feed--completion-second-in-band", 780, 660],
+	["chat-sidebar-status-feed--completion-acknowledged", 780, 660],
+	["chat-sidebar-status-feed--completion-reordered-offscreen", 780, 660],
+	/*
 	 * The sidebar's CURRENT ROW, and the caps beside it on that row.
 	 *
 	 * Two surfaces, and both are the row the reader is on: a conversation row
@@ -1833,13 +1857,17 @@ export const STORIES = [
 	["chat-message-input--credential-masked-session-pane", 1024, 300],
 	["chat-message-input--credential-masked-small-view", 440, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
-	/* The reservation (UX round 1's U1 / QA's Q1) at both rungs, the two shorter
-	   notice branches (design round 1's N2), and the version-skew line. The
-	   reservation has no ink of its own by design, so its frames are read against
-	   `stop-control-while-streaming` (the same cluster, occupied) and
-	   `stop-control-without-capability` (a backend that reserves nothing). */
-	["chat-message-input--stop-slot-reserved", 1024, 300],
-	["chat-message-input--stop-slot-reserved-small-view", 1024, 300],
+	/* The SETTLED idle row (UX round 1's U1 / QA's Q1, and the operator's report
+	   that the first fix left a standing gap) at both rungs, the two shorter notice
+	   branches (design round 1's N2), and the version-skew line. The slot is now
+	   held for a grace window after a turn ends and is empty once the row has
+	   settled, so these two frames are the pair that shows the reservation is GONE
+	   at idle - read against `stop-control-while-streaming` (the same cluster,
+	   occupied) and `stop-control-without-capability` (a backend that could never
+	   hold it). The grace window itself is measured in the real app and framed under
+	   `interrupt-live/`. */
+	["chat-message-input--stop-slot-settled", 1024, 300],
+	["chat-message-input--stop-slot-settled-small-view", 1024, 300],
 	["chat-message-input--interrupt-left-children-only", 1024, 300],
 	["chat-message-input--interrupt-left-jobs-only", 1024, 300],
 	["chat-message-input--interrupt-unavailable-old-backend", 1024, 300],
