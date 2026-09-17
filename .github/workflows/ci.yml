@@ -53,7 +53,8 @@ jobs:
   # request forever, which looks exactly like the design working. The backend
   # repository shipped precisely that defect first - correct classifier, dead
   # gate, and a green run of its own - so the copy list is asserted rather than
-  # remembered.
+  # remembered, and each copy is guarded so a base revision that predates one of
+  # them takes the warn-and-run-everything path instead of failing the step.
   #
   # `--root` is passed EXPLICITLY even though the module resolves the repository
   # from its invocation directory on its own. That redundancy is the point: two
@@ -100,16 +101,33 @@ jobs:
         run: |
           set -uo pipefail
           base="$(git rev-parse HEAD^1 2>/dev/null || true)"
+          # ONE `git show` PER FILE the module imports, INTO $RUNNER_TEMP, and each
+          # one guarded. The guard is not decoration: GitHub runs a `run:` block
+          # under `bash -e` (this repository's job logs print
+          # `shell: /usr/bin/bash -e {0}`), so an unguarded
+          # `git show "$base:<path>"` for a file the base revision does not have -
+          # the ordinary state of a PR that ADDS an import - aborts the step before
+          # it writes a single output, i.e. a RED `Change Scope` on a legitimate PR.
+          # The contract is the opposite of that: a base this step cannot read from
+          # is a warn-and-run-everything, because a gate that reds an honest PR is
+          # a gate people learn to route around. `scripts/ci-scope.test.mjs`
+          # derives this list from the module's own imports, fails if it drifts, and
+          # drives both branches below against real scratch repositories - including
+          # that the file executed really is the base revision's.
+          copied=false
           if [ -n "$base" ] && git cat-file -e "$base:scripts/ci-scope.mjs" 2>/dev/null; then
-            git show "$base:scripts/ci-scope.mjs" > "$RUNNER_TEMP/ci-scope.mjs"
-            git show "$base:scripts/version-bump-guard.mjs" > "$RUNNER_TEMP/version-bump-guard.mjs"
-            git show "$base:scripts/entry-point.mjs" > "$RUNNER_TEMP/entry-point.mjs"
+            copied=true
+            git show "$base:scripts/ci-scope.mjs" > "$RUNNER_TEMP/ci-scope.mjs" || copied=false
+            git show "$base:scripts/version-bump-guard.mjs" > "$RUNNER_TEMP/version-bump-guard.mjs" || copied=false
+            git show "$base:scripts/entry-point.mjs" > "$RUNNER_TEMP/entry-point.mjs" || copied=false
+          fi
+          if [ "$copied" = true ]; then
             node "$RUNNER_TEMP/ci-scope.mjs" \
               --event "$GITHUB_EVENT_NAME" --base "$base" \
               --root "$GITHUB_WORKSPACE" \
               --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
           else
-            echo "::warning title=Change classification unavailable::no classifier at the base commit, so this diff cannot be classified. Running every job rather than guessing."
+            echo "::warning title=Change classification unavailable::no complete classifier at the base commit, so this diff cannot be classified. Running every job rather than guessing."
             node scripts/ci-scope.mjs --all --root "$GITHUB_WORKSPACE" \
               --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
           fi
