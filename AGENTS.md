@@ -945,10 +945,11 @@ where the interpreter lives or how it is updated.
 ## Which pnpm may install and package
 
 Every workflow that INSTALLS pnpm pins it to **10.29.2** (the `version:` input
-on `pnpm/action-setup`) — the `changes` job in `ci.yml` is the one job that
-installs nothing at all, because the change-scope classifier is node builtins
-plus two sibling files and must not go red for a dependency reason (see *Change
-scope*) — and that pin is load-bearing rather than a preference:
+on `pnpm/action-setup`) — `ci.yml`'s `changes` and `runtime-deps` are the two
+jobs that install nothing at all, the first because the change-scope classifier
+is node builtins plus two sibling files and must not go red for a dependency
+reason (see *Change scope*), the second because its check reads `package.json`
+and nothing else — and that pin is load-bearing rather than a preference:
 **pnpm 10.29.3 through at least 10.34.x drops dependency edges from
 `pnpm list --prod --json --depth Infinity`**, which is the command
 electron-builder runs to decide what goes inside `app.asar`
