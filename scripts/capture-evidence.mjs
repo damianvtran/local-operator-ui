@@ -2106,6 +2106,7 @@ export const STORIES = [
 		620,
 	],
 	["settings-app-updates-section--server-behind-serving-install", 900, 620],
+	["settings-app-updates-section--serving-server-behind-install", 900, 620],
 
 	/* Canvas: the second-largest surface, and the one with the data grids. */
 	["canvas-workspace--markdown-document", 1280, 900],

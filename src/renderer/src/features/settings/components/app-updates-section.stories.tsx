@@ -584,3 +584,39 @@ export const ServerBehindServingInstall: Story = {
 		/>
 	),
 };
+
+/**
+ * THE STATE THE NEW STATUS EXISTS FOR, and the one this pair is about: the
+ * install on disk is at the published release and the process serving this app
+ * is not.
+ *
+ * It is the state the machine walks into one step after the offer above is
+ * acted on - the environment is moved, the daemon keeps serving the old build
+ * until it restarts - and it is the state the reported defect turned into a
+ * contradiction: the check called it `current`, so the whole check earned "The
+ * application and server are up to date" and rendered it beside this very
+ * notice, which says the opposite.
+ *
+ * The verdict is `restart-required` now: the same notice (the only surface that
+ * can carry a skew when there is nothing to offer), and no affirmation at all.
+ * Read against `BeforeTheFix`, which is that notice with the green sentence
+ * above it, the two frames are the rule's whole point.
+ */
+export const ServingServerBehindInstall: Story = {
+	parameters: {
+		verdict: {
+			app: "current",
+			server: "restart-required",
+			affirmation: null,
+		} satisfies UpdateCheckVerdict,
+		numbers: OPERATOR_MACHINE,
+		skew: {
+			version: OPERATOR_MACHINE.published,
+			runningVersion: OPERATOR_MACHINE.server,
+			restartable: false,
+		},
+	},
+	render: () => (
+		<ReportFrame expect="The server is on an older build than the install" />
+	),
+};
