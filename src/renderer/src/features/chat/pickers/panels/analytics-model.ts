@@ -342,57 +342,25 @@ export type SessionRow = {
 	cacheHit: number | null;
 };
 
-/**
- * The by-session table: the top `cap` sessions by the selected metric.
- *
- * Depth comes from `session_parents`, walked upward with a cycle guard —
- * `_PARENT_EDGE_SQL` cannot produce a cycle, but a client that trusted another
- * process's data enough to loop forever would hang the renderer. When the
- * parent map is absent the table renders ids and no indentation, and says
- * nothing: an id is a true label, so there is nothing to apologise for.
+/*
+ * Where the by-session rows come from, now that this file no longer builds
+ * them: `analytics-session-state.ts` indexes the payload, narrows it, orders it,
+ * slices one page out of it and enriches those rows into `SessionRow[]`. This
+ * file keeps the two things the move could have broken — the row's SHAPE, which
+ * the columns read, and the depth walk below, whose clamp and cycle guard are
+ * the reason a 4,550-row table cannot indent itself away or hang the renderer.
  */
-export function sessionRows(
-	bySession: Record<string, DesktopUsageAggregate> | undefined,
-	names: Record<string, string> | undefined,
-	parents: Record<string, string> | undefined,
-	metric: AnalyticsMetric,
-	cap = 12,
-): { rows: SessionRow[]; hidden: number } {
-	const entries = Object.entries(bySession ?? {});
-	const total = entries.reduce(
-		(sum, [, aggregate]) => sum + metricValue(aggregate, metric),
-		0,
-	);
-	const ranked = entries
-		.map(([id, aggregate]) => ({
-			id,
-			aggregate,
-			value: metricValue(aggregate, metric),
-		}))
-		.sort((a, b) => b.value - a.value || a.id.localeCompare(b.id));
-	const rows = ranked.slice(0, cap).map(({ id, aggregate }) => {
-		const name = names?.[id];
-		return {
-			id,
-			label: name ?? id,
-			unnamed: !name,
-			depth: sessionDepth(id, names, parents),
-			calls: aggregate.calls,
-			tokens: totalTokens(aggregate),
-			cost: formatMicroUsd(
-				aggregate.cost_micro,
-				aggregate.cost_known_calls,
-				aggregate.calls,
-			),
-			fraction: total > 0 ? metricValue(aggregate, metric) / total : 0,
-			cacheHit: cacheReadFraction(aggregate),
-		};
-	});
-	return { rows, hidden: Math.max(0, ranked.length - rows.length) };
-}
 
-/** How many parents a session has, clamped to 2, with a cycle guard. */
-function sessionDepth(
+/**
+ * How many parents a session has, clamped to 2, with a cycle guard.
+ *
+ * Exported because the row enrichment lives in `analytics-session-state.ts` and
+ * this walk must stay single-sourced: the clamp is a presentation decision
+ * (`_PARENT_EDGE_SQL` cannot produce a cycle, but a client that trusted another
+ * process's data enough to loop forever would hang the renderer) and a second
+ * copy of it in the table's own module is how the two would drift.
+ */
+export function sessionDepth(
 	id: string,
 	_names: Record<string, string> | undefined,
 	parents: Record<string, string> | undefined,
