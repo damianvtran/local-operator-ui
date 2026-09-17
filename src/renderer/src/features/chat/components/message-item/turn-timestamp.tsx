@@ -1,13 +1,14 @@
 /**
- * The always-visible stamp: when this turn was sent, or when this tool call ran.
+ * The always-visible stamp: when this turn was sent, when an answer was written,
+ * or when this tool call ran.
  *
  * BESIDE `message-timestamp.tsx`, not a variant of it, because the two answer
  * different questions and are seen at different moments. That one is the hover
  * meta row's stamp: it appears among copy and speak, only while the reader is
  * hovering the row, and it is formatted for someone already looking at the
- * message. This one is on screen for every user turn and inside every expanded
- * tool call, so it has to name the day itself (`formatTurnTimestamp`) rather
- * than a bare clock time.
+ * message. This one is on screen for every user turn, under every settled agent
+ * answer and inside every expanded tool call, so it has to name the day itself
+ * (`formatTurnTimestamp`) rather than a bare clock time.
  *
  * THIS REVERSES A DELIBERATE DECISION, and the record of the old one is in that
  * file's header, so the reason it was reversed belongs here. The hover-only
@@ -19,21 +20,25 @@
  * single stamp under it is the anchor the hover model was missing — and the
  * collapsed ledger rows keep the quiet they were given, because their stamp
  * lives inside the disclosure and a run of twenty calls therefore stays twenty
- * lines.
- *
+ * lines. The agent's answer was added to that list a report later (the operator,
+ * 2026-09-17: "the agent responses (just the final responses, not the in-progress
+ * tool intent/response) don't have a time displayed on them"), which is why the
+ * in-progress half of that sentence is a rule here rather than a detail.
+ * *
  * IT SITS IN EXACTLY TWO PLACES, and the operator's report of 2026-09-17 is why
  * that is two rather than three. `scope="turn"` under a user turn's bubble: one
  * per turn, the anchor the hover model was missing. `scope="turn"` at the foot
  * of an OPEN tool disclosure: the collapsed ledger keeps the quiet it was given,
  * so a run of twenty calls stays twenty lines.
  *
- * THE THIRD PLACE IS GONE. This component used to also own a FOOTER line at the
- * end of the transcript, stating when the last thing in the conversation
- * happened, gated so it stayed away when the last row painted a stamp of its own
- * (a user turn, or a ledger row the reader had opened). The transcript is
- * bottom-pinned and the aggregate working line sits at its foot, so during a live
- * turn that stamp landed directly under the thinking indicator — a clock beneath
- * a liveness row, which is the state the operator screenshotted. The line was
+ * THE FOOTER LINE IS GONE, and it was a THIRD PLACE only in the sense that it
+ * was the third one this component owned. It stated when the last thing in the
+ * conversation happened, gated so it stayed away when the last row painted a
+ * stamp of its own (a user turn, or a ledger row the reader had opened). The
+ * transcript is bottom-pinned and the aggregate working line sits at its foot, so
+ * during a live turn that stamp landed directly under the thinking indicator — a
+ * clock beneath a liveness row, which is the state the operator screenshotted.
+ * The line was
  * removed rather than gated because every gate it had asked WHICH row came last,
  * and the row that comes last during a turn is the working line: not a record,
  * and not something the gate could name. The trade is deliberate and worth
@@ -99,20 +104,39 @@ export type TurnTimestampProps = {
 	/** The moment itself: epoch ms from a record, or a `Date`. */
 	timestamp: number | Date;
 	/**
-	 * WHICH stamp this is, in the DOM as `data-stamp`.
+	 * WHICH carrier paints this stamp, in the DOM as `data-stamp`.
 	 *
-	 * It names the PLACEMENT rather than the fact — the stamp under a user turn's
-	 * bubble and the stamp at the foot of an open tool call are different spots on
-	 * the page for the same kind of time — so the render tests can say where a
-	 * `<time>` came from without depending on the DOM shape around it. The union
-	 * used to carry `"footer"` for the transcript's removed footer line; one
-	 * member is left because that was the only other placement.
+	 * Three placements, three names, because they are different facts on the page
+	 * and the render tests have to count each one separately: a user turn's `turn`
+	 * (under its bubble), an agent answer's `answer` (under it, against the rail),
+	 * and a tool call's `tool` (at the foot of the disclosure the reader opened).
+	 * The union used to carry `"footer"` for the transcript's removed footer line,
+	 * and it used to make the tool call borrow `"turn"`, which meant two different
+	 * carriers shared one value.
 	 *
-	 * Required rather than defaulted, so a third placement states itself rather
+	 * It also picks the accessible name below, which is the reason it is a value
+	 * rather than a boolean: "Sent" is true of a user's message and false of an
+	 * answer the agent wrote.
+	 *
+	 * Required rather than defaulted, so a fourth carrier states itself rather
 	 * than inheriting whichever value happened to be the default.
 	 */
-	scope: "turn";
+	scope: "turn" | "answer" | "tool";
 	className?: string;
+};
+
+/**
+ * The verb each carrier's accessible name is built from.
+ *
+ * A stamp's visible text is a bare time, so the NAME is the only place the fact
+ * it states is spelled out - and it has to be the right fact. `Sent` was
+ * hardcoded while every stamp was a turn's own; it is false on an answer the
+ * agent wrote and on a call that ran, which is what the three variants fix.
+ */
+const STAMP_VERB: Record<TurnTimestampProps["scope"], string> = {
+	turn: "Sent",
+	answer: "Answered",
+	tool: "Ran",
 };
 
 export const TurnTimestamp: FC<TurnTimestampProps> = ({
@@ -156,9 +180,11 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 				/*
 				 * The label rather than the text is what assistive tech reads: the
 				 * visible "3:42 PM" is a caption under a card, and out of that
-				 * context it states no day at all (review round 1, R7).
+				 * context it states no day at all (review round 1, R7). The verb comes
+				 * from `scope`, so the name is truthful per carrier - a turn was sent,
+				 * an answer was written, a call ran.
 				 */
-				aria-label={`Sent ${full}`}
+				aria-label={`${STAMP_VERB[scope]} ${full}`}
 				/*
 				 * `text-ink-dim` + `text-meta` is the contract's own pair for a
 				 * caption (§ 4: `text-meta` is "captions, timestamps, counts"; § 2:

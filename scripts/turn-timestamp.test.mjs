@@ -491,25 +491,48 @@ const toolRecord = (id, over = {}) => ({
 	...over,
 });
 
-/*
- * The transcript paints ONE kind of stamp, a turn's own (`data-stamp="turn"`),
- * and WHERE it is placed is the whole claim: under a user turn's bubble, or at
- * the foot of an open tool call. The assertions key on the attribute rather than
- * counting `<time>` elements so a test can ask where a stamp is, not only how
- * many there are.
+/**
+ * A settled answer, which is the shape that carries the agent-side stamp.
  *
- * THE ATTRIBUTE USED TO CARRY A SECOND VALUE. `"footer"` named the transcript's
- * footer line, which is REMOVED (the operator's report of 2026-09-17), so the
- * assertions that once counted footers now assert their absence - and they assert
- * it as a count over the whole container, because "no footer" and "nothing at the
- * foot of the transcript" are the same claim now that only one placement exists.
- * `allStamps` is the unqualified count those absence assertions rest on.
+ * `streaming: false` is the discriminator the component reads, so it is spelled
+ * out here rather than defaulted by omission: a fixture that forgot it would be
+ * a streaming record, and the assertion "a settled answer paints one" would then
+ * be testing the wrong row (see the streaming case below).
+ */
+const answerRecord = (id, over = {}) => ({
+	kind: "assistant",
+	id,
+	ts: TS,
+	text: "Four invoices were late: 1042, 1088, 1103 and 1177.",
+	streaming: false,
+	stopReason: null,
+	error: false,
+	...over,
+});
+
+/*
+ * The transcript paints THREE carriers' stamps and the assertions below ask which
+ * of them is present, and where: a user turn's (`data-stamp="turn"`, under its
+ * bubble), an agent answer's (`data-stamp="answer"`, under it against the rail),
+ * and a tool call's (`data-stamp="tool"`, at the foot of the disclosure the
+ * reader opened). They render the same text on purpose - one fact, one spelling -
+ * so counting `<time>` elements cannot tell them apart, which is what the
+ * attribute is for.
+ *
+ * THE ATTRIBUTE USED TO CARRY TWO VALUES, one of them shared. `"footer"` named
+ * the transcript's footer line, which is REMOVED (the operator's report of
+ * 2026-09-17), and the tool call borrowed `"turn"` from the user turn - so a
+ * count could not say which of the two a `<time>` came from. `"answer"` was
+ * added the same day, with the report that the agent's responses carried no time.
+ * The assertions that counted footers now assert their absence, and they assert it
+ * as a count over the whole container: `allStamps` is the unqualified count those
+ * absence assertions rest on.
  */
 const stamps = (container, kind) => [
 	...container.querySelectorAll(`time[data-stamp="${kind}"]`),
 ];
 
-/** Every stamp on the page, whichever placement it names. */
+/** Every stamp on the page, whichever carrier it names. */
 const allStamps = (container) => [...container.querySelectorAll("time")];
 
 const mount = (records, over = {}) => {
@@ -643,9 +666,9 @@ test("a collapsed tool row has no stamp at all, and one appears when it is opene
 
 	const pane = container.querySelector("[data-detail-section]");
 	assert.ok(pane, "the expansion is open");
-	const turns = stamps(container, "turn");
-	assert.equal(turns.length, 1, "the expanded row carries one stamp");
-	const [stamp] = turns;
+	const toolStamps = stamps(container, "tool");
+	assert.equal(toolStamps.length, 1, "the expanded row carries one stamp");
+	const [stamp] = toolStamps;
 	assert.equal(stamp.getAttribute("datetime"), new Date(TS).toISOString());
 	/*
 	 * OUTSIDE the scrolling pane, which is the placement claim the pane's own
@@ -686,68 +709,60 @@ test("a tool row with nothing to disclose stays a line, stamp and all", async ()
 	const { container, unmount } = mount([
 		toolRecord("tool:1", { args: {}, output: null, toolName: "team" }),
 	]);
-	assert.equal(stamps(container, "turn").length, 0, "the row paints nothing");
+	assert.equal(stamps(container, "tool").length, 0, "the row paints nothing");
 	assert.equal(container.querySelector("button[aria-expanded]"), null);
 	unmount();
 });
 
-test("no stamp is painted at the foot of the transcript, on any last row", async () => {
+test("the transcript paints no stamp of its own, on any last row", async () => {
 	/*
 	 * THE FOOTER IS REMOVED, and what replaces it is an absence on every shape of
 	 * last row rather than a gate on some of them. The operator asked for the time
 	 * "only beside user messages and in tool traces when expanded" (2026-09-17): a
-	 * transcript that ends on prose, on a settled row nobody opened, or on a system
-	 * notice states no time at its foot.
+	 * transcript that ends on a settled row nobody opened, or on a system notice,
+	 * states no time at its foot.
 	 *
-	 * The assertions count stamps over the WHOLE container rather than filtering by
-	 * `data-stamp`, because the attribute no longer has a second value to filter
-	 * for - "no footer" and "no stamp at the foot" are one claim now. Comparing
-	 * against `allStamps` also catches a regression that reintroduced the line
-	 * under a different value name.
+	 * THE COUNTS BELOW ARE PER CARRIER rather than a bare total, because the
+	 * transcript now paints three of them (`turn`, `answer`, `tool`) and a total
+	 * alone could not say which one a regression added. What is asserted is that
+	 * every `<time>` on the page belongs to a row that owns one - so the shape of
+	 * the claim survives the answer's stamp landing where the footer used to be.
 	 */
-	const answer = {
-		kind: "assistant",
-		id: "a",
-		ts: TS + 60_000,
-		text: "Reconciled.",
-		streaming: false,
-		stopReason: null,
-		error: false,
-	};
+	const settled = answerRecord("answer:1", { ts: TS + 60_000 });
 
-	// Ends on a USER turn: that turn's stamp is under its bubble, and the foot is
-	// empty. This was the case the footer's gate was written for, and the absence
-	// is now unconditional rather than a suppression.
+	// Ends on a USER turn: that turn's stamp is under its bubble. This was the case
+	// the footer's gate was written for, and the absence is now unconditional
+	// rather than a suppression.
 	const endsOnUser = mount([
-		{ ...answer, ts: TS },
+		{ ...settled, ts: TS },
 		userRecord("user:1", { ts: TS + 60_000 }),
 	]);
 	assert.equal(stamps(endsOnUser.container, "turn").length, 1);
+	assert.equal(stamps(endsOnUser.container, "answer").length, 1);
 	assert.equal(
 		allStamps(endsOnUser.container).length,
-		1,
-		"the turn's own stamp is the only time on the page",
+		2,
+		"the turn's and the answer's own, and nothing else",
 	);
 	endsOnUser.unmount();
 
-	// Ends on an ANSWER: the case the footer used to exist for, and the case the
-	// operator's "only beside user messages and in tool traces when expanded"
-	// removes it from. MEASURED AGAINST THE BEHAVIOUR THAT WAS REMOVED: this fixture
-	// used to paint TWO stamps - the user turn's, and the footer under the answer -
-	// and the count below is what says the second one is gone.
-	const endsOnAnswer = mount([userRecord("user:1"), answer]);
+	// Ends on an ANSWER. This is the row the removed footer used to state the time
+	// for, and it now has a stamp of its OWN where the footer stood - which is why
+	// the claim is about ownership rather than about an empty foot: the answer
+	// carries a time because it is the answer, not because the transcript does.
+	const endsOnAnswer = mount([userRecord("user:1"), settled]);
 	assert.equal(
-		allStamps(endsOnAnswer.container).length,
+		stamps(endsOnAnswer.container, "answer").length,
 		1,
-		"the user turn's stamp, and nothing at the foot under the answer",
+		"the answer's own stamp, in the footer's old position and under its own name",
 	);
-	assert.equal(stamps(endsOnAnswer.container, "turn").length, 1);
+	assert.equal(stamps(endsOnAnswer.container, "tool").length, 0);
+	assert.equal(allStamps(endsOnAnswer.container).length, 2);
 	endsOnAnswer.unmount();
 
 	// Ends on a CLOSED ledger row: the row paints nothing, and the transcript no
-	// longer states the time on its behalf - which is the trade this removal makes,
-	// recorded in `turn-timestamp.tsx`'s own header rather than hidden here. Also a
-	// two-stamp fixture before the change.
+	// longer states the time on its behalf - the trade this removal makes,
+	// recorded in `turn-timestamp.tsx`'s own header rather than hidden here.
 	const endsOnRow = mount([
 		userRecord("user:1"),
 		toolRecord("tool:1", { args: { command: "pnpm build" }, output: "built" }),
@@ -755,7 +770,7 @@ test("no stamp is painted at the foot of the transcript, on any last row", async
 	assert.equal(
 		allStamps(endsOnRow.container).length,
 		1,
-		"a settled row nobody opened states no time either",
+		"the user turn's alone: a settled row nobody opened states no time",
 	);
 	endsOnRow.unmount();
 
@@ -777,6 +792,166 @@ test("no stamp is painted at the foot of the transcript, on any last row", async
 		"a trailing notice states no time at the foot",
 	);
 	endsOnNotice.unmount();
+});
+
+test("a settled answer carries one stamp, under it on the agent rail", async () => {
+	/*
+	 * The operator's second report of 2026-09-17: "the agent responses (just the
+	 * final responses, not the in-progress tool intent/response) don't have a time
+	 * displayed on them". So a settled answer paints exactly one stamp, and it is a
+	 * SIBLING of the answer's own content box rather than a line inside it -
+	 * `turnRef` is what the quote toolkit reads, so a stamp inside it would be
+	 * swept into a quote - and the box it is a sibling in is the agent rail's own
+	 * (`pl-10`), which is the left edge the answer's prose already starts at.
+	 *
+	 * That is the structural half of "under the message, left-aligned". The pixels
+	 * are the frames' claim, because jsdom has no layout engine.
+	 */
+	const { container, unmount } = mount([
+		userRecord("user:1"),
+		answerRecord("answer:1", { ts: TS + 60_000 }),
+	]);
+	assert.equal(stamps(container, "turn").length, 1, "the user turn's own");
+	assert.equal(
+		stamps(container, "answer").length,
+		1,
+		"exactly one for the answer",
+	);
+	const [stamp] = stamps(container, "answer");
+	assert.equal(
+		stamp.getAttribute("datetime"),
+		new Date(TS + 60_000).toISOString(),
+	);
+	assert.equal(
+		stamp.closest(".lo-markdown"),
+		null,
+		"the stamp is not inside the answer's words",
+	);
+	const content = stamp.parentElement.previousElementSibling;
+	assert.ok(
+		content?.querySelector(".lo-markdown"),
+		"and it follows the content box it captions, as its sibling",
+	);
+	assert.equal(
+		content.contains(stamp),
+		false,
+		"so the caption is outside the box a selection has to lie inside to quote",
+	);
+	assert.match(
+		stamp.parentElement.parentElement.className,
+		/pl-10/,
+		"in the agent rail's own box, which is the left edge the prose starts at",
+	);
+	/*
+	 * AND THE NAME IS TRUTHFUL PER CARRIER. `Sent` was hardcoded while every stamp
+	 * was a turn's own; an answer the agent wrote was not sent by anyone. The three
+	 * verbs are asserted together so a fourth carrier added without one fails here.
+	 */
+	assert.match(stamp.getAttribute("aria-label"), /^Answered /);
+	assert.match(
+		stamps(container, "turn")[0].getAttribute("aria-label"),
+		/^Sent /,
+	);
+	unmount();
+});
+
+test("an answer that is still arriving carries none", async () => {
+	/*
+	 * The other half of the same sentence: "not the in-progress tool
+	 * intent/response". The discriminator is the record's own `streaming` flag -
+	 * never "is this the last record" and never its stop reason, which a durable
+	 * entry may not carry at all. A settled answer in the MIDDLE of a turn is still
+	 * an answer the agent gave, which the test below pins from the other side.
+	 */
+	const { container, unmount } = mount([
+		userRecord("user:1"),
+		answerRecord("answer:1", {
+			streaming: true,
+			text: "Four invoices were",
+		}),
+	]);
+	// The partial answer IS on screen, so the absence below is about the caption
+	// and not about a row that never rendered.
+	assert.ok(container.querySelector(".lo-markdown"));
+	assert.equal(
+		stamps(container, "answer").length,
+		0,
+		"no stamp while the answer is still being written",
+	);
+	assert.equal(
+		allStamps(container).length,
+		1,
+		"the user turn's stamp alone: liveness is the working line's job (§ 7)",
+	);
+	unmount();
+});
+
+test("a turn paints one stamp per settled prose row, and none on the tool rows", async () => {
+	/*
+	 * The shape the operator's addendum asks about directly: prose, the calls it
+	 * narrates, and a closing answer. Each SETTLED prose row carries its own
+	 * caption and the collapsed ledger rows carry none, so the count tracks the
+	 * carrier rather than the row's position - and the ORDER is asserted, because a
+	 * caption that drifted one row up or down would still produce the right total.
+	 */
+	const { container, unmount } = mount([
+		userRecord("user:1"),
+		answerRecord("answer:1", { text: "Reading the ledger." }),
+		toolRecord("tool:1"),
+		toolRecord("tool:2"),
+		answerRecord("answer:2", { text: "Four invoices were late." }),
+	]);
+	assert.equal(
+		stamps(container, "answer").length,
+		2,
+		"one per settled prose row",
+	);
+	assert.equal(
+		stamps(container, "tool").length,
+		0,
+		"and a closed ledger row carries none",
+	);
+	assert.deepEqual(
+		allStamps(container).map((time) => time.getAttribute("data-stamp")),
+		["turn", "answer", "answer"],
+		"in the order of the rows they caption",
+	);
+	unmount();
+});
+
+test("the answer's caption sits under the content in its other shapes too", async () => {
+	/*
+	 * The answer row renders more than prose: a reply quote above it, a refusal's
+	 * danger ink, and a `Stopped before finishing` line under an aborted turn. The
+	 * operator's constraint is that the caption sits under the MESSAGE CONTENT in
+	 * every one of them and appears once - which is about where the wrapper sits,
+	 * not about the words, so it is asserted structurally.
+	 *
+	 * IMAGES ARE NOT ONE OF THE SHAPES and that is checked rather than assumed: the
+	 * `assistant` record carries no `images` field (`transcript-reducer.ts`),
+	 * `CanonicalImage` is reached from `UserRow` and from the tool row's `details`,
+	 * and `AssistantRow` renders none - so there is no image shape for this caption
+	 * to fall above.
+	 */
+	for (const [name, over] of [
+		["a refusal", { stopReason: "refusal", error: true }],
+		["an aborted turn", { stopReason: "aborted" }],
+		["an error", { error: true }],
+	]) {
+		const { container, unmount } = mount([
+			userRecord("user:1"),
+			answerRecord("answer:1", over),
+		]);
+		const found = stamps(container, "answer");
+		assert.equal(found.length, 1, `${name} paints exactly one caption`);
+		assert.ok(
+			found[0].parentElement.previousElementSibling?.querySelector(
+				".lo-markdown",
+			),
+			`and ${name}'s caption is still under its content box`,
+		);
+		unmount();
+	}
 });
 
 test("a transcript ending on the working line paints no stamp beneath it", async () => {
@@ -836,35 +1011,36 @@ test("a transcript ending on the working line paints no stamp beneath it", async
 	unmount();
 });
 
-test("assistant prose carries no stamp of its own", async () => {
-	// The stamp is a fact about the two things the operator named: a user turn
-	// and an open tool call. An answer is neither, so the only turn stamp on the
-	// page is the user's - proven by where it sits, not only by its count.
+test("the two captions are separate carriers rather than one repeated", async () => {
+	/*
+	 * The stamp used to be a fact about ONE thing - a user turn - and an open tool
+	 * call borrowed its name. The answer's caption makes three carriers, and this
+	 * is the test that they stay distinguishable: the same `<time>`, the same text,
+	 * and a `data-stamp` that says which row it belongs to, so a page can be asked
+	 * "did the answer get one?" and "did the turn get one?" separately.
+	 *
+	 * The placement is asserted with it, because a carrier's name is only useful if
+	 * the stamp is where that carrier's reader looks: the turn's is inside a
+	 * right-justified row (the bubble's edge), the answer's inside the agent rail.
+	 */
 	const { container, unmount } = mount([
 		userRecord("user:1"),
-		{
-			kind: "assistant",
-			id: "assistant:1",
-			ts: TS + 1000,
-			text: "Three invoices were late.",
-			streaming: false,
-			stopReason: null,
-			error: false,
-		},
+		answerRecord("assistant:1", { ts: TS + 1000 }),
 	]);
 	const turns = stamps(container, "turn");
-	assert.equal(turns.length, 1, "only the user turn is stamped");
+	const answers = stamps(container, "answer");
+	assert.equal(turns.length, 1, "one for the user turn");
+	assert.equal(answers.length, 1, "one for the answer, and counted separately");
 	assert.ok(
 		// The card, not `.lo-measured`: that class was retired on 2026-09-16 (the
-		// note in the placement test above records why), and an answer still
-		// renders no card of its own for a stamp to hang on.
-		turns[0].parentElement.querySelector(".rounded-frame"),
-		"and it is the user turn's: the answer has no card to hang one on",
+		// note in the placement test above records why).
+		turns[0].parentElement.parentElement.querySelector(".rounded-frame"),
+		"the turn's sits in the row that carries the bubble",
 	);
 	assert.equal(
-		allStamps(container).length,
-		1,
-		"and the answer paints no stamp of its own either",
+		answers[0].parentElement.closest(".rounded-frame"),
+		null,
+		"and the answer's is not attached to a card: an answer renders none",
 	);
 	unmount();
 });

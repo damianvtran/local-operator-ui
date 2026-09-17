@@ -1072,6 +1072,148 @@ export const TurnBoundaryAndWorkingLine: Story = {
 	),
 };
 
+export const AnswerInProgress: Story = {
+	render: () => (
+		<Frame
+			waiting
+			height={340}
+			records={[
+				{
+					kind: "user",
+					id: "p1",
+					ts: TS,
+					text: "Which invoices were paid late?",
+					images: [],
+				},
+				{
+					kind: "assistant",
+					id: "p2",
+					ts: TS + 4_000,
+					text: "Reading the ledger first.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "p3",
+					toolName: "read",
+					args: { path: "invoices/2026-08.csv" },
+					durationS: 0.06,
+				}),
+				// The answer that is still arriving. It carries prose and no caption:
+				// this record is the operator's "in-progress tool intent/response",
+				// and the working line below is the only liveness element on screen
+				// (§ 7).
+				{
+					kind: "assistant",
+					id: "p4",
+					ts: TS + 9_000,
+					text: "Four were late, and the oldest is 41 days",
+					streaming: true,
+					stopReason: null,
+					error: false,
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * A turn whose prose arrives in pieces, which is the shape the caption's count
+ * has to survive: three intermediate paragraphs interleaved with the calls they
+ * narrate, and a closing answer.
+ *
+ * The operator asked for a caption on the agent's final responses and then asked,
+ * in the same breath, what a turn like this looks like - because a stamp per
+ * settled prose row is four captions in one turn, while the ledger below it stays
+ * four lines. The frame exists so that question is judged on pixels rather than
+ * on the rule: what keeps the count down is that a record with no content paints
+ * nothing (`paintsSomething`), so a turn that stops talking between calls adds no
+ * caption - and what the frame shows is that a turn that DOES talk four times
+ * carries four.
+ */
+export const ProseBetweenCalls: Story = {
+	render: () => (
+		<Frame
+			height={520}
+			records={[
+				{
+					kind: "user",
+					id: "q1",
+					ts: TS,
+					text: "Reconcile August against the bank feed.",
+					images: [],
+				},
+				{
+					kind: "assistant",
+					id: "q2",
+					ts: TS + 2_000,
+					text: "Pulling both sides of the month first.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "q3",
+					toolName: "read",
+					args: { path: "invoices/2026-08.csv" },
+					durationS: 0.08,
+				}),
+				tool({
+					id: "q4",
+					toolName: "read",
+					args: { path: "bank/2026-08.csv" },
+					durationS: 0.05,
+				}),
+				{
+					kind: "assistant",
+					id: "q5",
+					ts: TS + 5_000,
+					text: "Both ledgers agree on 214 of the 220 rows.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "q6",
+					toolName: "bash",
+					args: { command: "node scripts/diff-ledgers.mjs" },
+					durationS: 1.2,
+				}),
+				{
+					kind: "assistant",
+					id: "q7",
+					ts: TS + 8_000,
+					text: "The six that disagree are all dated on a weekend.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "q8",
+					toolName: "bash",
+					args: { command: "node scripts/check-weekends.mjs" },
+					durationS: 0.7,
+				}),
+				{
+					kind: "assistant",
+					id: "q9",
+					ts: TS + 11_000,
+					text: "Four invoices were paid late, and the oldest is 41 days behind.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+			]}
+		/>
+	),
+};
+
 /**
  * The operator's alignment report, as one frame: prose between tool rows, and
  * a final answer, against the ledger they are supposed to line up with.
