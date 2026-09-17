@@ -182,6 +182,31 @@ export function useScrollPaging({
 	// refs: a demand arming or a settle timer firing must not repaint a list
 	// that repaints per token already.
 	const [failed, setFailed] = useState(false);
+	/*
+	 * Whether the pump is between dispatching a reveal and the reader being able
+	 * to see it — the same fact the policy holds in `busy` and `pageWidenOwed`,
+	 * mirrored into React state because one surface READS it: the top slot.
+	 *
+	 * Why the slot needs it (design round 1 D1-3, UX round 1 U1-2). Measured on
+	 * the real surface, one flick painted the row four times in 1.34s:
+	 *
+	 *   "40 earlier messages above - scroll up to load" -> "Load earlier messages"
+	 *   -> "Loading earlier messages" -> "100 earlier messages above - scroll up
+	 *   to load" -> "40 earlier messages above - scroll up to load"
+	 *
+	 * The two sentences in the middle of that are the pre-fix instruction this
+	 * whole change exists to remove, painted at a reader who is pinned at the hard
+	 * top mid-push and can act on neither: they say "scroll up to load" while the
+	 * app is loading exactly that, and the same sentence reappears 105ms later
+	 * with a different count. Holding the loading paint for as long as a reveal is
+	 * in flight OR owed leaves one statement per act and hands the reader the
+	 * count only once it is the count they can see.
+	 *
+	 * It is a mirror, not a second state machine: it is written in exactly one
+	 * place (the pump, from the decisions the policy just returned) and every
+	 * value it takes is derived from `busy`/`pageWidenOwed`.
+	 */
+	const [revealInFlight, setRevealInFlight] = useState(false);
 
 	// Latest values for the rAF pump, which must not be re-created per render.
 	const live = useRef({ hiddenRows, hasMore, onWiden, onLoadOlder });
@@ -351,6 +376,20 @@ export function useScrollPaging({
 				performance.now(),
 			);
 			state.current = next;
+			/*
+			 * The slot's paint follows the policy's own view of what is on its way:
+			 * a reveal just dispatched, one in flight, one owed, or a demand the
+			 * reader has already made and that will be spent on this act — the
+			 * last of those is what closes the window between a widen landing and
+			 * the fetch it frees. Measured with only the first three: the row still
+			 * painted the button for 184ms inside one flick (`Loading earlier
+			 * messages` -> `Load earlier messages` -> `Loading earlier messages`),
+			 * because a settled widen leaves the reader's retained demand armed for
+			 * a frame or two before the pump spends it.
+			 */
+			setRevealInFlight(
+				action !== "none" || next.busy || next.pageWidenOwed || next.armed,
+			);
 			if (action === "none") {
 				// An armed demand waiting only on the settle debounce needs someone to
 				// ask again once the debounce expires: no further input is coming, by
@@ -505,7 +544,19 @@ export function useScrollPaging({
 	useEffect(() => {
 		state.current = initialPagingState();
 		anchor.current = { sample: null, until: 0 };
+		/*
+		 * The DOM half's measurement state belongs to the conversation too
+		 * (review round 1, R1-6). Left alone, the first input of a NEW conversation
+		 * is differenced against the PREVIOUS conversation's offsets, so the travel
+		 * and the speed handed to the policy describe a layout change rather than
+		 * the reader's own motion — the one thing clause A requires them to be.
+		 * `at: 0` is what "no previous sample" means here, so the first notch of a
+		 * fresh conversation carries no speed and no travel, exactly as the first
+		 * notch of the first-ever conversation does.
+		 */
+		travel.current = { fromTail: 0, at: 0, extent: 0, clamped: false };
 		setFailed(false);
+		setRevealInFlight(false);
 		// A fresh conversation may already be shorter than its viewport with more
 		// history behind it, which is clause L's case and has no gesture to start
 		// it. `continuation` is the only demand kind `decide` will honour without
@@ -711,15 +762,25 @@ export function useScrollPaging({
 	}, [correctAnchor, rowCount]);
 
 	const exhaustedRetries = isExhausted(state.current);
-	const slotState: OlderHistoryState = loadingOlder
-		? "loading"
-		: failed && (exhaustedRetries || hiddenRows === 0)
-			? "failed"
-			: hiddenRows > 0
-				? "windowed"
-				: hasMore
-					? "idle"
-					: "exhausted";
+	/*
+	 * One statement per act, and the loading paint outranks the two sentences that
+	 * ask for a gesture. `loadingOlder` is the session hook's own in-flight flag
+	 * and `revealInFlight` the policy's, so the row stays on "Loading earlier
+	 * messages" from the moment a reveal is dispatched until the page's rows are
+	 * actually on screen — including the window in which a landed page's rows are
+	 * still held back and the count would otherwise be painted at a reader who
+	 * cannot see it yet. See the note on `revealInFlight`.
+	 */
+	const slotState: OlderHistoryState =
+		loadingOlder || revealInFlight
+			? "loading"
+			: failed && (exhaustedRetries || hiddenRows === 0)
+				? "failed"
+				: hiddenRows > 0
+					? "windowed"
+					: hasMore
+						? "idle"
+						: "exhausted";
 
 	return { slotState, requestOlder };
 }
