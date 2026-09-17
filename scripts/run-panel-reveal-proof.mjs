@@ -55,8 +55,14 @@
  * into the report.
  */
 
-import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import {
+	mkdirSync,
+	mkdtempSync,
+	realpathSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -293,16 +299,39 @@ const app = await (async () => {
 			`--window-size=${WIDTH}x${HEIGHT}`,
 		],
 		{
-			cwd: REPO,
-			env: {
-				...process.env,
-				LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
-				// The QA gate's rule: an inherited cmux id let a headless run rename
-				// the operator's real workspaces.
-				CMUX_WORKSPACE_ID: undefined,
-				CMUX_SURFACE_ID: undefined,
-			},
+				cwd: REPO,
+			env: (() => {
+				const env = {
+					...process.env,
+					LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+				};
+				/*
+				 * Every inherited cmux/lop variable is REMOVED rather than named: an inherited
+				 * workspace id has already renamed the operator's real workspaces from a
+				 * headless run in this project, and the gate's rule is the whole prefix, not
+				 * the two variables the first version of this rig happened to know about.
+				 */
+				for (const key of Object.keys(env)) {
+					if (key.startsWith("CMUX_") || key.startsWith("LOP_"))
+						delete env[key];
+				}
+				return env;
+			})(),
 			stdio: ["ignore", "pipe", "pipe"],
+			/*
+			 * Own the whole tree, because `npx` is in the middle of it. This spawns
+			 * `npx` -> `node .../electron/cli.js` -> `Electron.app`, so a signal to the
+			 * direct child alone stops the SHIM and leaves the app reparented to
+			 * launchd - one leaked app per run, INCLUDING on green runs, each of them
+			 * still answering on its devtools port (measured: seven green runs in a
+			 * capture matrix left seven apps, and the next run that picked one of their
+			 * ports reported "already has a devtools endpoint", which reads as a slow
+			 * launch rather than as a collision). `detached` puts the tree in its own
+			 * process group so `stop` below can signal the group, the same rule
+			 * `scripts/browser-host-proof.mjs` records; the profile-scoped reap in the
+			 * teardown catches an app that outlives even that.
+			 */
+			detached: true,
 		},
 	);
 	child.unref();
@@ -403,7 +432,7 @@ const app = await (async () => {
 	};
 	// A headless window cannot be focused, so a key event is dropped without it.
 	await send("Emulation.setFocusEmulationEnabled", { enabled: true });
-	return { child, send, evaluate, click, screenshot, log, socket };
+	return { child, profile, send, evaluate, click, screenshot, log, socket };
 })();
 
 const outDir = join(OUT, `press-${WIDTH}x${HEIGHT}`);
@@ -782,7 +811,24 @@ try {
 	}
 } finally {
 	app.socket.close();
-	app.child.kill("SIGTERM");
+	/*
+	 * Kill the process GROUP, not the direct child, and tolerate a group that has
+	 * already gone away: the direct child here is `npx`, whose exit says nothing
+	 * about the `Electron.app` two levels below it. Signalling a bare `child.kill`
+	 * is what left one app per run alive on this lane.
+	 */
+	const killGroup = (signal) => {
+		try {
+			process.kill(-app.child.pid, signal);
+		} catch {
+			try {
+				app.child.kill(signal);
+			} catch {
+				// Already gone.
+			}
+		}
+	};
+	killGroup("SIGTERM");
 	/*
 	 * WAIT for the exit before returning. A run that leaves the app holding its
 	 * devtools port makes the NEXT run fail with "no app page target", which reads
@@ -793,8 +839,30 @@ try {
 	for (let attempt = 0; attempt < 20 && app.child.exitCode === null; attempt++)
 		await wait(250);
 	if (app.child.exitCode === null) {
-		app.child.kill("SIGKILL");
+		killGroup("SIGKILL");
 		await wait(500);
+	}
+	/*
+	 * The group kill above covers the shape this driver spawns; this reap covers
+	 * the shape it CANNOT see. An app that outlived its group - reparented to
+	 * launchd before the signal, or a helper that detached itself - is reachable by
+	 * the one thing every launch of it carries: its own scratch profile. The pattern
+	 * is scoped to the mkdtemp'd path, so a peer's run and the operator's own app
+	 * cannot be matched by it.
+	 */
+	try {
+		execFileSync("pkill", ["-f", `user-data-dir=${app.profile}`]);
+	} catch {
+		// `pkill` exits 1 when nothing matched, which is the good case.
+	}
+	await wait(250);
+	/*
+	 * The profile is this run's own mkdtemp; leave the machine as it was found.
+	 */
+	try {
+		rmSync(app.profile, { recursive: true, force: true });
+	} catch {
+		// A profile an app is still holding can refuse removal; not this run's failure.
 	}
 	/*
 	 * The child's pipes keep this process alive on their own: a CLI that spawned
