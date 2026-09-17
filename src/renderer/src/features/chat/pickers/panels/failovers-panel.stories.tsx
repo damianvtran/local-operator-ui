@@ -13,6 +13,10 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import "../../../../styles/index.css";
+import {
+	desktopRequestDeadlineDetail,
+	desktopRequestDeadlineMs,
+} from "../../../../../../shared/desktop-contract";
 import { FailoversPanel } from "./failovers-panel";
 import type { FailoversData } from "./failovers-panel";
 
@@ -86,8 +90,11 @@ export const Unavailable: Story = {
 	args: {
 		...base,
 		data: null,
-		error:
-			"The backend did not answer /v1/desktop/sessions/a1b2c3d4e5f6/failovers within 30s.",
+		/* Built from the shipped functions, not transcribed: see the analytics story. */
+		error: desktopRequestDeadlineDetail(
+			"sessions.failovers",
+			desktopRequestDeadlineMs("sessions.failovers"),
+		).message,
 	},
 };
 

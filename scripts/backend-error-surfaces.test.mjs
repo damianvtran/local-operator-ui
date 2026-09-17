@@ -38,7 +38,7 @@ const bundle = await build({
 			export { backendSettingsKeys } from "./src/renderer/src/features/settings/components/backend-settings-section";
 			export { desktopResult, DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export { ConfigApi } from "./src/renderer/src/shared/api/local-operator/config-api";
-			export { backendErrorKind, backendLoadErrorMessage } from "./src/renderer/src/shared/api/local-operator/backend-error";
+			export { backendErrorKind, backendLoadErrorMessage, backendCompatibilityMessage } from "./src/renderer/src/shared/api/local-operator/backend-error";
 
 			const render = (Component) => (client) =>
 				renderToStaticMarkup(
@@ -115,6 +115,7 @@ const {
 	ConfigApi,
 	backendErrorKind,
 	backendLoadErrorMessage,
+	backendCompatibilityMessage,
 	renderProviderGrid,
 	renderBackendSettings,
 } = await import(bundlePath.href);
@@ -746,4 +747,52 @@ test("a failed background capabilities refetch does not blank a loaded settings 
 
 	unsubscribe();
 	client.clear();
+});
+
+// Review R4 / design D3: a request that ran out of its budget is a state with an
+// explanation and an action, on the surfaces that CLASSIFY rather than render
+// the request's own sentence.
+//
+// The 504 split this change set introduces was right about the panels and wrong
+// about everything downstream of them: `backendErrorKind` answered `unknown`,
+// whose diagnosis and remedy are both empty, so the compatibility banner — the
+// one surface with no in-place retry — told a user their server "did not answer
+// as expected" and stopped. A server wedged for the app's whole budget is the
+// case that banner exists for, and its instruction is what gets it answered.
+test("an expired request keeps a diagnosis and its instruction", () => {
+	const ours = new DesktopControlError(
+		504,
+		"The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting.",
+		undefined,
+		"deadline_exceeded",
+	);
+	assert.equal(backendErrorKind(ours), "deadline");
+
+	const sentence = backendLoadErrorMessage(
+		"Your settings could not be loaded.",
+		ours,
+	);
+	assert.match(sentence, /did not answer in time/);
+	assert.match(sentence, /Restart the app so it can start its own server\./);
+	// Not the offline claim, which this is not: nothing established that the
+	// server was stopped, only that it stayed silent for the whole budget.
+	assert.doesNotMatch(sentence, /is not answering\./);
+
+	const banner = backendCompatibilityMessage({
+		kind: "deadline",
+		unpaired: false,
+		missing: [],
+		answered: false,
+	});
+	assert.match(banner, /did not answer in time/);
+	assert.match(banner, /Restart the app so it can start its own server\./);
+
+	// And a 504 that is NOT ours — an upstream gateway's — keeps the honest
+	// "we cannot advise" instead of borrowing our reason (review round 1, N2).
+	const upstream = new DesktopControlError(504, "upstream timeout");
+	assert.equal(backendErrorKind(upstream), "unknown");
+	assert.equal(
+		backendLoadErrorMessage("Your settings could not be loaded.", upstream),
+		"Your settings could not be loaded.",
+	);
 });

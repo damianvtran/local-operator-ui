@@ -634,7 +634,8 @@ export const SettingsPage: FC = () => {
 
 	// Combine loading states
 	const isLoading = isConfigLoading || isAuthLoading;
-	// Well inside the transport's 30s deadline, so the explanation appears while
+	// Well inside the transport's deadline for these reads (the op's own derived
+	// budget), so the explanation appears while
 	// the user is still deciding whether the app is stuck rather than after they
 	// have concluded it is.
 	const isSlowLoad = useElapsedSince(isLoading, 4000);
@@ -677,7 +678,8 @@ export const SettingsPage: FC = () => {
 
 						    `isFetching`, not `isLoading`: refetching an ERRORED query
 						    leaves `status: "error"`, so `isLoading` stays false and this
-						    branch keeps rendering for the transport's whole 30s deadline.
+						    branch keeps rendering for the transport's whole deadline for this
+						    op.
 						    Without a pending state the frame is pixel-identical after the
 						    click -- issue 89's own "I cannot tell whether this is working
 						    or hung", one click downstream of its fix. */}
@@ -704,7 +706,8 @@ export const SettingsPage: FC = () => {
 			 *
 			 * The caption previously sat outside the spinner's own `role="status"`,
 			 * so a screen-reader user heard "Loading settings" once at mount and
-			 * then nothing for up to 30s -- while a sighted user got a visible state
+			 * then nothing for the whole budget -- while a sighted user got a visible
+			 * state
 			 * change at 4s telling them the app was alive. Under
 			 * `prefers-reduced-motion` the global cap freezes the ring, so that user
 			 * had no liveness signal at all. The text whose entire purpose is "you

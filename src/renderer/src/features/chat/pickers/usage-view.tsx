@@ -25,6 +25,7 @@
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
 import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { cn } from "@shared/lib/utils";
@@ -762,6 +763,14 @@ export const usageQueryOptions = (
 		 * makes the window it has to speak for a decision rather than an accident.
 		 */
 		retry: 0,
+		/*
+		 * And no re-read because the window was focused (review round 1, R1). The
+		 * app default is `true`, and it is the wrong shape for this read in
+		 * particular: a live `usage.get` fans out to every provider, and a
+		 * provider-side read costs the network and the provider's own rate limit.
+		 * Focus is not an ask — the panel's ask is the button, stated below.
+		 */
+		...SNAPSHOT_READ_OPTIONS,
 	}) as const;
 
 /**

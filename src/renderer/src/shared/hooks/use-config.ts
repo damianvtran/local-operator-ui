@@ -60,8 +60,9 @@ export const useConfig = () => {
 		staleTime: 5000,
 		// This is the query in issue 89's title, and it inherited the client's
 		// `retry: 1`. When the desktop transport's deadline rejects, that default
-		// re-waits the ENTIRE deadline a second time -- 30s, then 30s again --
-		// which is 60s of unbroken spinner before the error state can render. The
+		// re-waits the ENTIRE deadline a second time -- the op's derived budget,
+		// twice over, which is a doubled unbroken spinner before the error state
+		// can render. The
 		// deadline already means "we waited the whole budget and nothing came
 		// back"; asking again on a path known to be dead cannot learn more. A
 		// failure that carries a real HTTP status came from a backend that DID
