@@ -36,6 +36,8 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Bot } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useLayoutEffect, useState } from "react";
+import { modelOptions } from "../model-setting-options";
+import { PROVIDER_ROWS, catalogue } from "./setting-combobox.fixtures";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const nextFrame = () =>
@@ -100,26 +102,25 @@ const OPTIONS: SearchableOption[] = [
 	},
 ];
 
-const MODELS: SearchableOption[] = [
-	{
-		id: "claude-opus-5",
-		name: "anthropic/claude-opus-5",
-		description: "anthropic",
-		group: "Signed in",
-	},
-	{
-		id: "gpt-5.6-sol",
-		name: "openai/gpt-5.6-sol",
-		description: "openai",
-		group: "Signed in",
-	},
-	{
-		id: "anthropic/claude-haiku-4-5",
-		name: "openrouter/anthropic/claude-haiku-4-5",
-		description: "openrouter, aggregated, no credential",
-		group: "Needs sign-in",
-	},
-];
+/*
+ * The model list the frames show, DERIVED from the shipped builder over the
+ * committed fixtures rather than written out by hand.
+ *
+ * It used to be a literal, and round 2's copy change left it behind: the
+ * sub-lines read `anthropic` while the app wrote `Anthropic`, so every frame that
+ * used this fixture pictured copy the control no longer produces (review round 2,
+ * R2-4; design round 2, N1's residue). Deriving it means the frames are pictures
+ * of the app by construction — including the provider's own brand spelling, which
+ * comes from the registry projection the same file already carries.
+ */
+const MODELS: SearchableOption[] = modelOptions(catalogue(), {
+	kind: "model",
+	hosting: "",
+	current: "",
+	providerNames: Object.fromEntries(
+		PROVIDER_ROWS.map((provider) => [provider.id, provider.name]),
+	),
+});
 
 /* --------------------------------------------------------------- harness */
 
@@ -329,8 +330,10 @@ export const OpenFiltered: Story = {
 					listbox()?.querySelectorAll(
 						'[role="option"]:not([data-combobox-row="typed"])',
 					).length ?? 0;
-				await waitFor(() => matches() === 2);
-				return matches() === 2;
+				// The property is "narrowed, not emptied", which is what the frame is
+				// about; an exact count would be a second copy of the fixture.
+				await waitFor(() => matches() > 0 && matches() < MODELS.length);
+				return matches() > 0 && matches() < MODELS.length;
 			}}
 		/>
 	),

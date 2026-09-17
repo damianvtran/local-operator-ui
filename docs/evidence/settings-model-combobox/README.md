@@ -6,11 +6,29 @@ login state, rather than two empty text boxes.
 
 ## What produced these frames
 
-The `before/` and `after/` directories are the LIVE-APP pair described here. The sibling
-directories (`chrome-less/`, `labelled/`, `no-matches/`, `open-filtered/`, `open-grouped/`,
-`unknown-value/`) are the same surface as STORYBOOK frames, swept across the twelve themes by
-`scripts/capture-evidence.mjs` — they are separate pictures of the same states, taken over a
-stubbed transport, and the two sets are not interchangeable evidence.
+The `before/` and `after/` directories are the LIVE-APP pair described here. Every other
+directory is the same surface as a STORYBOOK frame, swept across the twelve themes by
+`scripts/capture-evidence.mjs` — separate pictures of the same states, taken over a stubbed
+transport, and the two sets are not interchangeable evidence. The sibling set, one line each,
+because this list is where a reader learns what a directory is evidence OF:
+
+| Directory | The state it is a picture of |
+| --- | --- |
+| `chrome-less/` | The field with no label rendered, which is what the registry rows ask for |
+| `labelled/` | The same field with its label, icon and help text |
+| `no-matches/` | A query matching nothing: the list names the outcome and stays open |
+| `open-filtered/` | A query that narrowed the list rather than closing it |
+| `open-grouped/` | The list at rest, grouped, with the credential state on every row |
+| `unknown-value/` | A stored value no listing contains, shown rather than blanked |
+| `active-row/` | The active row's mark, with the typed text selected |
+| `disabled/` | The field while the row cannot be edited |
+| `loading/` | The in-flight catalogue: the list says it is asking |
+| `scoped-notice/` | The model list stating the provider it is narrowed to |
+| `unresolved-scope/` | That scope failing to resolve, so the list falls back to all models |
+
+Two neighbours on the OTHER settings surface are worth naming here because they are easy to
+mistake for this set: `../settings-backend/catalogue-partial/` (a listing that answered with
+errors) and `../settings-backend/catalogue-in-flight/` (the same list before it answers).
 
 **The real Electron app**, driven by this repository's own harness —
 `scripts/renderer-driver.mjs`, whose contract is `docs/agent-driver.md` — with

@@ -131,7 +131,15 @@ const installBridge = (
 					desktop_available: true,
 					desktop_auth: "bearer",
 					// `settings` is the gate this surface sits behind.
-					features: { settings: 1 },
+					/*
+					 * `auth` and `catalogues` are granted because this surface ISSUES the
+					 * two ops they gate: without them the provider registry and the model
+					 * catalogue are both disabled, so the rows render their
+					 * "unavailable" fallbacks, the in-flight story's never-settling
+					 * promise is never created and its frame is a picture of a settled
+					 * list (design round 2, D6).
+					 */
+					features: { settings: 1, auth: 1, catalogues: 1 },
 				});
 			case "settings.list":
 				return ok(payload);
