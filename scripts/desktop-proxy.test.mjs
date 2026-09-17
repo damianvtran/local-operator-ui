@@ -62,7 +62,8 @@ after(async () => {
 	if (PREVIOUS_BACKEND_URL === undefined)
 		delete process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL;
 	else process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL = PREVIOUS_BACKEND_URL;
-	if (PREVIOUS_TOKEN === undefined) delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+	if (PREVIOUS_TOKEN === undefined)
+		delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
 	else process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = PREVIOUS_TOKEN;
 });
 
@@ -87,8 +88,8 @@ async function proxy(backendUrl) {
 		 * empty, and a fix that awaited the promise instead of guarding the
 		 * headers would leave this array empty for the wrong reason.
 		 */
-		Promise.resolve(middleware[0](req, res, () => notFound(res))).catch((error) =>
-			rejections.push(error),
+		Promise.resolve(middleware[0](req, res, () => notFound(res))).catch(
+			(error) => rejections.push(error),
 		);
 	});
 	servers.push(server);

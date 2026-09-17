@@ -78,6 +78,27 @@ type BackendSessionRow = Omit<CanonicalSessionRow, "session_id"> & {
  * send whatever the catalogue says NOW, which after a merge could be the value
  * the failed press failed to change.
  */
+/**
+ * What this client knows about one conversation's pin, and WHEN it learned it.
+ *
+ * The `at` stamp is the currency that keeps two writers ordered. Without it the
+ * fact outranks every later answer, so a pin made here and removed on the other
+ * surface leaves the row reading pinned and the next press sends the state the
+ * backend already holds - round 2's Qr2-1 with the polarity reversed, against
+ * the two-way claim this work exists for. With it, an answer that SPEAKS about
+ * the id (the catalogue page, the search answer) supersedes a fact older than the
+ * answer's own request, while a fact written after that request survives it -
+ * which is the half that stops an answer in flight across a press from undoing
+ * the press. The stamp is taken when the REQUEST starts, never when its answer
+ * lands: comparing arrival times would let an answer that predates a press
+ * supersede it, the same defect on a shorter clock.
+ */
+export type PinFact = {
+	pinned: boolean;
+	/** The answer sequence current when this fact was written. */
+	at: number;
+};
+
 export type PinFailure = {
 	sessionId: string;
 	/** The desired state that was refused, not the state on screen. */
@@ -1045,7 +1066,17 @@ type CanonicalSessionsState = {
 	 * reappears in a later page carries the wire's `pinned` over it by load order
 	 * (`mergeRow`: the incoming row wins).
 	 */
-	pinFacts: Record<string, boolean>;
+	pinFacts: Record<string, PinFact>;
+	/**
+	 * The answer counter every fact and every request is stamped against.
+	 *
+	 * One monotonic sequence shared by the two writers: `setSessionPin` stamps
+	 * what it writes with the current value, and each request takes the NEXT value
+	 * when it starts. So `fact.at < answerSeq-of-this-request` means the answer is
+	 * newer than the write and may supersede it, and the reverse order means the
+	 * write is newer and the answer must not touch it (`PinFact` has the reasoning).
+	 */
+	answerSeq: number;
 	/**
 	 * Apply the backend's pin state to one row, optimistically.
 	 *
@@ -1072,6 +1103,11 @@ type CanonicalSessionsState = {
 	 * `pinned` is what the control renders and what the press inverts, and the wire hit
 	 * is only what a conversation the store has never held is drawn from.
 	 */
+	beginAnswer: () => number;
+	applySearchAnswer: (
+		seq: number,
+		hits: { id: string; pinned?: boolean }[],
+	) => void;
 	setSessionPin: (
 		sessionId: string,
 		pinned: boolean,
@@ -1440,6 +1476,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			navigationError: null,
 			pinFailure: null,
 			pinFacts: {},
+			answerSeq: 0,
 			loading: false,
 			truncated: false,
 			statusUnavailable: [],
@@ -1448,6 +1485,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setCwd: (cwd) => set({ cwd }),
 			fetchSessions: async (limit = 500) => {
 				const generation = ++refreshGeneration;
+				/*
+				 * The page is an answer too, so it carries the same currency: taken when the
+				 * REQUEST starts, so a page already in flight across a press cannot supersede
+				 * that press (`PinFact`).
+				 */
+				const answerAt = get().answerSeq + 1;
+				set({ answerSeq: answerAt });
 				set({ loading: true, error: null });
 				try {
 					const result = await desktopResult<{
@@ -1466,19 +1510,34 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						title: name,
 						updated_at: mtime,
 					}));
-					set((state) => ({
-						sessions: replaceSessionRows(state.sessions, rows),
-						loading: false,
-						truncated: result.truncated === true,
+					set((state) => {
 						/*
-						 * Read only from an answer that arrived: a failed read leaves the last
-						 * known list in place (and says so through `error`), so the marker that
-						 * belonged to those rows is the honest thing to keep beside them.
+						 * The facts the page SPEAKS ABOUT give way to it: those rows are on
+						 * screen carrying the wire's own `pinned`, so a remembered write for
+						 * them is stale by construction. Facts for conversations the page
+						 * cannot carry - the only rows that need one - survive untouched.
 						 */
-						statusUnavailable: Array.isArray(result.degraded)
-							? result.degraded.filter((read) => typeof read === "string")
-							: [],
-					}));
+						const facts = { ...state.pinFacts };
+						for (const row of rows) {
+							const fact = facts[row.session_id];
+							if (fact === undefined || fact.at >= answerAt) continue;
+							delete facts[row.session_id];
+						}
+						return {
+							sessions: replaceSessionRows(state.sessions, rows),
+							pinFacts: facts,
+							loading: false,
+							truncated: result.truncated === true,
+							/*
+							 * Read only from an answer that arrived: a failed read leaves the last
+							 * known list in place (and says so through `error`), so the marker that
+							 * belonged to those rows is the honest thing to keep beside them.
+							 */
+							statusUnavailable: Array.isArray(result.degraded)
+								? result.degraded.filter((read) => typeof read === "string")
+								: [],
+						};
+					});
 				} catch (error) {
 					if (generation === refreshGeneration)
 						set({
@@ -1983,6 +2042,64 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 * incoming state, so a concurrent catalog read cannot make the revert
 			 * write a third value), and `pinFailure` states it.
 			 */
+			/**
+			 * Take the sequence for an answer that is ABOUT TO BE REQUESTED.
+			 *
+			 * Called by the search hook when its request starts, so the number describes
+			 * the moment the question was asked rather than the moment the answer came
+			 * back: an answer in flight across a press must not be able to supersede it.
+			 */
+			beginAnswer: () => {
+				const seq = get().answerSeq + 1;
+				set({ answerSeq: seq });
+				return seq;
+			},
+			/**
+			 * Apply a search answer's own pin state to the facts it speaks about.
+			 *
+			 * This is the supersession half of the currency rule (`PinFact`): a fact older
+			 * than the request that produced this answer gives way to the answer, so a pin
+			 * removed on the other surface stops reading pinned here as soon as this client
+			 * asks again. A fact written AFTER the request started is left alone, and a hit
+			 * that carries no `pinned` says nothing and therefore supersedes nothing.
+			 */
+			applySearchAnswer: (seq, hits) =>
+				set((state) => {
+					let facts: Record<string, PinFact> | null = null;
+					/*
+					 * The ROW gives way too, not only the fact. A press on a conversation the
+					 * catalogue page cannot carry INSERTS a row (see `setSessionPin`), and that
+					 * row carries the pressed state until something speaks about it - a fact
+					 * swept away while its row kept the stale pin would leave the panel saying
+					 * exactly what the review said it must not. So an answer newer than the
+					 * press writes the answer's own value onto the row as well.
+					 */
+					let rows: typeof state.sessions | null = null;
+					for (const hit of hits) {
+						if (typeof hit.pinned !== "boolean") continue;
+						const fact = state.pinFacts[hit.id];
+						if (fact !== undefined && fact.at >= seq) continue;
+						if (fact !== undefined) {
+							facts = facts ?? { ...state.pinFacts };
+							delete facts[hit.id];
+						}
+						if (
+							state.sessions.some(
+								(row) => row.session_id === hit.id && row.pinned !== hit.pinned,
+							)
+						) {
+							rows = rows ?? state.sessions.map((row) => ({ ...row }));
+							for (const row of rows) {
+								if (row.session_id === hit.id) row.pinned = hit.pinned === true;
+							}
+						}
+					}
+					if (facts === null && rows === null) return {};
+					return {
+						...(facts === null ? {} : { pinFacts: facts }),
+						...(rows === null ? {} : { sessions: rows }),
+					};
+				}),
 			setSessionPin: async (sessionId, pinned, seed) => {
 				const before = get().sessions.find(
 					(row) => row.session_id === sessionId,
@@ -2005,7 +2122,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * wire hit and says nothing about what was on screen.
 				 */
 				const held =
-					before === undefined ? (factBefore ?? false) : before.pinned === true;
+					before === undefined
+						? (factBefore?.pinned ?? false)
+						: before.pinned === true;
 				/*
 				 * A row the store does not hold is INSERTED from the seed rather than left
 				 * absent: the map below is a no-op without it, and a press whose result the
@@ -2030,8 +2149,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								)
 							: [...state.sessions, seedRow],
 					// The fact as well as the row: the row can be dropped by the next
-					// catalogue page (see `pinFacts`), and the fact cannot.
-					pinFacts: { ...state.pinFacts, [sessionId]: pinned },
+					// catalogue page (see `pinFacts`), and the fact cannot. Stamped with the
+					// sequence current NOW, so an answer requested after this press supersedes
+					// it and an answer requested before it does not.
+					pinFacts: {
+						...state.pinFacts,
+						[sessionId]: { pinned, at: state.answerSeq },
+					},
 					// A press retires the previous press's sentence: the notice is about the
 					// row under the pointer, and two of them would be a log.
 					pinFailure: null,
@@ -2049,7 +2173,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						),
 						pinFacts: {
 							...state.pinFacts,
-							[sessionId]: answer.pinned === true,
+							[sessionId]: {
+								pinned: answer.pinned === true,
+								at: state.pinFacts[sessionId]?.at ?? state.answerSeq,
+							},
 						},
 					}));
 					return true;
@@ -2061,11 +2188,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						const facts = { ...state.pinFacts };
 						// The fact follows the row: a revert that restored a fact DISAGREEING
 						// with the row it just put back would leave the two saying opposite
-						// things about the same conversation.
+						// things about the same conversation. The stamp is kept where the fact
+						// survived and taken fresh where a fact is minted, so a revert cannot
+						// make a fact look older than the write it is about.
 						if (factBefore === null && before === undefined) {
 							delete facts[sessionId];
 						} else {
-							facts[sessionId] = held;
+							facts[sessionId] = { pinned: held, at: state.answerSeq };
 						}
 						return {
 							sessions: state.sessions.map((row) =>

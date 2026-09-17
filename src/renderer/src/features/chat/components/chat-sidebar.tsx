@@ -231,6 +231,15 @@ export function ChatSidebar({
 	 * the search last saw and its control cannot invert its own press (Qr2-1).
 	 */
 	const pinFacts = useCanonicalSessionsStore((s) => s.pinFacts);
+	/*
+	 * The pure search module takes plain booleans: the stamp that orders a fact against
+	 * an answer is the store's business, and a row only needs what to draw.
+	 */
+	const pinFactValues = useMemo(() => {
+		const values: Record<string, boolean> = {};
+		for (const [id, fact] of Object.entries(pinFacts)) values[id] = fact.pinned;
+		return values;
+	}, [pinFacts]);
 	const setSessionPin = useCanonicalSessionsStore((s) => s.setSessionPin);
 	const wasReady = useRef(false);
 	if (ready) wasReady.current = true;
@@ -412,14 +421,25 @@ export function ChatSidebar({
 	 * control away from them. The keyboard is never involved: Enter or Space carries no
 	 * pointer position, so it always acts on the row that has focus.
 	 *
-	 * The slop is a hand's tremor, not a movement: 3 px of wobble is still the same press,
-	 * which is what the round's own instrument used.
+	 * The slop is a hand's tremor, not a movement: a few px of wobble is still the same
+	 * press. But the tremor test alone made the guard a DISC rather than a gesture (QA
+	 * round 3, Qr3-1; UX round 3, U9): pressing the parked point after the pointer had left
+	 * and come back was still "a repeat", and the disc outlived the gesture, so a deliberate
+	 * later press on a control the reader could see was silently dropped. So the record is
+	 * EXPIRED by the pointer's own path - a move further than the slop clears it, and so
+	 * does leaving the list - which is what makes the drop describe "the pointer has not
+	 * gone anywhere since" rather than "these coordinates were used a moment ago".
 	 */
 	const lastPinPress = useRef<{
 		x: number;
 		y: number;
 		sessionId: string;
 	} | null>(null);
+	/*
+	 * A hand's tremor, in CSS px. The scene's instrument uses 3 px and the code allows a
+	 * little more, so the instrument sits inside the boundary rather than on it; QA round 3
+	 * measured the recovery at 8 px, which is the first move that clears this record.
+	 */
 	const PIN_PRESS_SLOP_PX = 6;
 	/**
 	 * Whether a pointer press repeats the previous one on a DIFFERENT conversation.
@@ -557,8 +577,8 @@ export function ChatSidebar({
 		conversationMatches,
 		synthesized,
 	} = useMemo(
-		() => searchChats(sessions, query, hits, pinFacts),
-		[sessions, query, hits, pinFacts],
+		() => searchChats(sessions, query, hits, pinFactValues),
+		[sessions, query, hits, pinFactValues],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -922,16 +942,12 @@ export function ChatSidebar({
 						   duplicates the name without being announced twice. */
 						title={`${pinned ? "Unpin" : "Pin"} “${label}”`}
 						onClick={(event) => {
-							// Where the row is NOW, and WHICH PRESS it was: the two get opposite
-							// corrections (see `rememberMovedRow`), and `detail === 0` is the
-							// keyboard (a click synthesised from Enter or Space carries no count).
-							rememberMovedRow(row.session_id, event.detail === 0, {
-								x: event.clientX,
-								y: event.clientY,
-							});
 							/*
-							 * A repeat press aimed at a row that has moved out is dropped before
-							 * anything else runs: it would write the wrong conversation's pin.
+							 * THE GUARD RUNS FIRST (review round 3, MINOR 2). A dropped press must
+							 * change nothing at all, and `rememberMovedRow` arms an anchor
+							 * correction that the next render - a doorbell, a keystroke - would
+							 * then apply, computing a correction for a press that never wrote
+							 * anything. Dropped means dropped, so nothing is recorded.
 							 */
 							if (
 								dropRepeatPress(
@@ -943,6 +959,13 @@ export function ChatSidebar({
 							) {
 								return;
 							}
+							// Where the row is NOW, and WHICH PRESS it was: the two get opposite
+							// corrections (see `rememberMovedRow`), and `detail === 0` is the
+							// keyboard (a click synthesised from Enter or Space carries no count).
+							rememberMovedRow(row.session_id, event.detail === 0, {
+								x: event.clientX,
+								y: event.clientY,
+							});
 							/*
 							 * The seed is what lets the store HOLD a conversation it does not
 							 * list: without it the write reaches the backend and the row keeps
@@ -1521,6 +1544,26 @@ export function ChatSidebar({
 			{showList && (
 				<div
 					ref={listRef}
+					/*
+					 * The pointer's path, which is the half a coordinate test cannot see: a
+					 * reader who moves away from the point they pressed and comes back has made
+					 * a NEW gesture, so the record expires on that movement. Leaving the list
+					 * expires it too - the reflex this protects never leaves the region between
+					 * its two clicks (UX round 3, U9; QA round 3, Qr3-1).
+					 */
+					onPointerMove={(event) => {
+						const from = lastPinPress.current;
+						if (
+							from !== null &&
+							Math.hypot(event.clientX - from.x, event.clientY - from.y) >
+								PIN_PRESS_SLOP_PX
+						) {
+							lastPinPress.current = null;
+						}
+					}}
+					onPointerLeave={() => {
+						lastPinPress.current = null;
+					}}
 					className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2"
 				>
 					<section>

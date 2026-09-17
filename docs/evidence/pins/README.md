@@ -40,9 +40,13 @@ the two runs, and every claim below is about the sidebar.
 
 ## The frames
 
-Twenty-three frames: seventeen from `--scene pins`, four from `--scene pins-scroll`, six from
-`--scene pins-search` (three states per theme: the search-only row pinned, the same row
-unpinned from its own control, and the parked pointer's stationary second press), plus the four
+Thirty-one frames, counted by `ls docs/evidence/pins/*.png` rather than by summing the
+scenes - the sets overlap on purpose (`pins-pinned-hover-{dark,light}` is drawn by `--scene
+pins-scroll` and belongs to both the scrolled pair and the pinned-state pair), so `17 + 4 + 6 + 4`
+read as 31 against a directory that holds fewer, and the overlap is what the arithmetic was
+missing. `--scene pins-search` contributes six: the search-only row pinned, the same row unpinned
+from its own control, the row after the query is cleared, and the re-asked answer after the pin is
+removed on the other surface, per theme. Plus the four
 of the capability-withdrawn pair. The window is `1380x900` in `--window-mode=headless` (a
 1380x868 CSS viewport, `devicePixelRatio` 2, so the PNGs are 2760x1736), never shown and
 never focused: the run asserts both from main's own window facts before it takes a frame.
@@ -56,11 +60,11 @@ never focused: the run asserts both from main's own window facts before it takes
 | [`pins-filter-dark`](pins-filter-dark.png) ([light](pins-filter-light.png)) | a query matching only the pinned conversation | **The filter**: the Pinned section is `matching ∩ pinned`; the other sections empty rather than keeping rows "because they are pinned" |
 | [`pins-flat-dark`](pins-flat-dark.png) ([light](pins-flat-light.png)) | the panel in `All chats` (flat) mode | **Both modes**: the section is drawn in the flat list too, at the same place in the region, and the pinned row is drawn once — in the section, not twice |
 | [`pins-from-tui-dark`](pins-from-tui-dark.png) | a pin written by the **terminal's own store** | **The round trip, TUI to app**: no manual refresh, no focus, no reload |
-| [`pins-scrolled-dark`](pins-scrolled-dark.png) ([light](pins-scrolled-light.png)) | a region scrolled a quarter of its range, a click on a row's pin, and then a SECOND press through the keyboard | **The move, corrected** (QA round 1, U1/U2/U3): the row beside the pressed one keeps its line to the pixel (±2 px), no control is left under the parked pointer, and after the keyboard press the caret is on the moved row's own pin, in view |
+| [`pins-scrolled-dark`](pins-scrolled-dark.png) ([light](pins-scrolled-light.png)) | the region at the top of a list whose `Pinned chats` section is taller than the window it is drawn in - the boundary state, after the unpin press the correction had to act on | **The pinned set cannot be whole in one window** (design round 2, D7): the check reads the capture-time state (`scrollTop`, pinned rows, wholly inside) and the frame is taken at it, so the picture and the number describe the same moment. The correction's own evidence is the pair of checks in the scene (`an unpin press the correction can act on...` and `the correction moved the region to do it`), whose numbers are printed in the run log |
 | [`pins-pinned-hover-dark`](pins-pinned-hover-dark.png) ([light](pins-pinned-hover-light.png)) | the pointer ON an already-pinned row's glyph | **The pinned state does not depend on the reveal**: the glyph is filled and fully opaque at rest, and it says what a press would do (`Unpin “…”`) |
 | [`pins-search-pinned-dark`](pins-search-pinned-dark.png) ([light](pins-search-pinned-light.png)) | a conversation OUTSIDE the panel's own page (568 seeded, the page reads 500), pinned from its search hit | **Qr2-1, both directions**: the press writes the wire, the store the terminal reads holds it, and the row it was made on follows - then the SAME row unpins it, with all three surfaces checked again |
 | [`pins-search-unpinned-dark`](pins-search-unpinned-dark.png) ([light](pins-search-unpinned-light.png)) | the same row, after the second press | the control inverts the STORE's state, not a cached wire answer |
-| [`pins-stationary-dark`](pins-stationary-dark.png) ([light](pins-stationary-light.png)) | a genuinely stationary second press on a pinned glyph, then a 3 px wobble | **U3-unpin**: neither changes a pin, because the disarm covers both glyph states and treats a 3 px tremor as the same parked gesture |
+| [`pins-stationary-dark`](pins-stationary-dark.png) ([light](pins-stationary-light.png)) | a stationary repeat press on a pinned glyph, then a 3 px wobble of the same gesture | **U3-unpin**: neither press reaches a row the pointer is not on. The repeat acts on the conversation whose control is under the pointer and on nothing else - what the check asserts (`a stationary repeat press acts on the row under the pointer and on no other`). The disarm this caption used to name was replaced by `dropRepeatPress` (identity, not time or distance), and the reader's own repeat is exercised by keyboard, where it is reachable |
 | [`pins-withdrawn-dark`](pins-withdrawn-dark.png) ([light](pins-withdrawn-light.png)) | a backend whose capabilities omit `session_pins` | **Fail-closed**: no affordance anywhere |
 | [`pins-withdrawn-main-dark`](pins-withdrawn-main-dark.png) ([light](pins-withdrawn-main-light.png)) | the same backend, driven by the **same scene on `origin/main`** | **...byte-identical to the pre-change panel** — see below |
 
@@ -243,7 +247,10 @@ run: the clamped case cannot be mistaken for the passing one.
 | Review round 1 (M1, m1) | the current-row ground had to span the pin slot: the ground moved to the row's own box, with one decision (`current`) worn by every site rather than re-spelled at each | `pins-selected-{dark,light}`: the ground covers the row AND the slot the filled glyph sits in |
 | Design round 1 (D1, D2, D5) | the section's placement; one theme per launch, because a two-theme pass left the light frames in the dark pass's state; the cost of the reserved slot | the table above: D1's placement in both modes, D2's per-theme frames, and the slot measured below |
 | QA round 1 (U1, U2, U3) | the move a pin makes: content anchoring for a pointer press, follow-the-row for a keyboard press, and an inert reveal under a parked pointer | `pins-scrolled-{dark,light}` and the measured numbers above |
-| Review round 2 (m2, m3) | the U1 assertion could not fail (its anchor was the row the correction anchors on); the disarm reached only the pointer path and only the unpinned glyph | the row left under the parked pointer is now asserted not to have moved, and both glyph states and both press kinds are disarmed - `pins-stationary-{dark,light}` |
+| Review round 2 (m2, m3) | the U1 assertion could not fail (its anchor was the row the correction anchors on); the disarm reached only the pointer path and only the unpinned glyph | the disarm was replaced in round 3 by `dropRepeatPress` - identity rather than time or distance, expired by the pointer's own path - and `pins-stationary-{dark,light}` carries the repeat-press state |
+| Review round 3 (m1, m2, m3 + minors) | the replacement `m2` check was held by arithmetic and ran at `scrollTop 0` where the correction has nothing to add; the client's pin fact outranked a fresher answer with no currency; a dropped press armed the move correction; the central fix's test was a source scrape | an UNPIN press at a depth the correction can act from, with the region's own `scrollTop` asserted to have changed; `PinFact` carries the answer sequence and an answer that speaks about an id supersedes an older fact; the guard runs before `rememberMovedRow`; the test is behavioural |
+| Design round 3 (D11, D12) | the scrolled pair photographed a depth its caption did not describe, and the state one click after the search pair was in no frame | the frame is taken at a state the checks assert (the correction settles before the scroll is set) and `pins-search-cleared-*` photographs the pin held for a row the page cannot carry |
+| QA round 3 (Qr3-1) + UX round 3 (U9) | the guard was a coordinate disc with no expiry, so a press after the pointer left and returned was silently dropped | the record is expired by the pointer's path - a move beyond the slop, or leaving the list |
 | Design round 2 (D6-D10) | the nav rows move 44 CSS px on a press (recorded, below); the scrolled frames refuted their own claim; `pins-hover` had the pointer on the row, not the glyph; the gate table was a pre-B1 snapshot; the slot's cost was argued | fourteen pins and an assertion that the set is taller than the window, the pointer on the glyph, the refreshed table, and the D9 claim narrowed to what the frames carry |
 | QA round 2 (Qr2-1, Qr2-2, Qr2-3) | a pin on a search-only conversation could not be undone from its own row; the gate table; a missing light link | the store now holds the row the press acts on (both directions proven in `pins-search-*`), and the table is refreshed |
 
@@ -255,7 +262,12 @@ is either confirmed or corrected for the tree that ships.
 
 **U1's residual, with UX round 2's measurement.** A pin made from a list scrolled deeper than
 the `Pinned chats` section is tall leaves the row and the section out of view - user-visible
-past roughly 30% of the region's range, which is where a reader with a real pin list lives.
+past a fraction of the region's range that SCALES WITH THE PINNED SET, and UX round 3 measured both
+ends of that: about 16% of the range with two pins, and 50% in the D7 shape (fourteen pins), where
+the pressed row's new home is 554 px above the fold. The reason is legible - the pressed row lands at
+its catalogue position inside the pinned section, so pinning an OLDER conversation from deep in the
+list puts its new home at the END of a tall section, the furthest place in the panel from the
+reader's line. Round 2's 30% figure was one measurement of a moving boundary, not the boundary.
 The anchor strategy is kept deliberately: the alternative - scrolling the row back into view -
 moves rows under a stationary pointer, which is the hazard U1 itself was about. Two ways out
 were considered and neither is taken unilaterally here because both are design decisions: a

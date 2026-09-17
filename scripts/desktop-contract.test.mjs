@@ -1643,6 +1643,9 @@ const {
 	isWritableVariableKey,
 	desktopRequestSchema,
 	desktopEndpoint: rendererDesktopEndpoint,
+	// The capability gate the pins tests read: the SAME export the renderer bundle carries, so
+	// the test asks the shipped predicate rather than a restatement of it.
+	desktopFeatureEnabled,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(rendererBundle.outputFiles[0].text).toString("base64")}`
 );
