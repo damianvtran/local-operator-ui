@@ -42,28 +42,68 @@ Driver: `scripts/session-switch-latency.mjs` (the page it drives is
 `scripts/session-switch.tsx`, which mounts the SHIPPED `ChatPage` behind the
 scripted owner in `scripts/session-switch-bridge.ts`).
 
-- `--race` / `--race-write` — two clicks, A and then B, with per-session hop
-  latencies (`--race-get-a/b`, and the same for history and stream). `--race-write`
-  dispatches the second click AT the first one's URL write. The settled view is
-  asserted at three surfaces: the store for the committed conversation, the URL
-  for the route, the DOM for whose transcript rows were painted.
-- `--race-palette` — the same race with the palette on the near side, the far
-  side and both, because a palette pick is not a row and no row-clicking arm
-  reaches that path.
-- `--race-fuzz` — fourteen click sequences (reversed pairs, re-clicks, three
-  clicks, gaps 0-900 ms, palette and row entrances mixed) asserting the one
-  property true of all of them: the LAST choice owns the settled view.
+**No arm is evidence by being green.** Four of these discriminate and the rest are
+regression guards, and which is which is measured, not asserted: every arm was run
+on a tree with the deferral put back (`navigate` returned to the read's answer, the
+only change), and the runs are recorded below with the configuration each used.
 
-Sequence: `scripts/session-switch.test.mjs` pins the store's ordering and the
-one-place rule structurally.
+- `--race` — two clicks, A and then B, `--race-gap` ms apart, with per-session hop
+  latencies (`--race-get-a/b`, and the same for history and stream). **A regression
+  guard**: it PASSES on the tree with the deferral put back, at both latency pairs
+  tried, because a deadline can only race the renderer's frame.
+- `--race-write` — the same two clicks with the second dispatched AT the first
+  one's URL write. **Discriminating**: on the deferred tree at
+  `--race-get-a=0 --race-get-b=900` it is 4 FAIL of 6 claims (the settled view is
+  the FIRST click's conversation) and 6 PASS on this one. Its discriminating
+  configuration puts the SLOW hop on the second click: the late write belongs to
+  the click the user made first.
+- `--race-palette` — the same write-gated race with the palette on the near side,
+  the far side and both. **Discriminating**, and it drives the PALETTE COMPONENT:
+  the harness mounts the real `CommandPalette` and the pick is a click on the
+  palette's own `role="option"` row, so `command-palette.tsx`'s handler runs (the
+  call-site log in its output shows `… <- at openConversation <- (command-palette.tsx…)`).
+  An earlier version called the rule directly and reported the palette as covered;
+  on a tree where the palette still deferred, that version was 3/3 PASS, which is
+  what a claim like that needs to be checked against. **Discriminating at the
+  DEFAULT latencies** (600/40): on the deferred tree 1 of its 3 cases fails
+  (`palette A, then palette B`, settling on the boot session). At
+  `--race-get-a=0 --race-get-b=900` it is 3/3 on the deferred tree, which is why
+  both configurations are recorded instead of one being called "the" run.
+- `--race-stage-draft` — the New-chat gesture (`stageDraft` + `/chat`, as `app.tsx`
+  performs it) staged inside a switch's guard read, by row and by palette.
+  **Discriminating against the refusal**, which is the defect it is for: 2/2 FAIL on
+  a tree whose refusal repair is unbounded (`path=/chat/<A>` and the draft gone —
+  the reviewer's M1), 2/2 PASS here. It does NOT indict the deferral on its own, and
+  is not claimed to: a deferred write plus a bounded refusal is a correct tree.
+- `--race-fuzz` — twenty click sequences: reversed pairs, re-clicks, three clicks,
+  gaps 0-900 ms, palette and row entrances mixed, and seven of them WRITE-GATED
+  (each click after the first dispatched at the previous one's URL write). The
+  driver prints each trial's gate, and the distinction is measured: on the deferred
+  tree all **thirteen deadline-gated sequences PASS** in both configurations (a
+  regression guard, not proof), and 18/20 settle correctly — every failure
+  write-gated, two in each configuration: `A -> B` and `A -> B -> A (palette,row,row)`
+  at `--race-get-a=0 --race-get-b=900`; `B -> B -> A` and the same three-click
+  palette chain at the defaults (600/40). Each latency pair discriminates a
+  different sequence, which is why both are recorded rather than one being called
+  "the" configuration.
+
+Sequence: `scripts/session-switch.test.mjs` pins the store's ordering and the URL
+rule structurally — including an enumeration of every `/chat/<id>` write in the
+renderer with the reason it is not a switch's URL, so a new entrance cannot appear
+unnamed (the previous version listed three entrance files and the reviewer proved
+both a differently-written deferral in a listed file and a fourth entrance in an
+unlisted one passed it).
 
 ## Reachability: what is measured, and what the operator's report establishes
 
-The arms force the window to **zero slack**: the second click is dispatched in
-the same tick as the first one's URL write, which is earlier than any human can
-click. They therefore establish the DEFECT and the fix, not that a person
-reaches the window at their own cadence — and nothing here should be read as
-"proven reachable at normal cadence".
+The write-gated arms dispatch the second click in the same microtask drain as the
+first one's URL write — earlier than any human can click, and tighter than the
+window the defect actually needs (the write→route-effect interval, which lasts as
+long as the renderer has not painted). They therefore establish the DEFECT and the
+fix; they do **not** establish that a person reaches the window at their own
+cadence, and nothing here should be read as "proven reachable at normal cadence".
+Nor do the deadline-gated sequences stand in for it: they are the ones that pass on
+the deferred tree.
 
 What establishes that a human reaches it is the operator's own report, from real
 use on this machine: clicking across several conversations and landing on the
