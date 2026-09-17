@@ -32,7 +32,9 @@ import { LogFileType, logger } from "./backend/logger";
 import {
 	isUnpreparedVenvPath,
 	legacyEnvironmentReport,
+	legacyVenvPaths,
 	managedSupportRoot,
+	managedVenvPath,
 } from "./backend/venv-paths";
 import { withPythonBytecodeCache } from "./python-bytecode-cache";
 import {
@@ -3482,16 +3484,39 @@ export class UpdateService {
 	 * a match by a substring test.
 	 */
 	private appOwnsInstallRoot(prefix: string): boolean {
-		const root = join(
-			managedSupportRoot(app.getPath("home")),
-			"managed-python",
-		);
-		const relative = path.relative(root, prefix);
-		return (
-			relative.length > 0 &&
-			!relative.startsWith("..") &&
-			!path.isAbsolute(relative)
-		);
+		const support = managedSupportRoot(app.getPath("home"));
+		/*
+		 * THREE SHAPES OF "THE APP'S OWN VENV", because the answer changed over
+		 * time and every one of them can still be the environment a daemon was
+		 * started from: the post-split tree this build manages, this instance's own
+		 * environment (which on Windows is not under the support root at all - it is
+		 * `userData`'s, and asking `managedVenvPath` is what keeps that from being a
+		 * second copy of the split rule), and the pre-split venvs an older build
+		 * created and left on disk.
+		 */
+		const roots = [
+			join(support, "managed-python"),
+			...legacyVenvPaths(support),
+			managedVenvPath({
+				platform: process.platform,
+				home: app.getPath("home"),
+				appDataPath: app.getPath("appData"),
+				packaged: app.isPackaged,
+			}),
+		];
+		/*
+		 * A relative answer is never inside: `path.relative` returns the input when
+		 * the two paths share no root, and an unreadable or partial prefix must not
+		 * be read as a match by a substring test.
+		 */
+		return roots.some((root) => {
+			const relative = path.relative(root, prefix);
+			return (
+				relative.length > 0 &&
+				!relative.startsWith("..") &&
+				!path.isAbsolute(relative)
+			);
+		});
 	}
 
 	/**
