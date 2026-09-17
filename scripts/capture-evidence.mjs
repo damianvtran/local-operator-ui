@@ -2309,7 +2309,9 @@ export const STORIES = [
 	   reason as the pair above, and the arrival stamp is derived from the
 	   snapshot's own in-flight call so the frames do not move between captures. */
 	["chat-trace-order-while-live--before-report", 1280, 800],
+	["chat-trace-order-while-live--after-report", 1280, 800],
 	["chat-trace-order-while-live--before-live", 1280, 800],
+	["chat-trace-order-while-live--after-live", 1280, 800],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
 	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
 	   popup from wire-shaped fixtures — the rows the backend's

@@ -2,7 +2,7 @@
 	"session": {
 		"id": "c1c7072b735c",
 		"title": "Optimize local session load times",
-		"harvested_at": "2026-09-17T17:50:08.695Z",
+		"harvested_at": "2026-09-17T18:23:07.658Z",
 		"page_limit": 100
 	},
 	"derivation": {
@@ -79,10 +79,7 @@
 			"call_00_rlPnq9LYcxcJarIAjnG57582"
 		],
 		"reconcile_entries": 218,
-		"reach_back_records": [
-			27,
-			272
-		],
+		"reach_back_records": [27, 275],
 		"evicted": [
 			"call_00_OiYytjOq31f8yulKR0Hg3660",
 			"call_01_FpnJoxUGRU3LaQO2c49J2686",
@@ -1444,11 +1441,7 @@
 							"name": "wait",
 							"arguments": {
 								"i": "Awaiting corrected investigations",
-								"job_id": [
-									"8541b05ad560",
-									"6de9a5b2df05",
-									"ab3b4d2f8505"
-								],
+								"job_id": ["8541b05ad560", "6de9a5b2df05", "ab3b4d2f8505"],
 								"wait_ms": 1500000
 							}
 						}
@@ -1512,10 +1505,7 @@
 							"name": "wait",
 							"arguments": {
 								"i": "Awaiting remaining two reports",
-								"job_id": [
-									"8541b05ad560",
-									"ab3b4d2f8505"
-								],
+								"job_id": ["8541b05ad560", "ab3b4d2f8505"],
 								"wait_ms": 1500000
 							}
 						}
@@ -1587,9 +1577,7 @@
 							"name": "wait",
 							"arguments": {
 								"i": "Awaiting open-path report",
-								"job_id": [
-									"8541b05ad560"
-								],
+								"job_id": ["8541b05ad560"],
 								"wait_ms": 1500000
 							}
 						}
@@ -7013,10 +7001,7 @@
 				"tool_name": "wait",
 				"started_at_epoch": 1789666405.693405,
 				"args": {
-					"job_id": [
-						"ffd038a9b9ab",
-						"9cd93f4823bc"
-					],
+					"job_id": ["ffd038a9b9ab", "9cd93f4823bc"],
 					"wait_ms": 1800000
 				},
 				"intent": "Awaiting coder results"
@@ -7026,10 +7011,7 @@
 	"reported": {
 		"note": "The moment the report was photographed, derived by `reportedMoment` (see the script's header) and read out of a truncated copy of the journal.",
 		"through_record": 122,
-		"record_window": [
-			122,
-			126
-		],
+		"record_window": [122, 126],
 		"page": {
 			"entries": [
 				{

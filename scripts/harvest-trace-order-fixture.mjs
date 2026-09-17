@@ -75,6 +75,7 @@
 import { execFileSync } from "node:child_process";
 import {
 	cpSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -680,6 +681,7 @@ async function main() {
 		};
 		mkdirSync(dirname(out), { recursive: true });
 		writeFileSync(out, `${JSON.stringify(fixture, null, "\t")}\n`);
+		formatFixture(out);
 		process.stdout.write(
 			`${out}\n` +
 				`  page          ${fixture.derivation.page_entries} entries, names ${fixture.derivation.page_names_calls} calls\n` +
@@ -691,6 +693,29 @@ async function main() {
 	} finally {
 		rmSync(isolated.isolated, { recursive: true, force: true });
 	}
+}
+
+/**
+ * Bring the written fixture into the formatter's own shape.
+ *
+ * `scripts/` is checked by `pnpm lint:scripts` against the base commit, so a
+ * fixture this script writes has to be byte-stable under `biome` or the gate
+ * fails on the very change that introduces it — and a hand-rolled
+ * `JSON.stringify` cannot match the formatter's array compaction. Running the
+ * formatter here is what makes re-harvesting a no-op in the diff rather than a
+ * reformat somebody has to notice.
+ */
+function formatFixture(out) {
+	const biome = join(ROOT, "node_modules", ".bin", "biome");
+	if (!existsSync(biome)) {
+		process.stderr.write(
+			`no biome at ${biome}; run \`pnpm exec biome check --write ${out}\` before committing\n`,
+		);
+		return;
+	}
+	execFileSync(biome, ["check", "--write", out], {
+		stdio: ["ignore", "ignore", "inherit"],
+	});
 }
 
 /** The session's own title, which is how a reader recognises the fixture. */

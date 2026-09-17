@@ -2367,6 +2367,23 @@ function seededClock(event: LiveEvent, state: TranscriptState): number | null {
 }
 
 /**
+ * Whether a frame SETTLES a call, which is the one tool frame with no clock.
+ *
+ * `tool_execution_start` states `started_at_epoch` and `tool_call_compose` is a
+ * dictation phase that belongs to #312's rule; a settled end states neither a
+ * time nor `args`, so it can only be placed by something else — the seed entry
+ * the runtime stamps with the call's start (new runtimes) or the durable row
+ * that named the call (`argsByCall.anchoredAt`). Both are checked before this
+ * predicate, which is only reached when the frame would CREATE a row and
+ * `seededClock` has already said it states no time: refusing it costs a row
+ * until the read-back names it, and painting it costs a row in the wrong place
+ * that says nothing ran.
+ */
+function settlesACall(event: LiveEvent): boolean {
+	return event.type === "tool_execution_end";
+}
+
+/**
  * Seed the in-flight turn from a snapshot's `live_events`. Called after the
  * snapshot's history page has been applied so durable rows win.
  *
@@ -2389,16 +2406,28 @@ function seededClock(event: LiveEvent, state: TranscriptState): number | null {
  *     that attaches after a turn ended is handed that turn's seed.
  *
  * Placement therefore follows the frame's own clock where one exists, and a
- * frame that would CREATE a row and states no time is refused outright when no
- * turn is in flight: its only remaining time is the viewer's arrival, and
- * appending it paints `wait`/`hub`/`task` rows from hours earlier under a
- * conversation whose last message is the one the reader expects to be last. A
- * frame whose record is ALREADY painted is folded onto it whatever the clock,
- * because that settles a card the reader can see without moving any row — so a
- * viewer that PAINTED the seed live (the mid-turn join this seed exists for)
- * and then lost the transport keeps those rows where they were painted; the
- * guarantee here is about a frame that would create a row, not about one that
- * finds its row on screen.
+ * frame that would CREATE a row and states no time is refused outright: with no
+ * turn in flight because its only remaining time is the viewer's arrival, and
+ * for a SETTLED CALL even with one in flight, because the in-flight exemption is
+ * a claim about WORK rather than about TIME. A call that has ended is not work
+ * waiting for the reader, and its position belongs to the durable record: the
+ * assistant row that named it dates it (`argsByCall.anchoredAt`), or the runtime
+ * states when it began on the retained end. `tool_execution_end` carries neither
+ * — it is the one tool frame the runtime emits with no clock at all, and no
+ * `args` — so with neither in hand there is nothing left but the arrival, which
+ * is the fabricated position this rule exists to refuse. Appending it is exactly
+ * the report this covers: opening a session while its turn runs painted the
+ * OPENING turn's eight `bash` calls, an hour and several completed turns earlier,
+ * under the running call, each row showing its output's first line where the
+ * command belongs (the seed reaches that far back because the runtime empties
+ * `live_events` on `agent_start`/`agent_end` — the RUN's boundaries, not a
+ * turn's — and caps it at the newest 100 ends, so it is a rolling window over
+ * every turn the run has taken). A frame whose record is ALREADY painted is
+ * folded onto it whatever the clock, because that settles a card the reader can
+ * see without moving any row — so a viewer that PAINTED the seed live (the
+ * mid-turn join this seed exists for) and then lost the transport keeps those
+ * rows where they were painted; the guarantee here is about a frame that would
+ * create a row, not about one that finds its row on screen.
  *
  * Refusing loses nothing, but it does not return everything at once: every row
  * such a seed names is durable on the backend and the client fires a read sized
@@ -2452,7 +2481,7 @@ export function applyLiveSeed(
 			if (stated !== null) {
 				clock = stated;
 				placed = true;
-			} else if (!inFlight) {
+			} else if (settlesACall(event) || !inFlight) {
 				continue;
 			}
 		}

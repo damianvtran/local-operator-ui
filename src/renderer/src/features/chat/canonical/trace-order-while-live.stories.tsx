@@ -85,6 +85,16 @@
  * a row painted from the page keeps the durable `ts` its entry states. See
  * `scripts/harvest-trace-order-fixture.mjs` for every command and transform.
  *
+ * WHY BOTH ORDERS COME FROM ONE TREE. The pair is the pre-fix fold and the shipped
+ * one over the SAME fixture: `Before*` runs the pre-fix body spelled out (`beforeFix`
+ * — every seed frame applied, nothing refused), because that state no longer
+ * exists in the shipped code and is what these frames are evidence about, and
+ * `After*` calls `applyLiveSeed` the way the hook calls it. A pair captured from
+ * two trees photographs the fix but cannot be re-captured once the base moves;
+ * this one can, and the only difference between the halves is HOW the seed is
+ * folded — see the set's `README.md` for the capture command and the set's own
+ * account of what each image is.
+ *
  * WHY THE PANE'S HEIGHT IS PINNED. A transcript story with no fixed height lets
  * the capture grow its viewport to the document, so a still would show a state
  * no reader can be in: the reader's pane is 685px (the transcript's measured
@@ -106,6 +116,7 @@ import { CanonicalTranscript } from "./canonical-transcript";
 import {
 	EMPTY_TRANSCRIPT,
 	type TranscriptState,
+	applyEvent,
 	applyHistoryPage,
 	applyLiveSeed,
 } from "./transcript-reducer";
@@ -218,6 +229,37 @@ const shipped = (
 	applyLiveSeed(withPage(entries), frontendOf(seed, streaming), arrival);
 
 /**
+ * The PRE-FIX fold, spelled out: every seed frame applied, nothing refused.
+ *
+ * Kept as its own function rather than reconstructed from `applyLiveSeed`, because
+ * the state it produces no longer exists in the shipped code — which is what makes
+ * a before/after pair possible on ONE tree, and what the `Before` frames are
+ * evidence about. It is the pre-fix `applyLiveSeed` body: a loop over the seed's
+ * frames, handing `applyEvent` the clock the frame itself states (`epochMs`) or
+ * the reader's arrival. The pre-fix fold's closing `withTimeOrder` is not spelled
+ * out because it cannot move a frame painted at the arrival, which is newer than
+ * anything the seed states.
+ */
+const beforeFix = (
+	seed: LiveEvent[],
+	{
+		entries = PAGE,
+		arrival = ARRIVAL_MS,
+	}: { entries?: Entry[]; arrival?: number } = {},
+): TranscriptState => {
+	let state = withPage(entries);
+	for (const event of seed) {
+		const stated = Number(event.started_at_epoch);
+		state = applyEvent(
+			state,
+			event,
+			stated > 0 ? Math.round(stated * 1000) : arrival,
+		);
+	}
+	return state;
+};
+
+/**
  * Every record the fold stamped with the reader's own arrival.
  *
  * That stamp is the seed's signature: a row the PAGE paints keeps the durable
@@ -317,7 +359,7 @@ type Story = StoryObj;
  */
 export const BeforeReport: Story = {
 	render: () => {
-		const transcript = shipped(REPORTED_SEED, {
+		const transcript = beforeFix(REPORTED_SEED, {
 			entries: REPORTED_PAGE,
 			arrival: REPORTED_ARRIVAL_MS,
 		});
@@ -325,6 +367,30 @@ export const BeforeReport: Story = {
 		return (
 			<Frame
 				caption={`Before: opening the session while its turn runs (streaming: ${REPORTED.seed.streaming}) at journal record ${REPORTED.through_record}. The pane ends at the call the turn was inside (${inFlight?.tool_name}, ${inFlight?.intent}) and the opening turn's eight bash calls — an hour earlier — are painted under it at the reader's arrival, each showing output where its command belongs.`}
+				transcript={transcript}
+				rows={injected(transcript, REPORTED_ARRIVAL_MS)}
+			/>
+		);
+	},
+};
+
+/**
+ * The same frames, the same page, the shipped fold: the pane ends where the turn does.
+ *
+ * The eight rows are refused rather than greyed or captioned — an unplaceable row
+ * is not painted at a position nobody stated — and they return as durable rows
+ * through the reconcile read the client already fires for unlabelled calls.
+ */
+export const AfterReport: Story = {
+	render: () => {
+		const transcript = shipped(REPORTED_SEED, {
+			entries: REPORTED_PAGE,
+			arrival: REPORTED_ARRIVAL_MS,
+		});
+		const inFlight = REPORTED.in_flight;
+		return (
+			<Frame
+				caption={`After: the same session and the same frames. The pane still ends at the call the turn was inside (${inFlight?.tool_name}, ${inFlight?.intent}), and nothing is painted under it: a clockless settled row is refused because a settled row's position belongs to the durable record, which is the only thing that can date it.`}
 				transcript={transcript}
 				rows={injected(transcript, REPORTED_ARRIVAL_MS)}
 			/>
@@ -342,13 +408,42 @@ export const BeforeReport: Story = {
  */
 export const BeforeLive: Story = {
 	render: () => {
-		const transcript = shipped(SEED);
+		const transcript = beforeFix(SEED);
 		const inFlight = SEED.find(
 			(event) => event.type === "tool_execution_start",
 		);
 		return (
 			<Frame
-				caption={`Before: the harvested seed itself — ${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} of them unable to name a command — folded by the shipped fold under the turn's in-flight ${inFlight?.tool_name}. The window reaches back to journal record ${FIXTURE.derivation.reach_back_records?.[0]}.`}
+				caption={`Before: the harvested seed itself — ${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} of them unable to name a command — folded by the pre-fix fold under the turn's in-flight ${inFlight?.tool_name}. The window reaches back to journal record ${FIXTURE.derivation.reach_back_records?.[0]}.`}
+				transcript={transcript}
+				rows={injected(transcript, ARRIVAL_MS)}
+			/>
+		);
+	},
+};
+
+/**
+ * The unmodified harvest through the shipped fold: the wall is gone.
+ *
+ * This is the frame that states the fix does not depend on the reported moment:
+ * the same 100 retained ends, the same page, the same in-flight call, and no row
+ * painted at the arrival.
+ */
+export const AfterLive: Story = {
+	render: () => {
+		const transcript = shipped(SEED);
+		const inFlight = SEED.find(
+			(event) => event.type === "tool_execution_start",
+		);
+		// A compose frame never ran, so nothing dates it either — and it is not this
+		// rule's business (#312 refuses a finished-dictation compose frame). Named
+		// here rather than counted away, because "none is painted" would be false.
+		const composing = SEED.filter((event) => event.type === "tool_call_compose")
+			.map((event) => String(event.tool_call_id))
+			.join(", ");
+		return (
+			<Frame
+				caption={`After: the harvested seed (${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} of them unable to name a command) through the shipped fold. The pane ends at the turn's in-flight ${inFlight?.tool_name}, and no settled row is painted at the arrival; the one row that still is (${composing}) is the seed's compose frame, which never ran.`}
 				transcript={transcript}
 				rows={injected(transcript, ARRIVAL_MS)}
 			/>

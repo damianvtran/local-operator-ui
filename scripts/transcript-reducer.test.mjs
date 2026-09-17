@@ -2216,7 +2216,7 @@ test("a page row that ties with a painted row is painted after it", () => {
 	);
 });
 
-test("an anchor of epoch 0 is no anchor, so a settling frame is refused or dated now", () => {
+test("an anchor of epoch 0 is no anchor, so a settling frame is refused whatever the turn is doing", () => {
 	// `applyHistoryPage` anchors a call at the instant of the entry that named it,
 	// so an entry whose `ts` is missing or zero would anchor every call it names
 	// at EPOCH 0 — a fabricated time rather than a weak one, which `withTimeOrder`
@@ -2254,8 +2254,11 @@ test("an anchor of epoch 0 is no anchor, so a settling frame is refused or dated
 		["a0", "later"],
 	);
 
-	// The turn is still running, so the frame is painted after the rows already
-	// there, dated by the reader's clock rather than by the unusable anchor.
+	// The turn is still running, and the frame is refused all the same: a settled
+	// call's position belongs to the durable record, and the in-flight exemption is
+	// a claim about WORK rather than about time — nothing is live about a call that
+	// has ended. Painted here it would claim the reader's own clock for work that
+	// no source dated, which is the row that used to appear after the turn's tail.
 	const inFlight = applyLiveSeed(
 		applyHistoryPage(EMPTY_TRANSCRIPT, undated),
 		{ streaming: true, generation: "1", live_events: [settled] },
@@ -2263,9 +2266,8 @@ test("an anchor of epoch 0 is no anchor, so a settling frame is refused or dated
 	);
 	assert.deepEqual(
 		inFlight.records.map((record) => record.id),
-		["a0", "later", "tool:callZ"],
+		["a0", "later"],
 	);
-	assert.equal(inFlight.records.at(-1).ts, 2_000_000);
 });
 
 test("a history_delta that states reset replaces the viewport it cannot extend", () => {
