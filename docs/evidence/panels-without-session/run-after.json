@@ -1,0 +1,91 @@
+{
+  "label": "after",
+  "rig_sha256": "78b708c38e7f838784b6e6642b12f4141862549a960d78cb70000991ae0dffb9",
+  "at": "2026-09-16T16:57:09.223Z",
+  "records": [
+    {
+      "scene": "draft-analytics",
+      "label": "after",
+      "frame": "/tmp/pws-evidence-after/draft-analytics.png",
+      "page": {
+        "route": "/chat",
+        "composer": true,
+        "dialog_title": "",
+        "regions": [
+          "Analytics region"
+        ],
+        "refusal": false,
+        "conversation_section": false,
+        "session_scope": false,
+        "all_sessions": false,
+        "empty_notice": false,
+        "suppressed_by": null,
+        "paused_note": false,
+        "text": "Local Operator Chat My agents Agent hub Schedules Browser Settings Search ⌘+K U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 7 7 New chat ⌘ + N Active chats Nothing running right now. Previous chats 7 7 Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat New chat The session starts when you send your first message. What can I help you with today? Choose a model Working directory: ~ search chats and agents to reopen an earlier session Set u"
+      }
+    },
+    {
+      "scene": "draft-info",
+      "label": "after",
+      "frame": "/tmp/pws-evidence-after/draft-info.png",
+      "page": {
+        "route": "/chat",
+        "composer": true,
+        "dialog_title": "",
+        "regions": [
+          "Host info region"
+        ],
+        "refusal": false,
+        "conversation_section": false,
+        "session_scope": false,
+        "all_sessions": false,
+        "empty_notice": false,
+        "suppressed_by": null,
+        "paused_note": false,
+        "text": "Local Operator Chat My agents Agent hub Schedules Browser Settings Search ⌘+K U User Chats Agents architect coder designer manager reviewer scout Create agent Teams Create team All chats 7 7 New chat ⌘ + N Active chats Nothing running right now. Previous chats 7 7 Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat Recent Untitled chat New chat The session starts when you send your first message. What can I help you with today? Choose a model Working directory: ~ search chats and agents to reopen an earlier session Set u"
+      }
+    },
+    {
+      "scene": "palette-settings",
+      "label": "after",
+      "frame": "/tmp/pws-evidence-after/palette-settings.png",
+      "page": {
+        "route": "/settings",
+        "composer": false,
+        "dialog_title": "",
+        "regions": [
+          "Host info region"
+        ],
+        "refusal": false,
+        "conversation_section": false,
+        "session_scope": false,
+        "all_sessions": false,
+        "empty_notice": false,
+        "suppressed_by": null,
+        "paused_note": false,
+        "text": "Local Operator Chat My agents Agent hub Schedules Browser Settings Search ⌘+K U User General General settings Appearance Account Radient account Integrations Providers API credentials Backend Backend settings System Application updates Settings User profile Your user profile information displayed in the application. This information is not provided to the agents. Display name User Clear Email address user@example.com Clear Application tour Missed the application onboarding tour or want a refresher? Start it again here. Take the tour Model settings Configure the default AI model and hosting pro"
+      }
+    },
+    {
+      "scene": "palette-browser",
+      "label": "after",
+      "frame": "/tmp/pws-evidence-after/palette-browser.png",
+      "page": {
+        "route": "/browser",
+        "composer": false,
+        "dialog_title": "",
+        "regions": [
+          "Host info region"
+        ],
+        "refusal": false,
+        "conversation_section": false,
+        "session_scope": false,
+        "all_sessions": false,
+        "empty_notice": false,
+        "suppressed_by": "panel-picker::r1g:",
+        "paused_note": true,
+        "text": "Local Operator Chat My agents Agent hub Schedules Browser Settings Search ⌘+K U User New tab Approvals New tab Paused while a dialog or panel is open — close it to bring the page back. Info The install, the host this app is connected to, and the sessions running on it. Install Python 3.12.10 · macOS-26.6.2-arm64-arm-64bit · arm64 Version 0.55.9 never checked Install kind pip Interpreter 3.12.10 CPython Path Value Install path /Users/damian/Library/Application Support/Local Operator/managed-python/packaged/environments/183bbfdc87acd8159e60228c9f91ba254095b0a9d878f4649c67688c82047552-7ad511f5-92"
+      }
+    }
+  ]
+}
