@@ -32,13 +32,14 @@ export const autumn: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.060, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.48 from `surface`, 3.33 from `elevated` and 7.46 from
-		 * `sunken`.
+		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 5 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.17 from `surface`, 2.36 from `elevated` and 9.96 from `sunken`;
+		 * the step is 4.87 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.66:1 the ink that binds it.
 		 */
-		highlight: "#2A1D14",
+		highlight: "#35271D",
 
 		ink: "#EDDFD0",
 		inkMuted: "#C0AC97",

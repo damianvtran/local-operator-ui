@@ -29,14 +29,32 @@ export const obsidian: ThemeDefinition = {
 		// would clear the separation floor more easily and was what this held, but
 		// a C0 value is the absence of the ramp rather than its bottom rung.
 		sunken: "#030307",
+
 		/*
-		 * The current row's own ground: `surface` stepped +7 on every channel
-		 * toward white. ΔE00 2.20 from `surface`, and this is the palette that
-		 * sets the band's own ceiling — 2.52 from `elevated`, the row's hover
-		 * step, against the 2.0 the
-		 * contract floors that pair at. 6.67 from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own violet-tinted neutral
+		 * ramp 5.58 `L*`, carrying 1.90x the panel's chroma. ΔE00 4.01 from `surface`,
+		 * 2.36 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 8.37 from `sunken`. The row is 1.134x the panel's relative
+		 * luminance.
+		 *
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#1f1f22)
+		 * stepped 3.51 `L*` off the panel, and this one steps 5.58. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
+		 *
+		 * Ink on this ground: `ink` 14.97:1, `ink-muted` 6.10:1, `ink-dim` 4.87:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 4.87:1. The step here is still partly chroma-bought (1.90x the panel's, a faint violet
+		 * on a near-black neutral); the ordering above is what a re-authoring should
+		 * follow.
 		 */
-		highlight: "#1f1f22",
+		highlight: "#232329",
 
 		ink: "#FAFAFA",
 		inkMuted: "#A1A1AA",

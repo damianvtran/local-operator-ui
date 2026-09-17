@@ -41,12 +41,14 @@ export const solarizedLight: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.26 from `surface`,
-		 * 4.71 from `elevated` and 3.12 from `sunken`.
+		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 5 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4 from `surface`, 4.52 from `elevated` and 4.98 from `sunken`;
+		 * the step is -5.15 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.71:1 the ink that binds it.
 		 */
-		highlight: "#F3EFE3",
+		highlight: "#EBECE4",
 
 		ink: "#073642",
 		// Canonical base01 586E75 is 4.39:1 on `sunken` — under the 4.5 floor, and only
