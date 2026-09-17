@@ -561,8 +561,28 @@ export const AgentHubPage: React.FC = () => {
 						 * columns at 1280 after the sidebar had already taken 264px
 						 * of that 1280, which left 224px cards — narrower than the
 						 * card footer needs, so the Get button was clipped off every
-						 * one of them. 17.5rem is the width at which a card footer
-						 * holds three counters and a labelled action on one line.
+						 * one of them.
+						 *
+						 * `minmax(17.5rem,1fr)`: 17.5rem is the narrowest COLUMN, and
+						 * what sets it is the footer at the count widths this hub
+						 * actually serves — three five-figure counters and a labelled
+						 * action on one line at 306px, with around 50px to spare.
+						 *
+						 * It is NOT a claim that they always fit on one line, and an
+						 * earlier version of this comment said exactly that until a
+						 * frame disproved it: measured on
+						 * `agent-hub-page--narrow-columns` (920x900, the narrowest
+						 * supported viewport, cards 292px wide, counts 1,204,583 /
+						 * 121,408 / 84,903) the footer WRAPS — the card goes from
+						 * 257px to 290px tall and the row pitch from 283px to 315px.
+						 *
+						 * That wrap is the intended degradation rather than a defect
+						 * to rule out: `flex-wrap` with `ml-auto` keeps the counters
+						 * whole and lands the action on the right edge beneath them.
+						 * The one-line alternatives all lose information this surface
+						 * exists to compare — truncating a count states a wrong
+						 * number, and hiding the numbers or the action's label drops
+						 * one altogether (design round 1, D5).
 						 */
 						<div
 							className="grid grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] gap-6"
