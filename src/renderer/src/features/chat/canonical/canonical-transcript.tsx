@@ -1486,6 +1486,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					// component's mount - and so the frame is a picture of the state
 					// instead of the shutter's timing (design round 2, D3).
 					compactingSince: transcript.compactingSince,
+					// The producer's OWN phase and its zero, off the frontend state that
+					// rode in with the snapshot. This is the half a resumed pane cannot
+					// derive from its own records (`thinking` has no tool row behind it at
+					// all), and it is used only when the producer's phase equals the one
+					// derived here - the gate lives in `deriveWorkingLine`, once, because
+					// the comparison needs the derived phase.
+					foldedPhase: frontend?.activity_phase,
+					foldedPhaseStartedAt: frontend?.activity_phase_started_at,
 					starting,
 					startingAfterId,
 					gate,
@@ -1513,6 +1521,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			// The phase's own start, read by the builder above: without it a pass
 			// whose stamp changed while the claim did not would keep the old anchor.
 			transcript.compactingSince,
+			// Read by the builder above as the resumed rung's anchor. Spelled out as the
+			// two fields rather than the `frontend` object, for the same reason the four
+			// view flags are: a memo whose dep is the object re-derives on every frame
+			// the stream repaints, which is the per-token path this memo exists to stay
+			// off.
+			frontend?.activity_phase,
+			frontend?.activity_phase_started_at,
 			starting,
 			startingAfterId,
 			gate,

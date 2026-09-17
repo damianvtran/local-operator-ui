@@ -737,6 +737,12 @@ export const STORIES = [
 	   NOT run. Added by the round that gave the refusal a row. */
 	["chat-tool-rows--compacting-refused", 1280, 300],
 	["chat-tool-rows--working-labels", 760, 300],
+	/* The operator's own report, in the two arms a resumed pane can be in: a
+	   model call the band can only date from the producer's folded phase, and a
+	   running batch the row and the band both date from its oldest card. Sized
+	   to its content — a taller viewport is mostly ground, which is the
+	   uniformity ceiling this list keeps running into. */
+	["chat-tool-rows--resumed-running-clock", 1280, 400],
 	/* The `write`/`edit` diff body: the expansion the TUI shows in place of the
 	   arguments. Captured at the height the story declares, because the frame IS
 	   the body — a viewport shorter than the content photographs a scrolled
