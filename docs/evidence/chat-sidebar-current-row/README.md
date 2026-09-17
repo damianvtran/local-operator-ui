@@ -1,7 +1,11 @@
 # The current row's ground, and the key caps
 
 Two changes the operator reported, photographed on the surfaces they are visible
-on, in all twelve palettes:
+on, in all TWENTY-THREE themes this set covers: the twelve the band was authored on,
+plus the eleven the theme port (PR #272) added, which are the palettes whose
+`highlight` this branch re-authored to the same rule. Frames added in a pass are
+named in the section for the state they belong to, and every frame's reading is in
+the tables below rather than asserted in prose:
 
 1. **"The highlight style needs to be more subtle — it's currently a very dark
    colour but it should be a slight darkening on light themes and a slight
@@ -31,7 +35,13 @@ on, in all twelve palettes:
 ```sh
 # the AFTER half: the branch's own tree
 npx storybook dev -p 6017 --host 127.0.0.1 --no-open --disable-telemetry
-node scripts/capture-evidence.mjs --only=chat-sidebar-current-row --allow-backend http://127.0.0.1:6017
+# the sweep is narrowed per state because two states are shot on a theme SUBSET:
+# the focused row on the ten the design named, the wash frame on the four the
+# port's collision was measured on. `--themes` takes the 23 ids this set covers.
+node scripts/capture-evidence.mjs --only=chat-sidebar-current-row--selected-row --themes=<23 ids> --allow-backend http://127.0.0.1:6017
+node scripts/capture-evidence.mjs --only=chat-sidebar-current-row--settings-rail --themes=<23 ids> --allow-backend http://127.0.0.1:6017
+node scripts/capture-evidence.mjs --only=chat-sidebar-current-row--focused-row-current --themes=<the 10> --allow-backend http://127.0.0.1:6017
+node scripts/capture-evidence.mjs --only=chat-sidebar-current-row--wash-swatches --themes=oneLight,rosePineDawn,rosePine,tokyoNightDay --allow-backend http://127.0.0.1:6017
 node scripts/capture-evidence.mjs --only=command-palette-commandpalette-- http://127.0.0.1:6017
 
 # the BEFORE half: a worktree of unmodified origin/main at da9e75a6, with the same
@@ -212,6 +222,38 @@ committed) beside the **committed** q88 file:
 | sage | light | `#f0ede2`, 2.34 | 4.02 | `#e8e4da`, **4.02** | `#e7e5da`, 4.15 | 0.13 | −6.62 |
 | synth | dark | `#231235`, 2.19 | 4.14 | `#281641`, **4.14** | `#291641`, 3.98 | 0.16 | +6.08 |
 
+### The eleven themes the port added (frames taken in this pass)
+
+Same story, same rig, same column; the `committed q88` column is read off the frames in
+this directory with `harness/read-current-row.mjs`, and the `contract` column is the
+palette's own `highlight`/`surface` distance from `pnpm check-themes`. The lossless
+equivalence the twelve above were measured for (a lossless capture reads the palette
+exactly) is unchanged by the encoder framing, so the contract column is the palette's
+value rather than a second capture: what these rows add is the q88 drift on palettes no
+earlier pass read.
+
+| palette | mode | contract | committed q88 | \|q88 − contract\| | `L*` step off the panel |
+| --- | --- | --- | --- | --- | --- |
+| catppuccinFrappe | dark | 4.34 | `#413f57`, 5.16 | 0.82 | **+2.52** |
+| catppuccinMacchiato | dark | 4.00 | `#322f4b`, 3.94 | 0.06 | **+1.74** |
+| cyberpunk | dark | 4.14 | `#1d171e`, 4.07 | 0.07 | **+3.11** |
+| nord | dark | 4.35 | `#30404f`, 3.88 | 0.47 | **+1.53** |
+| oneLight | light | 4.03 | `#e5ebf0`, 3.97 | 0.06 | **−3.18** |
+| palenight | dark | 4.87 | `#393750`, 3.77 | 1.10 | **+2.22** |
+| rosePine | dark | 5.97 | `#302232`, 6.07 | 0.10 | **+3.29** |
+| rosePineDawn | light | 4.09 | `#fdeeea`, 4.41 | 0.32 | **−2.11** |
+| solarizedDark | dark | 4.04 | `#023a42`, 4.04 | 0.00 | **+2.65** |
+| synthwave | dark | 4.02 | `#39304c`, 3.41 | 0.61 | **+3.27** |
+| tokyoNightDay | light | 4.12 | `#dce3ec`, 4.45 | 0.33 | **−3.07** |
+
+Every one of the eleven steps in the direction its mode runs (`L*` up on a dark theme,
+down on a light one), which is the half of the operator's sentence ΔE00 cannot state; and
+the six whose q88 reading lands under 4.0 (`catppuccinMacchiato` 3.94, `nord` 3.88,
+`oneLight` 3.97, `palenight` 3.77, `synthwave` 3.41, and on the twelve above `monokai` and
+`synth`) are the encoder's version of the paint rather than the authored value — the
+contract column is what the band is held to, and the section below says why the two
+differ.
+
 The `L*` column is a PALETTE number and is here because ΔE00 cannot state it: the
 band can be reached while the row lands DARKER than the panel it is supposed to be
 brighter than, which is what the first version of this change did on the three
@@ -236,6 +278,26 @@ capture), and a reading taken off a committed frame can sit below the floor with
 the palette being below it, because the file is the encoder's version of the paint.
 Read the band off the contract and the row off the frame; where the two disagree,
 the table says which is which.
+
+**Two states were added in the frame pass that widened this set to 23 themes**, and one
+of them is not a screen:
+
+- **`focused-row-current/`** — the current row with the KEYBOARD on it (design round 2,
+  N3; round 3, N4), shot on the ten themes the design named (the six pinned palettes plus
+  the four re-authored by the port). It is the only frame in the set where two outline
+  rules meet on one box: the `highlight` ground and the row's own `focus-visible` ring
+  (2px `outline-accent`, 2px offset) drawn AROUND it. The ring is BROWSER state and cannot
+  be faked by the story — a programmatic `.focus()` does not match `:focus-visible`, which
+  the first cut of this state demonstrated by capturing the ground with no ring at all — so
+  the rig presses the real Tab key until the row holds focus (`{ tabTo }` in
+  `scripts/capture-evidence.mjs`) and throws rather than filing an unfocused frame under it.
+- **`wash-swatches/`** — the current row's `highlight` beside the app's active-row
+  `accentWash`, as a **colour-only** frame: the picture says so in its own caption, and no
+  state in this set can hold both in one view, because every call site that paints
+  `accentWash` is in a different panel from the one these states photograph. What the frame
+  settles is the ΔE00 between the two grounds, which is the contract's `HIGHLIGHT`/wash
+  assertion; the numbers are in the tables below. Shot on the four palettes the port's
+  collision was measured on (`oneLight`, `rosePineDawn`, `rosePine`, `tokyoNightDay`).
 
 **The cause is the encoder, not the compositor**: re-encoding a lossless capture of
 this same story at the same quality reproduces the committed readings digit for

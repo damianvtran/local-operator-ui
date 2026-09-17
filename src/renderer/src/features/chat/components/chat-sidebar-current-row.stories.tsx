@@ -475,3 +475,97 @@ export const NestedRowCurrent: Story = {
 		await sleep(300);
 	},
 };
+
+
+/**
+ * The current row UNDER KEYBOARD FOCUS — the one arrangement where two outline
+ * rules meet on one box, and a state no frame in this set has ever held.
+ *
+ * The row's own class list carries `focus-visible:outline focus-visible:outline-2
+ * focus-visible:outline-accent focus-visible:outline-offset-2`, so a focused
+ * current row is the `highlight` ground plus an `accent` ring at a 2px offset
+ * drawn AROUND it. Every other frame in the set shows the ground alone, and the
+ * question this one exists for is whether the two marks read as one state or as
+ * a mark fighting its own outline (design round 2, N3; round 3, N4).
+ *
+ * Focus is moved to the row itself rather than to a store field, because the ring
+ * is `:focus-visible`'s and only the browser's own focus state produces it. A
+ * scripted `.focus()` matches `:focus-visible` in a fresh page whose last
+ * interaction was not a pointer, which is the state a capture starts in — the
+ * rig's pointer states are separate entries for exactly this reason.
+ */
+export const FocusedRowCurrent: Story = {
+	render: () => {
+		roster = DEFAULT_ROSTER;
+		agentCatalogue = [];
+		selected = REVENUE;
+		draftKey = null;
+		return <Page note="A conversation row is current, with the keyboard on it" />;
+	},
+	play: async () => {
+		await catalogueSettled(3);
+		useCanonicalSessionsStore.setState({ activeDraftKey: null });
+		await sleep(300);
+		/*
+		 * NO focus call here on purpose. The ring this state is about is
+		 * `:focus-visible`'s, which is BROWSER state: a programmatic `element.focus()`
+		 * does not match it in Blink unless the last interaction was the keyboard, so
+		 * a story that focused a control itself would photograph the resting state and
+		 * file it under a ring. The rig presses the real Tab key instead (`{ tabTo }`
+		 * on this set's own row in `capture-evidence.mjs`) and throws rather than
+		 * shooting the unfocused state if it never lands. The first cut of this story
+		 * called `.focus()` from here and the frame came back with the ground and no
+		 * ring — measured, not assumed.
+		 */
+		await sleep(200);
+	},
+};
+
+/**
+ * A COLOUR-ONLY frame, and it says so in the picture.
+ *
+ * The pair this shows is `highlight` — the current row's ground — beside
+ * `accentWash`, the tint the app already paints on an active or selected row
+ * elsewhere (`bg-accent-wash`). On four palettes the two measured under the
+ * contract's 2.0 field floor after the theme port landed, and three of them were
+ * re-authored to clear it while `rosePineDawn` could not (its ink caps the route;
+ * the contract pins the pair at its measured 1.75 ceiling).
+ *
+ * WHY A SWATCH AND NOT A SCREEN. Every call site that paints `accentWash` is in a
+ * different panel from this one — the agents sidebar, the category rail, the
+ * spreadsheet's selected row — and this rig's seven states photograph the chat
+ * sidebar and the settings rail, so no state in it can hold a current row and a
+ * wash element in one view. Rather than imply a screen was found, the frame draws
+ * the two grounds at the size they are painted and labels itself: what it settles
+ * is the ΔE00 between the two colours, which is the whole of the claim, and the
+ * README says the same thing where a reader meets the frames.
+ */
+export const WashSwatches: Story = {
+	render: () => (
+		<div className={cn("flex h-screen flex-col gap-6 bg-canvas p-8 text-ink")}>
+			<p className="text-body">
+				COLOUR-ONLY FRAME — this is not a screen. It shows the current row's
+				ground beside the app's active-row wash, at the size a row is painted,
+				because no state in this set can hold both in one view.
+			</p>
+			<div className="flex gap-6">
+				<div className="flex flex-col gap-2">
+					<div className="h-24 w-[320px] rounded-md bg-highlight" />
+					<p className="font-mono text-meta text-ink-muted">
+						bg-highlight — the current row's ground
+					</p>
+				</div>
+				<div className="flex flex-col gap-2">
+					<div className="h-24 w-[320px] rounded-md bg-accent-wash" />
+					<p className="font-mono text-meta text-ink-muted">
+						bg-accent-wash — the app's active-row tint
+					</p>
+				</div>
+			</div>
+			<p className="text-meta text-ink-muted">
+				A reader judges the pair by whether the two blocks read as two
+				grounds; the contract asserts the same distance numerically.
+			</p>
+		</div>
+	),
+};
