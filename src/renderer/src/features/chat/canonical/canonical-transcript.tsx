@@ -555,6 +555,40 @@ const AssistantRow = memo(function AssistantRow({
 					/>
 				)}
 			</div>
+			{/*
+			 * One stamp per SETTLED answer, under it on the agent rail, and none while
+			 * the answer is still arriving.
+			 */}
+			{/*
+			 * `streaming` is the discriminator, deliberately: the operator's "just the
+			 * final responses, not the in-progress tool intent/response" contrasts with
+			 * an answer that is still being written, not with prose the agent wrote in
+			 * the middle of a turn. An in-progress answer is the working line's job -
+			 * section 7's "one liveness element per turn" - so a stamp on it would
+			 * state a time for a message that has not finished being one. `stopReason`
+			 * is NOT the test either way: a durable entry can carry a null stop reason,
+			 * and a settled answer mid-turn is still an answer the agent gave.
+			 */}
+			{/*
+			 * OUTSIDE the content box above, so a selection drag over the answer cannot
+			 * sweep a clock into a quote (`turnRef` is what the toolkit reads, and the
+			 * stamp must not be inside it). `mt-1` is the same 4px the user-side
+			 * caption takes from its column's `gap-1`; it is a margin here because this
+			 * row's parent is the message container rather than a flex column, and
+			 * wrapping the answer in one to borrow the gap would change how the
+			 * markdown's own block margins collapse.
+			 */}
+			{/*
+			 * Left-aligned by the container's own `pl-10` gutter, which is the padding
+			 * the answer's prose already starts at - so the caption and the prose share
+			 * one left edge structurally rather than by a second measurement (the frame
+			 * is where that is checked; see `docs/evidence/chat-tool-rows/README.md`).
+			 */}
+			{!record.streaming && (
+				<div className={cn("mt-1")}>
+					<TurnTimestamp timestamp={record.ts} scope="answer" />
+				</div>
+			)}
 		</MessageContainer>
 	);
 });
@@ -759,7 +793,7 @@ const ToolRow = memo(function ToolRow({
 			 * that ground is a different change from this one.
 			 */}
 			<div className={cn("flex justify-end pr-4")}>
-				<TurnTimestamp timestamp={record.ts} scope="turn" />
+				<TurnTimestamp timestamp={record.ts} scope="tool" />
 			</div>
 		</>
 	) : undefined;
