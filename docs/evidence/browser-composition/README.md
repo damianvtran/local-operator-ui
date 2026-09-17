@@ -50,13 +50,25 @@ cue, the dock's notice sentence and waiting row, and the URL bar's label reserve
 That re-shoot is done: the deferral the earlier revision of this file carried is
 discharged, and `manifest.json`'s `partialCapture.roundTwoRecapture` records it.
 
-**What is bounded rather than current (design round 3, D24):** `03` carries strip
-pixels from that same tree, and none of the six is re-photographed at the head that
-added the four- and five-chip floors and the button-level clip. The delta is bounded,
-and this is the reason rather than a promise: the frames here render rows carrying at
-most one chip, and both of those changes bind only at four chips or more (the floor
-steps) or when a row's content exceeds its floor at all (the clip, which measures as a
-backstop today). Nothing in these six frames can move with them. Re-taking them is one
-`pnpm build` plus `node scripts/browser-chrome-proof.mjs --keep`, and the frames are
-read from that run's scratch directory; it is a capture run, so it waits for a window
-where the box is not carrying other sessions' suites.
+**The bounded delta is CLOSED, and these six frames are current at this head.** The
+earlier revision of this paragraph recorded that `03` carried strip pixels from an
+older tree and that none of the six had been re-photographed at the head that added
+the four- and five-chip floors and the button-level clip; review round 2 then changed
+two surfaces every one of them contains (the pinned control's count chip beside the
+new-tab control, and the actions band's shape), so the whole set was re-taken. Source,
+exactly, at this head: `pnpm build`, then
+
+```
+env -u NO_COLOR LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_NO_TERMINAL_TITLE=1 \
+  node scripts/browser-chrome-proof.mjs --keep
+```
+
+and the run's own scratch frames (PNG) encoded to `.webp` at quality 90. Where each
+frame comes from, now stated rather than implied, because two of the names are not
+the run's own: `03-surface-populated`, `12-approvals-queue`, `17-tab-actions-in-band`
+and `18-approvals-dock` are the run's frames of those names; `19-strip-marked-tab-at-rest`
+is the run's `09-strip-user-and-agent` (the strip at rest with one user and one
+agent-marked tab) and `20-strip-failed-and-agent-markers` is its
+`16-surface-strip-failed-agent-tab` (the `Failed` and `Agent` markers painted
+together). `17` is the frame that carries review round 2's D7 band — one item per row,
+`Copy URL` last behind the rule — in the running app.
