@@ -1,16 +1,19 @@
 import { cn } from "@shared/lib/utils";
-import type { CSSProperties, FC } from "react";
+import type { CSSProperties, FC, MouseEvent as ReactMouseEvent } from "react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { classifyHref, shouldOpenOnClick } from "../utils/link-actions";
+import { openLocalTarget, selectionTouches } from "../utils/link-open";
 import {
 	type BlockScanner,
 	createBlockScanner,
 	scanMarkdownBlocks,
 	trimmedEndLength,
 } from "../utils/markdown-blocks";
+import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import "./markdown.css";
 import { MermaidDiagram } from "./mermaid-diagram";
 
@@ -46,6 +49,20 @@ type MarkdownRendererProps = {
 	content: string;
 	styleProps?: MarkdownStyleProps;
 	className?: string;
+	/**
+	 * Whether a path the text merely CONTAINS becomes a link. On by default.
+	 *
+	 * A completed document is the case the linkifier was written for: the agent
+	 * wrote a path, and it is dead text until something renders it as a link.
+	 * The caller that turns it off is the canonical transcript's streaming row
+	 * (`AssistantRow`), for the reason `isQuotable` refuses a streaming record: a
+	 * row still receiving deltas is a prefix the next token falsifies, so a path
+	 * that is half-written - `/Users/x/Workspace/opoint-renewal-2026-09-1` - would
+	 * be linkified into a target that does not exist and then silently re-link as
+	 * the rest of it arrived. The link appears when the row settles, which is
+	 * also when the row's own Quote control appears.
+	 */
+	linkify?: boolean;
 };
 
 const LANGUAGE_REGEX = /language-(\w+)/;
@@ -56,19 +73,92 @@ const MATH_ENVIRONMENT_REGEX = /\\begin\{([^}]+)\}([\s\S]+?)\\end\{\1\}/;
 const MATH_COMMAND_REGEX = /\\[a-zA-Z]+(\{[^}]*\})?/;
 
 /**
+ * The anchor every markdown link renders as, wherever markdown is rendered.
+ *
+ * Three kinds, decided from the href's shape by `classifyHref`, and the third is
+ * the one that matters most: an href this app has no business opening keeps
+ * exactly the behaviour it had before this change. That is what "do not disrupt
+ * links that are already captured by markdown parsing" means in code.
+ *
+ * `data-lo-kind` is what the transcript's hover toolbar looks for
+ * (`event.target.closest("[data-lo-kind]")`), and `data-lo-target` is the
+ * target it acts on - the PATH, never a `file://` URL, because
+ * react-markdown's own `defaultUrlTransform` replaces a `file://` href with the
+ * empty string and the anchor would render as a link to nowhere.
+ */
+const MarkdownAnchor: FC<{ href?: string; children?: React.ReactNode }> = ({
+	href,
+	children,
+}) => {
+	const target = classifyHref(href);
+	if (!target || target.kind === "other") {
+		return (
+			<a href={href} target="_blank" rel="noopener noreferrer">
+				{children}
+			</a>
+		);
+	}
+	if (!shouldOpenOnClick(target.kind)) {
+		return (
+			// A URL keeps `target="_blank"`: it leaves the app through
+			// `setWindowOpenHandler` into `shell.openExternal`, which is the path
+			// that already exists and already works.
+			<a
+				href={href}
+				data-lo-kind={target.kind}
+				data-lo-target={target.target}
+				target="_blank"
+				rel="noopener noreferrer"
+			>
+				{children}
+			</a>
+		);
+	}
+	return (
+		<a
+			href={href}
+			data-lo-kind="file"
+			data-lo-target={target.target}
+			onClick={handleFileAnchorClick}
+		>
+			{children}
+		</a>
+	);
+};
+
+/**
+ * A plain click on a detected file link.
+ *
+ * `preventDefault()` on EVERY detected target is mandatory rather than
+ * defensive: nothing in this app guards same-window `file://` navigation - there
+ * is no `will-navigate` handler - so letting the default through would replace
+ * the app's own window with a file the reader cannot navigate back from.
+ */
+const handleFileAnchorClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+	event.preventDefault();
+	const anchor = event.currentTarget;
+	if (selectionTouches(anchor)) return;
+	const target = anchor.getAttribute("data-lo-target");
+	if (!target) return;
+	void openLocalTarget(target);
+};
+
+/**
  * Hoisted, and that matters more than it looks.
  *
  * react-markdown memoises its pipeline against the props it is given. Rebuilding
  * this literal inside the component body handed it a new object on every render,
  * so the memo missed every time and the whole document was re-processed — the
  * exact cost the streaming path is built to avoid.
+ *
+ * The `a` entry is the anchor every link in the app renders as
+ * (`MarkdownAnchor`), because the alternative — a second anchor implementation
+ * for the transcript's rows — is the "second implementation of one thing" § 9
+ * refuses, and because the links that need the new behaviour are exactly the
+ * ones markdown produces.
  */
 const MARKDOWN_COMPONENTS: Components = {
-	a: ({ href, children }) => (
-		<a href={href} target="_blank" rel="noopener noreferrer">
-			{children}
-		</a>
-	),
+	a: MarkdownAnchor,
 	code: ({ node: _node, className, children, ...rest }) => {
 		const language = LANGUAGE_REGEX.exec(className ?? "")?.[1];
 
@@ -88,6 +178,19 @@ const MARKDOWN_COMPONENTS: Components = {
 
 const GFM_ONLY = [remarkGfm];
 const GFM_AND_MATH = [remarkGfm, remarkMath];
+/*
+ * The same two pipelines with the linkifier on the end, hoisted for the same
+ * reason the two above are: `MARKDOWN_COMPONENTS`'s comment records what a
+ * per-render plugin array cost, and building `[...GFM_ONLY, remarkLinkifyTargets]`
+ * inside the component would be that bug again with a different literal.
+ *
+ * Four constants rather than a builder function on purpose. react-markdown
+ * memoises against the ARRAY IDENTITY, so a function that returned a fresh array
+ * for the same arguments would miss the memo on every render - which is the
+ * whole reason these are module-scope in the first place.
+ */
+const GFM_LINKIFY = [remarkGfm, remarkLinkifyTargets];
+const GFM_MATH_LINKIFY = [remarkGfm, remarkMath, remarkLinkifyTargets];
 const NO_REHYPE: [] = [];
 const KATEX_ONLY = [rehypeKatex];
 
@@ -127,8 +230,14 @@ const useStyleVariables = (
  * The math plugins wait for the stylesheet: rendering KaTeX markup before its
  * CSS arrives shows visibly broken layout, whereas holding the plugins back for
  * that one frame just leaves the raw "$x$" source on screen.
+ *
+ * `linkify` is the second thing this hook decides, and it is a parameter rather
+ * than a prop of its own because both answers have to come out as ONE array
+ * identity: react-markdown memoises its pipeline against the arrays it is handed,
+ * so a caller that picked the arrays itself could hand it a fresh pair on every
+ * render.
  */
-const useMathPipeline = (content: string) => {
+const useMathPipeline = (content: string, linkify: boolean) => {
 	const hasLatex = useMemo(() => containsLatex(content), [content]);
 	const [mathEnabled, setMathEnabled] = useState(
 		() => hasLatex && katexStylesLoaded,
@@ -146,7 +255,13 @@ const useMathPipeline = (content: string) => {
 	}, [hasLatex, mathEnabled]);
 
 	return {
-		remarkPlugins: mathEnabled ? GFM_AND_MATH : GFM_ONLY,
+		remarkPlugins: mathEnabled
+			? linkify
+				? GFM_MATH_LINKIFY
+				: GFM_AND_MATH
+			: linkify
+				? GFM_LINKIFY
+				: GFM_ONLY,
 		rehypePlugins: mathEnabled ? KATEX_ONLY : NO_REHYPE,
 	};
 };
@@ -158,15 +273,21 @@ const useMathPipeline = (content: string) => {
  * `convertUrlsToMarkdownLinks` pre-pass here as well; it declared the same
  * regex twice and returned the input unchanged whenever the first one matched,
  * which is whenever the text contains a URL — so it did nothing, ever, and what
- * it was meant to do was already being done by the plugin.
+ * it was meant to do was already being done by the plugin. What was NOT being
+ * done is the other half: a bare PATH is not a URL, remark-gfm does not know
+ * about paths, and `remarkLinkifyTargets` is what renders one as a link. It is a
+ * plugin over the mdast rather than a text pre-pass precisely because the dead
+ * pre-pass above is the recorded evidence that a text rewrite cannot tell a path
+ * in a code fence or inside an existing link's label from one in prose.
  *
  * @param content - The markdown source
  * @param styleProps - Optional font size and line height overrides
+ * @param linkify - Whether bare paths become links (default true)
  */
 export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
-	({ content, styleProps, className }) => {
+	({ content, styleProps, className, linkify = true }) => {
 		const trimmed = useMemo(() => content.trim(), [content]);
-		const { remarkPlugins, rehypePlugins } = useMathPipeline(trimmed);
+		const { remarkPlugins, rehypePlugins } = useMathPipeline(trimmed, linkify);
 		const style = useStyleVariables(styleProps);
 
 		return (
@@ -209,7 +330,14 @@ MarkdownRenderer.displayName = "MarkdownRenderer";
  * document-level render enables math because of a formula elsewhere.
  */
 const StableBlock = memo(({ source }: { source: string }) => {
-	const { remarkPlugins, rehypePlugins } = useMathPipeline(source);
+	/*
+	 * `linkify` is on here even though this is a streaming view, and the
+	 * difference from `AssistantRow`'s `streaming` row is what a block IS: a
+	 * block reaches this component once it has CLOSED, so its source can never
+	 * change again and a path inside it is a finished path. The in-flight tail
+	 * below renders as literal text and is never parsed at all.
+	 */
+	const { remarkPlugins, rehypePlugins } = useMathPipeline(source, true);
 	return (
 		<ReactMarkdown
 			remarkPlugins={remarkPlugins}

@@ -221,6 +221,21 @@
 	color: var(--lo-accent-hover);
 }
 
+/*
+ * A LINKIFIED INLINE-CODE SPAN takes the anchor's own colour.
+ *
+ * `code` above sets `color: var(--lo-ink)`, which is right for a fragment the
+ * reader is meant to read as machine voice - and wrong the moment the span IS a
+ * link: the fragment would then be painted in ink under an accent underline,
+ * i.e. two registers for one token, and the anchor's `:hover` colour step would
+ * move only the underline. `inherit` keeps the monospace face (the whole point of
+ * admitting a code span to the linkifier) and leaves the colour to the register
+ * that owns it: one link per paragraph, whether the link wraps prose or code.
+ */
+.lo-markdown a code {
+	color: inherit;
+}
+
 .lo-markdown strong {
 	font-weight: 600;
 	color: var(--lo-ink);
