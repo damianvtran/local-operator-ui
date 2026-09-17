@@ -354,6 +354,15 @@ const LEGACY_SCHEDULES: ScheduleResponse[] = [
 	},
 ];
 
+/**
+ * The sentence the stub answers with once it has stopped answering, which is the
+ * one the live drive saw from a real daemon that had gone away in the round-2
+ * evidence: `The backend could not complete this request. Check its connection and
+ * try again.`
+ */
+const REFUSAL_AFTER_LOAD =
+	"The backend could not complete this request. Check its connection and try again.";
+
 /** What the stubbed desktop bridge answers, per story. */
 type StubState = {
 	entries: DesktopWakeEntry[];
@@ -364,6 +373,16 @@ type StubState = {
 	hang: boolean;
 	/** Answers with a backend refusal, for the error state. */
 	fail: string | null;
+	/**
+	 * How many listings answer successfully before the stub starts refusing.
+	 *
+	 * `fail` is a daemon that was never there, and it can only ever photograph a
+	 * page with no rows in it. The marker that says the rows on screen are the last
+	 * list that LOADED needs the other sequence - a read that landed, then a read
+	 * that failed - which is the one a user meets when the daemon goes away under a
+	 * page that is already open (round 2, U4; round 3's evidence gap).
+	 */
+	failAfter?: number | null;
 };
 
 let stub: StubState = {
@@ -373,7 +392,11 @@ let stub: StubState = {
 	readError: false,
 	hang: false,
 	fail: null,
+	failAfter: null,
 };
+
+/** Listings the stub has answered, which is what `failAfter` counts. */
+let listingReads = 0;
 
 const json = (body: unknown) =>
 	new Response(JSON.stringify(body), {
@@ -409,6 +432,11 @@ const answer = async (request: { op: string; [key: string]: unknown }) => {
 		case "wakes.list": {
 			if (stub.hang) return new Promise<never>(() => {});
 			if (stub.fail) return { status: 503, body: { detail: stub.fail } };
+			listingReads += 1;
+			const failAfter = stub.failAfter ?? null;
+			if (failAfter !== null && listingReads > failAfter) {
+				return { status: 503, body: { detail: REFUSAL_AFTER_LOAD } };
+			}
 			return {
 				status: 200,
 				body: {
@@ -604,6 +632,20 @@ installFetchStub();
  * query's first request already sees it - which is what makes a story a frame
  * of ONE state rather than of whichever state the previous story left behind.
  */
+/**
+ * Reset the stub's read counter once per story MOUNT.
+ *
+ * Mount-scoped rather than render-scoped, for the reason in `page()`'s note below:
+ * a story that presses a control re-renders, and a counter reset on render cannot
+ * count the reads such a story is made of.
+ */
+const FreshReadCount = () => {
+	useEffect(() => {
+		listingReads = 0;
+	}, []);
+	return null;
+};
+
 const page = (state: Partial<StubState>) => {
 	stub = {
 		entries: [],
@@ -612,8 +654,17 @@ const page = (state: Partial<StubState>) => {
 		readError: false,
 		hang: false,
 		fail: null,
+		failAfter: null,
 		...state,
 	};
+	/*
+	 * NOTE: the read counter is NOT reset here. `page()` runs on every render of
+	 * the story, and the app re-renders whenever its own query state changes - which
+	 * is precisely what a press of the refresh control does. Measured while building
+	 * `stale-rows`: with the reset here the counter went back to 1 the moment the
+	 * press landed, the stub then answered every read successfully, and the frame
+	 * photographed the plain list. `FreshReadCount` is the mount-scoped reset.
+	 */
 	stageWorkspace();
 	/*
 	 * `h-screen`, because in the app the panel is `min-h-0 flex-1` inside a
@@ -687,6 +738,46 @@ export const LoadError: Story = {
 		<>
 			<HoldUntilText text="Could not load scheduled tasks." />
 			{page({ fail: "The backend did not answer." })}
+		</>
+	),
+};
+
+/**
+ * A read that landed and then stopped landing: the stale-rows marker.
+ *
+ * `load-error` cannot carry this state - its stub never answers, so there are no
+ * cached rows to mark, which is exactly why the marker is conditional on rows -
+ * and its own frame therefore proves only the total failure. Here the first read
+ * succeeds (six conversations), the daemon then goes away, and the header's
+ * refresh control is pressed, because that is both what a user does and the
+ * sequence the round-2 live drive reproduced with the backend actually killed
+ * (U4). The press also keeps the frame off the page's own 30 s poll, which is
+ * what would produce the same state in the app a minute later.
+ */
+export const StaleRows: Story = {
+	render: () => (
+		<>
+			<FreshReadCount />
+			{page({ entries: MANY, legacy: LEGACY_SCHEDULES, failAfter: 1 })}
+			<Drive
+				steps={[
+					/*
+					 * The rows first, then the press: the refresh control is `disabled`
+					 * while a fetch is in flight, so a press that lands before the first
+					 * read settles is swallowed by React and the frame photographs the
+					 * plain list (measured - the first version of this story wrote a
+					 * frame byte-identical to `list`).
+					 */
+					{ waitFor: "[data-scheduled-task-row]" },
+					{ selector: 'button[aria-label="Refresh scheduled tasks"]' },
+					/*
+					 * The marker is the story's own subject, and the failing read only
+					 * reaches the DOM after the transport's retry: waiting for it is what
+					 * makes the frame the state rather than the tick before it.
+					 */
+					{ until: "the last one that loaded" },
+				]}
+			/>
 		</>
 	),
 };
@@ -786,7 +877,28 @@ export const RowActionsRevealed: Story = {
 const Drive = ({
 	steps,
 }: {
-	steps: Array<{ selector: string; option?: string; text?: string }>;
+	/**
+	 * One step, in order.
+	 *
+	 * `waitFor` is the step that does not click: it holds the sequence until a
+	 * selector exists, which is what a press that must land AFTER data has rendered
+	 * needs. Without it such a story can only press blind - and a press on a control
+	 * that is `disabled` while its fetch is in flight is swallowed by React, which
+	 * is how the first version of `stale-rows` wrote a frame of the plain list.
+	 *
+	 * `until` is the step that waits for TEXT: a failure that only renders after the
+	 * transport's own retry needs it, and without it the sequence clears
+	 * `data-capture-pending` first and the shutter catches the page one retry early -
+	 * measured on `stale-rows`, whose first frames were the plain list while the
+	 * state the story is named for was one second away.
+	 */
+	steps: Array<{
+		selector?: string;
+		option?: string;
+		text?: string;
+		waitFor?: string;
+		until?: string;
+	}>;
 }) => {
 	useEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
@@ -854,11 +966,41 @@ const Drive = ({
 			}
 			return false;
 		};
+		const waitForSelector = async (selector: string) => {
+			for (let attempt = 0; attempt < 160; attempt++) {
+				if (cancelled) return false;
+				if (document.querySelector(selector)) {
+					await wait(150);
+					return true;
+				}
+				await wait(50);
+			}
+			return false;
+		};
+		const waitForText = async (text: string) => {
+			for (let attempt = 0; attempt < 160; attempt++) {
+				if (cancelled) return false;
+				if (document.body.textContent?.includes(text)) {
+					await wait(150);
+					return true;
+				}
+				await wait(50);
+			}
+			return false;
+		};
 		const run = async () => {
 			for (const step of steps) {
+				if (step.until) {
+					if (!(await waitForText(step.until))) return;
+					continue;
+				}
+				if (step.waitFor) {
+					if (!(await waitForSelector(step.waitFor))) return;
+					continue;
+				}
 				const done = step.text
-					? await type(step.selector, step.text)
-					: await press(step.selector, step.option);
+					? await type(step.selector ?? "", step.text)
+					: await press(step.selector ?? "", step.option);
 				if (!done) return;
 			}
 			await wait(300);

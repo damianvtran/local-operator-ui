@@ -341,11 +341,15 @@ test("the supervisor sentence is one truth, picked by three states", () => {
 			detail: "",
 			verifiable: false,
 		}),
-		/^Nothing supervises the wakes above/,
+		/^Nothing supervises the wakes below/,
 	);
-	/* Each lead scopes itself to the wake rows it sits above, because the fenced
-	   legacy group renders BELOW the strip and the engine it runs on is not what
-	   the strip is talking about (round-2 U7). */
+	/*
+	 * Each lead scopes itself to the wake rows, and the deixis is `below`: the
+	 * strip renders ABOVE those rows, with the header above it and nothing else
+	 * (measured natively on `supervisor-down`: strip y147..161, first row name
+	 * y236..245). `above` was the round-2 wording and it pointed at nothing -
+	 * round 2 raised the scope, round 3 corrected the direction.
+	 */
 	for (const lead of [
 		supervisorLead({ supported: true, running: false, detail: "" }),
 		supervisorLead({ supported: false, running: false, detail: "" }),
@@ -356,7 +360,7 @@ test("the supervisor sentence is one truth, picked by three states", () => {
 			verifiable: false,
 		}),
 	]) {
-		assert.match(lead, /wakes above/);
+		assert.match(lead, /wakes below/);
 		assert.equal(/scheduled tasks/.test(lead), false);
 	}
 });

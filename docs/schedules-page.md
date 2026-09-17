@@ -99,8 +99,8 @@ buys, and the record says so rather than claiming a win it cannot show.
 | Empty | `No scheduled tasks yet`, the operator's body copy with typographic quotes, and the second `New scheduled task` button. |
 | Error | `Could not load scheduled tasks.` · the backend's own message · `Try again` (a refetch). Three parts, where the alert it replaces had one and no way back. |
 | Unreadable store | `read_error: true` is a 200 that could not read the index: a warning strip, because "could not read" and "nothing is scheduled" are different sentences — with the same `Try again` the total-failure branch has, since the recovery is the same one (design round 1, D6). **And the empty state is suppressed in this state**: it is `read_error` plus both lists settled and both empty, which is what `isEmptyListing` encodes — the strip said the list may be incomplete while the state beneath it told a user with thirty schedules that they had none and offered a button to make one (round 2, D13/U8). |
-| Failed read with rows on screen | React Query keeps serving the last answer, so the rows under a failure are the last list that LOADED: the strip names them (`The list below is the last one that loaded, so it may be out of date.`) rather than letting each row go on asserting `1 wake` as if it were a claim about now (round 2, U4). |
-| Supervisor down | A warning strip, with the lead sentence picked by three states (`supported`, `verifiable`, `running`) and the backend's own `detail` on its own line in `text-mono`, because a daemon's words are a bug report's sentence rather than a user's (design round 1, D6). Every lead names the rows it covers (`the wakes above`) and none of them says `scheduled tasks`: the fenced legacy group renders below the strip and runs on another engine, so a sentence scoped to the whole page claimed more than it knew (round 2, U7). The strip is the ONE place the page states whether anything can fire: the panel footer's "wakes fire whether or not this window is open" is gated on the same verdict, and when nothing can fire **no row prints an instant either** — the parked rule applied one state over, because a stored instant is equally wrong there (design round 1, D2). |
+| Failed read with rows on screen | React Query keeps serving the last answer, so the rows under a failure are the last list that LOADED: the strip names them (`The list below is the last one that loaded, so it may be out of date.`) rather than letting each row go on asserting `1 wake` as if it were a claim about now (round 2, U4). Its story is `stale-rows`, and it needs one of its own: `load-error`'s stub never answers, so that story can only ever photograph a page with no rows in it and the marker is conditional on rows for exactly that reason (round 3's evidence gap). The story's stub answers one listing and then refuses, and a Drive step presses the header's refresh control so the frame is not a minute of the page's own poll. |
+| Supervisor down | A warning strip, with the lead sentence picked by three states (`supported`, `verifiable`, `running`) and the backend's own `detail` on its own line in `text-mono`, because a daemon's words are a bug report's sentence rather than a user's (design round 1, D6). Every lead names the rows it covers and none of them says `scheduled tasks`: the fenced legacy group renders below the strip and runs on another engine, so a sentence scoped to the whole page claimed more than it knew (round 2, U7). The direction is **`the wakes below`**, corrected in round 3 after the round-2 wording shipped as `above`: the strip sits above the first row (measured natively on `supervisor-down`: strip y147..161, first row name y236..245, nothing between it and the header), so `above` pointed at the header. Two words, and a reader who follows them walks the wrong way. The strip is the ONE place the page states whether anything can fire: the panel footer's "wakes fire whether or not this window is open" is gated on the same verdict, and when nothing can fire **no row prints an instant either** — the parked rule applied one state over, because a stored instant is equally wrong there (design round 1, D2). |
 | Listing truncated | `truncated: true` (beyond the backend's own page cap) adds `Showing N of M conversations with wakes.` rather than silently under-reporting (review round 1, R7). |
 | Parked | A conversation whose session was stopped (or whose transcript is gone) drops its instants everywhere and states the fact: `Parked — wakes resume after its next turn`. A stored instant would be wrong twice over — it will not fire then, and it will be re-anchored when the conversation runs again. **The earlier clause said "when you open it", and round 2 measured that as false**: pressing a parked row's `Open conversation` leaves the index's `stopped_at` set (the warm correctly refuses a session reporting stopped), and only a turn clears it and re-arms the wakes (U9). |
 | Spent | Absence, deliberately: a one-shot that has fired retires out of the schedule list, and a recurring wake that has fired shows `Ran 3 times` so a row that is working does not read as untouched. |
@@ -270,6 +270,15 @@ thing is managed.
 
 ## Freshness
 
+The header's two controls are **one group** (`flex items-center gap-2`) rather
+than three siblings in `PageHeader`'s `justify-between` row: as siblings the
+refresh icon was stranded mid-header (measured on `list`: icon box x=757..788 at
+the 60% mark, CTA x=1079..1255, 291 px of empty band between them) and at the
+app's minimum width the wrap put the secondary control in the right corner while
+`New scheduled task` dropped to its own line at the left edge, demoting the
+primary action below a secondary one (round 3, the designer's placement finding,
+which is also its U-N2).
+
 Nothing pushes the wake index — the supervisor is a separate process writing
 files, and the app's only event stream is per session — so the listing polls at
 30 s (three supervisor re-reads of lag) with `refetchOnWindowFocus`, and the
@@ -320,6 +329,25 @@ cancel it, show the row gone" is the real page against a real route.
   degrades visibly, and the realistic cardinality (one entry per wake-carrying
   session) does not need a control — the count clause above is what `truncated`
   buys today.
+
+### Deferred, recorded rather than fixed (round 3, non-gating)
+
+- **D14 — the read-error strip's direction when there is nothing under it.** The
+  strip says "the list below may be incomplete" and, in the state where the store
+  could not be read, there is no list below: the sentence is aimed at something
+  absent. It is not wrong (a list may still be there and unreadable) but it is the
+  same class of word as U7's `above`, and the honest fix is either to name what is
+  missing or to drop the clause in the empty case. Recorded, not fixed, because
+  the state's frames are the round's own evidence and the copy is not false.
+- **D15 — the way back lasts the toast.** The cancel toast carries
+  `Open conversation`, and a toast lives about four seconds: a user who misses it
+  has no path from this page to the conversation the confirm promised stays. The
+  page has no other door to a conversation whose last wake is gone. Recorded, not
+  fixed: the honest fix is a decision about where else that door belongs (the
+  conversation is in the sidebar), not another control on this page.
+- **U-N2 — the placement question**, settled by the header group above rather
+  than deferred: the designer raised it as the placement blocker and the one
+  wrapper answers it.
 
 ### Deferred, with the reason
 

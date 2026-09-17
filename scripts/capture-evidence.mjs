@@ -1967,6 +1967,14 @@ export const STORIES = [
 	["schedules-page--empty", 1280, 900],
 	["schedules-page--loading", 1280, 900],
 	["schedules-page--load-error", 1280, 900],
+	/*
+	 * The pair to `load-error`, and the reason it needs its own story: the
+	 * marker that says the rows on screen are the last list that LOADED cannot
+	 * appear where there are no rows, so a set that stops at the total failure
+	 * cannot photograph the state a user meets when the daemon goes away under an
+	 * open page.
+	 */
+	["schedules-page--stale-rows", 1280, 900],
 	["schedules-page--one-wake", 1280, 900],
 	["schedules-page--three-wakes", 1280, 900],
 	["schedules-page--parked", 1280, 900],

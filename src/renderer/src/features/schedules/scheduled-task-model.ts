@@ -219,12 +219,12 @@ export const keepEndsLabel = (
  */
 export const supervisorLead = (supervisor: DesktopWakeSupervisor): string => {
 	if (!supervisor.supported) {
-		return "Wakes are not supervised on this platform yet, so the wakes above only fire while a conversation is running.";
+		return "Wakes are not supervised on this platform yet, so the wakes below only fire while a conversation is running.";
 	}
 	if (supervisor.verifiable === false) {
-		return "Nothing supervises the wakes above, so they only fire while their conversation is running.";
+		return "Nothing supervises the wakes below, so they only fire while their conversation is running.";
 	}
-	return "The wake supervisor is installed but not running, so the wakes above will not fire.";
+	return "The wake supervisor is installed but not running, so the wakes below will not fire.";
 };
 
 /**

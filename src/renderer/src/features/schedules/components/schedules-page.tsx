@@ -259,26 +259,38 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				 * interval stays - the poll is what keeps the page honest without a
 				 * press - and this is the press for when the user knows it moved.
 				 */}
-				<Button
-					variant="secondary"
-					size="icon"
-					aria-label="Refresh scheduled tasks"
-					title="Refresh scheduled tasks"
-					disabled={listing.isFetching}
-					onClick={() => void listing.refetch()}
-					data-tour-tag="refresh-schedules-button"
-				>
-					<RefreshCw />
-				</Button>
-				<Button
-					variant="secondary"
-					size="md"
-					onClick={() => setDialog({ mode: "create" })}
-					data-tour-tag="create-schedule-button"
-				>
-					<Plus />
-					New scheduled task
-				</Button>
+				{/*
+				 * The two header controls are ONE group, and the group is what
+				 * `justify-between` places. As three siblings the icon was stranded
+				 * mid-header (measured on `list`: icon box x=757..788 at the 60% mark,
+				 * CTA x=1079..1255, 291 px of empty band between them) and at the app's
+				 * minimum width the header wrapped so that the SECONDARY control held
+				 * the right corner while `New scheduled task` dropped to its own line at
+				 * the left edge - the primary action demoted below a secondary one. The
+				 * group keeps them adjacent and wraps as a pair (design round 3).
+				 */}
+				<div className="flex items-center gap-2">
+					<Button
+						variant="secondary"
+						size="icon"
+						aria-label="Refresh scheduled tasks"
+						title="Refresh scheduled tasks"
+						disabled={listing.isFetching}
+						onClick={() => void listing.refetch()}
+						data-tour-tag="refresh-schedules-button"
+					>
+						<RefreshCw />
+					</Button>
+					<Button
+						variant="secondary"
+						size="md"
+						onClick={() => setDialog({ mode: "create" })}
+						data-tour-tag="create-schedule-button"
+					>
+						<Plus />
+						New scheduled task
+					</Button>
+				</div>
 			</PageHeader>
 
 			<div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-hairline bg-surface">
