@@ -1385,6 +1385,29 @@ async function sceneBrowserMark(cdp) {
 	);
 	const pressedFrame = await captureSettled(cdp, "browser-mark-pressed");
 	note("frame", JSON.stringify(pressedFrame));
+
+	/*
+	 * THE SECOND PRESS IS THE TOGGLE (design review round 2, U6, ruled). A press on the
+	 * mark while the pane is already open ON THAT CONVERSATION closes it — the state a
+	 * second press used to leave untouched, which is indistinguishable from a press that
+	 * never registered. Read from the DOM rather than inferred, and read at the same
+	 * selector the check above used, so the two readings are one surface.
+	 */
+	await verb(cdp, "press", { selector: "[data-browser-mark]" });
+	await wait(900);
+	const toggled = await cdp.evaluate(
+		`(() => ({
+			pane: Boolean(document.querySelector('[data-tour-tag="browser-pane"]')),
+			mark: Boolean(document.querySelector('[data-browser-mark]')),
+			strip: document.querySelectorAll('[data-tour-tag="browser-tab"]').length,
+		}))()`,
+	);
+	check(
+		"and a second press on the same mark CLOSES the pane it opened (U6)",
+		toggled.pane === false && toggled.mark === true,
+		`after the toggle: ${JSON.stringify(toggled)}`,
+	);
+
 	note(
 		"not shown",
 		"the mark's loading and approvals states: both need a live agent leg and a live request, which the browser-chrome proof drives against the real host rather than through the chat route",
