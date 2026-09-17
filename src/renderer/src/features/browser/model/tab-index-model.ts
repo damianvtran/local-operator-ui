@@ -374,21 +374,29 @@ export type CloseTabsIntent =
 export type CloseTabsByIdsIntent = Extract<CloseTabsIntent, { mode: "ids" }>;
 
 /**
- * `Close N other tabs`: every tab in the pool except the one the menu is on.
+ * `Close N other tabs`: every tab in the POOL except the one the menu is on.
  *
- * THE WHOLE POOL, NOT THE HOST'S VISIBLE LIST (design R5). In the pane, scoped
- * to two tabs of eight, the item reads `Close 7 other tabs` — the truth about
- * what it does. `paneApprovalHeaderLabel`'s sibling rule applies: the words have
- * to agree with the scope, and a count in the label is the disclosure.
+ * THE CALLER OWNS THE POOL, AND THAT IS THE WHOLE CONTRACT (review round 1, A3). The
+ * pane's strip is scoped to a conversation, so its `tabs` prop is the host's VISIBLE
+ * list — passing that here made the item read `Close 1 other tab` in a pane holding two
+ * of the pool's eight tabs while this docstring and the design's R5 both promised `Close
+ * 7 other tabs`: a label honest about what the press did and wrong about what the design
+ * said it does. The parameter is named `poolTabs` rather than `allTabs` so a reader
+ * cannot hand it the scoped list by accident, and the strip passes `poolTabs` (its own
+ * prop, defaulting to `tabs` on the route, where the two are the same array).
+ *
+ * This counts the POOL while `closeToTheRightIntent` counts the ORDER ON SCREEN, and the
+ * difference is deliberate: "other" is a fact about the pool, "to the right" is a fact
+ * about the strip the user is looking at.
  *
  * `null` when there is nothing to close, so the item is not offered at all rather
  * than offered and inert.
  */
 export function closeOthersIntent(
-	allTabs: readonly TabInput[],
+	poolTabs: readonly TabInput[],
 	keepTabId: number,
 ): CloseTabsByIdsIntent | null {
-	const tabIds = pooledTabs(allTabs)
+	const tabIds = pooledTabs(poolTabs)
 		.map((tab) => tab.tabId)
 		.filter((tabId) => tabId !== keepTabId);
 	return tabIds.length ? { mode: "ids", tabIds } : null;
