@@ -45,6 +45,19 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 	// State to track agents added during this session
 	const [addedAgentIds, setAddedAgentIds] = useState<Set<string>>(new Set());
 	const [isAddingAll, setIsAddingAll] = useState(false);
+	/*
+	 * The batch's failures, which used to be `console.error` and nothing else.
+	 *
+	 * The download mutation no longer raises a toast — the surface that owns the
+	 * button owns the sentence, which is what this change set moved everywhere
+	 * else — and this step was the one caller left with no surface at all: its
+	 * per-card Get button is gone (`showActions={false}`), so "Add all four" is
+	 * the only control, and a failed batch returned the button to idle and told
+	 * the user nothing (agent review round 1, R2).
+	 */
+	const [failures, setFailures] = useState<{ name: string; error: unknown }[]>(
+		[],
+	);
 
 	// Fetch recommended public agents (top 8 by download count)
 	const {
@@ -97,6 +110,10 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 	const handleAddRecommended = async () => {
 		if (isAddingAll || downloadAgentMutation.isPending) return;
 		setIsAddingAll(true);
+		setFailures([]);
+		// Collected locally and published once the batch finishes, so a partially
+		// failed run reports every name that failed rather than the last one.
+		const failed: { name: string; error: unknown }[] = [];
 		// Filter agents that are not already added locally or in the process of being added
 		const agentsToAdd = recommendedAgents.filter(
 			(agent) => !addedAgentIds.has(agent.id),
@@ -121,6 +138,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 						setAddedAgentIds((prev) => new Set(prev).add(agent.id));
 					} catch (agentErr) {
 						console.error(`Failed to download agent ${agent.name}:`, agentErr);
+						failed.push({ name: agent.name, error: agentErr });
 						// One failed agent does not stop the rest
 					}
 				}
@@ -129,6 +147,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 			// This catch block might be less likely to be hit with individual try/catches
 			console.error("Failed to add all recommended agents:", err);
 		} finally {
+			setFailures(failed);
 			setIsAddingAll(false);
 		}
 	};
@@ -167,6 +186,36 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 					{isAddingAll ? "Adding" : allAdded ? "All added" : "Add all four"}
 				</Button>
 			</div>
+
+			{/*
+			 * The failure, beside the action that produced it, in the same shape the
+			 * hub card uses for the same download failure (a sentence and a way to try
+			 * again) — one error language for one action. `Try again` re-runs the
+			 * batch, which skips whatever landed on the first attempt, so the retry is
+			 * the failed remainder rather than a second copy of everything.
+			 */}
+			{failures.length > 0 && (
+				<output
+					aria-live="polite"
+					className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-danger"
+					data-testid="onboarding-add-error"
+				>
+					<span className="min-w-0 flex-1">
+						{failures.length === 1
+							? `${failures[0].name} could not be added.`
+							: `${failures.length} agents could not be added: ${failures
+									.map((failure) => failure.name)
+									.join(", ")}.`}
+					</span>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => void handleAddRecommended()}
+					>
+						Try again
+					</Button>
+				</output>
+			)}
 
 			{isLoadingAgents && (
 				<div className="flex h-60 items-center justify-center">
