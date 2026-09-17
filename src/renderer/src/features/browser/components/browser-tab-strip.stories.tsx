@@ -458,9 +458,14 @@ export const Restored: Story = {
  * confirmation dialog: the count is the disclosure, and a single close has no undo
  * either (open question 4).
  *
- * The conversation item carries NO number, and the strip is why: the group chip above
- * already shows the group's size, so repeating it here would be the third copy of a
- * fact that is on screen.
+ * The conversation item carries a NUMBER TOO (review round 1, U3): the group chip the
+ * design relied on is drawn only when the pool holds two or more conversations, and this
+ * story's host — and the pane opened from a sidebar mark — is the single-conversation
+ * case, so the most destructive item on the row was the one with no count beside it.
+ *
+ * THE BAND IS A COLUMN SINCE REVIEW ROUND 2 (D7, ruled): one item per row at every
+ * width, `Copy URL` last behind the band's own hairline, so the wrap that orphaned it at
+ * this fixture's 1280px cannot come back at some other width.
  *
  * The second tab's conversation holds two tabs, which is the gate for the group item:
  * closing "all" of a conversation's single tab is `Close "X"` under a longer label.

@@ -1464,157 +1464,203 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							closeActions();
 						}
 					}}
-					className="flex flex-wrap items-center gap-2 border-control border-t bg-surface px-2 py-1 focus:outline-none"
+					className="relative flex flex-col border-control border-t bg-surface py-1 focus:outline-none"
 					data-tour-tag="browser-tab-actions"
 				>
-					<span className="shrink-0 text-meta text-ink-dim">
-						Actions for "{tabLabel(actionsTab.title)}"
-					</span>
-					{!actionsTab.active && (
-						// §8.3's "one click to watch": activation is the USER's click, which is
-						// what design 11.4 permits — the app never activates a tab on the agent's
-						// behalf. This replaces the old menu's "Switch to this tab" for a
-						// non-active tab, because it is the same action and the one the operator's
-						// report needs a name for.
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => {
-								closeActions();
-								onActivate(actionsTab.tabId);
-							}}
-							data-tour-tag="browser-tab-watch"
-						>
-							Watch "{tabLabel(actionsTab.title)}"
-						</Button>
-					)}
 					{/*
-					 * The hand-over affordances live here rather than in the band
-					 * because a hand-over is a statement about ONE tab, and the strip
-					 * is where tabs are named (design 6.3).
+					 * THE HEADING ROW SITS OUTSIDE THE SCROLLER, which is the shape the pinned tab list
+					 * below already uses: the band's own name and its dismiss control cannot scroll
+					 * away from the items they belong to.
 					 */}
-					{actionsTab.owner === "user" && !actionsTab.handedOver && (
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => {
-								closeActions();
-								onHandOver(actionsTab);
-							}}
-							data-tour-tag="browser-tab-hand-over"
-						>
-							Let an agent use "{tabLabel(actionsTab.title)}"…
-						</Button>
-					)}
-					{(actionsTab.handedOver || actionsTab.owner === "agent") && (
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => {
-								closeActions();
-								onRevokeHandOver(actionsTab.tabId);
-							}}
-							data-tour-tag="browser-tab-revoke-hand-over"
-						>
-							Stop letting the agent use "{tabLabel(actionsTab.title)}"
-						</Button>
-					)}
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => runClose(actionsTab.tabId)}
-						data-tour-tag="browser-tab-actions-close"
-					>
-						Close "{tabLabel(actionsTab.title)}"
-					</Button>
+					<div className="flex h-7 shrink-0 items-center px-2">
+						<span className="truncate text-meta text-ink-dim">
+							Actions for "{tabLabel(actionsTab.title)}"
+						</span>
+					</div>
 					{/*
-					 * THE FOUR BULK ACTIONS (design R5), and the COUNTS IN THEIR LABELS ARE THE
-					 * DISCLOSURE. Each is destructive with no undo — closing a tab is not
-					 * recoverable, because the session file records the current set rather than a
-					 * history — and three of the four reach beyond the list a scoped host is
-					 * showing: in the pane, scoped to 2 tabs of 8, `Close 7 other tabs` is the
-					 * truth about what the press does (the pool, not the visible list), and the
-					 * conversation item counts the pool's tabs in that conversation, both for the
-					 * reason `paneApprovalHeaderLabel`'s sibling rule gives — the words have to
-					 * agree with the scope, and the number in the label is the disclosure. No
-					 * dialog, and that is the design's ruling: the count is the disclosure, and a
-					 * single close has no undo either.
+					 * ONE ITEM PER ROW, AT EVERY WIDTH (design review round 2, D7, ruled). The band was
+					 * a flex ROW that wrapped, so `Copy URL` orphaned onto a line of its own once the
+					 * four bulk closes were present at the 1280px fixture - a failure class a wrap at
+					 * one fixture width hides and a wider band only postpones. A column of full-width
+					 * rows is the same in-band shape the pinned tab list uses, and it removes the
+					 * orphan rather than trading it for a wrap elsewhere.
+					 *
+					 * BOUNDED, WITH THE HEADING OUTSIDE IT, and the bound is a GUARD RATHER THAN A
+					 * FOLD at today's counts: eight rows is the most this band can hold (watch,
+					 * hand-over, `Close "X"`, the four bulk items and `Copy URL`), which is 8 x 28px of
+					 * buttons plus the 9px rule = 233px against `max-h-60`'s 240px — so every item is
+					 * visible without scrolling, `Copy URL` included, and a ninth item would scroll
+					 * rather than push the page down by another row. `max-h-36`, the pinned list's own
+					 * bound, would have been too mean here: it holds five rows, so it would have hidden
+					 * exactly the item D7 is about.
 					 */}
-					{closeOthers !== null && (
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => runBatchClose(closeOthers)}
-							data-tour-tag="browser-tab-close-others"
-						>
-							Close {closeOthers.tabIds.length} other
-							{closeOthers.tabIds.length === 1 ? " tab" : " tabs"}
-						</Button>
-					)}
-					{closeRight !== null && (
-						// "To the right" is the RENDERED order — the grouped one — because that is
-						// the only order in which the words are true for a grouped strip. A tab an
-						// agent creates after the press is not to the right of anything the user
-						// saw and survives, which the strip then shows honestly.
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => runBatchClose(closeRight)}
-							data-tour-tag="browser-tab-close-right"
-						>
-							Close {closeRight.tabIds.length} tab
-							{closeRight.tabIds.length === 1 ? "" : "s"} to the right
-						</Button>
-					)}
-					{actionsTab.sessionId !== null &&
-						conversationTabCount(actionsTab.sessionId) >= 2 && (
-							// THE COUNT IS ON THIS ONE TOO (review round 1, U3, Q3). It used to rely
-							// on the group chip stating the size, and the band's own arithmetic says
-							// otherwise: the chip is drawn only when the pool holds more than one
-							// conversation (`showGroupLabels`), and the host this feature adds — the
-							// pane opened from a sidebar mark — is the single-conversation case. So
-							// beside `Close 5 other tabs` the most destructive item on the row carried
-							// no number and nothing on screen said the group's size. Three counted
-							// items, one grammar.
+					<div className="max-h-60 overflow-y-auto">
+						{!actionsTab.active && (
+							// §8.3's "one click to watch": activation is the USER's click, which is
+							// what design 11.4 permits — the app never activates a tab on the agent's
+							// behalf. This replaces the old menu's "Switch to this tab" for a
+							// non-active tab, because it is the same action and the one the operator's
+							// report needs a name for.
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									closeActions();
+									onActivate(actionsTab.tabId);
+								}}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-watch"
+							>
+								Watch "{tabLabel(actionsTab.title)}"
+							</Button>
+						)}
+						{/*
+						 * The hand-over affordances live here rather than in the band
+						 * because a hand-over is a statement about ONE tab, and the strip
+						 * is where tabs are named (design 6.3).
+						 */}
+						{actionsTab.owner === "user" && !actionsTab.handedOver && (
 							<Button
 								variant="ghost"
 								size="sm"
-								onClick={() =>
-									runBatchClose(
-										closeConversationIntent(actionsTab.sessionId as string),
-									)
-								}
-								data-tour-tag="browser-tab-close-conversation"
+								onClick={() => {
+									closeActions();
+									onHandOver(actionsTab);
+								}}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-hand-over"
 							>
-								Close all {conversationTabCount(actionsTab.sessionId)} tabs in
-								this conversation
+								Let an agent use "{tabLabel(actionsTab.title)}"…
 							</Button>
 						)}
-					{HTTP_URL.test(actionsTab.url) && (
-						/* COPY URL NEEDS NO INTENT, which is why it is the one action here that
+						{(actionsTab.handedOver || actionsTab.owner === "agent") && (
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									closeActions();
+									onRevokeHandOver(actionsTab.tabId);
+								}}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-revoke-hand-over"
+							>
+								Stop letting the agent use "{tabLabel(actionsTab.title)}"
+							</Button>
+						)}
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => runClose(actionsTab.tabId)}
+							className="w-full justify-start"
+							data-tour-tag="browser-tab-actions-close"
+						>
+							Close "{tabLabel(actionsTab.title)}"
+						</Button>
+						{/*
+						 * THE FOUR BULK ACTIONS (design R5), and the COUNTS IN THEIR LABELS ARE THE
+						 * DISCLOSURE. Each is destructive with no undo — closing a tab is not
+						 * recoverable, because the session file records the current set rather than a
+						 * history — so the number is what tells the user how much one press takes.
+						 * EVERY COUNT COMES FROM THE LIST THIS HOST IS SHOWING (the operator's U7
+						 * ruling, review round 2; round 1's A3 had fed `others` a second, wider pool
+						 * list and that is withdrawn): in the pane, scoped to 2 tabs of a pool of 8,
+						 * the item reads `Close 1 other tab`, which is exactly what the press closes.
+						 * That is `paneApprovalHeaderLabel`'s sibling rule rather than a weakening of
+						 * it — the words have to agree with the scope — and a band that closed tabs
+						 * the host is not showing would be the words agreeing with the registry
+						 * instead of with the screen. No dialog, and that is the design's ruling: the
+						 * count is the disclosure, and a single close has no undo either.
+						 */}
+						{closeOthers !== null && (
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => runBatchClose(closeOthers)}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-close-others"
+							>
+								Close {closeOthers.tabIds.length} other
+								{closeOthers.tabIds.length === 1 ? " tab" : " tabs"}
+							</Button>
+						)}
+						{closeRight !== null && (
+							// "To the right" is the RENDERED order — the grouped one — because that is
+							// the only order in which the words are true for a grouped strip. A tab an
+							// agent creates after the press is not to the right of anything the user
+							// saw and survives, which the strip then shows honestly.
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => runBatchClose(closeRight)}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-close-right"
+							>
+								Close {closeRight.tabIds.length} tab
+								{closeRight.tabIds.length === 1 ? "" : "s"} to the right
+							</Button>
+						)}
+						{actionsTab.sessionId !== null &&
+							conversationTabCount(actionsTab.sessionId) >= 2 && (
+								// THE COUNT IS ON THIS ONE TOO (review round 1, U3, Q3). It used to rely
+								// on the group chip stating the size, and the band's own arithmetic says
+								// otherwise: the chip is drawn only when the pool holds more than one
+								// conversation (`showGroupLabels`), and the host this feature adds — the
+								// pane opened from a sidebar mark — is the single-conversation case. So
+								// beside `Close 5 other tabs` the most destructive item on the row carried
+								// no number and nothing on screen said the group's size. Three counted
+								// items, one grammar.
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() =>
+										runBatchClose(
+											closeConversationIntent(actionsTab.sessionId as string),
+										)
+									}
+									className="w-full justify-start"
+									data-tour-tag="browser-tab-close-conversation"
+								>
+									Close all {conversationTabCount(actionsTab.sessionId)} tabs in
+									this conversation
+								</Button>
+							)}
+						{/*
+						 * THE HAIRLINE IS THE BAND'S OWN RULE, SEPARATING THE CLOSES FROM THE ONE ITEM THAT
+						 * CLOSES NOTHING (D7's ruling): `Copy URL` is last among the actions because it is
+						 * the only one here that leaves every tab on screen, so the destructive family
+						 * reads as one block and nothing destructive sits below the divider.
+						 */}
+						<span
+							aria-hidden={true}
+							className="my-1 block h-px w-full bg-hairline"
+						/>
+						{HTTP_URL.test(actionsTab.url) && (
+							/* COPY URL NEEDS NO INTENT, which is why it is the one action here that
 						   does not go through `useBrowserChrome`: the URL is already in the
 						   projection, the clipboard is the renderer's, and inventing a channel to
 						   main for it would be a round trip to copy a string the user is looking
 						   at. The guard is the scheme — `about:blank`, `file:` and `data:` are not
 						   things to paste into a chat. */
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => {
-								closeActions();
-								void navigator.clipboard?.writeText(actionsTab.url);
-							}}
-							data-tour-tag="browser-tab-copy-url"
-						>
-							Copy URL
-						</Button>
-					)}
-					<div className="grow" />
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									closeActions();
+									void navigator.clipboard?.writeText(actionsTab.url);
+								}}
+								className="w-full justify-start"
+								data-tour-tag="browser-tab-copy-url"
+							>
+								Copy URL
+							</Button>
+						)}
+					</div>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						aria-label="Hide tab actions"
 						onClick={closeActions}
+						className="absolute top-1 right-2"
 						data-tour-tag="browser-tab-actions-dismiss"
 					>
 						{/* A chevron, not an `×`: the row already ends near the tab-close
