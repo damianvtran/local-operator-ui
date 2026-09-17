@@ -1,6 +1,6 @@
-# The current row's ground, the edge beside it, and the key caps
+# The current row's ground, and the key caps
 
-Three changes the operator reported, photographed on the surfaces they are visible
+Two changes the operator reported, photographed on the surfaces they are visible
 on, in all twelve palettes:
 
 1. **"The highlight style needs to be more subtle — it's currently a very dark
@@ -10,12 +10,16 @@ on, in all twelve palettes:
    the panel it sits on. It was then moved to `highlight`, authored at ΔE00
    2.18–2.28 from `surface`.
 2. **"The highlight on selected sidebar items (the currently viewed chat) is way
-   too subtle, can you make it brighter/more contrasted?"** The operator has now
-   SEEN (1) rendered, so the band it asked for is reversed: `highlight` lands at
-   ΔE00 4.01–4.39 from `surface` across the twelve palettes, bought on the chroma
-   axis at the surface's own hue, and the current row also carries a 1px
-   `outline-control` edge — the half of the mark the ink floors cannot cap. Both
-   rails take the same two-part mark.
+   too subtle, can you make it brighter/more contrasted? On dark mode it should be
+   a bit lighter and on light mode it should be dark enough to contrast."** The
+   operator has now SEEN (1) rendered, so the band it asked for is reversed:
+   `highlight` lands at **ΔE00 4.01–4.15** from `surface` across the twelve
+   palettes, and it is a **lightness** step — **3.81–6.62 `L*`** away from the
+   panel in the direction the mode runs, chroma paying only the remainder. The
+   current row's mark is that ground plus `font-medium`; an earlier round's 1px
+   `outline-control` edge is RETIRED (design round 1, D3 — that role is
+   `docs/branding.md` § 2's *sole boundary of a control*, and the ring rendered
+   as the search field one line above the list).
 3. **"The keycaps need to be consistent in size, and a bit more subtle; they
    shouldn't have a dark box around them."** A cap was a `bg-sunken` box, and it
    came in two geometries in one component, a third in the command palette, and
@@ -36,12 +40,14 @@ node scripts/capture-evidence.mjs --only=command-palette-commandpalette-- http:/
 # frames; its own README carries the exact commands.
 ```
 
-**Re-shot for this round at `e304a384d`**, when the ground rose from the
-2.18–2.28 band to the 4.01–4.39 one and the current row gained its structural
-edge. Every frame in both halves is from this round's two passes: the previous
-baseline was taken on a base whose current row was still `sunken`, so a pair
-against it would have been a comparison between two retired grounds rather than
-between this change and its own base.
+**Re-shot for round 2's remediation at `8412e9e8a`**, when the mark became a
+lightness step (three palettes re-authored: tokyoNight, `localOperatorDark`,
+`localOperatorLight`) and the current row's 1px `outline-control` edge was
+retired. Every frame in both halves is from this round's passes. **Two states are
+new to the set**: a row carrying a `· lopdev` BINDING inside a current row, and a
+NESTED row under its agent — the two arrangements where the mark is drawn on an
+ink and at an inset no other state here reaches, and neither of which any frame
+covered when the round-1 streams looked (design D5, QA's N3 and N6).
 
 `--allow-backend` was passed for these runs because a backend was answering on
 the configured port while they were taken; none of the stories in this set talk
@@ -66,9 +72,20 @@ in `docs/evidence/renderer-driver-palette-baseline/`.
 | --- | --- | --- |
 | A conversation row is current | [`selected-row/`](selected-row/) — 12 themes | [`chat-sidebar-current-row-baseline/selected-row/`](../chat-sidebar-current-row-baseline/selected-row/) |
 | The New chat row is current, with its chord | [`new-chat-row-current/`](new-chat-row-current/) — 12 themes | [`chat-sidebar-current-row-baseline/new-chat-row-current/`](../chat-sidebar-current-row-baseline/new-chat-row-current/) |
+| A row BOUND to an agent is current (the `· lopdev` binding inside the mark) | [`bound-row-current/`](bound-row-current/) — 12 themes | [`chat-sidebar-current-row-baseline/bound-row-current/`](../chat-sidebar-current-row-baseline/bound-row-current/) |
+| A NESTED row under its agent is current | [`nested-row-current/`](nested-row-current/) — 12 themes | [`chat-sidebar-current-row-baseline/nested-row-current/`](../chat-sidebar-current-row-baseline/nested-row-current/) |
 | A NEIGHBOUR row under the pointer while a conversation is current | [`selected-row-neighbour-hovered/`](selected-row-neighbour-hovered/) — 12 themes | [`chat-sidebar-current-row-baseline/selected-row-neighbour-hovered/`](../chat-sidebar-current-row-baseline/selected-row-neighbour-hovered/) |
 | The **settings rail's** current section (`1280x760`) | [`settings-rail/`](settings-rail/) — 12 themes | [`chat-sidebar-current-row-baseline/settings-rail/`](../chat-sidebar-current-row-baseline/settings-rail/) |
 | …with the row ABOVE it under the pointer | [`settings-rail-neighbour-hovered/`](settings-rail-neighbour-hovered/) — 12 themes | [`chat-sidebar-current-row-baseline/settings-rail-neighbour-hovered/`](../chat-sidebar-current-row-baseline/settings-rail-neighbour-hovered/) |
+
+The two BINDING states are reached by fixture, and the fixture's shape is the
+claim: the roster's third row carries `binding: { agent: "lopdev", team: null }`,
+so the row's trailing statement is the binding rather than a search match — which
+is the `ink-muted` ink the floors on `highlight` are measured for, drawn inside
+the mark. In the nested state that row is also INACTIVE, so the flat Active chats
+partition does not draw it and the frame holds exactly one marked row; the agent's
+own disclosure is clicked open in the story's `play`, because it starts collapsed
+and a query would be a different surface.
 
 The two pointer pairs are the states no still at rest can hold — a pointer is
 browser state — so the rig dispatches a real `Input.dispatchMouseEvent` at the row
@@ -78,8 +95,8 @@ there. In the chat panel that is `data-chat-row:has(+ [data-chat-row][aria-curre
 third row is current); on the rail it is
 `li:has(+ li > button[aria-current="page"]) > button`, because the rail's rows are
 `li`s wrapping their own button. They exist for the comparison WITHIN the frame —
-the current row's `highlight` and its edge beside the pointer's `elevated` — which
-is the pair the operator's report is about.
+the current row's `highlight` and its weight beside the pointer's `elevated` —
+which is the pair the operator's report is about.
 
 The rail's frames are at **1280x760** rather than the chat panel's 780x560:
 `SettingsSidebar` switches between its labelled and its 48px icon-only layouts at
@@ -115,80 +132,114 @@ the before frame, `esc` at x863-891 — so the row above now names both shapes.)
 After the change every cap is 20 × 20 with the same ink and no ground at all, and a
 word grows out of that floor rather than changing size class.
 
-**The current row now carries TWO marks, and the second one is this round's fix.**
-The ink floors cap how far the ground can climb — `ink-dim` is drawn inside a
-current row — while the hover step the rows around it carry is `elevated`, which is
-also every menu, popover and tooltip ground in the app. On eight of the twelve
-palettes `elevated` is therefore still the LARGER step off `surface`, so the
-persistent mark needed a signal that is not capped by an ink floor at all: the 1px
-`outline-control` edge, measured 3.17–4.59:1 against the row's own ground on all
-twelve palettes and drawn outside the box model. `font-medium` is the third step
-and the one `settings-sidebar.tsx` already carried. Its side effects were measured
-rather than assumed: the title's natural width grows **2.25-2.33%** at weight 500
-("Quarterly revenue model" 149.36 → 152.84px, the measurement is
-theme-independent because it is font metrics), every row in the frame keeps
-**54.9px** of headroom at the heavier weight, and the row's box (263 × 32), its
+**The mark is the ground plus the WEIGHT, and the ordering the ground cannot fix is
+recorded rather than papered over.** The ink floors cap how far the ground can climb
+— `ink-dim` is drawn inside a current row (the caps and the `· lopdev` binding) —
+while the hover step the rows around it carry is `elevated`, which is also every
+menu, popover and tooltip ground in the app, so it cannot come down to meet the
+selection. On eight of the twelve palettes `elevated` is therefore still the LARGER
+step off `surface` (radient 6.25 and synth 5.44 against marks of 4.01–4.15). The
+second step is `font-medium`, which `settings-sidebar.tsx` already carried and which
+the app rail's active item carries — and it is the ONLY second step: round 2's
+remediation retired the 1px `outline-control` edge this set was first shot with,
+because that role is `docs/branding.md` § 2's *sole boundary of an input, select,
+checkbox or outlined button* and both rails drew it with the search field's own ink,
+height and radius, so the current row read as a filled field (design round 1, D3).
+Its side effects were measured rather than assumed: the title's natural width grows
+**2.25-2.33%** at weight 500 ("Quarterly revenue model" 149.36 → 152.84px, the
+measurement is theme-independent because it is font metrics), every row in the frame
+keeps **54.9px** of headroom at the heavier weight, and the row's box (263 × 32), its
 line-height and its alignment are unchanged — nothing reflows and no title
 truncates a character earlier. In the hovered pairs you can see both at once: the
-neighbour carries `elevated` and weight 400, the current row carries `highlight`,
-its edge and weight 500.
+neighbour carries `elevated` and weight 400, the current row carries `highlight` and
+weight 500.
 
-## The numbers, read back out of the committed frames
+## The numbers, read back out of the frames — and what the encoder costs
 
-`pnpm check-themes` measures the PALETTE: it proves `highlight` is ΔE00 4.01–4.39
-from `surface` on each of the twelve and that every ink clears its floor on it. It
-cannot prove the row is painted with that role, or that the browser composited what
-the class string asked for. So the frames are read back, one column at a time,
-through `harness/read-current-row.mjs`:
+`pnpm check-themes` measures the PALETTE: it proves `highlight` is ΔE00 4.01–4.15
+from `surface` on each of the twelve, that it steps 3.81–6.62 `L*` in the direction
+the mode runs, and that every ink clears its floor on it. It cannot prove the row is
+painted with that role, or that the browser composited what the class string asked
+for. So the frames are read back, one column at a time, through
+`harness/read-current-row.mjs`:
 
 ```sh
-sips -s format png docs/evidence/chat-sidebar-current-row/selected-row/tokyoNight.webp --out /tmp/f.png
-node docs/evidence/chat-sidebar-current-row/harness/read-current-row.mjs /tmp/f.png 180 265 380 560
-# {"panel":"#24283b","row":"#272d4b","edge":"#24273f",
-#  "extent":{"top":487,"bottom":520,"height":34},"deltaE00":4.63}
+node docs/evidence/chat-sidebar-current-row/harness/read-current-row.mjs \
+  docs/evidence/chat-sidebar-current-row/selected-row/tokyoNight.png 180 265 380 560
+# {"panel":"#24283b","row":"#313342","runs":[32],
+#  "extent":{"top":488,"bottom":519,"height":32},"deltaE00":4.09}
 ```
 
 The harness samples the row's ground as the MODE of a horizontal span (one pixel in
 a row of text is a glyph's antialiased edge) and reports the longest run in the
 window that differs from the panel's own ground.
 
-**A conversation row is current (`selected-row/`), measured pixels:**
+**A conversation row is current (`selected-row/`), measured pixels — and TWO
+readings, because the committed frames are lossy.** Every file beside this README is
+WebP at `quality: 88` (`scripts/capture-evidence.mjs:3808`), which is this
+repository's evidence format and is NOT what the browser painted: the encoder's
+quantisation moves a ground by one or two 8-bit levels, and against a 4–5 ΔE00 total
+that is a visible fraction of it. So each row carries the **lossless** reading (the
+same story, same rig, same viewport, captured as PNG for the measurement and not
+committed) beside the **committed** q88 file:
 
-| palette | before | | after | |
-| --- | --- | --- | --- | --- |
-| | ground | ΔE00 from panel | ground | ΔE00 from panel |
-| tokyoNight | `#2b2f42` | **2.23** | `#272d4b` | **4.63** |
-| localOperatorDark | `#25211c` | 2.20 | `#291f14` | 4.93 |
-| localOperatorLight | `#eeede6` | 2.47 | `#f5f1e0` | 4.83 |
-| dracula | `#37384e` | 2.26 | `#3a3d57` | 4.15 |
-| dune | `#211d1a` | 2.20 | `#272320` | 4.08 |
-| iceberg | `#e7e9eb` | 2.36 | `#e6e7f2` | 5.67 |
-| monokai | `#34362e` | 2.24 | `#37392d` | 3.70 |
-| neon | `#171c2a` | 2.24 | `#1b2230` | 4.05 |
-| obsidian | `#1f1f21` | 2.20 | `#24232a` | 5.04 |
-| radient | `#222637` | 2.21 | `#272c3c` | 4.22 |
-| sage | `#f0ede2` | 2.34 | `#e7e5da` | 4.15 |
-| synth | `#231235` | 2.19 | `#291641` | 3.98 |
+| palette | mode | before (base, q88) | contract | lossless capture | committed q88 | \|q88 − contract\| | `L*` step off the panel |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| tokyoNight | dark | `#2b2f42`, 2.23 | 4.09 | `#313342`, **4.09** | `#313343`, 3.90 | 0.19 | **+5.09** |
+| localOperatorDark | dark | `#25211c`, 2.20 | 4.15 | `#292116`, **4.15** | `#282116`, 4.23 | 0.08 | **+3.81** |
+| localOperatorLight | light | `#eeede6`, 2.47 | 4.02 | `#ecebde`, **4.02** | `#ececde`, 4.75 | 0.73 | **−4.75** |
+| dracula | dark | `#37384e`, 2.26 | 4.11 | `#3a3c56`, **4.11** | `#3a3d57`, 4.15 | 0.04 | +5.17 |
+| dune | dark | `#211d1a`, 2.20 | 4.08 | `#272421`, **4.08** | `#272320`, 4.08 | 0.00 | +6.44 |
+| iceberg | light | `#e7e9eb`, 2.36 | 4.12 | `#e5e7f1`, **4.12** | `#e6e7f2`, 5.67 | 1.55 | −4.09 |
+| monokai | dark | `#34362e`, 2.24 | 4.07 | `#37392d`, **4.07** | `#37392d`, 3.70 | 0.37 | +4.35 |
+| neon | dark | `#171c2a`, 2.24 | 4.04 | `#1c2231`, **4.04** | `#1b2230`, 4.05 | 0.01 | +6.39 |
+| obsidian | dark | `#1f1f21`, 2.20 | 4.01 | `#232329`, **4.01** | `#24232a`, 5.04 | 1.03 | +5.58 |
+| radient | dark | `#222637`, 2.21 | 4.11 | `#272c3d`, **4.11** | `#272c3c`, 4.22 | 0.11 | +6.24 |
+| sage | light | `#f0ede2`, 2.34 | 4.02 | `#e8e4da`, **4.02** | `#e7e5da`, 4.15 | 0.13 | −6.62 |
+| synth | dark | `#231235`, 2.19 | 4.14 | `#281641`, **4.14** | `#291641`, 3.98 | 0.16 | +6.08 |
 
-**The settings rail's current section (`settings-rail/`), the same instrument,
-on the rail's own frame and column (x 60–260, y 140–260):**
+The `L*` column is a PALETTE number and is here because ΔE00 cannot state it: the
+band can be reached while the row lands DARKER than the panel it is supposed to be
+brighter than, which is what the first version of this change did on the three
+palettes the operator's report is measured on (`tokyoNight` 2.61 → **5.09**,
+`localOperatorDark` 2.82 → **3.81**, `localOperatorLight` −2.52 → **−4.75**; those
+are the three values re-authored in round 2's remediation). The contract now asserts
+the direction and a 3 `L*` floor, and `scripts/contrast-contract.mjs`'s `highlight`
+block carries the derivation.
 
-| palette | before | after |
-| --- | --- | --- |
-| tokyoNight | `#2b2f42`, ΔE00 **2.23** | `#272d4b`, ΔE00 **4.63** |
-| localOperatorDark | `#25211c`, 2.20 | `#291f14`, 4.93 |
-| localOperatorLight | `#eeede6`, 2.47 | `#f5f1e0`, 4.83 |
-| iceberg | `#e7e9eb`, 2.36 | `#e6e7f2`, 5.67 |
-| dracula | `#37384e`, 2.26 | `#3a3d57`, 4.15 |
-| sage | `#f0ede2`, 2.34 | `#e7e5da`, 4.15 |
+**The lossless reading equals the palette's own value to two decimal places on all
+twelve**, and the row's hex is the palette's `highlight` exactly — which is the
+claim the frames exist to support: the row really is painted with that role.
+**The committed q88 file does not, and the table above is what it actually does**:
+0.00–0.19 on eight palettes and up to 1.55 on the near-white ones. **The cause is the
+encoder, not the compositor**: re-encoding a lossless capture of this same story at
+the same quality reproduces the committed readings digit for digit, and the lossless
+reading of the same frame is the contract's own number. So the committed frames are
+evidence about the ROW — which role it paints, that the mark's box is 32 rows, that
+nothing moves — while the band is the contract's own numbers, and a reader who wants
+the band should read those rather than the q88 column.
 
-**The rendered reading tracks the palette's own within about 0.4, and where it does
-not the frame is the honest number.** The compositor rounds each ground to 8 bits
-against its own colour management, so monokai's panel reads `#2d2f27` where the
-palette says `#2E2F28` — one level on each channel — and that alone moves the pair
-by 0.37, which is the whole of the gap between the contract's 4.07 and the frame's
-3.70. Both numbers are stated rather than the flattering one: the contract is what
-holds the value, and the frame is what the reader sees.
+**The row's BOX is 32 rows, losslessly, on every palette and in every state in this
+set** — the same 32 the before half's run covers — so the mark (a ground and a
+weight, neither of which is geometry) does not move the row. The q88 files read
+32–34: that is the encoder's bleed at the run's edge, not the box.
+
+**The settings rail's current section (`settings-rail/`), the same instrument, on
+the rail's own frame and column (x 60–260, y 140–260):**
+
+| palette | before (base, q88) | after (lossless) | after (committed q88) |
+| --- | --- | --- | --- |
+| tokyoNight | `#2b2f42`, ΔE00 **2.23** | `#313342`, **4.09** | `#313343`, 3.90 |
+| localOperatorDark | `#25211c`, 2.20 | `#292116`, **4.15** | `#282116`, 4.23 |
+| localOperatorLight | `#eeede6`, 2.47 | `#ecebde`, **4.02** | `#ececde`, 4.75 |
+| iceberg | `#e7e9eb`, 2.36 | `#e5e7f1`, **4.12** | `#e6e7f2`, 5.67 |
+| dracula | `#37384e`, 2.26 | `#3a3c56`, **4.11** | `#3a3d57`, 4.15 |
+| sage | `#f0ede2`, 2.34 | `#e8e4da`, **4.02** | `#e7e5da`, 4.15 |
+
+The rail takes the same role at the same mark. Six palettes are listed because the
+pair is the SAME pair as the chat panel's — `highlight` on `surface`, one palette
+value, one role — so the other six read exactly as they do in the table above; the
+frames are in `settings-rail/` for all twelve.
 
 - **The caps' ink rank, on the palette.** Measured rather than argued, because
 the earlier round took a decision here and the pixels disagreed with it: at
@@ -248,14 +299,29 @@ remove, so the spacing is the lever.
   through the shipped `cn`) and by the contract's `highlight`-vs-`elevated`
   assertion. QA measured that case live in the running app in an earlier round and
   reports the ground unchanged (ΔE00 0.00 from rest).
-- **The row's box, in the two halves, to the pixel.** The mark names only outline
-  classes — asserted in `chat-sidebar-selection.test.mjs`, which refuses any token
-  in `rowCurrentEdge` that is not in the outline group — and an outline
-  participates in no box model. The frames agree but do not resolve it more finely
-  than that: the run of pixels differing from the panel grows by one to three rows
-  in the after halves, which is the 1px ring landing inside the row's own box at
-  `-outline-offset-1`, not the box moving. A reader who wants the box itself should
-  measure the live DOM; no frame in this set does.
+- **The row's box, to the pixel, only in the LOSSLESS reading.** The mark is a
+  ground and a weight now — neither is geometry — and the row's box is 32 rows in
+  the lossless capture of every palette and every state here, the same 32 the before
+  half's run covers. The committed q88 files read 32–34 on the same frames, which is
+  the encoder's bleed at the run's edge rather than the box; the number to trust for
+  geometry is the lossless one, and `harness/read-current-row.mjs` reports both the
+  run and its extent so a reader can tell which they are looking at.
+- **The FOCUSED current row.** Design round 1's N3 recorded it as unphotographed
+  because it was the one state where two outline rules met — the row's own 1px
+  `outline-control` ring inside `rowStyle`'s `focus-visible:outline-2 outline-accent
+  outline-offset-2`. Round 2's remediation retired the ring, so a focused current row
+  now carries one outline (the focus one, drawn outside the box) over the ground and
+  the weight, which is the same pairing as a focused row that is not current. It is
+  still not a frame; what changed is that the state it was flagged for no longer
+  exists.
+- **Whether a hovered neighbour is still distinguishable, judged rather than
+  measured.** The frames show it and the numbers bound it: on eight of the twelve
+  palettes the hovered row's ground is the larger step off `surface` (radient 6.25,
+  synth 5.44, obsidian 4.72 against marks of 4.01–4.15), and the current row is the
+  only one of the two carrying weight 500 and a state that survives the pointer
+  leaving. Which of those two facts a reader weights more is a design judgement, and
+  it is the reason this set's pointer pairs exist: they are the evidence, not the
+  verdict.
 - **The New chat row's own frames from the earlier round.**
   `docs/evidence/new-chat-shortcut/`, `new-chat-row/` and `sidebar-new-chat/` are
   live-app captures of the same row from previous rounds, and they are NOT re-shot
@@ -271,5 +337,5 @@ remove, so the spacing is the lever.
   current** — the story sets the state before the frame, so the transition is not
   in any frame. It is a colour step and a weight with no layout change:
   `scripts/chat-sidebar-selection.test.mjs` pins that the row's box is the same
-  in both states (`rowStyle` is untouched, and the retired `capEdge` outline was
-  an outline for exactly that reason).
+  in both states (`rowStyle` is untouched, which is what the retired `capEdge`
+  outline was there for).

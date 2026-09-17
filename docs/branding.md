@@ -81,64 +81,90 @@ popovers, tooltips, hovered rows), plus `sunken` (wells, tracks, code grounds)
 recessed below canvas.
 
 There is a fifth ground role that is **not** a rung on that ladder: `highlight`,
-the ground of a row the reader is currently ON. It is a step off `surface` in the
-direction the mode runs — darker on light themes, lighter on dark ones — carrying
-the surface's own hue at more chroma, and authored to land at **ΔE00 4.0 or
-better from `surface`** (the twelve palettes measure 4.01–4.39). The role was
-first authored at **2.0–2.5** for a selection the operator had asked to be
-subtle; he has since seen it rendered and reported the current row as invisible
-beside a hovered neighbour, and the band was raised in the same change. The step
-is bought on the **chroma axis at the surface's own hue** rather than with more
-lightness, which is § 3's cheap axis for exactly this reason: a contrast ratio
-has no chroma term, so warmth at a fixed `L*` spends no ink assertion, while
-lightness spends every ink measured against the ground. A selection is a mark on
-a panel, not a hole in it: `sunken` is always recessed and measures 3.75–14.94
-from `surface`, which is a dark box rather than a highlight, and it is the role
-97 `*-sunken` utility occurrences across 66 files under `src/renderer` depend on
-being deep (85 live class usages and 12 inside prose, the palettes and the
-generated stylesheet excluded).
+the ground of a row the reader is currently ON. It is a **lightness** step off
+`surface` in the direction the mode runs — darker on light themes, lighter on
+dark ones — and it is authored to land at **ΔE00 4.0 or better from `surface`**
+(the twelve palettes measure 4.01–4.15). The role was first authored at
+**2.0–2.5** for a selection the operator had asked to be subtle; he has since
+seen it rendered and reported the current row as invisible beside a hovered
+neighbour, and the band was raised in the same change.
+
+**The axis is lightness, and that is asserted rather than described.** ΔE00 is a
+budget with a chroma term in it, so a step can be made as large as you like by
+warming it at a fixed `L*` — which is how the first version of the raised band
+answered the same report twice: on `tokyoNight`, `localOperatorDark` and
+`localOperatorLight` the whole of the ΔE00 gain was chroma, and the `L*` step off
+the panel **fell** to 2.61, 2.82 and 2.52 — *less* light on the two dark themes
+than the 3.26 and 3.47 steps he had already reported as invisible. Those three
+were re-authored to **+5.09, +3.81 and −4.75 `L*`**, and
+`scripts/contrast-contract.mjs` now asserts both halves of the direction (a dark
+palette's row is lighter than its panel, a light one's darker) and a floor of
+**3 `L*`** on the magnitude, so no palette can satisfy the band while landing
+darker on a dark theme. The twelve carry 3.81–6.62 `L*` today.
+
+A selection is a mark on a panel, not a hole in it: `sunken` is always recessed
+and measures 3.75–14.94 from `surface`, which is a dark box rather than a
+highlight, and it is the role 97 `*-sunken` utility occurrences across 66 files
+under `src/renderer` depend on being deep (85 live class usages and 12 inside
+prose, the palettes and the generated stylesheet excluded).
 
 A mark also needs to survive the pointer, and a ground cannot do that alone: the
 ink floors on `highlight` cap how far it can climb (the caps and the `· lopdev`
 binding inside a current row are drawn in `ink-dim`), while the hover step the
 rows around it carry is `elevated`, which is also every menu, popover and tooltip
-ground in the app — so on eight of the twelve palettes it is still the LARGER step
-off `surface`. The current row therefore carries two non-colour steps beside its
-ground: `font-medium`, the weight the settings rail's active row already carried,
-and a **1px `outline-control` edge**, the role § 3 floors at 3:1 as a structural
-boundary and which draws outside the box model. Both rails mark a current row the
-same way, and `features/chat/pickers/picker-host.tsx` is the same two-part mark
-for the same measured reason on the command palette's pointer row.
+ground in the app — so on **eight of the twelve** palettes it is still the LARGER
+step off `surface` (up to 6.25 on radient, against a mark of 4.01–4.15). The
+current row therefore carries the ground plus **`font-medium`**: the weight the
+settings rail's active row already carried and the app rail's active item
+carries, so the app has one "you are here" idiom rather than two.
+
+**There is no boundary on a current row, and that is a decision with a
+measurement behind it.** An earlier round drew a 1px `outline-control` ring
+beside the ground, and it is retired: `border-control` is § 2's *sole visual
+boundary of an input, select, checkbox or outlined button* and a nav row is none
+of those; no other role in the system carries a 3:1 structural floor; and the
+ring rendered with the search field's own ink, height and radius one line below
+the field itself, so the current row read as a filled input — worst on `iceberg`,
+where a periwinkle ground inside a navy line reads as a disabled field. The
+operator had already had that same boundary removed from the New chat row for the
+read it produces. If a selection ever needs a third signal, that is a role this
+contract does not have — add it there rather than borrowing one, which is the
+rule § 1 states for every other missing value.
 
 `highlight` is not in `check-themes`' `GROUNDS` list, because that list is the set
 a control is drawn on one of at a time and every ink and structural border is
 measured against all of it; a current row still sits INSIDE a `surface` panel. The
 contract asserts what the row actually depends on instead: `highlight` against
-`surface` at its own band floor of ΔE00 4.0 (so the mark is visible), against
-`elevated` and `sunken` at the field floor of ΔE00 2.0 (so it is not confused with
-the pointer's own hover step and is not the well below it), `ink` / `ink-muted` /
-`ink-dim` on it at their usual floors plus 0.15 of headroom, and `border-control`
-on it at 3:1 for the structural edge the row carries.
+`surface` at its own band floor of ΔE00 4.0 (so the mark is visible, and so that
+its `L*` step runs the right way), against `elevated` and `sunken` at the field
+floor of ΔE00 2.0 (so it is not confused with the pointer's own hover step and is
+not the well below it), and `ink` / `ink-muted` / `ink-dim` on it at their usual
+floors plus 0.15 of headroom. It no longer asserts `border-control` on it: there
+is no boundary on the row (above).
 
 **The rule a porting author follows**, so a new palette can be derived rather
-than tuned: take the LARGEST step from `surface` that
+than tuned: take the `L*` step **first**, at the panel's own hue, in the direction
+the mode runs — as far as the ink floors allow — and then buy only the shortfall
+to the band's floor of **ΔE00 4.0** on the chroma axis at that same hue. Chroma
+may pay a remainder; it may not pay the step. The constraints:
 
 - targets **ΔE00 ≥ 4.0 from `surface`**,
 - keeps every ink floor with at least **0.15 of headroom above it** — `ink` ≥
   7:1, `ink-muted` and `ink-dim` ≥ 4.5:1 on the row's own ground, and
   `ink-dim` is the one that usually binds, because the caps and the `· lopdev`
   binding inside a current row are drawn in it — and
-- stays **ΔE00 ≥ 2.2 from `elevated` and from `sunken`**,
+- stays **ΔE00 ≥ 2.0 from `elevated` and from `sunken`** (the field floor § 3
+  enforces; 2.2 is the target to aim past, being where the original band's
+  separation was measured).
 
-and where the ink floor stops that step below 4.0, buy the rest on the chroma axis
-at the surface's own hue, which costs no assertion in the table above. The two
-palettes where `elevated` blocks a lightness step (dracula and obsidian: their
-hover step is itself the larger step off `surface`) are resolved the same way —
-chroma, not a louder ground — and the row's `outline-control` edge carries the
-mark on every palette regardless, so a capped step is never a capped mark.
-`iceberg` is the palette where the recessed ground binds instead: `sunken` sits
-only ΔE00 3.75 from `surface` there, so the step stops at 4.12 with 3.04x the
-surface's chroma rather than climbing further.
+Four of the twelve still carry a partly chroma-bought step — `dracula` 1.20x the
+panel's chroma, `monokai` 1.66x, `obsidian` 1.90x and `iceberg` 3.31x — each
+recorded at its own value in its palette. They clear the asserted floor, and they
+are what a re-authoring should take next: `iceberg` is where the cost is visible,
+because that panel is the least chromatic of the twelve (C* 1.57), so its step
+reads as a lavender band rather than a darker row (design round 1, D4). Its
+earlier justification — that its recessed ground capped the step — was wrong:
+`sunken` sits ΔE00 3.75 from that `surface` and the row still clears it by 2.53.
 
 **Elevation is a lightness step, not a shadow.** There is exactly one shadow in
 the system and it belongs only to objects that leave the flow: menu, dialog,
@@ -210,9 +236,9 @@ the weakest pair anywhere in the system is sage at 8.4.
 | `border-control` on each of the four grounds | 3:1 |
 | Any two grounds, mutually | 1.03:1 |
 | `highlight` against `surface` | ΔE00 4.0 |
+| `highlight`'s `L*` step off `surface`: the direction, and at least 3 `L*` | 3 `L*` |
 | `highlight` against `elevated` and against `sunken` | ΔE00 2.0 |
 | `ink` / `ink-muted` / `ink-dim` on `highlight`, with 0.15 of headroom | 7:1 / 4.5:1 / 4.5:1 |
-| `border-control` on `highlight` (the current row's structural edge) | 3:1 |
 | Component triples: ink on its own fill | 4.5:1 |
 | Component triples: edge (fill **or** border) against the ground behind | 3:1 |
 

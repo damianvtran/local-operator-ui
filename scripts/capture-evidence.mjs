@@ -1397,6 +1397,18 @@ export const STORIES = [
 	["chat-sidebar-current-row--selected-row", 780, 560],
 	["chat-sidebar-current-row--new-chat-row-current", 780, 560],
 	/*
+	 * The two arrangements where the mark is drawn on an ink no other state here
+	 * reaches, added in round 2's remediation (design round 1, D5; QA's N3 and
+	 * N6): a row carrying a `· lopdev` BINDING inside a current row — `ink-muted`
+	 * on `highlight`, the ink the floors are measured for, and the case in the
+	 * operator's own screenshot — and a NESTED row under its agent, which is the
+	 * one place the mark is drawn at the row's own inset inside a disclosure.
+	 * Before these two, every fixture row was unbound and top-level, so both were
+	 * assertions in `pnpm check-themes` and in no frame at all.
+	 */
+	["chat-sidebar-current-row--bound-row-current", 780, 560],
+	["chat-sidebar-current-row--nested-row-current", 780, 560],
+	/*
 	 * The SAME story with a real pointer on the neighbour row ABOVE the current
 	 * one, because the pair it produces is a state a still at rest cannot hold:
 	 * a hover is browser state, so the rig moves a real pointer through the input
@@ -1447,6 +1459,10 @@ export const STORIES = [
 	 * in ONE frame. The rail's rows are `li`s wrapping their own button, so the
 	 * selector addresses the neighbouring `li` and lands the pointer on the button
 	 * inside it; `aria-current="page"` is the rail's own marking of its current row.
+	 *
+	 * A NESTED state's neighbour is not in this list on purpose: the row above a
+	 * nested current row is its agent's entity row, which is not `elevated` — the
+	 * entities own their own hover — so a pointer there measures a different pair.
 	 */
 	[
 		"chat-sidebar-current-row--settings-rail",
