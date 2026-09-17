@@ -344,9 +344,18 @@ const CURRENT = [
 		file: MARK,
 		expression: () =>
 			expressionBefore(MARK, 'data-tour-tag="chat-session-browser"'),
-		stubs: { quiet: false, current: true },
+		/*
+		 * EVERY TERM THE EXPRESSION READS IS STUBBED, and `expanded` is one of them
+		 * (design review round 2, U8): the mark now carries the disclosure state in
+		 * its ink, so the resolved list has one more conditional in it. A term the
+		 * guard does not name throws `ReferenceError` inside the resolved
+		 * expression rather than failing an assertion, which is how this went red
+		 * when the state was added — the stub table is the instrument's contract, so
+		 * it moves with the component.
+		 */
+		stubs: { quiet: false, current: true, expanded: true },
 		ground: false,
-		notCurrent: { quiet: false, current: false },
+		notCurrent: { quiet: false, current: false, expanded: false },
 	},
 	{
 		what: "the settings rail's current section",
