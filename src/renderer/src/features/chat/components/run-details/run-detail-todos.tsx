@@ -28,6 +28,7 @@ import {
 	type TodoItemStatus,
 	type TodoItemView,
 	tallyBudget,
+	tallyFitsInline,
 	todoTally,
 	visibleTodoPhases,
 } from "./run-detail-model";
@@ -197,7 +198,9 @@ export const RunDetailTodos = ({
 						"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
 					)}
 				>
-					{todoTally(details, tallyBudget(paneWidth))}
+					{tallyFitsInline(paneWidth)
+						? todoTally(details, tallyBudget(paneWidth))
+						: null}
 				</span>
 			</div>
 			{/*

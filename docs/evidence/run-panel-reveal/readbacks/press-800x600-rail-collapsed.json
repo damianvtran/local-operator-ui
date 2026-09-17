@@ -1,0 +1,687 @@
+{
+  "session": "84d10ac4fc2a",
+  "backend": "http://127.0.0.1:18111",
+  "viewport": [
+    800,
+    568,
+    2
+  ],
+  "press": "Open the plan in run details — 6 to-dos open",
+  "paneOpen": [
+    false,
+    true
+  ],
+  "movers": [],
+  "before": {
+    "viewport": [
+      800,
+      568,
+      2
+    ],
+    "paneOpen": false,
+    "dialog": false,
+    "documentScrollTop": 0,
+    "bodyScrollTop": 0,
+    "todosOffsetInRegion": null,
+    "acceptance": {
+      "clipPx": null,
+      "closeControl": null,
+      "closeControlHit": null,
+      "elidedRows": 0,
+      "cutRows": 0,
+      "collapsedTextRows": 0,
+      "outsideRegionRows": 0,
+      "collapsedTextExamples": [],
+      "outsideRegionExamples": []
+    },
+    "scrollBoxes": [
+      {
+        "name": "button|inline-flex.h-6.min-w-0",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 412,
+        "left": 354
+      },
+      {
+        "name": "div|flex.min-w-0.flex-wrap",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 412,
+        "left": 360
+      },
+      {
+        "name": "div|w-full.@min-[750px]/chatcol:max-w-[900px].@min-[750px]/chatcol:mx-auto",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 412,
+        "left": 352
+      },
+      {
+        "name": "form|w-full",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 412,
+        "left": 352
+      },
+      {
+        "name": "div|w-full",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 412,
+        "left": 352
+      },
+      {
+        "name": "div|@container/chatcol.flex.w-full",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 410,
+        "left": 328
+      },
+      {
+        "name": "div|flex.h-full.min-h-0",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|relative.h-full.w-0",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|relative.flex.h-full",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|min-h-0.flex-1",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|flex.h-full.min-h-0",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|min-h-0.flex-1",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|flex.h-full.min-h-0",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|h-full.grow.overflow-hidden",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|flex.h-full.w-full",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 48
+      },
+      {
+        "name": "main|flex.grow.flex-col",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 48
+      },
+      {
+        "name": "div|relative.flex.h-screen",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 0
+      },
+      {
+        "name": "div#app|",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 0
+      },
+      {
+        "name": "body|",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 0
+      },
+      {
+        "name": "html|dark",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 0
+      }
+    ],
+    "surfaces": {
+      "iconRailAndList": {
+        "top": 0,
+        "left": 0,
+        "width": 48,
+        "height": 568
+      },
+      "chatList": {
+        "top": 0,
+        "left": 48,
+        "width": 280,
+        "height": 568
+      },
+      "chatColumn": {
+        "top": 56,
+        "left": 328,
+        "width": 472,
+        "height": 354
+      },
+      "transcript": {
+        "top": 56,
+        "left": 328,
+        "width": 472,
+        "height": 354
+      },
+      "composerBand": {
+        "top": 410,
+        "left": 328,
+        "width": 472,
+        "height": 158
+      },
+      "runPane": null,
+      "todosSection": null
+    }
+  },
+  "after": {
+    "viewport": [
+      800,
+      568,
+      2
+    ],
+    "paneOpen": true,
+    "dialog": false,
+    "documentScrollTop": 0,
+    "bodyScrollTop": 0,
+    "todosOffsetInRegion": 0,
+    "acceptance": {
+      "clipPx": 0,
+      "closeControl": {
+        "left": 764,
+        "right": 792,
+        "insideViewport": true
+      },
+      "closeControlHit": true,
+      "elidedRows": 18,
+      "cutRows": 0,
+      "collapsedTextRows": 0,
+      "outsideRegionRows": 0,
+      "collapsedTextExamples": [],
+      "outsideRegionExamples": []
+    },
+    "scrollBoxes": [
+      {
+        "name": "button|inline-flex.h-6.min-w-0",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 412,
+        "left": 354
+      },
+      {
+        "name": "div|flex.min-w-0.flex-wrap",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 412,
+        "left": 360
+      },
+      {
+        "name": "div|w-full.@min-[750px]/chatcol:max-w-[900px].@min-[750px]/chatcol:mx-auto",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 412,
+        "left": 352
+      },
+      {
+        "name": "form|w-full",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 412,
+        "left": 352
+      },
+      {
+        "name": "div|w-full",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 412,
+        "left": 352
+      },
+      {
+        "name": "div|@container/chatcol.flex.w-full",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 410,
+        "left": 328
+      },
+      {
+        "name": "div|flex.h-full.min-h-0",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|relative.h-full.w-0",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|relative.flex.h-full",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|min-h-0.flex-1",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|flex.h-full.min-h-0",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|min-h-0.flex-1",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|flex.h-full.min-h-0",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|h-full.grow.overflow-hidden",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 328
+      },
+      {
+        "name": "div|flex.h-full.w-full",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 48
+      },
+      {
+        "name": "main|flex.grow.flex-col",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 48
+      },
+      {
+        "name": "div|relative.flex.h-screen",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 0
+      },
+      {
+        "name": "div#app|",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 0
+      },
+      {
+        "name": "body|",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 0
+      },
+      {
+        "name": "html|dark",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 0
+      },
+      {
+        "name": "section|flex.flex-col.pb-1.5",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 40,
+        "left": 549
+      },
+      {
+        "name": "div|flex.flex-col",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 40,
+        "left": 549
+      },
+      {
+        "name": "div|min-h-0.flex-1.overflow-y-auto",
+        "isRegion": true,
+        "overflowY": "auto",
+        "overflowX": "auto",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 547,
+        "horizontalOverflow": 0,
+        "top": 40,
+        "left": 549
+      },
+      {
+        "name": "section|flex.h-full.flex-col",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 549
+      },
+      {
+        "name": "div|relative.h-full.shrink",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 548
+      }
+    ],
+    "surfaces": {
+      "iconRailAndList": {
+        "top": 0,
+        "left": 0,
+        "width": 48,
+        "height": 568
+      },
+      "chatList": {
+        "top": 0,
+        "left": 48,
+        "width": 280,
+        "height": 568
+      },
+      "chatColumn": {
+        "top": 56,
+        "left": 328,
+        "width": 220,
+        "height": 354
+      },
+      "transcript": {
+        "top": 56,
+        "left": 328,
+        "width": 220,
+        "height": 354
+      },
+      "composerBand": {
+        "top": 410,
+        "left": 328,
+        "width": 220,
+        "height": 158
+      },
+      "runPane": {
+        "top": 0,
+        "left": 549,
+        "width": 251,
+        "height": 568
+      },
+      "todosSection": {
+        "top": 40,
+        "left": 549,
+        "width": 243,
+        "height": 227.4
+      }
+    }
+  }
+}
