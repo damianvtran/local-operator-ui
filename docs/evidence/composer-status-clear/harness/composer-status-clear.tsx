@@ -17,7 +17,13 @@
  *   the tab goes when the value goes.
  * - STUBBED: the BACKEND. The bridge records the request and answers the receipt the
  *   owner would answer, and the band then applies the effect that command has on the
- *   wire — `goal --clear` empties the goal, `loop --stop` turns a running loop idle.
+ *   wire — `goal clear` empties the goal, and `loop stop` settles the loop to
+ *   `cancelled` while KEEPING its state, which is what the real cancel path does
+ *   (`local_operator/session/goal_loop.py` publishes `status="cancelled"` from its
+ *   `CancelledError` arm and never clears the state). The settled loop's `Clear loop`
+ *   sends NOTHING — there is no released spelling for it, and the two the companion
+ *   adds start a loop on a backend that does not know them — so its band shows the
+ *   wire standing still while the row's own acknowledgement takes the chip off.
  *   That is what a `sessions.command` receipt plus the next canonical frame look
  *   like from the renderer's side; the backend half of this pair is
  *   `local-operator`'s own change, and these frames make no claim about it.
@@ -80,33 +86,47 @@ const CASES: Array<{
 	sessionId: string;
 	label: string;
 	wire: Wire;
-	effect: (wire: Wire) => Wire;
+	/**
+	 * The command's effect on the wire. The REQUEST is passed because one band has two
+	 * legal commands: the goal's dismiss clears it, and the toast's own `Undo` restores
+	 * it with `goal <text>` — the same command the picker's field sends. A stub that
+	 * only knew the clear would make the undo look like a no-op.
+	 */
+	effect: (wire: Wire, request: CommandRequest) => Wire;
 }> = [
 	{
 		sessionId: "clear-goal",
 		label:
-			"goal --clear: the X and Clear goal are held at rest, revealed by focus or hover, and the press clears the goal",
+			"goal clear: the X and Clear goal are held at rest, revealed by focus or hover, and the press clears the goal and offers it back",
 		wire: { goal: STANDING_GOAL, loop: null },
-		effect: (wire) => ({ ...wire, goal: "" }),
+		effect: (wire, request) =>
+			request.command === "goal" && request.args === "clear"
+				? { ...wire, goal: "" }
+				: { ...wire, goal: request.args },
 	},
 	{
 		sessionId: "stop-loop",
 		label:
-			"loop --stop: the loop is running, the control says Stop loop, and the press settles it",
+			"loop stop: the loop is running, the control says Stop loop, and the press settles it to cancelled — the chip stays, because the backend keeps the state",
 		wire: { goal: STANDING_GOAL, loop: LOOP_RUNNING },
-		effect: (wire) => ({ ...wire, loop: null }),
+		effect: (wire) => ({
+			...wire,
+			loop: { ...LOOP_RUNNING, status: "cancelled" },
+		}),
 	},
 	{
 		sessionId: "clear-loop",
 		label:
-			"loop --clear: the loop has settled, the same control says Clear loop, and the press takes it off the row",
+			"Clear loop on a settled loop: the control sends NO command at all, and the row acknowledges its own chip — no released backend has a spelling for this one",
 		wire: { goal: "", loop: LOOP_SETTLED },
-		effect: (wire) => ({ ...wire, loop: null }),
+		// The wire does NOT move: the effect is the ROW's acknowledgement of a state
+		// the backend is keeping, which is the whole point of this band.
+		effect: (wire) => wire,
 	},
 	{
 		sessionId: "refused",
 		label:
-			"a REFUSED command: the backend answers 503, the wire does not move, and the refusal is the app's own toast rather than silence",
+			"a REFUSED command: the backend answers 503, the wire does not move, and the refusal is the app's own toast in the control's own words rather than silence",
 		wire: { goal: STANDING_GOAL, loop: null },
 		effect: (wire) => wire,
 	},
@@ -145,7 +165,9 @@ const installBridge = () => {
 					 */
 					return {
 						status: 503,
-						body: { detail: "the backend refused: no standing goal to clear" },
+						body: {
+						detail: "the backend refused: the session is not accepting commands",
+					},
 					};
 				}
 				return {
@@ -179,7 +201,7 @@ const Band = ({
 	sessionId: string;
 	label: string;
 	initial: Wire;
-	effect: (wire: Wire) => Wire;
+	effect: (wire: Wire, request: CommandRequest) => Wire;
 }) => {
 	const [wire, setWire] = useState<Wire>(initial);
 	const [log, setLog] = useState<string[]>([]);
@@ -192,7 +214,7 @@ const Band = ({
 				...previous,
 				`${request.op} ${request.command} ${request.args} -> session ${request.sessionId}`,
 			]);
-			setWire((previous) => effect(previous));
+			setWire((previous) => effect(previous, request));
 		});
 		return () => {
 			handlers.delete(sessionId);
@@ -266,9 +288,13 @@ const App = () => (
 				effect={entry.effect}
 			/>
 		))}
-		{/* The app's own toast host: a refusal is the one outcome this row speaks, and it
-		 * speaks through the same channel the composer's other failures use. */}
-		<ThemedToastContainer />
+		{/* The app's own toast host: the row speaks two outcomes through it — a refusal,
+		 * and the goal's cleared-with-Undo confirmation — and BOTH are held rather than
+		 * timed, because a frame is a still of a state that a 4s default would take away
+		 * mid-capture. The harness is the only place either is photographed: a story's own
+		 * press has no bridge, so it fails instead of succeeding (this set's README says
+		 * what that means for the story frames). */}
+		<ThemedToastContainer duration={Number.POSITIVE_INFINITY} />
 	</div>
 );
 

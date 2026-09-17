@@ -620,6 +620,33 @@ const RowFacts = ({ children }: { children: React.ReactNode }) => {
 						"[data-status-goal-dismiss], [data-status-loop-dismiss]",
 					),
 				].map((box) => `${Math.round(box.getBoundingClientRect().width)}px`);
+				/*
+				 * The DISTANCE from each dismiss to the words it acts on, which is design review
+				 * round 1's D1 as a number: the review measured the same control at 132px, 414px
+				 * and 532px from its chip while it sat at the flex ITEM's trailing edge, and the
+				 * ruling was that it belongs at the chip's own. A still cannot show a distance
+				 * between two boxes, and the fix is a property of that distance — so the frames
+				 * print it, beside the held width that makes it visible at all.
+				 *
+				 * Measured off the chip's own box rather than a class name: the claim is about
+				 * geometry, and the chip is whichever element the dismiss's line carries
+				 * (`aria-expanded` for the goal's disclosure, `data-status-loop` for the readout).
+				 */
+				const dismissGaps = [
+					...row.querySelectorAll<HTMLElement>(
+						"[data-status-goal-dismiss], [data-status-loop-dismiss]",
+					),
+				].map((box) => {
+					const chip = box.parentElement?.querySelector<HTMLElement>(
+						"[aria-expanded], [data-status-loop]",
+					);
+					return chip
+						? `${Math.round(
+								box.getBoundingClientRect().left -
+									chip.getBoundingClientRect().right,
+							)}px`
+						: "?";
+				});
 				const goal =
 					goalItem && goalText
 						? ` · goal ${Math.round(
@@ -649,6 +676,10 @@ const RowFacts = ({ children }: { children: React.ReactNode }) => {
 						row.getBoundingClientRect().height,
 					)}px tall · overflowX ${row.scrollWidth - row.clientWidth}px · ${chips} chips · ${dismisses} dismiss${
 						dismissWidths.length > 0 ? ` (${dismissWidths.join("+")})` : ""
+					}${
+						dismissGaps.length > 0
+							? ` · dismiss gap ${dismissGaps.join("+")}`
+							: ""
 					}${goal}`,
 				);
 			}
@@ -1036,10 +1067,11 @@ export const WakeWidths: Story = {
  *
  * The state a still can carry is the RESTING one — `:hover` and `:focus-within` are
  * browser state and no story can force either — so this story pairs a resting band
- * with the two rig inputs that produce the revealed states
- * (`{ hover }` moves a real pointer, `{ tabTo }` presses the real Tab key), and the
- * three frames are read together: `goal-clear-hovered/`, `goal-clear-focused/` and
- * `goal-clear-dismiss-focused/`.
+ * with the three bands the revealed states were captured from
+ * (`docs/evidence/composer-status-clear/`, which says plainly that the reveal was
+ * captured through FOCUS-within and that no `:hover` frame exists in this set: the
+ * `browser` tool has no hover verb, and a press in this host produces focus without
+ * hover, measured).
  *
  * What the resting band is FOR, and it is the half a hover frame cannot show: the
  * control is invisible and STILL THERE, holding its box, so the chip's snippet does
@@ -1064,7 +1096,7 @@ export const GoalClear: Story = {
 				/>
 			</RowFacts>
 			<Band
-				label="The goal alone on the row: the control is still at the item's trailing edge, not beside the words"
+				label="The goal alone on the row: the control stays beside the words, at the chip's trailing edge"
 				frontend={frontend(SHORT_GOAL)}
 				runDetails={null}
 			/>
@@ -1078,7 +1110,7 @@ export const GoalClear: Story = {
 			<RowFacts>
 				<Band
 					width={240}
-					label="240: the goal keeps its line, and the word is dropped while the X and its name stay"
+					label="240: the goal keeps its line AND its word — the drop is strictly below this width, so this band is the layout rule rather than the X-alone state"
 					frontend={frontend(SHORT_GOAL)}
 					runDetails={BOTH_ACTIVITY}
 				/>
@@ -1086,7 +1118,7 @@ export const GoalClear: Story = {
 			<RowFacts>
 				<Band
 					width={FLOOR_COLUMN_PX}
-					label="172 (the app's real floor): the row stacks, the chip keeps the row's width, nothing overflows"
+					label="172 (the app's real floor): the row stacks, the word is dropped, the X keeps its own box and its accessible name, and nothing overflows"
 					frontend={frontend(LONG_GOAL)}
 					runDetails={IN_FLIGHT}
 				/>
@@ -1102,8 +1134,10 @@ export const GoalClear: Story = {
  *
  * 1. a loop alone — no goal, no plan — so the chip takes the row's content edge and
  *    the first-chip rule falls to it;
- * 2. the ordinary pair: a goal, a loop and the plan, which is the band the rig hovers
- *    and focuses (`loop-clear-hovered/`, `loop-clear-focused/`);
+ * 2. the ordinary pair: a goal, a loop and the plan, which is the band the loop's own
+ *    control was captured revealed on (`docs/evidence/composer-status-clear/`,
+ *    through FOCUS-within — see that set's README for what a press can and cannot
+ *    produce in this host);
  * 3. `judging`, the wire's other moving state, where the clause prints its own word
  *    and no figure;
  * 4. `achieved` — SETTLED, so the same control says `Clear loop`;
@@ -1162,7 +1196,7 @@ export const LoopChip: Story = {
 			/>
 			<RowFacts>
 				<Band
-					label="All six chips at 900: the goal, the loop and four counts on one line"
+					label="All six chips at 900: the goal and the loop on the first line, the four counts wrapped to the second"
 					frontend={frontend(
 						SHORT_GOAL,
 						loopOf("running", { completed: 2, iterations: 5 }),

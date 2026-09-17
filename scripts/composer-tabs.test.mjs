@@ -63,7 +63,7 @@ const bundle = await build({
 				loopActionLabel,
 				loopAffordance,
 				loopProgress,
-	loopStatusWord,
+				loopStatusWord,
 				loopClause,
 				loopIsRunning,
 				planChipLabel,
@@ -1437,16 +1437,25 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	assert.match(source, /min-w-\[140px\] flex-1/);
 	assert.doesNotMatch(source, /cn\("min-w-0 flex-1", COLUMN_GOAL\)/);
 	/*
-	 * The goal's item is the WRAPPER now, because the dismiss lives inside it: the
-	 * floor and the column switch are properties of the item, and the disclosure
-	 * inside it is the part that yields (`min-w-0 flex-1`) with its trigger still
-	 * `w-fit` so the hover ground stays chip-sized. The floor and the switch moved
-	 * together rather than one at a time, which is what the two pins below say.
+	 * The goal's item is the WRAPPER around the disclosure, and the DISMISS is no
+	 * longer its second child: the pair the reveal joins — the trigger and its control
+	 * — is inside the primitive's own root (`trailing`), because the body is rendered
+	 * there too and a wrapper outside the disclosure can hold one of the two and not
+	 * the other (design review round 1's D1; the measurement is in § 12.3). The floor
+	 * and the column switch stay on the item, and the item is NOT a `group` any more:
+	 * the reveal's scope is the trigger's own line, so a pointer on the item's empty
+	 * space no longer reveals the control (UX's U5).
 	 */
 	assert.match(
 		source,
-		/cn\(\s*"group flex min-w-\[140px\] flex-1 items-center",\s*COLUMN_GOAL,/,
+		/cn\("flex min-w-\[140px\] flex-1 items-center", COLUMN_GOAL\)/,
 	);
+	assert.doesNotMatch(
+		source,
+		/"group flex min-w-\[140px\]/,
+		"the item is not the reveal's group: the trigger's own line is, so the ✕ cannot be revealed from the item's empty space",
+	);
+	assert.match(source, /trailing=\{/);
 	assert.match(source, /className=\{cn\("min-w-0 flex-1"\)\}/);
 	/*
 	 * The first-chip chain, which had to grow an item: the loop chip is the second
@@ -1467,7 +1476,7 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * un-truncated; without `h-6 py-0` the two chips of one row differ by 1.7px
 	 * (25.7px beside 24px).
 	 */
-	assert.match(source, /"w-fit max-w-full text-ink-muted/);
+	assert.match(source, /"w-fit max-w-full min-w-0 text-ink-muted/);
 	assert.match(source, /rowClassName=\{cn\("h-6 rounded-sm px-1\.5 py-0"\)\}/);
 
 	// The shared horizontal inset is the alert's own, not a second number.
@@ -1541,19 +1550,20 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	/*
 	 * And nothing here counts: no filtering to an open slice and no length turned
 	 * into a number. The row chooses which of the model's functions to print, which
-	 * is the rule the plan chip already follows. The row's ONE status comparison is
-	 * the loop chip's own predicate (`loopIsRunning`, whose truth table the loop
-	 * section of this file asserts): the activity chips read no status word at all,
-	 * which is what makes D1 unrepeatable rather than merely fixed, and the pin holds
-	 * the line at one so a second status vocabulary here has to be argued for.
+	 * is the rule the plan chip already follows. The row's ONE status comparison USED
+	 * to be the loop chip's own predicate; it is now the shared `loopIsRunning`
+	 * (`pickers/session-commands.ts`), which the row imports rather than restating —
+	 * so the line here is ZERO (agent review round 1, MINOR 1 required exactly that:
+	 * one definition, in one module, read by the row and the `/loop` picker alike). A
+	 * status vocabulary that creeps back into this file has to be argued for.
 	 */
 	assert.doesNotMatch(source, /\.filter\(/);
 	assert.equal(
 		(source.match(/=== "(running|judging)"/g) ?? []).length,
-		2,
-		"one predicate compares a status word, and it is the loop's own",
+		0,
+		"the row restates no status vocabulary: it reads the shared predicate",
 	);
-	assert.match(source, /export const loopIsRunning = /);
+	assert.match(source, /loopIsRunning/);
 });
 
 test("the expanded body caps itself, keeps the author's breaks, and carries its own tab stop", () => {
@@ -2216,8 +2226,12 @@ test("the Jobs section draws the partition's rows, and nothing in it is pressabl
  * What none of these can see is the REVEAL: `:hover` and `:focus-within` are
  * browser state, and jsdom evaluates neither. So the classes that carry it are
  * asserted here as strings and the pixels are asserted in the frames
- * (`docs/evidence/chat-composer-status-row/goal-clear-hovered/`,
- * `…-focused/`), which is this repo's rule for every other hover claim.
+ * (`docs/evidence/composer-status-clear/goal-tab-revealed/` and `…/loop-tab-revealed/`
+ * — the change's OWN set, not the swept set next door, which has none of these
+ * states), which is this repo's rule for every other hover claim. What those frames
+ * show is stated in that set's README and not here: the reveal on them is the
+ * FOCUS-within path, because the `browser` tool has no hover verb — and it is the
+ * same class string this file asserts, which the parity test below keeps true.
  */
 
 test("a session with no loop renders no loop chip, and an idle loop is the same absence", () => {
@@ -2282,14 +2296,48 @@ test("the loop chip states the wire's own status word, with the progress the wir
 	}
 });
 
+test("the loop's clause is one text flow, so the readings' gap cannot land inside it", () => {
+	/*
+	 * QA round 1's Q2, from the real app's own frames: the row painted `Loop:
+	 * running , 1 of 25 turns`. The readout's box carries the readings' `gap-1.5`, the
+	 * progress was its own FLEX ITEM, and the gap therefore landed between the status
+	 * word and its own comma — while `textContent` stayed clean, which is why no
+	 * assertion on the string could see it and why the clause's own unit test above
+	 * passed throughout. The progress is INSIDE the label's span now: one text flow,
+	 * still its own node (the stacked band has to be able to drop it) and no longer
+	 * its own flex item.
+	 */
+	const markup = renderRow({
+		frontend: frontendWith({
+			goal: "Ship it",
+			loop: wireLoop("running", { completed: 2, iterations: 5 }),
+		}),
+		runDetails: null,
+	});
+	assert.match(
+		markup,
+		/Loop: running<span class="[^"]*">, 2 of 5 turns<\/span><\/span>/,
+	);
+});
+
 test("the loop's affordance is the state's own: Stop while it moves, Clear once it settles", () => {
+	/*
+	 * `args` is the ARGUMENT the press sends, and `null` on the settled half is the
+	 * claim that the settled press sends NOTHING — there is no released spelling that
+	 * clears a settled loop, and both spellings the companion adds start a loop on a
+	 * backend that does not know them. The word and the argument are asserted together
+	 * because they are one decision: a second derivation could print `Stop loop` and
+	 * send a clear.
+	 */
 	assert.deepEqual(loopAffordance(wireLoop("running")), {
 		text: "Stop loop",
-		flag: "--stop",
+		args: "stop",
+		failure: "Could not stop the loop",
 	});
 	assert.deepEqual(loopAffordance(wireLoop("judging")), {
 		text: "Stop loop",
-		flag: "--stop",
+		args: "stop",
+		failure: "Could not stop the loop",
 	});
 	for (const status of [
 		"achieved",
@@ -2300,7 +2348,11 @@ test("the loop's affordance is the state's own: Stop while it moves, Clear once 
 	]) {
 		assert.deepEqual(
 			loopAffordance(wireLoop(status)),
-			{ text: "Clear loop", flag: "--clear" },
+			{
+				text: "Clear loop",
+				args: null,
+				failure: "Could not clear the loop",
+			},
 			`${status} is settled, so it is cleared rather than stopped`,
 		);
 	}
@@ -2413,10 +2465,36 @@ test("both dismisses hold their box and are revealed by hover and by keyboard fo
 		assert.match(dismiss, /group-hover:opacity-100/);
 		assert.match(dismiss, /group-focus-within:pointer-events-auto/);
 		assert.match(dismiss, /group-focus-within:opacity-100/);
+		/*
+		 * AND THE TWO HALVES ARE THE SAME UTILITIES, mechanically (agent review round 1,
+		 * MINOR 3). The classes above are asserted one by one, which is what let the set
+		 * drift: a `group-hover:`-only utility added later would pass every assertion here
+		 * and leave the keyboard path behind. So the sets are compared as sets — whatever
+		 * every `group-hover:` utility is, the `group-focus-within:` side carries it too,
+		 * and vice versa.
+		 */
+		const revealUtilities = (prefix) =>
+			new Set(
+				(
+					dismiss.match(new RegExp(`group-${prefix}:([^"\\s]+)`, "g")) ?? []
+				).map((entry) => entry.slice(`group-${prefix}:`.length)),
+			);
+		assert.deepEqual(
+			[...revealUtilities("hover")].sort(),
+			[...revealUtilities("focus-within")].sort(),
+			"the pointer and the keyboard reveal the same utilities, or one of the two paths is behind",
+		);
 		// The readings' own control box, so the dismiss is the same species as the
 		// chips beside it rather than a second hover ground on one line.
 		assert.match(dismiss, /hover:bg-accent-wash/);
 		assert.match(dismiss, /focus-visible:outline-offset-1/);
+		/*
+		 * The disabled step, while a command is in flight (agent review round 1, MINOR 2;
+		 * UX's U3): `branding.md` § 6 — a disabled control STEPS COLOUR to `ink-disabled`
+		 * rather than fading, and it drops the hover ground it cannot honour.
+		 */
+		assert.match(dismiss, /disabled:text-ink-disabled/);
+		assert.match(dismiss, /disabled:hover:bg-transparent/);
 	}
 });
 
@@ -2516,7 +2594,7 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 			"the command is addressed to the session the row is drawn for",
 		);
 		assert.equal(requests[0].command, "goal");
-		assert.equal(requests[0].args, "--clear");
+		assert.equal(requests[0].args, "clear");
 		/*
 		 * THE PRESS THE CONTROL SITS NEXT TO IS UNTOUCHED. This is the property the
 		 * sibling structure exists for: the dismiss is not a child of the disclosure's
@@ -2543,12 +2621,13 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 		await press(stop);
 		assert.equal(requests.length, 2);
 		assert.equal(requests[1].command, "loop");
-		assert.equal(requests[1].args, "--stop");
+		assert.equal(requests[1].args, "stop");
 
 		/*
 		 * The loop SETTLES under the same wire the chip reads, so the affordance is
-		 * re-derived rather than remembered: the word on the control and the flag the
-		 * press sends both move to `clear`, off one `loopAffordance` call.
+		 * re-derived rather than remembered: the word on the control moves to `Clear
+		 * loop` off the same `loopAffordance` call. Its ARGUMENT is `null`, which is the
+		 * claim the press below tests: the settled dismiss sends NOTHING.
 		 */
 		answer = {
 			status: 200,
@@ -2571,9 +2650,42 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 		const clearLoop = dom.document.querySelector("[data-status-loop-dismiss]");
 		assert.match(clearLoop.textContent, /Clear loop/);
 		await press(clearLoop);
-		assert.equal(requests.length, 3);
-		assert.equal(requests[2].command, "loop");
-		assert.equal(requests[2].args, "--clear");
+		assert.equal(
+			requests.length,
+			2,
+			"the settled dismiss runs no command at all: no released backend has a spelling for it, and both spellings that clear a settled loop START one on a backend that does not know them",
+		);
+		/*
+		 * And it does what it promises with the row's own state: the chip goes, which is
+		 * the ACKNOWLEDGEMENT the row is making. The wire is untouched — the test's own
+		 * element still holds `achieved` — so a re-render of the same state keeps it
+		 * hidden, and a NEW loop (a different signature) brings its chip back.
+		 */
+		assert.equal(
+			dom.document.querySelector("[data-status-loop-dismiss]"),
+			null,
+			"the settled chip is acknowledged off the row",
+		);
+		await act(
+			async () =>
+				void root.render(element(wireLoop("achieved", { completed: 5 }))),
+		);
+		assert.equal(
+			dom.document.querySelector("[data-status-loop-dismiss]"),
+			null,
+			"the wire did not move, so the acknowledged settled state stays acknowledged",
+		);
+		await act(
+			async () =>
+				void root.render(
+					element(wireLoop("running", { completed: 1, iterations: 5 })),
+				),
+		);
+		assert.match(
+			dom.document.querySelector("[data-status-loop-dismiss]").textContent,
+			/Stop loop/,
+			"a NEW loop is never hidden by the previous one's acknowledgement",
+		);
 
 		/*
 		 * A REFUSAL goes to the app's toast channel rather than nowhere, and the case
@@ -2585,9 +2697,10 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 		await press(dom.document.querySelector("[data-status-goal-dismiss]"));
 		assert.equal(
 			requests.length,
-			4,
+			3,
 			"the refused press still reached the owner",
 		);
+		assert.equal(requests[2].args, "clear");
 		assert.ok(
 			dom.document.querySelector("[data-status-goal-dismiss]"),
 			"and a refusal leaves the row as it was",
@@ -2602,27 +2715,108 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 	);
 });
 
-test("a refusal is the only outcome that speaks, and it speaks in the backend's words", () => {
+test("the two outcomes that speak do so in the person's own words", () => {
 	/*
-	 * A SOURCE pin, and the weakest instrument here, deliberately: the success path is
-	 * visible (the wire clears the goal and the chip goes; the loop settles and its
-	 * word changes) and needs no announcement, a live region is refused on this row
-	 * (§ 7), and whether sonner paints a toast in a bare jsdom document is not a fact
-	 * about the row. What the pin buys is that a revert has to come here and say what
-	 * replaced the refusal path — and the frame set's own `…-refused/` capture is
-	 * where the toast is photographed (docs/evidence/…/README.md).
+	 * A SOURCE pin, and the weakest instrument here, deliberately: whether sonner paints
+	 * a toast in a bare jsdom document is not a fact about the row, and the channels are
+	 * photographed in this change's own frame set (`docs/evidence/composer-status-clear/`
+	 * — the refusal and the cleared goal, both held in the harness). What the pin buys is
+	 * that a revert has to come here and say what replaced it.
 	 */
 	const row = code(ROW);
-	assert.match(
-		row,
-		/if \(result\.tone === "error"\) showErrorToast\(result\.text\);/,
-	);
+	/*
+	 * A FAILURE still goes to the app's toast channel in the backend's own words, and
+	 * the prefix is now the CONTROL'S (agent review round 1, U2): the person pressed a
+	 * button, so the line may not name a slash command they never typed.
+	 */
+	assert.match(row, /if \(result\.result\.tone === "error"\)/);
+	assert.match(row, /showErrorToast\(result\.result\.text\);/);
+	for (const prefix of [
+		"Could not clear the goal",
+		"Could not stop the loop",
+		"Could not clear the loop",
+		"Could not restore the goal",
+	]) {
+		assert.match(
+			row,
+			new RegExp(`"${prefix}"`),
+			`${prefix} is the failure prefix`,
+		);
+	}
+	/*
+	 * AND THE GOAL'S CLEAR IS THE ONE SUCCESS THAT ALSO SPEAKS (agent review round 1,
+	 * U1): the dismissed text is the user's own prose and nothing else on the app still
+	 * carries it, so the confirmation carries the one press that takes it back, and the
+	 * restore runs through the same command channel with the CLEARED text.
+	 */
+	assert.match(row, /showInfoToast\(GOAL_CLEARED_TEXT, \{/);
+	assert.match(row, /label: GOAL_UNDO_TEXT,/);
+	assert.match(row, /onClick: \(\) => void restoreGoal\(cleared\)/);
+	assert.match(row, /command\.run\(GOAL_COMMAND, text, GOAL_UNDO_FAILURE\)/);
 	// One hook for both controls, addressed by the session the row is drawn for.
 	assert.match(
 		row,
 		/const command = useSessionCommand\(frontend\?\.session_id \?\? ""\);/,
 	);
 	// The pair the two controls dispatch, and neither of them is a label.
-	assert.match(row, /runDismiss\(GOAL_COMMAND, GOAL_CLEAR_FLAG\)/);
-	assert.match(row, /runDismiss\(LOOP_COMMAND, loopAction\.flag\)/);
+	assert.match(
+		row,
+		/runDismiss\(\s*GOAL_COMMAND,\s*GOAL_CLEAR_ARGS,\s*GOAL_CLEAR_FAILURE,\s*\)/,
+	);
+	assert.match(row, /dismissLoop\(loopAction\)/);
+	/*
+	 * AND NO `--`-PREFIXED ARGUMENT IS SENT FROM THIS APP AT ALL — the finding the round
+	 * turned on, as a mechanical pin rather than a paragraph (agent review round 1,
+	 * MAJOR 1): every `--`-prefixed spelling belongs to the companion's TUI/CLI
+	 * vocabulary, and a released backend reads one as the VALUE the command takes.
+	 */
+	assert.doesNotMatch(
+		row,
+		/"--[a-z]+/,
+		"the row sends no flag: the spellings it may send are the shared ones a released backend honours",
+	);
+});
+
+test("one spelling per operation, and one moving-loop predicate, across the row and the pickers", () => {
+	/*
+	 * Agent review round 1's MINOR 1, as a pin rather than a paragraph: the SAME two
+	 * operations were spelled twice in one app (the row sent `goal --clear` / `loop
+	 * --stop` where the picker sent `goal clear` / `loop cancel`), and the moving-loop
+	 * set had two definitions — the row's `loopIsRunning` and the picker's own inline
+	 * pair of comparisons. One module now owns both, and both callers import it, so
+	 * this asserts where the truth lives rather than what either caller happens to
+	 * print today.
+	 */
+	const shared = code(
+		"src/renderer/src/features/chat/pickers/session-commands.ts",
+	);
+	assert.match(shared, /export const GOAL_CLEAR_ARGS = "clear";/);
+	assert.match(shared, /export const LOOP_STOP_ARGS = "stop";/);
+	assert.match(shared, /export const loopIsRunning = /);
+	// And the released spellings are the only ones in it: no flag form is exported.
+	assert.doesNotMatch(shared, /"--[a-z]+/);
+
+	const row = code(ROW);
+	assert.match(row, /"\.\.\/pickers\/session-commands"/);
+	assert.doesNotMatch(
+		row,
+		/status === "running"/,
+		"the row reads the shared predicate instead of restating it",
+	);
+
+	const pickers = code(
+		"src/renderer/src/features/chat/pickers/destination-pickers.tsx",
+	);
+	assert.match(
+		pickers,
+		/import \{[\s\S]*?GOAL_CLEAR_ARGS,[\s\S]*?LOOP_STOP_ARGS,[\s\S]*?loopIsRunning,[\s\S]*?\} from "\.\/session-commands";/,
+	);
+	assert.match(pickers, /command\.run\("goal", GOAL_CLEAR_ARGS\)/);
+	assert.match(pickers, /cancel\.run\("loop", LOOP_STOP_ARGS\)/);
+	assert.doesNotMatch(pickers, /run\("loop", "cancel"\)/);
+	assert.doesNotMatch(
+		pickers,
+		/status === "judging"/,
+		"the picker reads the shared predicate too",
+	);
 });

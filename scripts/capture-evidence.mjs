@@ -1461,52 +1461,28 @@ export const STORIES = [
 	   the same three widths as `activity-widths` plus 220, the column floor the wake
 	   change was specified against. */
 	["chat-composer-status-row--wake-widths", 1000, 1200],
-	/* THE DISMISS AFFORDANCES and the loop chip (this change): the resting states are
-	   the two stories below, and the REVEALED states are the rig's own inputs, because
-	   both `:hover` and `:focus-within` are browser state that no story can force —
-	   the same arrangement `activity-stacked` uses for its own two states. Three tuples
-	   per story and not two: the goal's dismiss is reachable two ways (the chip is
-	   focused, or the control itself is), and the second is the one that says the
-	   affordance stays revealed while it holds focus, which is what makes it usable
-	   without a pointer at all. */
+	/* THE DISMISS AFFORDANCES and the loop chip (this change): the two RESTING states
+	   only.
+
+	   There were five more tuples here - `goal-clear-hovered`, `goal-clear-focused`,
+	   `goal-clear-dismiss-focused`, `loop-clear-hovered` and `loop-clear-focused` -
+	   and they are DELETED rather than fixed, because they were a claim of work that
+	   never ran and five directories exist nowhere in the repository (agent review
+	   round 1's MINOR 3, design review's D2). The obstacle is not laziness: this
+	   machine's operator policy forbids a screenshot produced by a scripted browser
+	   engine, so the rig cannot take them, and the browser tool has no hover verb, so
+	   the `{ hover }` half of two of them could not be taken even at the tool.
+	   What covers those states instead is `docs/evidence/composer-status-clear/`,
+	   whose frames were taken through the FOCUS path in the operator's browser and
+	   whose README says exactly that - including that no `:hover` frame exists and
+	   that the hover paint is therefore unverified by pixels, while the class string
+	   both activators share is asserted as two equal SETS in
+	   `scripts/composer-tabs.test.mjs`.
+
+	   The two tuples below remain because the rig CAN take them, and the swept set
+	   owes them: they are the same two stories' resting states. */
 	["chat-composer-status-row--goal-clear", 1000, 760],
-	[
-		"chat-composer-status-row--goal-clear",
-		1000,
-		760,
-		{
-			dir: "goal-clear-hovered",
-			hover: "[data-status-goal] button[aria-expanded]",
-		},
-	],
-	[
-		"chat-composer-status-row--goal-clear",
-		1000,
-		760,
-		{
-			dir: "goal-clear-focused",
-			tabTo: "[data-status-goal] button[aria-expanded]",
-		},
-	],
-	[
-		"chat-composer-status-row--goal-clear",
-		1000,
-		760,
-		{ dir: "goal-clear-dismiss-focused", tabTo: "[data-status-goal-dismiss]" },
-	],
 	["chat-composer-status-row--loop-chip", 1000, 1000],
-	[
-		"chat-composer-status-row--loop-chip",
-		1000,
-		1000,
-		{ dir: "loop-clear-hovered", hover: "[data-status-loop]" },
-	],
-	[
-		"chat-composer-status-row--loop-chip",
-		1000,
-		1000,
-		{ dir: "loop-clear-focused", tabTo: "[data-status-loop-dismiss]" },
-	],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
 	   0.01ms rather than cancelling anything, so the frame has to show that the
