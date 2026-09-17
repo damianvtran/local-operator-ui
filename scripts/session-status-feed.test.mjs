@@ -37,7 +37,17 @@ import { build } from "esbuild";
  *      none - never a `(new epoch, old revision)` hybrid no process minted, and
  *      never a row pinned against the new epoch's own list because of it;
  *   8. the frame's own arrival path - the HOOK - hands the store the two-key
- *      pair, which is the part the store cannot check for itself.
+ *      pair, which is the part the store cannot check for itself;
+ *   9. a frame moves a row's STATUS and can never move its SLOT - only a list
+ *      read re-orders the array, which is the division of responsibility the
+ *      desktop contract states (`src/shared/desktop-session-contract.ts`: the
+ *      backend owns status precedence, the active/previous partition and the
+ *      order). A future attempt to "fix" a late re-file inside the renderer has
+ *      to fail here rather than merely look plausible;
+ *  10. the `catalogue` frame is the REFETCH TRIGGER: it hands the sidebar a
+ *      revision it watches, and it carries no state the list could be reordered
+ *      from. That is the half a client-side sort would need, and it is not there
+ *      to be used.
  *
  * The tests drive the STORE's own two entry points - `applySessionStatus` for the
  * frame and `fetchSessions` for the list - rather than `replaceSessionRows`
@@ -126,7 +136,7 @@ export const desktopResult = request => globalThis.__statusRequest(request);`,
 							capabilities: `export const desktopFeatureEnabled = () => true;
 export const useDesktopCapabilities = () => ({data: {features: {desktop_feed: true}}});`,
 							"react-hooks": `export function useEffect(effect) { globalThis.__effects.push(effect); return () => {}; }
-export function useState(initial) { return [typeof initial === "function" ? initial() : initial, () => {}]; }`,
+export function useState(initial) { return [typeof initial === "function" ? initial() : initial, (value) => { globalThis.__stateSets.push(value); }]; }`,
 						}[args.path],
 						loader: "js",
 						resolveDir: process.cwd(),
@@ -156,6 +166,10 @@ const { useCanonicalSessionsStore: store, useDesktopFeed } = await import(
 // The hook's recorded effects, and the frame handler its subscription installs.
 // Both are published by the `react`/feed fixtures above.
 globalThis.__effects = [];
+// Every value any `useState` setter in the hook was handed, in order. The hook's
+// catalogue revision is published through one, so a setter that discarded its
+// argument would leave the trigger unassertable.
+globalThis.__stateSets = [];
 globalThis.__frames = () => {
 	throw new Error("the hook never subscribed");
 };
@@ -473,6 +487,66 @@ test("a revision with no epoch is not a stamp either", async () => {
 });
 
 /*
+ * THE DIVISION OF RESPONSIBILITY, pinned from the side that can be broken by
+ * accident. A row's SLOT is the backend's: the list arrives in the backend's
+ * order (`rank_entries`, by order key) and the sidebar renders that array in
+ * sequence, so a re-file travels on a LIST READ and on nothing else. A frame is
+ * a few hundred bytes about one row's status, and the tempting shortcut when a
+ * re-file looks late is to sort where the row's data already is - which would put
+ * two implementations of the order key in two languages, one of them without the
+ * wake band, and would show up as a list that disagrees with the next read.
+ *
+ * So this asserts the negative directly: a frame that completes the MIDDLE row
+ * leaves the array exactly as it was, and the same roster delivered as a list
+ * read is what moves it. A renderer-side sort has to fail the first assertion.
+ */
+test("a frame moves a row's status and cannot move its slot", async () => {
+	const ids = ["111111111111", "222222222222", "333333333333"];
+	await list(
+		ids.map((id, index) =>
+			wire({ id, name: `Row ${index}`, mtime: 1_760_000_000 - index }),
+		),
+	);
+	const order = () => store.getState().sessions.map((item) => item.session_id);
+	assert.deepEqual(order(), ids);
+
+	// The BACKEND's reorder, as the next list read would answer it: the completed
+	// row leads. Delivered as a read, it is the only thing that moves the row.
+	await list([
+		wire({ id: ids[2], name: "Row 2", mtime: 1_760_000_000 - 2 }),
+		wire({ id: ids[0], name: "Row 0", mtime: 1_760_000_000 }),
+		wire({ id: ids[1], name: "Row 1", mtime: 1_760_000_000 - 1 }),
+	]);
+	assert.deepEqual(order(), [ids[2], ids[0], ids[1]]);
+
+	// Back to the pre-completion order, then the frame the completion actually
+	// arrives on.
+	await list(
+		ids.map((id, index) =>
+			wire({ id, name: `Row ${index}`, mtime: 1_760_000_000 - index }),
+		),
+	);
+	assert.deepEqual(order(), ids);
+	store
+		.getState()
+		.applySessionStatus(
+			ids[2],
+			{ code: "complete", label: "Complete" },
+			9,
+			EPOCH,
+		);
+	const completed = store
+		.getState()
+		.sessions.find((item) => item.session_id === ids[2]);
+	assert.deepEqual(completed.status, { code: "complete", label: "Complete" });
+	assert.equal(completed.status_revision, 9);
+	// THE ASSERTION THIS TEST EXISTS FOR: the status moved and the SLOT did not.
+	// The row is still last, and a renderer that inferred the order from the row
+	// it just wrote would have it first.
+	assert.deepEqual(order(), ids);
+});
+
+/*
  * The arrival path ABOVE the store, which is where the row's shape is decided.
  * The store writes its `status` argument onto the row verbatim, so a hook that
  * hands it the frame's whole `payload` leaves a `revision` key on a row whose
@@ -518,4 +592,67 @@ test("the hook hands the store the pair, not the frame payload", () => {
 	assert.deepEqual(row().status, { code: "complete", label: "Complete" });
 	assert.equal(row().status_revision, 3);
 	assert.equal(row().status_epoch, EPOCH);
+});
+
+/*
+ * The other half of the same division: what a `catalogue` frame HANDS the client.
+ *
+ * The frame is the refetch trigger, and its payload is a revision rather than a
+ * list. The sidebar's effect is keyed on `feed.catalogueRevision`, so one bump
+ * re-runs `fetchSessions` once - which is how a row that re-ordered inside its
+ * section gets its new slot without a renderer-side sort. The value is asserted
+ * here because it is the hook's own decision: a frame that kept the revision to
+ * itself, or handed over its payload's other keys, would leave the sidebar
+ * without a trigger it can watch - and a `useState` setter that discarded its
+ * argument is the shape this test's fixture would previously have hidden.
+ *
+ * The unknown-type case is asserted beside it because it is the same branch: a
+ * frame this build does not know must publish nothing at all, which is what makes
+ * a newer backend's frame a no-op for an older renderer.
+ */
+test("the catalogue frame publishes the revision the sidebar refetches on", () => {
+	seeded();
+	globalThis.__effects.length = 0;
+	globalThis.__stateSets.length = 0;
+	globalThis.__frames = () => {
+		throw new Error("the hook never subscribed");
+	};
+	globalThis.window = {
+		api: {
+			desktop: {
+				feed: {
+					subscribe: (onFrame) => {
+						globalThis.__frames = onFrame;
+						return () => {};
+					},
+					watchState: () => () => {},
+				},
+			},
+		},
+	};
+	const connection = useDesktopFeed();
+	assert.equal(connection.available, true);
+	// Before any frame there is no revision to watch, and that `null` is what the
+	// sidebar's effect reads as "nothing has been invalidated yet".
+	assert.equal(connection.catalogueRevision, null);
+	for (const effect of globalThis.__effects) effect();
+
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 11,
+		type: "catalogue",
+		payload: { revision: 7 },
+	});
+	assert.deepEqual(globalThis.__stateSets, [7]);
+
+	// A frame type this build does not know publishes nothing - neither a revision
+	// nor anything else - which is the compatibility rule the hook's own comment
+	// states.
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 12,
+		type: "something_newer",
+		payload: {},
+	});
+	assert.deepEqual(globalThis.__stateSets, [7]);
 });
