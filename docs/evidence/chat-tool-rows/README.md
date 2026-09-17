@@ -298,7 +298,7 @@ prose starts at — structural, not a second measurement. The frame is what chec
 | Story | Prose ink's left edge | Caption ink's left edge |
 | --- | --- | --- |
 | `prose-tool-alignment@1024`, `localOperatorDark` | 103, at y 364..375 | 102, at y 388..394 |
-| `prose-between-calls@1024`, `localOperatorDark` | 103, at y 182..194 | 102, at y 314..326 |
+| `prose-between-calls@1024`, `localOperatorDark` | 103, at y 182..194 | 102, at y 210..218 |
 
 A one-pixel difference is the glyph's own side bearing at 12px versus 16px, not a rail: which is the
 point, since a caption placed by its own rule would be off by whatever the two rules disagreed about.
