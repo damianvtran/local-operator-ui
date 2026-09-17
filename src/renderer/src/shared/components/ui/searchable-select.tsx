@@ -235,6 +235,14 @@ export type ComboboxRow = { kind: "group"; label: string } | ComboboxOptionRow;
  * free text has nothing for it to carry) and only when the text is not already
  * an option's own name, because then the option's row IS the typed value.
  */
+/**
+ * The typed-value row's name when the owner does not supply one.
+ *
+ * Every field that commits free text needs the row to be legible, and a caller
+ * with no opinion should not have to write this to get its free text back.
+ */
+export const defaultCustomRowLabel = (text: string): string => `Use "${text}"`;
+
 export function buildComboboxRows(
 	options: SearchableOption[],
 	query: string,
@@ -397,9 +405,24 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 				options,
 				query,
 				selectedName,
-				Boolean(onCustomSubmit && customRowLabel),
+				/*
+				 * Gated on the DECISION the owner makes, which is `onCustomSubmit` and
+				 * nothing else. It was briefly gated on the label too, and that took
+				 * free text away from the three call sites that predate this control:
+				 * they pass `onCustomSubmit` and no label, so a query matching nothing
+				 * left Enter doing nothing at all and `onBlur` discarding the text
+				 * (review round 2, R2-1). A label is presentation; refusing free text
+				 * is a capability, and only the owner's own prop decides that.
+				 */
+				Boolean(onCustomSubmit),
 			),
-		[options, query, selectedName, onCustomSubmit, customRowLabel],
+		/*
+		 * `customRowLabel` is deliberately NOT a dependency: it is presentation
+		 * applied at render time, so a caller that renames its row does not
+		 * rebuild the option list. Listing it here was a leftover from when the
+		 * memo spelled the label, and the lint rule is right about it.
+		 */
+		[options, query, selectedName, onCustomSubmit],
 	);
 	const navigable = navigableRowCount(rows);
 	/*
@@ -504,7 +527,19 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 				}
 				// The field is a text mode, not a popup that happens to accept
 				// typing. A popup that was open closes on a free-text commit.
-				if (outcome.kind === "custom") commitCustom(outcome.text);
+				if (outcome.kind === "custom") {
+					commitCustom(outcome.text);
+					return;
+				}
+				/*
+				 * Nothing to take: the field is at rest, so its rows are the whole
+				 * list and the first of them is arbitrary. Enter still has to DO
+				 * something, because a key that produces no visible response reads as
+				 * a broken control - the list closes and the value stands, which is
+				 * what every other picker in the product does with this key (UX round
+				 * 2, U9). Escape does the same, and neither writes anything.
+				 */
+				if (open) setOpenState(false);
 				return;
 			}
 			case "Escape": {
@@ -712,7 +747,13 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 							// is - the heading of everything under it.
 							<li
 								role="presentation"
-								className="px-2 pt-2 pb-1 text-meta text-ink-dim"
+								/*
+								 * A different register from the group heading it sits above: same
+								 * slot, one step up the ink ramp and one step larger, because "what
+								 * this list is OF" is not "what is IN it". In the group heading's own
+								 * ink the two stacked as one block (design round 2, D7).
+								 */
+								className="px-2 pt-2 pb-1 text-body-sm text-ink-muted"
 							>
 								{listNotice}
 							</li>
@@ -833,7 +874,7 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 								>
 									<div className="flex items-center gap-2">
 										<span className="text-body-sm text-ink">
-											{customRowLabel ? customRowLabel(row.text) : row.text}
+											{(customRowLabel ?? defaultCustomRowLabel)(row.text)}
 										</span>
 									</div>
 									<div className="text-meta text-ink-muted">
