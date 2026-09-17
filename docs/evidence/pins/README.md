@@ -40,7 +40,7 @@ the two runs, and every claim below is about the sidebar.
 
 ## The frames
 
-Thirty-one files, counted by `ls docs/evidence/pins/*.png`: sixteen STATES, every one of them in
+Thirty-three files, counted by `ls docs/evidence/pins/*.png`: seventeen STATES, every one of them in
 both themes except `pins-from-tui`, which the round trip photographs once, and the two
 capability-withdrawn states. The earlier paragraph here added scene totals together (`17 + 4 + 6`)
 and so read as 31 against a directory that holds 31 for different reasons — the sets overlap,
@@ -51,8 +51,10 @@ scrolled pair and the pinned-state pair. By the scene that writes it:
 | --- | --- | --- |
 | `--scene pins` | `pins-populated`, `pins-hover`, `pins-unpinned`, `pins-flat`, `pins-selected`, `pins-filter`, `pins-from-tui` | 13 |
 | `--scene pins-scroll` | `pins-scrolled`, `pins-pinned-hover` | 4 |
-| `--scene pins-search` | `pins-search-pinned`, `pins-search-unpinned`, `pins-search-cleared`, `pins-search-resuperseded`, `pins-stationary` | 10 |
-| the capability-withdrawn stage | `pins-withdrawn`, `pins-withdrawn-main` | 4 | The window is `1380x900` in `--window-mode=headless` (a
+| `--scene pins-search` | `pins-search-pinned`, `pins-search-unpinned`, `pins-search-cleared`, `pins-search-resuperseded`, `pins-stationary`, `pins-tui-offpage` | 12 |
+| the capability-withdrawn stage | `pins-withdrawn`, `pins-withdrawn-main` | 4 |
+
+The window is `1380x900` in `--window-mode=headless` (a
 1380x868 CSS viewport, `devicePixelRatio` 2, so the PNGs are 2760x1736), never shown and
 never focused: the run asserts both from main's own window facts before it takes a frame.
 
@@ -69,6 +71,7 @@ never focused: the run asserts both from main's own window facts before it takes
 | [`pins-pinned-hover-dark`](pins-pinned-hover-dark.png) ([light](pins-pinned-hover-light.png)) | the pointer ON an already-pinned row's glyph | **The pinned state does not depend on the reveal**: the glyph is filled and fully opaque at rest, and it says what a press would do (`Unpin “…”`) |
 | [`pins-search-pinned-dark`](pins-search-pinned-dark.png) ([light](pins-search-pinned-light.png)) | a conversation OUTSIDE the panel's own page (568 seeded, the page reads 500), pinned from its search hit | **Qr2-1, both directions**: the press writes the wire, the store the terminal reads holds it, and the row it was made on follows - then the SAME row unpins it, with all three surfaces checked again |
 | [`pins-search-unpinned-dark`](pins-search-unpinned-dark.png) ([light](pins-search-unpinned-light.png)) | the same row, after the second press | the control inverts the STORE's state, not a cached wire answer |
+| [`pins-tui-offpage-dark`](pins-tui-offpage-dark.png) ([light](pins-tui-offpage-light.png)) | a pin written by the TERMINAL's own writer (`sidebar_pins.toggle_pin`) on a conversation the client's page does not carry: 568 in the store, 500 on the page | **UX round 5, U15**: the row is drawn, named, pinned at rest and counted by its section - `Pinned chats 2` with `RecentSweep 034` - 268 ms after the write, against the 11.2 s-and-beyond that drew nothing. Unpinned from the same surface, it leaves |
 | [`pins-search-cleared-dark`](pins-search-cleared-dark.png) ([light](pins-search-cleared-light.png)) | the query cleared, with the pin still held for a conversation the catalogue page does not carry | **The pin the page cannot draw, drawn** (design round 4, D17; UX round 4, U14): the row is there, above `Active chats`, carrying the title the fact holds, and its section counts it — so the panel and the terminal hold the same set |
 | [`pins-search-resuperseded-dark`](pins-search-resuperseded-dark.png) ([light](pins-search-resuperseded-light.png)) | the same row after the pin is removed through the daemon's own route, then asked for again | **The currency rule, live** (review round 3, MAJOR 2; round 4, M1): a fresh answer supersedes the client's memory and settles the ROW it speaks about, so the other surface's removal is visible here |
 | [`pins-stationary-dark`](pins-stationary-dark.png) ([light](pins-stationary-light.png)) | a stationary repeat press on a pinned glyph, then a 3 px wobble of the same gesture | **U3-unpin**: neither press reaches a row the pointer is not on. The repeat acts on the conversation whose control is under the pointer and on nothing else - what the check asserts (`a stationary repeat press acts on the row under the pointer and on no other`). The disarm this caption used to name was replaced by `dropRepeatPress`, which drops a repeat press on a DIFFERENT conversation inside a 6 px slop of the last pointer press — identity AND a small radius, expired by the pointer's own path (a move beyond the slop, or leaving the list) — and the reader's own repeat is exercised by keyboard, where it is reachable |
@@ -202,12 +205,30 @@ fold onto ccc3017a3   sidebar 0 differing pixels   pane 1134-1200   (six frames)
 fold onto 3afcc732f   sidebar 0 differing pixels   pane 923        (the same six)
 ```
 
-So every claim in this file's table holds on the folded tree, and the thirteen frames whose
-pixels did not move at all are evidence that neither fold touched anything the pins surface
-paints - including the withdrawn pair, which re-shot byte-identical to the pre-change panel
-both times. The frames in this directory are the `3afcc732f` set; the earlier fold's
-measurement is in the pull request's fold comment rather than kept here, because only one set
-of frames can be the pictures of the shipped tree.
+Those two rows describe the first two folds, where the sidebar was untouched and the
+measurement was that the pins surface had not moved at all. **They stopped being the whole
+story at the fold onto `318cbb75e`** (the fold this head carries), and the third row is what
+that one measured:
+
+```
+fold onto 846ff92a5   re-shoot, 4db3ccb7f comparison: 0 moved   (small conflict set only)
+fold onto 318cbb75e   re-shoot, this set: 9 frames moved, 22 byte-identical
+                      moved: pins-filter-{dark,light}, pins-flat-{dark,light},
+                             pins-from-tui-dark, pins-search-cleared-{dark,light},
+                             pins-selected-{dark,light}
+```
+
+The nine are exactly the frames whose sidebar carries a SELECTED row, and the cause is a change
+this surface inherited rather than made: main's #281 moved the `--lo-highlight` role, so the
+current-row ground differs in every frame that paints one (design round 5 measured 30,700-62,813
+pixels a frame, and confirmed the claim the ground carries still holds - the full 264 px box
+including the pin slot, 13.7:1 dark and 13.9:1 light). No other frame carries that ground, which
+is why the other 22 did not move: the field's own pixels are unchanged. The withdrawn pair is
+byte-identical to the pre-change panel under `cmp` on this head, as before.
+
+The `3afcc732f` row above is kept as history rather than deleted: it is what the set's older
+frames were shot at, and the statement "the frames in this directory are the shipped tree's"
+is now carried by `manifest.json`'s `srcTree`/`scriptsTree` stamps rather than by naming a fold.
 
 ## The move a pin makes, and what the panel does about it
 
@@ -276,6 +297,7 @@ run: the clamped case cannot be mistaken for the passing one.
 | Design round 4 (D17) + UX round 4 (U14) | the pin a page cannot carry was drawn NOWHERE - no row, no heading, no count - so the app under-reported a set the backend and the terminal both held | `pinFacts` carries the title a row needs and the list draws a row from it, above `Active chats`, with the section counting it; `pins-search-cleared-{dark,light}` is the frame and the check asserts the row BY ID against the same store the terminal reads |
 | QA round 4 (Qr4-1, Qr4-2, Qr4-4) | as above, plus the fold's `package.json` regression (the branch's own older file, 125 `test:desktop` entries where main has 138) and fourteen resurrected script reformats | `package.json` is main's with one registration added (139 entries, version `0.26.5`); the reformats are main's content again and `git diff origin/main` names only this feature's files |
 | Code round 4 (B1) | the same `package.json` regression, merge-blocking | fixed and proven with the version, the argument-list diff and the count |
+| Recorded, not fixed: UX U16 | focus after a POINTER press is `body`, so a Space before the reader Tabs is lost. The pressed row is replaced by the re-render, so restoring focus means focusing the moved row's own control from the pointer path - the same effect that arms the follow-the-row correction, whose record is keyed on the last pointer press - and re-arming it there is what the parked-pointer guard exists to prevent. A decision with its reason, not a gap |
 | Recorded, not fixed: UX U12 | the 6 px slop is deliberate rather than accidental: a 3 px and a 6 px repeat are dropped, 7 px acts, so the guard narrows the DROP set rather than widening the ACT set, and U9's silent swallow is gone. Named here so the next reader does not re-derive it from the constant |
 | Recorded, not fixed: UX U13 | the caret is restored one render behind the remount in the follow-the-row case; no reader-visible repro was found, and the correction itself is asserted |
 | Design round 2 (D6-D10) | the nav rows move 44 CSS px on a press (recorded, below); the scrolled frames refuted their own claim; `pins-hover` had the pointer on the row, not the glyph; the gate table was a pre-B1 snapshot; the slot's cost was argued | fourteen pins and an assertion that the set is taller than the window, the pointer on the glyph, the refreshed table, and the D9 claim narrowed to what the frames carry |

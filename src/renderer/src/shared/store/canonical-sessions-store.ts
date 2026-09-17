@@ -1525,16 +1525,31 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					}));
 					set((state) => {
 						/*
-						 * The facts the page SPEAKS ABOUT give way to it: those rows are on
-						 * screen carrying the wire's own `pinned`, so a remembered write for
-						 * them is stale by construction. Facts for conversations the page
-						 * cannot carry - the only rows that need one - survive untouched.
+						 * A page newer than the write settles the WHOLE pinned set, not only
+						 * the rows it happens to carry.
+						 *
+						 * It used to keep the facts for conversations the page could not
+						 * carry, because on a paged client that was the only way a pin made
+						 * here stayed visible for a conversation past the page: the page was
+						 * silent about them, so silence had to mean "still pinned". The list
+						 * route now APPENDS every pinned conversation below the newest
+						 * `limit` rows (the sibling backend increment, `feat/desktop-session-pins`),
+						 * so the page speaks for the pinned set as a whole - and under that
+						 * contract silence means the opposite: a conversation is absent from
+						 * a newer page because it is unpinned or gone. Keeping the fact then
+						 * RESURRECTS it: a conversation whose directory has been deleted
+						 * would go on drawing a row from this client's memory while the
+						 * backend answers 200 without it (UX round 5, U15's follow-up).
+						 *
+						 * Constraint this carries: it assumes a daemon that appends off-page
+						 * pinned rows. A daemon without that increment would hide an off-page
+						 * pin until it was unpinned - which is why the two halves ship as one
+						 * stack and why the capability stays `session_pins: 1` on both.
 						 */
 						const facts = { ...state.pinFacts };
-						for (const row of rows) {
-							const fact = facts[row.session_id];
-							if (fact === undefined || fact.at >= answerAt) continue;
-							delete facts[row.session_id];
+						for (const [id, fact] of Object.entries(facts)) {
+							if (fact.at >= answerAt) continue;
+							delete facts[id];
 						}
 						/*
 						 * AND THE ROWS, not only the facts (review round 4, M1; QA Qr4-1).

@@ -255,7 +255,7 @@ const CURRENT = [
 		/*
 		 * The conversation BUTTON: the row's `flex-1` half, which keeps the ground under
 		 * the pointer. Anchored on its own hook (`data-child`) rather than on the current
-		 * row's predicate, because that predicate is now computed once as `current` and
+		 * row's predicate, because that predicate is now computed once as `isCurrent` and
 		 * worn by three elements - see the `same terms` test below, which is what holds
 		 * that single decision together.
 		 */

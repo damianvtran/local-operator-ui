@@ -385,6 +385,30 @@ test("a repeat press is dropped only when it lands on a DIFFERENT conversation",
 	);
 });
 
+test("a keyboard press cannot disarm the parked-pointer guard", () => {
+	const source = read(SIDEBAR);
+	/*
+	 * Review round 5: the keyboard branch used to CLEAR the repeat record, and clearing it
+	 * leaves the guard with nothing to compare against - so a pointer press on the row that
+	 * slid under a parked pointer would act, which is the hazard the guard exists for. That
+	 * half of the fix had no instrument, and re-adding the line left the suite green (21/21).
+	 *
+	 * A scrape is the right instrument for this one because the property IS the absence of a
+	 * statement: the record describes the last POINTER press, and a keyboard activation has no
+	 * position to record. The behavioural half - a keyboard press, then a pointer repeat - is
+	 * asserted in `--scene pins-search`.
+	 */
+	const branch = source.slice(
+		source.indexOf("if (pointer === null) {"),
+		source.indexOf("if (last !== null) {"),
+	);
+	assert.notEqual(branch.length, 0, "the keyboard branch must exist");
+	assert.ok(
+		!/lastPinPress\.current\s*=\s*null/.test(branch),
+		`the keyboard branch must not clear the pointer record, or the guard is disarmed for the next pointer press:\n${branch}`,
+	);
+});
+
 test("a hidden reveal is inert, and the reveal is what makes it operable", () => {
 	const source = read(SIDEBAR);
 	const at = source.indexOf("data-session-pin\n");
@@ -668,8 +692,13 @@ test("a press outranks a page whose request predates it, and settles under one t
 		"a page whose request predates the press must not drop the row it cannot carry",
 	);
 
-	// 3. A PAGE ASKED FOR AFTER THE PRESS is the newer answer and settles it: the row it
-	// cannot carry goes, and the fact is what keeps the pin readable for it.
+	/*
+	 * 3. A PAGE ASKED FOR AFTER THE PRESS settles the whole pinned set: the row goes, and so
+	 * does the FACT. That is the contract the list route now keeps - it appends every pinned
+	 * conversation below the page's newest rows, so absence from a newer page means the
+	 * conversation is unpinned or GONE - and it is what stops a deleted conversation being
+	 * resurrected from this client's memory (round 5, item 2).
+	 */
 	globalThis.__pinRequest = async (request) =>
 		request.op === "sessions.list"
 			? {
@@ -690,9 +719,9 @@ test("a press outranks a page whose request predates it, and settles under one t
 		"the newer page is the authority on membership",
 	);
 	assert.equal(
-		store.getState().pinFacts[OUTSIDE].pinned,
-		true,
-		"and the fact keeps the pin readable for a row the page cannot carry",
+		store.getState().pinFacts[OUTSIDE],
+		undefined,
+		"and on the pinned set as a whole: a conversation it no longer carries is not resurrected from this client's memory",
 	);
 });
 
