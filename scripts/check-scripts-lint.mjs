@@ -129,14 +129,24 @@ const USAGE = [
  * a non-zero exit and is reported as such.
  *
  * The buffer is generous because biome's JSON report carries every diagnostic's
- * full formatter diff: the default 1 MB trips `ENOBUFS` on a change touching a
- * handful of the tree's pre-existing offenders, and a spawned-with-no-buffer
- * failure would read as "could not run biome" rather than as the verdict it is.
+ * own copy of the FILE it was found in (`location.sourceCode`), so the report
+ * scales as diagnostics x file size rather than with the size of the change: the
+ * default 1 MB trips `ENOBUFS` on a change touching a handful of the tree's
+ * pre-existing offenders, and a spawned-with-no-buffer failure would read as
+ * "could not run biome" rather than as the verdict it is.
+ *
+ * 256 MB, not 64, because the tree's largest changed file is also its
+ * warning-heaviest: `update-robustness.test.mjs` alone reports 167 warnings - 166
+ * of them `useTopLevelRegex` - and its own source is ~370 KB, so one file answers
+ * a 63 MB report and the change that touches it plus six neighbours asked for
+ * 77 MB, over the old ceiling. Measured with `biome check --reporter=json` on
+ * each; the growth is the file's, not this gate's, and the ceiling has to clear
+ * the biggest report the tree can hand it rather than the last one that fit.
  */
 function run(command, args, options = {}) {
 	return spawnSync(command, args, {
 		encoding: "utf8",
-		maxBuffer: 64 * 1024 * 1024,
+		maxBuffer: 256 * 1024 * 1024,
 		...options,
 	});
 }

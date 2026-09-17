@@ -58,6 +58,8 @@ import {
 	buildWatchdogPlan,
 	classifyGlobalInstall,
 	clearPendingInstallMarker,
+	clearPendingServerUpdateMarker,
+	compareVersions,
 	didUpgradeLand,
 	evaluateBundleSeal,
 	evaluatePendingInstall,
@@ -65,6 +67,7 @@ import {
 	installFailurePayload,
 	installInFlightPayload,
 	installedBundleSealBlock,
+	installerSearchPath,
 	isInstallInFlight,
 	launchdJobLoaded,
 	matchArtifactMetadata,
@@ -74,11 +77,13 @@ import {
 	readInstallIdentity,
 	readLastInstallAttempt,
 	readPendingInstallMarker,
+	readPendingServerUpdateMarker,
 	reapFailedInstall,
 	reapStagedTree,
 	recordInstallFailure,
 	requiredDiskBytes,
 	resolveCommandPath,
+	resolveGlobalConsoleScript,
 	resolveGlobalInstallPlan,
 	resolveStagedArtifactPath,
 	shipItCacheDir,
@@ -88,6 +93,7 @@ import {
 	watchdogSignals,
 	watchdogSwapTarget,
 	writePendingInstallMarker,
+	writePendingServerUpdateMarker,
 } from "./update-install";
 
 // Regex constants for performance (moved to top-level)
@@ -248,7 +254,24 @@ function runCommand(
 	});
 }
 
-/** Read a command's trimmed stdout, or null when it fails to run. */
+/**
+ * The update service log, as a path a renderer surface can open.
+ *
+ * Every failing branch of this service ends with a sentence telling the reader the
+ * installer's own output is in the update service log, and until this helper
+ * existed the pointer named a file no panel could open: the path is composed in
+ * the logger from the platform's user-data location plus the launch's own
+ * override, so a renderer could not derive it - and a renderer that guessed would
+ * name the operator's file during a scratch agent run (QA U5, design D3/D6). The
+ * producer that wrote the log is the party that knows, so it travels on the report.
+ */
+function serverUpdateLogPath(): string {
+	return join(logger.getLogPath(), LogFileType.UPDATE_SERVICE);
+}
+
+/**
+ * Read a command's trimmed stdout, or null when it fails to run.
+ */
 function readCommandOutput(command: string, args: string[]): string | null {
 	try {
 		const output = execFileSync(command, args, {
@@ -262,12 +285,37 @@ function readCommandOutput(command: string, args: string[]): string | null {
 }
 
 /**
+ * How long an installer probe may take before it is not evidence.
+ *
+ * The sync probe's own timeout (`readCommandOutput`), kept because the two answer
+ * the same question about the same tools and a longer wait would only delay the
+ * classification it feeds.
+ */
+const INSTALLER_PROBE_TIMEOUT_MS = 5000;
+
+/**
  * Health check result containing version information
  */
 type HealthCheckResult = {
 	/** API server version */
 	version: string;
 };
+
+/**
+ * The last few lines of an installer's stderr, for a panel's error sentence.
+ *
+ * The tail rather than the head, because an installer's own refusal is its last
+ * line (`installer exited 127`, `error: Failed to install`), and bounded rather
+ * than whole, because this text lands in a notification: the full streams are in
+ * the update service log, which the sentence names.
+ */
+function stderrTail(stderr: string, maxLines = 4): string {
+	const lines = stderr
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+	return lines.slice(-maxLines).join("\n").slice(-600);
+}
 
 /**
  * Response from health check endpoint.
@@ -296,6 +344,38 @@ type HealthCheckResponse = {
  * (review R2-1, QA Q2). So the producer says which phase it is rather than the
  * consumer guessing from timing.
  */
+/**
+ * What a finished app-driven server update reports about the two readings.
+ *
+ * Sent on `backend-update-completed` instead of the null payload that used to
+ * ride it, because a completion is not always good news for the server the user
+ * is talking to: `restarted: false` with two different readings is the adopted
+ * daemon that will keep serving the old build, and `unattended` is an attempt
+ * that landed after the app was gone (reviews R1-3, UX U1/U6). A null payload
+ * still means what it always did - the plain success the renderer toast shows -
+ * so an older producer keeps working.
+ */
+export type BackendUpdateCompletion = {
+	/** The version the install on disk reports after the attempt. */
+	installVersion: string | null;
+	/** The version the daemon serving this app reports, when it was readable. */
+	runningVersion: string | null;
+	/**
+	 * Whether the app restarted the daemon it owns. False on every path where the
+	 * server serving the conversation has NOT moved onto the new build.
+	 */
+	restarted: boolean;
+	/**
+	 * True when the attempt landed while no app was watching it - a quit mid-update
+	 * whose installer finished on its own (UX U6).
+	 */
+	unattended?: boolean;
+	/** Whether the daemon serving this app is one the APP may restart. */
+	restartable?: boolean;
+	/** The install version read before an unattended attempt, when there was one. */
+	before?: string | null;
+};
+
 export type BackendUpdateErrorReport = {
 	/** The sentence to show, written by the branch that failed. */
 	message: string;
@@ -305,19 +385,64 @@ export type BackendUpdateErrorReport = {
 	 * failure panel and a check's on the toast a check has always taken.
 	 */
 	phase: "check" | "update";
+	/**
+	 * The update service log the failing branch wrote its detail to, when it has
+	 * one.
+	 *
+	 * Every one of these last-resort sentences tells the reader the installer's own
+	 * output is in the update service log, and until this field existed that
+	 * pointer named a file no renderer surface could open - the path is composed in
+	 * the logger from the platform's user-data location and the launch's own
+	 * override, so the renderer could not derive it, let alone the right one for a
+	 * scratch launch (QA U5, design D3/D6). The producer that wrote the log is the
+	 * one party that knows, so it travels with the report and the panel offers the
+	 * button.
+	 */
+	logPath?: string;
 };
 
 /**
  * Type definition for backend update information
  */
 export type BackendUpdateInfo = {
+	/**
+	 * The version the INSTALL on disk reports - what an update would move.
+	 *
+	 * Not necessarily the build serving the conversation: the app can be attached
+	 * to a daemon it did not start, or one left over from the last update
+	 * (`runningVersion` below). The panel says which is which rather than
+	 * presenting this one as the version the reader is using (review D3).
+	 */
 	currentVersion: string;
 	latestVersion: string;
 	updateCommand: string;
 	/** Whether the update can be managed by the update service */
 	canManageUpdate: boolean;
+	/**
+	 * Whether the app may restart the daemon serving this app.
+	 *
+	 * The plan states the managed arm's consequence from the INSTALL's layout and
+	 * cannot know who started the server, so a machine where discovery adopted a
+	 * daemon got an offer promising a restart that cannot happen - and the app's own
+	 * completion notice then denied it (UX U9). This reading, which the other two
+	 * events already carry, is what lets the panel choose the sentence that is true
+	 * for the server the reader is talking to: false means it keeps serving the old
+	 * build until it restarts on its own, and no turn in flight is dropped.
+	 */
+	restartable?: boolean;
 	/** The startup mode of the backend service */
 	startupMode?: LocalOperatorStartupMode;
+	/**
+	 * The version the daemon SERVING this app reports, when it is not the same
+	 * reading as `currentVersion` - and it is always sent, so the panel can tell
+	 * "the same build" from "no reading".
+	 *
+	 * It used to travel as a clause appended to `detail`, which the managed panel
+	 * branch never rendered, so the skew vanished exactly where the app is about
+	 * to act (review R1-2) and the version sentence kept calling the install's
+	 * version the one the reader "is currently using" (review D3, UX U1).
+	 */
+	runningVersion?: string | null;
 	/**
 	 * Sentence introducing `updateCommand` in the prompt, chosen for how the
 	 * backend is actually installed (uv tool, pipx, or a server outside the app).
@@ -2990,13 +3115,34 @@ export class UpdateService {
 	}
 
 	/**
+	 * The address every backend read in this service goes to.
+	 *
+	 * The manager's LIVE address rather than the configured one: an adopted daemon
+	 * is discovered at a port the configuration never named, and the manager rotates
+	 * its own `backendUrl` onto it when it attaches. Reading the configured URL
+	 * instead made every health read fail for exactly the shape this branch adds -
+	 * a daemon the app did not start - so the skew after an install moved degraded
+	 * to "no reading" on the one path where that sentence is the only report the
+	 * user gets, while Settings could name the same daemon's version a few clicks
+	 * away (QA Q-2, UX U1).
+	 *
+	 * The configured URL stays as the fallback for the frames where no manager is
+	 * attached yet - the update service is constructed before it in the app's start
+	 * path.
+	 */
+	private liveBackendUrl(): string {
+		return this.backendService?.getBackendUrl() ?? this.backendUrl;
+	}
+
+	/**
 	 * Get the installed backend version using the health API
 	 * @returns Promise resolving to the installed version or null if not found
 	 */
 	private async getInstalledBackendVersion(): Promise<string | null> {
 		try {
+			const backendUrl = this.liveBackendUrl();
 			logger.info(
-				`Checking backend version from health API at ${this.backendUrl}/health`,
+				`Checking backend version from health API at ${backendUrl}/health`,
 				LogFileType.UPDATE_SERVICE,
 			);
 
@@ -3004,7 +3150,7 @@ export class UpdateService {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-			const response = await fetch(`${this.backendUrl}/health`, {
+			const response = await fetch(`${backendUrl}/health`, {
 				method: "GET",
 				headers: { Accept: "application/json" },
 				signal: controller.signal,
@@ -3045,9 +3191,10 @@ export class UpdateService {
 			);
 
 			// Try alternative URL with localhost if the first attempt failed with 127.0.0.1
-			if (this.backendUrl.includes("127.0.0.1")) {
+			const retryUrl = this.liveBackendUrl();
+			if (retryUrl.includes("127.0.0.1")) {
 				try {
-					const altUrl = this.backendUrl.replace("127.0.0.1", "localhost");
+					const altUrl = retryUrl.replace("127.0.0.1", "localhost");
 					logger.info(
 						`Trying alternative URL: ${altUrl}/health`,
 						LogFileType.UPDATE_SERVICE,
@@ -3188,17 +3335,27 @@ export class UpdateService {
 		remedy: string;
 		detail: string;
 		sourceBuild: boolean;
+		/**
+		 * The version the resolved install reports on disk, or null.
+		 *
+		 * Travels beside the plan because the plan IS a statement about that
+		 * install: the check compares this version (what an update would move),
+		 * and `updateBackend` holds the installer to it before and after. Null for
+		 * the modes whose environment the app owns, where the bundled `pip show` is
+		 * the reading and nothing else needs one.
+		 */
+		installedInstallVersion: string | null;
 	}> {
 		if (
 			startupMode === LocalOperatorStartupMode.EXISTING_SERVER ||
 			startupMode === LocalOperatorStartupMode.GLOBAL_INSTALL
 		) {
-			const plan = resolveGlobalInstallPlan({
-				identity: this.resolveInstallIdentity(),
-				lopUpdatePath: this.resolveLopUpdatePath(),
-			});
+			const identity = await this.resolveInstallIdentity();
+			const plan = resolveGlobalInstallPlan({ identity });
 			logger.info(
-				`External backend install (${startupMode}): ${plan.detail}; remedy is \`${plan.updateCommand || "nothing the app can name"}\``,
+				`External backend install (${startupMode}): ${plan.detail}; remedy is ` +
+					`\`${plan.updateCommand || "nothing the app can name"}\`; install version ` +
+					`${identity.version ?? "unreadable"}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return {
@@ -3207,6 +3364,7 @@ export class UpdateService {
 				remedy: plan.remedy,
 				detail: plan.detail,
 				sourceBuild: plan.sourceBuild,
+				installedInstallVersion: identity.version ?? null,
 			};
 		}
 
@@ -3216,6 +3374,7 @@ export class UpdateService {
 			remedy: "Updating the server will improve AI functionality.",
 			detail: `The app started this server itself (${startupMode}).`,
 			sourceBuild: false,
+			installedInstallVersion: null,
 		};
 	}
 
@@ -3235,28 +3394,14 @@ export class UpdateService {
 	 * searches the machine's and the user's own install locations.
 	 */
 	private resolveLocalOperatorPath(): string | null {
-		if (process.platform === "win32") {
-			const first = readCommandOutput("where", ["local-operator"])
-				?.split("\n")[0]
-				?.trim();
-			return first && first.length > 0 ? first : null;
-		}
-		return resolveCommandPath("local-operator");
-	}
-
-	/**
-	 * Path the `lop-update` shim resolves to, or null when this machine has none.
-	 *
-	 * The same problem as the shim above, for the remedy rather than the
-	 * classification: `lop-update` is what the source-build wording tells the user
-	 * to run, and it lives in `~/.local/bin`, which a Finder launch cannot see
-	 * through PATH alone - so the plan fell back to the pip/pipx wording for an
-	 * install that is neither. It is a shell script, so there is no Windows
-	 * counterpart to look for.
-	 */
-	private resolveLopUpdatePath(): string | null {
-		if (process.platform === "win32") return null;
-		return resolveCommandPath("lop-update");
+		/*
+		 * THE SAME RESOLUTION the decision, the ranking and the spawn use (reviews
+		 * R1-6, R2-2): one helper, so an install whose `local-operator` console script
+		 * is gone but whose `lop` remains is one install to all of them - on Windows
+		 * too, where this used to probe a single name of its own while the spawn tried
+		 * both.
+		 */
+		return resolveGlobalConsoleScript();
 	}
 
 	/**
@@ -3269,18 +3414,57 @@ export class UpdateService {
 	 * answered: spawning `uv` and `pipx` on every backend check for a question
 	 * three string tests settled is work nobody asked for.
 	 */
-	private resolveInstallIdentity(): InstallIdentity {
+	private async resolveInstallIdentity(): Promise<InstallIdentity> {
 		const identity = readInstallIdentity(this.resolveLocalOperatorPath());
 		if (identity.path && classifyGlobalInstall(identity) !== "global-unknown") {
 			return identity;
 		}
-		// Resolved the same way as the shims: a shell the app did not inherit also
-		// hides these two, and a probe that cannot be spawned is not evidence.
+		/*
+		 * Resolved the same way as the shims: a shell the app did not inherit also
+		 * hides these two, and a probe that cannot be spawned is not evidence.
+		 *
+		 * ASYNC, and that is the point: this method runs on every backend check, and
+		 * the synchronous form of it blocked the main thread for up to 5 s per probe
+		 * (10 s for the pair) on any machine whose install the three string tests
+		 * cannot classify - measured by review R1-4, which is the cost this fixes.
+		 * Nothing above depends on the answer arriving in the same tick.
+		 */
 		const uv = resolveCommandPath("uv");
 		const pipx = resolveCommandPath("pipx");
-		identity.uvToolList = uv ? readCommandOutput(uv, ["tool", "list"]) : null;
-		identity.pipxList = pipx ? readCommandOutput(pipx, ["list"]) : null;
+		const [uvToolList, pipxList] = await Promise.all([
+			uv ? this.probeInstallerList(uv, ["tool", "list"]) : null,
+			pipx ? this.probeInstallerList(pipx, ["list"]) : null,
+		]);
+		identity.uvToolList = uvToolList;
+		identity.pipxList = pipxList;
 		return identity;
+	}
+
+	/**
+	 * What an installer's own list command answers, or null.
+	 *
+	 * ASYNC, and that is the R1-4 fix: this runs on every backend check for an
+	 * install the three string tests cannot classify, and the synchronous form of it
+	 * blocked the main thread for up to 5 s per probe - 10 s for the pair, with the
+	 * window and every IPC channel frozen behind it. Review R1-4 measured it; the
+	 * answer is identical, only the waiting is not done on the event loop.
+	 *
+	 * `runCommand` rather than a second runner, and with `pythonSpawnEnv()`: `uv` and
+	 * `pipx` are python programs, so they get the same guarded environment every
+	 * other python spawn here passes - which is what keeps bytecode they write out
+	 * of the installed app.
+	 */
+	private async probeInstallerList(
+		command: string,
+		args: string[],
+	): Promise<string | null> {
+		const result = await runCommand(command, args, {
+			timeoutMs: INSTALLER_PROBE_TIMEOUT_MS,
+			env: this.pythonSpawnEnv(),
+		});
+		if (!result.ran) return null;
+		const output = result.stdout.trim();
+		return output.length > 0 ? output : null;
 	}
 
 	/**
@@ -3306,6 +3490,16 @@ export class UpdateService {
 			`Checking for backend updates... (silent mode: ${silent})`,
 			LogFileType.UPDATE_SERVICE,
 		);
+
+		/*
+		 * BEFORE anything is compared, and on every check rather than once at
+		 * construction: the check is the first thing that runs after the renderer is
+		 * listening (the offer appears seconds after the first frame), and this has to
+		 * reach a surface. It reports at most once per attempt - the marker is cleared
+		 * as soon as it is read - so a periodic check finding nothing left says
+		 * nothing (UX U6).
+		 */
+		await this.reportUnattendedServerUpdate();
 
 		try {
 			// Handle dev mode case
@@ -3366,12 +3560,35 @@ export class UpdateService {
 				return { status: "unavailable", info: null };
 			}
 
-			const installedVersion = await this.getInstalledBackendVersion();
+			/*
+			 * The plan is resolved BEFORE the comparison, because it is the plan that
+			 * says which install this check is about. "Check updates against that lop"
+			 * means the version the update action would move - the install on disk -
+			 * and the install is what `resolveBackendUpdatePlan` classifies. The running
+			 * backend's `/health` is still read and still reported: it is the same
+			 * install whenever this app spawned the daemon (#254), and it can be a
+			 * different one when discovery adopted a daemon the app did not start.
+			 */
+			const plan = await this.resolveBackendUpdatePlan(startupMode);
+			const runningVersion = await this.getInstalledBackendVersion();
 			const latestVersion = await this.getLatestPypiVersion();
 			// Remembered for the by-hand prompt: that event is produced from a click
 			// rather than from a check, and it has to be able to name the published
 			// release the user is working towards (review U17).
 			if (latestVersion) this.lastPublishedBackendVersion = latestVersion;
+
+			/*
+			 * The comparison uses the install's own version whenever one resolved, and
+			 * falls back to the running reading otherwise - never to "current". The
+			 * gates below are about the absence of a reading, so a fallback that
+			 * answered "up to date" from a version nobody could read would be the one
+			 * misreading they exist to prevent.
+			 */
+			const installVersion = plan.installedInstallVersion;
+			const installedVersion =
+				installVersion && isReadableVersion(installVersion)
+					? installVersion
+					: runningVersion;
 
 			if (!installedVersion || !latestVersion) {
 				logger.error(
@@ -3382,6 +3599,7 @@ export class UpdateService {
 					this.sendToRenderer("backend-update-error", {
 						message: "Unable to determine backend version.",
 						phase: "check",
+						logPath: serverUpdateLogPath(),
 					});
 				}
 				return { status: "unavailable", info: null };
@@ -3400,6 +3618,7 @@ export class UpdateService {
 						message:
 							"The installed server version could not be determined, so no update was offered. Restart the app to try again.",
 						phase: "check",
+						logPath: serverUpdateLogPath(),
 					});
 				}
 				return { status: "unavailable", info: null };
@@ -3439,12 +3658,22 @@ export class UpdateService {
 					this.sendToRenderer("backend-update-error", {
 						message: "Unable to determine backend version.",
 						phase: "check",
+						logPath: serverUpdateLogPath(),
 					});
 				}
 				return { status: "unavailable", info: null };
 			}
 
 			const shouldUpdate = this.isNewerVersion(latestVersion, installedVersion);
+
+			// Both readings on one line, deliberately: they disagree in exactly one
+			// situation that matters - after an update has landed on disk and before
+			// the daemon that serves it has been restarted - and when they do, the
+			// check has to be answerable from the log.
+			logger.info(
+				`Install on disk reports: ${installVersion ?? "no reading"}, running backend reports: ${runningVersion ?? "no reading"}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}, Startup mode: ${startupMode}`,
+				LogFileType.UPDATE_SERVICE,
+			);
 
 			logger.info(
 				`Installed backend version: ${installedVersion}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}, Startup mode: ${startupMode}`,
@@ -3457,18 +3686,29 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 
-				const { canManageUpdate, updateCommand, remedy, detail, sourceBuild } =
-					await this.resolveBackendUpdatePlan(startupMode);
-
 				const updateInfo: BackendUpdateInfo = {
 					currentVersion: installedVersion,
 					latestVersion,
-					updateCommand,
-					canManageUpdate,
+					runningVersion,
+					updateCommand: plan.updateCommand,
+					canManageUpdate: plan.canManageUpdate,
 					startupMode,
-					remedy,
-					detail,
-					sourceBuild,
+					remedy: plan.remedy,
+					detail: plan.detail,
+					sourceBuild: plan.sourceBuild,
+					/*
+					 * WHO THE APP WOULD RESTART, on the panel where the user decides (UX U9).
+					 *
+					 * The managed arm's consequence sentence comes from the plan, and the plan is
+					 * an INSTALL classification - it cannot know whether the daemon serving this
+					 * app is one the app started. On a machine where discovery ADOPTED a server,
+					 * the offer therefore promised a restart that cannot happen, and the app's
+					 * own completion notice then said the opposite ("Local Operator does not
+					 * restart a server it did not start"). The sentence is right for the arm it
+					 * was written for; what was missing is the reading that decides it, which the
+					 * other two events already carry. It travels here too.
+					 */
+					restartable: this.backendIsAppOwned(),
 					/* `silent` is the whole difference between the two callers: the periodic
 					   and start-up checks pass `true`, the IPC handlers behind the buttons
 					   pass `false`. The renderer needs to know which one it is answering,
@@ -3492,8 +3732,30 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 
+			/*
+			 * WHO HEARS THIS, and why a SILENT check can still speak (UX U10).
+			 *
+			 * A launch and a periodic check are silent, and silence used to swallow this
+			 * event along with everything else it suppresses - so the one state with no
+			 * other surface to say it (install current, the daemon serving the app a build
+			 * behind) was invisible until the user happened to press Check for updates.
+			 * That is Q-1's discoverability half surviving Q-1's fix: the launch that
+			 * follows such an update ran the check and reached the renderer with nothing.
+			 *
+			 * So the READINGS decide, not the caller: when the two disagree, this event is
+			 * sent even on a silent pass, because the disagreement is the fact no other
+			 * surface carries. Everything else a silent check could say stays suppressed,
+			 * and the renderer's own guard keeps a pair that agrees silent - so an
+			 * equal-reading machine still hears nothing from a launch.
+			 */
+			const readingsDiffer =
+				installedVersion !== null &&
+				runningVersion !== null &&
+				isReadableVersion(installedVersion) &&
+				isReadableVersion(runningVersion) &&
+				installedVersion.trim() !== runningVersion.trim();
 			if (
-				!silent &&
+				(!silent || readingsDiffer) &&
 				this.mainWindow &&
 				!this.mainWindow.isDestroyed() &&
 				this.mainWindow.webContents &&
@@ -3501,6 +3763,19 @@ export class UpdateService {
 			) {
 				this.mainWindow.webContents.send("backend-update-not-available", {
 					version: installedVersion,
+					/*
+					 * The second reading travels on THIS state too, which is the one QA
+					 * Q-1 found: an install already at the published version whose daemon
+					 * still serves the old build offers nothing, so the offer's detail was
+					 * never rendered and the user was told nothing at all - while the log
+					 * carried both readings and Settings could name the daemon. It is the
+					 * state design §5 exists for (right after a landed install, before the
+					 * restart), and no later check re-offers it, because the install itself
+					 * is up to date.
+					 */
+					runningVersion,
+					/** Whether the app may restart the daemon that is behind. */
+					restartable: this.backendIsAppOwned(),
 				});
 			}
 
@@ -3529,6 +3804,7 @@ export class UpdateService {
 					 */
 					message: stripErrorPrefixes((error as Error).message),
 					phase: "check",
+					logPath: serverUpdateLogPath(),
 				});
 			}
 
@@ -3612,7 +3888,22 @@ export class UpdateService {
 			const version = await this.getInstalledBackendVersion();
 			if (version && version !== "Unknown") {
 				last = version;
-				if (target == null || version === target) return version;
+				if (target == null) return version;
+				/*
+				 * AT OR PAST the target, the same rule the landing check states (review
+				 * R2-1, and the same scenario): the app names the version the CHECK read
+				 * off PyPI, and `lop update` installs whatever PyPI has when it RUNS - so
+				 * a release published between the offer and the click comes back one past
+				 * the string that was asked for, and equality here failed a restart that
+				 * had landed ("The server restarted but did not report version 0.56.0"),
+				 * one step after the landing rule stopped doing the same thing. An
+				 * unorderable reading falls back to equality rather than being accepted:
+				 * this cannot order it, so it cannot call it at the target.
+				 */
+				const order = compareVersions(version, target);
+				if (order === null ? version.trim() === target.trim() : order >= 0) {
+					return version;
+				}
 			}
 			await new Promise((resolve) => setTimeout(resolve, intervalMs));
 		}
@@ -3621,6 +3912,392 @@ export class UpdateService {
 			LogFileType.UPDATE_SERVICE,
 		);
 		return null;
+	}
+
+	/**
+	 * Whether the daemon serving this app is one the APP may restart.
+	 *
+	 * The answer decides what the skew notice can tell the user to do about a server
+	 * still on the old build: an owned daemon is the app's to bounce (so the sentence
+	 * names restarting Local Operator, which is an action), while an adopted one is
+	 * not (so the sentence says the app will not, which is a fact about what the
+	 * reader should expect). Getting this wrong is not cosmetic - the notice would
+	 * tell a user of an app-owned daemon that nothing will ever move it.
+	 */
+	private backendIsAppOwned(): boolean {
+		return (
+			this.backendService !== null &&
+			!this.backendService.isUsingExternalBackend()
+		);
+	}
+
+	/**
+	 * The version the resolved global install reports on disk, or null.
+	 *
+	 * Shell-free, and deliberately a different read from the running backend's
+	 * `/health`: the install is what an update moves, and immediately after one it
+	 * is the only reading that has moved - the daemon lags until it is restarted.
+	 * Read through the same resolution the plan classified, because it is half of
+	 * the evidence that the install changed at all.
+	 */
+	private readGlobalInstallVersion(): string | null {
+		return (
+			readInstallIdentity(this.resolveLocalOperatorPath())?.version ?? null
+		);
+	}
+
+	/**
+	 * Run the install's own front end: `<resolved shim> update`.
+	 *
+	 * WHY THIS AND NOT AN INSTALLER. The mechanism that owns a uv tool install is
+	 * `lop update`: it detects the install kind, honours the `editable`/`unknown`
+	 * refusals, writes the `.lop-source` marker runtimes converge on, prunes the
+	 * generations nothing refers to, and refreshes the daemons it supervises. An
+	 * app that ran `uv` itself would bypass every one of those, and the two
+	 * commands this path used to name are the ones the harness documents as
+	 * failing (`uv tool upgrade` on a pinned receipt or a git snapshot) or as
+	 * belonging to another audience (`lop-update`, the release owner's
+	 * build-from-checkout script, which refuses when its ref has diverged).
+	 *
+	 * THE PATH IS BUILT, NOT INHERITED. `lop update` reaches `uv` by bare name
+	 * through the child's environment, and this app is normally launched by Finder
+	 * with `/usr/bin:/bin:/usr/sbin:/sbin` - on this machine `uv` is
+	 * `/opt/homebrew/bin/uv`. Without `installerSearchPath` the feature fails with
+	 * an `installer exited 127` that reads as an installer bug.
+	 *
+	 * The cwd is the user's home: a neutral directory, never the app's resources
+	 * dir, so an installer that resolves a relative path from where it stands
+	 * cannot land inside the sealed bundle. `shell: true` is never used - this is a
+	 * resolved shim path, not a command line.
+	 */
+	private async runGlobalUpdate(consolePath: string): Promise<{
+		exitCode: number;
+		stdout: string;
+		stderr: string;
+		ran: boolean;
+	}> {
+		// The same bytecode-cache discipline the pip path uses (`pythonSpawnEnv`),
+		// because the child is another Python process this app is responsible for -
+		// plus the ONE entry it needs on top of it: the PATH its own installer lookup
+		// reads. See `installerSearchPath` for why the child cannot inherit it.
+		const updatePath = installerSearchPath(process.env, homedir());
+		logger.info(
+			`Executing the install's own updater: ${consolePath} update (PATH: ${updatePath})`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		const run = await runCommand(consolePath, ["update"], {
+			timeoutMs: 15 * 60 * 1000,
+			env: { ...this.pythonSpawnEnv(), PATH: updatePath },
+		});
+		// Both streams, both to the update service log: the installer's own output is
+		// the only thing that can say WHY it refused, and the panel's error line is a
+		// tail of it. Same capture discipline as the pip branch.
+		logger.info(
+			`lop update stdout: ${run.stdout.trim() || "(empty)"}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		if (run.stderr.trim().length > 0) {
+			logger.warn(
+				`lop update stderr: ${run.stderr.trim()}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
+		return run;
+	}
+
+	/**
+	 * True while an app-driven update of the global install is running.
+	 *
+	 * The guard is here and not on the surfaces that ask for the update, because
+	 * their flags are per-surface: the offer holds `checking` and the run panel holds
+	 * `updatingBackend`, so a press on each of them reached `updateGlobalInstall`
+	 * twice and the second `lop update` ran beside the first against one install root
+	 * (review R1-8). The bundled path never needed one because it stops the backend
+	 * first, which serialises it by accident; nothing on this path stops anything.
+	 */
+	private globalUpdateInFlight = false;
+
+	/**
+	 * Update the resolved global install, then restart the daemon this app owns.
+	 *
+	 * ORDERING IS THE POINT, and it is the opposite of the bundled path: that one
+	 * stops the backend BEFORE pip because pip replaces the environment the daemon
+	 * runs from. Under generations the install lands in a new tree, the pointer
+	 * flips, and no running process's tree is touched - so the install cannot fail
+	 * the daemon, and stopping first would throw away in-flight work for the whole
+	 * install to buy nothing. Install, verify, restart. A failed install therefore
+	 * leaves a daemon that never stopped serving.
+	 *
+	 * `landed` is a READING, not an exit code: `lop update` exits 0 in its "already
+	 * latest" case too, so the app holds the install's own version to the target
+	 * exactly as the pip path does (`didUpgradeLand`).
+	 */
+	private async updateGlobalInstall(
+		backend: BackendServiceManager,
+		plan: { installedInstallVersion: string | null },
+		target: string | null,
+	): Promise<boolean> {
+		if (this.globalUpdateInFlight) {
+			logger.warn(
+				"A global install update is already running; refusing to start a second beside it",
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-error", {
+				message:
+					"A server update is already running. Let it finish before starting another.",
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
+		this.globalUpdateInFlight = true;
+		try {
+			return await this.runGlobalUpdateAttempt(backend, plan, target);
+		} finally {
+			this.globalUpdateInFlight = false;
+		}
+	}
+
+	/** The attempt itself, under the guard above. */
+	private async runGlobalUpdateAttempt(
+		backend: BackendServiceManager,
+		plan: { installedInstallVersion: string | null },
+		target: string | null,
+	): Promise<boolean> {
+		// The same resolution the plan classified - not a fresh lookup and not the
+		// `lop` name either: the app has to run the front end of the install it is
+		// about to hold to the result, or it updates one tree and verifies another.
+		const consolePath = this.resolveLocalOperatorPath();
+		if (!consolePath) {
+			this.sendToRenderer("backend-update-error", {
+				message:
+					"The global install could not be found on this machine, so the update did not run. See the update service log.",
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
+
+		// Re-read rather than trusting the plan's reading: a check and a click can be
+		// minutes apart, and `before` is half of the only evidence that anything
+		// moved.
+		const before =
+			this.readGlobalInstallVersion() ?? plan.installedInstallVersion;
+		/*
+		 * The phase is announced BEFORE the child starts, because on a realistic cold
+		 * cache the install is ~47 s and the restart ~15 s of one unchanging panel:
+		 * the bar animated and nothing else moved, so a user could not tell a working
+		 * install from a hung one, and the panel's only cost claim ("will temporarily
+		 * go offline") described the phase that had not started yet (UX U4).
+		 */
+		this.sendToRenderer("backend-update-progress", { phase: "installing" });
+		/*
+		 * The durable record of an attempt that nobody is watching (UX U6). It is
+		 * written BEFORE the spawn because the case it exists for is the app dying
+		 * while the child keeps running - measured: killed 10 s in, the installer
+		 * finished on its own, created a generation and flipped the pointer with no app
+		 * alive, and the next launch read that as the state it had always been in. It
+		 * is cleared as soon as this attempt reaches its own verdict, which is the
+		 * only thing that makes it mean "nobody saw this end".
+		 */
+		writePendingServerUpdateMarker(this.markerDir(), {
+			before,
+			target,
+			startedAt: new Date().toISOString(),
+		});
+		const run = await this.runGlobalUpdate(consolePath);
+		const after = this.readGlobalInstallVersion();
+		// The verdict is in THIS process, so the marker's remaining job is gone: the
+		// panel carries the outcome, and a later launch must not report it twice.
+		clearPendingServerUpdateMarker(this.markerDir());
+		const landed =
+			run.exitCode === 0 && didUpgradeLand({ before, after, target });
+		if (!landed) {
+			const running = await this.getInstalledBackendVersion();
+			const tail = stderrTail(run.stderr);
+			logger.error(
+				`Global install update did not land (exited ${run.exitCode}, ran ${run.ran}): ${before ?? "unknown"} -> ${after ?? "unknown"}, running backend reports ${running ?? "no reading"}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			// Nothing moved, so nothing is restarted: the daemon that was serving is
+			// still serving, on the build it loaded.
+			this.sendToRenderer("backend-update-error", {
+				message: `${
+					!run.ran
+						? "The server update did not finish: the installer could not be run to a verdict or timed out."
+						: run.exitCode !== 0
+							? `The server update did not install: \`lop update\` exited ${run.exitCode}.`
+							: `The server update to ${target ?? "the new release"} did not take effect: the install still reports ${after ?? before ?? "its previous version"}.`
+				} The running backend is still serving${running ? ` version ${running}` : ""}; see the update service log for the installer's output.${tail ? `\n\n${tail}` : ""}`,
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
+
+		logger.info(
+			`Global install updated: ${before ?? "unknown"} -> ${after ?? "unknown"}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+
+		/*
+		 * A daemon this app did not start is NOT the app's to bounce. It keeps
+		 * serving the build it loaded - the backend refuses the handover contract in
+		 * production (`local_operator/server/retire.py`), and this app's own
+		 * observation of the build announcement deliberately does not act on it - so
+		 * the app reports the skew and leaves the process alone. A supervised daemon
+		 * has already been refreshed by `lop update` itself
+		 * (`refresh_daemons_after_upgrade`), and the existing probe loop re-attaches.
+		 */
+		if (backend.isUsingExternalBackend()) {
+			const running = await this.getInstalledBackendVersion();
+			logger.info(
+				`Install moved to ${after ?? "unknown"}; the attached backend still reports ${running ?? "no reading"}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			/*
+			 * BOTH readings travel, and both surface: this used to log the skew and send
+			 * a null payload, so the renderer answered with "Server update completed
+			 * successfully" and a six-second toast while the daemon the user was talking
+			 * to kept serving the old build, with nothing else ever saying so - the
+			 * install is now latest, so no later check re-offers it (review R1-3,
+			 * QA Q-2, UX U1). `restarted: false` is the whole reason the panel has
+			 * something to say: the app deliberately does not bounce a daemon it did not
+			 * start, so the honest report is "the install moved; this server has not".
+			 */
+			this.sendToRenderer("backend-update-completed", {
+				installVersion: after,
+				runningVersion: running,
+				restarted: false,
+				restartable: this.backendIsAppOwned(),
+			});
+			return true;
+		}
+
+		// The app owns this daemon, so it is the one process that has to move onto
+		// the new build - and the same tail the bundled path runs: restart, health,
+		// hold the reported version to the target, then announce.
+		logger.info(
+			"Restarting backend service onto the updated install...",
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.sendToRenderer("backend-update-progress", { phase: "restarting" });
+		backend.setAutoUpdating(true);
+		const restartSuccess = await backend.restart();
+		backend.setAutoUpdating(false);
+		if (!restartSuccess) {
+			logger.error(
+				"Backend service restart failed after the global install update",
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-error", {
+				message:
+					"The server was updated but the backend did not restart. Restart Local Operator to run the new version.",
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
+		const healthy = await this.checkBackendHealth();
+		if (!healthy) {
+			logger.error(
+				"Backend service restarted but the health check failed; retrying once",
+				LogFileType.UPDATE_SERVICE,
+			);
+			await backend.start();
+			if (!(await this.checkBackendHealth())) {
+				this.sendToRenderer("backend-update-error", {
+					message:
+						"The server was updated but the backend did not restart properly. Restart Local Operator to run the new version.",
+					phase: "update",
+					logPath: serverUpdateLogPath(),
+				});
+				return false;
+			}
+		}
+		const reported = await this.waitForBackendVersion(target);
+		if (reported === null) {
+			logger.error(
+				`Backend restarted onto the updated install but did not report ${target ?? "the target version"}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-error", {
+				message: `The server restarted but did not report ${target ? `version ${target}` : "the updated version"}. See the update service log, then restart Local Operator.`,
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
+		logger.info(
+			`Backend reports version ${reported} after the global install update`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.sendToRenderer("backend-update-completed", {
+			installVersion: after,
+			runningVersion: reported,
+			restarted: true,
+		});
+		return true;
+	}
+
+	/**
+	 * Report a server update that landed while no app was supervising it.
+	 *
+	 * The other half of UX U6: the marker above survives exactly when the app died
+	 * mid-attempt, and the installer is a child that outlives its parent, so the
+	 * update can land with nothing watching. The end state is coherent on its own -
+	 * the app comes up on the new build and reports it - which is why this reports
+	 * the fact ONCE rather than treating a stale marker as a failure: there is no
+	 * remedy to offer and no version to hold anyone to, only a sentence the user has
+	 * never seen about an update they started.
+	 *
+	 * Cleared either way: a marker whose install did NOT move describes an
+	 * interrupted attempt whose reason is in the log, and re-reporting it on every
+	 * launch would be a permanent warning about a state the app has since read
+	 * correctly (and the failure path keeps no record for the app to re-read).
+	 */
+	private async reportUnattendedServerUpdate(): Promise<void> {
+		const marker = readPendingServerUpdateMarker(this.markerDir());
+		if (!marker) return;
+		const after = this.readGlobalInstallVersion();
+		clearPendingServerUpdateMarker(this.markerDir());
+		if (!after || after === marker.before) {
+			logger.info(
+				`A server update started at ${marker.startedAt} did not move the install (still ${after ?? "no reading"}); nothing to report on this launch`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
+		/*
+		 * THE SERVING DAEMON'S OWN READING, and this is UX U14's cause. The event
+		 * used to carry `runningVersion: null` deliberately, on the reasoning that the
+		 * attempt landed while nothing was watching - so the renderer had no reading
+		 * to compare the install against and announced a skew it could not see. On the
+		 * ordinary graceful-quit path the app comes back and spawns its daemon from
+		 * the landed install (the reading is the install's own version), while the
+		 * panel headed itself "The server is on an older build than the install" and
+		 * told the user to restart the app that was painting it - with Settings one
+		 * second later reading the new version.
+		 *
+		 * The read is the same one the check uses, taken at the same moment (the app's
+		 * backend is up by now: discovery runs before the first check), so the
+		 * renderer's own guard can say whether the two readings actually differ and
+		 * stay silent when they agree. Unreadable stays null, and null is silence: the
+		 * panel may not claim a skew it cannot see.
+		 */
+		const running = await this.getInstalledBackendVersion();
+		logger.info(
+			`A server update that no app was supervising landed: ${marker.before ?? "unknown"} -> ${after}; the backend serving this launch reports ${running ?? "no reading"}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.sendToRenderer("backend-update-completed", {
+			installVersion: after,
+			runningVersion: running,
+			restarted: false,
+			unattended: true,
+			restartable: this.backendIsAppOwned(),
+			before: marker.before,
+		});
 	}
 
 	public async updateBackend(targetVersion?: string): Promise<boolean> {
@@ -3642,6 +4319,7 @@ export class UpdateService {
 					this.mainWindow.webContents.send("backend-update-error", {
 						message: "No backend service reference available, cannot update.",
 						phase: "update",
+						logPath: serverUpdateLogPath(),
 					});
 				}
 				return false;
@@ -3665,6 +4343,7 @@ export class UpdateService {
 						this.mainWindow.webContents.send("backend-update-error", {
 							message: "No python server is available, nothing to update.",
 							phase: "update",
+							logPath: serverUpdateLogPath(),
 						});
 					}
 					return false;
@@ -3679,6 +4358,29 @@ export class UpdateService {
 					// and names the command that owns it - or names none, rather than
 					// defaulting to pip (reviews R10, U4, D4, R13, Q5).
 					const plan = await this.resolveBackendUpdatePlan(startupMode);
+					// The caller's target when it named one (the "Update server" button
+					// does), otherwise the published release the last check read: the
+					// compatibility banner calls this with no target at all, and the
+					// panel's version sentence then had nothing to render on the path
+					// that actually produces it (review U17).
+					const target =
+						targetVersion ?? this.lastPublishedBackendVersion ?? null;
+
+					if (plan.canManageUpdate) {
+						/*
+						 * The app runs the install's own updater. This is the ONE branch that
+						 * may start an install without stopping the daemon first, and
+						 * `plan.canManageUpdate` is what licenses it: the plan only says yes
+						 * for a generation-based install, where the update lands in a tree
+						 * no running process is reading.
+						 */
+						return await this.updateGlobalInstall(
+							this.backendService,
+							plan,
+							target,
+						);
+					}
+
 					logger.info(
 						`Cannot manage the update for ${startupMode}: ${plan.detail}`,
 						LogFileType.UPDATE_SERVICE,
@@ -3689,20 +4391,23 @@ export class UpdateService {
 					// happened to precede it (reviews U12, U17). The running version
 					// travels too, because the sibling panel is able to say both and a
 					// user comparing the two doors would expect the same sentence.
+					//
+					// BOTH READINGS ARE STRUCTURED FIELDS rather than a clause appended
+					// to `detail`: the sentence that names them belongs in the panel's
+					// prose, and the Details line is the classification evidence the
+					// reader copies for support (review D3). `currentVersion` keeps the
+					// meaning this payload has always had - the build the reader is
+					// using - while `installVersion` is what an update would move.
 					const installed = await this.getInstalledBackendVersion();
 					this.sendToRenderer("backend-update-manual-required", {
 						message: plan.remedy,
 						command: plan.updateCommand,
 						detail: plan.detail,
-						// The caller's target when it named one (the "Update server"
-						// button does), otherwise the published release the last check
-						// read: the compatibility banner calls this with no target at
-						// all, and the panel's version sentence then had nothing to
-						// render on the path that actually produces it (review U17).
-						latestVersion:
-							targetVersion ?? this.lastPublishedBackendVersion ?? null,
+						latestVersion: target,
 						currentVersion:
 							installed && installed !== "Unknown" ? installed : null,
+						installVersion: plan.installedInstallVersion,
+						runningVersion: installed,
 						sourceBuild: plan.sourceBuild,
 					});
 					return false;
@@ -3728,6 +4433,7 @@ export class UpdateService {
 						message:
 							"The app could not tell how this server was started, so it did not update it. See the update service log.",
 						phase: "update",
+						logPath: serverUpdateLogPath(),
 					});
 					return false;
 			}
@@ -3778,6 +4484,7 @@ export class UpdateService {
 					message:
 						"The bundled server's Python environment could not be found, so the update did not run. Please reinstall the application.",
 					phase: "update",
+					logPath: serverUpdateLogPath(),
 				});
 				return false;
 			}
@@ -3841,6 +4548,7 @@ export class UpdateService {
 								: "The server update failed to install and the server did not come back up. Restart Local Operator, and see the update service log for pip's output."
 							: `The server update to ${targetVersion ?? "the new release"} did not take effect: the server is still on ${versionAfter ?? "its previous version"}. See the update service log for pip's output, then try again.`,
 					phase: "update",
+					logPath: serverUpdateLogPath(),
 				});
 				return false;
 			}
@@ -3895,6 +4603,7 @@ export class UpdateService {
 								message:
 									"Backend was updated but failed to restart properly. Please restart the application.",
 								phase: "update",
+								logPath: serverUpdateLogPath(),
 							});
 						}
 						return false;
@@ -3914,6 +4623,7 @@ export class UpdateService {
 						message:
 							"Backend was updated but failed to restart. Please restart the application.",
 						phase: "update",
+						logPath: serverUpdateLogPath(),
 					});
 				}
 				return false;
@@ -3933,6 +4643,7 @@ export class UpdateService {
 				this.sendToRenderer("backend-update-error", {
 					message: `The server restarted but did not report ${targetVersion ? `version ${targetVersion}` : "the updated version"}. Check the update service log, then try again.`,
 					phase: "update",
+					logPath: serverUpdateLogPath(),
 				});
 				return false;
 			}
@@ -3994,6 +4705,7 @@ export class UpdateService {
 					// report above.
 					message: stripErrorPrefixes((error as Error).message),
 					phase: "update",
+					logPath: serverUpdateLogPath(),
 				});
 			}
 
@@ -4038,7 +4750,7 @@ export class UpdateService {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
 
-			const response = await fetch(`${this.backendUrl}/health`, {
+			const response = await fetch(`${this.liveBackendUrl()}/health`, {
 				method: "GET",
 				headers: { Accept: "application/json" },
 				signal: controller.signal,
