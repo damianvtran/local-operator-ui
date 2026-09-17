@@ -9,6 +9,7 @@ Eight inherited Storybook frames: four states at 1024 x 300, each in
 | `awaiting-reply` | Waiting for the agent |
 | `awaiting-reply-transport-down` | Ask me for help (wait claim withdrawn) |
 | `awaiting-answer` | Answer the question above |
+| `conversation-gone` | This conversation is gone |
 
 These files were produced by the earlier interrupted coder's legacy repository
 capture harness and were untracked at the handoff on `7550bf1ae`; the inherited
@@ -25,6 +26,13 @@ recovery and before/after failure) is in
 [`../chat-cold-send-browser/README.md`](../chat-cold-send-browser/README.md).
 That separate evidence, rather than these legacy images, carries the new live
 validation claim. D3's previously missing committed state pictures are now here.
+
+`conversation-gone` is the one state added to this set after the inherited pass:
+the band's own gone-state row (`scripts/capture-evidence.mjs`, the D3 region)
+now names this set's story at 1024 x 300 rather than the retired
+`chat-composer-states` sheet, so the sweep writes
+`docs/evidence/chat-message-input/conversation-gone/`. The frames land on the
+next full sweep; the id rather than the pixels is what that change carries.
 
 ## The inline credential capture's seven states
 
