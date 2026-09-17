@@ -1015,6 +1015,13 @@ export const TraceGapBoundaries: Story = {
  * Tightening adjacent tool rows is only correct if the reader can still see
  * where one turn ended and the next began — otherwise the ledger becomes one
  * undifferentiated column. This frame is where that trade is judged.
+ *
+ * AND IT IS THE FRAME FOR THE OPERATOR'S OTHER REPORT (2026-09-17): the
+ * transcript's footer line used to be keyed to the newest record, so during a
+ * live turn its stamp landed directly under this working line. That line is
+ * removed rather than re-gated (`turn-timestamp.tsx` carries the reasoning), and
+ * this frame is the evidence that the foot now ends at the working line — the
+ * last row a transcript can end on that is not a record at all.
  */
 export const TurnBoundaryAndWorkingLine: Story = {
 	render: () => (
