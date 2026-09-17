@@ -315,7 +315,7 @@ const baseEnv = {};
 for (const [name, value] of Object.entries(process.env)) {
 	if (inherited.has(name)) baseEnv[name] = value;
 }
-const appEnv = withNotificationsOff({
+const env = withNotificationsOff({
 	...baseEnv,
 	HOME: ROOT,
 	LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
@@ -329,8 +329,8 @@ const appEnv = withNotificationsOff({
 	 */
 	VITE_DISABLE_BACKEND_MANAGER: "true",
 });
-for (const key of Object.keys(appEnv)) {
-	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete appEnv[key];
+for (const key of Object.keys(env)) {
+	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 }
 
 const children = [];
@@ -354,7 +354,7 @@ function launch() {
 		],
 		{
 			cwd: REPO,
-			env: appEnv,
+			env,
 			stdio: ["ignore", "pipe", "pipe"],
 			detached: true,
 		},
