@@ -198,11 +198,28 @@ function compareCandidates(a: Candidate, b: Candidate): number {
  * R1). Sorting at every crossing of the cap — what the shape this replaced did —
  * is not the same answer: entries read after a crossing were appended to the kept
  * set without ever being compared against it, so the pool the final sort truncated
- * was a mixture of two windows rather than any one order's minimum. This answers
- * what the harness's own `scan_directory` answers with `heapq.nsmallest`: the
- * smallest `SCAN_CANDIDATE_LIMIT` names of the WHOLE stream, decided as the
- * entries arrive, so the final sort and slice return the directory's own first
- * `DIRECTORY_ENTRY_LIMIT` names whatever the enumeration order was.
+ * was a mixture of two windows rather than any one order's minimum. This is the
+ * same RULE and the same BOUND as the harness's own `scan_directory`, which
+ * retains with `heapq.nsmallest`: the smallest `SCAN_CANDIDATE_LIMIT` names of
+ * the WHOLE stream, decided as the entries arrive, so the final sort and slice
+ * return the directory's own first `DIRECTORY_ENTRY_LIMIT` names whatever the
+ * enumeration order was.
+ *
+ * AND THE ORDER IT KEEPS IS THIS ONE, NOT THE HARNESS'S — stated because the
+ * sentence above reads as row parity and is not one (code review round 3, S1;
+ * QA round 3, Q-7). `heapq.nsmallest` keys on the raw Python string, so the
+ * harness compares CODE UNITS; this cap compares `Intl.Collator` DISPLAY order.
+ * The two disagree on exactly the inputs the paragraph above names: a
+ * `new Intl.Collator()` calls `"B00000.txt"` against `"a00000.txt"` `1` where
+ * `sorted()` puts `B…` first, and `"é"` against `"f"` `-1` where the code-unit
+ * compare is positive. On a directory that mixes cases or carries an accented
+ * name the two surfaces therefore choose DIFFERENT prefixes of the same size —
+ * the picker answers `a00000.txt` upward where the harness's reference block
+ * answers `B00000.txt` upward. What the two guarantee between them is the same
+ * shape and the same bound; the rows are this listing's own, and display order
+ * is deliberately the one they are in, because the rows a reader sees are the
+ * rows the collator orders and a picker whose cap kept a different order than
+ * its answer would be showing a prefix of neither.
  *
  * The COST is the reason for a heap rather than a scan for the maximum: a full
  * heap refuses an arrival with ONE comparison in the common case (a name past the

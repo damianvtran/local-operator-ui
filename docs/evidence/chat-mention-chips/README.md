@@ -49,14 +49,22 @@ file are the merged tree's own (`frames` 5,722 outside the 74 declared sets,
 `surfaces` 615), re-derived by the same walker `check-evidence.mjs` uses.
 
 **What moved in this pass, measured.** 170 of the 288 frames differ from the
-reviewed set, in three groups and no others: the states a round-2 finding named
-(`chip-needs-approval`, `mentions-at-the-edges`, `harness-cannot-expand`,
-`no-rows-enter`), the picker states (the fixture gained the long name Q-5's own
-assertion needs, so every count and footer in those frames moved with it), and
-180-2,639 pixels elsewhere that are the ambient tip row's rotating entry —
-`before-no-mentions`, `mention-at-rest`, `atomic-delete`, `scrolled-draft` and
-`small-view-mention` differ by at most 36 pixels of 1,203,360, all inside the tip
-band below the composer.
+reviewed set, and the three groups below are exhaustive of them. The first is the
+states a round-2 finding named (`chip-needs-approval`, `mentions-at-the-edges`,
+`harness-cannot-expand`, `no-rows-enter`) — together with `wrapped-mention`, whose
+12 frames carry U13's footer copy and belong in this group rather than beside it:
+`Esc closes` becomes `Nothing to insert · Esc closes` across 2,970 pixels above
+4/255, 702 of them above 20/255, every one of those inside rows 316..328 — the
+picker's footer line, left of the field's own text — with a maximum channel delta
+of 159 and nothing above 20/255 anywhere else in the frame. This sentence used to
+leave that state out and to call the groups "three ... and no others", which the
+pixels falsify (design round 3, D10). The second group is the picker states (the
+fixture gained the long name Q-5's own assertion needs, so every count and footer
+in those frames moved with it). The third is the ambient tip row's rotating entry,
+and it is the only group bounded by pixel count — `before-no-mentions`,
+`mention-at-rest`, `atomic-delete`, `scrolled-draft` and `small-view-mention`
+differ by 180-2,639 pixels, at most 36 of 1,203,360 each, all inside the tip band
+below the composer.
 
 **Provenance, stated because it is not a full sweep.** `frames` is re-derived from
 the tree the way `check-evidence.mjs` derives it — every `.webp` under

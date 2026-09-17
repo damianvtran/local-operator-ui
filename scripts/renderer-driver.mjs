@@ -3485,6 +3485,21 @@ async function scenePalette(cdp) {
  * loopback proxy in front of a live daemon that injects that one field (the shape
  * QA round 2 ran). That is a statement about the harness, not a defect in this
  * scene, and it is the honest answer while the key does not exist.
+ *
+ * AND THE ORIGIN IT HAS TO BE SERVED FROM, which is a requirement of its own and
+ * cost a QA round its whole diagnosis (QA round 3, Q-6). `src/renderer/index.html`
+ * pins the page's `connect-src` to `1111` and `8080` plus three vendor origins and
+ * nothing computes it at runtime (`grep -rn "connect-src" src/main src/preload` is
+ * empty), so a `--backend` rig on any OTHER loopback port is refused by the page
+ * itself: the app's log says
+ * `Connecting to 'http://127.0.0.1:<port>/v1/credentials' violates the following
+ * Content Security Policy`, the chat route never gets a pane, and this scene throws
+ * its composer refusal while the daemon behind the proxy is up and answering —
+ * which reads as the wrong cause. ONLY THE SCENE needs this: the picker and the
+ * chip are served over main-process IPC, which no CSP touches (measured — QA's
+ * round-3 rows were green at 8080 and the port was the only difference). So run the
+ * proxy on an allowed port (8080 is what QA used for the green run) and build the
+ * renderer with `VITE_LOCAL_OPERATOR_API_URL` set to that same URL.
  */
 async function sceneMentions(cdp) {
 	const hello = await verb(cdp, "hello");
@@ -3569,7 +3584,15 @@ async function sceneMentions(cdp) {
 				"with one: this scene needs a live, ISOLATED backend this run owns " +
 				"(`--backend <url>` plus `--seed-onboarding-complete`, per docs/agent-driver.md), " +
 				"because a session (and with it the composer) is the backend's to create. " +
-				"Without one the chat route paints its offline card and there is nothing to drive.",
+				"Without one the chat route paints its offline card and there is nothing to drive. " +
+				"IF THE BACKEND IS IN FACT UP, check the port against the page's own origin " +
+				"allowlist before anything else (QA round 3, Q-6): `src/renderer/index.html` pins " +
+				"`connect-src` to `1111` and `8080` plus three vendor origins and nothing computes " +
+				"it at runtime, so a rig on any other loopback port is refused BY THE PAGE and looks " +
+				"exactly like this (`/v1/credentials ... violates the following Content Security " +
+				"Policy` in the app's own log). Serve the proxy on an allowed port - 8080 is the one " +
+				"QA round 3's green run used - and build the renderer with " +
+				"`VITE_LOCAL_OPERATOR_API_URL` set to that same URL.",
 		);
 	}
 	check(
@@ -3610,7 +3633,7 @@ async function sceneMentions(cdp) {
 		throw new Error(
 			`the backend does not advertise \`features.references\` in /v1/capabilities (read: ${JSON.stringify(
 				references,
-			)}), so the composer withholds the whole \`@\` affordance by design and there is no list to drive. This is a statement about the harness, not a defect in this scene: NO released harness carries the key. TO RUN IT, present the capability - a loopback proxy in front of a live daemon this run owns that injects \`result.features.references = 1\` into /v1/capabilities and forwards every other byte (SSE included) unchanged, then pass the PROXY's URL to --backend and build the renderer with VITE_LOCAL_OPERATOR_API_URL set to the same URL. That is the rig QA round 2 ran.`,
+			)}), so the composer withholds the whole \`@\` affordance by design and there is no list to drive. This is a statement about the harness, not a defect in this scene: NO released harness carries the key. TO RUN IT, present the capability - a loopback proxy in front of a live daemon this run owns that injects \`result.features.references = 1\` into /v1/capabilities and forwards every other byte (SSE included) unchanged, then pass the PROXY's URL to --backend and build the renderer with VITE_LOCAL_OPERATOR_API_URL set to the same URL. That is the rig QA round 2 ran, and the proxy has to be on a port the PAGE allows (1111 or 8080, per src/renderer/index.html's connect-src) or the composer never mounts and the refusal above is the one you get instead (QA round 3, Q-6).`,
 		);
 	}
 
