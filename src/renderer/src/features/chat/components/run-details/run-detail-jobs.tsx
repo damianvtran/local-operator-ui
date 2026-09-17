@@ -43,6 +43,7 @@ import {
 	isOpenRow,
 	subagentTally,
 	tallyBudget,
+	tallyFitsInline,
 } from "./run-detail-model";
 import { SubagentRowBody } from "./run-detail-row-parts";
 
@@ -114,7 +115,9 @@ export const RunDetailJobs = ({
 					 * what keeps the two sections' tallies in the same voice — `1 running`
 					 * above a row whose mark says the same thing.
 					 */}
-					{subagentTally(rows, tallyBudget(paneWidth))}
+					{tallyFitsInline(paneWidth)
+						? subagentTally(rows, tallyBudget(paneWidth))
+						: null}
 				</span>
 			</div>
 			<ul className={cn("flex flex-col")}>

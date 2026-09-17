@@ -2775,6 +2775,38 @@ const TALLY_LABEL_PX = 66;
 const TALLY_CHAR_PX = 6;
 
 /**
+ * The fewest characters a tally is worth drawing: four, so `2 of …` is the
+ * shortest thing that still carries a count and a denominator. Below this the
+ * header shows its label alone — see `tallyFitsInline`.
+ */
+const MIN_TALLY_CHARS = 4;
+
+/**
+ * Whether the pane can show a section's label AND any tally at all on one line.
+ *
+ * A section header is a `shrink-0` label beside a `min-w-0 flex-1 truncate` tally,
+ * so below the width where the two can share the line the TALLY is the box that
+ * gives: it shrinks to ZERO, which is not an elision the reader can see but a
+ * value that is gone and looks like nothing was ever there. Measured at the app's
+ * own 800x600 floor with the rail expanded (79px pane): `2 of 8 closed` and
+ * `2 of 11 connected` were both `clientWidth 0`. A value that cannot be shown is
+ * therefore NOT DRAWN rather than collapsed — the same rule the row grammar above
+ * applies to a trailing value, one element along.
+ *
+ * The budget is the chart the tallies themselves already use (`tallyBudget`'s own
+ * chrome plus label width), so the two cannot disagree about how much room the
+ * line has: a section that sheds a segment for its budget sheds the whole tally
+ * here for the same reason.
+ */
+export const tallyFitsInline = (paneWidth: number): boolean => {
+	const width =
+		Number.isFinite(paneWidth) && paneWidth > 0 ? paneWidth : FALLBACK_PANE_PX;
+	return (
+		width - TALLY_CHROME_PX - TALLY_LABEL_PX >= MIN_TALLY_CHARS * TALLY_CHAR_PX
+	);
+};
+
+/**
  * The pane's default width, mirrored from `ui-preferences-store`'s
  * `DEFAULT_RUN_PANEL_WIDTH`.
  *

@@ -126,6 +126,24 @@ const READER = args.get("reader") ?? "";
  * the concern names, and says so rather than claiming the full gesture.
  */
 const FOCUS = args.get("focus-probe") ?? "";
+/**
+ * `--drag-probe` drives the pane's own divider and prints what it announces
+ * against what the pane renders, step by step. It is round 2's U6 as a state of
+ * this rig rather than a one-off script, because the finding is about a CONTROL's
+ * honesty and the next reviewer has to be able to re-derive it.
+ */
+const DRAG = args.get("drag-probe") ?? "";
+/**
+ * `--escape-probe` presses the chip, then `Escape`, and writes the pair down.
+ *
+ * This is the branch's ONE measured claim whose reading was never committed
+ * (round 2's R2-2/U9): the Escape half lived in the README's prose while every
+ * other number in the set sits in a readback beside its frame. The state it needs
+ * is the one the flow arrives in - focus still on the chip after its own press -
+ * which is why it hangs off the reveal press rather than opening the pane some
+ * other way, and why it costs no extra run: the press has already happened.
+ */
+const ESCAPE = args.get("escape-probe") ?? "";
 
 const TOKEN = process.env.LOCAL_OPERATOR_DESKTOP_TOKEN ?? "";
 if (!SESSION || !TOKEN) {
@@ -339,6 +357,93 @@ const PROFILE = mkdtempSync(join(tmpdir(), "lo-reveal-proof-"));
 /** The `npx` child, as soon as it exists, so a launch failure is reaped too. */
 let spawned = null;
 
+/**
+ * Stop the whole process tree and leave the machine as it was found.
+ *
+ * A FUNCTION rather than the body of one `finally`, because two paths need it and
+ * only one of them used to have it. This is QA round 2's Q1, and the first attempt
+ * at it did not close the hole - measured on `867198881` with a dead `--repo`: the
+ * failed launch left three processes (root `npx`, `ppid=1`) and the `mkdtemp`
+ * profile on disk, unchanged at +20s. Hoisting `PROFILE` and `spawned` out of the
+ * launch IIFE was necessary and not sufficient: a reachable variable is no use if
+ * the code that reaps it never runs. The `try` below is the MEASUREMENT's - the
+ * launch's own failure (a busy port, a `spawn` that dies, "no app page target
+ * after 60s") happens before it and used to throw straight past the teardown. Both
+ * callers now run this, and the launch's is a `.catch` on the IIFE so a failure
+ * cannot get between them.
+ */
+const reapRevealRig = async () => {
+	/*
+	 * Kill the process GROUP, not the direct child, and tolerate a group that has
+	 * already gone away: the direct child here is `npx`, whose exit says nothing
+	 * about the `Electron.app` two levels below it. Signalling a bare `child.kill`
+	 * is what left one app per run alive on this lane.
+	 */
+	const killGroup = (signal) => {
+		if (!spawned) return;
+		try {
+			process.kill(-spawned.pid, signal);
+		} catch {
+			try {
+				spawned.kill(signal);
+			} catch {
+				// Already gone.
+			}
+		}
+	};
+	killGroup("SIGTERM");
+	/*
+	 * WAIT for the exit before returning. A run that leaves the app holding its
+	 * devtools port makes the NEXT run fail with "no app page target", which reads
+	 * as a slow launch rather than as the collision it is (measured: two of three
+	 * consecutive sizes failed that way). SIGKILL is the backstop for an app that
+	 * ignores the term.
+	 */
+	for (
+		let attempt = 0;
+		attempt < 20 && spawned && spawned.exitCode === null;
+		attempt++
+	)
+		await wait(250);
+	if (spawned && spawned.exitCode === null) {
+		killGroup("SIGKILL");
+		await wait(500);
+	}
+	/*
+	 * The group kill above covers the shape this driver spawns; this reap covers
+	 * the shape it CANNOT see. An app that outlived its group - reparented to
+	 * launchd before the signal, or a helper that detached itself - is reachable by
+	 * the one thing every launch of it carries: its own scratch profile. The pattern
+	 * is scoped to the mkdtemp'd path, so a peer's run and the operator's own app
+	 * cannot be matched by it.
+	 */
+	try {
+		execFileSync("pkill", ["-f", `user-data-dir=${PROFILE}`]);
+	} catch {
+		// `pkill` exits 1 when nothing matched, which is the good case.
+	}
+	await wait(250);
+	/*
+	 * The profile is this run's own mkdtemp; leave the machine as it was found.
+	 */
+	try {
+		rmSync(PROFILE, { recursive: true, force: true });
+	} catch {
+		// A profile an app is still holding can refuse removal; not this run's failure.
+	}
+	/*
+	 * The child's pipes keep this process alive on their own: a CLI that spawned
+	 * Electron with `stdio: ["ignore", "pipe", "pipe"]` and only killed it waits
+	 * forever for streams nobody will close, which is a hang AFTER the whole
+	 * measurement is already on disk (measured: the work finished at 10:40 and the
+	 * process was still alive when the run was timed out). Destroy them and exit
+	 * on the result the run already has.
+	 */
+	spawned?.stdout?.destroy();
+	spawned?.stderr?.destroy();
+	spawned?.unref();
+};
+
 const app = await (async () => {
 	/*
 	 * A port somebody else is already holding is the one start-up failure that
@@ -502,7 +607,10 @@ const app = await (async () => {
 	// A headless window cannot be focused, so a key event is dropped without it.
 	await send("Emulation.setFocusEmulationEnabled", { enabled: true });
 	return { child, send, evaluate, click, screenshot, log, socket };
-})();
+})().catch(async (error) => {
+	await reapRevealRig();
+	throw error;
+});
 
 const outDir = join(OUT, `press-${WIDTH}x${HEIGHT}`);
 mkdirSync(outDir, { recursive: true });
@@ -715,6 +823,139 @@ try {
 			};
 		})()`);
 		console.log(JSON.stringify(probe, null, 2));
+	} else if (DRAG) {
+		/*
+		 * THE DIVIDER'S CONTRACT, MEASURED (round 2's U6): what the separator
+		 * announces and accepts has to be what the pane renders.
+		 *
+		 * The separator is `side="left"`, so a drag to the RIGHT shrinks the pane and
+		 * one to the LEFT grows it (`resizable-divider.tsx` computes `start - delta`
+		 * for that side). Every step is a real CDP pointer sequence - press at the
+		 * handler's painted centre, move in eight increments so it is a drag rather
+		 * than a teleport, release - and the reading after it comes from the page: the
+		 * STORED preference (the store's own persisted state, i.e. the number a later
+		 * session would restore), the separator's `aria-valuenow/min/max`, its own
+		 * left edge, and the pane's rect.
+		 */
+		const READ_DIVIDER = `(() => {
+			const sep = document.querySelector('[aria-label="Resize run details"]');
+			const pane = document.querySelector("[data-run-panel-pane]");
+			let pref = null;
+			try {
+				const raw = localStorage.getItem("ui-preferences-storage");
+				if (raw) pref = JSON.parse(raw)?.state?.runPanelWidth ?? null;
+			} catch {
+				// A store that has not written yet; the reading stays null.
+			}
+			const sepRect = sep?.getBoundingClientRect();
+			const paneRect = pane?.getBoundingClientRect();
+			return {
+				pref,
+				ariaNow: sep?.getAttribute("aria-valuenow") ?? null,
+				ariaMin: sep?.getAttribute("aria-valuemin") ?? null,
+				ariaMax: sep?.getAttribute("aria-valuemax") ?? null,
+				separatorLeft: sepRect ? Math.round(sepRect.left * 100) / 100 : null,
+				paneLeft: paneRect ? Math.round(paneRect.left * 100) / 100 : null,
+				paneWidth: paneRect ? Math.round(paneRect.width * 100) / 100 : null,
+				clipPx: paneRect
+					? Math.max(0, Math.round(paneRect.right - window.innerWidth))
+					: null,
+			};
+		})()`;
+		const separatorCentre = async () => {
+			const point = await app.evaluate(`(() => {
+				const node = document.querySelector('[aria-label="Resize run details"]');
+				if (!node) return null;
+				const rect = node.getBoundingClientRect();
+				return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+			})()`);
+			if (!point)
+				throw new Error("no 'Resize run details' separator on screen");
+			return point;
+		};
+		const dragBy = async (delta) => {
+			const start = await separatorCentre();
+			await app.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: start.x,
+				y: start.y,
+			});
+			await app.send("Input.dispatchMouseEvent", {
+				type: "mousePressed",
+				x: start.x,
+				y: start.y,
+				button: "left",
+				buttons: 1,
+				clickCount: 1,
+			});
+			for (let step = 1; step <= 8; step++)
+				await app.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: start.x + (delta * step) / 8,
+					y: start.y,
+					button: "left",
+					buttons: 1,
+				});
+			await app.send("Input.dispatchMouseEvent", {
+				type: "mouseReleased",
+				x: start.x + delta,
+				y: start.y,
+				button: "left",
+				buttons: 0,
+				clickCount: 1,
+			});
+			await wait(300);
+			return app.evaluate(READ_DIVIDER);
+		};
+		/*
+		 * The keyboard path is the same control and the same divergence, and it is
+		 * the one a screen-reader user has: `Home` and `End` jump to the range's ends
+		 * without going through `clamp`, so they are the rungs that expose a range
+		 * wider than the pane.
+		 */
+		const keyOnSeparator = async (key, code, virtualKey) => {
+			await app.evaluate(
+				`(() => { document.querySelector('[aria-label="Resize run details"]')?.focus(); return true; })()`,
+			);
+			for (const type of ["keyDown", "keyUp"])
+				await app.send("Input.dispatchKeyEvent", {
+					type,
+					key,
+					code,
+					windowsVirtualKeyCode: virtualKey,
+					nativeVirtualKeyCode: virtualKey,
+				});
+			await wait(250);
+			return app.evaluate(READ_DIVIDER);
+		};
+		if (!(await app.click("[data-run-panel-trigger]")))
+			throw new Error("no header trigger to open the pane with");
+		await wait(1500);
+		const readings = [["start", await app.evaluate(READ_DIVIDER)]];
+		for (const delta of [60, 60, 200, 200, 200, -120, -600])
+			readings.push([
+				`drag ${delta > 0 ? "right" : "left"} ${Math.abs(delta)}`,
+				await dragBy(delta),
+			]);
+		for (const [key, code, virtualKey] of [
+			["ArrowLeft", "ArrowLeft", 37],
+			["ArrowLeft", "ArrowLeft", 37],
+			["ArrowLeft", "ArrowLeft", 37],
+			["End", "End", 35],
+			["Home", "Home", 36],
+		])
+			readings.push([key, await keyOnSeparator(key, code, virtualKey)]);
+		console.log(
+			JSON.stringify(
+				{
+					rail: RAIL || "profile default",
+					steps: readings.map(([what, reading]) => ({ what, ...reading })),
+				},
+				null,
+				2,
+			),
+		);
+		await app.screenshot(join(outDir, "drag-probe.png"));
 	} else {
 		if (READER === "first") {
 			if (!(await app.click("[data-run-panel-trigger]")))
@@ -819,6 +1060,45 @@ try {
 		);
 		const after = await app.evaluate(MEASURE);
 		await app.screenshot(join(outDir, `${theme}-after.png`));
+		/*
+		 * THE ESCAPE HALF, committed rather than described: the press above left
+		 * focus on the chip, so one `Escape` here is exactly the flow the finding is
+		 * about. `paneOpen` after the key and who holds focus are the whole reading.
+		 */
+		if (ESCAPE) {
+			const focusOwner = `(() => {
+				const node = document.activeElement;
+				if (!node) return null;
+				if (node.closest("[data-status-plan]")) return "composer plan chip";
+				return node.getAttribute("aria-label") || node.tagName.toLowerCase();
+			})()`;
+			const focusBeforeEscape = await app.evaluate(focusOwner);
+			for (const type of ["keyDown", "keyUp"])
+				await app.send("Input.dispatchKeyEvent", {
+					type,
+					key: "Escape",
+					code: "Escape",
+					windowsVirtualKeyCode: 27,
+					nativeVirtualKeyCode: 27,
+				});
+			await wait(700);
+			const reading = {
+				rail: RAIL || "profile default",
+				theme,
+				focusBeforeEscape,
+				paneOpenAfterEscape: Boolean(
+					await app.evaluate(
+						`Boolean(document.querySelector("[data-run-panel-pane]"))`,
+					),
+				),
+				focusAfterEscape: await app.evaluate(focusOwner),
+			};
+			console.log(JSON.stringify(reading, null, 2));
+			writeFileSync(
+				join(outDir, "escape.json"),
+				`${JSON.stringify(reading, null, 2)}\n`,
+			);
+		}
 
 		const movers = [];
 		const names = new Set(after.scrollBoxes.map((row) => row.name));
@@ -905,14 +1185,40 @@ try {
 			 * named - the predicate used to skip exactly that box, so a run whose pane
 			 * rendered every row's name at 0px reported `cutRows: 0` and passed. Gated
 			 * rather than reported, because a number nothing fails on is the same defect
-			 * one step along; `outsideRegionRows` is reported beside it and not gated,
-			 * because a scroll region's content may legitimately exceed its client box
-			 * (that is what its own scrollbar is for) and the cases that matter are
-			 * graded by the row grammar.
+			 * one step along. `clipPx`, `cutRows` and `outsideRegionRows` are gated
+			 * beside it for the same reason (round 2's delta review: three counters
+			 * printed and nothing failing on any of them), and that gate is the reason
+			 * the app's window floor fails it today - see the README's own account of
+			 * that state rather than a weaker predicate here.
 			 */
 			if (after.acceptance.collapsedTextRows > 0)
 				throw new Error(
 					`expected no text box collapsed to nothing in the pane, but ${after.acceptance.collapsedTextRows} did: ${JSON.stringify(after.acceptance.collapsedTextExamples)}`,
+				);
+			/*
+			 * AND THE OTHER THREE COUNTERS ARE GATED TOO, which is what round 2's delta
+			 * review asked for and what they were missing: they were counted and
+			 * printed and nothing failed on any of them, so a run whose pane hung past
+			 * the window (or whose content sat outside the box it was given) exited 0
+			 * with the failure sitting in the JSON. A number nothing fails on is the
+			 * same defect class as a predicate that cannot see - the one this file's
+			 * whole acceptance block exists to remove.
+			 *
+			 * This is the HEAD's expectation. A `before-fix` run passes no `--expect`
+			 * at all, because there a mover and a clipped pane are the POINT of the
+			 * frame - the gate is for the tree that claims to have fixed them.
+			 */
+			if (after.acceptance.clipPx > 0)
+				throw new Error(
+					`expected the pane inside the window, but its right edge is ${after.acceptance.clipPx}px past it`,
+				);
+			if (after.acceptance.cutRows > 0)
+				throw new Error(
+					`expected no row elided at a hard screen edge, but ${after.acceptance.cutRows} were`,
+				);
+			if (after.acceptance.outsideRegionRows > 0)
+				throw new Error(
+					`expected no text drawn outside the pane's own region, but ${after.acceptance.outsideRegionRows} were: ${JSON.stringify(after.acceptance.outsideRegionExamples)}`,
 				);
 		} else if (EXPECT !== "") {
 			throw new Error(
@@ -922,73 +1228,5 @@ try {
 	}
 } finally {
 	app?.socket?.close();
-	/*
-	 * Kill the process GROUP, not the direct child, and tolerate a group that has
-	 * already gone away: the direct child here is `npx`, whose exit says nothing
-	 * about the `Electron.app` two levels below it. Signalling a bare `child.kill`
-	 * is what left one app per run alive on this lane.
-	 */
-	const killGroup = (signal) => {
-		if (!spawned) return;
-		try {
-			process.kill(-spawned.pid, signal);
-		} catch {
-			try {
-				spawned.kill(signal);
-			} catch {
-				// Already gone.
-			}
-		}
-	};
-	killGroup("SIGTERM");
-	/*
-	 * WAIT for the exit before returning. A run that leaves the app holding its
-	 * devtools port makes the NEXT run fail with "no app page target", which reads
-	 * as a slow launch rather than as the collision it is (measured: two of three
-	 * consecutive sizes failed that way). SIGKILL is the backstop for an app that
-	 * ignores the term.
-	 */
-	for (
-		let attempt = 0;
-		attempt < 20 && spawned && spawned.exitCode === null;
-		attempt++
-	)
-		await wait(250);
-	if (spawned && spawned.exitCode === null) {
-		killGroup("SIGKILL");
-		await wait(500);
-	}
-	/*
-	 * The group kill above covers the shape this driver spawns; this reap covers
-	 * the shape it CANNOT see. An app that outlived its group - reparented to
-	 * launchd before the signal, or a helper that detached itself - is reachable by
-	 * the one thing every launch of it carries: its own scratch profile. The pattern
-	 * is scoped to the mkdtemp'd path, so a peer's run and the operator's own app
-	 * cannot be matched by it.
-	 */
-	try {
-		execFileSync("pkill", ["-f", `user-data-dir=${PROFILE}`]);
-	} catch {
-		// `pkill` exits 1 when nothing matched, which is the good case.
-	}
-	await wait(250);
-	/*
-	 * The profile is this run's own mkdtemp; leave the machine as it was found.
-	 */
-	try {
-		rmSync(PROFILE, { recursive: true, force: true });
-	} catch {
-		// A profile an app is still holding can refuse removal; not this run's failure.
-	}
-	/*
-	 * The child's pipes keep this process alive on their own: a CLI that spawned
-	 * Electron with `stdio: ["ignore", "pipe", "pipe"]` and only killed it waits
-	 * forever for streams nobody will close, which is a hang AFTER the whole
-	 * measurement is already on disk (measured: the work finished at 10:40 and the
-	 * process was still alive when the run was timed out). Destroy them and exit
-	 * on the result the run already has.
-	 */
-	spawned?.stdout?.destroy();
-	spawned?.stderr?.destroy();
-	spawned?.unref();
+	await reapRevealRig();
 }
