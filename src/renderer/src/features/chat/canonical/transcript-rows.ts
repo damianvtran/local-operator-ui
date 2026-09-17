@@ -89,11 +89,13 @@ export type Row = {
  *
  * The TUI has one aggregate liveness element and no per-record equivalent
  * (`WorkingBlock`, `tui/widgets/transcript.py`), and the working line here is
- * the port of it: its `thinking` → `composing N calls` → `running` →
- * `responding` ladder already covers every state this row could have described,
- * including composing tool calls, which paint as `composing · N B` on their own
- * tool rows. So liveness has ONE channel, and a record with nothing in it
- * paints nothing.
+ * the port of it: its `thinking` → `composing N calls` → `waiting to run N
+ * calls` → `running` → `responding` ladder already covers every state this row
+ * could have described, including composing tool calls, which paint as
+ * `composing · N B` on their own tool rows, a call whose dictation has finished
+ * and which nothing has started (`queued · N B`), and a call the harness will
+ * never run (`never sent · N composed`). So liveness has ONE channel, and a
+ * record with nothing in it paints nothing.
  *
  * ### The safety net that went with it, and why it is not needed
  *
