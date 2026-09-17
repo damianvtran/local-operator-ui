@@ -241,6 +241,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/band-occlusion-evidence.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app on a scratch profile to photograph the shell's band geometry, headless",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-chrome-proof.mjs",
 		"spawn",
 		1,

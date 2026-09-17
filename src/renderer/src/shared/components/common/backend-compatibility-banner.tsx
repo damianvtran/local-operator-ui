@@ -147,7 +147,15 @@ export const BackendCompatibilityBanner = () => {
 		canUpdate && backendUpdateIsRemedy({ kind, unpaired, answered });
 
 	return (
-		<div className="fixed inset-x-0 top-0 z-2100 w-full">
+		/*
+		 * IN FLOW, beside the connectivity band, rather than `fixed inset-x-0 top-0
+		 * z-2100` (D9). The two bands can be up at once, and two `fixed` strips both
+		 * pinned to y 0 OVERLAP rather than stack - so the case that decided the shape
+		 * (`docs/evidence/band-occlusion/before/before-two-bands.png`) could not even
+		 * be photographed as two bands before this change. `app.tsx` carries the full
+		 * rationale.
+		 */
+		<div className="w-full">
 			<Alert
 				variant="warning"
 				// Setup state, not an interruption: it is present from first paint

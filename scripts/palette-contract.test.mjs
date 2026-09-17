@@ -136,28 +136,141 @@ test("the subscription is torn down, so a remount cannot double-toggle", () => {
  * the committed frames use. Neither needs a browser to assert.
  */
 
-test("the palette paints above the app's connection banner", () => {
+/** The two full-bleed bands, named once: every assertion below reads them. */
+const BANDS = [
+	"src/renderer/src/shared/components/common/connectivity-banner.tsx",
+	"src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
+];
+
+/**
+ * The surfaces the shell mounts that declare a stacking level of their own.
+ *
+ * Named rather than discovered by scanning `src/`: a new global scan is a second
+ * way of asking a question this file already asks, and a list a reviewer can check
+ * is what keeps the comparison honest. `z-[1300]`/`z-[1301]` is the canvas inline
+ * editor, `z-50` is the update notification.
+ */
+const SHELL_SURFACES = [
+	"src/renderer/src/app.tsx",
+	"src/renderer/src/shared/components/common/update-notification.tsx",
+	"src/renderer/src/features/chat/components/canvas/inline-edit.tsx",
+	...BANDS,
+];
+
+/** The source with its comments blanked, so a level named in prose is not a declaration. */
+function withoutComments(source) {
+	return source
+		.replace(/\/\*[\s\S]*?\*\//g, " ")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+}
+
+test("the palette owns the screen over the app's full-bleed bands", () => {
 	/*
-	 * The banner is `fixed inset-x-0 top-0` and 68px tall; the dialog is centred.
-	 * At a window under ~638 CSS px the two overlap, and the banner used to paint
-	 * over the query field — the user typing into a field they could not see (UX
-	 * round 1, U1).
+	 * WHAT THIS USED TO BE, and why it is the same invariant in a new shape. The
+	 * band was `fixed inset-x-0 top-0` and 68px tall and the dialog is centred, so
+	 * at a window under ~638 CSS px the two overlapped and the band painted over
+	 * the query field: the user typing into a field they could not see (UX round
+	 * 1, U1). The band is the shell's FIRST CHILD in flow since D9
+	 * (`docs/evidence/band-occlusion/`), so it carries no stacking level at all
+	 * and that overlap is impossible by construction - the assertion is kept
+	 * rather than deleted because the failure it was written for was real and
+	 * invisible at the captured window size, and the property that keeps it
+	 * impossible is a pairing this can still falsify: no band declares a level,
+	 * and the modal declares one above every level the shell itself declares.
 	 */
-	const banner = read(
-		"src/renderer/src/shared/components/common/connectivity-banner.tsx",
-	);
+	for (const file of BANDS) {
+		const source = read(file);
+		/*
+		 * Matched on the ATTRIBUTE rather than on the file: these components carry
+		 * their old spelling in a comment (the change's own record of what moved),
+		 * and a scan of the whole text would read that comment as a live class.
+		 */
+		assert.doesNotMatch(
+			source,
+			/className="[^"]*\bz-(?:\[?\d)/,
+			`${file}: an in-flow band must declare no stacking level of its own`,
+		);
+	}
 	const palette = read(
 		"src/renderer/src/features/command-palette/components/command-palette.tsx",
 	);
-	const bannerZ = banner.match(/z-(?:\[(\d+)\]|(\d+))/);
 	const paletteZ = palette.match(/className="z-\[(\d+)\]/);
-	assert.ok(bannerZ, "the banner declares a stacking level");
-	assert.ok(paletteZ, "the palette must declare one that clears it");
-	const bannerLevel = Number(bannerZ[1] ?? bannerZ[2]);
-	const paletteLevel = Number(paletteZ[1]);
+	assert.ok(paletteZ, "the palette must declare a stacking level of its own");
+	/*
+	 * The bar is the shell's OWN highest declared level, read from the surfaces the
+	 * shell mounts rather than from a constant: `z-[1300]`/`z-[1301]` (the canvas
+	 * inline editor) and `z-50` (the update notification) are the other levels a
+	 * screen-owning modal has to clear, and comparing against them is what makes
+	 * `> 0` a claim about this app rather than about arithmetic. Comments are
+	 * stripped so a level named in prose is not a declaration.
+	 */
+	const declared = SHELL_SURFACES.flatMap((file) =>
+		[...withoutComments(read(file)).matchAll(/\bz-(?:\[(\d+)\]|(\d+))/g)].map(
+			(match) => Number(match[1] ?? match[2]),
+		),
+	);
+	const highest = declared.length ? Math.max(...declared) : 0;
 	assert.ok(
-		paletteLevel > bannerLevel,
-		`the palette paints at ${paletteLevel} and the banner at ${bannerLevel}: the modal must own the screen`,
+		Number(paletteZ[1]) > highest,
+		`the palette paints at ${paletteZ[1]} and the shell's highest declared level is ${highest}: the modal must own the screen`,
+	);
+});
+
+test("the bands are in flow, and the region keeps the window minus their height", () => {
+	/*
+	 * THE ACCEPTANCE POINT NO OTHER GATE WATCHES. With no band up the region is the
+	 * WHOLE window, and it is the whole window because both bands `return null`
+	 * rather than because a `fixed` band happened to take no layout space - so a
+	 * revert of the shell restructure, or of a band's `fixed inset-x-0 top-0 w-full`,
+	 * would put the covered rows back with every other check in this file green.
+	 * Three facts, each of which the reviewed change is the only reason for: the
+	 * band's own class attribute is not positioned, the region below them is
+	 * `flex-1 min-h-0`, and the two bands are the shell root's first children.
+	 */
+	/*
+	 * THE REACH OF THIS, which is a literal class attribute and nothing else (review
+	 * round 2, F5). `className="..."` is what it reads, so a band that took its
+	 * positioning through `cn(...)` - this repo's route for conditional classes - would
+	 * satisfy this assertion without carrying the class in an attribute at all. That is
+	 * complete TODAY and only today: both band files use literal class names (0 `cn(`
+	 * calls), and the day one of them grows a conditional class this assertion, the
+	 * palette's level comparison and the first-children check below all need a scan of
+	 * the class surface rather than of the attribute. Stated here so the limit is read
+	 * beside the assertion rather than discovered when it matters.
+	 */
+	for (const file of BANDS) {
+		assert.doesNotMatch(
+			read(file),
+			/className="[^"]*\bfixed\b/,
+			`${file}: a band must not be positioned (it takes its height out of the shell)`,
+		);
+	}
+	const app = read("src/renderer/src/app.tsx");
+	const region = [...app.matchAll(/className="([^"]*)"/g)]
+		.map((match) => match[1])
+		.find(
+			(classes) =>
+				classes.includes("flex-1") &&
+				classes.includes("min-h-0") &&
+				classes.includes("overflow-hidden"),
+		);
+	assert.ok(
+		region,
+		"the region below the bands must be `flex-1 min-h-0 overflow-hidden`: `h-screen` on it would make the shell taller than the window whenever a band is up",
+	);
+	assert.match(
+		app,
+		/className="relative flex h-screen flex-col overflow-hidden"/,
+		"the shell root must be a COLUMN, or the bands and the region share a row",
+	);
+	const order = [
+		"<ConnectivityBanner />",
+		"<BackendCompatibilityBanner />",
+		'className="flex min-h-0 flex-1 overflow-hidden"',
+	].map((needle) => app.indexOf(needle));
+	assert.ok(
+		order.every((at) => at > -1) && order[0] < order[1] && order[1] < order[2],
+		`the two bands must be the shell root's FIRST children, above the region (offsets ${order.join(", ")})`,
 	);
 });
 
