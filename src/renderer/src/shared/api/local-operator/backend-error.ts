@@ -19,7 +19,7 @@
  */
 
 import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
-import { DesktopControlError } from "./desktop-api";
+import { DesktopControlError, isDeadlineExceeded } from "./desktop-api";
 
 /**
  * What a failed desktop control says about the backend, in terms of the ONE
@@ -32,6 +32,7 @@ import { DesktopControlError } from "./desktop-api";
  */
 export type BackendErrorKind =
 	| "unreachable"
+	| "deadline"
 	| "unauthorized"
 	| "outdated"
 	| "unknown";
@@ -39,9 +40,16 @@ export type BackendErrorKind =
 /**
  * Classify a desktop control failure by the remedy it calls for.
  *
+ * - `deadline` is the transport's own request budget expiring: the request may
+ *   well have been received and may still be running, so this is neither
+ *   "no backend was reached" (nothing says that) nor "we cannot advise" (we
+ *   can: the server did not answer in time). It is a kind of its own for the
+ *   reason R4/D3 give — `unknown` carries an EMPTY diagnosis and remedy, and
+ *   the compatibility banner is the surface where a server wedged for twenty
+ *   seconds is exactly the case the user needs an instruction for.
  * - `null` means the request produced no HTTP status: a rejected IPC call, a
- *   dead dev proxy, or the transport's stalled-request deadline. No backend
- *   was reached.
+ *   dead dev proxy, or the transport failing before any byte left the process.
+ *   No backend was reached.
  * - 503 is the main process's own "could not complete this request", which is
  *   what a backend that is down or refusing work produces.
  * - 401/403 mean a backend answered and refused this app's bearer, so it is
@@ -54,6 +62,7 @@ export type BackendErrorKind =
  * running, current and merely erroring -- was answered with an install.
  */
 export function backendErrorKind(error: unknown): BackendErrorKind {
+	if (isDeadlineExceeded(error)) return "deadline";
 	const status = error instanceof DesktopControlError ? error.status : null;
 	if (status === null || status === 503) return "unreachable";
 	if (status === 401 || status === 403) return "unauthorized";
@@ -90,6 +99,13 @@ export function backendErrorKind(error: unknown): BackendErrorKind {
  */
 export const BACKEND_ERROR_REMEDY: Record<BackendErrorKind, string> = {
 	unreachable: "Restart the app so it can start its own server.",
+	// The same instruction as `unreachable`, for the same reason: a server that
+	// has been silent for the whole budget is not answering, and restarting the
+	// app is what starts a new one. It is NOT the panel copy — a panel renders
+	// the request's own authored sentence, which says the app stopped waiting
+	// rather than that the server is down (design round 1, D3: this instruction
+	// must survive on the surfaces that have no in-place retry).
+	deadline: "Restart the app so it can start its own server.",
 	unauthorized: "Restart the app so it starts and pairs with its own server.",
 	outdated: "Update the server and try again.",
 	unknown: "",
@@ -108,6 +124,7 @@ export const BACKEND_ERROR_REMEDY: Record<BackendErrorKind, string> = {
  */
 export const BACKEND_ERROR_DIAGNOSIS: Record<BackendErrorKind, string> = {
 	unreachable: "The Local Operator server is not answering.",
+	deadline: "The Local Operator server did not answer in time.",
 	unauthorized:
 		"This app cannot authenticate to the running Local Operator server.",
 	// "may need an update" hedged while the sentence after it issued a command
@@ -205,6 +222,14 @@ export function backendCompatibilityMessage(input: {
 			// "protected controls are unavailable" was jargon two sentences away
 			// from this file's own plain list of the same surfaces (design D10).
 			return `This app cannot authenticate to the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable. ${BACKEND_ERROR_REMEDY.unauthorized}`;
+		if (kind === "deadline")
+			// A server that has been silent for the app's whole budget is a wedged
+			// server, which is the case this banner exists for. It names that, and
+			// keeps the restart instruction, because the banner has no retry of its
+			// own: dropping the remedy would leave the user a statement and no
+			// action (design round 1, D3). It is also not "as expected" — nothing
+			// arrived at all, which is a different fact from an unexpected answer.
+			return `${BACKEND_ERROR_DIAGNOSIS.deadline} Provider sign-in, settings, slash commands and MCP management need it answering. ${BACKEND_ERROR_REMEDY.deadline}`;
 		if (kind === "outdated")
 			// The trailing clause read "stay off until then", whose antecedent left
 			// with the remedy when it was extracted into the shared sentence --
@@ -273,11 +298,17 @@ export function compatibilityBannerShown(
 /**
  * Whether a failed desktop query is worth asking again.
  *
- * React Query's default `retry: 1` charges the full renderer deadline twice for
- * a request that never gets an answer: the stalled-IPC shape cost 30s, then
- * another 30s, so a user watched an unbroken spinner for ~60s before the error
- * state could render. That is the symptom issue 89 was reported for, merely
- * bounded -- a user who gave up at 45s before still gives up at 45s.
+ * React Query's default `retry: 1` charges the renderer deadline twice for a
+ * request that never gets an answer: the stalled-IPC shape ended one wait, then
+ * the retry began another, so a user watched an unbroken spinner for the sum of
+ * the two before the error state could render. That is the symptom issue 89 was
+ * reported for, merely bounded -- a user who gave up at 45s before still gives
+ * up at 45s.
+ *
+ * The deadline here is the OP'S OWN, derived per op
+ * (`desktopRequestTimeoutMs`), not one literal: a control waits 25 s and a
+ * ledger read 95 s, so the two waits this refuses to double are 25 s and 95 s
+ * respectively.
  *
  * The distinction that matters is whether anything answered. A `status: null`
  * failure means the deadline expired or the transport never reached a backend;

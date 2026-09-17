@@ -40,7 +40,10 @@ import {
 import { DesktopStreamRelay } from "../desktop-stream";
 import { requestDesktop, requestDesktopOutcome } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
-import { readInstallIdentity, resolveCommandPath } from "../update-install";
+import {
+	readInstallIdentity,
+	resolveGlobalConsoleScript,
+} from "../update-install";
 import { backendConfig } from "./config";
 import {
 	DETACHED_AFTER_MS,
@@ -83,15 +86,18 @@ import {
 	windowsPathInterpreterCandidates,
 } from "./owned-serve-launch";
 
-/** Every `where`/`which local-operator` exec the start path runs, bounded.
- *
- * Two of them - the existence check, then the resolution - at one ceiling each
- * is the console half of the start path's worst case. The first used to have no
- * timeout at all, which made it the only unbounded step a quit waiting on a
- * start could land on (review round 3, F12); a bound that has to outlast this
- * work derives from this number rather than restating it. */
-const CONSOLE_DISCOVERY_TIMEOUT_MS = 5_000;
-export const CONSOLE_RESOLUTION_WORST_MS = 2 * CONSOLE_DISCOVERY_TIMEOUT_MS;
+/*
+ * There is no `CONSOLE_RESOLUTION_WORST_MS` here any more, and the absence is a
+ * removal rather than an oversight. The console half of the start path used to
+ * be two bounded `which`/`where` execs - the existence check, then the
+ * resolution - and the quit path's failsafe carried a term for them. Both are
+ * gone: the launcher is named by `resolveCommandPath`, a synchronous search of
+ * the installers' own bin directories (see `globalConsoleScript`). Leaving the
+ * term in place would inflate `QUIT_CLEANUP_FAILSAFE_MS` by ten seconds of
+ * waiting that no longer happens, and that constant's own note says each term
+ * has to be the bound it comes from. A future exec on this path owes the
+ * failsafe a term again.
+ */
 
 /** The shutdown escalation one `stop(false)` can spend before it gives up: the
  * normal grace, then the force hold after SIGKILL. Exported for the same reason
@@ -132,7 +138,6 @@ const execPromise = promisify(exec);
 
 // Regex for parsing environment variable lines (moved to top-level for performance)
 const ENV_VAR_REGEX = /^([^=]+)=(.*)$/;
-const LINE_BREAK = /\r?\n/;
 
 /**
  * Which of the three things one answered desktop read told us.
@@ -1053,71 +1058,87 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * Check if the local-operator command exists globally
-	 * @returns Promise resolving to true if the command exists, false otherwise
+	 * The global launcher this app ranks its daemons by, spawns from, and reports.
+	 *
+	 * ONE resolution, read by `checkLocalOperatorExists`, `resolveGlobalConsole`
+	 * and `preferredInstallPrefix`, because the three have to name the same
+	 * install: the decision to run GLOBAL_INSTALL is only true if the spawn can
+	 * resolve that same launcher, and a second resolution through a different
+	 * mechanism is exactly how a shell rc file's prepended venv becomes the thing
+	 * that gets spawned while the ranking talked about a different one.
+	 *
+	 * `resolveCommandPath`, NOT `which`. WHY, measured on this host 2026-09-16: the
+	 * app is started by LaunchServices, whose PATH is `/usr/bin:/bin:/usr/sbin:/sbin`,
+	 * and an app launched from a session that carries its own minimal PATH inherits
+	 * that. `~/.local/bin` - where uv and pipx link their console scripts, and where
+	 * this machine's `lop-update` install lives - is on neither. So the shell probe
+	 * this replaced answered "not found globally" on every ordinary launch, and the
+	 * app fell through to its OWN bundled environment: it ran a backend the
+	 * operator never updates, watched it diverge from `lop --version` (0.55.9
+	 * bundled against 0.55.10 installed), and offered to `pip install` into a uv
+	 * tool. `resolveCommandPath` searches the installers' own locations
+	 * (`UV_TOOL_BIN_DIR`, `XDG_BIN_HOME`, `$XDG_DATA_HOME/../bin`, `~/.local/bin`,
+	 * the Homebrew prefixes and every uv tool environment) as well as the inherited
+	 * PATH, so the same install is named with or without a shell - which is the
+	 * ranking rule `preferredInstallPrefix` states, and precisely what a
+	 * `which`-based check could not honour.
+	 *
+	 * `local-operator` before `lop`: both are console scripts of the same install
+	 * and normally sit in the same bin directory, but the spawn reads the resolved
+	 * script's shebang and refuses anything that is not a
+	 * `from local_operator.cli import main` launcher (`consoleInterpreter`), so the
+	 * name this app has always spawned is tried first and `lop` covers an install
+	 * whose older console script is gone.
 	 */
-	async checkLocalOperatorExists(): Promise<boolean> {
-		try {
-			const command =
-				process.platform === "win32"
-					? "where local-operator"
-					: "which local-operator";
-
-			logger.info(
-				`Checking if local-operator command exists: ${command}`,
-				LogFileType.BACKEND,
-			);
-
-			const { stdout } = await execPromise(command, {
-				// Bounded: a quit that arrives mid-start waits on this same path, and an
-				// unbounded child here is a wait with nothing underneath it.
-				timeout: CONSOLE_DISCOVERY_TIMEOUT_MS,
-				windowsHide: true,
-			});
-
-			if (stdout.trim()) {
-				if (
-					process.platform === "darwin" &&
-					isLegacyManagedCommand(
-						stdout.trim().split("\n")[0],
-						join(
-							app.getPath("home"),
-							"Library",
-							"Application Support",
-							"Local Operator",
-						),
-					)
-				) {
-					logger.info(
-						"The PATH command belongs to a legacy managed environment; preparing a separate backend instead",
-						LogFileType.BACKEND,
-					);
-					return false;
-				}
-				logger.info(
-					`local-operator command found at: ${stdout.trim()}`,
-					LogFileType.BACKEND,
-				);
-				return true;
-			}
-		} catch (_error) {
-			logger.info(
-				"local-operator command not found globally",
-				LogFileType.BACKEND,
-			);
-		}
-
-		return false;
+	private globalConsoleScript(): string | null {
+		/*
+		 * THE SHARED HELPER, not a second copy of its rule (review R2-2). The update
+		 * path resolves the plan and the install's identity through this same
+		 * function, so the decision this feeds, the ranking and the plan cannot drift
+		 * apart - including on Windows, where the helper's own arm asks `where` for
+		 * both names and the inline pair here could only ever have tried one of them
+		 * through `resolveCommandPath`. Its docstring says it is one helper for both
+		 * callers; this is the call site that made that true.
+		 */
+		return resolveGlobalConsoleScript();
 	}
 
 	/**
 	 * Check if the local-operator command exists globally
 	 * @returns Promise resolving to true if the command exists, false otherwise
 	 */
-	private canonicalLauncher(): string | null {
-		// Rank and spawn from the same entrypoint; shell rc files may prepend an
-		// unrelated venv, so resolving a bare command a second time is unsafe.
-		return resolveCommandPath("lop") ?? resolveCommandPath("local-operator");
+	async checkLocalOperatorExists(): Promise<boolean> {
+		const command = this.globalConsoleScript();
+		if (!command) {
+			logger.info(
+				"local-operator command not found globally",
+				LogFileType.BACKEND,
+			);
+			return false;
+		}
+		if (
+			process.platform === "darwin" &&
+			isLegacyManagedCommand(
+				command,
+				join(
+					app.getPath("home"),
+					"Library",
+					"Application Support",
+					"Local Operator",
+				),
+			)
+		) {
+			logger.info(
+				`The resolved command belongs to a legacy managed environment (${command}); preparing a separate backend instead`,
+				LogFileType.BACKEND,
+			);
+			return false;
+		}
+		logger.info(
+			`local-operator command found at: ${command}`,
+			LogFileType.BACKEND,
+		);
+		return true;
 	}
 
 	/**
@@ -1133,7 +1154,7 @@ export class BackendServiceManager {
 	 */
 	private preferredInstallPrefix(): string | null {
 		try {
-			const identity = readInstallIdentity(this.canonicalLauncher());
+			const identity = readInstallIdentity(this.globalConsoleScript());
 			if (identity.uvReceipt) return dirname(identity.uvReceipt);
 			if (identity.venvPrefix) return identity.venvPrefix;
 			return null;
@@ -1629,16 +1650,32 @@ export class BackendServiceManager {
 	 * Start the backend service
 	 * @returns Promise resolving to true if the backend was started successfully, false otherwise
 	 */
-	/** Keep PATH discovery authoritative; `ownedServeLaunch` proves the identity
-	 * of what it found rather than trusting the name it was resolved under. */
-	private async resolveGlobalConsole(env: NodeJS.ProcessEnv): Promise<string> {
-		const { stdout } = await execPromise(
-			process.platform === "win32"
-				? "where local-operator"
-				: "which local-operator",
-			{ env, timeout: CONSOLE_DISCOVERY_TIMEOUT_MS },
-		);
-		return stdout.trim().split(LINE_BREAK)[0];
+	/** The global console to launch, resolved the one shell-free way.
+	 *
+	 * `ownedServeLaunch` still proves the identity of what it is handed rather than
+	 * trusting the name it was resolved under - that part is unchanged. What
+	 * changed is WHERE the name comes from: this method used to re-resolve a bare
+	 * `local-operator` through a shell, in the spawn environment that carries the
+	 * login shell's PATH. That is the second resolution `globalConsoleScript`
+	 * warns about, and it could name a venv a shell rc file prepends while the
+	 * decision above had ranked the operator's real install - two answers to one
+	 * question, with the spawn using the one the ranking never saw. Reading the
+	 * same helper removes the possibility instead of documenting it.
+	 *
+	 * The throw is reachable only when the resolution succeeded a moment ago and
+	 * the install disappeared since. It is deliberately not swallowed into an
+	 * empty string: `consoleInterpreter("")` would report that as an ENOENT on a
+	 * path nobody printed, and the caller's own failure report is the honest face
+	 * of this.
+	 */
+	private async resolveGlobalConsole(): Promise<string> {
+		const command = this.globalConsoleScript();
+		if (!command) {
+			throw new Error(
+				"No global local-operator command could be resolved, though one was found a moment ago",
+			);
+		}
+		return command;
 	}
 
 	/**
@@ -1819,7 +1856,7 @@ export class BackendServiceManager {
 			let interpreters: string[];
 			if (globalInstall) {
 				this.startupMode = LocalOperatorStartupMode.GLOBAL_INSTALL;
-				const executable = await this.resolveGlobalConsole(env);
+				const executable = await this.resolveGlobalConsole();
 				interpreters =
 					process.platform === "win32"
 						? await windowsInterpreterCandidates(executable, env)
@@ -2862,6 +2899,21 @@ export class BackendServiceManager {
 	 */
 	getOwnedPid(): number | null {
 		return this.process?.pid ?? null;
+	}
+
+	/**
+	 * The address this app is talking to RIGHT NOW.
+	 *
+	 * Not the configured target: `attachTo` rotates `backendUrl` onto the daemon
+	 * discovery adopted, and everything that queries the backend resolves against
+	 * it at call time. A consumer that instead read the configured URL described a
+	 * daemon the app is not talking to - the update service's `/health` read did
+	 * exactly that, so for an adopted daemon every version read failed and the
+	 * panel could neither name the build being served nor report the skew after an
+	 * install moved (QA Q-2, UX U1).
+	 */
+	getBackendUrl(): string {
+		return this.backendUrl;
 	}
 
 	/**

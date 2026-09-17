@@ -397,6 +397,7 @@ function installPreloadStubs() {
 		onBackendUpdateDevMode: unsub,
 		onBackendUpdateNotAvailable: unsub,
 		onBackendUpdateCompleted: unsub,
+		onBackendUpdateProgress: unsub,
 		onBackendUpdateError: unsub,
 		onBackendUpdateManualRequired: unsub,
 	};

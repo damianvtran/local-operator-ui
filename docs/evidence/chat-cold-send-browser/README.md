@@ -6,6 +6,34 @@ Operator **browser tool**, then viewed each image. These WebPs are lossless
 conversions at the original 2880 x 1634 device pixels (1440 x 817 CSS viewport).
 No capture-evidence/CDP/Playwright/Puppeteer driver was used in this pass.
 
+**One frame has been re-shot since, and this is the only exception to the above.**
+`admission-timeout/` was re-taken by PR #278's round-4 remediation, because it
+was the set's only picture of the held-message card and it showed the copy that
+PR retired. It was shot through the app's own failure path instead of the
+browser tool: the worktree's own build launched headless as a real Electron app,
+an isolated `local-operator serve` behind a tap that holds the first
+session-`/messages` POST past the app's own 20 s control budget, captured by the
+app's `capturePage` at the same 2880 x 1634 device pixels (1440 x 817 viewport).
+Every other frame here is untouched.
+
+**The user bubble's text measure moved under that frame afterwards, and that is
+disclosed rather than re-shot.** `main`'s #290 (the user-bubble measure) landed
+after the frame was re-taken: it removed the `.lo-measured .lo-markdown {
+max-width: 62ch; margin-inline: auto }` rule and the `lo-measured` class from
+both components that render a user bubble (`message-paper.tsx` and
+`canonical/canonical-transcript.tsx`), and this frame contains one. What the
+frame is evidence for is unchanged - the deadline sentence, `A message is still
+being held...` and the `Restore message` / `Discard message` controls all still
+render, and no copy commit is in that range - so only the bubble's measure is a
+picture of the previous build. It was not re-shot because the rig that took it
+is scratch under `/tmp` and was reclaimed with the rest of that round's scratch,
+and its reconstruction (isolated daemon, a discovery record the app will attach
+to, and the tap) is refused by the app's own attach check: the seeded daemon is
+classified `heartbeat-stale` and the app waits rather than attaching, so the
+deadline state is never reached. No sweep can catch this - the set is
+`supplementary` and not swept - which is why it is written down here, and why
+rebuilding that rig as a committed script is worth doing before the next pass.
+
 ## Provenance and scope
 
 The worktree started at `7550bf1ae`, already containing the round-2 code and the
@@ -21,7 +49,7 @@ in this repository was re-captured on it**.
 | --- | --- |
 | `idle-before-send` | New draft, pre-send subtitle, normal composer. The pre-existing draft skeleton is visible; this is not proof of a greeting. |
 | `admitted-echo` | Real message POST held by a test proxy: sent text visible, `waiting for the agent 9s`, matching composer hint, subtitle `Starting the session`. U1/U2 fixed. |
-| `admission-timeout` | The 30 s proxy delay exceeds the desktop request deadline: wait withdrawn, held-message recovery offered, visible echo makes the transcript reference truthful. This is a failure frame, **not successful settle**. |
+| `admission-timeout` | The tap's delay exceeds the desktop request deadline: wait withdrawn, held-message recovery offered, visible echo makes the transcript reference truthful. This is a failure frame, **not successful settle**. RE-SHOT by PR #278's round-4 remediation (`be66aa465`), so it renders the copy the app ships - the deadline sentence (`The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting...`), `A message is still being held, so a different message cannot be sent yet.`, and the controls `Restore message` / `Discard message`. The wording it replaced (`An unsent message is still being held`, `Restore unsent message` / `Discard unsent message`, and the transport's generic `The backend could not complete this request...` where an expired deadline now answers) is the D1/D9 copy this PR removed, which `send-error/README.md` records as `measured as ...; renamed by #278's design round 2`. The sidebar's `Not connected to the backend - showing the last known state.` line is this rig's own state - the tap fronts the daemon on another port - and is not part of what this frame is evidence for. |
 | `restored-message` | Clicked Restore: exact sent text returns to the editable composer, recovery copy now refers to that composer. |
 | `successful-resend` | Delay removed; clicked Send: real mock-provider answer arrives, echo coalesces, normal composer returns. |
 | `refusal-before-fix` | **Reproduced Q4 on inherited `7550bf1ae`:** `[refuse]` ends the turn, yet `Stopped with an error` and `waiting for the agent 6s` coexist. The inherited raw-notice guard did not cover the real frame-only outcome. |

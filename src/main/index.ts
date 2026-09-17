@@ -37,7 +37,6 @@ import {
 import {
 	BackendInstaller,
 	BackendServiceManager,
-	CONSOLE_RESOLUTION_WORST_MS,
 	INTERPRETER_RESOLUTION_WORST_MS,
 	LocalOperatorStartupMode,
 	OWNED_STOP_WORST_MS,
@@ -2713,14 +2712,19 @@ app.on("window-all-closed", () => {
  * ...and never leave the user without a way out.
  *
  * Derived from the work the retry waits on, not asserted: `stop(false)` waits
- * for the start promise to settle, and that promise can be inside console
- * discovery, interpreter resolution and the owned stop's own escalation, with
- * the readiness poll's last interval on top. Round 2's version of this constant
- * named only the probe budget and the stop escalation, which omitted the
- * `where` execs and the discovery window entirely - so the "60000 ms" it
- * claimed could be reached mid-cleanup and report a failure that had not
- * happened (review round 3, F12). Each term is the exported bound it comes
- * from; changing any of them moves this one.
+ * for the start promise to settle, and that promise can be inside interpreter
+ * resolution and the owned stop's own escalation, with the readiness poll's
+ * last interval on top. Round 2's version of this constant named only the probe
+ * budget and the stop escalation, which omitted the resolution execs and the
+ * discovery window entirely - so the "60000 ms" it claimed could be reached
+ * mid-cleanup and report a failure that had not happened (review round 3, F12).
+ * Each term is the exported bound it comes from; changing any of them moves
+ * this one.
+ *
+ * The console term is GONE rather than zeroed. It was two 5 s `where`/`which`
+ * ceilings for naming the global launcher; that is now a synchronous search of
+ * the installers' bin directories, so no wait is left to bound and a term for
+ * one would hold this timer ten seconds past everything it actually waits on.
  *
  * What it does NOT cover, stated because a bound that only holds while the
  * thread is free is not a bound: it is a timer, so it cannot fire while the
@@ -2730,7 +2734,6 @@ app.on("window-all-closed", () => {
  */
 const QUIT_FAILSAFE_MARGIN_MS = 5_000;
 const QUIT_CLEANUP_FAILSAFE_MS =
-	CONSOLE_RESOLUTION_WORST_MS +
 	INTERPRETER_RESOLUTION_WORST_MS +
 	OWNED_STOP_WORST_MS +
 	READINESS_POLL_INTERVAL_MS +

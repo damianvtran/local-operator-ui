@@ -496,6 +496,12 @@ updater.onBackendUpdateNotAvailable = updater.on(
 );
 updater.onBackendUpdateCompleted = updater.on("backend-update-completed");
 /*
+ * Which phase a running update is in, announced as it changes: the in-flight panel
+ * is one unchanging rectangle for a ~47 s install and a ~15 s restart without it
+ * (UX U4).
+ */
+updater.onBackendUpdateProgress = updater.on("backend-update-progress");
+/*
  * The channel the main process has always sent a failed server update on, and
  * which nothing subscribed to until the reported hang - so a case that does not
  * wire it would be modelling a renderer that cannot be fixed.
@@ -1341,14 +1347,347 @@ test("a message with no panel to sit beside still renders the toast", () => {
  * with, so this case is the driven one: it mounts the shipped panel and counts
  * what is pinned in that corner.
  */
+/**
+ * The skew notice speaks only when there IS a skew.
+ *
+ * The rig's own false alarm, caught end to end: the check that follows an
+ * install which is already current carries `runningVersion` equal to `version`,
+ * and the panel headed that machine "The server is on an older build than the
+ * install" while both readings were 0.56.2 - and its remedy line said restart a
+ * server that was already up to date. A notice built on two equal readings is not
+ * a smaller version of the truth, it is a different statement.
+ */
+test("readings that agree raise no skew notice, and readings that differ do", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.2",
+		restartable: true,
+	});
+	handle.render();
+	assert.equal(
+		allCopy(handle).some((text) => /older build than the install/.test(text)),
+		false,
+		JSON.stringify(allCopy(handle)),
+	);
+
+	// The mirror, so the guard cannot pass by never rendering the notice at all.
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.0",
+		restartable: true,
+	});
+	handle.render();
+	const copy = allCopy(handle);
+	assert.ok(
+		copy.some((text) => /older build than the install/.test(text)),
+		JSON.stringify(copy),
+	);
+	assert.ok(
+		copy.some((text) => /install is up to date \(0\.56\.2\)/.test(text)),
+		JSON.stringify(copy),
+	);
+	assert.ok(
+		copy.some((text) => /is still running 0\.56\.0/.test(text)),
+		JSON.stringify(copy),
+	);
+	// And it tells the reader what to do about it, for a daemon the app owns.
+	assert.ok(
+		copy.some((text) => /Restart Local Operator/.test(text)),
+		JSON.stringify(copy),
+	);
+});
+
+/**
+ * U9: the offer states the cost THIS machine pays, not the one the layout implies.
+ *
+ * The managed arm's sentence comes from the plan, and the plan is an install
+ * classification: it cannot know whether the daemon serving this app is one the
+ * app started. On a machine where discovery adopted a server the offer therefore
+ * promised "restarts the server it started, so a turn that is in flight is
+ * dropped" - a cost that cannot be incurred there, denied four minutes later by the
+ * app's own completion notice. The event now carries `restartable`, and this case
+ * pins both directions off the SAME payload: only the ownership reading differs.
+ */
+test("the offer names the restart cost only where the app may restart the server", () => {
+	// The plan's own managed sentence, verbatim from `resolveGlobalInstallPlan`.
+	const PLAN_MANAGED_SENTENCE =
+		"The app updates this install and then restarts the server it started, so a turn that is in flight is dropped while the server comes back. This can take a minute or two.";
+
+	const owned = mountNotification();
+	updater.emit("backend-update-available", {
+		...SERVER_UPDATE_OFFER,
+		remedy: PLAN_MANAGED_SENTENCE,
+		restartable: true,
+	});
+	owned.render();
+	const ownedCopy = allCopy(owned).join(" ");
+	assert.match(ownedCopy, /then restarts the server it started/, ownedCopy);
+	assert.match(ownedCopy, /a turn that is in flight is dropped/, ownedCopy);
+
+	const adopted = mountNotification();
+	updater.emit("backend-update-available", {
+		...SERVER_UPDATE_OFFER,
+		remedy: PLAN_MANAGED_SENTENCE,
+		restartable: false,
+	});
+	adopted.render();
+	const adoptedCopy = allCopy(adopted).join(" ");
+	assert.match(
+		adoptedCopy,
+		/keeps running the old build until it restarts/,
+		adoptedCopy,
+	);
+	assert.match(adoptedCopy, /nothing in flight is dropped/, adoptedCopy);
+	assert.equal(
+		/restarts the server it started/.test(adoptedCopy),
+		false,
+		`an adopted daemon's offer must not promise a restart: ${adoptedCopy}`,
+	);
+
+	// An older main process sends no ownership reading at all. The app-owned
+	// sentence is the one this offer was written for, so that is the fallback.
+	const unstated = mountNotification();
+	updater.emit("backend-update-available", {
+		...SERVER_UPDATE_OFFER,
+		remedy: PLAN_MANAGED_SENTENCE,
+	});
+	unstated.render();
+	assert.match(
+		allCopy(unstated).join(" "),
+		/then restarts the server it started/,
+	);
+});
+
+/**
+ * R2-3: silence on SUCCESS is the one outcome this panel must not produce.
+ *
+ * The completion path routed every `restarted: false` arrival through the skew
+ * funnel and returned past its toast - and the funnel declines when the running
+ * reading is missing. So a successful install over an adopted daemon whose
+ * `/health` read failed rendered nothing at all: no toast, no notice, no error,
+ * and a panel that simply went idle. The funnel now reports whether it spoke.
+ */
+test("a completed install the notice declines still answers the press", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.2",
+		// Adopted, and the read failed: the funnel has nothing to compare, so it
+		// declines - correctly, because it cannot claim the server is behind.
+		runningVersion: null,
+		restarted: false,
+		restartable: true,
+	});
+	handle.render();
+
+	const shown = visible(handle);
+	assert.equal(
+		shown.length,
+		1,
+		`the press must be answered: ${JSON.stringify(shown)} ${JSON.stringify(allCopy(handle))}`,
+	);
+	assert.equal(shown[0].variant, "success");
+	assert.match(shown[0].text, /Server update completed successfully/);
+	// ... and it still must not claim the server moved.
+	assert.equal(
+		allCopy(handle).some((text) => /older build than the install/.test(text)),
+		false,
+		JSON.stringify(allCopy(handle)),
+	);
+});
+
+/**
+ * R2-5: the phase lives in the same cleanup as the flags that put the panel up.
+ *
+ * `updateBackend`'s `finally` clears `checking`/`updatingBackend` unconditionally
+ * and deliberately not per-branch - and the phase added this round was reset only
+ * by the two listeners that carry one, so an attempt answered through the
+ * by-hand surface left `"installing"` set and the NEXT attempt's panel opened on
+ * the previous attempt's sentence.
+ */
+/**
+ * U13: the panel that follows the click carries the same reading as the offer.
+ *
+ * The offer learned to stop promising a restart it cannot perform (U9), and the
+ * in-flight install panel went on making the same promise two seconds later, on
+ * the same machine, from a constant chosen by the install's LAYOUT. Both ask
+ * `serverRestartsWithInstall` now, so this case pins both arms of the SAME
+ * payload, before and after the press.
+ */
+test("the in-flight install panel promises a restart only where one is coming", () => {
+	const press = (restartable) => {
+		const handle = mountNotification();
+		updater.emit("backend-update-available", {
+			...SERVER_UPDATE_OFFER,
+			restartable,
+		});
+		handle.render();
+		control(handle, "Update server").props.onClick();
+		handle.render();
+		return handle;
+	};
+
+	// Before any phase event: the panel's ambient sentence must not promise it
+	// either - it is the one a pip update shows for its whole run.
+	const ownedAmbient = press(true);
+	const ownedAmbientCopy = allCopy(ownedAmbient).join(" ");
+	assert.match(
+		ownedAmbientCopy,
+		/will temporarily go offline while it restarts/,
+		ownedAmbientCopy,
+	);
+
+	const adoptedAmbient = press(false);
+	const adoptedAmbientCopy = allCopy(adoptedAmbient).join(" ");
+	assert.equal(
+		/will temporarily go offline/.test(adoptedAmbientCopy),
+		false,
+		`an adopted server is not taken offline: ${adoptedAmbientCopy}`,
+	);
+
+	// And the install phase itself, which is where the reviewer found it.
+	const owned = press(true);
+	updater.emit("backend-update-progress", { phase: "installing" });
+	owned.render();
+	const ownedCopy = allCopy(owned).join(" ");
+	assert.match(ownedCopy, /and it restarts once the install lands/, ownedCopy);
+
+	const adopted = press(false);
+	updater.emit("backend-update-progress", { phase: "installing" });
+	adopted.render();
+	const adoptedCopy = allCopy(adopted).join(" ");
+	assert.equal(
+		/restarts once the install lands/.test(adoptedCopy),
+		false,
+		`the panel must not re-promise the restart: ${adoptedCopy}`,
+	);
+	// The rest of the sentence still stands.
+	assert.match(adoptedCopy, /keeps serving while this runs/, adoptedCopy);
+	assert.match(
+		adoptedCopy,
+		/can't be interrupted once it has started/,
+		adoptedCopy,
+	);
+});
+
+/**
+ * U14: the unattended notice speaks only when the readings differ.
+ *
+ * Its new `unattended && restartable` arm fired exactly when the app OWNED the
+ * server it had just started from the landed install - so the headline asserted a
+ * skew that did not exist and the advice told the reader to restart the app that
+ * was painting the panel, with Settings reading the new version one second later.
+ * The producer reads the serving daemon now, so the panel is silent unless there is
+ * something to say - and the attempt is still accounted for.
+ */
+test("an unattended completion speaks only when the readings actually differ", () => {
+	const completion = (runningVersion) => ({
+		installVersion: "0.56.2",
+		runningVersion,
+		restarted: false,
+		unattended: true,
+		restartable: true,
+	});
+
+	// The ordinary path: the app came back and started its daemon from the landed
+	// install. Both readings agree, so there is no skew to report - and the attempt
+	// is not left silent either.
+	const agreeing = mountNotification();
+	startServerUpdate(agreeing);
+	updater.emit("backend-update-completed", completion("0.56.2"));
+	agreeing.render();
+	const agreeingCopy = allCopy(agreeing).join(" ");
+	assert.equal(
+		/older build than the install/.test(agreeingCopy),
+		false,
+		`no skew exists here: ${agreeingCopy}`,
+	);
+	assert.equal(
+		/once more/.test(agreeingCopy),
+		false,
+		`no restart is owed here: ${agreeingCopy}`,
+	);
+	assert.equal(
+		visible(agreeing).length,
+		1,
+		`the attempt must still be accounted for: ${JSON.stringify(visible(agreeing))}`,
+	);
+	assert.match(
+		visible(agreeing)[0].text,
+		/Server update completed successfully/,
+	);
+
+	// The state the notice is for: the abandoned attempt landed and the daemon
+	// serving this launch is genuinely still on the old build.
+	const skew = mountNotification();
+	startServerUpdate(skew);
+	updater.emit("backend-update-completed", {
+		...completion("0.56.0"),
+		restartable: false,
+	});
+	skew.render();
+	const skewCopy = allCopy(skew).join(" ");
+	assert.match(skewCopy, /older build than the install/, skewCopy);
+	assert.match(skewCopy, /finished while Local Operator was closed/, skewCopy);
+	assert.match(skewCopy, /still reports 0\.56\.0/, skewCopy);
+	assert.match(
+		skewCopy,
+		/It moves onto the new build when it restarts/,
+		skewCopy,
+	);
+});
+
+test("a phase from an attempt answered elsewhere cannot leak into the next", async () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-progress", { phase: "installing" });
+	handle.render();
+	assert.ok(
+		allCopy(handle).some((text) =>
+			/Installing the new server build/.test(text),
+		),
+		JSON.stringify(allCopy(handle)),
+	);
+
+	/*
+	 * The attempt ends WITHOUT a completion and WITHOUT an error report - the shape
+	 * main answers over the by-hand surface, and the one the phase was never cleared
+	 * on: the two listeners that carry a phase are the completed event and an
+	 * update-phase error report, so the flags came down in `updateBackend`'s
+	 * `finally` and the phase stayed set.
+	 */
+	await settleServerUpdate(handle, true);
+
+	// The next attempt opens on the generic sentence, not the last one's.
+	startServerUpdate(handle);
+	handle.render();
+	const copy = allCopy(handle).join(" ");
+	assert.equal(
+		/Installing the new server build/.test(copy),
+		false,
+		`the new attempt must not open on the old attempt's phase: ${copy}`,
+	);
+	assert.match(copy, /Please wait while the server is being updated/, copy);
+});
+
 test("the pinned box holds one message, and the error takes it", () => {
 	const handle = mountNotification();
 	updater.emit("backend-update-available", SERVER_UPDATE_OFFER);
 	handle.render();
-	const offered = visible(handle);
-	assert.equal(offered.length, 1, JSON.stringify(offered));
-	assert.equal(offered[0].variant, "info");
-	assert.match(offered[0].text, /A new server update is available/);
+	/*
+	 * D6: this offer raises NO notice of its own. The panel already reads "Server
+	 * version X is available", so the toast in the opposite corner was the same
+	 * news twice in two spellings ("v0.55.10" against "0.55.10") - and it only ever
+	 * appeared for the arm that manages the update, which is the arm whose panel the
+	 * reader is looking at. The box therefore starts empty on this path.
+	 */
+	assert.equal(
+		visible(handle).length,
+		0,
+		`the offer must not raise a notice of its own: ${JSON.stringify(visible(handle))}`,
+	);
+	assert.ok(showsText(handle, "Server update available"));
 
 	// UX U6's own repro: a check the user pressed fails while the offer stands.
 	updater.emit(
@@ -1394,15 +1733,25 @@ test("the pinned box holds one message, and the error takes it", () => {
 	handle.render();
 	assert.equal(visible(handle).length, 0, "closing must free the box");
 
+	// And the next offer raises nothing either, so the box STAYS empty while the
+	// panel moves: there is no notice left on this branch to repaint.
 	updater.emit("backend-update-available", {
 		...SERVER_UPDATE_OFFER,
 		latestVersion: "0.55.11",
 	});
 	handle.render();
-	const again = visible(handle);
-	assert.equal(again.length, 1, JSON.stringify(again));
-	assert.equal(again[0].variant, "info");
-	assert.match(again[0].text, /0.55.11/);
+	assert.equal(visible(handle).length, 0, JSON.stringify(visible(handle)));
+	/*
+	 * The panel is the carrier, and it is the thing that moved - matched by
+	 * CONTAINMENT, because the sentence is now built from two readings in one `<p>`
+	 * rather than being a lone text child (`showsText` matches exactly).
+	 */
+	assert.ok(
+		allCopy(handle).some((text) =>
+			/Server version 0\.55\.11 is available/.test(text),
+		),
+		`the panel is the carrier: ${JSON.stringify(allCopy(handle))}`,
+	);
 });
 
 /**

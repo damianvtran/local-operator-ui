@@ -52,6 +52,33 @@ three directories were re-written by the same run and came back byte-identical,
 which is what says the copy change moved no height, no in-flight count and
 nothing at the column floor.
 
+## STALE FOR THE CLEAR/STOP CHANGE — the re-capture is OWED
+
+Every frame below is a picture of the row BEFORE
+`docs/evidence/composer-status-clear/` existed, and the row has since moved twice
+in the same commit:
+
+- the goal chip gained a trailing DISMISS control (an `X` and `Clear goal`,
+  revealed on hover and on keyboard focus) that HOLDS its box at rest, so the
+  snippet yields ~89px more before it truncates — visible in every band that has a
+  goal;
+- a sixth chip can now appear (the session's loop) between the goal and the plan,
+  which is a state none of these bands renders.
+
+The frames are LEFT IN PLACE rather than deleted: they are the record the design
+record's § 2, § 3.1 and § 5.4 quote numbers from, and a reader comparing heights is
+comparing two arrangements that existed. But they must not be read as pictures of
+`HEAD:src`, and `manifest.json`'s `headNote` records that this pass RE-STAMPED the
+two tree hashes rather than re-derived them.
+
+**WHY THE RE-CAPTURE WAS NOT RUN, rather than an omission:** the rig behind these
+frames launches a private headless Chromium, and this machine's operator policy
+forbids a screenshot produced by a scripted browser engine — the same policy
+`manifest.json`'s `chat-run-panel/mcp-grant-confirm` entry records for its own owed
+pass. The replacement set is the operator's own browser, at
+`docs/evidence/composer-status-clear/`, whose README states which states it covers,
+the commands that produced it, and what it is not.
+
 ## What is in each frame, and what it proves
 
 The stories render the PRODUCTION `ComposerStatusRow`, over real `RunDetails` from

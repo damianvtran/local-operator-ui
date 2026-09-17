@@ -76,6 +76,7 @@ const {
 	didUpgradeLand,
 	evaluateBundleSeal,
 	evaluatePendingInstall,
+	generationInstallRoot,
 	healPythonBytecode,
 	installFailurePayload,
 	installInFlightPayload,
@@ -83,6 +84,7 @@ const {
 	installedBundleSealBlock,
 	isInstallInFlight,
 	isPythonBytecodePath,
+	isSourceBuildRef,
 	lastInstallAttemptPath,
 	launchdJobLoaded,
 	matchArtifactMetadata,
@@ -2843,28 +2845,36 @@ test("a global install is never pip'd into, and names its own updater", () => {
 		"global-unknown",
 	);
 
-	// A source-built uv tool install must not be upgraded from the registry: that
-	// would replace the operator's own build with the stock package.
+	// A source-built uv tool install is described as one, from the install's own
+	// marker: the provenance is a fact about the INSTALL, where the signal it
+	// replaced - a `lop-update` script existing on this machine - was a fact about
+	// the machine, and told an install already replaced by a wheel that it was
+	// still following a checkout.
 	const sourceBuilt = resolveGlobalInstallPlan({
-		identity: uvIdentity,
-		lopUpdatePath: "/Users/operator/.local/bin/lop-update",
+		identity: {
+			...uvIdentity,
+			sourceRef: "67586aa1f47eea6be7dad0cdde3e2462f96f465d",
+		},
 	});
 	assert.equal(sourceBuilt.canManageUpdate, false);
-	assert.equal(sourceBuilt.updateCommand, "lop-update");
+	assert.equal(sourceBuilt.updateCommand, "lop update");
+	assert.equal(sourceBuilt.sourceBuild, true);
+	assert.match(sourceBuilt.detail, /installs the published release over it/);
 
-	const registryUv = resolveGlobalInstallPlan({
-		identity: uvIdentity,
-		lopUpdatePath: null,
-	});
+	// The remedy is the install's own front end in BOTH layouts. `lop-update` is
+	// the release owner's out-of-tree script and `uv tool upgrade local-operator`
+	// is documented in the harness as failing for a git-snapshot install or a
+	// pinned receipt, so neither may be named again.
+	const registryUv = resolveGlobalInstallPlan({ identity: uvIdentity });
 	assert.equal(registryUv.canManageUpdate, false);
-	assert.equal(registryUv.updateCommand, "uv tool upgrade local-operator");
-	assert.match(registryUv.remedy, /uv tool install/);
+	assert.equal(registryUv.updateCommand, "lop update");
+	assert.equal(registryUv.sourceBuild, false);
+	assert.match(registryUv.remedy, /predates the non-disruptive installer/);
 
 	const pipx = resolveGlobalInstallPlan({
 		identity: {
 			path: "/Users/operator/.local/pipx/venvs/local-operator/bin/local-operator",
 		},
-		lopUpdatePath: null,
 	});
 	assert.equal(pipx.updateCommand, "pipx upgrade local-operator");
 	assert.equal(pipx.canManageUpdate, false);
@@ -2874,7 +2884,6 @@ test("a global install is never pip'd into, and names its own updater", () => {
 			path: "/Users/operator/venv/bin/local-operator",
 			venvPrefix: "/Users/operator/venv",
 		},
-		lopUpdatePath: null,
 	});
 	assert.equal(pip.updateCommand, "pip install --upgrade local-operator");
 
@@ -2891,7 +2900,6 @@ test("a global install is never pip'd into, and names its own updater", () => {
 	// (reviews R2, U4, D4); "we could not tell" is a claim we can support.
 	const unknown = resolveGlobalInstallPlan({
 		identity: { path: null },
-		lopUpdatePath: null,
 	});
 	assert.equal(unknown.canManageUpdate, false);
 	assert.equal(unknown.updateCommand, "");
@@ -2901,7 +2909,6 @@ test("a global install is never pip'd into, and names its own updater", () => {
 
 	const unidentified = resolveGlobalInstallPlan({
 		identity: { path: "/opt/bin/local-operator" },
-		lopUpdatePath: null,
 	});
 	assert.equal(unidentified.updateCommand, "");
 	assert.match(unidentified.detail, /classified as global-unknown/);
@@ -2943,9 +2950,9 @@ test("the operator's own install is classified rather than told to use pip", (t)
 	assert.equal(kind, "uv-tool");
 	const plan = resolveGlobalInstallPlan({
 		identity: { path: shimPath, realPath, shebang: firstLine },
-		lopUpdatePath: null,
 	});
 	assert.doesNotMatch(plan.updateCommand, /^pip install/);
+	assert.equal(plan.updateCommand, "lop update");
 });
 
 /**
@@ -3034,8 +3041,8 @@ test("the install resolves without the shell's PATH, and names the same remedy",
 	);
 
 	// The real machine: both environments have to point at the same install, and
-	// that install has to classify as the uv tool install whose remedy is the
-	// source-build instruction rather than a pip or pipx command.
+	// that install has to classify as the uv tool install the plan names the
+	// harness's own command for - never a pip or pipx command.
 	const underLaunchd = resolveCommandPath("local-operator", {
 		env: appEnv,
 		home,
@@ -3054,23 +3061,41 @@ test("the install resolves without the shell's PATH, and names the same remedy",
 		"uv-tool",
 	);
 
-	const lopLaunchd = resolveCommandPath("lop-update", { env: appEnv, home });
-	assert.equal(
-		resolveCommandPath("lop-update", { env: loginEnv, home }),
-		lopLaunchd,
-	);
-	if (!lopLaunchd) {
-		t.diagnostic("no lop-update here: the source-build remedy is not nameable");
-		return;
-	}
-	const plan = resolveGlobalInstallPlan({
-		identity: readInstallIdentity(underLaunchd),
-		lopUpdatePath: lopLaunchd,
-	});
-	assert.equal(plan.sourceBuild, true);
-	assert.equal(plan.updateCommand, "lop-update");
-	assert.equal(plan.canManageUpdate, false);
+	// And the install the app found is the install the plan describes: the command
+	// is the harness's own front end in every layout, and the version and the
+	// provenance come from that install's metadata rather than from the daemon's
+	// `/health` or from a script on this machine.
+	const identity = readInstallIdentity(underLaunchd);
+	const plan = resolveGlobalInstallPlan({ identity });
+	assert.equal(plan.updateCommand, "lop update");
 	assert.doesNotMatch(plan.updateCommand, /^pip /);
+	assert.equal(plan.sourceBuild, isSourceBuildRef(identity.sourceRef));
+	// Whether the app may RUN it is the layout predicate and nothing else, and
+	// the reason has to be stated either way - this is the machine where the
+	// in-place rewrite killed 36 sessions, so the sentence that explains a refusal
+	// here is the one that matters most.
+	const generationRoot = generationInstallRoot(identity);
+	assert.equal(plan.canManageUpdate, generationRoot !== null);
+	if (generationRoot === null) {
+		/*
+		 * The reason moved from the mono Details line into the sentence above the
+		 * command it qualifies (reviews U8, N1): it is the fact that decides whether
+		 * the reader runs the command at all, and it was trailing a resolved path in
+		 * the copy-for-support blob. Details keeps the classification evidence, and
+		 * must NOT carry the sentence any more.
+		 */
+		assert.match(plan.remedy, /rewrites the shared environment in place/);
+		assert.match(plan.remedy, /predates the non-disruptive installer/);
+		assert.doesNotMatch(
+			plan.detail,
+			/rewrites the shared environment in place/,
+		);
+		// The managed arm states the cost of the click instead, and states no colon:
+		// the command well below it is visually distinct in both panels, while in
+		// the by-hand panel the colon promised the command and delivered a version
+		// line (review D5).
+		assert.doesNotMatch(plan.remedy, /:$/);
+	}
 });
 
 test("the bundled pip invocation is non-interactive and version-verified", () => {
@@ -4122,6 +4147,10 @@ test("a prefix's dist-info says which installer owns it, and whether it is a che
 	assert.deepEqual(resolveDistributionMarkers(basePrefixPip), {
 		installer: "pip",
 		editable: false,
+		// Both read from the same directory walk: the version out of the dist-info
+		// name, the provenance out of the marker beside it (absent here).
+		version: "0.54.20",
+		sourceRef: null,
 	});
 	assert.equal(
 		classifyGlobalInstall({
@@ -4133,7 +4162,6 @@ test("a prefix's dist-info says which installer owns it, and whether it is a che
 	assert.equal(
 		resolveGlobalInstallPlan({
 			identity: { path: "/usr/local/bin/local-operator", installer: "pip" },
-			lopUpdatePath: null,
 		}).updateCommand,
 		"pip install --upgrade local-operator",
 	);
@@ -4179,7 +4207,6 @@ test("a prefix's dist-info says which installer owns it, and whether it is a che
 			venvPrefix: "/Users/operator/local-operator/.venv",
 			editable: true,
 		},
-		lopUpdatePath: null,
 	});
 	assert.equal(editablePlan.updateCommand, "");
 	assert.equal(editablePlan.sourceBuild, true);
@@ -4202,6 +4229,8 @@ test("a prefix's dist-info says which installer owns it, and whether it is a che
 	assert.deepEqual(resolveDistributionMarkers(tempDir("lo-empty-")), {
 		installer: null,
 		editable: false,
+		version: null,
+		sourceRef: null,
 	});
 });
 
@@ -4977,13 +5006,26 @@ test("the banner's remedy names the release the last check read", async () => {
 					isDestroyed: () => false,
 				},
 			},
-			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+			backendManagerStub(
+				service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+				() => updateService,
+			),
 		);
 		interval = updateService.updateCheckInterval;
 		// Keep the health probe off anything real: the constructor derives this
 		// URL from config, and a live server on that port would be a session this
 		// test must not touch.
 		updateService.backendUrl = "http://127.0.0.1:9";
+		/*
+		 * NO INSTALL, DECLARED. `updateBackend` reads the install's plan now, and the
+		 * real read walks the machine's own PATH and home: on a box with a global
+		 * install the plan becomes the automatic `lop update` one and the
+		 * manual-required event this case is about is never sent - green on CI, red on
+		 * the machine that ships it. Pinned to the identity the real read returns when
+		 * nothing resolves, so the case's world is the one it declares, like every
+		 * other fixture in this file.
+		 */
+		updateService.resolveInstallIdentity = async () => ({ path: null });
 		// The field `checkForBackendUpdates` writes when a check read the published
 		// release (`:2064`). Setting it here is the point of the case: the question
 		// is whether the value reaches the payload, not how it was fetched.
@@ -5066,7 +5108,7 @@ test("a failed update-backend reports on backend-update-error and resolves false
 						isDestroyed: () => false,
 					},
 				},
-				{ getStartupMode: () => startupMode },
+				backendManagerStub(startupMode, () => updateService),
 			);
 			interval = updateService.updateCheckInterval;
 			// Keep the health probe off anything real, as the sibling cases do.
@@ -5173,6 +5215,33 @@ test("a failed update-backend reports on backend-update-error and resolves false
  * absent option runs non-silent, and `silent` is the only thing that suppresses
  * the events) are only reachable through it.
  */
+/**
+ * A stand-in for the two `BackendServiceManager` accessors this service reads.
+ *
+ * WHY A HELPER RATHER THAN A LITERAL PER FIXTURE: the check now reads both on the
+ * ordinary path, and a stub that omits either one throws inside the check - which
+ * the service reports as `unavailable`, i.e. a fixture bug that looks like a
+ * version-reading bug. The real manager answers both, so the fixture does too.
+ *
+ * `getBackendUrl` is the LIVE address the manager rotates onto when it adopts a
+ * daemon: the version read follows it rather than the configured URL, which is
+ * what made an adopted daemon's reading fail (QA Q-2, UX U1).
+ *
+ * `service` is a GETTER, not the instance: the stub is an argument to the
+ * constructor that binds the instance, so passing it directly is a temporal-dead-
+ * zone ReferenceError, while a function called later resolves it.
+ *
+ * `isUsingExternalBackend` answers false - these fixtures' daemon is the app's own
+ * - which is what decides whether the skew notice tells the user to restart Local
+ * Operator or says the app will not touch a server it did not start
+ * (review R1-3, UX U1).
+ */
+const backendManagerStub = (startupMode, service) => ({
+	getStartupMode: () => startupMode,
+	getBackendUrl: () => service().backendUrl,
+	isUsingExternalBackend: () => false,
+});
+
 const loAggregateCheck = async ({
 	appCheck,
 	serverVersion,
@@ -5187,6 +5256,24 @@ const loAggregateCheck = async ({
 	 * too). Omitted means the app is not an npx install, which is every other
 	 * case in this file.
 	 */
+	/*
+	 * The version the INSTALL on disk reports, when a case needs it to differ from
+	 * the running backend's `/health`.
+	 *
+	 * Why the fixture has to name the install at all: the check compares the install
+	 * the app would UPDATE - that is what "check updates against that lop" means -
+	 * and reads `/health` beside it. This fixture's world used to be complete
+	 * without an install, because the daemon and the registry were the only two
+	 * readings anything took; now that the check resolves the install, a case would
+	 * silently pull the OPERATOR'S real `~/.local/bin/local-operator` (0.55.x on this
+	 * machine) into a fixture whose every other number is 0.54.x.
+	 *
+	 * The default mirrors the daemon's own reading, which is the ordinary case: the
+	 * app spawned the daemon it is attached to (#254), so one install answers both.
+	 * A daemon that answers NO version leaves no reading anywhere - that is what the
+	 * absence cases mean - and a case that wants the skew passes its own version.
+	 */
+	installVersion = serverAnswersVersion ? (serverVersion ?? null) : null,
 	npxVersion = null,
 	/*
 	 * The backoff between attempts at one app-channel feed fetch. The SHIPPED
@@ -5260,9 +5347,10 @@ const loAggregateCheck = async ({
 					isDestroyed: () => false,
 				},
 			},
-			{
-				getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
-			},
+			backendManagerStub(
+				service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+				() => updateService,
+			),
 		);
 		interval = updateService.updateCheckInterval;
 		updateService.backendUrl = `http://127.0.0.1:${port}`;
@@ -5276,6 +5364,22 @@ const loAggregateCheck = async ({
 		updateService.getLatestPypiVersion = async () => publishedVersion ?? null;
 		updateService.appFeedRetryDelaysMs = retryDelaysMs;
 		updateService.updateStage = stage;
+		/*
+		 * The install, stubbed on the same terms as the registry above, and for the
+		 * same reason: this fixture drives GLOBAL_INSTALL, so both the plan and the
+		 * check resolve `local-operator` from the real PATH - which on the operator's
+		 * machine is a real global install and in a clean checkout may be nothing at
+		 * all. Pinned here so every case's world is the one it declared.
+		 *
+		 * ASYNC because the real one is (review R1-4): the installer probes it runs
+		 * for an unclassifiable install are awaited off the main thread, so a
+		 * synchronous stub would stop modelling the method it replaces.
+		 */
+		updateService.resolveInstallIdentity = async () => ({
+			path: "/synthetic/bin/local-operator",
+			realPath: "/synthetic/bin/local-operator",
+			version: installVersion,
+		});
 		globalThis.__loTestAppCheck = appCheck;
 		/*
 		 * The fixture's `ipcMain.handle` RECORDS the handlers (see its own comment),
@@ -5761,11 +5865,563 @@ test("an absent server reading keeps its own message, and an unparseable one tak
 });
 
 /**
+ * The requirement's own half, as a case: the version COMPARED is the install's.
+ *
+ * The app can be attached to a daemon that is not the install it would update -
+ * discovery adopted a daemon this app did not start, or an update landed and the
+ * daemon serving the old build has not been restarted - and the panel must not
+ * describe one install as the other. The comparison follows the install, and the
+ * backend still serving is named beside it.
+ */
+test("the check follows the install, and names the running backend beside it", async () => {
+	const trail = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.42",
+		installVersion: "0.54.43",
+		publishedVersion: "0.54.44",
+	});
+	const offer = trail.sent.find(
+		({ channel }) => channel === "backend-update-available",
+	);
+	assert.ok(offer, JSON.stringify(trail.sent.map(({ channel }) => channel)));
+	// The version the update action would move, not the one the daemon serves.
+	assert.equal(offer.payload.currentVersion, "0.54.43");
+	/*
+	 * BOTH READINGS AS FIELDS, not as a clause glued to `detail` (review D3). The
+	 * clause form was what let the skew leave the screen: the managed branch never
+	 * rendered `detail`, so the panel asserted the install's version as the one the
+	 * reader was using while the sentence that corrected it was mounted nowhere
+	 * (review R1-2). The renderer now builds the sentence from the pair, so the
+	 * pair has to arrive - and `detail` keeps only the classification evidence.
+	 */
+	assert.equal(offer.payload.runningVersion, "0.54.42");
+	assert.doesNotMatch(offer.payload.detail, /running backend reports/);
+	assert.match(offer.payload.detail, /classified as /);
+	assert.equal(trail.verdict.server, "available");
+
+	// And the mirror: the install is current although the daemon trails it, so
+	// there is nothing to offer - the check answers for what an update would move.
+	const installCurrent = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.43",
+		installVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+	assert.equal(installCurrent.verdict.server, "current");
+	assert.ok(
+		!installCurrent.sent.some(
+			({ channel }) => channel === "backend-update-available",
+		),
+		JSON.stringify(installCurrent.sent.map(({ channel }) => channel)),
+	);
+	/*
+	 * AND THE SKEW STILL ARRIVES, which is QA Q-1: with the install already latest
+	 * there is no offer to carry it, so this event is the only vehicle - and it
+	 * carried nothing, leaving a user whose runtime lags told nothing at all and no
+	 * later check able to re-offer, since the install itself is up to date.
+	 */
+	const notAvailable = installCurrent.sent.find(
+		({ channel }) => channel === "backend-update-not-available",
+	);
+	assert.ok(
+		notAvailable,
+		JSON.stringify(installCurrent.sent.map(({ channel }) => channel)),
+	);
+	assert.equal(notAvailable.payload.version, "0.54.44");
+	assert.equal(notAvailable.payload.runningVersion, "0.54.43");
+	/*
+	 * And WHO CAN CLOSE THE GAP travels with it: this fixture's manager says the
+	 * daemon is the app's own (`backendManagerStub`), so the notice may tell the
+	 * user to restart Local Operator - while for an adopted daemon the same reading
+	 * means the app deliberately will not touch the process
+	 * (`isUsingExternalBackend`), which is a different sentence about the same
+	 * numbers. The renderer picks between them from this flag.
+	 */
+	assert.equal(notAvailable.payload.restartable, true);
+});
+
+/**
  * The other half of Q2: the fix must not reclassify anything this product
  * actually publishes. These are the comparisons the update path has always
  * made, kept as themselves so a future tightening of the grammar names the
  * release form it broke.
  */
+/**
+ * A GLOBAL_INSTALL update attempt, driven end to end through `updateBackend`.
+ *
+ * WHAT IT STUBS, and why at these seams: the installer itself (a real
+ * `lop update` would install a release over the operator's runtime, which no test
+ * may do), the install's own version read (scripted before/after, the way the disk
+ * changes under a real run) and the daemon's `/health` reading. Everything between
+ * them - the landing rule, the ordering, the restart decision and the events the
+ * renderer sees - is the shipped code.
+ *
+ * The plan is stubbed as well, and deliberately: what a given tree classifies as is
+ * `resolveGlobalInstallPlan`'s own contract, covered over synthetic installs in
+ * `update-global-install.test.mjs`. This fixture is about what the service DOES
+ * with a managed plan, which is the half that had no case at all - and which is
+ * why R1-1 (an install already at the target reported as a failed update) was a
+ * green suite.
+ *
+ * `runGate` lets a case hold the installer open, which is how the in-flight guard
+ * and the mid-attempt marker are driven.
+ */
+const driveGlobalUpdate = async ({
+	before = "0.55.10",
+	after = "0.56.0",
+	exitCode = 0,
+	ran = true,
+	target = "0.56.0",
+	external = false,
+	daemonReports = null,
+	restartOk = true,
+	runGate = null,
+	/*
+	 * The post-restart version poll is stubbed by default: the shipped one waits up
+	 * to 60 s, which no case should pay. `stubWait: false` runs the shipped poll
+	 * against the scripted `/health` reading, which is what the R2-1 case needs - the
+	 * comparison inside it is the thing under test.
+	 */
+	stubWait = true,
+} = {}) => {
+	const home = mkdtempSync(join(tmpdir(), "lo-global-update-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-global-update-userdata-"));
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	// The marker the attempt leaves: `markerDir()` is `app.getPath("userData")`,
+	// which this fixture pins to its own temp directory.
+	const markerPath = join(userData, "pending-server-update.json");
+	const sent = [];
+	const calls = { installers: [], restarts: 0, starts: 0 };
+	const backend = {
+		getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+		getBackendUrl: () => "http://127.0.0.1:9",
+		isUsingExternalBackend: () => external,
+		setAutoUpdating: () => {},
+		restart: async () => {
+			calls.restarts += 1;
+			return restartOk;
+		},
+		start: async () => {
+			calls.starts += 1;
+			return true;
+		},
+	};
+	const updateService = new service.UpdateService(
+		{
+			isDestroyed: () => false,
+			webContents: {
+				send: (channel, payload) => sent.push({ channel, payload }),
+				isDestroyed: () => false,
+			},
+		},
+		backend,
+	);
+	const interval = updateService.updateCheckInterval;
+	const dispose = () => {
+		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	};
+	try {
+		// Keep the health probe off anything real, as every case in this file does.
+		updateService.backendUrl = "http://127.0.0.1:9";
+		updateService.resolveBackendUpdatePlan = async () => ({
+			canManageUpdate: true,
+			updateCommand: "lop update",
+			remedy:
+				"The app updates this install and then restarts the server it started.",
+			detail: "synthetic plan",
+			sourceBuild: false,
+			installedInstallVersion: before,
+		});
+		updateService.resolveLocalOperatorPath = () =>
+			"/synthetic/bin/local-operator";
+		// The pre-run read and the post-run read, in the order the attempt takes
+		// them; anything after those repeats the last one.
+		const readings = [before, after];
+		updateService.readGlobalInstallVersion = () =>
+			readings.length > 1 ? readings.shift() : after;
+		updateService.runGlobalUpdate = async (consolePath) => {
+			calls.installers.push(consolePath);
+			if (runGate) await runGate({ markerPath });
+			return {
+				exitCode,
+				stdout: "",
+				stderr:
+					exitCode === 0
+						? ""
+						: "error: Failed to install: the index is unreachable\n\n  Caused by: network unreachable",
+				ran,
+				command: consolePath,
+			};
+		};
+		updateService.getInstalledBackendVersion = async () => daemonReports;
+		if (stubWait) {
+			updateService.waitForBackendVersion = async () => daemonReports;
+		}
+		updateService.checkBackendHealth = async () => true;
+		return { updateService, sent, calls, dispose, userData, markerPath };
+	} catch (error) {
+		dispose();
+		throw error;
+	}
+};
+
+const backendCompletion = (sent) =>
+	sent.find(({ channel }) => channel === "backend-update-completed");
+const backendErrors = (sent) =>
+	sent.filter(({ channel }) => channel === "backend-update-error");
+const backendPhases = (sent) =>
+	sent
+		.filter(({ channel }) => channel === "backend-update-progress")
+		.map(({ payload }) => payload.phase);
+
+test("the offer carries the reading that decides the sentence it renders", async () => {
+	/*
+	 * UX U9's own cause, at the producer: the managed arm's consequence sentence
+	 * comes from the PLAN, which classifies the INSTALL and cannot know who started
+	 * the daemon. Without the ownership reading here the panel promised a restart
+	 * that cannot happen on a machine where discovery adopted a server - so the
+	 * reading travels on this event, as it already did on the other two.
+	 */
+	const owned = await driveGlobalUpdate({ daemonReports: "0.55.10" });
+	try {
+		owned.updateService.getLatestPypiVersion = async () => "0.56.2";
+		await owned.updateService.checkForBackendUpdates(true);
+		const offer = owned.sent.find(
+			({ channel }) => channel === "backend-update-available",
+		);
+		assert.ok(offer, JSON.stringify(owned.sent.map((c) => c.channel)));
+		assert.equal(offer.payload.restartable, true);
+	} finally {
+		owned.dispose();
+	}
+
+	const adopted = await driveGlobalUpdate({
+		daemonReports: "0.55.10",
+		external: true,
+	});
+	try {
+		adopted.updateService.getLatestPypiVersion = async () => "0.56.2";
+		await adopted.updateService.checkForBackendUpdates(true);
+		const offer = adopted.sent.find(
+			({ channel }) => channel === "backend-update-available",
+		);
+		assert.ok(offer, JSON.stringify(adopted.sent.map((c) => c.channel)));
+		assert.equal(offer.payload.restartable, false);
+	} finally {
+		adopted.dispose();
+	}
+});
+
+test("a silent check speaks when the two readings disagree, and not when they agree", async () => {
+	/*
+	 * UX U10: the launch check is silent, and silence swallowed the one event that
+	 * carries the skew - so the state right after a landed install (install current,
+	 * the daemon serving the app a build behind) was invisible until the user
+	 * happened to press Check for updates, and no later check re-offers it because
+	 * the install itself is up to date.
+	 */
+	const lurking = await driveGlobalUpdate({
+		before: "0.56.2",
+		daemonReports: "0.56.0",
+	});
+	try {
+		lurking.updateService.getLatestPypiVersion = async () => "0.56.2";
+		await lurking.updateService.checkForBackendUpdates(true);
+		const event = lurking.sent.find(
+			({ channel }) => channel === "backend-update-not-available",
+		);
+		assert.ok(event, JSON.stringify(lurking.sent.map((c) => c.channel)));
+		assert.equal(event.payload.version, "0.56.2");
+		assert.equal(event.payload.runningVersion, "0.56.0");
+		assert.equal(event.payload.restartable, true);
+	} finally {
+		lurking.dispose();
+	}
+
+	// And a launch on a machine where the readings agree still says nothing: the
+	// exception is the disagreement, not the silent caller.
+	const agreeing = await driveGlobalUpdate({
+		before: "0.56.2",
+		daemonReports: "0.56.2",
+	});
+	try {
+		agreeing.updateService.getLatestPypiVersion = async () => "0.56.2";
+		await agreeing.updateService.checkForBackendUpdates(true);
+		assert.equal(
+			agreeing.sent.some(
+				({ channel }) => channel === "backend-update-not-available",
+			),
+			false,
+			JSON.stringify(agreeing.sent.map((c) => c.channel)),
+		);
+	} finally {
+		agreeing.dispose();
+	}
+});
+
+test("an update that lands installs first and restarts the app's own daemon after", async () => {
+	const run = await driveGlobalUpdate({ daemonReports: "0.56.0" });
+	try {
+		const result = await run.updateService.updateBackend("0.56.0");
+		assert.equal(result, true);
+		// The install's OWN front end, from the resolution the plan classified.
+		assert.deepEqual(run.calls.installers, ["/synthetic/bin/local-operator"]);
+		// The ordering the design rests on: nothing is restarted before the install
+		// lands, so a failed install never costs the daemon a restart.
+		assert.deepEqual(backendPhases(run.sent), ["installing", "restarting"]);
+		assert.equal(run.calls.restarts, 1);
+		assert.deepEqual(backendErrors(run.sent), []);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.deepEqual(completed.payload, {
+			installVersion: "0.56.0",
+			runningVersion: "0.56.0",
+			restarted: true,
+		});
+	} finally {
+		run.dispose();
+	}
+});
+
+test("an install already at the target is a success, not a failed update", async () => {
+	/*
+	 * The R1-1 state, reached from the panel's own button: the install is ahead of
+	 * the daemon, so an update is offered - and `lop update` then prints "already
+	 * latest" and exits 0 without moving anything. The landing rule demanded a
+	 * CHANGE, so the app reported a machine that was already correct as "did not
+	 * take effect", and "Try again" reproduced it.
+	 */
+	const run = await driveGlobalUpdate({
+		before: "0.56.0",
+		after: "0.56.0",
+		daemonReports: "0.56.0",
+	});
+	try {
+		const result = await run.updateService.updateBackend("0.56.0");
+		assert.equal(result, true);
+		assert.deepEqual(backendErrors(run.sent), []);
+		assert.equal(run.calls.restarts, 1, "the daemon still has to move onto it");
+		assert.equal(backendCompletion(run.sent)?.payload.restarted, true);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("an installer that exits 0 having moved nothing is not a landed update, and nothing restarts", async () => {
+	const run = await driveGlobalUpdate({ before: "0.55.10", after: "0.55.10" });
+	try {
+		const result = await run.updateService.updateBackend("0.56.0");
+		assert.equal(result, false);
+		const errors = backendErrors(run.sent);
+		assert.equal(errors.length, 1, JSON.stringify(run.sent));
+		assert.equal(errors[0].payload.phase, "update");
+		assert.match(errors[0].payload.message, /did not take effect/);
+		// The proof nothing moved is that nothing is restarted: the daemon that was
+		// serving still is, on the build it loaded.
+		assert.equal(run.calls.restarts, 0);
+		assert.equal(backendCompletion(run.sent), undefined);
+		assert.deepEqual(backendPhases(run.sent), ["installing"]);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("a daemon that comes back past the target is a landing, not a timeout", async () => {
+	/*
+	 * The second half of R2-1, found by the app run that exercised the first: the
+	 * landing rule learned to accept an install at-or-past the target, and the
+	 * post-restart poll still demanded the EXACT string - so the same scenario (the
+	 * offer names 0.56.0, `lop update` installs the 0.56.2 PyPI has now) went from
+	 * "the update did not take effect" to "the server restarted but did not report
+	 * version 0.56.0", sixty seconds later, over a machine that was correct.
+	 */
+	const run = await driveGlobalUpdate({
+		daemonReports: "0.56.2",
+		stubWait: false,
+	});
+	try {
+		assert.equal(
+			await run.updateService.waitForBackendVersion("0.56.0", 4000, 200),
+			"0.56.2",
+		);
+		// A daemon that comes back BEHIND the target is still not the new build: the
+		// same poll with a reading that never reaches it gives up.
+		run.updateService.getInstalledBackendVersion = async () => "0.55.10";
+		assert.equal(
+			await run.updateService.waitForBackendVersion("0.56.0", 1200, 200),
+			null,
+		);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("a daemon the app did not start is reported with both readings and never restarted", async () => {
+	/*
+	 * R1-3, QA Q-2 and UX U1 in one case. The install moves; the daemon serving the
+	 * conversation does not, and the app deliberately does not bounce a process it
+	 * did not start. The completion used to be a NULL payload, so the renderer said
+	 * "completed successfully" over a server still on the old build - and because
+	 * the install is now latest, no later check ever offered the update again.
+	 */
+	const run = await driveGlobalUpdate({
+		external: true,
+		daemonReports: "0.55.10",
+	});
+	try {
+		const result = await run.updateService.updateBackend("0.56.0");
+		assert.equal(result, true);
+		assert.equal(run.calls.restarts, 0, "not the app's process to bounce");
+		assert.deepEqual(backendPhases(run.sent), ["installing"]);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.installVersion, "0.56.0");
+		assert.equal(completed.payload.runningVersion, "0.55.10");
+		assert.equal(completed.payload.restarted, false);
+		assert.equal(completed.payload.restartable, false);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("two update attempts cannot run beside each other, and the second says so", async () => {
+	/*
+	 * Review R1-8: the offer holds `checking` and the run panel holds
+	 * `updatingBackend`, so a press on each reached this path twice and the second
+	 * `lop update` ran beside the first against one install root.
+	 */
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const run = await driveGlobalUpdate({
+		daemonReports: "0.56.0",
+		runGate: () => gate,
+	});
+	try {
+		const first = run.updateService.updateBackend("0.56.0");
+		// Let the first attempt reach the installer before the second arrives.
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		const second = run.updateService.updateBackend("0.56.0");
+		/*
+		 * The gate is released BEFORE the second call is awaited, so an attempt that
+		 * is NOT refused runs its installer and finishes rather than deadlocking on
+		 * this test's own gate: the case then fails on the guard's own assertions
+		 * instead of hanging the suite, which is the shape a missing guard should
+		 * produce.
+		 */
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		release();
+		assert.equal(await second, false);
+		const refused = backendErrors(run.sent).find(({ payload }) =>
+			/already running/.test(payload.message),
+		);
+		assert.ok(
+			refused,
+			JSON.stringify(
+				run.sent.map(({ channel, payload }) => [channel, payload.message]),
+			),
+		);
+		assert.equal(
+			run.calls.installers.length,
+			1,
+			"the installer must be started once, not twice",
+		);
+		assert.equal(await first, true);
+		assert.equal(run.calls.installers.length, 1);
+	} finally {
+		release();
+		run.dispose();
+	}
+});
+
+test("the attempt's marker exists only while nobody has seen its end", async () => {
+	/*
+	 * UX U6, both halves: the marker is what a later launch reads, so it has to be
+	 * on disk DURING the install (the app can be killed while the installer's child
+	 * keeps running) and gone the moment the attempt reaches its own verdict (the
+	 * panel carries that outcome, and a later launch must not report it twice).
+	 */
+	let during = null;
+	const run = await driveGlobalUpdate({
+		daemonReports: "0.56.0",
+		runGate: ({ markerPath }) => {
+			during = existsSync(markerPath);
+			return Promise.resolve();
+		},
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
+		assert.equal(during, true, "the marker must be written before the spawn");
+		assert.equal(
+			existsSync(run.markerPath),
+			false,
+			"and cleared once this process has the verdict",
+		);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("an attempt that landed while no app was watching is reported once, on the next check", async () => {
+	const run = await driveGlobalUpdate({ daemonReports: "0.56.0" });
+	try {
+		const markerPath = join(run.userData, "pending-server-update.json");
+		writeFileSync(
+			markerPath,
+			`${JSON.stringify({
+				before: "0.55.10",
+				target: "0.56.0",
+				startedAt: new Date().toISOString(),
+			})}\n`,
+			"utf8",
+		);
+		/*
+		 * The world the abandoned installer left behind: the install moved to the
+		 * version it installed, the daemon serving the app is still on the old build,
+		 * and the published release is the one that landed - so the check has nothing
+		 * to offer and only this report can say anything about what happened.
+		 */
+		run.updateService.readGlobalInstallVersion = () => "0.56.0";
+		run.updateService.getInstalledBackendVersion = async () => "0.55.10";
+		run.updateService.getLatestPypiVersion = async () => "0.56.0";
+		await run.updateService.checkForBackendUpdates(false);
+
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.installVersion, "0.56.0");
+		assert.equal(completed.payload.unattended, true);
+		assert.equal(completed.payload.before, "0.55.10");
+		/*
+		 * AND THE SERVING DAEMON'S OWN READING (UX U14). It used to travel as null by
+		 * construction, which left the renderer unable to tell this state from the
+		 * ordinary one - the app coming back and starting its daemon from the landed
+		 * install - so the panel announced a skew it could not see.
+		 */
+		assert.equal(completed.payload.runningVersion, "0.55.10");
+		assert.equal(completed.payload.restartable, true);
+		assert.equal(existsSync(markerPath), false);
+
+		// And once means once: the next check has nothing left to report.
+		run.sent.length = 0;
+		await run.updateService.checkForBackendUpdates(false);
+		assert.equal(backendCompletion(run.sent), undefined);
+	} finally {
+		run.dispose();
+	}
+});
+
 test("the readable-version grammar keeps every comparison it always made", async () => {
 	const { rule, dir } = await loadVerdictRule();
 	try {
@@ -7853,7 +8509,10 @@ test("a re-check failure goes out through the delivery scheduler, not a bare pus
 					once: () => {},
 				},
 			},
-			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+			backendManagerStub(
+				service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+				() => updateService,
+			),
 		);
 		interval = updateService.updateCheckInterval;
 		updateService.backendUrl = "http://127.0.0.1:9";
@@ -7953,7 +8612,10 @@ test("a quit during an in-flight install takes the close over, and only then", a
 					once: () => {},
 				},
 			},
-			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+			backendManagerStub(
+				service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+				() => updateService,
+			),
 		);
 		updateService.backendUrl = "http://127.0.0.1:9";
 		return updateService;
@@ -8067,7 +8729,10 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 					once: () => {},
 				},
 			},
-			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+			backendManagerStub(
+				service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+				() => updateService,
+			),
 		);
 		intervals.push(updateService.updateCheckInterval);
 		updateService.backendUrl = "http://127.0.0.1:9";
@@ -8118,7 +8783,10 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 					once: () => {},
 				},
 			},
-			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+			backendManagerStub(
+				service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+				() => fromWindowClose,
+			),
 		);
 		intervals.push(fromWindowClose.updateCheckInterval);
 		fromWindowClose.backendUrl = "http://127.0.0.1:9";
@@ -8194,7 +8862,10 @@ test("the start-up seal pass heals the bundle it runs from, or refuses out loud"
 				once: () => {},
 			},
 		},
-		{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		backendManagerStub(
+			service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+			() => updateService,
+		),
 	);
 	const interval = updateService.updateCheckInterval;
 	try {
@@ -8352,7 +9023,10 @@ test("an unpackaged instance leaves the packaged app's install state alone", asy
 				once: () => {},
 			},
 		},
-		{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		backendManagerStub(
+			service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+			() => updateService,
+		),
 	);
 	const interval = updateService.updateCheckInterval;
 	try {

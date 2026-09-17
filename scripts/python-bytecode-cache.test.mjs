@@ -1385,28 +1385,60 @@ test("every python-running runCommand call site in the update service passes the
 	}
 
 	// Which of them run python: the command handed in is the interpreter this app
-	// ships, either by path or through the pip command builder. `codesign` is the
-	// file's other call site and wants the inherited environment, not this one.
+	// ships, either by path or through the pip command builder - or, for the global
+	// install's own `lop update` child, the resolved console script, which is that
+	// install's interpreter by a shebang. `codesign` is the file's other call site
+	// and wants the inherited environment, not this one.
 	const pythonCalls = calls.filter(({ text }) =>
-		/pythonPath|pip\.command/.test(text),
+		/pythonPath|pip\.command|consolePath/.test(text),
 	);
 
 	// Asserted rather than assumed, so a reorganisation cannot make this pass by
-	// finding nothing: the probe and the pip upgrade are the two that exist.
+	// finding nothing: the probe, the pip upgrade and the global install's update
+	// child are the three that exist, beside `codesign` and the installer list
+	// probe below.
 	assert.equal(
 		calls.length,
-		3,
-		`expected the file's three runCommand call sites, found ${calls.length}`,
+		5,
+		`expected the file's five runCommand call sites, found ${calls.length}`,
+	);
+	/*
+	 * The fifth is `probeInstallerList`, and it runs python too - `uv` and `pipx`
+	 * are python programs - but its command is a PARAMETER, so the text test above
+	 * cannot classify it. It is asserted by name instead, and it carries the same
+	 * guard for the same reason: the bytecode those tools write must not land in
+	 * the installed app.
+	 */
+	const probeCalls = calls.filter(({ text }) =>
+		/timeoutMs:\s*INSTALLER_PROBE_TIMEOUT_MS/.test(text),
+	);
+	assert.equal(
+		probeCalls.length,
+		1,
+		`expected the installer-list probe's one runCommand call site, found ${probeCalls.length}`,
+	);
+	assert.match(
+		probeCalls[0].text,
+		/env:\s*this\.pythonSpawnEnv\(\)/,
+		`the installer list probe must pass the guarded environment: ${probeCalls[0].text.replace(/\s+/g, " ")}`,
 	);
 	assert.equal(
 		pythonCalls.length,
-		2,
-		`expected two python-running call sites, found ${pythonCalls.length}`,
+		3,
+		`expected three python-running call sites, found ${pythonCalls.length}`,
 	);
 	for (const { line, text } of pythonCalls) {
+		/*
+		 * The env has to BE the guarded one. Two spellings are accepted because only
+		 * one of the three children can take it unmodified: the update child needs
+		 * `PATH` set to the installer directories as well (its `lop update` reaches
+		 * `uv` by bare name), so it SPREADS the guarded environment rather than
+		 * passing it through - and a spread is still the guard, where a call site
+		 * that built its own environment from `process.env` would not be.
+		 */
 		assert.match(
 			text,
-			/env:\s*this\.pythonSpawnEnv\(\)/,
+			/env:\s*(this\.pythonSpawnEnv\(\)|\{[^}]*\.\.\.this\.pythonSpawnEnv\(\))/,
 			`the python spawn at src/main/update-service.ts:${line} must pass the guarded environment: ${text.replace(/\s+/g, " ")}`,
 		);
 	}
@@ -2070,11 +2102,18 @@ const SPAWN_SITES = [
 	// scanner still walks it, so a new `spawn(pythonPath)` there fails this test
 	// for being unlisted rather than hiding behind a file-level exemption.
 
+	runsCommand(
+		"src/main/update-install.ts",
+		"execFileSync",
+		1,
+		/"where"/,
+		"`resolveGlobalConsoleScript`'s Windows arm: `where` asks for the same console-script names the Unix arm resolves through `resolveCommandPath`, and `where` starts no interpreter",
+	),
 	passThrough(
 		"src/main/update-service.ts",
 		"execFile",
 		1,
-		"the update service's `runCommand`: it runs `codesign` (inherited environment, its own call sites below) and the two python probes, and the python call sites pass `pythonSpawnEnv()` - asserted by the runCommand case above",
+		"the update service's `runCommand`: it runs `codesign` (inherited environment, its own call sites below) and the installer list probes (`uv tool list`, `pipx list`), which pass `pythonSpawnEnv()` - asserted by the runCommand case above",
 	),
 	passThrough(
 		"src/main/update-service.ts",

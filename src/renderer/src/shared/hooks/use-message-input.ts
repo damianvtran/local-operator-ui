@@ -27,7 +27,7 @@ import {
  * text back into the box would show the user one message twice, with no way to
  * tell which copy is real and a Failure copy that names only the box (design
  * round 1's D1). The retry belongs to the claim the store is already holding:
- * the composer offers "Restore unsent message" from it, and a resend replays the
+ * the composer offers "Restore message" from it, and a resend replays the
  * same request id, so nothing can duplicate on the owner.
  */
 export const SEND_HELD = "held";
@@ -562,7 +562,7 @@ export const useMessageInput = ({
 				 * The message may be on the owner and its echo is still painted, so the
 				 * text must not come back to the box - nor be adopted into it on a later
 				 * mount, which is what retiring the persisted draft here prevents. The
-				 * retry lives on the store's claim (`Restore unsent message`), whose
+				 * retry lives on the store's claim (`Restore message`), whose
 				 * resend replays the same request id.
 				 */
 				retireDraft();

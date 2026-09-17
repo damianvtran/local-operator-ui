@@ -50,6 +50,31 @@ export const defaultQueryOptions: DefaultOptions = {
 };
 
 /**
+ * What a panel that reads an expensive snapshot adds to the defaults above.
+ *
+ * `refetchOnWindowFocus: false` is the whole entry, and it is a fix rather than
+ * a preference. The app default is `true`, which for these reads means a full
+ * scan of the local analytics ledger — measured at 5.6-39.6 s — re-run because
+ * the operator clicked back into his own window. Measured once already, before
+ * this was set: with a panel showing a failed read, a second `analytics.get`
+ * left the app while the first was still running on the daemon.
+ *
+ * It lives here, beside the default it overrides, because more than one panel
+ * needs it and a second copy of the rule is how the two drift: the four
+ * catalogue panels (`panel-queries.ts`) and the `/usage` view both read a
+ * snapshot the user opened, and neither is refreshed by a focus change.
+ *
+ * `retry` is deliberately NOT part of this object. It is a per-read decision
+ * with a per-read reason — `panel-queries.ts` accepts one retry for an ordinary
+ * failure and none for a read that ran out of its own deadline, while
+ * `/usage` refuses retries outright because a live `usage.get` fans out to
+ * every provider and already retries per account inside the backend. Spreading
+ * this and then stating the retry keeps one statement of the focus rule and one
+ * retry decision per read.
+ */
+export const SNAPSHOT_READ_OPTIONS = { refetchOnWindowFocus: false } as const;
+
+/**
  * Default query client configuration
  *
  * We use a more aggressive configuration for authentication-related queries
