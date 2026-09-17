@@ -4295,26 +4295,38 @@ const main = async () => {
 	/*
 	 * A FOLD'S RESOLVER READS THIS BLOCK. When `main` and this branch have both
 	 * rewritten this file, the merge is a PER-FIELD decision and NOT "keep main's
-	 * record":
+	 * record" - and per FIELD rather than per entry, for the same reason: a union
+	 * taken at entry granularity silently replaces an authored field inside an
+	 * entry both sides have, which is how this branch's `why` clauses on two
+	 * `supplementary` entries vanished on the ninth fold (review round 8, R8-2).
 	 *
-	 *   - `head`, `headNote` and every `partialCapture` field describe THIS
-	 *     branch's own pass - but `countsMean` is NOT in this group: it restates
-	 *     `frames`/`surfaces` in prose, and the ninth fold's first exercise of this
-	 *     rule carried a stale count through it because the two groups both listed
-	 *     it. Main's values for them name main's pass, and taking
-	 *     them sends a verifier to a tree that does not carry this branch's frames
-	 *     - review rounds 4, 5 and 6 each found that, the third time inside the
-	 *     round that had just fixed it. Keep this branch's.
-	 *   - `supplementary` and the `refreshed*` fields are the UNION of the two
-	 *     sides, because the merged tree carries both; `refreshedFrames` is then
-	 *     re-derived against `HEAD` rather than added up, since the gate asks
-	 *     those fields about the tree that ships.
-	 *   - `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and `scriptsTree`
-	 *     are RE-DERIVED from the merged tree, never taken from either side.
-	 *   - and no field that SPELLS OUT WHAT A CITATION NAMES is carried from main's
-	 *     side under any name: main's manifest still has `refreshedAtHeadNote`, the
-	 *     spelling this branch deleted, and carrying main's keys this branch lacks
-	 *     re-introduces it - found the first time this rule was exercised.
+	 *   1. `head`, `headNote` and the `partialCapture` fields that DESCRIBE a pass
+	 *      - `refreshedAt`, `refreshedAtHead`, `refreshedFromHead`, `addedAt`,
+	 *      `addedAtHead`, `addedFrames`, `note`, `passScopeNote` and every
+	 *      per-pass `*Note` - are THIS branch's. Main's values name main's pass,
+	 *      and taking them sends a verifier to a tree that does not carry this
+	 *      branch's frames (rounds 4, 5 and 6 each found that, the third time
+	 *      inside the round that had just fixed it).
+	 *   2. The fields that LIST what both sides touched - `supplementary`'s
+	 *      ENTRIES, and `refreshedStories`, `refreshedThemes`, `addedSurfaces` -
+	 *      are the UNION of the two sides' entries or values, because the merged
+	 *      tree carries both and either side's list alone would claim a pass that
+	 *      did not run in it.
+	 *   3. INSIDE a `supplementary` entry that exists on both sides, this pass's
+	 *      AUTHORED keys - `why`, `capturedAt`, `capturedAtHead` and any note -
+	 *      are KEPT and only the listings are unioned. An entry is a record this
+	 *      branch wrote, not a listing, and taking main's whole entry loses
+	 *      exactly the field a reader follows the rule to find.
+	 *   4. `refreshedFrames` is RE-DERIVED against `HEAD` rather than added up,
+	 *      and `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and
+	 *      `scriptsTree` are re-derived from the merged tree and taken from
+	 *      neither side. `countsMean` is in this group because it restates
+	 *      `frames`/`surfaces` - its prose says what each field counts and where
+	 *      to read it, and carries no number of its own for a fold to falsify.
+	 *   5. And NO FIELD THAT SPELLS OUT WHAT A CITATION NAMES is carried from
+	 *      main's side under any name: main's manifest still has
+	 *      `refreshedAtHeadNote`, the spelling this branch deleted, and carrying
+	 *      main's keys this branch lacks re-introduces it.
 	 *
 	 * The gate cannot catch a `head` that names the wrong tree, and BOTH halves of
 	 * what it does ask are worth naming so this is auditable rather than a summary:
