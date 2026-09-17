@@ -1,12 +1,12 @@
 {
   "head": "8c8c4709318343d71a877a747f0e5ef683243f16",
   "headNote": "RE-STAMPED AND RE-CAPTURED ONCE MORE for the round-3 copy change (`8c8c47093`, the rebased spelling of `8cd6ab146`): design D10 put a word into the deadline sentence, so the three `unavailable` states that render it were re-taken in all 12 themes rather than re-stamped, and D9's held-card wording is evidenced from the running app, which has no story fixture for it. `head`/`refreshedAtHead`-style citations are re-pointed at the commits this lineage carries: a pre-rebase spelling is an ancestor of no ref, and a citation a reviewer cannot resolve is not a citation. `srcTree`/`scriptsTree` are `git rev-parse HEAD:src`/`HEAD:scripts` for the commit this file ships in, re-derived after the rebase onto `62c673adb` rather than carried from either side, and `frames`/`surfaces`/`themes` are re-derived on this tree with `check-evidence.mjs`'s own walkers. `main`'s own capture block, which the top-level fields carried before this rebase, is preserved under `partialCapture.rebaseOntoSessionTablePass.previousTopLevel`. What this rebase folded, and how the 126 frames both sides re-took were resolved, is recorded in `partialCapture.rebaseOntoSessionTablePass`.",
-  "srcTree": "aca12e400914234c4b838abfe79184c1befbb067",
-  "scriptsTree": "311c0b6a2798099beff89cf6ea454e6741481299",
+  "srcTree": "f6092fe86b45af1b0a042e631a31438cab1a7b93",
+  "scriptsTree": "a0ebc91f7875ac9ec18991e6fa52eac53ce29d35",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-16T20:05:00.000Z",
   "frames": 4871,
-  "surfaces": 531,
+  "surfaces": 546,
   "themes": 12,
   "countsMean": {
     "themes": "What `themes` counts: the palettes in `capture-evidence.mjs`'s THEMES literal - the set that keeps each per-directory frame a like-for-like pair across the declared palettes. THE NUMBER IS NOT RESTATED HERE; read the `themes` field, which the gate re-checks. Unlike the two above this one has not moved since the sets were declared, and it is still written this way, because \"stable so far\" is the argument that produced the other two.",
@@ -17,7 +17,7 @@
     "refreshedAt": "2026-09-17T04:33:26.806Z",
     "refreshedAtHead": "a5d81f0af0c3f8ce15183437b9d8d2d3ff79a4b0",
     "refreshedFromHead": "166b3f1244a71ef84e89da341b9ec2bcb72649e5",
-    "refreshedFrames": 2190,
+    "refreshedFrames": 2382,
     "collapseGuardRestampNote": "RE-STAMPED, NOT RE-CAPTURED, by the `Collapse all` guard's CI wiring (`test(settings): run the Collapse all guard in CI, and make it exit when it fails`), a scripts-only follow-up to this set: `scriptsTree` 11f234964 -> 1eafe2fc2. A commit that moves `scripts/` invalidates the stamp for every frame that ships in it whatever the branch's own delta is, and this delta is one test file plus its wiring and the list that runs it - no file under `src/` moves, no frame is re-taken, and no surface this set captures is touched, so the frames remain pictures of the tree they ship in. `srcTree`, `head`, `capturedAt`, `frames`, `surfaces` and `themes` are unchanged. Recorded here because the next author's alternative is rediscovering a red desktop suite with the cause in a file they did not open. RE-STAMPED ONCE MORE BY THAT PR'S ROUND-1 REMEDIATION (`test(settings): arm the collapse guard's teardown before it mounts`), which moves `scripts/` for the same reason this field exists in the first place: `scriptsTree` 1eafe2fc2 -> 526abb73. The delta is still one file under `scripts/` - the guard's teardown is armed before the mount creates anything rather than after the render, its three cases carry a per-test `timeout`, and its prose is corrected - together with `.github/workflows/ci.yml`, which no stamp in this file covers. No file under `src/` moves, no frame is re-taken, and `srcTree`, `head`, `capturedAt`, `frames`, `surfaces` and `themes` are unchanged.",
     "refreshedStories": [
       "chat-sidebar-current-row--selected-row",
@@ -1630,7 +1630,8 @@
         "addedAt": "2026-09-16T20:16:42.949Z",
         "addedAtHead": "35737bf3112f29ebeb9cfa29071b523bbf470613"
       },
-      "note": "A rebase is not a re-capture: no frame was re-taken by it and no sweep was run, so an older frame is still a picture of the tree it names. What the rebase DOES change is which of this file's citations resolve, which is why `head` and the branch's own records are re-pointed at their rebased spellings here."
+      "note": "A rebase is not a re-capture: no frame was re-taken by it and no sweep was run, so an older frame is still a picture of the tree it names. What the rebase DOES change is which of this file's citations resolve, which is why `head` and the branch's own records are re-pointed at their rebased spellings here.",
+      "surfaceCountNote": "`surfaces` is re-derived, not carried: the tree's `capture-evidence.mjs` declares 546 `STORIES` rows while the manifest inherited from `origin/main` stated 531, so the field was stale on `main` before this rebase touched it - `stampFailures` fails `531` on `62c673adb`'s own two files, which means `evidence-manifest.test.mjs` is red there and not because of anything this branch did. The count here is the one the gate derives from the tree that ships (546), and the pass total is re-derived the same way (2382 committed frames in the directories the list names)."
     }
   },
   "supplementary": [
