@@ -2337,7 +2337,7 @@ test("the goal chip carries a dismiss that says which goal it clears", () => {
 	assert.match(markup, /data-status-goal-dismiss=""/);
 	assert.match(
 		markup,
-		new RegExp(`aria-label="Clear goal — Reconcile the March invoices"`),
+		/aria-label="Clear goal — Reconcile the March invoices"/,
 	);
 	assert.match(markup, /Clear goal<\/span>/);
 	// The X is the mark, not the name: the glyph is `aria-hidden` and the word is
@@ -2492,8 +2492,11 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 			});
 		};
 
-		await act(async () =>
-			void root.render(element(wireLoop("running", { completed: 2, iterations: 5 }))),
+		await act(
+			async () =>
+				void root.render(
+					element(wireLoop("running", { completed: 2, iterations: 5 })),
+				),
 		);
 		const trigger = dom.document.querySelector(
 			"[data-composer-status-row] button[aria-expanded]",
@@ -2561,8 +2564,9 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 				},
 			},
 		};
-		await act(async () =>
-			void root.render(element(wireLoop("achieved", { completed: 5 }))),
+		await act(
+			async () =>
+				void root.render(element(wireLoop("achieved", { completed: 5 }))),
 		);
 		const clearLoop = dom.document.querySelector("[data-status-loop-dismiss]");
 		assert.match(clearLoop.textContent, /Clear loop/);
@@ -2579,7 +2583,11 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 		 */
 		answer = { status: 503, body: { detail: "the backend is not running" } };
 		await press(dom.document.querySelector("[data-status-goal-dismiss]"));
-		assert.equal(requests.length, 4, "the refused press still reached the owner");
+		assert.equal(
+			requests.length,
+			4,
+			"the refused press still reached the owner",
+		);
 		assert.ok(
 			dom.document.querySelector("[data-status-goal-dismiss]"),
 			"and a refusal leaves the row as it was",
@@ -2605,9 +2613,15 @@ test("a refusal is the only outcome that speaks, and it speaks in the backend's 
 	 * where the toast is photographed (docs/evidence/…/README.md).
 	 */
 	const row = code(ROW);
-	assert.match(row, /if \(result\.tone === "error"\) showErrorToast\(result\.text\);/);
+	assert.match(
+		row,
+		/if \(result\.tone === "error"\) showErrorToast\(result\.text\);/,
+	);
 	// One hook for both controls, addressed by the session the row is drawn for.
-	assert.match(row, /const command = useSessionCommand\(frontend\?\.session_id \?\? ""\);/);
+	assert.match(
+		row,
+		/const command = useSessionCommand\(frontend\?\.session_id \?\? ""\);/,
+	);
 	// The pair the two controls dispatch, and neither of them is a label.
 	assert.match(row, /runDismiss\(GOAL_COMMAND, GOAL_CLEAR_FLAG\)/);
 	assert.match(row, /runDismiss\(LOOP_COMMAND, loopAction\.flag\)/);
