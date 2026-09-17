@@ -13,6 +13,16 @@ daemon with its own venv, on an isolated `HOME` and `LOCAL_OPERATOR_CONFIG_DIR` 
 `/tmp`, with `LOCAL_OPERATOR_DESKTOP_TOKEN` in its environment. The UI tree's head is named
 in the pull request, not here, because a frame's own commit moves with every rebase.
 
+They were **re-shot after `origin/main` (`62c673adb`) was merged into this branch**, so every
+committed frame is a picture of the code that ships. The fold moved six of the thirteen
+frames' bytes by exactly 33,490 pixels (0.7%) in one `1663x209+1049+1087` box — the
+conversation tag chip's **focus ring** in the chat pane, drawn in the second run and not the
+first. That is focus-dependent rendering in a window that is never shown (the class
+`AGENTS.md` names for headless runs), it is not something the fold moved, and it touches no
+claim here: the three frames taken before any conversation was opened
+(`pins-unpinned-dark`, `pins-hover-dark`, `pins-populated-dark`) are byte-identical across
+the two runs, and every claim below is about the sidebar.
+
 ## The frames
 
 Thirteen frames in this directory, from one run of `--scene pins`, plus the four frames of
@@ -38,9 +48,12 @@ Two things are worth reading off the file set rather than per frame:
   byte-identical** (`cmp` prints nothing for both pairs; sha256 `505e0c608…` and
   `13bc1a1dd…`). The `main` halves come from a second worktree at `origin/main`
   (`013aad424`) running the *same* scene against the *same* daemon, so what the pair
-  compares is the two trees and nothing else. This is the claim the design states as "the
-  row is byte-identical to the pre-change frame", and it is a measurement rather than an
-  assertion.
+  compares is the two trees and nothing else. Nothing main moved between `013aad424` and
+  `62c673adb` renders in them — the files it moved are the transcript's message items and an
+  image lightbox, none of which is on screen in a panel with no messages — which is why
+  those four frames are re-stamped rather than re-shot. This is the claim the design states
+  as "the row is byte-identical to the pre-change frame", and it is a measurement rather
+  than an assertion.
 * **`pins-withdrawn-dark.png` is also byte-identical to `pins-unpinned-dark.png`**, which
   is a second, independent statement: with the capability present and nothing pinned, the
   panel paints exactly what it paints with the capability absent. The reserved 24px slot
@@ -99,7 +112,7 @@ Both directions were measured inside the pins run, against the same file:
   terminal's `f10` calls (`action_toggle_pin` hands it to a thread) — against the daemon's
   config root, then watches the panel with nobody touching the window. The frame
   `pins-from-tui-dark` is the panel after that write, and the measured latency was
-  **950 ms** in the run these frames come from (413 ms and 217 ms in the two runs before
+  **206 ms** on the merged tree (950 ms, 534 ms, 413 ms and 217 ms in the four runs before
   it, on the same box). The design's bound is ~1.5 s: the feed's 1 Hz catalogue probe
   fires on the pins file's own fingerprint, the renderer refetches once on that frame, and
   the panel's 30 s safety poll sits behind it as drift insurance.
