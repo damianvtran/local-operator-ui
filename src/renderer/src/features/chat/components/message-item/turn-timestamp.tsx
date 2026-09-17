@@ -21,15 +21,26 @@
  * lives inside the disclosure and a run of twenty calls therefore stays twenty
  * lines.
  *
- * IT ALSO OWNS THE TRANSCRIPT'S FOOTER LINE, which states when the last thing in
- * the conversation happened — the same fact a turn's stamp states, one line
- * under a turn that may already have said it. That line used to render the hover
- * row's `MessageTimestamp`, so a screen carried `2025-10-09` under `Oct 9, 2025,
- * 4:53 AM`: two spellings of one clock in one column, which is the defect class
- * `date-utils.ts` documents in `formatCalendarDate`'s own comment. One component
- * also keeps the gating honest — the footer is suppressed whenever the last row
- * already paints a stamp of its own, which is a user turn OR a ledger row whose
- * disclosure is open (review round 1, D1/M2).
+ * IT SITS IN EXACTLY TWO PLACES, and the operator's report of 2026-09-17 is why
+ * that is two rather than three. `scope="turn"` under a user turn's bubble: one
+ * per turn, the anchor the hover model was missing. `scope="turn"` at the foot
+ * of an OPEN tool disclosure: the collapsed ledger keeps the quiet it was given,
+ * so a run of twenty calls stays twenty lines.
+ *
+ * THE THIRD PLACE IS GONE. This component used to also own a FOOTER line at the
+ * end of the transcript, stating when the last thing in the conversation
+ * happened, gated so it stayed away when the last row painted a stamp of its own
+ * (a user turn, or a ledger row the reader had opened). The transcript is
+ * bottom-pinned and the aggregate working line sits at its foot, so during a live
+ * turn that stamp landed directly under the thinking indicator — a clock beneath
+ * a liveness row, which is the state the operator screenshotted. The line was
+ * removed rather than gated because every gate it had asked WHICH row came last,
+ * and the row that comes last during a turn is the working line: not a record,
+ * and not something the gate could name. The trade is deliberate and worth
+ * stating: a transcript ending on assistant prose, or on a settled tool row
+ * nobody opened, now shows no time at its foot. Both ends on a row whose own
+ * affordance is a disclosure, and an always-present clock at the foot was the
+ * thing the operator asked to remove.
  *
  * GEOMETRY, because the frame is the whole of what a stamp is: it is a sibling
  * of the bubble in a column (`UserRow`), so it sits under the bubble and shares
@@ -90,18 +101,17 @@ export type TurnTimestampProps = {
 	/**
 	 * WHICH stamp this is, in the DOM as `data-stamp`.
 	 *
-	 * The transcript carries two of these and they are different facts: a turn's
-	 * own (under its bubble, or at the foot of an open tool call) and the
-	 * transcript's, at the foot, stating when the last thing here happened. They
-	 * render identically on purpose — one fact, one spelling — which is exactly
-	 * why the DOM has to say which is which: the render tests assert that a
-	 * collapsed ledger row paints none of its own while the footer does, and a
-	 * count of `<time>` elements alone cannot tell those apart.
+	 * It names the PLACEMENT rather than the fact — the stamp under a user turn's
+	 * bubble and the stamp at the foot of an open tool call are different spots on
+	 * the page for the same kind of time — so the render tests can say where a
+	 * `<time>` came from without depending on the DOM shape around it. The union
+	 * used to carry `"footer"` for the transcript's removed footer line; one
+	 * member is left because that was the only other placement.
 	 *
-	 * Required rather than defaulted, so a third call site states which of the
-	 * two it is rather than inheriting whichever value happened to be the default.
+	 * Required rather than defaulted, so a third placement states itself rather
+	 * than inheriting whichever value happened to be the default.
 	 */
-	scope: "turn" | "footer";
+	scope: "turn";
 	className?: string;
 };
 
