@@ -1192,8 +1192,16 @@ export const UpdateNotification = ({
 		[],
 	);
 
-	// Update the backend
-	const updateBackend = useCallback(async () => {
+	/**
+	 * Run a server update attempt, optionally at a release the caller names.
+	 *
+	 * The override exists for the one press that has no OFFER behind it: the skew
+	 * notice renders on the state where the install is already the published release
+	 * and only the daemon serving this app is behind, so there is no
+	 * `backendUpdateInfo` to read a target from - and the target is the install's own
+	 * version, which is what the restart has to land on (UX U2).
+	 */
+	const updateBackend = useCallback(async (targetOverride?: string | null) => {
 		backendUpdateAttemptRef.current = { terminal: false, inFlight: true };
 		try {
 			setChecking(true);
@@ -1207,7 +1215,10 @@ export const UpdateNotification = ({
 			setBackendUpdateFailure(null);
 			// The target version travels with the request so the main process can
 			// confirm the restarted server actually reports it.
-			const targetVersion = backendUpdateInfoRef.current?.latestVersion;
+			const targetVersion =
+				targetOverride ??
+				backendUpdateInfoRef.current?.latestVersion ??
+				undefined;
 			const result = await window.api.updater.updateBackend(targetVersion);
 			/*
 			 * `false` is a failure, not a quiet no-op: this invoke resolves false on
@@ -2375,7 +2386,7 @@ export const UpdateNotification = ({
 							<Button
 								variant="primary"
 								size="sm"
-								onClick={updateBackend}
+								onClick={() => void updateBackend()}
 								disabled={checking}
 							>
 								{checking ? "Updating..." : "Update server"}
@@ -2498,8 +2509,12 @@ export const UpdateNotification = ({
 	 *
 	 * A panel rather than the completion toast, because the toast is a claim about
 	 * the server and the server has not moved: the app is attached to a daemon it did
-	 * not start, or an attempt landed while no app was watching, and in both cases
-	 * the app deliberately does not bounce that process - nor can it. The truth is
+	 * not start, or an attempt landed while no app was watching. On those two arms
+	 * the app deliberately does not bounce that process - nor may it - and the panel's
+	 * sentence names the reader's own step. On the arm where the app STARTED the
+	 * daemon (`restartable`, carried by the producer) the panel offers the restart as
+	 * an action instead of only describing it (UX U2), because a stated fact with
+	 * nothing to press is the same defect one panel further along. The truth is
 	 * also self-concealing: the install is now latest, so no later check re-offers
 	 * anything and nothing else on any surface says the two readings differ
 	 * (reviews R1-3, D3, UX U1/U6, QA Q-1/Q-2). It renders only when no offer or
@@ -2547,8 +2562,39 @@ export const UpdateNotification = ({
 						: "The server serving this app was started outside Local Operator, which does not restart a server it did not start: stop it and start Local Operator again, or restart whatever started it, and it comes back on the new build."}
 				</p>
 				<UpdateActions>
+					{/*
+					 * THE ACTION THE SENTENCE USED TO ONLY DESCRIBE (UX U2). "Restart Local
+					 * Operator and the server comes back on the new build" was a true fact with
+					 * nothing to press: this panel's only control was "Understood", so a reader
+					 * who wanted the new build had to work out for themselves that quitting and
+					 * relaunching was the step. It is reachable now, and the app performs it:
+					 * `update-backend` on this install publishes nothing - the install is already
+					 * the published release - and restarts the daemon onto it, which is exactly
+					 * what the sentence promises.
+					 *
+					 * Offered only when the app may act: `restartable` is the app's own answer
+					 * for the daemon it started, and on the other arm the sentence names the
+					 * reader's step instead, because there is no action here to give.
+					 *
+					 * The panel is cleared on the press WITHOUT recording it as dismissed, so a
+					 * restart that does not close the gap lets the same reading speak again
+					 * rather than burying a skew the user just tried to fix.
+					 */}
+					{restartable && (
+						<Button
+							variant="primary"
+							size="sm"
+							disabled={checking}
+							onClick={() => {
+								setBackendSkewNotice(null);
+								void updateBackend(installVersion);
+							}}
+						>
+							{checking ? "Restarting..." : "Restart the server"}
+						</Button>
+					)}
 					<Button
-						variant="primary"
+						variant={restartable ? "outline" : "primary"}
 						size="sm"
 						onClick={() => {
 							dismissedSkewRef.current = skewKey(backendSkewNotice);

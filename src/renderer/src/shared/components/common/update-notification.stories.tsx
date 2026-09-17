@@ -226,8 +226,30 @@ const mockUpdaterApi = () => {
 			return () => {};
 		},
 		onBackendUpdateNotAvailable: (
-			callback: (info: { version: string }) => void,
+			callback: (info: {
+				version: string;
+				runningVersion?: string | null;
+				restartable?: boolean;
+			}) => void,
 		) => {
+			/*
+			 * The SKEW payload is a different event on the same channel, and the difference
+			 * is the whole subject of the frames the flag below exists for: this is how the
+			 * app learns that the install on disk and the server SERVING it are on
+			 * different builds, which main sends on the state where there is nothing to
+			 * offer because the install is already the published release. The plain
+			 * `{ version }` arm is the channel's other use and the notice's own funnel
+			 * declines on it (no readable running reading, so no skew to state), which is
+			 * why a story that wants the panel has to carry the readings rather than a
+			 * placeholder.
+			 */
+			if (window.triggerBackendUpdateSkew && window.backendSkewReadings) {
+				callback({
+					version: window.backendSkewReadings.version,
+					runningVersion: window.backendSkewReadings.runningVersion,
+					restartable: window.backendSkewReadings.restartable,
+				});
+			}
 			// For stories that need to trigger this callback
 			if (window.triggerBackendUpdateNotAvailable) {
 				// Immediately trigger the callback
@@ -527,6 +549,20 @@ declare global {
 		triggerUpdateNpxAvailable?: boolean;
 		triggerBackendUpdateAvailable?: boolean;
 		triggerBackendUpdateNotAvailable?: boolean;
+		/**
+		 * The skew notice's own readings, delivered on `backend-update-not-available`.
+		 *
+		 * Separate from the boolean flag above rather than another trigger name: the
+		 * panel's subject is the PAIR of versions, so a story has to state both - which
+		 * is why the flag only says "fire this event" and the readings say what the
+		 * event carries.
+		 */
+		triggerBackendUpdateSkew?: boolean;
+		backendSkewReadings?: {
+			version: string;
+			runningVersion: string;
+			restartable: boolean;
+		};
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateError?: boolean;
 		triggerBackendUpdateInFlight?: boolean;
@@ -1133,6 +1169,47 @@ export const BackendUpdateNonManaged: Story = {
 	parameters: { triggerBackendUpdateNonManaged: true },
 	render: () => <Triggered flag="triggerBackendUpdateNonManaged" />,
 };
+/**
+ * THE APP-OWNED ARM OF THE SKEW, and the state this change is about.
+ *
+ * What the frame is: this machine's install is the published release and the daemon
+ * SERVING this app is still on the previous build - which the app may restart,
+ * because it started that daemon itself (`restartable`). The two numbers are real
+ * readings from the operator's own machine at the time of the report: `/health`
+ * answered 0.56.8 from the app's managed environment while 0.56.x was published,
+ * and the machine's recorded preparation stamp was older still.
+ *
+ * What the pair records is the panel's ENDING. Before, the sentence described the
+ * remedy and the panel's only control was "Understood" - a true fact with nothing
+ * to press, which left a reader who wanted the new build to work out that quitting
+ * the app was the step (UX U2). Now the panel offers the restart it has been
+ * talking about and the app performs it: `update-backend` on this install publishes
+ * nothing, because the install is already the release it would install, and
+ * restarts the daemon onto it.
+ *
+ * Same story, same readings, captured on the tree before this change and on the one
+ * after it; the set and the argument for it are under
+ * `docs/evidence/app-owned-managed-env-update/`.
+ */
+const ServerBehindAppOwnedBuild = () => {
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		window.backendSkewReadings = {
+			version: "0.56.12",
+			runningVersion: "0.56.8",
+			restartable: true,
+		};
+		window.triggerBackendUpdateSkew = true;
+		setReady(true);
+	}, []);
+	return ready ? <UpdateNotification autoCheck={false} /> : null;
+};
+
+export const ServerBehindAppOwned: Story = {
+	args: { autoCheck: false },
+	render: () => <ServerBehindAppOwnedBuild />,
+};
+
 /**
  * The panel driven the way the user drives it: raise the offer, press its own
  * "Update server", and let the main process answer.

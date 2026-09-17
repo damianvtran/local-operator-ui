@@ -1391,10 +1391,55 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 		copy.some((text) => /is still running 0\.56\.0/.test(text)),
 		JSON.stringify(copy),
 	);
-	// And it tells the reader what to do about it, for a daemon the app owns.
+	/*
+	 * AND IT OFFERS THE ACTION RATHER THAN ONLY DESCRIBING IT (UX U2, which is what
+	 * this assertion used to be about). It pinned "Restart Local Operator and the
+	 * server comes back on the new build" - a true fact with nothing to press, so the
+	 * panel's only control was `Understood` and a reader who wanted the new build had
+	 * to work out for themselves that quitting the app was the step. The sentence now
+	 * names the action and the control performs it, on the arm where the app owns the
+	 * daemon it is talking about.
+	 */
 	assert.ok(
-		copy.some((text) => /Restart Local Operator/.test(text)),
+		copy.some((text) => /can restart it onto the new build now/.test(text)),
 		JSON.stringify(copy),
+	);
+	control(handle, "Restart the server").props.onClick();
+	assert.equal(
+		updater.backendUpdates.length,
+		1,
+		"the press must reach the main process's own update attempt",
+	);
+	assert.equal(
+		updater.backendUpdates[0].targetVersion,
+		"0.56.2",
+		"and it must carry the INSTALL's own version rather than an offer's: this panel has no offer behind it to read a target from, and the restart has to land on what is published",
+	);
+	updater.backendUpdates[0].resolve(true);
+	handle.render();
+
+	/*
+	 * THE OTHER ARM SAYS SO PLAINLY INSTEAD. When the daemon serving this app is one
+	 * the app did not start, there is no action to give - and the copy may not imply
+	 * one, because an app that restarted somebody's server is the same class of
+	 * overreach as an app that installs into somebody's tree.
+	 */
+	const foreign = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.0",
+		restartable: false,
+	});
+	foreign.render();
+	const foreignCopy = allCopy(foreign).join(" ");
+	assert.match(
+		foreignCopy,
+		/does not restart a server it did not start/,
+		foreignCopy,
+	);
+	assert.ok(
+		!foreignCopy.includes("Restart the server"),
+		`the panel must not offer a restart it may not perform: ${foreignCopy}`,
 	);
 });
 

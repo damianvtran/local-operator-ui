@@ -24,6 +24,7 @@ import {
 	managedSelectionReady,
 	prepareManagedPython,
 } from "./managed-python";
+import { managedPythonOptions } from "./managed-python-options";
 import {
 	linuxInstallScript,
 	macosInstallScript,
@@ -286,17 +287,7 @@ export class BackendInstaller {
 	 * @returns Promise resolving to true if the backend was installed successfully, false otherwise
 	 */
 	private managedOptions(): ManagedPythonOptions {
-		return {
-			support: join(
-				app.getPath("home"),
-				"Library",
-				"Application Support",
-				"Local Operator",
-			),
-			resources: this.resourcesPath,
-			packaged: app.isPackaged,
-			arch: process.arch,
-		};
+		return managedPythonOptions();
 	}
 
 	async install(): Promise<boolean> {

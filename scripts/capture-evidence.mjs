@@ -2510,6 +2510,23 @@ export const STORIES = [
 	 */
 	["common-updatenotification--backend-update-in-flight", 1280, 900],
 	["common-updatenotification--backend-update-failed", 1280, 900],
+	/*
+	 * THE APP-OWNED ARM OF THE SKEW, and the pair this change is about: the install
+	 * is the published release, the daemon SERVING this app is the previous build,
+	 * and the app may restart it because it started it itself. `restartable` is the
+	 * reading that decides the panel's ending, so the story carries both numbers and
+	 * the flag - a frame whose subject is the control has to be the state that has
+	 * the control.
+	 *
+	 * Captured twice on purpose, and this entry is the second half: the same story on
+	 * the tree BEFORE the change states the fact and offers only "Understood", and
+	 * `docs/evidence/app-owned-managed-env-update/README.md` carries that arm's frame
+	 * and how it was taken. The difference between the two frames is renderer copy
+	 * and one control, so unlike a payload-only pair there is a real pre-change tree
+	 * to photograph - which is what makes this pair evidence rather than an
+	 * illustration.
+	 */
+	["common-updatenotification--server-behind-app-owned", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	/*
 	 * Two more than the set had, and both for a reason: `--filtered` is the only

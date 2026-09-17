@@ -39,13 +39,21 @@ import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
-	isUnpreparedVenvPath,
+	type ManagedUpdateOutcome,
+	publishedBackendVersion,
+	updateManagedPython,
+} from "./backend/managed-python";
+import { managedPythonOptions } from "./backend/managed-python-options";
+import {
 	legacyEnvironmentReport,
 	legacyVenvPaths,
 	managedSupportRoot,
 	managedVenvPath,
 } from "./backend/venv-paths";
-import { withPythonBytecodeCache } from "./python-bytecode-cache";
+import {
+	ensureVenvBytecodeGuard,
+	withPythonBytecodeCache,
+} from "./python-bytecode-cache";
 import {
 	type UpdateChannelStatus,
 	type UpdateCheckVerdict,
@@ -4937,39 +4945,6 @@ export class UpdateService {
 	}
 
 	/**
-	 * Bring the previous server back after a failed upgrade, and say whether it
-	 * actually came back.
-	 *
-	 * A failure here must not leave the user with no backend at all: whatever pip
-	 * did or did not do, the environment usually still holds a working install, so
-	 * start it again and then ask /health rather than assuming. The answer is not
-	 * cosmetic: `pip install --upgrade` uninstalls before it installs, so a
-	 * mid-install failure can leave the package absent, and telling the user "the
-	 * previous server is still running" when it is not is a claim we had no
-	 * evidence for (review R6).
-	 */
-	private async restartBackendAfterFailedUpgrade(): Promise<boolean> {
-		try {
-			await this.backendService?.start();
-			const healthy = await this.checkBackendHealth();
-			logger.info(
-				healthy
-					? "Restarted the previous backend after a failed update"
-					: "The backend did not answer its health check after a failed update",
-				LogFileType.UPDATE_SERVICE,
-			);
-			return healthy;
-		} catch (error) {
-			logger.error(
-				"Could not restart the backend after a failed update:",
-				LogFileType.UPDATE_SERVICE,
-				error,
-			);
-			return false;
-		}
-	}
-
-	/**
 	 * Poll /health until it reports `targetVersion`, bounded by a timeout.
 	 *
 	 * Returns null when the version never matched (or could not be read), which
@@ -5246,16 +5221,19 @@ export class UpdateService {
 	}
 
 	/**
-	 * True while an app-driven update of the global install is running.
+	 * True while an app-driven server update is running, whichever install it moves.
 	 *
 	 * The guard is here and not on the surfaces that ask for the update, because
 	 * their flags are per-surface: the offer holds `checking` and the run panel holds
-	 * `updatingBackend`, so a press on each of them reached `updateGlobalInstall`
-	 * twice and the second `lop update` ran beside the first against one install root
-	 * (review R1-8). The bundled path never needed one because it stops the backend
-	 * first, which serialises it by accident; nothing on this path stops anything.
+	 * `updatingBackend`, so a press on each of them reached an updater twice and the
+	 * second install ran beside the first against one tree (review R1-8).
+	 *
+	 * Both layouts need it now. The global path never stopped anything; the app-owned
+	 * path used to serialise itself by accident (it stopped the daemon first) and
+	 * stops nothing since it began publishing a generation instead of writing into
+	 * the live tree.
 	 */
-	private globalUpdateInFlight = false;
+	private serverUpdateInFlight = false;
 
 	/**
 	 * Update the resolved global install, then restart the daemon this app owns.
@@ -5277,7 +5255,7 @@ export class UpdateService {
 		plan: { installedInstallVersion: string | null },
 		target: string | null,
 	): Promise<boolean> {
-		if (this.globalUpdateInFlight) {
+		if (this.serverUpdateInFlight) {
 			logger.warn(
 				"A global install update is already running; refusing to start a second beside it",
 				LogFileType.UPDATE_SERVICE,
@@ -5290,11 +5268,11 @@ export class UpdateService {
 			});
 			return false;
 		}
-		this.globalUpdateInFlight = true;
+		this.serverUpdateInFlight = true;
 		try {
 			return await this.runGlobalUpdateAttempt(backend, plan, target);
 		} finally {
-			this.globalUpdateInFlight = false;
+			this.serverUpdateInFlight = false;
 		}
 	}
 
@@ -5719,235 +5697,19 @@ export class UpdateService {
 					return false;
 			}
 
-			// First, stop the backend service if we have a reference to it
-			if (!this.backendService.isUsingExternalBackend()) {
-				logger.info(
-					"Stopping backend service before update...",
-					LogFileType.UPDATE_SERVICE,
-				);
-				// Set the auto-updating flag to prevent error dialogs during shutdown
-				this.backendService.setAutoUpdating(true);
-				await this.backendService.stop(true);
-				logger.info(
-					"Backend service stopped successfully",
-					LogFileType.UPDATE_SERVICE,
-				);
-			}
-
-			// Update the backend using pip.
-			//
-			// Only the app's own bundled environment reaches this point: a global
-			// install returns above. `pip install --upgrade` against a uv tool or
-			// pipx environment either fails or corrupts it, and a fallback to the
-			// bare `pip` on PATH was how the app ended up offering to update an
-			// install it did not own.
-			let pythonPath = "";
-			const venvPath = this.backendService?.getVenvPath();
-			if (venvPath && app.isPackaged) {
-				const venvBinDir = process.platform === "win32" ? "Scripts" : "bin";
-				const pythonName =
-					process.platform === "win32" ? "python.exe" : "python3";
-				pythonPath = join(venvPath, venvBinDir, pythonName);
-			}
-
-			if (!pythonPath || !existsSync(pythonPath)) {
-				logger.error(
-					// `managedVenvPath` answers with a sentinel when no environment has
-					// been published, and "no Python at …/no-environment-selected" sent a
-					// reader to a directory-shaped path that nothing creates (review N3).
-					isUnpreparedVenvPath(venvPath ?? "")
-						? "Cannot update the bundled backend: no environment has been selected for this instance yet"
-						: `Cannot update the bundled backend: no Python at ${pythonPath || "an unknown path"}`,
-					LogFileType.UPDATE_SERVICE,
-				);
-				await this.restartBackendAfterFailedUpgrade();
-				this.sendToRenderer("backend-update-error", {
-					message:
-						"The bundled server's Python environment could not be found, so the update did not run. Please reinstall the application.",
-					phase: "update",
-					logPath: serverUpdateLogPath(),
-				});
-				return false;
-			}
-
 			/*
-			 * The target travels into the requirement, so pip cannot satisfy the user's
-			 * request with the version it is already standing on: the app promised a
-			 * specific release, and an index page that predates it (a cached one, or an
-			 * unreachable one) has to fail here rather than report success.
+			 * THE APP'S OWN ENVIRONMENT, updated the way everything else in this
+			 * product updates: publish a new tree, then move a pointer (design section
+			 * 4.4).
+			 *
+			 * Nothing is stopped before the write, and that is the point. The path this
+			 * replaces stopped the daemon FIRST and then ran `pip install --upgrade`
+			 * inside the published venv - rewriting `site-packages` under the process
+			 * that had been serving and under every session runtime importing from the
+			 * same tree, which is the incident `docs/design-install-generations.md` was
+			 * written about, one level down.
 			 */
-			const pip = buildPipUpgradeCommand(pythonPath, targetVersion ?? null);
-
-			// Read what the environment has NOW. "pip exited 0" is not evidence that
-			// anything was installed - pip reports success when the requirement is
-			// already satisfied - so the post-check needs a version to compare.
-			const versionBefore = await this.readBundledBackendVersion(pythonPath);
-
-			logger.info(
-				`Executing pip command: ${pip.display}`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			const pipRun = await runCommand(pip.command, pip.args, {
-				timeoutMs: 15 * 60 * 1000,
-				env: this.pythonSpawnEnv(),
-			});
-			// Both streams are captured into update-service.log: a pip failure with
-			// no output is what made the earlier failures unreadable.
-			logger.info(
-				`pip stdout:\n${pipRun.stdout.trim()}`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			if (pipRun.stderr.trim().length > 0) {
-				logger.warn(
-					`pip stderr:\n${pipRun.stderr.trim()}`,
-					LogFileType.UPDATE_SERVICE,
-				);
-			}
-
-			const versionAfter = await this.readBundledBackendVersion(pythonPath);
-			// An unreadable "before" is not evidence that the upgrade landed: when
-			// `pip show` failed beforehand, the target version is what the reading
-			// afterwards is held to (review R6, `didUpgradeLand`).
-			const upgradeLanded =
-				pipRun.exitCode === 0 &&
-				didUpgradeLand({
-					before: versionBefore,
-					after: versionAfter,
-					target: targetVersion ?? null,
-				});
-			if (!upgradeLanded) {
-				logger.error(
-					`Backend upgrade did not land: pip exited ${pipRun.exitCode}; version ${versionBefore ?? "unknown"} -> ${versionAfter ?? "unknown"}`,
-					LogFileType.UPDATE_SERVICE,
-				);
-				const serverIsBack = await this.restartBackendAfterFailedUpgrade();
-				this.sendToRenderer("backend-update-error", {
-					message:
-						pipRun.exitCode !== 0
-							? serverIsBack
-								? "The server update failed to install. The previously installed server is running again; see the update service log for pip's output."
-								: "The server update failed to install and the server did not come back up. Restart Local Operator, and see the update service log for pip's output."
-							: `The server update to ${targetVersion ?? "the new release"} did not take effect: the server is still on ${versionAfter ?? "its previous version"}. See the update service log for pip's output, then try again.`,
-					phase: "update",
-					logPath: serverUpdateLogPath(),
-				});
-				return false;
-			}
-
-			logger.info(
-				`Backend package upgraded: ${versionBefore ?? "unknown"} -> ${versionAfter}`,
-				LogFileType.UPDATE_SERVICE,
-			);
-
-			// Restart the backend service
-			logger.info(
-				"Restarting backend service after update...",
-				LogFileType.UPDATE_SERVICE,
-			);
-
-			// Use the dedicated restart method which properly handles the restart process
-			const restartSuccess = await this.backendService.restart();
-
-			if (restartSuccess) {
-				logger.info(
-					"Backend service restarted successfully after update",
-					LogFileType.UPDATE_SERVICE,
-				);
-
-				// Reset the auto-updating flag
-				this.backendService.setAutoUpdating(false);
-
-				// Verify the backend is actually running after restart
-				const isRunningAfterRestart = await this.checkBackendHealth();
-				if (!isRunningAfterRestart) {
-					logger.error(
-						"Backend service reported successful restart but health check failed",
-						LogFileType.UPDATE_SERVICE,
-					);
-
-					// Try one more time to start the service
-					logger.info(
-						"Attempting to start backend service again...",
-						LogFileType.UPDATE_SERVICE,
-					);
-					await this.backendService.start();
-
-					// Final health check
-					const finalHealthCheck = await this.checkBackendHealth();
-					if (!finalHealthCheck) {
-						logger.error(
-							"Backend service failed to start after multiple attempts",
-							LogFileType.UPDATE_SERVICE,
-						);
-						if (this.mainWindow) {
-							this.mainWindow.webContents.send("backend-update-error", {
-								message:
-									"Backend was updated but failed to restart properly. Please restart the application.",
-								phase: "update",
-								logPath: serverUpdateLogPath(),
-							});
-						}
-						return false;
-					}
-				}
-			} else {
-				logger.error(
-					"Failed to restart backend service after update",
-					LogFileType.UPDATE_SERVICE,
-				);
-
-				// Reset the auto-updating flag even if restart failed
-				this.backendService.setAutoUpdating(false);
-
-				if (this.mainWindow) {
-					this.mainWindow.webContents.send("backend-update-error", {
-						message:
-							"Backend was updated but failed to restart. Please restart the application.",
-						phase: "update",
-						logPath: serverUpdateLogPath(),
-					});
-				}
-				return false;
-			}
-
-			// Confirm the version the server actually reports before claiming
-			// success: a restart that came back on the old version is not an update,
-			// and "pip exited 0" is not evidence that it took effect.
-			const reportedVersion = await this.waitForBackendVersion(
-				targetVersion ?? null,
-			);
-			if (reportedVersion == null) {
-				logger.error(
-					`Backend did not report version ${targetVersion ?? "the new one"} after the update`,
-					LogFileType.UPDATE_SERVICE,
-				);
-				this.sendToRenderer("backend-update-error", {
-					message: `The server restarted but did not report ${targetVersion ? `version ${targetVersion}` : "the updated version"}. Check the update service log, then try again.`,
-					phase: "update",
-					logPath: serverUpdateLogPath(),
-				});
-				return false;
-			}
-			logger.info(
-				`Backend reports version ${reportedVersion} after the update`,
-				LogFileType.UPDATE_SERVICE,
-			);
-
-			logger.info(
-				"Backend update and restart completed successfully",
-				LogFileType.UPDATE_SERVICE,
-			);
-
-			if (
-				this.mainWindow &&
-				!this.mainWindow.isDestroyed() &&
-				this.mainWindow.webContents &&
-				!this.mainWindow.webContents.isDestroyed()
-			) {
-				this.mainWindow.webContents.send("backend-update-completed");
-			}
-
-			return true;
+			return await this.updateAppOwnedEnvironment(targetVersion ?? null);
 		} catch (error) {
 			logger.error(
 				"Error updating backend:",
@@ -5955,6 +5717,14 @@ export class UpdateService {
 				error,
 			);
 
+			/*
+			 * Belt and braces, and it stays on both arms: nothing on EITHER update path
+			 * stops the serving daemon any more (the app-owned arm publishes a generation
+			 * beside it, the global arm runs the install's own front end), so a failure
+			 * here normally leaves it serving untouched - and `start()` is a no-op while
+			 * the port is occupied by this app's own daemon. It is kept for the failures
+			 * that DO leave it down, because a user with no backend has no path back.
+			 */
 			// Try to restart the backend service if it was stopped
 			if (
 				this.backendService &&
@@ -5992,6 +5762,300 @@ export class UpdateService {
 
 			return false;
 		}
+	}
+
+	/**
+	 * Move the app's OWN managed environment onto the release the app means to run.
+	 *
+	 * The shape, and its order is load-bearing (design section 5): land the new build
+	 * in a tree nothing is reading, tell the consumer the build moved, let it leave
+	 * at its own boundary. `updateManagedPython` builds a NEW generation beside the
+	 * published one, smokes it there, and only then flips `selected-environment.json`
+	 * atomically - so a daemon that is serving keeps reading the tree it loaded, and
+	 * no file it has open is ever written.
+	 *
+	 * The guard is the one the global path uses, for the reason that one's own
+	 * comment gives: the surfaces that ask for an update hold per-surface flags, so a
+	 * press on each reaches an updater twice. The old bundled path was serialised by
+	 * accident - it stopped the daemon first - and this one stops nothing, so it
+	 * needs the guard on purpose.
+	 */
+	private async updateAppOwnedEnvironment(
+		targetVersion: string | null,
+	): Promise<boolean> {
+		if (this.serverUpdateInFlight) {
+			logger.warn(
+				"A server update is already running; refusing to start a second beside it",
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-error", {
+				message:
+					"A server update is already running. Let it finish before starting another.",
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
+		this.serverUpdateInFlight = true;
+		try {
+			return await this.runAppOwnedUpdateAttempt(targetVersion);
+		} finally {
+			this.serverUpdateInFlight = false;
+		}
+	}
+
+	/** The attempt itself, under the guard above. */
+	private async runAppOwnedUpdateAttempt(
+		targetVersion: string | null,
+	): Promise<boolean> {
+		const backend = this.backendService;
+		if (!backend) {
+			// This arm is reached from the startup mode the manager reports, so a
+			// missing manager means the app has no daemon to move; publishing a
+			// generation would leave the tree newer than anything that reads it, and
+			// the next launch would look like a machine that had updated by itself.
+			logger.error(
+				"An app-managed environment update was asked for with no backend service reference",
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-error", {
+				message:
+					"The app has no server to update right now. Restart Local Operator and try again.",
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
+		const options = managedPythonOptions();
+		/*
+		 * THE RELEASE THE APP MEANS TO RUN, positively read. The caller's target when
+		 * it named one (the button does), then the reading from the offer this attempt
+		 * is answering, and only then a fresh PyPI read - because the published
+		 * version is the one number that may never be a version nobody fetched. With
+		 * none of the three there is no release to move to, and an unpinned install
+		 * would silently satisfy the press with whatever the index happened to serve.
+		 */
+		const target =
+			targetVersion ??
+			this.lastPublishedBackendVersion ??
+			(await this.getLatestPypiVersion()) ??
+			null;
+		if (!target) {
+			logger.error(
+				"An app-managed environment update was asked for with no release to move to: no caller target, no published reading, and PyPI could not be read",
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-error", {
+				message:
+					"The app could not read which release to install, so it left its server environment alone. Check the connection and try again.",
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
+
+		const before = publishedBackendVersion(options);
+		logger.info(
+			`Updating the app-managed environment (published ${before ?? "no reading"}, target ${target})`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.sendToRenderer("backend-update-progress", { phase: "installing" });
+
+		let outcome: ManagedUpdateOutcome;
+		try {
+			outcome = await updateManagedPython(
+				options,
+				(venv, python) => this.installEnvironmentInto(venv, python, target),
+				{
+					target,
+					isNewer: (candidate, subject) =>
+						this.isNewerVersion(candidate, subject),
+				},
+			);
+		} catch (error) {
+			/*
+			 * THE POINTER DID NOT MOVE, and that is what makes this failure survivable
+			 * rather than an interruption: the pointer is written only after the new
+			 * environment answers its smoke, so whatever went wrong - pip, the network,
+			 * a build that will not start - every running process is still on the
+			 * generation it loaded. Nothing was stopped to get here and nothing is
+			 * restarted on the way out, so the previous environment stays both intact
+			 * and in service, and the remedy the app names is trying again.
+			 */
+			const reason = error instanceof Error ? error.message : String(error);
+			logger.error(
+				`The app-managed environment update published nothing: ${reason}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-error", {
+				message: `The server update did not install, so the environment serving this app was left as it was. ${reason}`,
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
+
+		const installVersion = outcome.selection.backendVersion;
+		logger.info(
+			outcome.replaced
+				? `Published a new app-managed environment generation: ${before ?? "none"} -> ${installVersion}; the generation it supersedes stays on disk at ${outcome.previous?.venv ?? "no previous generation"}`
+				: `The published app-managed environment already satisfies ${target}; nothing was installed (published ${installVersion})`,
+			LogFileType.UPDATE_SERVICE,
+		);
+
+		/*
+		 * NOW the daemon moves, and a restart is what moves it: `start` re-resolves
+		 * `managedVenvPath` on every start, because an instance pins the generation it
+		 * LOADED and nothing else - so the process that comes up reads the pointer this
+		 * attempt just flipped. This is the one step the previous path took FIRST
+		 * (stop, pip, restart); taking it last is what lets the new build land without
+		 * touching anything that is running.
+		 */
+		logger.info(
+			"Restarting backend service onto the published environment...",
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.sendToRenderer("backend-update-progress", { phase: "restarting" });
+		backend.setAutoUpdating(true);
+		const restarted = await backend.restart();
+		backend.setAutoUpdating(false);
+		const healthy = restarted ? await this.checkBackendHealth() : false;
+		if (!restarted || !healthy) {
+			/*
+			 * The install moved and the server did not come up onto it. This is a
+			 * COMPLETED attempt with both readings rather than a failure, because the
+			 * install genuinely moved and the environment is coherent on its own: the
+			 * honest sentence is the one the panel already renders for this pair (the
+			 * install is current, the server is behind), and the action it offers - a
+			 * restart this app performs itself - is a thing the app can actually do.
+			 *
+			 * `restarted: false` is the whole reason that panel has something to say,
+			 * and `restartable: true` is true here by construction: this arm runs only
+			 * for a daemon the app started.
+			 */
+			logger.error(
+				`The environment is published at ${installVersion} but the backend did not come back onto it (restart ${restarted ? "succeeded" : "failed"}, health ${healthy ? "ok" : "did not answer"})`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			const serving = await this.getInstalledBackendVersion();
+			this.sendToRenderer("backend-update-completed", {
+				installVersion,
+				runningVersion: serving,
+				restarted: false,
+				restartable: true,
+			});
+			return true;
+		}
+
+		const running = await this.waitForBackendVersion(installVersion);
+		if (running === null) {
+			// The same report, for the same reason, when the process is healthy but is
+			// not on the build that was published - a restart that came back on the old
+			// generation is not a claim anyone may make about the new one.
+			const serving = await this.getInstalledBackendVersion();
+			logger.error(
+				`The environment is published at ${installVersion} but the server serving this app reports ${serving ?? "no reading"}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-completed", {
+				installVersion,
+				runningVersion: serving,
+				restarted: false,
+				restartable: true,
+			});
+			return true;
+		}
+
+		logger.info(
+			`The server serving this app reports ${running} after the app-managed environment update`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		this.sendToRenderer("backend-update-completed", {
+			installVersion,
+			runningVersion: running,
+			restarted: true,
+		});
+		return true;
+	}
+
+	/**
+	 * Install a release into a freshly created environment, and say whether it landed
+	 * there.
+	 *
+	 * The two commands are the ones this app's own install script runs for the same
+	 * steps - create the environment on the managed runtime's interpreter, then
+	 * `pip install` into it - aimed at the generation the caller has just minted, and
+	 * pinned to the release the user was offered.
+	 *
+	 * It is deliberately NOT the install script itself. That one is the interactive
+	 * first run: it builds a modal progress window and it calls `app.exit(1)` when
+	 * the user cancels that window, so reaching for it here would put a second window
+	 * and a quit path inside an update - and an update that can quit the app is not
+	 * an update that leaves the runtimes running.
+	 *
+	 * `didUpgradeLand` rather than the exit code, for the reason it exists: pip
+	 * reports success when the requirement is already satisfied, and it can exit 0
+	 * having installed for a different interpreter, so the version read back out of
+	 * THIS environment is the only thing that answers whether the user got the
+	 * release they were offered.
+	 */
+	private async installEnvironmentInto(
+		venv: string,
+		python: string,
+		target: string,
+	): Promise<boolean> {
+		const created = await runCommand(python, ["-m", "venv", venv], {
+			timeoutMs: 10 * 60 * 1000,
+			env: this.pythonSpawnEnv(),
+		});
+		if (created.exitCode !== 0) {
+			logger.error(
+				`Could not create the update environment at ${venv}: ${(created.stderr || created.stdout).trim()}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return false;
+		}
+		const interpreter = join(
+			venv,
+			process.platform === "win32" ? "Scripts" : "bin",
+			process.platform === "win32" ? "python.exe" : "python",
+		);
+		const pip = buildPipUpgradeCommand(interpreter, target);
+		logger.info(
+			`Installing into the new environment: ${pip.display}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		const run = await runCommand(pip.command, pip.args, {
+			timeoutMs: 15 * 60 * 1000,
+			env: this.pythonSpawnEnv(),
+		});
+		logger.info(
+			`Install stdout:\n${run.stdout.trim()}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		if (run.stderr.trim().length > 0) {
+			logger.warn(
+				`Install stderr:\n${run.stderr.trim()}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
+		const installed = await this.readBundledBackendVersion(interpreter);
+		if (!didUpgradeLand({ before: null, after: installed, target })) {
+			logger.error(
+				`The new environment is not on ${target}: it reports ${installed ?? "no readable version"}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return false;
+		}
+		/*
+		 * The bytecode guard, written now that `site-packages` exists and before the
+		 * smoke runs. The first-run path writes this guard for the same reason: it is
+		 * what keeps a python started later without our environment from compiling
+		 * `.pyc` beside the sources in the managed runtime, and here it also covers the
+		 * smoke child, which this app starts itself.
+		 */
+		ensureVenvBytecodeGuard(venv);
+		return true;
 	}
 
 	/**

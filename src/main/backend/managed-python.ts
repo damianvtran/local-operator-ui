@@ -670,7 +670,16 @@ const PREPARATION_LOCK_MS = 120_000;
  * What a caller may protect is "what the repair can still USE", not "what is
  * published": the two differ exactly when the published tree is itself broken, and
  * protecting that is what stops this reclaiming the space the repair's own copy
- * needs (QA round 3, Q1). Only names this module
+ * needs (QA round 3, Q1).
+ *
+ * THE ONE CALLER THAT PROTECTS A PUBLISHED ENVIRONMENT IS AN UPDATE, and it is a
+ * different question rather than an exception: what it protects is the generation
+ * being superseded, which is both the rollback and the tree every running process
+ * is reading. Reclaiming THAT as if it were a broken repair target would delete the
+ * environment a serving daemon has open, which is the failure this whole layout
+ * exists to prevent - so `publishGeneration` passes it as a survivor.
+ *
+ * Only names this module
  * writes are ever considered - `[0-9a-f]{64}-<uuid>` and `.preparing-*` - so a
  * file an operator or a future version put here is left alone, and nothing
  * outside `managedPythonRoot` is read, walked or removed. Never a machine-wide
@@ -678,7 +687,21 @@ const PREPARATION_LOCK_MS = 120_000;
  */
 export function reapSupersededGenerations(
 	options: ManagedPythonOptions,
-	keep: { runtime?: string; venv?: string },
+	keep: {
+		/**
+		 * Runtime generations that must survive.
+		 *
+		 * A LIST rather than one path, because "the newest generation that is not
+		 * named" is not always the right second survivor. An update names the runtime
+		 * it reused AND the one the environment it superseded still names, since those
+		 * can be different trees; and a half-written generation left by a failed
+		 * attempt is NEWER than the rollback, so a caller that named one path would
+		 * watch the reaper keep the debris and delete the tree it promised to keep.
+		 */
+		runtime?: readonly string[];
+		/** Environment generations that must survive, on the same rule as above. */
+		venv?: readonly string[];
+	},
 	now = Date.now(),
 ): string[] {
 	const removed: string[] = [];
@@ -692,7 +715,7 @@ export function reapSupersededGenerations(
 		} catch {
 			continue;
 		}
-		const survivors = new Set(kept ? [kept] : []);
+		const survivors = new Set(kept ?? []);
 		const generations: Array<{ path: string; mtimeMs: number }> = [];
 		for (const name of names) {
 			const path = join(root, name);
@@ -896,60 +919,236 @@ export async function prepareManagedPython(
 		if (state.kind === "ready") return state.selection;
 		const superseded = state.kind === "missing" ? state.detail : null;
 		// `unprepared` has no pointer at all, so there is nothing published to keep.
-		const published = state.kind === "missing" ? state.published : undefined;
-		const root = managedPythonRoot(options);
-		/*
-		 * Reclaim BEFORE the copy, which is worth ~47 MB on the disk-full path this
-		 * branch writes user copy for - and protect only what the repair can still
-		 * USE. The published RUNTIME, while its bytes still hash to the seed, is the
-		 * tree `prepareRuntime` reuses, so protecting it is what lets a state that
-		 * only lost its environment repair with no copy at all (review N4). An
-		 * identity-broken runtime is NOT protected: the repair copies the seed
-		 * instead, so protecting it only competes with its own copy for space, which
-		 * on a full disk made the state unrecoverable (QA round 3, Q1). The
-		 * published ENVIRONMENT is not protected either - a repair always creates a
-		 * new one at a new path, so nothing there is reusable, and the retention
-		 * rule already keeps that root's newest generation as the fallback.
-		 * `unprepared` has nothing published at all.
-		 */
-		reapSupersededGenerations(options, {
-			runtime:
-				published && publishedRuntimeIsReusable(options, published)
-					? published.runtime
-					: undefined,
-		});
-		const { runtime, id } = await prepareRuntime(options);
-		await mkdir(environmentsRoot(options), { recursive: true, mode: 0o700 });
-		realDirectory(environmentsRoot(options));
-		// This is the FINAL venv pathname. Never rename an installed venv: pip
-		// entrypoints and activation scripts embed absolute paths into their bytes.
-		const venv = join(environmentsRoot(options), `${id}-${randomUUID()}`);
-		if (!(await install(venv, pythonPath(runtime))))
-			throw new Error(
-				"Backend preparation did not complete. Your previous environment and data were preserved.",
-			);
-		const env = withPythonBytecodeCache({ ...process.env }, options.support);
-		const backendVersion = await smokeEnvironment(venv, env);
-		const selection: ManagedSelection = {
-			format: FORMAT,
-			runtimeId: id,
-			runtime,
-			venv,
-			backendVersion,
-		};
-		const bytes = `${JSON.stringify(selection)}\n`;
-		await writeFile(join(venv, READY), bytes, { flag: "wx", mode: 0o600 });
-		const temporary = join(root, `.selection-${randomUUID()}.json`);
-		await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });
-		await rename(temporary, join(root, POINTER));
-		// Only now, with the new generation published, is it safe to reclaim what
-		// this one replaces: the pointer names the survivor.
-		reapSupersededGenerations(options, { runtime, venv });
-		if (superseded)
-			console.warn(
-				`Replaced an unusable managed Python selection: ${superseded}`,
-			);
-		return selection;
+		const published = state.kind === "missing" ? state.published : null;
+		return publishGeneration(options, install, published, superseded, false);
+	});
+}
+
+/**
+ * Publish ONE generation, inside the preparation lock: the body both entry
+ * points run.
+ *
+ * One body rather than two, because the difference between them is entirely in
+ * the DECISION that got here - `prepareManagedPython` publishes when nothing
+ * usable is published, `updateManagedPython` when what is published is behind
+ * the release the app means to run - and everything after the decision is the
+ * same steps in an order that is load-bearing: reclaim, reuse an identity-
+ * matching runtime, install into a NEW pathname, smoke it, write its readiness,
+ * flip the pointer atomically, and only then reap. A second copy of that
+ * sequence is how the two would come to disagree about when a pointer may move,
+ * which is the one thing in this module that must not vary.
+ *
+ * The pointer is written LAST and only after the smoke passed, which is what
+ * makes a failed update safe by construction rather than by recovery: a
+ * generation that never became healthy is a directory beside the published one,
+ * and the pointer still names the tree every running process loaded. The
+ * leftover is reclaimed by the same retention rule as any other superseded
+ * generation; nothing here deletes a path this call did not create.
+ */
+async function publishGeneration(
+	options: ManagedPythonOptions,
+	install: (venv: string, python: string) => Promise<boolean>,
+	published: ManagedSelection | null,
+	superseded: string | null,
+	/**
+	 * Whether `published` is a ROLLBACK an update must keep, or the unusable
+	 * selection a repair may reclaim.
+	 *
+	 * The distinction is the difference between the two entry points, and getting it
+	 * wrong in one direction deletes the generation the serving daemon has open while
+	 * getting it wrong in the other keeps the broken tree a disk-full repair needs to
+	 * reclaim. So it is a parameter the caller must state, not a default.
+	 */
+	keepPublished: boolean,
+): Promise<ManagedSelection> {
+	const root = managedPythonRoot(options);
+	/*
+	 * Reclaim BEFORE the copy, which is worth ~47 MB on the disk-full path this
+	 * branch writes user copy for - and protect only what the repair can still
+	 * USE. The published RUNTIME, while its bytes still hash to the seed, is the
+	 * tree `prepareRuntime` reuses, so protecting it is what lets a state that
+	 * only lost its environment repair with no copy at all (review N4). An
+	 * identity-broken runtime is NOT protected: the repair copies the seed
+	 * instead, so protecting it only competes with its own copy for space, which
+	 * on a full disk made the state unrecoverable (QA round 3, Q1). The
+	 * published ENVIRONMENT is not protected on a REPAIR either - a repair always
+	 * creates a new one at a new path, so nothing there is reusable, and the
+	 * retention rule already keeps that root's newest generation as the fallback.
+	 * `unprepared` has nothing published at all.
+	 *
+	 * AN UPDATE IS THE OTHER CASE, and `keepPublished` is how it says so: the
+	 * environment it supersedes is the rollback AND the tree a serving daemon has
+	 * open, so both the environment and the runtime it names are survivors here. The
+	 * disk-full argument above does not apply to it - it reuses the runtime it already
+	 * has, so there is no copy to make room for.
+	 */
+	reapSupersededGenerations(options, {
+		runtime:
+			published &&
+			(keepPublished || publishedRuntimeIsReusable(options, published))
+				? [published.runtime]
+				: [],
+		venv: keepPublished && published ? [published.venv] : [],
+	});
+	const { runtime, id } = await prepareRuntime(options);
+	await mkdir(environmentsRoot(options), { recursive: true, mode: 0o700 });
+	realDirectory(environmentsRoot(options));
+	// This is the FINAL venv pathname. Never rename an installed venv: pip
+	// entrypoints and activation scripts embed absolute paths into their bytes.
+	const venv = join(environmentsRoot(options), `${id}-${randomUUID()}`);
+	if (!(await install(venv, pythonPath(runtime))))
+		throw new Error(
+			"Backend preparation did not complete. Your previous environment and data were preserved.",
+		);
+	const env = withPythonBytecodeCache({ ...process.env }, options.support);
+	const backendVersion = await smokeEnvironment(venv, env);
+	const selection: ManagedSelection = {
+		format: FORMAT,
+		runtimeId: id,
+		runtime,
+		venv,
+		backendVersion,
+	};
+	const bytes = `${JSON.stringify(selection)}\n`;
+	await writeFile(join(venv, READY), bytes, { flag: "wx", mode: 0o600 });
+	const temporary = join(root, `.selection-${randomUUID()}.json`);
+	await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });
+	await rename(temporary, join(root, POINTER));
+	// Only now, with the new generation published, is it safe to reclaim what
+	// this one replaces: the pointer names the survivor. WHAT IS NAMED HERE IS BOTH
+	// GENERATIONS on an update - the one that just went live and the one it
+	// superseded - because the superseded one is the rollback this path promises to
+	// leave on disk, and it is not reliably "the newest other": a failed attempt's
+	// half-written generation is newer than it, and a bad build has to have
+	// something to fall back to.
+	reapSupersededGenerations(options, {
+		runtime:
+			keepPublished && published ? [runtime, published.runtime] : [runtime],
+		venv: keepPublished && published ? [venv, published.venv] : [venv],
+	});
+	if (superseded)
+		console.warn(
+			`Replaced an unusable managed Python selection: ${superseded}`,
+		);
+	return selection;
+}
+
+/**
+ * The backend version the published environment records, or null when none is
+ * usable.
+ *
+ * Exported because the version the environment was PREPARED with is the only
+ * number that answers "which build is published here", and the update check has
+ * to be able to name it: `managedSelectionReady` answers a different question
+ * ("is a usable generation published"), and reading that as "this environment is
+ * up to date" is precisely the conflation this pair exists to end.
+ */
+export function publishedBackendVersion(
+	options: ManagedPythonOptions,
+): string | null {
+	return readManagedSelection(options)?.backendVersion ?? null;
+}
+
+/**
+ * Whether the published environment already satisfies the version the app means
+ * to run.
+ *
+ * THE READINESS COMPARISON, in one place. `managedSelectionReady` is a
+ * structural verdict - a runtime that hashes to its seed and an environment that
+ * answers its readiness file - and a generation that was prepared three releases
+ * ago satisfies every one of its terms. So a control that asked only that
+ * question reported "nothing to do" over an environment that was three releases
+ * behind the release the app itself was offering, and pressing it again produced
+ * a byte-identical screen: the same verdict, the same numbers, nothing compared.
+ *
+ * `isNewer` is the APP's ordering rather than one written here. The app has
+ * exactly one comparator for its update decisions (`UpdateService.isNewerVersion`),
+ * it is deliberately permissive about the four-part releases the backend has
+ * published, and a second ordering in this module would be a second answer to
+ * "which of these is newer" - the shape of disagreement this change exists to
+ * remove.
+ *
+ * A target nobody could read is not a version to move to, so it answers true:
+ * nothing is compared, and no generation is published on a guess. An
+ * environment whose own version could not be read answers false, because "we
+ * could not read it" is not evidence that it is current.
+ */
+export function managedSelectionSatisfies(
+	options: ManagedPythonOptions,
+	target: string | null,
+	isNewer: (candidate: string, subject: string) => boolean,
+): boolean {
+	if (!target) return true;
+	const published = publishedBackendVersion(options);
+	if (published === null) return false;
+	return !isNewer(target, published);
+}
+
+/** What `updateManagedPython` did, in the terms its caller has to report. */
+export type ManagedUpdateOutcome = {
+	/** The generation the pointer names once this returns. */
+	selection: ManagedSelection;
+	/**
+	 * Whether the pointer MOVED - i.e. whether a new generation was published.
+	 *
+	 * False is the honest answer for a press that found the published generation
+	 * already at the target: nothing was installed, and a caller that reported
+	 * "updated" here would be claiming an install it did not perform.
+	 */
+	replaced: boolean;
+	/**
+	 * The generation the new one supersedes, still on disk as the rollback.
+	 *
+	 * Null when nothing was replaced, and also when nothing was published before
+	 * (a first preparation has no predecessor to keep).
+	 */
+	previous: ManagedSelection | null;
+};
+
+/**
+ * Publish a NEW generation for the release the app means to run, keeping the
+ * published one on disk as the rollback.
+ *
+ * This is the update half of this module, and the reason it exists is the shape
+ * of the failure it replaces. The app's previous update path ran
+ * `pip install --upgrade` inside the PUBLISHED venv, with every session runtime
+ * and the daemon importing from it - an in-place rewrite of a live tree, which
+ * is the incident `docs/design-install-generations.md` was written about, one
+ * level down. Here the new build lands at a pathname nothing is reading, is
+ * smoked there, and only a passing smoke moves the pointer.
+ *
+ * The caller supplies the target and the ordering, so this module never invents
+ * one; `install` is handed the NEW venv and its interpreter, exactly as the
+ * start-up path's callback is, which is what keeps a single installer rather
+ * than one per entry point.
+ */
+export async function updateManagedPython(
+	options: ManagedPythonOptions,
+	install: (venv: string, python: string) => Promise<boolean>,
+	decision: {
+		/** The release the app means to run, or null when it knows none. */
+		target: string | null;
+		isNewer: (candidate: string, subject: string) => boolean;
+	},
+): Promise<ManagedUpdateOutcome> {
+	return locked(managedPythonRoot(options), async () => {
+		const state = inspectManagedSelection(options);
+		const published = state.kind === "ready" ? state.selection : null;
+		if (
+			published &&
+			managedSelectionSatisfies(options, decision.target, decision.isNewer)
+		)
+			return { selection: published, replaced: false, previous: null };
+		const previous =
+			published ?? (state.kind === "missing" ? state.published : null);
+		const selection = await publishGeneration(
+			options,
+			install,
+			previous,
+			state.kind === "missing" ? state.detail : null,
+			true,
+		);
+		return { selection, replaced: true, previous };
 	});
 }
 
