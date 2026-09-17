@@ -21,9 +21,12 @@ type UseAgentLikeMutationParams = {
  *  - the count beside the heart lives on the list record, so it is moved by the
  *    delta this toggle implies. `already_liked` is read rather than assumed:
  *    the upstream answers 200 with that flag when the agent was already liked,
- *    where nothing changed and a bump would be a lie. (`unlike` is the
- *    asymmetric half — it answers 403 when there is no like to remove, so it
- *    never reports a no-op success.)
+ *    where nothing changed and a bump would be a lie. The field is OPTIONAL on
+ *    the response type (`AgentReactionResult`) because a backend older than the
+ *    flag omits it: an absent flag reads as a like that landed, which is the
+ *    pre-existing reading and the only one that keeps the count honest on a
+ *    first like. (`unlike` is the asymmetric half — it answers 403 when there
+ *    is no like to remove, so it never reports a no-op success.)
  */
 export const useAgentLikeMutation = () => {
 	const queryClient = useQueryClient();
@@ -47,8 +50,10 @@ export const useAgentLikeMutation = () => {
 				return { liked: false, changed: true };
 			}
 			const response = await likeAgent(agentId);
-			const result = response.result as { already_liked?: boolean } | undefined;
-			return { liked: true, changed: !result?.already_liked };
+			// `!== true` rather than `?? false`: a response with no flag at all is an
+			// older backend, not a redundant like, and the delta belongs to a like
+			// that landed.
+			return { liked: true, changed: response.result?.already_liked !== true };
 		},
 		onSuccess: ({ liked, changed }, variables) => {
 			patchAgentStatus(queryClient, variables.agentId, { liked });

@@ -13,6 +13,21 @@ type AgentCardProps = {
 	agent: Agent;
 	isLiked: boolean;
 	isFavourited: boolean;
+	/**
+	 * Whether the viewer's like/favourite state is actually KNOWN for this card.
+	 *
+	 * The batched status read fails as a whole (and a 200 can omit an id), so
+	 * "unfilled heart" would otherwise mean "the hub could not read your likes"
+	 * stated as "you have not liked this" — on every card at once. False renders
+	 * both controls unavailable with a sentence that says so instead of
+	 * asserting a state, and the counts (which come from the record, not from
+	 * that read) are unaffected.
+	 *
+	 * Defaults true, because the caller that has no batched read at all
+	 * (onboarding renders cards with no viewer state by construction) is not in
+	 * the same position as one whose read failed.
+	 */
+	viewerStateKnown?: boolean;
 	onLikeToggle: (agentId: string) => void;
 	onFavouriteToggle: (agentId: string) => void;
 	/** Omit to render the card without a download action (onboarding does). */
@@ -68,6 +83,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 	actionError = null,
 	onRetryAction,
 	showActions = true,
+	viewerStateKnown = true,
 }) => {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth();
@@ -102,16 +118,35 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 		clampObserver.current = observer;
 	}, []);
 
-	const likeTooltip = isAuthenticated
-		? isLiked
+	const likeTooltip = !isAuthenticated
+		? "Log in to Radient to like agents"
+		: !viewerStateKnown
+			? "Your likes could not be read, so this is not shown as unliked."
+			: isLiked
+				? "Unlike agent"
+				: "Like agent";
+	const favouriteTooltip = !isAuthenticated
+		? "Log in to Radient to favourite agents"
+		: !viewerStateKnown
+			? "Your favourites could not be read, so this is not shown as unfavourited."
+			: isFavourited
+				? "Unfavourite agent"
+				: "Favourite agent";
+	/*
+	 * The unknown state has its own two labels. A screen reader is told the same
+	 * thing the tooltip says: not "like this agent", and not "unlike it" either,
+	 * because neither is a claim this card can make.
+	 */
+	const likeLabel = !viewerStateKnown
+		? "Like state unavailable"
+		: isLiked
 			? "Unlike agent"
-			: "Like agent"
-		: "Log in to Radient to like agents";
-	const favouriteTooltip = isAuthenticated
-		? isFavourited
+			: "Like agent";
+	const favouriteLabel = !viewerStateKnown
+		? "Favourite state unavailable"
+		: isFavourited
 			? "Unfavourite agent"
-			: "Favourite agent"
-		: "Log in to Radient to favourite agents";
+			: "Favourite agent";
 
 	return (
 		<div className="flex h-full flex-col overflow-hidden rounded-lg border border-hairline bg-surface transition-colors duration-fast ease-out-quart hover:border-control">
@@ -195,17 +230,36 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			 * the counts turn out to be.
 			 */}
 			<div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-hairline px-3 py-2">
-				<div className="flex min-w-0 items-center gap-0.5">
+				{/*
+				 * `data-viewer-state` so the rendered page can be asked which of the three
+				 * states a card is in, rather than inferred from a glyph's fill: the
+				 * difference between "not liked" and "not known" is exactly what the
+				 * frames cannot show.
+				 */}
+				<div
+					className="flex min-w-0 items-center gap-0.5"
+					data-viewer-state={
+						!isAuthenticated
+							? "signed-out"
+							: viewerStateKnown
+								? "known"
+								: "unknown"
+					}
+				>
 					<Tooltip content={likeTooltip}>
 						<span>
 							<Button
 								variant="ghost"
 								size="sm"
 								onClick={
-									isAuthenticated ? () => onLikeToggle(agent.id) : undefined
+									isAuthenticated && viewerStateKnown
+										? () => onLikeToggle(agent.id)
+										: undefined
 								}
-								disabled={isLikeActionLoading || !isAuthenticated}
-								aria-label={isLiked ? "Unlike agent" : "Like agent"}
+								disabled={
+									isLikeActionLoading || !isAuthenticated || !viewerStateKnown
+								}
+								aria-label={likeLabel}
 								className={cn(isLiked && "text-danger")}
 							>
 								<Heart
@@ -216,6 +270,16 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 									data-testid="agent-like-count"
 									className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted"
 								>
+									{/*
+									 * `?? 0`, not a dash. `like_count` (and its two siblings) is a REQUIRED
+									 * number on the declared wire type, so the only payload this default
+									 * can meet is one that omits a field its own contract says is present
+									 * — and 0 is the benign reading of that, where a dash would claim an
+									 * "unknown" the type does not have. These three are RECORD data, not
+									 * the viewer state the batched read carries, so the
+									 * absent-is-unknown rule that governs the heart beside them does not
+									 * reach them.
+									 */}
 									{agent.like_count ?? 0}
 								</span>
 							</Button>
@@ -231,10 +295,12 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 										? () => onFavouriteToggle(agent.id)
 										: undefined
 								}
-								disabled={isFavouriteActionLoading || !isAuthenticated}
-								aria-label={
-									isFavourited ? "Unfavourite agent" : "Favourite agent"
+								disabled={
+									isFavouriteActionLoading ||
+									!isAuthenticated ||
+									!viewerStateKnown
 								}
+								aria-label={favouriteLabel}
 								className={cn(isFavourited && "text-warning")}
 							>
 								<Star

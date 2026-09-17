@@ -44,10 +44,12 @@ export const useAgentFavouriteMutation = () => {
 				return { favourited: false, changed: true };
 			}
 			const response = await favouriteAgent(agentId);
-			const result = response.result as
-				| { already_favourited?: boolean }
-				| undefined;
-			return { favourited: true, changed: !result?.already_favourited };
+			// Same reading as the like half: only an explicit `true` means the
+			// favourite was already there (`use-agent-like-mutation`).
+			return {
+				favourited: true,
+				changed: response.result?.already_favourited !== true,
+			};
 		},
 		onSuccess: ({ favourited, changed }, variables) => {
 			patchAgentStatus(queryClient, variables.agentId, { favourited });

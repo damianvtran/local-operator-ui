@@ -1,4 +1,4 @@
-import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import type { Agent, AgentViewerStatus } from "@shared/api/radient/types";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import type React from "react";
@@ -12,13 +12,20 @@ type AgentCardContainerProps = {
 	agent: Agent;
 	/**
 	 * The viewer's relationship to this agent, read once for the whole page by
-	 * `useAgentStatusesQuery` and passed down. An absent entry (the read has not
-	 * answered, the viewer is signed out, or the backend predates the batched
-	 * op) renders as neither liked nor favourited, which stays correct: the
-	 * upstream like and favourite endpoints answer an already-liked agent with
-	 * `already_liked` rather than a conflict.
+	 * `useAgentStatusesQuery` and passed down.
 	 */
 	status?: AgentViewerStatus;
+	/**
+	 * Whether that read actually ANSWERED this agent's state.
+	 *
+	 * False when the viewer is signed out, when the batched read failed, and when
+	 * it answered without an entry for this id — three different causes with one
+	 * consequence here: the card has no viewer state to show, and says so rather
+	 * than rendering an unfilled heart, which would state "you have not liked
+	 * this" about every card on the page from one failed request. The card's
+	 * COUNTS are unaffected: they come from the list record, not from this read.
+	 */
+	viewerStateKnown?: boolean;
 };
 
 /**
@@ -32,6 +39,7 @@ type AgentCardContainerProps = {
 export const AgentCardContainer: React.FC<AgentCardContainerProps> = ({
 	agent,
 	status,
+	viewerStateKnown = true,
 }) => {
 	const { isAuthenticated } = useRadientAuth();
 	const [failedAction, setFailedAction] = useState<
@@ -94,11 +102,12 @@ export const AgentCardContainer: React.FC<AgentCardContainerProps> = ({
 			isLikeActionLoading={likeMutation.isPending}
 			isFavouriteActionLoading={favouriteMutation.isPending}
 			isDownloading={downloadMutation.isPending}
+			viewerStateKnown={viewerStateKnown}
 			actionError={
 				failure
-					? userFacingMessage(
+					? backendLoadErrorMessage(
+							"The action did not complete.",
 							failure.error,
-							"The action did not complete. Try again.",
 						)
 					: null
 			}
