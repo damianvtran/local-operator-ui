@@ -54,6 +54,7 @@ import {
 	mcpServersAreCold,
 	mcpTally,
 	tallyBudget,
+	tallyFitsInline,
 } from "./run-detail-model";
 import type { McpRemedyControls } from "./use-mcp-remedy";
 
@@ -338,6 +339,21 @@ const MCP_ROW_NAME_FLOOR_PX = 44;
 /** The row's own chrome: `px-3` both sides, the 16px mark, and its 8px gap. */
 const MCP_ROW_CHROME_PX = 12 + 12 + 16 + 8;
 const MCP_ROW_GAP_PX = 8;
+/**
+ * The per-character advance this line's text averages, in pixels, rounded UP so
+ * the budget errs short.
+ *
+ * It is the META advance, and the reason it is the right unit here rather than a
+ * borrowed number (round 2's delta review): this line carries TWO type steps. The
+ * count and the scope are `text-meta` (12px), and the status word is
+ * `text-body-sm` (13px, `styles/index.css`) at `font-medium`. `TALLY_CHAR_PX` in
+ * `run-detail-model.ts` is that same meta advance — 5.16px measured over 43
+ * characters, rounded up to 6 — so for the wider step the arithmetic is
+ * `5.16 x 13/12 = 5.59`, and the medium weight adds a few per cent on top of that:
+ * every step in play rounds up to the same 6px, which is why one constant is
+ * honest here. A step that needed more would need its own number rather than this
+ * one; the status word does not.
+ */
 const MCP_ROW_CHAR_PX = 6;
 
 /**
@@ -530,8 +546,21 @@ const McpRow = ({
 					 * pane's scarcest direction.
 					 */}
 					{row.scope && line.kept[2] && (
+						/*
+						 * The qualifier SHRINKS, unlike the two values beside it, and the
+						 * distinction is the numbers rule rather than a preference: that rule
+						 * forbids cutting a VALUE mid-figure, and a scope is neither a figure nor
+						 * the row's subject — it is `global` / `project` / a file's basename, it
+						 * carries the whole string in its own `title`, and it is the LAST thing
+						 * on the line. Measured at 800x600 with the rail collapsed (251px pane,
+						 * 203px line): with `shrink-0` three of these were drawn outside the
+						 * region's client box — the one class the acceptance counters exist to
+						 * catch — because the shed estimate above errs short by design. Letting
+						 * the browser shrink it is what removes that, and it costs nothing at the
+						 * widths where the estimate is right.
+						 */
 						<span
-							className={cn("shrink-0 text-meta text-ink-dim")}
+							className={cn("min-w-0 truncate text-meta text-ink-dim")}
 							title={row.scope}
 						>
 							{row.scope}
@@ -678,8 +707,17 @@ export const RunDetailMcp = ({
 							"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
 						)}
 					>
-						{/* Budgeted, not merely truncated: see `mcpTally`'s `maxChars`. */}
-						{mcpTally(servers, tallyBudget(paneWidth))}
+						{/*
+						 * Budgeted, not merely truncated (see `mcpTally`'s `maxChars`), and
+						 * not drawn at all where the line cannot host a label and a tally
+						 * (`tallyFitsInline`): at the app's window floor with the rail
+						 * expanded this header's tally was a `clientWidth 0` box — a value
+						 * that is gone rather than elided, which is the class this round's
+						 * acceptance counters exist to catch.
+						 */}
+						{tallyFitsInline(paneWidth)
+							? mcpTally(servers, tallyBudget(paneWidth))
+							: null}
 					</span>
 				</div>
 			)}

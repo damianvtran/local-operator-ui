@@ -1,0 +1,7 @@
+{
+  "rail": "expanded",
+  "theme": "default",
+  "focusBeforeEscape": "composer plan chip",
+  "paneOpenAfterEscape": false,
+  "focusAfterEscape": "composer plan chip"
+}

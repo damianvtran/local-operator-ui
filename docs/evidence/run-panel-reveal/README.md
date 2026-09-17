@@ -521,6 +521,101 @@ change (`data-run-panel-region`); the base's own region still lands the section
 at its head, which `movers: []` and the pane rects show, but it carries no
 attribute to measure against.
 
+## Round 2's verification, measured on the head
+
+The round's fixes were verified by driving the BUILT app, one run at a time, once
+the machine came out of its hold. Every number below is a reading, not a claim;
+the commands are the rig's own, and the readbacks are in each run's `default.json`
+(and, for the Escape pair, beside this file in `escape-readback/`).
+
+| state | pane | clipPx | cutRows | collapsedTextRows | outsideRegionRows | gate |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1024x673 expanded | 303 | 0 | 0 | 0 | 0 | **pass** |
+| 1024x673 collapsed | 419 | 0 | 0 | 0 | 0 | **pass** |
+| 800x600 collapsed | 251 | 0 | 0 | 0 | 0 | **pass** |
+| 800x600 expanded | 79 | 0 | 0 | 0 | **9** | **FAIL** |
+
+**The gate is now two-sided, and it fails at the app's window floor** — which is
+the point of gating it, and it is a finding rather than a number to be tuned away.
+At 79px the pane's region has a 71px client box, and nine leaves are drawn past
+it: the MCP section's own label (`MCP servers`, `shrink-0`) and the eight
+`Grant account access` controls, whose own label is ~110px at `text-body-sm` in a
+71px box. Both classes are `shrink-0` for good reasons (a section label is not a
+value; a control's label is the control), and neither can be made to fit a 71px
+pane by truncation without changing what a user reads — at which point the choice
+is the chrome decision this set already records as open (`docs/run-sidebar.md`
+§ 8: which of the rail, the chat list and the column gives at the floor), not a
+tweak to the row grammar. Two smaller pieces of the same class WERE closed, and
+they are what the first three rows above measure:
+
+- **the section tallies no longer collapse.** At 79px `2 of 8 closed` and
+  `2 of 11 connected` were `clientWidth 0` boxes — a value gone rather than
+  elided. A tally that the line cannot hold is now not drawn (`tallyFitsInline`,
+  `run-detail-model.ts`), which is the row grammar's own rule one element along;
+- **the row's trailing qualifier may shrink.** At 800x600 collapsed (251px pane,
+  203px line) three `config.toml` scopes were drawn outside the region, because
+  the shed estimate errs short by design. The scope carries its own `title`, is
+  the last thing on the line, and is not a figure, so letting the browser shrink
+  it is what removes the overflow — measured: 3 → 0, and the row names stayed
+  intact.
+
+**The divider's contract, measured** (`--drag-probe`, real pointer sequences and
+real key events). At 1024x673 **expanded**, where the row cannot host even the
+pane's 320px floor, the control is inert and says so:
+
+| step | stored preference | `aria-valuenow` | `aria-min..max` | separator x | pane width | clip |
+| --- | --- | --- | --- | --- | --- | --- |
+| start | 420 | 304 | 304..304 | 714 | 303 | 0 |
+| drag right 60, then 60, then 200 x3 | **420** | 304 | 304..304 | 714 | 303 | 0 |
+| drag left 120, then 600 | **420** | 304 | 304..304 | 714 | 303 | 0 |
+| ArrowLeft x3, End, Home | **420** | 304 | 304..304 | 714 | 303 | 0 |
+
+The stored preference never moves, the announced value is the RENDERED width, and
+the pane never disagrees with either — where before this round seven drags moved
+the preference 420 → 360 → 320 → 440 → 640 while the pane stood at 303px and
+`aria-valuenow` announced widths nothing was drawn at. At 1024x673 **collapsed**
+the range is live and every step renders as itself:
+
+| step | stored preference | `aria-valuenow` | pane width | separator x |
+| --- | --- | --- | --- | --- |
+| start | 420 | 420 | 419 | 598 |
+| drag right 60 | 360 | 360 | 359 | 658 |
+| drag right 60, then 200 x3 | 320 (floor holds) | 321 | 319 | 698 |
+| drag left 120 | 440.9 | 440 | 439.9 | 577.1 |
+| drag left 600 | **476** (the row's capacity, not 640) | 476 | 475 | 542 |
+| End / Home | 320 / 476 | 321 / 475 | 319 / 475 | 698 / 542 |
+
+Shrinking works, growing works, the 320 floor holds, and the ceiling is now what
+the ROW can host rather than the design's 640 — which is what stops a stored 640
+from rendering as 475 after a rail collapse.
+
+**The Escape pair, committed** (`escape-readback/escape-1024x673-expanded.json`,
+`--escape-probe`):
+
+```json
+{ "rail": "expanded", "theme": "default",
+  "focusBeforeEscape": "composer plan chip",
+  "paneOpenAfterEscape": false,
+  "focusAfterEscape": "composer plan chip" }
+```
+
+That closes the last measured claim in this set that lived in prose alone. The
+BASE half of the row is not mine: on the tree this lands on, both round-2 reviewers
+measured `paneOpen: false` from the same gesture (`escapeFromAnywhere`, main's),
+which is why the paragraph above names the tooltip as what the chip's clause
+actually answers.
+
+**The rig's launch failure is reaped** (`867198881` and the fix after it). Two
+runs of the dead-`--repo` path — the failure this round was reopened for:
+
+```
+BEFORE  trees=0  profiles=0
+driver exit=1   "no app page target after 60s"
+AFTER+0s  trees=0  profiles=0
+AFTER+25s trees=0  profiles=0
+port 9431: free
+```
+
 ## What was NOT re-run, and why
 
 The machine these runs came from went into a declared hold (load average 465–635,
@@ -531,7 +626,12 @@ is only honest next to "also ran":
 
 Owed:
 
-- **re-capturing the frames on the final head.** No frame in this set was re-taken
+- **re-capturing the frames.** No frame in this set was re-taken for the
+  re-integration or for round 2 — the runs above measured the states with the
+  app's own driver and readbacks rather than re-shooting the `.webp` pairs, so the
+  committed frames still show `8bd51bd03`'s build. The numbers they would now show
+  are the table above. Nothing below is contradicted by them;
+- **the older wording of this list, kept for the record: no frame in this set was re-taken
   for the re-integration or for round 2. The `after-fix` frames already show the
   post-fit geometry (they were shot at `8bd51bd03`, which carries the fit change)
   and the `before-fix` frames are `8f80697c8` by construction, so nothing above is

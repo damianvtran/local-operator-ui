@@ -10,7 +10,10 @@ import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	DEFAULT_RUN_PANEL_WIDTH,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import React, {
 	type FC,
@@ -556,9 +559,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const isRunPanelOpen = useUiPreferencesStore((s) => s.isRunPanelOpen);
 		const runPanelWidth = useUiPreferencesStore((s) => s.runPanelWidth);
 		const setRunPanelWidth = useUiPreferencesStore((s) => s.setRunPanelWidth);
-		const restoreDefaultRunPanelWidth = useUiPreferencesStore(
-			(s) => s.restoreDefaultRunPanelWidth,
-		);
 		const setRunPanelOpen = useUiPreferencesStore((s) => s.setRunPanelOpen);
 		/*
 		 * The pane's VIEW state — which of its two views is showing — and the reason it
@@ -748,6 +748,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			},
 			[runPanelCapacity, setRunPanelWidth],
 		);
+		/*
+		 * A RESET IS A DRAG to the design's default — the separator's double-click,
+		 * and its Enter, both land here — so it goes through the SAME clamped write a
+		 * drag does. The store's own reset writes the preference directly and knows
+		 * nothing about the row, which is round 2's U6 on a different gesture: at
+		 * 1024x673 with the rail expanded a reset would store 420 while the pane went
+		 * on rendering 304, and the number the control hands back would be one the
+		 * pane does not use. Routing the default through the clamp leaves the stored
+		 * preference alone in that state — the same refusal a drag gets — and stores
+		 * the default wherever the row can host it.
+		 */
+		const handleRunPanelWidthReset = useCallback(() => {
+			handleRunPanelWidthChange(DEFAULT_RUN_PANEL_WIDTH);
+		}, [handleRunPanelWidthChange]);
 
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
@@ -1242,7 +1256,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									: runPanelDividerValue
 							}
 							side="left"
-							onDoubleClick={restoreDefaultRunPanelWidth}
+							onDoubleClick={handleRunPanelWidthReset}
 							label="Resize run details"
 						/>
 						<div
