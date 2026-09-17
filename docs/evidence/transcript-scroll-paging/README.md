@@ -294,10 +294,134 @@ For the short-content case (clause L), seed ~130 rows and drive a window taller
 than the resulting content — the transcript must have no overflow at all for the
 chain to be the only route.
 
+## Round 2 — the momentum fix, measured on both trees
+
+The operator's report has two halves and this round measures both: *"sometimes it
+loads the next sections without my scroll getting stuck"* (lead time) and *"if I
+scroll a bit too fast I get stuck ... I need to scroll jitter down a bit and back
+up to trigger the lazy loading"* (the freeze). The diagnosis
+(`/tmp/scroll-paging-diagnosis.md`, `architect`) reproduced both and designed
+A1-A4; this is what the implementation measured.
+
+### What the rig gained, and why
+
+The revised `scripts/scroll-paging-evidence.mjs` drives both arms through one
+harness. Four changes, each answering something this file used to be unable to
+say:
+
+1. **`flingWithMomentum`** — a finger burst followed by a TIME-BOUNDED decaying
+   momentum tail. The old `fling(count, deltaY, gap)` is a finger walking a
+   wheel; the operator's gesture is a flick whose tail keeps reporting after the
+   fingers lift. The tail is bounded by the clock rather than by a notch count
+   because a count-bounded decay spaced its last notches **733ms** apart in the
+   diagnosis run — past `GESTURE_GAP_MS`, i.e. a gap the harness invented.
+2. **A page-side recorder** (capture-phase listeners plus a per-frame geometry
+   sampler). A before/after probe pair either side of a gesture cannot see the
+   question: two probes a second apart report the same state whether a reveal
+   took 0ms or 96ms, and the 96ms is the whole complaint.
+3. **Per-reveal attribution**: how many reveals an act bought, whether each
+   arrived while the reader was still APPROACHING or after they had stopped at
+   the wall, the longest run of notches at the hard top with nothing revealed,
+   and the end state as a flag (`endsPinnedWithHiddenRows`).
+4. **The lurch, per frame and post-input**: the largest single-frame change of
+   the held row's viewport offset over the frames after the LAST input. Taken
+   across a gesture it measures the reader's own wheel — the largest figure in
+   one whole train was 136px on a frame where `scrollTop` moved 136px and no
+   reveal was in flight.
+
+### The two arms
+
+`after` is this branch. `before` is the same tree with the two paging modules
+taken back to `318cbb75e` (`git show 318cbb75e:src/renderer/src/features/chat/
+canonical/{scroll-paging,use-scroll-paging}.ts`), served by the same rig on the
+same port against the same seeded backend — restored byte-identically afterwards
+(`md5` compared). Both runs: 22 `sessions.history` ops, ~267 desktop ops as the
+positive control.
+
+| scenario | before | after |
+| --- | --- | --- |
+| `fast-fling-to-top` | 2 reveals, **0 on the approach**, spent at `d = 0` (the wall); the page's rows landed 1575ms after arrival and mounted nothing visible | 3 reveals, **1 on the approach** (spent at `d = 1494px`), the landing plus the widen that makes it visible inside 105ms of each other |
+| `fling-crossing-two-walls` | **ends `d = 0`, `hiddenRows = 100`, `endsPinnedWithHiddenRows = true`**; longest clamped stretch 28 notches / 967ms | ends at `d = 5856`, `hiddenRows = 40`, `endsPinnedWithHiddenRows = false`; 3 reveals |
+| `page-lands-with-rows-hidden` | 2 reveals, both after arrival (worst 2747ms) | 1 reveal, on the approach |
+| `resting-finger-at-clamped-top` | 4 reveals, 1 page, worst 4664ms after arrival | 3 reveals, 1 page, none after arrival |
+| `keyboard-home` | **1 input event, 1 reveal** (focused) | 1 input event, 1 reveal (focused) |
+| `scrollbar-drag-to-top` | 0 reveals, ended 3555px from the top | 0 reveals, ended 3555px from the top |
+
+The freeze, in the operator's own terms: on `before`, a flick that crossed two
+walls left the reader **pinned at the hard top with 100 fetched rows the app was
+not showing** — the state that produces "I need to scroll jitter down a bit and
+back up". On `after` the same gesture ends with those rows mounted.
+
+### Clause E on a mid-motion dispatch (risk 1)
+
+The lead spends the page while the reader is still travelling, which is what rule
+3 originally refused. The frame-to-frame number, over the frames after the last
+input, on both arms:
+
+```
+                          before        after
+fast-fling-to-top         24px          24px
+fling-crossing-two-walls   0px           0px
+every other scenario       0px           0px
+```
+
+24px is the clamp-follow the browser performs when a landing grows the extent
+under a pinned reader — the same figure on both arms, so **the lead does not
+introduce a lurch**. (The largest single-frame change of `distanceFromTopPx` is
+6030-6238px on both arms; that is content inserted above a HELD row, which is the
+reveal itself, and it is why the anchor offset rather than the distance is the
+number quoted.)
+
+### Two clauses run 1 left unproven
+
+- **`Home` keystroke: PROVEN.** Run 1's zero was the scroller never being
+  focused (the app's listener is on the scroller element, and the browser
+  surface does not focus it). The harness now focuses it AFTER the reload inside
+  the scenario — focusing once before the phase focused an element the next
+  reload replaced, which is the same blocked zero one layer further in — and
+  reports both the focus result and the recorded event count: `focused -> still
+  focused`, 1 input event, 1 reveal.
+- **Scrollbar drag: still not a positive case, stated rather than claimed
+  passing.** Run 1's drag was void because it ran after the history was
+  exhausted; it now runs from a fresh arrival with 5694px of overflow, and it
+  moves the reader 145-151px and issues nothing on EITHER arm. So it proves the
+  attribution window works (the drag's `scroll` events reach the policy as
+  input events and are spendable) and that a drag ending 3555px from the top
+  spends nothing — a negative control, not a pass. A drag that reaches the hard
+  top is not expressible with this fixture's scrollbar geometry.
+
+### What these numbers do not settle
+
+- **Scenario start states diverge after the first scenario on each arm**, because
+  the two arms leave different content behind: `slow-notches-into-zone` starts
+  24px from the top on `before` and 7790px on `after`, so its 1-vs-0 reveal
+  difference is the start state rather than the change. Every claim above is
+  taken from scenarios that begin at a reloaded arrival state, except that one,
+  which is quoted nowhere. The "a slow reader sees no difference" claim is
+  carried by the pure case `the lead is inert below its velocity floor` instead.
+- **The backend's latency varied by an order of magnitude between runs** (a
+  durable page landed 85-100ms after the spend in the diagnosis run, ~900ms under
+  this rig's reload load). "Worst ms after arrival" therefore reads as a property
+  of the harness's backend as much as of the policy; the discriminating numbers
+  are the ones that do not depend on it — where the spend happened, how many
+  reveals an act bought, and the end state.
+- **The capture predates a whitespace-only formatter pass** (`biome check
+  --write`: three line-wraps in the two modules under test, no token changed),
+  and `srcTree`/`scriptsTree` name the committed tree. Disclosed rather than
+  left for a reader to discover, since the stamps are the only way to check it.
+- **The Electron transport and the packaged build**, as above: this is the
+  browser surface.
+- A real trackpad is still not a real trackpad: the momentum tail is now shaped
+  like one (time-bounded decay at frame cadence) but it is still synthesized, so
+  `GESTURE_GAP_MS = 400` is justified by a better argument rather than measured
+  against hardware.
+
 ## Still open
 
 - **`GESTURE_GAP_MS = 400` is unmeasured against real hardware.** It is reasoned
-  from a trackpad's momentum tail, not observed on one.
+  from a trackpad's momentum tail, not observed on one — and round 2's harness
+  now EMITS such a tail (time-bounded, frame cadence), which tests the clause
+  against a synthesized momentum phase rather than against no momentum at all.
 
 - **Q7, the backend degrading under sustained paging** (rows mounting as 0 and a
   persistent "Reconnecting" after ~130 history requests across many browser
