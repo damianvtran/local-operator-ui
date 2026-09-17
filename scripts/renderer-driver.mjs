@@ -3027,8 +3027,45 @@ async function scenePinsSearch(cdp) {
 			(row) => row.pinned === true,
 		);
 		const heldByTerminal = tuiStoreReading().pins;
+		/*
+		 * THE HELD PIN MUST BE A ROW, above the other sections, and its section must count it
+		 * (design round 4, D17; UX round 4, U14). The state this asserts is the one D12
+		 * photographed as a near-absence: the backend and the terminal both holding a pin and
+		 * the app drawing no row, no heading and no count for a conversation that is genuinely
+		 * in the shared pinned set. Read from the DOM by id, and read against the SAME store
+		 * the terminal reads, so the two surfaces are compared in one assertion.
+		 */
+		const panel = await cdp.evaluate(`(() => {
+			const heading = Array.from(
+				document.querySelectorAll("button[data-chat-row]"),
+			).find((button) =>
+				(button.textContent || "").trim().startsWith("Pinned chats"),
+			);
+			const active = Array.from(
+				document.querySelectorAll("button[data-chat-row]"),
+			).find((button) => (button.textContent || "").trim().startsWith("Active chats"));
+			const row = document.querySelector('[data-session-row="${outside.id}"]');
+			return {
+				heading: heading ? (heading.textContent || "").trim() : null,
+				headingTop: heading ? heading.getBoundingClientRect().top : null,
+				activeTop: active ? active.getBoundingClientRect().top : null,
+				rowId: row ? row.getAttribute("data-session-row") : null,
+				rowText: row ? (row.textContent || "").trim() : null,
+				rowTop: row ? row.getBoundingClientRect().top : null,
+			};
+		})()`);
 		say(
-			`  [pins] D12 after the query is cleared: pinned rows drawn ${JSON.stringify(clearedPinned.map((row) => row.id))}; rows ${clearedState.rows.length}; terminal holds ${JSON.stringify(heldByTerminal)}`,
+			`  [pins] D12 after the query is cleared: pinned rows drawn ${JSON.stringify(clearedPinned.map((row) => row.id))}; rows ${clearedState.rows.length}; terminal holds ${JSON.stringify(heldByTerminal)}; panel ${JSON.stringify(panel)}`,
+		);
+		check(
+			"the pin the page cannot carry is DRAWN as a row above Active chats, and its section counts it (design round 4, D17; UX round 4, U14)",
+			clearedPinned.some((row) => row.id === outside.id) &&
+				panel.rowId === outside.id &&
+				panel.heading !== null &&
+				panel.activeTop !== null &&
+				panel.rowTop !== null &&
+				panel.rowTop < panel.activeTop,
+			JSON.stringify({ drawn: clearedPinned.map((row) => row.id), panel }),
 		);
 		check(
 			"the terminal still holds the pin with the query cleared - the durable half of D12",

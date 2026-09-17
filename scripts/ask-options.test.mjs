@@ -141,8 +141,7 @@ function accessibleText(node, out = []) {
 	// Decoration is excluded exactly as a screen reader excludes it, which is
 	// what makes the ordinal assertion below meaningful.
 	if (node.props?.["aria-hidden"] === true) return out;
-	if (node.props?.children !== undefined)
-		accessibleText(node.props.children, out);
+	if (node.props?.children !== undefined) accessibleText(node.props.children, out);
 	return out;
 }
 
@@ -214,9 +213,7 @@ test("a pressed option answers with its label, and that label is what the wire c
 	// Half one: the button's OWN handler, on the tree the shipped component
 	// returns. This is what a click does after React's event plumbing.
 	const answered = [];
-	const buttons = buttonsOf(
-		render({ onAnswer: (label) => answered.push(label) }),
-	);
+	const buttons = buttonsOf(render({ onAnswer: (label) => answered.push(label) }));
 	assert.equal(buttons.length, 3, "one control per option");
 
 	// The SECOND option, so a passing assertion cannot be an index-0 accident.
@@ -266,11 +263,7 @@ test("one press is one answer: the second loses, and the lock lets go", async ()
 		[first.outcome.status, second.outcome.status],
 		["sent", "refused"],
 	);
-	assert.equal(
-		sent.length,
-		1,
-		"one answer in flight is one answer on the wire",
-	);
+	assert.equal(sent.length, 1, "one answer in flight is one answer on the wire");
 	assert.equal(sent[0].value, OPTIONS[1].label);
 
 	// The loser sends nothing at all: a refusal is not a failed request.
@@ -286,11 +279,7 @@ test("one press is one answer: the second loses, and the lock lets go", async ()
 test("a question that cannot be addressed is never sent", async () => {
 	const lock = createSendLock();
 	for (const deps of [
-		{
-			gate: gate({ kind: "approval", options: [] }),
-			sessionId: SESSION,
-			epoch: EPOCH,
-		},
+		{ gate: gate({ kind: "approval", options: [] }), sessionId: SESSION, epoch: EPOCH },
 		{ gate: gate(), sessionId: null, epoch: EPOCH },
 		{ gate: gate(), sessionId: SESSION, epoch: null },
 	]) {
@@ -363,11 +352,7 @@ test("only a bare, in-range numeral on an options ask is resolved", () => {
 		"1,",
 		"1..",
 	]) {
-		assert.equal(
-			resolveNumericAnswer(g, text),
-			text,
-			`must not rewrite ${text}`,
-		);
+		assert.equal(resolveNumericAnswer(g, text), text, `must not rewrite ${text}`);
 	}
 	// Out of range falls through unchanged: answering the seventh of three is
 	// not something this can invent.
@@ -399,7 +384,10 @@ test("a staged reply's bare ordinal still resolves to the option's label", () =>
 	const payload = buildSendPayload("2", [
 		{ text: "Is the extension popup open?" },
 	]);
-	assert.equal(payload, "<reply-to>Is the extension popup open?</reply-to>\n2");
+	assert.equal(
+		payload,
+		"<reply-to>Is the extension popup open?</reply-to>\n2",
+	);
 	assert.equal(answerValue(g, "2", payload), OPTIONS[1].label);
 	assert.equal(answerValue(g, " 1. ", payload), OPTIONS[0].label);
 });
@@ -497,15 +485,9 @@ test("the gate's focus restore refuses a composer the user has taken", () => {
 	// Focus is somewhere else entirely.
 	assert.equal(composerFocusIsOurs(box(), other, false), false);
 	// A follow-up typed during the hold - the case round 3's guard caught.
-	assert.equal(
-		composerFocusIsOurs(box({ value: "follow up" }), focused, false),
-		false,
-	);
+	assert.equal(composerFocusIsOurs(box({ value: "follow up" }), focused, false), false);
 	// Whitespace is content: the user is in the box, whatever they typed.
-	assert.equal(
-		composerFocusIsOurs(box({ value: "   " }), focused, false),
-		false,
-	);
+	assert.equal(composerFocusIsOurs(box({ value: "   " }), focused, false), false);
 	// U13: clicked into during the hold, still empty, still focused. The caret is
 	// theirs, so the restore must leave it alone.
 	assert.equal(composerFocusIsOurs(focused, focused, true), false);
@@ -586,8 +568,7 @@ test("an answer that lost the gate is reported, whichever status carried it", ()
 	const refusal = lostAnswerMessage({ status: "sent" }, false);
 	assert.match(refusal ?? "", /already answered somewhere else/);
 	assert.match(
-		lostAnswerMessage({ status: "failed", error: new Error("409") }, false) ??
-			"",
+		lostAnswerMessage({ status: "failed", error: new Error("409") }, false) ?? "",
 		/already answered somewhere else/,
 	);
 	// Quiet while the gate this press belonged to still stands: the card owns the
@@ -691,7 +672,10 @@ test("the production transcript renders options as real controls", () => {
 	// restating it.
 	assert.ok(markup.includes("<fieldset"), "the options are a labelled group");
 	assert.ok(markup.includes('aria-label="Answer options"'));
-	assert.ok(markup.includes("Popup is not open"), "every option label paints");
+	assert.ok(
+		markup.includes("Popup is not open"),
+		"every option label paints",
+	);
 	assert.ok(markup.includes("Recommended"), "the recommended option is marked");
 	// The multi-question prefix survives, and the hint names the affordances
 	// while keeping the free-text path honest. The digits are named because they
@@ -766,8 +750,7 @@ test("an answer in flight says so, and the card holds itself after a press", () 
 			...base,
 			answer: {
 				sending: false,
-				refused:
-					"Your answer was not sent. The request could not be completed.",
+				refused: "Your answer was not sent. The request could not be completed.",
 			},
 		}),
 	);

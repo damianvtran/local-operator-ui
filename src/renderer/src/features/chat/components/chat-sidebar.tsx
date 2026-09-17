@@ -448,7 +448,7 @@ export function ChatSidebar({
 	 * asked about in the same place - one place, so the record and the decision cannot
 	 * disagree about which press was last. `pointer === null` is the keyboard (a click
 	 * synthesised from Enter or Space carries no count): it has no position, so it is never
-	 * dropped, and it clears the record rather than leaving a stale one behind.
+	 * dropped and it records nothing.
 	 */
 	const dropRepeatPress = (
 		pointer: { x: number; y: number } | null,
@@ -464,9 +464,15 @@ export function ChatSidebar({
 		 * which is the exact gesture UX round 2 reported.
 		 */
 		if (pointer === null) {
-			// The keyboard carries no position: it always acts on the row that has focus, and
-			// it clears the record rather than leaving a stale one for the next pointer press.
-			lastPinPress.current = null;
+			/*
+			 * The keyboard carries no position: it always acts on the row that has focus, so it
+			 * is never dropped. It also does NOT clear the record (review round 4, item 7): a
+			 * keyboard press re-orders the panel exactly as a pointer press does, so the parked
+			 * pointer is left over a different conversation by it too - and clearing the record
+			 * here disarmed the guard for the next pointer press, which is the one press the
+			 * guard exists for. `lastPinPress` describes the last POINTER press, which is the
+			 * only kind that has a position, and the path expiry above is what keeps it fresh.
+			 */
 			return false;
 		}
 		if (last !== null) {
@@ -572,13 +578,41 @@ export function ChatSidebar({
 	const hits = hitsAnswerQuery(search.data, query)
 		? search.data.sessions
 		: null;
+	/*
+	 * THE PIN THE PAGE CANNOT DRAW, drawn from the fact (design round 4, D17; UX round 4,
+	 * U14). A press on a conversation the catalogue page does not carry is remembered by
+	 * `pinFacts`, and the fact is now a record a row can be built from rather than a bare
+	 * boolean - because the alternative is what D12 photographed: the backend and the
+	 * terminal both holding a pin, and the app drawing no row, no heading and no count for
+	 * a conversation that is genuinely in the pinned set. The design round weighed the
+	 * alternatives and refused both (a count with no row under-reports the shared set; a
+	 * "not in this list" badge exposes a paging bound the reader has no model for).
+	 *
+	 * The row is built only for a conversation the catalogue does NOT list: where it does,
+	 * the catalogue's own row is the row, and this one would be a second copy on one axis -
+	 * the same defect the partition exists to avoid.
+	 */
+	const heldRows = useMemo(() => {
+		const listed = new Set(sessions.map((row) => row.session_id));
+		const out: CanonicalSessionRow[] = [];
+		for (const [id, fact] of Object.entries(pinFacts)) {
+			if (!fact.pinned || listed.has(id)) continue;
+			out.push({
+				session_id: id,
+				title: fact.title || "Untitled chat",
+				updated_at: fact.updated_at,
+				pinned: true,
+			});
+		}
+		return out;
+	}, [pinFacts, sessions]);
 	const {
 		rows: matching,
 		conversationMatches,
 		synthesized,
 	} = useMemo(
-		() => searchChats(sessions, query, hits, pinFactValues),
-		[sessions, query, hits, pinFactValues],
+		() => searchChats([...sessions, ...heldRows], query, hits, pinFactValues),
+		[sessions, heldRows, query, hits, pinFactValues],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
