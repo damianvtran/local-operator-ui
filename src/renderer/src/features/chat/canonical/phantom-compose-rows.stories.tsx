@@ -330,7 +330,7 @@ export const AfterTurnDeath: Story = {
 	render: () => (
 		<Frame
 			waiting={false}
-			caption="After, the turn ending on a call still being dictated: `never sent · 2.0 KB composed`, no clock, no duration, and the interrupt's own glyph — not the tick a clean end used to paint."
+			caption="After, the turn ending on a call still being dictated: `never sent · 1.9 KB composed`, no clock, no duration, and the interrupt's own glyph — not the tick a clean end used to paint."
 			transcript={applyEvent(announced(), TURN_END, ARRIVAL_MS)}
 		/>
 	),

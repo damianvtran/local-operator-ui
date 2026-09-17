@@ -103,12 +103,20 @@ export type ToolRowOutcome =
 	 * body, and a record of how far the model got before it was told nothing
 	 * would receive the call.
 	 *
-	 * It wears the error ink and the cross glyph, which is the TUI's treatment
-	 * (`ToolCard.mark_not_run` settles the card into the `tool-error` class:
-	 * `never sent · N composed` under the harness's reason) — a cross says the
-	 * call did not succeed, which is true, and the LABEL is what keeps it apart
-	 * from a failure: the row's summary reads `never sent`, never `failed`, and
-	 * its accessible label is "never ran".
+	 * It wears the error ink on the glyph and the summary, and the cross glyph, which
+	 * is the TUI's treatment (`ToolCard.mark_not_run` settles the card into the
+	 * `tool-error` class: `never sent · N composed` under the harness's reason) — a
+	 * cross says the call did not succeed, which is true, and the LABEL is what
+	 * keeps it apart from a failure: the row's summary reads `never sent`, never
+	 * `failed`, and its accessible label is "never ran".
+	 *
+	 * ONE CHANNEL DELIBERATELY DOES NOT FOLLOW, and it is the region one: the
+	 * `bg-danger-wash` ground is gated on the `error` outcome alone
+	 * (`failed = outcome === "error"`), and so is the danger ink on the tool ICON,
+	 * because both mark a call that returned a FAILED RESULT — this row returned
+	 * no result at all, which is the whole state. So a reader gets the same words,
+	 * glyph and name ink as a failure, on the plain surface, and no wash claiming a
+	 * result that does not exist.
 	 *
 	 * SCOPE OF THAT DISTINCTION, because it is on the LIVE path only. A row read
 	 * back from the durable transcript is the harness's record of a call it did

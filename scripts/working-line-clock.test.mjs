@@ -480,7 +480,8 @@ async function fixture({ startedAt, now }, run) {
 			window.document.querySelectorAll("[data-lo-working-line] span")[2]
 				?.textContent,
 		/**
-		 * Render the row again, optionally MOVING or WITHDRAWING its anchor.
+		 * Render the row again, optionally MOVING or WITHDRAWING its anchor, or
+		 * changing its PHASE.
 		 *
 		 * The anchor is the one prop the cases below change without changing the
 		 * phase, and that is the whole situation they exist for: the running rung's
@@ -489,15 +490,20 @@ async function fixture({ startedAt, now }, run) {
 		 * a bare number, because `{ startedAt: undefined }` is a state of its own -
 		 * the producer taking the anchor back - and a defaulted parameter could not
 		 * tell that from "no override".
+		 *
+		 * The PHASE is overridable for the mirror-image case: a withdrawal is a
+		 * state of ONE phase, and the edge that ends that phase is where the state
+		 * has to be dropped rather than latched.
 		 */
 		render: async (override) => {
 			const anchor =
 				override && "startedAt" in override ? override.startedAt : startedAt;
+			const nextPhase = override?.phase ?? "running";
 			await act(() =>
 				root.render(
 					h(WorkingLine, {
 						activity: "running bash",
-						phase: "running",
+						phase: nextPhase,
 						...(anchor === undefined ? {} : { startedAt: anchor }),
 					}),
 				),
@@ -659,6 +665,42 @@ test("a WITHDRAWN anchor blanks the cell rather than restarting at the arrival",
 				api.label(),
 				"",
 				"and it does not start counting from the arrival",
+			);
+		},
+	);
+});
+
+test("a PHASE CHANGE drops a withdrawn anchor rather than latching the cell blank", async () => {
+	/*
+	 * The withdrawal belongs to ONE phase, and the phase edge states its own zero -
+	 * the same local zero a row that never had an anchor keeps. Without the clear
+	 * the cell latches blank through the next phase, so a row under a phase the
+	 * producer HAS dated says nothing at all. That is the shape QA's Q-4 note names
+	 * as the residual divergence's second case (a phase edge landing on an
+	 * undateable batch), and it is the mutation this case exists to kill: delete
+	 * the clear and this file goes red where it used to stay green.
+	 */
+	await fixture(
+		{ startedAt: PHASE_STARTED_MS - 600_000, now: PHASE_STARTED_MS },
+		async (api) => {
+			await api.render();
+			assert.equal(api.label(), "10m");
+			await api.render({ startedAt: undefined });
+			assert.equal(api.label(), "", "withdrawn while the phase holds");
+			await api.render({
+				phase: "composing",
+				startedAt: PHASE_STARTED_MS - 120_000,
+			});
+			assert.equal(
+				api.label(),
+				"0s",
+				"the new phase renders its own edge, not a latched blank",
+			);
+			await act(() => api.advance(1_000));
+			assert.equal(
+				api.label(),
+				"2m1s",
+				"and counts from the anchor the new phase was handed (120s + the tick)",
 			);
 		},
 	);
