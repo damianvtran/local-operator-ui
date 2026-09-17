@@ -155,6 +155,31 @@ The TUI *surface* (a real terminal with `f10` pressed) is not driven here: that 
 in the backend pull request's own pilot, where the terminal app and the route are in one
 process tree.
 
+## The fold onto `ccc3017a3`, measured rather than asserted
+
+The branch was folded onto `origin/main` at `ccc3017a3` after remediation. Two conflicts
+(`docs/evidence/manifest.json`, `package.json`) and one content question: does the fold move
+anything this set is a picture of?
+
+**It moved the PANE, not the sidebar, and that is a measurement.** Six of the nineteen frames
+were re-shot because their bytes moved - `pins-filter-{dark,light}`, `pins-flat-{dark,light}`,
+`pins-selected-{dark,light}` and `pins-from-tui-dark`, which are exactly the frames with a
+conversation open in the chat pane, where `main`'s `chat-content.tsx` changed (241 lines).
+Cropping both the committed frame and the re-shot one to the sidebar's own columns removes the
+difference completely:
+
+```
+pins-selected-dark   [sidebar 0..528]  differing pixels = 0
+pins-selected-dark   [pane 528..2760]  differing pixels = 1200
+pins-filter-dark     [sidebar] 0    [pane] 1134
+pins-flat-light      [sidebar] 0    [pane] 1134
+pins-from-tui-dark   [sidebar] 0    [pane] 1134
+```
+
+So every claim in this file's table still holds on the folded tree, and the thirteen frames
+whose pixels did not move at all - including the withdrawn pair, which re-shot byte-identical
+to the pre-change panel - are evidence that the fold touched nothing the pins surface paints.
+
 ## The move a pin makes, and what the panel does about it
 
 Pinning moves a row out of `Active`/`Previous` and into `Pinned chats`, which is a change of
