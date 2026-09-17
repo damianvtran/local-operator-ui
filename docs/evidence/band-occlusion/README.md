@@ -1,121 +1,167 @@
-# The full-bleed band covers the first rows of every surface (D9/D10)
+# The full-bleed bands, in flow (D9)
 
-This is the brief for the one defect family `local-operator-ui#205`'s design round
-2 routed out of that pull request: both findings are measured inside #205's
-committed frames, and both are **inherited from `main` rather than introduced by
-#205's diff**. The measurements below are the designer's, taken on #205's head
-`c4beb7a5f`; the reproduction says how to take them again.
+This directory was the brief for the band's occlusion. It is now the record of the
+fix, the measurements it was decided on, and the frames that carry them.
 
-## What ships today
+## The defect, in one paragraph
 
-The band is `fixed inset-x-0 top-0 z-2200` (`connectivity-banner.tsx`), so it
-overlays the layout instead of taking its height out of it. Everything the shell
-mounts below it keeps its y, which means the covered rows are not displaced —
-they are absent.
+Both bands used to be `fixed inset-x-0 top-0` strips rendered inside the shell's
+`relative flex h-screen overflow-hidden` root
+(`connectivity-banner.tsx:258` at `z-2200`, `backend-compatibility-banner.tsx:150`
+at `z-2100` on `main`). A `fixed` band is painted OVER the layout, so every row it
+covered was **absent, not displaced**. Measured below, on the app itself: with either
+band up, the pane's own first text row and the top of the sidebar's search control
+were band paint, and the band's own height follows its copy.
 
-**D9 — content under the band, at three different band heights.** Measured on
-`main`'s own capture (`base-absent.png`, md5 `ac580c4d…`): the band occupies
-device y 0-134, the same extent it has on `#205` (the copy is the same two-line
-copy), so every row the design round measured as covered is covered on this
-pull request's base as well — the numbers below are that measurement, and this
-pull request is where they get fixed.
+## The decision, and the trade-off that was accepted
 
-- The pane's page title occupies device y 62-89 in `after-attached.png` (no band).
-  In `after-gate-open.png` and `after-flap-during.png` those rows are band paint
-  while every other pane row sits at the same device y (subtitle 128-148, the
-  `New chat` button 191-240). The title is on screen only when no band is up.
-- The sidebar region x 430-1015 is byte-identical between the two frames from
-  y=106 down, so rows 96-105 — where the search field's top border and its
-  rounded top corners are drawn — are covered. The control loses its own
-  boundary where the band ends.
-- `after-daemon-absent.png` is the worst case: the band is 0-134 device (0-67
-  CSS) and the search field's placeholder glyphs (device 119-142) are sliced
-  through their upper half. A half-line of text reads as a rendering fault, not
-  as a state.
+**The bands are the shell's first children, in flow, above a `flex-1 min-h-0`
+region** (`app.tsx`). Nothing can be covered at any band height, by construction.
 
-**D10 — RESTATED AFTER QA ROUND 2: this is NOT this pull request's work.** The
-design round measured the pane below the band in `after-daemon-absent.png` as 0
-painted pixels of 2,808,960, one colour (`#15130e`). QA round 2 then measured the
-same cell **re-run on #205's head** and found it painting — the pane's own
-sentence at device y 828-853 and its `Retry` at 888-912 — and traced the
-committed frame to a pre-pane-fix capture (`#205`'s Q-7, re-shot there on
-`ced379608`).
+The alternative was a **reserving inset**: keep the bands `fixed` and give the shell
+a top inset measured from them. It lost on measurement rather than taste:
 
-Re-measured for this brief on both trees:
+- the band's height is **copy-dependent** — 53 CSS px with one line, 68 with two, in
+  the same 1380x868 window (below) — so an inset would have to be measured from the
+  band rather than chosen, and re-measured on every copy change;
+- **two bands can be up at once** (`ConnectivityBanner` and
+  `BackendCompatibilityBanner` have independent triggers), and both were pinned to
+  `y 0`, so they OVERLAPPED rather than stacked: `before-two-bands.png` photographs
+  two bands whose DOM heights are 68 and 53 CSS px with only 68 CSS px painted, and
+  the inset would have to sum the two the moment the shape changed to stack them.
 
-| frame | tree | pane content below the band (device x≥1000, y>134) |
-| --- | --- | --- |
-| `base-absent.png` (QA's capture, md5 `ac580c4d…`) | `main` | **0 painted pixels** — this is where the void is real |
-| `after-absent.png` (QA's capture on #205's head) | `#205` | sentence at 828-853, `Retry` at 888-912 |
+What was given up: an in-flow band **shifts the app down** at the moment it appears —
+which is the moment the app is already announcing a state change — where a reserving
+inset would not. What that buys is that a band can never be the reason a row is
+missing.
 
-So the void is `main`'s and `#205`'s pane fix is what removes it: this pull
-request does **not** need to re-fix it, and nothing here should be read as
-claiming the pane is blank on the head being merged. What remains inherited — and
-what this pull request is for — is D9 below.
+## What the fix is
 
-**Why this is a separate pull request.** The band's position is the same on
-`main` (`fixed inset-x-0 top-0 z-2200`), and `after-daemon-absent.png` is
-byte-identical to the base-tree capture of that state (md5 `ac580c4d…`), so
-neither finding is #205's to fix. They change app-shell layout for every banner
-state, which is a design decision rather than a patch, and the frames a reader
-checks belong to #205 — which is why the disposition is recorded there and the
-work happens here.
+| file | change |
+| --- | --- |
+| `src/renderer/src/app.tsx` | the shell root becomes a flex COLUMN, the two bands are its first children, and the app's own region becomes `flex-1 min-h-0` in a `flex overflow-hidden` row below them |
+| `src/renderer/src/shared/components/common/connectivity-banner.tsx` | root `fixed inset-x-0 top-0 z-2200 w-full` -> `w-full`; the comment records the new shape and why it replaced the old |
+| `src/renderer/src/shared/components/common/backend-compatibility-banner.tsx` | root `fixed inset-x-0 top-0 z-2100 w-full` -> `w-full`; same, with the two-bands case named |
+| `src/renderer/src/features/command-palette/components/command-palette.tsx`, `src/renderer/src/shared/components/ui/dialog.tsx` | the two stacking comments that justified `z-[2300]` by "the banner is `fixed` and 68px tall" now say what the modal actually clears |
+| `scripts/palette-contract.test.mjs` | the geometric invariant is kept and re-expressed: no band declares a stacking level, the modal declares one |
 
-## The two shapes, and the trade-off to decide
+No colour, no copy, no radius and no spacing changed: this is geometry.
 
-1. **In flow.** Render the band as the shell's first child, above the
-   `h-screen` region (`app.tsx`), so the app keeps the rest of the window
-   because the band occupies the rest. Nothing can be covered at any band
-   height, by construction.
-2. **A reserving overlay.** Keep the band `fixed` — the component's own comment
-   records that choice as deliberate, with the z-index chosen to clear the
-   chrome it covers — and give the shell a top inset measured from the band. The
-   height follows the copy: **52 CSS px** in the gate frames against **67 CSS px**
-   in the daemon-absent frame, so a hard-coded value is wrong in one of the two
-   and the inset has to be measured from the band, and summed when more than one
-   band is up.
+## The measured state before the fix
 
-The trade-off, stated so it is decided knowingly: an in-flow band shifts the app
-down at the moment it appears, which is the moment the app is already announcing
-a state change; a reserving overlay does not shift, but has to track the band's
-height on every copy change and for every band that can show at once. Either is
-defensible. What the current pair of frames shows is the third option's cost — an
-invisible page title and a sliced line of text.
+`before/before-geometry.json`, from the rig below: 1380x900 window -> **1380x868
+viewport at dpr 2** (Electron 44.3.0), window mode named by the app's own
+`[window-mode]` line (`headless`, window created and never shown, page throttling
+off, no Dock tile).
 
-## What a fix has to show
+| state | bands | band rect (CSS px) | band rows (device px) | sidebar search control | pane's first text row | region height |
+| --- | --- | --- | --- | --- | --- | --- |
+| `none` | 0 | — | — | css y 48-80, device 96-160 | css y 14.25-33.75, device 29-68 | 868 |
+| `one-line` | 1 | y 0, h 53, `fixed`, z 2100 | 0-106 | **covered** | **covered** | 868 |
+| `two-line` | 1 | y 0, h 68, `fixed`, z 2200 | 0-136 | **covered** | **covered** | 868 |
+| `two-bands` | 2 | both at `y 0`, h 68 (z 2200) over h 53 (z 2100) | 0-136 painted | **covered** | **covered** | 868 |
 
-- With any band up, at any of the three heights above, no text row of any surface
-  is partially or wholly covered: the pane title, the sidebar search field's
-  border and corners, and the placeholder glyphs all render in full, or the
-  layout reserves enough that they are pushed.
-- The reservation (if that shape is chosen) tracks the band's measured height,
-  including the two-line band and two bands at once.
-- If the pane's statement can then take the same top anchor as the pane's own
-  empty state, the centring `#205` introduced goes with it — one anchor per pane,
-  not three.
+"Covered" is an **intersection test**, not a pixel judgement: the band's
+`getBoundingClientRect()` against the anchor's, which is the probe the brief asked
+for. Reproducing the brief's own numbers: its device rows for the search control
+(96-105, its top border and rounded corners) and for the daemon-absent band (0-134 at
+67 CSS px) sit inside these to within the copy difference between its state and this
+one.
 
-## Reproducing it
+Three things this table says that a frame cannot:
 
-Every number above is a measurement of a committed frame on `#205`
-(`fix/daemon-attach-robustness`, head `c4beb7a5f`):
+- **the region keeps the window at 868 in every band state** — a `fixed` band takes no
+  height from the layout, which is what makes the covered rows absent rather than
+  displaced (and what the after half must show changing to 868 minus the bands);
+- **`documentElement.scrollHeight == clientHeight == 868` with `overflow-y: hidden`**
+  in all four states: no scrollbar appears, so the band is not hiding a row that
+  scrolled out of view;
+- **the app's `position: fixed` set grows with the bands** — 2 with no band up, 3 with
+  one, 4 with both — which is the count `app.tsx` reasons about after this change.
+  (An earlier draft of that comment claimed one such element; the measurement is why
+  it now states two, and the bands leave the set.)
 
-```bash
-# the frames, without checking the branch out
-git -C ~/local-operator-ui show c4beb7a5f:docs/evidence/daemon-attach-live-app/after-attached.png > /tmp/attached.png
-git -C ~/local-operator-ui show c4beb7a5f:docs/evidence/daemon-attach-live-app/after-gate-open.png > /tmp/gate-open.png
-git -C ~/local-operator-ui show c4beb7a5f:docs/evidence/daemon-attach-live-app/after-daemon-absent.png > /tmp/absent.png
+## The frames
+
+| frame | state |
+| --- | --- |
+| `before/before-none.png` | attached daemon, every required capability advertised: no band, the control |
+| `before/before-one-line.png` | six of the seven required features withdrawn: the compatibility band alone, covering the pane's first row and the search control's top |
+| `before/before-two-line.png` | the address quiet, main's own second line in the copy: the connectivity band alone, device 0-136 |
+| `before/before-two-bands.png` | both bands up at once, overlapping at `y 0` — the case that decided the shape |
+
+## What produced them
+
+```
+node scripts/band-occlusion-evidence.mjs --out docs/evidence/band-occlusion/before --label before
 ```
 
-- The frames are 2760x1736 for a 1380x868 CSS viewport (device pixel ratio 2).
-- "Covered" is decided by comparing a row's device y between the no-band frame
-  and a band frame: the band's height is the band's own rect, and any row whose
-  ink in the no-band frame falls inside the band's device rows in the band frame
-  is absent rather than displaced.
-- "The pane is blank" is decided by counting pixels in the pane column (device
-  x≥1000) below the band and comparing them against the same region in a frame
-  where the pane paints.
+The rig boots the BUILT app in the documented `headless` window mode, in an isolated
+HOME, config dir, `--user-data-dir` and port pair, with `VITE_DISABLE_BACKEND_MANAGER=true`
+so no backend of the operator's can be spawned, an allowlisted environment, `CMUX_*`/
+`LOP_*` stripped, notifications off through `scripts/notifications-off.mjs`, and it
+asserts the app's own `[window-mode]` line rather than trusting the variable it set.
+Frames come from the app's own `Page.captureScreenshot` over CDP - never macOS
+`screencapture`, and never a mode that takes the operator's focus.
 
-A live probe, once the app can be booted headless against a forced band, is the
-same instrument `#205` used to decide its own pane finding: the band's
-`getBoundingClientRect()` against the content rects it overlaps, which turns
-"covered" from a pixel judgement into an intersection test.
+Nothing in the app can force a band on: the connectivity band is MAIN's daemon status
+and the compatibility band is the backend's capability answer, so the rig IS a stub
+daemon and walks the four states in one boot (attached and complete -> features
+withdrawn -> address quiet -> both up). It is the same instrument the D9 brief's own
+frames came from (`docs/evidence/daemon-attach-live-app/`), extended with the
+measurement above. The app's own `scripts/renderer-driver.mjs` reaches only the
+daemon-absent state - it has no backend, so it cannot photograph "no band" or a
+one-line band at all - which is why the band states are taken here; its
+`--scene states` boot reproduces that one state independently.
+
+## What is proven, and what is not
+
+Proven, from the frames and the JSON above: the defect as described (covered rows, by
+intersection), the copy-dependent band height (53 against 68 CSS px in one window),
+two bands overlapping rather than stacking, and the region's height and the absence
+of a scrollbar in every state.
+
+NOT proven here, and named rather than implied:
+
+- **the AFTER half of this pair.** It needs a rebuild of the changed tree and a second
+  app drive, and this box is under a HOST HOLD (measured by a peer session: load
+  635/502/497, swap 21.5 GB of 23.5 GB used) that forbids another build or drive. The
+  set therefore carries the before frames only, and the fix's own acceptance claims -
+  no row covered at any of the three heights, the region's exact extent when no band
+  is up, two bands stacking at 68 + 53 - are **unverified by frames** until the
+  resumed pass takes them. That pass must re-take BOTH halves, because the state
+  sequence has to be identical on both trees for the pair to mean anything.
+- **the first-run wizard is up in these frames** (a fresh profile: "Connect a
+  provider", step 1 of 6). It is a `fixed` overlay, so it is one of the two baseline
+  `fixed` elements in the table and it sits over the middle of the pane; it touches no
+  anchor (the numbers are rects), but the resumed pass should seed it away the way
+  `attach-frame-evidence.mjs` does, on both halves, and the pair above should then be
+  re-shot.
+- **`headless` is not a focus path**: the band's `Retry` control renders as it does
+  for nobody, and nothing here measures a press.
+- **the stub is a stub**: these frames are evidence about the renderer and the shell
+  they describe, not about main's daemon state machine, which
+  `scripts/daemon-health-state.test.mjs` and `scripts/daemon-discovery-evidence.mjs`
+  own.
+
+## Reproducing the pair
+
+The before half is the tree at the commit before the fix (this branch's own rig
+commit), built and driven exactly as above. The after half, once the hold clears:
+
+```bash
+pnpm build
+node scripts/band-occlusion-evidence.mjs --out docs/evidence/band-occlusion/after --label after
+```
+
+and the before half again, for a comparable pair:
+
+```bash
+git stash                     # or: git worktree add /tmp/band-before <rig commit>
+node scripts/band-occlusion-evidence.mjs --out docs/evidence/band-occlusion/before --label before
+```
+
+A run leaves nothing behind: each boot is spawned in its own process group, the
+teardown signals the group (the `node_modules/.bin/electron` shim's CHILD is the app,
+so a signal to the shim's pid would orphan it), and a profile-match reap is the
+backstop.
