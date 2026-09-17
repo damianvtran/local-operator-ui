@@ -46,6 +46,17 @@ const LOCK_OWNER = /^\s*\d+\s*$/;
 const LEGACY_BUNDLE_PYTHON_PATH =
 	/\.app\/Contents\/Resources\/python(?:_aarch64)?\//;
 export const PYTHON_SEED_NAMESPACE = BUNDLED_PYTHON_LAYOUT.seedNamespace;
+/**
+ * The Mach-O magics, from the layout definition rather than inline here.
+ *
+ * They moved because a second reader needs exactly this set: the seed-pruning
+ * step clears the execute bit on every file under the seed that is NOT one of
+ * these (`scripts/prune-python-seed.mjs`), and the release gate holds the
+ * packaged seed to the same predicate. A "which files are executable code
+ * objects" question answered by two hand-kept lists is the drift review R10 /
+ * QA Q2 cost a release; the app, the pack step and the gate now read one list.
+ */
+const MACH_O_MAGICS = new Set<string>(BUNDLED_PYTHON_LAYOUT.machOMagics);
 const FORMAT = 1;
 const READY = "environment-ready.json";
 const POINTER = "selected-environment.json";
@@ -252,17 +263,7 @@ async function verifyMachO(
 		} finally {
 			fs.closeSync(fd);
 		}
-		if (
-			![
-				"cffaedfe",
-				"cefaedfe",
-				"feedfacf",
-				"feedface",
-				"cafebabe",
-				"bebafeca",
-			].includes(magic.toString("hex"))
-		)
-			continue;
+		if (!MACH_O_MAGICS.has(magic.toString("hex"))) continue;
 		binaries++;
 		await execute("/usr/bin/codesign", ["--verify", "--strict", path], {
 			timeout: 30_000,
