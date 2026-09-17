@@ -33,13 +33,14 @@ export const ocean: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.055, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.30 from `surface`, 3.57 from `elevated` and 7.88 from
-		 * `sunken`.
+		 * `surface` cast 0.06 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4.25 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.01 from `surface`, 3.15 from `elevated` and 10.32 from `sunken`;
+		 * the step is 4.29 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.7:1 the ink that binds it.
 		 */
-		highlight: "#10272F",
+		highlight: "#183038",
 
 		ink: "#DCEBEE",
 		inkMuted: "#A4BEC5",

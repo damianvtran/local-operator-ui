@@ -39,12 +39,14 @@ export const alucard: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.27 from `surface`,
-		 * 4.24 from `elevated` and 3.15 from `sunken`.
+		 * `surface` cast 0.03 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 6.25 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.11 from `surface`, 4.86 from `elevated` and 4.97 from `sunken`;
+		 * the step is -6.18 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.67:1 the ink that binds it.
 		 */
-		highlight: "#F1EEE3",
+		highlight: "#EAE7E0",
 
 		ink: "#1F1F1F",
 		inkMuted: "#4F4A37",

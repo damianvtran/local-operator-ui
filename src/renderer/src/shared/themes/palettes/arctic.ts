@@ -36,13 +36,14 @@ export const arctic: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.030, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.27 from `surface`, 3.76 from `elevated` and 6.82 from
-		 * `sunken`.
+		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.12 from `surface`, 2.01 from `elevated` and 9.87 from `sunken`;
+		 * the step is 4.7 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.82:1 the ink that binds it.
 		 */
-		highlight: "#212F3C",
+		highlight: "#2B3946",
 
 		ink: "#E3ECF4",
 

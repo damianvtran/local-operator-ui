@@ -30,15 +30,38 @@ export const iceberg: ThemeDefinition = {
 		// a mid-light grey, and every step down costs tertiary-ink headroom. This
 		// sits 1.07:1 under canvas, which is what caps inkDim below.
 		sunken: "#E1E2E7",
+
 		/*
-		 * The current row's own ground, and the palette where the band is tightest:
-		 * `surface` stepped -10/-10/-11 on R/G/B toward black. ΔE00 2.19 from
-		 * `surface`, but only
-		 * 2.15 from `sunken` — this light ramp has very little room below its page
-		 * ground, so a deeper selection step would have collided with the recessed
-		 * one. 4.21 from `elevated`.
+		 * The current row's own ground: `surface` stepped down its own cool neutral
+		 * ramp 4.09 `L*`, carrying 3.31x the panel's chroma. ΔE00 4.12 from `surface`,
+		 * 5.88 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 2.53 from `sunken`. The row is 1.111x the panel's relative
+		 * luminance.
+		 *
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#e8e9eb)
+		 * stepped 3.52 `L*` off the panel, and this one steps 4.09. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
+		 *
+		 * Ink on this ground: `ink` 9.51:1, `ink-muted` 6.64:1, `ink-dim` 5.11:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 5.11:1. KNOWN CAST, RECORDED RATHER THAN HIDDEN: this panel is the least chromatic of
+		 * the twelve (C* 1.57), so every step here is a large multiple of it and the row
+		 * reads as a lavender band rather than a darker one (design round 1, D4). It is
+		 * the one palette whose step is bought on chroma rather than lightness — the
+		 * premise that its recessed ground capped the step was wrong (see this file's
+		 * neighbours: `sunken` sits 3.75 from `surface` and the row still clears it by
+		 * 2.53) — and the fix is the ordering the rule states: spend `L*` first. Not
+		 * re-authored in this round, which is scoped to the three palettes the
+		 * operator's report is measured on.
 		 */
-		highlight: "#e8e9eb",
+		highlight: "#e5e7f1",
 
 		// Iceberg's own text colour. The old file darkened it to 262A3F for
 		// contrast, which is no longer necessary — this measures 9:1 on the darkest

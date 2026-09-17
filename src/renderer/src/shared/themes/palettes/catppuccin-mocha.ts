@@ -36,13 +36,14 @@ export const catppuccinMocha: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.075, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.36 from `surface`, 2.18 from `elevated` and 5.32 from
-		 * `sunken`.
+		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 5.25 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.19 from `surface`, 2.19 from `elevated` and 8.34 from `sunken`;
+		 * the step is 5.11 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.66:1 the ink that binds it.
 		 */
-		highlight: "#262438",
+		highlight: "#312F44",
 
 		ink: "#CDD6F4",
 		inkMuted: "#BAC2DE",

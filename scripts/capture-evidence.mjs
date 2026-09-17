@@ -1397,6 +1397,18 @@ export const STORIES = [
 	["chat-sidebar-current-row--selected-row", 780, 560],
 	["chat-sidebar-current-row--new-chat-row-current", 780, 560],
 	/*
+	 * The two arrangements where the mark is drawn on an ink no other state here
+	 * reaches, added in round 2's remediation (design round 1, D5; QA's N3 and
+	 * N6): a row carrying a `· lopdev` BINDING inside a current row — `ink-muted`
+	 * on `highlight`, the ink the floors are measured for, and the case in the
+	 * operator's own screenshot — and a NESTED row under its agent, which is the
+	 * one place the mark is drawn at the row's own inset inside a disclosure.
+	 * Before these two, every fixture row was unbound and top-level, so both were
+	 * assertions in `pnpm check-themes` and in no frame at all.
+	 */
+	["chat-sidebar-current-row--bound-row-current", 780, 560],
+	["chat-sidebar-current-row--nested-row-current", 780, 560],
+	/*
 	 * The SAME story with a real pointer on the neighbour row ABOVE the current
 	 * one, because the pair it produces is a state a still at rest cannot hold:
 	 * a hover is browser state, so the rig moves a real pointer through the input
@@ -1427,6 +1439,65 @@ export const STORIES = [
 			hover: '[data-chat-row]:has(+ [data-chat-row][aria-current="page"])',
 		},
 	],
+	/*
+	 * The SETTINGS RAIL's current section, which is the other `surface` panel that
+	 * paints this role and the one two earlier rounds stated as a gap: the shipped
+	 * `settings-appearance` story sets `capturePending` and never clears it offline,
+	 * so the sweep waited out its bound there and every row after it went stale. The
+	 * story renders the rail component directly instead, which needs no bridge and
+	 * no store, so the surface is photographed rather than described.
+	 *
+	 * 1280 wide rather than its siblings' 780: `SettingsSidebar` switches between its
+	 * labelled and its 48px icon-only layouts at `(min-width: 1040px)`, and the
+	 * labelled one is the surface whose current row has to carry text on the ground.
+	 */
+	["chat-sidebar-current-row--settings-rail", 1280, 760],
+	/*
+	 * The same rail with the pointer on the row ABOVE the current one, which is the
+	 * pair the chat panel's own neighbour frame exists for: whether the persistent
+	 * mark still out-ranks the transient one is a fact about two grounds side by side
+	 * in ONE frame. The rail's rows are `li`s wrapping their own button, so the
+	 * selector addresses the neighbouring `li` and lands the pointer on the button
+	 * inside it; `aria-current="page"` is the rail's own marking of its current row.
+	 *
+	 * A NESTED state's neighbour is not in this list on purpose: the row above a
+	 * nested current row is its agent's entity row, which is not `elevated` — the
+	 * entities own their own hover — so a pointer there measures a different pair.
+	 */
+	[
+		"chat-sidebar-current-row--settings-rail",
+		1280,
+		760,
+		{
+			dir: "settings-rail-neighbour-hovered",
+			hover: 'li:has(+ li > button[aria-current="page"]) > button',
+		},
+	],
+	/*
+	 * The current row with the KEYBOARD on it, which is the one arrangement where
+	 * two outline rules meet on one box: the row's `highlight` ground plus the
+	 * app's `focus-visible` ring drawn around it. Design round 2's N3 asked for it
+	 * and it has never been photographed; round 3's N4 kept it open. Shot on the
+	 * ten themes the design named (the six pinned plus the four re-authored
+	 * values), where a mark paid on the cast is the thing most worth looking at.
+	 *
+	 * 780x560 like its siblings: the ring is drawn OUTSIDE the row's box, so the
+	 * frame has to include the margin it sits in.
+	 */
+	[
+		"chat-sidebar-current-row--focused-row-current",
+		780,
+		560,
+		{ tabTo: '[data-chat-row][aria-current="page"]' },
+	],
+	/*
+	 * The two-swatch wash frame (design round 3, D3), labelled in the picture as a
+	 * colour-only frame rather than a screen: this rig's states cannot co-shoot a
+	 * current row and an `accentWash` element, and the claim is about the distance
+	 * between two grounds rather than about a layout. Narrower than its siblings
+	 * because there is no panel to fit - a caption and two blocks.
+	 */
+	["chat-sidebar-current-row--wash-swatches", 780, 260],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
