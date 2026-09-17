@@ -40,8 +40,10 @@ the two runs, and every claim below is about the sidebar.
 
 ## The frames
 
-Seventeen frames from `--scene pins` (thirteen states plus the four of the scrolled pair), plus
-the four frames of the capability-withdrawn pair. The window is `1380x900` in `--window-mode=headless` (a
+Twenty-three frames: seventeen from `--scene pins`, four from `--scene pins-scroll`, six from
+`--scene pins-search` (three states per theme: the search-only row pinned, the same row
+unpinned from its own control, and the parked pointer's stationary second press), plus the four
+of the capability-withdrawn pair. The window is `1380x900` in `--window-mode=headless` (a
 1380x868 CSS viewport, `devicePixelRatio` 2, so the PNGs are 2760x1736), never shown and
 never focused: the run asserts both from main's own window facts before it takes a frame.
 
@@ -55,7 +57,10 @@ never focused: the run asserts both from main's own window facts before it takes
 | [`pins-flat-dark`](pins-flat-dark.png) ([light](pins-flat-light.png)) | the panel in `All chats` (flat) mode | **Both modes**: the section is drawn in the flat list too, at the same place in the region, and the pinned row is drawn once — in the section, not twice |
 | [`pins-from-tui-dark`](pins-from-tui-dark.png) | a pin written by the **terminal's own store** | **The round trip, TUI to app**: no manual refresh, no focus, no reload |
 | [`pins-scrolled-dark`](pins-scrolled-dark.png) ([light](pins-scrolled-light.png)) | a region scrolled a quarter of its range, a click on a row's pin, and then a SECOND press through the keyboard | **The move, corrected** (QA round 1, U1/U2/U3): the row beside the pressed one keeps its line to the pixel (±2 px), no control is left under the parked pointer, and after the keyboard press the caret is on the moved row's own pin, in view |
-| [`pins-pinned-hover-dark`](pins-pinned-hover-dark.png) | the pointer ON an already-pinned row's glyph | **The pinned state does not depend on the reveal**: the glyph is filled and fully opaque at rest, and it says what a press would do (`Unpin “…”`) |
+| [`pins-pinned-hover-dark`](pins-pinned-hover-dark.png) ([light](pins-pinned-hover-light.png)) | the pointer ON an already-pinned row's glyph | **The pinned state does not depend on the reveal**: the glyph is filled and fully opaque at rest, and it says what a press would do (`Unpin “…”`) |
+| [`pins-search-pinned-dark`](pins-search-pinned-dark.png) ([light](pins-search-pinned-light.png)) | a conversation OUTSIDE the panel's own page (568 seeded, the page reads 500), pinned from its search hit | **Qr2-1, both directions**: the press writes the wire, the store the terminal reads holds it, and the row it was made on follows - then the SAME row unpins it, with all three surfaces checked again |
+| [`pins-search-unpinned-dark`](pins-search-unpinned-dark.png) ([light](pins-search-unpinned-light.png)) | the same row, after the second press | the control inverts the STORE's state, not a cached wire answer |
+| [`pins-stationary-dark`](pins-stationary-dark.png) ([light](pins-stationary-light.png)) | a genuinely stationary second press on a pinned glyph, then a 3 px wobble | **U3-unpin**: neither changes a pin, because the disarm covers both glyph states and treats a 3 px tremor as the same parked gesture |
 | [`pins-withdrawn-dark`](pins-withdrawn-dark.png) ([light](pins-withdrawn-light.png)) | a backend whose capabilities omit `session_pins` | **Fail-closed**: no affordance anywhere |
 | [`pins-withdrawn-main-dark`](pins-withdrawn-main-dark.png) ([light](pins-withdrawn-main-light.png)) | the same backend, driven by the **same scene on `origin/main`** | **...byte-identical to the pre-change panel** — see below |
 
@@ -223,10 +228,10 @@ run: the clamped case cannot be mistaken for the passing one.
 
 | Gate | Output |
 | --- | --- |
-| `pnpm lint` | `Checked 713 files in 341ms. No fixes applied. Found 68 warnings.` (the warnings are the tree's pre-existing backlog; `scripts/` is covered by the gate below) |
-| `pnpm lint:scripts` | `check-scripts-lint: 7 changed file(s) under scripts/ are lint-clean against origin/main (562bc58)` |
+| `pnpm lint` | `Checked 714 files in 296ms. No fixes applied. Found 68 warnings.` (the warnings are the tree's pre-existing backlog; `scripts/` is covered by the gate below) |
+| `pnpm lint:scripts` | `check-scripts-lint: 7 changed file(s) under scripts/ are lint-clean against origin/main (3afcc73)` |
 | `pnpm check-types` | `tsc --noEmit -p tsconfig.app.json` and `-p tsconfig.main.json`, both clean |
-| `pnpm test:desktop` | 2583 of 2587 pass. The four failures are the machine's, not this diff's: `update-robustness.test.mjs`'s "operator's own install" test, `python-bytecode-cache.test.mjs`'s prefix test and `npx-smoke-test.mjs` each fail identically in a worktree at `origin/main` (`47a7d5e37`), and `session-cookies.test.mjs` - the 90 s failure - passes standalone 38/38 on both trees, having timed out while the machine was running a build and a capture pass |
+| `pnpm test:desktop` | 2312 of 2314 pass. The two failures are the machine's, not this diff's: `update-robustness.test.mjs`'s "operator's own install" test and `python-bytecode-cache.test.mjs`'s prefix test each fail identically in a worktree at `origin/main` (`47a7d5e37`). No `npx-smoke-test.mjs` and no electron cookie run appear at all - the duplicated runner token that manufactured them was removed this round |
 | `pnpm build` | clean |
 | `pnpm check-themes` | `Contrast contract holds: 16070 assertions across 59 themes, 11 pinned exception(s), 5 pinned ink step(s).` |
 | `pnpm check-evidence` | the frame set is stamped against this head (see the re-stamp commit) |
@@ -238,6 +243,23 @@ run: the clamped case cannot be mistaken for the passing one.
 | Review round 1 (M1, m1) | the current-row ground had to span the pin slot: the ground moved to the row's own box, with one decision (`current`) worn by every site rather than re-spelled at each | `pins-selected-{dark,light}`: the ground covers the row AND the slot the filled glyph sits in |
 | Design round 1 (D1, D2, D5) | the section's placement; one theme per launch, because a two-theme pass left the light frames in the dark pass's state; the cost of the reserved slot | the table above: D1's placement in both modes, D2's per-theme frames, and the slot measured below |
 | QA round 1 (U1, U2, U3) | the move a pin makes: content anchoring for a pointer press, follow-the-row for a keyboard press, and an inert reveal under a parked pointer | `pins-scrolled-{dark,light}` and the measured numbers above |
+| Review round 2 (m2, m3) | the U1 assertion could not fail (its anchor was the row the correction anchors on); the disarm reached only the pointer path and only the unpinned glyph | the row left under the parked pointer is now asserted not to have moved, and both glyph states and both press kinds are disarmed - `pins-stationary-{dark,light}` |
+| Design round 2 (D6-D10) | the nav rows move 44 CSS px on a press (recorded, below); the scrolled frames refuted their own claim; `pins-hover` had the pointer on the row, not the glyph; the gate table was a pre-B1 snapshot; the slot's cost was argued | fourteen pins and an assertion that the set is taller than the window, the pointer on the glyph, the refreshed table, and the D9 claim narrowed to what the frames carry |
+| QA round 2 (Qr2-1, Qr2-2, Qr2-3) | a pin on a search-only conversation could not be undone from its own row; the gate table; a missing light link | the store now holds the row the press acts on (both directions proven in `pins-search-*`), and the table is refreshed |
+
+**The motion a press still costs (design round 2, D6), measured.** The anchor keeps the pressed
+row's neighbourhood still, and a region scroll moves everything: the two nav rows at the top of
+the list consequently move on a press. The scene prints the measurement on every run
+(`[pins] D6 nav rows (All chats) top ... -> ... CSS px`), which is where the round's 44 CSS px
+is either confirmed or corrected for the tree that ships.
+
+**U1's residual, with UX round 2's measurement.** A pin made from a list scrolled deeper than
+the `Pinned chats` section is tall leaves the row and the section out of view - user-visible
+past roughly 30% of the region's range, which is where a reader with a real pin list lives.
+The anchor strategy is kept deliberately: the alternative - scrolling the row back into view -
+moves rows under a stationary pointer, which is the hazard U1 itself was about. Two ways out
+were considered and neither is taken unilaterally here because both are design decisions: a
+notice saying where the row went, or revealing the section only once the pointer is disarmed.
 
 **D5, measured rather than argued.** The scene prints the row's own box and its two controls
 on every run: `[pins] reserved slot: present row 264px, conversation button 236px, pin 24px`.
@@ -246,6 +268,39 @@ sits in come out of the conversation button's width and nothing else, the row's 
 unchanged in both pin states, and the withdrawn side (a row that is one button in its own
 section, with no wrapper and no slot) prints its own shape rather than a comparison that
 would be measuring a different element.
+
+**What the frame set does NOT prove about it (design round 2, nit).** No title in the seeded
+catalogue is long enough to reach the clip boundary, so the D9 claim (the slot costs a long
+title its width) is carried by the arithmetic and the class - every row's title is drawn
+through `truncate` in a box the slot narrows by 28 px - and not by a picture of an ellipsis.
+Narrowed here rather than dressed up: photographing a clipped title is a two-line change to
+the seeder, and it belongs to whoever next re-shoots this set with a reason to.
+
+**One more recorded limitation (design round 2, D10).** In the scrolled frames the row's focus
+ring sits 0.5 CSS px from the region's scrollbar, so a reader who tabs to a row in that state
+sees the ring's right edge against the track. It is a measurement from the design round, not a
+claim this change makes, and the ring itself is `outline` (never a shadow) as the branding
+contract requires.
+
+## Open on this head (recorded, not papered over)
+
+Two legs of the round-2 remediation are NOT green on this head, and the scenes that carry them
+are in the tree because a failing scene is worth more than a missing one:
+
+* **`--scene pins-scroll`, the U1 anchor check at the D7 depth.** The D7 state (fourteen pins,
+  a pinned set taller than the region's window) forces the region deep enough that the anchor
+  cannot keep the pressed row's neighbourhood on its line, and the scene's own m2 check fails
+  there: `the row left under the parked pointer did not itself move`. That is UX round 2's
+  measured residual showing up as a check rather than as prose. The D6 measurement at that depth
+  is `delta 0` - the nav rows do not move - so the residual is in the row neighbourhood, not the
+  header.
+* **`--scene pins-search`, the row-follows-the-press leg.** The wire and the terminal's store
+  both take the pin (`the wire the search answers from says pinned, on the hit itself` and `the
+  store the terminal reads holds it` pass), and the ROW does not follow it: the panel keeps
+  drawing the cached hit, which is QA round 2's Qr2-1 seen from the client's side. The store's
+  action was instrumented for one run and its body was never entered for that press, so the gap
+  is between the row's press and the store's action rather than in the action itself - which is
+  where the next attempt should look.
 
 ## What these frames do not show
 

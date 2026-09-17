@@ -44,14 +44,35 @@ if (!ROOT) {
 	process.exit(2);
 }
 
-const titles = titleArgs().length
-	? titleArgs()
-	: [
-			"Retention sweep notes",
-			"Migrate the billing ledger",
-			"Investigate the throughput dip",
-			"Watchlist dossiers",
-		];
+/**
+ * `--generate N` writes N sessions with numbered titles.
+ *
+ * WHY. The search-only scene needs a store LARGER than the panel's own page (the catalogue
+ * read asks for 500), and a hand-written list of 568 titles is a list nobody reads. The
+ * numbering is also what makes the pick deterministic: the oldest sessions are the ones the
+ * page drops, and their titles are the ones the scene searches for.
+ */
+function generated() {
+	const at = process.argv.indexOf("--generate");
+	if (at === -1) return [];
+	const count = Number(process.argv[at + 1]);
+	if (!Number.isFinite(count) || count <= 0) return [];
+	return Array.from(
+		{ length: count },
+		(_, index) => `Sweep ${String(index + 1).padStart(3, "0")}`,
+	);
+}
+
+const titles = generated().length
+	? generated()
+	: titleArgs().length
+		? titleArgs()
+		: [
+				"Retention sweep notes",
+				"Migrate the billing ledger",
+				"Investigate the throughput dip",
+				"Watchlist dossiers",
+			];
 
 /**
  * A 12-hex session id, deterministic in the title.
@@ -61,7 +82,10 @@ const titles = titleArgs().length
  * it reached a row.
  */
 const sessionId = (title) =>
-	createHash("sha1").update(`pins-evidence:${title}`).digest("hex").slice(0, 12);
+	createHash("sha1")
+		.update(`pins-evidence:${title}`)
+		.digest("hex")
+		.slice(0, 12);
 
 const sessions = join(ROOT, "sessions");
 mkdirSync(sessions, { recursive: true });

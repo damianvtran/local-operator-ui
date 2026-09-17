@@ -99,7 +99,8 @@ const ratio = (a, b) => {
 
 /* A palette value that is not a flat hex — an `rgb()` scrim, a shadow — cannot
    be measured against a ground and is not a colour this contract governs. */
-const isHex = (v) => typeof v === "string" && /^#[0-9a-fA-F]{3,8}$/.test(v);
+const HEX = /^#[0-9a-fA-F]{3,8}$/;
+const isHex = (v) => typeof v === "string" && HEX.test(v);
 
 /* ---- 3. loading the palettes ------------------------------------------- */
 

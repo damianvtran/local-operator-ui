@@ -312,8 +312,14 @@ export function ChatSidebar({
 		follow: boolean;
 		anchorId: string | null;
 		anchorTop: number;
+		/** Where the pointer was at the press, for the wobble slop above. */
+		pointer: { x: number; y: number } | null;
 	} | null>(null);
-	const rememberMovedRow = (sessionId: string, follow: boolean) => {
+	const rememberMovedRow = (
+		sessionId: string,
+		follow: boolean,
+		pointer: { x: number; y: number } | null,
+	) => {
 		const rows = Array.from(
 			listRef.current?.querySelectorAll<HTMLElement>("[data-session-row]") ??
 				[],
@@ -332,6 +338,7 @@ export function ChatSidebar({
 			id: sessionId,
 			top: rows[index].getBoundingClientRect().top,
 			follow,
+			pointer,
 			anchorId: neighbour?.getAttribute("data-session-row") ?? null,
 			anchorTop: neighbour ? neighbour.getBoundingClientRect().top : 0,
 		};
@@ -344,7 +351,20 @@ export function ChatSidebar({
 		const row = list.querySelector<HTMLElement>(
 			`[data-session-row="${moved.id}"]`,
 		);
-		if (!row) return;
+		if (!row) {
+			// The row is gone entirely (the read removed it): nothing to correct, and the
+			// ref must not survive into the next press as a stale anchor.
+			movedRef.current = null;
+			return;
+		}
+		/*
+		 * BOTH kinds of press disarm, not only the pointer's (UX round 2, m3): the DOM moves
+		 * under whatever is parked, and a keyboard press leaves exactly the same parked state
+		 * a pointer press does - the control the reader operated has moved and something else
+		 * now sits at the caret's position.
+		 */
+		setRevealArmed(false);
+		armedAtRef.current = moved.pointer;
 		if (moved.follow) {
 			const delta = row.getBoundingClientRect().top - moved.top;
 			if (delta !== 0) list.scrollTop += delta;
@@ -363,7 +383,6 @@ export function ChatSidebar({
 				.querySelector<HTMLElement>("[data-session-pin]")
 				?.focus({ preventScroll: true });
 		} else if (moved.anchorId !== null) {
-			setRevealArmed(false);
 			const anchor = list.querySelector<HTMLElement>(
 				`[data-session-row="${moved.anchorId}"]`,
 			);
@@ -384,6 +403,15 @@ export function ChatSidebar({
 	 * until the reader moves, at which point the affordance is exactly where it was.
 	 */
 	const [revealArmed, setRevealArmed] = useState(true);
+	/*
+	 * ...and a WOBBLE IS NOT A MOVE (UX round 2, U3-unpin). The disarm exists for the gesture
+	 * "press, and the pointer has not gone anywhere"; a 3 px tremor is still that gesture, and
+	 * re-arming on any pixel at all put the reader back in the state the round reported. So the
+	 * position at the press is kept, and the reveal re-arms only once the pointer has moved
+	 * further than a hand wobbles.
+	 */
+	const armedAtRef = useRef<{ x: number; y: number } | null>(null);
+	const ARM_SLOP_PX = 6;
 	const isOpen = (key: string, initial = false) => expanded[key] ?? initial;
 	const toggle = (key: string, initial = false) =>
 		setExpanded((current) => ({
@@ -833,8 +861,22 @@ export function ChatSidebar({
 							// Where the row is NOW, and WHICH PRESS it was: the two get opposite
 							// corrections (see `rememberMovedRow`), and `detail === 0` is the
 							// keyboard (a click synthesised from Enter or Space carries no count).
-							rememberMovedRow(row.session_id, event.detail === 0);
-							void setSessionPin(row.session_id, !pinned);
+							rememberMovedRow(row.session_id, event.detail === 0, {
+								x: event.clientX,
+								y: event.clientY,
+							});
+							/*
+							 * The seed is what lets the store HOLD a conversation it does not
+							 * list: without it the write reaches the backend and the row keeps
+							 * drawing the cached wire hit, so the press can never be undone
+							 * from this control (QA round 2, Qr2-1).
+							 */
+							void setSessionPin(row.session_id, !pinned, {
+								// A row's title/`updated_at` are nullable on the canonical shape; the
+								// store's seed is not, and a row with neither is still the right row.
+								title: row.title ?? undefined,
+								updated_at: row.updated_at ?? undefined,
+							});
 						}}
 						className={cn(
 							"flex size-6 shrink-0 items-center justify-center rounded-md",
@@ -846,7 +888,14 @@ export function ChatSidebar({
 							// height are the same in both states, which is what makes the
 							// reserved slot unable to reflow the row.
 							pinned
-								? "text-ink"
+								? cn(
+										"text-ink",
+										// Visible, because a pinned glyph is the STATE and hiding it
+										// would be worse than the hazard; inert, so the parked
+										// pointer cannot operate the row that slid into its place
+										// (UX round 2, U3-unpin).
+										!revealArmed && "pointer-events-none",
+									)
 								: cn(
 										"text-ink-dim opacity-0",
 										revealArmed
@@ -1393,12 +1442,29 @@ export function ChatSidebar({
 				<div
 					ref={listRef}
 					/*
-					 * Re-arming is the pointer MOVING, not a timer: a timer would re-arm
-					 * under a pointer that is still parked, which is the state this exists
-					 * to keep inert.
+					 * Re-arming is the reader ACTING again, not a timer: a timer would re-arm
+					 * under a pointer that is still parked, which is the state this exists to
+					 * keep inert. A pointer move and a key press both count, because a
+					 * keyboard press has no pointer to move and must not leave the panel
+					 * inert for the rest of its life (UX round 2, m3).
 					 */
-					onPointerMove={() => {
-						if (!revealArmed) setRevealArmed(true);
+					onPointerMove={(event) => {
+						if (revealArmed) return;
+						const from = armedAtRef.current;
+						const moved =
+							from === null ||
+							Math.hypot(event.clientX - from.x, event.clientY - from.y) >
+								ARM_SLOP_PX;
+						if (moved) {
+							armedAtRef.current = null;
+							setRevealArmed(true);
+						}
+					}}
+					onKeyDown={() => {
+						if (!revealArmed) {
+							armedAtRef.current = null;
+							setRevealArmed(true);
+						}
 					}}
 					className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2"
 				>
