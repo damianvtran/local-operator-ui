@@ -43,6 +43,16 @@ reacting rather than of a prop that fakes a state.
 All but the last were captured at `1280x900`; `narrow-columns` declares `920x900`
 in `STORIES`, and that is the only place a story's viewport is stated.
 
+**PAUSED MID-CAPTURE — which frames on this head are from the remediation and
+which are not.** The re-capture for design/UX round 1 was stopped by a host-load
+hold (the machine was pageout-bound). Captured at `f04dbe2e6`, twelve themes
+each: the six states added above, and `grid`, `signed-in` and `loading`
+re-captured against the fixed code. NOT yet re-captured, so still the previous
+round's frames and not evidence for this round: `empty`, `load-failed`,
+`empty-category` and `page-change-keeps-the-grid` — every one of which the
+remediation touches (D6's capped panel, U5's alert copy, D1's skeleton and pager
+height). The pause comment on the PR lists them as remaining work.
+
 `agent-hub-page-baseline/grid/` is the same story captured from
 **unmodified `origin/main`** — see that directory's own README for what was
 patched to make it photograph the hub rather than its load error.
