@@ -104,7 +104,8 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  * the accent wash behind it is invisible to assistive tech — colour alone is
  * not a state.
  *
- * The active row is the rail's single accent spend (wash ground, accent icon),
+ * The active row is the rail's single accent spend (its accent icon, over the
+ * `highlight` ground this branch gave the row),
  * so hover is a neutral ground step to `elevated` rather than a second tint.
  * Its label stays `ink` rather than going accent: tinting the ground and the
  * mark and the text is three signals for one state, and it makes the row you
@@ -189,10 +190,12 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					 * runs. It was authored at ΔE00 2.18-2.28 for a selection the operator had
 					 * asked to be SUBTLE; he has since seen it rendered and reported the row as
 					 * being lost beside a hovered neighbour, so the role now carries ΔE00
-					 * 4.0-4.4 from `surface` on eleven of the twelve palettes (3.51 on
-					 * `iceberg`, which its own well caps — see that palette), bought on the
-					 * CHROMA axis at the surface's own hue because that axis costs no ink
-					 * assertion (`docs/branding.md` § 3).
+					 * 4.01-4.15 from `surface` on all twelve palettes — a LIGHTNESS step, 3.81
+					 * to 6.62 `L*` in the direction the mode runs, with chroma paying only the
+					 * remainder. That ordering, and the direction, are stated in
+					 * `docs/branding.md` § 2 and asserted in `scripts/contrast-contract.mjs`.
+					 * (The earlier reading of this palette, "3.51 on `iceberg`, capped by its
+					 * own well", was wrong: iceberg measures 4.12, above the band's floor.)
 					 *
 					 * It was `accentWash` before that role existed, which is ΔE00 **1.05** on
 					 * this ground in tokyoNight (`#262B3F` on `#24283B`, the pair the app
@@ -210,20 +213,19 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					 * bare background, so without it the pointer would replace the mark on
 					 * the row the user is already on.
 					 *
-					 * The 1px `outline-control` edge is the mark's second half and the half
-					 * that does not spend ink headroom: the ink floors cap how far this
-					 * ground can climb (`ink-dim` is drawn inside a current row), and on
-					 * eight palettes the neighbouring rows' hover step is still the larger
-					 * step off `surface` — a bound no palette value lifts, because `elevated`
-					 * is also every menu and popover ground in the app. It clears § 3's 3:1
-					 * structural floor against this ground on all twelve palettes
-					 * (3.17-4.59) and draws outside the box model, so this rail's row box and
-					 * its alignment against the app rail are unchanged. Same two-part mark,
-					 * same roles, same reasoning as `rowCurrent`/`rowCurrentEdge` in
-					 * `features/chat/components/chat-sidebar.tsx`.
+					 * No EDGE, deliberately, and this rail is the second place the boundary was
+					 * retired from rather than the first: an earlier round of this branch drew a
+					 * 1px `outline-control` ring here, which is `docs/branding.md` § 2's *sole
+					 * visual boundary of an input, select, checkbox or outlined button* — and
+					 * both rails drew it with the same 1px, radius and ink as the search field
+					 * above the chat list, so the row read as a filled field (design round 1,
+					 * D3). The mark is the ground plus the weight, which is what the app rail
+					 * already used for the same fact. See
+					 * `features/chat/components/chat-sidebar.tsx`'s `rowCurrent` block: one
+					 * decision, two call sites.
 					 */
 					isActive
-						? "bg-highlight font-medium text-ink outline-solid outline-1 -outline-offset-1 outline-control hover:bg-highlight"
+						? "bg-highlight font-medium text-ink hover:bg-highlight"
 						: "text-ink-muted hover:bg-elevated hover:text-ink",
 				)}
 			>
