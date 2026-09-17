@@ -203,7 +203,10 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 		"the session row has a fail-closed branch on `pinsEnabled`",
 	);
 	const fragmentAt = source.indexOf("return <Fragment", withdrawnAt);
-	assert.ok(fragmentAt > withdrawnAt, "the withdrawn branch returns a keyed Fragment");
+	assert.ok(
+		fragmentAt > withdrawnAt,
+		"the withdrawn branch returns a keyed Fragment",
+	);
 	// The `;` that closes the return, and not the next `}`: the Fragment line carries
 	// two of them (`{row.session_id}`, `{rowButton}`) and the first would cut the
 	// slice off before the thing it is here to check.
