@@ -22,17 +22,26 @@ import { spawnSync } from "node:child_process";
 import {
 	closeSync,
 	existsSync,
+	lstatSync,
 	openSync,
 	readdirSync,
 	rmSync,
 	statSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
 	BYTECODE_TREE_NAMES,
+	LAYOUT,
 	seedResourceDir,
 } from "./bundled-python-layout.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	PRUNED_SEED_PATHS,
+	SEED_STDLIB_MARKER,
+	machOFiles,
+	seedExecBitFiles,
+	seedModeViolations,
+} from "./prune-python-seed.mjs";
 import {
 	finalContainerChecks,
 	finalMetadataChecks,
@@ -316,6 +325,187 @@ function defaultWalk(root, relative = "") {
 	return files;
 }
 
+/**
+ * The three seed checks, and why they are assertions rather than prose in a
+ * document.
+ *
+ * A seed change fails SILENTLY in the direction that costs the release: the
+ * interpreter still runs, the app still starts, and the only symptom is that
+ * every user downloads and extracts the content the change was made to remove.
+ * The pruned paths are the sharpest case - "the pruned paths are absent" is
+ * trivially true for a tree where they were never spelled the same way again,
+ * which is what a Python version bump does. So each check asserts what the
+ * packaged bundle must still contain as well as what it must not, and the pair
+ * fails loudly when either half stops holding.
+ *
+ * They live beside `bundledPythonCheck` rather than with the artifact-layout
+ * checks because each one walks a tree the build assembled, which is what this
+ * file's app checks do; the artifact-layout module reads containers.
+ */
+
+/** A check result in the shape this file's app checks use. */
+function appCheck(id, appPath, description, work) {
+	try {
+		return {
+			id,
+			scope: "app",
+			target: appPath,
+			description,
+			passed: true,
+			output: work() ?? "",
+		};
+	} catch (error) {
+		return {
+			id,
+			scope: "app",
+			target: appPath,
+			description,
+			passed: false,
+			output: error.message,
+		};
+	}
+}
+
+/** The architecture seed directory a packaged app carries.
+ *
+ * `null` when the app carries none or several: which one it *should* carry is
+ * `privatePythonSeedCheck`'s assertion (one directory, matching the artifact's
+ * own architecture), and answering it a second time here is how two checks come
+ * to disagree. Each caller turns a missing root into a failing check naming it.
+ */
+export function seedRoot(appPath) {
+	try {
+		const parent = join(appPath, "Contents", "Resources", LAYOUT.seedNamespace);
+		const names = readdirSync(parent).filter((name) =>
+			LAYOUT.architectures.includes(name),
+		);
+		return names.length === 1 ? join(parent, names[0]) : null;
+	} catch {
+		return null;
+	}
+}
+
+/** `lstat` without a throw: `existsSync` answers false for a dangling symlink,
+ * and a dangling symlink is content the bundle must not carry either. */
+function lstatOrNull(path) {
+	try {
+		return lstatSync(path);
+	} catch (error) {
+		if (error.code === "ENOENT") return null;
+		throw error;
+	}
+}
+
+/** The standard-library directory, derived from the marker rather than spelled
+ * again: the marker is the one place the seed's Python version is written, so a
+ * second `lib/python3.12` literal here would be the copy that goes stale. */
+const STDLIB_RELATIVE = dirname(dirname(SEED_STDLIB_MARKER));
+
+/** The seed content no import can reach, which the build must remove. */
+export function prunedSeedCheck(appPath) {
+	return appCheck(
+		"app-pruned-python-seed",
+		appPath,
+		"the seed content no import can reach stays out of the bundle",
+		() => {
+			const root = seedRoot(appPath);
+			if (root == null)
+				throw new Error(
+					`No single Contents/Resources/${LAYOUT.seedNamespace}/<arch> directory to check`,
+				);
+			const back = PRUNED_SEED_PATHS.filter(
+				(relative) => lstatOrNull(join(root, relative)) !== null,
+			);
+			if (back.length > 0)
+				throw new Error(
+					`${back.length} pruned path(s) are back under the seed: ${back.join(", ")}. scripts/setup-python-resource.sh runs scripts/prune-python-seed.mjs; a build that skips it ships them again.`,
+				);
+			return `${PRUNED_SEED_PATHS.length} pruned path(s) absent`;
+		},
+	);
+}
+
+/** Execute bits under the seed, which only a Mach-O file may carry.
+ *
+ * The count is asserted beside the predicate because the predicate alone is
+ * satisfied by a seed with no execute bit anywhere - including the interpreter
+ * itself, which the app executes through its managed copy. */
+export function seedModeCheck(appPath) {
+	return appCheck(
+		"app-seed-exec-bits",
+		appPath,
+		"every execute bit under the seed belongs to a Mach-O file",
+		() => {
+			const root = seedRoot(appPath);
+			if (root == null)
+				throw new Error(
+					`No single Contents/Resources/${LAYOUT.seedNamespace}/<arch> directory to check`,
+				);
+			const violations = seedModeViolations(root);
+			if (violations.length > 0)
+				throw new Error(
+					`${violations.length} seed file(s) carry an execute bit without a Mach-O header: ${violations.slice(0, 4).join(", ")}${violations.length > 4 ? ` (and ${violations.length - 4} more)` : ""}`,
+				);
+			const execBits = seedExecBitFiles(root).length;
+			const machO = machOFiles(root).length;
+			if (machO === 0)
+				throw new Error(
+					"No Mach-O file under the seed at all: the interpreter and its library are gone",
+				);
+			if (execBits !== machO)
+				throw new Error(
+					`${execBits} seed file(s) carry an execute bit but ${machO} are Mach-O; the two counts must agree`,
+				);
+			return `${machO} Mach-O file(s), each carrying the execute bit and nothing else`;
+		},
+	);
+}
+
+/** The bootstrap a venv is built from, which the pruning must not reach.
+ *
+ * `macos-install-script.sh` creates its venv with `-m venv` and then asserts
+ * `bin/pip` exists, and the pip there comes from `ensurepip`'s bundled wheel -
+ * not from the seed's own `site-packages`, whose pip is a different, older
+ * version (measured: the venv built from the pruned seed reports pip 25.0.1
+ * from `ensurepip/_bundled/pip-25.0.1-py3-none-any.whl`, while the seed's own
+ * `site-packages` carries 24.3.1). Both halves are asserted, with the
+ * interpreter itself, because the failure this catches is a future prune that
+ * looks tidy and leaves an install with no pip to install from. */
+export function seedBootstrapCheck(appPath) {
+	return appCheck(
+		"app-seed-venv-bootstrap",
+		appPath,
+		"the seed can still build a venv with pip",
+		() => {
+			const root = seedRoot(appPath);
+			if (root == null)
+				throw new Error(
+					`No single Contents/Resources/${LAYOUT.seedNamespace}/<arch> directory to check`,
+				);
+			const missing = [];
+			for (const relative of [
+				"bin/python3",
+				`${STDLIB_RELATIVE}/venv/__init__.py`,
+			])
+				if (!existsSync(join(root, relative))) missing.push(relative);
+			let wheels = [];
+			try {
+				wheels = readdirSync(
+					join(root, STDLIB_RELATIVE, "ensurepip", "_bundled"),
+				).filter((name) => /^pip-.*\.whl$/.test(name));
+			} catch {
+				// Reported as a missing path below rather than as a thrown error, so
+				// one failing check names every half that is absent.
+			}
+			if (wheels.length === 0)
+				missing.push(`${STDLIB_RELATIVE}/ensurepip/_bundled/pip-*.whl`);
+			if (missing.length > 0)
+				throw new Error(`the seed cannot build a venv: ${missing.join(", ")}`);
+			return `venv bootstrap present (${wheels.join(", ")})`;
+		},
+	);
+}
+
 /** A failure entry shaped like the other checks, so the CLI reports it alike. */
 export function bundledBytecodeCheck(appPath, options = {}) {
 	const found = findBundledBytecode(appPath, options);
@@ -503,6 +693,13 @@ export function verifyArtifacts({
 		bundledBytecodeCheck(path),
 		bundledPythonCheck(path, { run, expectArch: arch }),
 		privatePythonSeedCheck(path, { expectArch: arch }),
+		// The three halves of the seed's weight, each asserted where the build
+		// assembled it: the content nothing imports, the execute bits that mean
+		// nothing in a bundle, and the venv bootstrap the pruning must not have
+		// reached.
+		prunedSeedCheck(path),
+		seedModeCheck(path),
+		seedBootstrapCheck(path),
 	];
 	for (const appPath of appPaths) {
 		if (!existsSync(appPath)) {
@@ -511,12 +708,15 @@ export function verifyArtifacts({
 		}
 		log(`Checking app: ${appPath}`);
 		results.push(...runChecks({ appPath, dmgPath: null, run }));
-		// Neither of the next three is a `codesign` question: all are about what the
+		// Neither of the next six is a `codesign` question: all are about what the
 		// build assembled, and they fail with the offending paths so the fix is
 		// obvious.
 		results.push(bundledBytecodeCheck(appPath));
 		results.push(bundledPythonCheck(appPath, { run }));
 		results.push(privatePythonSeedCheck(appPath));
+		results.push(prunedSeedCheck(appPath));
+		results.push(seedModeCheck(appPath));
+		results.push(seedBootstrapCheck(appPath));
 	}
 	for (const dmgPath of dmgPaths) {
 		if (!existsSync(dmgPath)) {
@@ -569,6 +769,17 @@ export function verifyArtifacts({
 		if (interpreters) {
 			log(
 				`The app does not ship the bundled interpreter its architecture needs: ${interpreters.output}. The afterPack step in scripts/prune-python-resource.mjs keeps only that tree, and it runs before signing, so fix the build rather than the bundle.`,
+			);
+		}
+		// Both remedies below are in the seeding step rather than in the signing
+		// step, so they are named here: a reader sent looking at signatures would be
+		// looking in the wrong place.
+		const seed = failures.find((result) =>
+			["app-pruned-python-seed", "app-seed-exec-bits"].includes(result.id),
+		);
+		if (seed) {
+			log(
+				`The bundled seed is not the pruned one: ${seed.output}. scripts/setup-python-resource.sh runs scripts/prune-python-seed.mjs over the tree it downloads, so fix the build rather than the bundle.`,
 			);
 		}
 	}
