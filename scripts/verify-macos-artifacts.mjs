@@ -698,7 +698,6 @@ export function verifyArtifacts({
 		// nothing in a bundle, and the venv bootstrap the pruning must not have
 		// reached.
 		prunedSeedCheck(path),
-		prunedSeedCheck(path),
 		seedModeCheck(path),
 		seedBootstrapCheck(path),
 	];

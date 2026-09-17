@@ -47,10 +47,16 @@
  * WHAT THIS COSTS AN EXISTING INSTALL: NOTHING - and the obvious claim here
  * was wrong before this comment said otherwise. `runtimeManifest` records each
  * entry's mode and `runtimeId` is the sha256 of that manifest, so clearing
- * these bits DOES change the identity (measured: the unpruned seed hashes to
- * 03782941..., the pruned one to 3b120dac..., and between the two trees 0 files
- * differ in bytes while 23 differ in mode). It does not follow that an update
- * re-provisions. `prepareManagedPython` returns a published selection whose
+ * these bits DOES change the identity. Measured on the tree
+ * `setup-python-resource.sh` assembles for arm64: the seed hashes to
+ * `d84351e5...` before this prune and `ef2c1ab1...` after it, over 0 byte
+ * differences and 23 mode-only differences between the two trees. A digest
+ * names ONE exact tree and is not portable between copies of the same seed -
+ * an install's own copy hashes to its own value - so a digest quoted anywhere
+ * should say which tree it belongs to; `ef2c1ab1...` is the shipped arm64 seed,
+ * and the value an install records in `selected-environment.json` when it
+ * provisions from it. None of that means an update re-provisions.
+ * `prepareManagedPython` returns a published selection whose
  * `inspectManagedSelection` verdict is `ready` and never compares that runtime
  * to the CURRENT seed - `publishedRuntimeIsReusable`, the one comparison that
  * does, is read only on the missing/reap path - and on darwin the installer
