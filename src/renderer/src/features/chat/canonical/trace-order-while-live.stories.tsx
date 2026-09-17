@@ -590,15 +590,19 @@ export const AfterLive: Story = {
 		 * sentence, so the clause stays and the rest was shortened until the ink bands
 		 * measured two again.
 		 */
-		// A compose frame never ran, so nothing dates it either — and it is not this
-		// rule's business (#312 refuses a finished-dictation compose frame). Named
-		// here rather than counted away, because "none is painted" would be false.
+		// A compose frame never ran, so nothing dates it either — the same rule the
+		// settled ends get below, which is why it too is refused now that it shares
+		// the clause (#312). Named here rather than counted away, because the row
+		// ITSELF is what moved: it was this set's one arrival-stamped row until the
+		// fold onto #312, and it is the reason the panel reads 0. Ordering is the
+		// other half of the fact: the pane's last record row is the turn's in-flight
+		// call, because the compose announcement is no longer painted under it.
 		const composing = SEED.filter((event) => event.type === "tool_call_compose")
 			.map((event) => String(event.tool_call_id))
 			.join(", ");
 		return (
 			<Frame
-				caption={`After: the harvested seed (${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} unable to name a command) through the shipped fold. Its last record row IS the one still stamped at the arrival (${composing}) — the compose frame, which never ran and is #312's half of the clause — with the in-flight ${inFlight?.tool_name} immediately above it and no settled call's row painted at the arrival at all.`}
+				caption={`After: the harvested seed (${FIXTURE.derivation.seed_ends} retained ends, ${FIXTURE.derivation.unlabelled_ends} unable to name a command) through the shipped fold. Its last record row is the turn's in-flight ${inFlight?.tool_name}, and NO row is stamped at the arrival — the clockless settled ends and the seed's one compose frame (${composing}) are refused alike, the compose row's verdict being #312's half of the same clause.`}
 				transcript={transcript}
 				rows={injected(transcript, ARRIVAL_MS)}
 				waiting={FIXTURE.seed.streaming}

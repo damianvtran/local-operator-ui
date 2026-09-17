@@ -2316,11 +2316,47 @@ export const STORIES = [
 	["chat-stale-seed-order--after-arrival", 1280, 800],
 	["chat-stale-seed-order--before-seam", 1280, 800],
 	["chat-stale-seed-order--after-seam", 1280, 800],
+	/* The phantom compose rows: the four rows the operator photographed stuck at
+	   the bottom of a conversation waiting on subagents — `hub composing 2.0 KB`
+	   and three `wait composing` rows, all of them calls the harness NEVER RAN.
+	   Built by the SHIPPED reducer from the real snapshot's frames
+	   (`scripts/fixtures/phantom-compose-rows.json`), and the states are the
+	   contract's endings rather than a montage: `arrival` is the seed as it
+	   arrives, `settled`/`settled-open` the verdict on the row its own
+	   announcement left, `settled-empty` a call that composed nothing,
+	   `queued`/`queued-seeded` the dictation ending with and without a row on
+	   screen to settle, and `durable-twin`/`durable-twin-open` the case where the
+	   transcript's own row is loaded.
+
+	   THE `before` HALF IS NOT THIS TABLE'S, and that is the point of it: those
+	   frames are the same states rendered by the BASE tree
+	   (`phantom-compose-rows-before.stories.tsx`, deliberately not listed here),
+	   captured in a worktree at the base commit and moved under
+	   `chat-phantom-compose-rows/before/`, which `manifest.json` declares as a
+	   supplementary set with its own `source`. A `before` captured from this tree
+	   photographs the fix — the first pass of this set did exactly that, and
+	   agent review round 1 caught it by folding the committed fixture through the
+	   real pre-fix reducer and finding the fields identical and the order not.
+	   `README.md` in the set carries the recipe.
+
+	   `settled-narrow` is captured at 420px because the fixed summary is eleven
+	   characters longer than the composing one it replaced, so the shed order
+	   under width pressure is part of what this change has to show. */
+	["chat-phantom-compose-rows--after-arrival", 1280, 800],
+	["chat-phantom-compose-rows--after-settled", 1280, 800],
+	["chat-phantom-compose-rows--after-settled-open", 1280, 800],
+	["chat-phantom-compose-rows--after-settled-empty", 1280, 800],
+	["chat-phantom-compose-rows--after-settled-narrow", 420, 800],
+	["chat-phantom-compose-rows--after-queued", 1280, 800],
+	["chat-phantom-compose-rows--after-queued-seeded", 1280, 800],
+	["chat-phantom-compose-rows--after-turn-death", 1280, 800],
+	["chat-phantom-compose-rows--after-durable-twin", 1280, 800],
+	["chat-phantom-compose-rows--after-durable-twin-open", 1280, 800],
 	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
 	   not cover: its fixture is a finished turn (`streaming: false`), where a
 	   clockless frame that would create a row is refused. With a turn in flight
-	   the shipped fold paints it at the reader's arrival instead, and the
-	   operator's report is that state — opening session `c1c7072b735c` mid-turn
+	   the fold this change replaces painted it at the reader's arrival instead, and
+	   the operator's report is that state — opening session `c1c7072b735c` mid-turn
 	   painted the OPENING turn's eight `bash` calls, an hour earlier, under the
 	   running `wait`, each showing its output's first line where the command
 	   belongs. The `After` frames are built by the SHIPPED reducer from the real

@@ -90,7 +90,49 @@ export type ToolRowOutcome =
 	 * column. The TUI's receipt blocks draw neither either
 	 * (`PeerMessageBlock._build_row`, `WakeBlock._build_row`).
 	 */
-	| "receipt";
+	| "receipt"
+	/**
+	 * A call the harness announced and then NEVER RAN (`ToolCallComposeEvent.
+	 * not_run_reason`): parked at planning on invalid arguments or an unknown
+	 * tool, or skipped by steering.
+	 *
+	 * A state of its own rather than `error`, because it is not a result. The
+	 * call returned nothing, so `error` would claim a tool reported a failure,
+	 * and `interrupted` would blame a stop that never happened. What the row has
+	 * instead is the harness's own verdict, which the caller renders as the row's
+	 * body, and a record of how far the model got before it was told nothing
+	 * would receive the call.
+	 *
+	 * It wears the error ink on the glyph and the summary, and the cross glyph, which
+	 * is the TUI's treatment (`ToolCard.mark_not_run` settles the card into the
+	 * `tool-error` class: `never sent · N composed` under the harness's reason) — a
+	 * cross says the call did not succeed, which is true, and the LABEL is what
+	 * keeps it apart from a failure: the row's summary reads `never sent`, never
+	 * `failed`, and its accessible label is "never ran".
+	 *
+	 * ONE CHANNEL DELIBERATELY DOES NOT FOLLOW, and it is the region one: the
+	 * `bg-danger-wash` ground is gated on the `error` outcome alone
+	 * (`failed = outcome === "error"`), and so is the danger ink on the tool ICON,
+	 * because both mark a call that returned a FAILED RESULT — this row returned
+	 * no result at all, which is the whole state. So a reader gets the same words,
+	 * glyph and name ink as a failure, on the plain surface, and no wash claiming a
+	 * result that does not exist.
+	 *
+	 * SCOPE OF THAT DISTINCTION, because it is on the LIVE path only. A row read
+	 * back from the durable transcript is the harness's record of a call it did
+	 * send and that came back an error — the never-run verdicts settle a row the
+	 * composing surface announced and leave no mark on the durable row — so such a
+	 * row is not this state and must not be dressed as one: it wears the failure
+	 * treatment identifier-for-identifier against the comparison surface
+	 * (`chat-tool-rows/states`), which is exactly right for a call that really
+	 * failed.
+	 *
+	 * The TURN-DEATH ending also lands here, one glyph away: a row still being
+	 * dictated or waiting to run when the turn ended was never sent either, and
+	 * only a verdict gives it a reason, so a death with no verdict has no body and
+	 * keeps the interrupt's own state instead (see `neverSent`).
+	 */
+	| "not-run";
 
 /**
  * The ledger row's own height, overriding the shared disclosure default.
@@ -230,6 +272,11 @@ const CATEGORY_INK: Record<ToolCategory, string> = {
 const rowNameInk = (outcome: ToolRowOutcome, toolName: string): string => {
 	if (outcome === "running") return "text-ink";
 	if (outcome === "error") return "text-danger";
+	// `not-run` takes the error ink with the glyph and for the same reason: the
+	// call did not succeed. The row's summary is where the distinction from a
+	// tool failure is stated (`never sent`, not `failed`), because ink is a
+	// second channel and never the only one.
+	if (outcome === "not-run") return "text-danger";
 	if (outcome === "receipt") return "text-ink-muted";
 	return CATEGORY_INK[toolCategory(toolName)];
 };
@@ -279,6 +326,12 @@ const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
 	success: "succeeded",
 	error: "failed",
 	interrupted: "interrupted",
+	// NOT "failed": the call produced no result to fail, and the harness's own
+	// verdict names what stopped it before it was sent to a tool. Announced
+	// rather than silent for the same reason `error` is: it is a settled outcome
+	// the row is the only carrier of, and a reader who cannot see the glyph would
+	// otherwise hear only the size.
+	"not-run": "never ran",
 	// Nothing to report: a receipt is not an action, so it has no outcome to
 	// announce. Silence here is not the running row's silence — that one is
 	// covered by the working line, which names the running phase in turn.
@@ -343,15 +396,20 @@ const StatusCluster = ({
 	const Glyph =
 		outcome === "success"
 			? SuccessGlyph
-			: outcome === "error"
-				? ErrorGlyph
+			: outcome === "error" || outcome === "not-run"
+				? // The cross is the TUI's mark for this settlement (`mark_not_run`
+					// puts the card in the error class). Shape is the primary channel, so
+					// the DISTINCTION from a tool failure rides the summary and the
+					// accessible label rather than a second invented glyph — the three
+					// outcome glyphs are a contract, and a fourth would weaken it.
+					ErrorGlyph
 				: outcome === "interrupted"
 					? InterruptedGlyph
 					: null;
 	const glyphInk =
 		outcome === "success"
 			? "text-success"
-			: outcome === "error"
+			: outcome === "error" || outcome === "not-run"
 				? "text-danger"
 				: // `interrupted` is deliberately hueless: a stop is not a failure,
 					// and giving it danger ink would report the user's own interrupt as
