@@ -158,7 +158,9 @@ if (ROSTER > 0) {
 					payload: {
 						kind: "message",
 						role: "user",
-						content: [{ text: `Child job ${index + 1}: check the reveal's target.` }],
+						content: [
+							{ text: `Child job ${index + 1}: check the reveal's target.` },
+						],
 					},
 				}),
 				JSON.stringify({
@@ -176,10 +178,16 @@ if (ROSTER > 0) {
 				join(childDir, "transcript.jsonl"),
 				`${childLines.join("\n")}\n`,
 			);
-			writeFileSync(join(childDir, "created_at.json"), JSON.stringify(now - 800));
+			writeFileSync(
+				join(childDir, "created_at.json"),
+				JSON.stringify(now - 800),
+			);
 			writeFileSync(
 				join(childDir, "desktop.json"),
-				JSON.stringify({ cwd: process.env.HOME ?? homedir(), origin: "subagent" }),
+				JSON.stringify({
+					cwd: process.env.HOME ?? homedir(),
+					origin: "subagent",
+				}),
 			);
 			writeFileSync(
 				join(childDir, "title.json"),

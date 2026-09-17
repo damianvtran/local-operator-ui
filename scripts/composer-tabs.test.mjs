@@ -263,7 +263,8 @@ const MESSAGE_INPUT = COMPOSER;
 const MEASURE = "src/renderer/src/features/chat/chat-measure.ts";
 const SCROLL_BUTTON =
 	"src/renderer/src/features/chat/components/scroll-to-bottom-button.tsx";
-const PANEL = "src/renderer/src/features/chat/components/run-details/run-panel.tsx";
+const PANEL =
+	"src/renderer/src/features/chat/components/run-details/run-panel.tsx";
 const CONTENT = "src/renderer/src/features/chat/components/chat-content.tsx";
 
 /* ---------------------------------------------------------------- */
