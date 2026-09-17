@@ -222,6 +222,49 @@ const LEGACY_CATALOGUE_POLL_MS = 5_000;
  */
 const CATALOGUE_SAFETY_POLL_MS = 30_000;
 
+/*
+ * The words this sentence uses for a count of at most six; digits beyond that,
+ * because "Eleven built-in agents" is a figure the eye has to translate back.
+ */
+const BUILTIN_COUNT_WORDS = [
+	"No",
+	"One",
+	"Two",
+	"Three",
+	"Four",
+	"Five",
+	"Six",
+];
+
+/**
+ * The sentence that offers the built-ins, built from the names actually offered.
+ *
+ * It replaced copy that named activities rather than roles — "roles for coding,
+ * review, design, research and coordination" — with no count at all: "research"
+ * is not among the packaged profiles, architecture and testing went unnamed, and
+ * the number only appeared once the batch had started ("Installing 1 of 6"), so
+ * the sentence that sets the expectation for the whole flow was wrong about
+ * both what is on offer and how much of it there is (UX round 1, U6). Derived
+ * from the rows the backend sent rather than written by hand, because the
+ * catalogue is the authority on what can be installed and a second list here
+ * can disagree with it.
+ */
+const builtinOfferSentence = (
+	builtins: readonly { name: string }[],
+): string => {
+	const names = builtins.map((builtin) => builtin.name);
+	const count = BUILTIN_COUNT_WORDS[names.length] ?? String(names.length);
+	const plural = names.length === 1 ? "agent" : "agents";
+	const verb = names.length === 1 ? "is" : "are";
+	const list =
+		names.length === 1
+			? names[0]
+			: `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+	return `${count} built-in ${plural} ${verb} ready to install — ${list}. You can edit ${
+		names.length === 1 ? "it" : "them"
+	} once installed.`;
+};
+
 export function ChatSidebar({
 	selectedConversation,
 	onSelectConversation,
@@ -1260,15 +1303,33 @@ export function ChatSidebar({
 											data-testid="agents-sidebar-empty"
 										>
 											<p className="text-body-sm text-ink">No agents yet</p>
-											<p className="text-meta text-ink-muted">
-												Built-in agents are ready to install. They give you
-												roles for coding, review, design, research and
-												coordination — you can edit them once installed.
-											</p>
-											<InstallBuiltinAgents
-												builtins={availableBuiltins}
-												presentation="primary"
-											/>
+											{/*
+											 * The offer is CONDITIONAL on there being something to offer, and it
+											 * names what that is.
+											 *
+											 * It used to render unconditionally: on a backend with no packaged
+											 * profiles the section still said "Built-in agents are ready to
+											 * install" while offering nothing that installs one — the same
+											 * paragraph, pixel-identical, in a state whose whole point is that
+											 * there is nothing to install (design round 1, D3). And what it
+											 * promised was a list of activities rather than the roles on offer,
+											 * including a "research" role that is not among the packaged
+											 * profiles, with no count at all until the batch had started (UX
+											 * round 1, U6). Derived from the rows the backend sent, because
+											 * the catalogue is the authority on what can be installed and a
+											 * hand-written list can disagree with it.
+											 */}
+											{availableBuiltins.length > 0 && (
+												<>
+													<p className="text-meta text-ink-muted">
+														{builtinOfferSentence(availableBuiltins)}
+													</p>
+													<InstallBuiltinAgents
+														builtins={availableBuiltins}
+														presentation="primary"
+													/>
+												</>
+											)}
 										</div>
 									) : (
 										<>
