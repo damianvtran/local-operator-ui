@@ -296,17 +296,17 @@ function groupLabelName(
  */
 export function tabFloor(active: boolean, pills: number): string {
 	if (active) {
-		if (pills >= 4) return "min-w-[26rem] @max-2xl:min-w-62";
-		if (pills === 3) return "min-w-96 @max-2xl:min-w-56";
-		if (pills === 2) return "min-w-96 @2xl:@max-6xl:min-w-80 @max-2xl:min-w-50";
-		if (pills === 1) return "min-w-80 @2xl:@max-6xl:min-w-72 @max-2xl:min-w-33";
-		return "min-w-56 @max-2xl:min-w-30";
+		if (pills >= 4) return "min-w-[26rem] @max-2xl:min-w-101";
+		if (pills === 3) return "min-w-96 @max-2xl:min-w-91";
+		if (pills === 2) return "min-w-96 @2xl:@max-6xl:min-w-80 @max-2xl:min-w-77";
+		if (pills === 1) return "min-w-80 @2xl:@max-6xl:min-w-72 @max-2xl:min-w-65";
+		return "min-w-56 @max-2xl:min-w-48";
 	}
-	if (pills >= 4) return "min-w-96 @max-2xl:min-w-62";
-	if (pills === 3) return "min-w-80 @max-2xl:min-w-56";
-	if (pills === 2) return "min-w-72 @2xl:@max-6xl:min-w-60 @max-2xl:min-w-50";
-	if (pills === 1) return "min-w-56 @2xl:@max-6xl:min-w-48 @max-2xl:min-w-33";
-	return "min-w-44 @2xl:@max-6xl:min-w-36 @max-2xl:min-w-30";
+	if (pills >= 4) return "min-w-96 @max-2xl:min-w-84";
+	if (pills === 3) return "min-w-80 @max-2xl:min-w-74";
+	if (pills === 2) return "min-w-72 @2xl:@max-6xl:min-w-60 @max-2xl:min-w-60";
+	if (pills === 1) return "min-w-56 @2xl:@max-6xl:min-w-48 @max-2xl:min-w-48";
+	return "min-w-44 @2xl:@max-6xl:min-w-36 @max-2xl:min-w-31";
 }
 
 /**
@@ -758,21 +758,30 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						 *
 						 *   inactive   0:176->138  1:224->118  2:288->133  3:320->111  4:384->133
 						 *   active     0:224->124  1:320->146  2:384->161  3:384->107  4:416->97
+						 *   narrow     inactive 0-4:124/192/240/296/336->86/86/85/87/85
+						 *              active   0-4:192/260/308/364/404->154/154/153/155/153
 						 *
-						 * EVERY ROW AT EVERY RUNG OF THE BASE AND MIDDLE TIERS CLEARS THE 85px THIS
-						 * FILE PROMISES, and that is the whole point of the cap: before it, the
-						 * five-chip inactive row yielded to 72px. The invariant is `title >= 85` at
-						 * every reachable count, asserted where a pure function belongs
-						 * (`scripts/browser-chrome.test.mjs`) rather than read off a frame.
+						 * EVERY ROW AT EVERY RUNG OF EVERY TIER CLEARS THE 85px THIS FILE PROMISES, and
+						 * that is the whole point of the cap: before it, the five-chip inactive row
+						 * yielded to 72px. The invariant is `title >= 85` at every reachable count,
+						 * asserted where a pure function belongs (`scripts/browser-chrome.test.mjs`)
+						 * rather than read off a frame.
 						 *
-						 * THE NARROW TIER MAKES A SMALLER PROMISE AND ALWAYS DID: at the pane's own
-						 * width the floors are a step down, the title yields past two pills, and the
-						 * button's clip is the backstop - `min-w-30` is 120px, which cannot hold a
-						 * mark, a chip and 85px of title at any arithmetic. What the cap owes that
-						 * tier is that it never makes a row WORSE, and that is asserted too: the same
-						 * rung is kept for the same count and the collapse chip (36px) is narrower
-						 * than the two pills it replaces (43 and 48), so every capped row's title
-						 * widens.
+						 * THE NARROW TIER CARRIES THE SAME PROMISE NOW, AND THE COST IS THE ARITHMETIC
+						 * RATHER THAN A PREFERENCE (design review round 2, D1, settled as option 1 of the
+						 * two that finding priced). Below `@max-2xl` the active row's cluster is
+						 * `absolute`, so it costs no width and the promise there is
+						 * `floor - 32 - pills - 6 x (pills + 1) >= 85`: the raised rungs are inactive
+						 * 124/192/240/296/336px and active 192/260/308/364/404px for 0-4 pills, which
+						 * leave 86/86/85/87/85 and 154/154/153/155/153px of title. What that buys is the
+						 * guarantee the operator asked for - no title is ever squeezed below the floor,
+						 * at any count, at any width the pane renders - and what it costs is two numbers
+						 * in a 640px pane: the common CHIP-LESS active row goes 120 -> 192px, and the
+						 * worst 4-pill row 248 -> 404px. Accepted knowingly, because the tabs that no
+						 * longer fit are still REACHABLE - the pinned control is the strip's own overflow
+						 * list, moved in-band by this change so nothing occludes it - and because the
+						 * narrowing tool is the pane's own scope switch, which shows one conversation's
+						 * tabs on request rather than all of them by default.
 						 *
 						 * THE ACTIVE ROW STILL TAKES ONE STEP PAST THE SPACING SCALE, and it is named
 						 * rather than hidden: `min-w-[26rem]` is the only arbitrary length left, for

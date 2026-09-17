@@ -2270,9 +2270,22 @@ async function sceneBrowserPane(cdp) {
 		const fourFrame = await captureSettled(cdp, "browser-pane-strip-four");
 		note("strip at the pane's default width, four tabs", JSON.stringify(four));
 		note("frame", JSON.stringify(fourFrame));
+		/*
+		 * WHAT THE RAISED NARROW RUNGS CHANGED HERE, and it is the cost the ruling was
+		 * accepted with (design review round 2, D1, option 1): four agent tabs no longer fit
+		 * the pane's own 640px WHOLE, because the floor a one-chip row needs there is 192px
+		 * inactive and 260px active rather than 132/120. The four-tab state this used to
+		 * assert as "not overflowing" is now the state the pinned control exists for, so the
+		 * check asserts the new arithmetic instead of the old: the rows overflow, the control
+		 * is on screen, and the count it carries is the difference.
+		 */
 		check(
-			"four tabs fit the pane's own width WHOLE, so the state D1 filed is not reachable there",
-			four.rows >= 4 && four.whole === four.rows && four.control === null,
+			"four tabs overflow the pane's OWN width now, and the pinned control is what makes them reachable (D1's accepted cost)",
+			four.rows >= 4 &&
+				four.whole < four.rows &&
+				four.control !== null &&
+				four.control.text.replace(/[^0-9]/g, "") ===
+					String(four.rows - four.whole),
 			JSON.stringify(four),
 		);
 		for (let index = 0; index < 2; index += 1) {
