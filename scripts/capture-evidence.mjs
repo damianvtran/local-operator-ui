@@ -4287,9 +4287,14 @@ const main = async () => {
 	 *   - `frames`, `surfaces`, `themes`, `srcTree` and `scriptsTree` are
 	 *     RE-DERIVED from the merged tree, never taken from either side.
 	 *
-	 * The gate cannot catch a `head` that names the wrong tree: it asks whether
-	 * the citation resolves and is reachable, and main's own commit does both.
-	 * The same rule is stated for readers in the manifest's `citationConvention`.
+	 * The gate cannot catch a `head` that names the wrong tree, and BOTH halves of
+	 * what it does ask are worth naming so this is auditable rather than a summary:
+	 * `citationFailures` asks whether the sha RESOLVES, and
+	 * `citationAncestryFailures` (`check-evidence.mjs:812`) asks whether it is an
+	 * ANCESTOR OF `HEAD`. Main's own commit satisfies both, which is exactly why
+	 * the gate could not see the round-6 defect; neither half asks whether the tree
+	 * a citation names carries the frames this record declares. The same rule is
+	 * stated for readers in the manifest's `citationConvention`.
 	 */
 	const manifestPath = join(OUT, "manifest.json");
 	let previous = {};
