@@ -70,6 +70,7 @@ const updaterStub = () => ({
 	onBackendUpdateDevMode: () => () => {},
 	onBackendUpdateNotAvailable: () => () => {},
 	onBackendUpdateCompleted: () => () => {},
+	onBackendUpdateProgress: () => () => {},
 	onBackendUpdateError: () => () => {},
 	onBackendUpdateManualRequired: () => () => {},
 	onUpdateDownloaded: () => () => {},

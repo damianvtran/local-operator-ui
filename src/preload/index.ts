@@ -2,6 +2,7 @@ import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type {
+	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
 	BackendUpdateInfo,
 } from "../main/update-service";
@@ -321,7 +322,11 @@ const api = {
 			};
 		},
 		onBackendUpdateNotAvailable: (
-			callback: (info: { version: string }) => void,
+			callback: (info: {
+				version: string;
+				runningVersion?: string | null;
+				restartable?: boolean;
+			}) => void,
 		) => {
 			const handler = (_event, info) => callback(info);
 			ipcRenderer.on("backend-update-not-available", handler);
@@ -329,11 +334,29 @@ const api = {
 				ipcRenderer.removeListener("backend-update-not-available", handler);
 			};
 		},
-		onBackendUpdateCompleted: (callback: () => void) => {
-			const handler = () => callback();
+		onBackendUpdateCompleted: (
+			callback: (completion: BackendUpdateCompletion | null) => void,
+		) => {
+			/*
+			 * The payload is passed through, not discarded, and it is allowed to be
+			 * null: a plain successful update still sends null, while the two cases
+			 * where the server serving the conversation did NOT move (a daemon this
+			 * app adopted, an attempt that landed unattended) send both readings
+			 * (reviews R1-3, UX U1/U6).
+			 */
+			const handler = (_event, completion) => callback(completion ?? null);
 			ipcRenderer.on("backend-update-completed", handler);
 			return () => {
 				ipcRenderer.removeListener("backend-update-completed", handler);
+			};
+		},
+		onBackendUpdateProgress: (
+			callback: (progress: { phase: "installing" | "restarting" }) => void,
+		) => {
+			const handler = (_event, progress) => callback(progress);
+			ipcRenderer.on("backend-update-progress", handler);
+			return () => {
+				ipcRenderer.removeListener("backend-update-progress", handler);
 			};
 		},
 		/**
@@ -375,6 +398,9 @@ const api = {
 				detail?: string;
 				latestVersion?: string | null;
 				currentVersion?: string | null;
+				/** The version the INSTALL reports, when it is not the running one. */
+				installVersion?: string | null;
+				runningVersion?: string | null;
 				sourceBuild?: boolean;
 			}) => void,
 		) => {

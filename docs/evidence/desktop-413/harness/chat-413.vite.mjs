@@ -131,6 +131,7 @@ for (const name of [
 	"onUpdateInstallInFlight", "onBeforeQuitForUpdate",
 	"onBackendUpdateAvailable", "onBackendUpdateDevMode",
 	"onBackendUpdateNotAvailable", "onBackendUpdateCompleted",
+	"onBackendUpdateProgress",
 	"onBackendUpdateError", "onBackendUpdateManualRequired",
 ]) updater[name] = noop;
 window.api = {

@@ -96,6 +96,7 @@ for (const name of [
 	"onUpdateInstallInFlight", "onBeforeQuitForUpdate",
 	"onBackendUpdateAvailable", "onBackendUpdateDevMode",
 	"onBackendUpdateNotAvailable", "onBackendUpdateCompleted",
+	"onBackendUpdateProgress",
 	"onBackendUpdateError", "onBackendUpdateManualRequired",
 ]) updater[name] = noop;
 updater.getLastInstallAttempt = async () => null;
