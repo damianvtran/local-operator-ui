@@ -72,8 +72,8 @@ export type ThemePalette = {
 	/** One step recessed: wells, tracks, code grounds, footers. */
 	sunken: string;
 	/**
-	 * The current row's own ground: a SHALLOW step off `surface`, in the
-	 * direction the mode runs (darker on light themes, lighter on dark ones).
+	 * The current row's own ground: a step off `surface`, in the direction the
+	 * mode runs (darker on light themes, lighter on dark ones).
 	 *
 	 * A selection is not a well. Before this role existed the current row was
 	 * painted `sunken`, which is always RECESSED — a hole in the panel — and
@@ -86,21 +86,75 @@ export type ThemePalette = {
 	 * row could not be quietened by moving that value: the row needed a ground of
 	 * its own.
 	 *
-	 * ## The band, and the two floors it sits between
+	 * ## The step is lightness, and its DIRECTION is the half that is asserted
 	 *
-	 * Authored to land at **ΔE00 2.0-2.5 from `surface`** — above the
-	 * perceptual threshold (below it a row is drawn and not seen, the defect
-	 * `docs/evidence/chat-sidebar-selection/README.md` records) and well under
-	 * `sunken`'s 3.75-14.94 (above that it stops being a highlight and becomes
-	 * the box the operator reported). Measured per palette by
-	 * `scripts/contrast-contract.mjs`'s `highlight` block; the authored values
-	 * land 2.18-2.28.
+	 * The role was first authored to land at **ΔE00 2.0-2.5 from `surface`**, for
+	 * a selection the operator had asked to be SUBTLE. He has since seen it
+	 * rendered and reported the current row as lost beside a hovered neighbour,
+	 * so the intent is reversed and the step now lands at **ΔE00 4.0 or better on
+	 * every palette in the tree** — the twelve this change was authored against at
+	 * 4.01-4.15, and the forty-seven the theme port added at 4.00-5.97 (`rosePine` sets the top),
+	 * re-authored
+	 * to this rule in the same round. It is a LIGHTNESS step first — the row sits
+	 * **3.81 to 6.62 `L*`** from its panel on those twelve, and **3.0 or better**
+	 * across the rest except six palettes whose OWN ink caps the lightness route
+	 * below 3 `L*`: those take the cap, pay the band on the accent cast, and are
+	 * pinned in `scripts/contrast-contract.mjs` with the ink number — and chroma pays
+	 * only what is left over. The cast's OWN cause is narrower than it reads: of the
+	 * forty-one palettes that take it, the hover step is the binding wall for only
+	 * TWO (`kanagawaWave`, `rosePineMoon`); on the other thirty-nine what binds is
+	 * the ink cap and the band, and the cast is how those two are paid together. Three palettes had reached the band on chroma alone
+	 * (tokyoNight, `localOperatorDark`, `localOperatorLight`), at a `L*` step
+	 * *smaller* than the ΔE00 2.2 value they had already reported as invisible;
+	 * they were re-authored to +5.09, +3.81 and −4.75 `L*` respectively, and
+	 * `scripts/contrast-contract.mjs` now asserts **both the direction and a floor
+	 * on the step**, so no palette can satisfy the band while landing darker on a
+	 * dark theme. That is the trap this doc exists to close: ΔE00 is a budget, and
+	 * a chroma-bought step can spend all of it while moving the wrong way.
 	 *
-	 * The top of the band is bounded by something the row does not control: a
-	 * row's `hover:` step is `elevated`, so a hovered row must STILL be a
-	 * different ground from the current one. That pair's worst case is ΔE00
-	 * 2.52 (obsidian) and the contract asserts it at the field floor, which is
-	 * what stops the band running up into the hover step.
+	 * ## The rule a porting author follows
+	 *
+	 * Take the `L*` step first, at the panel's own hue, as far as the ink floors
+	 * allow; buy only the shortfall to the band's floor of ΔE00 4.0 on the chroma
+	 * axis at that same hue. Chroma may pay a remainder; it may not pay the step.
+	 * Some of the twelve still carry a partly chroma-bought step (dracula 1.20x
+	 * the panel's chroma, monokai 1.66x, obsidian 1.90x, iceberg 3.31x, each
+	 * recorded at its own value) and those are the palettes a re-authoring should
+	 * take next. The port's forty-seven were re-authored to this rule when the
+	 * raised band landed, at the branch the port itself used: a neutral step (its
+	 * branch L) where the palette's ramp affords one, a cast toward `accent` (its
+	 * branch H) where the hover step above the row blocks the lightness route.
+	 *
+	 * ## What bounds it
+	 *
+	 * Below: every ink on the ground keeps § 3's floor with headroom — `ink` at
+	 * 7:1, `ink-muted` and `ink-dim` at 4.5:1 — and `ink-dim` is the binder,
+	 * because the caps and the `· lopdev` binding INSIDE a current row are drawn
+	 * in it. That floor is what caps the step on the palettes where it stops
+	 * short of the band's top, and it is the reason the row's ground cannot simply
+	 * be made louder on those palettes.
+	 *
+	 * Against the app's other selected-row mark: `accentWash` is what an active or
+	 * selected row wears elsewhere (`bg-accent-wash`), and this role is a step toward
+	 * the same family, so the two converge on a palette whose wash sits close to
+	 * `surface` — four of the port's palettes landed under the field floor that way and
+	 * were re-authored, and `rosePineDawn` cannot reach it at all (its ink caps the
+	 * route and the best cast it can afford measures 1.75), recorded as a pinned
+	 * exception. That pair is asserted beside the separations below.
+	 *
+	 * Beside it: a row's `hover:` step is `elevated`, so a hovered row must STILL
+	 * be a different ground from the current one — worst pair ΔE00 2.25
+	 * (localOperatorDark), asserted at the field floor. `elevated` is ALSO every
+	 * menu, popover and tooltip ground in the app, so it is not a value that can
+	 * come down to meet the selection: on eight of the twelve palettes it was measured
+	 * against (design round 1, D2), the hover
+	 * step remains the larger step off `surface` (up to 6.25 on radient), and the
+	 * current row is therefore marked by its ground plus `font-medium`. An earlier
+	 * round drew that second step as a 1px `outline-control` boundary; it is
+	 * retired, because that role is § 2's *sole boundary of a control* and the
+	 * ring rendered as the search field above the list (design round 1, D3). There
+	 * is no role in this contract for a selection boundary — adding one would be
+	 * role inflation for a mark the ground already carries.
 	 *
 	 * `highlight` is the ground the row is painted with; every ink on it is
 	 * asserted at its own floor, so it is a ground for text rather than a tint

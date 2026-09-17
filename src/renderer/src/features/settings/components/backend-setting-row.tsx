@@ -49,6 +49,7 @@ import {
 	isDraftDirty,
 	serialize,
 } from "./backend-settings-drafts";
+import { settingHelpId } from "./setting-combobox";
 import { SettingControl, controlSlot } from "./setting-control";
 import { ChangedDot } from "./settings-group-header";
 
@@ -75,6 +76,11 @@ export type BackendSettingRowProps = {
 	setting: BackendSetting;
 	draft: SettingDraft;
 	tier: SettingTier;
+	/**
+	 * The `hosting` this page will boot on, passed straight through to the
+	 * control: only the model fields read it, and only to narrow their list.
+	 */
+	effectiveHosting?: string;
 	/** The row's gate, when the wire says one exists. */
 	gate?: SettingGate | null;
 	saving: boolean;
@@ -95,6 +101,7 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 	onDraftChange,
 	onSave,
 	onReset,
+	effectiveHosting = "",
 }) => {
 	const gatedOff = Boolean(gate && !gate.on);
 	const dirty = isDraftDirty(setting, draft);
@@ -216,8 +223,16 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 					)}
 					{tier === "core" && setting.help && (
 						// Aligned under the label rather than under the gutter: it is
-						// the sentence that belongs to that label.
-						<p className="ml-5 text-meta text-ink-dim">{setting.help}</p>
+						// the sentence that belongs to that label. Its `id` is what the
+						// control describes itself by, so a screen reader hears why an
+						// empty model means the provider's own default rather than only
+						// the label and "combobox".
+						<p
+							id={settingHelpId(setting.key)}
+							className="ml-5 text-meta text-ink-dim"
+						>
+							{setting.help}
+						</p>
 					)}
 					{gateNote}
 				</div>
@@ -295,6 +310,15 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 								value={draft.value}
 								chains={draft.cascadeBase ?? undefined}
 								disabled={disabled}
+								effectiveHosting={effectiveHosting}
+								/* The row's help is on the page only on a CORE row; an advanced
+								   one keeps it behind its disclosure, where describing the field
+								   by it would name an element nobody rendered. */
+								helpId={
+									tier === "core" && setting.help
+										? settingHelpId(setting.key)
+										: undefined
+								}
 								onValueChange={(value) => onDraftChange({ ...draft, value })}
 								onChainsChange={(chains) =>
 									onDraftChange({ ...draft, cascadeBase: chains })

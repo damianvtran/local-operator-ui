@@ -89,10 +89,8 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --theme <localOperatorDark|localOperatorLight>  run ONE theme (the scene's default
- *                is both, which is only safe for a scene whose passes cannot leave
- *                state behind - the pins scenes run one theme per launch, see THEME)
- *   --scene <states|new-chat|palette|browser-pane|pins|pins-scroll|pins-search|none>  which built-in scene
+ *   --scene <states|new-chat|settings-model|settings-fields|palette|browser-pane|pins|pins-scroll|pins-search|none>
+ *                          which built-in scene to run (default: states)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -417,13 +415,20 @@ function record(label, body) {
 	transcript.push(`### ${label}\n\n\`\`\`\n${body}\n\`\`\`\n`);
 }
 
-function check(label, ok, detail) {
+function check(label, ok, detail, observed) {
 	if (!ok) failures += 1;
 	const status = ok ? "PASS" : "FAIL";
-	say(
-		`[${status}] ${label}${detail === undefined ? "" : `\n        ${detail}`}`,
-	);
-	record(label, `[${status}] ${detail ?? ""}`);
+	/*
+	 * `detail` says what went WRONG, so it is printed only when something did.
+	 * It used to print unconditionally, which put a failure explanation on a PASS
+	 * line - a reader grepping the log for the reason a check failed could not
+	 * tell the two apart, and the tell was the sentence itself (QA round 1, Q3).
+	 * What a PASS observed belongs in `observed`, which is where a check states
+	 * the thing it actually read rather than the thing it would have said.
+	 */
+	const extra = ok ? observed : detail;
+	say(`[${status}] ${label}${extra === undefined ? "" : `\n        ${extra}`}`);
+	record(label, `[${status}] ${extra ?? detail ?? ""}`);
 	return ok;
 }
 
@@ -4088,7 +4093,10 @@ const MODIFIER = { alt: 1, ctrl: 2, meta: 4, shift: 8 };
  * answers differently (`repeat`) and a chord left down would leak into the next
  * step's reading.
  */
-async function pressChord(cdp, { key, code, virtualKeyCode, modifiers = 0 }) {
+async function pressChord(
+	cdp,
+	{ key, code, virtualKeyCode, modifiers = 0, commands },
+) {
 	for (const type of ["keyDown", "keyUp"]) {
 		await cdp.send("Input.dispatchKeyEvent", {
 			type,
@@ -4097,6 +4105,14 @@ async function pressChord(cdp, { key, code, virtualKeyCode, modifiers = 0 }) {
 			modifiers,
 			windowsVirtualKeyCode: virtualKeyCode,
 			nativeVirtualKeyCode: virtualKeyCode,
+			/*
+			 * An EDITING chord needs Chromium's own editing command. A bare
+			 * modifier+key pair reaches the page and performs no edit, so `Cmd+A`
+			 * selected nothing and the next insert appended at the caret — measured
+			 * here, where it turned the scene's query into a concatenation (QA round
+			 * 2, Q5).
+			 */
+			...(type === "keyDown" && commands ? { commands } : {}),
 		});
 	}
 }
@@ -5033,6 +5049,793 @@ async function sceneNewChat(cdp) {
 }
 
 /**
+ * `settings-model`: the settings registry's provider and model fields, with
+ * their searchable list OPEN.
+ *
+ * ## Why this scene exists, and why no story can carry it
+ *
+ * These two rows shipped as bare `<Input>`s with no placeholder and no
+ * affordance, and the whole of the operator's report is about what they become:
+ * a field that OFFERS the providers and models the app actually has. The two
+ * claims that matter are not visual and not fixture-shaped:
+ *
+ *   1. the provider list is the WHOLE login registry — every provider the app
+ *      knows, signed in or not — because `hosting` is where a user names the
+ *      provider they intend to boot on, which may be one they have not logged
+ *      into yet;
+ *   2. the model list comes from `models.catalogue`, so it is the same rows the
+ *      `/model` picker shows.
+ *
+ * Both come from the desktop ops, so this scene needs a live, ISOLATED backend
+ * (`--backend`, plus a renderer built against the same URL) and a scratch
+ * profile whose onboarding wizard is already complete
+ * (`--seed-onboarding-complete`): without the first the settings section paints
+ * its offline surface, and without the second a first-run modal covers it.
+ *
+ * ## What it asserts that a frame cannot show
+ *
+ * - the placeholder, which is the one thing the row never had and which a
+ *   pixel cannot be read for (the wire sends no `placeholder`, so it is
+ *   supplied client-side from the row's source — see
+ *   `features/settings/backend-setting-combos.ts`);
+ * - that the list is OPEN (`aria-expanded`, a real `role="listbox"` in the DOM)
+ *   and that the option rows are the ones the backend sent, counted;
+ * - that typing narrows it, that Escape reverts the text, and that Enter on text
+ *   matching nothing COMMITS it — the "suggestions assist, they do not
+ *   constrain" contract, which is precisely the rule a combobox is most likely
+ *   to break;
+ * - that the row is never disabled while a list is unavailable, and that the
+ *   stored value a listing does not contain is still rendered.
+ *
+ * ## What it does not prove
+ *
+ * The pixels of a FOCUS state: a `headless` window is never shown and cannot be
+ * focused, so the field's focus ring is not what a user sees while typing (see
+ * `docs/agent-driver.md`, "What it cannot prove"). Nothing here depends on it —
+ * every assertion above is a DOM or state fact, not a ring.
+ */
+
+/** The row's own field, by the registry key it belongs to. */
+const settingField = (key) =>
+	`[data-setting-key="${key}"] input[role="combobox"]`;
+
+/**
+ * Poll a page expression until it is true, and report whether it ever was.
+ *
+ * A scene that sleeps a fixed interval instead is the shape that commits a
+ * frame of the state before the change (or after it has gone) and calls it
+ * evidence; every wait in this scene is therefore a predicate with a bound, and
+ * the bound being hit is asserted rather than absorbed.
+ */
+async function waitForScene(cdp, expression, attempts = 150) {
+	for (let i = 0; i < attempts; i++) {
+		if ((await cdp.evaluate(expression)) === true) return true;
+		await wait(20);
+	}
+	return false;
+}
+
+/**
+ * Put the caret in a field.
+ *
+ * The PRESS below is still the pointer path a user takes, but a synthetic
+ * pointer sequence cannot move focus — `dispatchEvent` does not activate an
+ * element the way a real click does, which the palette scene records for the
+ * same reason — so keystrokes sent through CDP's input pipeline would land on
+ * nothing without this.
+ */
+async function focusField(cdp, selector) {
+	return cdp.evaluate(`(() => {
+		const input = document.querySelector(${JSON.stringify(selector)});
+		if (!input) return false;
+		input.focus();
+		return document.activeElement === input;
+	})()`);
+}
+
+/** What the row and its open list actually are, read from the page. */
+async function readSettingField(cdp, key) {
+	return cdp.evaluate(`(() => {
+		const row = document.querySelector(${JSON.stringify(`[data-setting-key="${key}"]`)});
+		if (!row) return { row: false };
+		const input = row.querySelector('input[role="combobox"]');
+		const list = document.querySelector('ul[role="listbox"]');
+		return {
+			row: true,
+			value: input ? input.value : null,
+			placeholder: input ? input.placeholder : null,
+			ariaLabel: input ? input.getAttribute('aria-label') : null,
+			describedBy: input ? input.getAttribute('aria-describedby') : null,
+			expanded: input ? input.getAttribute('aria-expanded') : null,
+			disabled: input ? input.disabled : null,
+			listOpen: Boolean(list),
+			/*
+			 * The row's NAME, which is the option's whole identity: for a model it
+			 * is the provider/model selector the row stores a bare id beside, and
+			 * for a provider it is the registry's own name. Read off the name span
+			 * rather than the row's whole text, because the row also carries a
+			 * sub-line with the credential state and concatenating the two would
+			 * make every assertion about the offered rows a substring match.
+			 */
+			/*
+			 * This template is PAGE-SIDE source, so no backticks in a comment here.
+			 * The rows the LISTING produced: the typed-text row carries
+			 * role="option" as well, because the arrow keys reach it, and it is not
+			 * a match - counting it made the no-match assertion "1 === 0" for every
+			 * query (QA round 2, Q5). The data-combobox-row="typed" hook is what
+			 * tells the two apart.
+			 */
+			options: list
+				? Array.from(
+						list.querySelectorAll(
+							'[role="option"]:not([data-combobox-row="typed"])',
+						),
+					).map((node) => {
+						const name = node.querySelector('span');
+						return ((name ? name.textContent : node.textContent) || '')
+							.replace(/\\s+/g, ' ')
+							.trim();
+					})
+				: [],
+			headings: list
+				? Array.from(list.querySelectorAll('[role="presentation"]')).map((node) =>
+						(node.textContent || '').replace(/\\s+/g, ' ').trim(),
+					)
+				: [],
+		};
+	})()`);
+}
+
+async function sceneSettingsModel(cdp) {
+	const hello = await verb(cdp, "hello");
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	/*
+	 * The scene needs a backend, and says so rather than photographing the
+	 * offline surface and calling it the feature: the whole of these rows is the
+	 * options they offer, and with no daemon there are none.
+	 */
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"pass --backend <url> with the renderer built against the same URL, plus --seed-onboarding-complete",
+	);
+	if (!BACKEND) return [];
+
+	/*
+	 * The registry's own deep link, which is how a reader lands on this row from
+	 * a search hit or the command palette — and the reason the control has to
+	 * contain a real `<input>`: the reveal loop focuses
+	 * `[data-setting-control] :is(input, …)` and scrolls the row into view, and
+	 * the scroll sits in the SUCCESS branch, so a combobox whose editable part is
+	 * not an input loses both the focus and the scroll with no error anywhere.
+	 */
+	await verb(cdp, "navigate", "/settings?setting=hosting");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	/*
+	 * Wait for the registry to arrive rather than for a fixed interval: the
+	 * section is a React Query consumer, and a frame taken before it answers is a
+	 * picture of the offline surface.
+	 */
+	const ready = await waitForScene(
+		cdp,
+		`Boolean(document.querySelector('[data-setting-key="hosting"] input[role="combobox"]'))`,
+	);
+	check(
+		"the registry rendered, with the provider row as a combobox",
+		ready === true,
+		"no [data-setting-key=hosting] combobox appeared",
+	);
+	if (ready !== true) return [];
+
+	const revealed = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-setting-key="hosting"]');
+		const input = row ? row.querySelector('input[role="combobox"]') : null;
+		if (!row || !input) return null;
+		const box = row.getBoundingClientRect();
+		return {
+			focused: document.activeElement === input,
+			onScreen: box.top >= 0 && box.bottom <= window.innerHeight,
+			top: Math.round(box.top),
+			viewport: window.innerHeight,
+		};
+	})()`);
+	note("the deep link's landing", JSON.stringify(revealed));
+	check(
+		"the deep link focused the combobox's own input",
+		revealed?.focused === true,
+		`activeElement is the row's input: ${revealed?.focused}`,
+	);
+	check(
+		"and scrolled the row into view",
+		revealed?.onScreen === true,
+		`row top ${revealed?.top} of ${revealed?.viewport}`,
+	);
+
+	const keystroke = async (key, code, virtualKeyCode) => {
+		for (const type of ["keyDown", "keyUp"]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key,
+				code,
+				windowsVirtualKeyCode: virtualKeyCode,
+				nativeVirtualKeyCode: virtualKeyCode,
+			});
+		}
+	};
+
+	/* ---------------------------------------------------------------- */
+	/* 1. The rows at rest                                               */
+	/* ---------------------------------------------------------------- */
+
+	const atRest = await readSettingField(cdp, "hosting");
+	note("hosting at rest", JSON.stringify(atRest));
+	check(
+		"the provider field carries a placeholder, which is what these rows never had",
+		atRest.placeholder === "Search providers",
+		`placeholder is ${JSON.stringify(atRest.placeholder)}`,
+	);
+	check(
+		"the field is named by the registry row's own label and described by its help",
+		atRest.ariaLabel === "Default provider" &&
+			typeof atRest.describedBy === "string" &&
+			atRest.describedBy.startsWith("setting-help-hosting"),
+		`aria-label=${JSON.stringify(atRest.ariaLabel)} aria-describedby=${JSON.stringify(atRest.describedBy)}`,
+	);
+	check(
+		"an unset field is offered, not disabled",
+		atRest.disabled === false && atRest.value === "",
+		`disabled=${atRest.disabled} value=${JSON.stringify(atRest.value)}`,
+	);
+	const restFrame = await captureSettled(cdp, "settings-hosting-rest");
+
+	/* ---------------------------------------------------------------- */
+	/* 2. The list open: the whole login registry                        */
+	/* ---------------------------------------------------------------- */
+
+	const pressed = await verb(cdp, "press", settingField("hosting"));
+	note("pressed the provider field", JSON.stringify(pressed));
+	const focused = await focusField(cdp, settingField("hosting"));
+	check("the provider field took the caret", focused === true, `${focused}`);
+	/*
+	 * Waits for ROWS, not merely for the popover: the list paints inside the
+	 * gesture that asked for it, so a frame taken the moment the popover exists
+	 * is a picture of a spinner or of an empty list — which is the state this
+	 * whole change exists to remove.
+	 */
+	const opened = await waitForScene(
+		cdp,
+		`document.querySelectorAll('ul[role="listbox"] [role="option"]').length > 0`,
+	);
+	const openRead = await readSettingField(cdp, "hosting");
+	note("hosting open", JSON.stringify(openRead));
+	check(
+		"pressing the field opened a real listbox",
+		opened === true &&
+			openRead.listOpen === true &&
+			openRead.expanded === "true",
+		`expanded=${openRead.expanded} list=${openRead.listOpen}`,
+	);
+	/*
+	 * The centralised-login-state claim, as a number and two ids. Both halves
+	 * matter: a provider with no credential must be OFFERED — a user may be about
+	 * to sign into it, and `hosting` is where they name the provider they intend
+	 * to boot on — and a local server must be offered too, described as needing
+	 * no key rather than as connected.
+	 */
+	check(
+		"the provider list is the whole login registry, not the signed-in subset",
+		openRead.options.length >= 17 &&
+			openRead.options.includes("DeepSeek") &&
+			openRead.options.includes("Ollama"),
+		`${openRead.options.length} rows; deepseek=${openRead.options.includes("DeepSeek")} ollama=${openRead.options.includes("Ollama")}`,
+	);
+	check(
+		"the credential state is shown rather than used to filter",
+		openRead.headings.includes("Needs sign-in") &&
+			openRead.headings.includes("Needs a running server"),
+		`headings: ${JSON.stringify(openRead.headings)}`,
+	);
+	const openFrame = await captureSettled(cdp, "settings-hosting-open");
+
+	/* ---------------------------------------------------------------- */
+	/* 3. Typing narrows it, Escape puts it back                          */
+	/* ---------------------------------------------------------------- */
+
+	await cdp.send("Input.insertText", { text: "oll" });
+	const narrowed = await waitForScene(
+		cdp,
+		`document.querySelectorAll('ul[role="listbox"] [role="option"]').length < ${openRead.options.length}`,
+	);
+	const narrowedRead = await readSettingField(cdp, "hosting");
+	note("hosting filtered", JSON.stringify(narrowedRead));
+	check(
+		"typing narrows the list to the rows whose name contains the query",
+		narrowed === true &&
+			narrowedRead.options.length > 0 &&
+			narrowedRead.options.every((row) => /oll/i.test(row)),
+		`${narrowedRead.options.length} rows: ${JSON.stringify(narrowedRead.options)}`,
+	);
+	const filteredFrame = await captureSettled(cdp, "settings-hosting-filtered");
+
+	await keystroke("Escape", "Escape", 27);
+	const dismissed = await waitForScene(
+		cdp,
+		`document.querySelector('ul[role="listbox"]') === null`,
+	);
+	const revertedRead = await readSettingField(cdp, "hosting");
+	check(
+		"the first Escape dismisses the list and reverts the text to the stored value",
+		dismissed === true &&
+			revertedRead.listOpen === false &&
+			revertedRead.value === atRest.value,
+		`value ${JSON.stringify(atRest.value)} -> ${JSON.stringify(revertedRead.value)}`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 4. Picking a provider stores its ID and shows its NAME             */
+	/* ---------------------------------------------------------------- */
+
+	await focusField(cdp, settingField("hosting"));
+	await cdp.send("Input.insertText", { text: "anthropic" });
+	await waitForScene(
+		cdp,
+		`document.querySelectorAll('ul[role="listbox"] [role="option"]').length === 1`,
+	);
+	// The highlight is moved by a real key event, and Enter accepts it: the
+	// pointer path is asserted above, the keyboard path here.
+	await keystroke("ArrowDown", "ArrowDown", 40);
+	await keystroke("Enter", "Enter", 13);
+	const picked = await waitForScene(
+		cdp,
+		`(() => {
+			const input = document.querySelector('[data-setting-key="hosting"] input[role="combobox"]');
+			return Boolean(input) && input.value.startsWith("Anthropic");
+		})()`,
+	);
+	const pickedRead = await readSettingField(cdp, "hosting");
+	note("hosting after picking the Anthropic row", JSON.stringify(pickedRead));
+	check(
+		"picking a row shows the provider's NAME and closes the list",
+		picked === true && pickedRead.listOpen === false,
+		`value=${JSON.stringify(pickedRead.value)} list=${pickedRead.listOpen}`,
+	);
+	/*
+	 * The stored value is asserted through what it DOES rather than read from the
+	 * page, because the page shows the name: the model list beside it is scoped by
+	 * the hosting row's DRAFT, and the only way it can be scoped to `anthropic/`
+	 * rows is if the draft holds the bare id `anthropic`. That is the whole reason
+	 * this control separates `option.id` from `option.name`, and the reason the
+	 * scoping is draft-aware at all — the draft is dirty and unsaved.
+	 *
+	 * The predicate is the row's SAVE control, and it is read by its label rather
+	 * than by "does this row contain a button". The old predicate was satisfied by
+	 * any button at all — the clear affordance a picked value always renders, and
+	 * the advanced-row disclosure chevron — so it passed on a row that had saved
+	 * on select, which is the one thing it existed to rule out (QA round 1, Q2).
+	 * `Save` is rendered only when the row is dirty (`backend-setting-row.tsx`),
+	 * which is exactly the claim.
+	 */
+	const hostingButtons = await cdp.evaluate(
+		`Array.from(document.querySelectorAll('[data-setting-key="hosting"] button')).map((b) => b.textContent.trim())`,
+	);
+	check(
+		"the pick wrote a draft rather than saving",
+		hostingButtons.includes("Save"),
+		"no Save control appeared on the hosting row, so the pick saved on select",
+		`the hosting row's controls read ${JSON.stringify(hostingButtons)}`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 5. The model list, scoped by the effective hosting                 */
+	/* ---------------------------------------------------------------- */
+
+	const modelPressed = await verb(cdp, "press", settingField("model_name"));
+	note("pressed the model field", JSON.stringify(modelPressed));
+	await focusField(cdp, settingField("model_name"));
+	/*
+	 * The model catalogue is fetched on FIRST OPEN, so this wait is the one that
+	 * spans the fetch: the popover exists before the rows do, and a frame taken
+	 * between the two would be a spinner.
+	 */
+	const modelOpened = await waitForScene(
+		cdp,
+		`document.querySelectorAll('ul[role="listbox"] [role="option"]').length > 0`,
+	);
+	const modelRead = await readSettingField(cdp, "model_name");
+	note("model_name open", JSON.stringify(modelRead));
+	check(
+		"the model field offers rows, from the same op the /model picker reads",
+		modelOpened === true && modelRead.options.length > 0,
+		`${modelRead.options.length} rows`,
+	);
+	check(
+		"the model field states its own placeholder and accessible name",
+		modelRead.placeholder === "Search models" &&
+			modelRead.ariaLabel === "Default model",
+		`placeholder=${JSON.stringify(modelRead.placeholder)} aria-label=${JSON.stringify(modelRead.ariaLabel)}`,
+	);
+	/*
+	 * Scoping is asserted as a PROPERTY rather than as a count or a fixture list:
+	 * every offered row must belong to the effective hosting, except the field's
+	 * own stored value, which is the rescue and is allowed to sit outside the
+	 * scope. A frame cannot tell a correctly scoped list from a long one, and a
+	 * count is a fixture.
+	 */
+	const outside = modelRead.options.filter(
+		(name) => name !== modelRead.value && !name.startsWith("anthropic/"),
+	);
+	check(
+		"every model row belongs to the effective hosting, apart from the field's own value",
+		modelRead.options.length > 0 && outside.length === 0,
+		`outside scope: ${JSON.stringify(outside)}`,
+	);
+	const modelFrame = await captureSettled(cdp, "settings-model-open");
+
+	/* ---------------------------------------------------------------- */
+	/* 6. Enter takes the row the list is showing, not the query           */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * The reported gesture, end to end: type a filter that leaves rows on
+	 * screen, press Enter, and see which value is committed. It used to be the
+	 * three characters — a stored hosting no registry had ever heard of, with
+	 * nothing on the page saying so (UX round 1, U1).
+	 *
+	 * The list is read BEFORE the key so the check can name what the answer
+	 * should have been, rather than asserting "not the query".
+	 */
+	const beforeEnter = await readSettingField(cdp, "model_name");
+	await cdp.send("Input.insertText", { text: "clau" });
+	const narrowedForFilter = await waitForScene(
+		cdp,
+		`document.querySelector('ul[role="listbox"]') !== null`,
+	);
+	const filterRead = await readSettingField(cdp, "model_name");
+	/*
+	 * The mark is the visible half of the fix: with no arrow key pressed, the
+	 * first row the query admits already carries it, so the user can see what
+	 * Enter is about to take.
+	 */
+	const markedCount = await cdp.evaluate(
+		`document.querySelectorAll('ul[role="listbox"] li[role="option"].outline-control').length`,
+	);
+	check(
+		"a narrowed list already marks the row Enter would take",
+		narrowedForFilter === true && markedCount === 1,
+		`marked rows: ${markedCount}`,
+		`${filterRead.options.length} rows offered, ${markedCount} marked`,
+	);
+	const typedRowFrame = await captureSettled(cdp, "settings-model-typed-row");
+
+	await keystroke("Enter", "Enter", 13);
+	const afterEnter = await waitForScene(
+		cdp,
+		`(() => {
+			const input = document.querySelector('[data-setting-key="model_name"] input[role="combobox"]');
+			return Boolean(input) && input.value !== "clau" && input.value !== "";
+		})()`,
+	);
+	const enterRead = await readSettingField(cdp, "model_name");
+	note("model_name after Enter on a filter", JSON.stringify(enterRead));
+	check(
+		"Enter on a filter commits the row the list was showing",
+		afterEnter === true &&
+			enterRead.listOpen === false &&
+			filterRead.options.includes(enterRead.value) &&
+			enterRead.value !== "clau",
+		`committed ${JSON.stringify(enterRead.value)} from ${JSON.stringify(filterRead.options.slice(0, 3))}`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 7. Text that matches nothing still commits                         */
+	/* ---------------------------------------------------------------- */
+
+	await verb(cdp, "press", settingField("model_name"));
+	await waitForScene(
+		cdp,
+		`document.querySelector('ul[role="listbox"]') !== null`,
+	);
+	/*
+	 * Replace the buffer before typing. Step 6 ends by committing a picked row, so
+	 * the field holds its selector — and `Input.insertText` inserts AT THE CARET,
+	 * which turned this query into `anthropic/claude-opus-5zzzz-no-such-model` and
+	 * made every assertion below about a string nobody typed (QA round 2, Q5).
+	 * `Cmd+A` then typing is the gesture a user makes.
+	 */
+	await pressChord(cdp, {
+		key: "a",
+		code: "KeyA",
+		virtualKeyCode: 65,
+		modifiers: MODIFIER.meta,
+		commands: ["selectAll"],
+	});
+	await cdp.send("Input.insertText", { text: "zzzz-no-such-model" });
+	/*
+	 * The typed-text row is a `role="option"` too, so the wait is for a list
+	 * whose ONLY row is that one — which is the state this check is about: no
+	 * listing knows the query, and the list offers to commit it as typed
+	 * instead of closing or claiming a result.
+	 */
+	const empty = await waitForScene(
+		cdp,
+		`(() => {
+			const rows = document.querySelectorAll('ul[role="listbox"] li[role="option"]');
+			const typed = document.querySelectorAll('ul[role="listbox"] li[data-combobox-row="typed"]');
+			return rows.length === 1 && typed.length === 1 && typed[0].textContent.includes("zzzz-no-such-model");
+		})()`,
+	);
+	const emptyRead = await readSettingField(cdp, "model_name");
+	note("model_name with no matches", JSON.stringify(emptyRead));
+	check(
+		"a query matching nothing still commits, through a row that says so",
+		empty === true &&
+			emptyRead.listOpen === true &&
+			emptyRead.options.length === 0,
+		`list open=${emptyRead.listOpen} rows=${JSON.stringify(emptyRead.options)}`,
+		`the only row reads ${JSON.stringify(emptyRead.headings.slice(-1))}`,
+	);
+	const noMatchFrame = await captureSettled(cdp, "settings-model-no-match");
+
+	await keystroke("Enter", "Enter", 13);
+	const committed = await waitForScene(
+		cdp,
+		`(() => {
+			const input = document.querySelector('[data-setting-key="model_name"] input[role="combobox"]');
+			return Boolean(input) && input.value === "zzzz-no-such-model";
+		})()`,
+	);
+	const committedRead = await readSettingField(cdp, "model_name");
+	note("model_name after Enter", JSON.stringify(committedRead));
+	check(
+		"Enter on text no listing matches commits it verbatim, and the row goes dirty",
+		committed === true &&
+			committedRead.listOpen === false &&
+			committedRead.value === "zzzz-no-such-model",
+		`value=${JSON.stringify(committedRead.value)}`,
+	);
+	const freeTextFrame = await captureSettled(cdp, "settings-model-free-text");
+
+	/* ---------------------------------------------------------------- */
+	/* 7. The stored value that no listing contains                       */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * Re-opened by a PRESS rather than by a focus: the field still holds the
+	 * caret from the commit above, and `focus()` on an already-focused element
+	 * fires no event — which is also why the pointer path, not the focus path, is
+	 * the one a user who has just typed reaches for.
+	 */
+	await verb(cdp, "press", settingField("model_name"));
+	const rescueOpened = await waitForScene(
+		cdp,
+		`document.querySelectorAll('ul[role="listbox"] [role="option"]').length > 0`,
+	);
+	const rescueRead = await readSettingField(cdp, "model_name");
+	note("model_name re-opened", JSON.stringify(rescueRead));
+	check(
+		"a stored value no listing contains is listed, under its own heading",
+		rescueOpened === true &&
+			rescueRead.headings.includes("Current value") &&
+			rescueRead.options.includes("zzzz-no-such-model"),
+		`headings=${JSON.stringify(rescueRead.headings)} options=${JSON.stringify(rescueRead.options.slice(-3))}`,
+	);
+	check(
+		"and it is not badged with a sign-in state the payload cannot support",
+		!rescueRead.options.some((name) => /signed in/i.test(name)),
+		JSON.stringify(rescueRead.options.slice(-3)),
+	);
+	/*
+	 * Scrolled to the end before the frame, because the rescued row is appended
+	 * LAST — it is the one row here that is not in the scope — and a popover
+	 * showing its first nine rows would photograph the assertion rather than its
+	 * subject.
+	 */
+	await cdp.evaluate(
+		`(() => { const list = document.querySelector('ul[role="listbox"]'); if (list) list.scrollTop = list.scrollHeight; return true; })()`,
+	);
+	const rescueFrame = await captureSettled(cdp, "settings-model-unknown-value");
+
+	const frames = [
+		restFrame,
+		openFrame,
+		filteredFrame,
+		modelFrame,
+		noMatchFrame,
+		freeTextFrame,
+		rescueFrame,
+	];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
+ * `settings-fields`: the registry's provider and model fields AT REST, captured
+ * from whichever tree is being run.
+ *
+ * WHY A SECOND SCENE, when `settings-model` already photographs these rows: this
+ * one is deliberately blind to the component. It waits for a field in each row —
+ * any input, not a combobox — so the SAME scene runs against a tree that has the
+ * searchable control and against one that does not, and the two frames it writes
+ * carry the same labels. That is the shape the operator's before/after rule
+ * asks for, and it is why the pair is comparable at all: a scene that asserted
+ * the combobox would refuse to photograph the tree the change is measured
+ * against.
+ *
+ * Run it against a build of the base commit and against a build of the branch,
+ * with the same command in each tree (see `docs/evidence/settings-model-combobox/`):
+ *
+ *   node scripts/renderer-driver.mjs --scene settings-fields --backend <url> \
+ *     --seed-onboarding-complete --out <dir>
+ */
+async function sceneSettingsFields(cdp) {
+	const hello = await verb(cdp, "hello");
+	const facts = await factsOf(cdp);
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"the registry renders its offline surface without a daemon, so the pair needs --backend",
+	);
+	if (!BACKEND) return [];
+
+	/*
+	 * The registry's own deep link, so both trees photograph the SAME row: the
+	 * plain page renders the section below the fold, and a frame of the top of
+	 * the page would be a picture of the General section's legacy pair (which
+	 * this change deliberately leaves alone) rather than of the rows it changes.
+	 */
+	await verb(cdp, "navigate", "/settings?setting=hosting");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	/*
+	 * Waits for an input in the row, whatever that input is: a combobox on this
+	 * branch, a bare text field on the base commit.
+	 */
+	const ready = await waitForScene(
+		cdp,
+		`Boolean(document.querySelector('[data-setting-key="hosting"] input'))`,
+	);
+	check(
+		"the registry rendered, with a field on the provider row",
+		ready === true,
+		"no [data-setting-key=hosting] input appeared",
+	);
+	if (ready !== true) return [];
+
+	const rest = await readSettingsFields(cdp);
+	note("the two fields at rest", JSON.stringify(rest));
+	const restFrame = await captureSettled(cdp, "settings-hosting-rest");
+
+	/*
+	 * The second state, and the only one the base commit can render for it: the
+	 * model row holding a value no listing contains. On this branch that value
+	 * arrives through the combobox; on the base commit the field is plain text
+	 * and typing is the only way in. Both frames therefore show the same
+	 * QUESTION — what does this row look like when it holds a value nothing
+	 * knows — and the difference between them is the change.
+	 */
+	// By ROW rather than by combobox: the base commit's field has no `role`.
+	await focusField(cdp, '[data-setting-key="model_name"] input');
+	await cdp.send("Input.insertText", { text: "deepseek/deepseek-chat" });
+	await wait(150);
+	const typed = await readSettingsFields(cdp);
+	note(
+		"the model field holding a value no listing contains",
+		JSON.stringify(typed),
+	);
+	check(
+		"the model field holds the value it was given",
+		typed.model?.value === "deepseek/deepseek-chat",
+		`model field reads ${JSON.stringify(typed.model)}`,
+	);
+	const typedFrame = await captureSettled(cdp, "settings-model-typed");
+
+	const frames = [restFrame, typedFrame];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
+ * Both registry fields as a reader sees them, without assuming which control
+ * they are.
+ *
+ * `role` is read rather than required: on this branch these are comboboxes and
+ * on the base commit they are plain inputs, and the pair's whole point is that
+ * one scene describes both.
+ */
+async function readSettingsFields(cdp) {
+	return cdp.evaluate(`(() => {
+		const read = (key) => {
+			const row = document.querySelector(${JSON.stringify('[data-setting-key="PLACEHOLDER"]')}.replace("PLACEHOLDER", key));
+			const input = row ? row.querySelector('input') : null;
+			return input
+				? { value: input.value, placeholder: input.placeholder, role: input.getAttribute('role') }
+				: null;
+		};
+		return { hosting: read('hosting'), model: read('model_name') };
+	})()`);
+}
+
+/**
  * `palette`: the command palette, driven the way it is actually opened.
  *
  * ## Why this scene exists, and what it is evidence for
@@ -5825,6 +6628,8 @@ async function main() {
 			}
 			if (SCENE === "states") await sceneStates(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
+			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
+			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "pins") await scenePins(cdp);

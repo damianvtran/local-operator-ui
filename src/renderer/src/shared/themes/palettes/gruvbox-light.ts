@@ -43,12 +43,14 @@ export const gruvboxLight: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.30 from `surface`,
-		 * 4.94 from `elevated` and 3.74 from `sunken`.
+		 * `surface` cast 0.06 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.08 from `surface`, 4.81 from `elevated` and 6.3 from `sunken`;
+		 * the step is -4.64 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.69:1 the ink that binds it.
 		 */
-		highlight: "#F2EBCD",
+		highlight: "#EAEAD0",
 
 		ink: "#3C3836",
 		// Canonical dark3 665C54 is 5.18:1 on `sunken` and only ΔE00 5.6 from dark4, under

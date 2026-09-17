@@ -45,15 +45,15 @@ export const tokyoNightDay: ThemeDefinition = {
 		// Generated inactive-tab C4C8DA is ΔE00 6.3 under the page — a well rather than a
 		// recess. This is one just-visible step under canvas (ΔE00 2.06).
 		sunken: "#D8DAE1",
-
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.40 from `surface`,
-		 * 4.39 from `elevated` and 2.35 from `sunken`.
+		 * `surface` cast 0.09 toward `accent` and stepped 3.07 on the `L*` axis — branch H
+		 * of this port's selection rule, with the cast raised from the earlier 0.06 because
+		 * this palette's `accentWash` sat ΔE00 **1.54** from the ground it produced, under the
+		 * contract's field floor for two states; measured 2.13 now. ΔE00 4.12 from `surface`,
+		 * 5.83 from `elevated`, 2.94 from `sunken`, `inkDim` 4.94:1.
 		 */
-		highlight: "#DFE0E3",
+		highlight: "#DCE3ED",
 
 		// Generated foreground 3760BF is 4.19:1 on `sunken` — a syntax blue, not a body ink,
 		// which is what the 7:1 floor is for. Deepened along the same indigo to 7.33:1.

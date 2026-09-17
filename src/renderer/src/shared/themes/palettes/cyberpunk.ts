@@ -44,15 +44,24 @@ export const cyberpunk: ThemeDefinition = {
 		surface: "#16101F",
 		elevated: "#1E172A",
 		sunken: "#080510",
-
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped +7/+8/+7 on R/G/B toward white — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.26 from `surface`,
-		 * 2.73 from `elevated` and 6.85 from `sunken`.
+		 * `surface` cast toward `accent` and stepped 3.1 on the `L*` axis — branch H of this
+		 * port's selection rule, and here the cast is MANDATORY rather than preferred: the
+		 * ink floor caps this palette's lightness route at 3.1 `L*` (`inkDim` 4.65:1 there
+		 * and under the bound at 3.5), and a 3.1 `L*` step at the panel's own hue is only
+		 * ΔE00 1.94 — under the band. So the pair that binds is the ink cap plus the band,
+		 * and NOT `elevated`: at the cap the row is already ΔE00 5.74 clear of it.
+		 * The first cut of this value let the displacement run to the full ΔE00 10.35 the
+		 * rule's fixed fraction produced, which made it 2.3x the loudest row in the tree
+		 * against `gruvbox` 4.54; design round 3 (D1) measured the band as reachable at 40%
+		 * of that displacement, and this is that point: ΔE00 4.14 from `surface`, 5.74 from
+		 * `elevated`, 5.58 from `sunken`, with `inkDim` at 4.65:1 the ink that binds it —
+		 * that is the contract's own ratio for this ground, and the raw value is 4.654, so
+		 * the margin it keeps is nothing rather than 0.01: this is the palette whose step
+		 * is at the ink cap by construction, not by slack.
 		 */
-		highlight: "#1D1826",
+		highlight: "#1E171F",
 
 		ink: "#EAE5F2",
 		inkMuted: "#B3A8C6",

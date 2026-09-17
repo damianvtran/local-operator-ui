@@ -33,13 +33,14 @@ export const rosewood: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.080, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.33 from `surface`, 3.26 from `elevated` and 7.12 from
-		 * `sunken`.
+		 * `surface` cast 0.07 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.07 from `surface`, 2.59 from `elevated` and 9.51 from `sunken`;
+		 * the step is 4.6 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.7:1 the ink that binds it.
 		 */
-		highlight: "#2D1B1E",
+		highlight: "#372428",
 
 		ink: "#EEE0DC",
 		inkMuted: "#C2ABA6",

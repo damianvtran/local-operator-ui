@@ -312,7 +312,7 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	);
 	assert.match(
 		wrapperClasses,
-		/current && rowCurrent/,
+		/isCurrent && rowCurrent/,
 		"the row's box wears the current-row ground, so it spans the pin slot",
 	);
 	/*
@@ -642,9 +642,9 @@ test("a press outranks a page whose request predates it, and settles under one t
 		}),
 		true,
 	);
-	const afterPress = store.getState().sessions.find(
-		(row) => row.session_id === OUTSIDE,
-	);
+	const afterPress = store
+		.getState()
+		.sessions.find((row) => row.session_id === OUTSIDE);
 	assert.deepEqual(
 		[afterPress?.pinned, afterPress?.title],
 		[true, "Sweep 001"],
@@ -721,7 +721,8 @@ test("two presses in flight on one row settle in the order they were made", asyn
 	});
 	globalThis.__pinRequest = (request) =>
 		new Promise((resolve) => pending.push({ request, resolve }));
-	const pinned = () => store.getState().sessions.find((row) => row.session_id === ROW)?.pinned;
+	const pinned = () =>
+		store.getState().sessions.find((row) => row.session_id === ROW)?.pinned;
 
 	const first = store.getState().setSessionPin(ROW, true);
 	const second = store.getState().setSessionPin(ROW, false);
@@ -770,9 +771,9 @@ test("the currency orders the FACT and the ROW it speaks about", async () => {
 		store.getState().sessions.find((item) => item.session_id === OUTSIDE);
 
 	// an answer asked for BEFORE the press must not reach the fact or the row
-	store.getState().applySearchAnswer(beforePress, [
-		{ id: OUTSIDE, pinned: false },
-	]);
+	store
+		.getState()
+		.applySearchAnswer(beforePress, [{ id: OUTSIDE, pinned: false }]);
 	assert.deepEqual(
 		[store.getState().pinFacts[OUTSIDE]?.pinned, row()?.pinned],
 		[true, true],
@@ -782,9 +783,9 @@ test("the currency orders the FACT and the ROW it speaks about", async () => {
 	// an answer asked for AFTER it settles BOTH, which is how a pin removed on the other
 	// surface stops reading pinned - on the fact and on the row the press inserted
 	const afterPress = store.getState().beginAnswer();
-	store.getState().applySearchAnswer(afterPress, [
-		{ id: OUTSIDE, pinned: false },
-	]);
+	store
+		.getState()
+		.applySearchAnswer(afterPress, [{ id: OUTSIDE, pinned: false }]);
 	assert.deepEqual(
 		[store.getState().pinFacts[OUTSIDE], row()?.pinned],
 		[undefined, false],
@@ -793,9 +794,9 @@ test("the currency orders the FACT and the ROW it speaks about", async () => {
 
 	// an answer that says nothing about an id is not a claim
 	store.setState({ pinFacts: { [OUTSIDE]: { pinned: true, at: 0 } } });
-	store.getState().applySearchAnswer(store.getState().beginAnswer(), [
-		{ id: OUTSIDE },
-	]);
+	store
+		.getState()
+		.applySearchAnswer(store.getState().beginAnswer(), [{ id: OUTSIDE }]);
 	assert.equal(
 		store.getState().pinFacts[OUTSIDE]?.pinned,
 		true,
