@@ -125,8 +125,14 @@ reason a sync here ends with a re-stamp-only commit whose message says what move
 what did not, and why. Only `pnpm check-evidence` checks it, and that is the command
 that defers (exit 75) while another sweep holds the lease, so a stale stamp is
 invisible locally until a sweep actually runs: re-derive both from the tree you are
-committing (`git rev-parse HEAD:src`, `HEAD:scripts` after staging) rather than
-letting the next author rediscover it.
+committing - and that reads the MERGED tree, so the derivation happens AFTER the
+merge or sync commit exists. Deriving them while the change is still in the
+working tree asks `git rev-parse HEAD:src` about the PRE-merge head and gets its
+trees: real trees, so the diff looks right, just not this one's (fold 11 shipped
+exactly that to `main`, and the desktop suite's own test caught it). When the
+change also touches `scripts/`, the order is commit, derive, write the values in,
+`--amend` - the amendment moves `docs/` only, so the `scripts` tree the values
+name is unchanged and they stay true.
 
 `pnpm test:desktop` runs focused desktop transport/security contract checks with
 Node's built-in runner. It bundles the actual TypeScript modules in memory and
