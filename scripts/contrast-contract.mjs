@@ -1657,6 +1657,28 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
+		 * The install meter's track.
+		 *
+		 * Same defect as the quota bar's above, found from a frame rather than from
+		 * the palette: the sidebar's install progress rendered as a uniform 4px rule
+		 * with no fill and a `sunken` track, measured at 1.15:1 in
+		 * localOperatorLight, ~1.3:1 dark and ~1.4:1 in neon — fainter than the
+		 * app's own section hairline in the same frame (1.33:1), so at 0% the bar
+		 * read as blank space and at 100% as a coloured rule (design round 1, D2).
+		 *
+		 * Pinned at the call site for the same reason as the quota bar: the palette
+		 * rows prove `borderControl` clears 3:1 on every ground, and cannot see which
+		 * class the bar actually renders. Pinned WITHOUT the `h-1.5` step, which is
+		 * the geometry rather than the role, so a height change does not fail the
+		 * assertion that matters.
+		 */
+		what: "install meter track boundary",
+		file: "src/renderer/src/features/agents/components/install-builtin-agents.tsx",
+		must: "border border-control",
+		why: "the track is the reference the fill is read against, so it carries information and belongs on the 3:1 floor; the primitive's own `sunken` track measures under 1.3:1 everywhere, which is indistinguishable from a blank row",
+	},
+	{
+		/*
 		 * The rule under a scrolling picker body.
 		 *
 		 * It shipped as `hairline` and measured 1.08:1 dark / 1.03:1 light

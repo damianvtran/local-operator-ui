@@ -73,6 +73,8 @@ const SETTLE_POLL_MS = 200;
 const SETTLE_TIMEOUT_MS = 20_000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+/** The Chrome DevTools WebSocket address, as the child prints it on stderr. */
+const DEBUGGER_URL = /ws:\/\/[^\s]+/;
 
 /** A CDP client over Node's built-in WebSocket, in the idiom the other rigs use. */
 const connect = async (userDataDir) => {
@@ -97,7 +99,9 @@ const connect = async (userDataDir) => {
 		);
 		child.stderr.on("data", (chunk) => {
 			buffer += String(chunk);
-			const match = /ws:\/\/[^\s]+/.exec(buffer);
+			// Hoisted: a literal inside a callback is what `useTopLevelRegex`
+			// reports, and `scripts/`'s backlog is burnt down as files are touched.
+			const match = DEBUGGER_URL.exec(buffer);
 			if (match) {
 				clearTimeout(timer);
 				resolve(match[0]);

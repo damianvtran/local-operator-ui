@@ -21,10 +21,11 @@ of the app's empty right-hand side).
 | `empty-without-shortcut` | the same empty section on a server with no packaged profiles — the shortcut is absent, not broken |
 | `installed-with-builtins` | three agents of the user's own, three built-ins still available |
 | `all-installed` | nothing left to offer: no line, no action |
-| `installing` | the batch in flight, determinate |
-| `install-summary` | the end of a mixed batch: one already present, one name the user already holds |
+| `installing` | the batch in flight, determinate — the moment the action is pressed |
+| `installing-mid-run` | the same batch four installs in: three answered and the fourth held open, so the bar has a FILL and reports the step the sentence reports |
+| `install-summary` | the end of a mixed batch: one already present, one name the user already holds; the skip is one count-led sentence and `Done` is a 28px control that takes focus |
 
-The last two are driven by their stories' own `play` functions — a real click on
+The last three are driven by their stories' own `play` functions — a real click on
 the action, then a wait for the state under test — so they are pictures of the
 component reacting rather than of a prop that fakes a state.
 
@@ -44,3 +45,24 @@ component reacting rather than of a prop that fakes a state.
 - **Not the rest of the sidebar.** These frames carry the section inside the real
   `ChatSidebar`, so the rows above and below it are real too, but the claims here
   are about the Agents section alone.
+- **Not a live batch's timing.** The per-name answers are fixtures; the counting,
+  the skip rule and the sentence the user reads are held by
+  `scripts/install-builtin-batch.test.mjs`, which runs the shipped batch module
+  against a scripted installer.
+
+## The two meters, and why the frames decide
+
+The progress bar is the one element on this surface whose defect could only be
+found by looking: the track it defaults to (`sunken` on `surface`) measures
+1.11-1.26:1 across the twelve palettes, so the bar rendered as a hairline-faint
+rule with no perceivable container — measured on the round-1 frames at 1.15:1 in
+`localOperatorLight`, ~1.3:1 dark and ~1.4:1 neon, against the app's own section
+hairline at 1.33:1 in the same frame. It now carries the `border-control`
+boundary the palette contract guarantees is above 3:1 on every ground, the same
+treatment the quota bar in `usage-view.tsx` uses and for the same reason; the
+class is pinned in `scripts/contrast-contract.mjs`, which is what makes the edit
+that drops it fail a gate rather than a frame review.
+
+`installing-mid-run` exists because the set could not previously answer the
+question the bar raises: with only the starting frame, a bar that never moves is
+indistinguishable from a bar that is not drawn.
