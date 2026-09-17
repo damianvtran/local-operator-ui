@@ -557,17 +557,28 @@ export const StopControlWhileStreaming: Story = {
 };
 
 /*
- * THE RESERVED SLOT, which is the fix for the round's MAJOR and has to be
- * visible to be judged. Between turns on a capable backend the row holds an
- * invisible box where the control renders, so the dictation control never slides
- * into the centre a reflex second press lands on (UX round 1's U1, QA's Q1).
- * Captured against the frame above, the pair shows the cluster is the same shape
- * in both states; against `StopControlWithoutCapability` below, it shows a
- * backend that cannot interrupt reserves nothing.
+ * THE SETTLED IDLE ROW, which is the operator's report on the first fix for the
+ * round's MAJOR and has to be visible to be judged. The reservation of the Stop
+ * control's box is now a GRACE WINDOW rather than a standing state
+ * (`interrupt-slot-grace.ts`), so an idle composer on a capable backend holds
+ * nothing and the dictation control sits beside Send with only the row's own gap
+ * between them. Captured against the frame above, the pair is the point: the
+ * cluster CHANGES between the two states - the dictation control keeps its
+ * position and Send is the control that moves - which is why the box is held for
+ * the half second a reflex press arrives in rather than for as long as the
+ * capability is negotiated. Against `StopControlWithoutCapability` below it shows
+ * a backend that cannot interrupt renders the same settled row.
+ *
+ * The frames cannot show the grace itself: a story mounts a component in one
+ * state, and the window opens on a TRANSITION the turn's own end produces (a
+ * freshly mounted composer must render no reservation). That transition is
+ * measured in the real app instead - `scripts/interrupt-esc-proof.mjs` presses the
+ * Stop control and re-measures the cluster on both sides of the window, and its
+ * `interrupt-live` frames carry both.
  */
-export const StopSlotReserved: Story = {
+export const StopSlotSettled: Story = {
 	render: () => (
-		<Frame label="idle between turns, session_interrupt negotiated: the control's box is held">
+		<Frame label="idle between turns, session_interrupt negotiated: dictation sits beside Send, no box held">
 			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
 				<MessageInput
 					isLoading={false}
@@ -581,9 +592,9 @@ export const StopSlotReserved: Story = {
 	),
 };
 
-export const StopSlotReservedSmallView: Story = {
+export const StopSlotSettledSmallView: Story = {
 	render: () => (
-		<Frame label="small view: the reservation tracks the rung, and the tightened notice fits">
+		<Frame label="small view: dictation sits beside Send at the tighter rung, and the tightened notice fits">
 			<div className={cn("@container/chatcol")} style={{ width: 440 }}>
 				<MessageInput
 					isLoading={false}

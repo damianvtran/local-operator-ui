@@ -1762,13 +1762,17 @@ export const STORIES = [
 	["chat-message-input--credential-masked-session-pane", 1024, 300],
 	["chat-message-input--credential-masked-small-view", 440, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
-	/* The reservation (UX round 1's U1 / QA's Q1) at both rungs, the two shorter
-	   notice branches (design round 1's N2), and the version-skew line. The
-	   reservation has no ink of its own by design, so its frames are read against
-	   `stop-control-while-streaming` (the same cluster, occupied) and
-	   `stop-control-without-capability` (a backend that reserves nothing). */
-	["chat-message-input--stop-slot-reserved", 1024, 300],
-	["chat-message-input--stop-slot-reserved-small-view", 1024, 300],
+	/* The SETTLED idle row (UX round 1's U1 / QA's Q1, and the operator's report
+	   that the first fix left a standing gap) at both rungs, the two shorter notice
+	   branches (design round 1's N2), and the version-skew line. The slot is now
+	   held for a grace window after a turn ends and is empty once the row has
+	   settled, so these two frames are the pair that shows the reservation is GONE
+	   at idle - read against `stop-control-while-streaming` (the same cluster,
+	   occupied) and `stop-control-without-capability` (a backend that could never
+	   hold it). The grace window itself is measured in the real app and framed under
+	   `interrupt-live/`. */
+	["chat-message-input--stop-slot-settled", 1024, 300],
+	["chat-message-input--stop-slot-settled-small-view", 1024, 300],
 	["chat-message-input--interrupt-left-children-only", 1024, 300],
 	["chat-message-input--interrupt-left-jobs-only", 1024, 300],
 	["chat-message-input--interrupt-unavailable-old-backend", 1024, 300],

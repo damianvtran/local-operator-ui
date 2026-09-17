@@ -50,6 +50,48 @@ is the flag a narrowed run needs because the operator's own app is listening on
 and to this surface's directory; `manifest.json`'s `partialCapture` and the
 branch's own `credentialCapture` record the pass.
 
+### Round 5: the reservation becomes a grace window
+
+The composer's right-hand cluster changed again, and for a reason that is the
+operator's rather than the code's: the reservation UX round 1's U1 and QA's Q1
+required - an invisible box holding the Stop control's place for as long as the
+backend negotiated `session_interrupt` - left a standing gap between the dictation
+control and Send, which the operator then reported as a defect of its own. The box
+is now held only while a turn runs and for a 500 ms grace window after it ends
+(`src/renderer/src/features/chat/interrupt-slot-grace.ts`), so an idle composer is
+`[dictation][Send]` adjacent and the row the turn runs with is unchanged.
+
+The two stories that declared the reservation (`StopSlotReserved`,
+`StopSlotReservedSmallView`) declared a state that no longer renders on mount, so
+they are RENAMED to what they now show - `stop-slot-settled` and
+`stop-slot-settled-small-view`, captioned "idle between turns, session_interrupt
+negotiated: dictation sits beside Send, no box held" - and their twenty-four
+frames re-taken with the repo's own rig rather than by hand:
+
+```
+npx storybook dev -p 6131 --host 127.0.0.1 --no-open --disable-telemetry
+node scripts/capture-evidence.mjs --only=stop-slot-settled http://127.0.0.1:6131
+```
+
+6131 rather than 6017 or 6018 for the reason 6018 was not 6017: sibling worktrees
+held both when this ran, and the default port answered with THEIR story index.
+The frames the old ids named (`stop-slot-reserved*`) are deleted rather than left
+beside the new ones, `scripts/capture-evidence.mjs` registers the new ids (its
+`STORIES` list is what `surfaces` counts), and `manifest.json`'s `partialCapture`
+records the pass: `refreshedStories` gains the two new ids, `addedSurfaces` the two
+new directories, and `frames` is re-derived from the tree rather than adjusted -
+the 24 added and the 24 the deleted directories held cancel, which is why the
+swept count returns to the number it was.
+
+What these frames CANNOT show is the window itself: a Storybook story mounts a
+component in one state, and the window opens on the TRANSITION a turn's own end
+produces (a freshly mounted composer renders no reservation, by design). That
+transition is measured in the real app instead, in the frames and record beside
+this set under [`../interrupt-live/`](../interrupt-live/README.md): the same row
+photographed 260 ms after the composer's flip (box still held, a press there
+starting nothing) and 1869 ms after it (box gone, the two controls adjacent, and a
+press at the dictation control's own centre starting a recording).
+
 ### Round 2: the notice moves, and the leaked frames are re-taken
 
 The round-2 remediation changed the composer's own layout again — the notice
@@ -70,7 +112,7 @@ independent reasons, and which frames changed for WHICH reason matters:
 | --- | --- |
 | `credential-armed`, `credential-masked`, `credential-escaped` | The notice moved onto the control row, so the textarea sits **31.5px higher** (its `y` is 78.39 where round 1 left it at 109.89) and carries no reserved line of its own. **Round 3 moved it again — out of the composer entirely, to a full-width line above the box; see the round-3 section below, which is what these frames now show.** |
 | `idle`, `credential-pill-mid-prose`, `credential-pill-at-line-start`, `awaiting-*`, `stop-*`, `interrupt-*` | The standing reservation is gone: the composer's ring bottom returns to its round-1 predecessor's **210.58 -> 179.08**, and the typed line to **78.39** (round 1: 109.89). **The claim that this made the `idle` frame "geometrically the frame that was captured before this feature existed" was FALSE as written, and round 3 corrected it:** the composer box at that head measured `61.4..179.1` (117.7px) against live `origin/main`'s `61.4..173.4` (112.0px) at the same story, decorator and viewport, because the overlay's wrapper left the field an inline-block in a line box (39.7px around a 34px field). All three archive claims that said otherwise are corrected in round 3's section below, and the frames were re-taken again with the fix. |
-| `interrupt-left-work-running`, `stop-slot-reserved`, `stop-slot-reserved-small-view`, `interrupt-left-children-only`, `interrupt-left-jobs-only`, `interrupt-unavailable-old-backend` | Both of the above, **and** the leaked escaped canary is gone: these six are the frames design round 2 photographed holding a secret they have nothing to do with (D1). |
+| `interrupt-left-work-running`, `stop-slot-settled`, `stop-slot-settled-small-view`, `interrupt-left-children-only`, `interrupt-left-jobs-only`, `interrupt-unavailable-old-backend` | Both of the above, **and** the leaked escaped canary is gone: these six are the frames design round 2 photographed holding a secret they have nothing to do with (D1). The pair the reservation's stories carried is renamed in round 5 (below): `stop-slot-reserved`/`-small-view` were the same two stories under ids that no longer describe what they render. |
 
 The last six are the ones the round-2 review could not sign off, and the fix that
 removed the leak is the capture's own (the draft store is cleared per frame), not

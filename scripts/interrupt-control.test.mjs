@@ -43,6 +43,10 @@ const bundle = await build({
 				ownsEscapeOutsideComposer,
 			} from "./src/renderer/src/features/chat/hooks/use-interrupt-on-escape";
 			import { COMPOSER_TEXTAREA_SELECTOR } from "./src/renderer/src/features/chat/composer-field";
+			import {
+				INTERRUPT_SLOT_GRACE_MS,
+				interruptSlotHold,
+			} from "./src/renderer/src/features/chat/interrupt-slot-grace";
 			export {
 				interruptNotice,
 				interruptTurn,
@@ -53,6 +57,8 @@ const bundle = await build({
 				interruptEscapeApplies,
 				ownsEscapeOutsideComposer,
 				COMPOSER_TEXTAREA_SELECTOR,
+				INTERRUPT_SLOT_GRACE_MS,
+				interruptSlotHold,
 			};
 		`,
 		resolveDir: process.cwd(),
@@ -110,6 +116,8 @@ const {
 	interruptEscapeApplies,
 	ownsEscapeOutsideComposer,
 	COMPOSER_TEXTAREA_SELECTOR,
+	INTERRUPT_SLOT_GRACE_MS,
+	interruptSlotHold,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -137,10 +145,14 @@ await unlink(bundlePath);
  * `slot.*` steps). Two instruments for one fact, because the fact is the one QA
  * rated MAJOR.
  *
- * What it pins: the row is [dictation][Stop][Send] while a turn runs and
- * [dictation][reserved box][Send] between turns, the reserved box is the control's
- * own size at whichever rung the row is on, and it carries nothing that can be
- * reached, focused or announced.
+ * What it pins, which is the shape the reservation has now: the row is
+ * [dictation][Stop][Send] while a turn runs, the held box is the Stop control's
+ * own box at whichever rung the row is on, and at a SETTLED idle row the box is
+ * not in the row at all - so the dictation control's right edge plus the row's
+ * own gap IS Send's left edge, with nothing between them. The box carries nothing
+ * that can be reached, focused or announced, and its mount is gated on the grace
+ * predicate rather than on the capability alone, which is the operator's report
+ * on the standing gap the first version of this fix left behind.
  */
 const ROW_SOURCE = readFileSync(
 	"src/renderer/src/features/chat/components/message-input.tsx",
@@ -204,79 +216,378 @@ const resolveRung = (expression, isSmallView) => {
 	);
 };
 
-test("the Stop control's box is reserved, so the dictation control cannot take its centre", () => {
-	// The row's own order, by where each control's marker appears in it.
+/*
+ * THE ROW'S BOXES, derived from the shipped source: the gap between the row's
+ * controls from its own `gap-*` class, each control's width from the `size`
+ * expression it carries resolved through the Button variant map it names, and
+ * the held box's width from its classes resolved the same way. Nothing here
+ * restates a number the row itself declares - a geometry pin built from its own
+ * constants cannot fail on a regression - and the two facts that are NOT
+ * geometry (which children the row draws in a state, and what the grace
+ * predicate answers) are read from the source and from the shipped helper
+ * respectively.
+ */
+const ROW_PARTS = (() => {
 	const mic = ROW.indexOf('aria-label="Start recording"');
 	const stop = ROW.indexOf('aria-label="Stop"');
 	const send = ROW.indexOf('aria-label="Send message"');
 	const reserved = ROW.indexOf("data-interrupt-slot");
+	return {
+		mic,
+		stop,
+		send,
+		reserved,
+		micBlock: ROW.slice(mic - 400, mic + 400),
+		stopBlock: ROW.slice(stop - 400, stop + 200),
+		sendBlock: ROW.slice(send - 400, send + 200),
+		// The mount's own condition, from the `{` that opens it to the span's
+		// attributes, and the span itself.
+		gate: ROW.slice(
+			ROW.lastIndexOf("{canonicalStopAvailable", reserved),
+			reserved,
+		),
+		span: ROW.slice(
+			ROW.lastIndexOf("<span", reserved),
+			ROW.indexOf("/>", reserved) + 2,
+		),
+	};
+})();
+
+/** The `size={isSmallView ? a : b}` class expression a control carries. */
+const sizeExpression = (block, what) => {
+	const expression = /size=\{(isSmallView \? "[\w-]+" : "[\w-]+")\}/.exec(
+		block,
+	)?.[1];
+	assert.ok(expression, `${what} carries no rung-dependent size`);
+	return expression;
+};
+
+const ROW_RUNGS = [
+	["default", false],
+	["small", true],
+];
+
+/**
+ * The boxes the row lays out from its own left edge, in one state.
+ *
+ * `state` names WHAT THE ROW DRAWS, which is what the assertions below are about:
+ * `running` is the turn with the Stop control offered, `grace` is the window
+ * after it, where the held box stands in the control's place, and `settled` is
+ * the idle row once that window has passed - the state the operator's report is
+ * about, where the row is the two controls and nothing between them.
+ */
+const rowBoxes = (isSmallView, state) => {
+	const micWidth = px(
+		resolveRung(
+			sizeExpression(ROW_PARTS.micBlock, "the dictation control"),
+			isSmallView,
+		),
+	);
+	const stopWidth = px(
+		resolveRung(
+			sizeExpression(ROW_PARTS.stopBlock, "the Stop control"),
+			isSmallView,
+		),
+	);
+	const sendWidth = px(
+		resolveRung(
+			sizeExpression(ROW_PARTS.sendBlock, "the Send control"),
+			isSmallView,
+		),
+	);
+	const heldWidth = px(
+		resolveRung(
+			/isSmallView \? "(size-\d+)" : "(size-\d+)"/.exec(ROW_PARTS.span)?.[0],
+			isSmallView,
+		),
+	);
+	const children = [{ label: "dictation", width: micWidth }];
+	// Which middle child the row draws is the grace gate's answer, asserted from
+	// the source below and from the shipped helper further down.
+	if (state === "running") children.push({ label: "Stop", width: stopWidth });
+	else if (state === "grace")
+		children.push({ label: "held box", width: heldWidth });
+	children.push({ label: "Send", width: sendWidth });
+	const placed = [];
+	let x = 0;
+	for (const child of children) {
+		placed.push({ ...child, x });
+		x += child.width + ROW_GAP_PX;
+	}
+	return placed;
+};
+
+test("the row's own controls and the held box, from the source", () => {
+	const { mic, stop, send, reserved } = ROW_PARTS;
 	assert.ok(
 		mic > -1 && stop > -1 && send > -1,
 		"the row lost one of its controls",
 	);
 	assert.ok(
 		reserved > -1,
-		"the Stop control's box is not reserved: the dictation control will slide into the centre a reflex second press lands on",
+		"the row lost the box that holds the Stop control's place, so the dictation control slides into the centre a reflex second press lands on",
 	);
 	assert.ok(
 		mic < reserved && reserved < stop && stop < send,
-		`the row is not [dictation][reserved box][Stop][Send] (mic ${mic}, reserved ${reserved}, Stop ${stop}, Send ${send})`,
+		`the row is not [dictation][held box][Stop][Send] (mic ${mic}, box ${reserved}, Stop ${stop}, Send ${send})`,
 	);
-	const reservedBlock = ROW.slice(reserved - 500, reserved + 200);
-	assert.match(reservedBlock, /aria-hidden="true"/);
-	assert.match(reservedBlock, /pointer-events-none/);
-	assert.doesNotMatch(reservedBlock, /<button|tabIndex|onClick/);
-	// The reservation only exists where the control could: gated on the capability
-	// the caller folds `active` with.
-	assert.match(reservedBlock, /canonicalStopAvailable &&/);
-
-	/*
-	 * The dictation control's own size expression, immediately before the row's
-	 * reservation - the two have to resolve to the SAME box at every rung, or the
-	 * reservation moves the control instead of holding its place.
-	 */
-	const micBlock = ROW.slice(mic - 400, mic + 400);
-	const micExpression = /size=\{(isSmallView \? "[\w-]+" : "[\w-]+")\}/.exec(
-		micBlock,
-	)?.[1];
-	assert.ok(
-		micExpression,
-		"the dictation control carries no rung-dependent size",
-	);
-	const reservedExpression = /isSmallView \? "(size-\d+)" : "(size-\d+)"/.exec(
-		reservedBlock,
-	)?.[0];
-	assert.ok(
-		reservedExpression,
-		"the reservation carries no rung-dependent size",
-	);
-
-	for (const [rung, isSmallView] of [
-		["default", false],
-		["small", true],
-	]) {
-		const dictationToken = resolveRung(micExpression, isSmallView);
-		const slotToken = resolveRung(reservedExpression, isSmallView);
+	// The held box is the control's own box at both rungs, so holding it moves
+	// nothing, and the control arriving in it needs no shift either.
+	for (const [rung, isSmallView] of ROW_RUNGS) {
+		const running = rowBoxes(isSmallView, "running");
+		const grace = rowBoxes(isSmallView, "grace");
+		const stopBox = running.find((box) => box.label === "Stop");
+		const heldBox = grace.find((box) => box.label === "held box");
 		assert.equal(
-			slotToken,
-			dictationToken,
-			`${rung}: the reservation is ${slotToken} but the control it stands in for is ${dictationToken}`,
+			heldBox.width,
+			stopBox.width,
+			`${rung}: the held box is ${heldBox.width}px but the control it stands in for is ${stopBox.width}px`,
 		);
-		const width = px(slotToken);
-		// [dictation][reserved][Send], from the row's own left edge and the row's
-		// own gap.
-		const dictation = { x: 0, width: px(dictationToken) };
-		const slot = { x: dictation.width + ROW_GAP_PX, width };
-		const stopCentre = slot.x + slot.width / 2;
-		assert.ok(
-			dictation.x + dictation.width <= slot.x,
-			`${rung}: the dictation control reaches into the Stop's box; its centre ${stopCentre} would be pressable in the state a reflex press arrives in`,
+		assert.equal(
+			heldBox.x,
+			stopBox.x,
+			`${rung}: the held box sits at ${heldBox.x} where the control renders at ${stopBox.x}`,
 		);
-		assert.ok(
-			stopCentre > dictation.x + dictation.width,
-			`${rung}: the Stop's centre ${stopCentre} falls inside the dictation control's box`,
+		assert.equal(
+			heldBox.width,
+			running[0].width,
+			`${rung}: the held box is not the dictation control's own size`,
 		);
 	}
+	// `aria-hidden`, no focus, no pointer events, nothing pressable: this is
+	// geometry rather than a control, so nothing may be reached, announced or
+	// activated there.
+	assert.match(ROW_PARTS.span, /aria-hidden="true"/);
+	assert.match(ROW_PARTS.span, /pointer-events-none/);
+	assert.match(ROW_PARTS.span, /data-interrupt-slot=""/);
+	assert.doesNotMatch(ROW_PARTS.span, /<button|tabIndex|onClick/);
+});
+
+test("the held box is mounted on the grace predicate, not on the capability alone", () => {
+	/*
+	 * The reservation's mount reads the shipped helper's answer, so the two
+	 * cannot drift: the stop-beside-send state is what the operator reported, and
+	 * a gate that ignored the grace would put the standing gap straight back. The
+	 * `!canonicalStop?.active` term is the other half and is not decoration: while
+	 * the turn runs the fold holds the box true, so without it the row would draw
+	 * the control AND the box, moving Send an extra 36px right.
+	 */
+	assert.match(ROW_PARTS.gate, /canonicalStopAvailable &&/);
+	assert.match(ROW_PARTS.gate, /!canonicalStop\?\.active/);
+	assert.match(ROW_PARTS.gate, /slotHold\.held/);
+	// The same legacy condition the dictation control is gated on: that path hides
+	// it and renders its own `Stop agent` in this cluster.
+	assert.match(ROW_PARTS.gate, /!\(isLoading && currentJobId\)/);
+	// And the predicate is the shipped module's, folded through the shipped
+	// function rather than a local boolean that could outlive the window.
+	assert.match(
+		ROW_SOURCE,
+		/import \{[^}]*interruptSlotHold[^}]*\} from "\.\.\/interrupt-slot-grace"/s,
+	);
+	assert.match(ROW_SOURCE, /interruptSlotHold\(\{/);
+});
+
+test("a running turn's row is [dictation][Stop][Send]", () => {
+	for (const [rung, isSmallView] of ROW_RUNGS) {
+		const boxes = rowBoxes(isSmallView, "running");
+		assert.deepEqual(
+			boxes.map((box) => box.label),
+			["dictation", "Stop", "Send"],
+			`${rung}: the running row is not the three controls`,
+		);
+		const [dictation, stop, send] = boxes;
+		assert.equal(
+			dictation.x,
+			0,
+			`${rung}: the dictation control does not open the row`,
+		);
+		assert.equal(
+			stop.x,
+			dictation.width + ROW_GAP_PX,
+			`${rung}: the Stop control is not the row's own gap from the dictation control`,
+		);
+		assert.equal(
+			send.x,
+			stop.x + stop.width + ROW_GAP_PX,
+			`${rung}: Send is not the row's own gap from the Stop control`,
+		);
+	}
+});
+
+test("a settled idle row is [dictation][Send], with one row gap between them", () => {
+	/*
+	 * The operator's report, as an invariant: with nothing running and the grace
+	 * window passed, the row draws the dictation control and Send and NOTHING
+	 * ELSE, so the dictation control's right edge plus the row's own gap IS Send's
+	 * left edge. The middle child is absent because the gate above reads a
+	 * predicate the shipped helper answers `held: false` for a settled composer
+	 * (pinned by the injected-clock tests below), which is the whole of the claim
+	 * - the row's own arithmetic cannot put a box between them that it does not
+	 * draw.
+	 */
+	const settledGate = assertGateAnswersSettled(interruptSlotHold);
+	assert.ok(
+		settledGate,
+		"the shipped grace predicate does not release the box",
+	);
+	for (const [rung, isSmallView] of ROW_RUNGS) {
+		const boxes = rowBoxes(isSmallView, "settled");
+		assert.deepEqual(
+			boxes.map((box) => box.label),
+			["dictation", "Send"],
+			`${rung}: the settled row still draws something between the dictation control and Send`,
+		);
+		const [dictation, send] = boxes;
+		assert.equal(
+			send.x,
+			dictation.width + ROW_GAP_PX,
+			`${rung}: Send's left edge is not the dictation control's right edge plus the row's own gap`,
+		);
+		// The distance the reservation used to hold open, which is what the
+		// measured 36px in the comment above this row and in the interrupt-live
+		// record are: the control it stands in for plus one gap.
+		const running = rowBoxes(isSmallView, "running");
+		const runningSend = running.find((box) => box.label === "Send");
+		const stopBox = running.find((box) => box.label === "Stop");
+		assert.equal(
+			runningSend.x - send.x,
+			stopBox.width + ROW_GAP_PX,
+			`${rung}: the closed gap is not the control plus the row's own gap`,
+		);
+	}
+});
+
+/**
+ * Whether the shipped predicate answers "not held" for a composer that mounted
+ * idle and never saw a transition - the state the geometry above is about. Read
+ * from the one function rather than restated, so a change to the fold's rules
+ * (or to the window's length) cannot leave this assertion behind.
+ */
+function assertGateAnswersSettled(fold) {
+	const neverSawATurn = fold({
+		previousActive: false,
+		currentActive: false,
+		heldUntil: null,
+		now: 1_000_000,
+	});
+	return neverSawATurn.held === false && neverSawATurn.heldUntil === null;
+}
+
+/* --------------------------------------------------------- the grace window */
+
+/*
+ * THE WINDOW THE BOX IS HELD FOR, driven through the shipped helper with an
+ * injected clock rather than a browser: these are the properties the mount above
+ * depends on, and they cannot be scraped from the source because they are
+ * arithmetic over time. No `Date.now()` and no timer here - the composer owns
+ * the clock, this file owns the rules.
+ *
+ * The window's LENGTH is pinned with the behaviour it buys, so a later change to
+ * the number is a visible decision rather than a quiet one: the reported hazard
+ * is a second press a fraction of a second behind the first, and a window that
+ * collapsed to a frame or two would no longer cover it.
+ */
+test("the grace window is the 500ms the reflex press was measured over", () => {
+	assert.equal(INTERRUPT_SLOT_GRACE_MS, 500);
+	const armed = interruptSlotHold({
+		previousActive: true,
+		currentActive: false,
+		heldUntil: null,
+		now: 10_000,
+	});
+	assert.equal(
+		armed.heldUntil - 10_000,
+		INTERRUPT_SLOT_GRACE_MS,
+		"the window the box is held for is not the shipped constant",
+	);
+});
+
+test("a freshly mounted idle composer holds nothing", () => {
+	// The mount case, and the reason it matters: a composer that has never seen a
+	// turn must render no reservation, or the operator's standing gap is back.
+	assert.deepEqual(
+		interruptSlotHold({
+			previousActive: false,
+			currentActive: false,
+			heldUntil: null,
+			now: 1_000_000,
+		}),
+		{ held: false, heldUntil: null },
+	);
+});
+
+test("the box is held from the edge the control leaves on, for the whole window", () => {
+	const armed = interruptSlotHold({
+		previousActive: true,
+		currentActive: false,
+		heldUntil: null,
+		now: 10_000,
+	});
+	assert.equal(
+		armed.held,
+		true,
+		"the true -> false edge does not hold the box",
+	);
+	const deadline = armed.heldUntil;
+	// Inside the window, folded again: still held, and the deadline is NOT
+	// extended by the fold - a composer re-rendering through the window cannot
+	// push the collapse out in front of itself.
+	assert.deepEqual(
+		interruptSlotHold({
+			previousActive: false,
+			currentActive: false,
+			heldUntil: deadline,
+			now: deadline - 1,
+		}),
+		{ held: true, heldUntil: deadline },
+	);
+	// The instant the window closes, and everything after it: released, with no
+	// deadline remembered.
+	assert.deepEqual(
+		interruptSlotHold({
+			previousActive: false,
+			currentActive: false,
+			heldUntil: deadline,
+			now: deadline,
+		}),
+		{ held: false, heldUntil: null },
+	);
+	assert.deepEqual(
+		interruptSlotHold({
+			previousActive: false,
+			currentActive: false,
+			heldUntil: deadline,
+			now: deadline + 60_000,
+		}),
+		{ held: false, heldUntil: null },
+	);
+});
+
+test("a running turn holds the box, and a second traversal re-arms it", () => {
+	// While the control is rendered the box is held with no deadline: the control
+	// fills it, and the window that matters opens on the edge below.
+	assert.deepEqual(
+		interruptSlotHold({
+			previousActive: false,
+			currentActive: true,
+			heldUntil: null,
+			now: 1,
+		}),
+		{ held: true, heldUntil: null },
+	);
+	// A second turn: false -> true clears any deadline left over from the first,
+	// and true -> false arms a FRESH window from its own instant rather than
+	// carrying the previous one's.
+	const settled = interruptSlotHold({
+		previousActive: true,
+		currentActive: false,
+		heldUntil: null,
+		now: 20_000,
+	});
+	assert.deepEqual(settled, {
+		held: true,
+		heldUntil: 20_000 + INTERRUPT_SLOT_GRACE_MS,
+	});
 });
 
 const requests = [];
