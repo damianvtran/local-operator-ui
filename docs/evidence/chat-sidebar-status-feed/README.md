@@ -27,8 +27,9 @@ heading the marks are under. It is gated on the backend advertising
 completion.
 
 - **`mark-all-read-pile/`** — the operator's report: a pile of finished turns,
-  each with its check, and the control that clears them beside the group's own
-  count.
+  each with its check, and the control beside the group's own count — its label
+  naming the number the click will clear (`Mark all 3 read`), which is the set the
+  request carries, because the same predicate produces both.
 - **`mark-all-read-partly-read/`** — the state the whole per-item verdict exists
   for. Two marks cleared, one REFUSED (`superseded`: the conversation completed
   again between the render and the click, so the token this client held is no
@@ -46,8 +47,22 @@ completion.
   clear: a catalogue read that has not answered, one that failed, and a machine
   with no conversations. Each frame is an ABSENCE claim, which is why the readout
   beside the panel states the control's own state in words —
-  `Mark all as read: absent · 0 unread row(s) it would name` — rather than leaving
+  `Bulk read receipt: absent · 0 unread row(s) it would name` — rather than leaving
   a reviewer to infer it from a missing button.
+- **`mark-all-read-narrow-default/`** (280px panel) and
+  **`mark-all-read-narrow-minimum/`** (240px) — the app's own clamps
+  (`chat-layout.tsx`; 280 is the default preference), and the widths at which the
+  action's label SHEDS so the group's own name never breaks to make room for it.
+  The shed fires on the header ROW's width — 271px and 223px here — against the
+  264px measured break for a two-digit section badge. A set captured only at
+  360px, the clamp's maximum, cannot photograph this state at all.
+- **`mark-all-read-in-flight/`** — the interval between the click and the receipt,
+  which is the only progress cue an irreversible write has. The label keeps its
+  readable ink and only the glyph steps down, and the control stays focusable and
+  in the ring (`aria-disabled`, not `disabled`).
+- **`mark-all-read-refused/`** — the transport failing: both facts in one toast,
+  because the question an irreversible action raises is "did it happen?" rather
+  than "what is the backend doing?". Every check is still on screen behind it.
 
 ## What produced these frames
 
@@ -56,16 +71,36 @@ Storybook, through the repo's own `scripts/capture-evidence.mjs`:
 ```
 npx storybook dev -p 6017 --ci --quiet
 node scripts/capture-evidence.mjs http://localhost:6017 \
-  --only=chat-sidebar-status-feed--
+  --only=chat-sidebar-status-feed-- --allow-backend
 ```
+
+`--allow-backend` is required while the operator's own backend is answering on
+the default port (1111): the capturer's pre-flight guard refuses to run against a
+live one, and these stories stub their own transport, so no frame can show any
+backend's replies. The frames in this set were taken on port **6027** because
+6017 was serving another session's worktree at the time — the port is the
+capturer's first argument and nothing about the frames depends on it. Both lines
+are the command that actually produced them; a README that records a different
+command from the run is a claim a reproducer cannot trust (agent review round 1,
+R6).
 
 The stories (`chat-sidebar-status-feed.stories.tsx`) drive the REAL
 `ChatSidebar` — including `ChatSessionStatus`'s glyph, ink and accessible name —
 against the REAL canonical-sessions store, with only the transport below the
-hook stubbed. The two click-driven stories press the shipped button and hold
-`documentElement.dataset.capturePending` until the receipt is on screen, so the
-frame is the settled state rather than a race between a request, a store commit,
-a toast and the shutter.
+hook stubbed. The click-driven stories press the shipped button and hold
+`documentElement.dataset.capturePending` until the state under test is on
+screen — the receipt, or the in-flight announcement — so a frame is a settled
+state rather than a race between a request, a store commit, a toast and the
+shutter.
+
+The control's KEYBOARD behaviour is pinned separately, in
+`scripts/mark-all-read-control.test.mjs`, which mounts this same sidebar in jsdom
+and drives the real key events: the control is a stop in the ↑/↓ walk between its
+section's toggle and the first conversation, it keeps focus and its stop for the
+whole request (`aria-disabled`, never `disabled`), and clearing the last mark
+hands focus to the section's own disclosure rather than dropping it to `<body>`.
+jsdom has no layout engine, so that file says nothing about pixels — which is
+exactly why the widths and the shed are photographs.
 
 The readout panel beside the sidebar is not decoration: it subscribes to the
 same store the panel reads, and its last line is measured off the DOM (the
