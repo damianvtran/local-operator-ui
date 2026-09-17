@@ -4695,12 +4695,31 @@ export class UpdateService {
 		}
 		if (outcome.kind === "running") {
 			logger.warn(
-				`A server update recorded by an earlier launch is still running (group ${outcome.marker.groupPid}, ${outcome.reason}); refusing to start a second beside it`,
+				`A server update recorded by an earlier launch is still running (group ${outcome.marker.groupPid}, ${outcome.reason}, started ${outcome.marker.startedAt}); refusing to start a second beside it`,
 				LogFileType.UPDATE_SERVICE,
 			);
+			/*
+			 * THE REFUSAL NAMES THE RUN IT FOUND. This is the arm a relaunch reaches - a
+			 * record left by an app that died mid-update - and its reader has no way to
+			 * know that from a sentence about "a server update", which is the same one the
+			 * press beside them produces. Naming when that run started and which process
+			 * group holds it is what makes the refusal specific enough to act on: an
+			 * install that is genuinely still running is a wait, and one that has stopped
+			 * responding is a log file, and the sentence has to leave the reader able to
+			 * tell which they are looking at.
+			 */
+			const startedAtMs = Date.parse(outcome.marker.startedAt);
+			const ageMinutes = Number.isFinite(startedAtMs)
+				? Math.max(0, Math.round((Date.now() - startedAtMs) / 60_000))
+				: null;
+			const age =
+				ageMinutes === null
+					? "at a time that could not be read"
+					: ageMinutes < 1
+						? "moments ago"
+						: `${ageMinutes} minute${ageMinutes === 1 ? "" : "s"} ago`;
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"A server update is already running. Let it finish before starting another.",
+				message: `A server update this app started ${age} is still running (process group ${outcome.marker.groupPid}), so a second one will not be started beside it. If that update is no longer responding, the update service log says what it was doing.`,
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
