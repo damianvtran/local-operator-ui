@@ -185,7 +185,7 @@ export interface BrowserChrome {
 	 * absent argument — an unattributed, user-owned tab.
 	 */
 	newTab: (sessionId?: string | null) => Promise<void>;
-	closeTab: (tabId: number) => Promise<void>;
+	closeTab: (tabId: number) => Promise<boolean>;
 	/**
 	 * Close several tabs as ONE intent (design R5).
 	 *
@@ -195,8 +195,15 @@ export interface BrowserChrome {
 	 * agent opened in that conversation in the meantime — and the user pressed something
 	 * that said all. Main also skips ids that are already gone, so a double press closes
 	 * the rest rather than failing the batch.
+	 *
+	 * THE RETURN IS THE OUTCOME, and only the strip's caret restore reads it (review
+	 * round 2, A-2): `false` means the invoke was refused. A refusal is the one close
+	 * result the caller cannot infer from the projection, because the re-read that
+	 * follows it still shows every tab — the same picture as a close that has not landed
+	 * yet, which is what left the strip waiting for a projection that could never come.
+	 * It is the fact, not the message: the message is `error`'s job.
 	 */
-	closeTabs: (intent: CloseTabsIntent) => Promise<void>;
+	closeTabs: (intent: CloseTabsIntent) => Promise<boolean>;
 	activateTab: (tabId: number) => Promise<void>;
 	navigate: (url: string) => Promise<void>;
 	reload: () => Promise<void>;
@@ -321,7 +328,7 @@ export function useBrowserChrome(): BrowserChrome {
 	}, [readState]);
 
 	/**
-	 * Run one intent, then re-read.
+	 * Run one intent, then re-read, and report whether main ACCEPTED the invoke.
 	 *
 	 * Failures are reported in the band rather than swallowed: several of these
 	 * refusals are the intended behaviour (a `nav_failed` for a non-http URL, a
@@ -331,18 +338,34 @@ export function useBrowserChrome(): BrowserChrome {
 	 * The `await refresh()` is deliberately AFTER the error is recorded and cannot
 	 * clear it - see the two error slots above. Reading the projection is how the
 	 * band learns what main did; it is not an answer to what the action was told.
+	 *
+	 * THE RETURNED OUTCOME IS THAT SAME DISTINCTION, for the one caller that has to
+	 * act on it instead of reading it: the strip's caret restore has to know that a
+	 * close was refused, because a refusal and a close still in flight look identical
+	 * in the projection (review round 2, A-2). `false` is `action` rejecting; nothing
+	 * else here reports it, and the band's own message is unchanged.
 	 */
 	const run = useCallback(
-		async (action: () => Promise<unknown> | undefined): Promise<void> => {
+		async (action: () => Promise<unknown> | undefined): Promise<boolean> => {
+			let accepted = true;
 			try {
 				await action();
 				setActionError(null);
 			} catch (caught) {
+				accepted = false;
 				setActionError(unwrapIpcErrorMessage(caught));
 			}
 			await refresh();
+			return accepted;
 		},
 		[refresh],
+	);
+
+	/** `run`, for every call site that does not ask what the invoke answered. */
+	const runVoid = useCallback(
+		(action: () => Promise<unknown> | undefined): Promise<void> =>
+			run(action).then(() => undefined),
+		[run],
 	);
 
 	/** Clear the band's error. The one explicit dismissal, so a refusal the user
@@ -430,30 +453,30 @@ export function useBrowserChrome(): BrowserChrome {
 			dismissError,
 			available,
 			refresh,
-			newTab: (sessionId) => run(() => api?.newTab(sessionId ?? null)),
+			newTab: (sessionId) => runVoid(() => api?.newTab(sessionId ?? null)),
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
 			closeTabs: (intent) => run(() => api?.closeTabs(intent)),
-			activateTab: (tabId) => run(() => api?.activateTab(tabId)),
+			activateTab: (tabId) => runVoid(() => api?.activateTab(tabId)),
 			navigate: (url) => {
 				// Recorded before the intent is sent: the reply may take a while (the tab
 				// has to load), and the point of the note is to cover exactly that window.
 				setPendingUrl(url);
-				return run(() => api?.navigate(url));
+				return runVoid(() => api?.navigate(url));
 			},
-			reload: () => run(() => api?.reload()),
-			stop: () => run(() => api?.stop()),
-			history: (direction) => run(() => api?.history(direction)),
+			reload: () => runVoid(() => api?.reload()),
+			stop: () => runVoid(() => api?.stop()),
+			history: (direction) => runVoid(() => api?.history(direction)),
 			setContentRect,
 			setViewVisible,
 			respondToConsent: (entryId, decision) =>
-				run(() => api?.respondToConsent(entryId, decision)),
+				runVoid(() => api?.respondToConsent(entryId, decision)),
 			handOver: (tabId, sessionId) =>
-				run(() => api?.handOver(tabId, sessionId)),
-			revokeHandOver: (tabId) => run(() => api?.revokeHandOver(tabId)),
-			revokeApproval: (origin) => run(() => api?.revokeApproval(origin)),
-			revokeAllApprovals: () => run(() => api?.revokeAllApprovals()),
-			forgetSite: (origin) => run(() => api?.forgetSite(origin)),
-			clearData: (what) => run(() => api?.clearData(what)),
+				runVoid(() => api?.handOver(tabId, sessionId)),
+			revokeHandOver: (tabId) => runVoid(() => api?.revokeHandOver(tabId)),
+			revokeApproval: (origin) => runVoid(() => api?.revokeApproval(origin)),
+			revokeAllApprovals: () => runVoid(() => api?.revokeAllApprovals()),
+			forgetSite: (origin) => runVoid(() => api?.forgetSite(origin)),
+			clearData: (what) => runVoid(() => api?.clearData(what)),
 		}),
 		[
 			state,
@@ -463,6 +486,7 @@ export function useBrowserChrome(): BrowserChrome {
 			available,
 			refresh,
 			run,
+			runVoid,
 			setContentRect,
 			setViewVisible,
 			api,

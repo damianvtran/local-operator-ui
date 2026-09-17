@@ -118,10 +118,20 @@ export interface BrowserTabStripProps {
 	 * (§5.2). */
 	waiting: Record<number, number>;
 	onActivate: (tabId: number) => void;
-	onClose: (tabId: number) => void;
+	/** Close one tab, and report whether the host's invoke was ACCEPTED (`false` is a
+	 * refusal). Only the caret restore reads the value — see the pending-close block.
+	 * `undefined` is the host saying it reports nothing, which the bounded wait's
+	 * expiry then ends; a host that does not care answers `true`. */
+	onClose: (tabId: number) => Promise<boolean> | undefined;
 	/** Close several tabs as ONE intent (design R5). The counts in the labels are the
-	 * disclosure, so the strip builds the intent and the host sends it. */
-	onCloseTabs: (intent: CloseTabsIntent) => void;
+	 * disclosure, so the strip builds the intent and the host sends it.
+	 *
+	 * The promise is the close's own OUTCOME, and it is what bounds the caret restore
+	 * (review round 2, A-2): `false` means the invoke was refused, so the projection
+	 * this side is waiting for can never arrive and the wait has to end. `undefined` is
+	 * the same allowance `onClose` makes, and a host that hands back nothing leaves the
+	 * bounded wait's expiry to end it. */
+	onCloseTabs: (intent: CloseTabsIntent) => Promise<boolean> | undefined;
 	onNewTab: () => void;
 	/** What the `+` calls itself. The host's own sentence, because only the host
 	 * knows whether a tab opened here is attributed to a conversation (design R1):
@@ -132,6 +142,29 @@ export interface BrowserTabStripProps {
 	onHandOver: (tab: BrowserTabView) => void;
 	onRevokeHandOver: (tabId: number) => void;
 }
+
+/**
+ * How long a close's caret restore may stay armed, in milliseconds.
+ *
+ * A BACKSTOP, not the mechanism: when the host reports the close's outcome the record
+ * settles on that answer within one projection, and this only ends the wait for a host
+ * that hands back nothing (a story, a test harness) or a projection that never arrives
+ * at all. The number is the app's own worst measured landing — the QA round that filed
+ * the caret defect read `<body>` at 300ms, 1.3s and 2.8s after the press, the last of
+ * which is a projection still arriving almost three seconds later — so a merely slow
+ * close is still honoured, and past that the caret is left wherever the user has put it
+ * rather than being taken back into the strip.
+ */
+const CLOSE_FOCUS_SETTLE_MS = 4000;
+
+/** One close's claim on the caret. See the pending-close block in the component: `ids`
+ * is what the close named, `parked` records that the caret has already been moved into
+ * the strip for it, and `decided` records that the close's own promise has settled. */
+type CloseFocusPending = {
+	ids: number[];
+	parked: boolean;
+	decided: boolean;
+};
 
 /** The favicon-equivalent: a per-tab state glyph at 16px.
  *
@@ -435,8 +468,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	}, [overflowOpen, activeTabId]);
 
 	/**
-	 * Where a close that takes its own trigger with it leaves the caret, and why it needs
-	 * its own path.
+	 * Where a close that takes its own trigger with it leaves the caret, and why it needs its
+	 * own path, its own record and its own expiry.
 	 *
 	 * A dismissal that does NOT remove the tab (`closeActions`, used by Watch, hand-over,
 	 * revoke and Copy URL) hands focus back to the tab its trigger belonged to. A close
@@ -444,15 +477,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 * caret has nowhere to return to and would fall to `<body>` — dropping a keyboard user
 	 * out of the strip entirely (the UX round 2 U9 class of defect).
 	 *
-	 * SO THE CLOSE NAMES ITS OWN TARGETS. `closingTabIds` is what the batch asked for: the
-	 * ids it sent (`mode: "ids"`) or the conversation's own tabs as the strip last saw them
+	 * SO THE CLOSE NAMES ITS OWN TARGETS. `ids` is what the batch asked for: the ids it
+	 * sent (`mode: "ids"`) or the conversation's own tabs as the strip last saw them
 	 * (`mode: "conversation"`, which main resolves against the live registry so a tab an
 	 * agent opens meanwhile is closed too — the ids here are only the ones this side can
-	 * wait for). While any of them is still in `tabs` THE CLOSE HAS NOT LANDED, and the
-	 * effect below parks the caret in the strip without spending the flag: the projection
-	 * that removes them is what re-runs it.
+	 * wait for). While any of them is still in `tabs` THE CLOSE HAS NOT LANDED.
 	 *
-	 * WHY THE FLAG HAS TO SURVIVE THE FIRST RENDER (review round 1, A2 — one bug, three
+	 * WHY THE RECORD HAS TO SURVIVE THE FIRST RENDER (review round 1, A2 — one bug, three
 	 * reports): `setActionsTabId(null)` renders BEFORE `chrome.closeTabs`'s IPC round trip
 	 * lands, so the first run of this effect after a press still sees every pre-close tab.
 	 * Resolving the selection there focuses the tab that is being removed, which unmounts
@@ -461,25 +492,109 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 * jsdom probe against this component (reviewer, A2). Neither `activeTabId` nor the
 	 * props carry "the close has landed", so the ids do.
 	 *
+	 * AND WHY THE WAIT IS BOUNDED (review round 2, A-2 — the flag had no failure exit). The
+	 * projection that removes the ids is a thing that may NEVER come: an invoke main refuses
+	 * drops nothing, and neither does an id main did not take, because the test above asks
+	 * whether ALL of them are gone. An unbounded wait is not a wait but an armed tripwire —
+	 * this effect re-runs on every `tabs` change, including the `refresh()` a failed `run()`
+	 * performs — so the next tab that arrived took the caret back into the strip, away from
+	 * wherever the user had put it (reproduced in jsdom by the reviewer, whose control case
+	 * shows the caret left alone). THREE RULES BOUND IT, and each covers a different way the
+	 * projection can fail to arrive:
+	 *
+	 *  1. IT PARKS ONCE (`parked`). The caret is moved out of the row that is about to
+	 *     disappear by the first run after the press and by no later one: after that, only
+	 *     the landing below or the expiry may move it.
+	 *  2. THE CLOSE'S OWN OUTCOME DECIDES IT (`settleCloseFocus`). `run` in
+	 *     `use-browser-chrome.ts` awaits its re-read before it resolves, so a settled
+	 *     promise means main has published the projection that answers THIS close: `false`
+	 *     (the invoke was refused) drops the record at once, and `true` marks it decided —
+	 *     the next `tabs` change is then the verdict, and ids still present after it are ids
+	 *     this close did not take, so the record is dropped rather than left armed.
+	 *  3. IT EXPIRES (`CLOSE_FOCUS_SETTLE_MS`). For a host that reports nothing and a
+	 *     projection that never arrives, the record ends on its own either way.
+	 *
 	 * THE TWO PLACEMENTS, in order: while the close is in flight the caret sits on the
 	 * scroller — the one element in the strip that survives every close, which is exactly
 	 * why it is focusable — and once the projection lands, on the new active tab's
-	 * `[role="tab"]`, or the scroller again when there is no tab left to hold it.
+	 * `[role="tab"]`, or the scroller again when there is no tab left to hold it. A refused
+	 * or expired close moves NOTHING: the caret is left where the user has since put it.
 	 */
-	const closingTabIds = useRef<number[]>([]);
-	const closeFocusPending = useRef(false);
+	const closeFocus = useRef<CloseFocusPending | null>(null);
+	const closeFocusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	/** Drop the record and its timer. Nothing here touches focus: every caller has already
+	 * decided that this close will not move the caret (a refusal, a landing, an expiry). */
+	const clearCloseFocus = useCallback((): void => {
+		if (closeFocusTimer.current !== null) {
+			clearTimeout(closeFocusTimer.current);
+			closeFocusTimer.current = null;
+		}
+		closeFocus.current = null;
+	}, []);
+	/** An unmount ends the wait too, so a strip that goes away does not leave a timer behind. */
+	useEffect(() => clearCloseFocus, [clearCloseFocus]);
+
+	/** Arm the wait for ONE close, and return its record so that close's own promise settles
+	 * THAT record rather than whatever a later press armed. */
+	const armCloseFocus = useCallback(
+		(ids: number[]): CloseFocusPending => {
+			if (closeFocusTimer.current !== null)
+				clearTimeout(closeFocusTimer.current);
+			const pending: CloseFocusPending = {
+				ids,
+				parked: false,
+				decided: false,
+			};
+			closeFocus.current = pending;
+			closeFocusTimer.current = setTimeout(() => {
+				if (closeFocus.current === pending) clearCloseFocus();
+			}, CLOSE_FOCUS_SETTLE_MS);
+			return pending;
+		},
+		[clearCloseFocus],
+	);
+
+	/** Let the close's own outcome settle the record when the host reports one. */
+	const settleCloseFocus = useCallback(
+		(
+			pending: CloseFocusPending,
+			settled: Promise<boolean> | undefined,
+		): void => {
+			if (!settled) return;
+			void settled.then((accepted) => {
+				if (closeFocus.current !== pending) return;
+				if (!accepted) {
+					clearCloseFocus();
+					return;
+				}
+				pending.decided = true;
+			});
+		},
+		[clearCloseFocus],
+	);
+
 	useEffect(() => {
-		if (!closeFocusPending.current || actionsTabId !== null) return;
-		const pending = closingTabIds.current;
-		const landed = !pending.some((tabId) =>
+		const pending = closeFocus.current;
+		if (!pending || actionsTabId !== null) return;
+		const landed = !pending.ids.some((tabId) =>
 			tabs.some((tab) => tab.tabId === tabId),
 		);
 		if (!landed) {
+			// THE CLOSE WAS DECIDED AND THESE IDS SURVIVED IT: nothing is coming, so stop
+			// waiting rather than leaving the record armed for the next projection.
+			if (pending.decided) {
+				clearCloseFocus();
+				return;
+			}
+			// PARK ONCE, and never take the caret back from where the user has since put it:
+			// only the landing below may move it again.
+			if (pending.parked) return;
+			pending.parked = true;
 			scrollerRef.current?.focus();
 			return;
 		}
-		closeFocusPending.current = false;
-		closingTabIds.current = [];
+		clearCloseFocus();
 		const next =
 			activeTabId === null
 				? null
@@ -487,23 +602,24 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						`[data-tab-id="${activeTabId}"] [role="tab"]`,
 					);
 		(next ?? scrollerRef.current)?.focus();
-	}, [actionsTabId, activeTabId, tabs]);
+	}, [actionsTabId, activeTabId, tabs, clearCloseFocus]);
 
 	/** One batch close, whatever it closes: drop the row, name what it will take, ask for
-	 * the intent, and leave the caret to the effect above. */
+	 * the intent, and leave the caret to the effect above — which the close's own outcome
+	 * settles when the host reports it. */
 	const runBatchClose = useCallback(
 		(intent: CloseTabsIntent): void => {
-			closingTabIds.current =
+			const pending = armCloseFocus(
 				intent.mode === "ids"
 					? [...intent.tabIds]
 					: tabs
 							.filter((tab) => tab.sessionId === intent.sessionId)
-							.map((tab) => tab.tabId);
-			closeFocusPending.current = true;
+							.map((tab) => tab.tabId),
+			);
 			setActionsTabId(null);
-			onCloseTabs(intent);
+			settleCloseFocus(pending, onCloseTabs(intent));
 		},
-		[onCloseTabs, tabs],
+		[armCloseFocus, onCloseTabs, settleCloseFocus, tabs],
 	);
 
 	/** A single close from the band takes the same path, for the same reason the batch
@@ -511,12 +627,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 * inside the row being removed (review round 1, A2's "while in here"). */
 	const runClose = useCallback(
 		(tabId: number): void => {
-			closingTabIds.current = [tabId];
-			closeFocusPending.current = true;
+			const pending = armCloseFocus([tabId]);
 			setActionsTabId(null);
-			onClose(tabId);
+			settleCloseFocus(pending, onClose(tabId));
 		},
-		[onClose],
+		[armCloseFocus, onClose, settleCloseFocus],
 	);
 
 	// The activated tab scrolls into view (spec §6's last row). With the width
@@ -1219,16 +1334,27 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					 * distinguished only by whether a digit followed one of them. The count now
 					 * carries the chip grammar the tab chips use (`border-control`, `text-ink-dim`,
 					 * `tabular-nums`) so it reads as a COUNT, it carries no plus of its own (see
-					 * its own note below), and the words `N more tabs` are in both channels the
-					 * ruling names: the control's accessible name and its tooltip. `N not shown`
-					 * stays the LIST's own heading, where the sentence is about the rows below it
-					 * rather than about this control's count.
+					 * its own note below), and its words are in both channels the ruling names: the
+					 * control's accessible name and its tooltip.
+					 *
+					 * THE WORDS ARE `N not shown`, AND THAT IS D10 (design review round 2). They were
+					 * `N more tabs`, and the reviewer's reading of the pane's own four-tab frame is why
+					 * they changed: THREE titles are readable there while the chip reads `2`, because
+					 * the third row is clipped at its right edge and this count is measured from the
+					 * rows' own boxes — so a tab lying half outside is counted as not shown, which is
+					 * what the measurement above has always meant and what the count exists to
+					 * disclose (the width cost D1's ruling accepted). The SENTENCE therefore gives way
+					 * to the measure rather than the measure to the sentence: "not shown" is exactly
+					 * true of a clipped row and of a hidden one, it is the same sentence the pinned
+					 * list's own heading already carries, and the two channels a reader can compare can
+					 * no longer disagree. What the chip must not do is read as a count of tabs with no
+					 * visible trace, which is what `more tabs` invited beside three readable titles.
 					 */
 					<Tooltip
 						content={
 							tabsOffScreen === 1
-								? "All tabs — 1 more tab"
-								: `All tabs — ${tabsOffScreen} more tabs`
+								? "All tabs — 1 not shown"
+								: `All tabs — ${tabsOffScreen} not shown`
 						}
 					>
 						<Button
@@ -1237,8 +1363,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							size="icon-sm"
 							aria-label={
 								tabsOffScreen === 1
-									? "All tabs, 1 more tab"
-									: `All tabs, ${tabsOffScreen} more tabs`
+									? "All tabs, 1 not shown"
+									: `All tabs, ${tabsOffScreen} not shown`
 							}
 							aria-expanded={overflowOpen}
 							onClick={() => setOverflowOpen((open) => !open)}
@@ -1254,9 +1380,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							 * grammar (`border-control`, `ink-dim`, tabular) and keeps its count; what
 							 * it loses is the one character that made it a second plus sign, so the
 							 * only `+` in this corner is the control that opens one more tab. The
-							 * words are still in both read channels: "N more tabs" in the control's
-							 * accessible name and in its tooltip, and the pinned list's own heading
-							 * says `All tabs, N not shown`.
+							 * words are still in both read channels, and they are the pinned list's own
+							 * sentence (`All tabs, N not shown`, D10): the control says it in its
+							 * accessible name and in its tooltip, and the list's heading says it above
+							 * the rows it is counting.
 							 */}
 							<span
 								aria-hidden="true"
@@ -1497,13 +1624,17 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					 * orphan rather than trading it for a wrap elsewhere.
 					 *
 					 * BOUNDED, WITH THE HEADING OUTSIDE IT, and the bound is a GUARD RATHER THAN A
-					 * FOLD at today's counts: eight rows is the most this band can hold (watch,
-					 * hand-over, `Close "X"`, the four bulk items and `Copy URL`), which is 8 x 28px of
-					 * buttons plus the 9px rule = 233px against `max-h-60`'s 240px — so every item is
-					 * visible without scrolling, `Copy URL` included, and a ninth item would scroll
-					 * rather than push the page down by another row. `max-h-36`, the pinned list's own
-					 * bound, would have been too mean here: it holds five rows, so it would have hidden
-					 * exactly the item D7 is about.
+					 * FOLD at today's counts: SEVEN rows is the most this band can hold (watch,
+					 * hand-over OR revoke — mutually exclusive, so never both — `Close "X"`, the three
+					 * bulk items and `Copy URL`), which is 7 x 28px of buttons plus the TWO 9px rules
+					 * (D12's, before the closes, and D7's, before `Copy URL`) = 214px against
+					 * `max-h-60`'s 240px — so every item is visible without scrolling, `Copy URL`
+					 * included, and an eighth row would scroll rather than push the page down by
+					 * another row. (The round-2 comment here counted eight rows and one rule, 233px;
+					 * the row count was one wider than the component can draw and the rule count is
+					 * two now, which is why the arithmetic is re-derived rather than incremented.)
+					 * `max-h-36`, the pinned list's own bound, would have been too mean here: it holds
+					 * five rows, so it would have hidden exactly the item D7 is about.
 					 */}
 					<div className="max-h-60 overflow-y-auto">
 						{!actionsTab.active && (
@@ -1512,8 +1643,16 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							// behalf. This replaces the old menu's "Switch to this tab" for a
 							// non-active tab, because it is the same action and the one the operator's
 							// report needs a name for.
+							//
+							// A GHOST ROW RATHER THAN AN OUTLINED ONE (design review round 2, D11): the
+							// `outline` box made the one BENIGN item in this band the loudest thing in
+							// it — a full-width boundary on the row that takes nothing away — while the
+							// closes below it were bare text. The band has ONE row grammar
+							// (`size="sm"`, `w-full justify-start`), and the variant is what carries a
+							// row's weight: `danger` for what closes a tab, `ghost` for what does not.
+							// Watch is a `ghost` here for the same reason `Copy URL` is one.
 							<Button
-								variant="outline"
+								variant="ghost"
 								size="sm"
 								onClick={() => {
 									closeActions();
@@ -1558,8 +1697,33 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 								Stop letting the agent use "{tabLabel(actionsTab.title)}"
 							</Button>
 						)}
+						{/*
+						 * THE DESTRUCTIVE FAMILY WEARS THE DANGER VARIANT, AND IT STARTS HERE BEHIND A RULE
+						 * (design review round 2, D11 and D12).
+						 *
+						 * D11: before this round the four closes were bare `ghost` text while `Watch`'s
+						 * benign row drew an outlined full-width box, so the band's hierarchy read
+						 * backwards — the loudest element on the one item that removes nothing. `danger`
+						 * is the design system's own variant for a control that destroys something
+						 * (`border-danger-border text-danger`, `hover:bg-danger-wash`), and reusing it
+						 * owes no new `CONTROLS` row: `scripts/contrast-contract.mjs`'s `danger callout`
+						 * entry already asserts `dangerBorder` + `danger` ink over `canvas`/`surface`
+						 * — this band's own ground — and `danger` is in that file's `AS_TEXT` list, so
+						 * its text floor on `surface` is asserted too.
+						 *
+						 * D12: the spec's item table IS two groups — the unnumbered rows that take
+						 * nothing away (`Watch`, hand-over/revoke) and the numbered closes, which R5's
+						 * own paragraph calls destructive with no undo — and D7's ruling is that "the
+						 * destructive family reads as one block". One block needs one edge, so the
+						 * family opens at `Close "X"` behind this rule, exactly as it closes before
+						 * `Copy URL` behind the other one.
+						 */}
+						<span
+							aria-hidden={true}
+							className="my-1 block h-px w-full bg-hairline"
+						/>
 						<Button
-							variant="ghost"
+							variant="danger"
 							size="sm"
 							onClick={() => runClose(actionsTab.tabId)}
 							className="w-full justify-start"
@@ -1584,7 +1748,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						 */}
 						{closeOthers !== null && (
 							<Button
-								variant="ghost"
+								variant="danger"
 								size="sm"
 								onClick={() => runBatchClose(closeOthers)}
 								className="w-full justify-start"
@@ -1600,7 +1764,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							// agent creates after the press is not to the right of anything the user
 							// saw and survives, which the strip then shows honestly.
 							<Button
-								variant="ghost"
+								variant="danger"
 								size="sm"
 								onClick={() => runBatchClose(closeRight)}
 								className="w-full justify-start"
@@ -1621,7 +1785,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 								// no number and nothing on screen said the group's size. Three counted
 								// items, one grammar.
 								<Button
-									variant="ghost"
+									variant="danger"
 									size="sm"
 									onClick={() =>
 										runBatchClose(
