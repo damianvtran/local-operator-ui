@@ -2519,7 +2519,7 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 	{
 		file: "scripts/evidence-run-guard.test.mjs",
 		name: "spawn",
-		index: 5,
+		index: 2,
 		binding: /const env = pythonChildEnv\(\{/,
 		why: "the dead-metadata contenders, which override HOME/TMPDIR on top of that env",
 	},
@@ -2568,8 +2568,11 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 	{
 		file: "scripts/renderer-driver.mjs",
 		name: "spawnSync",
-		index: 2,
-		binding: /const env = pythonChildEnv\(\{\}\)/,
+		index: 5,
+		// This site binds its env from a local (`const env = pythonChildEnv({...})`), so the row
+		// matches the BINDING rather than the call's `env:` argument: the U15 step's three spawns
+		// sit above it and shifted it from #2 to #5 (QA round 6, Q6-1).
+		binding: /const env = pythonChildEnv\(\{\}/,
 		why: "the terminal's own `read_pins`, asked what the shared pin store holds after this app pinned from its own surface — the pins scene's `--tui-python` step",
 	},
 	{
