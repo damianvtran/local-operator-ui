@@ -1019,6 +1019,34 @@ type CanonicalSessionsState = {
 	 */
 	pinFailure: PinFailure | null;
 	/**
+	 * The client's own pin state for conversations its catalogue page may not hold.
+	 *
+	 * WHY THIS EXISTS BESIDE `sessions`. `replaceSessionRows` rebuilds the row list
+	 * from the page payload alone, deliberately: the page is the authority on which
+	 * conversations exist, and a row kept past it would be one the backend had
+	 * deleted. But `sessions.list` is CAPPED (500 rows, reported as `truncated`),
+	 * while the search answer is asked of the whole store - so a conversation the
+	 * user just pinned from a search hit is in neither: its row is inserted by
+	 * `setSessionPin` and then dropped by the catalogue refresh that very write
+	 * triggers. The row then falls back to the cached wire hit, which reports the
+	 * state the search last saw, and the next press re-sends the state already
+	 * applied - QA round 2's Qr2-1, measured: wire `pinned: true`, store file
+	 * holding the id, DOM row `aria-pressed="false"`, and the follow-up press
+	 * sending `true` again.
+	 *
+	 * A pin is a fact this client wrote and the backend confirmed, so it is held
+	 * here rather than inferred from a page that cannot carry it. `searchChats`
+	 * renders it for a row the catalogue does not list, and the press inverts it,
+	 * which is what makes the control's state and the press's direction the same
+	 * fact (the round's own requirement).
+	 *
+	 * Cleared nowhere on purpose: it is one boolean per conversation this window
+	 * has pinned, which is bounded by what the user pressed, and a row that
+	 * reappears in a later page carries the wire's `pinned` over it by load order
+	 * (`mergeRow`: the incoming row wins).
+	 */
+	pinFacts: Record<string, boolean>;
+	/**
 	 * Apply the backend's pin state to one row, optimistically.
 	 *
 	 * Optimistic rather than refetch-and-wait: `sessions.list` is a WHOLE
@@ -1411,6 +1439,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			validatingSessionId: null,
 			navigationError: null,
 			pinFailure: null,
+			pinFacts: {},
 			loading: false,
 			truncated: false,
 			statusUnavailable: [],
@@ -1959,6 +1988,25 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					(row) => row.session_id === sessionId,
 				);
 				/*
+				 * What this client knew BEFORE the press, which is what a refused write
+				 * reverts to. The fact outranks the row's own field: for a conversation the
+				 * catalogue page does not carry, the row is the cached wire hit and is not
+				 * evidence, while the fact is this client's own last confirmed state. `null`
+				 * rather than `false` for "no fact", because reverting must not MINT one: a
+				 * row the catalogue does not carry and this window never pinned has nothing
+				 * to put back.
+				 */
+				const factBefore = get().pinFacts[sessionId] ?? null;
+				/*
+				 * What the CONTROL RENDERED before the press, which is what a refused write has
+				 * to put back. The row's own field wins when the store holds the row - it is
+				 * what the glyph was drawn from - and the client's fact is the only witness for
+				 * a conversation the catalogue page does not carry, where the row is the cached
+				 * wire hit and says nothing about what was on screen.
+				 */
+				const held =
+					before === undefined ? (factBefore ?? false) : before.pinned === true;
+				/*
 				 * A row the store does not hold is INSERTED from the seed rather than left
 				 * absent: the map below is a no-op without it, and a press whose result the
 				 * panel cannot read is the failure this exists to prevent. `updated_at` is
@@ -1981,6 +2029,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 									row.session_id === sessionId ? { ...row, pinned } : row,
 								)
 							: [...state.sessions, seedRow],
+					// The fact as well as the row: the row can be dropped by the next
+					// catalogue page (see `pinFacts`), and the fact cannot.
+					pinFacts: { ...state.pinFacts, [sessionId]: pinned },
 					// A press retires the previous press's sentence: the notice is about the
 					// row under the pointer, and two of them would be a log.
 					pinFailure: null,
@@ -1996,21 +2047,39 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								? { ...row, pinned: answer.pinned === true }
 								: row,
 						),
+						pinFacts: {
+							...state.pinFacts,
+							[sessionId]: answer.pinned === true,
+						},
 					}));
 					return true;
 				} catch (error) {
-					const held = before?.pinned === true;
-					set((state) => ({
-						sessions: state.sessions.map((row) =>
-							row.session_id === sessionId ? { ...row, pinned: held } : row,
-						),
-						pinFailure: {
-							sessionId,
-							pinned,
-							title: before?.title || "this chat",
-							detail: userFacingMessage(error, ""),
-						},
-					}));
+					set((state) => {
+						// The fact goes back to what it was, or goes away: a revert that MINTED
+						// one would claim this window knows the state of a conversation it has
+						// only just failed to write.
+						const facts = { ...state.pinFacts };
+						// The fact follows the row: a revert that restored a fact DISAGREEING
+						// with the row it just put back would leave the two saying opposite
+						// things about the same conversation.
+						if (factBefore === null && before === undefined) {
+							delete facts[sessionId];
+						} else {
+							facts[sessionId] = held;
+						}
+						return {
+							sessions: state.sessions.map((row) =>
+								row.session_id === sessionId ? { ...row, pinned: held } : row,
+							),
+							pinFacts: facts,
+							pinFailure: {
+								sessionId,
+								pinned,
+								title: before?.title || "this chat",
+								detail: userFacingMessage(error, ""),
+							},
+						};
+					});
 					return false;
 				}
 			},

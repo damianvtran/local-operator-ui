@@ -224,6 +224,13 @@ export function ChatSidebar({
 	 */
 	const pinsEnabled = desktopFeatureEnabled(capabilities.data, "session_pins");
 	const pinFailure = useCanonicalSessionsStore((s) => s.pinFailure);
+	/*
+	 * The client's own pin state for conversations this panel's page does not carry
+	 * (the store's `pinFacts`). A row synthesized from a search hit is rebuilt from
+	 * the cached answer on every render, so without this the row reports the state
+	 * the search last saw and its control cannot invert its own press (Qr2-1).
+	 */
+	const pinFacts = useCanonicalSessionsStore((s) => s.pinFacts);
 	const setSessionPin = useCanonicalSessionsStore((s) => s.setSessionPin);
 	const wasReady = useRef(false);
 	if (ready) wasReady.current = true;
@@ -357,14 +364,6 @@ export function ChatSidebar({
 			movedRef.current = null;
 			return;
 		}
-		/*
-		 * BOTH kinds of press disarm, not only the pointer's (UX round 2, m3): the DOM moves
-		 * under whatever is parked, and a keyboard press leaves exactly the same parked state
-		 * a pointer press does - the control the reader operated has moved and something else
-		 * now sits at the caret's position.
-		 */
-		setRevealArmed(false);
-		armedAtRef.current = moved.pointer;
 		if (moved.follow) {
 			const delta = row.getBoundingClientRect().top - moved.top;
 			if (delta !== 0) list.scrollTop += delta;
@@ -394,24 +393,70 @@ export function ChatSidebar({
 		movedRef.current = null;
 	});
 	/*
-	 * WHETHER THE REVEAL IS ARMED, which is a fact about the pointer rather than about a
-	 * row (QA round 1, U3). A pin press moves a row out of the list; the rows below slide
-	 * up, so the pointer - which has not moved - is left over a DIFFERENT conversation,
-	 * and its pin was revealed under a pointer that never went there. Disarming on a
-	 * pointer press and re-arming on the next movement inside the region makes the
-	 * stationary pointer inert: the row under it cannot be pinned or opened by accident
-	 * until the reader moves, at which point the affordance is exactly where it was.
+	 * A PRESS BELONGS TO THE CONTROL IT WAS MADE ON (QA round 1, U3; UX round 2, U3-unpin).
+	 *
+	 * A pin press re-orders the panel: the pressed row leaves the list, and the rows below
+	 * slide up. The pointer has not moved, so it is now over a DIFFERENT conversation - and
+	 * a repeat press there would pin or open a row the reader never pointed at. The first
+	 * instrument for this was a disarm: after any press the reveal went inert until the
+	 * pointer moved again. It was too blunt, and QA round 2 (Qr2-1) is where that showed:
+	 * a reader who pins a row and then presses its glyph again to UNPIN it pressed the SAME
+	 * control, at coordinates that had not changed, and the disarm swallowed a gesture that
+	 * was exactly what the panel invites.
+	 *
+	 * So the guard is about identity rather than time or distance: a pointer press that
+	 * repeats the previous one without the pointer having gone anywhere - inside the wobble
+	 * slop - is dropped WHEN THE CONTROL UNDER THE POINTER IS A DIFFERENT CONVERSATION'S,
+	 * and honoured when it is the same one. That is the hazard stated precisely (a row that
+	 * merely slid into place is not the row the press meant) without taking the reader's own
+	 * control away from them. The keyboard is never involved: Enter or Space carries no
+	 * pointer position, so it always acts on the row that has focus.
+	 *
+	 * The slop is a hand's tremor, not a movement: 3 px of wobble is still the same press,
+	 * which is what the round's own instrument used.
 	 */
-	const [revealArmed, setRevealArmed] = useState(true);
-	/*
-	 * ...and a WOBBLE IS NOT A MOVE (UX round 2, U3-unpin). The disarm exists for the gesture
-	 * "press, and the pointer has not gone anywhere"; a 3 px tremor is still that gesture, and
-	 * re-arming on any pixel at all put the reader back in the state the round reported. So the
-	 * position at the press is kept, and the reveal re-arms only once the pointer has moved
-	 * further than a hand wobbles.
+	const lastPinPress = useRef<{
+		x: number;
+		y: number;
+		sessionId: string;
+	} | null>(null);
+	const PIN_PRESS_SLOP_PX = 6;
+	/**
+	 * Whether a pointer press repeats the previous one on a DIFFERENT conversation.
+	 *
+	 * Called by the pin's own handler before it does anything, and it records the press it is
+	 * asked about in the same place - one place, so the record and the decision cannot
+	 * disagree about which press was last. `pointer === null` is the keyboard (a click
+	 * synthesised from Enter or Space carries no count): it has no position, so it is never
+	 * dropped, and it clears the record rather than leaving a stale one behind.
 	 */
-	const armedAtRef = useRef<{ x: number; y: number } | null>(null);
-	const ARM_SLOP_PX = 6;
+	const dropRepeatPress = (
+		pointer: { x: number; y: number } | null,
+		sessionId: string,
+	) => {
+		const last = lastPinPress.current;
+		/*
+		 * A dropped press does NOT advance the record. The row under a parked pointer is not the
+		 * row the gesture was aimed at, and the reader has still not moved: recording the
+		 * dropped press would make the NEXT repeat look like the same control's own press and
+		 * let the hazard through on the second attempt. Measured, before this line existed: a
+		 * 3 px wobble after a press on another row unpinned the row that had slid into place,
+		 * which is the exact gesture UX round 2 reported.
+		 */
+		if (pointer === null) {
+			// The keyboard carries no position: it always acts on the row that has focus, and
+			// it clears the record rather than leaving a stale one for the next pointer press.
+			lastPinPress.current = null;
+			return false;
+		}
+		if (last !== null) {
+			const repeated =
+				Math.hypot(pointer.x - last.x, pointer.y - last.y) <= PIN_PRESS_SLOP_PX;
+			if (repeated && last.sessionId !== sessionId) return true;
+		}
+		lastPinPress.current = { ...pointer, sessionId };
+		return false;
+	};
 	const isOpen = (key: string, initial = false) => expanded[key] ?? initial;
 	const toggle = (key: string, initial = false) =>
 		setExpanded((current) => ({
@@ -512,8 +557,8 @@ export function ChatSidebar({
 		conversationMatches,
 		synthesized,
 	} = useMemo(
-		() => searchChats(sessions, query, hits),
-		[sessions, query, hits],
+		() => searchChats(sessions, query, hits, pinFacts),
+		[sessions, query, hits, pinFacts],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -712,7 +757,26 @@ export function ChatSidebar({
 			   draws one of those the tooltip repeats it rather than omitting it
 			   (review round 6, R33). */
 				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
-				onClick={() => onSelectConversation(row.session_id)}
+				onClick={(event) => {
+					/*
+					 * The same guard as the pin's (see `dropRepeatPress`): a press that repeats the
+					 * previous one without the pointer having gone anywhere belongs to the row the
+					 * reader pressed, and this row may simply have slid into its place. Opening a
+					 * conversation the reader never pointed at is the same hazard as pinning one,
+					 * and it is worse to undo.
+					 */
+					if (
+						dropRepeatPress(
+							event.detail === 0
+								? null
+								: { x: event.clientX, y: event.clientY },
+							row.session_id,
+						)
+					) {
+						return;
+					}
+					onSelectConversation(row.session_id);
+				}}
 			>
 				<ChatSessionStatus row={row} />
 				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
@@ -866,6 +930,20 @@ export function ChatSidebar({
 								y: event.clientY,
 							});
 							/*
+							 * A repeat press aimed at a row that has moved out is dropped before
+							 * anything else runs: it would write the wrong conversation's pin.
+							 */
+							if (
+								dropRepeatPress(
+									event.detail === 0
+										? null
+										: { x: event.clientX, y: event.clientY },
+									row.session_id,
+								)
+							) {
+								return;
+							}
+							/*
 							 * The seed is what lets the store HOLD a conversation it does not
 							 * list: without it the write reaches the backend and the row keeps
 							 * drawing the cached wire hit, so the press can never be undone
@@ -888,19 +966,21 @@ export function ChatSidebar({
 							// height are the same in both states, which is what makes the
 							// reserved slot unable to reflow the row.
 							pinned
-								? cn(
-										"text-ink",
-										// Visible, because a pinned glyph is the STATE and hiding it
-										// would be worse than the hazard; inert, so the parked
-										// pointer cannot operate the row that slid into its place
-										// (UX round 2, U3-unpin).
-										!revealArmed && "pointer-events-none",
-									)
+								? // Visible, because a pinned glyph is the STATE and hiding it would
+									// be worse than the hazard. Its repeat-press hazard is handled by
+									// the press guard, not by taking the control away.
+									"text-ink"
 								: cn(
 										"text-ink-dim opacity-0",
-										revealArmed
-											? "group-hover:opacity-100 group-hover:text-ink-muted group-hover:duration-fast group-focus-within:opacity-100 group-focus-within:duration-fast"
-											: /* Disarmed: hidden AND inert, so the pointer cannot reach it. */ "pointer-events-none",
+										/*
+										 * HIDDEN IS ALSO INERT: an affordance the reader cannot see must
+										 * not be the thing a press lands on (QA round 1, U3). The row
+										 * behind it is the hover target - `group-hover` reveals the
+										 * control, and the same two states make it operable - so the
+										 * transition from inert to operable is the reveal itself.
+										 */
+										"pointer-events-none",
+										"group-hover:opacity-100 group-hover:pointer-events-auto group-hover:text-ink-muted group-hover:duration-fast group-focus-within:opacity-100 group-focus-within:pointer-events-auto group-focus-within:duration-fast",
 									),
 							// Colour step only, and only while this row is NOT the current
 							// one - see the block comment above.
@@ -1441,31 +1521,6 @@ export function ChatSidebar({
 			{showList && (
 				<div
 					ref={listRef}
-					/*
-					 * Re-arming is the reader ACTING again, not a timer: a timer would re-arm
-					 * under a pointer that is still parked, which is the state this exists to
-					 * keep inert. A pointer move and a key press both count, because a
-					 * keyboard press has no pointer to move and must not leave the panel
-					 * inert for the rest of its life (UX round 2, m3).
-					 */
-					onPointerMove={(event) => {
-						if (revealArmed) return;
-						const from = armedAtRef.current;
-						const moved =
-							from === null ||
-							Math.hypot(event.clientX - from.x, event.clientY - from.y) >
-								ARM_SLOP_PX;
-						if (moved) {
-							armedAtRef.current = null;
-							setRevealArmed(true);
-						}
-					}}
-					onKeyDown={() => {
-						if (!revealArmed) {
-							armedAtRef.current = null;
-							setRevealArmed(true);
-						}
-					}}
 					className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2"
 				>
 					<section>
