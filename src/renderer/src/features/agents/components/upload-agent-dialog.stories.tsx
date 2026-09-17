@@ -445,7 +445,17 @@ export const ReservedBuiltin: Story = {
 	// The reservation is caught locally by name key, so submit is already disabled
 	// here; the live check answers the same thing from the hub, which is what makes
 	// both lines visible in one frame.
-	play: settleOn("is the name of a built-in agent"),
+	//
+	// Waited on the AVAILABILITY line's own tail, not on `is the name of a built-in
+	// agent` - that sentence is in the ALERT too (`"Reviewer" is the name of a
+	// built-in agent. Built-in names cannot be published to the hub.`), and the
+	// alert is up as soon as the pre-validation runs, a debounce of 400 ms and a
+	// fetch before the courtesy line arrives. Waiting on the shared sentence
+	// returned the moment the alert painted, so the shutter raced the answer: on
+	// one pass eleven themes photographed both lines and `localOperatorDark`
+	// photographed one, and the next pass moved the missing theme to `dracula` and
+	// `monokai`. `which the hub reserves` is in the courtesy line alone.
+	play: settleOn("which the hub reserves"),
 };
 
 /**
