@@ -5016,6 +5016,16 @@ test("the banner's remedy names the release the last check read", async () => {
 		// URL from config, and a live server on that port would be a session this
 		// test must not touch.
 		updateService.backendUrl = "http://127.0.0.1:9";
+		/*
+		 * NO INSTALL, DECLARED. `updateBackend` reads the install's plan now, and the
+		 * real read walks the machine's own PATH and home: on a box with a global
+		 * install the plan becomes the automatic `lop update` one and the
+		 * manual-required event this case is about is never sent - green on CI, red on
+		 * the machine that ships it. Pinned to the identity the real read returns when
+		 * nothing resolves, so the case's world is the one it declares, like every
+		 * other fixture in this file.
+		 */
+		updateService.resolveInstallIdentity = async () => ({ path: null });
 		// The field `checkForBackendUpdates` writes when a check read the published
 		// release (`:2064`). Setting it here is the point of the case: the question
 		// is whether the value reaches the payload, not how it was fetched.
