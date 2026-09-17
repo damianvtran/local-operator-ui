@@ -720,11 +720,12 @@ made impossible in the one state that also tells them the conversation is gone.
 The pane's own sentence for the state is tied to the box
 (`aria-describedby`), because the placeholder that states it is painted only
 while the box is empty, which is not the state this exists for. Claim focus and
-retrieval here, never a painted caret: no engine paints one in a read-only field
-(measured — the refused box's frames are pixel-identical over 840 ms, and moving
-the insertion point inside a focused read-only textarea changes 0 px against
-137 px in the editable one), so what a reviewer can go and look at is the colour
-step and the focus ring.
+retrieval here; the visible proof of the state is the colour step and the focus
+ring, because a painted caret is not available as evidence of it (measured — the
+refused box's frames are pixel-identical over 840 ms, and moving the insertion
+point inside a focused read-only textarea changes 0 px against 137 px in the
+editable one, and a frame cannot separate `read-only` from a window that is not
+active).
 
 **A burst is one banner, and its click is the catalogue.** When several
 completions land in one tick the backend caps the per-tick banners and publishes
