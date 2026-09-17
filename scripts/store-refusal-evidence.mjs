@@ -358,14 +358,15 @@ const CASES = [
 		viewport: { width: 800, height: 568 },
 		column: 236,
 		/*
-		 * NO `overflowing` ASSERTION HERE, and that is the measurement rather than an
-		 * omission: the sibling's 500 sentence wraps to exactly the six lines the cap
-		 * shows at this track, so the block's own numbers say 120/120 and a 1px metric
-		 * difference would flip a claim this frame is not making. What this frame is
-		 * for is the CLAUSE - it must be painted at the app's minimum window, which is
-		 * what `namesControl` and `knownFact` now ask of the visible rect. The sibling's
-		 * longer sentence (the 507, below) is the frame that carries the overflow.
+		 * The block overflows here too: the sibling's 500 sentence wraps to eight lines
+		 * at this track, so 120 of 160px are shown. (It read 120/120 while the
+		 * horizontal clip was in place - a sentence whose every line is cut at the right
+		 * edge uses fewer lines, which is how the other axis was hiding.) What this frame
+		 * is FOR is the CLAUSE: it must be PAINTED at the app's minimum window, which is
+		 * what `namesControl` and `knownFact` now ask of the visible rect. The 507 frame
+		 * carries the longest copy the sibling's contract can produce.
 		 */
+		overflowing: true,
 	},
 	{
 		/*

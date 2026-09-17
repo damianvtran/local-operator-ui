@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-09-17T17:57:05.137Z",
+  "capturedAt": "2026-09-17T17:59:24.126Z",
   "theme": "localOperatorDark",
   "comment": "Read out of the live DOM per frame. `failures` is empty for every row by construction: a run with any failure writes neither the frames nor this file (agent review round 1, R-1).",
   "cases": [
