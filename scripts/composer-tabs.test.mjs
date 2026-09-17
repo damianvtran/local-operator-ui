@@ -4,7 +4,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
-import { act, createElement } from "react";
+import { Fragment, act, createElement } from "react";
 
 /*
  * The composer's status row: the goal disclosure and the plan count, above the
@@ -60,6 +60,7 @@ const bundle = await build({
 				shouldRestoreComposerFocus,
 				goalDisclosureLabel,
 				goalClearLabel,
+				goalClearedText,
 				loopActionLabel,
 				loopAffordance,
 				loopProgress,
@@ -81,6 +82,8 @@ const bundle = await build({
 				wakeClause,
 			} from "./src/renderer/src/features/chat/components/run-details";
 			import { RunDetailWakes } from "./src/renderer/src/features/chat/components/run-details/run-detail-wakes";
+			import { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
+			import * as toasts from "./src/renderer/src/shared/utils/toast-manager";
 			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 
@@ -88,7 +91,8 @@ const bundle = await build({
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
 			export const renderWakes = (props) =>
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
-			export { ComposerStatusRow, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
+			export { toasts };
+			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalClearedText, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -149,6 +153,9 @@ const {
 	renderWakes,
 	goalDisclosureLabel,
 	goalClearLabel,
+	goalClearedText,
+	ThemedToastContainer,
+	toasts,
 	loopActionLabel,
 	loopAffordance,
 	loopProgress,
@@ -1867,6 +1874,10 @@ async function rowInDom() {
 	const dom = new JSDOM("<div id='root'></div>", { pretendToBeVisual: true });
 	const { window } = dom;
 	const originals = new Map();
+	/** Every observer the mounted tree registered, in registration order. */
+	const observers = [];
+	/** Frames queued by the shim below, in request order. */
+	const frames = [];
 	const shims = {
 		window,
 		document: window.document,
@@ -1892,15 +1903,32 @@ async function rowInDom() {
 		// Deliberately NOT jsdom's own: with `pretendToBeVisual` its rAF is a
 		// real frame loop, and floating-ui's `autoUpdate` keeps one running for as
 		// long as a trigger is mounted — which leaves the process with a pending
-		// frame forever and node:test never exits. Nothing here asserts on a
-		// measurement, so the no-op is the honest shim.
-		requestAnimationFrame: () => 0,
+		// frame forever and node:test never exits. The callbacks are QUEUED rather
+		// than dropped, so a test can fire one frame on demand (the toast channel
+		// schedules its own dismissal in a rAF, which is otherwise invisible here)
+		// while nothing runs unless a test asks for it.
+		requestAnimationFrame: (callback) => frames.push(callback),
 		cancelAnimationFrame: () => {},
 		IS_REACT_ACT_ENVIRONMENT: true,
 		// Radix's tooltip only measures when it opens, but the shim costs nothing
 		// and its absence is a crash deep inside a portal rather than a skip.
+		/*
+		 * The observer RECORDS its callbacks rather than dropping them, because the
+		 * row's own fit rule measures through one (`itemFits`, QA round 2's Q4) and a
+		 * shim that swallowed the callback would make that rule untestable in the one
+		 * instrument that drives the shipped component. `resize()` fires the callbacks
+		 * that observed a matching box, which is what a column change does in a browser.
+		 * The Radix tooltips' own observers land in the same list and are left alone:
+		 * they are only registered while a tooltip is open, and this file's tooltips are
+		 * never opened.
+		 */
 		ResizeObserver: class {
-			observe() {}
+			constructor(callback) {
+				observers.push({ callback, targets: [] });
+			}
+			observe(target) {
+				observers[observers.length - 1].targets.push(target);
+			}
 			unobserve() {}
 			disconnect() {}
 		},
@@ -1918,6 +1946,20 @@ async function rowInDom() {
 	return {
 		window,
 		root,
+		/** Run every frame the mounted tree has requested since the last one. */
+		frame() {
+			for (const callback of frames.splice(0)) callback(0);
+		},
+		/** Fire the observers that observed a box matching `selector`. */
+		resize(selector) {
+			for (const entry of observers) {
+				if (
+					entry.targets.some((target) => target.matches?.(selector) === true)
+				) {
+					entry.callback([]);
+				}
+			}
+		},
 		cleanup() {
 			root.unmount();
 			window.close();
@@ -2749,19 +2791,41 @@ test("the two outcomes that speak do so in the person's own words", () => {
 	 * carries it, so the confirmation carries the one press that takes it back, and the
 	 * restore runs through the same command channel with the CLEARED text.
 	 */
-	assert.match(row, /showInfoToast\(GOAL_CLEARED_TEXT, \{/);
-	assert.match(row, /label: GOAL_UNDO_TEXT,/);
-	assert.match(row, /onClick: \(\) => void restoreGoal\(cleared\)/);
-	assert.match(row, /command\.run\(GOAL_COMMAND, text, GOAL_UNDO_FAILURE\)/);
-	// One hook for both controls, addressed by the session the row is drawn for.
 	assert.match(
 		row,
-		/const command = useSessionCommand\(frontend\?\.session_id \?\? ""\);/,
+		/showInfoToast\(goalClearedText\(cleared\), \{/,
+		"the confirmation names what it cleared (UX round 2, U7)",
 	);
+	assert.match(row, /label: GOAL_UNDO_TEXT,/);
+	assert.match(row, /onClick: \(\) => void restoreGoal\(cleared\)/);
+	assert.match(
+		row,
+		/goalCommand\.run\(GOAL_COMMAND, text, GOAL_UNDO_FAILURE\)/,
+	);
+	/*
+	 * EACH CONTROL OWNS ITS OWN CHANNEL (agent review round 2, MINOR 2): one hook meant
+	 * one `busy`, so a hung `Clear goal` disabled the control that stops a loop that is
+	 * spending turns. The pin is that there are two instances and no shared one left.
+	 */
+	assert.match(
+		row,
+		/const goalCommand = useSessionCommand\(frontend\?\.session_id \?\? ""\);/,
+	);
+	assert.match(
+		row,
+		/const loopCommand = useSessionCommand\(frontend\?\.session_id \?\? ""\);/,
+	);
+	assert.doesNotMatch(row, /const command = useSessionCommand/);
+	assert.match(row, /disabled=\{goalCommand\.busy\}/);
+	assert.match(row, /disabled=\{loopCommand\.busy\}/);
 	// The pair the two controls dispatch, and neither of them is a label.
 	assert.match(
 		row,
-		/runDismiss\(\s*GOAL_COMMAND,\s*GOAL_CLEAR_ARGS,\s*GOAL_CLEAR_FAILURE,\s*\)/,
+		/runDismiss\(\s*goalCommand,\s*GOAL_COMMAND,\s*GOAL_CLEAR_ARGS,\s*GOAL_CLEAR_FAILURE,\s*\)/,
+	);
+	assert.match(
+		row,
+		/void runDismiss\(loopCommand, LOOP_COMMAND, action\.args, action\.failure\)/,
 	);
 	assert.match(row, /dismissLoop\(loopAction\)/);
 	/*
@@ -2793,11 +2857,21 @@ test("one spelling per operation, and one moving-loop predicate, across the row 
 	assert.match(shared, /export const GOAL_CLEAR_ARGS = "clear";/);
 	assert.match(shared, /export const LOOP_STOP_ARGS = "stop";/);
 	assert.match(shared, /export const loopIsRunning = /);
+	/*
+	 * AND THE NAMES (agent review round 2, NIT 2): the module owned the ARGUMENT while
+	 * `"goal"`/`"loop"` stayed literals in three call sites, so its single-owner claim
+	 * was true of half an operation. An operation is a name plus a value, and both
+	 * halves are written here now.
+	 */
+	assert.match(shared, /export const GOAL_COMMAND = "goal";/);
+	assert.match(shared, /export const LOOP_COMMAND = "loop";/);
 	// And the released spellings are the only ones in it: no flag form is exported.
 	assert.doesNotMatch(shared, /"--[a-z]+/);
 
 	const row = code(ROW);
 	assert.match(row, /"\.\.\/pickers\/session-commands"/);
+	assert.match(row, /GOAL_COMMAND,/);
+	assert.match(row, /LOOP_COMMAND,/);
 	assert.doesNotMatch(
 		row,
 		/status === "running"/,
@@ -2809,14 +2883,460 @@ test("one spelling per operation, and one moving-loop predicate, across the row 
 	);
 	assert.match(
 		pickers,
-		/import \{[\s\S]*?GOAL_CLEAR_ARGS,[\s\S]*?LOOP_STOP_ARGS,[\s\S]*?loopIsRunning,[\s\S]*?\} from "\.\/session-commands";/,
+		/import \{[\s\S]*?GOAL_CLEAR_ARGS,[\s\S]*?GOAL_COMMAND,[\s\S]*?LOOP_COMMAND,[\s\S]*?LOOP_STOP_ARGS,[\s\S]*?loopIsRunning,[\s\S]*?\} from "\.\/session-commands";/,
 	);
-	assert.match(pickers, /command\.run\("goal", GOAL_CLEAR_ARGS\)/);
-	assert.match(pickers, /cancel\.run\("loop", LOOP_STOP_ARGS\)/);
+	assert.match(pickers, /command\.run\(GOAL_COMMAND, GOAL_CLEAR_ARGS\)/);
+	assert.match(pickers, /cancel\.run\(LOOP_COMMAND, LOOP_STOP_ARGS\)/);
+	// And no call site in the app spells either half for itself any more.
+	for (const site of [row, pickers]) {
+		assert.doesNotMatch(site, /run\("goal"/);
+		assert.doesNotMatch(site, /run\("loop"/);
+	}
 	assert.doesNotMatch(pickers, /run\("loop", "cancel"\)/);
 	assert.doesNotMatch(
 		pickers,
 		/status === "judging"/,
 		"the picker reads the shared predicate too",
 	);
+});
+
+/* ---------------------------------------------------------------- */
+/* The delta of the round that closed QA's Q4, code review's MINOR 1-3 and   */
+/* UX's U7/U8: the fit rule, the idle re-arm, the per-control flags, the     */
+/* scoped undo. Each is driven through the shipped component.               */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The two numbers the fit rule reads, as the TEST's fixture rather than the layout's.
+ *
+ * `jsdom` lays nothing out, so `clientWidth`/`scrollWidth` are always 0 and a rule
+ * that compares them is untestable without them. What is under test is the
+ * COMPARISON and the state it drives, not the pixels: the values below are QA round
+ * 2's own measurements of the built app (`[data-status-loop-item]` 243px for
+ * `Loop: running, 0 turns` and 275px for `Loop: running, 0 of 25 turns`, against a
+ * 224px row content box at a 240px column), and the frames are where the pixels
+ * themselves are evidence.
+ */
+const stubWidths = (dom, widths) => {
+	Object.defineProperty(dom.HTMLElement.prototype, "clientWidth", {
+		configurable: true,
+		get() {
+			return this.hasAttribute("data-composer-status-row") ? widths.row : 0;
+		},
+	});
+	Object.defineProperty(dom.HTMLElement.prototype, "scrollWidth", {
+		configurable: true,
+		get() {
+			return this.hasAttribute("data-status-loop-item") ? widths.item : 0;
+		},
+	});
+};
+
+test("the loop's figure is painted exactly while the row's own box carries it", async () => {
+	/*
+	 * QA round 2's Q4, as the rule rather than as the defect. The progress used to
+	 * yield only at the STACKED band (`@max-[240px]`), while the pair it belongs to
+	 * stops fitting above it: measured, the item is 243px/275px in a 224px content box
+	 * at a 240px column, and the row painted 19px/52px past it. The yield is now the
+	 * measurement the box model answers, so it holds at every width and for every
+	 * clause the wire can print — including one wider than any of the recorded ones.
+	 */
+	const { window: dom, root, cleanup, resize } = await rowInDom();
+	try {
+		const widths = { row: 0, item: 0 };
+		stubWidths(dom, widths);
+		const h = createElement;
+		const element = () =>
+			h(ComposerStatusRow, {
+				frontend: frontendWith({
+					goal: "",
+					loop: wireLoop("running", { completed: 2, iterations: 5 }),
+				}),
+				runDetails: null,
+			});
+		const clause = () =>
+			dom.document.querySelector("[data-status-loop]").textContent;
+
+		// The composer's own column: 275px of item in an 868px content box.
+		widths.row = 868;
+		widths.item = 275;
+		await act(async () => void root.render(element()));
+		assert.match(clause(), /Loop: running, 2 of 5 turns/);
+
+		// The 240px band: the same item in a 224px content box — Q4's own numbers.
+		widths.row = 224;
+		await act(async () => resize("[data-composer-status-row]"));
+		assert.equal(
+			clause(),
+			"Loop: running",
+			"the figure yields and the status word stays: nothing is cut mid-figure",
+		);
+
+		// A column that can carry it again gets it back, with no threshold involved.
+		widths.row = 868;
+		await act(async () => resize("[data-composer-status-row]"));
+		assert.match(clause(), /, 2 of 5 turns/);
+
+		/*
+		 * And a clause WIDER than the recorded ones — the case a fixed boundary cannot
+		 * cover, which is why the rule is a measurement. `, 2 of 100000 turns` is the
+		 * wire's own spelling with figures no boundary was ever sized for.
+		 */
+		widths.item = 999;
+		widths.row = 868;
+		await act(async () => void root.render(element()));
+		assert.match(
+			clause(),
+			/2 of 5 turns/,
+			"the wide column still carries the clause",
+		);
+		widths.row = 900;
+		await act(async () => resize("[data-composer-status-row]"));
+		assert.equal(clause(), "Loop: running");
+	} finally {
+		cleanup();
+	}
+});
+
+test("an idle reading is not a settled identity, so an acknowledged chip comes back", async () => {
+	/*
+	 * Agent review round 2's MINOR 1, as the sequence that reproduced it: settle,
+	 * acknowledge, the wire reports `idle`, the SAME settled state returns. `idle` used
+	 * to yield a non-null signature (`loopIsRunning("idle")` is false) while `showLoop`
+	 * read it as "no loop", so the acknowledgement was never dropped and the chip that
+	 * should return stayed hidden. A detached app or a replaced driver produces exactly
+	 * that order without an observed `running` frame.
+	 */
+	const { window: dom, root, cleanup } = await rowInDom();
+	const requests = [];
+	dom.api = { desktop: { request: async (request) => requests.push(request) } };
+	try {
+		const h = createElement;
+		const settled = () =>
+			wireLoop("cancelled", { completed: 2, iterations: 5 });
+		const element = (loop) =>
+			h(ComposerStatusRow, {
+				frontend: frontendWith({ goal: "", loop }),
+				runDetails: null,
+			});
+		const chip = () => dom.document.querySelector("[data-status-loop-item]");
+
+		await act(async () => void root.render(element(settled())));
+		const dismiss = dom.document.querySelector("[data-status-loop-dismiss]");
+		assert.match(dismiss.textContent, /Clear loop/);
+		await act(async () => dismiss.click());
+		assert.equal(
+			chip(),
+			null,
+			"the press acknowledges the settled state off the row",
+		);
+		assert.equal(
+			requests.length,
+			0,
+			"and sends nothing: no released spelling for it",
+		);
+
+		// The wire reports `idle`: neither state has a chip to show.
+		await act(async () => void root.render(element(wireLoop("idle"))));
+		assert.equal(chip(), null, "an idle loop is no loop at all");
+
+		// The same settled state comes back. It is a re-arm, not a second chance.
+		await act(async () => void root.render(element(settled())));
+		assert.ok(
+			chip(),
+			"an idle reading between them re-arms the acknowledgement instead of hiding the chip",
+		);
+		assert.match(
+			dom.document.querySelector("[data-status-loop-dismiss]").textContent,
+			/Clear loop/,
+		);
+
+		/*
+		 * The control, unchanged: with no idle reading in between, the same settled
+		 * state stays acknowledged and does not grow a second press.
+		 */
+		await act(async () =>
+			dom.document.querySelector("[data-status-loop-dismiss]").click(),
+		);
+		await act(async () => void root.render(element(settled())));
+		assert.equal(chip(), null, "an identical re-render keeps it acknowledged");
+	} finally {
+		cleanup();
+	}
+});
+
+test("each dismiss owns its own in-flight state, and the busy one stays painted", async () => {
+	/*
+	 * Agent review round 2's MINOR 2 and UX round 2's U8, driven together because they
+	 * are the same two properties of the same two presses.
+	 *
+	 * MINOR 2: one `useSessionCommand` meant one `busy`, so a hung `Clear goal` disabled
+	 * `Stop loop` — the control that stops a loop spending turns, dead while an
+	 * unrelated receipt is outstanding.
+	 *
+	 * U8: `DISMISS_REVEAL` is keyed to the pointer, so a press followed by the pointer
+	 * moving on left the control at `opacity: 0` with `disabled: true` until the command
+	 * settled: a user who pressed and moved on got silence. The busy step is the second
+	 * activator — one class — and it must not un-disable anything.
+	 *
+	 * The bridge is DEFERRED rather than stubbed-answered, because an in-flight command
+	 * is the whole subject: a promise that never resolves is what a hung owner looks
+	 * like to the renderer.
+	 */
+	const { window: dom, root, cleanup } = await rowInDom();
+	const pending = [];
+	const answer = {
+		status: 200,
+		body: {
+			result: {
+				command: "goal",
+				result: { kind: "notice", text: "ran.", style: "success", data: {} },
+			},
+		},
+	};
+	dom.api = {
+		desktop: {
+			request: (request) =>
+				new Promise((resolve) => pending.push({ request, resolve })),
+		},
+	};
+	try {
+		const h = createElement;
+		const element = () =>
+			h(ComposerStatusRow, {
+				frontend: frontendWith({
+					goal: "Reconcile the March invoices",
+					loop: wireLoop("running", { completed: 2, iterations: 5 }),
+				}),
+				runDetails: null,
+			});
+		const goalDismiss = () =>
+			dom.document.querySelector("[data-status-goal-dismiss]");
+		const loopDismiss = () =>
+			dom.document.querySelector("[data-status-loop-dismiss]");
+		const settle = async () => {
+			await act(async () => {
+				for (const entry of pending.splice(0)) entry.resolve(answer);
+			});
+		};
+
+		/*
+		 * The reveal's classes are read as TOKENS, not as substrings: `opacity-100` is a
+		 * substring of `group-hover:opacity-100`, and a matcher that cannot tell them apart
+		 * would pass on the resting control and on the busy one alike.
+		 */
+		const tokens = (node) => node.className.split(/\s+/);
+
+		await act(async () => void root.render(element()));
+		assert.ok(
+			tokens(goalDismiss()).includes("opacity-0"),
+			"at rest the control is held: the reveal waits for a pointer or for busy",
+		);
+		assert.ok(!tokens(goalDismiss()).includes("opacity-100"));
+
+		// The goal's command hangs. The loop's control is untouched by it.
+		await act(async () => goalDismiss().click());
+		assert.equal(pending.length, 1);
+		assert.equal(
+			goalDismiss().disabled,
+			true,
+			"the pressed control is disabled",
+		);
+		assert.equal(
+			loopDismiss().disabled,
+			false,
+			"Stop loop is NOT disabled by the goal's command: the two presses are independent",
+		);
+		assert.ok(
+			tokens(goalDismiss()).includes("opacity-100"),
+			"and it stays PAINTED while it is busy (U8): the press is visible with the pointer gone",
+		);
+		assert.ok(!tokens(goalDismiss()).includes("opacity-0"));
+		await settle();
+		assert.equal(goalDismiss().disabled, false);
+		assert.ok(
+			!tokens(goalDismiss()).includes("opacity-100"),
+			"and the busy step goes with the command: the held state is back",
+		);
+
+		// The other direction, which is the consequential one: a hung Stop loop must
+		// leave `Clear goal` usable.
+		await act(async () => loopDismiss().click());
+		assert.equal(loopDismiss().disabled, true);
+		assert.equal(
+			goalDismiss().disabled,
+			false,
+			"Clear goal is not disabled by the loop's command",
+		);
+		assert.equal(pending[0].request.command, "loop");
+		assert.equal(pending[0].request.args, "stop");
+		await settle();
+	} finally {
+		cleanup();
+	}
+});
+
+test("the goal's undo belongs to its own clearing, and the confirmation names it", async () => {
+	/*
+	 * UX round 2's U7, both measured facets, driven with the app's own toast host:
+	 *
+	 * 1. the offer is retired the moment the wire holds a goal again, so a goal the
+	 *    AGENT set while the toast was up cannot be silently replaced by the cleared
+	 *    text — the defect as the reviewer measured it (`/goal Reconcile the March
+	 *    invoices…` over `A goal the agent set while the toast was up`);
+	 * 2. a second clear's confirmation NAMES what it cleared, so two offers are two
+	 *    things to the eye (`goalClearedText`), and each press returns its own text.
+	 *
+	 * The toast is the app's own container, mounted here because the row speaks through
+	 * that channel and the assertion is about what a person could press.
+	 */
+	const { window: dom, root, cleanup, frame } = await rowInDom();
+	const requests = [];
+	dom.api = {
+		desktop: {
+			request: async (request) => {
+				requests.push(request);
+				return {
+					status: 200,
+					body: {
+						result: {
+							command: request.command,
+							result: {
+								kind: "notice",
+								text: "ran.",
+								style: "success",
+								data: {},
+							},
+						},
+					},
+				};
+			},
+		},
+	};
+	try {
+		const h = createElement;
+		const element = (goal) =>
+			h(
+				Fragment,
+				null,
+				h(ComposerStatusRow, {
+					frontend: frontendWith({ goal }),
+					runDetails: null,
+				}),
+				h(ThemedToastContainer, { duration: Number.POSITIVE_INFINITY }),
+			);
+		/*
+		 * A toast that has been retired is still IN the document with `data-removed="true"`
+		 * until sonner's exit animation ends, and `jsdom` runs no animations: the mark is
+		 * what says the offer is gone, and waiting for the node to leave would be waiting
+		 * for a frame this instrument never paints.
+		 */
+		const liveToasts = () =>
+			[...dom.document.querySelectorAll("[data-sonner-toast]")].filter(
+				(node) => node.getAttribute("data-removed") !== "true",
+			);
+		const toastText = () => liveToasts().map((node) => node.textContent ?? "");
+		/*
+		 * The toast channel schedules its own work in a `requestAnimationFrame`
+		 * (`toast.dismiss` notifies its subscribers from one), and this harness's rAF is a
+		 * queue: a frame has to be asked for. Three rounds is what the two state hops need —
+		 * the store's notify, the Toaster's render, and the removal mark.
+		 */
+		const settle = async () => {
+			for (let round = 0; round < 3; round += 1) {
+				await act(async () => {});
+				await act(async () => frame());
+			}
+		};
+		/*
+		 * A BOUNDED WAIT, because sonner paints through its own portal from its own store
+		 * and in bare jsdom that render lands a frame or two after the press — lag this
+		 * round's reviewer recorded too (they treated a missing toast as harness flake and
+		 * re-ran). The wait is bounded and still fails on a WRONG confirmation or on one
+		 * that never arrives, which is what the assertions are about.
+		 */
+		const waitForLive = async (needle) => {
+			for (let round = 0; round < 12; round += 1) {
+				if (toastText().some((text) => text.includes(needle))) return;
+				await settle();
+			}
+			assert.fail(
+				`no confirmation carrying ${needle}: ${JSON.stringify(toastText())}`,
+			);
+		};
+		const waitForRetired = async () => {
+			for (let round = 0; round < 12; round += 1) {
+				if (liveToasts().length === 0) return;
+				await settle();
+			}
+			assert.fail(
+				`the offer was never retired: ${JSON.stringify(toastText())}`,
+			);
+		};
+		const dismiss = () =>
+			dom.document.querySelector("[data-status-goal-dismiss]");
+		const pressUndo = async () => {
+			const button = [
+				...liveToasts().flatMap((node) => [...node.querySelectorAll("button")]),
+			].find((node) => node.textContent === "Undo");
+			assert.ok(button, "the confirmation offers the undo");
+			await act(async () => button.click());
+		};
+
+		// The copy itself, as a value: one line, leading words, an ellipsis, nothing cut.
+		assert.equal(
+			goalClearedText("Reconcile the March invoices"),
+			"Goal cleared · Reconcile the March invoices",
+		);
+		assert.equal(
+			goalClearedText(
+				"Reconcile the March invoices against the payments ledger",
+			),
+			"Goal cleared · Reconcile the March…",
+			"the cut falls on a word, not inside one",
+		);
+		assert.equal(
+			goalClearedText("Two lines\nof a goal"),
+			"Goal cleared · Two lines of a goal",
+			"a multi-line goal is one line in a toast",
+		);
+
+		// SEQUENCE 1: cleared, then a goal arrives while the confirmation is up.
+		await act(
+			async () => void root.render(element("Reconcile the March invoices")),
+		);
+		await act(async () => dismiss().click());
+		await waitForLive("Goal cleared · Reconcile the March invoices");
+		assert.equal(requests.length, 1);
+		assert.equal(requests[0].args, "clear");
+		await act(async () => void root.render(element("A goal the agent set")));
+		await waitForRetired();
+		assert.equal(
+			liveToasts().length,
+			0,
+			"the offer is retired the moment the wire holds a goal: nothing can put the cleared text over it",
+		);
+
+		// SEQUENCE 2: two clears, each with its own text, each answering for itself.
+		await act(async () => dismiss().click());
+		await waitForLive("Goal cleared · A goal the agent set");
+		assert.equal(requests.length, 2);
+		assert.equal(requests[1].args, "clear");
+		assert.equal(
+			liveToasts().length,
+			1,
+			"and the second confirmation is the only one on screen",
+		);
+		// The wire's goal is now empty: the offer stands, and its press restores THAT text.
+		await act(async () => void root.render(element("")));
+		await pressUndo();
+		assert.equal(requests[2].command, "goal");
+		assert.equal(
+			requests[2].args,
+			"A goal the agent set",
+			"the undo returns the text of ITS OWN clearing",
+		);
+	} finally {
+		cleanup();
+	}
 });

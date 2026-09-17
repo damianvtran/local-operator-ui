@@ -307,8 +307,14 @@ change since § 3.1 said so; what this change adds is one more reason it does.
 | 172px (the app's floor), the same six | 6, stacked | **158px** | 0 |
 
 The 158px is this row's tallest state above the composer and it is the one number
-the frames print that this record did not carry (design review round 1's D5, read
-off `loop-tab-rest/`'s own caption): six lines at the app's floor. It is not a new
+the frames print that this record did not carry (design review round 1's D5). Where it
+is printed was WRONG until this round: this sentence cited `loop-tab-rest/`'s caption,
+and that directory's frames photograph bands 1-4 of an eight-band story while the two
+`RowFacts` bands are its last two (agent review round 2, MINOR 3). The number and the
+six-chip band's pair of dismiss widths are now in a frame that holds them —
+`docs/evidence/composer-status-clear/loop-tab-facts/`, which prints `172px column ·
+row 158px tall · overflowX 0px · 6 chips · 2 dismiss (26px+26px)…` and
+`2 dismiss (89px+86px) · dismiss gap 0px+0px` at 900px. It is not a new
 decision — § 2.3's "the height may change" already covers it, and the change that
 produced it is the same one that produced the 58px two-line state above: a sixth
 chip and two held boxes on a 156px column, where the counts are `shrink-0` and
@@ -943,10 +949,19 @@ merges it with the list panel beside it and no palette assertion can see it).
 condition that would change it.** The rule is a component *"with its own fill and
 border"* (`AGENTS.md` § "Where colour comes from", `branding.md` § 3, § 9.8), and
 this one declares neither: at rest it is text on the page ground, and its only
-fill is the hover ground whose one pairing (ink on `accentWash`) is already
-asserted by the `reading button, hovered` row (`contrast-contract.mjs:368`) —
-a pairing that is ground-independent because `accentWash` is an opaque role in
-every palette (e.g. `local-operator.ts:67`, `:186`), not an alpha composite. So:
+fill is the hover ground whose pairings are asserted by the `reading button,
+hovered` row (`contrast-contract.mjs`) — ink on `accentWash`, which is
+ground-independent because `accentWash` is an opaque role in every palette (e.g.
+`local-operator.ts:67`, `:186`), not an alpha composite.
+
+**That row now asserts BOTH grounds, and this round is why** (design review round 2's
+contract note, the item the review called the one open contrast question): the fill's
+own perceptibility against the ground is NOT ground-independent, this row paints on
+`canvas` while the readings wear the same box on `surface`, and the row asserted
+`surface` alone. The designer computed the missing pair by hand — `ΔE00(accentWash,
+canvas)` = 13.33 dark / 6.75 light, so nothing hides — and the contract now computes
+it for every palette instead, which is the difference between a measurement that was
+taken once and one that cannot rot. So:
 **if either chip acquires a rest fill or any border — `bg-surface`,
 `bg-elevated`, `border-control` — a `CONTROLS` row becomes mandatory in the same
 commit**, because green output about a component nobody listed is not evidence
@@ -1237,13 +1252,26 @@ Three properties, each a decision rather than a habit:
   control is unusable by keyboard (WCAG 2.1.1), and taking focus on the chip is what
   reveals it. The control is consequently in the tab order at every width, including
   the widths where its word is dropped (§ 12.5).
-- **The scope is the TRIGGER'S OWN LINE, not the flex item** (§ 12.3). `group` sits on
-  the row that holds the trigger and its control, so `group-hover` and
-  `group-focus-within` mean "the pointer or the focus is on the pair", and the ✕
-  cannot appear while the pointer is on empty row up to 532px away (UX round 1, U5).
-  The two activators are also asserted to carry the SAME utilities, as sets, in
-  `scripts/composer-tabs.test.mjs` — the keyboard half cannot drift behind the pointer
-  half.
+- **The scope is the TRIGGER'S OWN LINE, and it is the ITEM'S WIDTH — the claim as
+  first written is corrected here (design review round 2, `D8`). `group` sits on the
+  row that holds the trigger and its control, and that row is a BLOCK-level box
+  inside the caller's `min-w-0 flex-1` root, so its box IS the item's content box:
+  **472px** in the goal+loop+plan band, **868px** with the goal alone. The ✕ can
+  therefore still be revealed from the item's blank stretch to the right of the
+  dismiss — which UX round 1 scored a NIT and called good for discovery (`U5`),
+  inherited from `canvas-tabs.tsx` and `directory-indicator.tsx`. What moved is WHICH
+  full-width element carries `group`: the primitive's own row rather than the
+  caller's item, so no call site can widen the scope without changing the primitive.
+  The two activators are asserted to carry the SAME utilities, as sets, in
+  `scripts/composer-tabs.test.mjs`, and that assertion cannot see a width — which is
+  why the wrong claim survived it.
+- **BUSY is the second activator** (UX round 2, `U8`): `DISMISS_BUSY_REVEAL` is one
+  class, applied while that control's own command is in flight, so a press followed
+  by the pointer moving on — which is what pointers do once they have pressed
+  something — still shows the control working. Measured before the fix: 400ms into a
+  held command the dismiss computed `opacity: 0` with `disabled: true` and the row
+  said nothing until the command settled. It paints; it does not un-disable (the
+  ink step and `pointer-events-none` stay), and no motion is added.
 - **No transition.** The two existing hover-revealed dismisses reveal instantly, and
   the row's chips transition `color` and `background-color` only. A fade here would
   be new motion on this row for nothing (`branding.md` § 5 is why the two are
@@ -1294,14 +1322,35 @@ control landed **132px, 414px and 532px** from the words it acts on across three
 states — and in two of them its nearest neighbour was a DIFFERENT chip. The loop's
 identical control, on a content-sized item, sat 7px from its words in every state.
 
-**The pair is on one line now, and the row is the reveal's scope with it.** The
-primitive renders the trigger and the `trailing` control inside one row and puts
-`group` on that row, which is the smallest common ancestor of the two: the reveal is
-scoped to the pair rather than to the item's `flex-1` box, so the ✕ no longer appears
-while the pointer is on empty row (UX round 1, `U5`) and cannot be read as row-level
-chrome. Measured in this change's own frames (`dismiss gap 0px` in every state, at
-900px, 240px and the 172px floor) against the same instrument's reading of the
-reviewed arrangement (`407px` on the goal+plan band, whose chip is unclamped).
+**The pair is on one line now, and `group` moved onto the primitive's own row —
+which is NOT the same thing as narrowing the reveal, and this paragraph is the
+correction design review round 2's `D8` asked for.** The first version of it said the
+reveal was "scoped to the pair rather than to the item's `flex-1` box, so the ✕ no
+longer appears while the pointer is on empty row". The box model says otherwise: the
+primitive's row is a block-level box inside the caller's `min-w-0 flex-1` root, so its
+box IS the item's content box — **472px** in the goal+loop+plan band (where the pair
+occupies 345px, leaving 133px of revealable line to the right of the dismiss) and
+**868px** with the goal alone (§ 4.1's own figure), which is § 12.3's original 868px
+item. Measured on the running app by UX round 2 as well: the `.group` row spans
+`[540..1340]`, 800px, exactly the goal item's box. So the ✕ still appears with the
+pointer on the item's blank stretch — UX round 1's `U5`, scored NIT and kept as the
+inherited pattern's behaviour.
+
+What the change actually did, and why it is still worth the slot: `group` now sits on
+the smallest box that holds both controls, so the reveal's SCOPE is the primitive's
+own markup rather than whatever wrapper a caller happens to draw — no call site can
+widen it by accident, and a caller whose root is narrower than its item (or whose
+wrapper is wider) cannot change the pair's relationship. The narrow thing that IS
+still measured and still true is the pair's own geometry: `dismiss gap 0px` in every
+state, at 900px, 240px and the 172px floor, against the same instrument's reading of
+the reviewed arrangement (`407px` on the goal+plan band, whose chip is unclamped).
+
+The rejected alternative is recorded with it: keying `group` to the pair's own boxes
+(`group flex w-fit max-w-full items-center`) would make the claim true, and it is not
+taken — with the line at fit-content the chip's own `max-w-full` re-resolves against
+a fit-content containing block, and the `overflowX 75px` failure § 12.6 records is the
+shape that would come back. A claim narrowed to what the code does beats a class that
+has to be re-measured to stay true.
 
 **WHY THE SLOT AND NOT `display: contents`.** The cheap mechanism the review asked to
 try was `display: contents` on the primitive's existing root, with the body as a
@@ -1327,13 +1376,27 @@ the DOM it rendered before.
 
 ### 12.4 The command, and the outcomes that speak
 
-Both controls run one owner command through the pickers' own channel —
-`useSessionCommand(frontend.session_id).run(name, args, failure)` (`use-picker-backend.ts`),
-the same hook the destination pickers submit with, so the request shape, the request
-id and the receipt are the app's own rather than a second way to reach a session
-command. The command NAMES (`goal`, `loop`) are literals in the row, deliberately not
-derived from the control's visible word: the command surface is the backend's API and
-the word is copy, so a copy change must not be able to move the command it runs.
+Each control runs its own owner command through the pickers' own channel —
+`useSessionCommand(frontend.session_id).run(name, args, failure)`
+(`use-picker-backend.ts`), the same hook the destination pickers submit with, so the
+request shape, the request id and the receipt are the app's own rather than a second
+way to reach a session command.
+
+**ONE HOOK INSTANCE PER CONTROL** (agent review round 2, `MINOR 2`), and the first
+version of this paragraph argued the opposite: a single instance meant a single
+`busy`, so a `Clear goal` whose receipt never arrived disabled `Stop loop` — the one
+control that stops a loop spending turns, dead while an unrelated command was
+outstanding. Reproduced against the shipped component with a deferred bridge (the goal
+pressed: `goal disabled = true, loop disabled = true`), and the two presses are now
+independent in both directions (`scripts/composer-tabs.test.mjs` drives each).
+
+The command NAMES (`goal`, `loop`) are NOT derived from the control's visible word:
+the command surface is the backend's API and the word is copy, so a copy change must
+not be able to move the command it runs. They live in the shared module with the
+values they take (agent review round 2, `NIT 2`), because that module owned the
+ARGUMENT while three call sites kept spelling the names: an operation is a name plus a
+value, and a module that owns half of one cannot keep its callers spelling the whole
+of it the same way.
 
 **NO `--`-PREFIXED ARGUMENT IS SENT FROM THIS APP AT ALL**, and that is the round's
 blocker read back (agent review round 1's `MAJOR 1`, QA's `Q1`). The desktop command
@@ -1375,12 +1438,26 @@ the app sends nothing the oldest backend in the fleet cannot already read.
   and the operator asked for a subtle hover affordance rather than for a press that
   loses work.
   - So the clear confirms through the channel the refusal already uses, **with the one
-    press that takes it back**: `Goal cleared` with an `Undo` action
-    (`showInfoToast` with sonner's own `action`), which re-sends the CLEARED text as
-    `goal <text>` — a set form every released backend honours — and reports its own
-    failure if that fails. The text is captured before the wire moves, so the undo
-    restores what was cleared and not a later revision. Driven end to end in
+    press that takes it back**: `Goal cleared · <the cleared goal's leading words>` with
+    an `Undo` action (`showInfoToast` with sonner's own `action`), which re-sends the
+    CLEARED text as `goal <text>` — a set form every released backend honours — and
+    reports its own failure if that fails. The text is captured before the wire moves,
+    so the undo restores what was cleared and not a later revision. Driven end to end in
     `docs/evidence/composer-status-clear/interaction-undone/`.
+  - **The offer belongs to its own clearing and is retired when the wire moves on**
+    (UX round 2, `U7`), which is what the first version got wrong: the confirmation
+    captured the cleared text and never re-checked anything, so a goal the AGENT set
+    while the toast was up was silently replaced by the older sentence on the next
+    `Undo` press — no confirmation, no way back. The offer now stands only while the
+    wire still holds NO goal (the state the press was taken from); the row retires it
+    through the toast channel's own `dismissToast` the moment a goal arrives, and the
+    press re-reads the same precondition, so a press that loses the race sends nothing.
+  - **And the confirmation NAMES what it cleared**, which is the other half of the same
+    finding: clears inside one confirmation's life used to stack indistinguishable
+    `Goal cleared` lines, each holding a different sentence back. `goalClearedText`
+    collapses the goal to one line and cuts it on a WORD inside a 28-character budget
+    (`Goal cleared · Reconcile the March…`), so two of them are two things to the eye
+    and one of them says what a reader wants when the chip is gone.
   - The action button's paint is sonner's own, from the themed `--normal-*` variables
     (`ink` ground, `elevated` text in the dark palette, inverted in the light one —
     both legible, and both visible in this set's `interaction-performed/` frames).
@@ -1402,12 +1479,15 @@ the app sends nothing the oldest backend in the fleet cannot already read.
   prefix is a parameter of `run` so the pickers keep the slash spelling that is
   accurate for THEM. The frame:
   `docs/evidence/composer-status-clear/interaction-refused/`.
-- **The dismisses are DISABLED while a command is in flight**, matching the sibling
+- **Each dismiss is DISABLED while ITS OWN command is in flight**, matching the sibling
   control for the same operation (`LoopPicker`'s Cancel, `disabled={cancel.busy}`):
   a second press cannot fire a second command, so a successful clear can no longer be
   followed by the refusal its own repeat would earn (`R-MINOR-2`, UX's `U3`). The
   disabled state STEPS COLOUR to `ink-disabled` and drops the hover ground it can no
-  longer honour, rather than fading (`branding.md` § 6).
+  longer honour, rather than fading (`branding.md` § 6), and it is the state that
+  keeps the control PAINTED when the pointer has moved on (§ 12.2, UX's `U8`). The flag
+  is per control, not shared: see the channel note above (agent review round 2,
+  `MINOR 2`).
 
 ### 12.5 The word yields at the stacked band
 
@@ -1436,9 +1516,38 @@ the dismiss stays 89px — so the 26px state is emulation-only, and the rule exi
 keep the control identifiable if a narrower column ever becomes reachable.
 
 The same constant drops the loop chip's PROGRESS (§ 13.3), which is the other piece
-of copy a 156px column cannot carry. One rule, two users: what yields at the band is
-the part that has a second home, and what stays is the part that identifies the
-control.
+of copy a 156px column cannot carry. What yields at the band is the part that has a
+second home, and what stays is the part that identifies the control.
+
+**The FIGURE yields by a SECOND rule with a second condition** (QA round 2's `Q4`),
+and the first version of this section, which called the two yields "one rule, two
+users", was wrong about the half that mattered. A container step can only be a PROXY
+for the width at which copy stops fitting, and this one was below it: the defect,
+measured on the built app, is that `[data-status-loop-item]` is **243px** for
+`Loop: running, 0 turns` and **275px** for `Loop: running, 0 of 25 turns` while the
+row's content box is **224px** at a 240px column — `overflowX 19px` and `52px` at 240px,
+`18px`/`51px` at 241px, and `0px` one pixel lower, where the step happens to fire.
+
+So the progress yields on the FIT the item actually has: the row measures the loop
+item's own width against its own content box, and the figure is painted only while
+that box carries the item (`itemFits`). No step can express this — the clause carries
+the wire's own figures, so its width is unbounded by construction (a longer count is a
+wider chip) and any boundary is a guess the next figure outgrows, which is exactly what
+this defect was. Three properties make the measurement stable rather than clever: what
+it REMEMBERS is the item's own width from the frame the figure was painted in, so the
+rule is monotone in the row's width and cannot flip on the answer it just gave; it is a
+LAYOUT effect, so the first paint already carries it; and the observer is on the ROW,
+because what moves this box is a container query (the same reason
+`directory-indicator.tsx` records for its own). The class rule keeps the word — and
+keeps the figure at the stacked band, where the row is a COLUMN and the yield must hold
+before any measurement lands — but the two are two rules with two conditions, and
+neither is a proxy for the other.
+
+`min-w-0` on the item was the other candidate and is NOT the fix, recorded rather than
+left as a question: the chip and the dismiss are both `shrink-0` in the boxes they
+share with the readings, so a `min-w-0` item would be narrowed with its contents
+painting straight through it — the overflow would move from the row's edge into the
+item's own box and stay on the column, with the row still reporting it.
 
 ### 12.6 What the held box costs, in numbers
 
@@ -1462,6 +1571,31 @@ at every captured width, which is the invariant the row has carried since § 5.4
 the one the pair's new line could most easily have broken: the chip's automatic
 minimum size had to be brought to 0 (`min-w-0` on the trigger) for it to shrink and
 leave the control its box, measured at `overflowX 75px` without it.
+
+**AND THE LOOP ITEM'S OWN NUMBERS, which the table above does not carry** — it was the
+one item whose `overflowX` was not 0, and it is QA round 2's `Q4`. The frames that hold
+them are the band stories: `docs/evidence/composer-status-clear/loop-band-fit/` and
+`loop-band-fit-goal/` at the 240px step (241/240/239px) and `loop-band-fit-floor/` with
+`loop-band-fit-floor-goal/` at the app's floor (173/172/171px), one per clause shape,
+with the before half in `loop-band-overflow/`.
+
+| Column | Clause | Loop item | Row's box | `overflowX` | dismiss |
+|---|---|---|---|---|---|
+| 241px, before | `Loop: running, 0 of 25 turns` | 270px | 241px | **37px** | 86px |
+| 240px, before | the same | 270px | 240px | **38px** | 86px |
+| 239px, before | the same | 130px | 239px | 0px | 26px (word dropped) |
+| 241px, after | the same | 190px | 241px | 0px | 86px |
+| 240px, after | the same | 190px | 240px | 0px | 86px |
+| 240px, after | `Loop: running, 0 turns` (narrower) | 190px | 240px | 0px | 86px |
+| 172px, after | `Loop: running, 0 of 25 turns` | 136px | 172px | 0px | 26px |
+
+The two `before` rows are the same three widths with the measured fit rule disabled
+(the code this round's reviews measured), and QA's own rig put the same shape on the
+BUILT app at `19px`/`52px` at the 240px band and 241px: the numbers differ because the
+app's paddings differ, and both are the same defect — the item is wider than the line it
+is on and nothing in it yields. The `after` rows are also the reason a threshold was not
+the fix: at 240px the figure has yielded (190px of item in a 225px line) while the
+clause is still the widest one the wire prints, and at 172px the word has yielded too.
 
 ---
 
@@ -1510,10 +1644,15 @@ without colour: a hover ground and a pointer mean a press does something.
   because that is the app's one vocabulary for a loop — the `/loop` picker's own
   status row prints the same token — and a prettier word here would be a second
   vocabulary for one fact, which is the defect `wakeClause` refuses one surface over.
-- **The progress YIELDS at the stacked band** (`NARROW_HIDDEN`, § 12.5), and the
-  measurement that made it a rule: with the whole clause at the 172px floor the row
-  read `overflowX 44px` — a chip that cannot wrap is a chip that paints past its
-  column. With the progress dropped, `overflowX 0` at every captured width.
+- **The progress YIELDS when the row cannot carry the clause**, and there are two
+  conditions because there are two ways that happens (§ 12.5). At the STACKED band the
+  row is a column and the class rule drops it (`NARROW_HIDDEN`); and at every width
+  above it the row MEASURES whether its content box carries the item and drops it when
+  it does not (QA round 2, `Q4`). The first measurement that made the band rule
+  necessary: with the whole clause at the 172px floor the row read `overflowX 44px` —
+  a chip that cannot wrap is a chip that paints past its column. The fit rule is what
+  makes that true ABOVE the band as well, where the same chip is 243px and 275px wide
+  in a 224px box; with either yield applied, `overflowX 0` at every captured width.
 - **The clause is ONE TEXT FLOW**, and the progress is an INLINE node inside it rather
   than a second flex item of the readout's box. The first arrangement split the clause
   into two flex items and the readings' box carries `gap-1.5`, so the app painted
@@ -1559,10 +1698,23 @@ so the settled step is the ROW'S OWN ACKNOWLEDGEMENT of its own chip:
   `judging`, which is the re-arm the interaction requires;
 - it is dropped as soon as the wire reports no settled loop, so a later loop that
   settles into the same shape shows its own chip;
-- **the honest cost**: a RE-ATTACH re-renders the wire's settled chip and a second
-  acknowledgement is needed. That is accepted over sending a command an older backend
-  misreads — a cosmetic wart beats starting a runaway loop — and it is the reason the
-  word `Clear loop` stays: what the press clears is the row's chip.
+- **`idle` is NOT a settled identity** (agent review round 2, `MINOR 1`), and excluding
+  it corrects what this section first said the cost was. `loopIsRunning("idle")` is
+  false, so an idle reading used to produce a signature and the acknowledgement was
+  never dropped — while the chip's own gate reads idle as "no loop". The two
+  predicates disagreeing about the one status they share left the chip HIDDEN through
+  `settle → acknowledge → idle → the same settled state`, which is the sequence a
+  detached app or a replaced driver produces. The signature is now the identity of a
+  settled loop and nothing else, and `scripts/composer-tabs.test.mjs` drives that
+  exact order;
+- **the honest cost**: a RE-ATTACH (a reload, a remount) re-renders the wire's settled
+  chip and a second acknowledgement is needed — the signature memory lives in the
+  mounted row, not on the wire. Note what does NOT re-arm while the row stays mounted:
+  a settled state RE-PUBLISHED with an identical signature keeps the chip hidden, which
+  is the opposite of what an earlier version of this sentence claimed. Accepted over
+  sending a command an older backend misreads — a cosmetic wart beats starting a
+  runaway loop — and it is the reason the word `Clear loop` stays: what the press
+  clears is the row's chip.
 
 **An unreadable status is read as SETTLED**, and the boundary is stated rather than
 assumed: the running set is the wire's own two words, and offering `Stop` on a status

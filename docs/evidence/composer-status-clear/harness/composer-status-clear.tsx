@@ -60,6 +60,20 @@ type Wire = {
 
 const STANDING_GOAL = "Reconcile the March invoices";
 
+/**
+ * A goal long enough to CLAMP the dismiss's tooltip (`TOOLTIP_CLAMP` = four lines).
+ *
+ * Used only where `?long=<session>` asks for it (see `LONG_GOAL_BANDS`), because the
+ * clamp is a state design review round 2 (D7/D9) found unpainted: the frame the set
+ * carried for it showed a two-line tooltip over a short goal, so "four lines at most"
+ * was true of the class and not of any pixel.
+ */
+const LONG_GOAL =
+	"Reconcile the March invoices against the payments ledger, group the unpaid rows " +
+	"by customer, confirm what 'pending' means with finance (two rows need a decision), " +
+	"then write reports/unpaid-march.md from the reconciled totals and publish the " +
+	"summary to the finance channel before the month closes";
+
 const LOOP_RUNNING: DesktopLoopState = {
 	status: "running",
 	completed: 2,
@@ -145,6 +159,36 @@ const REFUSING = new Set(["refused"]);
 const handlers = new Map<string, (request: CommandRequest) => void>();
 
 /**
+ * The bands whose command is ANSWERED BY NOTHING, selected by `?hang=<session id>`.
+ *
+ * WHY IT IS A QUERY PARAMETER rather than a fifth band: the frames in this set
+ * photograph the whole page, so a band added here would make every one of them a
+ * picture of a harness that no longer exists — re-shooting them all to add one state.
+ * This changes the BRIDGE and not the page, so the four existing frames still describe
+ * the page they were taken from, and the in-flight state has its own URL (recorded in
+ * this set's README). It is the disability state design review round 2's D9 found
+ * unpainted: `disabled={busy}` on each dismiss, with the busy step keeping it painted
+ * (UX round 2's U8) — and it needs a transport that never answers, which is what a
+ * hung or recovering owner looks like from the renderer's side.
+ */
+const HANGING = new Set(
+	new URLSearchParams(window.location.search).getAll("hang"),
+);
+
+/**
+ * The bands whose goal is the LONG fixture, selected by `?long=<session id>`.
+ *
+ * The second half of the clamped tooltip's own URL, and it is a separate parameter
+ * because the two are separate facts: `hang` makes the command never answer (the
+ * DISABLED state), and this makes the tooltip the press leaves open long enough to
+ * clamp. Both are fixture-level and both are off by default, so no frame already in
+ * this set describes a page this file can no longer render.
+ */
+const LONG_GOAL_BANDS = new Set(
+	new URLSearchParams(window.location.search).getAll("long"),
+);
+
+/**
  * Install the desktop bridge, exactly as the Electron preload installs it.
  *
  * The request is recorded into the DOM by the band that owns it (a page-level
@@ -156,7 +200,12 @@ const installBridge = () => {
 	(window as unknown as { api: unknown }).api = {
 		desktop: {
 			request: async (request: CommandRequest) => {
+				// The band records the press first, so the in-flight frame carries the command
+				// it dispatched while the wire stands still and the control is disabled.
 				handlers.get(request.sessionId)?.(request);
+				if (HANGING.has(request.sessionId)) {
+					return new Promise(() => {});
+				}
 				if (REFUSING.has(request.sessionId)) {
 					/*
 					 * `desktopResult` turns a non-2xx into a `DesktopControlError` carrying this
@@ -284,7 +333,11 @@ const App = () => (
 				key={entry.sessionId}
 				sessionId={entry.sessionId}
 				label={entry.label}
-				initial={entry.wire}
+				initial={
+					LONG_GOAL_BANDS.has(entry.sessionId)
+						? { ...entry.wire, goal: LONG_GOAL }
+						: entry.wire
+				}
 				effect={entry.effect}
 			/>
 		))}

@@ -105,14 +105,20 @@ import { Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
+import {
+	dismissToast,
+	showErrorToast,
+	showInfoToast,
+} from "@shared/utils/toast-manager";
 import { AlarmClock, Info, Repeat, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DesktopLoopState } from "../../../../../shared/desktop-control-contract";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { CAPPED_BLOCK, CHAT_MEASURE } from "../chat-measure";
 import {
 	GOAL_CLEAR_ARGS,
+	GOAL_COMMAND,
+	LOOP_COMMAND,
 	LOOP_STOP_ARGS,
 	loopIsRunning,
 } from "../pickers/session-commands";
@@ -197,16 +203,16 @@ const LOOP_STOP_TEXT = "Stop loop";
 const LOOP_CLEAR_TEXT = "Clear loop";
 
 /**
- * The two owner commands the dismiss controls run.
+ * The two owner commands the dismiss controls run are IMPORTED, name and VALUE
+ * together (`pickers/session-commands.ts`), and the first version of this row is
+ * why: it kept `"goal"`/`"loop"` as its own literals while the shared module owned
+ * only the argument, so the single-owner claim was true of the half and not of the
+ * whole (agent review round 2, NIT 2).
  *
- * Spelled here as literals rather than built from the control's own word: the
- * command surface is the backend's API and a label is copy, so a copy change must
- * not be able to move the command it runs. The VALUE each command takes is the
- * shared one (`pickers/session-commands.ts`), because the pickers send these same
- * two operations and one app may not spell one operation two ways.
+ * Neither name is built from the control's own word: the command surface is the
+ * backend's API and a label is copy, so a copy change must not be able to move the
+ * command a press runs.
  */
-const GOAL_COMMAND = "goal";
-const LOOP_COMMAND = "loop";
 
 /**
  * The sentences a FAILED press speaks, in the control's own words rather than in
@@ -236,6 +242,44 @@ const GOAL_UNDO_FAILURE = "Could not restore the goal";
  */
 const GOAL_CLEARED_TEXT = "Goal cleared";
 const GOAL_UNDO_TEXT = "Undo";
+
+/**
+ * How much of the cleared goal the confirmation prints, in characters.
+ *
+ * TWO CONFIRMATIONS HAVE TO BE TWO THINGS TO THE EYE (UX round 2, U7): with the
+ * bare `Goal cleared` copy, a second clear inside the first toast's life stacked a
+ * second identical line beside it, each holding a different sentence back, and the
+ * person choosing between them could not tell which press returned which text.
+ * The leading words are the smallest thing that makes them distinguishable, and
+ * they are also what a reader wants when the chip is gone — `Goal cleared ·
+ * Reconcile the March…` says what was cleared, not only that something was.
+ */
+const GOAL_CLEARED_PREVIEW_CHARS = 28;
+
+/**
+ * The cleared goal as the confirmation names it: one line, leading WORDS, ellipsis.
+ *
+ * Whitespace is collapsed rather than truncated around, because the wire's goal may
+ * be multi-line prose (the harness's own fixture is) and a toast is one line: a
+ * confirmation that painted the goal's own break would be a taller toast whose second
+ * half said nothing. The cut falls on the last SPACE inside the budget rather than
+ * mid-word, so the reader sees words rather than a syllable; a goal that fits the
+ * budget whole is printed whole and carries no ellipsis at all. The full value is
+ * untouched — it is what `Undo` restores, byte for byte, and what the accessible
+ * name of the control that cleared it keeps saying.
+ */
+export const goalClearedText = (cleared: string): string => {
+	const flat = cleared.trim().replace(/\s+/g, " ");
+	if (flat.length <= GOAL_CLEARED_PREVIEW_CHARS) {
+		return `${GOAL_CLEARED_TEXT} · ${flat}`;
+	}
+	const budget = flat.slice(0, GOAL_CLEARED_PREVIEW_CHARS);
+	const lastSpace = budget.lastIndexOf(" ");
+	const leading = (
+		lastSpace > 0 ? budget.slice(0, lastSpace) : budget
+	).trimEnd();
+	return `${GOAL_CLEARED_TEXT} · ${leading}…`;
+};
 
 /**
  * The clamp on a dismiss's tooltip, which repeats the value it is about to throw
@@ -309,8 +353,31 @@ const DISMISS_REVEAL = cn(
 );
 
 /**
- * The piece of COPY that yields at and below the row's stacked band, whatever it is
- * attached to.
+ * The reveal's IN-FLIGHT half: a command that is running keeps its control painted.
+ *
+ * One class, and it is the fix for a measured defect (UX round 2, U8). A press
+ * followed by the pointer moving off the control — which is what pointers do once
+ * they have pressed something — left the dismiss at `opacity: 0` with `disabled:
+ * true` for as long as the command took, so a user who pressed and moved on got
+ * SILENCE until the goal vanished or the refusal arrived. Busy is exactly the state
+ * the person is waiting to see the end of, so it is the second activator beside the
+ * pointer: reveal on hover OR while busy.
+ *
+ * Painted, not re-enabled: `DISMISS_DISABLED` still steps the ink and drops the
+ * ground, and `pointer-events-none` still holds, so the busy control reads as a
+ * control that is working rather than one that is listening.
+ */
+const DISMISS_BUSY_REVEAL = "opacity-100";
+
+/**
+ * The piece of COPY that yields STRICTLY BELOW the row's stacked band, whatever it
+ * is attached to.
+ *
+ * The boundary is `width < 240px`, which is Tailwind v4's own compiled form of
+ * `@max-[240px]` and the reason three comments in this file now say "strictly
+ * below": a `max-width` reading of the same string is what they used to claim, and
+ * `docs/composer-status-tabs.md` § 12.5 states the correction (agent review round
+ * 2, NIT 1).
  *
  * One constant for the two places that use it, because they are one rule: the
  * dismiss's word (`Clear goal`) and the loop chip's progress (`2 of 5 turns`) are
@@ -327,7 +394,7 @@ const DISMISS_REVEAL = cn(
 const NARROW_HIDDEN = "@max-[240px]/chatcol:hidden";
 
 /**
- * The dismiss's visible word, DROPPED at and below the row's stacked band.
+ * The dismiss's visible word, DROPPED strictly below the row's stacked band.
  *
  * The word is part of the affordance and is carried in the accessible name at
  * every width, but the box it occupies is real: at the 172px column floor the row
@@ -366,7 +433,7 @@ const DISMISS_WORD = NARROW_HIDDEN;
 const FIRST_CHIP = "-ml-1.5";
 
 /**
- * At and below this much column, the row stacks.
+ * Strictly below this much column, the row stacks.
  *
  * `CHAT_CHIP_ICON_ONLY_PX`'s number, reused rather than a second threshold for
  * the same moment: it is where the composer's chrome stops sharing one line, and
@@ -652,18 +719,26 @@ export const ComposerStatusRow = ({
 		(state) => state.revealRunPanelSection,
 	);
 	/*
-	 * ONE command channel for the row's two DISMISS controls, and it is the pickers'
-	 * own hook rather than a second way to reach a session command
-	 * (`use-picker-backend.ts`): the receipt it returns is the backend's own, its
-	 * error text is the owner's own sentence, and the request id is minted per press.
+	 * ONE command channel PER CONTROL, and it is the pickers' own hook rather than a
+	 * second way to reach a session command (`use-picker-backend.ts`): the receipt it
+	 * returns is the backend's own, its error text is the owner's own sentence, and
+	 * the request id is minted per press.
 	 *
 	 * Addressed by the SESSION the row is drawn for — `frontend.session_id`, the same
 	 * snapshot the goal itself comes off — because the row is rendered by the
 	 * composer and holds no id of its own. A row with no snapshot at all addresses
 	 * the empty id, which the backend refuses in its own words rather than the row
 	 * inventing a reason.
+	 *
+	 * TWO instances rather than one shared flag, and that is a defect read back
+	 * (agent review round 2, MINOR 2): one hook meant one `busy`, so a `Clear goal`
+	 * whose command hung disabled `Stop loop` with it — the one control that can stop
+	 * a loop that is spending turns, dead while an unrelated receipt is outstanding.
+	 * The two operations are independent and the row may not couple them; each
+	 * control now owns the state of its own press.
 	 */
-	const command = useSessionCommand(frontend?.session_id ?? "");
+	const goalCommand = useSessionCommand(frontend?.session_id ?? "");
+	const loopCommand = useSessionCommand(frontend?.session_id ?? "");
 	/*
 	 * A MIRROR of the disclosure's state, for copy alone.
 	 *
@@ -763,9 +838,21 @@ export const ComposerStatusRow = ({
 	 * into the same shape shows its own chip. The cost is stated rather than implied:
 	 * a re-attach re-renders the wire's settled chip, and a second acknowledgment is
 	 * needed (`docs/composer-status-tabs.md` § 13.4).
+	 *
+	 * `idle` IS NOT A SETTLED IDENTITY, and excluding it is a finding read back
+	 * (agent review round 2, MINOR 1): `loopIsRunning("idle")` is false, so an idle
+	 * loop used to produce a non-null signature and the acknowledgement was NOT
+	 * dropped — while `showLoop` below reads idle as “no loop” for the chip's own
+	 * gate. The two predicates disagreeing about the one status they share left the
+	 * chip hidden through `settle → acknowledge → idle → the same settled state`,
+	 * which is the sequence a detached app or a replaced driver produces. The
+	 * signature is now the identity of a settled loop and nothing else, which is what
+	 * the hide is allowed to be keyed to.
 	 */
 	const settledLoopSignature =
-		loop !== null && !loopIsRunning(loop.status) ? loopSignature(loop) : null;
+		loop !== null && loop.status !== "idle" && !loopIsRunning(loop.status)
+			? loopSignature(loop)
+			: null;
 	const [acknowledgedLoop, setAcknowledgedLoop] = useState<string | null>(null);
 	useEffect(() => {
 		if (settledLoopSignature === null) setAcknowledgedLoop(null);
@@ -776,6 +863,46 @@ export const ComposerStatusRow = ({
 		!(
 			settledLoopSignature !== null && settledLoopSignature === acknowledgedLoop
 		);
+	/*
+	 * The clause as ONE string, for the measurement below: its two halves are what the
+	 * chip paints, and a change in either is a change in the item's width — which is
+	 * the trigger the fit rule re-reads on. A stable string rather than the wire object,
+	 * because `frontend` is a new object on every poll and an effect keyed on it would
+	 * rebuild the observer for a state that did not move.
+	 */
+	const loopClauseText = loop === null ? "" : loopClause(loop);
+
+	/*
+	 * THE UNDO BELONGS TO THE CLEARING IT CAME FROM, and it is retired the moment the
+	 * wire no longer holds the state the offer was taken from (UX round 2, U7).
+	 *
+	 * Two measured facets of one cause — the confirmation captured the cleared text at
+	 * the press and never re-checked anything:
+	 *
+	 * 1. A goal the AGENT set while the toast was up was silently replaced: pressing
+	 *    the still-visible `Undo` re-sent the older sentence over the newer goal, with
+	 *    no confirmation and no way back to it.
+	 * 2. Clears inside one confirmation's life stacked indistinguishable offers, each
+	 *    holding a different sentence back (`goalClearedText` above is the other half
+	 *    of that: the leading words are what make two of them two things).
+	 *
+	 * So the offer stands only while the wire still holds NO goal — the state the
+	 * press was taken from — and any goal arriving takes it back. The channel is the
+	 * toast manager's own `dismissToast`, one place the app can retire something it
+	 * said rather than a second route to the library underneath it.
+	 *
+	 * `wireGoal` is the same rule as a REF because the confirmation's action outlives
+	 * the render that made it: its closure sees the goal of the press's own frame, and
+	 * the press below is the second moment the rule has to be read at.
+	 */
+	const pendingUndo = useRef<Array<string | number>>([]);
+	const wireGoal = useRef(goal);
+	useEffect(() => {
+		wireGoal.current = goal;
+		if (goal.length === 0 || pendingUndo.current.length === 0) return;
+		for (const id of pendingUndo.current) dismissToast(id);
+		pendingUndo.current = [];
+	}, [goal]);
 
 	/*
 	 * The mirror FOLLOWS the control it describes, and this is what keeps that true
@@ -859,6 +986,72 @@ export const ComposerStatusRow = ({
 		previouslyFocused.current = focusedInRow;
 	});
 
+	/*
+	 * WHETHER THE ROW CAN CARRY THE LOOP CHIP'S WHOLE CLAUSE — measured off the row's
+	 * own boxes rather than guessed from a width (QA round 2, Q4).
+	 *
+	 * The defect it closes: the clause's progress yielded only at the STACKED band
+	 * (`NARROW_HIDDEN`), and the pair it belongs to stops fitting well above it.
+	 * Measured on the built app: `[data-status-loop-item]` is 243px for `Loop: running,
+	 * 0 turns` and 275px for `Loop: running, 0 of 25 turns`, while the row's content box
+	 * is 224px at a 240px column — nothing in the item yields (both the chip and the
+	 * dismiss are `shrink-0`, carried by the boxes they share with the readings), so
+	 * the row painted 19px and 52px past its column and 0 one pixel lower. The step was
+	 * simply below the width at which the thing it guards stops fitting.
+	 *
+	 * WHY A MEASUREMENT AND NOT A WIDER STEP. The clause carries the wire's own
+	 * figures, so its width is unbounded by construction — a longer count is a wider
+	 * chip — and any fixed boundary is a guess the next figure outgrows, which is what
+	 * the defect IS. The one question with an answer is the one the box model answers:
+	 * does the row's content box carry the item as it stands?
+	 *
+	 * `requiredItemWidth` is what keeps that question stable. With the progress DROPPED
+	 * the item is narrower by construction, so re-measuring then would ask a different
+	 * question and flip on every frame; the remembered width is the item's own, taken
+	 * from the last frame the full clause was painted in, and the rule is
+	 * `row.clientWidth >= requiredItemWidth` — monotone in the row's width, which is
+	 * the only input that can change the answer. The observer is on the ROW for the
+	 * reason `directory-indicator.tsx` records: what moves this box is a CONTAINER
+	 * query (the canvas opening, a column resize), and no window event sees it. It is a
+	 * LAYOUT effect so the first paint already carries the answer — a measurement that
+	 * landed after paint would photograph as the defect it is fixing.
+	 */
+	const [itemFits, setItemFits] = useState(true);
+	const loopItemRef = useRef<HTMLDivElement | null>(null);
+	const requiredItemWidth = useRef(0);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `loopClauseText` is the TRIGGER for this effect rather than a value its body reads (the body reads the rendered box, deliberately — the clause is what decides the item's width), the same shape `directory-indicator.tsx` records. It is a string and not the wire object because that identity is new on every poll, and an observer rebuilt for a state that did not move is a measurement taken for nothing.
+	useLayoutEffect(() => {
+		const row = rowRef.current;
+		const item = loopItemRef.current;
+		if (!row || !item) return;
+		/*
+		 * The LINE's width, not the row's `clientWidth`, and the difference is not a
+		 * refinement: `clientWidth` is the PADDING box, while the item's line is the CONTENT
+		 * box — the row's own `px-2` is 16px of it (measured, and it is exactly the size of
+		 * the miss: a 237px goal-loop item kept its figure in a 241px row and the row read
+		 * `overflowX 4px`). `clientWidth` is still what the row's own width means; the
+		 * padding is what is not the item's.
+		 */
+		const lineWidth = () => {
+			const style = getComputedStyle(row);
+			const padding = (value: string) => Number.parseFloat(value) || 0;
+			return (
+				row.clientWidth -
+				padding(style.paddingLeft) -
+				padding(style.paddingRight)
+			);
+		};
+		const measure = () => {
+			if (itemFits) requiredItemWidth.current = item.scrollWidth;
+			setItemFits(lineWidth() >= requiredItemWidth.current);
+		};
+		measure();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(measure);
+		observer.observe(row);
+		return () => observer.disconnect();
+	}, [itemFits, loopClauseText]);
+
 	if (!showGoal && !showLoop && !showPlan && !showWakes && !children && !jobs)
 		return null;
 
@@ -926,9 +1119,16 @@ export const ComposerStatusRow = ({
 	 * <text>` is `GOAL_COMMAND`'s set form, which every released backend honours. Its
 	 * OWN failure speaks too — an undo that silently failed would be worse than no
 	 * undo at all, because the person has been told the text is recoverable.
+	 *
+	 * AND IT MAY NOT OVERWRITE A GOAL THE WIRE NOW HOLDS (UX round 2, U7): the offer
+	 * is only ever made while that state is EMPTY, and this is that same precondition
+	 * read at the one other moment it can be — the press, which can land after a goal
+	 * arrived and before the effect above took the offer back. Sending anyway is what
+	 * silently replaced a newer goal, so a press that loses that race sends NOTHING.
 	 */
 	const restoreGoal = async (text: string) => {
-		const result = await command.run(GOAL_COMMAND, text, GOAL_UNDO_FAILURE);
+		if (wireGoal.current.length > 0) return;
+		const result = await goalCommand.run(GOAL_COMMAND, text, GOAL_UNDO_FAILURE);
 		if (result.result.tone === "error") showErrorToast(result.result.text);
 	};
 
@@ -946,7 +1146,7 @@ export const ComposerStatusRow = ({
 			setAcknowledgedLoop(settledLoopSignature);
 			return;
 		}
-		void runDismiss(LOOP_COMMAND, action.args, action.failure);
+		void runDismiss(loopCommand, LOOP_COMMAND, action.args, action.failure);
 	};
 
 	/**
@@ -971,21 +1171,34 @@ export const ComposerStatusRow = ({
 	 * cleared text is re-sent as `goal <text>`, a spelling every released backend
 	 * honours, and it is captured before the wire moves so the undo cannot restore a
 	 * goal that a later goal revision replaced.
+	 *
+	 * The confirmation NAMES what it cleared (`goalClearedText`) and its id is kept, so
+	 * the offer can be retired the moment the wire moves on — how, and why, is at
+	 * `pendingUndo` above. The CHANNEL is the caller's own: the two controls own
+	 * independent presses (agent review round 2, MINOR 2), so neither can hold the
+	 * other's flag.
 	 */
-	const runDismiss = async (name: string, args: string, failure: string) => {
-		const result = await command.run(name, args, failure);
+	const runDismiss = async (
+		channel: ReturnType<typeof useSessionCommand>,
+		name: string,
+		args: string,
+		failure: string,
+	) => {
+		const result = await channel.run(name, args, failure);
 		if (result.result.tone === "error") {
 			showErrorToast(result.result.text);
 			return;
 		}
 		if (name !== GOAL_COMMAND) return;
 		const cleared = goal;
-		showInfoToast(GOAL_CLEARED_TEXT, {
-			action: {
-				label: GOAL_UNDO_TEXT,
-				onClick: () => void restoreGoal(cleared),
-			},
-		});
+		pendingUndo.current.push(
+			showInfoToast(goalClearedText(cleared), {
+				action: {
+					label: GOAL_UNDO_TEXT,
+					onClick: () => void restoreGoal(cleared),
+				},
+			}),
+		);
 	};
 
 	return (
@@ -1061,7 +1274,7 @@ export const ComposerStatusRow = ({
 				 * leaving ~65px of snippet.
 				 *
 				 * The dismiss now shares this floor, and the two facts are settled together
-				 * rather than one at a time: the word `Clear goal` is DROPPED at and below the
+				 * rather than one at a time: the word `Clear goal` is DROPPED strictly below the
 				 * stacked band (`DISMISS_WORD`), which is where the item is `w-full` and the
 				 * floor does not bind, so at the one width the floor is stated for, what sits
 				 * beside the chip is the X and nothing wider. Above that band the item is
@@ -1075,8 +1288,13 @@ export const ComposerStatusRow = ({
 				>
 					<Disclosure
 						/*
-						 * The disclosure takes the item's width less the dismiss, and `min-w-0` is
-						 * what lets the snippet yield first inside it; the trigger keeps its
+						 * The disclosure's ROOT is the item's `flex-1` child, so its content box is the
+						 * item's content box — and the BODY below the pair measures that root, which is
+						 * why the dismiss does not narrow the body at all. The earlier wording here
+						 * (“the item's width less the dismiss”) was the same box-model error design
+						 * review round 2 corrected in § 12.3 (D8): the control sits on the trigger's line
+						 * INSIDE the root, so it is a sibling of the body and not a tax on it. `min-w-0`
+						 * is what lets the snippet yield first inside the line; the trigger keeps its
 						 * `w-fit` so the hover ground stays chip-sized while the ITEM stretches
 						 * (the body's own requirement, § 4.4).
 						 */
@@ -1156,11 +1374,16 @@ export const ComposerStatusRow = ({
 						 * on its own line at all. The row's own geometry needs both, so the pair is
 						 * wrapped in the one container that is the trigger's line (§ 12.3).
 						 *
-						 * That container is also the REVEAL's scope (the primitive puts `group` on
-						 * it), which is the second half of the same finding: the trigger becomes the
-						 * chip plus its control instead of an 868px item, so the ✕ no longer appears
-						 * while the pointer is on empty row (UX round 1, U5) and cannot be read as
-						 * row-level chrome.
+						 * That container is also the REVEAL's scope (the primitive puts `group` on it),
+						 * and design review round 2 (D8) corrected what this file first said about it:
+						 * the container is a BLOCK-level box inside the caller's `min-w-0 flex-1` root,
+						 * so its box IS the item's content box — 472px in the goal+loop+plan band, 868px
+						 * with the goal alone — and the reveal can therefore still fire from the item's
+						 * blank stretch to the right of the dismiss (UX round 1's U5 scored that NIT and
+						 * called the wider ground good for discovery). What the change did is move
+						 * `group` from the caller's item onto the primitive's OWN row, so no call site
+						 * can widen the scope by accident and the pair is what the primitive guarantees
+						 * shares a line. `docs/composer-status-tabs.md` § 12.3 states both halves.
 						 */
 						trailing={
 							<Tooltip
@@ -1172,15 +1395,21 @@ export const ComposerStatusRow = ({
 									type="button"
 									data-status-goal-dismiss=""
 									aria-label={goalClear}
-									disabled={command.busy}
+									disabled={goalCommand.busy}
 									onClick={() =>
 										void runDismiss(
+											goalCommand,
 											GOAL_COMMAND,
 											GOAL_CLEAR_ARGS,
 											GOAL_CLEAR_FAILURE,
 										)
 									}
-									className={cn(CHIP_CONTROL, DISMISS_REVEAL, DISMISS_DISABLED)}
+									className={cn(
+										CHIP_CONTROL,
+										DISMISS_REVEAL,
+										goalCommand.busy ? DISMISS_BUSY_REVEAL : undefined,
+										DISMISS_DISABLED,
+									)}
 								>
 									<X aria-hidden={true} className={cn("size-3.5 shrink-0")} />
 									<span className={cn(DISMISS_WORD)}>{GOAL_CLEAR_TEXT}</span>
@@ -1275,12 +1504,20 @@ export const ComposerStatusRow = ({
 			 * be a second motion vocabulary for the same question (an activity chip's mark
 			 * says a row is moving; this chip's CLAUSE says a loop is running).
 			 *
-			 * `shrink-0` on the item, on the row's own yield rule: the clause is a bounded
-			 * fact read off one wire field, so it is never cut — the goal's snippet is the
-			 * item that yields, and the row wraps rather than squeezing either.
+			 * `shrink-0` on the item, on the row's own yield rule: the clause is a fact read off
+			 * one wire field, so it is never CUT — the goal's snippet is the item that yields and
+			 * the row wraps rather than squeezing either. What the item cannot do is yield
+			 * ITSELF, and the measured fit rule above (`itemFits`) is why it does not have to:
+			 * the item keeps its own box and the progress inside the clause is what gives when
+			 * the row's content box cannot carry it (QA round 2, Q4). `min-w-0` here would not
+			 * have been the fix, and the reason is the boxes: the chip and the dismiss are both
+			 * `shrink-0` in the boxes they share with the readings, so a `min-w-0` item could be
+			 * narrowed with its contents painting straight through it — the overflow would have
+			 * moved from the row's edge into the item's own box and stayed on the column.
 			 */}
 			{showLoop && loop && loopAction && (
 				<div
+					ref={loopItemRef}
 					data-status-loop-item=""
 					className={cn("group flex shrink-0 items-center")}
 				>
@@ -1290,21 +1527,29 @@ export const ComposerStatusRow = ({
 					>
 						<Repeat aria-hidden={true} className={cn("size-3.5 shrink-0")} />
 						{/*
-						 * The clause is ONE text flow, and the progress yields from INSIDE it at the
-						 * stacked band (`NARROW_HIDDEN`) — leaving `Loop: running` where a 156px column
-						 * cannot carry the rest. The progress stays a node of its own because the band
-						 * rule needs something it can `display: none`; it is an INLINE node rather than a
-						 * second flex item, because the readout's box carries the readings' `gap-1.5` and
-						 * that gap was landing inside the sentence — the app printed `Loop: running , 1 of
-						 * 25 turns`, and the DOM text was clean, which is why no unit test could see it
-						 * (QA round 1, Q2). One derivation split in two, not two copies: `loopClause` is
-						 * these two halves in order, and it is what the dismiss's accessible name prints
-						 * at EVERY width — so the figure a narrow row drops from the paint is still one
-						 * hover or one screen reader away.
+						 * The clause is ONE text flow, and the progress yields from INSIDE it — leaving
+						 * `Loop: running` where the column cannot carry the rest. The progress stays a node
+						 * of its own because the yield needs something it can drop; it is an INLINE node
+						 * rather than a second flex item, because the readout's box carries the readings'
+						 * `gap-1.5` and that gap was landing inside the sentence — the app printed
+						 * `Loop: running , 1 of 25 turns`, and the DOM text was clean, which is why no unit
+						 * test could see it (QA round 1, Q2). One derivation split in two, not two copies:
+						 * `loopClause` is these two halves in order, and it is what the dismiss's
+						 * accessible name prints at EVERY width — so the figure a narrow row drops from
+						 * the paint is still one hover or one screen reader away.
+						 *
+						 * TWO CONDITIONS DROP IT, and they are the two ways this row can be unable to
+						 * carry it: the stacked band (the class rule — the row is a COLUMN there, which is
+						 * an ARRANGEMENT and not a width guess, and it holds before any measurement has
+						 * been taken) and the measured fit above it (`itemFits`, QA round 2, Q4). They
+						 * agree wherever both apply, and neither is a proxy for the other: the class rule
+						 * marks the arrangement, the measurement marks the box.
 						 */}
 						<span>
 							{`${LOOP_LABEL} ${loopStatusWord(loop)}`}
-							<span className={cn(NARROW_HIDDEN)}>{loopProgress(loop)}</span>
+							{itemFits && (
+								<span className={cn(NARROW_HIDDEN)}>{loopProgress(loop)}</span>
+							)}
 						</span>
 					</span>
 					<Tooltip content={loopLabel} side="top" className={cn(TOOLTIP_CLAMP)}>
@@ -1312,9 +1557,14 @@ export const ComposerStatusRow = ({
 							type="button"
 							data-status-loop-dismiss=""
 							aria-label={loopLabel}
-							disabled={command.busy}
+							disabled={loopCommand.busy}
 							onClick={() => dismissLoop(loopAction)}
-							className={cn(CHIP_CONTROL, DISMISS_REVEAL, DISMISS_DISABLED)}
+							className={cn(
+								CHIP_CONTROL,
+								DISMISS_REVEAL,
+								loopCommand.busy ? DISMISS_BUSY_REVEAL : undefined,
+								DISMISS_DISABLED,
+							)}
 						>
 							<X aria-hidden={true} className={cn("size-3.5 shrink-0")} />
 							<span className={cn(DISMISS_WORD)}>{loopAction.text}</span>

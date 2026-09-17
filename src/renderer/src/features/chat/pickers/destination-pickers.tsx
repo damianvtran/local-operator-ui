@@ -81,6 +81,8 @@ import {
 } from "./picker-host";
 import {
 	GOAL_CLEAR_ARGS,
+	GOAL_COMMAND,
+	LOOP_COMMAND,
 	LOOP_STOP_ARGS,
 	loopIsRunning,
 } from "./session-commands";
@@ -1854,7 +1856,7 @@ export const GoalPicker: FC<PickerContext> = ({
 					/>
 				</PickerField>
 			}
-			onSubmit={() => void command.run("goal", goal.trim())}
+			onSubmit={() => void command.run(GOAL_COMMAND, goal.trim())}
 			submitLabel="Set goal"
 			submitDisabled={!goal.trim()}
 			actions={
@@ -1863,7 +1865,7 @@ export const GoalPicker: FC<PickerContext> = ({
 						variant="danger"
 						size="sm"
 						type="button"
-						onClick={() => void command.run("goal", GOAL_CLEAR_ARGS)}
+						onClick={() => void command.run(GOAL_COMMAND, GOAL_CLEAR_ARGS)}
 						disabled={command.busy}
 					>
 						Clear goal
@@ -2071,7 +2073,7 @@ export const LoopPicker: FC<PickerContext> = ({
 	const submit = useCallback(async () => {
 		const args = mode === "count" ? count.trim() : goal.trim();
 		if (!args) return;
-		await command.run("loop", args);
+		await command.run(LOOP_COMMAND, args);
 	}, [command, mode, count, goal]);
 	return (
 		<PickerHost
@@ -2148,7 +2150,7 @@ export const LoopPicker: FC<PickerContext> = ({
 						variant="danger"
 						size="sm"
 						type="button"
-						onClick={() => void cancel.run("loop", LOOP_STOP_ARGS)}
+						onClick={() => void cancel.run(LOOP_COMMAND, LOOP_STOP_ARGS)}
 						disabled={cancel.busy}
 					>
 						Cancel loop

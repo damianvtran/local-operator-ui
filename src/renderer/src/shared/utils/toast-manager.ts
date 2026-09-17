@@ -230,6 +230,26 @@ export const showInfoToast = (
 };
 
 /**
+ * Take one toast back, by the id `showInfoToast` returned when it was shown.
+ *
+ * The app's ONE way to retire something it has said, and it exists as a channel
+ * function rather than as a direct `toast.dismiss` at the call site for the reason
+ * every other entry here does: the composer's status row is the only caller today,
+ * and a component reaching into the toast library itself would be a second route to
+ * the channel the rest of the app speaks through.
+ *
+ * WHY A TOAST HAS TO BE RETIRABLE AT ALL (UX round 2, U7): the goal's confirmation
+ * carries an `Undo`, and an `Undo` is only honest while the state it was taken from
+ * still holds. With the wire's goal re-set underneath it, the offer has to go rather
+ * than sit there pressing into a sentence the person never asked to replace.
+ *
+ * @param id - The id `showInfoToast` (or a sibling) returned
+ */
+export const dismissToast = (id: string | number): void => {
+	toast.dismiss(id);
+};
+
+/**
  * Show a success toast
  *
  * @param message - The success message to display

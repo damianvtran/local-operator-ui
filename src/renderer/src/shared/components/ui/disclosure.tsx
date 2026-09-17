@@ -170,6 +170,16 @@ export type DisclosureProps = {
 	 * Opt-in, so every call site that passes nothing renders exactly the DOM it
 	 * rendered before. The caller owns the control's own reveal classes, its tooltip
 	 * and its label; this prop only decides WHERE it sits.
+	 *
+	 * IT IS DROPPED BY THE `disabled` BRANCH, and that is stated here rather than left
+	 * to be discovered (agent review round 2, NIT 3): that branch returns early with
+	 * no trigger to sit beside, and a caller passing both would lose its control with
+	 * no type error and no warn. No call site does today and the composer never sets
+	 * `disabled` — the branch exists for rows with nothing to disclose, which have no
+	 * trailing control either — so the pair is documented rather than made exclusive:
+	 * a type-level refusal would have to name a shape this prop genuinely does not
+	 * care about, and the honest statement is that `trailing` belongs to the
+	 * interactive branch only.
 	 */
 	trailing?: ReactNode;
 	/**
@@ -487,11 +497,15 @@ export const Disclosure = ({
 			 * the branch is on `trailing` rather than always wrapping so that every other
 			 * call site's markup is byte-identical to what it was.
 			 *
-			 * `group` is here, on the trigger's own line, and not on the caller's wrapper:
-			 * the pair is what a hover or a focus reveals together, and a caller whose
-			 * wrapper is wider than the pair (the composer's goal item is the row's `flex-1`
-			 * box) would otherwise reveal a control with the pointer nowhere near the words
-			 * it acts on.
+			 * `group` is here, on the trigger's own line, and not on the caller's wrapper: the
+			 * pair is what a hover or a focus reveals together, and this row is the smallest
+			 * box that holds both. Read it for what it is (design review round 2, D8, which
+			 * corrected the claim this comment first made): the row is a BLOCK-level box
+			 * inside the caller's root, so its box IS the caller's item content box when that
+			 * root fills the item — which is the composer's case — and the reveal still
+			 * reaches the item's blank stretch. What the placement guarantees is that the
+			 * SCOPE is the primitive's own markup rather than whatever wrapper a caller
+			 * happens to draw: no call site can widen it without changing this component.
 			 */}
 			{trailing ? (
 				<div className={cn("group flex items-center")}>
