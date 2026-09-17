@@ -174,8 +174,67 @@ const LEGACY_CATALOGUE_POLL_MS = 5_000;
  */
 const CATALOGUE_SAFETY_POLL_MS = 30_000;
 
-/** Where a scroll container last saw the row that held keyboard focus. */
-type FocusedSlot = { node: HTMLElement | null; index: number };
+/**
+ * Where a scroll container last saw the row that held keyboard focus.
+ *
+ * `inside` is the row's OWN containment as of the last time this record was
+ * refreshed - this effect's own run, or the container's last scroll - and it is
+ * what separates "the completion took the cursor's row out of the panel" from
+ * "the reader scrolled it out themselves". Both leave the row outside the panel,
+ * and only the first is this rule's to correct: a record carrying the slot alone
+ * cannot tell them apart, which is how the first version of the rule moved a
+ * reader who had deliberately scrolled away from their own cursor (round 2: U5,
+ * R2-4, D2).
+ */
+type FocusedSlot = { node: HTMLElement | null; index: number; inside: boolean };
+
+/**
+ * A scroller's CLIP box: its padding box, not its border box.
+ *
+ * `getBoundingClientRect()` reports the border box and a scroll container clips at
+ * its padding box, so a row aligned to the border box sits one border-width above
+ * the clip - on the list, which carries `border-t border-hairline`, the row's own
+ * first pixel is painted over by the container (design round 3, D1).
+ */
+const clipBox = (container: HTMLElement) => {
+	const box = container.getBoundingClientRect();
+	const top = box.top + container.clientTop;
+	return { top, bottom: top + container.clientHeight };
+};
+
+/**
+ * Is the focused row FULLY inside its panel right now?
+ *
+ * Fully, and that is the load-bearing half: a row that is already partly clipped
+ * when a change lands is indistinguishable from a reader who scrolled it half out
+ * themselves, so the correction may only run for a transition it can attribute to
+ * the re-file (see `holdFocusedRow`).
+ */
+const rowInsidePanel = (node: HTMLElement, container: HTMLElement) => {
+	const clip = clipBox(container);
+	const box = node.getBoundingClientRect();
+	return box.top >= clip.top && box.bottom <= clip.bottom;
+};
+
+/**
+ * The band the focused row's own ring needs outside its box, in px.
+ *
+ * Focus is an `outline` here (the branding contract forbids a `box-shadow` ring on
+ * these scroll containers, which clip it), so the row's PAINTED extent is larger
+ * than its box: correcting the box flush to the clip edge ships a ring with a
+ * segment cut off (D1). Read from the computed style rather than hard-coded so a
+ * change to the focus treatment moves this with it.
+ */
+const ringBand = (node: HTMLElement) => {
+	const style = getComputedStyle(node);
+	if (style.outlineStyle === "none") return 0;
+	const width = Number.parseFloat(style.outlineWidth);
+	const offset = Number.parseFloat(style.outlineOffset);
+	return (
+		(Number.isFinite(width) ? width : 0) +
+		(Number.isFinite(offset) ? offset : 0)
+	);
+};
 
 /**
  * Hold the row that holds FOCUS inside its scroll container across a re-file.
@@ -207,11 +266,24 @@ type FocusedSlot = { node: HTMLElement | null; index: number };
  * is the smaller surprise of the two, and the row it reveals is the one the
  * reader's own cursor moved with.
  *
- * GATED ON THE FOCUSED ROW'S SLOT CHANGING, not on any re-order. A reader who
- * scrolls the panel away from their cursor and then watches an arrival re-file
- * some other row must keep the position they scrolled to; the index comparison is
- * what separates that case from this one, and it is the whole reason this cannot
- * be a plain "keep the focused element visible" rule.
+ * GATED ON THE FOCUSED ROW LEAVING THE PANEL, not on the slot changing and not on
+ * any re-order. Three facts have to hold together, and each of them is a case this
+ * rule got wrong before it was written down:
+ *
+ *  1. the row's SLOT changed, so a reader who scrolled the panel away from their
+ *     cursor and watches an arrival re-file some OTHER row keeps the position they
+ *     scrolled to;
+ *  2. the row was INSIDE the panel when the record was last refreshed, so the
+ *     reader's own scroll put it outside rather than this change (U5);
+ *  3. the row is OUTSIDE the panel now, so there is something to correct.
+ *
+ * Facts 2 and 3 are why `FocusedSlot` carries `inside` rather than the slot alone.
+ * A record refreshed only here could not see a wheel scroll at all - scrolling does
+ * not commit - so a reader who scrolled their cursor away would have been followed
+ * by the next completion: the drag this rule exists to remove, reintroduced by its
+ * own remedy. The record is therefore refreshed on the containers' own scroll too
+ * (`refreshFocusedInside`), and the correction only ever fires for a row that was
+ * inside the panel and left it as this change landed.
  *
  * The NODE is the identity, not an attribute: React keys each row by session id,
  * so an intra-section re-file moves the same element and no row carries a session
@@ -224,7 +296,7 @@ const holdFocusedRow = (
 	slot: { current: FocusedSlot },
 ) => {
 	if (!container) {
-		slot.current = { node: null, index: -1 };
+		slot.current = { node: null, index: -1, inside: false };
 		return;
 	}
 	/*
@@ -245,24 +317,63 @@ const holdFocusedRow = (
 			: null;
 	const index = active ? rowNodes.indexOf(active) : -1;
 	const previous = slot.current;
-	slot.current = { node: active, index };
+	if (!active || index < 0) {
+		slot.current = { node: null, index: -1, inside: false };
+		return;
+	}
+	const insideNow = rowInsidePanel(active, container);
 	if (
-		!active ||
-		index < 0 ||
 		previous.node !== active ||
 		previous.index < 0 ||
-		previous.index === index
-	)
+		previous.index === index ||
+		!previous.inside ||
+		insideNow
+	) {
+		slot.current = { node: active, index, inside: insideNow };
 		return;
+	}
+	const clip = clipBox(container);
 	const rowBox = active.getBoundingClientRect();
-	const panelBox = container.getBoundingClientRect();
-	const above = rowBox.top - panelBox.top;
-	const below = panelBox.bottom - rowBox.bottom;
-	if (above >= 0 && below >= 0) return;
+	const above = rowBox.top - clip.top;
+	const below = clip.bottom - rowBox.bottom;
+	/*
+	 * The row enters from the edge it is off past, and the correction leaves the
+	 * ring's own band as clearance there rather than landing the box flush: the
+	 * minimum that puts the row - not just its box - inside the panel.
+	 */
+	const band = ringBand(active);
 	container.scrollTop = Math.min(
-		Math.max(container.scrollTop + (above < 0 ? above : -below), 0),
+		Math.max(
+			container.scrollTop + (above < 0 ? above - band : -below + band),
+			0,
+		),
 		container.scrollHeight - container.clientHeight,
 	);
+	slot.current = {
+		node: active,
+		index,
+		inside: rowInsidePanel(active, container),
+	};
+};
+
+/**
+ * Refresh a record's containment on the reader's OWN scroll.
+ *
+ * The reader scrolling is the one input to `holdFocusedRow`'s gate that never
+ * commits, so without this the record keeps saying "inside" after a wheel scroll
+ * has taken the row out of the panel - which is exactly the state U5 reproduced
+ * (three times, in both containers). Cheap by construction: one focused row's box
+ * against its container's clip box, and only while a row is recorded.
+ */
+const refreshFocusedInside = (
+	container: HTMLElement | null,
+	slot: { current: FocusedSlot },
+) => {
+	const node = slot.current.node;
+	if (!container || !node || !node.isConnected || !container.contains(node))
+		return;
+	if (node !== document.activeElement) return;
+	slot.current = { ...slot.current, inside: rowInsidePanel(node, container) };
 };
 
 export function ChatSidebar({
@@ -948,11 +1059,26 @@ export function ChatSidebar({
 	 * the same reason `use-scroll-paging.ts` corrects its anchor in a layout effect
 	 * rather than a passive one, where a correction arriving one frame late is
 	 * still a jump.
+	 *
+	 * The record this hands over is also the gate: each run states whether the
+	 * focused row is inside its panel, and the correction only fires for a row that
+	 * was inside and left as this commit landed. A commit is not the only thing that
+	 * can take the row out of the panel, so the containers refresh the record on
+	 * their own scroll as well - without that the gate would read a wheel-scrolled
+	 * row as still inside and follow it (U5).
 	 */
 	const entityPanelRef = useRef<HTMLDivElement | null>(null);
 	const listPanelRef = useRef<HTMLDivElement | null>(null);
-	const entitySlotRef = useRef<FocusedSlot>({ node: null, index: -1 });
-	const listSlotRef = useRef<FocusedSlot>({ node: null, index: -1 });
+	const entitySlotRef = useRef<FocusedSlot>({
+		node: null,
+		index: -1,
+		inside: false,
+	});
+	const listSlotRef = useRef<FocusedSlot>({
+		node: null,
+		index: -1,
+		inside: false,
+	});
 	useLayoutEffect(() => {
 		holdFocusedRow(entityPanelRef.current, entitySlotRef);
 		holdFocusedRow(listPanelRef.current, listSlotRef);
@@ -1117,6 +1243,9 @@ export function ChatSidebar({
 			    declaration takes. */}
 			<div
 				ref={entityPanelRef}
+				onScroll={() =>
+					refreshFocusedInside(entityPanelRef.current, entitySlotRef)
+				}
 				className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none]"
 			>
 				{capabilities.isLoading && (
@@ -1263,10 +1392,15 @@ export function ChatSidebar({
 			    keyboard cursor is an ELEMENT, so a focused row that re-files out of the
 			    panel would leave the cursor off screen. `holdFocusedRow` above is the
 			    other half of this rule - the container follows the row the CURSOR is on,
-			    by the minimum, which is the case the transcript's rule is about. */}
+			    by the minimum, which is the case the transcript's rule is about. It
+			    follows it only when the RE-FILE is what took it out of the panel: a
+			    reader who scrolled their cursor away keeps the position they chose. */}
 			{showList && (
 				<div
 					ref={listPanelRef}
+					onScroll={() =>
+						refreshFocusedInside(listPanelRef.current, listSlotRef)
+					}
 					className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2 [overflow-anchor:none]"
 				>
 					<section>
