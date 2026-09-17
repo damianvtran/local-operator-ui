@@ -1081,9 +1081,34 @@ export function ChatSidebar({
 			{/* The global partition is NAVIGATION, not a peer of the entity lists.
 			    Sharing one scroll flow pushed Previous below the fold at 16+ sessions
 			    and its disclosure became easy to miss, so it is pinned below the
-			    scrolling entity region and owns its own scroll area. */}
+			    scrolling entity region and owns its own scroll area.
+
+			    `overflow-anchor: none` IS LOAD-BEARING ON THIS CONTAINER, and it is a
+			    property of the ROWS this panel draws rather than a style choice. A
+			    session's slot is the backend's order key, so a completion re-files the
+			    row - within the same section when it was already Active - and the feed
+			    now invalidates the client's list read on that change rather than on a
+			    section move, so the re-file happens on every completion instead of on
+			    the next poll.
+
+			    Chrome's scroll anchoring (`overflow-anchor: auto`, the initial value)
+			    picks the element that moved as the anchor and pays for its move by
+			    moving THIS container's `scrollTop` by exactly the row's travel -
+			    measured on the overflowing story at -96 px for a 3-row travel
+			    (`scripts/sidebar-resort-geometry.mjs`; before/after frames on the pull
+			    request). The reader is not following the row: they are somewhere else in
+			    the list, and the whole viewport slides under them by the travel, which is
+			    the jitter this change is about. Refusing to anchor holds `scrollTop`
+			    through the re-file and leaves the one-row shift the re-file itself
+			    produces - the rows redrawn in their new order - which is the row moving
+			    rather than the reader being moved.
+
+			    The sibling rule is the transcript's, and the two are opposite on
+			    purpose: `canonical-transcript.tsx` sets `overflow-anchor: auto` because
+			    ITS content grows under a reader pinned to the end, where following the
+			    content is the feature. Nothing here grows; the list only re-orders. */}
 			{showList && (
-				<div className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2">
+				<div className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2 [overflow-anchor:none]">
 					<section>
 						<button
 							type="button"
