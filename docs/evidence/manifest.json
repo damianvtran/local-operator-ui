@@ -3391,6 +3391,17 @@
           "scriptsTree": "34e8bc0be45896ee0e0fa9788248855ec2604bdf",
           "capturedAt": "2026-09-16T20:05:00.000Z"
         }
+      },
+      {
+        "at": "2026-09-17, on `fix/composer-focus-flow`, at the round-1 remediation head",
+        "by": "PR #308",
+        "why": "A RE-STAMP, NOT A RECAPTURE, and the second one on this branch: the round-1 remediation moved `src/` (the refusal rule's arms, the guards on every path that mutates or submits the composer, the pane sentence's `id` and the composer's `aria-describedby`, and the composer registry carrying its own node) and `scripts/` (the outcome table's missing rail-door cells, the destination pins on the palette restore, the refusal-coverage pins, the exempt-ink reasoning line in `contrast-contract.mjs`, and this file's own stamp check). No swept frame was re-taken and none is claimed to describe this tree: every frame under `docs/evidence/**` still depicts the tree it was captured from, which is what the `before/` halves are for. `frames`, `surfaces` and `themes` are unchanged because no frame moved.",
+        "replaced": {
+          "head": "69ce16abd700ad4929fc9c79d998b872d939516e",
+          "srcTree": "a9c66ecd8feb9844636975b03b1455486c9706b4",
+          "scriptsTree": "b9f2d1542c73716ed0c093ce432759fed5f8388f",
+          "capturedAt": "2026-09-17T07:08:08.000Z"
+        }
       }
     ],
     "browserToolPass": {

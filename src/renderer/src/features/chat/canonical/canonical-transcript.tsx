@@ -103,6 +103,7 @@ import {
 	toolNameColumn,
 } from "../components/trace/tool-row-model";
 import { WorkingLine } from "../components/trace/working-line";
+import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
@@ -1835,7 +1836,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								!isSmallView && AGENT_GUTTER,
 							)}
 						>
-							<p className="text-body-sm text-ink">
+							{/*
+							 * `id` is what the refused composer points its `aria-describedby` at
+							 * (UX round 1, U3): this sentence is the pane's statement of WHY the box
+							 * takes nothing, and it is the only one that survives the box being
+							 * non-empty. The name lives in `../missing-session-notice` so the two
+							 * components cannot spell it differently.
+							 */}
+							<p
+								id={MISSING_SESSION_NOTICE_ID}
+								className="text-body-sm text-ink"
+							>
 								This conversation is no longer on this machine.
 							</p>
 							<p className="text-ink-dim text-meta">
