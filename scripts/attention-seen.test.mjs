@@ -132,24 +132,24 @@ test("the schema admits one item and 500, and refuses 0, 501 and anything malfor
 		"a session id shaped like a path is refused before any HTTP",
 	);
 	/*
-	 * An extra field INSIDE an item is stripped rather than refused, because the
-	 * frozen arm's inner object carries no `.strict()` of its own (only the arm
-	 * around it does) — while the backend's own `Input` model is `extra="forbid"`
-	 * and would answer 422 for one. That mismatch is unreachable from this app: the
-	 * batch is built by `markAllRead` from two fields, and `desktopEndpoint` —
-	 * asserted below — emits exactly `session_id` and `completion_token` and
-	 * nothing else, so no unmodelled key can reach the wire from a renderer. It is
-	 * asserted this way round rather than by tightening the schema, because the
-	 * arm is FROZEN across two repositories and a tightening here would be this
-	 * side inventing a wire contract (reported instead of changed).
+	 * An extra field INSIDE an item is refused, which is the tightening agent review
+	 * round 1 (R5) asked for: the arm's outer object was `.strict()` and the item was
+	 * not, so an item carrying a third field was silently stripped here while the
+	 * sibling repository's `extra="forbid"` model would have answered 422 for it. The
+	 * two surfaces refuse the same now, and `desktopEndpoint` — asserted below —
+	 * emits exactly `session_id` and `completion_token` for the items that ARE
+	 * accepted.
 	 */
-	const withExtra = parse({
-		op: "attention.seen",
-		items: [{ ...item(), seenAt: 123 }],
-	});
-	assert.equal(withExtra.success, true);
+	assert.equal(
+		parse({
+			op: "attention.seen",
+			items: [{ ...item(), seenAt: 123 }],
+		}).success,
+		false,
+		"an extra field on an item is refused rather than dropped",
+	);
 	assert.deepEqual(
-		desktopEndpoint(withExtra.data).body,
+		desktopEndpoint({ op: "attention.seen", items: [item()] }).body,
 		{ items: [{ session_id: SESSION, completion_token: TOKEN }] },
 		"the encoder emits the two modelled keys and nothing else",
 	);
@@ -191,7 +191,8 @@ globalThis.__attentionRequest = async () => ({
 const storeBundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store";' +
+			' export * from "./src/renderer/src/features/chat/mark-all-read";',
 		resolveDir: process.cwd(),
 	},
 	alias: {
@@ -237,9 +238,11 @@ export const discardPendingEchoes = () => undefined;`,
 		},
 	],
 });
-const { useCanonicalSessionsStore: store } = await import(
+const storeModule = await import(
 	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
 );
+const { useCanonicalSessionsStore: store } = storeModule;
+const { unreadAckableCount, unreadAckableRows, markAllReadCopy } = storeModule;
 
 /** One unread completion, as a catalogue row carries it. */
 const unread = (sessionId, over = {}) => ({
@@ -286,6 +289,124 @@ test("the batch is exactly the rows carrying an unseen completion with a token",
 		op: "attention.seen",
 		items: [{ sessionId: SESSION, completionToken: TOKEN }],
 	});
+});
+
+test("the label's number is the set the request sends, from one predicate", async () => {
+	/*
+	 * Agent review round 1 (R1): DESIGN §3.3 pins that "the count the control shows
+	 * and the set `markAllRead` sends are the same fact", and the way that stops
+	 * being true is two hand-written literals — one in the surface, one in the
+	 * action. The predicate now has ONE home and both halves call it, so this
+	 * asserts the invariant end to end on a roster that exercises all three
+	 * exclusions at once: an ackable row, a row already read, and an unseen row
+	 * that carries no token (which names no completion and so is neither counted
+	 * nor sent).
+	 */
+	const rows = [
+		{ session_id: SESSION, title: "Unread", attention: unread(SESSION) },
+		{
+			session_id: OTHER,
+			title: "Read",
+			attention: unread(OTHER, { unseen: false }),
+		},
+		{
+			session_id: "333333333333",
+			title: "No token",
+			attention: unread("333333333333", { completion_token: null }),
+		},
+	];
+	seed(rows);
+	serve({ read: [], superseded: [], unknown: [] });
+	const copy = markAllReadCopy(rows);
+	assert.equal(
+		copy.count,
+		unreadAckableCount(rows),
+		"the label's number is the predicate's count",
+	);
+	assert.equal(copy.count, 1);
+	await store.getState().markAllRead();
+	assert.deepEqual(
+		requests[0].items.map((entry) => entry.sessionId),
+		unreadAckableRows(rows).map((row) => row.session_id),
+		"the request carries exactly the rows that predicate returns",
+	);
+});
+
+test("the control's copy names the extent before the click", () => {
+	/*
+	 * UX round 1 (U1) and design D3: the gesture is catalogue-wide, so the number
+	 * belongs in the control's own words and the rows it reaches outside its own
+	 * section are stated too. Design N5 is the third case: a mark with no token
+	 * cannot be cleared, so when one exists the limit is named rather than left as
+	 * a check that survives an acknowledged clear with nothing explaining it.
+	 */
+	const elsewhere = [
+		{
+			session_id: SESSION,
+			title: "Active unread",
+			active: true,
+			attention: unread(SESSION),
+		},
+		{
+			session_id: OTHER,
+			title: "Previous unread",
+			active: false,
+			attention: unread(OTHER),
+		},
+	];
+	const local = markAllReadCopy(elsewhere);
+	assert.equal(local.label, "Mark all 2 read");
+	assert.equal(
+		local.scope,
+		"Mark 2 unread chats as read, including 1 in Previous chats",
+	);
+	assert.equal(
+		local.nameSuffix,
+		", including 1 in Previous chats",
+		"the accessible name carries the rows the visible label cannot",
+	);
+	// A name whose visible text is a prefix of it, so Label in Name (WCAG 2.5.3)
+	// holds once the surface appends the suffix.
+	assert.equal(
+		`${local.label}${local.nameSuffix}`.startsWith(local.label),
+		true,
+	);
+
+	const withoutElsewhere = markAllReadCopy([
+		{
+			session_id: SESSION,
+			title: "Active unread",
+			active: true,
+			attention: unread(SESSION),
+		},
+	]);
+	assert.equal(withoutElsewhere.label, "Mark all 1 read");
+	assert.equal(withoutElsewhere.scope, "Mark 1 unread chat as read.");
+	assert.equal(
+		withoutElsewhere.nameSuffix,
+		"",
+		"no words are spent on nothing",
+	);
+
+	const tokenless = markAllReadCopy([
+		{
+			session_id: SESSION,
+			title: "Active unread",
+			active: true,
+			attention: unread(SESSION),
+		},
+		{
+			session_id: "444444444444",
+			title: "Unseen, no token",
+			active: true,
+			attention: unread("444444444444", { completion_token: null }),
+		},
+	]);
+	assert.equal(tokenless.count, 1, "a mark with no token is not the set sent");
+	assert.equal(
+		tokenless.scope,
+		"Mark 1 unread chat as read. 1 unread mark with no completion token cannot be cleared.",
+	);
 });
 
 test("nothing unread sends no request and writes nothing", async () => {

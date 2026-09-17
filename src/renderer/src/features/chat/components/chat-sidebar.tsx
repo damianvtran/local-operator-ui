@@ -38,6 +38,7 @@ import {
 import {
 	type KeyboardEvent,
 	type ReactNode,
+	type Ref,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -55,7 +56,7 @@ import {
 	searchChats,
 } from "../chat-search";
 import { clearSearch } from "../clear-search";
-import { markAllReadReceipt, unreadAckableCount } from "../mark-all-read";
+import { markAllReadCopy, markAllReadReceipt } from "../mark-all-read";
 import { newChatShortcutCap } from "../new-chat-shortcut";
 import { catalogueGate } from "../sidebar-catalogue-gate";
 
@@ -66,6 +67,29 @@ type Props = {
 };
 const rowStyle =
 	"flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
+
+/*
+ * Where the bulk read receipt's label stops fitting, in the width of the header
+ * row itself — the row is the container queried rather than the panel, because
+ * the row is what has to fit.
+ *
+ * 250px is the design round's measured break, read at the right granularity. The
+ * measurements are on the PANEL (`chat-layout.tsx` clamps 240/288/360, default
+ * 280): the group's own name needs a 235px row with a one-digit section badge and
+ * ~249px with a two-digit one — the operator's own "Active chats 38" — because
+ * the action is unshrinkable and the name absorbs whatever is left. The header row
+ * is 17px narrower than the panel, so a 250px row is a 267px panel: the shed fires
+ * below the DEFAULT width but not at it, and the 240px clamp minimum gets the
+ * glyph. Above the break the full label fits and nothing truncates.
+ *
+ * Below it the glyph keeps the tooltip and the accessible name, which carry the
+ * same scope in words.
+ *
+ * The shape is `older-history-slot.tsx`'s, which switches two spellings on its
+ * own container for the same reason: the row's height is fixed, so a wrapped
+ * line is not an option and the sentence is what has to change length.
+ */
+const MARK_ALL_READ_LABEL_SHED = "@max-[250px]/chatheading:hidden";
 
 /**
  * The ground of the row this panel is currently ON — the selected conversation,
@@ -334,15 +358,28 @@ export function ChatSidebar({
 	 * Gated on the CAPABILITY, not on a 404: a backend without
 	 * `completion_ack_bulk` gets no control at all, because a control that is
 	 * clicked and answers "this backend does not support it" has already promised
-	 * a mark was cleared. And hidden at zero, on this file's own precedent that a
-	 * zero badge beside a group which already says it is empty is one fact told
-	 * twice — here the marks themselves are the fact, so with none on screen the
-	 * action has no subject.
+	 * a mark was cleared. Hidden at zero, on this file's own precedent that a zero
+	 * badge beside a group which already says it is empty is one fact told twice —
+	 * here the marks themselves are the fact, so with none on screen the action has
+	 * no subject.
+	 *
+	 * And hidden while a SEARCH is active. The set is the store's, deliberately (a
+	 * filter must not be able to make the number on screen disagree with what the
+	 * click clears), so under a query the reader can see one mark while the action
+	 * would move forty — an irreversible write whose extent the reader cannot see
+	 * is not offered at all (agent review round 1, R4).
+	 *
+	 * WHAT IT SAYS IS THE POINT (UX round 1, U1). The scope is catalogue-wide, so
+	 * the number the request will carry is in the control's own visible words — not
+	 * only in a tooltip — and the rows it reaches OUTSIDE this section are named in
+	 * the tooltip and the accessible name. `markAllReadCopy` owns that copy, and it
+	 * derives the number from the same predicate `markAllRead` enumerates with.
 	 */
-	const unreadCount = unreadAckableCount(sessions);
+	const unreadCopy = markAllReadCopy(sessions);
 	const [clearingUnread, setClearingUnread] = useState(false);
 	const markAllReadShown =
-		unreadCount > 0 &&
+		unreadCopy.count > 0 &&
+		!query.trim() &&
 		desktopFeatureEnabled(capabilities.data, "completion_ack_bulk");
 	const clearUnread = async () => {
 		setClearingUnread(true);
@@ -352,73 +389,135 @@ export function ChatSidebar({
 			else showWarningToast(message);
 		} catch (failure) {
 			/*
-			 * Nothing moved: `markAllRead` writes local state only from the answer's
-			 * `read` bucket, so a refused request (a background window refused by
-			 * main's foreground gate, a busy store answering 503) leaves every mark
-			 * exactly where it was and the sentence says so rather than reporting a
-			 * clear that did not happen.
+			 * BOTH facts, because the question an irreversible action raises is "did it
+			 * happen?" and the transport's own translation answers a different one: a
+			 * reader told only "the backend is unreachable" has to infer the marks'
+			 * state from the rows (UX round 1, U5). Nothing moved — `markAllRead` writes
+			 * local state only from the answer's `read` bucket, so a refused request (a
+			 * background window refused by main's foreground gate, a busy store
+			 * answering 503) leaves every mark exactly where it was — and the sentence
+			 * says so rather than only reporting the transport failure.
 			 */
 			showWarningToast(
-				userFacingMessage(failure, "The unread marks were not cleared."),
+				`${userFacingMessage(failure, "The backend did not answer.")} The unread marks were not cleared.`,
 			);
 		} finally {
 			setClearingUnread(false);
 		}
 	};
 	/**
+	 * Where focus goes when the control leaves the screen by succeeding.
+	 *
+	 * The control unmounts when the last mark is cleared, and a focused element
+	 * that unmounts drops focus to `<body>` — so the next Tab restarted from the
+	 * top of the panel, outside the list, which is the opposite of what a reader
+	 * who just cleared the pile wants (UX round 1, U2). Focus is handed to the
+	 * section's own disclosure instead, which is in the ring and adjacent to where
+	 * the control was.
+	 *
+	 * Guarded on `document.activeElement` rather than taken unconditionally: the
+	 * count can also reach zero while focus is somewhere else entirely (the reader
+	 * clicked a row, the feed cleared the last mark in another window), and moving
+	 * focus then would steal the cursor from wherever they actually are. `<body>`
+	 * is the signature of the unmount-drop and of nothing else here.
+	 */
+	const activeHeadingRef = useRef<HTMLButtonElement | null>(null);
+	const controlWasShown = useRef(markAllReadShown);
+	useEffect(() => {
+		if (controlWasShown.current && !markAllReadShown) {
+			const active = document.activeElement;
+			if (active === null || active === document.body) {
+				activeHeadingRef.current?.focus();
+			}
+		}
+		controlWasShown.current = markAllReadShown;
+	}, [markAllReadShown]);
+	/**
 	 * The control, as the sibling of a section's toggle rather than inside it: a
 	 * button nested in the toggle's own button would share its hit area, so the
 	 * inner click and the outer one could not be told apart, and the arrow walk
 	 * over `[data-chat-row]` would land on a control whose activation also
-	 * collapsed the group. It is stamped as a row of its own so it IS a stop in
-	 * that walk, like every other control in the list — for the states in which
-	 * it can actually take focus (see the attribute below).
+	 * collapsed the group.
+	 *
+	 * IT IS A STOP IN THAT WALK, and for the WHOLE exchange. `keyDown` moves by
+	 * calling `.focus()` on the next `[data-chat-row]`, so the stamp is what makes
+	 * this a row-scoped action a keyboard reader can reach — ArrowDown from the
+	 * Active chats disclosure stops here before the first conversation — and it
+	 * MUST NOT drop out while the request is open, because dropping it shortens the
+	 * ring to less than the DOM being walked. The stop is kept by not using
+	 * `disabled` at all (see below); the ring's order is pinned in
+	 * `scripts/mark-all-read-control.test.mjs`.
 	 */
 	const markAllReadControl: ReactNode = markAllReadShown ? (
-		<button
-			type="button"
-			/*
-			 * `data-chat-row` drops out while the request is in flight, on the
-			 * New chat row's own rule: only a focusable row is a stop in the arrow
-			 * ring, and `keyDown` moves by calling `.focus()` on the next such
-			 * element — which a disabled button silently refuses, stranding a
-			 * keyboard user on the row they are already on for as long as the
-			 * request takes.
-			 */
-			data-chat-row={clearingUnread ? undefined : true}
+		<Button
+			size="sm"
+			variant="ghost"
+			data-chat-row
 			data-tour-tag="mark-all-read"
-			disabled={clearingUnread}
-			// The count is in the tooltip rather than in the label: the row's own
-			// heading already ends in a number and a second one beside it reads as
-			// the same fact. It is stated before the click all the same, because an
-			// acknowledgement cannot be undone.
-			title={`Mark ${unreadCount} unread ${
-				unreadCount === 1 ? "chat" : "chats"
-			} as read`}
-			onClick={() => void clearUnread()}
-			className="flex h-7 shrink-0 items-center gap-1 rounded-md px-1 text-meta text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+			/*
+			 * `aria-disabled` and NOT `disabled`, which is the Older history slot's rule
+			 * and the reason it states: Chrome blurs a button the moment `disabled`
+			 * lands, so a keyboard reader who pressed Enter loses focus to `<body>` for
+			 * the length of the request and the next Tab restarts from the top of the
+			 * panel. The click is ignored while the promise is open instead, and focus —
+			 * and this ring stop — stay exactly where the reader put them.
+			 */
+			aria-disabled={clearingUnread || undefined}
+			title={unreadCopy.scope}
+			onClick={() => {
+				if (clearingUnread) return;
+				void clearUnread();
+			}}
+			/*
+			 * The primitive, with exactly two overrides (design D5). Its authored hover
+			 * ground is `accent-wash`; this row's own step is `elevated`, the ground the
+			 * disclosure beside it takes, and two hover grounds in one row is the
+			 * inconsistency branding § 5 asks us not to ship. The rest ink steps down to
+			 * `ink-dim` so the action and the section's count are two REGISTERS rather
+			 * than one phrase (design D3): the count is a fact at `ink-muted`/medium, the
+			 * action is a control below it and takes `ink` on hover. `ink-dim` clears
+			 * 4.5:1 on every ground in all 59 palettes.
+			 *
+			 * `shrink-0` because the action must not be squashed, and the label's
+			 * `min-w-0 truncate` below is what keeps the group's own name from being the
+			 * thing that gives way — the pair is safe only because the label ALSO sheds
+			 * below the row width where it stops fitting (design D1).
+			 */
+			className="shrink-0 text-ink-dim hover:bg-elevated"
 		>
 			{clearingUnread ? (
+				/*
+				 * Only the GLYPH steps down while the request is open: this control is
+				 * WORKING, not unavailable, so the label holds its readable ink and the
+				 * spinner is the thing that dims (design D4). `ink-disabled` is a colour
+				 * step rather than an opacity, per § 6.
+				 */
 				<LoaderCircle
-					className="size-3.5 motion-safe:animate-spin"
+					className="text-ink-disabled motion-safe:animate-spin"
 					aria-hidden="true"
 				/>
 			) : (
-				<CheckCheck className="size-3.5" aria-hidden="true" />
+				<CheckCheck aria-hidden="true" />
 			)}
-			Mark all as read
 			{/*
-			 * The count is in the accessible name as well as the tooltip: the action
-			 * is irreversible, and how many marks it will clear is not decoration
-			 * for someone who cannot see the pile. Appended rather than replacing
-			 * the label, so the visible text stays a prefix of the name (WCAG 2.5.3
-			 * Label in Name) — the same shape `ChatSessionStatus` uses for its own
-			 * ", unread" suffix.
+			 * The label NAMES THE NUMBER the request will carry (UX U1), and it sheds
+			 * below the row width where it stops fitting so the group's own name never
+			 * breaks to make room for it (design D1). Below that width the glyph keeps
+			 * the tooltip and the accessible name, which still carry the full scope.
 			 */}
-			<span className="sr-only">
-				{` (${unreadCount} unread ${unreadCount === 1 ? "chat" : "chats"})`}
+			<span className={cn("truncate", MARK_ALL_READ_LABEL_SHED)}>
+				{unreadCopy.label}
 			</span>
-		</button>
+			{/*
+			 * The rows this control reaches outside its own section, in the accessible
+			 * name as well as the tooltip. APPENDED rather than replacing the label, so
+			 * the visible text stays a prefix of the name (WCAG 2.5.3 Label in Name) —
+			 * the shape `ChatSessionStatus` uses for its own ", unread" suffix.
+			 */}
+			{unreadCopy.nameSuffix ? (
+				<span className="sr-only">{unreadCopy.nameSuffix}</span>
+			) : null}
+		</Button>
 	) : null;
 	useEffect(() => {
 		localStorage.setItem("chat-sidebar-disclosures", JSON.stringify(expanded));
@@ -1009,7 +1108,21 @@ export function ChatSidebar({
 	 * still visits it, and its `aria-expanded`).
 	 *
 	 * `action` is undefined for every group but the one that can carry one, so the
-	 * row renders as it always did for the rest.
+	 * row renders as it always did for the rest — including the two properties
+	 * that follow from carrying one:
+	 *
+	 * - the row is a NAMED CONTAINER (`@container/chatheading`), which is the width
+	 *   the action's own label sheds against;
+	 * - and it STICKS to the top of the list's scroll box, so the control travels
+	 *   with the pile it clears instead of sitting 632px above it once the operator
+	 *   has scrolled into his own 38 rows (design D2). Sticky only here: the other
+	 *   three headings would be a layout change nothing asked for, and this row is
+	 *   bounded by its own section, so it un-sticks on its own when the group ends.
+	 *   The ground is `bg-surface` (the panel's own) because rows scroll under it.
+	 *
+	 * The label carries `min-w-0 flex-1 truncate` — this file's own idiom for the
+	 * one flexed label that renders a string it can run out of, since a fixed
+	 * literal cannot truncate anything and a 28px row cannot hold a wrapped line.
 	 */
 	const heading = (
 		key: string,
@@ -1017,9 +1130,16 @@ export function ChatSidebar({
 		initial: boolean,
 		count?: number,
 		action?: ReactNode,
+		toggleRef?: Ref<HTMLButtonElement>,
 	) => (
-		<div className="flex h-7 items-center gap-1">
+		<div
+			className={cn(
+				"@container/chatheading flex h-7 items-center gap-1",
+				action && "sticky top-0 z-10 bg-surface",
+			)}
+		>
 			<button
+				ref={toggleRef}
 				type="button"
 				data-chat-row
 				className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-elevated"
@@ -1031,7 +1151,7 @@ export function ChatSidebar({
 				) : (
 					<ChevronRight className="size-3.5" />
 				)}
-				<span className="flex-1 text-left">{label}</span>
+				<span className="min-w-0 flex-1 truncate text-left">{label}</span>
 				{/* A zero badge next to a group that already says it is empty is the
 				    same fact twice; only a non-zero count carries information. */}
 				{count !== undefined && count !== 0 && countBadge(count)}
@@ -1599,13 +1719,19 @@ export function ChatSidebar({
 									 * The bulk read receipt sits with the group the operator
 									 * pointed at — the one whose rows carry the completion
 									 * checkmarks — while the set it clears is the STORE's, so
-									 * the visible column of marks and the count the action names
+									 * the visible column of marks and the count its label names
 									 * are the same fact. It is deliberately not duplicated
-									 * beside "Previous chats": one gesture, one control, and two
-									 * affordances for one irreversible write would be a second
-									 * thing to keep in step.
+									 * beside "Previous chats": one gesture, one control. The
+									 * flat "All chats" view has none — recorded on the pull
+									 * request as deferred rather than papered over, because a
+									 * second control site is a second design decision.
 									 */
 									markAllReadControl,
+									/*
+									 * The disclosure the reader is handed when clearing the last
+									 * mark unmounts the control under their cursor.
+									 */
+									activeHeadingRef,
 								)}
 								{(query || isOpen("active", true)) &&
 									(matching.some((row) => row.active) ? (
