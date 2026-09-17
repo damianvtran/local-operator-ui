@@ -194,6 +194,19 @@ export function useScrollPaging({
 	// Writes this hook makes to `scrollTop`. The resulting `scroll` event is our
 	// own motion and must never be attributed to the reader (clause A).
 	const programmatic = useRef(0);
+	/*
+	 * The reader's own motion, as the SCROLLER reported it at the last input.
+	 *
+	 * Measured from the offsets rather than from `deltaY`, because a wheel delta
+	 * is device-scaled and a trackpad's is a lie: the same gesture reports
+	 * different numbers on different hardware and neither number says how far the
+	 * content actually moved. `at: 0` means "no input yet", which is what makes
+	 * the first input carry no speed and no travel — there is no previous sample
+	 * to difference it against, and inventing one (the reader's distance from the
+	 * tail, say) would report a flick's worth of travel for a reader who has only
+	 * just put their fingers on the pad.
+	 */
+	const travel = useRef({ fromTail: 0, at: 0, extent: 0, clamped: false });
 	const pump = useRef<number>(0);
 	const settleTimer = useRef<number>(0);
 
@@ -388,10 +401,38 @@ export function useScrollPaging({
 			}
 			void live.current.onLoadOlder().then((ok) => {
 				setFailed(!ok);
-				state.current = ok
-					? noteSettled(state.current)
-					: noteFailed(state.current);
-				requestAnimationFrame(schedule);
+				if (!ok) {
+					state.current = noteFailed(state.current);
+					requestAnimationFrame(schedule);
+					return;
+				}
+				/*
+				 * Settle on the OBSERVED landing, exactly as the widen path does, and for
+				 * the same reason: `loadOlder` resolves as soon as it has SCHEDULED the
+				 * view update that carries the page's rows
+				 * (`use-canonical-session.ts`), so a settle read in this microtask sees
+				 * the pre-landing `hiddenRows` — and that zero is precisely the state
+				 * rule 6 is about. Measured on the real surface: a durable page landed
+				 * with `rows 200 -> 200` and `hiddenRows 0 -> 60`, i.e. the reader's
+				 * arrival was answered and nothing on screen changed. Polling the value
+				 * the decision reads is the fix that does not depend on knowing how
+				 * many frames React needs, and the cap is the same guard the widen path
+				 * uses: a page that legitimately mounts nothing must still settle.
+				 */
+				let waited = 0;
+				const awaitLanding = () => {
+					const after = live.current.hiddenRows;
+					if (after > 0 || waited >= COMMIT_WAIT_FRAMES) {
+						state.current = noteSettled(state.current, {
+							hiddenRowsAfter: after,
+						});
+						schedule();
+						return;
+					}
+					waited += 1;
+					requestAnimationFrame(awaitLanding);
+				};
+				requestAnimationFrame(awaitLanding);
 			});
 		});
 	}, [holdAnchor, measure]);
@@ -399,19 +440,59 @@ export function useScrollPaging({
 	/** Fold one real gesture in, then re-decide. */
 	const input = useCallback(
 		(direction: "up" | "down", continuous: boolean, deliberate = false) => {
+			const el = containerRef.current;
+			const at = performance.now();
 			const geo = measure();
+			const atHardTop =
+				(geo?.distanceFromTopPx ?? Number.POSITIVE_INFINITY) <= HARD_TOP_PX;
+			/*
+			 * What the reader's own input actually did, in the two terms the policy
+			 * reasons about (rule 3's lead and rule 4's travel record): a speed
+			 * toward the top in px/ms, and a distance travelled since the previous
+			 * input in px.
+			 *
+			 * Both are read from the scroller's OFFSETS at input time, which is the
+			 * only measurement that is the same on every input device — and both are
+			 * read HERE, at the input event, rather than from a `scroll` listener,
+			 * so a landing, a streamed token or the anchor correction can never look
+			 * like the reader moving (clause A).
+			 */
+			const held = travel.current;
+			const first = held.at === 0;
+			const fromTail = el ? Math.abs(el.scrollTop) : held.fromTail;
+			const extent = el ? el.scrollHeight : held.extent;
+			const elapsed = first ? 0 : at - held.at;
+			/*
+			 * Clamp-follow. Growth observed while the reader is ALREADY against the
+			 * top edge is the browser re-pinning them to the grown extent, not the
+			 * reader moving: mounting rows above a pinned reader moves `scrollTop`
+			 * by exactly the growth (measured on the real scroller: `scrollHeight`
+			 * +24px with `scrollTop` -24px and no input at all). Left in the
+			 * measurement, those 24px would read as travel — and travel is what
+			 * releases the clamp latch, so a finger resting on the top edge could
+			 * walk the whole conversation into memory through that door.
+			 */
+			const clampFollow =
+				held.clamped && extent > held.extent ? extent - held.extent : 0;
+			const moved = first ? 0 : fromTail - held.fromTail - clampFollow;
+			travel.current = { fromTail, at, extent, clamped: atHardTop };
 			state.current = noteInput(state.current, {
 				direction,
 				continuous,
 				deliberate,
-				atHardTop:
-					(geo?.distanceFromTopPx ?? Number.POSITIVE_INFINITY) <= HARD_TOP_PX,
-				at: performance.now(),
+				atHardTop,
+				at,
+				// Only motion TOWARD the top is a lead. A downward notch is the reader
+				// turning around, and `noteInput` answers it on its own branch, where
+				// a velocity toward the top would mean nothing.
+				travelVelocityPxPerMs:
+					direction === "up" && elapsed > 0 ? Math.max(0, moved) / elapsed : 0,
+				travelledPx: Math.max(0, moved),
 			});
 			if (deliberate) setFailed(false);
 			schedule();
 		},
-		[measure, schedule],
+		[containerRef, measure, schedule],
 	);
 
 	const requestOlder = useCallback(() => {
