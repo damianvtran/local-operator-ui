@@ -483,9 +483,11 @@ export const STORIES = [
 	 * its 900px cap and the card at 675px; the story file's header carries the DOM
 	 * read behind both numbers. The before half is a declared supplementary set
 	 * (`../chat-canonical-user-card-measure-before/`) — the same three stories on
-	 * the same rig, with the three rendering files at base `962f43350` in the
+	 * the same rig, with the three rendering files at the branch's base in the
 	 * working tree and nothing else moved, so the pair differs in the measure
-	 * alone.
+	 * alone. Both halves were re-shot at the rebased head on 2026-09-17, so the
+	 * base named there is the rebase's own fork point (`562bc5837`), not the
+	 * pre-rebase `962f43350`.
 	 */
 	["chat-canonical-user-card-measure--reported-shape", 1024, 620],
 	["chat-canonical-user-card-measure--wide-attachment", 1024, 620],
