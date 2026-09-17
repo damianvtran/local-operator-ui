@@ -36,7 +36,8 @@
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 
 /** Whitespace, hoisted: this file parses `magick -format` output on every read. */
 const SPACES = /\s+/;
@@ -175,8 +176,17 @@ if (OUT) {
 	 * measurement to fail for uninteresting reasons — so the file name and the
 	 * commit message carry the reading.
 	 */
-	const parts = `${OUT.replace(/\.[a-z]+$/, "")}-parts`;
-	mkdirSync(dirname(join(parts, "x")), { recursive: true });
+	/*
+	 * The panels are SCRATCH and are written under the system temp dir rather than
+	 * beside the still: `docs/evidence/` is a committed tree, and a generator that
+	 * leaves intermediates next to its artifact is a generator whose next `git add -A`
+	 * commits them (this one did, twice, before the path moved).
+	 */
+	const parts = join(
+		tmpdir(),
+		`stroke-step-${basename(OUT).replace(/\.[a-z]+$/, "")}`,
+	);
+	mkdirSync(parts, { recursive: true });
 	const resize = ["-filter", "point", "-resize", ZOOM];
 	const crop = ["-crop", CROP, "+repage"];
 	magick([BEFORE, ...crop, ...resize, join(parts, "before.png")]);
