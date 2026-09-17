@@ -2213,7 +2213,11 @@ test("the rung only shows when nothing the owner drove has taken over", () => {
 			waiting: true,
 			records: [userRow(ECHO, "go"), runningToolRow("t1")],
 		}),
-		{ activity: "running bash", phase: "running" },
+		// The `startedAt` is the RUNNING arm's own anchor, not the admitted-send
+		// rung's: a running batch is dated by its oldest card's own start, so the
+		// band resumes the age the call has instead of restarting at zero
+		// (`working-line-model.ts`; the fixture's row is stamped at 1).
+		{ activity: "running bash", phase: "running", startedAt: 1 },
 	);
 	assert.deepEqual(
 		admitted([], {
