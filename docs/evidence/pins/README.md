@@ -155,30 +155,29 @@ The TUI *surface* (a real terminal with `f10` pressed) is not driven here: that 
 in the backend pull request's own pilot, where the terminal app and the route are in one
 process tree.
 
-## The fold onto `ccc3017a3`, measured rather than asserted
+## The folds onto `main`, measured rather than asserted
 
-The branch was folded onto `origin/main` at `ccc3017a3` after remediation. Two conflicts
-(`docs/evidence/manifest.json`, `package.json`) and one content question: does the fold move
-anything this set is a picture of?
+The branch was folded twice while this set existed - onto `ccc3017a3` (#299), then onto
+`3afcc732f` (#290, the user bubble's measure width) - and each time the question was the same:
+did the fold move anything this set is a picture of?
 
-**It moved the PANE, not the sidebar, and that is a measurement.** Six of the nineteen frames
-were re-shot because their bytes moved - `pins-filter-{dark,light}`, `pins-flat-{dark,light}`,
-`pins-selected-{dark,light}` and `pins-from-tui-dark`, which are exactly the frames with a
-conversation open in the chat pane, where `main`'s `chat-content.tsx` changed (241 lines).
-Cropping both the committed frame and the re-shot one to the sidebar's own columns removes the
-difference completely:
+**It moved the PANE, not the sidebar, and that is a measurement.** Six frames moved on each
+fold, and they are exactly the frames with a conversation open in the chat pane, where `main`
+changed (`chat-content.tsx` on the first, `markdown.css` + `message-paper.tsx` on the second).
+Cropping the frame from the previous head and the re-shot one to the sidebar's own columns
+removes the difference completely:
 
 ```
-pins-selected-dark   [sidebar 0..528]  differing pixels = 0
-pins-selected-dark   [pane 528..2760]  differing pixels = 1200
-pins-filter-dark     [sidebar] 0    [pane] 1134
-pins-flat-light      [sidebar] 0    [pane] 1134
-pins-from-tui-dark   [sidebar] 0    [pane] 1134
+fold onto ccc3017a3   sidebar 0 differing pixels   pane 1134-1200   (six frames)
+fold onto 3afcc732f   sidebar 0 differing pixels   pane 923        (the same six)
 ```
 
-So every claim in this file's table still holds on the folded tree, and the thirteen frames
-whose pixels did not move at all - including the withdrawn pair, which re-shot byte-identical
-to the pre-change panel - are evidence that the fold touched nothing the pins surface paints.
+So every claim in this file's table holds on the folded tree, and the thirteen frames whose
+pixels did not move at all are evidence that neither fold touched anything the pins surface
+paints - including the withdrawn pair, which re-shot byte-identical to the pre-change panel
+both times. The frames in this directory are the `3afcc732f` set; the earlier fold's
+measurement is in the pull request's fold comment rather than kept here, because only one set
+of frames can be the pictures of the shipped tree.
 
 ## The move a pin makes, and what the panel does about it
 
