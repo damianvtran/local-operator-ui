@@ -3257,16 +3257,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * KEEP THE CARET ON A PRESS THAT LANDS ON A CONTROL THE BOX IS REFUSING WITH
 		 * (QA round 2, Q-3).
 		 *
-		 * The Send and dictation controls are `disabled` while this composer refuses,
-		 * and the browser's default action for a `mousedown` is to move the caret to
-		 * what was pressed. A disabled control cannot take focus, so that default does
-		 * not fail harmlessly - it CLEARS focus to `document.body` instead. Measured,
-		 * with the caret in a refused box still holding the reader's sentence: a real
-		 * mouse press on the Send control ends `active=body, focused=false` where the
-		 * keyboard path ends `active=textarea[Message]`. That is the mouse half of the
-		 * defect this refusal exists to fix - the operator's "I type and nothing
-		 * happens", one door over - and the words survive the press only because the
-		 * box was kept `readOnly` rather than `disabled`.
+		 * The Send, dictation and attach controls are `disabled` while this composer
+		 * refuses, and the browser's default action for a `mousedown` is to move the
+		 * caret to what was pressed. A disabled control cannot take focus, so that
+		 * default does not fail harmlessly - it CLEARS focus to `document.body`
+		 * instead. Measured, with the caret in a refused box still holding the
+		 * reader's sentence: a real mouse press on the Send control ends
+		 * `active=body, focused=false` where the keyboard path ends
+		 * `active=textarea[Message]`, and QA round 3 measured the same row for the
+		 * attach control (`attachPress active=body isComposer=false`) - which is why
+		 * the suppression is on every control the refusal's own `isInputDisabled`
+		 * term disables, rather than on the two the first measurement happened to
+		 * land on. That is the mouse half of the defect this refusal exists to fix -
+		 * the operator's "I type and nothing happens", one door over - and the words
+		 * survive the press only because the box was kept `readOnly` rather than
+		 * `disabled`.
 		 *
 		 * `preventDefault` suppresses ONLY the focus-changing default: the press still
 		 * reaches the control, and a refused control fires no `click` in any case, so
@@ -3278,10 +3283,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * `pointerdown` arrives on the disabled Send control and no `mousedown`
 		 * follows, which is why the slash rows' technique fixes nothing here).
 		 *
-		 * Scoped to the refusal deliberately: outside it these two controls keep the
+		 * Scoped to the refusal deliberately: outside it these controls keep the
 		 * browser's normal press behaviour, and a control that is disabled for its OWN
 		 * reason - an empty box's Send, the mic with no Radient credential - is not
-		 * this composer refusing with anyone.
+		 * this composer refusing with anyone. The gate below is the whole of that
+		 * scoping, and it is load-bearing in both directions: without it a blanket
+		 * suppression would also swallow the press on inert background, which has to
+		 * go on clearing the caret, and a live control has to be exactly what it was.
 		 */
 		const holdCaretOnRefusedPress = useCallback(
 			(event: PointerEvent<HTMLButtonElement>) => {
@@ -4829,6 +4837,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												variant="ghost"
 												size={isSmallView ? "icon-sm" : "icon"}
 												className="text-ink-dim hover:bg-elevated hover:text-ink"
+												onPointerDown={holdCaretOnRefusedPress}
 												onClick={handleAttachFile}
 												aria-label="Attach file"
 												data-tour-tag="chat-input-attach-file-button"
@@ -5233,6 +5242,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							splash={splash}
 							suggestions={suggestions}
 							disabled={suggestionsDisabled}
+							onRefusedPress={holdCaretOnRefusedPress}
 							onSelect={handleSuggestionClick}
 							focusComposer={() => textareaRef.current?.focus()}
 						/>

@@ -1,6 +1,6 @@
 import { Button } from "@shared/components/ui/button";
 import { cn } from "@shared/lib/utils";
-import { useLayoutEffect, useRef, useState } from "react";
+import { type PointerEvent, useLayoutEffect, useRef, useState } from "react";
 import { suggestionStackCapFor } from "./suggestion-stack";
 
 type Props = {
@@ -14,6 +14,23 @@ type Props = {
 	 * this component only paints the state.
 	 */
 	disabled: boolean;
+	/**
+	 * A press-suppression for a chip the composer is refusing with, supplied by the
+	 * caller and GATED THERE (`isInputDisabled`), never here. A chip is `disabled`
+	 * for two reasons - the refusal, and the composer holding a draft - and only
+	 * the first carries the caret defect: a disabled control dispatches no mouse
+	 * event, so the browser's `mousedown` default moves focus past it, to
+	 * `document.body`. The draft case is a control disabled for its own reason and
+	 * keeps the browser's normal press behaviour, exactly as the composer's own
+	 * comment records for the mic with no Radient credential. Keeping the gate at
+	 * the one call site is also what makes it assertable:
+	 * `composer-refusal.test.mjs` reads the gate where it is written.
+	 *
+	 * Optional, and deliberately not derived from `disabled` here: a component that
+	 * suppressed the press whenever its own prop was true would silently widen the
+	 * refusal's scope to every caller's reason for disabling a chip.
+	 */
+	onRefusedPress?: (event: PointerEvent<HTMLButtonElement>) => void;
 	onSelect: (suggestion: string) => void;
 	focusComposer: () => void;
 };
@@ -34,6 +51,7 @@ export const MeasuredSuggestionStack = ({
 	splash,
 	suggestions,
 	disabled,
+	onRefusedPress,
 	onSelect,
 	focusComposer,
 }: Props) => {
@@ -166,6 +184,7 @@ export const MeasuredSuggestionStack = ({
 						// being unavailable in principle.
 						aria-disabled={disabled || undefined}
 						disabled={disabled || hidden}
+						onPointerDown={onRefusedPress}
 						onClick={() => {
 							if (!hidden && !disabled) onSelect(suggestion);
 						}}
