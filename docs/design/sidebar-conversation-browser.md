@@ -508,11 +508,19 @@ already exists:
 (closing a tab is not recoverable — the session file records the current set, not a
 history: `host.ts:716-746`), and three of them ("others", and the conversation
 item's own count) read the **pool** while a scoped host is showing a list — a number
-is the disclosure. This is also
-why `Close other tabs` means **the whole pool**, not the host's visible list: in
-the pane, scoped to 2 tabs of 8, the item reads `Close 7 other tabs`, which is the
-truth about what it does. `paneApprovalHeaderLabel`'s sibling rule applies here
-too — the words have to agree with the scope.
+is the disclosure.
+
+**SUPERSEDED IN ROUND 2 (U7) — READ THE PARAGRAPH BELOW, WHICH IS THE CORRECTION**
+(review round 2, A-5: a reader implementing from *these* lines saw no sign that the
+scope rule had been ruled the other way, which is exactly how A3 happened). The
+withdrawn sentences are kept as the record of what round 1 was written against
+rather than struck, because they are what the correction corrects — they are NOT the
+requirement:
+
+> This is also why `Close other tabs` means **the whole pool**, not the host's visible
+> list: in the pane, scoped to 2 tabs of 8, the item reads `Close 7 other tabs`, which
+> is the truth about what it does. `paneApprovalHeaderLabel`'s sibling rule applies
+> here too — the words have to agree with the scope.
 
 **RULED THE OTHER WAY IN ROUND 2 (U7), and this paragraph is the correction.** Round 1
 (A3) read the sentence above as a requirement and the branch threaded a second, WIDER
