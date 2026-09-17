@@ -99,6 +99,21 @@ The withdrawn pair is the same scene against a daemon checked out at
 where `capabilities.features.session_pins` is genuinely absent — the same server minus
 this feature, rather than a client told to pretend.
 
+## Reproducible until the clock moves, and that is measured
+
+The frames are a property of the instrument and the tree, not of one afternoon: the
+committed driver, re-run against the same daemon and the same store, reproduced all
+thirteen byte for byte. The bound is stated rather than left to be discovered — the
+transcript in these frames carries minute-resolution wall-clock timestamps that
+`harness/seed-store.mjs` writes from `Date.now()`, so an exact reproduction is a
+statement about a re-run inside the same minute.
+
+A later re-run differs in exactly those digits and nothing else: 782 pixels,
+identical in every affected frame, in one `42x154+2610+1270` box — the render of
+`12:18 AM` against `1:38 AM`. That is how a clock was told apart from a fold that
+moved something: a class or a layout change moves the box it touched, differently
+in each frame it touches; a clock moves the same digits everywhere it is drawn.
+
 ## The round trip, measured
 
 Both directions were measured inside the pins run, against the same file:
