@@ -1370,6 +1370,13 @@ export const LoopSettledFocus: Story = {
  * two-line tooltip over a short goal: the class was true and its clamp was not shown.
  * This band is the 300-character goal with its dismiss focused, which is the state D9
  * named as capturable — four lines at most, with the ellipsis that says so.
+ *
+ * THE TOOLTIP ITSELF IS NOT IN THE PICTURE, and the label says so (design review round
+ * 3, `D12`). A programmatic focus paints the reveal but does not open a Radix tooltip —
+ * `:focus-visible` is what the primitive waits for, and this instrument has no keyboard
+ * — so a label promising "the tooltip clamps to four lines" was a still asserting a state
+ * its own pixels contradict. The clamp is declared by the class and by the tooltip the
+ * control owns; what this frame is evidence of is the held box and the word beside it.
  */
 export const LongGoalDismissFocus: Story = {
 	render: () => {
@@ -1378,7 +1385,7 @@ export const LongGoalDismissFocus: Story = {
 			<div className={cn("flex flex-col gap-4")}>
 				<RowFacts>
 					<Band
-						label="A 300-character goal, its dismiss revealed: the tooltip clamps to four lines"
+						label="A 300-character goal, its dismiss revealed: the box and the word are painted, and the clamped tooltip is declared rather than shown"
 						frontend={frontend(LONG_GOAL)}
 						runDetails={IN_FLIGHT}
 					/>

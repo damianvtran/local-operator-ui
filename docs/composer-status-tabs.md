@@ -1253,10 +1253,14 @@ Three properties, each a decision rather than a habit:
   reveals it. The control is consequently in the tab order at every width, including
   the widths where its word is dropped (§ 12.5).
 - **The scope is the TRIGGER'S OWN LINE, and it is the ITEM'S WIDTH — the claim as
-  first written is corrected here (design review round 2, `D8`). `group` sits on the
-  row that holds the trigger and its control, and that row is a BLOCK-level box
-  inside the caller's `min-w-0 flex-1` root, so its box IS the item's content box:
-  **472px** in the goal+loop+plan band, **868px** with the goal alone. The ✕ can
+  first written is corrected here (design review round 2, `D8`), and its NUMBERS are
+  corrected with it (design review round 3, `D15`). `group` sits on the row that
+  holds the trigger and its control, and that row is a BLOCK-level box inside the
+  caller's `min-w-0 flex-1` root, so its box IS the item's content box: **868px** with
+  the goal alone (§ 4.1's own figure), and in every band wider than the pair it holds
+  — the pair measures **346px** at a 900px column, `89px` of dismiss plus `257px` of
+  goal chip, the two numbers
+  `docs/evidence/composer-status-clear/loop-tab-facts/` prints. The ✕ can
   therefore still be revealed from the item's blank stretch to the right of the
   dismiss — which UX round 1 scored a NIT and called good for discovery (`U5`),
   inherited from `canvas-tabs.tsx` and `directory-indicator.tsx`. What moved is WHICH
@@ -1265,6 +1269,13 @@ Three properties, each a decision rather than a habit:
   The two activators are asserted to carry the SAME utilities, as sets, in
   `scripts/composer-tabs.test.mjs`, and that assertion cannot see a width — which is
   why the wrong claim survived it.
+
+  The `472px` / `345px` / `133px` triple this bullet carried is GONE and the
+  arithmetic is why: `345 + 133` is `478`, not `472`, no frame printed the item's own
+  box in that band, and the three numbers could not be resolved against each other by
+  a reader. What the frames do carry is the pair, and the box it sits in is the only
+  other term — so the pair is what is quoted and the box is the `flex-1` share whose
+  one frame-backed figure is the goal-alone 868px.
 - **BUSY is the second activator** (UX round 2, `U8`): `DISMISS_BUSY_REVEAL` is one
   class, applied while that control's own command is in flight, so a press followed
   by the pointer moving on — which is what pointers do once they have pressed
@@ -1328,13 +1339,16 @@ correction design review round 2's `D8` asked for.** The first version of it sai
 reveal was "scoped to the pair rather than to the item's `flex-1` box, so the ✕ no
 longer appears while the pointer is on empty row". The box model says otherwise: the
 primitive's row is a block-level box inside the caller's `min-w-0 flex-1` root, so its
-box IS the item's content box — **472px** in the goal+loop+plan band (where the pair
-occupies 345px, leaving 133px of revealable line to the right of the dismiss) and
-**868px** with the goal alone (§ 4.1's own figure), which is § 12.3's original 868px
-item. Measured on the running app by UX round 2 as well: the `.group` row spans
-`[540..1340]`, 800px, exactly the goal item's box. So the ✕ still appears with the
-pointer on the item's blank stretch — UX round 1's `U5`, scored NIT and kept as the
-inherited pattern's behaviour.
+box IS the item's content box — **868px** with the goal alone (§ 4.1's own figure,
+which is § 12.3's original 868px item) and, in the wider bands, the same `flex-1` share
+of the row: always more than the **346px** the pair occupies at a 900px column (`89px`
+of dismiss plus `257px` of goal chip, both printed by
+`docs/evidence/composer-status-clear/loop-tab-facts/`). The three numbers this sentence
+used to carry (`472` / `345` / `133`) are dropped for the reason the bullet above
+records: they did not close against each other. Measured on the running app by UX
+round 2 as well: the `.group` row spans `[540..1340]`, 800px, exactly the goal item's
+box. So the ✕ still appears with the pointer on the item's blank stretch — UX round 1's
+`U5`, scored NIT and kept as the inherited pattern's behaviour.
 
 What the change actually did, and why it is still worth the slot: `group` now sits on
 the smallest box that holds both controls, so the reveal's SCOPE is the primitive's
@@ -1534,9 +1548,13 @@ that box carries the item (`itemFits`). No step can express this — the clause 
 the wire's own figures, so its width is unbounded by construction (a longer count is a
 wider chip) and any boundary is a guess the next figure outgrows, which is exactly what
 this defect was. Three properties make the measurement stable rather than clever: what
-it REMEMBERS is the item's own width from the frame the figure was painted in, so the
-rule is monotone in the row's width and cannot flip on the answer it just gave; it is a
-LAYOUT effect, so the first paint already carries it; and the observer is on the ROW,
+it REMEMBERS is the item's own width from the frame the full clause was painted in, so
+the rule is monotone in the row's width — for a FIXED clause, which is the only input
+that can change the answer there, while a clause that CHANGES invalidates the remembered
+width rather than answering with the sentence it replaced (agent review round 3,
+`MINOR 1`; the code's own comment is the normative version) — and cannot flip on the
+answer it just gave; it is a LAYOUT effect, so the first paint already carries it; and
+the observer is on the ROW,
 because what moves this box is a container query (the same reason
 `directory-indicator.tsx` records for its own). The class rule keeps the word — and
 keeps the figure at the stacked band, where the row is a COLUMN and the yield must hold
@@ -1579,7 +1597,7 @@ them are the band stories: `docs/evidence/composer-status-clear/loop-band-fit/` 
 `loop-band-fit-floor-goal/` at the app's floor (173/172/171px), one per clause shape,
 with the before half in `loop-band-overflow/`.
 
-| Column | Clause | Loop item | Row's box | `overflowX` | dismiss |
+| Column | Clause | Loop item | Row's `clientWidth` | `overflowX` | dismiss |
 |---|---|---|---|---|---|
 | 241px, before | `Loop: running, 0 of 25 turns` | 270px | 241px | **37px** | 86px |
 | 240px, before | the same | 270px | 240px | **38px** | 86px |
@@ -1587,15 +1605,25 @@ with the before half in `loop-band-overflow/`.
 | 241px, after | the same | 190px | 241px | 0px | 86px |
 | 240px, after | the same | 190px | 240px | 0px | 86px |
 | 240px, after | `Loop: running, 0 turns` (narrower) | 190px | 240px | 0px | 86px |
-| 172px, after | `Loop: running, 0 of 25 turns` | 136px | 172px | 0px | 26px |
+| 172px, after | `Loop: running, 0 of 25 turns` | 130px | 172px | 0px | 26px |
 
 The two `before` rows are the same three widths with the measured fit rule disabled
 (the code this round's reviews measured), and QA's own rig put the same shape on the
 BUILT app at `19px`/`52px` at the 240px band and 241px: the numbers differ because the
 app's paddings differ, and both are the same defect — the item is wider than the line it
 is on and nothing in it yields. The `after` rows are also the reason a threshold was not
-the fix: at 240px the figure has yielded (190px of item in a 225px line) while the
+the fix: at 240px the figure has yielded (190px of item in a 224px line, the content box
+`240 - px-2`, which is the box the rule compares; the 225px is the 241px band's) while the
 clause is still the widest one the wire prints, and at 172px the word has yielded too.
+
+The "Row's `clientWidth`" column is what the FRAMES print (`in ${row.clientWidth}px`) and
+is not the box the rule tests: `itemFits` compares the item against the row's CONTENT box,
+so at the 241px band the comparison is `190 <= 225` rather than `190 <= 241` (design review
+round 3, `NIT 2`). Both are real numbers and § 12.5 states the content box for each width;
+the label is the one that had to move, from "Row's box" to the box it actually is. The floor
+row's 130px is the same figure `loop-band-fit-floor/` prints for that clause at that width
+and not `loop-tab-facts/`'s 136px, which belongs to the six-chip floor and the other clause
+(`2 of 5 turns`) (design review round 3, `D14`).
 
 ---
 

@@ -96,6 +96,30 @@ const LOOP_SETTLED: DesktopLoopState = {
  * Written as the BACKEND's effect rather than as a UI assertion: the harness does
  * not remove the tab, it empties the field the tab is gated on.
  */
+/**
+ * The bands whose command is ANSWERED BY NOTHING, selected by `?hang=<session id>`.
+ *
+ * WHY IT IS A QUERY PARAMETER rather than a fifth band: the frames in this set
+ * photograph the whole page, so a band added here would make every one of them a
+ * picture of a harness that no longer exists — re-shooting them all to add one state.
+ * This changes the BRIDGE and not the page, so the four existing frames still describe
+ * the page they were taken from, and the in-flight state has its own URL (recorded in
+ * this set's README). It is the disability state design review round 2's D9 found
+ * unpainted: `disabled={busy}` on each dismiss, with the busy step keeping it painted
+ * (UX round 2's U8) — and it needs a transport that never answers, which is what a
+ * hung or recovering owner looks like from the renderer's side.
+ *
+ * IT IS ALSO READ BY THE `refused` BAND'S LABEL, which is why it is declared above
+ * `CASES` rather than after it (design review round 3, D12). A label is part of the
+ * PICTURE in this set — it is painted INTO the frame — so a band whose fixture the
+ * query string can change has to take its caption from the same fixture, or the still
+ * states a backend answer that never arrived. The refusal's own label is the true one
+ * for the default page; the hanging variant carries its own.
+ */
+const HANGING = new Set(
+	new URLSearchParams(window.location.search).getAll("hang"),
+);
+
 const CASES: Array<{
 	sessionId: string;
 	label: string;
@@ -139,8 +163,15 @@ const CASES: Array<{
 	},
 	{
 		sessionId: "refused",
-		label:
-			"a REFUSED command: the backend answers 503, the wire does not move, and the refusal is the app's own toast in the control's own words rather than silence",
+		/*
+		 * Two states one band can be in, and the caption has to be the one the pixels show:
+		 * the default page's backend ANSWERS 503, and `?hang=refused` makes it answer
+		 * NOTHING (design review round 3, D12 — the in-flight frame carried the refusal's
+		 * label while its own log line showed a command that never returned).
+		 */
+		label: HANGING.has("refused")
+			? "a command the backend NEVER ANSWERS (the hung-owner fixture): the wire does not move, no refusal arrives, and the disabled control stays painted in the busy step"
+			: "a REFUSED command: the backend answers 503, the wire does not move, and the refusal is the app's own toast in the control's own words rather than silence",
 		wire: { goal: STANDING_GOAL, loop: null },
 		effect: (wire) => wire,
 	},
@@ -157,23 +188,6 @@ const REFUSING = new Set(["refused"]);
 
 /** The bridge's routing table, keyed by the session the request is addressed to. */
 const handlers = new Map<string, (request: CommandRequest) => void>();
-
-/**
- * The bands whose command is ANSWERED BY NOTHING, selected by `?hang=<session id>`.
- *
- * WHY IT IS A QUERY PARAMETER rather than a fifth band: the frames in this set
- * photograph the whole page, so a band added here would make every one of them a
- * picture of a harness that no longer exists — re-shooting them all to add one state.
- * This changes the BRIDGE and not the page, so the four existing frames still describe
- * the page they were taken from, and the in-flight state has its own URL (recorded in
- * this set's README). It is the disability state design review round 2's D9 found
- * unpainted: `disabled={busy}` on each dismiss, with the busy step keeping it painted
- * (UX round 2's U8) — and it needs a transport that never answers, which is what a
- * hung or recovering owner looks like from the renderer's side.
- */
-const HANGING = new Set(
-	new URLSearchParams(window.location.search).getAll("hang"),
-);
 
 /**
  * The bands whose goal is the LONG fixture, selected by `?long=<session id>`.
