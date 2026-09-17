@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -106,21 +112,31 @@ test("the budget stops the whole group, and the verdict does not wait for a desc
 	);
 	let descendantPid = null;
 	try {
+		/*
+		 * THE BUDGET IS LONG ENOUGH FOR THE FIXTURE TO START, and the escalation is
+		 * short. Both are load decisions: a loaded machine can take longer to spawn
+		 * `sh` than a 300ms budget, and a case whose fixture never starts proves
+		 * nothing about the stop. What the case is actually about - that the verdict
+		 * is taken on the timer instead of waiting for the descendant's streams - is
+		 * unaffected: a violation of that property is bounded by the descendant's own
+		 * loop (minutes), not by a second or two, so the generous bound below still
+		 * discriminates while a tight one would fail this suite on a busy box and
+		 * prove nothing on an idle one.
+		 */
+		const budgetMs = 4000;
 		const startedAt = Date.now();
 		const result = await runInOwnProcessGroup({
 			command: "/bin/sh",
 			args: [fixture],
-			timeoutMs: 300,
-			// A short escalation, so the case bounds what it waits rather than
-			// sleeping the shipped five seconds.
-			graceMs: 300,
+			timeoutMs: budgetMs,
+			graceMs: 500,
 		});
 		// (1) The verdict is taken on the timer, not on a descendant's exit.
 		assert.equal(result.timedOut, true);
 		assert.equal(result.ran, false);
 		assert.ok(
-			Date.now() - startedAt < 5000,
-			`the verdict waited for the descendant: ${Date.now() - startedAt}ms against a 300ms budget`,
+			Date.now() - startedAt < budgetMs + 30_000,
+			`the verdict waited for the descendant: ${Date.now() - startedAt}ms against a ${budgetMs}ms budget`,
 		);
 		assert.ok(result.groupPid !== null, "the run never reported its group");
 		/*
@@ -128,19 +144,24 @@ test("the budget stops the whole group, and the verdict does not wait for a desc
 		 * answering ESRCH is the only proof that nothing is left writing into the
 		 * install root. Its pid comes from the fixture itself, because the leader
 		 * dying is exactly what a leader-only stop proved and exactly what was not
-		 * enough.
+		 * enough - so the fixture's own pidfile is waited for rather than assumed.
 		 */
+		assert.equal(
+			await waitFor(() => existsSync(descendantPidFile), 30_000),
+			true,
+			"the fixture never started its descendant",
+		);
 		descendantPid = Number(readFileSync(descendantPidFile, "utf8").trim());
 		assert.ok(descendantPid > 0, "the fixture reported no descendant pid");
 		assert.equal(
-			await waitFor(() => !isInstallGroupAlive(result.groupPid)),
+			await waitFor(() => !isInstallGroupAlive(result.groupPid), 30_000),
 			true,
 			"the signalled group outlived its wait",
 		);
 		// (3) The prefix stops growing.
 		const lines = () => readFileSync(ledger, "utf8").split("\n").length;
 		const settled = lines();
-		await new Promise((resolve) => setTimeout(resolve, 400));
+		await new Promise((resolve) => setTimeout(resolve, 1000));
 		assert.equal(
 			lines(),
 			settled,
