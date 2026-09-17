@@ -64,6 +64,44 @@ const SCENARIO = {
 };
 const AS_JSON = ARGS.includes("--json");
 /**
+ * The two-click race arm: row A, then row B `--race-gap` ms later, with A's hop
+ * scripted to answer LAST.
+ */
+const RACE = ARGS.includes("--race");
+const RACE_GAP = Number(flag("race-gap", "150"));
+const RACE_GET_A = flag("race-get-a", "600");
+const RACE_GET_B = flag("race-get-b", "40");
+const RACE_STREAM_A = flag("race-stream-a", null);
+const RACE_STREAM_B = flag("race-stream-b", null);
+const RACE_HISTORY_A = flag("race-history-a", null);
+const RACE_HISTORY_B = flag("race-history-b", null);
+/** Session ids whose guard read 404s, per side of the race. */
+const RACE_FAIL_A = ARGS.includes("--race-fail-a");
+const RACE_FAIL_B = ARGS.includes("--race-fail-b");
+/** The fuzz over click SEQUENCES, on the same recorded latencies. */
+const RACE_FUZZ = ARGS.includes("--race-fuzz");
+/*
+ * The same write-gated race, reached through the command palette instead of a
+ * sidebar row. The palette was a second copy of the deferral the rows had, so it
+ * needs its own arm rather than an inference from the row one: a defect removed
+ * from one entrance and left in another is exactly what this checks for.
+ */
+const RACE_PALETTE = ARGS.includes("--race-palette");
+/*
+ * The New-chat arm: a switch, then the draft gesture inside its guard read.
+ *
+ * Nothing else the switch can meet mid-read is NOT a newer switch, which is why no
+ * arm saw the refusal branch undo one: `stageDraft` bumps the generation counter a
+ * switch bumps, so the switch's read reports itself superseded and its repair used
+ * to write the session's URL over the draft's route.
+ */
+const RACE_STAGE = ARGS.includes("--race-stage-draft");
+/**
+ * The two-click race with the second click dispatched AT the first click's URL
+ * write rather than a deadline, so the ordering is taken rather than raced for.
+ */
+const RACE_WRITE = ARGS.includes("--race-write");
+/**
  * Write frames instead of a phase table: `docs/evidence/session-switch/
  * <state>/<theme>.webp`. One directory per state, and the states are the ones a
  * switch can put on screen.
@@ -123,7 +161,9 @@ const FRAME_STATES = [
 const PULSE_TROUGH = 0.7;
 const FRAME_THEMES = (
 	flag("themes", "localOperatorDark,localOperatorLight") ?? ""
-).split(",").filter(Boolean);
+)
+	.split(",")
+	.filter(Boolean);
 /**
  * The page a CAPTURE loads: a stream delay long enough for the hydrating window
  * to outlive a screenshot round trip. It changes how long the state lasts,
@@ -318,6 +358,269 @@ const FAIL_RUN = `(async () => {
 	};
 })()`;
 
+/**
+ * The two-click race, driven in the real renderer.
+ *
+ * The operator's report is about the SECOND click not being the last word: "if
+ * you click one and then click another and the first loads, it switches you to
+ * that one even if the second loads first". The two loads therefore have to be
+ * in flight at once and the FIRST one's has to finish LAST, which is what
+ * `--race-get-a`/`--race-stream-a` are for: with the owner's uniform table both
+ * hops are the same length and the second click's read settles last by
+ * construction, so the arm could only ever be a flake. The scripted answer times
+ * are printed with every run.
+ *
+ * WHAT THE VERDICT IS ABOUT is the SETTLED view, and the three claims are asked
+ * at their own surfaces - the store for the committed conversation, the ROUTER
+ * for the path, the DOM for whose transcript rows were painted. The samples are
+ * printed beside them because an end state cannot say whether the view went
+ * straight to B or went to B through A, and those are different bugs.
+ */
+const RACE_RUN = (writeGated) => `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const before = probe.view();
+	const WRITE_GATED = ${writeGated};
+	/*
+	 * The two clicks, in ONE page-side call so no websocket round trip can fall
+	 * between them: the interval between the clicks is the arm's own parameter,
+	 * and a driver that awaited the first click before issuing the second would be
+	 * measuring its own latency instead.
+	 */
+	const result = await (WRITE_GATED
+		? probe.raceAtWrite(meta.raceFirst, meta.raceSecond)
+		: probe.raceTo(meta.raceFirst, meta.raceSecond, meta.raceGap));
+	return {
+		meta,
+		before,
+		result,
+		latency: probe.bridge.log.latency,
+		/*
+		 * EVERY request the race issued, with the session it named. The point of the
+		 * list is the "did the superseded read even get issued" question, which the
+		 * end state cannot answer: a fix that cancels the abandoned load and one that
+		 * lets it complete and discards it are identical in the final view, and only
+		 * differ here.
+		 */
+		requests: probe.bridge.log.requests.map(
+			(request) =>
+				request.op +
+				(request.sessionId ? ":" + request.sessionId : "") +
+				" @" +
+				Math.round(request.startedAt) +
+				"-" +
+				Math.round(request.settledAt),
+		),
+		streams: probe.bridge.log.streams.map(
+			(stream) =>
+				stream.sessionId +
+				" subscribe@" +
+				Math.round(stream.subscribedAt) +
+				(stream.openedAt ? " open@" + Math.round(stream.openedAt) : "") +
+				(stream.snapshotAt ? " snapshot@" + Math.round(stream.snapshotAt) : "") +
+				/*
+				 * THE CANCELLATION EVIDENCE. 'disposed' is the transport's own record
+				 * that the renderer threw a superseded subscription away, and it is
+				 * the fact the operator's ask is about: a load that is cancelled and
+				 * one that is left running to completion are indistinguishable in the
+				 * transcript, so the arm has to say which of the two happened.
+				 */
+				(stream.disposedAt
+					? " DISPOSED@" + Math.round(stream.disposedAt)
+					: " never-disposed"),
+		),
+	};
+})()`;
+
+/**
+ * The fuzz: many click SEQUENCES, each asserted for the one property that is
+ * true of all of them - the LAST row clicked owns the settled view.
+ *
+ * WHY A FUZZ RATHER THAN MORE CONFIGURATIONS OF ONE PAIR. "Clicking across
+ * multiple conversations" is open-ended, and a hypothesis about which hop loses
+ * a race is not evidence that no other sequence does. The sequences below differ
+ * in length, in order and in interval - including the reversed pair (where the
+ * SECOND read answers first, so the first click's URL write is the stale one), a
+ * click on the row the view is already on (the store's no-op re-select, the one
+ * path that does NOT bump its navigation generation), and a re-click of the row
+ * the user just chose.
+ *
+ * EACH TRIAL IS RESET FIRST, to the session the page booted on. That click is
+ * not hygiene: it means every trial starts from a settled view, and the later
+ * trials run with the paint cache their predecessors filled - which is the state
+ * a real user's third and fourth clicks are made from, and the one a single-shot
+ * arm never reaches.
+ */
+const PALETTE_RUN = `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const A = meta.raceFirst;
+	const B = meta.raceSecond;
+	/*
+	 * The entrance pairs that put the palette on the near side, on the far side and
+	 * on both: the palette is how a user crosses conversations by TYPING, and its
+	 * pick is not a row, so no row-clicking arm can stand in for it.
+	 */
+	const cases = [
+		["palette A, then row B", await probe.raceEntrances(A, B, "palette", "row")],
+		["row A, then palette B", await probe.raceEntrances(A, B, "row", "palette")],
+		["palette A, then palette B", await probe.raceEntrances(A, B, "palette", "palette")],
+	];
+	return {
+		meta,
+		cases,
+		latency: probe.bridge.log.latency,
+		getRequests: probe.bridge.log.requests
+			.filter((request) => request.op === "sessions.get")
+			.map(
+				(request) =>
+					request.sessionId +
+					" @" +
+					Math.round(request.startedAt) +
+					"-" +
+					Math.round(request.settledAt),
+			),
+		openCalls: probe.openCalls().map(
+			(call) => "@" + call.t + " " + call.id + " from " + call.from,
+		),
+	};
+})()`;
+
+const STAGE_RUN = `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const A = meta.raceFirst;
+	const cases = [
+		["row A, then New chat", await probe.raceStageDraft(A, "row")],
+		["palette A, then New chat", await probe.raceStageDraft(A, "palette")],
+	];
+	return {
+		meta,
+		cases,
+		latency: probe.bridge.log.latency,
+		getRequests: probe.bridge.log.requests
+			.filter((request) => request.op === "sessions.get")
+			.map(
+				(request) =>
+					request.sessionId +
+					" @" +
+					Math.round(request.startedAt) +
+					"-" +
+					Math.round(request.settledAt),
+			),
+		openCalls: probe
+			.openCalls()
+			.map((call) => "@" + call.t + " " + call.id + " from " + call.from),
+	};
+})()`;
+
+const FUZZ_RUN = `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const A = meta.raceFirst;
+	const B = meta.raceSecond;
+	const O = meta.outgoing;
+	const click = (id, gapAfter, via, when) => ({ id, gapAfter, via, when });
+	const sequences = [
+		/*
+		 * ONE CLICK, dispatched the moment the reset switch has COMMITTED.
+		 *
+		 * The reset is a real sidebar click (on the row the page booted with), and
+		 * its own URL write lands a frame after its commit - so a click issued here
+		 * is a click that arrives while the router is still rendering the previous
+		 * switch's URL. That interval stands in for the RENDER LAG rather than for a
+		 * human's cadence: a person cannot click two rows 15 ms apart, but their
+		 * second click can still arrive before a loaded renderer has painted the
+		 * first one's route, which is the window this sequence compresses to zero.
+		 */
+		[click(A, 0)],
+		[click(A, 0), click(B, 20)],
+		[click(A, 0), click(B, 60), click(A, 60)],
+		[click(A, 0), click(B, ${RACE_GAP})],
+		[click(B, 0), click(A, ${RACE_GAP})],
+		[click(A, 0), click(B, 120), click(A, 120)],
+		[click(A, 0), click(A, 200)],
+		[click(B, 0), click(B, 200)],
+		[click(O, 0), click(A, 0), click(B, ${RACE_GAP})],
+		[click(A, 0), click(B, 60), click(B, 600)],
+		[click(A, 0), click(B, 900)],
+		/*
+		 * THREE SEQUENCES THROUGH THE PALETTE. Its pick calls the same rule a row
+		 * does and it is the entrance a row-clicking arm cannot reach, so the arm
+		 * that asserts "the last choice wins" has to include it on both sides.
+		 */
+		[click(A, 0, "palette"), click(B, 20)],
+		[click(A, 0), click(B, 20, "palette")],
+		[click(A, 0, "palette"), click(B, 20, "palette")],
+		/*
+		 * AND THE WRITE-GATED ONES, which are the sequences with teeth. Every click
+		 * after the first is dispatched the moment the PREVIOUS click's URL write is
+		 * observable to JavaScript (the "when" field), which is inside the interval the
+		 * deferral used to open: a write-gated sequence settles on the wrong
+		 * conversation when the write is deferred behind the guard read, and a
+		 * gap-gated one does not (a 20 ms deadline either side of a render is a coin
+		 * toss, not a gate).
+		 *
+		 * They differ in the way a user's own clicking differs - a second pick, a third
+		 * pick, a re-click of the row already open, a re-click of the row the page
+		 * booted on, and the palette on either side.
+		 */
+		[click(A, 0), click(B, 0, undefined, A)],
+		[click(A, 0), click(B, 0, undefined, A), click(A, 0, undefined, B)],
+		[click(B, 0), click(B, 0, undefined, B), click(A, 0, undefined, B)],
+		[click(O, 0), click(A, 0, undefined, O), click(B, 0, undefined, A)],
+		[click(A, 0, "palette"), click(B, 0, undefined, A), click(A, 0, undefined, B)],
+		[click(A, 0), click(B, 0, "palette", A)],
+	];
+	const trials = await probe.raceMany(sequences);
+	return {
+		meta,
+		trials,
+		/*
+		 * EVERY guard read, in issue order. This is where a sequence that re-opened
+		 * a conversation the user never clicked again shows up, and the end states
+		 * cannot say it: a re-opened conversation nobody asked for is invisible in a settled
+		 * view that happens to agree with it.
+		 */
+		getRequests: probe.bridge.log.requests
+			.filter((request) => request.op === "sessions.get")
+			.map(
+				(request) =>
+					request.sessionId +
+					" @" +
+					Math.round(request.startedAt) +
+					"-" +
+					Math.round(request.settledAt),
+			),
+		streams: probe.bridge.log.streams.map(
+			(stream) =>
+				stream.sessionId +
+				(stream.disposedAt
+					? " DISPOSED@" + Math.round(stream.disposedAt)
+					: " snapshot@" + Math.round(stream.snapshotAt)),
+		),
+		/*
+		 * WHO moved the view, not only where it ended. Each entry is one
+		 * openSession call, with the store and route it was made against and the call
+		 * site inside the product code that made it - which is the difference
+		 * between a click and something re-issuing an older intent.
+		 */
+		openCalls: probe.openCalls().map(
+			(call) =>
+				"@" +
+				call.t +
+				" " +
+				call.id +
+				" (active=" +
+				call.active +
+				" path=" +
+				call.path +
+				") from " +
+				call.from,
+		),
+	};
+})()`;
+
 const median = (values) => {
 	const sorted = [...values].sort((a, b) => a - b);
 	if (sorted.length === 0) return null;
@@ -448,7 +751,7 @@ const prepareState = async (cdp, state) => {
 		await sendInComposer(cdp, REFUSAL_TEXT);
 		await waitForComposerAlert(cdp, REFUSAL_SENTENCE);
 		await settleFrames(cdp);
-		}
+	}
 
 	if (state === "settled") {
 		await cdp.send("Runtime.evaluate", {
@@ -697,7 +1000,10 @@ const shoot = async (cdp, path, state, theme) => {
 		if (state === "mark") {
 			if (!seen.rowInView) refuse("the switched-to sidebar row is not in view");
 		}
-		if (state === "slow" && !((seen.placeholderOpacity ?? 1) <= PULSE_TROUGH + 0.1))
+		if (
+			state === "slow" &&
+			!((seen.placeholderOpacity ?? 1) <= PULSE_TROUGH + 0.1)
+		)
 			refuse(
 				`the placeholder is not at its pulse trough (opacity ${seen.placeholderOpacity})`,
 			);
@@ -726,7 +1032,11 @@ const shoot = async (cdp, path, state, theme) => {
 		 * so a frame caught mid-fade is refused rather than published under a
 		 * measurement it does not show.
 		 */
-		if (state !== "slow" && state !== "settled" && (seen.placeholderOpacity ?? 1) < 0.99)
+		if (
+			state !== "slow" &&
+			state !== "settled" &&
+			(seen.placeholderOpacity ?? 1) < 0.99
+		)
 			refuse(
 				`the placeholder is not at the pulse's rest phase (opacity ${seen.placeholderOpacity})`,
 			);
@@ -797,6 +1107,27 @@ const main = async () => {
 	for (const [key, value] of Object.entries(SCENARIO))
 		if (value !== null && value !== undefined) query.set(key, value);
 	if (FAIL_GET) query.set("fail", "incoming");
+	if (RACE || RACE_FUZZ || RACE_PALETTE || RACE_STAGE) {
+		query.set("race", "1");
+		query.set("raceGap", String(RACE_GAP));
+		query.set("raceGetA", RACE_GET_A);
+		query.set("raceGetB", RACE_GET_B);
+		if (RACE_STREAM_A !== null) query.set("raceStreamA", RACE_STREAM_A);
+		if (RACE_STREAM_B !== null) query.set("raceStreamB", RACE_STREAM_B);
+		if (RACE_HISTORY_A !== null) query.set("raceHistoryA", RACE_HISTORY_A);
+		if (RACE_HISTORY_B !== null) query.set("raceHistoryB", RACE_HISTORY_B);
+		/*
+		 * Which side's guard read refuses.
+		 *
+		 * The page boots on `OUTGOING`, so the race pair is named by the QUERY and
+		 * the refusal has to be applied to that pair rather than to the fixture the
+		 * other arm's `--fail=incoming` names - the two are different sessions, and
+		 * a `?fail=` that hit neither would leave the arm reporting a rollback it
+		 * never drove.
+		 */
+		if (RACE_FAIL_A) query.set("raceFailA", "1");
+		if (RACE_FAIL_B) query.set("raceFailB", "1");
+	}
 	const url = query.toString() ? `${PAGE}?${query}` : PAGE;
 
 	dataDir = join(tmpdir(), `lo-switch-${process.pid}`);
@@ -889,7 +1220,10 @@ const main = async () => {
 		ready = result.value === true;
 		if (!ready) await sleep(250);
 	}
-	if (!ready) throw new Error(`the harness at ${FRAMES ? FRAMES_URL : url} never became ready`);
+	if (!ready)
+		throw new Error(
+			`the harness at ${FRAMES ? FRAMES_URL : url} never became ready`,
+		);
 
 	if (FRAMES) {
 		const written = await captureFrames(cdp);
@@ -897,7 +1231,8 @@ const main = async () => {
 		return;
 	}
 
-	const runWithDeadline = (expression, ms) =>		Promise.race([
+	const runWithDeadline = (expression, ms) =>
+		Promise.race([
 			cdp.send("Runtime.evaluate", {
 				awaitPromise: true,
 				returnByValue: true,
@@ -917,7 +1252,17 @@ const main = async () => {
 		]);
 
 	const { result } = await runWithDeadline(
-		FAIL_GET ? FAIL_RUN : RUN(SWITCHES),
+		RACE_STAGE
+			? STAGE_RUN
+			: RACE_PALETTE
+				? PALETTE_RUN
+				: RACE_FUZZ
+					? FUZZ_RUN
+					: RACE
+						? RACE_RUN(RACE_WRITE)
+						: FAIL_GET
+							? FAIL_RUN
+							: RUN(SWITCHES),
 		FAIL_GET ? 90_000 : 60_000 + SWITCHES * 25_000,
 	);
 	if (!result.value)
@@ -925,88 +1270,311 @@ const main = async () => {
 			`the page threw instead of returning a run table: ${result.description ?? JSON.stringify(result)}`,
 		);
 
+	if (RACE_STAGE) {
+		const { meta, cases, latency, getRequests, openCalls } = result.value;
+		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
+		console.log(
+			"new-chat arm - a draft staged inside a switch's guard read must survive it",
+		);
+		console.log(
+			`  A=${meta.raceFirst} ("${meta.raceFirstTitle}")  scripted owner latencies (ms): ${JSON.stringify({ A: RACE_GET_A, B: RACE_GET_B })}  ·  load average ${loads.join(" ")} on ${cpus().length} cores`,
+		);
+		let failures = 0;
+		for (const [label, race] of cases) {
+			/*
+			 * THREE CLAIMS, and the first two are the user's: the route is the draft's
+			 * (`/chat`), and the draft key is still set. The third is that the run
+			 * settled rather than hitting its deadline - a switch whose read never
+			 * answered would pass the first two vacuously.
+			 */
+			const verdict = {
+				"the New chat route stands": race.path === "/chat",
+				"the staged draft is still staged": Boolean(race.draftKey),
+				"the run settled rather than hit its deadline": race.settled,
+				"every gesture reached the page": race.error === null,
+			};
+			const passed = Object.values(verdict).every(Boolean);
+			if (!passed) failures += 1;
+			console.log(
+				`  ${passed ? "PASS" : "FAIL"}  ${label}  (path=${race.path} active=${race.active} draft=${race.draftKey}${race.error ? `  dispatch error: ${race.error}` : ""})`,
+			);
+			for (const [claim, held] of Object.entries(verdict))
+				console.log(`        ${held ? "PASS" : "FAIL"}  ${claim}`);
+			/*
+			 * THE TIMELINE IS PRINTED FOR EVERY CASE, not only the failures: this arm's
+			 * subject is an ORDERING (the draft staged between the write and the read's
+			 * answer), and a PASS that does not show the ordering can be a pass for the
+			 * wrong reason - which is how the palette case first read.
+			 */
+			console.log(`        timeline: ${JSON.stringify(race.samples)}`);
+		}
+		console.log(`  guard reads: ${getRequests.join(", ")}`);
+		console.log("  openSession calls:");
+		for (const call of openCalls) console.log(`    ${call}`);
+		if (failures > 0) process.exitCode = 1;
+		return;
+	}
+	if (RACE_PALETTE) {
+		const { meta, cases, latency, getRequests, openCalls } = result.value;
+		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
+		console.log(
+			"entrance race - a palette pick and a row click are one switch",
+		);
+		console.log(
+			`  A=${meta.raceFirst} ("${meta.raceFirstTitle}")  B=${meta.raceSecond} ("${meta.raceSecondTitle}")  boot=${meta.outgoing}`,
+		);
+		console.log(
+			`  scripted owner latencies (ms): ${JSON.stringify(latency)}  ·  per-session: ${JSON.stringify({ A: RACE_GET_A, B: RACE_GET_B, streamA: RACE_STREAM_A, streamB: RACE_STREAM_B })}`,
+		);
+		console.log(
+			`  load average ${loads.join(" ")} on ${cpus().length} cores  ·  the second choice is dispatched AT the first one's URL write`,
+		);
+		let failures = 0;
+		for (const [label, race] of cases) {
+			/*
+			 * The same five claims the row arm makes, asked of a race that started at
+			 * the palette: an entrance that still defers its URL write fails the URL
+			 * claim first, and the store claim with it - and the palette pick is not a
+			 * row, so nothing in the row arm reaches this path.
+			 */
+			const verdict = {
+				"the second choice is the committed one":
+					race.active === meta.raceSecond,
+				"the URL names the second choice":
+					race.path === `/chat/${meta.raceSecond}`,
+				"the painted transcript is the second choice's":
+					race.painted.length === 1 && race.painted[0] === meta.raceSecond,
+				"the sidebar's current row is the second choice's":
+					race.selectedIsSecond,
+				"the run settled rather than hit its deadline": race.settled,
+				"every gesture reached the page": race.error === null,
+			};
+			const passed = Object.values(verdict).every(Boolean);
+			if (!passed) failures += 1;
+			console.log(
+				`  ${passed ? "PASS" : "FAIL"}  ${label}  (active=${race.active} path=${race.path} painted=${JSON.stringify(race.painted)}${race.error ? `  dispatch error: ${race.error}` : ""})`,
+			);
+			for (const [claim, held] of Object.entries(verdict))
+				console.log(`        ${held ? "PASS" : "FAIL"}  ${claim}`);
+			if (!passed)
+				console.log(`        timeline: ${JSON.stringify(race.samples)}`);
+		}
+		console.log(`  guard reads: ${getRequests.join(", ")}`);
+		console.log("  openSession calls:");
+		for (const call of openCalls) console.log(`    ${call}`);
+		if (failures > 0) process.exitCode = 1;
+		return;
+	}
+	if (RACE_FUZZ) {
+		const { meta, trials, streams, getRequests, openCalls } = result.value;
+		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
+		console.log(
+			"two-click race, fuzzed over click sequences — the LAST row clicked must own the view",
+		);
+		console.log(
+			`  A=${meta.raceFirst} ("${meta.raceFirstTitle}")  B=${meta.raceSecond} ("${meta.raceSecondTitle}")  boot=${meta.outgoing}`,
+		);
+		console.log(
+			`  per-session latencies (ms): ${JSON.stringify({ A: RACE_GET_A, B: RACE_GET_B, streamA: RACE_STREAM_A, streamB: RACE_STREAM_B, historyA: RACE_HISTORY_A, historyB: RACE_HISTORY_B })}  ·  gap ${RACE_GAP}`,
+		);
+		console.log(`  load average ${loads.join(" ")} on ${cpus().length} cores`);
+		let failures = 0;
+		for (const trial of trials) {
+			const last = trial.clicks.at(-1);
+			const held = {
+				committed: trial.active === last,
+				url: trial.path === `/chat/${last}`,
+				painted: trial.painted.length === 1 && trial.painted[0] === last,
+				marked: trial.selectedIsLast,
+				settled: !trial.timedOut,
+				dispatched: trial.error === null,
+			};
+			const passed = Object.values(held).every(Boolean);
+			if (!passed) failures += 1;
+			const broken = Object.entries(held)
+				.filter(([, value]) => !value)
+				.map(([name]) => name);
+			/*
+			 * The entrance of each click is printed only when one of them was the
+			 * palette's, so a sequence that a row arm already covers keeps the line it
+			 * had: the reader has to be able to tell which arm produced a failure.
+			 */
+			const entrances = trial.vias.includes("palette")
+				? `  ·  entrances ${trial.vias.join(",")}`
+				: "";
+			/*
+			 * WHICH GATE, because the two are not the same evidence: a write-gated
+			 * sequence can reach the window the deferral opens and a deadline-gated one
+			 * cannot (it passes on the unfixed tree). Printed for every trial so no
+			 * reader has to infer it from the gap list.
+			 */
+			const gate = trial.writeGated ? "write-gated" : "deadline";
+			console.log(
+				`  ${passed ? "PASS" : "FAIL"}  ${trial.clicks.join(" -> ")}  (${gate}${entrances})  active=${trial.active} path=${trial.path} painted=${JSON.stringify(trial.painted)}${passed ? "" : `  broken: ${broken.join(", ")}`}`,
+			);
+			if (!passed) {
+				if (trial.error) console.log(`        dispatch error: ${trial.error}`);
+				console.log(
+					`        dispatched on: ${JSON.stringify(trial.activeBefore)}`,
+				);
+				console.log(`        timeline: ${JSON.stringify(trial.samples)}`);
+			}
+		}
+		console.log(`  streams: ${streams.join(", ")}`);
+		console.log(`  guard reads: ${getRequests.join(", ")}`);
+		console.log("  openSession calls:");
+		for (const call of openCalls) console.log(`    ${call}`);
+		console.log(
+			`  ${trials.length - failures}/${trials.length} sequences ended on the choice the user made last  ·  ${trials.filter((trial) => trial.writeGated).length} write-gated, ${trials.filter((trial) => !trial.writeGated).length} deadline-gated`,
+		);
+		if (failures > 0) process.exitCode = 1;
+		return;
+	}
+	if (RACE) {
+		const {
+			meta,
+			before,
+			result: race,
+			latency,
+			requests,
+			streams,
+		} = result.value; /*
+		 * The URL is a claim about the ROUTER, and the fixture pair is the page's:
+		 * the driver learns both ids from `snapshot()` rather than spelling them,
+		 * because a driver that spelled them would keep passing against a fixture it
+		 * no longer describes.
+		 */
+		const verdict = {
+			"the second click's conversation is the committed one":
+				race.active === meta.raceSecond,
+			"the URL names the second click's conversation":
+				race.path === `/chat/${meta.raceSecond}`,
+			"the painted transcript is the second click's":
+				race.painted.length === 1 && race.painted[0] === meta.raceSecond,
+			"the sidebar's current row is the second click's": race.selectedIsSecond,
+			"the run settled rather than hit its deadline": race.settled,
+			/* A sequence whose gesture never happened proves nothing; say so rather than pass. */
+			"every gesture reached the page": race.error === null,
+		};
+		const passed = Object.values(verdict).every(Boolean);
+		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
+		console.log("two-click race — clicking A and then B must end on B");
+		console.log(
+			`  clicked first  A=${meta.raceFirst} ("${meta.raceFirstTitle}")  +${race.secondClickAt - race.clickAt} ms  then B=${meta.raceSecond} ("${meta.raceSecondTitle}")${RACE_WRITE ? "  [B dispatched AT A's URL write]" : ""}`,
+		);
+		console.log(
+			`  scripted owner latencies (ms): ${JSON.stringify(latency)}  ·  per-session: ${JSON.stringify(
+				{
+					A: RACE_GET_A,
+					B: RACE_GET_B,
+					streamA: RACE_STREAM_A,
+					streamB: RACE_STREAM_B,
+				},
+			)}`,
+		);
+		console.log(
+			`  load average ${loads.join(" ")} on ${cpus().length} cores  ·  quiet window ${race.quietMs} ms`,
+		);
+		console.log(`  before the race: ${JSON.stringify(before)}`);
+		console.log(
+			`  at the readback: active=${race.active} path=${race.path} painted=${JSON.stringify(race.painted)} selectedRow=${JSON.stringify(race.selectedRow)}`,
+		);
+		console.log("  timeline (only changes):");
+		for (const sample of race.samples)
+			console.log(
+				`    ${String(sample.t).padStart(9)} ms  active=${sample.active} path=${sample.path} painted=${JSON.stringify(sample.painted)}`,
+			);
+		console.log(`  requests: ${requests.join(", ")}`);
+		console.log(`  streams: ${streams.join(", ")}`);
+		for (const [claim, held] of Object.entries(verdict))
+			console.log(`  ${held ? "PASS" : "FAIL"}  ${claim}`);
+		if (!passed) process.exitCode = 1;
+		return;
+	}
 	if (FAIL_GET) {
 		const {
 			before,
 			run,
-				atRollback,
-				after,
+			atRollback,
+			after,
 			stats,
-				pollsAfterRollback,
-				requests,
-			} = result.value;
-			/*
-					* EVERY CLAIM IS ABOUT A FRAME, not about the store's history.
-			*
-				* "The failure sentence reached the screen" used to be computed as
-			* `transitions.some((entry) => entry.shown)` over entries pushed from a
-				* `store.subscribe` callback - a `document.body.innerText` read taken at a
-				* store notification, i.e. at an instant no browser ever painted. It was
-						* true there and false on every delivered frame: the rollback's own
-					* catalogue refetch cleared the sentence 4.5-8.1 ms after writing it, and
-					* 0 of ~1,100 sampled frames contained it (UX round 1, U1). The recorder
-				* samples per `rAF` now, so `shownFrames > 0` is a claim about paints, and
-				* `shownAtEnd` is the one the fix has to satisfy: the sentence has to
-			* outlive the five-second poll that used to wipe it, and the run waits for
-			* at least one of those polls (`pollsAfterRollback`) before asking.
-			*/
-				const verdict = {
+			pollsAfterRollback,
+			requests,
+		} = result.value;
+		/*
+		 * EVERY CLAIM IS ABOUT A FRAME, not about the store's history.
+		 *
+		 * "The failure sentence reached the screen" used to be computed as
+		 * `transitions.some((entry) => entry.shown)` over entries pushed from a
+		 * `store.subscribe` callback - a `document.body.innerText` read taken at a
+		 * store notification, i.e. at an instant no browser ever painted. It was
+		 * true there and false on every delivered frame: the rollback's own
+		 * catalogue refetch cleared the sentence 4.5-8.1 ms after writing it, and
+		 * 0 of ~1,100 sampled frames contained it (UX round 1, U1). The recorder
+		 * samples per `rAF` now, so `shownFrames > 0` is a claim about paints, and
+		 * `shownAtEnd` is the one the fix has to satisfy: the sentence has to
+		 * outlive the five-second poll that used to wipe it, and the run waits for
+		 * at least one of those polls (`pollsAfterRollback`) before asking.
+		 */
+		const verdict = {
 			"the switch committed the target first": run.committedAt !== null,
 			"the view came back to the outgoing session":
 				atRollback.activeSessionId === before.activeSessionId,
 			"the failure sentence was recorded in the store": stats.recorded,
 			"the failure sentence reached a painted frame": stats.shownFrames > 0,
-			"the sentence is stated on exactly one surface":
-			stats.maxSurfaces === 1,
-				"the sentence outlived a catalogue poll":
-		stats.shownAtEnd && pollsAfterRollback > 0,
-		"the sidebar marks the outgoing session again":
-		atRollback.selectedRow === before.selectedRow,
-	};
-	const passed = Object.values(verdict).every(Boolean);
-	if (AS_JSON) {
-	console.log(
-		JSON.stringify(
-			{
-				verdict,
-				before,
-				run,
-				atRollback,
-				after,
-				stats,
-				pollsAfterRollback,
-				requests,
-			},
-			null,
-			2,
-		),
-	);
-	} else {
-	console.log("guard-read failure — the rollback, driven in the real renderer");
-	console.log(`  before:      ${JSON.stringify(before)}`);
-	console.log(`  at rollback: ${JSON.stringify(atRollback)}`);
-	console.log(`  6.2 s later: ${JSON.stringify(after)}`);
-	console.log(
-		`  the switch committed at ${run.committedAt === null ? "-" : "yes"} and its read settled at ${run.getSettledAt === null ? "-" : "yes"}, then rolled back`,
-	);
-	console.log(
-		`  frames: ${stats.frames} sampled, ${stats.shownFrames} showing the sentence` +
-			` (first ${stats.firstShownAt ?? "-"}, last ${stats.lastShownAt ?? "-"}),` +
-			` ${pollsAfterRollback} catalogue poll(s) after the rollback`,
-	);
-	console.log(`  transitions: ${JSON.stringify(stats.transitions)}`);
-	console.log(`  requests: ${requests.join(", ")}`);
-	for (const [claim, held] of Object.entries(verdict))
-		console.log(`  ${held ? "PASS" : "FAIL"}  ${claim}`);
-	}
-	if (!passed) process.exitCode = 1;
-	return;
+			"the sentence is stated on exactly one surface": stats.maxSurfaces === 1,
+			"the sentence outlived a catalogue poll":
+				stats.shownAtEnd && pollsAfterRollback > 0,
+			"the sidebar marks the outgoing session again":
+				atRollback.selectedRow === before.selectedRow,
+		};
+		const passed = Object.values(verdict).every(Boolean);
+		if (AS_JSON) {
+			console.log(
+				JSON.stringify(
+					{
+						verdict,
+						before,
+						run,
+						atRollback,
+						after,
+						stats,
+						pollsAfterRollback,
+						requests,
+					},
+					null,
+					2,
+				),
+			);
+		} else {
+			console.log(
+				"guard-read failure — the rollback, driven in the real renderer",
+			);
+			console.log(`  before:      ${JSON.stringify(before)}`);
+			console.log(`  at rollback: ${JSON.stringify(atRollback)}`);
+			console.log(`  6.2 s later: ${JSON.stringify(after)}`);
+			console.log(
+				`  the switch committed at ${run.committedAt === null ? "-" : "yes"} and its read settled at ${run.getSettledAt === null ? "-" : "yes"}, then rolled back`,
+			);
+			console.log(
+				`  frames: ${stats.frames} sampled, ${stats.shownFrames} showing the sentence` +
+					` (first ${stats.firstShownAt ?? "-"}, last ${stats.lastShownAt ?? "-"}),` +
+					` ${pollsAfterRollback} catalogue poll(s) after the rollback`,
+			);
+			console.log(`  transitions: ${JSON.stringify(stats.transitions)}`);
+			console.log(`  requests: ${requests.join(", ")}`);
+			for (const [claim, held] of Object.entries(verdict))
+				console.log(`  ${held ? "PASS" : "FAIL"}  ${claim}`);
+		}
+		if (!passed) process.exitCode = 1;
+		return;
 	}
 	const { meta, runs, latency } = result.value;
 	const steady = runs.filter((run) => run.label === "steady");
 	const cold = runs.filter((run) => run.label === "cold");
 	const loads = loadavg().map((value) => Math.round(value * 100) / 100);
-	const numbers = (runs_, of) => runs_.map(of).filter((value) => value !== null);
+	const numbers = (runs_, of) =>
+		runs_.map(of).filter((value) => value !== null);
 
 	const summary = {
 		url,
@@ -1045,12 +1613,10 @@ const main = async () => {
 	} else {
 		console.log(`switch latency — ${url}`);
 		console.log(
-			`configured owner latencies (ms): ${JSON.stringify(latency)}  ·  ` +
-				`step function (sessions.get) included in every switch`,
+			`configured owner latencies (ms): ${JSON.stringify(latency)}  ·  step function (sessions.get) included in every switch`,
 		);
 		console.log(
-			`load average ${loads.join(" ")} on ${summary.cores} cores  ·  ` +
-				`${summary.samples} timed switches (median), first switch after boot ${summary.firstSwitch} ms`,
+			`load average ${loads.join(" ")} on ${summary.cores} cores  ·  ${summary.samples} timed switches (median), first switch after boot ${summary.firstSwitch} ms`,
 		);
 		console.log("");
 		console.log(
@@ -1064,8 +1630,11 @@ const main = async () => {
 		console.log(
 			`sessions.get for the target, per switch: ${summary.sessionsGetPerSwitch.join(", ")}`,
 		);
-		console.log(`requests issued by the last switch: ${summary.requestSequence.join(", ")}`);
-		if (summary.timedOut) console.log("NOTE: at least one switch hit the 20s deadline");
+		console.log(
+			`requests issued by the last switch: ${summary.requestSequence.join(", ")}`,
+		);
+		if (summary.timedOut)
+			console.log("NOTE: at least one switch hit the 20s deadline");
 	}
 };
 
