@@ -37,14 +37,14 @@ One source, two consumers. Do not add a third.
 
 ```mermaid
 graph LR
-  A["palettes/*.ts<br/>ThemePalette x12"] --> B["createBaseTheme()<br/>MUI, hex values"]
+  A["palettes/*.ts<br/>ThemePalette x59"] --> B["createBaseTheme()<br/>MUI, hex values"]
   A --> C["generate-theme-css.mjs<br/>--lo-* variables"]
   C --> D["styles/index.css<br/>@theme role utilities"]
   A --> E["contrast-contract.mjs<br/>the floors"]
 ```
 
 - **`src/renderer/src/shared/themes/palettes/*.ts`** — the single source of
-  truth. Twelve `ThemePalette` objects, 31 roles each, every value a literal
+  truth. Fifty-nine `ThemePalette` objects, 31 roles each, every value a literal
   string.
 - **MUI** consumes them as hex, because roughly 299 `alpha()` call sites need a
   real colour and cannot take a `var()`. This half shrinks as the port
@@ -60,11 +60,12 @@ half of the app renders unthemed.
 
 ### Why roles rather than colours
 
-Twelve themes are user-selectable, and a "Dracula" theme is a promise to a user.
+Fifty-nine themes are user-selectable, and a "Dracula" theme is a promise to a
+user.
 Overriding community palettes with brand green would break exactly the users who
 chose them. So the brand ports as **roles with contrast floors**, not as values:
-the two `localOperator*` palettes *are* the brand, and the other ten only have
-to satisfy the contract while keeping their own identity.
+the two `localOperator*` palettes *are* the brand, and the other fifty-seven
+only have to satisfy the contract while keeping their own identity.
 
 A component never names a colour. It names a role — `bg-surface`,
 `text-ink-muted`, `border-control` — and the theme decides what that is.
@@ -145,8 +146,8 @@ as it thinks.
 faintest tint, for the ground of a callout) and `-border`.
 
 All three parts are authored per theme rather than derived, because deriving
-them is what lets MUI's `augmentColor` invent an Alert's appearance — twelve
-times, differently.
+them is what lets MUI's `augmentColor` invent an Alert's appearance — once per
+theme, differently.
 
 Four semantics means four **separable** hues. `info` used to be the accent's
 own triple in the two brand palettes, on the theory that a fourth semantic hue
@@ -584,7 +585,8 @@ and never the empty state — the skeleton is the honest shape of not knowing.
 The bars are drawn on `elevated`, not `sunken`. The bars ARE the entire
 substance of this state, and `sunken` against `canvas` is ΔE00 1.23 in
 obsidian, 1.66 in dune, 1.82 in iceberg and 1.89 in brand-dark — at or below
-the § 3 aim of 2 on four of twelve themes, where the loading state is a black
+the § 3 aim of 2 on nine of the fifty-nine themes (four of the twelve the port
+started from), where the loading state is a black
 pane with one sentence. `check-themes` cannot catch it: it floors grounds at
 1.03:1, which those steps pass. `elevated` measures 6.44 dark / 4.35 light
 against `canvas`, and it is a ground role the palette already owns.

@@ -34,7 +34,7 @@ import { formatDayBucket, formatTokens } from "../formatters";
  * this inline first; it is migrated onto this frame in the same change,
  * because a second styling path beside an established one is a defect rather
  * than a style choice — and the next reader would have to keep two of them in
- * step with the twelve themes.
+ * step with the theme set.
  *
  * What it must not do: accept a colour, `stroke` or `fill` prop from a caller
  * (the hue is the contract's, not the call site's); draw with an empty data

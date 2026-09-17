@@ -3514,14 +3514,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							/*
 							 * Icon and weight, not colour, are what rank this line.
 							 *
-							 * The alert carried no glyph and `font-weight: 400`, so hue was
-							 * its ONLY signal - and `danger` is the highest-contrast ink in
-							 * none of the twelve palettes, because the ink ramps order by
-							 * design intent and `danger` is a hue role rather than a
-							 * loudness rank. So any "danger must out-contrast its siblings"
-							 * rule loses in some palette by construction: the 13px accent
-							 * Restore control measured above the error in 9 of 12, worse
-							 * than the inversion the previous round fixed on the abandon
+							 * The alert carried no glyph and `font-weight: 400`, so hue was its
+							 * ONLY signal - and `danger` is the highest-contrast ink in none of the
+							 * palettes, because the ink ramps order by design intent and `danger`
+							 * is a hue role rather than a loudness rank. So any "danger must out-
+							 * contrast its siblings" rule loses in some palette by construction:
+							 * the 13px accent Restore control measured above the error in 9 of 12,
+							 * worse than the inversion the previous round fixed on the abandon
 							 * link. Colour alone was also the whole signal, which is a
 							 * 1.4.1 problem independent of the ranking.
 							 *
@@ -3674,7 +3673,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 *
 										 * `text-meta text-ink-dim`, down from `text-body-sm
 										 * text-ink-muted`: as the latter this outweighed the
-										 * failure it belongs to in 11 of 12 themes (radient 11.86:1
+										 * failure it belongs to in 56 of the 59 palettes (radient 11.86:1
 										 * against danger's 6.98:1), putting a destructive secondary
 										 * at the top of the hierarchy. Now radient reads 7.41 and
 										 * the worst remaining margin over danger is 0.43 rather

@@ -34,17 +34,20 @@ import { tags as t } from "@lezer/highlight";
  * The four gated semantics carry keyword, string, number and function;
  * `inkDim` carries comment; `ink` carries names. Chosen by exhaustive search
  * over the 24 permutations of the four semantics across the four slots,
- * maximising the worst pairwise dE00 across all twelve palettes: keyword =
- * success, string = warning, number = danger, function = info, worst case
- * 8.87 (radient, function vs comment). The same mapping was recommended
- * independently with a worst case of 8.88; both numbers are measurements.
+ * maximising the worst pairwise dE00 across every palette: keyword = success,
+ * string = warning, number = danger, function = info. Re-run over all fifty-
+ * nine palettes, this is still the search's choice and its worst case is 8.68
+ * (nord, function vs comment); over the twelve the port started from the same
+ * search measured 8.87 (radient, function vs comment), and an independent
+ * recommendation of the same mapping measured 8.88.
  *
  * Two deliberate limits, recorded so they are not mistaken for oversights.
  * obsidian's `info` IS its `ink`, so function and variable names cannot be
  * separated by hue there; `functionName` takes a heavier weight instead. And
  * `inkDisabled` was measured and rejected for comments - it is the authentic
- * upstream comment colour, but it fails 4.5:1 on the editor ground in all
- * twelve palettes, down to 1.91:1 on iceberg.
+ * upstream comment colour, but it fails 4.5:1 on the editor ground in every
+ * palette, down to 1.50:1 on linen (1.91:1 on iceberg, over the twelve the
+ * port started from).
  */
 const colors = {
 	background: "var(--color-sunken)",
@@ -108,14 +111,15 @@ const editorSpec = {
 	/*
 	 * The editor's focus ring, drawn on the root rather than the content.
 	 *
-	 * CodeMirror's own base theme sets `.cm-content { outline: none }` and
-	 * `.cm-editor.cm-focused { outline: 1px dotted #212121 }`. Both ship from
+	 * CodeMirror's own base theme sets `.cm-content { outline: none }` and `.cm-
+	 * editor.cm-focused { outline: 1px dotted #212121 }`. Both ship from
 	 * node_modules, so the app's contrast gate cannot see either of them, and
-	 * that hardcoded near-black measures 1.02:1 on dracula and 1.03:1 on
-	 * monokai - on nine of the twelve palettes it is under 1.30:1, which is to
-	 * say invisible. The content rule also lands at two-class specificity once
-	 * CodeMirror prefixes it with the generated theme class, so the app's
-	 * unlayered `html :focus-visible` at (0,1,1) loses to it.
+	 * that hardcoded near-black measures 1.02:1 on dracula and 1.03:1 on monokai
+	 * - on forty-one of the fifty-nine palettes it is under 1.30:1 (nine of the
+	 * twelve the port started from), which is to say invisible. The content rule
+	 * also lands at two-class specificity once CodeMirror prefixes it with the
+	 * generated theme class, so the app's unlayered `html :focus-visible` at
+	 * (0,1,1) loses to it.
 	 *
 	 * Styling `&.cm-focused` puts the ring on the editor root - but NOT, as an
 	 * earlier version of this comment claimed, at a specificity that beats

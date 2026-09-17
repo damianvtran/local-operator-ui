@@ -208,9 +208,9 @@ const BUTTON_VARIANTS = [
 /*
  * The hover column, faked the same way the focus and pressed columns are.
  * `:hover` cannot be forced from markup either, and without it `accent-hover`
- * appeared as a fill in zero frames across all twelve palettes while rest and
- * pressed appeared in every one - so the middle state of the most-used
- * control in the app was the one state no reviewer could see.
+ * appeared as a fill in zero frames across every palette the sweep captured
+ * while rest and pressed appeared in every one - so the middle state of the
+ * most-used control in the app was the one state no reviewer could see.
  */
 const HOVER_BY_VARIANT: Record<(typeof BUTTON_VARIANTS)[number], string> = {
 	primary: "bg-accent-hover",

@@ -4,7 +4,8 @@ import { ChatSessionStatus } from "./chat-session-status";
 
 /** Read/unread specimens, not a receipt transition. The receipt flow is the
  * isolated browser fixture; this matrix keeps every neighbouring status legible
- * under all twelve Storybook themes without inventing a second glyph renderer.
+ * under every Storybook theme — the registry's fifty-nine, which is the list the
+ * `theme` control offers — without inventing a second glyph renderer.
  */
 const meta = {
 	title: "Chat/Session status",
