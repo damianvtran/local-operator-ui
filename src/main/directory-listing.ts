@@ -138,15 +138,23 @@ export function resolveUserPath(
  * 60ms-debounced keystroke path) to answer with 200 rows. Neither half of that
  * scales here: the scan is ASYNC (see `listDirectory`), so the read happens off
  * the main thread and the event loop that serves every other IPC keeps running;
- * the sort sees at most twice this many names, never the directory; and the
- * per-row `stat` runs at most this many times however large the directory is.
+ * the retained set never exceeds this many names however large the directory is
+ * (see `offerCandidate`); and the per-row `stat` runs at most this many times.
  *
  * Measured on the same 200,000-entry directory, before and after (one process,
  * one directory, a 16ms heartbeat running throughout): the synchronous unbounded
- * shape blocked the event loop for **295ms**; this one's longest block is
+ * shape blocked the event loop for **295ms**; the async shape's longest block is
  * **18.9ms** — about one frame instead of eighteen — for the same 200 rows in the
  * same order and a wall time within noise of the old one. The finding was about
  * the BLOCK, and that is the number that moved.
+ *
+ * THE RETAINED SET CHANGED AFTER THAT MEASUREMENT (review round 2, R1): the cap
+ * now keeps the smallest names of the stream as it arrives, which is one
+ * comparison per entry in the common case, where the shape measured above sorted
+ * up to twice this many names at every crossing of the cap. So the read loop's
+ * per-entry work is smaller and no synchronous step in it grew; the 18.9ms is the
+ * async read's block rather than this cap's, which is why it is still the number
+ * quoted for the BLOCK finding.
  */
 export const DIRECTORY_SCAN_LIMIT = 2000;
 
@@ -154,17 +162,96 @@ export const DIRECTORY_SCAN_LIMIT = 2000;
 type Candidate = { name: string; directory: boolean; link: boolean };
 
 /**
- * Keep the alphabetically-smallest `DIRECTORY_SCAN_LIMIT` names, in place.
+ * The order the picker's answer is in, and therefore the order its CAP is applied
+ * in.
  *
- * Plain `<` rather than `localeCompare` because this runs on the scanning path
- * and only has to be a CONSISTENT order, not the display order: the retained set
- * is re-sorted with the collator once, after the scan, at a size this cap makes
- * fixed. Choosing here is what keeps the answer the same rows a
- * sort-then-truncate returned.
+ * ONE ORDER, TWO USES, and separating them was a defect (review round 2, R1). The
+ * cap used to retain with plain `<` — code units — while the answer was sorted
+ * with `localeCompare`, and the two disagree the moment a directory holds both
+ * cases or an accented name: the retained set was then neither order's prefix. A
+ * directory of 2,500 `B…` and 2,500 `a…` answered with names from the MIDDLE of
+ * the alphabet (a00040.txt upward, measured) where the shape it replaced answered
+ * with the directory's own first 200.
+ *
+ * `localeCompare` is the display order this listing is sorted in, so it is the
+ * order the cap has to keep — and the code-unit tiebreak under it makes the order
+ * TOTAL, so two names the collator calls equal cannot depend on the order the
+ * filesystem happened to enumerate them in.
+ *
+ * The collator is built once: `String.prototype.localeCompare` constructs one per
+ * call, and this comparator runs once per directory entry.
  */
-function retainSmallest(candidates: Candidate[]): Candidate[] {
-	candidates.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-	return candidates.slice(0, DIRECTORY_SCAN_LIMIT);
+const collator = new Intl.Collator();
+
+function compareCandidates(a: Candidate, b: Candidate): number {
+	const display = collator.compare(a.name, b.name);
+	if (display !== 0) return display;
+	return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+}
+
+/**
+ * Offer one candidate to the bounded kept set, as a MAX-heap of
+ * `DIRECTORY_SCAN_LIMIT` names: the root is the LARGEST name kept, i.e. the one
+ * candidate a later arrival can displace.
+ *
+ * WHY THE RETAINED SET IS THE EXACT SMALLEST NAMES OF THE STREAM (review round 2,
+ * R1). Sorting at every crossing of the cap — what the shape this replaced did —
+ * is not the same answer: entries read after a crossing were appended to the kept
+ * set without ever being compared against it, so the pool the final sort truncated
+ * was a mixture of two windows rather than any one order's minimum. This answers
+ * what the harness's own `scan_directory` answers with `heapq.nsmallest`: the
+ * smallest `SCAN_CANDIDATE_LIMIT` names of the WHOLE stream, decided as the
+ * entries arrive, so the final sort and slice return the directory's own first
+ * `DIRECTORY_ENTRY_LIMIT` names whatever the enumeration order was.
+ *
+ * The COST is the reason for a heap rather than a scan for the maximum: a full
+ * heap refuses an arrival with ONE comparison in the common case (a name past the
+ * cap's current boundary), and pays `log(k)` only when it accepts.
+ *
+ * Returns whether the candidate was kept: `false` means the cap withheld it, which
+ * is what `truncated` reports.
+ */
+function offerCandidate(heap: Candidate[], candidate: Candidate): boolean {
+	if (heap.length < DIRECTORY_SCAN_LIMIT) {
+		heap.push(candidate);
+		siftUp(heap, heap.length - 1);
+		return true;
+	}
+	if (compareCandidates(candidate, heap[0]) >= 0) return false;
+	heap[0] = candidate;
+	siftDown(heap, 0);
+	return true;
+}
+
+/** Restore the max-heap invariant upward from `from`. */
+function siftUp(heap: Candidate[], from: number): void {
+	let index = from;
+	while (index > 0) {
+		const parent = (index - 1) >> 1;
+		if (compareCandidates(heap[index], heap[parent]) <= 0) return;
+		[heap[parent], heap[index]] = [heap[index], heap[parent]];
+		index = parent;
+	}
+}
+
+/** Restore the max-heap invariant downward from `from`. */
+function siftDown(heap: Candidate[], from: number): void {
+	let index = from;
+	for (;;) {
+		const left = index * 2 + 1;
+		const right = left + 1;
+		let largest = index;
+		if (left < heap.length && compareCandidates(heap[left], heap[largest]) > 0)
+			largest = left;
+		if (
+			right < heap.length &&
+			compareCandidates(heap[right], heap[largest]) > 0
+		)
+			largest = right;
+		if (largest === index) return;
+		[heap[largest], heap[index]] = [heap[index], heap[largest]];
+		index = largest;
+	}
 }
 
 /**
@@ -195,7 +282,7 @@ function retainSmallest(candidates: Candidate[]): Candidate[] {
  */
 export async function listDirectory(dir: string): Promise<DirectoryListing> {
 	try {
-		let candidates: Candidate[] = [];
+		const candidates: Candidate[] = [];
 		let overflow = false;
 		const stream = await opendir(dir);
 		/*
@@ -207,17 +294,16 @@ export async function listDirectory(dir: string): Promise<DirectoryListing> {
 		 */
 		for await (const entry of stream) {
 			if (excluded(entry.name)) continue;
-			candidates.push({
-				name: entry.name,
-				directory: entry.isDirectory(),
-				link: entry.isSymbolicLink(),
-			});
-			if (candidates.length >= DIRECTORY_SCAN_LIMIT * 2) {
+			if (
+				!offerCandidate(candidates, {
+					name: entry.name,
+					directory: entry.isDirectory(),
+					link: entry.isSymbolicLink(),
+				})
+			)
 				overflow = true;
-				candidates = retainSmallest(candidates);
-			}
 		}
-		candidates.sort((a, b) => a.name.localeCompare(b.name));
+		candidates.sort(compareCandidates);
 		const kept = candidates.slice(0, DIRECTORY_ENTRY_LIMIT);
 		const entries: DirectoryEntry[] = kept.map((candidate) => ({
 			name: candidate.name,
@@ -230,10 +316,11 @@ export async function listDirectory(dir: string): Promise<DirectoryListing> {
 		return {
 			dir,
 			entries,
-			// Either bound withheld something. `overflow` is the scan cap — which
-			// means the kept set is the smallest ALPHABETICAL slice of a directory
-			// nobody finished reading — and the second term is the answer's own
-			// 200-row limit.
+			// Either bound withheld something. `overflow` is the scan cap, which
+			// means the kept set is the smallest ALPHABETICAL
+			// `DIRECTORY_SCAN_LIMIT` names of a directory nobody finished reading —
+			// the same rows a full sort-then-truncate would have answered with — and
+			// the second term is the answer's own `DIRECTORY_ENTRY_LIMIT`-row limit.
 			truncated: overflow || candidates.length > DIRECTORY_ENTRY_LIMIT,
 		};
 	} catch (error) {

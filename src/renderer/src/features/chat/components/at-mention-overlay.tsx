@@ -98,6 +98,22 @@ export const MENTION_CHIP_OUTSIDE_ROLE =
 const CHIP_OVERHANG_PX = 6;
 
 /**
+ * The ground a side facing another mention must leave unpainted: one space's
+ * advance in this field.
+ *
+ * A measurement, and the same one the design record's § 5 state 10 carries: an
+ * `@a.py @b.py` pair measures the separator at **3.8px** at a normal column
+ * (3.6px in the small view, where the field's own type step shrinks), against
+ * the 4.5px the direction first budgeted for. It is a floor rather than an
+ * equality, which is what makes it safe under that drift: a ground at or below
+ * this value spends the WHOLE space as separator, and the fills still cannot
+ * touch however far a font or a zoom moves the real advance — the separator is
+ * never smaller than `min(ground, this)`, because the overhang it is taken out
+ * of is capped at `CHIP_OVERHANG_PX` as well.
+ */
+const CHIP_SEPARATOR_MIN_PX = 3.8;
+
+/**
  * The fill's height: the line box (21.7px at `text-body`'s 14px x 1.55) less 2px
  * at the top and bottom.
  *
@@ -247,29 +263,62 @@ export const AtMentionOverlay = ({
 			}
 		}
 		/*
-		 * THE OVERHANG ON A SIDE THAT FACES ANOTHER MENTION IS ZERO (design round 1,
-		 * D2), and the number it replaced is the reason. It used to be half the clear
-		 * ground less 0.5px, which left 1.00px of unpainted separator between two
-		 * adjacent fills — a value that exists in the DOM and not in the pixels: read
-		 * off the committed frames, no pixel in the seam came within 4/255 of the ground
-		 * in `localOperatorLight`, and the dark themes never approached it at all. The
-		 * fill is the boundary, so a one-pixel gap is not a separator, and the merge it
-		 * hid was not merely quiet: the quoted form `@"my file.txt"` paints ONE fill
-		 * over a space, so two merged chips were indistinguishable from a single token —
-		 * a picture making a claim that is false.
+		 * THE OVERHANG IS TAKEN OUT OF THE GROUND, AND THE GROUND DECIDES HOW MUCH
+		 * (design round 1's D2, re-scoped by design round 2's D9).
 		 *
-		 * Zero on a facing side leaves the WHOLE space advance unpainted — the 3.8px this
-		 * field measures, against the 1.00px that shipped — which is the widest
-		 * separator this geometry can produce without painting the space itself. The
-		 * full 6px still stands wherever there is no neighbour, which is where the
-		 * container reading lives (a mention opening or closing a draft, or the two
-		 * outer ends of a pair).
+		 * WHAT D2 SETTLED, and the number it replaced. The clamp used to be half the
+		 * clear ground less 0.5px, which left 1.00px of unpainted separator between two
+		 * adjacent fills — a value that exists in the DOM and not in the pixels: read off
+		 * the committed frames, no pixel in the seam came within 4/255 of the ground in
+		 * `localOperatorLight`, and the dark themes never approached it at all. The fill
+		 * is the boundary, so a one-pixel gap is not a separator, and the merge it hid
+		 * was not merely quiet: the quoted form `@"my file.txt"` paints ONE fill over a
+		 * space, so two merged chips were indistinguishable from a single token — a
+		 * picture making a claim that is false.
+		 *
+		 * WHAT THE FIRST CORRECTION GOT WRONG (D9), and it is why this is a distance
+		 * again: it dropped the term entirely and returned 0 for a run ANYWHERE on the
+		 * line, so a side facing a mention 39px — or 149px — away lost the same 6px it
+		 * loses at 3.8px. Two consequences the designer measured on the re-captured
+		 * frames: `mentions-at-the-edges` lost 5-6px across 149px of prose, and in
+		 * `chip-needs-approval` the outside chip's new 1px rule came to render in
+		 * columns 441-442 against the token's own first ink column at 441 — the one
+		 * state whose whole job is to be readable at a glance, with 6px of air on its
+		 * free side and none on this one. A fill's silhouette may not depend on
+		 * something 150px away, and reflowing a mention onto the next line may not
+		 * reshape a chip the user is not touching.
+		 *
+		 * THE RULE, IN ONE SENTENCE: a facing side keeps a full space's advance of
+		 * ground unpainted, and the two facing sides split whatever is left of the ground
+		 * between them, never more than `CHIP_OVERHANG_PX` each. So a neighbour one space
+		 * away spends the whole space as separator — D2's case, exactly, and the case its
+		 * frames were written about — the overhang grows continuously with the room, and
+		 * from a ground of `CHIP_SEPARATOR_MIN_PX + 2 x CHIP_OVERHANG_PX` (15.8px) out it
+		 * is the full 6px again. A chip with nothing beside it is unchanged, which is
+		 * where the container reading lives (a mention opening or closing a draft, or the
+		 * two outer ends of a pair).
+		 *
+		 * WHAT IT CANNOT DO, stated where the next reader meets it rather than left to be
+		 * inferred from the arithmetic: with THREE mentions on one line at one space each,
+		 * the middle chip is flush at both ends. That is not the rule failing — the only
+		 * alternative is painting the space, which is the one thing it forbids — and the
+		 * design record's § 5 state 10 and § 3.1 now say so.
+		 *
+		 * The separator can never reach zero whatever the ground is, because the overhang
+		 * is capped: it is at least `min(ground, CHIP_SEPARATOR_MIN_PX)`, so the "one
+		 * fill over a space" misreading D2 was written for cannot come back.
 		 *
 		 * A neighbour is a run of a DIFFERENT token whose vertical band overlaps this
 		 * one's, so a wrapped token's own fragments never clamp each other, and two
-		 * mentions on different lines never see each other at all.
+		 * mentions on different lines never see each other at all. The NEAREST such run
+		 * on that side is the one that decides: the ground a side may spend is the ground
+		 * to the closest fill it must not touch.
 		 */
-		const overhang = (run: (typeof runs)[number], side: "left" | "right") => {
+		const groundBeside = (
+			run: (typeof runs)[number],
+			side: "left" | "right",
+		): number | null => {
+			let ground: number | null = null;
 			for (const other of runs) {
 				if (other.span === run.span) continue;
 				if (
@@ -277,10 +326,20 @@ export const AtMentionOverlay = ({
 					run.top >= other.top + other.height
 				)
 					continue;
-				if (side === "left" && other.right <= run.left) return 0;
-				if (side === "right" && other.left >= run.right) return 0;
+				const gap =
+					side === "left" ? run.left - other.right : other.left - run.right;
+				if (gap < 0) continue;
+				ground = ground === null ? gap : Math.min(ground, gap);
 			}
-			return CHIP_OVERHANG_PX;
+			return ground;
+		};
+		const overhang = (run: (typeof runs)[number], side: "left" | "right") => {
+			const ground = groundBeside(run, side);
+			if (ground === null) return CHIP_OVERHANG_PX;
+			return Math.min(
+				CHIP_OVERHANG_PX,
+				Math.max(0, (ground - CHIP_SEPARATOR_MIN_PX) / 2),
+			);
 		};
 		const measured: FillRect[] = runs.map((run, index) => {
 			const left = overhang(run, "left");

@@ -321,6 +321,15 @@ type ChatContentProps = {
 	 */
 	mentionsEnabled?: boolean;
 	/**
+	 * Whether the connected harness is the reason the `@` affordance is absent, as
+	 * opposed to a turn in flight — the two false states of the flag above.
+	 *
+	 * Forwarded verbatim to the composer, which is the only surface that can say it:
+	 * see `MessageInputProps.mentionsUnsupported` for why the distinction has to come
+	 * from the page that owns the capability answer (UX round 2, U12).
+	 */
+	mentionsUnsupported?: boolean;
+	/**
 	 * Per-child `subagent_*` pulse counters, from the canonical stream, for the
 	 * reader's refresh cadence (`§ 5.3`).
 	 */
@@ -470,6 +479,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * chip, which is the fail-closed reading of a caller that did not ask.
 		 */
 		mentionsEnabled = false,
+		mentionsUnsupported = false,
 		pulses,
 	}) => {
 		const [isSmallView, setIsSmallView] = useState(false);
@@ -1162,6 +1172,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								agentData={agentData}
 								cwd={cwd}
 								mentionsEnabled={mentionsEnabled}
+								mentionsUnsupported={mentionsUnsupported}
 								cwdWritePath={cwdWritePath}
 								cwdPending={cwdPending}
 								cwdPendingAccepted={cwdPendingAccepted}

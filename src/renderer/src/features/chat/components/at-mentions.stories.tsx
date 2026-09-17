@@ -41,6 +41,7 @@ import { expect, userEvent } from "@storybook/test";
 import type { ReactNode } from "react";
 import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
 import type { Message } from "../types/message";
+import { AT_UNAVAILABLE_REASON } from "./at-contract";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 import { MessageInput } from "./message-input";
 
@@ -69,6 +70,19 @@ const TREE: Record<string, Entry[]> = {
 		{ name: "tsconfig.json", directory: false },
 		{ name: "vitest.config.ts", directory: false },
 		{ name: "SECURITY.md", directory: false },
+		/*
+		 * A NAME WIDER THAN THE NARROWEST REGION, so the frames carry the shape QA
+		 * round 2's Q-5 measured rather than only the shape that fits: a 58-character
+		 * name is ~450px of `font-mono`, against the 242px region an 800x600 window
+		 * gives this popup. It sorts LAST on purpose — the frames above read the
+		 * leading rows and the footer's count, and a long first row would change what
+		 * they say — while the region's own `scrollWidth` sees every row it holds,
+		 * visible or not, which is what the row must not be able to move.
+		 */
+		{
+			name: "zz-a-name-far-too-long-for-the-narrowest-region-this-popup-has.tsx",
+			directory: false,
+		},
 	],
 	"src/": [
 		{ name: "components", directory: true },
@@ -328,13 +342,18 @@ const boxValue = (): string =>
 	document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]')
 		?.value ?? "";
 
-/** The picker's one-row notice, or null when the list has rows (or is not up). */
-const noticeText = (): string | null => {
-	const list = document.querySelector('[role="listbox"][aria-label="Files"]');
-	if (!list) return null;
-	if (list.querySelector('[role="option"]')) return null;
-	return list.textContent ?? null;
-};
+/**
+ * The picker's one-row notice, or null when no notice is up.
+ *
+ * READ BY ITS OWN HOOK rather than through the listbox's text, because the notice
+ * is now two things: the row an empty listing paints INSIDE the listbox, and the
+ * whole of the `harness-cannot-expand` shell, which is deliberately not a listbox
+ * (there are no options to be in) — a selector that went through the role could
+ * not reach the sentence this set exists to photograph (UX round 2, U12). The row
+ * carries `data-mention-notice` in both places for exactly that reason.
+ */
+const noticeText = (): string | null =>
+	document.querySelector("[data-mention-notice]")?.textContent ?? null;
 
 /**
  * The play every state shares: install the bridge, type the draft, wait for the
@@ -435,6 +454,19 @@ const stateStory = (state: DraftStory): Story => ({
 					HARNESS[state.harness ?? "withMentions"],
 					"references",
 				)}
+				/*
+				 * The other half of the gate, from the same fixture answer: the composer's
+				 * sentence may only be said when the BACKEND is the reason the affordance is
+				 * absent, so the story derives the unsupported fact the way `chat-page.tsx`
+				 * does — an answer that arrived (the fixture bridge always answers) and says
+				 * the harness is available without the key.
+				 */
+				mentionsUnsupported={
+					!desktopFeatureEnabled(
+						HARNESS[state.harness ?? "withMentions"],
+						"references",
+					)
+				}
 				onSendMessage={async () => true}
 			/>
 		</Column>
@@ -495,8 +527,17 @@ export const MentionsAtTheEdges: Story = stateStory({
  * True adjacency is impossible by grammar — a token opens only at a boundary, so
  * `@a.py@b.py` is ONE unresolvable span and not two chips — and this is the
  * reachable case. The property to read off the frame is that the two fills never
- * touch: each is its own rectangle with its own 6px overhang, and the space
- * itself is unpainted.
+ * touch: the side each chip turns toward the other spends the whole space as
+ * separator (the overhang there is 0, because the ground one space wide is
+ * exactly the advance a facing side must leave unpainted), while the outer 6px
+ * overhangs stand on both chips.
+ *
+ * WHAT THIS FRAME IS NOT: it is the one-space case, and the rule's distance term
+ * (design round 2, D9) is what keeps it from being the ONLY case — a chip whose
+ * neighbour is 39px or 149px away keeps its full 6px on that side, which is what
+ * `mentions-at-the-edges` and `chip-needs-approval` show. Three mentions on one
+ * line at one space each leave the MIDDLE chip flush at both ends; the design
+ * record's § 5 state 10 states that consequence, and no committed frame covers it.
  */
 export const AdjacentMentions: Story = stateStory({
 	story: "adjacent",
@@ -506,6 +547,30 @@ export const AdjacentMentions: Story = stateStory({
 	// fills and the ground between them.
 	draft: "@src/app.py @README.md ",
 	settled: () => chipCount() === 2,
+});
+
+/**
+ * THE QUOTED FORM, and the frame the merge defect was invisible in: `@"my file.txt"`
+ * paints ONE fill over a space.
+ *
+ * `adjacent-mentions` argues that two chips are not one, by measuring the ground
+ * through the seam; this is the other half of that pair, because a single token
+ * that legitimately spans a space is exactly what a merged pair USED to look like
+ * — the two same-coloured fills covering both tokens and the separator between them
+ * are one rectangle over one space. So a reader needs this frame beside that one:
+ * one fill over a name with a space, and two fills with a space's advance of
+ * unpainted ground down the middle. Both design round 1's D2 and review round 2
+ * named the absent frame (design round 2's D2 / code round 2's M5 note).
+ *
+ * The token is TYPED, and the grammar recognises it rather than the picker writing
+ * it: the quoted form is the port of the harness's own `@"…"` (`at-token.ts`), so
+ * this is the same rule the picker's write satisfies, reached the other way.
+ */
+export const QuotedMention: Story = stateStory({
+	story: "quoted",
+	label: 'the quoted form @"my file.txt": one fill over a name with a space',
+	draft: 'open @"my file.txt" then stop',
+	settled: () => chipCount() === 1,
 });
 
 /**
@@ -664,7 +729,7 @@ export const PickerUnreadable: Story = stateStory({
  * The row budget at its ceiling, and then at its floor.
  *
  * The same story captured twice by the rig, at a normal window and at a short one:
- * the region's height is a whole multiple of the 36px pitch, computed from the
+ * the region's height is a whole multiple of the 35.5px pitch, computed from the
  * space between the anchor and the nearest clipping ancestor, so a short window
  * shows FEWER ROWS rather than a shell pushed off the bottom. That is the design's
  * open item 3, and it is a claim about two frames rather than about arithmetic.
@@ -682,9 +747,16 @@ export const PickerManyRows: Story = stateStory({
 	 * whether those two numbers agree — which is exactly what was wrong: a 36px
 	 * pitch over 35.5px rows capped the region 4.0px into a ninth row and painted a
 	 * sliver of it. This reads BOTH numbers off the rendered DOM, at every viewport
-	 * this story is captured at (1380x768, 1380x872, 800x600 and 768x372), and
+	 * this story is captured at (1380x768, 1380x872, 800x600 and 768x520), and
 	 * throws if the cap is not a whole number of the rows the browser actually laid
 	 * out. A sweep that captures a budget frame therefore also asserts the budget.
+	 *
+	 * AND THE REGION MUST NOT SCROLL SIDEWAYS, which is the same claim one step out
+	 * (QA round 2, Q-5): an `overflow-x` bar takes 8px off the region's CLIENT box,
+	 * so at 800x600 the cap above was right to the half pixel and the region still
+	 * painted four rows and 28px of a fifth while the footer counted five. The
+	 * fixture's own long name is what makes that measurable here rather than in an
+	 * argument, and the assertion is on the box the ROWS get, not on the class list.
 	 */
 	after: () => {
 		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
@@ -705,6 +777,9 @@ export const PickerManyRows: Story = stateStory({
 		expect(
 			Math.abs(visible - Math.round(visible / pitch) * pitch),
 		).toBeLessThan(0.02);
+		// Q-5: no horizontal bar, so the rows keep the whole cap. `clientWidth` is
+		// the box the rows are laid out in and `scrollWidth` is what they needed.
+		expect(region.scrollWidth).toBeLessThanOrEqual(region.clientWidth);
 		return true;
 	},
 });
@@ -725,16 +800,23 @@ export const PickerManyRows: Story = stateStory({
  *
  * The draft carries BOTH facts in one frame on purpose: a token that would be a
  * chip if the harness could expand it, and a bare `@` at the caret that would open
- * the list. Read off the frame: neither happens, and the sentence is exactly the
- * text that will be sent.
+ * the list. Read off the frame: neither happens, the text is exactly what will be
+ * sent, and the ONE SENTENCE the caret's `@` brings on says why (UX round 2,
+ * U12). That sentence is the whole of this state's answer to "I typed `@` and
+ * nothing happened": it names the backend as the reason, promises no update, and
+ * costs the composer no geometry because it stands in the list's own
+ * `absolute bottom-full` slot.
  */
 export const HarnessCannotExpand: Story = stateStory({
 	story: "no-references",
 	harness: "withoutMentions",
 	label:
-		"a harness that cannot expand a mention: no list, no chip, the path sent as written",
+		"a harness that cannot expand a mention: no list, no chip, one sentence saying why, the path sent as written",
 	draft: "look at @src/app.py then fix @",
-	settled: () => chipCount() === 0 && rowCount() === 0,
+	settled: () =>
+		chipCount() === 0 &&
+		rowCount() === 0 &&
+		noticeText() === AT_UNAVAILABLE_REASON,
 });
 
 /**

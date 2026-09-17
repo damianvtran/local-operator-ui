@@ -125,7 +125,7 @@ import {
 import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = process.cwd();
@@ -3470,6 +3470,19 @@ async function scenePalette(cdp) {
  * has no session cwd (`probe-files` answers `undefined`, which is not "outside"),
  * so every chip here is the ordinary one. That state is photographed by the
  * `chat-mention-chips` story set, where the fact comes from a fixture.
+ *
+ * AND THE CAPABILITY, WHICH IS THE OTHER HALF OF REACHING THIS FLOW AT ALL (UX
+ * round 2, U14b). The scene used to throw at its own composer precondition — with
+ * a live backend attached — because it looked for the field on a route that mounts
+ * the composer only for a session or a staged draft, and staging one is exactly
+ * what it did not do. With that fixed it reaches the composer, and then the gate
+ * refuses: NO harness advertises `references` yet, so `@` is dark by design and
+ * there is no list to drive. So the run asserts the capability as a PRECONDITION
+ * before it types anything, and refuses with the rig it needs named in full — a
+ * backend whose `/v1/capabilities` carries `features.references = 1`, i.e. a
+ * loopback proxy in front of a live daemon that injects that one field (the shape
+ * QA round 2 ran). That refusal is a statement about the harness, not a defect in
+ * this scene, and it is the honest answer while the key does not exist.
  */
 async function sceneMentions(cdp) {
 	const hello = await verb(cdp, "hello");
@@ -3511,20 +3524,41 @@ async function sceneMentions(cdp) {
 	const closed = await cdp.evaluate(anchors);
 	note("the band with an empty draft", JSON.stringify(closed));
 	/*
-	 * THIS SCENE NEEDS A BACKEND, and it says so rather than reporting a run of
-	 * failed checks. On a pane with no backend the chat route paints its offline
-	 * card and the composer is NOT MOUNTED at all - measured on this scene's first
-	 * run, where `document.activeElement` was `BODY` and the field did not exist -
-	 * so there is nothing here to drive. Both flags the `new-chat` scene documents
-	 * are what makes the composer exist: `--backend <url>` for a live daemon this
-	 * run owns, and the record and onboarding flags that let the app reach it.
+	 * STAGE A COMPOSER FIRST, and this is the fix rather than a workaround (UX
+	 * round 2, U14b). `/chat` with a live backend and no staged draft mounts NO
+	 * composer: the route opens on the empty-chat surface, whose field exists only
+	 * for a session or for a draft the user started. The scene used to look for the
+	 * field and throw its "this scene needs a live backend" refusal — while the app
+	 * was in fact attached to one — so the live half of this evidence set was
+	 * unrunnable by anyone. The ⌘N chord is the app's own way to stage that draft
+	 * (`sceneNewChat` drives the same press through the same `session_catalogue`
+	 * gate), and it is pressed here only when there is no field already.
 	 */
-	if (closed.field === null) {
+	const stageComposer = async () => {
+		const mounted = () =>
+			cdp.evaluate(`document.querySelector(${JSON.stringify(FIELD)}) !== null`);
+		if (await mounted()) return "the route already held a composer";
+		await pressChord(cdp, {
+			key: "n",
+			code: "KeyN",
+			virtualKeyCode: 78,
+			modifiers: MODIFIER.meta,
+		});
+		for (let attempt = 0; attempt < 60; attempt++) {
+			await wait(100);
+			if (await mounted()) return "staged with ⌘N";
+		}
+		return null;
+	};
+	const staged = await stageComposer();
+	note("how the composer got on screen", String(staged));
+	if (staged === null) {
 		throw new Error(
-			"the composer is not on screen: this scene needs a live backend " +
-				"(see `--backend` / `--backend-records` in docs/agent-driver.md). " +
-				"Without one the chat route paints its offline card and the field does " +
-				"not exist, which is this run's own finding rather than a failed check.",
+			"no composer on screen, and ⌘N did not stage one: this scene needs a live, " +
+				"ISOLATED backend this run owns (`--backend <url>` with `--backend-records " +
+				"<dir>` and `--seed-onboarding-complete`), because the ⌘N chord takes the " +
+				"New chat row's own `session_catalogue` capability. Without one the chat " +
+				"route paints its offline card, the chord is inert and there is nothing to drive.",
 		);
 	}
 	check(
@@ -3534,6 +3568,42 @@ async function sceneMentions(cdp) {
 	);
 
 	/*
+	 * THE CAPABILITY FIRST, before a single fixture file is written (UX round 2,
+	 * U14b).
+	 *
+	 * The composer withholds the whole `@` affordance unless the backend advertises
+	 * `features.references`, and NO harness does yet — the key is what the harness
+	 * half must add. So on an ordinary backend this scene has nothing to drive, and
+	 * saying that here is the difference between "the scene is broken" and "the
+	 * harness cannot do this yet": the run has to be handed a backend that presents
+	 * the capability. The answer is read from the backend rather than inferred from
+	 * the app, because it is the same answer the app's gate reads.
+	 */
+	const capabilities = await fetch(`${BACKEND}/v1/capabilities`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	})
+		.then((response) => response.json())
+		.catch(() => null);
+	const references = capabilities?.result?.features?.references ?? null;
+	const expandable =
+		capabilities?.result?.desktop_available === true &&
+		typeof references === "number" &&
+		references >= 1;
+	note(
+		"whether the backend advertises file references",
+		JSON.stringify({ references, expandable }),
+	);
+	if (!expandable) {
+		throw new Error(
+			`the backend does not advertise \`features.references\` in /v1/capabilities (read: ${JSON.stringify(
+				references,
+			)}), so the composer withholds the whole \`@\` affordance by design and there is no list to drive. This is a statement about the harness, not a defect in this scene: NO released harness carries the key. TO RUN IT, present the capability - a loopback proxy in front of a live daemon this run owns that injects \`result.features.references = 1\` into /v1/capabilities and forwards every other byte (SSE included) unchanged, then pass the PROXY's URL to --backend and build the renderer with VITE_LOCAL_OPERATOR_API_URL set to the same URL. That is the rig QA round 2 ran.`,
+		);
+	}
+
+	/*
 	 * The fixture the picker will list, written into the working directory the
 	 * composer is ACTUALLY in — read off the control row's own cwd chip rather than
 	 * assumed, because with a backend that directory is the session's and not this
@@ -3541,36 +3611,55 @@ async function sceneMentions(cdp) {
 	 * directory to drill into, a nested one to read a parent column from, a common
 	 * file the pool boosts, and a name with a space (the quoted form's only reason
 	 * to exist).
+	 *
+	 * THE PATH COMES FROM THE CHIP'S OWN DATA ATTRIBUTE (`data-lo-cwd-path`, on all
+	 * three of its branches), which is the value the composer resolves against; the
+	 * accessible names are kept in the note because that is what a reader of the run
+	 * sees on screen.
+	 *
+	 * AND IT HAS TO BE INSIDE THIS RUN'S OWN SCRATCH TREE, because the four lines
+	 * under this comment WRITE files: a brand-new draft's cwd is the account home
+	 * (which this run redirects with its own scratch `HOME`), a `~`-spelled path is
+	 * resolved against that same scratch home here, and anything outside the scratch
+	 * root is refused BEFORE a byte is written — otherwise the first successful run
+	 * of this scene against a session in the operator's workspace would scribble
+	 * fixture files into it.
 	 */
-	const cwdLabel = await cdp.evaluate(`(() => {
+	const cwdChip = await cdp.evaluate(`(() => {
+		const paths = [...document.querySelectorAll("[data-lo-cwd-path]")]
+			.map((el) => el.getAttribute("data-lo-cwd-path"));
 		const labels = [...document.querySelectorAll("[aria-label]")]
 			.map((el) => el.getAttribute("aria-label"))
 			.filter((label) => typeof label === "string" && label.startsWith("Working directory"));
-		const absolute = labels
-			.map((label) => label.split(": ").slice(1).join(": "))
-			.find((value) => value?.startsWith("/"));
-		return { labels, absolute: absolute ?? null };
+		return { paths, labels };
 	})()`);
 	note(
 		"the composer's working directory, as the control row names it",
-		JSON.stringify(cwdLabel),
+		JSON.stringify(cwdChip),
 	);
-	if (!cwdLabel.absolute) {
+	const spelled =
+		cwdChip.paths.find(
+			(value) => typeof value === "string" && value.length > 0,
+		) ?? null;
+	const cwd = spelled?.startsWith("~")
+		? join(HOME_DIR, spelled.slice(1).replace(/^\//, ""))
+		: spelled;
+	if (!cwd) {
 		throw new Error(
-			`the composer does not name an absolute working directory (${JSON.stringify(cwdLabel.labels)}), so this scene cannot place its fixture files where the picker will list them`,
+			`the composer's chip names no working directory (${JSON.stringify(cwdChip.paths)}), so this scene cannot place its fixture files where the picker will list them`,
 		);
 	}
-	mkdirSync(join(cwdLabel.absolute, "src", "components"), { recursive: true });
-	writeFileSync(join(cwdLabel.absolute, "README.md"), "# listing fixture\n");
-	writeFileSync(
-		join(cwdLabel.absolute, "my file.txt"),
-		"a name with a space\n",
-	);
-	writeFileSync(join(cwdLabel.absolute, "src", "app.py"), "print('hi')\n");
-	writeFileSync(
-		join(cwdLabel.absolute, "src", "components", "button.tsx"),
-		"export {}\n",
-	);
+	if (!cwd.startsWith(SCRATCH + sep)) {
+		throw new Error(
+			`the composer's working directory ${cwd} is outside this run's scratch tree ${SCRATCH}: this scene WRITES its fixture files there, so it refuses a directory it does not own. Start the run against an isolated backend whose session cwd is this run's own scratch (see docs/agent-driver.md), or point it at a directory you are willing to have four fixture files written into.`,
+		);
+	}
+	note("where the fixtures will be written", cwd);
+	mkdirSync(join(cwd, "src", "components"), { recursive: true });
+	writeFileSync(join(cwd, "README.md"), "# listing fixture\n");
+	writeFileSync(join(cwd, "my file.txt"), "a name with a space\n");
+	writeFileSync(join(cwd, "src", "app.py"), "print('hi')\n");
+	writeFileSync(join(cwd, "src", "components", "button.tsx"), "export {}\n");
 
 	/*
 	 * `@` alone: the whole-directory listing. Typed through the browser's own input
@@ -3647,7 +3736,7 @@ async function sceneMentions(cdp) {
 		return {
 			list: Boolean(list),
 			options: list ? list.querySelectorAll('[role="option"]').length : -1,
-			notice: list?.lastElementChild?.previousElementSibling?.textContent ?? null,
+			notice: document.querySelector("[data-mention-notice]")?.textContent ?? null,
 		};
 	})()`);
 	const afterNoMatch = await cdp.evaluate(anchors);
@@ -3661,7 +3750,7 @@ async function sceneMentions(cdp) {
 	check(
 		'the notice distinguishes "nothing here matches" from "this folder is empty"',
 		typeof noMatch.notice === "string" &&
-			noMatch.notice.includes('No files match "zzzz".'),
+			noMatch.notice.includes('No files match "zzzz" in src/.'),
 		JSON.stringify(noMatch.notice),
 	);
 	check(

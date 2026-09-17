@@ -177,6 +177,13 @@ test("a bare `~` working directory expands exactly like a bare `~` path", async 
  * directory's own enumeration order happened to give, which is a listing whose
  * contents depend on the filesystem — so this builds more than twice the cap and
  * checks the 200 rows against the FIRST 200 of a full sorted listing.
+ *
+ * AND THE UNIFORM PREFIX IT BUILDS CANNOT DISCRIMINATE THE ORDER, which is the
+ * half review round 2 (R1) found missing: with one prefix, the display order, the
+ * code-unit order and a mixture of two scan windows all begin at the same row. The
+ * fixture below has two, so it fails against a cap that retains by code units
+ * (`B…` sorts before `a…` there) and against a cap that only prunes at each
+ * crossing of the bound (whose pool is neither prefix).
  */
 test("more than twice the scan cap still answers with the smallest names", async () => {
 	const count = DIRECTORY_SCAN_LIMIT * 2 + 200;
@@ -195,6 +202,41 @@ test("more than twice the scan cap still answers with the smallest names", async
 		listing.entries.map((entry) => entry.name),
 		expected,
 	);
+});
+
+test("past the scan cap the answer is the display-alphabetical first entries", async () => {
+	/*
+	 * Two prefixes whose orders DISAGREE: `localeCompare` puts `a…` before `B…`
+	 * (primary-level collation ignores case) and the code units do the opposite, so
+	 * the directory has two different "first 200"s and the answer has to be the
+	 * display order's — that is the order the picker sorts in. More than twice the
+	 * cap, so the retention has to decide and not merely read everything.
+	 */
+	const each = DIRECTORY_SCAN_LIMIT + 500;
+	const mixed = join(root, "mixed-cases");
+	mkdirSync(mixed);
+	for (let index = 0; index < each; index++) {
+		const suffix = String(index).padStart(5, "0");
+		writeFileSync(join(mixed, `B${suffix}.txt`), "");
+		writeFileSync(join(mixed, `a${suffix}.txt`), "");
+	}
+	const listing = await listDirectory(mixed);
+	assert.equal(listing.truncated, true);
+	assert.equal(listing.entries.length, 200);
+	const expected = readdirSync(mixed)
+		.sort((a, b) => a.localeCompare(b))
+		.slice(0, 200);
+	assert.deepEqual(
+		listing.entries.map((entry) => entry.name),
+		expected,
+	);
+	/*
+	 * And the two wrong rules, named so a failure reads as which one came back: the
+	 * code-unit prefix (`B00000.txt` upward) or a window's mixture (a row from
+	 * mid-alphabet, which is what the crossing-only prune answered with).
+	 */
+	assert.equal(listing.entries[0].name, "a00000.txt");
+	assert.equal(listing.entries[199].name, "a00199.txt");
 });
 
 test("outsideWorkspace is the harness's containment rule", async () => {
