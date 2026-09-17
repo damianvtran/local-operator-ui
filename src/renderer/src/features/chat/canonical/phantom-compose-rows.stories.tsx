@@ -116,7 +116,11 @@ const ANNOUNCEMENT: LiveEvent = {
 };
 const VERDICT = SEED[0];
 /** The turn's own end, with no abort: the case that used to paint a tick. */
-const TURN_END: LiveEvent = { type: "agent_end", generation: 1, aborted: false };
+const TURN_END: LiveEvent = {
+	type: "agent_end",
+	generation: 1,
+	aborted: false,
+};
 /** The same call with an EMPTY payload: a parked call that composed nothing. */
 const EMPTY_VERDICT: LiveEvent = { ...VERDICT, argument_bytes: 0 };
 
@@ -284,7 +288,11 @@ export const AfterQueued: Story = {
 		<Frame
 			waiting={true}
 			caption="After, the dictation ending: the call waits to run, the row says `queued · 109 B`, and the band says `waiting to run a call` with NO clock — the dictation clock ended and nothing else has begun."
-			transcript={applyLiveSeed(queuedAnnounced(), frontendOf([QUEUED]), ARRIVAL_MS)}
+			transcript={applyLiveSeed(
+				queuedAnnounced(),
+				frontendOf([QUEUED]),
+				ARRIVAL_MS,
+			)}
 		/>
 	),
 };

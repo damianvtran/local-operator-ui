@@ -88,7 +88,10 @@ import {
 	wakePromptBody,
 	wakeReceiptHeadline,
 } from "../components/trace/receipt-row-model";
-import { DETAIL_SECTION_MAX, ToolDetail } from "../components/trace/tool-detail";
+import {
+	DETAIL_SECTION_MAX,
+	ToolDetail,
+} from "../components/trace/tool-detail";
 import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {

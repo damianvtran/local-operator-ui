@@ -93,7 +93,11 @@ const ANNOUNCEMENT: LiveEvent = {
 };
 const VERDICT = SEED[0];
 /** The turn's own end, with no abort: the case that used to paint a tick. */
-const TURN_END: LiveEvent = { type: "agent_end", generation: 1, aborted: false };
+const TURN_END: LiveEvent = {
+	type: "agent_end",
+	generation: 1,
+	aborted: false,
+};
 const QUEUED_ANNOUNCEMENT: LiveEvent = {
 	...QUEUED,
 	argument_bytes: 40,
