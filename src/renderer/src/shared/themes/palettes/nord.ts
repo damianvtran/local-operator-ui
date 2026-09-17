@@ -44,13 +44,16 @@ export const nord: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.080, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.34 from `surface`, 3.82 from `elevated` and 5.53 from
-		 * `sunken`.
+		 * `surface` cast 0.19 toward `accent`, then stepped 1.5 on the `L*`
+		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
+		 * what put it there: the ink floor on the row's ground caps the lightness route
+		 * at 2.25 `L*` here (inkDim reaches its floor with the 0.15 of
+		 * headroom at 4.83:1 on this ground), so the band is paid on the cast.
+		 * ΔE00 4.35 from `surface`, 4.94 from `elevated` and 7.44 from
+		 * `sunken`; the step of 1.53 `L*` is short of the 3 `L*` floor and is pinned in
+		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
 		 */
-		highlight: "#313C49",
+		highlight: "#30404E",
 
 		ink: "#ECEFF4",
 		inkMuted: "#D8DEE9",

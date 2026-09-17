@@ -51,13 +51,14 @@ export const arcade: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.030, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.19 from `surface`, 3.96 from `elevated` and 3.89 from
-		 * `sunken`.
+		 * `surface` cast 0.03 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 3.25 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.14 from `surface`, 4.44 from `elevated` and 6 from `sunken`;
+		 * the step is 3.38 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.71:1 the ink that binds it.
 		 */
-		highlight: "#161414",
+		highlight: "#1C1B19",
 
 		ink: "#E8E8E4",
 		inkMuted: "#B0B0AC",

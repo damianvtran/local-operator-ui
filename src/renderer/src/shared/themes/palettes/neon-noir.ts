@@ -51,13 +51,14 @@ export const neonNoir: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.050, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.34 from `surface`, 3.38 from `elevated` and 4.99 from
-		 * `sunken`.
+		 * `surface` cast 0.06 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 3.25 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.03 from `surface`, 3.15 from `elevated` and 7.12 from `sunken`;
+		 * the step is 3.35 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.76:1 the ink that binds it.
 		 */
-		highlight: "#192027",
+		highlight: "#1E272E",
 
 		ink: "#DCDFE4",
 		inkMuted: "#A6ACB8",

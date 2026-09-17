@@ -44,12 +44,14 @@ export const catppuccinLatte: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.34 from `surface`,
-		 * 4.26 from `elevated` and 2.34 from `sunken`.
+		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 5.25 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.1 from `surface`, 6.16 from `elevated` and 2.03 from `sunken`;
+		 * the step is -5.36 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.66:1 the ink that binds it.
 		 */
-		highlight: "#E4E6EA",
+		highlight: "#E1E1E9",
 
 		// Canonical text 4C4F69 is 6.04:1 on `sunken` — under the 7:1 body floor. Deepened
 		// along the same indigo-blue.

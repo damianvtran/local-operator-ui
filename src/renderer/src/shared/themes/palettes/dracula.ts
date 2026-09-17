@@ -27,13 +27,31 @@ export const dracula: ThemeDefinition = {
 		// down the same blue-grey ramp and selection stays available for hovers.
 		elevated: "#3D4055",
 		sunken: "#21222C",
+
 		/*
-		 * The current row's own ground: `surface` stepped +7 on every channel
-		 * toward white. ΔE00 2.26 from `surface`, 2.63 from `elevated` (the same
-		 * row's hover step, so
-		 * the pointer cannot erase the selection) and 8.72 from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own blue-grey
+		 * ramp 5.17 `L*`, at 1.20x the panel's chroma. ΔE00 4.11 from `surface`,
+		 * 2.56 from `elevated` (the same row's hover step, so the pointer cannot erase
+		 * the selection) and 11.03 from `sunken`. The row is 1.189x the panel's relative
+		 * luminance.
+		 *
+		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
+		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
+		 * SUBTLE, and he has since seen that band rendered and reported the row as
+		 * invisible beside a hovered neighbour; the value this one replaces (#36384d)
+		 * stepped 3.16 `L*` off the panel, and this one steps 5.17. That ordering —
+		 * lightness first, chroma only for what is left over, never the other way
+		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
+		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
+		 * the band while landing darker on a dark theme.
+		 *
+		 * Ink on this ground: `ink` 10.05:1, `ink-muted` 5.82:1, `ink-dim` 4.74:1 — every floor
+		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
+		 * inside a current row are drawn on it and legibility is not what the mark may
+		 * spend. `ink-dim` is the binder at 4.74:1. The step here is still partly chroma-bought (1.20x the panel's); the ordering
+		 * above is what a re-authoring of this palette should follow.
 		 */
-		highlight: "#36384d",
+		highlight: "#3a3c56",
 
 		ink: "#F8F8F2",
 		inkMuted: "#BFBFBF",
