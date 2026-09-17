@@ -35,7 +35,13 @@
  *      added to a row cannot be resolved by nobody;
  *   3. every current-row state in those two panels takes the same role — the
  *      four chat call sites, the entity row's three elements, and the settings
- *      rail's row are one fact.
+ *      rail's row are one fact;
+ *   4. the STATES that are not a ground are read the same way, off the resolved
+ *      list rather than off a class string this file wrote: the mark's disclosure
+ *      step (`expanded && "text-ink"`) is asserted as a TOKEN, because
+ *      `text-ink-muted` and `hover:text-ink` both CONTAIN it as a substring — the
+ *      distinction between "the state is visible" being a claim and being a
+ *      checked one (review round 3, A-1).
  *
  * WHAT IT CANNOT PROVE: that the ground is *visible*, and that it steps in the
  * right DIRECTION. Both are properties of the role against its neighbours across
@@ -548,6 +554,51 @@ test("a row that is NOT current still gets the pointer's step", () => {
 			`${site.what} must not carry the current-row ground while it is not current:\n${classes}`,
 		);
 	}
+});
+
+test("the mark's disclosure state is in its ink, and only while it is expanded", () => {
+	/*
+	 * U8's VISIBLE HALF, ASSERTED RATHER THAN DESCRIBED (review round 3, A-1).
+	 *
+	 * The disclosure state reaches the user through two channels that are already
+	 * checked elsewhere — `aria-expanded` and a verb-carrying label, both read in
+	 * the running app — and one that was checked nowhere: the ink step the mark
+	 * takes while the pane is open on its conversation. Deleting that term left
+	 * THIS FILE 12 pass / 0 fail, because every assertion it held was about the
+	 * row's GROUND, so "the state is visible" was a claim the diff made and no
+	 * instrument repeated.
+	 *
+	 * WHY THE TOKENS ARE SPLIT rather than the merged string being searched: the
+	 * closed list carries `text-ink-muted` and `hover:text-ink`, so `includes` would
+	 * pass on a list that has no `text-ink` class at all and would keep passing if
+	 * the step were deleted. `classes.split(" ")` is the idiom the hover loop above
+	 * already uses for the same reason.
+	 *
+	 * BOTH STATES COME FROM THE ENTRY'S OWN STUBS, which is why this is one test and
+	 * not a second resolution mechanism: `stubs` is the expanded state and
+	 * `notCurrent` the closed one, and both already name `expanded` because a term
+	 * the guard does not name throws inside the evaluated expression.
+	 */
+	const mark = CURRENT.find(
+		(site) => site.what === "the conversation row's browser mark",
+	);
+	assert.notEqual(
+		mark,
+		undefined,
+		"the conversation row's browser mark is no longer in `CURRENT`",
+	);
+	const expanded = merged(mark.file, mark.expression(), mark.stubs).split(" ");
+	const closed = merged(mark.file, mark.expression(), mark.notCurrent).split(
+		" ",
+	);
+	assert.ok(
+		expanded.includes("text-ink"),
+		`the mark paints no ink step while its pane is open on this conversation, so a second press leaves the control looking exactly as it did one press earlier — indistinguishable from a press that did not register:\n${expanded.join(" ")}`,
+	);
+	assert.ok(
+		!closed.includes("text-ink"),
+		`the mark carries the expanded ink step while its pane is closed, so the state is painted for every row rather than for the row the pane is open on:\n${closed.join(" ")}`,
+	);
 });
 
 test("the file accounts for every hover ground the two panels declare", () => {

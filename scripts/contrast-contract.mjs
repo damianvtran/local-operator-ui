@@ -588,9 +588,16 @@ const CONTROLS = [
 		 *   - `elevated`, the row's hover step, which a ROW that is not current paints
 		 *     under the pointer;
 		 *   - `highlight`, the CURRENT row's ground (`chat-sidebar.tsx`'s `rowCurrent`,
-		 *     this app's role for it);
-		 *   - `sunken`, which the current row paints in `browser-conversation-mark.
-		 *     stories.tsx`'s row specimen, so the frames reviewers judge cover it too.
+		 *     this app's role for it) - and the ground the `browser-conversation-mark`
+		 *     row specimen paints since design round 3's D17 moved it off the retired
+		 *     `sunken`, so the frames reviewers judge cover the state that ships;
+		 *   - `sunken`, kept in this list rather than dropped with the specimen that
+		 *     used to paint it: a palette step can put this control back on a recessed
+		 *     ground, and a ground dropped in the same commit that moves a specimen is a
+		 *     silent shrink of this row's asserted set - the coverage gap this entry
+		 *     exists to close, one turn of the same screw. Dropping it is a deliberate
+		 *     decision for whoever takes the next palette pass, not a side effect of a
+		 *     story edit.
 		 * Measured across the twelve palettes when this row was added: `ink` on
 		 * `warningWash` 8.39:1 at worst (tokyoNight) and `borderControl` on the ground
 		 * 3.13:1 at worst (iceberg on `sunken`) — a coverage gap rather than a violation
@@ -1926,8 +1933,20 @@ const inkStepSeen = new Set();
  * on, which is a real state for the mark, since the mark is drawn on every
  * conversation's row including the current one - `borderControl` measures 2.81 to
  * 2.91:1 in these three palettes and the badge's `warningWash` fill measures 1.09
- * to 1.59:1, so neither edge reaches the floor and the badge has no perceivable
- * boundary in that state.
+ * to 1.59:1, so neither edge reaches the floor. WHAT THAT IS AND IS NOT, at the
+ * precision it was measured at: the edge is PAINTED and faint rather than absent -
+ * it is 0.09 to 0.19 under the floor - and it is the shortest of the three
+ * surfaces the badge paints there (`ring-canvas` 1.27 cat, 1.38 duskfox, 1.39
+ * gruvbox), so no surface of it clears the contract's number.
+ *
+ * THIS PIN IS THE MINIMUM THE PALETTE SET ALLOWS, and that is a measurement rather
+ * than a preference (design round 3, D18). The obvious local fix - the badge's own
+ * semantic border, `warningBorder`, in place of `borderControl` - clears 3:1 on
+ * `highlight` in 12 of 59 palettes against 3 of 59 for `borderControl` (worst
+ * `warningBorder` 2.69 in `dracula` and `monokai`), so the swap would pin MORE
+ * palettes rather than fewer. Re-derived on the tree this comment ships in, with
+ * the palettes read through `scripts/palette-source.mjs`, so the pair is a
+ * measurement of the registry rather than a remembered number.
  *
  * PINNED RATHER THAN FIXED, deliberately, and for the reason the `danger` pairs
  * above are pinned: both available fixes are app-wide visual changes owned by the
@@ -1940,14 +1959,46 @@ const inkStepSeen = new Set();
  * says, and a palette re-authored out of the floor FAILS until its pin is deleted,
  * so the list cannot outlive the defect it records.
  *
- * @type {{theme: string, got: number}[]}
+ * KEYED BY THE CONTROL AND THE GROUND IT WAS MEASURED ON, not by the theme alone
+ * (review round 3, A-2). A `(theme, got)` key could excuse a DIFFERENT control's
+ * sub-floor edge that happened to land within 0.01 of the pinned ratio - the gate
+ * would stay green, the stale check would be satisfied, and the summary would still
+ * report the pin as used with no way to tell which row it excused. `EXCEPTIONS` is
+ * keyed `(theme, fg, bg)` for the same reason. `control` is the control's own
+ * `name`, which is the identity `CONTROLS` carries; a pin that names a control or
+ * ground nothing measures fails the stale check below rather than passing quietly.
+ *
+ * @type {{control: string, ground: string, theme: string, got: number}[]}
  */
 const CONTROL_EDGE_PINNED = [
-	{ theme: "catppuccinMocha", got: 2.85 },
-	{ theme: "duskfox", got: 2.91 },
-	{ theme: "gruvbox", got: 2.81 },
+	{
+		control: "conversation browser mark badge",
+		ground: "highlight",
+		theme: "catppuccinMocha",
+		got: 2.85,
+	},
+	{
+		control: "conversation browser mark badge",
+		ground: "highlight",
+		theme: "duskfox",
+		got: 2.91,
+	},
+	{
+		control: "conversation browser mark badge",
+		ground: "highlight",
+		theme: "gruvbox",
+		got: 2.81,
+	},
 ];
 const controlEdgeSeen = new Set();
+
+/**
+ * The identity of one pinned measurement: which control, on which ground, in which
+ * palette. Used for BOTH the match and the stale check so the two cannot disagree
+ * about what a pin covers - the defect review round 3's A-2 named, one key along.
+ */
+const controlEdgeKey = (control, ground, theme) =>
+	`${control} on ${ground} in ${theme}`;
 
 /* ---- 5. the run --------------------------------------------------------- */
 
@@ -2803,10 +2854,16 @@ for (const { id, palette: p } of palettes) {
 				 * check below fails a pin whose palette no longer needs it.
 				 */
 				const pin = CONTROL_EDGE_PINNED.find(
-					(x) => x.theme === id && Math.abs(x.got - r2(edge)) < 0.01,
+					(x) =>
+						x.control === c.name &&
+						x.ground === g &&
+						x.theme === id &&
+						Math.abs(x.got - r2(edge)) < 0.01,
 				);
 				if (pin) {
-					controlEdgeSeen.add(id);
+					controlEdgeSeen.add(
+						controlEdgeKey(pin.control, pin.ground, pin.theme),
+					);
 				} else {
 					fail(
 						`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
@@ -3102,11 +3159,11 @@ if (staleInk.length > 0) {
  * is the same rule `INK_STEP_PINNED` follows, asked of the edge pins.
  */
 const staleControlEdge = CONTROL_EDGE_PINNED.filter(
-	(e) => !controlEdgeSeen.has(e.theme),
+	(e) => !controlEdgeSeen.has(controlEdgeKey(e.control, e.ground, e.theme)),
 );
 if (staleControlEdge.length > 0) {
 	console.error(
-		`\nContrast contract FAILED: ${staleControlEdge.length} pinned control edge(s) no longer under the floor (${staleControlEdge.map((e) => e.theme).join(", ")}) - delete the pin, the palette clears it now.`,
+		`\nContrast contract FAILED: ${staleControlEdge.length} pinned control edge(s) no longer under the floor (${staleControlEdge.map((e) => controlEdgeKey(e.control, e.ground, e.theme)).join(", ")}) - delete the pin, the palette clears it now.`,
 	);
 	process.exit(1);
 }
