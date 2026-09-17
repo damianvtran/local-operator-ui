@@ -20,13 +20,12 @@ import React, { act } from "react";
  * WHY THIS FILE MOUNTS THE COMPONENT RATHER THAN GREPPING ITS SOURCE. The claim
  * is about what a reader sees, and the footer is assembled from three branches
  * (`state.kind === "notice"`, a recorded press failure, and
- * `state.kind === "running" && !running`) whose inputs are the operation the
- * poll answered with. A regex over the
- * predicate would pin the spelling of the fix and nothing about the state it
- * produces — and the arithmetic that makes `running` false at a COMPLETE
- * operation (line `const running = …`) is exactly where this defect lived, so
- * the discriminating proof is the DOM: the real component, mounted with the
- * real bridge seam, driven through a real press.
+ * `state.kind === "running" && !running`) whose inputs are the operation the poll
+ * answered with. A regex over the predicate would pin the spelling of the fix and
+ * nothing about the state it produces — and the arithmetic that makes `running`
+ * false at a COMPLETE operation (line `const running = …`) is exactly where this
+ * defect lived, so the discriminating proof is the DOM: the real component,
+ * mounted with the real bridge seam, driven through a real press.
  *
  * The instruments are `suggestion-stack-react.test.mjs`'s: jsdom, React's own
  * `act`, and an esbuild bundle of the SHIPPED component with the renderer's
@@ -35,10 +34,15 @@ import React, { act } from "react";
  * the path the product itself uses, answering the same envelopes the backend
  * sends.
  *
- * Three cases, and the two controls are what make the first one mean anything: a
- * `complete` operation must lose the retry, and a `failed` or `cancelled` one must
- * KEEP it. Without those two, "the retry was dropped here" and "the retry was
- * dropped everywhere" are the same green run.
+ * Four cases. The first is the claim; the next two are what make it mean
+ * anything: a `complete` operation must lose the retry, and a `failed` or
+ * `cancelled` one must KEEP it. Without those two, "the retry was dropped here"
+ * and "the retry was dropped everywhere" are the same green run. The fourth is
+ * the BOUNDARY the fix's own comment spends a paragraph on — a status word this
+ * build has not been taught is not a success, so it keeps the retry too — and it
+ * is the one case the differential run against the base component cannot police,
+ * because the base is correct there as well: it exists to fail if a later
+ * refactor ever folds the unknown word into "settled".
  */
 
 /*
@@ -89,10 +93,17 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const { McpAuthDialog } = await import(bundlePath.href);
 await unlink(bundlePath);
 
-/** The body sentence the settle waits for, whatever status the case settled at. */
-const SETTLED_SENTENCE = /Sign-in (complete|failed|cancelled)\./;
+/**
+ * The body sentence the settle waits for: `Sign-in <the wire's own word>.`
+ *
+ * The word is not enumerated here because the boundary case below deliberately
+ * settles on one this build does not know.
+ */
+const SETTLED_SENTENCE = /Sign-in [a-z-]+\./;
 /** The sentence a completed grant states, which the fix must not disturb. */
 const COMPLETED_SENTENCE = /Sign-in complete\./;
+/** The sentence an operation whose status this build cannot read still prints. */
+const UNREADABLE_SENTENCE = /Sign-in succeeded\./;
 
 /** The dialog's row: an HTTP server whose probe answers "OAuth". */
 const ROW = {
@@ -402,3 +413,32 @@ for (const status of ["failed", "cancelled"]) {
 		});
 	});
 }
+
+/*
+ * The BOUNDARY the fix's own comment names, and the one case here that is not a
+ * differential: `succeeded` is outside `MCP_GRANT_STATUSES`
+ * (`running`/`complete`/`failed`/`cancelled`), so it is a word this build has not
+ * been taught. It must NOT be treated as a success — the dialog cannot know that
+ * sign-in worked, and the run panel's own fold drops the same operation for the
+ * same reason (`mcpGrantStates` refuses an unrecognised status rather than
+ * folding it to the nearest word).
+ *
+ * It reads the same on both trees, so the run against the base component proves
+ * nothing about it; what it polices is the refactor that would fold the unknown
+ * word into "settled" — `!running` alone, or asserting the vocabulary instead of
+ * the one word — which would show up here and nowhere else.
+ */
+test("a status this build cannot read is not a success, and keeps the retry", async () => {
+	await fixture("succeeded", async ({ dialog, labels: read, button }) => {
+		const close = button("Close");
+		assert.ok(close, "the dialog must keep its Close action");
+		assert.deepEqual(
+			read(close.parentElement),
+			["Close", "Try again"],
+			"an unreadable status is not a settled success",
+		);
+		// The body echoes the wire's own word, which is the honest thing to print
+		// for a status the dialog cannot name.
+		assert.match(dialog().textContent, UNREADABLE_SENTENCE);
+	});
+});

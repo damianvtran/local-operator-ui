@@ -7,8 +7,9 @@ reads as a failure — "there's no need to try again if the sign-in worked".
 
 The retry is the probe's, and at a settled SUCCESS it is not one press away from
 another attempt at the same thing: it re-runs the probe, the probe answers "this
-server takes OAuth", and the dialog is handed back its primary
-`Continue in browser` — a control that re-offers the grant that just succeeded,
+server takes OAuth", and the dialog is handed back its own primary —
+`Continue in browser` for a sign-in, `Replace grant and sign in` when the
+`action` is a re-auth — a control that re-offers the grant that just succeeded,
 sitting under a sentence that says it worked. The fix names that state
 (`completed = operation?.status === "complete"`) and stands the retry down for
 it, and for it alone.
@@ -47,14 +48,28 @@ Vite server); the server binds loopback only. Storybook walks forward when a por
 is taken — this rig does not, it fails, so a busy port is a re-run with a
 `--port`.
 
+**Run one rig at a time over one `node_modules`.** Vite's dependency cache lives
+under that shared directory, and a second run's page then misses its 60 s
+readiness budget and dies with `the harness never reported the state it settled
+in` — which reads as a state failure rather than the load timeout it is (QA round
+1, Q3). The teardown signals the Vite server's process GROUP for the same reason:
+a run that ends on its error path must not leave a server holding the port, which
+is how the next run came to fail for a reason that looked like a state.
+
 ```sh
 # AFTER — this branch's tree, written into the directories named below.
 node docs/evidence/mcp-auth-complete/harness/capture.mjs --tree=after
 
-# BEFORE — origin/main (da9e75a616), materialised OUTSIDE the repository so
+# BEFORE — the PR's base (cfc28c817), materialised OUTSIDE the repository so
 # nothing is written into the repository's own .git, with the harness copied in
-# and this worktree's node_modules linked alongside it.
-git archive da9e75a616 | tar -x -C /tmp/mcp-auth-before
+# and this worktree's node_modules linked alongside it. The same bytes come out of
+# da9e75a616, this branch's first base: the frames were first captured there and
+# re-taken from cfc28c817, and both captures agree byte for byte because
+# `mcp-auth-dialog.tsx` is identical in the two trees (`git diff da9e75a616
+# cfc28c817 -- src/renderer/src/features/chat/components/run-details/
+# mcp-auth-dialog.tsx` is empty). To reproduce from the other base, substitute the
+# SHA in the archive line.
+git archive cfc28c817 | tar -x -C /tmp/mcp-auth-before
 mkdir -p /tmp/mcp-auth-before/docs/evidence/mcp-auth-complete
 cp -R docs/evidence/mcp-auth-complete/harness \
   /tmp/mcp-auth-before/docs/evidence/mcp-auth-complete/harness
@@ -79,7 +94,7 @@ below.
 
 | Frame | What it shows |
 | --- | --- |
-| [`complete-before/localOperatorDark.png`](complete-before/localOperatorDark.png), [`…Light.png`](complete-before/localOperatorLight.png) | **The defect, on the base tree.** `Sign-in complete.` with the footer reading `["Close", "Try again"]` — the operator's own screenshot, reproduced from `origin/main`'s component under this rig. |
+| [`complete-before/localOperatorDark.png`](complete-before/localOperatorDark.png), [`…Light.png`](complete-before/localOperatorLight.png) | **The defect, on the base tree.** `Sign-in complete.` with the footer reading `["Close", "Try again"]` — the operator's own screenshot, reproduced from the base commit's component under this rig (captured from `da9e75a616` and re-taken byte-identically from `cfc28c817`, the PR's base). |
 | [`complete-after/localOperatorDark.png`](complete-after/localOperatorDark.png), [`…Light.png`](complete-after/localOperatorLight.png) | **The fix.** The same dialog, the same settled `complete` operation, the same sentence — and the footer reading `["Close"]` alone. |
 | [`failed-after/localOperatorDark.png`](failed-after/localOperatorDark.png), [`…Light.png`](failed-after/localOperatorLight.png) | **The control.** A `failed` operation still reads `Sign-in failed.` with `["Close", "Try again"]`, so the change is shown to be scoped to a settled success rather than a blanket removal of the retry. |
 | [`cancelled-after/localOperatorDark.png`](cancelled-after/localOperatorDark.png), [`…Light.png`](cancelled-after/localOperatorLight.png) | The same control for `cancelled`: `Sign-in cancelled.` with both controls, unchanged. |
@@ -90,15 +105,37 @@ Measured, in the two brand themes:
   printed by the run: `["Close"]` for `complete-after`, `["Close", "Try again"]`
   for `complete-before`, `failed-after` and `cancelled-after`;
 - the before/after pair differs by **15,612 pixels** in the dark theme and
-  **15,633** in the light (5.38% of the 704x412 frame), and the differing pixels
-  form **one 375x72 box at +206+258** in both — the footer's right half, where
-  `Try again` sat. Nothing else in the frame moved;
+  **15,632** in the light — 5.38% and 5.39% of the 704x412 frame — and the
+  differing pixels form **one 375x72 box at +206+258** in both. Both counts come
+  from decoding the two PNGs channel by channel — this rig's own decode,
+  independent of ImageMagick — and `magick compare -metric AE` agrees on the dark
+  count and reads one pixel more in the light (15,633): it classifies one
+  anti-aliased edge pixel differently, and the box is identical either way;
+- what those pixels ARE is two mechanisms the box's single rectangle does not
+  distinguish, and the distinction matters for reading the pair: in the before
+  frame the footer holds `Close` in the LEFT slot and `Try again` in the right
+  one, and in the after frame it holds `Close` alone in the right slot. So the
+  retired control's own columns (`206`-`405`) account for **14,308** of the
+  differing pixels, and the surviving button — the same border box in both frames,
+  both at the footer's 100 CSS px minimum width — accounts for the remaining
+  **1,304** dark / **1,324** light, which is its label ink alone (`Try again` →
+  `Close`). Nothing else in the frame moved;
 - the panel's own geometry is identical in all six frames (320x174 at 340,263 in
   the 1000x700 viewport), so the pair differs in its controls and not in its
   layout;
 - the six `after` frames came back **byte-identical** across two runs of the
   capture (md5 of each frame unchanged), so a re-run of this rig reports the same
   pixels rather than a sampled state.
+
+**A lone right-aligned `Close` is this dialog's own shape, not one this change
+invented.** The `probing` state — which this PR does not touch — renders exactly
+that footer: design round 1 measured the surviving control at the same device box
+(`422-621 x 258-329`) as the completed frame's, the two frames differing only
+inside the sentence band, and the panel keeping its `320x174` in all four of
+`probing`, `complete`, `failed` and `cancelled`. Nothing collapses when the second
+control leaves: the freed ~190 px of content box is plain ground, and the
+surviving control keeps the footer's own padding (25.5 CSS px from the panel's
+right and bottom edges) in every state.
 
 ## What these frames do NOT prove
 
@@ -125,7 +162,10 @@ Measured, in the two brand themes:
   instead. What is checked after the fact is the manifest's `srcTree`/`scriptsTree`
   stamp, which this change re-derives.
 - **Not the second half of the claim.** The DOM assertion — one action in the
-  footer at a completed grant, and both at a `failed`/`cancelled` one — is
-  re-run by `scripts/mcp-auth-complete-no-retry.test.mjs` on every
+  footer at a completed grant and both at a `failed`/`cancelled`/unreadable-status
+  one — is re-run by `scripts/mcp-auth-complete-no-retry.test.mjs` on every
   `pnpm test:desktop`, against this same component. That test is the
-  discriminating proof; these frames are the picture of it.
+  discriminating proof; these frames are the picture of it. Its fourth case — a
+  status word this build has not been taught — is deliberately NOT a differential
+  one: it reads the same on both trees, and it exists to fail if a later refactor
+  ever folds "cannot read this" into "settled".
