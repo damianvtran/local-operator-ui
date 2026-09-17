@@ -2055,14 +2055,47 @@ export function applyEvent(
 				output: null,
 				isError: false,
 				durationS: null,
-				// Where the running row's clock counts from. Reuses the existing value
-				// when there is one so a replayed `_start` (the reconnect cursor sends
-				// them again) cannot restart a clock that is already running — and so
-				// the record stays identical under the gate.
+				// Where the running row's clock counts from, and the ONE field here that
+				// may not be the caller's arrival instant: a viewer that ATTACHES to a
+				// turn already in flight must resume the age the call really has, not
+				// start a fresh zero beside a call that has been running for minutes
+				// (the operator report this fixes: "each time I resume it says it's been
+				// waiting for 0s regardless of how long").
+				//
+				// So the FRAME'S OWN stated clock wins, and the chain behind it is the
+				// fallback rather than the rule:
+				//
+				//   - `epochMs(event)` is the producer's `started_at_epoch`, stamped at
+				//     execution start. It is the only value in this expression that is a
+				//     fact about the CALL rather than about this viewer, which is why it
+				//     closes every arrival-stamping path at once — the seed applied
+				//     after a snapshot already painted the row, the reconnect replay
+				//     folded before that snapshot lands (both hand `applyEvent` a `now`
+				//     that is the viewer's own), and an ordinary live frame. The reducer
+				//     no longer depends on a caller passing the right value in an
+				//     implicit parameter.
+				//   - the existing value keeps a replayed `_start` (the reconnect cursor
+				//     sends them again) from restarting a clock that is already running,
+				//     and keeps the record identical under the equality gate.
+				//   - `now` is the last resort, for a frame that states nothing.
+				//
+				// A stated start can never move a clock BACKWARDS — the producer stamps
+				// it at execution start, so it is at or before this instant — and a
+				// replay of the SAME frame states the same epoch, so the value stays put
+				// rather than advancing on every replay.
+				//
+				// DELIBERATE ASYMMETRY, stated rather than discovered: a frame with NO
+				// `started_at_epoch` (a legacy producer) still falls back to `now`
+				// instead of blanking the column the way the TUI refuses to paint a
+				// number it cannot justify (`tool_card.py:1437-1441`). That asymmetry
+				// is kept here on purpose — this change is about resuming a clock that
+				// has a real start, and a stated-nothing frame behaves exactly as it did
+				// before. See the PR body for the reviewer's side of that call.
 				startedAt:
-					current?.kind === "tool" && current.startedAt !== null
+					epochMs(event) ??
+					(current?.kind === "tool" && current.startedAt !== null
 						? current.startedAt
-						: now,
+						: now),
 				// A running row has no outcome to report yet. It keeps whatever the
 				// composing row held so a rebuild here cannot drop an array the gate
 				// is comparing — and the same for a diff, which a replayed `_start`
