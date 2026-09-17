@@ -124,6 +124,17 @@ setup_python_arch() {
         echo "No bytecode caches found in ${final_python_dir}."
     fi
 
+    # Remove the seed content nothing can reach, and normalise the execute bits
+    # that mean nothing in a bundle. This is the one place the seed is
+    # materialised, so it is where the dev tree and the shipped tree are made
+    # identical; the release gate asserts both halves against the packaged app.
+    # It runs BEFORE signing by construction - this script runs before the build
+    # - and removing content after signing would be a `file missing:` violation.
+    # See scripts/prune-python-seed.mjs for why the list is what it is, and
+    # src/shared/bundled-python-layout.json for the list itself.
+    echo "Pruning unreachable seed content and normalising execute bits in ${final_python_dir}..."
+    node "$(dirname "$0")/prune-python-seed.mjs" "${final_python_dir}"
+
     REMAINING_PYC=$(find "${final_python_dir}" \( -name '*.pyc' -o -name '*.pyo' \) -print | sort)
     if [ -n "${REMAINING_PYC}" ]; then
         echo "Error: bytecode remains in ${final_python_dir} after cleanup; the release gate would reject this app:"
