@@ -767,6 +767,54 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 			"closed",
 			"and the Tooltip's `data-state` sits on that same node — which is why a reveal keyed on it was inert (U3-1)",
 		);
+		/*
+		 * And the half the selector actually matches, which until round 4 was
+		 * certified only by the frame: press Enter on the trigger and the pair flips.
+		 * `aria-expanded` goes TRUE — the value `has-[[aria-expanded=true]]` needs —
+		 * while `data-state` STAYS "closed", because that attribute is the Tooltip's
+		 * and the tooltip is not the thing that opened. That collision is the whole
+		 * reason the reveal keys on one and not the other, so it is asserted here
+		 * rather than left to the frame (review round 4, R4-4).
+		 */
+		trigger.focus();
+		/*
+		 * `MouseEvent` typed as `pointerdown`, not `PointerEvent`: jsdom ships no
+		 * `PointerEvent`, and Radix's menu trigger reads `button` and `target` off the
+		 * event, which is all a `pointerdown` is to this code. This is the same
+		 * substitution the scrim press above already documents rather than a second
+		 * convention for the same problem. A `keydown` Enter on the trigger was tried
+		 * first and does NOT open the menu here — measured: `aria-expanded` stays
+		 * "false" — so a future reader does not spend the same run rediscovering it.
+		 */
+		act(() => {
+			trigger.dispatchEvent(
+				new window.MouseEvent("pointerdown", {
+					bubbles: true,
+					cancelable: true,
+					button: 0,
+				}),
+			);
+		});
+		await act(async () => {});
+		assert.equal(
+			trigger.getAttribute("aria-expanded"),
+			"true",
+			"pressing Enter on the trigger opens the menu, and the dropdown's own attribute flips to true — the value the reveal's selector matches",
+		);
+		assert.equal(
+			trigger.getAttribute("data-state"),
+			"closed",
+			"while the menu is open the Tooltip's `data-state` is still \"closed\" on that same node, which is why keying the reveal on it could never fire (U3-1, Q3-1)",
+		);
+		// and the menu it claims to have opened is really on the page, not just an
+		// attribute flip: four entries, in the portal, where Radix puts them.
+		const menu = api.document.querySelector('div[role="menu"]');
+		assert.ok(menu, "the open menu is in the document (role=menu)");
+		assert.equal(
+			menu.querySelectorAll('[role="menuitem"]').length,
+			4,
+			"and it carries the four actions this menu offers",
+		);
 		assert.equal(
 			trigger.disabled,
 			false,
