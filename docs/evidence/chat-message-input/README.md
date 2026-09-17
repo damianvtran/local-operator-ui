@@ -88,9 +88,13 @@ component in one state, and the window opens on the TRANSITION a turn's own end
 produces (a freshly mounted composer renders no reservation, by design). That
 transition is measured in the real app instead, in the frames and record beside
 this set under [`../interrupt-live/`](../interrupt-live/README.md): the same row
-photographed 260 ms after the composer's flip (box still held, a press there
-starting nothing) and 1869 ms after it (box gone, the two controls adjacent, and a
-press at the dictation control's own centre starting a recording).
+photographed 74 ms after the composer's flip (box still held, a press there
+starting nothing at 161-170 ms) and 1776 ms after it (box gone, the two controls
+adjacent, and a
+press at the dictation control's own centre starting a recording). It also carries
+the three dictation-in-flight frames - a recording running across a turn's end,
+which is the shape where a release would otherwise move the recording's own
+controls under a press - and the whole run's row-transition timeline.
 
 ### Round 2: the notice moves, and the leaked frames are re-taken
 

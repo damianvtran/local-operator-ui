@@ -158,10 +158,45 @@ const ROW_SOURCE = readFileSync(
 	"src/renderer/src/features/chat/components/message-input.tsx",
 	"utf8",
 );
-/** The row's control cluster: from its own class to the closing of its wrapper. */
+/*
+ * The hook that owns the window's clock, read the same way the row is: the fold
+ * is exercised directly by the tests below, but which module the composer folds
+ * THROUGH is a property of the source, and the previous shape of that assertion
+ * (the row importing `interruptSlotHold` itself) stopped being true the moment
+ * the timer moved out of the component.
+ */
+const HOOK_SOURCE = readFileSync(
+	"src/renderer/src/features/chat/hooks/use-interrupt-slot-hold.ts",
+	"utf8",
+);
+/*
+ * The row's control cluster: from its own class to the closing of its wrapper.
+ *
+ * ANCHORED WITHOUT ITS GAP CLASS (code review round 1, N2). The prefix used to
+ * include `gap-1`, so changing the row's own gap made `indexOf` return -1 and the
+ * slice start at the top of the file: four tests then failed with messages that
+ * blamed the controls (`the row lost one of its controls`, `the dictation control
+ * carries no rung-dependent size`) instead of the one thing that had moved. The
+ * gap is read out of the slice below, so a gap change now fails where the gap is
+ * asked for, and a class change that removes the anchor fails here, by name.
+ */
+const ROW_START = ROW_SOURCE.indexOf('className="ml-auto flex items-center');
+assert.ok(
+	ROW_START > -1,
+	"the composer's right-hand cluster is not where the row's own class says it is: the tests below read their geometry out of that slice, so find it before assuming a control moved",
+);
 const ROW = ROW_SOURCE.slice(
-	ROW_SOURCE.indexOf('className="ml-auto flex items-center gap-1'),
+	ROW_START,
 	ROW_SOURCE.indexOf("{messages.length === 0 && !isHydrating && !isSmallView"),
+);
+assert.ok(
+	ROW.length > 0,
+	"the row slice is empty: the cluster's class is there but its closing marker is not, so the row's shape changed",
+);
+assert.match(
+	ROW,
+	/gap-\d+/,
+	"the row declares no `gap-*` between its controls, and every box below is laid out from it",
 );
 
 /*
@@ -177,12 +212,32 @@ const ROW = ROW_SOURCE.slice(
  *   - the reservation's size, from the classes that block carries, resolved
  *     through the same map plus Tailwind's 4px spacing step.
  */
-const ROW_GAP_PX = (() => {
-	const cluster = ROW_SOURCE.slice(
-		ROW_SOURCE.indexOf('className="ml-auto flex items-center'),
+/*
+ * The row's OWN gap, read out of the row's own class attribute rather than out of
+ * everything after it (code review round 1, N2, second shape): a regex run from
+ * the cluster's class to the end of the file finds some OTHER `gap-*` in the row's
+ * descendants the moment the row stops declaring one, which is the same defect as
+ * anchoring the slice on the literal - it answers a question nobody asked. The
+ * row's class is the first thing in the slice, so it is the only thing read here.
+ */
+const ROW_CLASS = (() => {
+	const match = /^className="([^"]*)"/.exec(ROW);
+	assert.ok(
+		match,
+		"the composer's row does not open with a `className`: its own class is where this file reads the gap from",
 	);
-	const [, gap] = /gap-(\d+)/.exec(cluster);
-	return Number(gap) * 4;
+	return match[1];
+})();
+const ROW_GAP_PX = (() => {
+	// Named rather than defaulted: every box below is laid out from this number, so
+	// a row that stopped declaring a gap must fail HERE, saying so, rather than
+	// somewhere downstream blaming a control.
+	const match = /(?:^|\s)gap-(\d+)(?:\s|$)/.exec(ROW_CLASS);
+	assert.ok(
+		match,
+		`the composer's row declares no \`gap-*\` class of its own (\`${ROW_CLASS}\`): the boxes this file derives from it cannot be laid out, and the gap is what the reservation's arithmetic is about`,
+	);
+	return Number(match[1]) * 4;
 })();
 
 /** The Button variant map, so a control's `size` variant resolves to its class. */
@@ -378,13 +433,31 @@ test("the held box is mounted on the grace predicate, not on the capability alon
 	// The same legacy condition the dictation control is gated on: that path hides
 	// it and renders its own `Stop agent` in this cluster.
 	assert.match(ROW_PARTS.gate, /!\(isLoading && currentJobId\)/);
+	/*
+	 * THE DICTATION-IN-FLIGHT TERM (design round 1, D2), and why it is separate
+	 * from the window: while a recording runs Send is not rendered at all, so the
+	 * row draws `[Confirm][Cancel]` where the dictation control and Send were. A
+	 * release would move BOTH of them 36px right at the moment the window expired
+	 * - measured on the previous head: `[Confirm 1235][Cancel 1271][box 1307]`
+	 * inside the window, `[Confirm 1271][Cancel 1307]` after it - so a reflex press
+	 * at the Stop's own centre would land on Confirm recording. Holding the box
+	 * while the dictation controls are rendered removes that press; `isTranscribing`
+	 * deliberately has no term, because it gates both the dictation control and
+	 * Send, so nothing is drawn that a press could reach.
+	 */
+	assert.match(ROW_PARTS.gate, /slotHold\.held \|\| isRecording/);
 	// And the predicate is the shipped module's, folded through the shipped
-	// function rather than a local boolean that could outlive the window.
+	// function - in the hook that owns the timer, not in this component: the row
+	// reads its answer and nothing here restates the fold's rules.
 	assert.match(
 		ROW_SOURCE,
-		/import \{[^}]*interruptSlotHold[^}]*\} from "\.\.\/interrupt-slot-grace"/s,
+		/import \{ useInterruptSlotHold \} from "\.\.\/hooks\/use-interrupt-slot-hold"/,
 	);
-	assert.match(ROW_SOURCE, /interruptSlotHold\(\{/);
+	assert.match(
+		HOOK_SOURCE,
+		/import \{\s*type InterruptSlotHold,\s*interruptSlotHold,\s*\} from "\.\.\/interrupt-slot-grace"/s,
+	);
+	assert.match(HOOK_SOURCE, /interruptSlotHold\(\{/);
 });
 
 test("a running turn's row is [dictation][Stop][Send]", () => {
@@ -487,7 +560,7 @@ function assertGateAnswersSettled(fold) {
  * is a second press a fraction of a second behind the first, and a window that
  * collapsed to a frame or two would no longer cover it.
  */
-test("the grace window is the 500ms the reflex press was measured over", () => {
+test("the window is 500ms, chosen to cover the measured reflex with the settle latency around it", () => {
 	assert.equal(INTERRUPT_SLOT_GRACE_MS, 500);
 	const armed = interruptSlotHold({
 		previousActive: true,
@@ -588,6 +661,155 @@ test("a running turn holds the box, and a second traversal re-arms it", () => {
 		held: true,
 		heldUntil: 20_000 + INTERRUPT_SLOT_GRACE_MS,
 	});
+});
+
+test("a flip back inside the window drops the live deadline rather than inheriting it", () => {
+	/*
+	 * THE BRANCH A RAPID FLIP ACTUALLY TAKES, and the one review round 1 (m1)
+	 * found reached only with `heldUntil: null`: a window opens, the turn is
+	 * restarted before it expires, and the fold must answer `held` with NO deadline
+	 * - the control is on screen again, so the composer's timer must be cleared and
+	 * the old expiry must not survive into the next window. A change that kept the
+	 * deadline here, or that re-armed the timer from it, would release the box
+	 * while the new turn is still running, which is the hazard this whole module
+	 * exists to close.
+	 */
+	const deadline = 30_000 + INTERRUPT_SLOT_GRACE_MS;
+	assert.deepEqual(
+		interruptSlotHold({
+			previousActive: false,
+			currentActive: true,
+			heldUntil: deadline,
+			now: 30_100,
+		}),
+		{ held: true, heldUntil: null },
+	);
+});
+
+test("a second traversal inside the window opens a fresh window from its own edge", () => {
+	// The full measured shape, at fold level: settle (fresh 500ms window) -> the
+	// control is back 40ms later (deadline dropped) -> settles again 20ms after
+	// that, which must arm ITS OWN window, 60ms later than the first one would
+	// have expired.
+	const first = interruptSlotHold({
+		previousActive: true,
+		currentActive: false,
+		heldUntil: null,
+		now: 40_000,
+	});
+	assert.deepEqual(first, {
+		held: true,
+		heldUntil: 40_000 + INTERRUPT_SLOT_GRACE_MS,
+	});
+	const back = interruptSlotHold({
+		previousActive: false,
+		currentActive: true,
+		heldUntil: first.heldUntil,
+		now: 40_040,
+	});
+	assert.deepEqual(back, { held: true, heldUntil: null });
+	const second = interruptSlotHold({
+		previousActive: true,
+		currentActive: false,
+		heldUntil: back.heldUntil,
+		now: 40_060,
+	});
+	assert.deepEqual(second, {
+		held: true,
+		heldUntil: 40_060 + INTERRUPT_SLOT_GRACE_MS,
+	});
+	assert.ok(
+		(second.heldUntil ?? 0) > (first.heldUntil ?? 0),
+		"the second window did not move the release out: the box would be released while the second turn is still running",
+	);
+	// ... and the first deadline passing does not release it: the fold re-reads the
+	// LIVE deadline, so the box holds until the second one.
+	assert.deepEqual(
+		interruptSlotHold({
+			previousActive: false,
+			currentActive: false,
+			heldUntil: second.heldUntil,
+			now: first.heldUntil,
+		}),
+		second,
+	);
+});
+
+test("a one-frame re-derivation of the control's state restarts the window, bounded", () => {
+	/*
+	 * THE SEQUENCE QA ROUND 1 (Q1) AND UX ROUND 1 (U4) SAMPLED, replayed as the
+	 * regression pin. Both found a single frame, a few milliseconds after a turn
+	 * settles, in which the Stop control is re-rendered and the box is gone - the
+	 * two are mutually exclusive by construction, so a transient re-derivation of
+	 * `active` upstream can only show up that way. The offsets are the ones they
+	 * measured (settle, then the control back 6.7ms later, then gone again 42.2ms
+	 * after that), and what the fold must do with them is stated rather than
+	 * tolerated: the pulse drops the deadline, its own falling edge opens a FRESH
+	 * window, and the release therefore lands one window after the PULSE - 501ms -
+	 * rather than at the first window's expiry.
+	 *
+	 * The property this pins is boundedness, not the pulse: a change that made a
+	 * one-frame pulse silent (keeping the first deadline) or unbounded (re-arming
+	 * on every frame) fails here, and neither is fixed by a debounce - the code
+	 * comment that carries why says so.
+	 */
+	const settle = 50_000;
+	const pulseUp = settle + 6.7;
+	const pulseDown = pulseUp + 42.2;
+	const after = interruptSlotHold({
+		previousActive: true,
+		currentActive: false,
+		heldUntil: null,
+		now: settle,
+	});
+	assert.deepEqual(after, {
+		held: true,
+		heldUntil: settle + INTERRUPT_SLOT_GRACE_MS,
+	});
+	const pulse = interruptSlotHold({
+		previousActive: false,
+		currentActive: true,
+		heldUntil: after.heldUntil,
+		now: pulseUp,
+	});
+	assert.deepEqual(pulse, { held: true, heldUntil: null });
+	const restarted = interruptSlotHold({
+		previousActive: true,
+		currentActive: false,
+		heldUntil: pulse.heldUntil,
+		now: pulseDown,
+	});
+	assert.deepEqual(restarted, {
+		held: true,
+		heldUntil: pulseDown + INTERRUPT_SLOT_GRACE_MS,
+	});
+	// The delay is the pulse's own length and no more: one window after the SECOND
+	// edge, so the arrival is bounded at 500ms + the pulse rather than at a
+	// multiple of it.
+	assert.equal(
+		(restarted.heldUntil ?? 0) - pulseUp,
+		INTERRUPT_SLOT_GRACE_MS + (pulseDown - pulseUp),
+		"the release is not one window after the pulse's own falling edge",
+	);
+	// Released there, and still held one millisecond before it.
+	assert.deepEqual(
+		interruptSlotHold({
+			previousActive: false,
+			currentActive: false,
+			heldUntil: restarted.heldUntil,
+			now: restarted.heldUntil ?? 0,
+		}),
+		{ held: false, heldUntil: null },
+	);
+	assert.equal(
+		interruptSlotHold({
+			previousActive: false,
+			currentActive: false,
+			heldUntil: restarted.heldUntil,
+			now: (restarted.heldUntil ?? 0) - 1,
+		}).held,
+		true,
+	);
 });
 
 const requests = [];

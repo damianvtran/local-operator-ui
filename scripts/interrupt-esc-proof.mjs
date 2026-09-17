@@ -787,11 +787,48 @@ const controlAt = async (selector) => {
 	return info === null ? null : JSON.parse(info);
 };
 
+/**
+ * The composer's right-hand cluster AND the page's clock in ONE round trip.
+ *
+ * The window is half a second wide and this rig measures inside it, so a
+ * round trip saved here is 20-60ms of margin: the first version measured the
+ * boxes and the clock separately and, on a loaded machine, landed 659ms past the
+ * flip - outside the window it was measuring, which reads as the hazard. One
+ * `Runtime.evaluate` is the difference between measuring the window and
+ * measuring the rig.
+ */
+const clusterBoxesAndStamp = async () => {
+	const value = JSON.parse(
+		await cdp.evaluate(`JSON.stringify({
+			boxes: [...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Confirm recording"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
+				.map((el) => {
+					const r = el.getBoundingClientRect();
+					return {
+						label: el.getAttribute("aria-label") ?? "reserved-slot",
+						x: Math.round(r.left),
+						w: Math.round(r.width),
+						centre: Math.round(r.left + r.width / 2),
+					};
+				})
+				.sort((a, b) => a.x - b.x),
+			now: performance.now(),
+			flip: window.__loFlip ?? null,
+		})`),
+	);
+	return {
+		boxes: value.boxes,
+		at: {
+			sinceFlipMs:
+				value.flip === null ? null : Math.round(value.now - value.flip),
+		},
+	};
+};
+
 /** The composer's right-hand cluster, as boxes, so a frame and a record agree. */
 const clusterBoxes = async () =>
 	JSON.parse(
 		await cdp.evaluate(`JSON.stringify(
-			[...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
+			[...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Confirm recording"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
 				.map((el) => {
 					const r = el.getBoundingClientRect();
 					return {
@@ -804,6 +841,84 @@ const clusterBoxes = async () =>
 				.sort((a, b) => a.x - b.x),
 		)`),
 	);
+
+/*
+ * EVERY TRANSITION OF THE ROW'S TWO INDICATORS, recorded from the page for the
+ * whole run.
+ *
+ * QA round 1 (Q1) and UX round 1 (U4) both saw a single frame, a few
+ * milliseconds after a turn settles, in which the Stop control is re-rendered and
+ * the box is gone - and QA attributed it to a later snapshot re-deriving the turn
+ * as active without being able to prove it. The control and the box are mutually
+ * exclusive by construction in the composer's gate, so such a pulse can only
+ * arrive through `active` itself; this observer is what turns that into a
+ * measurement. It records the Stop's presence, the box's presence AND the
+ * composer's own placeholder string - the cheap page-side proxy for the canonical
+ * layer's busy flag ("Waiting for the agent" versus "Ask me for help") - with the
+ * page's own timestamp, on every DOM change rather than once a frame.
+ *
+ * A MutationObserver and NOT a `requestAnimationFrame` loop, for two reasons that
+ * both matter here: a rAF loop can MISS a pulse shorter than a frame (QA's was
+ * 5.8ms at ~120fps, so a 60Hz sampler would have to be lucky), and a continuous
+ * rAF loop keeps the renderer drawing, which measurably slowed this rig's own
+ * CDP calls - the first version of this sampler pushed the window's own
+ * measurement 659ms past the flip, i.e. past the thing it was measuring. An
+ * observer is event-driven: it costs nothing while the row is still, and it
+ * cannot miss a change.
+ *
+ * The effect it reports is BOUNDED by construction (one fresh window after the
+ * pulse, argued in `interrupt-slot-grace.ts`), so this is recorded and attributed
+ * rather than gated: see the README's account of what the run found.
+ */
+const armSettleSampler = async () =>
+	cdp.evaluate(`(() => {
+		const stop = () => document.querySelector('[aria-label="Stop"]');
+		const slot = () => document.querySelector('[data-interrupt-slot]');
+		const field = () => document.querySelector('textarea[aria-label="Message"]');
+		const read = () => ({
+			t: Math.round(performance.now()),
+			stop: stop() !== null,
+			slot: slot() !== null,
+			placeholder: field()?.getAttribute("placeholder") ?? null,
+		});
+		window.__loSettle = { samples: [read()], changes: 0, startedAt: Math.round(performance.now()) };
+		let last = window.__loSettle.samples[0];
+		const observer = new MutationObserver(() => {
+			const now = read();
+			window.__loSettle.changes += 1;
+			if (
+				last === null ||
+				now.stop !== last.stop ||
+				now.slot !== last.slot ||
+				now.placeholder !== last.placeholder
+			) {
+				window.__loSettle.samples.push(now);
+				last = now;
+			}
+		});
+		observer.observe(document.body, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ["placeholder"],
+		});
+		return true;
+	})()`);
+
+/** The sampler's record: its transitions, the mutations it saw and its span. */
+const readSettleSampler = async () => {
+	const raw = JSON.parse(
+		await cdp.evaluate("JSON.stringify(window.__loSettle ?? null)"),
+	);
+	if (raw === null) return null;
+	const span =
+		raw.samples.length > 0 ? raw.samples.at(-1).t - raw.startedAt : 0;
+	return {
+		changes: raw.changes,
+		sampledMs: Math.round(span),
+		samples: raw.samples,
+	};
+};
 
 /** Open the run details pane from its own trigger, as a user does. */
 const openRunPane = async () => {
@@ -853,6 +968,11 @@ try {
 	await sleep(1500);
 	await cdp.evaluate("window.focus(); document.body.focus(); true");
 
+	// Armed before the first turn, read at the end: every transition of the Stop,
+	// the box and the composer's own placeholder for the whole run (see the sampler
+	// for what that attributes and why it is a record rather than a gate).
+	await armSettleSampler();
+
 	// Established before anything is measured: a run in which the dictation
 	// control is disabled cannot answer either of the questions below, so it says
 	// so rather than measuring the credential probe.
@@ -883,7 +1003,10 @@ try {
 	const box = await pressStop();
 	record("turn1.pressed", box);
 	record("turn1.settled", await waitForStreaming(sessionId, false));
-	record("turn1.controlAfter", { present: await controlPresent() });
+	// THE WINDOW'S OWN MEASUREMENT, taken before anything else that costs a round
+	// trip (see `clusterBoxesAndStamp`): the control being gone and the box being
+	// held are one fact read from one render.
+	const graceReading = await clusterBoxesAndStamp();
 	await cdp.shot("after-stop.png");
 
 	/*
@@ -903,8 +1026,8 @@ try {
 	 * claim is verified: a claim that does not hold is recorded with `ok: false`
 	 * and fails the run at the end rather than being left for a reader to notice.
 	 */
-	const graceBoxes = await clusterBoxes();
-	const graceAt = await stamp();
+	const graceBoxes = graceReading.boxes;
+	const graceAt = graceReading.at;
 	record("slot.clusterGrace", {
 		boxes: graceBoxes,
 		at: graceAt,
@@ -912,6 +1035,7 @@ try {
 	});
 	const repress = await probeSlot({ x: box.x, y: box.y });
 	record("slot.repress", repress);
+	record("turn1.controlAfter", { present: await controlPresent() });
 	record("slot.clusterAfterRepress", { boxes: await clusterBoxes() });
 
 	const boxOf = (boxes, label) => boxes.find((entry) => entry.label === label);
@@ -1054,6 +1178,103 @@ try {
 		});
 	}
 
+	/*
+	 * THE DICTATION-IN-FLIGHT SHAPE (design round 1, D2), measured rather than
+	 * argued: start a dictation, settle a turn underneath it, and photograph the row
+	 * on both sides of the window.
+	 *
+	 * WHY IT IS ITS OWN STEP. While a recording runs the row draws
+	 * `[Confirm recording][Cancel recording]` where the dictation control and Send
+	 * were, and the box renders AFTER them - so with only the grace term the release
+	 * moved BOTH of them 36px right, putting Confirm recording in the Stop's own
+	 * box, where a press more than a window after the turn ends sends in-flight
+	 * audio. The composer now holds the box while the dictation controls are
+	 * rendered, and this step is the evidence for that: the same boxes in the same
+	 * places on both sides of the window, and the collapse happening when the
+	 * RECORDING ends instead.
+	 */
+	record("inFlight.start", {
+		aim: await pressElement(MIC, "the dictation control"),
+	});
+	await sleep(1200);
+	record("inFlight.recording", await recordingState());
+	if ((await recordingState()).recording === true) {
+		record("inFlight.admit", await startTurn(sessionId));
+		record("inFlight.streaming", await waitForStreaming(sessionId, true));
+		// Re-armed for THIS settlement: `window.__loFlip` is a single slot, and the
+		// stamp beside the in-flight boxes is meaningless if it still names the first
+		// turn's flip.
+		await armFlipObserver(STOP);
+		const inFlightPressed = await pressStop();
+		record("inFlight.settled", await waitForStreaming(sessionId, false));
+		record("inFlight.pressed", inFlightPressed);
+		const heldBoxes = await clusterBoxes();
+		record("inFlight.grace", {
+			boxes: heldBoxes,
+			at: await stamp(),
+			graceMs: INTERRUPT_SLOT_GRACE_MS,
+		});
+		await cdp.shot("after-stop-recording-held.png");
+		await sleep(INTERRUPT_SLOT_GRACE_MS + 400);
+		const lateBoxes = await clusterBoxes();
+		record("inFlight.afterWindow", { boxes: lateBoxes, at: await stamp() });
+		await cdp.shot("after-stop-recording-settled.png");
+		const labelsOf = (boxes) => boxes.map((entry) => entry.label).join("|");
+		const rowGapInFlight =
+			heldBoxes.length > 1
+				? heldBoxes[1].x - (heldBoxes[0].x + heldBoxes[0].w)
+				: null;
+		verify(
+			"inFlight.holdsTheBox",
+			labelsOf(heldBoxes) ===
+				"Confirm recording|Cancel recording|reserved-slot" &&
+				labelsOf(lateBoxes) === labelsOf(heldBoxes) &&
+				heldBoxes.every(
+					(box, index) =>
+						box.x === lateBoxes[index].x && box.w === lateBoxes[index].w,
+				) &&
+				heldBoxes.at(-1).x === inFlightPressed.rect.left &&
+				heldBoxes.at(-1).w === inFlightPressed.rect.w,
+			{
+				what: "the box is not held while a dictation is in flight, so the release moves the recording's own controls 36px under a press",
+				held: heldBoxes,
+				afterWindow: lateBoxes,
+				stop: inFlightPressed.rect,
+			},
+		);
+		const ended = await pressElement(
+			'[aria-label="Cancel recording"]',
+			"the recording's own cancel control",
+		);
+		await sleep(800);
+		const endedBoxes = await clusterBoxes();
+		record("inFlight.recordingEnded", {
+			aim: ended,
+			boxes: endedBoxes,
+			after: await recordingState(),
+			// Which of the in-flight shapes' controls the dictation control comes back
+			// into, measured rather than described: it is the recording's own control's
+			// box, not the one the box held. That residual is recorded in the PR as
+			// deliberately not fixed - it predates this change and is unchanged by it.
+			takesBack:
+				heldBoxes.find((entry) => entry.x === endedBoxes[0].x)?.label ?? null,
+		});
+		await cdp.shot("after-recording-ends.png");
+		verify(
+			"inFlight.collapsesWithTheRecording",
+			labelsOf(endedBoxes) === "Start recording|Send message" &&
+				rowGapInFlight !== null &&
+				endedBoxes[1].x === endedBoxes[0].x + endedBoxes[0].w + rowGapInFlight,
+			{
+				what: "the row did not collapse to the idle shape when the recording ended",
+				ended: endedBoxes,
+				held: heldBoxes,
+			},
+		);
+	} else {
+		record("inFlight.skipped", { reason: "no recording could be started" });
+	}
+
 	/* ------------------------------------------------------- 2. Escape */
 	record("turn2.admit", await startTurn(sessionId));
 	record("turn2.streaming", await waitForStreaming(sessionId, true));
@@ -1148,6 +1369,19 @@ try {
 	console.error(String(error?.stack ?? error));
 	process.exit(1);
 }
+
+record("settle.timeline", await readSettleSampler());
+// A sampler that recorded nothing would report a clean timeline for free, so the
+// record says how fast it ran and that it saw the row change at all.
+const timeline = report.steps.at(-1);
+verify(
+	"settle.sampled",
+	(timeline.changes ?? 0) > 20 && (timeline.samples?.length ?? 0) >= 6,
+	{
+		what: "the settle observer saw too little of the run to attribute anything with it",
+		timeline,
+	},
+);
 
 report.claims = claims;
 await finish(cdp);

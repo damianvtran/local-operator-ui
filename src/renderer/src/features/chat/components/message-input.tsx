@@ -72,10 +72,7 @@ import type {
 	DraftPickerDestination,
 	DraftResolution,
 } from "../draft-selection";
-import {
-	type InterruptSlotHold,
-	interruptSlotHold,
-} from "../interrupt-slot-grace";
+import { useInterruptSlotHold } from "../hooks/use-interrupt-slot-hold";
 import { MOVE_UNAVAILABLE_REASON } from "../move-session";
 import {
 	DESTINATIONS,
@@ -2828,75 +2825,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER A TURN ENDS.
 		 *
 		 * The reservation itself is argued at the row (see `data-interrupt-slot`
-		 * below); this is the clock it runs on, and the reason it is a grace rather
-		 * than a permanent state: the operator reported the standing gap it used to
-		 * leave in the idle composer, and the geometry cannot avoid moving the
-		 * dictation control when the Stop leaves the row - with the Stop between them
-		 * the two controls are 68px apart, without it 36px, so an idle row in which
-		 * dictation sits beside Send NECESSARILY puts it where the Stop was. Holding
-		 * the box only for the window the reflex press comes in (`interrupt-slot-
-		 * grace.ts` carries the measured U1/Q1 hazard behind the number and what the
-		 * 500ms costs) is what answers both reports at once.
-		 *
-		 * THE EDGE, and why it is read from a ref rather than from state. What opens
-		 * the window is a TRANSITION - the control was rendered and now is not - which
-		 * cannot be read off one render, so the previous sample is kept in a ref. The
-		 * fold itself is pure and idempotent (`interruptSlotHold`), which is what makes
-		 * a double-invoked effect harmless: folding the same inputs twice cannot
-		 * shorten the window, extend it, or open one that was never opened. A freshly
-		 * mounted idle composer folds (false, false, no deadline) and therefore holds
-		 * nothing - mounting never renders a reservation.
-		 *
-		 * ONE TIMER, ARMED ONLY WHEN THE DEADLINE CHANGES, and cleared when the box is
-		 * replaced by the control it stands in for. It is deliberately NOT cleared by
-		 * the effect that armed it: that effect re-runs when the state it just set
-		 * lands, and a cleanup responsible for the timer would cancel the window it had
-		 * opened. The unmount-only effect below owns the disposal instead.
+		 * below); the clock it runs on is `useInterruptSlotHold`, which owns the
+		 * edge, the single timer and its disposal, and which the review round's own
+		 * test drives through the measured sequence. What belongs here is the ORDER
+		 * of the two conditions the row reads: the fold's `held` first, so a running
+		 * turn is never asked to render a box beside its own control.
 		 */
-		const stopActive = Boolean(canonicalStop?.active);
-		const [slotHold, setSlotHold] = useState<InterruptSlotHold>({
-			held: false,
-			heldUntil: null,
-		});
-		const wasStopActiveRef = useRef(false);
-		const slotGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-			null,
-		);
-		useEffect(() => {
-			const now = Date.now();
-			const next = interruptSlotHold({
-				previousActive: wasStopActiveRef.current,
-				currentActive: stopActive,
-				heldUntil: slotHold.heldUntil,
-				now,
-			});
-			wasStopActiveRef.current = stopActive;
-			if (next.held === slotHold.held && next.heldUntil === slotHold.heldUntil)
-				return;
-			if (slotGraceTimerRef.current !== null) {
-				clearTimeout(slotGraceTimerRef.current);
-				slotGraceTimerRef.current = null;
-			}
-			setSlotHold(next);
-			if (next.heldUntil !== null) {
-				slotGraceTimerRef.current = setTimeout(() => {
-					slotGraceTimerRef.current = null;
-					setSlotHold({ held: false, heldUntil: null });
-				}, next.heldUntil - now);
-			}
-		}, [stopActive, slotHold]);
-		// The window must not outlive the composer that opened it: a timer left armed
-		// here would set state on an unmounted component, and a failed unmount is the
-		// kind of leak that only shows up as a warning nobody reads.
-		useEffect(
-			() => () => {
-				if (slotGraceTimerRef.current !== null) {
-					clearTimeout(slotGraceTimerRef.current);
-					slotGraceTimerRef.current = null;
-				}
-			},
-			[],
-		);
+		const slotHold = useInterruptSlotHold(Boolean(canonicalStop?.active));
 
 		/*
 		 * Whether the suggestion chips are inert.
@@ -4614,10 +4549,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									 * refused, gated or greyed. The dictation control stays visible,
 									 * live and pressable at every instant, and during the grace it is
 									 * at its busy position - the row the operator sees today. The
-									 * grace decides whether an invisible placeholder sits beside it,
-									 * and nothing else. A control that looks live but is not would be
-									 * a worse defect than the gap it replaced, and it would refuse a
-									 * deliberate press.
+									 * reservation (the window's grace, or the in-flight dictation case
+									 * below) decides whether an invisible placeholder sits beside a
+									 * control, and nothing else. A control that looks live but is not
+									 * would be a worse defect than the gap it replaced, and it would
+									 * refuse a deliberate press.
 									 *
 									 * ALTERNATIVES CONSIDERED AND REJECTED. (a) No guard at all:
 									 * reintroduces the MAJOR above. (b) Putting Stop to the LEFT of
@@ -4634,16 +4570,39 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									 * THE START-OF-TURN TRANSITION IS DELIBERATELY NOT CHANGED (noted
 									 * so a later reader does not "fix" it by symmetry). When the turn
 									 * starts, the Stop appears in the box the dictation control had
-									 * been beside, so Send moves right by the same 36px. It is a
-									 * different case on the merits: the dictation control unmounts on
-									 * its own press (`isRecording` is the same state the recorder
-									 * holds), so nothing the user just pressed is left where a press
-									 * would land somewhere else; the control that ARRIVES is the one
-									 * the new turn needs; and Send moves rather than being replaced,
-									 * so an aim at Send lands on Send. A press aimed at where Send was
-									 * would now hit Stop - that is the cost, and it stops the turn the
-									 * user can see is running, which is recoverable and legible in a
-									 * way that a silent microphone recording is not.
+									 * occupied, so the DICTATION control moves 36px LEFT - 32px of
+									 * control plus the row's 4px gap - and Send does not move at all:
+									 * it is pinned to the row's right edge in every state (measured,
+									 * default rung: Send 1307 while running, inside the window and
+									 * settled; the dictation control 1271 settled and 1235 running).
+									 * The residual is the mirror of the one this box exists for: a press
+									 * aimed at the dictation control's own position lands on the Stop
+									 * once the Stop is drawn there, so a user reaching for dictation as a
+									 * turn starts stops the turn instead. It stays unchanged on the
+									 * merits: the control that ARRIVES is the one the new turn needs,
+									 * stopping a turn is legible and recoverable (the transcript says
+									 * "Interrupted") where a silent microphone recording is not, and the
+									 * only alternative that removes it - holding the box while idle too -
+									 * is the operator's own reported defect.
+									 *
+									 * THE BOX IS HELD WHILE A DICTATION IS IN FLIGHT, on a different
+									 * reason than the window. While `isRecording` the row draws
+									 * `[Confirm recording][Cancel recording]` where the dictation control
+									 * and Send were (Send is gated on `!isRecording`), so a release would
+									 * move BOTH of them 36px right at the moment the window expired -
+									 * measured on the previous head: `[Confirm 1235][Cancel 1271][box
+									 * 1307]` inside the window, `[Confirm 1271][Cancel 1307]` after it.
+									 * A reflex press at the Stop's own centre would therefore land on
+									 * Confirm recording and send in-flight audio. Holding the box while
+									 * the dictation controls are rendered removes that press and costs
+									 * nothing visible: neither the dictation control nor Send is drawn in
+									 * that shape, so there is no beside-Send reading to preserve - this
+									 * is also the shape the pre-change build had, where the reservation
+									 * was standing. `isTranscribing` deliberately gets no such term, and
+									 * that is a statement rather than an omission: `!isTranscribing` gates
+									 * both the dictation control and Send, so while a transcription is in
+									 * flight the row draws nothing a press could reach in the vacated
+									 * box, and a term for it would be symmetry rather than a fix.
 									 *
 									 * `aria-hidden`, no focus and no pointer events: this is geometry,
 									 * not a control - nothing may be reachable, announced or pressed
@@ -4654,7 +4613,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									 */}
 									{canonicalStopAvailable &&
 										!canonicalStop?.active &&
-										slotHold.held &&
+										(slotHold.held || isRecording) &&
 										!(isLoading && currentJobId) && (
 											<span
 												aria-hidden="true"
