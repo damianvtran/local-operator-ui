@@ -2753,8 +2753,8 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 		"and not the tab count, which is what it was for a round",
 	);
 	assert.ok(
-		strip.includes("+{tabsOffScreen}"),
-		"the count of tabs that are not shown is the control's own text",
+		/\n\s*\{tabsOffScreen\}\n\s*<\/span>/.test(strip),
+		"the count of tabs that are not shown is the control's own text, and it is the NUMBER rather than a second `+N`: U5's ruling is that the two affordances must not differ only by a digit after a plus, so the count carries no plus at all",
 	);
 	// AND IT IS A CHIP RATHER THAN A BARE PLUS (design review round 2, U5, ruled), which is
 	// what stops it reading as the strip's `+` (new tab) control at a glance: the count
@@ -2767,7 +2767,9 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 	);
 	assert.ok(
 		strip.includes('variant="outline"') &&
-			strip.includes('className="mx-1 h-4 w-px shrink-0 self-center bg-hairline"'),
+			strip.includes(
+				'className="mx-1 h-4 w-px shrink-0 self-center bg-hairline"',
+			),
 		"the new-tab control is a bounded control, and the strip's own rule separates it from the count when both are on screen",
 	);
 	assert.ok(

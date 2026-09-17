@@ -1218,10 +1218,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					 * this control and the strip's `+` (new tab) used to be two bare plus signs
 					 * distinguished only by whether a digit followed one of them. The count now
 					 * carries the chip grammar the tab chips use (`border-control`, `text-ink-dim`,
-					 * `tabular-nums`) so it reads as a COUNT, and the words `N more tabs` are in
-					 * both channels the ruling names: the control's accessible name and its
-					 * tooltip. `N not shown` stays the LIST's own heading, where the sentence is
-					 * about the rows below it rather than about this control's count.
+					 * `tabular-nums`) so it reads as a COUNT, it carries no plus of its own (see
+					 * its own note below), and the words `N more tabs` are in both channels the
+					 * ruling names: the control's accessible name and its tooltip. `N not shown`
+					 * stays the LIST's own heading, where the sentence is about the rows below it
+					 * rather than about this control's count.
 					 */
 					<Tooltip
 						content={
@@ -1245,15 +1246,25 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							className={cn("shrink-0 gap-1 self-center px-1")}
 						>
 							<ChevronDown aria-hidden="true" />
-							{/* The count itself, drawn in the chip grammar and tabular so two digits
-							    do not shift the row it sits in. */}
+							{/*
+							 * THE COUNT IS THE NUMBER, WITHOUT A PLUS, and that is the ruling's point
+							 * rather than a flourish: with `+4` beside the new-tab control's `+`, the
+							 * two still differed by whether a digit followed the plus — one glyph
+							 * apart, which is the sentence U5 is written from. The chip keeps its
+							 * grammar (`border-control`, `ink-dim`, tabular) and keeps its count; what
+							 * it loses is the one character that made it a second plus sign, so the
+							 * only `+` in this corner is the control that opens one more tab. The
+							 * words are still in both read channels: "N more tabs" in the control's
+							 * accessible name and in its tooltip, and the pinned list's own heading
+							 * says `All tabs, N not shown`.
+							 */}
 							<span
 								aria-hidden="true"
 								className={cn(
 									"rounded-sm border border-control px-1 text-meta text-ink-dim tabular-nums",
 								)}
 							>
-								+{tabsOffScreen}
+								{tabsOffScreen}
 							</span>
 						</Button>
 					</Tooltip>
