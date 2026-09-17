@@ -313,19 +313,62 @@ export const STORE_OUT_OF_SPACE_CODE = "store_out_of_space";
 export const STORE_UNAVAILABLE_CODE = "store_unavailable";
 
 /**
+ * Whether this refusal is the STORE's own verdict on the write - the two arms
+ * that are not contention.
+ *
+ * ONE PREDICATE FOR ONE FACT, with two consumers, because the two of them must
+ * not disagree about it on one screen. The fact is what a store failure KNOWS
+ * that the other refusals do not: the write did not happen. Every other refusal
+ * in this list is silent about the request's fate - the transport may have lost
+ * the response, the owner may have admitted it - which is why their shared held
+ * claim says the outcome is "not knowable" and conditions the retry on a reply
+ * arriving.
+ *
+ * For these two codes that sentence is simply wrong, and it is wrong in the
+ * incident's own direction: it tells the operator to wait for a reply that the
+ * failed write makes impossible while the transcript above shows their message
+ * painted (UX round 1, U4). So the composer reads this predicate for the two
+ * places the difference lands:
+ *
+ *   - the held line states the known fact instead of the unknowable-outcome
+ *     sentence (see the alert's `storeWriteRefused` branch);
+ *   - the generic retry hint is withheld, by `withholdsRetryHint` below, which
+ *     is a SEPARATE question - "is the retry the remedy" - and is kept separate
+ *     here: one predicate per fact, so a code can be added to either list for
+ *     its own reason without silently answering the other question.
+ *
+ * `store_busy` is deliberately NOT a member: contention is a refusal whose
+ * outcome really is unknowable, and it keeps the shared held sentence for the
+ * same reason it keeps the retry hint.
+ */
+export function isStoreWriteRefusal(code: string | undefined): boolean {
+	return code === STORE_OUT_OF_SPACE_CODE || code === STORE_UNAVAILABLE_CODE;
+}
+
+/**
  * Whether a refusal's remedy is anything OTHER than "send it again".
  *
  * The composer's generic retry hint is the alert's "what to do" half, and it is
- * only ever rendered where it is true. Five refusals cannot be answered by
+ * only ever rendered where it is true. Six refusals cannot be answered by
  * resending the same bytes: the read window refuses every send for as long as
  * its own notice is on screen, the leading-slash policy refuses this text
  * forever, an attachment that cannot be read is still unreadable on the next
  * attempt - the same chip is still attached, so the retry is refused for the
- * same reason until the chip is replaced or removed - and a store that is out of
- * space or unreadable is in the same state on the next attempt too (UX round 3,
- * U9; UX round 2, U13; design round 4, D13; the store split). Each carries its
- * own statement of what to do instead, and the composer withholds the hint for
- * all of them.
+ * same reason until the chip is replaced or removed - a store that is out of
+ * space or unreadable is in the same state on the next attempt too, and the
+ * unchanged-payload guard refuses the retry it is holding BY CONSTRUCTION: any
+ * send that reaches it has already been compared against the held payload and
+ * found different (UX round 3, U9; UX round 2, U13; design round 4, D13; the
+ * store split; UX round 1, U2). Each carries its own statement of what to do
+ * instead, and the composer withholds the hint for all of them.
+ *
+ * The guard's own code is the one with a history of being left out, and it is
+ * the one where the hint is not merely redundant but self-contradicting: the
+ * operator's own remedy on 2026-09-17 - drop the image that pushed the write
+ * over the threshold - lands exactly there, and read "Send it again" over a
+ * guard that refuses every resend until the claim is released. It went to the
+ * user as an infinite instruction/refusal loop, measured at 11 -> 11 requests
+ * (UX round 1, U2).
  *
  * What the two store codes add to that list is a distinction the copy alone
  * cannot make: the third arm of the same backend ladder, `store_busy`, reads
@@ -341,6 +384,7 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		code === SESSION_UNVALIDATED_CODE ||
 		code === LEADING_SLASH_CODE ||
 		code === UNREADABLE_ATTACHMENT_CODE ||
+		code === UNCONFIRMED_SEND_CODE ||
 		code === STORE_OUT_OF_SPACE_CODE ||
 		code === STORE_UNAVAILABLE_CODE
 	);
@@ -764,6 +808,30 @@ export async function admitChatDraft(
 		submittedAttachments: input.attachments,
 		submittedImages: images,
 		submittedMode: mode,
+		/*
+		 * The SENTENCE is cleared here and the CODE is deliberately left alone, and
+		 * the asymmetry is a decision rather than an oversight (review round 1,
+		 * R-4, which asked for the choice to be stated).
+		 *
+		 * Clearing both would hand the two refusals that raise a sentence with NO
+		 * code of their own - the send lock (`chat-page`'s "send it again in a
+		 * moment") and the message-budget refusal - the answer `undefined`, and
+		 * `withholdsRetryHint(undefined)` is false, so the composer's generic
+		 * "Send it again" would render under the budget refusal, whose remedy is
+		 * "remove an image or split the message". That is the D13 defect (a hint
+		 * instructing the action the refusal forbids) reintroduced on a path this
+		 * PR does not touch, one line below the fix for it.
+		 *
+		 * Leaving it alone has a cost, and it is the mirror image: a code-less
+		 * refusal falling through after a store refusal inherits these codes and
+		 * loses a hint that would have been TRUE there. It is the benign direction
+		 * - the send-lock sentence carries its own retry instruction in words
+		 * ("send it again in a moment"), so what is lost is a redundant line and
+		 * never a wrong instruction - and the fix that would remove it entirely is
+		 * for those two sites to carry codes of their own, which is a change to a
+		 * third refusal family (its own copy and its own evidence) rather than a
+		 * line of remediation here.
+		 */
 		error: undefined,
 	});
 	// Declared outside the try because the catch needs it to address the echo:

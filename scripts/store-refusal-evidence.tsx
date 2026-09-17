@@ -7,9 +7,9 @@
  * carrying its own CODE, so `withholdsRetryHint` withholds the generic "Your
  * message is still in the composer. Send it again." - while the 503 of the same
  * shape keeps it, because there a retry is the right advice. A component handed
- * `{message, withholdRetryHint}` proves the component; it proves nothing about
- * the ladder that produced them, and every defect this change exists for lives
- * on that ladder. So the page runs, in order:
+ * `{message, code}` proves the component; it proves nothing about the ladder that
+ * produced them, and every defect this change exists for lives on that ladder.
+ * So the page runs, in order:
  *
  *   1. the app's real transport, against the harness's `/__desktop` (the
  *      backend's verdict substituted at the HTTP boundary, the same substitution
@@ -18,26 +18,48 @@
  *      a non-2xx status and builds the `DesktopControlError`;
  *   3. the real `admitChatDraft`, which records the refusal and its code on the
  *      draft ROW the composer reads;
- *   4. the SHIPPED `withholdsRetryHint`, on the code that row holds;
+ *   4. the SHIPPED `withholdsRetryHint` and `isStoreWriteRefusal`, on the code
+ *      that row holds;
  *   5. the shipped `MessageInput`, on the same derivation `chat-page` uses for
- *      `composerSendError` (`message: sendError || draft.error`,
- *      `withholdRetryHint: withholdsRetryHint(activeErrorCode)`).
+ *      `composerSendError` (`message: sendError || draft.error`, `code:
+ *      activeErrorCode`, `heldText`/`heldAttachments` off the row,
+ *      `onRestoreHeld`/`onDiscard`/`onReleaseHeld` supplied from the same row).
  *
- * The box is seeded with the text the refused send carried, for EVERY case.
- * That is deliberate and it is the whole reason the busy case is captured beside
- * the other two: the alert's hint is also gated on the box holding something, so
- * an out-of-space frame shot over an empty composer would show no hint for a
- * reason that has nothing to do with the code. Same box, same pipeline, one
- * difference - the code - and the hint is the thing that moves.
+ * THREE STATES, because one screen cannot answer every claim this set makes
+ * (UX round 1, U1/U2/U3/U4):
+ *
+ *   - `restored` - the payload is back in the box (`Restore message`, or the
+ *     user retyped it). This is the state the hint's own condition is satisfied
+ *     in, so it is the state that shows the CODE deciding the hint: busy keeps
+ *     it, the two store arms do not.
+ *   - `held` - the refusal's own state, which is what the operator actually
+ *     lands on: the claim holds the text, the BOX IS EMPTY, the chip row still
+ *     carries the file, and the two controls are offered. This is where a
+ *     sentence that says "send it again" is an instruction the app cannot honour
+ *     until its control is named, and where a store sentence's "the outcome is
+ *     unknown" contradicts the sentence above it.
+ *   - `altered` - the operator's own remedy from 2026-09-17, one step on: the
+ *     text restored, the IMAGE DROPPED, and Enter pressed. The second admission
+ *     is really issued, so the unchanged-payload guard really fires and its own
+ *     code is what the alert renders. Same text, one fewer file - the case that
+ *     discriminates a chip-aware payload comparison from a text-only one.
+ *
+ * The box is set rather than typed, and the chip is the app's own PASTED shape (a
+ * `data:` URL, so no filename strip and no artefact of the harness), but the
+ * refusal, the row, the guard and the alert are the app's own code throughout.
  */
 
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
-import { MessageInput } from "@renderer/features/chat/components/message-input";
+import {
+	type ComposerSendError,
+	MessageInput,
+} from "@renderer/features/chat/components/message-input";
 import type { Message } from "@renderer/features/chat/types/message";
 import {
 	admitChatDraft,
 	isRefusedBeforeAdmission,
+	isStoreWriteRefusal,
 	useCanonicalSessionsStore,
 	withholdsRetryHint,
 } from "@shared/store/canonical-sessions-store";
@@ -53,7 +75,10 @@ import "./store-refusal-evidence.css";
 const params = new URLSearchParams(window.location.search);
 const COLUMN = Number(params.get("w") ?? 892);
 const CASE = params.get("case") ?? "out-of-space";
+const STATE = (params.get("state") ?? "restored") as State;
 const THEME = (params.get("theme") ?? DEFAULT_THEME) as ThemeName;
+
+type State = "restored" | "held" | "altered";
 
 applyThemeToDocument(THEME);
 
@@ -101,6 +126,14 @@ const TEXT = "Here is the screenshot from the failing run.";
  * user ever sees. The same bytes go on the wire as the send's image, so the chip
  * and the refused payload are one image rather than two.
  *
+ * It is passed as an ATTACHMENT as well as an image, because that is what the app
+ * does: `chat-page` sends `attachments.map((a) => a.path)` beside the encoded
+ * images, and the store's unchanged-payload guard compares text AND attachments
+ * AND images. A fixture that put the image only on the wire would be a payload
+ * whose chip set does not match its row - i.e. permanently in the state U2 is
+ * about, and the `restored` frame would show no hint for a reason that has
+ * nothing to do with its code.
+ *
  * A 48x28 PNG, generated rather than inlined by hand (144 bytes, so the request
  * stays far inside every budget this flow checks).
  */
@@ -110,26 +143,42 @@ const IMAGE_DATA_URL = `data:image/png;base64,${IMAGE_B64}`;
 
 type Evidence = {
 	case: string;
+	state: State;
 	status: number | null;
+	/** The code this state's refusal classified itself with, as `chat-page` reads it. */
 	code: string | undefined;
+	/** The row's own copy of it, which the guard's refusal does not update (R-4). */
+	rowCode?: string | undefined;
+	rowMessage?: string | undefined;
 	message: string | undefined;
 	withholdRetryHint: boolean;
+	storeWriteRefusal: boolean;
 	refusedBeforeAdmission: boolean;
 	admissionAttempted: boolean | undefined;
 	submittedText: string | undefined;
+	/** The files the held payload carried, as the row records them. */
+	submittedAttachments: string[] | undefined;
+	/** The chips in the composer as the page seeded them. */
+	boxAttachments: string[] | undefined;
 	/** What the alert actually painted, read from the DOM after the first paint. */
 	alertText?: string;
+	/** The same, over the PROSE only: the sentences, without the controls' labels. */
+	alertProse?: string;
 };
 
 const evidence: Evidence = {
-	case: CASE,
+	case: `${CASE}-${STATE}`,
+	state: STATE,
 	status: null,
 	code: undefined,
 	message: undefined,
 	withholdRetryHint: false,
+	storeWriteRefusal: false,
 	refusedBeforeAdmission: false,
 	admissionAttempted: undefined,
 	submittedText: undefined,
+	submittedAttachments: undefined,
+	boxAttachments: undefined,
 };
 (
 	window as unknown as { __storeRefusalEvidence: Evidence }
@@ -142,34 +191,58 @@ const evidence: Evidence = {
  * be on the first painted frame, or the driver photographs a composer that is
  * briefly refusing nothing.
  */
-await fetch(`/__store-refusal-case?case=${encodeURIComponent(CASE)}`).then(
-	(r) => {
-		if (!r.ok)
-			throw new Error(`the harness refused case \`${CASE}\`: ${r.status}`);
-	},
-);
+await fetch(
+	`/__store-refusal-case?case=${encodeURIComponent(CASE)}&state=${encodeURIComponent(STATE)}`,
+).then((r) => {
+	if (!r.ok)
+		throw new Error(`the harness refused case \`${CASE}\`: ${r.status}`);
+});
 
 const store = useCanonicalSessionsStore.getState();
 const key = store.stageDraft({ kind: "agent", name: "reviewer" });
+
+/** The refused send: the incident's own shape, text plus one pasted image. */
+const firstAttempt = {
+	text: TEXT,
+	attachments: [IMAGE_DATA_URL] as string[],
+	images: [{ data_b64: IMAGE_B64, mime_type: "image/png" }],
+	mode: "prompt" as const,
+	cwd: "/tmp",
+};
+
 let raised: unknown;
 try {
-	await admitChatDraft(
-		key,
-		{
-			text: TEXT,
-			attachments: [],
-			// The incident's own trigger: the image is the largest write in the
-			// flow, so it is what crossed the threshold first.
-			images: [{ data_b64: IMAGE_B64, mime_type: "image/png" }],
-			mode: "prompt",
-			cwd: "/tmp",
-		},
-		SESSION,
-	);
+	await admitChatDraft(key, firstAttempt, SESSION);
 	throw new Error("the harness's refusal did not happen: the send succeeded");
 } catch (error) {
 	raised = error;
 }
+evidence.refusedBeforeAdmission = isRefusedBeforeAdmission(raised);
+
+/*
+ * THE OPERATOR'S OWN REMEDY, FOR THE CASE THAT DISCRIMINATES IT (UX round 1, U2).
+ *
+ * The second send is really issued - the same text, the dropped image, exactly
+ * what `Restore message` then removing the chip produces - so the store's own
+ * unchanged-payload guard is what answers it, and its code is what reaches the
+ * row. A fixture that handed the composer that code would prove the component;
+ * this proves the guard produces it for this payload pair.
+ */
+if (STATE === "altered") {
+	try {
+		await admitChatDraft(
+			key,
+			{ ...firstAttempt, attachments: [], images: [] },
+			SESSION,
+		);
+		throw new Error(
+			"the altered retry was accepted, so the guard never fired and this frame proves nothing",
+		);
+	} catch (error) {
+		raised = error;
+	}
+}
+
 const draft = useCanonicalSessionsStore.getState().drafts[key];
 if (!draft?.error)
 	throw new Error("the refusal reached no draft row to render");
@@ -178,30 +251,74 @@ evidence.status =
 	typeof (raised as { status?: unknown })?.status === "number"
 		? ((raised as { status: number }).status as number)
 		: null;
-evidence.code = draft.errorCode;
-evidence.message = draft.error;
-evidence.withholdRetryHint = withholdsRetryHint(draft.errorCode);
-evidence.refusedBeforeAdmission = isRefusedBeforeAdmission(raised);
+/*
+ * WHAT THE COMPOSER IS HANDED, which is `chat-page`'s own derivation and not the
+ * row: `activeError = sendError || draft.error` and
+ * `activeErrorCode = sendErrorCode ?? draft.errorCode`, where the LOCAL half is
+ * the error this send threw. The distinction is load-bearing for the `altered`
+ * case, and it is the R-4 mechanism seen from the other side: the
+ * unchanged-payload guard throws OUTSIDE `admitChatDraft`'s catch (it fires before
+ * the request is built), so the failing second send records nothing new on the
+ * row - the row still holds the previous refusal's code while the composer is
+ * handed the guard's. A harness that read only the row would photograph the wrong
+ * code for the one frame that exists to pin this.
+ */
+evidence.rowCode = draft.errorCode;
+evidence.rowMessage = draft.error;
+evidence.code =
+	typeof (raised as { code?: unknown })?.code === "string"
+		? ((raised as { code: string }).code as string)
+		: draft.errorCode;
+evidence.message =
+	raised instanceof Error && raised.message ? raised.message : draft.error;
+evidence.withholdRetryHint = withholdsRetryHint(evidence.code);
+evidence.storeWriteRefusal = isStoreWriteRefusal(evidence.code);
 evidence.admissionAttempted = draft.admissionAttempted;
 evidence.submittedText = draft.submittedText;
+evidence.submittedAttachments = draft.submittedAttachments;
 
-/*
- * The box, seeded with what the refused send carried - the ONE piece of state
- * this harness sets rather than drives. See the module comment: without it the
- * hint's own condition is unsatisfied for every case, and the busy frame would
- * show nothing to compare against.
+/**
+ * The chips, per state: the file the refused send carried is still attached
+ * (`held`), was re-attached with the restored text (`restored`), or was removed -
+ * the remedy - in `altered`.
+ *
+ * The chip surviving a refusal is the product's behaviour, not the harness's:
+ * `Clear` and a removed chip are the user's actions, and the payload they act on
+ * is the claim's, not the box's.
  */
+const boxAttachments =
+	STATE === "altered"
+		? []
+		: [{ id: "harness-screenshot", path: IMAGE_DATA_URL }];
+/**
+ * The box, per state. `restored` and `altered` hold the held text (the `restore`
+ * control writes exactly `heldText`); `held` is the state the refusal leaves -
+ * empty box, claim holding the payload, chip row intact.
+ */
+const boxText = STATE === "held" ? "" : (draft.submittedText ?? TEXT);
+
+/**
+ * The held payload, on `chat-page`'s own terms: the claim holds the text only
+ * once an admission has been ISSUED and SETTLED (`admissionAttempted &&
+ * !pending`), which is what a post-admission refusal leaves behind - and why the
+ * box is empty in the `held` state and the restore control is the only way back
+ * to a sendable payload.
+ */
+const heldText =
+	draft.admissionAttempted && !draft.pending ? draft.submittedText : undefined;
+
 useConversationInputStore.setState({
 	inputByConversation: {
 		[CONVERSATION]: {
-			currentInput: draft.submittedText ?? TEXT,
+			currentInput: boxText,
 			submittedMessages: [],
 			currentHistoryIndex: null,
 			replies: [],
-			attachments: [{ id: "harness-screenshot", path: IMAGE_DATA_URL }],
+			attachments: boxAttachments,
 		},
 	},
 });
+evidence.boxAttachments = boxAttachments.map((a) => a.path);
 
 const client = new QueryClient({
 	defaultOptions: { queries: { retry: false } },
@@ -226,14 +343,29 @@ const Harness = () => {
 
 	/*
 	 * `chat-page`'s own derivation, to the letter: the composer's local failure
-	 * wins over the persisted row (`activeError = sendError || draft?.error`) and
-	 * the code is what decides the hint
-	 * (`activeErrorCode = sendErrorCode ?? draft?.errorCode`). Here both come
-	 * from the row, because the refusal was produced by the store.
+	 * wins over the persisted row (`activeError = sendError || draft?.error`), the
+	 * code is what the composer reads its predicates off
+	 * (`activeErrorCode = sendErrorCode ?? draft?.errorCode`), and the held payload
+	 * travels from the same row (`heldText` gated on an admission having been
+	 * attempted and settled, `refusedText`/`refusedAttachments` on the
+	 * pre-admission rows). Here every one of them comes from the row, because the
+	 * refusal was produced by the store.
+	 *
+	 * The abandon handlers are no-ops: a still cannot show what a press did, and
+	 * reaching them is the QA round's business rather than this rig's. What their
+	 * PRESENCE decides is the control's label (`Discard message` with an empty box
+	 * or the held text in it, `Stop holding it` when the box holds a different
+	 * payload) - i.e. copy, which is exactly what a still is for. Stated in the
+	 * README's "does not prove" list rather than left to be inferred.
 	 */
-	const sendError = {
-		message: draft.error,
-		withholdRetryHint: withholdsRetryHint(draft.errorCode),
+	const sendError: ComposerSendError = {
+		message: evidence.message,
+		code: evidence.code,
+		heldText,
+		heldAttachments: draft.submittedAttachments,
+		onRestoreHeld: () => {},
+		onDiscard: () => {},
+		onReleaseHeld: () => {},
 	};
 
 	return (
@@ -281,12 +413,24 @@ createRoot(document.getElementById("root") as HTMLElement).render(
  * and the message above are what the pipeline produced; this is what a person
  * reads, and the pair is the evidence: a withheld hint that is absent because the
  * copy dropped the sentence would look identical in a screenshot.
+ *
+ * `alertProse` is the region's PARAGRAPHS - the sentences - without the
+ * controls' own labels, which live in the pinned row beside them. U1's claim is
+ * about the prose naming a control, and reading it off the whole region would be
+ * satisfied by the button rendering at all.
  */
 requestAnimationFrame(() =>
 	requestAnimationFrame(() => {
 		const region = document.querySelector('[role="alert"]');
 		evidence.alertText = region
 			? (region.textContent ?? "").replace(/\s+/g, " ").trim()
+			: null;
+		evidence.alertProse = region
+			? [...region.querySelectorAll("p")]
+					.map((p) => p.textContent ?? "")
+					.join(" ")
+					.replace(/\s+/g, " ")
+					.trim()
 			: null;
 	}),
 );

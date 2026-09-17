@@ -25,11 +25,32 @@ const root = resolve(import.meta.dirname, "..");
  * pipeline, and the code alone deciding whether the alert's "what to do" half is
  * the false "Send it again.".
  *
- * The sentences are the BACKEND's - it is the process that knows which volume is
- * full and what the remedy is - so this file is a stand-in for the wire, not for
- * the copy: the harness substitutes the verdict at the HTTP boundary exactly as
- * `send-error-evidence.mjs` does for the 409, and everything after this line is
- * the app's own code.
+ * THESE SENTENCES ARE STAND-INS, NOT THE SIBLING PR'S COPY (agent review round 1,
+ * R-2). Nothing in the shipped renderer is affected by the difference - it paints
+ * `detail.message` verbatim, which is the point of the arm - but the stills are
+ * presented as the copy a user reads, and today they are not.
+ *
+ * What the sibling branch (`~/local-operator-worktrees/store-failure-classes`,
+ * `local_operator/server/utils/store_failures.py`) sends is:
+ *
+ *   store_out_of_space  "This computer is out of disk space, so the message could
+ *                        not be written. Free some space on the volume holding
+ *                        {root} and send it again."
+ *   store_unavailable   "The session store could not be read or written. Retrying
+ *                        will not help; check {root} and the disk it is on."
+ *
+ * where `{root}` is the config root the request actually used. So the two
+ * differences are wording AND the named destination: that PR moved both sentences
+ * from "this disk"/"its logs" to the path the process touched, which is the copy
+ * half of design round 1's D1 and UX round 1's U5. Both arms are routed there, and
+ * this file is deliberately not updated ahead of it: a stand-in that changes when
+ * the other branch rewords its copy would have to be re-captured for every
+ * revision of a string this repository does not own.
+ *
+ * What is asserted about the sentence here is therefore the MECHANISM, which is
+ * true of any wording: the composer renders whatever the wire carried, verbatim,
+ * and the code decides the hint. `scripts/canonical-chat.test.mjs` pins the same
+ * split against the codes themselves.
  */
 const STORE_FAILURES = {
 	busy: {
@@ -61,6 +82,15 @@ const STORE_FAILURES = {
  */
 let selected = "out-of-space";
 
+/**
+ * `altered` is not a fourth arm of the backend's ladder; it is the same
+ * `store_out_of_space` refusal followed by the operator's own remedy - the text
+ * restored, the image dropped, Enter pressed - so its FIRST attempt is that arm
+ * and its second never reaches this server at all (the unchanged-payload guard
+ * refuses it in the renderer, which is exactly what that frame exists to show).
+ */
+const CASE_ALIASES = { altered: "out-of-space" };
+
 const storeFailureServer = () => ({
 	name: "store-refusal-desktop-stub",
 	configureServer(server) {
@@ -69,12 +99,13 @@ const storeFailureServer = () => ({
 
 			if (url.pathname === "/__store-refusal-case") {
 				const requested = url.searchParams.get("case") ?? "";
-				if (!(requested in STORE_FAILURES)) {
+				const arm = CASE_ALIASES[requested] ?? requested;
+				if (!(arm in STORE_FAILURES)) {
 					res.statusCode = 400;
 					res.end(`unknown case \`${requested}\``);
 					return;
 				}
-				selected = requested;
+				selected = arm;
 				res.setHeader("Content-Type", "application/json");
 				res.end(JSON.stringify({ selected }));
 				return;

@@ -1,96 +1,413 @@
 {
-  "capturedAt": "2026-09-17T14:40:10.065Z",
+  "capturedAt": "2026-09-17T16:30:04.852Z",
   "theme": "localOperatorDark",
-  "viewport": {
-    "width": 1440,
-    "height": 817
-  },
-  "column": 892,
+  "comment": "Read out of the live DOM per frame. `failures` is empty for every row by construction: a run with any failure writes neither the frames nor this file (agent review round 1, R-1).",
   "cases": [
     {
+      "file": "busy-restored",
       "case": "busy",
-      "name": "store_busy",
-      "expected": {
-        "name": "store_busy",
-        "case": "busy",
-        "status": 503,
-        "code": "store_busy",
-        "message": "Read state is busy right now. It will catch up on its own.",
-        "hint": true
+      "state": "restored",
+      "viewport": {
+        "width": 1440,
+        "height": 817
       },
-      "regionPresent": true,
-      "alertText": "Read state is busy right now. It will catch up on its own. Your message is still in the composer. Send it again.",
+      "column": 892,
+      "status": 503,
+      "code": "store_busy",
+      "rowCode": "store_busy",
+      "rowMessage": "Read state is busy right now. It will catch up on its own.",
+      "message": "Read state is busy right now. It will catch up on its own.",
+      "withholdRetryHint": false,
+      "storeWriteRefusal": false,
+      "refusedBeforeAdmission": false,
+      "admissionAttempted": true,
+      "submittedText": "Here is the screenshot from the failing run.",
+      "submittedAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
       "boxValue": "Here is the screenshot from the failing run.",
-      "theme": "localOperatorDark",
-      "fonts": "loaded",
-      "evidence": {
-        "case": "busy",
-        "status": 503,
-        "code": "store_busy",
-        "message": "Read state is busy right now. It will catch up on its own.",
-        "withholdRetryHint": false,
-        "refusedBeforeAdmission": false,
-        "admissionAttempted": true,
-        "submittedText": "Here is the screenshot from the failing run.",
-        "alertText": "Read state is busy right now. It will catch up on its own."
+      "boxAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "alertProse": "Read state is busy right now. It will catch up on its own. Your message is still in the composer. Send it again.",
+      "alertText": "Read state is busy right now. It will catch up on its own. Your message is still in the composer. Send it again.Discard this message",
+      "region": {
+        "top": 505,
+        "bottom": 561,
+        "height": 56,
+        "overflowY": "visible"
+      },
+      "capped": {
+        "top": 505,
+        "bottom": 525,
+        "height": 20,
+        "clientHeight": 20,
+        "scrollHeight": 20,
+        "overflowY": "auto"
+      },
+      "controls": {
+        "top": 529,
+        "bottom": 553,
+        "height": 24,
+        "labels": [
+          "Discard this message"
+        ],
+        "insideCapped": false
+      },
+      "send": {
+        "top": 752,
+        "bottom": 784,
+        "height": 32
       },
       "failures": []
     },
     {
+      "file": "out-of-space-restored",
       "case": "out-of-space",
-      "name": "store_out_of_space",
-      "expected": {
-        "name": "store_out_of_space",
-        "case": "out-of-space",
-        "status": 507,
-        "code": "store_out_of_space",
-        "message": "There is not enough space on this disk to save your message. Free up space, then send it again.",
-        "hint": false
+      "state": "restored",
+      "viewport": {
+        "width": 1440,
+        "height": 817
       },
-      "regionPresent": true,
-      "alertText": "There is not enough space on this disk to save your message. Free up space, then send it again.",
+      "column": 892,
+      "status": 507,
+      "code": "store_out_of_space",
+      "rowCode": "store_out_of_space",
+      "rowMessage": "There is not enough space on this disk to save your message. Free up space, then send it again.",
+      "message": "There is not enough space on this disk to save your message. Free up space, then send it again.",
+      "withholdRetryHint": true,
+      "storeWriteRefusal": true,
+      "refusedBeforeAdmission": false,
+      "admissionAttempted": true,
+      "submittedText": "Here is the screenshot from the failing run.",
+      "submittedAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
       "boxValue": "Here is the screenshot from the failing run.",
-      "theme": "localOperatorDark",
-      "fonts": "loaded",
-      "evidence": {
-        "case": "out-of-space",
-        "status": 507,
-        "code": "store_out_of_space",
-        "message": "There is not enough space on this disk to save your message. Free up space, then send it again.",
-        "withholdRetryHint": true,
-        "refusedBeforeAdmission": false,
-        "admissionAttempted": true,
-        "submittedText": "Here is the screenshot from the failing run.",
-        "alertText": "There is not enough space on this disk to save your message. Free up space, then send it again."
+      "boxAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "alertProse": "There is not enough space on this disk to save your message. Free up space, then send it again.",
+      "alertText": "There is not enough space on this disk to save your message. Free up space, then send it again.Discard this message",
+      "region": {
+        "top": 505,
+        "bottom": 561,
+        "height": 56,
+        "overflowY": "visible"
+      },
+      "capped": {
+        "top": 505,
+        "bottom": 525,
+        "height": 20,
+        "clientHeight": 20,
+        "scrollHeight": 20,
+        "overflowY": "auto"
+      },
+      "controls": {
+        "top": 529,
+        "bottom": 553,
+        "height": 24,
+        "labels": [
+          "Discard this message"
+        ],
+        "insideCapped": false
+      },
+      "send": {
+        "top": 752,
+        "bottom": 784,
+        "height": 32
       },
       "failures": []
     },
     {
+      "file": "unavailable-restored",
       "case": "unavailable",
-      "name": "store_unavailable",
-      "expected": {
-        "name": "store_unavailable",
-        "case": "unavailable",
-        "status": 500,
-        "code": "store_unavailable",
-        "message": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
-        "hint": false
+      "state": "restored",
+      "viewport": {
+        "width": 1440,
+        "height": 817
       },
-      "regionPresent": true,
-      "alertText": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "column": 892,
+      "status": 500,
+      "code": "store_unavailable",
+      "rowCode": "store_unavailable",
+      "rowMessage": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "message": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "withholdRetryHint": true,
+      "storeWriteRefusal": true,
+      "refusedBeforeAdmission": false,
+      "admissionAttempted": true,
+      "submittedText": "Here is the screenshot from the failing run.",
+      "submittedAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
       "boxValue": "Here is the screenshot from the failing run.",
-      "theme": "localOperatorDark",
-      "fonts": "loaded",
-      "evidence": {
-        "case": "unavailable",
-        "status": 500,
-        "code": "store_unavailable",
-        "message": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
-        "withholdRetryHint": true,
-        "refusedBeforeAdmission": false,
-        "admissionAttempted": true,
-        "submittedText": "Here is the screenshot from the failing run.",
-        "alertText": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs."
+      "boxAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "alertProse": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "alertText": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.Discard this message",
+      "region": {
+        "top": 505,
+        "bottom": 561,
+        "height": 56,
+        "overflowY": "visible"
+      },
+      "capped": {
+        "top": 505,
+        "bottom": 525,
+        "height": 20,
+        "clientHeight": 20,
+        "scrollHeight": 20,
+        "overflowY": "auto"
+      },
+      "controls": {
+        "top": 529,
+        "bottom": 553,
+        "height": 24,
+        "labels": [
+          "Discard this message"
+        ],
+        "insideCapped": false
+      },
+      "send": {
+        "top": 752,
+        "bottom": 784,
+        "height": 32
+      },
+      "failures": []
+    },
+    {
+      "file": "out-of-space-held",
+      "case": "out-of-space",
+      "state": "held",
+      "viewport": {
+        "width": 1440,
+        "height": 817
+      },
+      "column": 892,
+      "status": 507,
+      "code": "store_out_of_space",
+      "rowCode": "store_out_of_space",
+      "rowMessage": "There is not enough space on this disk to save your message. Free up space, then send it again.",
+      "message": "There is not enough space on this disk to save your message. Free up space, then send it again.",
+      "withholdRetryHint": true,
+      "storeWriteRefusal": true,
+      "refusedBeforeAdmission": false,
+      "admissionAttempted": true,
+      "submittedText": "Here is the screenshot from the failing run.",
+      "submittedAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "boxValue": "",
+      "boxAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "alertProse": "There is not enough space on this disk to save your message. Free up space, then send it again. Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.",
+      "alertText": "There is not enough space on this disk to save your message. Free up space, then send it again.Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.Restore messageDiscard message",
+      "region": {
+        "top": 461,
+        "bottom": 561,
+        "height": 100,
+        "overflowY": "visible"
+      },
+      "capped": {
+        "top": 461,
+        "bottom": 525,
+        "height": 64,
+        "clientHeight": 64,
+        "scrollHeight": 64,
+        "overflowY": "auto"
+      },
+      "controls": {
+        "top": 529,
+        "bottom": 553,
+        "height": 24,
+        "labels": [
+          "Restore message",
+          "Discard message"
+        ],
+        "insideCapped": false
+      },
+      "send": {
+        "top": 752,
+        "bottom": 784,
+        "height": 32
+      },
+      "failures": []
+    },
+    {
+      "file": "unavailable-held",
+      "case": "unavailable",
+      "state": "held",
+      "viewport": {
+        "width": 1440,
+        "height": 817
+      },
+      "column": 892,
+      "status": 500,
+      "code": "store_unavailable",
+      "rowCode": "store_unavailable",
+      "rowMessage": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "message": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "withholdRetryHint": true,
+      "storeWriteRefusal": true,
+      "refusedBeforeAdmission": false,
+      "admissionAttempted": true,
+      "submittedText": "Here is the screenshot from the failing run.",
+      "submittedAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "boxValue": "",
+      "boxAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "alertProse": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs. Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.",
+      "alertText": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.Restore messageDiscard message",
+      "region": {
+        "top": 461,
+        "bottom": 561,
+        "height": 100,
+        "overflowY": "visible"
+      },
+      "capped": {
+        "top": 461,
+        "bottom": 525,
+        "height": 64,
+        "clientHeight": 64,
+        "scrollHeight": 64,
+        "overflowY": "auto"
+      },
+      "controls": {
+        "top": 529,
+        "bottom": 553,
+        "height": 24,
+        "labels": [
+          "Restore message",
+          "Discard message"
+        ],
+        "insideCapped": false
+      },
+      "send": {
+        "top": 752,
+        "bottom": 784,
+        "height": 32
+      },
+      "failures": []
+    },
+    {
+      "file": "altered-held",
+      "case": "altered",
+      "state": "altered",
+      "viewport": {
+        "width": 1440,
+        "height": 817
+      },
+      "column": 892,
+      "status": null,
+      "code": "unconfirmed_send",
+      "rowCode": "store_out_of_space",
+      "rowMessage": "There is not enough space on this disk to save your message. Free up space, then send it again.",
+      "message": "The previous send has not been confirmed, and it does not match what is in the composer now.",
+      "withholdRetryHint": true,
+      "storeWriteRefusal": false,
+      "refusedBeforeAdmission": false,
+      "admissionAttempted": true,
+      "submittedText": "Here is the screenshot from the failing run.",
+      "submittedAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "boxValue": "Here is the screenshot from the failing run.",
+      "boxAttachments": [],
+      "alertProse": "The previous send has not been confirmed, and it does not match what is in the composer now. A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives.",
+      "alertText": "The previous send has not been confirmed, and it does not match what is in the composer now.A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable, so restore it and send again only if no reply arrives.Restore messageStop holding it",
+      "region": {
+        "top": 589,
+        "bottom": 689,
+        "height": 100,
+        "overflowY": "visible"
+      },
+      "capped": {
+        "top": 589,
+        "bottom": 653,
+        "height": 64,
+        "clientHeight": 64,
+        "scrollHeight": 64,
+        "overflowY": "auto"
+      },
+      "controls": {
+        "top": 657,
+        "bottom": 681,
+        "height": 24,
+        "labels": [
+          "Restore message",
+          "Stop holding it"
+        ],
+        "insideCapped": false
+      },
+      "send": {
+        "top": 752,
+        "bottom": 784,
+        "height": 32
+      },
+      "failures": []
+    },
+    {
+      "file": "unavailable-narrow-held",
+      "case": "unavailable",
+      "state": "held",
+      "viewport": {
+        "width": 800,
+        "height": 568
+      },
+      "column": 340,
+      "status": 500,
+      "code": "store_unavailable",
+      "rowCode": "store_unavailable",
+      "rowMessage": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "message": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.",
+      "withholdRetryHint": true,
+      "storeWriteRefusal": true,
+      "refusedBeforeAdmission": false,
+      "admissionAttempted": true,
+      "submittedText": "Here is the screenshot from the failing run.",
+      "submittedAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "boxValue": "",
+      "boxAttachments": [
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAcCAYAAAAnbDzKAAAAV0lEQVR42u3UsQ0AIAgFUQYxjmPhCG5gwyTWrKsL2BENJFdcRfUKvpRaduYEAAAnoI2+MwcAgBfACgEAcD+YracBABAdwAoBcAJUZ4gApAXwxAAAAPjSAQ/BUbNOO4gwAAAAAElFTkSuQmCC"
+      ],
+      "alertProse": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs. Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.",
+      "alertText": "This chat's stored state could not be read or written. Retrying will not help; check this machine's storage and its logs.Nothing was saved, and the copy above is this app's own rather than the agent's. Choose Restore message to put it back in the composer.Restore messageDiscard message",
+      "region": {
+        "top": 200,
+        "bottom": 352,
+        "height": 152,
+        "overflowY": "visible"
+      },
+      "capped": {
+        "top": 200,
+        "bottom": 320,
+        "height": 120,
+        "clientHeight": 120,
+        "scrollHeight": 164,
+        "overflowY": "auto"
+      },
+      "controls": {
+        "top": 324,
+        "bottom": 348,
+        "height": 24,
+        "labels": [
+          "Restore message",
+          "Discard message"
+        ],
+        "insideCapped": false
+      },
+      "send": {
+        "top": 527,
+        "bottom": 555,
+        "height": 28
       },
       "failures": []
     }
