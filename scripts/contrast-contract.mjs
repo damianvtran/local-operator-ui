@@ -683,7 +683,17 @@ const CONTROLS = [
 		 * token move from breaking it silently.
 		 */
 		name: "reading button, hovered",
-		on: ["surface"],
+		/*
+		 * BOTH GROUNDS, and the second one is the point (design review round 2, D8's
+		 * contract note): `READING_BUTTON` is worn by the composer's status row as well as
+		 * by the session readings, and that row paints on `canvas` — measured
+		 * `(21,19,14)` dark / `#f5f0e6` light, identical to the far page margin — while
+		 * this row asserted `surface` alone. The pairing is reachable on both, and the
+		 * fill's perceptibility on `canvas` is what the designer computed by hand
+		 * (ΔE00(accentWash, canvas) = 13.33 dark / 6.75 light); here it is asserted rather
+		 * than computed once, so a token move cannot break it silently.
+		 */
+		on: ["surface", "canvas"],
 		fill: "accentWash",
 		border: "accent",
 		ink: "ink",
