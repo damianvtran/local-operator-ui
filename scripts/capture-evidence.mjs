@@ -528,11 +528,20 @@ export const STORIES = [
 
 	/* The composer's two refusals and the state a vanished conversation leaves
 	   it in (design review round 1, D3): the transcript stories above render the
-	   transcript alone, so the false "Agent is busy" placeholder and the missing
-	   colour step were never in a frame. Sized to the band, not to a window. */
-	["chat-composer-states--idle", 900, 160],
-	["chat-composer-states--busy", 900, 160],
-	["chat-composer-states--conversation-gone", 900, 160],
+	   transcript alone, so the composer's wait state and the missing colour step
+	   were never in a frame. Sized to the band, not to a window.
+
+	   THESE IDS FOLLOW THE STORY, NOT THE OTHER WAY ROUND. The band was written
+	   against `Chat/Composer states`; `7550bf1ae` ("retire the wait when a turn
+	   dies, and keep the send visible") retitled the file to `Chat/Message input`
+	   and retired the composer's own "Agent is busy" placeholder with it, so the
+	   old ids named stories that no longer existed and every sweep aborted at the
+	   unknown-id check. `--busy` maps to `--awaiting-reply` because that commit
+	   names it as what replaced the band's state: a send admitted, nothing
+	   painted yet. Nothing here points at a story that does not depict it. */
+	["chat-message-input--idle", 900, 160],
+	["chat-message-input--awaiting-reply", 900, 160],
+	["chat-message-input--conversation-gone", 900, 160],
 
 	/* The browser feature's own surfaces, added with the round that remediated its
 	   review. This is the ONE part of the visible browser a browser tool can
