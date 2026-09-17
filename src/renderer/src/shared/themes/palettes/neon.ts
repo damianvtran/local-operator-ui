@@ -22,6 +22,7 @@ export const neon: ThemeDefinition = {
 		surface: "#0F1524",
 		elevated: "#182036",
 		sunken: "#03040A",
+
 		/*
 		 * The current row's own ground: `surface` stepped up its own blue
 		 * ramp 6.39 `L*`, at 0.95x the panel's chroma. ΔE00 4.04 from `surface`,

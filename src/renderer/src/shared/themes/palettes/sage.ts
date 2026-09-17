@@ -28,6 +28,7 @@ export const sage: ThemeDefinition = {
 		surface: "#FBF7EC",
 		elevated: "#FFFEF9",
 		sunken: "#E9E2D0",
+
 		/*
 		 * The current row's own ground: `surface` stepped down its own green-grey
 		 * ramp 6.62 `L*`, at 0.93x the panel's chroma. ΔE00 4.02 from `surface`,

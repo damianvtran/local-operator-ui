@@ -23,6 +23,7 @@ export const monokai: ThemeDefinition = {
 		surface: "#2E2F28",
 		elevated: "#3E3D32",
 		sunken: "#1E1F1A",
+
 		/*
 		 * The current row's own ground: `surface` stepped up its own olive
 		 * ramp 4.35 `L*`, carrying 1.66x the panel's chroma. ΔE00 4.07 from `surface`,

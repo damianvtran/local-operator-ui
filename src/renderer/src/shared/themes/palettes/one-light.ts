@@ -43,12 +43,14 @@ export const oneLight: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11/-10/-10 on R/G/B toward black — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.20 from `surface`,
-		 * 4.39 from `elevated` and 2.33 from `sunken`.
+		 * `surface` cast 0.03 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 5.5 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 4.01 from `surface`, 6.01 from `elevated` and 2.39 from `sunken`;
+		 * the step is -5.65 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.77:1 the ink that binds it.
 		 */
-		highlight: "#E9EAEA",
+		highlight: "#E2E4E8",
 
 		ink: "#383A42",
 		// Canonical mono-2 696C77 is 3.97:1 on `sunken` (< 4.5) — darkened along the same

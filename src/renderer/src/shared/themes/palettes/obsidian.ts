@@ -29,6 +29,7 @@ export const obsidian: ThemeDefinition = {
 		// would clear the separation floor more easily and was what this held, but
 		// a C0 value is the absence of the ramp rather than its bottom rung.
 		sunken: "#030307",
+
 		/*
 		 * The current row's own ground: `surface` stepped up its own violet-tinted neutral
 		 * ramp 5.58 `L*`, carrying 1.90x the panel's chroma. ΔE00 4.01 from `surface`,

@@ -30,6 +30,7 @@ export const iceberg: ThemeDefinition = {
 		// a mid-light grey, and every step down costs tertiary-ink headroom. This
 		// sits 1.07:1 under canvas, which is what caps inkDim below.
 		sunken: "#E1E2E7",
+
 		/*
 		 * The current row's own ground: `surface` stepped down its own cool neutral
 		 * ramp 4.09 `L*`, carrying 3.31x the panel's chroma. ΔE00 4.12 from `surface`,

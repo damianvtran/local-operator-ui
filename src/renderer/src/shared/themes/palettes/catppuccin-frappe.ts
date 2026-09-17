@@ -34,13 +34,16 @@ export const catppuccinFrappe: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * a cast of `surface`'s chroma plane toward `accent` at alpha
-		 * 0.055, L* held — branch H, taken because no step on this
-		 * palette's lightness ladder clears `elevated` inside the band.
-		 * ΔE00 2.30 from `surface`, 3.40 from `elevated` and 4.87 from
-		 * `sunken`.
+		 * `surface` cast 0.11 toward `accent`, then stepped 0.25 on the `L*`
+		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
+		 * what put it there: the ink floor on the row's ground caps the lightness route
+		 * at 2.75 `L*` here (inkDim reaches its floor with the 0.15 of
+		 * headroom at 4.66:1 on this ground), so the band is paid on the cast.
+		 * ΔE00 4.04 from `surface`, 4.67 from `elevated` and 5.92 from
+		 * `sunken`; the step of 0.31 `L*` is short of the 3 `L*` floor and is pinned in
+		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
 		 */
-		highlight: "#383A50",
+		highlight: "#3B3A52",
 
 		// Canonical text C6D0F5 is 6.52:1 on `elevated` — under the 7:1 body floor. Lifted
 		// along the same lavender-white.

@@ -27,6 +27,7 @@ export const dracula: ThemeDefinition = {
 		// down the same blue-grey ramp and selection stays available for hovers.
 		elevated: "#3D4055",
 		sunken: "#21222C",
+
 		/*
 		 * The current row's own ground: `surface` stepped up its own blue-grey
 		 * ramp 5.17 `L*`, at 1.20x the panel's chroma. ΔE00 4.11 from `surface`,

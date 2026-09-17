@@ -91,9 +91,14 @@ export type ThemePalette = {
 	 * The role was first authored to land at **ΔE00 2.0-2.5 from `surface`**, for
 	 * a selection the operator had asked to be SUBTLE. He has since seen it
 	 * rendered and reported the current row as lost beside a hovered neighbour,
-	 * so the intent is reversed and the step now lands at **ΔE00 4.01-4.15 on all
-	 * twelve palettes**. It is a LIGHTNESS step first — the row sits **3.81 to
-	 * 6.62 `L*`** from its panel, in the direction the mode runs — and chroma pays
+	 * so the intent is reversed and the step now lands at **ΔE00 4.0 or better on
+	 * every palette in the tree** — the twelve this change was authored against at
+	 * 4.01-4.15, and the forty-seven the theme port added at 4.00-10.35, re-authored
+	 * to this rule in the same round. It is a LIGHTNESS step first — the row sits
+	 * **3.81 to 6.62 `L*`** from its panel on those twelve, and **3.0 or better**
+	 * across the rest except six palettes whose OWN ink caps the lightness route
+	 * below 3 `L*`: those take the cap, pay the band on the accent cast, and are
+	 * pinned in `scripts/contrast-contract.mjs` with the ink number — and chroma pays
 	 * only what is left over. Three palettes had reached the band on chroma alone
 	 * (tokyoNight, `localOperatorDark`, `localOperatorLight`), at a `L*` step
 	 * *smaller* than the ΔE00 2.2 value they had already reported as invisible;
@@ -111,7 +116,10 @@ export type ThemePalette = {
 	 * Some of the twelve still carry a partly chroma-bought step (dracula 1.20x
 	 * the panel's chroma, monokai 1.66x, obsidian 1.90x, iceberg 3.31x, each
 	 * recorded at its own value) and those are the palettes a re-authoring should
-	 * take next.
+	 * take next. The port's forty-seven were re-authored to this rule when the
+	 * raised band landed, at the branch the port itself used: a neutral step (its
+	 * branch L) where the palette's ramp affords one, a cast toward `accent` (its
+	 * branch H) where the hover step above the row blocks the lightness route.
 	 *
 	 * ## What bounds it
 	 *
@@ -126,7 +134,8 @@ export type ThemePalette = {
 	 * be a different ground from the current one — worst pair ΔE00 2.25
 	 * (localOperatorDark), asserted at the field floor. `elevated` is ALSO every
 	 * menu, popover and tooltip ground in the app, so it is not a value that can
-	 * come down to meet the selection: on eight of the twelve palettes the hover
+	 * come down to meet the selection: on eight of the twelve palettes it was measured
+	 * against (design round 1, D2), the hover
 	 * step remains the larger step off `surface` (up to 6.25 on radient), and the
 	 * current row is therefore marked by its ground plus `font-medium`. An earlier
 	 * round drew that second step as a 1px `outline-control` boundary; it is

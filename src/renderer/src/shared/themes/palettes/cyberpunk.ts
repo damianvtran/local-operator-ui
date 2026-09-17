@@ -47,12 +47,14 @@ export const cyberpunk: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped +7/+8/+7 on R/G/B toward white — the neutral step the
-		 * twelve use, and branch L of this port's selection rule; the ramp
-		 * affords it here, so the row takes no cast. ΔE00 2.26 from `surface`,
-		 * 2.73 from `elevated` and 6.85 from `sunken`.
+		 * `surface` cast 0.07 toward `accent` — branch H of this port's selection rule
+		 * — and then stepped 3 on the `L*` axis in the mode's direction, so the mark
+		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
+		 * 10.35 from `surface`, 12.32 from `elevated` and 7.45 from `sunken`;
+		 * the step is 3.1 `L*`, in the band this branch raised to 4.0, with
+		 * inkDim at 4.66:1 the ink that binds it.
 		 */
-		highlight: "#1D1826",
+		highlight: "#1E1816",
 
 		ink: "#EAE5F2",
 		inkMuted: "#B3A8C6",

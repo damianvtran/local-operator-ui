@@ -22,6 +22,7 @@ export const radient: ThemeDefinition = {
 		surface: "#1A1F2F",
 		elevated: "#282D47",
 		sunken: "#0A0D12",
+
 		/*
 		 * The current row's own ground: `surface` stepped up its own navy
 		 * ramp 6.24 `L*`, at 1.01x the panel's chroma. ΔE00 4.11 from `surface`,

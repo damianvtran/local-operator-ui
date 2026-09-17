@@ -22,6 +22,7 @@ export const dune: ThemeDefinition = {
 		// to stay distinguishable — at this darkness a step of one or two levels
 		// measures under the 1.03:1 separation floor.
 		sunken: "#050403",
+
 		/*
 		 * The current row's own ground: `surface` stepped up its own warm
 		 * ramp 6.44 `L*`, at 1.00x the panel's chroma. ΔE00 4.08 from `surface`,

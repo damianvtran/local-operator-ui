@@ -22,6 +22,7 @@ export const tokyoNight: ThemeDefinition = {
 		// Upstream bg_dark is 16161E, which measures 1.05:1 against canvas. Two
 		// levels deeper for a little more separation.
 		sunken: "#14141B",
+
 		/*
 		 * The current row's own ground: `surface` stepped up its own blue
 		 * ramp 5.09 `L*`, at 0.76x the panel's chroma, i.e. less tinted than the ground it sits on. ΔE00 4.09 from `surface`,
