@@ -389,6 +389,16 @@ async function mount({
 	onSendMessage,
 	sessionStatus,
 	/*
+	 * THE TWO REFUSAL ARMS, as props: `unavailable` is a conversation this
+	 * machine does not have and `isLoading && currentJobId` is the busy arm on a
+	 * backend that does not negotiate `canonical_stream`. Both are the composer's
+	 * own predicate (`isInputDisabled`), and this is the only place that mounts
+	 * the shipped component without a page deciding them.
+	 */
+	unavailable = false,
+	isLoading = false,
+	currentJobId,
+	/*
 	 * THE TRANSCRIPT IS A PARAMETER, because it decides the BAND's own shape and
 	 * not only the content above it: `messages: []` is the state in which the band
 	 * claims the column and centres the composer's group (see the mirror's case
@@ -473,10 +483,12 @@ async function mount({
 				QueryClientProvider,
 				{ client },
 				h(MessageInput, {
-					isLoading: false,
+					isLoading,
 					messages,
 					conversationId,
 					sessionStatus,
+					unavailable,
+					currentJobId,
 					onSendMessage: async (...args) => {
 						sent.push(args);
 						return onSendMessage ? onSendMessage(...args) : true;
@@ -538,6 +550,14 @@ const key = async (frame, keys) => {
 		claimed = event.defaultPrevented;
 	});
 	if (claimed) return;
+	/*
+	 * THE BROWSER'S OWN REFUSAL, modelled: a read-only field applies no edit and
+	 * fires no `input` event, so a rig that wrote anyway would prove the opposite
+	 * of what the composer does. What that means for the refusal test below is
+	 * stated where it is used - the assertion it carries is the ATTRIBUTE, and
+	 * what a real keystroke does to a read-only box is QA's and the driver's.
+	 */
+	if (field.readOnly) return;
 	const start = field.selectionStart ?? field.value.length;
 	const end = field.selectionEnd ?? start;
 	/*
@@ -2227,5 +2247,133 @@ test("the caret immediately before a moved token does not make it prose (QA roun
 		frame.sent.length,
 		0,
 		"so the secret is never sent as message text",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The refusal: a composer that will not take input, keeping its box   */
+/* ------------------------------------------------------------------ */
+
+test("a refused composer is read-only rather than disabled, and refuses Enter itself", async () => {
+	const missing = await mount({ unavailable: true });
+	const field = missing.textarea();
+	/*
+	 * THE ATTRIBUTE IS THE ASSERTION, and it is the whole of what this file can
+	 * honestly say about the edit: the rig below applies no default action to a
+	 * read-only field (no `input` event, so `onChange` never runs), which is what
+	 * a browser does — but that makes the rig, not the composer, the thing doing
+	 * the refusing. What jsdom CAN prove is the half a green DOM rig would
+	 * otherwise carry alone: `readOnly` does not stop `keydown`, so the guard in
+	 * `handleComposerKeyDown` is what stands between this state and a message
+	 * sent for a conversation this machine does not have.
+	 *
+	 * What it must NOT be is `disabled`, and that is the defect being fixed:
+	 * Chromium blurs a control that becomes disabled, so the caret went to
+	 * `document.body` and on this arm never came back (the predicate never flips
+	 * again for the panel), and a disabled textarea cannot be focused, selected
+	 * or copied — the reader lost access to the words they were typing in the one
+	 * state that also tells them the conversation is gone.
+	 */
+	assert.equal(field.readOnly, true);
+	assert.equal(
+		field.disabled,
+		false,
+		"`disabled` on the composer is the focus loss this change removes",
+	);
+	assert.equal(
+		field.getAttribute("aria-disabled"),
+		"true",
+		"the refusal has to reach a screen reader through the attribute it has left",
+	);
+	assert.equal(field.placeholder, "This conversation is gone");
+
+	await type(missing, "still typing");
+	assert.equal(missing.value(), "", "a read-only field takes no edit");
+	await enter(missing);
+	assert.equal(
+		missing.sent.length,
+		0,
+		"Enter must not submit while the composer refuses input — the guard, not the attribute, is what refuses this one",
+	);
+
+	/* The busy arm, which only a backend without `canonical_stream` reaches. */
+	const busy = await mount({ isLoading: true, currentJobId: "job-1" });
+	assert.equal(busy.textarea().readOnly, true);
+	await type(busy, "typed while busy");
+	assert.equal(busy.value(), "");
+	await enter(busy);
+	assert.equal(busy.sent.length, 0);
+
+	/*
+	 * And the refusal is a STATE rather than a permanent attribute: a live
+	 * composer takes input, submits, and says nothing to a screen reader about
+	 * being unavailable — absent, not `aria-disabled="false"`.
+	 */
+	const live = await mount({});
+	assert.equal(live.textarea().readOnly, false);
+	assert.equal(live.textarea().hasAttribute("aria-disabled"), false);
+	await type(live, "hello");
+	assert.equal(live.value(), "hello");
+	await enter(live);
+	assert.equal(
+		live.sent.length,
+		1,
+		"the live composer is not refusing anything",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The settle: what the user typed while a send was in flight           */
+/* ------------------------------------------------------------------ */
+
+test("text typed while a send is in flight survives the settle", async () => {
+	/*
+	 * THE MEASURED DEFECT, at the level the mechanism lives at. The seeding
+	 * effect was documented as "on mount or conversation change" and its deps
+	 * array also changed on every submit SETTLE — `addSubmittedMessage` installs
+	 * a new array identity and `retireDraft` nulls the history index in the same
+	 * turn — so it then re-seeded the box from `getCurrentInput`, which
+	 * `retireDraft` had just written to `""`. In the operator's own run that
+	 * destroyed 16 of 16 characters typed during the hold (5 of 16 at a shorter
+	 * one), with the caret still in the box: "a UI update lands and my typing
+	 * goes nowhere".
+	 *
+	 * This is the regression test for it, and it is DIFFERENT in kind from the
+	 * documented clear it was mistaken for: `clearOnce` clears only the text the
+	 * submit itself carried (`clearSubmittedText`), which is what keeps this
+	 * typing, and that guard is untouched by the change.
+	 */
+	let release;
+	const held = new Promise((resolve) => {
+		release = resolve;
+	});
+	const frame = await mount({ onSendMessage: () => held.then(() => true) });
+
+	await type(frame, "first message");
+	await enter(frame);
+	assert.equal(
+		frame.sent.length,
+		1,
+		"the send is in flight and deliberately held",
+	);
+
+	const typed = "what I typed while it was in flight";
+	await type(frame, typed);
+	const beforeSettle = frame.value();
+	assert.ok(
+		beforeSettle.includes(typed),
+		"the typing reaches the box while the send is held",
+	);
+
+	await act(async () => {
+		release();
+		await held;
+	});
+	await settle();
+
+	assert.equal(
+		frame.value(),
+		beforeSettle,
+		"the settle must not write the store's own value over what the user has typed since",
 	);
 });

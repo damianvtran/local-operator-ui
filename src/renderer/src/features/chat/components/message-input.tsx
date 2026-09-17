@@ -2739,9 +2739,52 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			},
 			[newMessage, caret, slash.commandNames, setNewMessage],
 		);
+		/*
+		 * Two reasons a composer refuses input, kept apart (design review round
+		 * 1, D3). `unavailable` is a conversation this machine does not have, and
+		 * the two used to share one placeholder, so the composer's only text read
+		 * "Agent is busy" over a session that does not exist - a false statement
+		 * about the state, in the one place the user is looking to find out what
+		 * to do about it. They still share the REFUSAL (typing into a conversation
+		 * that is gone is not a thing that can work); only the sentence differs.
+		 *
+		 * WHAT THEY NO LONGER SHARE IS THE CARET, and that is why the refusal is
+		 * expressed as `readOnly` rather than `disabled` on the textarea below. A
+		 * disabled control cannot refuse a keystroke without also dropping it:
+		 * Chromium blurs the field, the caret goes to `document.body`, and on the
+		 * `unavailable` arm it never comes back - `missing` is reset only when the
+		 * session id changes, so the same node's predicate never flips back and
+		 * the self-focus effect below never runs for that panel again. Worse, a
+		 * disabled textarea cannot be focused, selected or copied, so the words
+		 * the reader was in the middle of are unreachable in the one state that
+		 * also tells them the conversation is gone. `readOnly` refuses the same
+		 * edits (no `input` event fires) while the box keeps the caret and its
+		 * text.
+		 *
+		 * DECLARED HERE, above `handleComposerKeyDown`, rather than beside the
+		 * render that paints it: the handler guards on it, and while a `const` is
+		 * only read when the handler RUNS, its dependency array is evaluated during
+		 * this render.
+		 */
+		const isBusy = Boolean(isLoading && currentJobId);
+		const isInputDisabled = unavailable || isBusy;
+
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
 			(event: KeyboardEvent<HTMLTextAreaElement>) => {
+				/*
+				 * THE REFUSAL COMES FIRST, because `readOnly` is not `disabled`: this
+				 * handler still RUNS while the composer refuses input (the attribute
+				 * suppresses the edit, not the keydown), so without this guard the
+				 * Enter branch below would submit from a box the app has just told the
+				 * user refuses input - and on the `unavailable` arm it would submit a
+				 * message for a conversation this machine does not have. Nothing else
+				 * in this file may act on a keystroke in a state whose whole content is
+				 * "no": the slash handler and the credential capture follow it for the
+				 * same reason. (The chips and the Send control do not depend on it -
+				 * they carry the same predicate themselves.)
+				 */
+				if (isInputDisabled) return;
 				/*
 				 * A LIVE CAPTURE OWNS THE KEYS FIRST (§3), ahead of the slash handler and
 				 * ahead of the submit: while the mask is up the safe default is that no
@@ -2822,6 +2865,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				applyPlan,
 				newMessage,
 				caret,
+				isInputDisabled,
 			],
 		);
 
@@ -2866,19 +2910,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * see `composer-field.ts`.
 		 */
 		useEffect(() => registerComposerFocus(focusInput), [focusInput]);
-
-		/*
-		 * Two reasons a composer refuses input, kept apart (design review round
-		 * 1, D3). `unavailable` is a conversation this machine does not have, and
-		 * the two used to share one placeholder, so the composer's only text read
-		 * "Agent is busy" over a session that does not exist - a false statement
-		 * about the state, in the one place the user is looking to find out what
-		 * to do about it. They still share the disabled BEHAVIOUR (typing into a
-		 * conversation that is gone is not a thing that can work); only the
-		 * sentence differs.
-		 */
-		const isBusy = Boolean(isLoading && currentJobId);
-		const isInputDisabled = unavailable || isBusy;
 
 		/*
 		 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER A TURN ENDS.
@@ -4285,12 +4316,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										isSmallView ? "max-h-24" : "max-h-28",
 										"resize-none overflow-y-auto bg-transparent",
 										"text-ink outline-none placeholder:text-ink-dim",
-										// The disabled state STEPS COLOUR rather than fading
-										// (branding: disabled changes colour, never opacity), and
-										// without this the only signal was `cursor: not-allowed`
-										// after the user had already typed into a field that will
-										// not accept anything.
-										"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+										// A composer that REFUSES input STEPS COLOUR rather than fading
+										// (branding: disabled changes colour, never opacity), and without
+										// this the only signal was `cursor: not-allowed` after the user
+										// had already typed into a field that will not accept anything.
+										//
+										// `read-only:` is the pair that fires now, because the refusal
+										// is expressed as `readOnly` on the element below. The
+										// `disabled:` pair stays BESIDE it: nothing sets `disabled` on
+										// this element any more, and deleting the pair would let a
+										// future `disabled` state ship with no ink step at all - the
+										// exact defect the pair was added for.
+										"read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
 									)}
 									placeholder={
 										/*
@@ -4451,7 +4488,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									}}
 									onPaste={handlePaste}
 									rows={1}
-									disabled={isInputDisabled}
+									/*
+									 * READ-ONLY, NOT DISABLED, and the difference is the caret — see the
+									 * `isInputDisabled` declaration above. `disabled` blurs the field when
+									 * it lands, which parks the caret on `document.body` and, on the
+									 * `unavailable` arm, never gives it back on that panel; and a
+									 * disabled textarea cannot be focused, selected or copied, so the
+									 * reader cannot even retrieve the sentence they were writing from
+									 * the state that just told them the conversation is gone.
+									 *
+									 * `aria-disabled` is what says the same thing to a screen reader now
+									 * that the native attribute is gone: the field is still focusable
+									 * and still readable, so the accessible name has to carry the
+									 * refusal the ink step carries visually. It is undefined (absent)
+									 * while the composer works, because `aria-disabled="false"` on a
+									 * textarea that takes input is a statement about a state the user
+									 * is not in.
+									 *
+									 * The refusal itself is enforced by the guard at the top of
+									 * `handleComposerKeyDown`: `readOnly` suppresses the EDIT (no `input`
+									 * event fires, so `onChange` never runs), but the keydown still
+									 * arrives — so Enter would submit without that guard.
+									 */
+									readOnly={isInputDisabled}
+									aria-disabled={isInputDisabled || undefined}
 									aria-label="Message"
 									role="combobox"
 									aria-describedby={
