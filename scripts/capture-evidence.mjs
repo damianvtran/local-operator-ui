@@ -1952,7 +1952,50 @@ export const STORIES = [
 	["canvas-workspace--edit-prompt", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
+	/*
+	 * The Schedules page, re-shot whole when the page was harmonized onto the
+	 * wake primitive: its rows are conversations-with-wakes now, so every
+	 * frame the surface had was a picture of a page that no longer exists. The
+	 * four that were already here are kept - `list` is still the populated list,
+	 * `picker-open` is still the date-time field, and the two row-action frames
+	 * still hold an icon-only control's accessible name - and the states the
+	 * design round names are added beside them, because a frame set that covers
+	 * one state of a page with five is how a state ships unrendered.
+	 */
 	["schedules-page--list", 1280, 900],
+	["schedules-page--list-narrow", 1280, 900],
+	["schedules-page--empty", 1280, 900],
+	["schedules-page--loading", 1280, 900],
+	["schedules-page--load-error", 1280, 900],
+	/*
+	 * The pair to `load-error`, and the reason it needs its own story: the
+	 * marker that says the rows on screen are the last list that LOADED cannot
+	 * appear where there are no rows, so a set that stops at the total failure
+	 * cannot photograph the state a user meets when the daemon goes away under an
+	 * open page.
+	 */
+	["schedules-page--stale-rows", 1280, 900],
+	["schedules-page--one-wake", 1280, 900],
+	["schedules-page--three-wakes", 1280, 900],
+	["schedules-page--parked", 1280, 900],
+	["schedules-page--spent", 1280, 900],
+	["schedules-page--read-error", 1280, 900],
+	["schedules-page--supervisor-down", 1280, 900],
+	["schedules-page--legacy-only", 1280, 900],
+	["schedules-page--cancel-confirm", 1280, 900],
+	["schedules-page--create-dialog", 1280, 900],
+	["schedules-page--create-dialog-existing", 1280, 900],
+	["schedules-page--create-dialog-no-conversations", 1280, 900],
+	["schedules-page--create-dialog-every", 1280, 900],
+	/* The repeat floor, refused inline: the one refusal the dialog owns rather
+	   than letting the transport answer for it with its generic sentence. */
+	["schedules-page--create-dialog-repeat-floor", 1280, 900],
+	["schedules-page--create-dialog-ceiling", 1280, 900],
+	["schedules-page--edit-wake", 1280, 900],
+	/* The editor after a REPEAT-only change: the path the old re-anchor sentence
+	   was false on, and the dirty `Save` the old dialog enabled with nothing to
+	   save. */
+	["schedules-page--edit-wake-repeat-only", 1280, 900],
 	["schedules-page--picker-open", 1280, 900],
 	["schedules-page--row-actions-revealed", 1280, 900],
 	["schedules-page--row-action-label", 1280, 900],

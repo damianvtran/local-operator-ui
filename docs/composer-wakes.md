@@ -183,6 +183,18 @@ not reporting. Rejected glyphs, each for a collision:
 |---|---|
 | `Clock` | `SubagentStateIcon` draws it for a capacity-QUEUED child on the chip beside this one — one glyph, two states, one row |
 | `CalendarClock` | the schedules surface's glyph for a recurring job, and a wake is not a schedule job: different objects, different cancels |
+
+**Amendment — the Schedules page (`docs/schedules-page.md`).** The
+grounds of that last row have changed and its conclusion has not. "A wake is not
+a schedule job" was true while there were two objects; the wake IS the
+scheduled-task primitive now, and the machine-wide page lists
+conversations-with-wakes while the older agent-schedule engine runs out the rows
+it already has in a fenced group. What still decides the glyph is the half that
+survives the change: the page renders **this file's own row component**
+(`WakeRowView`), because one object must not read two ways on two surfaces that
+can be on screen at once, so its wake lines lead with the same `AlarmClock`.
+`CalendarClock` is still used by neither — the page's header keeps the route's
+`CalendarDays`, and the wake row keeps the alarm mark.
 | `Bell` / `BellRing` | the notification stack's, and a wake is a trigger rather than a notification |
 | `Info` | the plan chip's, and one glyph in this row means one thing |
 | no mark at all | what design review round 1's D1 refused for the plan chip: the count alone is plain muted text a reader has no way to tell from prose |
@@ -345,6 +357,17 @@ never cut mid-word, the unbounded one has a second home.
 - **The rows are quiet.** No hover ground, no pointer cursor, no button role: a
   schedule is read here and cancelled by the agent, so there is nothing to press.
 
+  **Amendment — the Schedules page (`docs/schedules-page.md`).** That is a
+  rule about THE PANE, and it is unchanged here: this section watches a live
+  turn, and the agent's own `wake({op:"cancel"})` is still the only cancel
+  reachable from inside a conversation. It is not a rule about every surface
+  that shows a wake. The Schedules page is where a scheduled task is CREATED,
+  and a management surface that can arm but not stop is half a control, so its
+  wake lines carry a `Cancel wake` control (hover- and focus-revealed, behind a
+  confirm) and its row head opens the conversation. The page also replaces this
+  file's footer sentence: "To stop a wake, ask the agent to cancel it" is false
+  there, so it says what the user can do instead.
+
 ## 9. Evidence
 
 | Frame set | What it is |
@@ -395,6 +418,15 @@ retained rather than consumed.
 | L | A second `wakes` count field on `RunDetails` beside the list | Refused: every row in the list is armed by definition, so `wakes.length` IS the count and a parallel number could only ever disagree with it (unlike `openChildren`/`openJobs`, which are filtered counts over lists that also hold settled rows). |
 | M | Reading only `remaining` for the bounded clause | Refused (§ 2): the field is declared and never populated, so the clause would render in every fixture and in no real session. The fallback is the backend's own arithmetic, and `remaining` still wins when a runtime starts sending it. |
 | N | Writing the fallback's two fields into a fixture's `remaining` instead | Refused: a frame that renders the clause off a field the product does not send is a frame that certifies an unreachable state, which is the failure this whole record is about. The fixtures carry `limit`/`fired_count` and a null `remaining`, exactly as the wire does. |
+
+**Amendment (the Schedules page).** The first half of K is now false in
+general and stays true HERE: a wake does have a conversation, because the wake
+is the primitive and the conversation is what carries it - but this pane's row
+is being read from inside that conversation already, so opening it would be a
+control that goes nowhere. The second half is the pane's own division of
+labour (the agent cancels) and is why the page's `Cancel wake` is a different
+surface's affordance rather than a reversal of this one
+(`docs/schedules-page.md` § Permissions).
 
 ## 11. Risks, and what this does not settle
 
