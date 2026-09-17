@@ -219,6 +219,21 @@ adopt a wider one — not whether to delete the cap.
 the measure is respecified, use container queries (`@container`, already used at
 `wysiwyg-markdown-editor.tsx:1701`) rather than viewport breakpoints.
 
+**Retired 2026-09-16 — a dated note on THIS WHOLE SECTION (§ 2b), not a rewrite of it.**
+Everything this section states is the audit's own record of its own date, **above and below
+this note**: the `lo-measured` class and the `62ch` rule it quotes, the 546.738px / "roughly
+465px" arithmetic, the "~395px permanently empty on the right" figure, and the choice it
+puts to the designer. **The rule no longer exists.** `.lo-measured` and its cap were removed
+on 2026-09-16 by the change answering a later operator report — a user card widened by a
+reply quote or an attachment left its prose centre-constrained inside it, the same class of
+defect on the user side of the column — and the removal answers this section's own question
+too: agent output now takes the full row content box, so there is no second left rail and
+nothing for the composer to adopt. The contract reads: the measure is the user card's own
+`max-w-[75%]` inside `CHAT_MEASURE`, and `.lo-markdown` takes no cap and no centring on
+either branch. The authority for it is the reading-measure comment at `markdown.css:280` and
+`branding.md` § 7 (`:422`); every line number and measurement in this section is left as it
+was written.
+
 ---
 
 ## Defect 3 — "The chat header style really needs to improve"

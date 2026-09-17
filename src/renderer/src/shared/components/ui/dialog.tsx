@@ -57,11 +57,13 @@ export type DialogContentProps = ComponentPropsWithoutRef<
 	/**
 	 * The scrim's own classes.
 	 *
-	 * The default scrim is `z-50`, which dims the app but NOT the connection
-	 * banner (`z-2200`, `fixed inset-x-0 top-0`): a dialog that clears the banner
-	 * has to clear its scrim too, or the banner paints between the two and shows
-	 * as an undimmed strip with its sentence sliced by the panel (UX round 2, U7).
-	 * Only a surface that has already decided it owns the screen needs this.
+	 * The default scrim is `z-50`, which dims the app but not a surface that
+	 * declares a level above it. With the stack the full-bleed bands used to have
+	 * (`z-2200`, `fixed inset-x-0 top-0`), the scrim left the band's strip
+	 * undimmed and its sentence showed sliced by the panel (UX round 2, U7). The
+	 * bands are in flow since D9 and carry no level of their own, so what this
+	 * still buys is the same guarantee for anything the shell DOES stack above
+	 * `z-50`. Only a surface that has already decided it owns the screen needs it.
 	 */
 	overlayClassName?: string;
 };
