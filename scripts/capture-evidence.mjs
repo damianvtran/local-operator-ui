@@ -4331,8 +4331,9 @@ const main = async () => {
 	 * The gate cannot catch a `head` that names the wrong tree, and BOTH halves of
 	 * what it does ask are worth naming so this is auditable rather than a summary:
 	 * `citationFailures` asks whether the sha RESOLVES, and
-	 * `citationAncestryFailures` (`check-evidence.mjs:812`) asks whether it is an
-	 * ANCESTOR OF `HEAD`. Main's own commit satisfies both, which is exactly why
+	 * `citationAncestryFailures` asks whether it is an ANCESTOR OF `HEAD` - named by
+	 * symbol rather than by line, since a line number is one more thing a later pass
+	 * has to keep true. Main's own commit satisfies both, which is exactly why
 	 * the gate could not see the round-6 defect; neither half asks whether the tree
 	 * a citation names carries the frames this record declares. The same rule is
 	 * stated for readers in the manifest's `citationConvention`.
