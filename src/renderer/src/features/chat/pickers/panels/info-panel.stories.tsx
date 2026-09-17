@@ -40,10 +40,13 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useState } from "react";
 import type { DesktopInfoData } from "../../../../../../shared/desktop-contract";
 import "../../../../styles/index.css";
+import {
+	desktopRequestDeadlineDetail,
+	desktopRequestDeadlineMs,
+} from "../../../../../../shared/desktop-contract";
 import type { InfoFrontend } from "./info-model";
 import { InfoPanel } from "./info-panel";
 import { scrollPanelToSection } from "./story-scroll";
-import { desktopRequestDeadlineDetail, desktopRequestDeadlineMs } from "../../../../../../shared/desktop-contract";
 
 const noop = () => {};
 

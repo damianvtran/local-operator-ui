@@ -42,9 +42,12 @@ import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { useState } from "react";
 import type { DesktopUsageAggregate } from "../../../../../../shared/desktop-contract";
 import "../../../../styles/index.css";
+import {
+	desktopRequestDeadlineDetail,
+	desktopRequestDeadlineMs,
+} from "../../../../../../shared/desktop-contract";
 import type { AnalyticsData, AnalyticsMetric } from "./analytics-model";
 import { AnalyticsPanel } from "./analytics-panel";
-import { desktopRequestDeadlineDetail, desktopRequestDeadlineMs } from "../../../../../../shared/desktop-contract";
 
 /* A fixed LOCAL noon, so the window's own arithmetic is stable everywhere: the
    panel derives its span from this clock, and a frame that moved with the
