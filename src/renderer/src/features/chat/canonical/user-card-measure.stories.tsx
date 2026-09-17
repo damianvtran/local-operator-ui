@@ -1,7 +1,8 @@
 /**
- * The user card at the widest the column gets, on the two shapes that widen it.
+ * The user card at the widest the column gets, on the three shapes that set its
+ * width.
  *
- * WHY THIS STORY EXISTS (operator report, 2026-09-16): "I noticed on some wider
+ * WHY THIS SET EXISTS (operator report, 2026-09-16): "I noticed on some wider
  * attachments that the text in the user message component doesn't expand all
  * the way across ... the text should expand with the width of the user message
  * card if the card width is expanded instead of ending up center constrained."
@@ -11,20 +12,54 @@
  * `margin-inline: auto`. Both rules lived in `markdown.css`; the measure comment
  * there now carries the report, the numbers, and why neither is coming back.
  *
- * WHY 1024, and what a frame at this width can prove. The column measure caps
- * at 900px and the transcript scroller insets it by its own `p-4`, so the row
- * content box is 868px and the card's `max-w-[75%]` resolves to 651px - the
- * widest a user card ever gets. Below a 750px column the cap never binds and
- * this defect has nothing to show, which is why the frames are taken where the
- * measure does bind rather than at whatever width the preview happens to have.
+ * WHY 1024x620, AND WHAT THAT NUMBER IS. 1024x620 is the PANE, not the window:
+ * these frames are the pane's own box, and every number below is read from the
+ * live DOM at that pane in localOperatorDark on
+ * `chat-canonical-user-card-measure--reported-shape`. At that pane the measure
+ * is 900px (62..962) - `CHAT_MEASURE` caps the CONTENT div and the scroller's
+ * `p-4` sits outside it, so the 900 is the row content box itself rather than
+ * 900 minus that padding. `max-w-[75%]` then puts the card at 675px, with a
+ * 641px content box inside its `px-4` and its 1px border, and the agent's
+ * answer resolves against 860px of the same measure because it loses the 40px
+ * avatar gutter. 675 against 860 is the aside the hierarchy asks for, and both
+ * halves come from the box rather than from a cap on prose.
  *
- * WHAT TO LOOK FOR in both frames: the prose's left edge and the card's inner
- * left edge are the SAME line, and they hold at every paragraph and at the
+ * THE BEFORE HALF, from the same read: with the retired cap in place the prose
+ * was 351.1..897.9, i.e. 546.738px = 62ch, with `margin-inline` 47.125 and
+ * 47.1406 - 48.1px of slack on EACH side of a 675px card. After it, the prose is
+ * 304..945: the whole 641px content box, `max-width: none`, margins 0, slack 0.
+ * That pair is the claim, and the frames are its pixels.
+ *
+ * THE THRESHOLD, stated correctly because the first draft got it wrong: the
+ * 62ch cap bound whenever the card's content box exceeded 546.738px, which is a
+ * column above roughly 806px - NOT `CHAT_MEASURE`'s own 750px breakpoint, which
+ * governs whether the column takes a percentage or the full width and is a
+ * different quantity. 1024 is comfortably above the 806 at which the cap binds,
+ * which is what makes these frames able to show the defect at all.
+ *
+ * LINE LENGTH, in the two different quantities the repo now keeps apart: the
+ * user's own longest rendered line in the reported fixture is ~99-101 characters
+ * on 627.6px, against the agent answer's 131 characters on 832.6px
+ * (`chat-older-history-slot--in-transcript-idle`, 1024). The `ch` figure this
+ * repository has carried (98.1) is `ch` units, not characters - see the measure
+ * comment in `markdown.css`, which states both.
+ *
+ * WHAT TO LOOK FOR in all three frames: the prose's left edge and the card's
+ * inner left edge are the SAME line, and they hold at every paragraph and at the
  * attachment. The failure these stories exist to catch is the prose block
  * sitting inboard of that edge with equal slack on both sides - the centred
  * column - which is exactly what the reported frame showed.
  *
- * No `play` function: both are resting states, and the evidence rig takes them.
+ * THE THREE FIXTURES are the three routes to a wide card, one story each: a
+ * reply quote (the reported shape), an attachment wider than the prose, and a
+ * long text-only turn. The third is here because it is the MAJORITY shape and
+ * the round that fixed this photographed only the first two: with the cap gone
+ * a text-only card widens from 580.7px (546.738 + 32 + 2) to 675px on any column
+ * wider than about 806px, which is a change a reviewer should accept or reject
+ * on pixels rather than on the contract's word.
+ *
+ * No `play` function: all three are resting states, and the evidence rig takes
+ * them.
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
@@ -40,13 +75,18 @@ import type {
  * A capture wide enough to widen the card on its own.
  *
  * SYNTHETIC, and deliberately: the claim under test is about the attachment's
- * WIDTH against the card's 619px content box, so what the fixture has to be is
- * precisely 900x200 with a normal aspect - a real screenshot would be a
- * megabyte of base64 in a story file for no extra evidence. It renders 619px
- * wide and 137.6px tall inside the card, under the 240px height ceiling the
- * ledger rule sets, so `object-contain` letterboxes nothing here.
+ * WIDTH against the card's 641px content box, so what the fixture has to be is
+ * a wide, normal-aspect capture - a real screenshot would be a megabyte of
+ * base64 in a story file for no extra evidence. It is 900x200 and MEASURED in
+ * the frame at 639x142 (so it sits just inside the content box rather than
+ * filling it edge to edge), under the 240px height ceiling the ledger rule sets,
+ * which is why `object-contain` letterboxes nothing here. The prose beside it is
+ * deliberately SHORT: this story exists to show the image SETTING the card's
+ * width, so a message long enough to reach the cap on its own would leave the
+ * frame unable to fail for the route it names.
  */
-const WIDE_CAPTURE_BASE64 = "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";
+const WIDE_CAPTURE_BASE64 =
+	"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";
 
 const TS = 1_760_000_000_000;
 
@@ -102,9 +142,9 @@ const ATTACHED: TranscriptRecord[] = [
 	record(
 		"u1",
 		[
-			"Here is the dashboard capture after the change.",
+			"Dashboard capture after the change.",
 			"",
-			"Does the spacing between the two panels look right to you, or is the left column still crowded against the header?",
+			"Does the left column still look crowded to you?",
 		].join("\n"),
 		[
 			{
@@ -114,6 +154,28 @@ const ATTACHED: TranscriptRecord[] = [
 				mimeType: "image/png",
 			},
 		],
+	),
+];
+
+/**
+ * The majority shape, and the one the first round did not photograph.
+ *
+ * No quote and no attachment: nothing here is wider than a 62ch column, so this
+ * card's width is decided by the prose alone - which is exactly the case whose
+ * width the retirement CHANGES, from 580.7px to 675px. A reviewer's question on
+ * this frame is not "does the fix hold?" but "is the wider card the right card?",
+ * and it can only be answered from a picture.
+ */
+const LONG_TEXT: TranscriptRecord[] = [
+	record(
+		"u1",
+		[
+			"Morning - here is where the import stands before you pick it up.",
+			"",
+			"The March file loaded cleanly except for one row, which is failing on a `not null` column that the source system still writes as empty rather than absent. I left the table half written so you can see the row that stopped it, and I did not retry, because a retry would have appended the four hundred rows behind it a second time.",
+			"",
+			"If you would rather have a clean run than a readable failure, delete the table and re-run with `--skip-invalid` and I will follow the count. Otherwise the question I need answered is what the import should DO with a row like that one: skip it and report, or refuse the file.",
+		].join("\n"),
 	),
 ];
 
@@ -172,4 +234,9 @@ export const ReportedShape: Story = {
 /** The same card widened by an attachment instead of a quote. */
 export const WideAttachment: Story = {
 	render: () => <Frame records={ATTACHED} />,
+};
+
+/** A long turn with nothing but text: the card's width from the prose alone. */
+export const LongTextOnly: Story = {
+	render: () => <Frame records={LONG_TEXT} />,
 };

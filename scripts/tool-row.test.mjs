@@ -726,7 +726,7 @@ test("the transcript no longer renders a Writing row", () => {
 	);
 });
 
-test("neither surface caps the prose with a reading measure", () => {
+test("no reading measure survives on either surface, by property not by name", () => {
 	// The operator's report of 2026-09-16: a user card widened by a reply quote
 	// or a wide attachment left the message floating as a centre-constrained
 	// column inside it, with equal slack on each side. The 62ch cap and the
@@ -740,51 +740,70 @@ test("neither surface caps the prose with a reading measure", () => {
 	// reversed that call: the aside is the CARD's own `max-w-[75%]` inside
 	// `CHAT_MEASURE`, and the prose fills the card. The agent half is unchanged —
 	// no cap there either, so it shares the tool rows' edges.
+	//
+	// IT ASKS ABOUT THE PROPERTY, NOT THE SPELLINGS (code review round 1, MAJOR
+	// 4). The first version looked for `.lo-measured .lo-markdown {` and for a
+	// bare `MEASURE` token sharing a line with `cn(`, so it passed for a
+	// DESCENDANT cap (`.lo-measured .lo-markdown > :is(p, ul) { max-width: 62ch
+	// }`), for a selector-list cap, for the class re-applied through a `cn(` call
+	// split over several lines, for a renamed class, and for a Tailwind
+	// `max-w-[62ch]` on the body div. Each of the four questions below fails for
+	// every one of those, because each asks what a reading measure IS rather than
+	// what it was called: a stylesheet cap (`max-width` other than `100%`, and no
+	// `ch` unit left at all), centring by margin (`auto` never appears in a margin
+	// declaration), a cap or an inline style in either component (`max-w-*` only
+	// the card's own two steps, no `maxWidth`) and re-centring by text alignment.
+	//
+	// WHAT IT STILL DOES NOT CATCH, stated so this is not read as a guarantee: a
+	// cap or a centring defined in a stylesheet OTHER than `markdown.css`, one
+	// that uses a unit and a property no declaration here uses, and any future
+	// legitimate non-`100%` `max-width` in this file — the last of which is a
+	// deliberate cost, because this file is the one place such a measure could
+	// retire to and a new cap here should be an argued act rather than a silent
+	// one.
 	const source = (path) => readFileSync(path, "utf8");
-	// `lo-measured` is what opted a box into the rule, so its absence is the
-	// whole contract: no cap can land on a box that never carries the class.
-	// Both surfaces are checked rather than the canonical one alone, because the
-	// two have to keep agreeing.
+	// Comments stripped first: this file's own measure argument QUOTES `max-width:
+	// 62ch` and `margin-inline: auto` while explaining why they are gone, and a
+	// test that read the prose as a rule would fail on its own explanation.
+	const css = source(
+		"src/renderer/src/features/chat/components/markdown.css",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.deepEqual(
+		[...css.matchAll(/max-width\s*:\s*([^;}]+)/g)]
+			.map(([, value]) => value.trim())
+			.filter((value) => value !== "100%"),
+		[],
+		"markdown.css declares no width cap beyond `100%`",
+	);
+	// A reading measure is a `ch` cap — 62ch was the number — so one re-added
+	// under another name still has to spell a `ch` unit in this file.
+	assert.deepEqual(
+		css.match(/[\d.]+ch\b/g) ?? [],
+		[],
+		"markdown.css keeps no `ch` unit: the reading measure has no spelling left",
+	);
+	assert.ok(
+		!/(?:^|[;{\s])margin[a-z-]*\s*:[^;}]*\bauto\b/.test(css),
+		"no margin in markdown.css centres a block",
+	);
+	assert.ok(
+		!/text-align\s*:\s*(?:center|justify)/.test(css),
+		"markdown.css centres nothing by text alignment either",
+	);
+	// Both user-turn surfaces, because the two have to keep agreeing, and a
+	// Tailwind cap is how one would come back on the body div.
 	for (const path of [
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		"src/renderer/src/features/chat/components/message-item/message-paper.tsx",
 	]) {
-		// A string literal, not the bare name: the history in `markdown.css` and in
-		// `message-paper.tsx` names the class it lost, and a prose mention is not an
-		// application. What must not come back is a box carrying it.
-		assert.ok(
-			!/["']lo-measured["']/.test(source(path)),
-			`${path} opts no box into a reading measure`,
+		const file = source(path);
+		assert.deepEqual(
+			[...new Set(file.match(/\bmax-w-[^\s"'`)]+/g) ?? [])].sort(),
+			["max-w-[75%]", "max-w-[92%]"],
+			`${path}: the only width caps are the card's own two steps`,
 		);
-		// The bare `MEASURE` token as well, so a class re-applied under another
-		// name still has to survive this. `CHAT_MEASURE` is the column's shared
-		// width and a different thing entirely, so a substring match would count
-		// it.
-		const applied = source(path)
-			.split("\n")
-			.filter(
-				(line) => /(?<![A-Z_])MEASURE\b/.test(line) && line.includes("cn("),
-			);
-		assert.deepEqual(applied, [], `${path} applies no measure to a box`);
+		assert.ok(!/maxWidth|max-width/.test(file), `${path} caps nothing inline`);
 	}
-	// Comments stripped first, so the argument above is not read as a rule. The
-	// stylesheet must keep neither the selector nor a cap on the rendered
-	// markdown root — a cap re-added under another name is the same defect
-	// returning in a different costume.
-	const css = source(
-		"src/renderer/src/features/chat/components/markdown.css",
-	).replace(/\/\*[\s\S]*?\*\//g, "");
-	assert.ok(
-		!/(?:^|\s)\.lo-measured\s*[{,]/.test(css),
-		"the stylesheet no longer opts a box into a reading measure",
-	);
-	// The bare root, not a descendant: `.lo-markdown pre` legitimately takes
-	// `max-width: 100%` so a code block wraps to its container, and a reading cap
-	// is a cap on the rendered root itself.
-	assert.ok(
-		!/\.lo-markdown\s*\{[^{}]*max-width/.test(css),
-		"no max-width is applied to the rendered markdown root",
-	);
 });
 
 test("an unchanged row keeps its object identity across a rebuild", () => {
