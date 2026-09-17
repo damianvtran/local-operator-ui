@@ -311,6 +311,14 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 								chains={draft.cascadeBase ?? undefined}
 								disabled={disabled}
 								effectiveHosting={effectiveHosting}
+								/* The row's help is on the page only on a CORE row; an advanced
+								   one keeps it behind its disclosure, where describing the field
+								   by it would name an element nobody rendered. */
+								helpId={
+									tier === "core" && setting.help
+										? settingHelpId(setting.key)
+										: undefined
+								}
 								onValueChange={(value) => onDraftChange({ ...draft, value })}
 								onChainsChange={(chains) =>
 									onDraftChange({ ...draft, cascadeBase: chains })

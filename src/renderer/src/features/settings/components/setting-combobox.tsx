@@ -201,7 +201,18 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 			   "typed something that matched nothing" (which is a value). */
 			onClear={() => onValueChange("")}
 			emptyText={
-				kind === "provider" ? "No providers" : "Nothing matches that model"
+				/*
+				 * Three different reasons for an empty list, and they must not read
+				 * as each other: a provider registry with nothing in it, a backend
+				 * that cannot be asked for a catalogue at all (no `catalogues`
+				 * capability — an older server, where the field falls back to what
+				 * it was), and a query that simply matched nothing.
+				 */
+				kind === "provider"
+					? "No providers"
+					: modelsEnabled
+						? "Nothing matches that model"
+						: "Model list unavailable"
 			}
 			helperText={helper ? <span {...helperProps}>{helper}</span> : undefined}
 		/>
