@@ -28,8 +28,15 @@
  * answer a gate would make every "it works" captured through it worthless.
  */
 
+import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
+import { getFileTypeFromPath } from "@features/chat/utils/file-types";
+import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
 import { apiConfig } from "@shared/config";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	panelIdentityFor,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
 /** One animation frame, so a capture sees the paint the action caused. */
@@ -387,6 +394,76 @@ export function installDevDriver(): string[] {
 			const result = pressAt(element);
 			await nextFrame();
 			return { selector, target: describeElement(element), ...result };
+		},
+
+		/**
+		 * Put a local file in the canvas, on the pane this app is showing.
+		 *
+		 * WHY THIS VERB HAS TO EXIST. Every other verb drives something the app puts
+		 * on screen by itself, and the canvas's documents view has no such path in a
+		 * driver run: its tiles come from a conversation's TRANSCRIPT (which needs a
+		 * reachable backend and a session whose messages mention a path), one of the
+		 * two controls that open a file directly is an OS dialog (`⌘O`), and the
+		 * other - the create-file dialog - renders only under an agent id the pane
+		 * takes from a session. So the gesture this stands in for is the one a
+		 * reviewer actually makes: a click on a Files-grid tile. It is built out of
+		 * the same pieces that handler uses - `probeFiles` for the mtime and the
+		 * size, the `READ_ENCODING`/`viewerFor` table for whether this viewer reads
+		 * its own bytes, `readFile` for the text kinds, `canvasDocumentForPath` for
+		 * the document - and it is deliberately NOT a second copy of the click
+		 * handler's branching: what a scene needs from it is a document with the
+		 * right facts on it, not the toasts and the OS fallbacks that belong to a
+		 * human's click.
+		 *
+		 * The draft is staged through the store action the New chat row calls, and
+		 * that IS a substitution rather than a press: the row's own gesture takes the
+		 * `session_catalogue` capability gate, which cannot open in a run with no
+		 * backend - and without a pane identity there is no conversation for the
+		 * document to belong to, so a canvas with nothing open is all a scene could
+		 * photograph.
+		 *
+		 * It answers with what it opened, so a scene asserts the document the panel
+		 * was handed rather than assuming it.
+		 */
+		openCanvasDocument: async (payload) => {
+			const request = payload as { path?: unknown; title?: unknown } | null;
+			const path = requireString(request?.path, "canvas document path");
+			const title =
+				typeof request?.title === "string" ? request.title : undefined;
+			const [probe] = await window.api.probeFiles([path]);
+			if (!probe || !probe.exists || !probe.isFile) {
+				throw new Error(`no file at ${probe?.resolved ?? path}`);
+			}
+			const document = canvasDocumentForPath(path, {
+				title,
+				type: getFileTypeFromPath(path),
+				availability: "present",
+				sizeBytes: probe.sizeBytes ?? undefined,
+				lastAgentModified: probe.mtimeMs ?? undefined,
+				readMtimeMs: probe.mtimeMs ?? undefined,
+			});
+			const encoding = READ_ENCODING[viewerFor(path, document.type) ?? "code"];
+			if (encoding === "utf-8" || encoding === "base64") {
+				const result = await window.api.readFile(document.path, encoding);
+				if (!result.success) {
+					throw new Error(`could not read ${document.path}`);
+				}
+				document.content = result.data;
+			}
+			const sessions = useCanonicalSessionsStore.getState();
+			const conversationId =
+				panelIdentityFor(sessions.activeDraftKey, sessions.activeSessionId) ??
+				sessions.stageDraft();
+			useUiPreferencesStore.getState().setCanvasOpen(true);
+			useCanvasStore.getState().addFileAndSelect(conversationId, document);
+			await nextFrame();
+			return {
+				conversationId,
+				documentId: document.id,
+				readMtimeMs: document.readMtimeMs ?? null,
+				contentLength: document.content.length,
+				encoding,
+			};
 		},
 	});
 }

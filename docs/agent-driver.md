@@ -254,6 +254,7 @@ bridge; the verbs are registered by the renderer's install module.
 | `call("navigate", path)` | Navigates the hash router and waits for the route |
 | `call("setTheme", name)` | The settings picker's own action, waiting out the 120ms `transition-colors` it starts so a frame taken after it is the settled palette rather than a blend of the two |
 | `call("press", selector)` | Waits for the element, hit-tests its painted centre, dispatches a pointer sequence, returns what was hit |
+| `call("openCanvasDocument", { path })` | Puts a local file in the canvas, on the pane the app is showing: the read step the Files grid's tile click performs (`probeFiles` for the mtime and size, `READ_ENCODING`/`viewerFor` for whether the viewer reads its own bytes, `readFile` for the text kinds, `canvasDocumentForPath` for the document), then `addFileAndSelect`. It also stages a draft, because a run with no backend cannot open the New chat gate and without a pane identity there is no conversation for the document to belong to |
 | `facts()` | From main: window mode, window vs content size, visible/focused/minimized, app version |
 | `capture(label)` | `webContents.capturePage()` → `<out>/<label>.png`, reporting pixels and the CSS viewport |
 
@@ -268,7 +269,7 @@ release. Add a *verb* only when a scene needs to reach a path none of these can
 is refused on purpose: its blast radius grows with every PR, and the review
 question "what can this reach" would have no answer.
 
-There are three scenes, and the second and third are the worked examples of that
+There are several scenes, and the ones below are the worked examples of that
 rule:
 
 - **`states`** — the before/after pair of one screen plus a real control press;
@@ -296,6 +297,24 @@ rule:
   six-step wizard is a modal over the window. It asserts both halves of the
   claim: that the chord moves the app to `/chat` and stages a fresh draft, and
   that with no catalogue answering the press changes nothing at all.
+
+- **`canvas-freshness`** — the canvas document kept current with the file on
+  disk. The scene writes the file ITSELF, from outside the app, which is the only
+  way to produce the event the feature exists for, and it sets the mtime exactly
+  so the two halves are not clock-dependent: a write with a new mtime must appear
+  with no interaction, and a write with the SAME mtime must not — then the
+  refresh control must apply it anyway. It also installs a counter over the app's
+  own `probeFiles` (a scene-level use of the bridge, not a verb), and that is
+  what makes the two claims about TIME assertable rather than merely plausible:
+  a tab that is not on screen is not probed at all while it is off screen, and
+  it IS probed within a moment of being switched to. This is also the scene that
+  needed a new verb (`openCanvasDocument`), because a driver run has no other way
+  to put a file in the canvas: the tiles come from a transcript, ⌘O is an OS
+  dialog, and the create-file dialog needs an agent id that only a session
+  supplies. What it cannot show is a window that is genuinely `hidden`, or a real
+  user's typing — the run's renderer reports `visible`, and the dirty-suppression
+  half is covered against the shipped module by
+  `scripts/canvas-file-freshness.test.mjs`.
 
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script

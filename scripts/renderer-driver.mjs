@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|settings-model|settings-fields|palette|browser-pane|browser-mark|none>
+ *   --scene <states|new-chat|settings-model|settings-fields|palette|browser-pane|browser-mark|mentions|canvas-freshness|none>
  *                          which built-in scene to run (default: states)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
@@ -121,6 +121,8 @@ import {
 	readdirSync,
 	realpathSync,
 	rmSync,
+	statSync,
+	utimesSync,
 	writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
@@ -4376,6 +4378,534 @@ async function sceneMentions(cdp) {
 	return frames;
 }
 
+// ---- the canvas freshness scene ----------------------------------------------
+
+/**
+ * A file rewritten on disk while its canvas tab is open, in the BUILT app.
+ *
+ * WHAT IT IS EVIDENCE FOR, and why it cannot be a unit test. The headless suite
+ * (`scripts/canvas-file-freshness.test.mjs`) drives the decisions - the mtime
+ * comparison, the identical-bytes backstop, the dirty suppression, the in-flight
+ * de-duplication - against the same modules the app runs, but every one of those
+ * runs against a FAKE bridge. What is left unproved by that is the half this
+ * scene exists for: that a real `statSync` in main and a real `readFile` over IPC
+ * reach a real viewer, on a real mount, through the app's own store, and that the
+ * panel a user is looking at changes without them doing anything.
+ *
+ * THE FILE IS REWRITTEN BY THIS SCRIPT, from outside the app, which is the only
+ * way to produce the event the feature exists for - an agent, an editor or a
+ * shell writing the file while the window sits there. Its mtime is set
+ * explicitly, so the three claims below are exact rather than clock-dependent:
+ *
+ *   1. a write with a NEW mtime is picked up with no interaction, and the
+ *      document's own line goes with it;
+ *   2. a write with the SAME mtime is not - which is what makes the mtime the
+ *      thing that decides - and the refresh control applies it anyway, which is
+ *      the control's whole job and the one case a probe cannot see;
+ *   3. a tab that is NOT on screen is left alone while it is off screen, and
+ *      switching to it is what applies what changed.
+ *
+ * WHY THE CLAIMS ABOUT TIME ARE PROVEN THROUGH THE STORE RATHER THAN BY COUNTING
+ * IPC CALLS. The first version of this scene wrapped `window.api.probeFiles` to
+ * count probes, and it measured nothing: the bridge is a `contextBridge` object,
+ * so assigning to one of its properties is silently ignored - the counter read
+ * zero for a run in which probes demonstrably happened. What replaces it is the
+ * app's own persisted state. `canvas-store` is the store's `localStorage` entry,
+ * so the scene can read the document the app is HOLDING (content, mtime baseline)
+ * for any tab, including one that is not on screen. That is a better instrument
+ * than a call count anyway, because it answers the question the design is really
+ * about: a file whose mtime differed and which the app had checked would have
+ * been applied, so "the off-screen tab's held bytes did not move for five
+ * seconds" is evidence that nothing checked it - and the same reading immediately
+ * after the switch, moved, is evidence that the switch is what did.
+ */
+const CANVAS_FRESHNESS_POLL_MS = 2000;
+
+/**
+ * The document the app is holding for one path, from its own store.
+ *
+ * `canvas-store` is zustand's `persist` entry: `{ state: { conversations: { … } } }`,
+ * one `files` array per conversation. Read as JSON with a try/catch because a
+ * torn read of a store mid-write is not what this scene is about, and `null` for
+ * "nothing holds this path yet" rather than an empty object, so a caller can tell
+ * "not there" from "there and empty".
+ */
+const CANVAS_STORE_DOCS_EXPR = `(() => {
+	try {
+		const raw = window.localStorage.getItem("canvas-store");
+		if (!raw) return null;
+		const conversations = JSON.parse(raw)?.state?.conversations ?? {};
+		const out = {};
+		for (const [key, value] of Object.entries(conversations)) {
+			out[key] = (value?.files ?? []).map((file) => ({
+				id: file.id,
+				content: file.content ?? "",
+				readMtimeMs: file.readMtimeMs ?? null,
+				lastAgentModified: file.lastAgentModified ?? null,
+			}));
+		}
+		return out;
+	} catch (error) {
+		return { error: String(error) };
+	}
+})()`;
+
+/**
+ * The store's entry for one path, whichever conversation holds it.
+ *
+ * Across conversations on purpose: which key the app filed the document under is
+ * the app's business (a draft key until the session exists, a session id after),
+ * and a scene that asserted the key would be asserting the app's routing rather
+ * than the freshness.
+ */
+async function storedDocument(cdp, path) {
+	const conversations = await cdp.evaluate(CANVAS_STORE_DOCS_EXPR);
+	if (!conversations || conversations.error) return null;
+	for (const files of Object.values(conversations)) {
+		for (const file of files) {
+			if (file.id === path || file.id === decodeURI(path)) return file;
+		}
+	}
+	return null;
+}
+
+/**
+ * The editor's own text, whichever of the two document surfaces is mounted.
+ *
+ * SCOPED TO THE CANVAS PANEL, and CodeMirror's own content first. Both editors
+ * are contenteditable - CodeMirror's `.cm-content` carries
+ * `contenteditable="true"` - so asking for a contenteditable and calling it
+ * "markdown" reads a code editor's text under the wrong name, and asking the
+ * whole document finds whatever else in the app is editable. The panel is
+ * `#canvas-document-panel`, which is also the element the tab strip's
+ * `aria-controls` names.
+ */
+const CANVAS_DOCUMENT_TEXT_EXPR = `(() => {
+	const panel = document.querySelector("#canvas-document-panel");
+	if (!panel) return { surface: null, text: "", panel: false };
+	const cm = panel.querySelector(".cm-content");
+	if (cm) return { surface: "code", text: cm.textContent ?? "", panel: true };
+	const editable = panel.querySelector('[contenteditable="true"]');
+	if (editable) return { surface: "markdown", text: editable.textContent ?? "", panel: true };
+	const body = panel.querySelector('[data-tour-tag="canvas-document-freshness"]');
+	return { surface: null, text: body ? body.textContent ?? "" : "", panel: true };
+})()`;
+
+/** The canvas's own tab strip, named by its own accessible label. */
+const CANVAS_TAB_SELECTOR =
+	'[role="tablist"][aria-label="Open documents"] [role="tab"]';
+
+/** The document on screen, as its own editor renders it. */
+function canvasDocumentText(cdp) {
+	return cdp.evaluate(CANVAS_DOCUMENT_TEXT_EXPR);
+}
+
+/** The text of one node, or null when it is not on screen. */
+function textOf(cdp, selector) {
+	return cdp.evaluate(
+		`(() => { const node = document.querySelector(${JSON.stringify(selector)}); return node ? node.textContent : null; })()`,
+	);
+}
+
+/** Wait for a condition the page answers, or give up and report the last answer. */
+async function waitForCondition(cdp, expr, timeoutMs, everyMs = 50) {
+	const started = Date.now();
+	let last = null;
+	for (;;) {
+		last = await cdp.evaluate(expr);
+		if (last) return { ok: true, waitedMs: Date.now() - started, last };
+		if (Date.now() - started > timeoutMs) {
+			return { ok: false, waitedMs: Date.now() - started, last };
+		}
+		await wait(everyMs);
+	}
+}
+
+/**
+ * Set a file's mtime to an exact second and read back what the filesystem
+ * recorded.
+ *
+ * Read back rather than assumed: the whole scene rests on the app's `mtimeMs`
+ * equalling this number exactly, and the only process that can answer for the
+ * volume is the one holding the file. Seconds are what `utimesSync` takes, so
+ * whole seconds are what is set.
+ */
+function setExactMtime(path, seconds) {
+	utimesSync(path, seconds, seconds);
+	return statSync(path).mtimeMs;
+}
+
+async function sceneCanvasFreshness(cdp) {
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless",
+		facts.windowMode === "headless",
+		facts.windowMode,
+	);
+	check(
+		"the window is never shown",
+		facts.visible === false,
+		`visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"the window never has focus",
+		facts.focused === false,
+		`focused=${facts.focused}`,
+	);
+	check(
+		"the renderer is looking at a visible document, which is what the poll requires",
+		hello.visibilityState === "visible",
+		hello.visibilityState,
+	);
+
+	/*
+	 * The subject. Two files, because the scene has to be able to ask "what
+	 * happens to a tab that is NOT the one on screen" - and a document that is
+	 * never opened is not a tab.
+	 */
+	const dir = join(SCRATCH, "canvas-freshness");
+	mkdirSync(dir, { recursive: true });
+	const markdown = join(dir, "notes.md");
+	const code = join(dir, "report.py");
+	const second = (Date.now() / 1000) | 0;
+	const MARKDOWN_T0 = second - 120;
+	const MARKDOWN_T1 = second - 60;
+	const MARKDOWN_T2 = second - 30;
+	const CODE_T0 = second - 90;
+
+	const markdownBody = (marker) => `# Canvas freshness\n\n${marker}\n`;
+	writeFileSync(markdown, markdownBody("first-version"));
+	const markdownMtime0 = setExactMtime(markdown, MARKDOWN_T0);
+	writeFileSync(code, 'print("code-first-version")\n');
+	const codeMtime0 = setExactMtime(code, CODE_T0);
+	note(
+		"the two subject files",
+		`${markdown} mtimeMs=${markdownMtime0}\n${code} mtimeMs=${codeMtime0}`,
+	);
+
+	/*
+	 * The chat route first. Nothing else in this scene can be reached from
+	 * wherever the app opens: the canvas is a dock beside a conversation, and a
+	 * run whose catalogue gate is closed has no panel to open a document in.
+	 */
+	await verb(cdp, "navigate", "/chat");
+	const routed = await verb(cdp, "state");
+	note("the route the scene works on", JSON.stringify(routed));
+
+	/*
+	 * ---- the markdown document: the poll, the mtime gate, the control --------
+	 */
+	const opened = await verb(cdp, "openCanvasDocument", { path: markdown });
+	note("openCanvasDocument", JSON.stringify(opened));
+	check(
+		"the document was opened at the mtime the file actually has",
+		opened.readMtimeMs === markdownMtime0,
+		`document baseline ${opened.readMtimeMs} against file mtime ${markdownMtime0}`,
+	);
+	check(
+		"the document's bytes were read into the canvas, not left to a viewer",
+		opened.contentLength === markdownBody("first-version").length,
+		`${opened.contentLength} characters for a ${markdownBody("first-version").length}-character file`,
+	);
+
+	const first = await canvasDocumentText(cdp);
+	note("what the canvas mounted", JSON.stringify(first));
+	check(
+		"the markdown editor is showing the file",
+		first.panel === true &&
+			first.surface === "markdown" &&
+			first.text.includes("first-version"),
+		`${first.surface}: ${JSON.stringify(first.text.slice(0, 120))}`,
+	);
+	const held = await storedDocument(cdp, markdown);
+	check(
+		"the app's own store holds the file's bytes and its mtime baseline",
+		held?.content === markdownBody("first-version") &&
+			held?.readMtimeMs === markdownMtime0,
+		JSON.stringify(held),
+	);
+
+	const stampBefore = await textOf(
+		cdp,
+		'[data-tour-tag="canvas-document-modified"]',
+	);
+	note("the document's line", stampBefore);
+	/*
+	 * The local-time claim, asked of the page rather than of this script: the
+	 * renderer's own locale and timezone are what "local" means here, so the
+	 * expectation is computed in the page from the same instant. The zone is
+	 * reported beside it, and the hour is compared with UTC's so a run on a UTC
+	 * machine says so instead of appearing to prove something.
+	 */
+	const stampFacts = await cdp.evaluate(`(() => {
+		const at = new Date(${markdownMtime0});
+		const options = { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" };
+		return {
+			expected: at.toLocaleString(navigator.language, options),
+			locale: navigator.language,
+			zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+			offsetMinutes: -at.getTimezoneOffset(),
+			localHour: at.getHours(),
+			utcHour: at.getUTCHours(),
+		};
+	})()`);
+	note("the stamp's claim", JSON.stringify(stampFacts));
+	check(
+		"the document's line states the file's last modification in the renderer's local time",
+		stampBefore === `Modified ${stampFacts.expected}`,
+		`${JSON.stringify(stampBefore)} against ${JSON.stringify(`Modified ${stampFacts.expected}`)}`,
+	);
+	check(
+		"the instant rendered is the local one, not UTC's",
+		stampFacts.localHour === stampFacts.utcHour ||
+			stampFacts.offsetMinutes !== 0,
+		`local hour ${stampFacts.localHour}, UTC hour ${stampFacts.utcHour}, offset ${stampFacts.offsetMinutes} min, zone ${stampFacts.zone}`,
+	);
+
+	/*
+	 * The layout claim, measured rather than eyeballed: the line is 28px and it
+	 * comes out of the document's own box rather than being laid over it or
+	 * pushing the panel past the window.
+	 */
+	const geometry = await cdp.evaluate(`(() => {
+		const line = document.querySelector('[data-tour-tag="canvas-document-freshness"]');
+		const panel = document.querySelector('[data-tour-tag="canvas-container"]');
+		const editor = document.querySelector("#canvas-document-panel .cm-editor") ??
+			document.querySelector('#canvas-document-panel [contenteditable="true"]');
+		if (!line || !panel || !editor) return null;
+		const lineRect = line.getBoundingClientRect();
+		const panelRect = panel.getBoundingClientRect();
+		const editorRect = editor.getBoundingClientRect();
+		return {
+			lineHeight: lineRect.height,
+			panelHeight: panelRect.height,
+			editorHeight: editorRect.height,
+			editorBottomPastPanel: editorRect.bottom - panelRect.bottom,
+			viewportHeight: window.innerHeight,
+			documentScrollHeight: document.documentElement.scrollHeight,
+		};
+	})()`);
+	note("geometry", JSON.stringify(geometry));
+	check(
+		"the document's line is one 28px row",
+		geometry !== null && Math.abs(geometry.lineHeight - 28) < 0.5,
+		JSON.stringify(geometry),
+	);
+	check(
+		"the document's own box is what shrank, not the panel",
+		geometry !== null && geometry.editorBottomPastPanel <= 0.5,
+		JSON.stringify(geometry),
+	);
+
+	const before = await captureSettled(cdp, "canvas-freshness-before");
+	check(
+		"the before frame is stable and toast-free",
+		before.stable && before.toastFree,
+		`attempts=${before.attempts} stable=${before.stable} toastFree=${before.toastFree}`,
+	);
+
+	/*
+	 * (1) A write with a NEW mtime, and nothing else. The app is not told; the
+	 * only thing that can notice is the mtime probe.
+	 */
+	const write2At = Date.now();
+	writeFileSync(markdown, markdownBody("second-version"));
+	const markdownMtime1 = setExactMtime(markdown, MARKDOWN_T1);
+	const applied = await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).text.includes("second-version")`,
+		CANVAS_FRESHNESS_POLL_MS * 4,
+	);
+	const appliedLatencyMs = Date.now() - write2At;
+	check(
+		"a file written on disk while its tab is open appears with no interaction",
+		applied.ok,
+		`waited ${appliedLatencyMs}ms (poll every ${CANVAS_FRESHNESS_POLL_MS}ms); last text ${JSON.stringify(String(applied.last).slice(0, 120))}`,
+	);
+	check(
+		"the automatic pickup is the poll's, not an accident of some faster path",
+		appliedLatencyMs >= CANVAS_FRESHNESS_POLL_MS / 2,
+		`${appliedLatencyMs}ms after the write`,
+	);
+	const stampAfterApply = await textOf(
+		cdp,
+		'[data-tour-tag="canvas-document-modified"]',
+	);
+	const expectedStamp1 = await cdp.evaluate(
+		`new Date(${markdownMtime1}).toLocaleString(navigator.language, { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })`,
+	);
+	check(
+		"the document's line moved with the file",
+		stampAfterApply === `Modified ${expectedStamp1}`,
+		`${JSON.stringify(stampAfterApply)} against ${JSON.stringify(`Modified ${expectedStamp1}`)}`,
+	);
+
+	/*
+	 * (2) A write with the SAME mtime. The bytes differ; the file's metadata does
+	 * not - a `cp -p` over the same path, a save that restored a timestamp, two
+	 * writes inside one filesystem tick. Nothing may change, which is what makes
+	 * the mtime the thing that decides - and it is also the case the refresh
+	 * control exists for, because no probe can see it.
+	 */
+	writeFileSync(markdown, markdownBody("third-version"));
+	setExactMtime(markdown, MARKDOWN_T1);
+	await wait(CANVAS_FRESHNESS_POLL_MS * 2 + 1000);
+	const afterSameMtime = await canvasDocumentText(cdp);
+	const heldWhileSame = await storedDocument(cdp, markdown);
+	check(
+		"a rewrite that leaves the mtime alone is not treated as a change",
+		afterSameMtime.text.includes("second-version") &&
+			!afterSameMtime.text.includes("third-version"),
+		`the editor still says ${JSON.stringify(afterSameMtime.text.slice(0, 120))}, the store holds ${JSON.stringify(String(heldWhileSame?.content).slice(0, 120))}`,
+	);
+
+	/*
+	 * (3) The control, which exists for exactly that case. Nothing else can apply
+	 * this: the poll has had ten chances and taken none, so a change here is the
+	 * press's by construction rather than by timing.
+	 */
+	const pressed = await verb(cdp, "press", {
+		selector: '[data-tour-tag="canvas-refresh-file-button"]',
+	});
+	check(
+		"the refresh control is a real hit target",
+		pressed.hitTest === true,
+		JSON.stringify(pressed),
+	);
+	const refreshed = await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).text.includes("third-version")`,
+		6000,
+	);
+	const refreshedStore = await storedDocument(cdp, markdown);
+	check(
+		"the refresh control re-reads the file the poll had left alone",
+		refreshed.ok,
+		`the editor says ${JSON.stringify(String(refreshed.last).slice(0, 60))}; the store holds ${JSON.stringify(String(refreshedStore?.content).slice(0, 60))}`,
+	);
+	check(
+		"the press is what re-read it, and the file's own mtime is untouched by it",
+		refreshed.ok && refreshedStore?.readMtimeMs === markdownMtime1,
+		`baseline ${refreshedStore?.readMtimeMs}, file mtime ${markdownMtime1}`,
+	);
+
+	const after = await captureSettled(cdp, "canvas-freshness-after");
+	check(
+		"the after frame is stable and toast-free",
+		after.stable && after.toastFree,
+		`attempts=${after.attempts} stable=${after.stable} toastFree=${after.toastFree}`,
+	);
+
+	/*
+	 * ---- the second document: a background tab is not polled ------------------
+	 *
+	 * Opening it makes IT the document on screen, which is what puts the first
+	 * one into the state this half is about: a tab that is open, whose file keeps
+	 * changing, that nothing is looking at. The instrument is the app's own
+	 * store, because the app's bridge cannot be wrapped from the page (a
+	 * `contextBridge` object ignores the assignment silently) and because the
+	 * store answers the question that matters: did the app's held bytes move.
+	 */
+	const secondOpen = await verb(cdp, "openCanvasDocument", { path: code });
+	note("openCanvasDocument (second)", JSON.stringify(secondOpen));
+	const onCode = await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).text.includes("code-first-version")`,
+		5000,
+	);
+	check(
+		"the second document opened in its own tab and became the one on screen",
+		onCode.ok,
+		JSON.stringify(secondOpen),
+	);
+
+	writeFileSync(markdown, markdownBody("fourth-version"));
+	const markdownMtime2 = setExactMtime(markdown, MARKDOWN_T2);
+	await wait(CANVAS_FRESHNESS_POLL_MS * 2 + 1000);
+	const backgroundHeld = await storedDocument(cdp, markdown);
+	const backgroundShown = await canvasDocumentText(cdp);
+	check(
+		"a tab that is off screen is left alone: nothing was applied to it in five seconds",
+		backgroundHeld?.content.includes("fourth-version") === false,
+		`the store holds ${JSON.stringify(String(backgroundHeld?.content).slice(0, 60))} for a file whose mtime moved about ${Date.now() - markdownMtime2}ms ago`,
+	);
+	check(
+		"and the tab that IS on screen is still the other document",
+		backgroundShown.text.includes("code-first-version"),
+		`${backgroundShown.surface}: ${JSON.stringify(backgroundShown.text.slice(0, 60))}`,
+	);
+
+	/*
+	 * Switching to it is the activation the design leans on: the check happens on
+	 * the switch, within a moment, rather than whenever the poll next came round.
+	 */
+	const switchAt = Date.now();
+	const switched = await verb(cdp, "press", { selector: CANVAS_TAB_SELECTOR });
+	const activated = await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).text.includes("fourth-version")`,
+		CANVAS_FRESHNESS_POLL_MS,
+	);
+	const activationLatencyMs = Date.now() - switchAt;
+	const activatedStore = await storedDocument(cdp, markdown);
+	check(
+		"switching to the tab applies what changed while it was off screen",
+		activated.ok && activatedStore?.content === markdownBody("fourth-version"),
+		`applied ${activationLatencyMs}ms after the switch; the store now holds ${JSON.stringify(String(activatedStore?.content).slice(0, 60))}`,
+	);
+	check(
+		"and the switch is what paid for it, inside one poll interval of the press",
+		activated.ok && activationLatencyMs < CANVAS_FRESHNESS_POLL_MS,
+		`${activationLatencyMs}ms after the switch, against a ${CANVAS_FRESHNESS_POLL_MS}ms poll`,
+	);
+	const stampOnSwitch = await textOf(
+		cdp,
+		'[data-tour-tag="canvas-document-modified"]',
+	);
+	const expectedStamp2 = await cdp.evaluate(
+		`new Date(${markdownMtime2}).toLocaleString(navigator.language, { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })`,
+	);
+	check(
+		"the line moved with the file the switch applied",
+		stampOnSwitch === `Modified ${expectedStamp2}`,
+		`${JSON.stringify(stampOnSwitch)} against ${JSON.stringify(`Modified ${expectedStamp2}`)}`,
+	);
+	note(
+		"the tab the switch pressed",
+		JSON.stringify(
+			await cdp.evaluate(`(() => {
+				const tabs = Array.from(document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}));
+				const active = tabs.find((tab) => tab.getAttribute("aria-selected") === "true");
+				return {
+					tabs: tabs.map((tab) => tab.textContent),
+					active: active ? active.textContent : null,
+					target: ${JSON.stringify(switched.target)},
+				};
+			})()`),
+		),
+	);
+
+	const activation = await captureSettled(cdp, "canvas-freshness-activation");
+	check(
+		"the activation frame is stable and toast-free",
+		activation.stable && activation.toastFree,
+		`attempts=${activation.attempts} stable=${activation.stable} toastFree=${activation.toastFree}`,
+	);
+}
+
 // ---- gate-check --------------------------------------------------------------
 
 /**
@@ -5618,6 +6148,7 @@ async function main() {
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE === "browser-mark") await sceneBrowserMark(cdp);
+			else if (SCENE === "canvas-freshness") await sceneCanvasFreshness(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {
