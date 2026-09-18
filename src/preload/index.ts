@@ -375,7 +375,20 @@ const api = {
 			};
 		},
 		onBackendUpdateProgress: (
-			callback: (progress: { phase: "installing" | "restarting" }) => void,
+			callback: (progress: {
+				phase: "installing" | "restarting";
+				/**
+				 * True when the running attempt is the checkout REBUILD rather than the
+				 * release path. The two promise different things while they run - the
+				 * release path installs under generations, a rebuild rewrites the install
+				 * in place - so the panel cannot write one sentence for both (review
+				 * round 3, U3). It rides the phase rather than a second channel because
+				 * it is a property of the run the phase describes, and it must not be
+				 * guessed from the offer, which has been dismissed by the time the run is
+				 * minutes old.
+				 */
+				sourceRebuild?: boolean;
+			}) => void,
 		) => {
 			const handler = (_event, progress) => callback(progress);
 			ipcRenderer.on("backend-update-progress", handler);
