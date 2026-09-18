@@ -1110,6 +1110,30 @@ test("the media slot is the row's own type, and the size is a fact or nothing", 
 	assert.equal(sizeLabel(undefined), null);
 });
 
+test("a missing row keeps the glyph, whatever its type", () => {
+	const rows = buildFileRows([
+		doc("/tmp/gone.png", { type: "image", availability: "missing" }),
+		doc("/tmp/gone.mp4", { type: "video", availability: "missing" }),
+		doc("/tmp/still-here.png", { type: "image" }),
+	]);
+	/*
+	 * A `missing` image or video row shows the TYPE GLYPH, not a thumbnail: the
+	 * receipt is the glyph plus the sentence in the meta slot, and a thumbnail
+	 * request for a path that no longer resolves can only come back empty - or as
+	 * the browser's own broken-frame icon, which is what the old grid's frames
+	 * caught. `media` was derived from the type alone, which is what this pins.
+	 */
+	assert.deepEqual(
+		rows.map((row) => row.media),
+		[null, null, "image"],
+		"only a file that is still there keeps a real thumbnail",
+	);
+	assert.deepEqual(
+		rows.map((row) => row.missing),
+		[true, true, false],
+	);
+});
+
 test("a data URI is searched by its name, never by its bytes", () => {
 	const payload = `data:image/png;base64,${"QUJD".repeat(400)}`;
 	const rows = buildFileRows([doc(payload, { title: "Pasted image" })]);
