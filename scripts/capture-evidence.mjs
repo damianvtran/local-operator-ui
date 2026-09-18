@@ -2330,6 +2330,43 @@ export const STORIES = [
 	["canvas-workspace--edit-prompt", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
+
+	/*
+	 * The publish dialog, in every state its rewrite introduced (agent-hub
+	 * contract §6.2/§6.3): the consent copy that now says what is published, the
+	 * blocked-field list that disables submit, and each refusal with its own
+	 * headline, action and register. Six of the ten are reached by PRESSING the
+	 * consent box and Publish — a treatment rendered from a prop would not be
+	 * evidence that the flow reaches it.
+	 *
+	 * 980x860: the dialog at its own `sm` step (max-w-xl) plus the page it is
+	 * centred in. Declared rather than measured for the reason every entry here
+	 * is — a frame whose height depends on which refusal is showing is a frame a
+	 * reviewer cannot diff against the next round's.
+	 */
+	["agents-publish-dialog--default", 980, 860],
+	["agents-publish-dialog--pre-validation-blocked", 980, 860],
+	["agents-publish-dialog--name-taken", 980, 860],
+	["agents-publish-dialog--name-taken-by-you", 980, 860],
+	["agents-publish-dialog--name-claim-in-flight", 980, 860],
+	["agents-publish-dialog--reserved-builtin", 980, 860],
+	["agents-publish-dialog--reserved-builtin-refusal", 980, 860],
+	["agents-publish-dialog--moderation-rejected", 980, 860],
+	["agents-publish-dialog--moderation-unavailable", 980, 860],
+	["agents-publish-dialog--published", 980, 860],
+	["agents-publish-dialog--update-listing", 980, 860],
+	/*
+	 * The pull's four outcomes, each one real toast from the real hook against a
+	 * stubbed transport, held open with `toastDuration: Infinity` because an
+	 * auto-closed toast is a frame that cannot be reproduced. Sized tight to the
+	 * caption plus the toast: a taller viewport is mostly ground, which
+	 * `check-evidence` rejects as a story that painted nothing.
+	 */
+	["agents-pull-outcomes--downloaded", 980, 420],
+	["agents-pull-outcomes--adjusted-name", 980, 420],
+	["agents-pull-outcomes--already-held", 980, 420],
+	["agents-pull-outcomes--refused", 980, 420],
+	["agents-pull-outcomes--refused-prose", 980, 420],
 	/*
 	 * The Schedules page, re-shot whole when the page was harmonized onto the
 	 * wake primitive: its rows are conversations-with-wakes now, so every
@@ -2613,6 +2650,29 @@ export const STORIES = [
 	["chat-phantom-compose-rows--after-turn-death", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin-open", 1280, 800],
+	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
+	   not cover: its fixture is a finished turn (`streaming: false`), where a
+	   clockless frame that would create a row is refused. With a turn in flight
+	   the fold this change replaces painted it at the reader's arrival instead, and
+	   the operator's report is that state — opening session `c1c7072b735c` mid-turn
+	   painted the OPENING turn's eight `bash` calls, an hour earlier, under the
+	   running `wait`, each showing its output's first line where the command
+	   belongs. The `After` frames are built by the SHIPPED reducer from the real
+	   journal and the real snapshot seed of that session (`scripts/fixtures/
+	   trace-order.json`, harvested by `scripts/harvest-trace-order-fixture.mjs`);
+	   the `Before` frames by a story-local re-implementation of the pre-fix fold,
+	   because the state they are evidence about no longer exists in the shipped
+	   code and a pair shot from two trees cannot be re-captured once the base
+	   moves. `Report` folds the eight calls the report proves — the page at that
+	   moment names none of them (`page_names_ghosts: []`) — over the in-flight
+	   frame; `Live` folds the unmodified harvest — 100 retained ends, 59 of them
+	   naming a call the page cannot label. The pane is pinned here for the same
+	   reason as the pair above, and the arrival stamp is derived from the
+	   snapshot's own in-flight call so the frames do not move between captures. */
+	["chat-trace-order-while-live--before-report", 1280, 800],
+	["chat-trace-order-while-live--after-report", 1280, 800],
+	["chat-trace-order-while-live--before-live", 1280, 800],
+	["chat-trace-order-while-live--after-live", 1280, 800],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
 	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
 	   popup from wire-shaped fixtures — the rows the backend's
@@ -3571,6 +3631,18 @@ export const STORIES = [
 	   the link's own text, on the same `conversationId` the chip reads. Also a
 	   scripted `Selection`, and also not reachable with a pointer. */
 	["chat-canonical-links--selection-in-link-staged", 1024, 820],
+	["chat-slash-highlight--command-alone", 900, 240],
+	["chat-slash-highlight--start-name-instruction", 900, 240],
+	["chat-slash-highlight--seeded-name-instruction", 900, 330],
+	["chat-slash-highlight--name-instruction-multiline", 900, 330],
+	["chat-slash-highlight--unknown-word", 900, 240],
+	["chat-slash-highlight--unknown-word-picking", 900, 390],
+	["chat-slash-highlight--prose-leading-command-word", 900, 240],
+	["chat-slash-highlight--mid-sentence-token", 900, 240],
+	["chat-slash-highlight--disabled-and-placeholder", 900, 460],
+	["chat-slash-highlight--clipped-boundary", 900, 240],
+	["chat-slash-highlight--geometry", 1000, 2600],
+	["chat-slash-highlight--scrolled-parity", 1000, 1000],
 ];
 
 /**
@@ -4435,10 +4507,19 @@ const main = async () => {
 				}
 			};
 			if (!options?.liveMotion) {
+				/*
+				 * `*:not(textarea)` on the caret, and the exception is the whole point of
+				 * the composer's frames: the field there keeps its OWN caret so the
+				 * capture can read it, which is how the highlight's caret guard is
+				 * measured at all (the mirror paints over a transparent textarea, so
+				 * "the caret is still the app's" is a claim about a colour that a
+				 * blanket `caret-color: transparent` would have answered for us).
+				 * A field that cannot be typed into is not what these frames are of.
+				 */
 				await cdp.send("Runtime.evaluate", {
 					expression: `(() => {
 						const s = document.createElement("style");
-						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
+						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*:not(textarea){caret-color:transparent !important}";
 						document.head.appendChild(s);
 					})()`,
 				});
@@ -5901,10 +5982,11 @@ const main = async () => {
 						 * branch needs, and the one the blanket override could not
 						 * express. A transition in flight is a difference between the
 						 * two shutters that the hold does not pin and no document
-						 * declares; the caret is the same argument as above.
+						 * declares; the caret is the same argument as above, including
+						 * its :not(textarea) scope (no backticks in here: this block is inside a template literal).
 						 */
 						const s = document.createElement("style");
-						s.textContent = "*,*::before,*::after{transition:none !important}*{caret-color:transparent !important}";
+						s.textContent = "*,*::before,*::after{transition:none !important}*:not(textarea){caret-color:transparent !important}";
 						document.head.appendChild(s);
 					})()`,
 				});

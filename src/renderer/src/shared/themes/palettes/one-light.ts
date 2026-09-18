@@ -76,6 +76,10 @@ export const oneLight: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.3
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#0039B6",
+		tokenCommand: "#006996",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#E5E6EA",
 		onAccent: "#EAEAEA",
 

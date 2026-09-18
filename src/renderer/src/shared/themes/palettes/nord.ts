@@ -77,6 +77,9 @@ export const nord: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.3
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#B1EBFB",
+		tokenCommand: "#91B3D4",
+		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.10), at a
+		// cost of ΔE00 2.86 from the signal itself; 5.14:1 on `surface`.
 		accentWash: "#2E3D40",
 		onAccent: "#272C36",
 
