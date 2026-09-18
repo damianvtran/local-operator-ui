@@ -5898,6 +5898,314 @@ async function sceneCanvasFreshness(cdp, app) {
 		`(${CANVAS_DOCUMENT_TEXT_EXPR}).panel === true`,
 		10_000,
 	);
+
+	/*
+	 * ---------------------------------------------------------------------------
+	 * THE CLOSE: A TAB THE READER CLOSED STAYS CLOSED.
+	 *
+	 * WHY THIS PHASE EXISTS. A reader closed a document tab in the canvas, watched it
+	 * flicker, and found the file still open. Nothing above could have caught it: the
+	 * ✕ handler is correct on its own (it takes the document out of `files`, and the
+	 * tab goes), and what put it BACK was the VIEWER'S UNMOUNT - every editable
+	 * surface's cleanup is `closeBuffer`, whose store handoff used to be an upsert,
+	 * i.e. `[...files, document]`. So the harm needs the order (close, then unmount,
+	 * then commit), a store for the document to come back into, and a strip to paint
+	 * it: this phase is the only one in the repository with all three.
+	 *
+	 * THREE CLAIMS, ONE PER PHASE:
+	 *
+	 * 1. the tab leaves the strip and the store, and is STILL gone once the unmount
+	 *    commit, the editor's own three-second debounce and two of the pane's
+	 *    two-second polls have all had their turn (`canvas-freshness-close-clean`,
+	 *    `canvas-freshness-close-settled`);
+	 * 2. a second ✕ on a second tab closes that one too, and that tab's document had
+	 *    been HELD - a dirty buffer over a file rewritten from outside, which is the
+	 *    state the phase above leaves its own document in - so the words that could
+	 *    not be written are kept rather than the tab (`canvas-freshness-close-held`);
+	 * 3. opening the same path again puts those words back on screen, with the row
+	 *    still saying the file moved on, while the store's own copy stays the file's
+	 *    version (`canvas-freshness-close-reopen`).
+	 *
+	 * WHAT IT DOES NOT REACH. The reopen below is the driver's own
+	 * `openCanvasDocument` verb rather than a press on a Files-grid tile: in a run with
+	 * no transcript there are no tiles, and this is the stand-in the whole scene opens
+	 * documents with (it reads the file over `readFile`, exactly as the tile's click
+	 * handler does). What the tile path adds beyond it - the grid's branching and its
+	 * toasts - is not what this change touches.
+	 */
+	const closeClean = join(dir, "close-clean.md");
+	const closeHeld = join(dir, "close-held.md");
+	const closeHeldExternalBody = "close-held-external\n";
+	const closeReaderWord = "CLOSEREADER";
+	const closeDirtyWord = "CLOSEDIRTY";
+	writeFileSync(closeClean, "clean-version\n");
+	setExactMtime(closeClean, BASE_SECOND - 420);
+	writeFileSync(closeHeld, "held-version\n");
+	setExactMtime(closeHeld, BASE_SECOND - 400);
+
+	/** The strip's own tabs, by the label the reader sees on them. */
+	const stripTabs = () =>
+		cdp.evaluate(
+			`Array.from(document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)})).map((tab) => tab.textContent ?? "")`,
+		);
+	/**
+	 * The ✕ of one tab. It is a sibling of the tab rather than inside it (a button
+	 * in a button is invalid markup), which is why it is addressed by the label it
+	 * carries rather than by position.
+	 */
+	const closeControlFor = (title) =>
+		`[role="tablist"][aria-label="Open documents"] button[aria-label="Close ${title}"]`;
+	/** Does the strip still hold this document? */
+	const stripHas = (title) =>
+		cdp.evaluate(
+			`Array.from(document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)})).some((tab) => (tab.textContent ?? "").includes(${JSON.stringify(title)}))`,
+		);
+
+	/*
+	 * START FROM A STRIP THIS PHASE OWNS. The phases above leave six documents open,
+	 * and that matters here for a reason that is not tidiness: the strip scrolls, and
+	 * the strip's pinned overflow control sits where a scrolled tab's ✕ does, so a
+	 * press aimed at the ✕ of a tab in an overflowing strip lands - on a HIT TEST, the
+	 * question this harness asks of a press rather than of the app - on the overflow
+	 * button instead. Measured: with those six tabs open, the driver's own press on
+	 * `Close close-clean.md` reported `hitTest: false` and named the overflow control
+	 * as the element under the pointer. The app's handler still ran (a `press` is a
+	 * dispatched pointer sequence, so it bypasses hit testing), but a claim about what
+	 * a reader's click does has to be made where the reader's click LANDS on the
+	 * control - which is why the leftover tabs are closed first and every press this
+	 * phase ASSERTS on carries `hitTest: true`.
+	 */
+	for (const title of await stripTabs()) {
+		await verb(cdp, "press", {
+			selector: closeControlFor(title),
+			timeoutMs: 3_000,
+		});
+		await wait(300);
+	}
+	const stripCleared = await waitForCondition(
+		cdp,
+		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length === 0`,
+		5_000,
+	);
+	check(
+		"the close phase's own strip: the earlier phases' documents are all closed",
+		stripCleared.ok,
+		JSON.stringify(await stripTabs()),
+	);
+
+	/* The two subjects, the clean one opened last so its ✕ is the revealed one. */
+	await verb(cdp, "openCanvasDocument", { path: closeHeld });
+	await verb(cdp, "openCanvasDocument", { path: closeClean });
+	const stripOpened = await waitForCondition(
+		cdp,
+		`document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}).length === 2`,
+		10_000,
+	);
+	const stripBeforeClose = await stripTabs();
+	note("the strip before the first close", JSON.stringify(stripBeforeClose));
+	check(
+		"the close's first subject is open, on a tab whose ✕ this phase can press",
+		stripOpened.ok && (await stripHas("close-clean.md")),
+		JSON.stringify(stripBeforeClose),
+	);
+	const closeCleanFrame = await captureSettled(
+		cdp,
+		"canvas-freshness-close-clean",
+	);
+
+	const cleanPressed = await verb(cdp, "press", {
+		selector: closeControlFor("close-clean.md"),
+	});
+	note("the ✕ press on the clean tab", JSON.stringify(cleanPressed));
+	/*
+	 * THE PRESS LANDED ON THE CONTROL. `press` dispatches a pointer sequence from
+	 * inside the page, so it reaches the app's handlers whatever is painted on top;
+	 * `hitTest` is the harness's own answer to the different question - whether the
+	 * element at that point IS the target - and it is what makes this a claim about
+	 * a reader's click rather than about a dispatched event. The strip is built so
+	 * that a tab's ✕ is revealed for the selected tab, and with this phase's own two
+	 * tabs open there is nothing left of the row for it to hide behind.
+	 */
+	check(
+		"the ✕ the reader aims at is the element at that point, not the strip's overflow control",
+		cleanPressed.hitTest === true,
+		`hit=${JSON.stringify(cleanPressed.hit)} rect=${JSON.stringify(cleanPressed.rect)}`,
+	);
+	const cleanGone = await waitForCondition(
+		cdp,
+		`!Array.from(document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)})).some((tab) => (tab.textContent ?? "").includes("close-clean.md"))`,
+		5_000,
+	);
+	check(
+		"the ✕ on the strip closes the tab, and the strip stops listing it",
+		cleanGone.ok,
+		JSON.stringify(await stripTabs()),
+	);
+	const cleanStored = await storedDocument(cdp, closeClean);
+	check(
+		"and the closed document is out of the store the strip and the pane render",
+		cleanStored === null,
+		JSON.stringify(cleanStored),
+	);
+
+	/*
+	 * THE DUST SETTLING, which is the half of the bug the press cannot show. The
+	 * close is right and the UNMOUNT COMMIT is what used to put the document back, so
+	 * a frame taken at the press proves nothing: this waits past the markdown
+	 * editor's three-second debounce and two of the pane's two-second polls, and asks
+	 * the DOM and the store again.
+	 */
+	await wait(4200);
+	const stripSettled = await stripTabs();
+	const cleanStoredAfterSettle = await storedDocument(cdp, closeClean);
+	check(
+		"the closed tab is still closed once the unmount, the debounce and the polls have run",
+		!stripSettled.includes("close-clean.md") && cleanStoredAfterSettle === null,
+		`strip=${JSON.stringify(stripSettled)} store=${JSON.stringify(cleanStoredAfterSettle)}`,
+	);
+	const closeSettledFrame = await captureSettled(
+		cdp,
+		"canvas-freshness-close-settled",
+	);
+
+	/*
+	 * THE HELD CLOSE. The second subject is put into the state the gate protects - the
+	 * reader's typing over a file rewritten from outside - and then closed. Its ✕ is
+	 * pressed while the tab is the SELECTED one, so the frame shows the control a
+	 * reader actually aims at (the strip reveals a tab's ✕ on hover, on focus, and on
+	 * the selected tab).
+	 */
+	await verb(cdp, "press", {
+		selector: `[role="tablist"][aria-label="Open documents"] [role="tab"][title="${closeHeld}"]`,
+	});
+	await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).surface === "markdown"`,
+		10_000,
+	);
+	const closeHeldEditor = '#canvas-document-panel [contenteditable="true"]';
+	const closeHeldTypedBy = await typeMarkdown(
+		cdp,
+		closeHeldEditor,
+		closeReaderWord,
+	);
+	const closeHeldSaved = await waitForFile(
+		closeHeld,
+		(bytes) => bytes.includes(closeReaderWord),
+		10_000,
+	);
+	check(
+		"the closed-while-held document's first words reach the file through the ordinary gate",
+		closeHeldSaved.ok,
+		`${closeHeldTypedBy}; ${JSON.stringify(closeHeldSaved.last.slice(0, 60))}`,
+	);
+	await typeMarkdown(cdp, closeHeldEditor, closeDirtyWord);
+	writeFileSync(closeHeld, closeHeldExternalBody);
+	setExactMtime(closeHeld, BASE_SECOND - 100);
+	const closeHeldExternalHash = fileHash(closeHeld);
+	const closeHeldFact = await waitForCondition(
+		cdp,
+		`(() => {
+			const note = document.querySelector('[data-tour-tag="canvas-document-freshness-note"]');
+			return Boolean(note) && /changed on disk/i.test(note.textContent ?? "");
+		})()`,
+		8_000,
+	);
+	check(
+		"the tab about to be closed is HELD: dirty buffer, file rewritten from outside",
+		closeHeldFact.ok,
+		`${JSON.stringify(closeHeldFact.last)} after ${closeHeldFact.attempts} attempt(s)`,
+	);
+	const closeHeldFrame = await captureSettled(
+		cdp,
+		"canvas-freshness-close-held",
+	);
+
+	const heldPressed = await verb(cdp, "press", {
+		selector: closeControlFor("close-held.md"),
+	});
+	note("the ✕ press on the held tab", JSON.stringify(heldPressed));
+	check(
+		"and the ✕ on the HELD tab is the element at that point too",
+		heldPressed.hitTest === true,
+		`hit=${JSON.stringify(heldPressed.hit)} rect=${JSON.stringify(heldPressed.rect)}`,
+	);
+	const heldGone = await waitForCondition(
+		cdp,
+		`!Array.from(document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)})).some((tab) => (tab.textContent ?? "").includes("close-held.md"))`,
+		5_000,
+	);
+	await wait(1500);
+	const closeHeldHashAfter = fileHash(closeHeld);
+	check(
+		"the ✕ closes a HELD tab too, and writes nothing over the file it refused",
+		heldGone.ok && closeHeldHashAfter === closeHeldExternalHash,
+		`gone=${heldGone.ok} after=${closeHeldHashAfter} external=${closeHeldExternalHash}`,
+	);
+	const heldStored = await storedDocument(cdp, closeHeld);
+	check(
+		"the held document is out of the store, so nothing re-listed it either",
+		heldStored === null,
+		JSON.stringify(heldStored),
+	);
+	const closeHeldAfterFrame = await captureSettled(
+		cdp,
+		"canvas-freshness-close-held-after",
+	);
+
+	/*
+	 * AND THE WORDS COME BACK. Opening the same path again is the files grid's own
+	 * act - the verb reads the file's bytes, so the store's copy is the EXTERNAL
+	 * version - and the canvas is handed the buffer owner's words instead, which is
+	 * the promise this change makes for a close whose write was refused.
+	 */
+	await verb(cdp, "openCanvasDocument", { path: closeHeld });
+	const closeHeldRestored = await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).text.includes(${JSON.stringify(closeDirtyWord)})`,
+		10_000,
+	);
+	const closeHeldText = await canvasDocumentText(cdp);
+	check(
+		"opening the same path again puts the reader's un-written words back on screen",
+		closeHeldRestored.ok && !closeHeldText.text.includes("close-held-external"),
+		JSON.stringify(closeHeldText.text.slice(0, 160)),
+	);
+	const closeHeldNote = await textOf(
+		cdp,
+		'[data-tour-tag="canvas-document-freshness-note"]',
+	);
+	check(
+		"and the row still says the file moved on, because the words on screen did",
+		/changed on disk/i.test(closeHeldNote ?? ""),
+		JSON.stringify(closeHeldNote),
+	);
+	const closeHeldStoredAfterReopen = await storedDocument(cdp, closeHeld);
+	check(
+		"the store's own copy after the reopen is the FILE's version, not the reader's words",
+		closeHeldStoredAfterReopen?.content === closeHeldExternalBody,
+		JSON.stringify(closeHeldStoredAfterReopen),
+	);
+	const closeReopenFrame = await captureSettled(
+		cdp,
+		"canvas-freshness-close-reopen",
+	);
+
+	const closeFrames = [
+		closeCleanFrame,
+		closeSettledFrame,
+		closeHeldFrame,
+		closeHeldAfterFrame,
+		closeReopenFrame,
+	];
+	note("the close phase's frames", JSON.stringify(closeFrames));
+	check(
+		"every close frame is a frame the app held still for, with no toast on it",
+		closeFrames.every(
+			(frame) => frame.stable === true && frame.toastFree === true,
+		),
+		JSON.stringify(closeFrames),
+	);
 }
 
 // ---- gate-check --------------------------------------------------------------
