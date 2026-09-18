@@ -24,19 +24,21 @@ import { build } from "esbuild";
  * `showing <id>` makes his own click report success while switching nothing — a
  * conversation that can then die at quit, which is worse than the lost caret this
  * gate was written for. So that delivery is APPLIED and LOGGED
- * (`reportViewerDelivery`), and a `banner-click` is applied for the same kind of
+ * (`reportConversationReplaced`), and a `banner-click` is applied for the same kind of
  * reason: one act must not mean two things depending on which process raised the
  * toast. The gate's whole job is now the silent delivery nobody would otherwise be
- * able to attribute.
+ * able to attribute — and the line that answers it is written by the SEND, so it
+ * covers EVERY delivery that replaces a conversation rather than the viewer's verb
+ * alone (UX round 2, U7).
  *
  * WHERE EACH HALF OF THAT IS PROVEN, and why it is split.
  *
  *  - The DECISION and the PARK LINE are shipped code (`canRetargetWindow` and
  *    `reportParkedInUse` in `src/main/window-raise.ts`), bundled from source here,
- *    so this file asserts the app's rule rather than a copy of it. The VIEWER
- *    DELIVERY LINE (`reportViewerDelivery`) is asserted the same way.
+ *    so this file asserts the app's rule rather than a copy of it. The REPLACEMENT
+ *    LINE (`reportConversationReplaced`) is asserted the same way.
  *  - The WIRING — that `openSessionInWindow` consults that predicate BEFORE it
- *    sends and parks on the refusal (TERMINALLY), logs the viewer delivery, and is
+ *    sends and parks on the refusal (TERMINALLY), logs the replacement, and is
  *    NOT re-asked for the parked drain — is a SOURCE SCAN over `index.ts`, in the
  *    shape `window-mode.test.mjs` already uses for the same file. `index.ts` imports
  *    Electron at module load and builds real windows on the ready path, so it cannot
@@ -73,7 +75,7 @@ const {
 	raiseWindow,
 	readSecondLaunchRequest,
 	reportParkedInUse,
-	reportViewerDelivery,
+	reportConversationReplaced,
 } = await loaded("./src/main/window-raise");
 
 const {
@@ -122,7 +124,7 @@ const fakeWindow = ({ focused = false } = {}) => {
 /**
  * `openSessionInWindow`'s existing-window branch, spelled from the SHIPPED
  * decision, the SHIPPED reporters and the SHIPPED raise and nothing else: it sends,
- * logs a viewer delivery, and raises when `canRetargetWindow` allows it, and parks
+ * logs the replacement, and raises when `canRetargetWindow` allows it, and parks
  * and reports when it does not. `fromPark` mirrors the ONE exemption `index.ts`
  * passes for the parked drain, and the scan further down pins that `index.ts` asks
  * the same question in the same order and passes that flag in exactly one place —
@@ -152,8 +154,14 @@ const branch = (sessionId, request, { window, queue, fromPark = false }) => {
 		return;
 	}
 	window.webContents.send("desktop-open-conversation", { sessionId });
-	if (sessionId !== null && request.trigger === "viewer-resume") {
-		reportViewerDelivery(sessionId, request.show, {
+	/*
+	 * Every delivery that reaches this point replaces the window's conversation, so
+	 * every one of them is logged (UX round 2, U7) — the trigger is a FIELD on the
+	 * line, not the condition for writing it. A CATALOGUE (`null`) is excluded: it
+	 * installs no conversation over one.
+	 */
+	if (sessionId !== null) {
+		reportConversationReplaced(sessionId, request.show, {
 			trigger: request.trigger,
 			requester: request.requester,
 			report: (line) => queue.lines.push(line),
@@ -455,29 +463,40 @@ test("a viewer-resume against a focused window is DELIVERED and LOGGED, not park
 	);
 });
 
-test("only the viewer verb logs a delivery: the line means a viewer delivery, not any delivery", () => {
+test("every delivery that replaces a conversation is logged, whatever verb it arrived on", () => {
 	/*
-	 * A `delivered=` token that appeared for every applied delivery would stop answering
-	 * the question it was added for — "did a VIEWER delivery re-key my panel?" — and the
-	 * raise line already accounts for the plans that may move the window. So the other
-	 * verbs are asserted to log nothing: a banner click and a second launch have their
-	 * own evidence (the raise line, the loser's sentence), and the `never`-plan second
-	 * launch is the one that parks.
+	 * UX ROUND 2 (U7) REVERSED THIS ROW, and the reason is the one that added the line
+	 * at all. Round 1 logged the viewer's verb alone, on the argument that a `delivered=`
+	 * token for every delivery would stop answering "did a VIEWER delivery re-key my
+	 * panel" — but the question a caret needs answered is "did a DELIVERY re-key my
+	 * panel", and two deliveries used to leave nothing anywhere: a `second-instance`
+	 * request under `inactive` against a window on screen, whose raise line records
+	 * `applied=showInactive` and nothing about the conversation, and one under `never`
+	 * against a BLURRED window, which the gate applies (nothing is being typed into) and
+	 * which then reports nothing at all. The line is therefore written by the SEND, and
+	 * `trigger=` is a field on it rather than the condition for it.
+	 *
+	 * A catalogue open is the one request that is not logged, and it is not a delivery of
+	 * a conversation: `null` means "show the list", so nothing replaces anything (the row
+	 * below asserts that half).
 	 */
 	const window = fakeWindow({ focused: true });
 	const queue = parkQueue();
-	for (const trigger of ["banner-click", "initial-present"]) {
+	for (const trigger of [
+		"banner-click",
+		"initial-present",
+		"second-instance",
+	]) {
 		branch(NAMED, { trigger, show: OPERATOR_SHOW }, { window, queue });
 	}
-	branch(
-		NAMED,
-		{ trigger: "second-instance", show: OPERATOR_SHOW },
-		{ window, queue },
-	);
 	assert.deepEqual(
 		queue.lines,
-		[],
-		"no delivery line outside the viewer's own verb",
+		[
+			`trigger=banner-click mode=normal requested=focus delivered=${NAMED} applied=conversation+replaced`,
+			`trigger=initial-present mode=normal requested=focus delivered=${NAMED} applied=conversation+replaced`,
+			`trigger=second-instance mode=normal requested=focus delivered=${NAMED} applied=conversation+replaced`,
+		],
+		"the line is about the delivery, so the verb it arrived on is a field on it",
 	);
 	assert.equal(window.sent.length, 3, "and every one of them was delivered");
 });
@@ -490,6 +509,12 @@ test("an inactive second launch is APPLIED to a focused window and orders it wit
 	 * applied and the raise is `showInactive`. This is the row that says so — applied,
 	 * nothing parked, and no `show`/`focus` among the calls — so if the rule ever widened
 	 * again, the sentence in `index.ts` would become a lie with a failing test under it.
+	 *
+	 * AND IT IS THE ROW THAT MADE U7 NECESSARY (UX round 2): this delivery replaces the
+	 * conversation the operator is looking at, while the only other line it writes —
+	 * `applied=showInactive` — says nothing about a conversation at all, so before U7 a
+	 * caret lost here had nothing to find it by. The `delivered=` line below is that
+	 * account.
 	 */
 	const window = fakeWindow({ focused: true });
 	const queue = parkQueue();
@@ -528,7 +553,13 @@ test("an inactive second launch is APPLIED to a focused window and orders it wit
 		[],
 		"an inactive request is applied, not parked",
 	);
-	assert.deepEqual(queue.lines, []);
+	assert.deepEqual(
+		queue.lines,
+		[
+			`trigger=second-instance mode=inactive requested=inactive delivered=${NAMED} applied=conversation+replaced`,
+		],
+		"the replacement is logged even when the raise line reports what the window did",
+	);
 	assert.deepEqual(
 		window.calls,
 		["showInactive"],
@@ -563,7 +594,16 @@ test("the parked drain is not re-gated: a promise this app made cannot be refuse
 		"the window created to open it delivers it, however focused it is",
 	);
 	assert.deepEqual([...queue], []);
-	assert.deepEqual(queue.lines, []);
+	/*
+	 * AND THE DRAIN'S SEND IS A REPLACEMENT, so it writes the delivery line too (UX round
+	 * 2, U7). The `applied=delivered` line `claimParkedFor` writes beside it is the QUEUE
+	 * reporting an entry leaving it; this one reports what the window was told. The entry
+	 * that becomes a window's INITIAL session is the one delivery that writes neither —
+	 * no send replaced anything there, because its first frame IS the delivery.
+	 */
+	assert.deepEqual(queue.lines, [
+		`trigger=second-instance mode=headless requested=never delivered=${NAMED} applied=conversation+replaced`,
+	]);
 
 	const source = readFileSync("src/main/index.ts", "utf8");
 	assert.equal(
@@ -668,9 +708,9 @@ test("the same request against a window nobody is using is still delivered", () 
 		{ channel: "desktop-open-conversation", payload: { sessionId: NAMED } },
 	]);
 	assert.deepEqual([...queue], [], "nothing parks when nothing is being used");
-	// The delivery line is the viewer verb's, blurred or focused: it answers "did a
-	// viewer delivery re-key this panel", which is a question about the delivery and
-	// not about who was looking at it.
+	// The delivery line is about the DELIVERY, not about the verb or who was looking at
+	// it: this is the blurred case, where the gate applies the request and no raise line
+	// follows.
 	assert.deepEqual(queue.lines, [
 		"trigger=viewer-resume mode=normal requested=focus delivered=0f1e2d3c4b5a applied=conversation+replaced",
 	]);
@@ -704,7 +744,9 @@ test("the operator's own request is still delivered to a window he is using", ()
 		],
 		"a person clicking a banner is not a script naming a conversation at them",
 	);
-	assert.deepEqual(bannerQueue.lines, []);
+	assert.deepEqual(bannerQueue.lines, [
+		`trigger=banner-click mode=normal requested=focus delivered=${NAMED} applied=conversation+replaced`,
+	]);
 
 	const own = fakeWindow({ focused: true });
 	const ownQueue = parkQueue();
@@ -745,7 +787,9 @@ test("the operator's own request is still delivered to a window he is using", ()
 		],
 		"only a person's own launch resolves focus, so this is the operator asking",
 	);
-	assert.deepEqual(ownQueue.lines, []);
+	assert.deepEqual(ownQueue.lines, [
+		`trigger=second-instance mode=normal requested=focus delivered=${NAMED} applied=conversation+replaced`,
+	]);
 });
 
 test("a catalogue request is not gated: it names no conversation to park", () => {
@@ -825,22 +869,25 @@ test("openSessionInWindow consults the gate before it delivers, and parks on a r
 		"the park is TERMINAL: a refusal that could fall through to the send would re-key the panel it was written to protect",
 	);
 	/*
-	 * AND THE VIEWER DELIVERY IS LOGGED, AFTER the send (UX round 1, U1/U2). The
-	 * narrowing that stops refusing `viewer-resume` is only honest if such a delivery
-	 * can be attributed afterwards — under a `never` plan the delivery itself reports
-	 * nothing — and a line written before the send would be a claim about something
-	 * that had not happened yet.
+	 * AND THE REPLACEMENT IS LOGGED, AFTER the send (UX round 1, U1/U2; round 2, U7).
+	 * The narrowing that stops refusing `viewer-resume` is only honest if such a
+	 * delivery can be attributed afterwards — under a `never` plan the delivery itself
+	 * reports nothing — and a line written before the send would be a claim about
+	 * something that had not happened yet. THE CONDITION IS THE NAMED CONVERSATION,
+	 * not a verb, which is the half U7 changed: every delivery that reaches this branch
+	 * replaces what the window was showing, so a `trigger` check would leave the
+	 * `inactive` and blurred-`never` deliveries unlogged.
 	 */
-	const viewerLog = body.indexOf('request.trigger === "viewer-resume"');
+	const replacementLog = body.indexOf("if (sessionId !== null) {");
 	assert.ok(
-		viewerLog > send,
-		"the viewer delivery is logged after the send, not before",
+		replacementLog > send,
+		"the replacement is logged after the send, not before",
 	);
 	assert.ok(
 		body
-			.slice(viewerLog, createBranch)
-			.includes("reportViewerDelivery(sessionId, request.show"),
-		"and it reports through the shipped viewer-delivery reporter",
+			.slice(replacementLog, createBranch)
+			.includes("reportConversationReplaced(sessionId, request.show"),
+		"and it reports through the shipped replacement reporter",
 	);
 	// The exemption the drain needs, read by the gate above rather than trusted to a
 	// comment: without it the app can refuse the delivery it just promised

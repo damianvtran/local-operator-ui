@@ -100,13 +100,13 @@ import {
 	presentWindow,
 	raiseWindow,
 	readSecondLaunchRequest,
+	reportConversationReplaced,
 	reportParked,
 	reportParkedDelivered,
 	reportParkedEvicted,
 	reportParkedInUse,
 	reportParkedLeftWaiting,
 	reportParksAtQuit,
-	reportViewerDelivery,
 } from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
@@ -907,11 +907,12 @@ const reportBackendFailure = (message: string, fileType: LogFileType): void => {
  * one attributable. `never` raises nothing and logs nothing, so a headless run
  * still leaves no trace by raising.
  *
- * THE ONE LINE THIS LOG CARRIES THAT IS NOT A RAISE is `reportViewerDelivery`'s
- * (`window-raise.ts`): under `never` a delivery reaches the renderer and reports
- * nothing at all while the panel still re-keys on the session, so that line is the
- * only account of a viewer delivery having happened — which is why it exists (UX
- * round 1, U1/U2).
+ * THE ONE LINE THIS LOG CARRIES THAT IS NOT A RAISE is
+ * `reportConversationReplaced`'s (`window-raise.ts`): under `never` a delivery
+ * reaches the renderer and reports nothing at all while the panel still re-keys on
+ * the session, so that line is the only account of a replacement having happened —
+ * which is why it is written for EVERY delivery that replaces a conversation rather
+ * than for the viewer's alone (UX round 1, U1/U2; round 2, U7).
  */
 const reportRaise: RaiseReport = (line) => {
 	logger.info(`[window-raise] ${line}`, LogFileType.BACKEND);
@@ -929,8 +930,12 @@ const reportRaise: RaiseReport = (line) => {
  *
  * The effect sentence is this process's OWN resolved mode, because that is the mode
  * it just handed over — and it stops short of promising anything now: a `headless`
- * request's conversation is delivered when a window is OPEN, not when the request
- * lands, which is what the mechanism can actually do (UX review round 2, U5).
+ * request's conversation is delivered when the app has a window to deliver it to, not
+ * when the request lands, which is what the mechanism can actually do (UX review
+ * round 2, U5). WHICH window that is, said exactly (UX review round 2, U6): the one
+ * already open, or — when that one is in use, and always when the app has none — the
+ * next window the app CREATES, because a parked request is drained by a window's
+ * creation and by nothing else.
  */
 function describeForwardedLaunch(
 	profile: string,
@@ -963,7 +968,7 @@ function describeForwardedLaunch(
 		windowLaunch.show === "never"
 			? named === null
 				? `${handed}, so nothing is waiting to be opened, and it will not raise a window in the meantime`
-				: `${handed}: the app will open it once a window is open, and it will not raise a window in the meantime (up to ${PARKED_LAUNCH_LIMIT} conversations wait; an older one is dropped and logged)`
+				: `${handed}: the app will open it in the window it already has open, or in the next window it creates when that window is in use or there is none, and it will not raise a window in the meantime (up to ${PARKED_LAUNCH_LIMIT} conversations wait; an older one is dropped and logged)`
 			: windowLaunch.show === "inactive"
 				? `${handed}; the app may order its window forward without activating it`
 				: `${handed}; the app will raise its window`;
@@ -1222,8 +1227,8 @@ function parkLaunch(
  * previous form emptied the queue into a single `did-finish-load` callback, so a
  * window that was closed — or whose renderer died — before that event took EVERY
  * claimed conversation with it: no line, no re-park, nothing left to open, while
- * each losing launch had been told the conversation is delivered once a window is
- * open. The queue is the only place a conversation can wait for another window, so
+ * each losing launch had been told the conversation is delivered by the next window
+ * the app creates. The queue is the only place a conversation can wait for another window, so
  * an entry leaves it when the send happens and not when the window is created. If
  * the window dies first the entries are still in the queue and the log says so
  * (`reportParkedLeftWaiting`), so the operator's next window opens them.
@@ -2890,8 +2895,9 @@ app
 				 * queue the create branch uses, so nothing is applied, nothing is raised and
 				 * nothing is dropped, and it opens in his next window (`reportParkedInUse`
 				 * says so); what is delivered rather than refused is LOGGED below
-				 * (`reportViewerDelivery`), so a caret lost to one is attributable rather than
-				 * invisible.
+				 * (`reportConversationReplaced`), for every delivery that replaces a conversation
+				 * rather than for the viewer's alone, so a caret lost to one is attributable rather
+				 * than invisible (UX round 2, U7).
 				 *
 				 * ONLY A NAMED conversation reaches the gate. `null` is the CATALOGUE, and
 				 * it is not someone's conversation being installed over the operator's: its
@@ -2913,17 +2919,20 @@ app
 				// for as long as the switch takes (B3).
 				window.webContents.send("desktop-open-conversation", { sessionId });
 				/*
-				 * THE VIEWER DELIVERY IS LOGGED, which is the other half of no longer
-				 * refusing it (UX round 1, U1/U2). Under a `never` plan a delivery reaches
-				 * the renderer and writes nothing at all — that mode is silent by design —
-				 * while the panel still re-keys on the session, so a caret lost to a viewer
-				 * delivery had nothing to find it by. `trigger=` and the session are what
-				 * make the next one attributable; the line is written AFTER the send, so it
-				 * is a statement about something that happened, and the raise line that
-				 * follows covers the plans allowed to move the window.
+				 * THE REPLACEMENT IS LOGGED, which is the other half of no longer refusing the
+				 * viewer's delivery (UX round 1, U1/U2) — and it is logged by the SEND rather
+				 * than by a `trigger` comparison (UX round 2, U7), because every delivery
+				 * that reaches here replaces the window's conversation. Two of them used to
+				 * leave no line at all: a `second-instance` request under `inactive` against
+				 * a window on screen, whose raise line records `applied=showInactive` and
+				 * nothing about the conversation, and one under `never` against a BLURRED
+				 * window, which this gate APPLIES — nothing is being typed into — and which
+				 * then reports nothing anywhere, since `never` raises and reports nothing.
+				 * `sessionId !== null` is the guard rather than a trigger: a CATALOGUE open
+				 * installs no conversation over one.
 				 */
-				if (sessionId !== null && request.trigger === "viewer-resume") {
-					reportViewerDelivery(sessionId, request.show, {
+				if (sessionId !== null) {
+					reportConversationReplaced(sessionId, request.show, {
 						trigger: request.trigger,
 						requester: request.requester,
 						report: reportRaise,
@@ -3229,9 +3238,10 @@ app.on("before-quit", async (event) => {
 	/*
 	 * A WAITING CONVERSATION DIES WITH THE PROCESS, AND SAYS SO (review round 3,
 	 * NIT-3). The queue is in-memory, so a park still waiting here is gone for good
-	 * — and its losing launch was told it would be delivered once a window is open.
-	 * The line is the only place that promise can be seen to end, which is what makes
-	 * a park that never arrived distinguishable from one the log simply lost.
+	 * — and its losing launch was told it would be delivered by the next window the
+	 * app creates. The line is the only place that promise can be seen to end, which
+	 * is what makes a park that never arrived distinguishable from one the log
+	 * simply lost.
 	 *
 	 * It lives HERE rather than in `will-quit`, where it was first written, because
 	 * `scripts/owned-serve-lifecycle.test.mjs` slices and runs that handler on its

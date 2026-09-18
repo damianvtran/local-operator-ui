@@ -25,7 +25,10 @@
  * which one had just taken the focus. The trigger is a required part of the call
  * so a new raise cannot be added anonymously, and `never` — the path that raises
  * nothing — is deliberately silent: a headless run's whole value is that it leaves
- * no trace on the machine, its logs included.
+ * no trace on the machine, its logs included. A `never` delivery that REPLACES an
+ * existing window's conversation is the one exception, and it is not a raise: it is
+ * `reportConversationReplaced`'s line, which exists because the replacement is
+ * otherwise invisible (see that function).
  *
  * The parameter type is the slice of `BrowserWindow` a raise touches, so the
  * policy is testable in process without Electron — the same reason
@@ -233,8 +236,9 @@ export const OPERATOR_SHOW: WindowShow = "focus";
  *    `showing <id>` makes his own click report success while switching nothing —
  *    and the conversation it parked then dies at quit. A caret he can type again is
  *    the cheaper loss; UX round 1 (U1) measured this against the real client, so
- *    this verb is DELIVERED and LOGGED instead (`reportViewerDelivery`), which is
- *    what makes the next caret loss attributable without breaking the click ladder.
+ *    this verb is DELIVERED and LOGGED instead (`reportConversationReplaced`), which
+ *    is what makes the next caret loss attributable without breaking the click
+ *    ladder.
  *  - `banner-click` is a person clicking a real notification. With a window up the
  *    app's own banner sends the conversation straight to it
  *    (`desktop-notifier.ts`), so this trigger reaches the gate only from the
@@ -345,10 +349,12 @@ const REFUSABLE_DELIVERY: Record<
  *
  * WHAT IS DELIVERED RATHER THAN REFUSED IS LOGGED (UX round 1, U1/U2). The viewer
  * delivery this rule must not refuse reports a line of its own
- * (`reportViewerDelivery`), so the next caret that dies with a viewer delivery in
- * the log is attributable rather than invisible. That is the point of the narrowing:
- * make the invisible case visible rather than refuse a path the operator's own
- * click ladder depends on.
+ * (`reportConversationReplaced`), so the next caret that dies with a delivery in
+ * the log is attributable rather than invisible — and that line is reported by the
+ * SEND rather than by the viewer verb, because every delivery through here replaces
+ * the conversation (`second-instance` included, UX round 2, U7). That is the point
+ * of the narrowing: make the invisible case visible rather than refuse a path the
+ * operator's own click ladder depends on.
  */
 export function canRetargetWindow(
 	request: { trigger: RaiseTrigger; show: WindowShow },
@@ -409,15 +415,15 @@ export function reportParked(
  *
  * THE REQUESTER IS TOLD BY ITS OWN SENTENCE, not by this line: the loser of a
  * second instance is the only requester this refusal applies to, and its terminal
- * already says the conversation will be opened once a window is open and that no
- * window will be raised in the meantime. This line is for the operator reading the
- * app's log afterwards.
+ * already says the conversation will be opened by the next window the app creates and
+ * that no window will be raised in the meantime. This line is for the operator
+ * reading the app's log afterwards.
  *
  * NOT A REFUSAL OF THE OPERATOR'S CLICK. `viewer-resume` used to be parked here,
  * and UX round 1 (U1) measured what that cost: the client's ladder decides from
  * the ack, so his own notification click reported success while switching nothing,
  * and the conversation it parked could die at quit. The gate no longer refuses that
- * verb — it delivers it and logs it (`reportViewerDelivery`) — so a
+ * verb — it delivers it and logs it (`reportConversationReplaced`) — so a
  * `parked+in-use` line now means a RUN was turned away, never a click.
  */
 export function reportParkedInUse(
@@ -433,8 +439,8 @@ export function reportParkedInUse(
  * token and finds every state a waiting conversation can be in.
  *
  * WHY EACH ONE EXISTS. A park is a promise to a losing launch that the conversation
- * will be delivered once a window is open, and the log is the only place that
- * promise can be checked, so every way it can end is a line: `delivered` (it
+ * will be delivered by the next window the app creates, and the log is the only place
+ * that promise can be checked, so every way it can end is a line: `delivered` (it
  * arrived), `left+waiting` (the window that claimed it died first, and it is STILL
  * queued rather than lost — review/QA round 3), `evicted` (the queue is bounded and
  * this one was dropped to hold the bound), `dropped+quit` (it died with the
@@ -497,24 +503,37 @@ export function reportParkedDelivered(
 }
 
 /**
- * A request from the viewer's control endpoint was APPLIED to a window.
+ * A delivery REPLACED the conversation an existing window was showing.
  *
- * WHY THIS LINE EXISTS (UX round 1, U1/U2, and the narrowing it produced). The gate
- * above used to refuse a `viewer-resume` against a focused window, which cost the
- * operator his own notification click: the ladder decides from the ack alone and any
- * ack reads as "displayed". So that verb is delivered instead, and the delivery is
- * LOGGED here — which is the change's point, because under a `never` plan the
- * delivery itself reports nothing at all (`never` is silent by design) while the
- * panel still re-keys on the session. Without this line the next caret that dies
- * with a viewer delivery arriving is indistinguishable from one that died for no
- * reason; `trigger=` and the session are what make it attributable.
+ * WHY THIS LINE EXISTS (UX round 1, U1/U2, and the narrowing it produced; widened in
+ * round 2, U7). The gate above used to refuse a `viewer-resume` against a focused
+ * window, which cost the operator his own notification click: the ladder decides from
+ * the ack alone and any ack reads as "displayed". So that verb is delivered instead,
+ * and the delivery is LOGGED here — which is the change's point, because under a
+ * `never` plan the delivery itself reports nothing at all (`never` is silent by
+ * design) while the panel still re-keys on the session. Without this line the next
+ * caret that dies with a delivery arriving is indistinguishable from one that died
+ * for no reason; `trigger=` and the session are what make it attributable.
+ *
+ * THE QUESTION IS ABOUT THE DELIVERY, NOT ABOUT THE VERB (UX round 2, U7), so it is
+ * answered by the SEND rather than by a `trigger` comparison: every delivery through
+ * the gate above replaces the window's conversation, and two of them used to leave
+ * nothing at all — a `second-instance` request under `inactive`, against a window on
+ * screen, whose only other line is `applied=showInactive`, and one under `never`
+ * against a BLURRED window, which the gate applies (nothing is being typed into) and
+ * which therefore reports nothing anywhere. Round 1 logged the viewer verb alone,
+ * which is the silence this line was added to end.
  *
  * `applied=conversation+replaced` is read off what actually happened — the
  * `desktop-open-conversation` send — and the raise line that follows covers the
  * plans that were allowed to move the window. `parked=` is deliberately absent: this
  * is not a queue state, it is the delivery the queue exists to avoid needing.
+ * `reportParkedDelivered`'s `applied=delivered` does not answer this one either: it
+ * reports the ENTRY leaving the queue, while this reports the SEND, and an entry
+ * delivered as a window's INITIAL session reaches neither — no send replaced
+ * anything there, and the window's first frame is the delivery.
  */
-export function reportViewerDelivery(
+export function reportConversationReplaced(
 	session: string,
 	requested: WindowShow,
 	context: RaiseContext,
