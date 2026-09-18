@@ -535,7 +535,10 @@ line only, `run-detail-model.ts:679-681`) is unchanged.
 ### 5.1 What it shows
 
 The child's **conversation**, rendered with the app's own canonical transcript
-grammar, on the parent transcript's ground:
+grammar, on the parent transcript's ground — with the child's own `Subagents`
+section above it when the child has children (`§ 5.2b`), so "the head block" in
+the list below means the head of the CONVERSATION, below that section where one
+is drawn:
 
 - **The body is the same row pipeline the parent uses.** The reader fetches a
   page from the new route (§ 10), reduces it with the existing
@@ -639,6 +642,42 @@ ancestors may shorten toward their leading words and the current crumb carries a
 the 40px bar and leave the title — the breadcrumb IS the pane's title (`§ 5.2`)
 — at no width. `reader-deep-floor` is the frame at depth 3 with the pane at its
 320px floor.
+
+### 5.2b The child's own subagents
+
+When the open child has children of its own, a `Subagents` section is drawn
+between the chrome bar and the conversation: one row per DIRECT child of the
+page's own child, each opening that child's page through the pane's own
+`openChild`. Downwards is therefore this section; upwards is what `§ 5.2`
+already carries (back, the breadcrumb, `Escape`, and the peer steppers, `§ 5.5`).
+
+The rows ARE the roster's rows — `SubagentRowView`, `SubagentRowBody` and
+`DetailLine` are shared with the roster and the Jobs section — so height, hover
+ground, focus ring and accessible name cannot drift between the three lists that
+draw a row. The one mark they add is `SubagentRow.childCount` (`2 children`,
+`1 child`): the row opens a PAGE rather than a subtree, so without the count the
+only way to learn there is a level below it is to open every row.
+
+The section is ABSENT, not empty, for a leaf — no heading, no `0 children`, no
+stray spacing — and a row that cannot be opened (no `session_id`, or a backend
+that does not advertise `subagent_transcript`, `§ 10.2`) degrades exactly as the
+roster's row does. The count and the rows come from ONE predicate,
+`childrenOf(details.lineage, row)` in `run-detail-model.ts`, which is also what
+the chrome bar's own `N children` control renders from; a second spelling of
+"which rows are my children" is how a count and the list under it come to
+disagree, and `§ 5.1`'s sibling `siblingsOf` is the same rule pointing up.
+
+What this replaced, and why it is load-bearing now: the pane modelled the whole
+delegation tree from the start (`parentJobId` the edge, `RunDetails.lineage`
+every node, `childCount` the branching factor) but listed only the tree's TOP
+level — a child's page said `2 child subagents` and descended into the FIRST of
+them, the rest reachable one press at a time through the peer stepper, and a
+level below a grandchild addressable only by descending twice. Since the harness
+began letting a subagent whose role allows the `task` tool delegate at any depth
+(`harness/subagent.py`'s allowance rule), that is the difference between walking
+the tree and guessing at it. The three frames that picture it are declared in
+`docs/evidence/chat-run-panel/README.md`: `reader-descendants`,
+`reader-deep-children` and `reader-childless`.
 
 ### 5.3 Live updates
 
