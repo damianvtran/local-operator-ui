@@ -12,8 +12,14 @@
  * holds Electron's own `WebAuthnAccount` shape (credentialId, name,
  * displayName, userHandle) and the dialog has to say something useful for an
  * account that has none of the human fields, without inventing an identity. The
- * two functions below are the whole of that reasoning, kept out of the component
- * so a test can assert the copy.
+ * functions below are the whole of that reasoning, kept out of the component so
+ * a test can assert the copy.
+ *
+ * EVERY SENTENCE THE CHOOSER PRINTS IS DERIVED HERE from the request, because
+ * design and UX round 1 found the fixed copy contradicting the rows under it:
+ * "More than one of your passkeys matches" was said for a one-account request
+ * (D3) and for three accounts whose names the OS never supplied (U1), which is
+ * exactly the state where the user has nothing to choose by.
  */
 
 /** One offered credential, as the dialog renders it. */
@@ -32,7 +38,31 @@ export interface WebauthnChoiceRequest {
 	 * reports it. Shown so the user knows which site is asking. */
 	relyingPartyId: string;
 	accounts: WebauthnAccountChoice[];
+	/** The tab whose page asked, and that page's title, when main could resolve
+	 * them from the event's own frame. Null when it could not: the frame may have
+	 * been destroyed, or belong to no tab of this host. */
+	tabId: number | null;
+	pageTitle: string | null;
 }
+
+/** Why a request the surface was showing is gone. The two the USER caused need
+ * no explanation; the rest mean it ended without them. */
+export type WebauthnSettledOutcome =
+	| "chosen"
+	| "dismissed"
+	| "expired"
+	| "host-stopped"
+	| "no-accounts"
+	| "credential-not-offered";
+
+/** Which typographic voice a row's first line is in.
+ *
+ * `human` is a person's name (`displayName`); `machine` is a login, an address or
+ * the positional fallback. Branding § 4: monospace is the machine voice and a
+ * login is not prose — the model draws that distinction and the frame used to
+ * erase it by rendering a `name` fallback at the same weight as a display name
+ * (design round 1, D4), which reads an email address as "the person". */
+export type AccountVoice = "human" | "machine";
 
 /**
  * What to call one account.
@@ -55,11 +85,32 @@ export function accountChoiceLabel(
 }
 
 /**
+ * The voice the label is read in.
+ *
+ * A display name is a person's name; a login is a machine string. The fallback is
+ * machine voice too, because it is a position rather than an identity.
+ */
+export function accountChoiceVoice(
+	account: WebauthnAccountChoice | null | undefined,
+): AccountVoice {
+	return (account?.displayName?.trim() ?? "") ? "human" : "machine";
+}
+
+/** The second line of a row whose site stored no name for the credential.
+ *
+ * Said rather than left blank (UX round 1, U1; design round 1, D9): a chooser
+ * offering three ordinals gives no basis for a choice, and a row that explains
+ * it is one the user can at least cancel deliberately. */
+export const UNNAMED_ACCOUNT_DETAIL =
+	"The site stored no name for this passkey.";
+
+/**
  * The second line for an account, or null when there is nothing to add.
  *
  * Shown only when it differs from the label: two lines that read the same is
  * noise, and the case it exists for is a passkey whose display name is a
- * person's name and whose login is an email address.
+ * person's name and whose login is an email address. An account with NO name of
+ * any kind gets the explicit sentence instead of a blank line.
  */
 export function accountChoiceDetail(
 	account: WebauthnAccountChoice | null | undefined,
@@ -68,5 +119,85 @@ export function accountChoiceDetail(
 	const label = accountChoiceLabel(account, index);
 	const candidates = [account?.displayName?.trim(), account?.name?.trim()];
 	const detail = candidates.find((value) => value && value !== label) ?? "";
-	return detail || null;
+	if (detail) return detail;
+	const anonymous =
+		!(account?.displayName?.trim() ?? "") && !(account?.name?.trim() ?? "");
+	return anonymous ? UNNAMED_ACCOUNT_DETAIL : null;
+}
+
+/** Whether every offered account arrived without a name of any kind. */
+export function accountsAreNameless(
+	accounts: readonly WebauthnAccountChoice[],
+): boolean {
+	return accounts.every(
+		(account) =>
+			!(account.displayName?.trim() ?? "") && !(account.name?.trim() ?? ""),
+	);
+}
+
+/** The chooser's lead sentence, derived from the request it is answering. */
+export function chooserLead(request: WebauthnChoiceRequest): string {
+	const site = request.relyingPartyId || "A site";
+	const count = request.accounts.length;
+	if (count === 1) {
+		return `${site} asked for a passkey. Pick it to sign in.`;
+	}
+	if (accountsAreNameless(request.accounts)) {
+		return `${site} asked for a passkey. Your Mac holds ${count} passkeys for this site and did not give their names, so the one you pick is the account you sign in as.`;
+	}
+	return `${site} asked for a passkey. More than one of your passkeys matches, so pick the one to use.`;
+}
+
+/** The page the request came from, when main could resolve it.
+ *
+ * The native view is suppressed while this dialog is up, so the page the
+ * decision is ABOUT is the one thing the user cannot see (UX round 1, U3). */
+export function chooserPageNote(request: WebauthnChoiceRequest): string | null {
+	return request.pageTitle
+		? `The page asking is \u201c${request.pageTitle}\u201d.`
+		: null;
+}
+
+/** How many further requests are waiting behind the one on screen. */
+export function chooserQueueNote(waiting: number): string | null {
+	if (waiting <= 0) return null;
+	return waiting === 1
+		? "One more site is waiting for a passkey."
+		: `${waiting} more sites are waiting for a passkey.`;
+}
+
+/** The sentence a request that ended without the user leaves behind.
+ *
+ * Null for `chosen` and `dismissed`: the user knows what they did, and telling
+ * them their own answer was registered is the kind of copy the branding
+ * contract's voice rule exists to keep out. The other outcomes are the ones the
+ * dialog used to swallow — it stayed open, and a later click was discarded
+ * silently (design round 1, D2). */
+export function settledChooserCopy(
+	outcome: WebauthnSettledOutcome,
+): { title: string; body: string } | null {
+	switch (outcome) {
+		case "expired":
+			return {
+				title: "This passkey request expired",
+				body: "Nobody chose a passkey within a minute, so the site's request was cancelled. Ask the site for a passkey again.",
+			};
+		case "host-stopped":
+			return {
+				title: "This passkey request was cancelled",
+				body: "The browser tab that asked went away before a passkey was chosen, so the request was cancelled.",
+			};
+		case "credential-not-offered":
+			return {
+				title: "That passkey was not offered",
+				body: "The choice did not name a passkey this site offered, so the request was cancelled. Try again from the site.",
+			};
+		case "no-accounts":
+			return {
+				title: "No passkey to choose",
+				body: "This Mac offered no passkey for the site, so the request was cancelled.",
+			};
+		default:
+			return null;
+	}
 }

@@ -1,6 +1,18 @@
 import { join } from "node:path";
-import { type BrowserWindow, type Event, WebContentsView, app } from "electron";
-import { WebauthnChooser, installWebauthn } from "../webauthn";
+import {
+	type BrowserWindow,
+	type Event,
+	WebContentsView,
+	type WebFrameMain,
+	app,
+	webContents,
+} from "electron";
+import {
+	WebauthnChooser,
+	type WebauthnRequestSource,
+	attachWebauthnChooser,
+	installWebauthn,
+} from "../webauthn";
 import { ApprovalStore } from "./approvals";
 import { CdpPool } from "./cdp";
 import { ConsentNotifier } from "./consent-notifier";
@@ -217,6 +229,45 @@ export async function startBrowserHost(
 	 * the difference between "the user chose" and a failure nobody can explain.
 	 */
 	await installWebauthn({ log });
+	/*
+	 * WHICH TAB ASKED, resolved from the event's own frame (UX round 1, U3).
+	 *
+	 * The chooser is a modal over a surface whose page is suppressed while it is
+	 * up, so naming the site is not the same as naming the page the decision is
+	 * about. Electron hands the initiating frame with the event, `fromFrame` is the
+	 * documented route from a frame to its webContents, and this host's registry is
+	 * the only thing that maps that to a tab id and the title both surfaces already
+	 * show. Called lazily (one event at a time, long after startup), which is why it
+	 * may close over `registry` declared further down.
+	 */
+	const describeSource = (frame: unknown): WebauthnRequestSource => {
+		/*
+		 * THE NULL GUARD IS LOAD-BEARING, and it is measured rather than defensive:
+		 * Electron documents `frame` as "may be null if accessed after the frame has
+		 * either navigated or been destroyed", and `webContents.fromFrame(null)` does
+		 * not return undefined for it — it throws `Invalid value used as weak map key`
+		 * from inside Electron, which the `select-webauthn-account` listener would then
+		 * propagate out of Electron's own emit. The passkey arm reaches this with a
+		 * synthetic emit (its `frame` is null on purpose), which is how the throw was
+		 * found; the same null arrives in production from a frame that navigated while
+		 * the request was in flight.
+		 */
+		if (!frame || typeof frame !== "object") {
+			return { tabId: null, pageTitle: null };
+		}
+		const contents = webContents.fromFrame(frame as WebFrameMain);
+		const record =
+			contents === undefined
+				? undefined
+				: registry.byWebContentsId(contents.id);
+		if (!record) return { tabId: null, pageTitle: null };
+		const title = record.view.webContents.isDestroyed()
+			? ""
+			: record.view.webContents.getTitle();
+		// A page that has not been titled yet reports its URL as its title; both are
+		// honest, and an empty string is not a title at all.
+		return { tabId: record.tabId, pageTitle: title || null };
+	};
 	const webauthn = new WebauthnChooser({
 		notify: (request) => {
 			// A window torn down while a chooser was open is the ordinary race: the
@@ -225,11 +276,37 @@ export async function startBrowserHost(
 			if (options.window.isDestroyed()) return;
 			options.window.webContents.send("browser-webauthn-request", request);
 		},
+		/*
+		 * AND THE OTHER DIRECTION: every settle is pushed, not only every arrival.
+		 *
+		 * Without this the renderer cannot tell a live request from one main has
+		 * already cancelled, so a chooser whose request expired while the user was
+		 * away stays on screen offering rows that can no longer do anything (design
+		 * round 1, D2) — and the click is then discarded silently. The outcome travels
+		 * with the push because the two cases differ for the user: their own answer is
+		 * already off the screen, an expiry has to be explained.
+		 */
+		onSettled: (requestId, outcome) => {
+			if (options.window.isDestroyed()) return;
+			options.window.webContents.send("browser-webauthn-settled", {
+				requestId,
+				outcome,
+			});
+		},
+		describeSource,
 		log,
 	});
-	browserSession.on("select-webauthn-account", (_event, details, callback) => {
-		webauthn.handle(details, callback);
-	});
+	/*
+	 * ONE LISTENER PER SESSION, for the life of the host that owns it.
+	 *
+	 * `attachWebauthnChooser` replaces any listener a previous host start left on
+	 * this session and returns the detach the stop path calls (reviewer round 1,
+	 * finding 2, MAJOR): a macOS window close followed by a Dock click starts a
+	 * second host, and a listener registered per start would leave two choosers
+	 * answering one Electron callback — whose contract is to be invoked exactly
+	 * once.
+	 */
+	const detachWebauthn = attachWebauthnChooser(browserSession, webauthn, log);
 
 	/*
 	 * Session-only cookie persistence, restored BEFORE anything can load a page.
@@ -528,7 +605,9 @@ export async function startBrowserHost(
 			await server.close();
 			unregisterBrowserIpc();
 			// Before the views go: a pending chooser's callback is the page's promise,
-			// and the page is about to stop existing.
+			// and the page is about to stop existing. The listener goes with it, so a
+			// second host start in this process cannot find two of them.
+			detachWebauthn();
 			webauthn.dispose();
 			stateWriter?.clear();
 			approvals.resetPending();

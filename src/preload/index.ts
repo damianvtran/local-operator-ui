@@ -21,6 +21,12 @@ import type {
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
+import {
+	type WebauthnRequestPayload,
+	type WebauthnSettledOutcome,
+	isWebauthnSettledOutcome,
+	parseWebauthnRequest,
+} from "../shared/webauthn-request";
 import { installDevDriverBridge } from "./dev-driver";
 
 // Custom APIs for renderer
@@ -618,57 +624,62 @@ const api = {
 		 * every other inbound payload is: main is trusted, but a malformed payload
 		 * must not reach the renderer as a dialog with no accounts to show. */
 		onWebauthnRequest: (
-			callback: (payload: {
-				requestId: string;
-				relyingPartyId: string;
-				accounts: Array<{
-					credentialId: string;
-					name: string | null;
-					displayName: string | null;
-				}>;
-			}) => void,
+			callback: (payload: WebauthnRequestPayload) => void,
 		): (() => void) => {
-			const handler = (
-				_event: unknown,
-				payload: {
-					requestId?: unknown;
-					relyingPartyId?: unknown;
-					accounts?: unknown;
-				},
-			) => {
-				if (typeof payload?.requestId !== "string" || !payload.requestId)
-					return;
-				if (!Array.isArray(payload.accounts)) return;
-				const accounts = payload.accounts
-					.filter(
-						(account): account is Record<string, unknown> =>
-							typeof account === "object" && account !== null,
-					)
-					.map((account) => ({
-						credentialId:
-							typeof account.credentialId === "string"
-								? account.credentialId
-								: "",
-						name: typeof account.name === "string" ? account.name : null,
-						displayName:
-							typeof account.displayName === "string"
-								? account.displayName
-								: null,
-					}))
-					.filter((account) => account.credentialId !== "");
-				if (accounts.length === 0) return;
-				callback({
-					requestId: payload.requestId,
-					relyingPartyId:
-						typeof payload.relyingPartyId === "string"
-							? payload.relyingPartyId
-							: "",
-					accounts,
-				});
+			const handler = (_event: unknown, raw: unknown) => {
+				const payload = parseWebauthnRequest(raw);
+				if (payload) callback(payload);
 			};
 			ipcRenderer.on("browser-webauthn-request", handler);
 			return () => {
 				ipcRenderer.removeListener("browser-webauthn-request", handler);
+			};
+		},
+		/**
+		 * The choosers still waiting, OLDEST FIRST.
+		 *
+		 * Main is the source of truth for the queue, and this is the pull that makes a
+		 * request recoverable: one raised while the surface that renders choosers was
+		 * not mounted was pushed to nobody, so the surface asks instead of assuming it
+		 * saw every event.
+		 */
+		pendingWebauthnRequests: async (): Promise<WebauthnRequestPayload[]> => {
+			const raw = await ipcRenderer.invoke("browser-webauthn-pending");
+			if (!Array.isArray(raw)) return [];
+			return raw
+				.map((entry) => parseWebauthnRequest(entry))
+				.filter((entry): entry is WebauthnRequestPayload => entry !== null);
+		},
+		/**
+		 * A chooser main has settled, so the surface can drop it.
+		 *
+		 * Without this a request that expired while the user was elsewhere leaves a
+		 * dialog on screen whose rows can no longer do anything, and the click is
+		 * discarded silently — the outcome travels with the event because an expiry
+		 * has to be explained and the user's own answer does not.
+		 */
+		onWebauthnSettled: (
+			callback: (payload: {
+				requestId: string;
+				outcome: WebauthnSettledOutcome;
+			}) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, raw: unknown) => {
+				if (typeof raw !== "object" || raw === null) return;
+				const payload = raw as { requestId?: unknown; outcome?: unknown };
+				if (typeof payload.requestId !== "string" || !payload.requestId) return;
+				// An outcome main does not define is dropped rather than passed on: the
+				// surface maps it to copy, and an unknown one would index that map with
+				// nothing behind it.
+				if (!isWebauthnSettledOutcome(payload.outcome)) return;
+				callback({
+					requestId: payload.requestId,
+					outcome: payload.outcome,
+				});
+			};
+			ipcRenderer.on("browser-webauthn-settled", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-webauthn-settled", handler);
 			};
 		},
 		onStateChanged: (callback: () => void): (() => void) => {
