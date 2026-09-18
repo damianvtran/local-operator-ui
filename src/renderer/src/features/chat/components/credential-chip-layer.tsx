@@ -146,6 +146,32 @@ export const CredentialChipLayer = ({
 				// wash the mirror already painted is its documented fallback.
 				if (rects.length !== 1) continue;
 				const rect = rects[0];
+				/*
+				 * AND A RUN THE LAYER CLIPS AWAY GETS NO CHIP AT ALL (code review round 3,
+				 * R3-1; UX round 3, U14). `overflow-clip` stopped the chip from MOVING; it
+				 * did not stop the browser from REACHING a chip whose run sits outside the
+				 * field's box, and there the control was focusable while painted nowhere -
+				 * measured: one real `Tab` from the field landed on `Remove credential #1`
+				 * with the chip at `top 391` against a clip box of `78..190`, the focus ring
+				 * clipped with it, five typed characters swallowed by the focused button,
+				 * and `Enter` clearing a credential the operator could not see. So the
+				 * invariant this rule establishes, and the one to hold onto: NO CONTROL IS
+				 * REACHABLE IN A STATE WHERE NOTHING OF ITS CHIP IS VISIBLE, and typing in
+				 * the composer is never swallowed by a control the operator did not aim at.
+				 *
+				 * A chip is drawn while any part of its run is inside the frame, which is
+				 * the same "no box to cover, keep the wash" fallback a wrapped run already
+				 * takes: the marker's own glyphs are painted by the textarea, so an unseen
+				 * run loses only its chip, and scrolling it back into view re-draws it on
+				 * the next measure (the field's own scroll listener).
+				 */
+				if (
+					rect.bottom < frame.top ||
+					rect.top > frame.bottom ||
+					rect.right < frame.left ||
+					rect.left > frame.right
+				)
+					continue;
 				next.push({
 					planIndex: Number(run.dataset.credentialRun),
 					// VIEWPORT-RELATIVE IN, LAYER-LOCAL OUT, and nothing else added: see this

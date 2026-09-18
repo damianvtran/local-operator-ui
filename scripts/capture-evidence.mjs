@@ -2157,6 +2157,8 @@ export const STORIES = [
 			dir: "credential-pill-pressed",
 			press: 'button[aria-label^="Remove credential"]',
 			hold: true,
+			label:
+				"pressed: the clear control held down - the ink step plus the primitive's sunken ground, no ring",
 		},
 	],
 	[
@@ -2169,6 +2171,8 @@ export const STORIES = [
 		{
 			dir: "credential-pill-hover-small-view",
 			hover: 'button[aria-label^="Remove credential"]',
+			label:
+				"hover at the compact rung: the control under the pointer, its ground inside the chip and only the ring leaving it",
 		},
 	],
 	[
@@ -2178,6 +2182,8 @@ export const STORIES = [
 		{
 			dir: "credential-pill-focused-small-view",
 			tabTo: 'button[aria-label^="Remove credential"]',
+			label:
+				"focus at the compact rung: the dense-size ring, offset inside the chip's own edge",
 		},
 	],
 	["chat-message-input--credential-pill-cleared-undone", 1024, 300],
@@ -5211,6 +5217,35 @@ const main = async () => {
 					});
 				}
 				if (options?.pressSettleMs) await sleep(options.pressSettleMs);
+			}
+
+			/*
+			 * A ROW MAY CORRECT THE CAPTION IT BORROWED (design round 3, D11). Some states
+			 * are reached by a row that reuses another story's surface - the `:active`
+			 * frame is the hover story, the compact hover and focus frames are the compact
+			 * story - and each then carries that story's own `Frame label`, so the frame is
+			 * anchored to a state it does not hold and a reader can only tell the three
+			 * apart by measuring. The override rewrites the story's own label handle
+			 * (`data-frame-label`); it FAILS when the handle is absent rather than shooting
+			 * the old caption under a new name, which is the defect class this exists for.
+			 */
+			if (options?.label) {
+				const written = (
+					await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector("[data-frame-label]");
+							if (!el) return null;
+							el.textContent = ${JSON.stringify(options.label)};
+							return el.textContent;
+						})()`,
+					})
+				).result.value;
+				if (written !== options.label) {
+					throw new Error(
+						`${story} @ ${theme}: the caption override could not be written (\`[data-frame-label]\` is missing) - a frame captioned with a state it does not hold is worse than no frame`,
+					);
+				}
 			}
 			// `let`, and biome must not be allowed to talk you out of it: line
 			// 620 reassigns this. A formatter once rewrote it to `const` while

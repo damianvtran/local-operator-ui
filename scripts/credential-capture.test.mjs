@@ -2009,8 +2009,10 @@ test("the token regex is read with a fresh lastIndex, so two reads agree", () =>
 /* Hoisted for the reason the story file hoists its matchers: a regex built inside a
    test body is rebuilt on every call, and `lint/performance/useTopLevelRegex` is
    the rule that says so. */
-const CLEARED_KEY_NOTICE = /Removed LOP_SECRET_4CE3Y48G from this message/;
-const CLEARED_REPASTE = /paste it again after \/credential/;
+const CLEARED_KEY_NOTICE =
+	/Removed LOP_SECRET_4CE3Y48G \(credential #3\) from this message/;
+const CLEARED_REPASTE =
+	/press ⌘Z to put it back, or paste it again after \/credential/;
 
 /*
  * ---------------------------------------------------------------------------
@@ -2238,7 +2240,7 @@ test("the x is refused, not guessed, when the marker it would remove has moved o
 });
 
 test("the cleared notice names the key and says who can supply the value again", () => {
-	const notice = clearedNotice("LOP_SECRET_4CE3Y48G");
+	const notice = clearedNotice("LOP_SECRET_4CE3Y48G", 3, "⌘Z");
 	assert.match(notice, CLEARED_KEY_NOTICE);
 	assert.match(notice, CLEARED_REPASTE);
 });
@@ -2360,21 +2362,22 @@ test("the notice line's precedence puts the actionable sentence first (UX round 
 	 * cleared, and the cleared sentence keeps the line whenever nothing actionable
 	 * wants it.
 	 */
-	const cleared = { key: "LOP_SECRET_4CE3Y48G", stale: false };
+	const cleared = { key: "LOP_SECRET_4CE3Y48G", index: 3, stale: false };
+	const undoCap = "⌘Z";
 	assert.equal(
-		noticeLineFor({ unredacted: null, armed: true, cleared }),
+		noticeLineFor({ unredacted: null, armed: true, cleared, undoCap }),
 		CREDENTIAL_ARMED_NOTICE,
 	);
 	assert.equal(
-		noticeLineFor({ unredacted: null, armed: false, cleared }),
-		clearedNoticeLine(cleared.key),
+		noticeLineFor({ unredacted: null, armed: false, cleared, undoCap }),
+		clearedNoticeLine(cleared.key, cleared.index, undoCap),
 	);
 	assert.equal(
-		noticeLineFor({ unredacted: null, armed: true, cleared: null }),
+		noticeLineFor({ unredacted: null, armed: true, cleared: null, undoCap }),
 		CREDENTIAL_ARMED_NOTICE,
 	);
 	assert.equal(
-		noticeLineFor({ unredacted: null, armed: false, cleared: null }),
+		noticeLineFor({ unredacted: null, armed: false, cleared: null, undoCap }),
 		null,
 	);
 	// The disclosure still outranks both, for the reason its own comment gives.
@@ -2383,6 +2386,7 @@ test("the notice line's precedence puts the actionable sentence first (UX round 
 			unredacted: "Enter will expose them",
 			armed: true,
 			cleared,
+			undoCap,
 		}),
 		"Enter will expose them",
 	);
@@ -2391,7 +2395,8 @@ test("the notice line's precedence puts the actionable sentence first (UX round 
 		noticeLineFor({
 			unredacted: null,
 			armed: false,
-			cleared: { key: cleared.key, stale: true },
+			cleared: { key: cleared.key, index: cleared.index, stale: true },
+			undoCap,
 		}),
 		clearedStaleNotice(cleared.key),
 	);
@@ -2413,9 +2418,22 @@ test("the toast says only what the toast can do, and the refusal has words (UX r
 	);
 	assert.notEqual(
 		clearedToastLine(2),
-		clearedNoticeLine("LOP_SECRET_4CE3Y48G"),
+		clearedNoticeLine("LOP_SECRET_4CE3Y48G", 3, "⌘Z"),
 	);
 	assert.ok(!clearedToastLine(2).includes("gone"));
+	/*
+	 * AND THE DURABLE LINE NAMES BOTH THE WAY BACK AND WHICH ONE WENT (UX round 3,
+	 * U15/U16). It said only "paste it again" while the cheap path the same round added
+	 * is the composer's own key, and it named only the KEY - which appears on no chip on
+	 * screen (the chip's face is `#N`), so a reader could not correlate the two channels.
+	 */
+	const durable = clearedNoticeLine("LOP_SECRET_4CE3Y48G", 3, "⌘Z");
+	assert.ok(durable.includes("⌘Z"), durable);
+	assert.ok(durable.includes("credential #3"), durable);
+	assert.ok(durable.includes("paste it again"), durable);
+	// The key named is the handler's own label, so the sentence cannot promise a key
+	// the composer does not listen for: the same helper, the other platform's spelling.
+	assert.ok(clearedNoticeLine("K", 1, "Ctrl+Z").includes("Ctrl+Z"));
 });
 
 test("only a link whose visible text IS the citation is chipped", () => {
@@ -2519,9 +2537,18 @@ test("the clear control's name and the composer chip's title are per-reference c
 		"Credential #1, 19 chars — held in this message; its value cannot be read",
 	);
 	assert.equal(CREDENTIAL_CLEAR_UNDO_LABEL, "Undo");
+	// U9's own rule, kept: the notice LINE and the durable sentence are one authority.
+	// The TOAST stopped sharing it in round 2 (it says `Credential #N removed` beside
+	// the `Undo`), which is why the pair compared here is the line and the sentence it
+	// is built from rather than the pair of channels.
 	assert.equal(
-		clearedNoticeLine("LOP_SECRET_4CE3Y48G"),
-		clearedNotice("LOP_SECRET_4CE3Y48G"),
-		"the notice line and the toast carry one sentence from one authority",
+		clearedNoticeLine("LOP_SECRET_4CE3Y48G", 3, "⌘Z"),
+		clearedNotice("LOP_SECRET_4CE3Y48G", 3, "⌘Z"),
+		"the notice line and its own sentence come from one authority",
+	);
+	assert.notEqual(
+		clearedToastLine(3),
+		clearedNoticeLine("LOP_SECRET_4CE3Y48G", 3, "⌘Z"),
+		"the transient channel must not repeat the durable one (U9)",
 	);
 });

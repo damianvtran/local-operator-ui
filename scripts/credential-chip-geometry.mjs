@@ -480,6 +480,151 @@ const main = async () => {
 		}
 
 		/*
+		 * AND THE SAME KEYSTROKE IN THE STATE THAT DISCRIMINATES (code review round 3,
+		 * R3-2). Every phase above parks the field where the chip is IN VIEW, and that is
+		 * exactly the state in which the round-2 defect cannot reproduce: with nothing for
+		 * the browser to scroll INTO view, `layer.scrollTop` stays 0 even when the layer
+		 * is the scroll container it used to be - the reviewer restored the pre-fix class
+		 * in a scratch tree and this rig still exited 0. The defect lives in the state the
+		 * round-2 reviewer measured: the field parked at its TOP, the marker's run 300px
+		 * below a 112px box, so the browser has somewhere to scroll a focused control to.
+		 *
+		 * WHAT IS ASSERTED HERE, in that state: the layer holds NO chip at all (round 3,
+		 * R3-1 - a run the layer clips away draws nothing, so its control is not reachable
+		 * by any route), a real Tab from the field does not land on a chip control, and
+		 * the layer's own offset stays 0. Both halves of the round-3 fix fail this phase
+		 * if they regress: with the clip rule reverted a control is focusable and
+		 * unpainted, and with `clip` reverted focus scrolls the layer.
+		 */
+		const parked = await scrollTo(0);
+		if (!parked?.scrollable) {
+			phases.push({
+				phase: "Tab with the run out of view",
+				skipped: "the field does not scroll in this story",
+			});
+		} else {
+			const beforeTab = await probe();
+			await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: "document.querySelector('textarea')?.focus()",
+			});
+			for (const type of ["rawKeyDown", "keyUp"]) {
+				await cdp.send("Input.dispatchKeyEvent", {
+					type,
+					key: "Tab",
+					code: "Tab",
+					windowsVirtualKeyCode: 9,
+					nativeVirtualKeyCode: 9,
+				});
+			}
+			await settle();
+			const afterTab = await probe();
+			const offScreen = (
+				await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const layer = document.querySelector("[data-credential-chips]");
+						return {
+							focused: document.activeElement?.getAttribute?.("aria-label") ?? document.activeElement?.tagName ?? null,
+							layerChips: layer ? layer.children.length : 0,
+							controls: document.querySelectorAll('[data-credential-chips] button').length,
+						};
+					})()`,
+				})
+			).result.value;
+			if (
+				(afterTab.layerScrollTop ?? 0) !== 0 ||
+				(afterTab.layerScrollTop ?? 0) !== (beforeTab.layerScrollTop ?? 0) ||
+				offScreen.layerChips !== 0 ||
+				offScreen.controls !== 0 ||
+				(typeof offScreen.focused === "string" &&
+					offScreen.focused.startsWith("Remove credential"))
+			) {
+				throw new Error(
+					`${story} @ ${width}x${height}: a run the layer clips away must offer no control (round 3, R3-1/R3-2) - ${JSON.stringify({ before: beforeTab.layerScrollTop, after: afterTab.layerScrollTop, ...offScreen })}`,
+				);
+			}
+			phases.push({
+				phase: `run out of view, Tab (focus ${offScreen.focused}, chips ${offScreen.layerChips})`,
+				...afterTab,
+			});
+		}
+
+		/*
+		 * AND THE PARTIALLY VISIBLE RUN, which is where the CLIP itself is load-bearing
+		 * (code review round 3, R3-2). The phases above park the field where the chip is
+		 * either wholly in view (nothing for the browser to scroll into view) or wholly
+		 * out of it (no chip at all, so no control to focus) - and in BOTH states a
+		 * restored `overflow-hidden` is invisible to this rig. The state where it is not:
+		 * the run straddling the layer's edge, so a chip IS drawn, its control IS
+		 * focusable, and the layer's own content overflows its box. Focusing the control
+		 * then asks the browser to scroll-into-view the nearest scroll container, which is
+		 * either the field (`clip`) or the layer itself (`hidden`, which moves the chip off
+		 * its run - the round-2 defect, re-entered through a door the chip's absence does
+		 * not close).
+		 */
+		const straddle = await cdp.send("Runtime.evaluate", {
+			returnByValue: true,
+			awaitPromise: true,
+			expression: `(async () => {
+				const f = document.querySelector("textarea");
+				const span = document.querySelector("[data-credential-run]");
+				if (!f || !span) return { ok: false, why: "no field or no run" };
+				const max = f.scrollHeight - f.clientHeight;
+				if (max <= 1) return { ok: false, why: "the field does not scroll" };
+				// Park the run's own top just inside the box's bottom edge: the chip exists,
+				// and the layer has content outside its box for a focus to scroll to.
+				const target = Math.max(0, Math.min(max, span.offsetTop - f.clientHeight + 8));
+				f.scrollTop = Math.round(target);
+				f.dispatchEvent(new Event("scroll"));
+				await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+				return { ok: true, scrollTop: f.scrollTop };
+			})()`,
+		});
+		const parkedHalf = straddle.result.value;
+		if (!parkedHalf?.ok) {
+			phases.push({
+				phase: "Tab with the run half in view",
+				skipped: parkedHalf?.why ?? "no answer",
+			});
+		} else {
+			const beforeHalf = await probe();
+			if (beforeHalf.chips.length === 0) {
+				throw new Error(
+					`${story} @ ${width}x${height}: the run straddles the layer's edge and no chip was drawn, so this phase would prove nothing about the clip - ${JSON.stringify({ scrollTop: parkedHalf.scrollTop })}`,
+				);
+			}
+			await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: "document.querySelector('textarea')?.focus()",
+			});
+			for (const type of ["rawKeyDown", "keyUp"]) {
+				await cdp.send("Input.dispatchKeyEvent", {
+					type,
+					key: "Tab",
+					code: "Tab",
+					windowsVirtualKeyCode: 9,
+					nativeVirtualKeyCode: 9,
+				});
+			}
+			await settle();
+			const afterHalf = await probe();
+			const halfDrift = afterHalf.deltas.filter(
+				(delta) =>
+					delta && (Math.abs(delta.left) > 0.5 || Math.abs(delta.top) > 0.5),
+			);
+			if ((afterHalf.layerScrollTop ?? 0) !== 0 || halfDrift.length > 0) {
+				throw new Error(
+					`${story} @ ${width}x${height}: focusing a control whose chip is half in view moved the layer rather than the field - ${JSON.stringify({ layerScrollTop: afterHalf.layerScrollTop, drift: halfDrift, scrollTop: parkedHalf.scrollTop })}`,
+				);
+			}
+			phases.push({
+				phase: `run half in view, Tab (scrollTop ${parkedHalf.scrollTop}, chips ${afterHalf.chips.length})`,
+				...afterHalf,
+			});
+		}
+
+		/*
 		 * THE RESIZE CASE (code review round 1, R1-3), which no story can drive and
 		 * which the viewport cannot produce for these stories either: each one pins
 		 * its own column width (`style={{ width: 1024 }}`), so narrowing the VIEWPORT
@@ -580,7 +725,9 @@ const main = async () => {
 						` box=${JSON.stringify(run.box)}`,
 				);
 				if (!chip) {
-					console.log("    no chip at this run (a wrapped run keeps the wash)");
+					console.log(
+						"    no chip at this run (a wrapped run, or one the layer clips away - round 3, R3-1)",
+					);
 					return;
 				}
 				console.log(
