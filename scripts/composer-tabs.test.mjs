@@ -2256,13 +2256,19 @@ test("the Jobs section draws the partition's rows, and nothing in it is pressabl
 	/*
 	 * And the row body itself is ONE component now, shared with the roster, so the
 	 * two lists cannot come to two row heights (`run-detail-row-parts.tsx`).
+	 *
+	 * Written across lines rather than on one: the row gained a `trailing` slot
+	 * for the subagent-count mark (design review round 1's D2), and a one-line
+	 * form with the three props `printWidth` allows is what the previous pin
+	 * assumed — this asserts the SHAPE the intent needs (one shared body, the
+	 * detail line passed as a prop) rather than one printer's output.
 	 */
 	const roster = code(
 		"src/renderer/src/features/chat/components/run-details/run-detail-subagents.tsx",
 	);
 	assert.match(
 		roster,
-		/<SubagentRowBody row=\{row\} detail=\{<DetailLine row=\{row\} \/>\} \/>/,
+		/<SubagentRowBody\s+[\s\S]*?row=\{row\}[\s\S]*?detail=\{<DetailLine row=\{row\} \/>\}/,
 	);
 });
 
