@@ -294,6 +294,21 @@ export const STORIES = [
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
 
+	/*
+	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
+	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
+	 * but not whole, and the mark is the whole change on screen. `before-join` is
+	 * the pre-fix fold spelled out in the story (one chunk painted as the answer),
+	 * so the pair is a difference in what the row says rather than two descriptions
+	 * of it; `after-join-settled` is the same turn once `message_end` states the
+	 * whole text, which is what clears the mark. 900 is the harness default and
+	 * the story pins its own pane height (685, the transcript's measured
+	 * `clientHeight`), so the pane is what a reader has rather than a capture.
+	 */
+	["chat-mid-turn-join--before-join", 1280, 900],
+	["chat-mid-turn-join--after-join", 1280, 900],
+	["chat-mid-turn-join--after-join-settled", 1280, 900],
+
 	/* Session incidents on their own rows — the operator's report that an error
 	  row read only `session incident` with the message behind a chevron. The
 	  rows are the PRODUCTION reducer's, over fourteen real persisted payloads
