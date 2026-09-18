@@ -23604,6 +23604,19 @@
       "capturedAt": "2026-09-14T01:10:00.000Z"
     },
     {
+      "path": "canvas-file-freshness",
+      "frames": 3,
+      "surfaces": 3,
+      "themes": 1,
+      "source": "the REAL built Electron app (pnpm build, then the tree's own out/ launched by scripts/renderer-driver.mjs --scene canvas-freshness in the documented `headless` window mode) against a live, ISOLATED `lop serve` on a scratch LOCAL_OPERATOR_CONFIG_DIR/HOME and a scratch --user-data-dir, paired through a LOCAL_OPERATOR_DESKTOP_TOKEN the run holds and never prints; the renderer was built against that backend's URL and the run asserts it. The scene writes its own subject files (notes.md, report.py) into the run's scratch tree and sets their mtimes explicitly, writes them AGAIN from outside the app to produce the event the feature exists for, reads the app's own persisted store (the `canvas-store` localStorage entry) for the claims about what did and did not happen to an off-screen tab, and drives the re-read control through the app's own DOM. Frames are the app photographing itself with webContents.capturePage(), full window at 1380x900 (not cropped): the run is isolated, so there is no operator data in them, and the sidebar's empty session list is part of what makes that checkable. The exact command, the backend setup and the per-frame claims are in this set's README; the run's own output is quoted on the pull request.",
+      "why": [
+        "The claims under review are about a RUNNING app, and no sweep can photograph them: a file rewritten on disk by another process, a poll that notices it, a rewrite whose mtime was restored (which no probe can see, so only a press can apply it), and a tab that is deliberately left alone while it is off screen. The unit suite (scripts/canvas-file-freshness.test.mjs) drives every decision against the shipped modules but against a FAKE bridge, so it cannot show a real statSync in main, a real readFile over IPC and a real markdown editor repainting.",
+        "The three frames are the three outcomes: the document opened with its line stating the file's own mtime in the reader's timezone; the same tab after a same-mtime rewrite the press applied; and the activation case - a second document on screen, the first one re-selected after its file moved, with the line moving with it.",
+        "PROVENANCE OF THE NUMBERS, so the frames can be read against them: the run reported the stamped line it read back ('Modified September 18, 2026 at 12:13 AM', local hour 0 against a UTC hour of 4, zone America/Toronto), the row's measured height (28px) and the document box under it (editor bottom 495px above the panel's), the automatic pickup's latency, and the equal-mtime case applying nothing for the whole window the poll had. It fails rather than skips on any of them."
+      ],
+      "capturedAt": "2026-09-18T04:01:00.000Z"
+    },
+    {
       "path": "chat-cold-send-browser",
       "frames": 11,
       "surfaces": 9,
