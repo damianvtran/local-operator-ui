@@ -96,8 +96,13 @@ export function serverUpdateFailureSentence(input: {
 	const pointer = input.diagnosis
 		? " The installer's own output is below."
 		: " The installer's own output is in the update service log.";
-	const escape = input.rebuildRoute
+	/*
+	 * NOT NAMED `escape`: that identifier shadows the deprecated global of the same name,
+	 * which the repo's lint treats as an error - found by running the gate rather than
+	 * assuming it, and worth the rename for the name alone.
+	 */
+	const escapeHatch = input.rebuildRoute
 		? ` You can also run \`${input.updateCommand || "lop-update"}\` yourself in a terminal.`
 		: "";
-	return `${headline}${stopped} ${serverUpdateFailureRemedy(input)}${pointer}${escape}`;
+	return `${headline}${stopped} ${serverUpdateFailureRemedy(input)}${pointer}${escapeHatch}`;
 }
