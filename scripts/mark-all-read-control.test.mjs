@@ -139,6 +139,7 @@ const STUB_PATHS = [
 	"react-router-dom",
 	"@shared/hooks/use-canonical-session",
 	"@shared/api/local-operator/desktop-api",
+	"@shared/hooks/use-connectivity-status",
 ];
 const STUB_FILTERS = STUB_PATHS.map((path) => new RegExp(`^${path}$`));
 
@@ -175,7 +176,7 @@ export const desktopResult = request => globalThis.__ack(request);`,
 	 * here. `desktopFeatureEnabled` is re-exported from the shipped module rather
 	 * than re-implemented, so the gate under test is the app's own.
 	 */
-	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled, desktopFeatureState} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-hooks.ts`,
 	)}
 export const useDesktopCapabilities = () => ({
@@ -191,6 +192,16 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 		"export const useChatSearch = () => ({ data: undefined, refused: false, isError: false, refetch: async () => undefined });",
 	"@shared/hooks/use-desktop-feed":
 		"export const useDesktopFeed = () => ({ available: false, connected: true, catalogueRevision: 0 });",
+	/*
+	 * The sidebar's status read is stubbed like the rest of the surfaces' data - it
+	 * is where main's pairing record arrives (`DaemonStatusSnapshot.pairing`), and
+	 * these cases are about the control's own copy, not about the record. Without
+	 * this stub the graph pulls the real hook, and with it the renderer's config
+	 * module and a `backend-error` export the stub below does not carry: measured as
+	 * a build failure rather than a failing assertion.
+	 */
+	"@shared/hooks/use-connectivity-status":
+		"export const useServerHealth = () => ({ data: { online: true, snapshot: null } });",
 	"@shared/api/local-operator/backend-error":
 		"export const compatibilityBannerShown = () => false;",
 	"react-router-dom": "export const useNavigate = () => () => undefined;",

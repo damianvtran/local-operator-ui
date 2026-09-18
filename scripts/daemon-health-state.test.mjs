@@ -337,7 +337,7 @@ test("a replacement this app started is an owned attachment, and reachable", () 
 
 test("desktop availability is reported beside the state, not through it", () => {
 	const machine = attached();
-	machine.setDesktopAvailable(false);
+	machine.setPairing({ available: false, cause: "credential-refused" });
 	assert.equal(machine.snapshot().desktopAvailable, false);
 	assert.equal(machine.getState(), "attached");
 	machine.observe({ kind: "identified" });
@@ -346,6 +346,57 @@ test("desktop availability is reported beside the state, not through it", () => 
 		false,
 		"a probe does not invent a capability",
 	);
+});
+
+/*
+ * The pairing record itself, which is what the renderer words its sentences from:
+ *
+ *  - the derived boolean and the record are ONE fact, so a producer cannot leave
+ *    them disagreeing;
+ *  - a FAILURE sets it, not only a success. The value it replaces was written
+ *    `true` at three sites and `false` at none, and `attach()` did not reset it,
+ *    so after a `lop` build swap the app went on reporting a pairing a successor
+ *    had already destroyed (design § 1.4);
+ *  - `attach()` RESETS it, so a cause cannot outlive the pairing it described and
+ *    keep a banner up over a working app (design § 10.3).
+ */
+test("the pairing record is written on failure too, and cleared by an attach", () => {
+	const machine = attached();
+	assert.deepEqual(
+		machine.snapshot().pairing,
+		{ available: true, cause: null },
+		"attaching to a daemon this app proved it may drive is a pairing",
+	);
+
+	machine.setPairing({ available: false, cause: "successor" });
+	assert.deepEqual(machine.snapshot().pairing, {
+		available: false,
+		cause: "successor",
+	});
+	assert.equal(
+		machine.snapshot().desktopAvailable,
+		false,
+		"the boolean is the record's projection, not a second value",
+	);
+	assert.equal(machine.getState(), "attached");
+
+	machine.attach(
+		{
+			url: "http://127.0.0.1:55002",
+			instanceId: "b".repeat(43),
+			pid: 4243,
+			version: "0.55.6",
+			prefix: "/tmp/prefix",
+			installKind: "uv-tool",
+		},
+		{ owned: false },
+	);
+	assert.deepEqual(
+		machine.snapshot().pairing,
+		{ available: true, cause: null },
+		"a fresh attach clears the cause, so a stale one cannot keep a banner up",
+	);
+	assert.equal(machine.snapshot().desktopAvailable, true);
 });
 
 /*

@@ -62,6 +62,18 @@ const SESSION_503 =
 /** And the one MAIN authors, i.e. no backend answered this request at all. */
 const TRANSPORT_503 =
 	"The backend could not complete this request. Check its connection and try again.";
+/**
+ * And the one the DAEMON's own plane authors, transcribed from
+ * `local_operator/server/desktop.py`.
+ *
+ * It is here because it was the sentence the operator's sidebar photographed: a 503
+ * the app did not author was read as "this conversation's session is not running"
+ * and the daemon's words about the DESKTOP APP's ownership were carried through
+ * verbatim as machine-voice detail (design § 0(c), § 5.1).
+ */
+const PLANE_503 = "Desktop controls require a backend started by the desktop app.";
+/** The pairing code the renderer derives for that refusal. */
+const PLANE_503_CODE = "pairing.plane-closed";
 
 /** Every phase the renderer can fail in. */
 const PHASES = [
@@ -460,4 +472,57 @@ test("no surface prints the caught message as copy", () => {
 	);
 	assert.match(panel, /MCP_SETTINGS_ACTION_LABEL/);
 	assert.match(panel, /mcpServerSettingsRoute\(row\.name\)/);
+});
+
+test("a refusal of the desktop PLANE is a fact about the server, not about the session", async () => {
+	/*
+	 * The class the operator photographed, at the surface it reached. A 503 the app
+	 * did not author used to fall into the session arm - "this conversation's session
+	 * is not running, trying again restarts it" - with the daemon's own sentence
+	 * carried into `detail`, so pressing the control answered with the SERVER's prose
+	 * about who owns it. Now the code decides: a plane refusal is a server fact, the
+	 * sentence is this app's, and no verbatim detail is carried.
+	 */
+	const failure = mcpFailure(
+		"reconnect",
+		new DesktopControlError(503, PLANE_503, undefined, PLANE_503_CODE),
+		false,
+	);
+	assert.equal(
+		failure.cause,
+		"server",
+		"a plane refusal is the server's, not the session's",
+	);
+	assert.doesNotMatch(
+		failure.message,
+		/desktop app|manage its own server|session is not running/i,
+	);
+	assert.equal(
+		failure.detail,
+		null,
+		"the server's sentence is not carried through as this app's detail",
+	);
+	// And the routing that follows from the cause: nothing in the dialog can fix a
+	// server that refused the app's credential, so no remedy is offered.
+	assert.deepEqual(
+		mcpFailureActions({
+			row: { remedy: { kind: "reconnect" }, keyNames: [] },
+			phase: "reconnect",
+			cause: failure.cause,
+			keyEntryAvailable: true,
+		}),
+		[],
+	);
+
+	/*
+	 * The contrast that makes it a CLASSIFICATION rather than a blanket rule: a 503
+	 * with no pairing code is still the session arm, because a session that is not
+	 * running is exactly what "trying again restarts it" fixes.
+	 */
+	const session = mcpFailure(
+		"reconnect",
+		new DesktopControlError(503, SESSION_503),
+		false,
+	);
+	assert.equal(session.cause, "session");
 });

@@ -239,6 +239,21 @@ async function daemonScene({
 	 * listing the client cannot tell from a genuinely empty store.
 	 */
 	sessionsStatus = 200,
+	/**
+	 * The status `/v1/desktop/claim` answers. `404` models an install that predates
+	 * the handshake, whose claim ROUTE does not exist - the one refusal a status
+	 * names unambiguously, because the daemon's own contract for this route never
+	 * answers 404 (design § 1.6, § 2 S3).
+	 */
+	claimStatus = 200,
+	/**
+	 * Whether the record publishes a GOVERNED plane: `desktop: true` with
+	 * `claim_key: ""`, which is what the daemon writes when SOMEBODY ELSE claimed the
+	 * plane or its spawner governed it through the environment (`registry.py`). It is
+	 * the discriminator between "another program has this" and "the plane is simply
+	 * unclaimed", and nothing read it before this change (design § 1.5).
+	 */
+	recordGoverned = false,
 }) {
 	const root = mkdtempSync(join(tmpdir(), `daemon-observation-${instanceId}-`));
 	const runDir = join(root, "run", "serve");
@@ -255,7 +270,13 @@ async function daemonScene({
 	 * identity, the plane and the credential change, and those are exactly what a
 	 * successor swaps.
 	 */
-	const live = { instanceId, acceptedBearer, healthStatus, sessionsStatus };
+	const live = {
+		instanceId,
+		acceptedBearer,
+		healthStatus,
+		sessionsStatus,
+		claimStatus,
+	};
 
 	const child = spawn(
 		process.execPath,
@@ -298,6 +319,10 @@ async function daemonScene({
 			return;
 		}
 		if (path === "/v1/desktop/claim") {
+			if (live.claimStatus === 404) {
+				json(404, { detail: "Not Found" });
+				return;
+			}
 			json(200, { status: 200 });
 			return;
 		}
@@ -364,7 +389,7 @@ async function daemonScene({
 				source_ref: "",
 				prefix: "/tmp/observation-prefix",
 				install_kind: "uv-tool",
-				desktop: false,
+				desktop: recordGoverned,
 				claim_key: recordClaimKey,
 				started_at: now - 10,
 				heartbeat_at: now,
@@ -1173,5 +1198,76 @@ test("a successor whose plane is SHUT detaches the app rather than holding it at
 		await manager.stop(false);
 	} finally {
 		await scene.dispose();
+	}
+});
+
+/*
+ * The three pairing causes this change introduced, produced by real loopback
+ * daemons rather than by a hand-built status (design § 7). Each is a DIFFERENT
+ * fact with a different sentence, and telling them apart is the whole point: they
+ * reached the operator as one sentence about restarting the app so it could manage
+ * its own server.
+ */
+test("S2: a plane another program governs reports `governed-elsewhere`", async () => {
+	const scene = await daemonScene({
+		instanceId: "instance-governed",
+		// The record a governed plane leaves: no key for us, and `desktop: true`.
+		claimKey: "",
+		recordGoverned: true,
+	});
+	try {
+		const { manager, adopted } = await adoptAtStartup(scene);
+		assert.equal(adopted, false, "this app may not drive another program's plane");
+		const snapshot = manager.getStatusSnapshot();
+		assert.deepEqual(
+			snapshot.pairing,
+			{ available: false, cause: "governed-elsewhere" },
+			"the record's own `desktop: true` with no key is the governed discriminator",
+		);
+		assert.equal(
+			snapshot.desktopAvailable,
+			false,
+			"the derived boolean is the record's, so the two cannot disagree",
+		);
+	} finally {
+		await scene.die();
+	}
+});
+
+test("S3: a claim route that does not exist reports `pre-handshake`", async () => {
+	const scene = await daemonScene({
+		instanceId: "instance-pre-handshake",
+		claimStatus: 404,
+	});
+	try {
+		const { manager, adopted } = await adoptAtStartup(scene);
+		assert.equal(adopted, false);
+		assert.deepEqual(
+			manager.getStatusSnapshot().pairing,
+			{ available: false, cause: "pre-handshake" },
+			"a missing claim route names an INSTALL older than the handshake",
+		);
+	} finally {
+		await scene.die();
+	}
+});
+
+test("S4: a plane that refuses this app's bearer reports `credential-refused`", async () => {
+	const scene = await daemonScene({
+		instanceId: "instance-refused-bearer",
+		// The plane is open and answers; the key this record publishes is not the one it
+		// accepts, which is what a refusal of OUR credential looks like.
+		acceptedBearer: "f".repeat(64),
+	});
+	try {
+		const { manager, adopted } = await adoptAtStartup(scene);
+		assert.equal(adopted, false);
+		assert.deepEqual(
+			manager.getStatusSnapshot().pairing,
+			{ available: false, cause: "credential-refused" },
+			"a refusal is a pairing cause, and re-claiming is the repair",
+		);
+	} finally {
+		await scene.die();
 	}
 });
