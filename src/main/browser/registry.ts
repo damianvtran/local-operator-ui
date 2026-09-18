@@ -300,6 +300,23 @@ export class TabRegistry {
 		return [...this.tabs.values()].sort((a, b) => a.tabId - b.tabId);
 	}
 
+	/**
+	 * The tab whose view owns this webContents id, if any.
+	 *
+	 * The passkey chooser needs it to name the page a request came from: Electron
+	 * hands the initiating frame, `webContents.fromFrame` turns that into a
+	 * webContents, and this is the mapping from there to a tab of THIS host — the
+	 * frame may belong to no tab here at all, which is why the answer is optional
+	 * rather than an error.
+	 */
+	byWebContentsId(webContentsId: number): TabRecord | undefined {
+		return this.list().find(
+			(record) =>
+				!record.view.webContents.isDestroyed() &&
+				record.view.webContents.id === webContentsId,
+		);
+	}
+
 	get activeTab(): TabRecord | null {
 		return this.activeTabId === null
 			? null

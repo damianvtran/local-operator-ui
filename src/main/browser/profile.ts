@@ -58,6 +58,29 @@ export const BROWSER_PARTITION = "persist:local-operator-browser";
  * version in a UA advertises a browser that shipped years ago, which is its own
  * compatibility problem on sites that gate features by version.
  *
+ * THE BUILD COMPONENT IS `0.0.0`, WHICH IS WHAT CHROME ITSELF SENDS. Chrome
+ * froze `MINOR.BUILD.PATCH` in the UA string with the desktop UA reduction
+ * (Chrome 101/107), so a full build number is a marker no Chrome emits — the same
+ * class of artifact this change exists to remove (reviewer round 1, finding 3).
+ * Measured on this machine, one command, no operator page and no screenshot:
+ *
+ *   Google Chrome 153.0.8010.53 presents
+ *     … HeadlessChrome/153.0.0.0 Safari/537.36
+ *
+ * (headless branding aside, the VERSION is the reduction under test), against
+ * this app's own string composed from the same runtime's build. The full
+ * `process.versions.chrome` stays out of the STRING only — nothing else reads it
+ * from here.
+ *
+ * ONE CAVEAT THE FILE HAS TO CARRY (reviewer round 1, finding 4), because the
+ * section above is about a measurement this file cannot show: the plain-window
+ * pair is what discriminates the UA, and the app's OWN shape was unchanged by it
+ * — `--arm ua` fails 3/3 on both trees, which is why
+ * `docs/design/browser-challenges-and-passkeys.md` § 2.1 says the operator's
+ * symptom is not proven fixed and § 2.2 lists the discriminators still untested.
+ * A reader who takes the pair above as "the app's stall was the UA" has read more
+ * than was measured.
+ *
  * The evidence arm that measures this is `scripts/browser-challenge-proof.mjs`'s
  * real-site arm, which asserts the UA each attempt ACTUALLY presented
  * (`navigator.userAgent`) rather than the one it asked for — an arm that sets a UA
@@ -66,13 +89,15 @@ export const BROWSER_PARTITION = "persist:local-operator-browser";
  */
 export function browserUserAgent(): string {
 	const chrome = process.versions.chrome ?? "0";
+	// The MAJOR version only: `Chrome/<major>.0.0.0` is the shape the brand ships.
+	const major = chrome.split(".")[0] || "0";
 	const platform =
 		process.platform === "darwin"
 			? "Macintosh; Intel Mac OS X 10_15_7"
 			: process.platform === "win32"
 				? "Windows NT 10.0; Win64; x64"
 				: "X11; Linux x86_64";
-	return `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chrome} Safari/537.36`;
+	return `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`;
 }
 
 /** What the session handlers tell the rest of the app. */

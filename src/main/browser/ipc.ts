@@ -74,6 +74,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-forget-site",
 	"browser-clear-data",
 	"browser-webauthn-respond",
+	"browser-webauthn-pending",
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
@@ -190,6 +191,25 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			return chooser.respond(requestId, credentialId);
 		},
 	);
+
+	/*
+	 * The pending choosers, pulled rather than only pushed.
+	 *
+	 * WHY A PULL EXISTS AT ALL: a request raised while the surface that renders
+	 * choosers was not mounted had nowhere to be received, and a push cannot replay
+	 * it — so the renderer asks main on mount what is still waiting (UX round 1, U2:
+	 * leaving the browser route and coming back left the user unable to answer a
+	 * request that was still live). MAIN IS THE SOURCE OF TRUTH for that queue; the
+	 * renderer only ever mirrors it, so the two cannot disagree about which request
+	 * is outstanding.
+	 */
+	ipcMain.handle("browser-webauthn-pending", (event) => {
+		authorize(event);
+		// No host running is an empty queue rather than an error: the renderer asks
+		// this while a host may be starting or stopped, and "nothing is waiting" is
+		// the truth in both cases.
+		return options.webauthn()?.pendingRequests() ?? [];
+	});
 
 	ipcMain.handle(
 		"browser-consent-respond",

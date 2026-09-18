@@ -35,7 +35,6 @@ import {
 	scopeKey,
 	tabsInScope,
 } from "../model/tab-index-model";
-import type { WebauthnChoiceRequest } from "../model/webauthn-chooser";
 import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
@@ -43,7 +42,6 @@ import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserTabStrip } from "./browser-tab-strip";
 import { BrowserUrlBar } from "./browser-url-bar";
-import { BrowserWebauthnDialog } from "./browser-webauthn-dialog";
 
 /**
  * The browser surface: everything that exists once per host.
@@ -242,18 +240,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 * (spec 4.1), never a second copy of main's queue. */
 	const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 	const [handOverTab, setHandOverTab] = useState<BrowserTabView | null>(null);
-	/**
-	 * The passkey chooser request waiting for an answer.
-	 *
-	 * Held HERE rather than in a store: it is one request at a time by
-	 * construction (a second matching request is a second `credentials.get()`, and
-	 * main's chooser holds both), so the surface renders the one main last raised.
-	 * A dismissal and a choice both clear it and answer main, because an unanswered
-	 * chooser is cancelled on main's own timeout — leaving it on screen after the
-	 * request is gone would offer a button that can no longer do anything.
-	 */
-	const [passkeyRequest, setPasskeyRequest] =
-		useState<WebauthnChoiceRequest | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [blockedPopup, setBlockedPopup] = useState<{
 		tabId: number;
@@ -369,16 +355,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		if (!api) return;
 		return api.onConsentAttention(() => void chrome.refresh());
 	}, [chrome.refresh]);
-
-	// A site asked for a passkey and more than one of them matches. Main raises
-	// this from the session's `select-webauthn-account`; with nothing answering,
-	// Electron cancels the request with `NotAllowedError`, so the dialog is the
-	// only way the user gets to choose (design: browser-challenges-and-passkeys).
-	useEffect(() => {
-		const api = window.api?.browser;
-		if (!api?.onWebauthnRequest) return;
-		return api.onWebauthnRequest((request) => setPasskeyRequest(request));
-	}, []);
 
 	const runBusy = useCallback(async (action: () => Promise<void>) => {
 		setBusy(true);
@@ -790,28 +766,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onConfirm={(tabId, sessionId) => {
 					setHandOverTab(null);
 					void runBusy(() => chrome.handOver(tabId, sessionId));
-				}}
-			/>
-			<BrowserWebauthnDialog
-				open={passkeyRequest !== null}
-				request={passkeyRequest}
-				busy={busy}
-				onDismiss={() => {
-					const request = passkeyRequest;
-					setPasskeyRequest(null);
-					if (request)
-						void runBusy(() =>
-							chrome.respondToWebauthn(request.requestId, null),
-						);
-				}}
-				onChoose={(credentialId) => {
-					const request = passkeyRequest;
-					setPasskeyRequest(null);
-					if (request) {
-						void runBusy(() =>
-							chrome.respondToWebauthn(request.requestId, credentialId),
-						);
-					}
 				}}
 			/>
 		</div>

@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { app } from "electron";
+import { type Session, app } from "electron";
 
 /**
  * The platform authenticator (Touch ID) for WebAuthn, the gate that decides
@@ -23,16 +23,25 @@ import { app } from "electron";
  *     incorrect. Expected value: <group>`;
  *   - `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()`
  *     stays `false`;
- *   - and `navigator.credentials.create()` never settles AT ALL — the page's
- *     promise hangs past a 60 s observation in both arms (hidden window and
- *     shown-inactive window).
+ *   - and `navigator.credentials.create()` never settled within a 60 s
+ *     observation in that same never-shown window.
  *
- * That last row is the reason this module is deliberate rather than eager: a
- * site that offers a passkey which cannot complete is worse than a site that
- * never offers one, and a hanging promise is the worst of the three. So the
- * authenticator is configured ONLY when the running app's signature really
- * carries the entitlement for the exact group about to be passed, and otherwise
- * the module logs one line naming why it is off and stays inert.
+ * WHAT THAT LAST ROW DOES AND DOES NOT SHOW (QA round 1, Q1). The pending
+ * promise is NOT caused by the missing configuration. With the authenticator
+ * OFF, a page on a real RP origin calling `credentials.create()` with
+ * `userVerification: "required"` is still pending after 20 s (measured twice),
+ * so a never-shown window hangs that request whether or not this module
+ * configures anything — Chromium is waiting on a native prompt no never-shown
+ * window can present. The difference the gate actually buys is the one a site's
+ * own feature detection reads, and it is measurable: with the entitlement
+ * missing, `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()`
+ * stays `false`, so a well-behaved site does not offer a passkey it cannot
+ * complete. THAT is why this module is deliberate rather than eager — a site
+ * that offers a passkey which cannot complete is worse than a site that never
+ * offers one — so the authenticator is configured ONLY when the running app's
+ * signature really carries the entitlement for the exact group about to be
+ * passed, and otherwise the module logs one line naming why it is off and stays
+ * inert.
  *
  * WHAT IT CANNOT DO, stated here rather than discovered later: Electron's
  * implementation is Touch ID / Secure Enclave only, through `LAContext`.
@@ -454,6 +463,46 @@ export interface WebauthnChooserRequest {
 	requestId: string;
 	relyingPartyId: string;
 	accounts: WebauthnAccountView[];
+	/**
+	 * The tab whose page raised the request, and that page's title, when the
+	 * initiating frame still resolves to one of this host's tabs.
+	 *
+	 * WHY THEY TRAVEL WITH THE REQUEST (UX round 1, U3): while the chooser is up
+	 * the native view is suppressed, so the page the decision is ABOUT is the one
+	 * thing the user cannot see — naming the site is not the same as naming the
+	 * page. Both are nullable because a frame can be destroyed or belong to no tab
+	 * (a popup was denied; the tab closed mid-request), and a chooser that invented
+	 * a title would be worse than one that leaves it out.
+	 */
+	tabId: number | null;
+	pageTitle: string | null;
+}
+
+/** Why a pending request stopped waiting.
+ *
+ * The renderer needs the difference rather than just the fact: a request the
+ * USER answered is already off its screen, while one that expired or was
+ * cancelled under them has to be explained (design round 1, D2 — the dialog
+ * otherwise stays up offering rows that can no longer do anything). */
+export type WebauthnChooserOutcome =
+	/** The user picked a credential. */
+	| "chosen"
+	/** The user dismissed the chooser. */
+	| "dismissed"
+	/** Nobody answered within `WEBAUTHN_CHOOSER_TIMEOUT_MS`. */
+	| "expired"
+	/** The browser host stopped with the request still pending. */
+	| "host-stopped"
+	/** Electron offered no account to choose from. */
+	| "no-accounts"
+	/** The answer named a credential that was not offered. */
+	| "credential-not-offered";
+
+/** Where a request came from, as the host can resolve it from the event's own
+ * frame. Both null means "the frame did not resolve to a tab of this host". */
+export interface WebauthnRequestSource {
+	tabId: number | null;
+	pageTitle: string | null;
 }
 
 export interface WebauthnChooserOptions {
@@ -463,13 +512,23 @@ export interface WebauthnChooserOptions {
 	timeoutMs?: number;
 	/** Injectable so a test can name requests deterministically. */
 	nextRequestId?: () => string;
+	/** Resolves the event's initiating frame to the tab it belongs to. Injected
+	 * because the mapping belongs to the host's registry, not here. */
+	describeSource?: (frame: unknown) => WebauthnRequestSource;
+	/** Every settle path reports here, so the renderer can drop a chooser main has
+	 * already answered rather than leaving a dead dialog on screen. */
+	onSettled?: (requestId: string, outcome: WebauthnChooserOutcome) => void;
 }
 
 interface PendingChoice {
 	requestId: string;
 	relyingPartyId: string;
 	accounts: WebauthnAccountView[];
-	callback: (credentialId?: string | null) => void;
+	tabId: number | null;
+	pageTitle: string | null;
+	/** Guarded: Electron's contract is that the native callback is invoked exactly
+	 * once, so the guard wraps the callback rather than the map lookup. */
+	answer: (credentialId: string | null) => void;
 	timer: ReturnType<typeof setTimeout>;
 }
 
@@ -500,9 +559,23 @@ export class WebauthnChooser {
 		details: {
 			relyingPartyId?: unknown;
 			accounts?: unknown;
+			frame?: unknown;
 		},
 		callback: (credentialId?: string | null) => void,
 	): void {
+		/*
+		 * THE CALLBACK IS GUARDED HERE, before anything can hold it.
+		 *
+		 * Electron documents this event's contract as "the credential request
+		 * remains pending until the listener invokes the callback, so always invoke
+		 * it exactly once". A second invocation is a contract violation inside
+		 * native code, and the shape that made it reachable was two listeners on one
+		 * Session (reviewer round 1, finding 2): the registration is fixed in
+		 * `attachWebauthnChooser`, and this guard is what makes exactly-once
+		 * structural rather than incidental — whatever answers twice, the second
+		 * answer stops here.
+		 */
+		const answer = onceAnswer(callback);
 		const relyingPartyId =
 			typeof details.relyingPartyId === "string" ? details.relyingPartyId : "";
 		const accounts = Array.isArray(details.accounts)
@@ -517,12 +590,16 @@ export class WebauthnChooser {
 			this.options.log(
 				`[webauthn] ${relyingPartyId || "a site"} asked for a passkey with no account to choose; cancelling the request`,
 			);
-			callback();
+			answer(null);
 			return;
 		}
 		const requestId = this.options.nextRequestId
 			? this.options.nextRequestId()
 			: `webauthn-${++this.counter}-${Date.now().toString(36)}`;
+		const source = this.options.describeSource?.(details.frame) ?? {
+			tabId: null,
+			pageTitle: null,
+		};
 		const timer = setTimeout(
 			() => this.expire(requestId),
 			this.options.timeoutMs ?? WEBAUTHN_CHOOSER_TIMEOUT_MS,
@@ -533,13 +610,15 @@ export class WebauthnChooser {
 			requestId,
 			relyingPartyId,
 			accounts,
-			callback,
+			tabId: source.tabId,
+			pageTitle: source.pageTitle,
+			answer,
 			timer,
 		});
 		this.options.log(
 			`[webauthn] ${relyingPartyId || "a site"} matched ${accounts.length} passkeys; asking the user which one to use (${requestId})`,
 		);
-		this.options.notify({ requestId, relyingPartyId, accounts });
+		this.options.notify(this.view(requestId));
 	}
 
 	/**
@@ -564,27 +643,40 @@ export class WebauthnChooser {
 			this.options.log(
 				`[webauthn] a choice for ${entry.relyingPartyId} named a credential that was not offered; cancelling the request`,
 			);
-			this.settle(entry, null);
+			this.settle(entry, null, "credential-not-offered");
 			return true;
 		}
 		if (credentialId === null) {
 			this.options.log(
 				`[webauthn] the passkey choice for ${entry.relyingPartyId} was dismissed; cancelling the request`,
 			);
-			this.settle(entry, null);
+			this.settle(entry, null, "dismissed");
 			return true;
 		}
 		const chosen = entry.accounts.find((a) => a.credentialId === credentialId);
 		this.options.log(
 			`[webauthn] the user chose ${labelOf(chosen)} for ${entry.relyingPartyId}`,
 		);
-		this.settle(entry, credentialId);
+		this.settle(entry, credentialId, "chosen");
 		return true;
 	}
 
 	/** Ids still waiting for an answer. Read by tests and by nothing else. */
 	pendingRequestIds(): string[] {
 		return [...this.pending.keys()];
+	}
+
+	/**
+	 * Every request still waiting, OLDEST FIRST.
+	 *
+	 * This is what a surface that mounts late reads instead of a request it never
+	 * received (UX round 1, U2: the request was raised while the browser route was
+	 * not mounted, so the push had nowhere to go). Order is the map's own insertion
+	 * order, which is why it is stated: the renderer offers the oldest request and
+	 * names the rest rather than silently replacing one with the next.
+	 */
+	pendingRequests(): WebauthnChooserRequest[] {
+		return [...this.pending.keys()].map((requestId) => this.view(requestId));
 	}
 
 	/** Cancel everything still pending. Called when the host stops, because a
@@ -595,7 +687,7 @@ export class WebauthnChooser {
 			this.options.log(
 				`[webauthn] the passkey request from ${entry.relyingPartyId} was cancelled: the browser host stopped`,
 			);
-			this.settle(entry, null);
+			this.settle(entry, null, "host-stopped");
 		}
 	}
 
@@ -605,17 +697,129 @@ export class WebauthnChooser {
 		this.options.log(
 			`[webauthn] nobody chose a passkey for ${entry.relyingPartyId} within ${Math.round((this.options.timeoutMs ?? WEBAUTHN_CHOOSER_TIMEOUT_MS) / 1000)}s; cancelling the request`,
 		);
-		this.settle(entry, null);
+		this.settle(entry, null, "expired");
 	}
 
-	/** Answer exactly once: the map entry is the once-guard, and the timer is
-	 * cleared here so an expired request cannot fire a second answer. */
-	private settle(entry: PendingChoice, credentialId: string | null): void {
+	/** The wire view of one pending request. Never a credential id in the token
+	 * position: `requestId` is this module's own. */
+	private view(requestId: string): WebauthnChooserRequest {
+		const entry = this.pending.get(requestId);
+		if (!entry) {
+			throw new Error(`no pending passkey request ${requestId}`);
+		}
+		return {
+			requestId: entry.requestId,
+			relyingPartyId: entry.relyingPartyId,
+			accounts: entry.accounts,
+			tabId: entry.tabId,
+			pageTitle: entry.pageTitle,
+		};
+	}
+
+	/** Answer exactly once, then tell the renderer the request is gone.
+	 *
+	 * Both halves matter. The map entry and the guarded callback are the
+	 * exactly-once half; `onSettled` is what stops the renderer offering a choice
+	 * for a request main has already answered — the dead-end dialog of design
+	 * round 1, D2 — and it fires for EVERY path, including the host's own stop.
+	 */
+	private settle(
+		entry: PendingChoice,
+		credentialId: string | null,
+		outcome: WebauthnChooserOutcome,
+	): void {
 		if (!this.pending.has(entry.requestId)) return;
 		this.pending.delete(entry.requestId);
 		clearTimeout(entry.timer);
-		entry.callback(credentialId ?? undefined);
+		entry.answer(credentialId);
+		this.options.onSettled?.(entry.requestId, outcome);
 	}
+}
+
+/**
+ * Electron's `select-webauthn-account` callback, invocable exactly once.
+ *
+ * WHY THE GUARD IS KEYED BY THE CALLBACK ITSELF rather than held per chooser or
+ * per `handle` call. The defect this closes was TWO chooser instances answering
+ * one request (reviewer round 1, finding 2, MAJOR), and Electron delivers an
+ * event to every registered listener with the SAME `callback` reference — so a
+ * guard owned by an instance is one guard per listener, and both of them answer.
+ * One `WeakMap` from the callback to its single wrapper makes "exactly once" a
+ * property of the callback rather than of the bookkeeping around it, whatever
+ * delivers it and however many listeners exist. Weak, so a callback Electron
+ * drops takes its entry with it.
+ */
+const answerableCallbacks = new WeakMap<
+	(credentialId?: string | null) => void,
+	(credentialId: string | null) => void
+>();
+
+function onceAnswer(
+	callback: (credentialId?: string | null) => void,
+): (credentialId: string | null) => void {
+	const existing = answerableCallbacks.get(callback);
+	if (existing) return existing;
+	let answered = false;
+	const guarded = (credentialId: string | null) => {
+		if (answered) return;
+		answered = true;
+		callback(credentialId ?? undefined);
+	};
+	answerableCallbacks.set(callback, guarded);
+	return guarded;
+}
+
+type SelectAccountListener = (
+	event: unknown,
+	details: { relyingPartyId?: unknown; accounts?: unknown; frame?: unknown },
+	callback: (credentialId?: string | null) => void,
+) => void;
+
+/**
+ * The one live `select-webauthn-account` listener per `Session`, and the chooser
+ * it feeds.
+ *
+ * WHY THIS IS A MODULE-LEVEL REGISTRY rather than an `on("select-webauthn-account")`
+ * inside `startBrowserHost` (reviewer round 1, finding 2, MAJOR):
+ * `session.fromPartition` returns the SAME `Session` object for the life of the
+ * process, so a listener added per host start accumulates. A macOS window close
+ * followed by a Dock click starts a second host — `app.on("activate")` recreates
+ * the window through the same startup path — and the stale listener, whose
+ * chooser has no renderer surface to notify, would hold a request for its full
+ * bound and then invoke the SAME Electron callback a second time, after the live
+ * chooser had already answered it.
+ *
+ * So the registration is idempotent per Session: attaching a second chooser
+ * removes the previous listener before it adds the new one, and `detach` runs from
+ * the host's own stop path.
+ */
+const chooserListeners = new WeakMap<Session, SelectAccountListener>();
+
+/** Register `chooser` as the session's chooser, replacing any earlier one. */
+export function attachWebauthnChooser(
+	session: Session,
+	chooser: WebauthnChooser,
+	log: (message: string) => void,
+): () => void {
+	const previous = chooserListeners.get(session);
+	if (previous) {
+		// Removing it is what makes "exactly one listener" true rather than likely.
+		// Logged, because a second host start in one process is otherwise invisible.
+		session.removeListener("select-webauthn-account", previous);
+		log(
+			"[webauthn] replaced the previous passkey chooser listener (a second browser host started in this process)",
+		);
+	}
+	const listener: SelectAccountListener = (_event, details, callback) => {
+		chooser.handle(details, callback);
+	};
+	session.on("select-webauthn-account", listener);
+	chooserListeners.set(session, listener);
+	return () => {
+		if (chooserListeners.get(session) !== listener) return;
+		session.removeListener("select-webauthn-account", listener);
+		chooserListeners.delete(session);
+	};
 }
 
 function toAccountView(account: Record<string, unknown>): WebauthnAccountView {

@@ -53,7 +53,8 @@ export interface OriginGateResult {
 }
 
 /**
- * The main frame's CDP frame id, or null when it cannot be read.
+ * The main frame's CDP frame id, or null when it cannot be read, plus whether
+ * this read enabled the `Page` domain.
  *
  * `Page.getFrameTree` is the only in-band way to learn which frame is the top
  * one, and the id it returns is STABLE across a cross-origin main-frame
@@ -68,23 +69,40 @@ export interface OriginGateResult {
  * measurement that makes this non-optional: on a target with no document at
  * all, `Page.enable` never answers (90 s, no reply).
  *
+ * WHY THE CALLER IS TOLD WHETHER IT ENABLED THE DOMAIN: nothing else consumes
+ * `Page` — `log-capture.ts` routes only `Runtime` and `Log` — so leaving it on
+ * costs event volume for the rest of an agent tab's life, and the always-attached
+ * debugger domain is one of the untested discriminators for the Cloudflare stall
+ * (`docs/design/browser-challenges-and-passkeys.md` § 2.2(b)). An experiment that
+ * measures "the debugger attachment" has to know whether `Page` was part of it,
+ * so the gate disables what it enabled rather than leaving that to inference.
+ *
  * A null answer is NOT an error to surface: the caller falls back to deciding
  * every paused Document, which is the stricter rule and the behaviour this gate
  * had before frame discrimination existed.
  */
+export interface MainFrameRead {
+	mainFrameId: string | null;
+	/** True when THIS read enabled `Page`, and therefore owes a `Page.disable`. */
+	pageEnabled: boolean;
+}
+
 async function resolveMainFrameId(
 	ctx: BrowserActionContext,
 	contents: DriveableView["webContents"],
-): Promise<string | null> {
+): Promise<MainFrameRead> {
 	try {
 		await ctx.cdp.send(contents, "Page.enable", {});
 		const tree = await ctx.cdp.send<{
 			frameTree?: { frame?: { id?: unknown } };
 		}>(contents, "Page.getFrameTree", {});
 		const id = tree?.frameTree?.frame?.id;
-		return typeof id === "string" && id ? id : null;
+		return {
+			mainFrameId: typeof id === "string" && id ? id : null,
+			pageEnabled: true,
+		};
 	} catch {
-		return null;
+		return { mainFrameId: null, pageEnabled: false };
 	}
 }
 
@@ -106,7 +124,8 @@ export async function withOriginGate<T>(
 	const contents = view.webContents;
 	const blocked: string[] = [];
 	const seen = new Set<string>();
-	const mainFrameId = await resolveMainFrameId(ctx, contents);
+	const frameTree = await resolveMainFrameId(ctx, contents);
+	const mainFrameId = frameTree.mainFrameId;
 	if (mainFrameId === null) {
 		ctx.log(
 			`[browser] could not read the frame tree for ${requester}; this navigation is gated on every Document request, which may refuse cross-origin frames the page needs`,
@@ -210,6 +229,16 @@ export async function withOriginGate<T>(
 		} catch {
 			// A view that closed mid-navigation needs no cleanup, and a failed
 			// disable must not replace the operation's own outcome.
+		}
+		// Only what this call enabled: `Page` is otherwise left exactly as the gate
+		// found it, so nothing else in the host inherits a debugger domain it did not
+		// ask for (finding 5).
+		if (frameTree.pageEnabled) {
+			try {
+				await ctx.cdp.send(contents, "Page.disable", {});
+			} catch {
+				// Same rule as above.
+			}
 		}
 	}
 }
