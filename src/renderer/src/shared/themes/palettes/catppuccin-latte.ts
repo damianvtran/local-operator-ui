@@ -82,16 +82,20 @@ export const catppuccinLatte: ThemeDefinition = {
 		sunken: "#DADEE6",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.1 `L*` darker (branch L of this port's selection rule), and
-		 * carrying 2.70x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is the ΔE00 4.08-to-4 band
-		 * on `surface`. ΔE00 4.08 from `surface`, 6.28 from `elevated`, 2.12 from
-		 * `sunken`, 2.19 from `accentWash`; the inks on the ground are 8.28:1,
-		 * 7.7:1, 5.36:1. Continuity with the panel: hue 5.44 degrees off the panel's
-		 * (the assertion allows 12) and chroma 5.84 where the panel carries 2.16.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #F0EAF5  accent hue, C* 6.07, +1.66 L*, ΔE00 5.60 off `surface`,
+		 *                       `inkDim` 5.72:1 on the fill, hue 0.39° off `accent`.
+		 * rowSelected #EBDEF6  accent hue, C* 13.33, +4.98 L*, ΔE00 11.50 off
+		 *                       `surface` and 6.16 off `rowHover`, `inkDim` 5.24:1, and the
+		 *                       2px `accent` bar at 4.73:1 against it.
 		 */
-		highlight: "#E1E5F0",
+		rowHover: "#F0EAF5",
+		rowSelected: "#EBDEF6",
 
 		// Canonical text 4C4F69 is 6.04:1 on `sunken` — under the 7:1 body floor. Deepened
 		// along the same indigo-blue.

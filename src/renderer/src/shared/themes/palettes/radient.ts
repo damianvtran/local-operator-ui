@@ -63,17 +63,20 @@ export const radient: ThemeDefinition = {
 		sunken: "#181A1D",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 5 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.31x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.15:1 on
-		 * the row's ground. ΔE00 4.23 from `surface`, 2.19 from `elevated`, 13.05
-		 * from `sunken`, 6.79 from `accentWash`; the inks on the ground are 11.43:1,
-		 * 7.97:1, 5.15:1. Continuity with the panel: hue 1.58 degrees off the
-		 * panel's (the assertion allows 12) and chroma 15.57 where the panel carries
-		 * 11.89.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #252E39  accent hue, C* 8.30, +1.64 L*, ΔE00 5.47 off `surface`,
+		 *                       `inkDim` 5.74:1 on the fill, hue 3.50° off `accent`.
+		 * rowSelected #1D3650  accent hue, C* 18.79, +4.95 L*, ΔE00 8.01 off
+		 *                       `surface` and 6.88 off `rowHover`, `inkDim` 5.18:1, and the
+		 *                       2px `accent` bar at 5.99:1 against it.
 		 */
-		highlight: "#2d344b",
+		rowHover: "#252E39",
+		rowSelected: "#1D3650",
 
 		// Pure white was the one value in this file that belonged to no ramp: at
 		// C0 it reads as a hole punched in the navy rather than as the top of the

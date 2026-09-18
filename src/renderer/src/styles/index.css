@@ -23,10 +23,12 @@
 	--color-surface: var(--lo-surface);
 	--color-elevated: var(--lo-elevated);
 	--color-sunken: var(--lo-sunken);
-	/* The current row's own ground — a shallow step off `surface` in the direction
-	   the mode runs, rather than the always-recessed `sunken`. See `highlight` in
-	   the palette contract and § 2 of docs/branding.md. */
-	--color-highlight: var(--lo-highlight);
+	/* The two STATES of a list row, and they are not grounds: each may be painted
+	   only on a row of a list or rail. Both are tints of the palette's own
+	   `accent` hue at two strengths; see the two roles' doc in the palette
+	   contract and § 2 of docs/branding.md. */
+	--color-row-hover: var(--lo-row-hover);
+	--color-row-selected: var(--lo-row-selected);
 
 	--color-ink: var(--lo-ink);
 	--color-ink-muted: var(--lo-ink-muted);

@@ -77,16 +77,20 @@ export const obsidian: ThemeDefinition = {
 		sunken: "#1B1B1E",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 5 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 2.59x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.49 from `surface`, 2.35 from `elevated`, 8.54
-		 * from `sunken`, 4 from `accentWash`; the inks on the ground are 11.82:1,
-		 * 7.2:1, 5.16:1. Continuity with the panel: hue 0.67 degrees off the panel's
-		 * (the assertion allows 12) and chroma 5.38 where the panel carries 2.08.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #313134  accent hue, C* 2.03, +3.05 L*, ΔE00 2.23 off `surface`,
+		 *                       `inkDim` 5.43:1 on the fill, hue 0.06° off `accent`.
+		 * rowSelected #36363A  accent hue, C* 2.67, +5.75 L*, ΔE00 3.90 off
+		 *                       `surface` and 1.75 off `rowHover`, `inkDim` 5.04:1, and the
+		 *                       2px `accent` bar at 11.76:1 against it.
 		 */
-		highlight: "#34343c",
+		rowHover: "#313134",
+		rowSelected: "#36363A",
 
 		ink: "#FAFAFA",
 		/*

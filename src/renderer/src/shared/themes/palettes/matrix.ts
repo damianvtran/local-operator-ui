@@ -104,17 +104,20 @@ export const matrix: ThemeDefinition = {
 		sunken: "#1B1D1B",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 3.6 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.57x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
-		 * the row's ground. ΔE00 4.36 from `surface`, 2.02 from `elevated`, 10.08
-		 * from `sunken`, 8.06 from `accentWash`; the inks on the ground are 10.5:1,
-		 * 6.61:1, 5.17:1. Continuity with the panel: hue 8.25 degrees off the
-		 * panel's (the assertion allows 12) and chroma 9.6 where the panel carries
-		 * 6.11.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #1E2D20  accent hue, C* 11.61, +1.70 L*, ΔE00 4.85 off `surface`,
+		 *                       `inkDim` 5.46:1 on the fill, hue 0.37° off `accent`.
+		 * rowSelected #17361E  accent hue, C* 21.45, +4.61 L*, ΔE00 11.46 off
+		 *                       `surface` and 6.79 off `rowHover`, `inkDim` 5.01:1, and the
+		 *                       2px `accent` bar at 7.54:1 against it.
 		 */
-		highlight: "#203129",
+		rowHover: "#1E2D20",
+		rowSelected: "#17361E",
 
 		ink: "#D4E6D6",
 		inkMuted: "#99BD9F",

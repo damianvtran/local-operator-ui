@@ -57,16 +57,20 @@ export const oneLight: ThemeDefinition = {
 		elevated: "#FFFFFF",
 		sunken: "#E1E0E0",
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 3.4 `L*` darker (branch L of this port's selection rule), and
-		 * carrying nullx the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is the ΔE00 4.18-to-4 band
-		 * on `surface`. ΔE00 4.18 from `surface`, 5.59 from `elevated`, 4.51 from
-		 * `sunken`, 2.23 from `accentWash`; the inks on the ground are 9.47:1,
-		 * 7.96:1, 5.55:1. Continuity with the panel: hue 0 degrees off the panel's
-		 * (the assertion allows 12) and chroma 3.98 where the panel carries 0.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #F0EEFA  accent hue, C* 6.22, +1.63 L*, ΔE00 6.11 off `surface`,
+		 *                       `inkDim` 5.80:1 on the fill, hue 1.12° off `accent`.
+		 * rowSelected #E6E3FE  accent hue, C* 14.05, +4.99 L*, ΔE00 11.92 off
+		 *                       `surface` and 6.07 off `rowHover`, `inkDim` 5.32:1, and the
+		 *                       2px `accent` bar at 4.83:1 against it.
 		 */
-		highlight: "#E6EBF2",
+		rowHover: "#F0EEFA",
+		rowSelected: "#E6E3FE",
 
 		ink: "#383A42",
 		// Canonical mono-2 696C77 is 3.97:1 on `sunken` (< 4.5) — darkened along the same

@@ -63,28 +63,20 @@ export const tokyoNight: ThemeDefinition = {
 		sunken: "#18181F",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.9 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.47x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is the ΔE00 4.98-to-4 band
-		 * on `surface`. ΔE00 4.98 from `surface`, 2.08 from `elevated`, 12.91 from
-		 * `sunken`, 3.32 from `accentWash`; the inks on the ground are 7.67:1,
-		 * 7.12:1, 5.15:1. Continuity with the panel: hue 0.39 degrees off the
-		 * panel's (the assertion allows 12) and chroma 19.55 where the panel carries
-		 * 13.26.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
 		 *
-		 * RAISED BY THE ROW/HOVER PASS, and this is the palette the pass's own gate
-		 * line spends: the 1.50 `L*` of headroom the legibility pass left under this
-		 * row is exactly what the row/hover ordering needed, because the hover rung's
-		 * own floor (ΔE00 2.0 off the panel, `ELEVATED_PANEL_DELTA_E`) sits where the
-		 * shorter row was. No rung can be both perceptibly off the panel and BELOW a
-		 * row this low, so the row came up to outrank the pointer's. The step is the
-		 * largest this palette's inks allow - `inkDim` is the binder at 5.15:1 on the
-		 * ground against its 5.0 floor - which is why
-		 * `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries re-measured numbers for this
-		 * palette.
+		 * rowHover    #2B2D34  accent hue, C* 4.88, +1.52 L*, ΔE00 6.42 off `surface`,
+		 *                       `inkDim` 5.72:1 on the fill, hue 0.66° off `accent`.
+		 * rowSelected #263453  accent hue, C* 21.10, +4.90 L*, ΔE00 6.00 off
+		 *                       `surface` and 10.64 off `rowHover`, `inkDim` 5.15:1, and the
+		 *                       2px `accent` bar at 4.91:1 against it.
 		 */
-		highlight: "#2C3350",
+		rowHover: "#2B2D34",
+		rowSelected: "#263453",
 
 		ink: "#C0CAF5",
 		/*
