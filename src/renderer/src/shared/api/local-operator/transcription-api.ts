@@ -2,6 +2,7 @@
  * Local Operator API - Transcription Endpoints
  */
 import { desktopMedia, mediaError } from "./desktop-api";
+import { TranscriptionRequestError } from "./transcription-failure";
 import type {
 	CRUDResponse,
 	CreateTranscriptionParams,
@@ -20,7 +21,11 @@ export const TranscriptionApi = {
 	 * @param baseUrl - The base URL of the Local Operator API.
 	 * @param params - The parameters for the transcription request.
 	 * @returns A promise that resolves to the transcription result.
-	 * @throws Will throw an error if the request fails.
+	 * @throws {TranscriptionRequestError} When the request fails. The error keeps
+	 * the server's own `detail` as its message AND the HTTP status beside it, so
+	 * the caller can turn `insufficient_quota` and a 402 into different sentences
+	 * (`transcriptionFailureMessage`) instead of the one generic line both
+	 * surfaces used to show.
 	 */
 	async createTranscription(
 		_baseUrl: string,
@@ -47,7 +52,11 @@ export const TranscriptionApi = {
 			},
 			bytes,
 		);
-		if (result.kind !== "json") throw mediaError(result);
+		if (result.kind !== "json")
+			throw new TranscriptionRequestError(
+				result.status,
+				mediaError(result).message,
+			);
 		return result.body as CRUDResponse<RadientTranscriptionResponseData>;
 	},
 };

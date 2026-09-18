@@ -16,6 +16,7 @@ import type {
 	DesktopMediaRequest,
 	DesktopRequest,
 	DesktopStreamEvent,
+	FileActionOutcome,
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
@@ -176,7 +177,8 @@ const api = {
 		},
 	},
 	// Add methods to open files and URLs
-	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
+	openFile: (filePath: string): Promise<FileActionOutcome> =>
+		ipcRenderer.invoke("open-file", filePath),
 	readFile: (filePath: string, encoding?: BufferEncoding) =>
 		ipcRenderer.invoke("read-file", filePath, encoding),
 	/**
@@ -200,7 +202,7 @@ const api = {
 		ipcRenderer.invoke("list-directory", dir, cwd),
 
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
-	showItemInFolder: (filePath: string) =>
+	showItemInFolder: (filePath: string): Promise<FileActionOutcome> =>
 		ipcRenderer.invoke("show-item-in-folder", filePath),
 
 	// System information
@@ -333,6 +335,13 @@ const api = {
 				version: string;
 				runningVersion?: string | null;
 				restartable?: boolean;
+				/**
+				 * False when the check that sent this pair never READ the published release, so
+				 * the notice may state the two readings without calling the install current.
+				 * Absent means the release was read. Only the network-unavailable pass sends
+				 * false (QA round 3, Q3-1).
+				 */
+				releaseRead?: boolean;
 			}) => void,
 		) => {
 			const handler = (_event, info) => callback(info);
@@ -540,9 +549,19 @@ const api = {
 	 */
 	browser: {
 		state: (): Promise<unknown> => ipcRenderer.invoke("browser-state"),
-		newTab: (): Promise<unknown> => ipcRenderer.invoke("browser-new-tab"),
+		/** `sessionId` attributes the tab to the conversation it was opened from
+		 * (design R1); `null` is a tab that belongs to no conversation, which is what
+		 * the route and a draft pane open. Main validates it rather than trusting it. */
+		newTab: (sessionId?: string | null): Promise<unknown> =>
+			ipcRenderer.invoke("browser-new-tab", sessionId ?? null),
 		closeTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-close-tab", tabId),
+		/** A bulk close: `{ mode: "ids", tabIds }` for tabs the user could see, or
+		 * `{ mode: "conversation", sessionId }` which MAIN resolves at execution time
+		 * (design R5 — a list computed in the renderer would miss a tab an agent opened
+		 * while the band was open). Main validates the shape rather than trusting it. */
+		closeTabs: (intent: unknown): Promise<unknown> =>
+			ipcRenderer.invoke("browser-close-tabs", intent),
 		activateTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-activate-tab", tabId),
 		navigate: (url: string): Promise<unknown> =>

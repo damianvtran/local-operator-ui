@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { SurfaceScope } from "./tab-index-model";
 
 /**
  * The approval queue as the renderer understands it: which requests are still
@@ -16,6 +17,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * counting a request that expired minutes ago until something else happens to
  * change state (§1.2). Liveness therefore has to be DERIVED here, from a clock
  * the renderer owns.
+ *
+ * WHAT IS NOT HERE ANY MORE: the scope helpers and the `SurfaceScope` type. They
+ * moved to `tab-index-model.ts` (design R6-A), because the pane, the grouped
+ * strip and the sidebar's per-conversation mark all have to answer "which tabs are
+ * this conversation's" and the change's structural rule is that no second place
+ * decides it. The type is imported from there rather than declared twice.
  *
  * WHY ONE CLOCK, AND WHY IT IS ONE HOOK. Two surfaces computing liveness from
  * two clocks is how the badge and the tray disagree by one for a second (§3.3).
@@ -74,73 +81,6 @@ export interface ApprovalTabInput {
 	 * and the page loads.
 	 */
 	owner?: "user" | "agent";
-}
-
-/**
- * Which tabs — and which requests — a browser surface is showing.
- *
- * `"all"` is the route's own, and a conversation scope is the pane's. TWO
- * FILTERS READ IT, and they are deliberately different keys for the same
- * question: `tabsInScope` matches a tab's `sessionId` and `requestsInScope`
- * matches a request's `requesterSessionId`. See each one for why.
- *
- * BOTH SIDES OF THE COMPARISON ARE THE APP'S OWN SESSION ID SPELLING — the bare
- * one the chat routes carry and the session list publishes — because that is what
- * the host stores and projects (`registry.ts` stores `sessionIdOf(identity)`, and
- * `chromeState` projects the record's own field). So the pane hands
- * `chromeState`'s own vocabulary back to it, and nothing here has to normalise a
- * `session:` prefix in one place and not the other.
- */
-export type SurfaceScope = "all" | { sessionId: string };
-
-/**
- * The scope's identity as a PRIMITIVE.
- *
- * WHY A SCOPE NEEDS A KEY AT ALL, and it is a defect this fixed rather than a
- * convenience: everything that consumes a scope keys on its IDENTITY — the
- * surface's tab and request memos, and the queue model's effects, one of which
- * publishes the shared clock and so re-renders the surface. A host that builds its
- * scope object inside its render body (the pane does: `{ sessionId }`) hands down a
- * new object every render, so a memo keyed on the object recomputes every render,
- * the model's effect re-runs, the clock publishes, and the surface re-renders — a
- * loop whose period is the microsecond it takes to run, on a surface that still
- * paints and therefore looks perfectly fine in a frame.
- *
- * So the value — `"all"`, or the session id, both strings — is what the surface
- * keys on, and the object is rebuilt from it inside the surface rather than trusted
- * from the caller. A host cannot trip it, which is the right place for that
- * guarantee: this model owns the rule.
- *
- * INJECTIVE, and that is a correctness property rather than a nicety (review round
- * 1, NIT A): keying a session scope as its bare session id made a session literally
- * named `all` indistinguishable from the all-tabs scope, so the strip would show
- * every conversation's tabs while the switch read "This conversation". Session ids
- * come from the daemon, so the collision was theoretical — but a key that is only
- * USUALLY injective is the kind of thing that holds until the day it does not.
- *
- * THE ENCODING IS THIS PAIR'S OWN BUSINESS: `scopeFromKey` below is the only thing
- * that reads it, so no caller takes the string apart, and a session id containing a
- * prefix of its own cannot confuse it.
- */
-const ALL_SCOPE_KEY = "all";
-const SESSION_SCOPE_PREFIX = "session:";
-
-export function scopeKey(scope: SurfaceScope): string {
-	return scope === "all"
-		? ALL_SCOPE_KEY
-		: `${SESSION_SCOPE_PREFIX}${scope.sessionId}`;
-}
-
-/** The scope a key names. The inverse of `scopeKey`, and the only reader of its
- * encoding. A key that is neither the all-scope nor prefixed is still a session
- * key: the tolerant reading is the one that cannot silently truncate an id. */
-export function scopeFromKey(key: string): SurfaceScope {
-	if (key === ALL_SCOPE_KEY) return "all";
-	return {
-		sessionId: key.startsWith(SESSION_SCOPE_PREFIX)
-			? key.slice(SESSION_SCOPE_PREFIX.length)
-			: key,
-	};
 }
 
 /** One live request, numbered and timed, as every surface renders it. */
@@ -369,22 +309,6 @@ export function approvalScopeLabel(
 		case "session":
 			return "This session only";
 	}
-}
-
-/**
- * The tabs a surface shows, for its scope.
- *
- * `"all"` is every tab. A conversation scope is tabs whose `sessionId` equals it,
- * and a tab with NO attribution is not any conversation's — it appears only
- * under `"all"`, with the this-conversation empty state saying so rather than
- * claiming no tabs are open behind a filter (design 7.2).
- */
-export function tabsInScope<T extends ApprovalTabInput>(
-	tabs: ReadonlyArray<T>,
-	scope: SurfaceScope,
-): T[] {
-	if (scope === "all") return [...tabs];
-	return tabs.filter((tab) => tab.sessionId === scope.sessionId);
 }
 
 /**

@@ -1,11 +1,4 @@
-import { useMemo } from "react";
-import {
-	type ApprovalRequestInput,
-	type ApprovalTabInput,
-	requestsInScope,
-	useApprovalQueue,
-} from "../model/approval-queue-model";
-import { useBrowserProjection } from "./use-browser-chrome";
+import { useConversationBrowserSummaries } from "./use-conversation-browser-summaries";
 
 /**
  * How many approvals THIS conversation is waiting on, for the chat header's Globe
@@ -20,35 +13,23 @@ import { useBrowserProjection } from "./use-browser-chrome";
  * count has to exist while the pane does not — and the pane's own instance of the
  * model goes away with the pane.
  *
- * IT IS THE SAME MODEL, NOT A SECOND COUNT. The liveness rule, the requester filter
- * and the clock are all the model's: this hook feeds it the projection filtered by
- * the same `requestsInScope` the surface uses, and asks it for `count`. That is what
- * keeps the badge and the tray from disagreeing — including the case spec 3.3
- * names, which became a real one here, because two consumers of this model can now
- * be mounted in one window at once (the clock they share lives in
- * `approval-queue-model.ts`).
+ * IT IS NOW THE SAME COUNT AS THE SIDEBAR MARK'S (design R2), and that is a change of
+ * mechanism rather than of number: both read `summariseConversations` over the one shared
+ * projection, so a conversation's badge in the header and its mark in the sidebar cannot
+ * disagree. The rule is unchanged — live requests (`expiresAt > now`) whose requester is
+ * this conversation, counted off the app's single clock — but there is now one
+ * implementation of it instead of two, which is what the earlier version of this comment
+ * claimed for the queue model and what the sidebar would have quietly broken by counting
+ * for itself.
  *
  * A DRAFT OWNS NO REQUESTS: with no session id the count is zero rather than every
  * request in the app. A chat whose header badge counted another conversation's
  * approval would be telling the user to answer a prompt that is not theirs.
  */
-
-/** The requests a draft has: none, and one stable array so the model's effect —
- * which keys on this array's identity — does not re-run on every render. */
-const NO_REQUESTS: ApprovalRequestInput[] = [];
-/** The tabs the model reads for the strip's waiting chips. A count has no strip,
- * and this array is stable for the same reason as the one above. */
-const NO_TABS: ApprovalTabInput[] = [];
-
 export function useConversationApprovals(sessionId: string | null): number {
-	const { state } = useBrowserProjection();
-	const requests = state?.pendingConsent;
-	const scoped = useMemo(
-		() =>
-			sessionId
-				? requestsInScope(requests ?? NO_REQUESTS, { sessionId })
-				: NO_REQUESTS,
-		[requests, sessionId],
-	);
-	return useApprovalQueue(scoped, NO_TABS).count;
+	const { summaries } = useConversationBrowserSummaries();
+	// `undefined` is "no browser here" (see the summaries hook), which is also "no
+	// requests to wait on" — so the badge is zero rather than a second branch.
+	if (!sessionId || !summaries) return 0;
+	return summaries.get(sessionId)?.pendingApprovals ?? 0;
 }
