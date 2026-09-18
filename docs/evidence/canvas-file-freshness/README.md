@@ -1,8 +1,15 @@
 # Canvas file freshness
 
-Five frames from the **real built app**, driven by the repo's own harness
+Six frames from the **real built app**, driven by the repo's own harness
 (`scripts/renderer-driver.mjs --scene canvas-freshness`), of the document line
 this change adds and of the behaviour behind it.
+
+Provenance: the frames were captured from a built app at
+`34836770e` (the round-5 code commit) plus the `biome-ignore` comments added to the
+editors immediately after the capture - a comment-only difference, stated because a
+stamp that names a tree the pixels did not come from should say so. The manifest's
+`srcTree`/`scriptsTree` name this commit's own trees, which is what the manifest test
+binds.
 
 They exist because the claims under review are claims about a running
 application, and a unit test with a fake bridge cannot reach any end of them:
@@ -92,12 +99,14 @@ The run's own output is quoted on the pull request.
   here. The check it guards is the same check the poll runs, and the `hidden`
   half is asserted in `scripts/canvas-file-freshness.test.mjs` at the level the
   decision lives at.
-- **A real reader's typing.** The dirty-buffer behaviour is driven against the
-  shipped modules by `scripts/canvas-file-freshness.test.mjs` (a dirty document
-  is probed and reports whether the file moved on; nothing is applied over it;
-  a keystroke that lands mid-read still wins), and this harness has no typing verb
-  to photograph it. The per-frame claims above are therefore about the file, never
-  about a buffer with unsaved edits in it.
+- **A real reader's typing, and what it does to the FILE.** The scene types through
+  the app's own input pipeline (`typeText`, one dispatch per character) on every
+  surface it covers, and the module suite drives the dirty-buffer rules against the
+  shipped modules (`scripts/canvas-file-freshness.test.mjs`). From round 5 the scene
+  also asserts the file's BYTES around each resolution - the press, the explicit
+  save, and the cross-document phase - because a check on the screen said nothing
+  about what a control did to the file underneath it, which is exactly how a press
+  that destroyed the file's version stayed green.
 - **The other byte viewers.** Every document in the canvas gets the line and the
   control, and pdf/image/audio re-read by moving the object URL's cache key while
   video re-keys on both of the document's version fields - the same store write
