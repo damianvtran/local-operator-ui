@@ -153,7 +153,6 @@ test("each refusal code gets its own headline, and only the wrong ones say nothi
 	);
 	assert.match(taken.body, /another account/);
 	assert.deepEqual(taken.actions, ["focus-name"]);
-	assert.equal(taken.focus, "name");
 
 	// The SAME code, owned by the caller: a different headline and a different
 	// next step. This is the branch a single-sentence toast could not carry — the
@@ -168,7 +167,24 @@ test("each refusal code gets its own headline, and only the wrong ones say nothi
 	);
 	assert.equal(owned.headline, "You already published this agent");
 	assert.deepEqual(owned.actions, ["update-listing", "focus-name"]);
-	// Without a listing id there is no honest "update it" offer.
+	// The refusal's OWN id is enough, with no remembered listing: gating this offer
+	// on the store alone printed "update that listing instead" beside a lone
+	// "Choose another name" for every fresh profile and every agent published
+	// before this app kept the link, which is the copy naming a remedy the action
+	// set did not contain.
+	const ownedFromRefusal = publicationTreatment(
+		{
+			code: "name_taken",
+			message: "taken",
+			details: {
+				owned_by_caller: true,
+				existing_agent_id: "listing-from-refusal",
+			},
+		},
+		context(),
+	);
+	assert.deepEqual(ownedFromRefusal.actions, ["update-listing", "focus-name"]);
+	// With neither there is no honest "update it" offer.
 	assert.deepEqual(
 		publicationTreatment(
 			{
@@ -190,13 +206,33 @@ test("each refusal code gets its own headline, and only the wrong ones say nothi
 				builtin_source_url: "https://example.invalid/reviewer",
 			},
 		},
-		context(),
+		// The name the dialog's own field holds, which is the thing a reader of the
+		// refusal has to change: the fixture is D2's frame.
+		context({ name: "adverse-media-screener" }),
 	);
-	// The built-in's NAME is shown; its source URL is not — a link to where the
-	// hub's definition came from is not what the author has to change.
-	assert.match(reserved.body, /"reviewer" is the name of a built-in agent/);
+	// The SUBJECT is the name being published; the built-in is the agent that
+	// reserves it. `details.builtin_name` says WHICH built-in reserved it, so a
+	// sentence built from it alone told an author publishing
+	// `adverse-media-screener` to stop using "reviewer" — a name that was not on
+	// their screen — and never named the one that was. Its source URL is still not
+	// shown: a link to where the hub's definition came from is not what the author
+	// has to change.
+	assert.match(
+		reserved.body,
+		/"adverse-media-screener" is reserved by the built-in agent "reviewer"/,
+	);
 	assert.ok(!JSON.stringify(reserved).includes("example.invalid"));
 	assert.deepEqual(reserved.actions, ["focus-name", "install-builtin"]);
+	// When the two names ARE the same name — the pre-submit arm, which has no
+	// `details` to read, and the hub refusing a built-in's own name — one clause
+	// says it once rather than naming the same string twice.
+	assert.match(
+		publicationTreatment(
+			{ code: "name_reserved_builtin", message: "reserved" },
+			context({ name: "Reviewer" }),
+		).body,
+		/^"Reviewer" is the name of a built-in agent\. Built-in names cannot be published to the hub\.$/,
+	);
 
 	// The one refusal that is NOT a rejection: warning, retryable, and it says
 	// outright that nothing was published.
@@ -232,22 +268,31 @@ test("each refusal code gets its own headline, and only the wrong ones say nothi
 		context(),
 	);
 	assert.match(tooLarge.body, /64 KiB/);
-	assert.deepEqual(tooLarge.actions, []);
+	// The body says "shorten the instructions", so the action set has to hold the
+	// route to them: an empty set left the one sentence and the one control
+	// disagreeing.
+	assert.deepEqual(tooLarge.actions, ["edit-instructions"]);
 
+	// The escape from a remembered listing this account cannot address. Both
+	// refusals that mean the memory is stale offer it, because `submit` sends the
+	// remembered id on every later attempt and neither of these can be fixed from
+	// the dialog otherwise.
 	const notOwner = publicationTreatment(
 		{ code: "not_owner", message: "not yours" },
-		context(),
+		context({ hubAgentId: "listing1" }),
 	);
 	assert.equal(notOwner.headline, "You cannot update this listing");
+	assert.deepEqual(notOwner.actions, ["publish-as-new"]);
 
 	const gone = publicationTreatment(
 		{ code: "agent_not_found", message: "gone" },
-		context(),
+		context({ hubAgentId: "listing1" }),
 	);
-	assert.deepEqual(gone.actions, ["refresh-hub"]);
+	assert.deepEqual(gone.actions, ["publish-as-new", "refresh-hub"]);
 
-	// The proxy's own two are distinguishable from the hub's, because the remedy
-	// differs: one is a dependency, the other is this machine.
+	// The proxy's own three are distinguishable from the hub's, because the remedy
+	// differs: one is a dependency, one is this machine's own credential, and one
+	// is this machine before the hub was asked anything.
 	assert.equal(
 		publicationTreatment(
 			{ code: "hub_unavailable", message: "unreachable" },
@@ -255,19 +300,32 @@ test("each refusal code gets its own headline, and only the wrong ones say nothi
 		).variant,
 		"warning",
 	);
+	// A refused CREDENTIAL is not the same fact as the app being signed out, and
+	// its remedy — re-running the Radient sign-in — is a control this dialog owns.
+	// Without an arm it rendered as the generic panel, so the one refusal whose fix
+	// was already on this component had no route to it.
+	const unauthorized = publicationTreatment(
+		{ code: "hub_unauthorized", message: "credential refused" },
+		context(),
+	);
+	assert.equal(unauthorized.variant, "danger");
+	assert.deepEqual(unauthorized.actions, ["sign-in"]);
 	assert.equal(
 		publicationTreatment({ code: "local_failure", message: "local" }, context())
 			.body,
 		"local",
 	);
 
-	// No code: the prose, unchanged, with no invented next step.
+	// No code: the prose, unchanged, and the one step that is honest at this level.
+	// Nothing in an untyped refusal establishes that a second attempt is unsafe,
+	// and an attempt that fails again comes back with a code that has a real next
+	// step.
 	const prose = publicationTreatment(
 		{ message: "Error uploading agent to Radient: boom" },
 		context(),
 	);
 	assert.equal(prose.body, "Error uploading agent to Radient: boom");
-	assert.deepEqual(prose.actions, []);
+	assert.deepEqual(prose.actions, ["retry"]);
 });
 
 test("every moderation category has a line, and an unknown one falls back rather than blanking", () => {
@@ -305,8 +363,8 @@ test("a name held by an in-flight publication is retryable, not taken", () => {
 	 * agent-server's ninth code, and the one most easily folded into
 	 * `name_taken` by accident. They are different facts: `name_taken` is a claim
 	 * to give up on, `name_claim_in_flight` is a seconds-long reservation to wait
-	 * out. The assertions below are about that difference - a retry action, no
-	 * name-field focus, a warning register - and about the neighbours it must not be
+	 * out. The assertions below are about that difference - a retry action, a
+	 * warning register - and about the neighbours it must not be
 	 * confused with, asserted in the same place so the distinction is one test
 	 * rather than three files.
 	 */
@@ -320,7 +378,6 @@ test("a name held by an in-flight publication is retryable, not taken", () => {
 		context(),
 	);
 	assert.deepEqual(inFlight.actions, ["retry"]);
-	assert.equal(inFlight.focus, null);
 	assert.equal(inFlight.variant, "warning");
 	assert.match(inFlight.headline, /being published/i);
 	assert.doesNotMatch(inFlight.body, /another account|choose another/i);
@@ -344,7 +401,8 @@ test("a name held by an in-flight publication is retryable, not taken", () => {
 	);
 });
 
-test("a validator refusal points at the field it names, and at nothing when it names none", () => {
+test("a validator refusal offers the route to the field it names", () => {
+	// The name is the one field this dialog owns a control for.
 	const name = publicationTreatment(
 		{
 			code: "invalid_instruction_set",
@@ -355,11 +413,11 @@ test("a validator refusal points at the field it names, and at nothing when it n
 		context(),
 	);
 	assert.equal(name.body, "Name must not contain whitespace.");
-	assert.equal(name.focus, "name");
 	assert.deepEqual(name.actions, ["focus-name"]);
 
 	// The rule text is the hub's, so the sentence names the field and the bound in
-	// one place rather than two.
+	// one place rather than two — and the sentence's own instruction ("shorten the
+	// instructions") has to be an action, not a sentence beside a lone Close.
 	const body = publicationTreatment(
 		{
 			code: "invalid_instruction_set",
@@ -375,10 +433,26 @@ test("a validator refusal points at the field it names, and at nothing when it n
 		body.body,
 		"The instruction body must be at most 8000 characters.",
 	);
-	assert.equal(body.focus, "instructions");
+	assert.deepEqual(body.actions, ["edit-instructions"]);
 
-	// A field with no control in this dialog stays dialog-level: pointing at a
-	// control that does not exist is the defect.
+	// The rest of the document is on the agent's own page, which is one destination
+	// for the description and the tool surface alike.
+	for (const field of ["description", "tools", "when_to_use", "categories"])
+		assert.deepEqual(
+			publicationTreatment(
+				{
+					code: "invalid_instruction_set",
+					message: "…",
+					details: { field, rule: "is too long" },
+				},
+				context(),
+			).actions,
+			["edit-agent"],
+			`${field} is edited on the agent's own page`,
+		);
+
+	// A document-level field has the same route, and keeps the backend's own
+	// sentence: this dialog cannot describe `kind` better than the validator did.
 	const kind = publicationTreatment(
 		{
 			code: "invalid_instruction_set",
@@ -387,14 +461,19 @@ test("a validator refusal points at the field it names, and at nothing when it n
 		},
 		context(),
 	);
-	assert.equal(kind.focus, null);
+	assert.deepEqual(kind.actions, ["edit-agent"]);
 	assert.equal(kind.body, "…kind must be role.");
 });
 
 test("the pre-validation mirrors the hub's name rules, rule for rule", () => {
-	// Order matters: it decides WHICH rule a name breaks for, and a client that
-	// reported a different one would send its author looking for a character that
-	// is not there.
+	/*
+	 * Order matters: it decides WHICH rule a name breaks for, and a client that
+	 * reported a different one would send its author looking for a character that
+	 * is not there. The order, the classes and the sentences are `_name_rule`
+	 * (`local_operator/clients/radient.py`), which is the function the publish
+	 * dialog's own sentences are quoted from; the bidi-before-whitespace case below
+	 * is what pins that.
+	 */
 	assert.equal(publicationNameRule(""), "must not be empty");
 	assert.equal(publicationNameRule("   "), "must not be empty");
 	assert.equal(
@@ -419,20 +498,43 @@ test("the pre-validation mirrors the hub's name rules, rule for rule", () => {
 		'must not contain "/", "\\" or ":"',
 	);
 	assert.equal(
-		publicationNameRule("code reviewer"),
+		publicationNameRule("code\u202ereviewer"),
+		"must not contain Unicode bidirectional override characters",
+	);
+	assert.equal(
+		publicationNameRule("code\u202ere viewer"),
+		"must not contain Unicode bidirectional override characters",
+		"the ORDER is the hub's: bidi outranks the space it also breaks",
+	);
+	// Whitespace that is ALSO a control character stays refused, with the hub's own
+	// text for it: no legitimate name contains a tab, a form feed or a NEL.
+	assert.equal(
+		publicationNameRule("code\u0009reviewer"),
 		"must not contain whitespace",
 	);
 	assert.equal(
-		publicationNameRule("code\u00a0reviewer"),
+		publicationNameRule("code\u0085reviewer"),
 		"must not contain whitespace",
 	);
 	assert.equal(
 		publicationNameRule("code\u0007reviewer"),
 		"must not contain control characters",
 	);
+	/*
+	 * Format characters (Cf) render as NOTHING, so `reviewer` with a zero-width
+	 * space inside it draws identically to `reviewer` while being a different key —
+	 * the shadowing an exact local lookup cannot see. This is the class the local
+	 * mirror used to leave entirely to the hub, in the one direction of divergence
+	 * that stays invisible until somebody types an invisible character.
+	 */
 	assert.equal(
-		publicationNameRule("code\u202ereviewer"),
-		"must not contain Unicode bidirectional override characters",
+		publicationNameRule("code\u200breviewer"),
+		"must not contain invisible Unicode formatting characters",
+	);
+	assert.equal(
+		publicationNameRule("code\ufeffreviewer"),
+		"must not contain invisible Unicode formatting characters",
+		"U+FEFF is Cf here whatever a JavaScript regex makes of it",
 	);
 	assert.equal(
 		publicationNameRule("-coder"),
@@ -442,15 +544,25 @@ test("the pre-validation mirrors the hub's name rules, rule for rule", () => {
 		publicationNameRule("coder."),
 		'must not begin or end with "-" or "."',
 	);
+
+	/*
+	 * AN ORDINARY SPACE IS NOT REFUSED, and this is the one rule the mirror
+	 * deliberately does NOT mirror. The hub is relaxing a whitespace ban its own
+	 * marketplace has already outgrown, so a client refusing one here would refuse a
+	 * name the hub accepts — a client bound stricter than the server, which is a bug
+	 * report — and would behave differently against two hub versions from one
+	 * release. The name travels as the author wrote it and the hub decides, quoting
+	 * its own rule through `details.rule`, which this dialog renders.
+	 */
+	assert.equal(publicationNameRule("code reviewer"), null);
+	assert.equal(publicationNameRule("code\u00a0reviewer"), null);
+	assert.equal(isPublishableName("Code Reviewer"), true);
+
 	// Everything else is allowed, case included: case is normalised for the
 	// duplicate check and never for storage.
 	assert.equal(publicationNameRule("Code_Reviewer-2"), null);
 	assert.equal(publicationNameRule("Кодер"), null);
-	// A zero-width no-break space is NOT White_Space: refusing it here would refuse
-	// a name the hub accepts, which is the wrong direction.
-	assert.equal(publicationNameRule("code\ufeffreviewer"), null);
 	assert.equal(isPublishableName("Code-Reviewer"), true);
-	assert.equal(isPublishableName("Code Reviewer"), false);
 });
 
 test("the name key folds the way the hub folds, so the local check cannot disagree", () => {
@@ -502,8 +614,11 @@ test("the document rules are the hub's bounds, counted in code points", () => {
 	);
 
 	// Every reason, not the first: the dialog lists them all and disables submit.
+	// The name breaks the begin/end rule, which is a rule the hub HAS — a space is
+	// not, so a fixture named with one would have made this list three long and the
+	// assertion below would have been pinning a rule the server does not have.
 	const many = publicationIssues({
-		name: "two words",
+		name: "two words.",
 		description: "   ",
 		instructions: "",
 		tools: Array.from(
@@ -516,7 +631,7 @@ test("the document rules are the hub's bounds, counted in code points", () => {
 		many.map((issue) => issue.field),
 		["name", "description", "instructions", "tools"],
 	);
-	assert.equal(many[0].message, "Name must not contain whitespace.");
+	assert.equal(many[0].message, 'Name must not begin or end with "-" or ".".');
 	assert.equal(many[1].message, "Description must not be empty.");
 
 	// `null` instructions means the body is not known yet (it is a separate read),
@@ -557,19 +672,63 @@ test("a pull refusal names what was not downloaded, from the code when there is 
 		),
 		'The hub could not be reached, so "Inbox triage" was not downloaded.',
 	);
-	// No code: the backend's own sentence, with the transport's machine-voice
-	// prefixes stripped so what is left is the reason. The carrier is the class the
-	// client actually throws — a `DesktopControlError` — because that class is the
-	// only thing that makes a message authored copy.
+	/*
+	 * No code: the transport's machine voice comes off, and what is LEFT is
+	 * classified, because a residue that is itself machinery is not a reason.
+	 *
+	 * The carriers are the classes the client actually throws: the Python proxy's
+	 * two measured shapes — a `requests` read timeout, and a status the hub
+	 * answered with — plus a genuine crash, whose message is not copy at all.
+	 */
+	const transport =
+		"Error downloading agent from Radient: Failed to download agent hub-1f4c9a from Radient Agent Hub due to a requests error: HTTPSConnectionPool(host='api.radienthq.com', port=443): Read timed out.";
 	assert.equal(
 		pullRefusalMessage(
 			new DesktopControlError(
 				400,
-				"Download agent from Radient failed: Error downloading agent from Radient: Failed to download agent x from Radient Agent Hub due to a requests error",
+				`Download agent from Radient failed: ${transport}`,
 			),
 			"Inbox triage",
 		),
-		'"Inbox triage" was not downloaded: Failed to download agent x from Radient Agent Hub due to a requests error',
+		'The hub could not be reached, so "Inbox triage" was not downloaded.',
+		"a requests timeout is the retryable case, and reads the way the hub_unavailable arm reads",
+	);
+	// The other measured shape: the hub answered 404 for a listing that is gone,
+	// with its route and status class in the sentence. The listing id, the URL, the
+	// exception class and the port must not reach the reader, and the sentence is
+	// the same one the typed `agent_not_found` arm produces for the same fact.
+	assert.equal(
+		pullRefusalMessage(
+			new DesktopControlError(
+				404,
+				"Error downloading agent from Radient: Failed to download agent from Radient Agent Hub: 404 Client Error: Not Found for url: https://api.radienthq.com/v1/agents/aa14759e-9c1f/download,Response Body: No response body",
+			),
+			"Inbox triage",
+		),
+		'"Inbox triage" is no longer on the hub, so nothing was downloaded.',
+	);
+	// A status the hub answered with that is neither: it refused, and this layer
+	// cannot invent a remedy for a reason it was not told.
+	assert.equal(
+		pullRefusalMessage(
+			new DesktopControlError(
+				400,
+				"Error downloading agent from Radient: Failed to download agent from Radient Agent Hub: 400 Client Error: Bad Request for url: https://api.radienthq.com/v1/agents/x/download",
+			),
+			"Inbox triage",
+		),
+		'The hub refused the download, so "Inbox triage" is not here.',
+	);
+	// A backend sentence that is a sentence is still shown as one.
+	assert.equal(
+		pullRefusalMessage(
+			new DesktopControlError(
+				400,
+				"Error downloading agent from Radient: This agent is private to its owner.",
+			),
+			"Inbox triage",
+		),
+		'"Inbox triage" was not downloaded: This agent is private to its owner.',
 	);
 	// A refusal that carried no sentence at all still says what it is about rather
 	// than nothing, and a bare `Error` (a crash, or this client's own guard) is not
@@ -669,12 +828,12 @@ test("the ops refuse what the hub would refuse, before a request is built", () =
 			op: "agent.republish",
 			agentId: "agent123",
 			hubAgentId: "listing",
-			document: { name: "two words" },
+			document: { name: "code/reviewer" },
 		},
 		{
 			op: "agent.publish",
 			agentId: "agent123",
-			document: { name: "two words" },
+			document: { name: "coder." },
 		},
 		{
 			op: "agent.publish",
@@ -695,4 +854,22 @@ test("the ops refuse what the hub would refuse, before a request is built", () =
 			`${JSON.stringify(bad)} must not be sendable`,
 		);
 	}
+
+	/*
+	 * ...and the other direction, which is the defect this pair exists for: a name
+	 * the HUB accepts must be sendable. An ordinary space is not a rule the hub has
+	 * — it is relaxing a whitespace ban its own marketplace has outgrown — so a
+	 * renderer refusing one is a client bound stricter than the server, which is a
+	 * bug report. The two cases below are the same name the old local rule refused.
+	 */
+	for (const ok of ["code reviewer", "code\u00a0reviewer"])
+		assert.equal(
+			desktopRequestSchema.safeParse({
+				op: "agent.publish",
+				agentId: "agent123",
+				document: { name: ok },
+			}).success,
+			true,
+			`${JSON.stringify(ok)} is a name the hub accepts, so it must be sendable`,
+		);
 });

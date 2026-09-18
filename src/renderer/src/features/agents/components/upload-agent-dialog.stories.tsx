@@ -28,9 +28,11 @@ import { UploadAgentDialog } from "./upload-agent-dialog";
 /**
  * The agent every story publishes, in the shape the dialog needs.
  *
- * The name has no spaces on purpose: the hub refuses whitespace, so a fixture
- * named like a human would put the dialog in its blocked state instead of the
- * state the story is about.
+ * The name carries no separator and does not end in a dot, so it is publishable
+ * by the hub's own rules: a fixture that broke one would put the dialog in its
+ * blocked state instead of the state the story is about. Spaces are NOT one of
+ * those rules — the hub stores names spelled the way a person spells them — so
+ * this fixture does not avoid them for that reason.
  */
 const AGENT = {
 	id: "b7c1f2a4-0001-4a1e-9f00-000000000001",
@@ -118,7 +120,23 @@ const refused = (status: number, detail: unknown) =>
 const originalFetch = window.fetch;
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 	const url = typeof input === "string" ? input : input.toString();
-	if (!url.includes("/__desktop")) return originalFetch(input, init);
+	if (!url.includes("/__desktop")) {
+		/*
+		 * The one non-`/__desktop` read this dialog makes, and it decides whether the
+		 * dialog can check the instruction body at all.
+		 *
+		 * `useAgentSystemPrompt` is gated on the connectivity probe, which on a host
+		 * with no desktop bridge is a plain `GET <baseUrl>/health` — a dead port on a
+		 * capture worktree, by design. So `instructions` stayed `null` ("not known
+		 * yet", which is deliberately not a violation) and the pre-flight frame could
+		 * never show the instruction-body rule it claims. This rig answers the probe
+		 * so the shipped component reads the shipped stub through its shipped gate;
+		 * the system-prompt READ itself is already stubbed above, because it goes
+		 * through the desktop transport like every other op here.
+		 */
+		if (url.endsWith("/health")) return json({ status: 200, result: {} });
+		return originalFetch(input, init);
+	}
 	const request = JSON.parse(String(init?.body ?? "{}"));
 	switch (request.op) {
 		case "profiles.list":
@@ -238,10 +256,17 @@ const seedRememberedListing = (seeded: Scenario) => {
  * a republish needs is still applied synchronously in `render`, below, which is
  * the only story that wants a listing to be there.
  *
- * It is here rather than in each file that photographs a listing, and it is a
- * reset of the STORE rather than of this file's stories: a story document
- * evaluates every story module in the preview, so this line runs for a story of
- * any family - the pull's outcome frames included - before that story renders.
+ * THE SCOPE OF THIS LINE IS THE PUBLISH FAMILY, and an earlier version of this
+ * comment claimed more than the code does. It said a story document evaluates
+ * every story module in the preview, so the reset covered any family's stories.
+ * This Storybook is 8.6 on `@storybook/react-vite`, and the preview it serves
+ * resolves stories through a LAZY import map (the virtual
+ * `storybook-stories.js` entry maps each story file to `() => import(...)`), so
+ * only the requested module is evaluated: the pull's outcome stories never
+ * import this file, and this line never runs for them. That is also why the
+ * reset lives here rather than in each stories file that seeds the store - it
+ * covers every story in the module it belongs to, which is where the leak was,
+ * and claiming a mechanism that does not exist is worse than the narrower truth.
  */
 usePublishedListingsStore.setState({ listings: {} });
 
@@ -427,9 +452,14 @@ export const Default: Story = {
  * name rules from `publicationNameRule`, the cap from
  * `PUBLICATION_INSTRUCTIONS_MAX_CHARS` — and submit is disabled with the reasons
  * above it, which is the whole point of a pre-flight rather than a silent button.
+ *
+ * The name breaks the begin/end rule rather than a whitespace one the hub does
+ * not have: the separator the author left behind is a trailing dot, which is the
+ * kind of mistake that is invisible in a text field and is exactly what a
+ * pre-flight is for.
  */
 export const PreValidationBlocked: Story = publishDialog({
-	agent: { ...AGENT, name: "Adverse media screener", description: "" },
+	agent: { ...AGENT, name: "adverse media screener.", description: "" },
 	instructions: "",
 });
 
@@ -485,15 +515,17 @@ export const ReservedBuiltin: Story = {
 	// both lines visible in one frame.
 	//
 	// Waited on the AVAILABILITY line's own tail, not on `is the name of a built-in
-	// agent` - that sentence is in the ALERT too (`"Reviewer" is the name of a
+	// agent` — that sentence is in the ALERT too (`"Reviewer" is the name of a
 	// built-in agent. Built-in names cannot be published to the hub.`), and the
 	// alert is up as soon as the pre-validation runs, a debounce of 400 ms and a
 	// fetch before the courtesy line arrives. Waiting on the shared sentence
 	// returned the moment the alert painted, so the shutter raced the answer: on
 	// one pass eleven themes photographed both lines and `localOperatorDark`
 	// photographed one, and the next pass moved the missing theme to `dracula` and
-	// `monokai`. `which the hub reserves` is in the courtesy line alone.
-	play: settleOn("which the hub reserves"),
+	// `monokai`. `for one of its built-in agents` is in the courtesy line alone,
+	// which is the constraint any future rewording of the field line has to keep in
+	// mind.
+	play: settleOn("for one of its built-in agents"),
 };
 
 /**
@@ -522,8 +554,17 @@ export const NameClaimInFlight: Story = {
 /**
  * The same refusal arriving from the hub instead: a machine whose built-in list
  * is older than the hub's manifest reserves a name this app does not know about,
- * so the hub is the one that refuses, and the built-in's own name is what the
- * author is told to stop using.
+ * so the hub is the one that refuses.
+ *
+ * The sentence names the name being PUBLISHED as its subject and the built-in as
+ * the agent that reserves it, which is the shape the hub's own message has
+ * (`The name "adverse-media-screener" is reserved by the built-in agent
+ * "reviewer".`). Deriving the sentence from `details.builtin_name` alone — which
+ * is WHICH built-in reserved it — made the built-in its subject, so this frame
+ * read `"reviewer" is the name of a built-in agent` while the field and the
+ * metadata line both said the author was publishing `adverse-media-screener`: a
+ * refusal telling the reader to stop using a name that was not on their screen,
+ * and never naming the one that was.
  */
 export const ReservedBuiltinRefusal: Story = {
 	...publishDialog({

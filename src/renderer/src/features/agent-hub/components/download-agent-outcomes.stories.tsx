@@ -15,10 +15,14 @@
  * auto-closes is a frame that cannot be reproduced.
  *
  * What they do NOT prove: that the hub answers these shapes. `renamed_from` is
- * the backend contract of §3.6 and is NOT on `main` yet, so the adjusted-name
- * frame is a fixture of the agreed shape rather than a recording of the backend —
- * which is also why the hook has a second, cache-based arm for the same
- * situation. They do not prove the navigation either: the app routes to the
+ * the backend contract of §3.6 and it IS on `main` now
+ * (`resolve_import_name`, `local_operator/agents.py`), so the adjusted-name frame
+ * is a recording of the shape the backend ships rather than a fixture of an
+ * agreed one — the suffix included, which is a HYPHEN because the `" (N)"`
+ * spelling the contract's prose used carries a space the hub's name rule
+ * refuses, and a pull would hand the user an agent the hub will not take. The
+ * hook keeps its second, cache-based arm anyway: a backend older than that fix
+ * still lands a duplicate silently. They do not prove the navigation either: the app routes to the
  * created agent's id, which is asserted by the code path and by the end-to-end
  * run in the pull request, not by a still.
  */
@@ -211,27 +215,32 @@ export const Downloaded: Story = pullStory({
  * The backend renamed it on the way in, and the receipt says so — the reason
  * §3.6 asks for a `renamed_from`, and the reason the message must name what was
  * CREATED rather than what was requested.
+ *
+ * The suffix is a HYPHEN, because that is the shape the backend ships
+ * (`resolve_import_name`: `Coder-2`). It is not the `" (N)"` spelling the
+ * contract's prose used — that one carries a space, which the hub's name rule
+ * refuses, so a renamed row could never be published.
  */
 export const AdjustedName: Story = pullStory({
-	answer: { kind: "ok", name: "Inbox triage (2)", renamedFrom: REQUESTED_NAME },
-	expect: 'Downloaded "Inbox triage (2)"',
+	answer: { kind: "ok", name: "Inbox triage-2", renamedFrom: REQUESTED_NAME },
+	expect: 'Downloaded "Inbox triage-2"',
 	caption:
 		"The backend disambiguated the name, and the receipt quotes the name it collided with.",
 });
 
 /**
  * The SAME situation on a backend that has not disambiguated yet: the row landed
- * beside a name this machine already holds, which today it does silently. The
- * hook compares the created name against the rows already cached and says plainly
- * that two agents now answer to it — the one state that must never read as a
- * clean success.
+ * beside a name this machine already holds, which it then did silently. The hook
+ * compares the created name against the rows already cached and says plainly that
+ * two agents now answer to it — the one state that must never read as a clean
+ * success, and the fallback arm for a backend older than the disambiguation.
  */
 export const AlreadyHeld: Story = pullStory({
 	answer: { kind: "ok", name: REQUESTED_NAME },
 	locals: [localAgent("9a1e0f3b-0002-4a1e-9f00-0000000000aa", "inbox triage")],
 	expect: "two agents now answer to that name",
 	caption:
-		"The local registry already held this name in another case, and the pull did not rename it.",
+		"A backend that does not disambiguate: the local registry already held this name in another case, so the pull landed beside it.",
 });
 
 /** The refused case, with the reason from the code rather than from prose. */
@@ -249,8 +258,15 @@ export const Refused: Story = pullStory({
 
 /**
  * The refusal an OLDER backend sends: one prose string, with the transport's own
- * prefixes in it. The reason is what is left after they are stripped, because the
- * prefix names the route rather than the problem.
+ * wrappers in it — the listing id, the connection-pool class, the host and the
+ * port all arrive between the wrapper and the reason.
+ *
+ * The state this story is about is the CLASSIFICATION, not the stripping: what is
+ * left once the machine voice comes off is a `requests` read timeout, which is
+ * the retryable case, and it gets the sentence the `hub_unavailable` arm uses
+ * rather than a Python exception repr. A frame of the raw residue is what the
+ * round-1 review found here, so this fixture is the one that has to keep
+ * producing a sentence a person can act on.
  */
 export const RefusedProse: Story = pullStory({
 	answer: {
@@ -260,7 +276,7 @@ export const RefusedProse: Story = pullStory({
 			"Error downloading agent from Radient: Failed to download agent hub-1f4c9a " +
 			"from Radient Agent Hub due to a requests error: HTTPSConnectionPool(host='api.radienthq.com', port=443): Read timed out.",
 	},
-	expect: "was not downloaded",
+	expect: "The hub could not be reached",
 	caption:
-		"An older backend's single prose refusal, with the transport's prefixes stripped.",
+		"An older backend's single prose refusal: the transport's machine voice is stripped, and what remains is classified.",
 });
