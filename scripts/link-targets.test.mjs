@@ -643,6 +643,59 @@ test("an extensioned path, a dotfile and a file:// URL never ask the disk", asyn
 	);
 });
 
+test("a token the markdown SPLIT is not linked as if it were whole", async () => {
+	/*
+	 * The second reported false positive, and the one no per-node scanner can see:
+	 * `write to /tmp/<name>.json` is ONE string to the grammar and correctly refused
+	 * as a placeholder, but mdast hands the walker three nodes - `text("write to
+	 * /tmp/")`, `html("<name>")`, `text(".json")` - and the per-node call saw a
+	 * COMPLETE token `/tmp/` and linked it. The `isFragment` guard exists for
+	 * exactly this shape and cannot see past a node boundary.
+	 *
+	 * Asserted on `linksIn` and NOT only on `targetsIn`: the whole-string call was
+	 * already correct, which is the entire point - a test that stopped at the
+	 * scanner would pass on the broken tree.
+	 */
+	assert.deepEqual(found("write to /tmp/<name>.json", LINKING), []);
+	assert.deepEqual(linksIn("write to /tmp/<name>.json"), []);
+	/*
+	 * `/tmp` is primed as an existing directory for the two cases below, so that
+	 * what they measure is the BOUNDARY rule and not the evidence gate: with an
+	 * empty cache every extensionless token is refused for the other reason, and
+	 * both assertions would pass on a tree where the guard did nothing at all.
+	 */
+	await probeTarget("/tmp", async (paths) =>
+		paths.map(() => ({ exists: true, isFile: false })),
+	);
+	/* A heredoc placeholder is the same shape one node over. */
+	assert.deepEqual(linksIn("here: /tmp/<name> is the file"), []);
+	/*
+	 * AND THE NARROWING, in both directions - the two cases that decide whether
+	 * this fix is a fix or a blunt instrument.
+	 *
+	 * A token SPLIT across a boundary that completes into a longer name is refused
+	 * (`/Users/x/rep` plus `` `ort.md` ``): the next node's text is the rest of the
+	 * name, so the half the reader sees is not a path anybody has.
+	 */
+	assert.deepEqual(linksIn("wrote /Users/x/rep`ort.md`"), []);
+	/*
+	 * A token followed by WHITESPACE before the boundary is untouched: the text
+	 * node ends in the space, so nothing is concatenated onto the token and the
+	 * ordinary `See /tmp <b>bold</b>` shape keeps its link. The right-hand half of
+	 * the pair is the glued spelling, which is refused - and it is refused for the
+	 * reason the grammar states for `isPlaceholderTail`: a token with a `<`
+	 * immediately after it is a placeholder tail, not a path.
+	 */
+	assert.deepEqual(linksIn("see /tmp <b>bold</b> now"), [
+		{ url: "/tmp", text: "/tmp" },
+	]);
+	assert.deepEqual(linksIn("see /tmp<b>bold</b> now"), []);
+	/* An emphasis marker abutting a path had no `value` to continue into. */
+	assert.deepEqual(linksIn("see **/tmp/notes.md** now"), [
+		{ url: "/tmp/notes.md", text: "/tmp/notes.md" },
+	]);
+});
+
 /* ---------------------------------------------------- existing markdown, untouched */
 
 const MARKDOWN_ONLY = [

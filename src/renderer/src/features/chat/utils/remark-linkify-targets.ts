@@ -187,12 +187,35 @@ const codeLinkAtom = (url: string, code: MdastNode): MdastNode => ({
  * One text node's value, as a run of text and link atoms.
  *
  * The slices come straight from the scanner's offsets, so the atoms spell the
- * node's own value exactly — no re-escaping, no re-quoting, and a markdown
+ * node's own value exactly - no re-escaping, no re-quoting, and a markdown
  * emphasis marker that happened to abut a path (`\`**\`/tmp/a.pdf\`**\``) stays
  * in the text atom on the correct side of the link.
+ *
+ * `rest` IS THE NEXT SIBLING'S FIRST WORD, and scanning `value + rest` is what
+ * stops a token that the MARKDOWN SPLIT from being linked as if it were whole:
+ * `write to /tmp/<name>.json` is one string to the scanner and correctly refused
+ * as a placeholder, but mdast hands the walker `text("write to /tmp/")`,
+ * `html("<name>")`, `text(".json")` - three nodes - and a per-node scan sees a
+ * complete token `/tmp/` and links it. The guard that exists for exactly this
+ * (`isFragment`, in the grammar) cannot see past a node boundary.
+ *
+ * WHAT THE `rest` SCAN IS FOR, and what it costs. Only targets that END INSIDE
+ * this node survive the filter below (`end <= value.length`): a token that the
+ * concatenation completes or extends - `/Users/x/rep` plus `` `ort.md` `` -
+ * belongs to the next node as much as to this one, so it is refused rather than
+ * half-linked. The trade is narrow on purpose: a token followed by WHITESPACE
+ * before the boundary (the ordinary `See /tmp <b>bold</b>` shape, whose text node
+ * ends in the space) is untouched, and so is one followed by a node with no text
+ * of its own (`**bold**`, an image), because `continuation` answers "" for those.
+ * What it refuses, and states here because it is a real false negative: a token
+ * glued to an inline HTML or code node that closes before any whitespace
+ * (`See /tmp<b>bold</b>`) stops linking - the same trade `isPlaceholderTail`
+ * documents on the grammar's side.
  */
-function atomsFor(value: string): MdastNode[] {
-	const targets = targetsIn(value, LINK_POLICY_EVIDENCED);
+function atomsFor(value: string, rest = ""): MdastNode[] {
+	const targets = targetsIn(value + rest, LINK_POLICY_EVIDENCED).filter(
+		(target) => target.end <= value.length,
+	);
 	if (targets.length === 0) return [];
 	const atoms: MdastNode[] = [];
 	let cursor = 0;
@@ -226,6 +249,29 @@ function wholeSpanTarget(value: string): TargetSpan | null {
 	return only.start === 0 && only.end === value.length ? only : null;
 }
 
+/** Where a following node's contribution to a token stops. */
+const CONTINUATION_BREAK = /\s/;
+
+/**
+ * The first word of the next sibling's text, or "" when there is none.
+ * Only the FIRST whitespace-delimited run: the walker wants to know what the
+ * scanner would have seen as one token continuing past this node's end, and a
+ * following node's whole text (`ort.md and here is more prose`) would put
+ * unrelated words inside the scan window. A sibling with no `value` of its own -
+ * `strong`, `emphasis`, an image - answers "" rather than recursing into its
+ * children, because the character immediately after this node is that sibling's
+ * MARKER (`*`, `_`, `![`), not its rendered text, and a scanner run over the
+ * marker would decide the fragment question from a `*`.
+ */
+const continuation = (
+	children: readonly MdastNode[],
+	index: number,
+): string => {
+	const next = children[index + 1];
+	if (!next || typeof next.value !== "string") return "";
+	return next.value.split(CONTINUATION_BREAK, 1)[0] ?? "";
+};
+
 /**
  * Rewrite every child list in the tree, once.
  *
@@ -243,9 +289,9 @@ function walk(node: MdastNode): void {
 	if (!children) return;
 	const rewritten: MdastNode[] = [];
 	let changed = false;
-	for (const child of children) {
+	for (const [index, child] of children.entries()) {
 		if (child.type === "text" && typeof child.value === "string") {
-			const atoms = atomsFor(child.value);
+			const atoms = atomsFor(child.value, continuation(children, index));
 			if (atoms.length > 0) {
 				rewritten.push(...atoms);
 				changed = true;
