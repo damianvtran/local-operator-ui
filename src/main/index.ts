@@ -96,12 +96,14 @@ import {
 	type SecondLaunchRequest,
 	applySecondLaunch,
 	canCreateWindowFor,
+	canRetargetWindow,
 	presentWindow,
 	raiseWindow,
 	readSecondLaunchRequest,
 	reportParked,
 	reportParkedDelivered,
 	reportParkedEvicted,
+	reportParkedInUse,
 	reportParkedLeftWaiting,
 	reportParksAtQuit,
 } from "./window-raise";
@@ -1163,14 +1165,27 @@ const PARKED_LAUNCH_LIMIT = 16;
  * `request` is the raise plan of the launch that asked, so the eventual delivery
  * raises as far as THAT launch allowed rather than as far as this process's plan
  * does — the whole point of the queue.
+ *
+ * `why` names WHICH rule parked it, because the two are different promises and one
+ * line has to tell them apart: `unreachable` is a request that must not be shown
+ * arriving where there is nothing to show it on, and `in-use` is a delivery that
+ * would have taken the conversation the operator is working in. Both words go into
+ * the queue identically — the reason only decides the line, so a park cannot be
+ * half-applied. `reportParkedInUse` carries what the second one costs a caller.
  */
-function parkLaunch(session: string, request: RaiseRequest): void {
+function parkLaunch(
+	session: string,
+	request: RaiseRequest,
+	why: "unreachable" | "in-use" = "unreachable",
+): void {
 	parkedLaunches.push({ session, request });
-	reportParked(session, {
+	const parkLine = {
 		trigger: request.trigger,
 		requester: request.requester,
 		report: reportRaise,
-	});
+	};
+	if (why === "in-use") reportParkedInUse(session, request.show, parkLine);
+	else reportParked(session, parkLine);
 	if (parkedLaunches.length <= PARKED_LAUNCH_LIMIT) return;
 	const evicted = parkedLaunches.shift();
 	if (evicted) {
@@ -2760,6 +2775,15 @@ app
 		 * second launch may only come forward as far as IT asked, while the banner
 		 * and viewer paths are requests from inside this process, where the launch
 		 * plan already is the caller's intent.
+		 *
+		 * THE TWO BRANCHES DO NOT ASK THE SAME QUESTION about a request that must not
+		 * be applied. With no window, the question is whether one may be CREATED
+		 * (`canCreateWindowFor`); with one, it is whether that window's conversation
+		 * may be REPLACED (`canRetargetWindow`) — a window the operator is typing in
+		 * is the one thing a delivery from someone else must not touch, and a refused
+		 * delivery parks on the same queue as the other. Both rules live in
+		 * `window-raise.ts` with the policy they belong to; the gate itself is the
+		 * existing-window branch below.
 		 */
 		function openSessionInWindow(
 			sessionId: string | null,
@@ -2767,6 +2791,53 @@ app
 		): void {
 			const window = mainWindow;
 			if (window && !window.isDestroyed()) {
+				/*
+				 * THE DELIVERY GATE — the only place a request may replace what an
+				 * EXISTING window is showing.
+				 *
+				 * WHY IT IS HERE AND NOWHERE ELSE. This is the one function that retargets a
+				 * window: a banner click, the viewer's `resume_session`, a second launch and
+				 * the parked-conversation drain all arrive through it (the create branch
+				 * below, and `secondInstanceRequest`, are the same request arriving where
+				 * there is no window yet). Putting the rule anywhere else — the renderer's
+				 * handler, the notifier, a per-caller check — is how the fourth requester
+				 * ends up outside it, and the rule then holds for three quarters of the
+				 * requests that can move this app's screen.
+				 *
+				 * WHAT IT COSTS WITHOUT THIS. A tool-spawned launch on the operator's own
+				 * profile — the driven shape, which resolves `headless` — can name a
+				 * conversation, find this window already up, and be applied to it. The
+				 * request raises as far as it asked, which for `never` is nowhere, so the
+				 * window does not move and `raiseWindow` reports NOTHING (silence is that
+				 * mode's documented promise). What does move is the conversation: the
+				 * renderer re-keys the panel on the session (`panelIdentityFor`), the
+				 * composer subtree unmounts, and the caret dies with it. The operator's only
+				 * symptom is a keystroke landing nowhere, in a window that never visibly
+				 * changed, with no line in the log to explain it.
+				 *
+				 * SO THE RULE: applied if the request is the operator's own or if he is not
+				 * using this window, and PARKED otherwise — the same `parkLaunch` the
+				 * create branch uses, so a refused delivery is not applied, not raised and
+				 * not dropped, and arrives in his next window exactly like any other request
+				 * that must not appear. `canRetargetWindow` carries the declaration half — a
+				 * table over the TRIGGER, because a banner click and a `viewer-resume` arrive
+				 * carrying this process's own show plan and cannot be told apart by it — and
+				 * `reportParkedInUse` carries what the refusal costs the caller.
+				 *
+				 * ONLY A NAMED conversation reaches the gate. `null` is the CATALOGUE, and
+				 * it is not someone's conversation being installed over the operator's: its
+				 * only source is a burst digest's banner click (`reopen(null)`), which is a
+				 * person clicking, and it arrives here only from the no-window path anyway.
+				 * Gating it would also mean parking an id to name — the queue is keyed by
+				 * conversation, and "the list" is not one.
+				 */
+				if (
+					sessionId !== null &&
+					!canRetargetWindow(request, window.isFocused())
+				) {
+					parkLaunch(sessionId, request, "in-use");
+					return;
+				}
 				// Send before raising: naming the conversation first means whatever
 				// comes forward is already correct, rather than showing the old one
 				// for as long as the switch takes (B3).
