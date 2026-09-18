@@ -24,6 +24,8 @@ import {
 	trimmedEndLength,
 } from "../utils/markdown-blocks";
 import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
+import { citationAwareAnchor } from "./credential-citation";
+import { remarkCredentialCitations } from "./credential-citation-remark";
 import "./markdown.css";
 import { MermaidDiagram } from "./mermaid-diagram";
 
@@ -60,19 +62,36 @@ type MarkdownRendererProps = {
 	styleProps?: MarkdownStyleProps;
 	className?: string;
 	/**
-	 * Whether a path the text merely CONTAINS becomes a link. On by default.
-	 *
-	 * A completed document is the case the linkifier was written for: the agent
-	 * wrote a path, and it is dead text until something renders it as a link.
-	 * The caller that turns it off is the canonical transcript's streaming row
-	 * (`AssistantRow`), for the reason `isQuotable` refuses a streaming record: a
-	 * row still receiving deltas is a prefix the next token falsifies, so a path
-	 * that is half-written - `/Users/x/Workspace/opoint-renewal-2026-09-1` - would
-	 * be linkified into a target that does not exist and then silently re-link as
-	 * the rest of it arrived. The link appears when the row settles, which is
-	 * also when the row's own Quote control appears.
-	 */
-	linkify?: boolean;
+ * Whether a path the text merely CONTAINS becomes a link. On by default.
+ *
+ * A completed document is the case the linkifier was written for: the agent
+ * wrote a path, and it is dead text until something renders it as a link.
+ * The caller that turns it off is the canonical transcript's streaming row
+ * (`AssistantRow`), for the reason `isQuotable` refuses a streaming record: a
+ * row still receiving deltas is a prefix the next token falsifies, so a path
+ * that is half-written - `/Users/x/Workspace/opoint-renewal-2026-09-1` - would
+ * be linkified into a target that does not exist and then silently re-link as
+ * the rest of it arrived. The link appears when the row settles, which is
+ * also when the row's own Quote control appears.
+ */
+linkify?: boolean;
+/**
+ * Render the app's own credential citations as chips, in place.
+ *
+ * OPT-IN, and the asymmetry is deliberate. A citation is text the app itself
+ * wrote for a value the reader can no longer see (`credentialCitation`), so
+ * chipping it tells the reader something true about their own message. Agent
+ * output is a different matter: a citation the MODEL writes is prose about a
+ * credential, and a renderer that made it a chip would be dressing a sentence up
+ * as the app's own receipt - and would do it on the streaming path, where the
+ * text is deliberately half-parsed. So the transform travels with the caller's
+ * opt-in and nothing else turns it on (`canonical-transcript.tsx`,
+ * `message-content.tsx`), and every agent-facing render - reasoning, questions,
+ * streaming - leaves it off and renders exactly what it rendered before. It
+ * composes with `linkify`: a citation-bearing user turn is also a turn whose
+ * paths may be linkified, which is why the hook below takes both.
+ */
+credentialCitations?: boolean;
 };
 
 const LANGUAGE_REGEX = /language-(\w+)/;
@@ -277,21 +296,65 @@ const MARKDOWN_COMPONENTS: Components = {
 	},
 };
 
+/**
+ * The same map with the citation override, for the one caller that opts in.
+ *
+ * Hoisted for the same reason the map above is: react-markdown memoises its
+ * pipeline against the props it is handed, so an object rebuilt per render
+ * re-processes the whole document on every frame.
+ */
+const MARKDOWN_COMPONENTS_WITH_CITATIONS: Components = {
+	...MARKDOWN_COMPONENTS,
+	// The factory is called HERE, once at module scope, so the override keeps one
+	// object identity for react-markdown's memo - and the anchor it delegates to is
+	// the renderer's own, which is the only link implementation in the app.
+	a: citationAwareAnchor(MarkdownAnchor),
+};
+
 const GFM_ONLY = [remarkGfm];
 const GFM_AND_MATH = [remarkGfm, remarkMath];
 /*
- * The same two pipelines with the linkifier on the end, hoisted for the same
- * reason the two above are: `MARKDOWN_COMPONENTS`'s comment records what a
- * per-render plugin array cost, and building `[...GFM_ONLY, remarkLinkifyTargets]`
- * inside the component would be that bug again with a different literal.
- *
- * Four constants rather than a builder function on purpose. react-markdown
- * memoises against the ARRAY IDENTITY, so a function that returned a fresh array
- * for the same arguments would miss the memo on every render - which is the
- * whole reason these are module-scope in the first place.
+ * Every combination of the three things this pipeline can add, hoisted for the
+ * reason `MARKDOWN_COMPONENTS`'s comment records: react-markdown memoises against
+ * the ARRAY IDENTITY, so a function that returned a fresh array for the same
+ * arguments would miss that memo on every render. Eight constants rather than a
+ * builder, and `REMARK_PIPELINES` below is only a selector over them.
  */
 const GFM_LINKIFY = [remarkGfm, remarkLinkifyTargets];
 const GFM_MATH_LINKIFY = [remarkGfm, remarkMath, remarkLinkifyTargets];
+const GFM_AND_CITATIONS = [remarkGfm, remarkCredentialCitations];
+const GFM_MATH_AND_CITATIONS = [
+	remarkGfm,
+	remarkMath,
+	remarkCredentialCitations,
+];
+const GFM_LINKIFY_AND_CITATIONS = [
+	remarkGfm,
+	remarkLinkifyTargets,
+	remarkCredentialCitations,
+];
+const GFM_MATH_LINKIFY_AND_CITATIONS = [
+	remarkGfm,
+	remarkMath,
+	remarkLinkifyTargets,
+	remarkCredentialCitations,
+];
+/*
+ * The selector, keyed by the three decisions in their own order (math, linkify,
+ * citations). A key rather than three nested ternaries: eight branches nested
+ * three deep is a shape no reviewer can check against the eight constants above,
+ * and every value here is one of those constants rather than a literal.
+ */
+const REMARK_PIPELINES: Record<string, typeof GFM_MATH_LINKIFY_AND_CITATIONS> = {
+	"000": GFM_ONLY,
+	"001": GFM_AND_CITATIONS,
+	"010": GFM_LINKIFY,
+	"011": GFM_LINKIFY_AND_CITATIONS,
+	"100": GFM_AND_MATH,
+	"101": GFM_MATH_AND_CITATIONS,
+	"110": GFM_MATH_LINKIFY,
+	"111": GFM_MATH_LINKIFY_AND_CITATIONS,
+};
 const NO_REHYPE: [] = [];
 const KATEX_ONLY = [rehypeKatex];
 
@@ -332,13 +395,24 @@ const useStyleVariables = (
  * CSS arrives shows visibly broken layout, whereas holding the plugins back for
  * that one frame just leaves the raw "$x$" source on screen.
  *
- * `linkify` is the second thing this hook decides, and it is a parameter rather
- * than a prop of its own because both answers have to come out as ONE array
- * identity: react-markdown memoises its pipeline against the arrays it is handed,
- * so a caller that picked the arrays itself could hand it a fresh pair on every
- * render.
+ * `linkify` and `citations` are the second and third things this hook decides,
+ * and they are parameters rather than props of their own because every answer
+ * has to come out as ONE array identity: react-markdown memoises its pipeline
+ * against the arrays it is handed, so a caller that picked the arrays itself
+ * could hand it a fresh pair on every render.
+ *
+ * The name says MATH because that was its only subject when it was written, and
+ * it is kept rather than renamed: the file that carries it was rewritten on `main`
+ * for the linkifier in the same window this branch added the citation pass, and a
+ * rename here would be a third spelling of the same function for no behaviour.
+ * `REMARK_PIPELINES` above is what holds the answer; every branch of it is a
+ * hoisted array, which is the memo the arrays exist to keep.
  */
-const useMathPipeline = (content: string, linkify: boolean) => {
+const useMathPipeline = (
+	content: string,
+	linkify: boolean,
+	citations: boolean,
+) => {
 	const hasLatex = useMemo(() => containsLatex(content), [content]);
 	const [mathEnabled, setMathEnabled] = useState(
 		() => hasLatex && katexStylesLoaded,
@@ -356,13 +430,12 @@ const useMathPipeline = (content: string, linkify: boolean) => {
 	}, [hasLatex, mathEnabled]);
 
 	return {
-		remarkPlugins: mathEnabled
-			? linkify
-				? GFM_MATH_LINKIFY
-				: GFM_AND_MATH
-			: linkify
-				? GFM_LINKIFY
-				: GFM_ONLY,
+		// Keyed by the three decisions in their own order - math, linkify, citations
+		// - so the answer is one of the eight hoisted arrays and never a fresh one.
+		remarkPlugins:
+			REMARK_PIPELINES[
+				`${mathEnabled ? 1 : 0}${linkify ? 1 : 0}${citations ? 1 : 0}`
+			],
 		rehypePlugins: mathEnabled ? KATEX_ONLY : NO_REHYPE,
 	};
 };
@@ -386,9 +459,13 @@ const useMathPipeline = (content: string, linkify: boolean) => {
  * @param linkify - Whether bare paths become links (default true)
  */
 export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
-	({ content, styleProps, className, linkify = true }) => {
+	({ content, styleProps, className, linkify = true, credentialCitations = false }) => {
 		const trimmed = useMemo(() => content.trim(), [content]);
-		const { remarkPlugins, rehypePlugins } = useMathPipeline(trimmed, linkify);
+		const { remarkPlugins, rehypePlugins } = useMathPipeline(
+			trimmed,
+			linkify,
+			credentialCitations,
+		);
 		const style = useStyleVariables(styleProps);
 
 		return (
@@ -397,7 +474,11 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 					remarkPlugins={remarkPlugins}
 					rehypePlugins={rehypePlugins}
 					urlTransform={LINK_URL_TRANSFORM}
-					components={MARKDOWN_COMPONENTS}
+					components={
+						credentialCitations
+							? MARKDOWN_COMPONENTS_WITH_CITATIONS
+							: MARKDOWN_COMPONENTS
+					}
 				>
 					{trimmed}
 				</ReactMarkdown>
@@ -438,8 +519,13 @@ const StableBlock = memo(({ source }: { source: string }) => {
 	 * block reaches this component once it has CLOSED, so its source can never
 	 * change again and a path inside it is a finished path. The in-flight tail
 	 * below renders as literal text and is never parsed at all.
+	 *
+	 * `citations` is OFF, and that is not an oversight: nothing on this path is a
+	 * user turn - the composer's own text never streams - so a chip here could only
+	 * ever dress up text the MODEL wrote, which is the case the prop's own comment
+	 * excludes.
 	 */
-	const { remarkPlugins, rehypePlugins } = useMathPipeline(source, true);
+	const { remarkPlugins, rehypePlugins } = useMathPipeline(source, true, false);
 	return (
 		<ReactMarkdown
 			remarkPlugins={remarkPlugins}

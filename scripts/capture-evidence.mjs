@@ -529,6 +529,16 @@ export const STORIES = [
 	["chat-canonical-user-card-measure--reported-shape", 1024, 620],
 	["chat-canonical-user-card-measure--wide-attachment", 1024, 620],
 	["chat-canonical-user-card-measure--long-text-only", 1024, 620],
+	/* THE CITATION A SENT MESSAGE CARRIES, as the chip the composer showed before
+	   the send (operator report, 2026-09-17). Three stories at the user-card
+	   measure's own 1024x620 pane, so they read beside the rows above: the reported
+	   shape (a citation mid-sentence), the same shape in the warning register for a
+	   value that did not survive, and the citation quoted inside a fenced block -
+	   the state the transform is required to leave ALONE, which is why it is a
+	   frame rather than a unit test alone. */
+	["chat-canonical-credential-citation--citation-mid-sentence", 1024, 620],
+	["chat-canonical-credential-citation--citation-not-stored", 1024, 620],
+	["chat-canonical-credential-citation--citation-in-code-fence", 1024, 620],
 	/*
 	 * The three states a notification click can paint before the owner answers:
 	 * a cached paint with its caption, the skeleton for a first-ever open, and
@@ -2083,6 +2093,18 @@ export const STORIES = [
 	   read beside the states above. */
 	["chat-message-input--credential-masked-session-pane", 1024, 300],
 	["chat-message-input--credential-masked-small-view", 440, 300],
+	/* THE CHIP'S TWO NEW STATES (operator report, 2026-09-17: "the pill must look
+	   like a real pill component ... with an x button to clear"). `pill-small-view`
+	   is the SAME minted reference at the shipped compact rung, because the chip is
+	   painted at a box MEASURED from the mirror: a rung that drops a type step and a
+	   padding step moves that box, and no frame before this one paired the mint with
+	   `isSmallView`. `pill-cleared` is the control's own state, driven by a real
+	   `userEvent.click` on the chip's `x`; the frame shows the sentence with the
+	   reference gone and the composer's sentence about what that cost. The numbers
+	   behind both are printed by `scripts/credential-chip-geometry.mjs` rather than
+	   read off these pictures. */
+	["chat-message-input--credential-pill-small-view", 440, 300],
+	["chat-message-input--credential-pill-cleared", 1024, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
 	/* The SETTLED idle row (UX round 1's U1 / QA's Q1, and the operator's report
 	   that the first fix left a standing gap) at both rungs, the two shorter notice

@@ -400,7 +400,19 @@ const UserRow = memo(function UserRow({
 							    recessed block the composer stages it in - the reader sees one
 							    idiom for "this is quoted" whether it is pending or sent. */}
 							{replies.length > 0 && <ReplyPreview replies={replies} />}
-							<MarkdownRenderer content={remainingContent} />
+							{/*
+							 * `credentialCitations`, and only on the user's own turn: this is the only
+							 * place in the transcript where a citation is the app's own words rather than
+							 * the agent's prose about one. A message sent with a pasted secret reads in the
+							 * reader's own voice, so the chip the composer showed must survive the send
+							 * (operator report, 2026-09-17: the citation arrived as a wall of technical
+							 * text). What the MODEL receives is unchanged — the sentence is still the
+							 * message's own text; only how it is drawn changes.
+							 */}
+							<MarkdownRenderer
+								content={remainingContent}
+								credentialCitations
+							/>
 							{record.images.length > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-2")}>
 									{record.images.map((image, index) => (
