@@ -37,6 +37,15 @@ export type RadientOperation =
 	| "agents.favourited"
 	| "agents.favourite_count"
 	| "agents.download_count"
+	/*
+	 * The viewer's own like/favourite state for a whole page of agents, in one
+	 * call. `agents.liked` and `agents.favourited` answer the same question for
+	 * one agent each, which is why a twelve-card hub page used to fire
+	 * twenty-four of them; this op exists so the page asks once. It is additive,
+	 * and a backend that predates it answers 404 - the hub treats that as "no
+	 * viewer state" rather than as a failure (see `use-agent-statuses-query`).
+	 */
+	| "agents.statuses"
 	| "comments.list"
 	| "comments.create"
 	| "comments.update"

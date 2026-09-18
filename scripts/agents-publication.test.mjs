@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
+
+/** Source-anchoring reads files rather than bundling them; see the call-site test. */
+const read = (path) => readFileSync(path, "utf8");
 
 /*
  * The publication flow's two pure halves, driven rather than eyeballed.
@@ -27,6 +31,7 @@ const bundle = await build({
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export * from "./src/renderer/src/features/agents/utils/publication-failure";
 			export * from "./src/renderer/src/features/agents/utils/publication-validation";
+			export { backendLoadErrorMessage } from "./src/renderer/src/shared/api/local-operator/backend-error";
 			export {
 				desktopRequestSchema,
 				desktopEndpoint,
@@ -73,6 +78,8 @@ const {
 	localNameCollision,
 	toolsFromAgentTags,
 	pullRefusalMessage,
+	agentActionFailureMessage,
+	backendLoadErrorMessage,
 	desktopRequestSchema,
 	desktopEndpoint,
 	publicationNameRule,
@@ -781,6 +788,156 @@ test("a pull refusal names what was not downloaded, from the code when there is 
 	assert.equal(
 		pullRefusalMessage(new Error("boom"), "Inbox triage"),
 		'"Inbox triage" could not be downloaded.',
+	);
+});
+
+/*
+ * WHICH VOCABULARY A FAILED ACTION SPEAKS (design round 3, D1).
+ *
+ * The card, the details page and the onboarding batch all ask
+ * `agentActionFailureMessage` for the sentence under the control that failed, so
+ * this is the rule those three surfaces read - and the finding was that the PULL
+ * was classified against the LOCAL server instead. Driven end to end through the
+ * real card, a 404 `agent_not_found` arrived as "The Local Operator server is
+ * older than this app expects. Update the server and try again." and a 503
+ * `hub_unavailable` as "The Local Operator server is not answering. Restart the
+ * app so it can start its own server." Both are true sentences about a process
+ * that had nothing to do with the refusal, and each names a remedy the user
+ * cannot act on; three more refusals arrived as "The action did not complete."
+ * with no reason at all, because a code this client has no treatment for is not
+ * something the local classifier can speak about either.
+ *
+ * PINNED HERE RATHER THAN IN A FRAME because the set that used to photograph this
+ * cannot settle: `agents-pull-outcomes--refused` waits on a toast sentence the
+ * hook no longer produces, the failure having become the caller's to render (D4
+ * in the same round).
+ *
+ * The `notEqual` against the local classifier is the load-bearing half rather
+ * than a tautology: it is the assertion that would have failed before this fix
+ * and it fails on the WORDING rather than on the wiring.
+ *
+ * It does NOT pin the wiring, and an earlier version of this paragraph claimed
+ * it did. Everything here bundles modules, so reverting a CALLER to
+ * `backendLoadErrorMessage` leaves this test green - measured, 15/15, for the
+ * card and for the onboarding step; only reverting the rule itself turns it red
+ * (review round 2, R1). The call sites are pinned by the test below, which is
+ * the instrument this PR actually has for them: the card's inline line is the one
+ * place these sentences render and its frame set cannot settle (D4 below).
+ */
+test("a failed action is answered by the process that refused it, never the other one", () => {
+	const localSentence = (error) =>
+		backendLoadErrorMessage("The action did not complete.", error);
+	const refusals = [
+		[
+			"a listing the hub no longer has",
+			publicationErrorFromBody(404, {
+				detail: { code: "agent_not_found", message: "Agent not found." },
+			}),
+		],
+		[
+			"a hub that is not answering",
+			publicationErrorFromBody(503, {
+				detail: { code: "hub_unavailable", message: "unreachable" },
+			}),
+		],
+		[
+			"a code this client has no treatment for",
+			publicationErrorFromBody(400, {
+				detail: {
+					code: "invalid_instruction_set",
+					message: "The reviewer refused these instructions.",
+				},
+			}),
+		],
+		[
+			"a name the hub already holds",
+			publicationErrorFromBody(409, {
+				detail: { code: "name_taken", message: "That name is taken." },
+			}),
+		],
+		[
+			"an older backend's single prose refusal",
+			new DesktopControlError(
+				400,
+				"Error downloading agent from Radient: Failed to download agent hub-1f4c9a " +
+					"from Radient Agent Hub due to a requests error: HTTPSConnectionPool(host='api.radienthq.com', port=443): Read timed out.",
+			),
+		],
+	];
+	for (const [what, error] of refusals) {
+		const sentence = agentActionFailureMessage(
+			"download",
+			error,
+			"Inbox triage",
+		);
+		assert.equal(
+			sentence,
+			pullRefusalMessage(error, "Inbox triage"),
+			`${what}: the pull speaks the hub's vocabulary`,
+		);
+		assert.notEqual(
+			sentence,
+			localSentence(error),
+			`${what}: and never the local server's, which answers about another process`,
+		);
+	}
+	/*
+	 * The other three actions on those two surfaces ARE local-server calls and keep
+	 * the classifier that names their remedy, so the split follows the process that
+	 * answers rather than the shape the failure arrived in.
+	 */
+	for (const action of ["like", "favourite", "delist"]) {
+		const error = new Error("the local server did not answer");
+		assert.equal(
+			agentActionFailureMessage(action, error, "Inbox triage"),
+			localSentence(error),
+			`${action} is answered by the local server`,
+		);
+	}
+});
+
+/*
+ * AND THE THREE SURFACES ACTUALLY ASK IT (review round 2, R1).
+ *
+ * A rule with no caller restores the D1 defect exactly: the card, the details
+ * page and the onboarding batch are what render the refusal under the control
+ * that failed, and reverting any one of their three lines left the test above
+ * green. There is no frame that can catch it either, because the local
+ * classifier's answer is itself a plausible sentence - it is the WRONG one, not
+ * a broken one. So the wiring is pinned where it lives, the shape
+ * `agent-hub-queries.test.mjs` uses for the card's viewer state.
+ */
+test("every surface that can refuse an action asks the rule, not the local classifier", () => {
+	const card =
+		"src/renderer/src/features/agent-hub/components/agent-card-container.tsx";
+	for (const [what, path, anchor] of [
+		["the hub card", card, /agentActionFailureMessage\(/],
+		[
+			"the agent details page",
+			"src/renderer/src/features/agent-hub/agent-details-page.tsx",
+			/agentActionFailureMessage\(/,
+		],
+		[
+			"the onboarding batch",
+			"src/renderer/src/features/onboarding/components/steps/create-agent-step.tsx",
+			/pullRefusalMessage\(/,
+		],
+	]) {
+		assert.match(
+			read(path),
+			anchor,
+			`${what} renders the refusal it was given`,
+		);
+	}
+	/*
+	 * The card has no load arm of its own, so the local classifier has no business
+	 * in that file at all - the sharpest form this anchor can take, and the
+	 * assertion that fails if the D1 defect is reintroduced here.
+	 */
+	assert.doesNotMatch(
+		read(card),
+		/backendLoadErrorMessage\(/,
+		"the card never classifies a refusal against the local server",
 	);
 });
 

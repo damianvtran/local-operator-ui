@@ -106,6 +106,22 @@ function formatLabel(str: string): string {
 }
 
 /**
+ * The icon and label for a category key, with the fallback in one place.
+ *
+ * Exported for the hub's category rail, which lists the categories the results
+ * actually carry: a category the enum grows before this map does has to render
+ * as something readable in both places, and two copies of that judgement is how
+ * the rail and the pills start disagreeing about the same record.
+ */
+export const categoryEntry = (
+	category: string,
+): { icon: React.ReactNode; label: string } =>
+	CATEGORY_ICON_MAP[category] ?? {
+		icon: <Tag size={14} aria-hidden="true" />,
+		label: formatLabel(category),
+	};
+
+/**
  * Shared pill shape for tags and categories: `sunken` fill on `surface`,
  * hairline edge. Display-only — if these ever become filters they become
  * buttons.
@@ -159,10 +175,7 @@ export const AgentTagsAndCategories: FC<AgentTagsAndCategoriesProps> = ({
 			data-testid="agent-tags-and-categories"
 		>
 			{categories?.map((cat) => {
-				const entry = CATEGORY_ICON_MAP[cat] || {
-					icon: <Tag size={14} aria-hidden="true" />,
-					label: formatLabel(cat),
-				};
+				const entry = categoryEntry(cat);
 				return (
 					<span
 						key={cat}
