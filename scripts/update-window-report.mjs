@@ -28,15 +28,26 @@
  *   a freshly extracted copy of the same 376 MB bundle, warm and cold alike
  *   (`scripts/sec-check.c` measures it; `codesign --verify --strict --deep` is
  *   0.35-0.45 s). So the stall is NOT validation work and NOT a cold cache.
- * - It is the SCHEDULING CLASS, measured on 2026-09-18: the same call on the same
- *   content takes 2.4-3.8 s at normal priority and 351-777 s under
- *   `taskpolicy -b`, with 0.7-1.1 s of user CPU - and a warm-up changes nothing
- *   (two foreground validations at 0.34 s and 0.40 s still left the background run
- *   at 351 s). Squirrel submits its installer as a launchd job (`SMJobSubmit`,
- *   `SQRLUpdater.m:406`), and launchd runs it in that background class, which is
- *   why four and a half minutes of an install sit inside a call that takes a third
- *   of a second from a shell, at 4.3% CPU. `pnpm sec-check --background <path>`
- *   prints both numbers side by side.
+ * - It is the CONTEXT the install runs the call in, measured on 2026-09-18. The
+ *   same call on the same content, from this machine, that day:
+ *
+ *       from an ordinary process (8 runs)            0.25 - 3.85 s
+ *       submitted as a launchd job                   33.3 s
+ *         (same bundle, one minute after a 3.45 s shell run)
+ *       background class, `taskpolicy -b` (5 runs)   331 - 777 s
+ *         (0.7-1.1 s of user CPU each)
+ *       ShipIt, during the 11:59 install             4 min 27 s inside this call,
+ *                                                    at 4.3% of a core
+ *
+ *   A warm-up changes nothing (two foreground validations at 0.34 s and 0.40 s
+ *   still left a background run at 351 s), so this is not a cold cache. WHICH part
+ *   of that context costs the time is NOT established and this report does not
+ *   claim it: the installer's own job carries `nice = -1` with no background
+ *   process type, and the live capture below prints a priority that reads as the
+ *   ordinary class - while both a launchd submission and the background class
+ *   reproduce the inflation. What the numbers say is where to look:
+ *   `pnpm sec-check --via-launchd <path>` measures the submission, and
+ *   `--background` measures the class.
  * - Not file count, either: a `ditto` of the full 1808-file bundle produced 19-21
  *   Gatekeeper scans and the same write with the Python seed removed (269 files)
  *   produced 32 and 17. A 6x smaller write bought no fewer scans, so the earlier
@@ -54,14 +65,15 @@
  *   aborts on.
  *
  * WHAT WOULD ACTUALLY SHRINK IT, named so nobody has to rediscover it: nothing
- * about the bundle. The install has to stop running Apple's validation inside a
- * launchd job - either by spawning the installer ourselves so its validation is
- * scheduled like a foreground process, or by owning the swap. Moving the 1818-file
+ * about the bundle. The install has to stop running Apple's validation in the
+ * context that inflates it - by spawning the installer ourselves rather than
+ * submitting it to launchd, or by owning the swap - and the next change should
+ * prove the move by measuring the window this report prints. Moving the 1818-file
  * Python seed out of the bundle and the 212-file locale strip (the second declined
  * by the operator) are separately worth doing and are NOT this: the file-count
  * measurement above says they will not shorten this window. The change this report
  * was written alongside is the launch-cancellation fix; this instrument is how the
- * window is read, and the scheduling facts below are how it is explained.
+ * window is read, and the live facts below are how a slow one is explained.
  *
  * USAGE
  *
@@ -434,12 +446,15 @@ export function machineState() {
  * The scheduling facts of an install that is running RIGHT NOW, if one is.
  *
  * WHY `ps` AND NOT THE LOGS: this is the field that makes the next slow install
- * self-explanatory. Squirrel submits its installer as a launchd job, launchd runs
- * it in the background class, and the same validation call costs seconds in the
- * foreground and minutes in that class (see the header). So a report read during
- * an install should name the process, its priority and its CPU, and the shape of
- * the reading - minutes elapsed against ~4% CPU - is what says "blocked in the
- * class" rather than "doing work".
+ * self-explanatory. Squirrel submits its installer as a launchd job and the same
+ * validation call costs seconds from an ordinary process and minutes in that
+ * context (see the header). So a report read during an install should name the
+ * process, its priority and its CPU, and the shape of the reading - minutes
+ * elapsed against ~4% CPU - is what says "blocked on the system's code-signing
+ * path" rather than "doing work". The priority is reported as it is, without
+ * naming a scheduling class for it: measured on this machine, the installer's
+ * priority reads as the ordinary class, so a class claim would not survive the
+ * reading this line prints (review R1).
  *
  * Matched on `/Squirrel.framework/Resources/ShipIt`, which is the installer's own
  * path inside the app, rather than on the word `ShipIt`: measured on this machine,
@@ -542,7 +557,7 @@ function renderText(report) {
 	}
 	for (const process_ of machine.shipit) {
 		out.push(
-			`  install now: pid ${process_.pid} nice ${process_.nice} priority ${process_.priority} cpu ${process_.cpuPercent}% - Squirrel's installer, in launchd's background class (a validation that costs seconds in the foreground takes minutes here)`,
+			`  install now: pid ${process_.pid} nice ${process_.nice} priority ${process_.priority} cpu ${process_.cpuPercent}% - Squirrel's installer (the validation it is inside costs seconds from a shell and minutes in the context an install runs it in; measure that with sec-check)`,
 		);
 		out.push(`    ${process_.command}`);
 	}
@@ -709,8 +724,21 @@ export function buildReport(options) {
 	});
 	const limited =
 		options.limit === null ? inWindow : inWindow.slice(-options.limit);
+	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	return {
 		generatedAt: new Date().toISOString(),
+		/*
+		 * Which clock every stamp in this file is on (review Q4). The JSON carries
+		 * UTC ISO-8601 and the text renderer prints the same instants in the
+		 * machine's local zone; a reader comparing the two - or quoting one beside
+		 * the other - needs to know that, and a tool whose whole purpose is quoting
+		 * durations should not leave it to be inferred.
+		 */
+		times: {
+			json: "UTC ISO-8601 (trailing Z)",
+			text: `the machine's local wall clock (${timeZone})`,
+			timeZone,
+		},
 		logs: {
 			shipit: options.shipitLog,
 			shipitRead: shipitText !== null,

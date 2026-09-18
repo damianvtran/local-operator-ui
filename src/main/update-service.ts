@@ -43,7 +43,7 @@ import {
 	transientTransportCode,
 } from "../shared/transport-failure";
 import { LocalOperatorStartupMode } from "./backend/backend-service";
-import { apiConfig } from "./backend/config";
+import { apiConfig, launchEnv } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
 	type ManagedUpdateOutcome,
@@ -52,6 +52,7 @@ import {
 	updateManagedPython,
 } from "./backend/managed-python";
 import { managedPythonOptions } from "./backend/managed-python-options";
+import { NOTIFICATIONS_ENV } from "./backend/notification-launch";
 import { setupFailureCause } from "./backend/setup-failure-causes";
 import {
 	legacyEnvironmentReport,
@@ -84,6 +85,7 @@ import {
 	type InstallFailurePayload,
 	type InstallIdentity,
 	type InstallInFlightPayload,
+	type InstallJobState,
 	type InstallLaunchHoldNotice,
 	type LastInstallAttempt,
 	type PendingInstallMarker,
@@ -109,11 +111,11 @@ import {
 	installDiagnosisLines,
 	installFailurePayload,
 	installInFlightPayload,
+	installJobState,
 	installLaunchHoldNotice,
 	installedBundleSealBlock,
 	installerSearchPath,
 	isInstallInFlight,
-	launchdJobLoaded,
 	matchArtifactMetadata,
 	measureDirectoryBytes,
 	parsePipShowVersion,
@@ -944,16 +946,23 @@ export function isWithinAnyRoot(roots: string[], candidate: string): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * How long the hold's notice has to report itself before the quit stops waiting
- * for it.
+ * How long the app's own banner gets to report itself shown, when it is the
+ * fallback.
  *
  * The notice and the quit are one action with two halves, and the half that
  * matters is the quit: a process still running when ShipIt takes its final check
  * is exactly what cancels the install (`App Still Running Error`, -9). So the
- * notice is given a bounded moment - measured on this machine at ~40 ms from
- * `show()` to the `show` event, with the whole launch held to ~0.3 s end to end -
- * rather than an unbounded wait, and a system that never reports a banner costs
- * the user the banner instead of the install.
+ * notice is given a bounded moment rather than an unbounded wait, and a system
+ * that never reports a banner costs the user the banner instead of the install.
+ *
+ * WHAT THE HOLD ACTUALLY COSTS, measured rather than assumed (review R3, QA Q1):
+ * on this machine a held launch measured 0.79 s, 2.29 s and 2.48 s of process,
+ * and the QA round on this head measured 4.03 s and 5.98 s on a host at load
+ * 165-190 - dominated by Electron's boot plus whichever bound below fired, so
+ * `show()` to the `show` event is milliseconds while the process's whole life is
+ * seconds. The guarantee this path makes is therefore "bounded by these two
+ * deadlines, and it exits 0" rather than a small number: what it removes is the
+ * unbounded exposure of a window a person has to notice and close.
  */
 const LAUNCH_HOLD_NOTICE_DEADLINE_MS = 2_000;
 
@@ -996,12 +1005,15 @@ function shipItJobForRunningBundle(): string | null {
 }
 
 /**
- * Whether this app's ShipIt install job is loaded, right now.
+ * What the machine says about this app's ShipIt install job, right now.
  *
  * The production answer, and the machine's own answer to "is an install in
  * flight". It is asked of launchd by label rather than inferred from a process
- * name, so nothing else on the machine can be mistaken for it. Off macOS there is
- * no launchd to ask, so the answer is a plain no.
+ * name, so nothing else on the machine can be mistaken for it - and it answers
+ * with the four states `installJobState` distinguishes rather than a boolean,
+ * because `running` and `registered` are the difference between a live install
+ * and the job a finished one leaves behind (review U1). Off macOS there is no
+ * launchd to ask, so the answer is `unread`.
  *
  * The command comes from the same place the watchdog's own probe does, so there is
  * one answer to "which command asks launchd about this job" and the two cannot
@@ -1009,17 +1021,20 @@ function shipItJobForRunningBundle(): string | null {
  * the service's own probe substitutable in a harness: PATH resolves it to
  * `/bin/launchctl` on any machine with launchd.
  */
-function probeShipItInstallJobLoaded(): boolean {
+function probeShipItInstallJobState(): InstallJobState {
 	const jobProbe = watchdogSignals(process.platform).jobProbe;
-	if (!jobProbe) return false;
-	return launchdJobLoaded(shipItJobForRunningBundle(), (label) => {
+	if (!jobProbe) return "unread";
+	return installJobState(shipItJobForRunningBundle(), (label) => {
 		const result = spawnSync(jobProbe, ["list", label], {
 			encoding: "utf8",
 			timeout: 5000,
 		});
 		// No exit status is not an answer: a probe that could not run must not read
-		// as "loaded", and `launchdJobLoaded` treats null as not loaded.
-		return result.error || result.status == null ? null : result.status;
+		// as "loaded" or as "running", and `installJobState` reports that as
+		// `unread` rather than as either.
+		return result.error || result.status == null
+			? null
+			: { status: result.status, output: result.stdout ?? "" };
 	});
 }
 
@@ -1105,12 +1120,17 @@ function startRelaunchWatchdog(input: {
  * `reapFailedInstall` takes its own: the service passes its own method (which a
  * harness substitutes), and the launch hold passes the module function - so the
  * rule is one rule and the seam survives.
+ *
+ * It ANSWERS whether a watchdog is alive once it has acted, because one caller
+ * has a user waiting on the answer: the hold's banner promises the app comes back
+ * by itself, and the branch that could not start one says the opposite in the log
+ * (review R2). A caller that only needs the side effect can ignore it.
  */
 function ensureRelaunchWatchdog(input: {
 	marker: PendingInstallMarker;
 	startWatchdog: (targetVersion: string | null) => number | null;
 	log: (message: string) => void;
-}): void {
+}): boolean {
 	const pid = input.marker.watchdogPid;
 	const commandLine =
 		pid == null
@@ -1126,47 +1146,184 @@ function ensureRelaunchWatchdog(input: {
 		input.log(
 			`Relaunch watchdog ${pid} is still running; it will start the app when the install settles.`,
 		);
-		return;
+		return true;
 	}
 	const launched = input.startWatchdog(input.marker.targetVersion);
 	input.log(
-		launched
+		launched != null
 			? `Started relaunch watchdog ${launched} for the install already in flight; it will start the app when the install's job goes.`
 			: "No relaunch watchdog is running for the install in flight and none could be started; the app will need starting by hand after it quits.",
 	);
+	return launched != null;
 }
 
 /**
- * Raise the hold's banner, and answer once the system has shown it.
+ * How long the install's own notification channel (osascript) may take.
+ *
+ * It runs only after the app's banner has failed to report itself, so it is the
+ * second half of a bounded wait rather than an unbounded one: on this machine
+ * `osascript` resolves in well under a second, and a host where it hangs loses
+ * the banner, never the quit.
+ */
+const LAUNCH_HOLD_SCRIPT_DEADLINE_MS = 2_000;
+
+/**
+ * How much process life is left after the last log line, so that line lands.
+ *
+ * electron-log's file transport flushes asynchronously and this path's last line
+ * is the record of what the user was actually told - the only durable account of
+ * a decision whose whole output is a banner and an exit. Measured during round 1:
+ * a line queued after the notice settled landed on one run of three, because the
+ * quit outran the write (review U3, QA Q2). The grace is small, bounded, and only
+ * on this path.
+ */
+const LAUNCH_HOLD_LOG_FLUSH_MS = 300;
+
+/**
+ * The whole notice budget, and the caller's own bound on it.
+ *
+ * The caller arms this as a quit deadline of its own rather than trusting the
+ * notice to settle: the notice's internals are two bounded steps (the app's banner,
+ * then the install's own channel) plus the flush grace, and a notice that wedges -
+ * a substituted one in a harness, an unforeseen hang - must cost the user the
+ * message and never the quit. Its arithmetic is stated here so the two cannot
+ * drift: a hold's worst case is this plus Electron's boot, and the measured shape
+ * of it is in `LAUNCH_HOLD_NOTICE_DEADLINE_MS`.
+ */
+const LAUNCH_HOLD_NOTICE_BUDGET_MS =
+	LAUNCH_HOLD_NOTICE_DEADLINE_MS +
+	LAUNCH_HOLD_SCRIPT_DEADLINE_MS +
+	LAUNCH_HOLD_LOG_FLUSH_MS;
+
+/**
+ * Whether this launch asked for no banners at all.
+ *
+ * `scripts/notifications-off.mjs` and `./backend/notification-launch` define the
+ * switch, and the BACKEND honours it. The hold's banner is raised by the MAIN
+ * process, which never read it - so a harness that switched notifications off
+ * (every rig that boots this app does, and the operator's rules require it) still
+ * put this path's banner on the operator's screen. Presence-based, like
+ * `notify.py`: any non-empty value is off, because `0` and `false` are spellings
+ * of "off" the repo's own tooling passes.
+ */
+function notificationsSilenced(): boolean {
+	const value = launchEnv[NOTIFICATIONS_ENV];
+	return typeof value === "string" && value.length > 0;
+}
+
+/**
+ * Whether the app's own banner reported itself shown, within the deadline.
  *
  * The promise is what makes the banner the temporary reason this process is still
  * alive rather than a message racing its own death: on this path the process's
  * exit is the operation, and a banner only queued when the app quits can be lost
- * with it. It resolves when the system reports the notification shown, and the
- * caller's own deadline covers a system that never reports.
- *
- * A platform that cannot raise one resolves immediately. The notice is a
- * convenience; the quit is the point.
+ * with it. A system that never reports one costs the user the banner, not the
+ * install - and the caller's deadline is the bound (measured on QA's round-1
+ * head: the banner never reported itself at all and the deadline was what closed
+ * both runs, so the deadline is the ordinary case here, not the exception).
  */
-function showInstallHoldNotice(notice: InstallLaunchHoldNotice): Promise<void> {
-	if (!Notification.isSupported()) return Promise.resolve();
+function bannerReportedShown(
+	notice: InstallLaunchHoldNotice,
+	deadlineMs: number,
+): Promise<boolean> {
+	if (!Notification.isSupported()) return Promise.resolve(false);
 	return new Promise((resolve) => {
+		const deadline = setTimeout(() => resolve(false), deadlineMs);
+		deadline.unref();
 		try {
 			const notification = new Notification({
 				title: notice.title,
 				body: notice.body,
 				silent: false,
 			});
-			notification.on("show", () => resolve());
+			notification.on("show", () => {
+				clearTimeout(deadline);
+				resolve(true);
+			});
 			// Electron's own banner API on a `Notification`, not a window:
 			// `scripts/window-mode.test.mjs` allow-lists this exact call.
 			notification.show();
 		} catch {
 			// A banner that cannot be raised is a missing convenience, never a reason
 			// to stay open.
-			resolve();
+			clearTimeout(deadline);
+			resolve(false);
 		}
 	});
+}
+
+/**
+ * Raise the notice through the channel the install's own messages use.
+ *
+ * The relaunch watchdog notifies this way (`display notification` through
+ * `osascript`, in its own script), so a person waiting out an update already sees
+ * this identity in Notification Center: falling back to it puts the hold's one
+ * message on the same channel as the wait's other two rather than adding a second
+ * sender for the same event (review U7). It is also the channel that WORKS on a
+ * build macOS has not registered for the app's own bundle identity, which is
+ * exactly the case QA round 1 measured (review U3, QA Q2).
+ *
+ * Synchronous on purpose: its exit status is the delivery evidence the caller
+ * logs, and this process is about to exit itself.
+ */
+function raiseThroughOsascript(notice: InstallLaunchHoldNotice): number | null {
+	if (process.platform !== "darwin") return null;
+	const result = spawnSync(
+		"/usr/bin/osascript",
+		[
+			"-e",
+			"on run argv",
+			"-e",
+			"display notification (item 1 of argv) with title (item 2 of argv)",
+			"-e",
+			"end run",
+			notice.body,
+			notice.title,
+		],
+		{ stdio: "ignore", timeout: LAUNCH_HOLD_SCRIPT_DEADLINE_MS },
+	);
+	return result.error || result.status == null ? null : result.status;
+}
+
+/**
+ * Raise the hold's notice and answer with a sentence for the caller's log.
+ *
+ * THE INSTALL'S OWN CHANNEL FIRST (review U3, U7). The wait a person is in the
+ * middle of already speaks to them twice through `osascript` - the relaunch
+ * watchdog's message at the quit and its 600 s follow-up - so the hold's message
+ * goes out the same way rather than arriving as a second sender for the same event.
+ * It is also the channel that works on a build macOS has not registered for the
+ * app's own bundle identity, which is the case QA round 1 measured: there the
+ * app's banner never reported itself at all.
+ *
+ * The app's own banner is the fallback, not the primary: its `show` event is a
+ * delivery SIGNAL this process can log, which the install's channel does not give
+ * it, so it is worth trying when that channel is unavailable or refuses - and it is
+ * the whole answer off macOS.
+ *
+ * The ANSWER is what makes delivery checkable instead of assumed: the same
+ * information QA round 1 could only record as BLOCKED, because nothing in the flow
+ * said whether the system had shown anything. A sentence rather than a record type
+ * because the only consumer is one log line.
+ */
+async function showInstallHoldNotice(
+	notice: InstallLaunchHoldNotice,
+	bannerDeadlineMs: number = LAUNCH_HOLD_NOTICE_DEADLINE_MS,
+): Promise<string> {
+	if (notificationsSilenced()) {
+		return "suppressed: this launch switched notifications off, so no banner was raised";
+	}
+	const status = raiseThroughOsascript(notice);
+	if (status === 0) {
+		return "sent through the install's own notification channel (osascript), the one the install and its watchdog already use";
+	}
+	if (await bannerReportedShown(notice, bannerDeadlineMs)) {
+		return "shown by the app's own banner, the install's channel being unavailable";
+	}
+	if (status == null) {
+		return "not raised: the install's channel is not available on this host, and the app's banner did not report itself shown";
+	}
+	return `not raised: the install's channel exited ${status}, and the app's banner did not report itself shown`;
 }
 
 /**
@@ -1185,11 +1342,14 @@ function showInstallHoldNotice(notice: InstallLaunchHoldNotice): Promise<void> {
  *
  * The three facts this must not break, each of them a rule from an earlier
  * incident: the MARKER is left exactly as it is (its start time is what tells the
- * install's own recovery this is still the same install); a STALE marker or a dead
- * job is not this path at all, and opens normally so recovery can explain what
- * happened (`evaluateLaunchDuringInstall`); and the relaunch promise is kept by
- * the same `ensureRelaunchWatchdog` every other quit path uses, so standing down
- * can never be the reason the user has no app.
+ * install's own recovery this is still the same install); a marker whose install
+ * is not RUNNING is not this path at all, and opens normally so recovery can
+ * explain what happened (`evaluateLaunchDuringInstall`) - that covers the stale
+ * marker, the failed install whose job launchd still holds, and the successful one
+ * whose marker recovery has not read yet, which is the state review U1 found the
+ * app unreachable in; and the relaunch promise is kept by the same
+ * `ensureRelaunchWatchdog` every other quit path uses, so standing down can never
+ * be the reason the user has no app.
  *
  * Returns true when the launch was held and a quit is under way, so the caller
  * knows not to build the window - and everything that comes with one - that this
@@ -1199,11 +1359,13 @@ export function holdLaunchForLiveInstall(options: {
 	/** Records what was decided, for the same log every update decision lands in. */
 	log: (message: string) => void;
 	/** Defaults to the launchctl probe; a harness substitutes it. */
-	jobLoaded?: () => boolean;
+	jobState?: () => InstallJobState;
+	/** Defaults to `app.getVersion()`; a harness substitutes it. */
+	runningVersion?: string;
 	/** Defaults to the real detached watchdog; a harness substitutes it. */
 	startWatchdog?: (targetVersion: string | null) => number | null;
 	/** Defaults to Electron's own banner; a harness substitutes it. */
-	showNotice?: (notice: InstallLaunchHoldNotice) => Promise<void>;
+	showNotice?: (notice: InstallLaunchHoldNotice) => Promise<string>;
 	/** Defaults to `app.quit`; a harness substitutes it. */
 	quit?: () => void;
 	/** Defaults to `app.exit(0)`; a harness substitutes it. */
@@ -1220,19 +1382,22 @@ export function holdLaunchForLiveInstall(options: {
 	 */
 	if (!app.isPackaged) return false;
 	const marker = readPendingInstallMarker(app.getPath("userData"));
+	const jobState = (options.jobState ?? probeShipItInstallJobState)();
 	const reading = evaluateLaunchDuringInstall({
 		marker,
-		jobLoaded: (options.jobLoaded ?? probeShipItInstallJobLoaded)(),
+		jobRunning: jobState === "running",
+		runningVersion: options.runningVersion ?? app.getVersion(),
 		now: options.now,
 	});
 	if (reading.kind === "open") return false;
 
 	options.log(
-		`Holding this launch for the install of version ${reading.marker.targetVersion} that is still running: a window here would make this process the running instance Squirrel's final check aborts the install on, so the app tells the user and quits.`,
+		`Holding this launch for the install of version ${reading.marker.targetVersion} that is still running (install job ${jobState}): a window here would make this process the running instance Squirrel's final check aborts the install on, so the app tells the user and quits.`,
 	);
-	// Before the quit, never after: the notice promises the app comes back, and
-	// once this process is gone it is the only thing that can keep that promise.
-	ensureRelaunchWatchdog({
+	// Before the quit, never after: the notice's promise - and, on the branch where
+	// nothing could be arranged, its warning - is about what happens once this
+	// process is gone, and only a watchdog can make the promise good.
+	const relaunchEnsured = ensureRelaunchWatchdog({
 		marker: reading.marker,
 		startWatchdog: options.startWatchdog ?? defaultStartRelaunchWatchdog,
 		log: options.log,
@@ -1240,35 +1405,50 @@ export function holdLaunchForLiveInstall(options: {
 
 	const quit = options.quit ?? (() => app.quit());
 	const forceQuit = options.forceQuit ?? (() => app.exit(0));
-	// Bounded twice, for the reason the headless path arms a deadline for every
-	// quit rather than only the two that ask for one: a quit that wedges is a
+	// Bounded once here and once over the whole path: a quit that wedges is a
 	// property of the quit path, and here a wedged quit is not a slow shutdown but
-	// the running instance this function exists to remove.
-	const noticeDeadline = setTimeout(quit, LAUNCH_HOLD_NOTICE_DEADLINE_MS);
+	// the running instance this function exists to remove. The notice's own wait
+	// carries its bound inside `showInstallHoldNotice`, because it may take two
+	// bounded steps (the app's banner, then the install's own channel) and only the
+	// second one knows whether it needs to run at all.
 	const forceDeadline = setTimeout(
 		forceQuit,
 		LAUNCH_HOLD_FORCE_QUIT_DEADLINE_MS,
 	);
-	noticeDeadline.unref();
 	forceDeadline.unref();
-	const notice = installLaunchHoldNotice(reading.marker);
+	// The notice's own bound, held by the caller: see `LAUNCH_HOLD_NOTICE_BUDGET_MS`.
+	const noticeDeadline = setTimeout(quit, LAUNCH_HOLD_NOTICE_BUDGET_MS);
+	noticeDeadline.unref();
+	const notice = installLaunchHoldNotice(reading.marker, { relaunchEnsured });
 	const showNotice = options.showNotice ?? showInstallHoldNotice;
 	/*
-	 * Logged BEFORE the notice is raised rather than after it settles, because this
-	 * line is the record of a decision and the process is about to stop being able
-	 * to write one: a log line queued after the banner is a line the next quit can
-	 * outrun (measured: it landed on one run of three, and the write is what the
-	 * exit raced). What it says is what this call is doing, not what the system did
-	 * with the banner - a system that never reports one still takes the same action,
-	 * which is why the notice is bounded rather than awaited.
+	 * The decision is logged BEFORE the notice is raised, because that line is the
+	 * record of a decision and the process is about to stop being able to write one;
+	 * the OUTCOME is logged after the notice settles, and the quit then waits out
+	 * `LAUNCH_HOLD_LOG_FLUSH_MS` so it lands - the record of what the user was
+	 * actually told is the one thing a later reader has instead of this process
+	 * (review U3).
 	 */
 	options.log(
-		`Telling the user the install of version ${reading.marker.targetVersion} is still running, and closing this launch so the install's final check finds no running instance of the app; the relaunch watchdog will open the app when the install settles.`,
+		`Telling the user the install of version ${reading.marker.targetVersion} is still running, and closing this launch so the install's final check finds no running instance of the app.`,
 	);
-	void showNotice(notice).finally(() => {
-		clearTimeout(noticeDeadline);
-		quit();
-	});
+	void showNotice(notice)
+		.then((record) => {
+			options.log(
+				`The notice for the install of version ${reading.marker.targetVersion}: ${record}.`,
+			);
+		})
+		.catch(() => {
+			// A notice that threw is a missing message, never a reason to stay open:
+			// the quit below is what removes the running instance either way.
+		})
+		.finally(() => {
+			const flush = setTimeout(() => {
+				clearTimeout(noticeDeadline);
+				quit();
+			}, LAUNCH_HOLD_LOG_FLUSH_MS);
+			flush.unref();
+		});
 	return true;
 }
 
@@ -1750,15 +1930,32 @@ export class UpdateService {
 			return;
 		}
 		const marker = readPendingInstallMarker(this.markerDir());
+		const jobState = this.shipItInstallJobState();
+		/*
+		 * The state is logged whenever there is a marker to judge, because it is the
+		 * fact that decides which of the two panels a person gets - and because its
+		 * absence is what made review U1 unnoticeable: "registered but not running" in
+		 * one line is the whole difference between an install in flight and the job a
+		 * finished one left behind.
+		 */
+		if (marker) {
+			logger.info(
+				`Pending install marker for version ${marker.targetVersion} on disk; its install job is ${jobState}.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
 		const outcome = evaluatePendingInstall({
 			marker,
 			runningVersion: app.getVersion(),
-			// Probed once per evaluation, and only on macOS: a loaded job plus a
+			// Probed once per evaluation, and only on macOS: a RUNNING job plus a
 			// current marker is what makes "still on the old version" an install in
-			// progress rather than an install that failed.
+			// progress rather than an install that failed. A job that is registered
+			// but not running is the state a finished install leaves behind, and
+			// reading it as live is what held a launch - and so swallowed this very
+			// report - for ~29 minutes after every successful update (review U1, U2).
 			installInFlight: isInstallInFlight({
 				marker,
-				jobLoaded: this.shipItInstallJobLoaded(),
+				jobRunning: jobState === "running",
 			}),
 		});
 
@@ -2044,9 +2241,9 @@ export class UpdateService {
 	}
 
 	/**
-	 * A substituted answer to "is this app's install job loaded", or null.
+	 * A substituted answer to "what is this app's install job doing", or null.
 	 *
-	 * The production answer is the launchd probe in `shipItInstallJobLoaded`, and
+	 * The production answer is the launchd probe in `shipItInstallJobState`, and
 	 * it asks about a label read from the RUNNING BUNDLE (`shipItJob`). A test or a
 	 * harness process that is not that bundle has no label to ask about, so the
 	 * whole in-flight path - recovery's reading, the re-check, and the quit below -
@@ -2056,21 +2253,22 @@ export class UpdateService {
 	 * rule production uses rather than a second copy of it. Production never sets
 	 * it.
 	 */
-	public installJobLoadedProbe: (() => boolean) | null = null;
+	public installJobStateProbe: (() => InstallJobState) | null = null;
 
 	/**
-	 * Whether this app's ShipIt install job is loaded, right now.
+	 * What this app's ShipIt install job is doing, right now.
 	 *
 	 * This is the machine's own answer to "is an install in flight", and the only
-	 * answer that can tell a live install apart from the job a failed one left
-	 * behind. It is asked of launchd by label rather than inferred from a process
-	 * name, so nothing else on the machine can be mistaken for it. Off macOS there
-	 * is no launchd to ask, so the answer is a plain no and recovery stays
+	 * answer that can tell a live install from the job a finished one left behind -
+	 * which is why it reports `running` separately from `registered` rather than a
+	 * boolean (review U1). It is asked of launchd by label rather than inferred from
+	 * a process name, so nothing else on the machine can be mistaken for it. Off
+	 * macOS there is no launchd to ask, so the answer is `unread` and recovery stays
 	 * version-only there, exactly as it is today.
 	 */
-	private shipItInstallJobLoaded(): boolean {
-		if (this.installJobLoadedProbe) return this.installJobLoadedProbe();
-		return probeShipItInstallJobLoaded();
+	private shipItInstallJobState(): InstallJobState {
+		if (this.installJobStateProbe) return this.installJobStateProbe();
+		return probeShipItInstallJobState();
 	}
 
 	/**
@@ -2172,7 +2370,7 @@ export class UpdateService {
 		if (!marker) return null;
 		return isInstallInFlight({
 			marker,
-			jobLoaded: this.shipItInstallJobLoaded(),
+			jobRunning: this.shipItInstallJobState() === "running",
 		})
 			? marker
 			: null;
