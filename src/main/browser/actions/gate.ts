@@ -21,6 +21,26 @@ import type { BrowserActionContext } from "./context";
  * command, not a standing policy on the tab — the extension makes the same choice
  * for the same reason (a human clicking a link needs no approval flow).
  *
+ * WHY the gate is scoped to the MAIN frame, and what it cost to learn: CDP's
+ * `Document` resource type covers SUBFRAME documents, not only navigation hops.
+ * Measured on Electron 44.3.0 / Chromium 152, two loopback origins, the app's own
+ * gate shape armed with `patterns: [{ resourceType: "Document" }]` and only A
+ * approved:
+ *
+ *   PAUSED type=Document frameId=<main>      CONTINUE http://127.0.0.1:<A>/top.html
+ *   PAUSED type=Document frameId=<subframe>  REFUSE   http://127.0.0.1:<B>/frame.html
+ *
+ * So for the whole time an agent navigation was in flight, every cross-origin
+ * iframe document was failed with `BlockedByClient`: Cloudflare's Turnstile
+ * widget (`challenges.cloudflare.com`), SSO frames, embedded logins, payment
+ * frames. That is the real cause of "the captcha never passes" — the human's
+ * click lands on a widget whose own document was refused before it ever ran, and
+ * it also worsened the same pages the approval system exists to make reachable.
+ *
+ * The security property is unchanged: a MAIN-frame document is still decided hop
+ * by hop, including every hop of a redirect chain, because the main frame's own
+ * id is what the paused request is compared against.
+ *
  * The refusal is the code the session already knows: `origin_not_allowed`. A
  * refused hop fails that request with `BlockedByClient`, which makes the
  * navigation itself fail — so the caller reads a typed refusal naming the origin
@@ -30,6 +50,42 @@ import type { BrowserActionContext } from "./context";
 export interface OriginGateResult {
 	/** Origins refused during the gated operation, in hop order. */
 	blocked: string[];
+}
+
+/**
+ * The main frame's CDP frame id, or null when it cannot be read.
+ *
+ * `Page.getFrameTree` is the only in-band way to learn which frame is the top
+ * one, and the id it returns is STABLE across a cross-origin main-frame
+ * navigation — measured, because the fix depends on it: the same id
+ * (`31E4C824…`) came back before the load, on the top-level document's own
+ * paused request, and again on a cross-origin navigation of that frame.
+ *
+ * WHY `Page.enable` FIRST: `getFrameTree` answers for a target that has a
+ * document, and the app's every path calls `cdp.attach` immediately before the
+ * gate arms — and `attach` itself loads `about:blank` when a view has never
+ * navigated (see `cdp.ts`), so a gate that runs has something to read. The
+ * measurement that makes this non-optional: on a target with no document at
+ * all, `Page.enable` never answers (90 s, no reply).
+ *
+ * A null answer is NOT an error to surface: the caller falls back to deciding
+ * every paused Document, which is the stricter rule and the behaviour this gate
+ * had before frame discrimination existed.
+ */
+async function resolveMainFrameId(
+	ctx: BrowserActionContext,
+	contents: DriveableView["webContents"],
+): Promise<string | null> {
+	try {
+		await ctx.cdp.send(contents, "Page.enable", {});
+		const tree = await ctx.cdp.send<{
+			frameTree?: { frame?: { id?: unknown } };
+		}>(contents, "Page.getFrameTree", {});
+		const id = tree?.frameTree?.frame?.id;
+		return typeof id === "string" && id ? id : null;
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -50,11 +106,43 @@ export async function withOriginGate<T>(
 	const contents = view.webContents;
 	const blocked: string[] = [];
 	const seen = new Set<string>();
+	const mainFrameId = await resolveMainFrameId(ctx, contents);
+	if (mainFrameId === null) {
+		ctx.log(
+			`[browser] could not read the frame tree for ${requester}; this navigation is gated on every Document request, which may refuse cross-origin frames the page needs`,
+		);
+	}
+	/** Requests whose frame could not be attributed to the main frame, counted so
+	 * the log can say the strict fallback actually ran rather than leaving a reader
+	 * to infer it. */
+	let unattributed = 0;
 	const unsubscribe = ctx.cdp.subscribe(contents.id, (method, params) => {
 		if (method !== "Fetch.requestPaused") return;
 		const requestId =
 			typeof params.requestId === "string" ? params.requestId : "";
 		if (!requestId) return;
+		const frameId = typeof params.frameId === "string" ? params.frameId : "";
+		/*
+		 * A paused document that is NOT the main frame is not a navigation hop: it is
+		 * a subframe's own document (a captcha widget, an SSO frame, an embedded
+		 * login, an ad), and the agent's approval of the top-level origin says nothing
+		 * about it — grounding every page the agent can load on a rule about iframes
+		 * is what broke the widget in the first place. The frame ATTRIBUTION is what
+		 * decides this, never the URL: a subframe on the approved origin is continued
+		 * for the same reason a subframe elsewhere is.
+		 *
+		 * An EMPTY frame id with a readable frame tree is the unattributed case and
+		 * keeps the strict decision, because a request this gate cannot place is not
+		 * evidence that it is a subframe; the count below is reported so the fallback
+		 * is visible if it ever runs.
+		 */
+		if (mainFrameId !== null && frameId && frameId !== mainFrameId) {
+			void ctx.cdp
+				.send(contents, "Fetch.continueRequest", { requestId })
+				.catch(() => {});
+			return;
+		}
+		if (mainFrameId !== null && !frameId) unattributed += 1;
 		const rawUrl =
 			typeof params.request === "object" && params.request !== null
 				? (params.request as { url?: unknown }).url
@@ -112,6 +200,11 @@ export async function withOriginGate<T>(
 		throw error;
 	} finally {
 		unsubscribe();
+		if (unattributed > 0) {
+			ctx.log(
+				`[browser] ${unattributed} paused document request(s) during ${requester}'s navigation carried no frame id; they were gated as navigation hops`,
+			);
+		}
 		try {
 			await ctx.cdp.send(contents, "Fetch.disable", {});
 		} catch {

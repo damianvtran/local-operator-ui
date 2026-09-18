@@ -217,6 +217,15 @@ export interface BrowserChrome {
 	) => Promise<void>;
 	handOver: (tabId: number, sessionId: string) => Promise<void>;
 	revokeHandOver: (tabId: number) => Promise<void>;
+	/**
+	 * Answer a surfaced passkey chooser: an offered credential id, or `null` for a
+	 * dismissal. An unanswered chooser is cancelled by main's own timeout, so a
+	 * dismissal is a real answer rather than something the caller may skip.
+	 */
+	respondToWebauthn: (
+		requestId: string,
+		credentialId: string | null,
+	) => Promise<void>;
 	revokeApproval: (origin: string) => Promise<void>;
 	revokeAllApprovals: () => Promise<void>;
 	forgetSite: (origin: string) => Promise<void>;
@@ -472,6 +481,8 @@ export function useBrowserChrome(): BrowserChrome {
 				runVoid(() => api?.respondToConsent(entryId, decision)),
 			handOver: (tabId, sessionId) =>
 				runVoid(() => api?.handOver(tabId, sessionId)),
+			respondToWebauthn: (requestId, credentialId) =>
+				runVoid(() => api?.respondToWebauthn(requestId, credentialId)),
 			revokeHandOver: (tabId) => runVoid(() => api?.revokeHandOver(tabId)),
 			revokeApproval: (origin) => runVoid(() => api?.revokeApproval(origin)),
 			revokeAllApprovals: () => runVoid(() => api?.revokeAllApprovals()),

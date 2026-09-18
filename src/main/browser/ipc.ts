@@ -1,5 +1,6 @@
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { trustedDesktopFrame } from "../desktop-transport";
+import type { WebauthnChooser } from "../webauthn";
 import type { BrowserHost, CloseTabsIntent } from "./host";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
@@ -37,6 +38,15 @@ export interface RegisterBrowserIpcOptions {
 	 * `index.html` otherwise. Same value the desktop transport is given. */
 	expectedUrl: string;
 	host: () => BrowserHost | null;
+	/**
+	 * The passkey chooser, which is what `browser-webauthn-respond` answers.
+	 *
+	 * A getter rather than the instance, like `host`: the chooser is built by the
+	 * host's own startup, and main registers this namespace while that startup is
+	 * still running. It is NULL only when no host is running, which is the same
+	 * condition `authorize` already refuses.
+	 */
+	webauthn: () => WebauthnChooser | null;
 	/** The clear-data affordances (design 5.4). Injected so this module does not
 	 * depend on the session object. */
 	clearData: (what: ClearWhat) => Promise<void>;
@@ -63,6 +73,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-revoke-all-approvals",
 	"browser-forget-site",
 	"browser-clear-data",
+	"browser-webauthn-respond",
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
@@ -152,6 +163,33 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		const host = authorize(event);
 		return host.revokeHandOver(numberOrThrow(tabId, "tabId"));
 	});
+
+	/*
+	 * The passkey chooser's answer.
+	 *
+	 * Sender-checked like every channel here, and addressed by a REQUEST ID main
+	 * minted: the renderer never names a credential the chooser did not offer, and a
+	 * request id that is unknown (or already answered) is refused by the chooser
+	 * rather than answered a second time. `credentialId: null` is the dismissal, and
+	 * it is a legal answer rather than a missing argument — the page's pending
+	 * promise has to be settled with nothing in that case, so refusing it here would
+	 * turn "the user said no" into a dead end.
+	 */
+	ipcMain.handle(
+		"browser-webauthn-respond",
+		(event, requestId: unknown, credentialId: unknown) => {
+			authorize(event);
+			const chooser = options.webauthn();
+			if (!chooser) throw new Error("The browser host is not running.");
+			if (typeof requestId !== "string" || !requestId) {
+				throw new Error("A pending passkey request id is required.");
+			}
+			if (credentialId !== null && typeof credentialId !== "string") {
+				throw new Error("A passkey choice must name a credential or nothing.");
+			}
+			return chooser.respond(requestId, credentialId);
+		},
+	);
 
 	ipcMain.handle(
 		"browser-consent-respond",

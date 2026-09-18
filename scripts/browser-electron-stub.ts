@@ -89,3 +89,36 @@ export class Notification {
 		for (const listener of this.#clickListeners) listener();
 	}
 }
+
+/**
+ * `app`, as far as this repo's main process uses it in a bundled test.
+ *
+ * Added with the WebAuthn work: `src/main/webauthn.ts` imports `app` as a VALUE,
+ * because the platform authenticator is configured once per process through
+ * `app.configureWebAuthn`. The two members modelled are the two that module
+ * reads — `isPackaged` (the gate's "unpackaged" arm) and the configuration call
+ * itself, recorded so a test can assert WHAT was configured and, just as
+ * importantly, that nothing was configured when the gate said no.
+ *
+ * `configureWebAuthn` is deliberately silent and non-throwing, which is what the
+ * real call does when the entitlement is missing (measured; see the module's
+ * header): a stub that threw would make the gate look load-bearing for a reason
+ * the platform does not provide.
+ */
+export const app = {
+	/** Flipped by tests: the gate's first check after the platform. */
+	isPackaged: false,
+	/** What was configured, most recent last. */
+	webauthnConfigured: [] as Array<{
+		touchID: { keychainAccessGroup: string; promptReason: string };
+	}>,
+	configureWebAuthn(options: {
+		touchID: { keychainAccessGroup: string; promptReason: string };
+	}): void {
+		app.webauthnConfigured.push(options);
+	},
+	reset(): void {
+		app.isPackaged = false;
+		app.webauthnConfigured = [];
+	},
+};

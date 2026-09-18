@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { type BrowserWindow, type Event, WebContentsView, app } from "electron";
+import { WebauthnChooser, installWebauthn } from "../webauthn";
 import { ApprovalStore } from "./approvals";
 import { CdpPool } from "./cdp";
 import { ConsentNotifier } from "./consent-notifier";
@@ -195,6 +196,40 @@ export async function startBrowserHost(
 	// Policy and data share one immutable vendoring pin. A writable userData
 	// file must not silently redefine which public suffixes admit broad grants.
 	configurePslRules(PSL_RULES);
+
+	/*
+	 * Passkeys: the platform authenticator, and the chooser behind a request that
+	 * matches more than one discoverable credential.
+	 *
+	 * INSTALLED HERE rather than per tab: the authenticator is a property of the
+	 * process (Electron's `app.configureWebAuthn`), so a per-tab call would be the
+	 * same answer repeated. `installWebauthn` is inert unless the running app is a
+	 * team-signed bundle whose signature carries the matching
+	 * `keychain-access-groups` entitlement — see that module for the measurement
+	 * that makes the gate load-bearing (an unentitled authenticator leaves the
+	 * page's `credentials.create()` promise hanging), and for the single log line
+	 * naming why it is off.
+	 *
+	 * THE SESSION LISTENER IS REGISTERED EVEN WHEN THE AUTHENTICATOR IS OFF. The
+	 * event is not macOS-only: Electron also fires it when a roaming FIDO2
+	 * authenticator returns several discoverable credentials, and with no listener
+	 * at all the request is cancelled with `NotAllowedError` — so the listener is
+	 * the difference between "the user chose" and a failure nobody can explain.
+	 */
+	await installWebauthn({ log });
+	const webauthn = new WebauthnChooser({
+		notify: (request) => {
+			// A window torn down while a chooser was open is the ordinary race: the
+			// request has nowhere to go, and the chooser's own timeout settles the
+			// page rather than leaving it hanging.
+			if (options.window.isDestroyed()) return;
+			options.window.webContents.send("browser-webauthn-request", request);
+		},
+		log,
+	});
+	browserSession.on("select-webauthn-account", (_event, details, callback) => {
+		webauthn.handle(details, callback);
+	});
 
 	/*
 	 * Session-only cookie persistence, restored BEFORE anything can load a page.
@@ -437,6 +472,7 @@ export async function startBrowserHost(
 		window: () => options.window,
 		expectedUrl: options.expectedUrl,
 		host: () => host,
+		webauthn: () => webauthn,
 		clearData: (what: ClearWhat) => sessionCookies.clearBrowsingData(what),
 		log,
 	});
@@ -491,6 +527,9 @@ export async function startBrowserHost(
 			await cdp.close();
 			await server.close();
 			unregisterBrowserIpc();
+			// Before the views go: a pending chooser's callback is the page's promise,
+			// and the page is about to stop existing.
+			webauthn.dispose();
 			stateWriter?.clear();
 			approvals.resetPending();
 			ownership.clear();

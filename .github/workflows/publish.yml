@@ -358,9 +358,32 @@ jobs:
         run: |
           pnpm setup-python
 
+      # The WebAuthn platform authenticator stores credentials under
+      # `<TEAM_ID>.<BUNDLE_ID>.webauthn`, and Electron refuses to service the
+      # authenticator unless that EXACT value is also in the app's
+      # `keychain-access-groups` code-signing entitlement. The team id is a
+      # secret, so the plist is rendered here from the committed
+      # `build/entitlements.mac.plist` plus APPLE_TEAM_ID and handed to the build
+      # by path: electron-builder passes an entitlements FILE through to
+      # @electron/osx-sign and codesign verbatim (app-builder-lib
+      # `out/mac/MacTargetHelper.js`), so a macro in the committed plist would
+      # ship literally. The rendered file names no secret in the log — only the
+      # destination and the count — and a build on a developer's machine renders
+      # nothing at all: it keeps the committed plist, stays ad-hoc signed, and the
+      # app stays inert (it logs the reason it cannot offer passkeys).
+      - name: Render the macOS entitlements plist
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          node scripts/render-mac-entitlements.mjs --out "$RUNNER_TEMP/entitlements.mac.plist"
+          echo "ENTITLEMENTS_PLIST=$RUNNER_TEMP/entitlements.mac.plist" >> "$GITHUB_ENV"
+
       - name: Build macOS app
         # pnpm forwards a literal -- to electron-builder; the config must precede it.
-        run: pnpm dist:mac -c.forceCodeSigning=true
+        # The entitlements pair is overridden to the rendered plist: without it the
+        # signature carries no WebAuthn keychain access group and the authenticator
+        # cannot be enabled.
+        run: pnpm dist:mac -c.forceCodeSigning=true -c.mac.entitlements="$ENTITLEMENTS_PLIST" -c.mac.entitlementsInherit="$ENTITLEMENTS_PLIST"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
