@@ -294,6 +294,36 @@ export const STORIES = [
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
 
+	/*
+	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
+	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
+	 * but not whole, and the mark is the whole change on screen. `before-join` is
+	 * the pre-fix fold spelled out in the story (one chunk painted as the answer),
+	 * so the pair is a difference in what the row says rather than two descriptions
+	 * of it; `after-join-settled` is the same turn once `message_end` states the
+	 * whole text, which is what clears the mark. 900 is the harness default and
+	 * the story pins its own pane height (685, the transcript's measured
+	 * `clientHeight`), so the pane is what a reader has rather than a capture.
+	 */
+	["chat-mid-turn-join--before-join", 1280, 900],
+	["chat-mid-turn-join--after-join", 1280, 900],
+	["chat-mid-turn-join--after-join-settled", 1280, 900],
+	/*
+	 * The three surfaces the round-1 review rounds asked for by name, added beside
+	 * the pair above rather than replacing it:
+	 *  - `after-join-unrelated` is D1's "one frame whose row above is an unrelated
+	 *    complete answer", the fixture in which a caption that attaches upward is
+	 *    visibly a claim about somebody else's paragraph (the original fixture's row
+	 *    above is the same sentence's first half, which reads correctly either way).
+	 *  - `after-seed-withheld` and `after-gap` are D2's two states that had no frame
+	 *    at all: a row that kept its text across a reconnect and had a delta withheld,
+	 *    and a row a receipt gap marked uncertain. Both hold their OWN earlier text on
+	 *    screen, which is exactly what the old single sentence denied.
+	 */
+	["chat-mid-turn-join--after-join-unrelated", 1280, 900],
+	["chat-mid-turn-join--after-seed-withheld", 1280, 900],
+	["chat-mid-turn-join--after-gap", 1280, 900],
+
 	/* Session incidents on their own rows — the operator's report that an error
 	  row read only `session incident` with the message behind a chevron. The
 	  rows are the PRODUCTION reducer's, over fourteen real persisted payloads
@@ -1049,6 +1079,22 @@ export const STORIES = [
 	["chat-run-panel--reader-settled", 1280, 900],
 	["chat-run-panel--reader-failed", 1280, 900],
 	["chat-run-panel--reader-nested", 1280, 900],
+	/* The nesting change's own three states (`§ 5`): a mid-level page that LISTS
+	   its child's subagents, a grandchild's page whose row carries its own count,
+	   and the leaf whose page has no section at all — the absence is the state a
+	   reader has to be able to tell from "not loaded yet". */
+	["chat-run-panel--reader-descendants", 1280, 900],
+	["chat-run-panel--reader-deep-children", 1280, 900],
+	["chat-run-panel--reader-childless", 1280, 900],
+	/* The same three states with the pane at its 320px floor, which is the width
+	   the row mark's shed rule exists for (design round 1, D1): at the default
+	   420px the mark is drawn, at the floor it is dropped whole so the label keeps
+	   the characters it would have spent. 800x700 for `narrow-800`'s reason — the
+	   pane plus the chat column's own floor — and the pane is pinned to 320px by
+	   the story itself, the way `reader-deep-floor` pins it. */
+	["chat-run-panel--reader-descendants-floor", 800, 700],
+	["chat-run-panel--reader-deep-children-floor", 800, 700],
+	["chat-run-panel--reader-childless-floor", 800, 700],
 	/* A member's page whose child count is ONE: the descend control's singular
 	   label and its accessible name, in the only state that can show either
 	   (round 1, Q8/U1-6), beside the peer stepper for the same child. */

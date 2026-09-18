@@ -46,6 +46,7 @@ import {
 	applyHistoryPage,
 } from "../../canonical/transcript-reducer";
 import type { AttachmentScope } from "../../canonical/use-attachment-url";
+import { ChildSubagents } from "./run-child-subagents";
 import type { SubagentRow } from "./run-detail-model";
 import {
 	briefIsInTranscript,
@@ -61,6 +62,25 @@ import {
 
 export type RunChildReaderProps = {
 	row: SubagentRow;
+	/**
+	 * This child's OWN children, in the wire's order (`childrenOf`).
+	 *
+	 * Computed by the PANE rather than here, and handed down rather than derived
+	 * from a `lineage` prop, for the reason the pane walks the lineage at all: one
+	 * walk answers the breadcrumb, the peer stepper, the descend control and this
+	 * list, so the count the chrome bar prints and the rows below it come off the
+	 * same call and cannot disagree about which children this child has.
+	 *
+	 * Named `childRows` and not `children`, which is React's own prop: a data
+	 * list under that name reads as this component's element children, and the
+	 * lint contract refuses the spelling outright
+	 * (`lint/correctness/noChildrenProp`).
+	 */
+	childRows: readonly SubagentRow[];
+	/** Whether a row in that list can be opened — `subagent_transcript`, `§ 10.2`. */
+	childrenOpenable: boolean;
+	/** The pane's own open, so this list walks DOWN the tree (`openChild`). */
+	onOpenChild: (id: string) => void;
 	sessionId: string | null;
 	/** This child's pulse counter, from the canonical stream. */
 	pulse: number;
@@ -114,6 +134,14 @@ export type RunChildReaderProps = {
 	 */
 	measuredAtMs: number;
 	measuredAtRealMs: number;
+	/**
+	 * The pane's own width, which this page's own subagents section measures its
+	 * row mark's shed rule against (`childCountFitsInline`).
+	 *
+	 * Threaded like `paneWidth` is to every other section: the width the pane is
+	 * drawn at is the caller's, not this page's to look up.
+	 */
+	paneWidth: number;
 };
 
 /**
@@ -251,6 +279,9 @@ const QuietLine = ({ children }: { children: React.ReactNode }) => (
 
 export const RunChildReader = ({
 	row,
+	childRows,
+	childrenOpenable,
+	onOpenChild,
 	sessionId,
 	pulse,
 	live,
@@ -259,6 +290,7 @@ export const RunChildReader = ({
 	measuredAtMs,
 	measuredAtRealMs,
 	onUnopenable,
+	paneWidth,
 }: RunChildReaderProps) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	/**
@@ -445,6 +477,36 @@ export const RunChildReader = ({
 					</div>
 				</div>
 			</div>
+
+			{/*
+			 * The child's OWN subagents (`§ 5`), and why it sits HERE rather than
+			 * further down the page.
+			 *
+			 * The reader's column is the pane's height less the 40px chrome bar
+			 * (`§ 8`), and the transcript below is this view's ONE scroll owner —
+			 * `flex-1 min-h-0`, bottom-pinned to the tail page the route answers
+			 * (`§ 5.3`). A `shrink-0` band in the HEAD therefore costs exactly what it
+			 * draws and nothing else: 28px of label line (`px-3 pt-2 pb-1` around
+			 * `text-meta`'s 16px) plus one 32px or 48px row per direct child, the
+			 * roster's own ladder, because these are the roster's rows. The transcript
+			 * absorbs that cost and keeps its scroll. Anything placed INSIDE the body
+			 * would either join the transcript's reversed scroller — painting a list of
+			 * children at the tail end of a conversation — or add the second scrollbar
+			 * `§ 8`'s scroll-owner row forbids.
+			 *
+			 * ABOVE the brief rather than below it, because the two blocks answer the
+			 * questions a reader asks in this order: the facts row names the child,
+			 * this section says who that child delegated to, and the brief is the
+			 * longest block on the page (folded, up to its `max-h-48`) whose text
+			 * belongs beside the transcript it heads.
+			 */}
+			<ChildSubagents
+				ownerLabel={row.label}
+				rows={childRows}
+				interactive={childrenOpenable}
+				onOpenChild={onOpenChild}
+				paneWidth={paneWidth}
+			/>
 
 			{/*
 			 * The brief, and ONLY when the transcript is not already carrying it
