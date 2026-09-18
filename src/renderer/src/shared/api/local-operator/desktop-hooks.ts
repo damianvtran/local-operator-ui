@@ -294,7 +294,22 @@ export type DesktopFeature =
 	 * load-bearing for the release: until it lands, this feature ships dark by
 	 * design.
 	 */
-	| "references";
+	| "references"
+	/**
+	 * `attention.seen`: marking MANY completions read in one gesture
+	 * (`POST /v1/desktop/attention/seen`), which the sidebar's "Mark all as read"
+	 * control rides.
+	 *
+	 * Its OWN key rather than a bump of `completion_ack`, on the rule
+	 * `session_search` and `draft_preview` state above: the per-session receipt is
+	 * an EXISTING surface that must keep working against a backend which has the
+	 * single route and not the batch one, and nothing else is gated on
+	 * `completion_ack`'s version. Absent here means the control is not rendered at
+	 * all — never a control that 404s when it is clicked, because a mark cleared
+	 * by a request that failed is a mark the user believes is gone while it is
+	 * still there.
+	 */
+	| "completion_ack_bulk";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.
