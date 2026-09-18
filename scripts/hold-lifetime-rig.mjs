@@ -42,17 +42,24 @@
  * the hold returns before any of that, which lives in `holdLaunchForLiveInstall`.
  *
  * THE NUMBERS IT PRODUCED, for comparison on a later run (this machine,
- * 2026-09-18, load 150-250):
+ * 2026-09-18, load 150-250; the round-3 arms at load ~280):
  *
  *   held launch (job RUNNING, marker 45 s old)          793 ms, 2291 ms, 2477 ms
  *   the same, measured independently by QA round 1      4030 ms, 5980 ms
- *   a launch with the job REGISTERED but not running    opens normally (no hold)
+ *   held launch (job REGISTERED, marker 2 s old)        1936 ms
+ *   held launch (job REGISTERED, marker 13 s old)       13 s is inside the app's
+ *                                                       hand-off bound (review R11)
+ *   a launch with the job REGISTERED and the marker
+ *     past the bound                                   opens normally (no hold)
  *   a completed install (marker target == app version)  opens normally (no hold)
- *   a failed install (target ahead, job not running)     opens and reports it
+ *   a failed install (target ahead, job not running)    opens and reports it
  *
  * The last three are the review-U1/U2 cases, and they are the point of the rig as
  * much as the lifetime is: a registration has to be read as "not an install" once the
- * install is over, or the app cannot be opened after an update at all.
+ * install is over, or the app cannot be opened after an update at all. The
+ * `registered` + small-marker arms are the review-R11 cases on the other side: the
+ * machine's own installs spend 1.92-13.32 s in that state, so an arm inside it must
+ * HOLD, and the expectation says which age it judged (the app's own line, review Q9).
  *
  * WHAT ITS `registered` ARM IS, AND IS NOT (review R9). The job is submitted with
  * `launchctl submit`, which creates a **KeepAlive** job - launchd restarts its program
@@ -174,6 +181,44 @@ function plistValue(appPath, key) {
 		{ encoding: "utf8" },
 	);
 	return result.status === 0 ? result.stdout.trim() : null;
+}
+
+/**
+ * The age the APP read, from its own line, rather than the age the rig wrote.
+ *
+ * Electron's boot is 1.95-13.55 s on this machine, so a marker written `--hold-ms`
+ * before the launch is read by the app at `--hold-ms` plus the boot: an arm that
+ * expects on the written age is an arm that measures the host's load, and it can go
+ * red while the app is right (review Q9, measured: `--hold-ms 2000` held at 3.95 s
+ * on one run and opened on another). The app stamps its lines with a millisecond
+ * time of day (`16:13:37.636 › …`), so the decision's instant comes from that line
+ * and the marker's own `startedAt` gives the other end.
+ *
+ * Answers null when no decision line is in the output: the caller then says it is
+ * resting on the written age rather than passing itself off as measured.
+ */
+function effectiveAgeSeconds(stdout, startedAt) {
+	const line = stdout
+		.split("\n")
+		.find((candidate) =>
+			/Pending install marker for version|Holding this launch/.test(candidate),
+		);
+	const stamp = line?.match(/^(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
+	if (!stamp) return null;
+	const start = new Date(startedAt);
+	const decision = new Date(start);
+	decision.setHours(
+		Number(stamp[1]),
+		Number(stamp[2]),
+		Number(stamp[3]),
+		Number(stamp[4]),
+	);
+	let age = (decision.getTime() - start.getTime()) / 1000;
+	// The app's stamp is a time of day, so a run across midnight reads negative; the
+	// day goes back on rather than the number being clamped, and anything still
+	// negative becomes a failing arm instead of a silent one.
+	if (age < 0) age += 86_400;
+	return age;
 }
 
 /** Run launchctl and answer with its status and output, without throwing. */
@@ -480,23 +525,39 @@ exit 1
 		/*
 		 * The expectation the state carries, stated here rather than inferred from the
 		 * numbers: a RUNNING job is a live install and the launch must stand down; a
-		 * REGISTERED job is a live install too while the marker is inside the submission
-		 * window - launchd has the job before ShipIt has a pid (review R6) - and is the
-		 * leftover a finished install leaves once the marker is past it; an ABSENT job is
-		 * never an install. Review U1 and U2 are the last two of those, and they are why
-		 * the rig exists at all.
+		 * REGISTERED job is a live install too while the marker is inside the HAND-OFF -
+		 * launchd has the job before ShipIt has a pid (review R6/R11) - and is the leftover
+		 * a finished install leaves once the marker is past it; an ABSENT job is never an
+		 * install. Review U1 and U2 are the last two of those, and they are why the rig
+		 * exists at all.
 		 *
-		 * `EXEC_GRACE_SECONDS` mirrors the app's `PENDING_INSTALL_EXEC_GRACE_SECONDS`. A
-		 * second copy of a constant is a defect in shipped code; in a rig it is the honest
-		 * shape, because the alternative is a rig that cannot state what it expects - and
-		 * `--hold-ms` runs either side of it are what keep the copy true.
+		 * THE AGE IT EXPECTS ON IS THE APP'S OWN, NOT THE RIG'S (review Q9). The app decides
+		 * after it has booted, measured at 1.95-13.55 s on this machine, so an arm dated by
+		 * `--hold-ms` at the rig's write is boot-coupled: a 2 s marker plus a 9 s boot is an
+		 * 11 s age to the app, and the arm then reads red while the app is exactly right.
+		 * The effective age therefore comes from the app's OWN millisecond-stamped line
+		 * (`Holding this launch …` / `Pending install marker for version …`), with the
+		 * written age reported beside it; if neither line is in the app's output there is
+		 * nothing to read, and the arm says so instead of pretending.
+		 *
+		 * `HANDOFF_SECONDS` mirrors the app's `PENDING_INSTALL_HANDOFF_SECONDS`. A second copy
+		 * of a constant is a defect in shipped code; in a rig it is the honest shape, because
+		 * the alternative is a rig that cannot state what it expects - and `--hold-ms` runs
+		 * either side of it are what keep the copy true.
 		 */
-		const EXEC_GRACE_SECONDS = 5;
-		const withinGrace = options.holdMs / 1000 <= EXEC_GRACE_SECONDS;
+		const HANDOFF_SECONDS = 30;
+		const appAge = effectiveAgeSeconds(stdout, marker.startedAt);
+		const statedAge = appAge === null ? options.holdMs / 1000 : appAge;
 		const expected =
-			options.job === "running" || (options.job === "registered" && withinGrace)
+			options.job === "running" ||
+			(options.job === "registered" && statedAge <= HANDOFF_SECONDS)
 				? "hold"
 				: "open";
+		log(
+			appAge === null
+				? `age: written ${Math.round(options.holdMs / 1000)} s before the launch; no app line to read, so the expectation rests on the written age`
+				: `age: written ${Math.round(options.holdMs / 1000)} s before the launch, read by the app at ${appAge.toFixed(2)} s (its own line) - the expectation uses the app's`,
+		);
 		const matched = expected === "hold" ? held : opened;
 		log(`expectation: ${expected} -> ${matched ? "PASS" : "FAIL"}`);
 		if (stdout.trim())

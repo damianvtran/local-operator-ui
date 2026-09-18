@@ -64,7 +64,7 @@ const {
 	INSTALL_DISK_SLACK_BYTES,
 	LAUNCH_HOLD_END_MARGIN_SECONDS,
 	PLIST_READ_TIMEOUT_SECONDS,
-	PENDING_INSTALL_EXEC_GRACE_SECONDS,
+	PENDING_INSTALL_HANDOFF_SECONDS,
 	PENDING_INSTALL_LAUNCH_HOLD_SECONDS,
 	PENDING_INSTALL_MARKER_FILE,
 	PENDING_INSTALL_RECENCY_MARGIN_SECONDS,
@@ -1105,50 +1105,69 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	);
 
 	/*
-	 * Review R6, the submission-to-exec window: launchd reports the job's pid only
-	 * once ShipIt is EXECUTING, and the machine bounds the gap between the two from
-	 * its own lines - the app's `app quit for the in-flight install` at 11:59:00.520
-	 * and ShipIt's first line at 11:59:00.991, 471 ms. A launch landing there was
-	 * opening into a live install (the `Code=-9` cancellation this whole path exists
-	 * for), so a REGISTERED job is read as this install until the marker is older than
-	 * the grace, and only then as the leftover registration a finished install leaves.
+	 * Review R6/R11, the hand-off: launchd reports the job's pid only once ShipIt is
+	 * EXECUTING, and until then the job reads `registered` with no pid. The interval
+	 * is NOT the submission-to-exec split - that is tenths of a second (the app's
+	 * `app quit for the in-flight install` at 11:59:00.520 to ShipIt's first line at
+	 * 11:59:00.991, and 256 ms and 380 ms on the two installs of 2026-09-18 measured
+	 * the same way). It opens when the MARKER is written, because the app writes the
+	 * marker and only then does Squirrel pull the staged artifact through the app's
+	 * own local proxy before submitting anything. Measured across the fourteen
+	 * installs of 2026-09-16..18 it runs 1.92 s to 13.32 s, and every age below is one
+	 * of those installs rather than a round number:
+	 *
+	 *   2 s     09-17 08:30 v0.26.4,  hand-off 1.981 s  (the shortest measured)
+	 *   6.43 s  09-18 16:32 v0.29.0,  hand-off 6.429 s  (past the five-second bound
+	 *                                                    this test was first written
+	 *                                                    against - review R11)
+	 *   13.32 s 09-16 15:23 v0.25.14, hand-off 13.315 s (the longest measured)
 	 */
-	const grace = (seconds) => ({
+	const aged = (seconds) => ({
 		...marker,
 		startedAt: new Date(now - seconds * 1000).toISOString(),
 	});
 	assert.equal(
-		isInstallInFlight({ marker: grace(2), jobState: "registered", now }),
+		isInstallInFlight({ marker: aged(2), jobState: "registered", now }),
 		true,
-		"a job launchd was handed two seconds ago is not an install that is over",
+		"the shortest measured hand-off (09-17 08:30) is still the install",
+	);
+	assert.equal(
+		isInstallInFlight({ marker: aged(6.43), jobState: "registered", now }),
+		true,
+		"the 09-18 16:32 hand-off outlasted five seconds and is still the install",
+	);
+	assert.equal(
+		isInstallInFlight({ marker: aged(13.32), jobState: "registered", now }),
+		true,
+		"the longest measured hand-off (09-16 15:23) is still the install",
 	);
 	assert.equal(
 		isInstallInFlight({
-			marker: grace(PENDING_INSTALL_EXEC_GRACE_SECONDS),
+			marker: aged(PENDING_INSTALL_HANDOFF_SECONDS),
 			jobState: "registered",
 			now,
 		}),
 		true,
-		"the grace is inclusive: at its own bound the gap may still be open",
+		"the bound is inclusive: at its own edge the hand-off may still be open",
 	);
 	assert.equal(
 		isInstallInFlight({
-			marker: grace(PENDING_INSTALL_EXEC_GRACE_SECONDS + 1),
+			marker: aged(PENDING_INSTALL_HANDOFF_SECONDS + 1),
 			jobState: "registered",
 			now,
 		}),
 		false,
-		"one second past the grace, a registration is the leftover it usually is",
+		"one second past the bound, a registration is the leftover it usually is",
 	);
-	// And the U1 case the grace must not resurrect: a COMPLETED install's marker is
+	// And the U1 case the bound must not resurrect: a COMPLETED install's marker is
 	// minutes old, so its registration still opens the app.
 	assert.equal(
-		isInstallInFlight({ marker: grace(280), jobState: "registered", now }),
+		isInstallInFlight({ marker: aged(280), jobState: "registered", now }),
 		false,
 	);
 	// An ABSENT job is not an install at any age - there is nothing to be handed.
 	assert.equal(
-		isInstallInFlight({ marker: grace(1), jobState: "absent", now }),
+		isInstallInFlight({ marker: aged(1), jobState: "absent", now }),
 		false,
 	);
 
@@ -10479,15 +10498,22 @@ test("a quit during an in-flight install takes the close over, and only then", a
 		// leaves its launchd job REGISTERED for hours (0.17.0: runs=3114), which is
 		// the leftover the probe and the recency rule exist to tell apart from a live
 		// install - and the state this one asserts is the other one, no job at all.
+		writeMarker(new Date().toISOString());
 		assert.equal(
 			leftoverJob.quitForInFlightInstall("last window closed"),
 			false,
 		);
 
-		// A REGISTERED job under a marker SECONDS old is the submission window rather
-		// than a leftover (review R6): launchd has the job before ShipIt has a pid, and
-		// a quit inside those seconds is still taken over - that close, left alone,
-		// would put a window-less instance into the install's running-instance check.
+		// A REGISTERED job under a marker inside the hand-off is still THIS install
+		// rather than a leftover (review R6/R11): launchd has the job before ShipIt has
+		// a pid, and a quit inside those seconds is taken over - that close, left
+		// alone, would put a window-less instance into the install's running-instance
+		// check. The marker is re-written HERE, two seconds old (the shortest hand-off
+		// this machine's own installs show), because this path takes no `now`: an
+		// assertion made against a marker written earlier in the test would be an
+		// assertion about how fast the test ran rather than about the state it names
+		// (review R13).
+		writeMarker(new Date(Date.now() - 2000).toISOString());
 		assert.equal(
 			freshRegistration.quitForInFlightInstall("last window closed"),
 			true,
@@ -10758,10 +10784,12 @@ test("a launch is held only for an install that is live, and never past the watc
 		{ kind: "open" },
 	);
 	/*
-	 * Review R6 at the decision, which is where the window it closes lives: the same
-	 * REGISTERED job, read at two ages. Seconds old is the install launchd has just
-	 * been handed and ShipIt has not exec'd yet, so it holds; a minute old is an install
-	 * that is over, so it opens and recovery reports it - the U2 case QA walked.
+	 * Review R6/R11 at the decision, which is where the window it closes lives: the
+	 * same REGISTERED job read at the ages the machine's own fourteen installs span
+	 * (see the in-flight test above for the install behind each number). Two of them
+	 * outlasted the five-second bound this predicate first had, and a launch landing
+	 * there opened into a live install; `fresh` is a minute old, which is an install
+	 * that is over and must open so recovery reports it - the U2 case QA walked.
 	 */
 	assert.equal(
 		evaluateLaunchDuringInstall({
@@ -10771,7 +10799,27 @@ test("a launch is held only for an install that is live, and never past the watc
 			now,
 		}).kind,
 		"hold",
-		"a launch inside the submission window must not open into a live install",
+		"the shortest measured hand-off is a live install",
+	);
+	assert.equal(
+		evaluateLaunchDuringInstall({
+			marker: marker(new Date(now - 6430).toISOString()),
+			jobState: "registered",
+			runningVersion: running,
+			now,
+		}).kind,
+		"hold",
+		"the 09-18 16:32 hand-off (6.429 s) is a live install, and the old bound opened it",
+	);
+	assert.equal(
+		evaluateLaunchDuringInstall({
+			marker: marker(new Date(now - 13320).toISOString()),
+			jobState: "registered",
+			runningVersion: running,
+			now,
+		}).kind,
+		"hold",
+		"the longest measured hand-off (09-16 15:23, 13.315 s) is a live install",
 	);
 	assert.equal(
 		evaluateLaunchDuringInstall({
@@ -10781,7 +10829,20 @@ test("a launch is held only for an install that is live, and never past the watc
 			now,
 		}).kind,
 		"open",
-		"and a minute past it the same registration is the leftover a finished install leaves",
+		"and a minute past the bound the same registration is the leftover a finished install leaves",
+	);
+	// U1's own state, in the shape it was when it held the operator's app for half an
+	// hour: a 280 s marker whose target the running version has ALREADY reached, with
+	// the job still registered. `evaluatePendingInstall` answers `succeeded` before it
+	// reads the job at all, so this opens at any age.
+	assert.equal(
+		evaluateLaunchDuringInstall({
+			marker: marker(new Date(now - 280_000).toISOString()),
+			jobState: "registered",
+			runningVersion: "0.19.5",
+			now,
+		}).kind,
+		"open",
 	);
 	// And a live install, which is the case this exists for.
 	const held = evaluateLaunchDuringInstall({

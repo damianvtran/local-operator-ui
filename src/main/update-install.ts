@@ -166,31 +166,51 @@ export const PENDING_INSTALL_LAUNCH_HOLD_SECONDS =
 	WATCHDOG_HARD_TIMEOUT_SECONDS - LAUNCH_HOLD_END_MARGIN_SECONDS;
 
 /**
- * How long after its own start a marker is still an install launchd has only just
- * been handed.
+ * How long after its own write a marker's install may still be arriving.
  *
  * WHY THIS EXISTS (review R6, and it is the last hole in the class this whole path
  * closes). launchd reports the job's `"PID" = n;` field only once ShipIt is
- * EXECUTING, and between Squirrel's submission and that exec the job reads
- * `registered` with no pid - so a gate that calls a registration "the install is
- * over" opens a window into a live install for the length of that gap. The machine
- * bounds it from its own lines: the app's `app quit for the in-flight install` at
- * 11:59:00.520 and ShipIt's first line at 11:59:00.991 - 471 ms, with the submission
- * inside it.
+ * EXECUTING, and until then the job reads `registered` with no pid - so a gate that
+ * calls a registration "the install is over" opens a window into a live install
+ * for the length of that gap.
  *
- * A handful of seconds rather than 471 ms because the fact is a chain of steps on a
- * loaded machine (the quit writes the marker, launchd reads the plist, ShipIt execs)
- * and because both ways of being wrong here are bounded: a launch held a few seconds
- * too long only means the person clicks again (the watchdog still opens the app),
- * while a launch that opens into a live install is the `Code=-9 App Still Running
- * Error` cancellation - the four-minute wait thrown away.
+ * THE CLOCK IS THE MARKER'S OWN WRITE TIME, AND THE INTERVAL IS NOT SHORT (review
+ * R11). The gap is not the submission-to-exec split, which is tenths of a second
+ * (the app's `app quit for the in-flight install` at 11:59:00.520 to ShipIt's first
+ * line at 11:59:00.991; 256 ms and 380 ms on the two installs of 2026-09-18
+ * measured the same way). It opens when the MARKER is written, because the app
+ * writes the marker and only then does Squirrel pull the staged artifact through
+ * the app's own local proxy before it submits anything. Read off the app's two logs
+ * across the fourteen installs of 2026-09-16..18, that hand-off is **1.92 s to
+ * 13.32 s** - the worst at 09-16 15:23:38.674 (+13.315 s), 6.429 s on 09-18 16:32,
+ * 1.981 s on 09-17 08:30 - with three more inside 0.4 s of the five-second bound
+ * this replaces. A launch landing anywhere in it read `registered` and opened INTO
+ * the install: the `Code=-9 App Still Running Error` cancellation this path exists
+ * to prevent.
+ *
+ * THIRTY SECONDS, so the bound is a multiple of the worst hand-off measured rather
+ * than of the sliver it was first sized from, and because both ways of being wrong
+ * are bounded: a launch held a few seconds too long only means the person clicks
+ * again (the watchdog still opens the app), while a launch that opens into a live
+ * install is a four-minute wait thrown away. The app's own boot is inside the age
+ * this reads - no decision is made before the app has started, measured at
+ * 1.95-13.55 s on this machine - so a shorter bound would still open into installs
+ * whose proxy hand-off outlasted the boot.
  *
  * WHAT IT MUST NOT DO is bring back the review-U1 blocker, and it cannot: a
  * COMPLETED install's marker is minutes old, never seconds - the one that made the
- * app unreachable for half an hour was 280 s - so a registration past this grace is
- * still read as "not an install", which is what the U1 and U2 fixes are built on.
+ * app unreachable for half an hour was 280 s - so a registration past this hand-off
+ * is still read as "not an install", which is what the U1 and U2 fixes are built on.
+ *
+ * THE EXACT INSTRUMENT, for whoever measures a hand-off longer than this bound: the
+ * app can observe the hand-off itself rather than bound its worst case - either the
+ * moment Squirrel took the artifact (`nativeUpdater.update-downloaded` is the app's
+ * own event, 1.92-12.79 s after the marker) or the lifetime of the relaunch watchdog
+ * the marker already records (`watchdogPid`, whose liveness `reapWatchdog`'s ps-probe
+ * already answers, and whose life is exactly "an install of this marker is in
+ * flight"). Neither is in this change; this is a bound, and it says so.
  */
-export const PENDING_INSTALL_EXEC_GRACE_SECONDS = 5;
+export const PENDING_INSTALL_HANDOFF_SECONDS = 30;
 
 /**
  * How long the watchdog's on-disk version read may take before it is killed.
@@ -1551,7 +1571,7 @@ export function pendingInstallAgeSeconds(
  * tell apart: launchd has the job and its program is not executing, which is what a
  * finished or failed install leaves behind - and also what the submission-to-exec gap
  * looks like for a few hundred milliseconds of every install's life
- * (`PENDING_INSTALL_EXEC_GRACE_SECONDS`, review R6). The marker's age is what tells
+ * (`PENDING_INSTALL_HANDOFF_SECONDS`, review R6). The marker's age is what tells
  * them apart, and it is the same age this function already reads.
  */
 export function isInstallInFlight(input: {
@@ -1570,7 +1590,7 @@ export function isInstallInFlight(input: {
 	if (age < 0 || age > PENDING_INSTALL_RECENCY_SECONDS) return false;
 	if (input.jobState === "running") return true;
 	return (
-		input.jobState === "registered" && age <= PENDING_INSTALL_EXEC_GRACE_SECONDS
+		input.jobState === "registered" && age <= PENDING_INSTALL_HANDOFF_SECONDS
 	);
 }
 
@@ -1594,10 +1614,13 @@ export function isInstallInFlight(input: {
  * Three answers are deliberately the same "open", and none of them is an
  * accident:
  *
- * - no marker, and a marker whose install job is not running, are
- *   `isInstallInFlight`'s own answers, and they are what keeps a FAILED install's
- *   leftover registration (0.17.0: `runs=3114`, loaded for hours) from holding
- *   every later launch forever;
+ * - no marker, and a marker whose install job is absent, are `isInstallInFlight`'s
+ *   own answers, and they are what keeps a FINISHED install's leftover registration
+ *   (0.17.0: `runs=3114`, loaded for hours) from holding every later launch forever;
+ * - a marker whose job is RUNNING, or registered inside
+ *   `PENDING_INSTALL_HANDOFF_SECONDS`, is the install this path stands down for:
+ *   the first is ShipIt executing, the second is the window in which launchd has
+ *   the job but ShipIt has no pid yet (review R6, R11);
  * - a marker the running version has reached or moved past opens, because that
  *   is `evaluatePendingInstall`'s `succeeded` / `stale` and recovery acts on it:
  *   this is the state every SUCCESSFUL install leaves behind on this machine
