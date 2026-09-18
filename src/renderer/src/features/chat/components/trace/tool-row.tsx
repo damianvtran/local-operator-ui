@@ -271,9 +271,29 @@ export type ToolRowProps = {
 const rowInk = (outcome: ToolRowOutcome): string => {
 	if (outcome === "running") return "text-accent";
 	if (outcome === "error" || outcome === "not-run") return "text-danger";
-	// `interrupted` and every settled success take the identity ink: the status
-	// glyph is where an interrupt is distinguished from a success, and it is
-	// hueless for that reason.
+	/*
+	 * `interrupted` and every settled success take the identity ink, and that is
+	 * a DECISION rather than a default (design round 1, D6: an interrupted call
+	 * is the only outcome with no colour of its own). Three reasons, and the
+	 * first is the one that decides it:
+	 *
+	 *  - the ink is the row's IDENTITY channel and the glyph is its STATE one.
+	 *    `interrupted` HAS its own glyph (the slashed circle) and its own
+	 *    duration, so it is already distinguished from a settled receipt without
+	 *    a tint; spending an ink here would put a third colour meaning "neither
+	 *    running nor failed" on a channel whose whole job is to be the same on
+	 *    every row of a tool.
+	 *  - a fourth ink would have to come from a role the palette has, and the
+	 *    only ones left are `ink-dim` (too quiet: it is the metadata register)
+	 *    and `warning` (a judgement about the interrupt, which the row does not
+	 *    have - an interrupt is often the user's own Escape).
+	 *  - the fleet cost is real: the trace is the densest surface in the app, and
+	 *    every extra colour there is one more thing that has to hold a floor on
+	 *    all 59 palettes for a state the glyph already carries.
+	 *
+	 * Recorded because "no colour" and "settled" are otherwise the same signal,
+	 * and a later round should meet the reasoning rather than the silence.
+	 */
 	return "text-ink-muted";
 };
 
