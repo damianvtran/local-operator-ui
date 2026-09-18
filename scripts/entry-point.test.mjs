@@ -156,6 +156,7 @@ function cases(root) {
 	const emptyDist = join(root, "empty-dist");
 	mkdirSync(emptyDist, { recursive: true });
 	const scriptsScope = scriptsScopeRepo(root);
+	const classifier = classifierRepo(root);
 	return [
 		{
 			// The only case that MUTATES its working directory: each spelling gets its
@@ -314,22 +315,26 @@ function cases(root) {
 			// the backend repository shipped and only noticed under review. The diff here
 			// is prose-only, so the answer this case pins is the one where every flag is
 			// FALSE - and a broken root would answer true for all of them.
-			// `docs/BUILD.md` is the FIXTURE's path, and requiring it is what makes this
-			// case discriminate. Driven only through the fixture's cwd, a
-			// path-resolving module classifies the HOST checkout's `HEAD^1..HEAD`
-			// instead of the fixture - and those false values satisfied the flag
-			// regexes by coincidence whenever the host's own last commit happened to be
-			// inert, which is how this case stayed green under the very mutation its
-			// comment names. A module reading the real repository cannot print this
-			// line, so the assertion is about the fixture and not about whatever
-			// repository happens to be nearby.
+			// WHAT MAKES THIS DISCRIMINATE IS THE FIXTURE'S OWN BASE SHA, and it is the one
+			// thing here a module resolving the WRONG repository cannot produce: the
+			// fixture is a fresh `mkdtemp` repository, so its commit id is one the checkout
+			// running this test can never have. Its parsed PATHS (`docs/BUILD.md` ->
+			// `docs`) and its flags are not enough on their own, because a host-resolving
+			// module prints exactly those whenever the host's own `HEAD^1..HEAD` happens
+			// to be a prose-only `docs/BUILD.md` change too - measured, and the reason
+			// this case used to stay green under the very mutation its comment names. The
+			// paths stay in the pattern as well: they pin WHICH paths were read, and the
+			// SHA pins WHOSE repository they came from.
 			script: "ci-scope.mjs",
 			args: ["--event", "pull_request", "--base", "HEAD^1"],
-			cwd: classifierRepo(root),
+			cwd: classifier.dir,
 			env: {},
 			status: 0,
-			stdout:
-				/`docs\/BUILD\.md` -> `docs`[\s\S]*`lint` = \*\*false\*\*[\s\S]*`pack` = \*\*false\*\*/,
+			stdout: new RegExp(
+				// A template literal rather than a regex literal: the assertion has to carry a
+				// value from outside it, and a literal cannot interpolate.
+				`- diff base: \`HEAD\\^1\` \\(\`${classifier.base}\`\\)[\\s\\S]*\`docs/BUILD\\.md\` -> \`docs\`[\\s\\S]*\`lint\` = \\*\\*false\\*\\*[\\s\\S]*\`pack\` = \\*\\*false\\*\\*`,
+			),
 			stderr: /^$/,
 		},
 	];
@@ -359,10 +364,15 @@ function classifierRepo(root) {
 	git("init", "--quiet", "-b", "main");
 	git("add", "-A");
 	git("commit", "--quiet", "-m", "the base revision");
+	// The base revision's own commit id, returned because it is the one assertion a
+	// case can make that no other repository can satisfy: see the `ci-scope.mjs` case,
+	// which needs a module resolving the WRONG repository to fail it for its own
+	// reason rather than pass on a coincidence.
+	const base = git("rev-parse", "HEAD").trim();
 	writeFileSync(join(dir, "docs", "BUILD.md"), "# build\n\nmore prose\n");
 	git("add", "-A");
 	git("commit", "--quiet", "-m", "a prose-only change");
-	return dir;
+	return { dir, base };
 }
 
 /**
