@@ -76,13 +76,16 @@ export const neonNoir: ThemeDefinition = {
 		 * the ladder above it and the three ink weights stop fitting above each
 		 * other without one of them breaking its own floor.
 		 *
-		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.94, elevated +8.14, sunken -2.47 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
-		 * hover states and the borders depend on survives the move. Measured:
-		 * canvas #15171C -> #1D2025 (L* 7.73 -> 12.14)
-		 * surface #1C1F26 -> #25282F (L* 11.73 -> 16.09)
-		 * elevated #242830 -> #2A2E37 (L* 16.03 -> 18.89)
-		 * sunken #101216 -> #191B1E (L* 5.43 -> 9.67)
+		 * The three grounds around the canvas ship as L* offsets from it (surface
+		 * +3.85, elevated +6.52, sunken -2.40 L*), which is what every ink, edge
+		 * and wash block below is measured against - and the offsets the LEGIBILITY PASS
+		 * recorded (surface +3.94, elevated +8.14, sunken -2.47 L*) ARE ITS AUTHORING INPUT, NOT THE SHIPPED
+		 * RUNG: the row/hover pass moved `elevated` down to the ladder's floor so the
+		 * current row can outrank a hovered neighbour. Measured, both moves:
+		 * canvas #15171C -> #1D2025 -> #23262B  (L* 7.73 -> 12.14 -> 15.05)
+		 * surface #1C1F26 -> #25282F -> #2B2E35  (L* 11.73 -> 16.09 -> 18.91)
+		 * elevated #242830 -> #2A2E37 -> #2F343D  (L* 16.03 -> 18.89 -> 21.57)
+		 * sunken #101216 -> #191B1E -> #1F2124  (L* 5.43 -> 9.67 -> 12.65)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
 		 * hue and chroma class are exactly what they were and chroma is scaled only
@@ -93,10 +96,10 @@ export const neonNoir: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1D2025",
-		surface: "#25282F",
-		elevated: "#2A2E37",
-		sunken: "#191B1E",
+		canvas: "#23262B",
+		surface: "#2B2E35",
+		elevated: "#2F343D",
+		sunken: "#1F2124",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
@@ -105,14 +108,14 @@ export const neonNoir: ThemeDefinition = {
 		 * reported as spent. The rule, and why neither role is a neutral step, are in the
 		 * two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #242D2E  accent hue, C* 4.09, +1.60 L*, ΔE00 6.23 off `surface`,
-		 *                       `inkDim` 5.46:1 on the fill, hue 5.87° off `accent`.
-		 * rowSelected #16363B  accent hue, C* 12.05, +4.45 L*, ΔE00 12.12 off
-		 *                       `surface` and 7.41 off `rowHover`, `inkDim` 5.00:1, and the
-		 *                       2px `accent` bar at 6.36:1 against it.
+		 * rowHover    #2B3435  accent hue, C* 4.02, +2.02 L*, ΔE00 6.18 off `surface`,
+		 *                       `inkDim` 5.50:1 on the fill, hue 5.86° off `accent`.
+		 * rowSelected #1D3D41  accent hue, C* 12.11, +4.70 L*, ΔE00 12.54 off
+		 *                       `surface` and 7.65 off `rowHover`, `inkDim` 5.03:1, and the
+		 *                       2px `accent` bar at 5.75:1 against it.
 		 */
-		rowHover: "#242D2E",
-		rowSelected: "#16363B",
+		rowHover: "#2B3435",
+		rowSelected: "#1D3D41",
 
 		ink: "#DCDFE4",
 		/*
@@ -125,7 +128,16 @@ export const neonNoir: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkMuted: "#B7BDCA",
+		/*
+		 * Register re-solve: `inkMuted`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5.5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 6.97:1.
+		 * The contract's 8 ΔE00 step down to `inkDim` measures
+		 * 8.14, and it is what sets the value as much as the floor does.
+		 */
+		inkMuted: "#C2C8D5",
 		// The TUI `dim` 767E8C lifted in L* with hue held: it measured 4.38 on
 		// `canvas` and 3.61 on `elevated`, the worst miss in this family, because this
 		// ink and these grounds are both near-neutral.
@@ -139,7 +151,16 @@ export const neonNoir: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkDim: "#98A2B0",
+		/*
+		 * Register re-solve: `inkDim`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 5.03:1.
+		 * The contract's 8 ΔE00 step up to `inkMuted` measures
+		 * 8.14, and it is what sets the value as much as the floor does.
+		 */
+		inkDim: "#A1ABB9",
 		// The TUI `faint` 454B56 lifted to 2.3:1 on `elevated`.
 		inkDisabled: "#595F6A",
 
@@ -150,9 +171,16 @@ export const neonNoir: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 5.16.
+		 * `elevated` is the tightest ground at ΔE00 4.22.
 		 */
-		hairline: "#383E48",
+		/*
+		 * Register re-solve: `hairline`
+		 * The one role whose rule binds at BOTH ends, so it is re-solved against all
+		 * four grounds at once: a rule has to be seen (ΔE00 4.0) without becoming a
+		 * border (2:1), and the window is walked at the role's own hue. Its ratio
+		 * lands at 1.22:1 against `elevated` at its tightest.
+		 */
+		hairline: "#3B414B",
 		// The TUI `edge-hi` 3A414E lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
@@ -160,7 +188,13 @@ export const neonNoir: ThemeDefinition = {
 		 * is the lower of the two bounds on how far the ramp could lift. `elevated`
 		 * binds it at 3.01:1. Lightness only, at the role's own hue.
 		 */
-		borderControl: "#727A88",
+		/*
+		 * Register re-solve: `borderControl`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.01:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		borderControl: "#757D8B",
 
 		// 5FC4D4 — a dim cyan, not a neon. The one accent here that would look
 		// underpowered in any other theme in the family, and the reason this one reads
@@ -175,23 +209,23 @@ export const neonNoir: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#1F2D34",
+		accentWash: "#26333B",
 		onAccent: "#090C13",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
 		 * `label` token (`#b48ec6`), received unchanged because it already clears
-		 * every floor — ΔE00 35.82 from `accent`, 19.78 from its nearest semantic
+		 * every floor — ΔE00 35.82 from `accent`, 39.44 from its nearest semantic
 		 * (`danger`), 5.36:1 as text on the tightest ground (`surface`).
 		 */
 		accentAlt: "#b48ec6",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
-		 * receives: `accentWash`'s own L* 17.53 and C* 7.40, with the hue moved to
-		 * `accentAlt`'s. Measured: ΔE00 12.14 from `accentWash` (the field floor is
-		 * 2.0), 5.14:1 for `accentAlt` on it, and 5.88 from the nearest ground it
+		 * receives: `accentWash`'s own L* 20.42 and C* 7.46, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 11.26 from `accentWash` (the field floor is
+		 * 2.0), 4.65:1 for `accentAlt` on it, and 5.86 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#2F2932",
+		accentAltWash: "#363039",
 
 		success: "#6CC49A",
 		successWash: "#202D2C",
@@ -200,7 +234,13 @@ export const neonNoir: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.13:1.
 		 */
-		successBorder: "#578271",
+		/*
+		 * Register re-solve: `successBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.00:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		successBorder: "#5A8574",
 
 		warning: "#CFAE62",
 		warningWash: "#2D2B25",
@@ -209,18 +249,30 @@ export const neonNoir: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
-		warningBorder: "#887857",
+		/*
+		 * Register re-solve: `warningBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.02:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		warningBorder: "#8B7B5A",
 
 		// E07A8A, the TUI's rose: a neon sign seen through a wet window rather than a
 		// saturated red.
-		danger: "#E07A8A",
+		danger: "#E47D8D",
 		dangerWash: "#2F242A",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.13:1.
 		 */
-		dangerBorder: "#9D6C76",
+		/*
+		 * Register re-solve: `dangerBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.00:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		dangerBorder: "#A06F79",
 
 		// 7AA8D8, the TUI's `signal` — rain blue, kept distinct from the dim cyan
 		// accent.
@@ -231,7 +283,13 @@ export const neonNoir: ThemeDefinition = {
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
 		 * only by a pin in the contract. `elevated` binds it at 3.17:1.
 		 */
-		infoBorder: "#667C96",
+		/*
+		 * Register re-solve: `infoBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.04:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		infoBorder: "#697F99",
 
 		overlayShadow: "0 12px 32px -12px rgb(8 9 11 / 0.75)",
 		scrim: "rgb(8 9 11 / 0.65)",

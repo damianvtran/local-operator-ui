@@ -2831,7 +2831,6 @@ const isNeutralClass = (palette) => {
 	return Math.hypot(a, b) < ROW_STATE_NEUTRAL_ACCENT;
 };
 
-
 const CHART_HOVER_SEPARATION_FLOOR = 10;
 const CHART_HOVER_GROUND = "surface";
 
@@ -2982,9 +2981,12 @@ for (const { id, palette: p } of palettes) {
 		/* The NEUTRAL CLASS has no chroma to bound, so the ceiling is not
 		   asserted on it: the derivation is `ROW_STATE_NEUTRAL_ACCENT` above, and
 		   the floors that hold there instead are the ink floors on the fill. */
-		if (accentChroma >= ROW_STATE_NEUTRAL_ACCENT && chroma > chromaCeiling + 0.05) {
+		if (
+			accentChroma >= ROW_STATE_NEUTRAL_ACCENT &&
+			chroma > chromaCeiling + 0.05
+		) {
 			fail(
-					`${id}: \`${role}\` ${value} carries C* ${r2(chroma)}, past the ${r2(chromaCeiling)} this file allows (${chromaRatio} x \`accent\`'s ${r2(accentChroma)}, capped at ${ROW_STATE_CHROMA_CAP}) — the state stops being a tint of the theme's own accent and becomes a separate saturated plane beside it. Search the chroma downward from the role's floor of ${chromaFloor} and let the accent bar carry what the fill no longer can`,
+				`${id}: \`${role}\` ${value} carries C* ${r2(chroma)}, past the ${r2(chromaCeiling)} this file allows (${chromaRatio} x \`accent\`'s ${r2(accentChroma)}, capped at ${ROW_STATE_CHROMA_CAP}) — the state stops being a tint of the theme's own accent and becomes a separate saturated plane beside it. Search the chroma downward from the role's floor of ${chromaFloor} and let the accent bar carry what the fill no longer can`,
 			);
 		}
 
@@ -3002,7 +3004,11 @@ for (const { id, palette: p } of palettes) {
 		   has no chroma to buy the band with, so the whole of its mark is a
 		   lightness step, and the step goes as far as the ink floors allow - which
 		   is what the retired ledger recorded as `obsidian`'s step `ceiling` miss. */
-		if (role === "rowSelected" && !neutral && step > ROW_SELECTED_STEP_CEILING + 1e-9) {
+		if (
+			role === "rowSelected" &&
+			!neutral &&
+			step > ROW_SELECTED_STEP_CEILING + 1e-9
+		) {
 			fail(
 				`${id}: \`rowSelected\` ${value} sits ${r2(step)} \`L*\` from \`surface\`, past the ${ROW_SELECTED_STEP_CEILING} \`L*\` ceiling — the step is taken as far as the inks allow and no further, because every L* the row rises is ink headroom spent on the caps drawn inside it: above this the row's own meta text stops clearing its floor on the palettes where the inks bind. A NEUTRAL-CLASS palette is measured against its ink cap here instead`,
 			);
@@ -3040,7 +3046,7 @@ for (const { id, palette: p } of palettes) {
 		   the wash there measures 0.75 ΔE00 off the fill. */
 		if (!neutral && washGap < ROW_STATE_WASH_FLOOR) {
 			fail(
-					`${id}: \`${role}\` ${value} is ΔE00 ${r2(washGap)} from \`accentWash\` ${p.accentWash} (need ${ROW_STATE_WASH_FLOOR}) — a hovered row beside a hovered button would merge into one mark, and they are a row state and a control state, so they have to be two`,
+				`${id}: \`${role}\` ${value} is ΔE00 ${r2(washGap)} from \`accentWash\` ${p.accentWash} (need ${ROW_STATE_WASH_FLOOR}) — a hovered row beside a hovered button would merge into one mark, and they are a row state and a control state, so they have to be two`,
 			);
 		}
 
@@ -3994,7 +4000,6 @@ if (stalePerceptible.length > 0) {
 	);
 	process.exit(1);
 }
-
 
 console.log(
 	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${CONTROL_EDGE_PINNED.length} pinned control edge(s).`,

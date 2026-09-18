@@ -124,42 +124,55 @@ export type ThemePalette = {
 	 * the same commit or not at all, which is a rule about this system rather than
 	 * about one palette.
 	 *
-	 * ## The measured ceiling on any further band move (2026-09-18)
+	 * ## The identity band, and the ceiling note this replaces (2026-09-18)
 	 *
 	 * The "some themes feel a lot more grey now" report is real and it is
 	 * measured: the pass above solved 23 palettes onto the same L* 12 floor, so
 	 * 9.47 L* of authored depth came to occupy 0.46 L*, and the dark fleet's
-	 * `canvas` spread fell from 19.5 to 10.0 L*. The rule for undoing it - the
-	 * four depth registers, cast spent rather than withdrawn - was solved in full
-	 * and then WITHDRAWN, because this fleet cannot pay for it. The numbers, so
-	 * the next pass starts from them rather than rediscovering them:
+	 * `canvas` spread fell from 19.5 to 10.0 L*. The previous revision of this
+	 * note recorded that the fleet could not pay to undo it - the band's own
+	 * headroom was 0 to +2.94 L* and each outside role sat 0.01-0.06:1 above its
+	 * floor. **THAT CLAIM IS RETIRED**, by this measurement: a role drawn on a
+	 * ground KEEPS ITS RATIO when both rise. A neutral role authored to sit
+	 * exactly on its floor at L* 12 holds it across a +0 to +10 L* rise -
+	 * 2.97-3.03:1 for the 3.0 floor, 4.46-4.52 for 4.5, 6.98-7.04 for 7:1 -
+	 * because the WCAG `+0.05` offsets dominate the change at the dark end.
+	 * Ratios are TRANSLATION-STABLE on the L* axis, so the whole non-ground role
+	 * layer re-solves WITH the band instead of capping it.
 	 *
-	 * - **The band's own headroom is 0 to +2.94 L*, and +0 on seven palettes.**
-	 *   Past that, one of the roles this file already asserts goes under its floor
-	 *   - `infoBorder`/`dangerBorder`/`warningBorder`/`accent` at 3:1 on
-	 *   `elevated`, `success`/`danger`/`info`/`accent` at 4.5:1 as text, `inkDim`
-	 *   at 5:1. Each sits 0.01-0.06:1 above its own floor today, so the fleet is
-	 *   at the ceiling that §1.3's registers (L* 14.5-18.4) are above.
-	 * - **The row window caps it lower still, and that is the binding one.** The
-	 *   row states live between `surface` and the ink cap, and the ladder's
-	 *   `surface -> elevated` step is only 2-3 L*; once `surface` passes ~L* 13
-	 *   the selection cannot reach ΔE00 6.0 off it inside the cap. Respecting
-	 *   both, the movers have 0.09-0.20 L* to spend - i.e. nothing.
-	 * - **The fleet is at its edge on every axis.** The lowest `canvas -> surface`
-	 *   ΔE00 is 2.08 against a 2.0 floor, the lowest `canvas -> sunken` is 2.02
-	 *   against 2.0, and the lowest `canvas` L* is 12.00 against the band's 12.0,
-	 *   so a cast change alone (`catppuccinMacchiato`, `rosePine`,
-	 *   `rosePineMoon`, `obsidian`, `autumn`, `vaporwave`) breaks a step floor.
-	 *   "Cast is spent, never withdrawn" is available in principle and not in
-	 *   this fleet's state.
-	 * - **The un-taken route, named so it is a decision and not an oversight:**
-	 *   authorizing the four semantic tones and the four `*Border` roles to move
-	 *   WITH the band is the only way to the registers, and it re-authors what
-	 *   green, red and amber mean on ~16 palettes. It is one approval away and it
-	 *   is deliberately not taken here.
+	 * The eleven palettes the legibility pass compressed therefore take their
+	 * authored depth again, and every role drawn on a ground moves with them: the
+	 * three ink weights, `borderControl`, the hairline, `accent`, the four
+	 * semantic tones and their four `*Border` roles, `tokenCommand`, the accent
+	 * ramp, both row fills and the washes. TEN of the eleven hold hue AND chroma
+	 * on every one of those roles. `tokyoNight` alone spends anything, on two:
+	 * `ink` gives up 4.59 C* (22.95 -> 18.36), because the ink ladder's own ΔE00 2
+	 * step above `inkMuted` puts the value at L* 88.23 where that hue sustains at
+	 * most C* 18.52; and `chartBarHover` gives up 1.79 C* holding its ΔE00 10
+	 * separation from the accent, which measures 10.00 exactly as shipped - the
+	 * tightest in the fleet. No floor is widened and no value is pinned.
 	 *
-	 * What this leaves is a fleet that is legible, spread where spread is free,
-	 * and honest about the axis it can no longer buy.
+	 * Measured over the 41 dark palettes: the darkest `canvas` 12.00 -> 12.04,
+	 * the `canvas` spread 9.99 -> 9.95, the max canvases in any 1.5-L* window
+	 * **25 -> 14** (the target is 14), canvases below L* 13.5 **25 -> 14**, pairs
+	 * under ΔE00 2.0 24 -> 20, and pairs under ΔE00 1.0 **7 -> 5** with none
+	 * created - the re-solve separates `neonNoir`/`tron` (0.000 -> 1.89) and
+	 * `lavender`/`rosePine` (0.55 -> 1.06). `rosePine` lands at the far end of its
+	 * own register (L* 17.30 against a 16.60 target) precisely because every rung
+	 * below it collides with `lavender`, the other mover in D3.
+	 *
+	 * Still unmet, so the next pass does not re-derive it: the four near-neutrals
+	 * (`obsidian` 0.72, `arcade` 0.72, `dune` 1.53, `gruvbox` 0.00 C*) are still
+	 * closer together than R4's 2.5 L*, `arcade` and `obsidian` are still the same
+	 * hex, and nothing sits in D4 (18.8-22.0 L*), so R5's five-canvases-above-18.0
+	 * is unsatisfied at 4. Those are placements of palettes this change does not
+	 * move, not band moves.
+	 *
+	 * What this leaves is a fleet that is legible and spread where its palettes
+	 * authored depth. The fleet DID read as one colour, and the compression of the
+	 * band onto a single floor is the whole of why: the axis was never exhausted,
+	 * and the ceiling this note used to state was an artefact of measuring that
+	 * axis through roles the compression had pinned to their floors.
 	 */
 	canvas: string;
 	/** One step raised: cards, panels, inputs, the message paper. */
