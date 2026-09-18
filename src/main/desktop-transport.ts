@@ -231,13 +231,31 @@ function deadlineExceeded(error: unknown): boolean {
 /**
  * The path prefix of every route the daemon's desktop plane has to ADMIT.
  *
- * The plane's own boundary treats `/v1/desktop/` as the sensitive family, and
- * every route under it refuses an unpaired caller with `401`/`403` - or with
- * `503` while the plane is shut ("Desktop controls require a backend started by
- * the desktop app"). Nothing else in the contract is a pairing signal:
- * `/v1/capabilities` is served WITHOUT admitting anyone precisely so a renderer
- * can see the plane's posture, and the legacy families (`/v1/agents`,
- * `/v1/auth`, ...) are ungated on a daemon nobody has claimed.
+ * The daemon's own routing table puts `require_desktop` on the `/v1/desktop/`
+ * routers, so every route under this prefix refuses an unpaired caller with
+ * `401`/`403` - or with `503` while the plane is shut ("Desktop controls
+ * require a backend started by the desktop app"). Nothing OUTSIDE the prefix is
+ * a pairing signal this predicate can read, and the families outside it are
+ * gated unevenly - which is why the prefix, not the family, is what it keys on:
+ *
+ *  - `/v1/capabilities` admits nobody, by design, so a renderer can read the
+ *    plane's posture (the op this app polls every 15 s while the plane is shut);
+ *  - `/v1/auth/*` and `/v1/settings*` carry the dependency unconditionally, so
+ *    on a daemon nobody has claimed they answer `503`, not `200`;
+ *  - `/v1/agents`, `/v1/jobs`, `/v1/schedules`, `/v1/config`, `/v1/credentials`
+ *    and `/v1/models` are gated by the boundary middleware ONLY while the plane
+ *    is enabled, so the same `200` from one of them is either the daemon
+ *    admitting an enabled plane's caller or an unclaimed daemon's ordinary
+ *    reply - and the answer alone cannot say which.
+ *
+ * What follows from that is the predicate's error direction, and it is
+ * deliberate: a 2xx on one of the gated legacy families an enabled plane
+ * admitted is DISCARDED (a false NEGATIVE - evidence this predicate fails to
+ * count), and no answer that the plane did not admit can ever be counted (no
+ * false POSITIVE). The state machine is built to absorb the first, because the
+ * ops under this prefix keep arriving - the presence beat every 15 s next to
+ * every desktop read - and any one of their 2xx is the proof this predicate
+ * wants.
  *
  * `/v1/desktop/claim` is under this prefix and is deliberately NOT gated - it is
  * the door the gate stands in front of - but no request op maps to it: a claim is
@@ -271,9 +289,8 @@ const ADMITTED_PATH_PREFIX = "/v1/desktop/";
  * nothing and answer `false`.
  *
  * `response` is read for its status alone rather than typed as
- * `DesktopResponse`, because the media transport answers with its own shape
- * (`DesktopMediaResponse`) that shares only that field - and the status is the
- * whole of what this question needs.
+ * `DesktopResponse`: this asks what the daemon DECIDED, not which body shape
+ * carried the decision, so any answer object with a status answers it.
  */
 export function desktopAnswerProvesPairing(
 	input: unknown,

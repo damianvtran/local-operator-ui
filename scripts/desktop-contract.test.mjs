@@ -2272,7 +2272,7 @@ test("only an answer the desktop plane admitted proves this app is still paired"
 			{ status: 200 },
 		),
 		false,
-		"a legacy family that answers an unclaimed daemon must not be read as a pairing either",
+		"a route OUTSIDE the desktop prefix is never pairing evidence, whatever status it answers: which status one of these families would answer is not knowable from the answer itself, which is why the predicate keys on the prefix rather than on the family - `/v1/auth` carries `require_desktop` unconditionally and answers `503` on an unclaimed daemon, while `/v1/agents` answers `200` there until the plane is enabled",
 	);
 	assert.equal(
 		desktopAnswerProvesPairing({}, { status: 422 }),
