@@ -1394,15 +1394,18 @@ test("every python-running runCommand call site in the update service passes the
 	);
 
 	// Asserted rather than assumed, so a reorganisation cannot make this pass by
-	// finding nothing: the probe and the pip upgrade are the two that exist, beside
-	// `codesign` and the installer list probe below. The global install's update
-	// child LEFT this table when it moved to `runInOwnProcessGroup` - the group stop
-	// is that module's whole point - so its guard is asserted by name below, where
-	// this scan can no longer see it.
+	// finding nothing: the probe, the pip install, the global install's update child
+	// and the update path's own `python -m venv` are the ones that run python, beside
+	// `codesign` and the installer list probe below.
+	/*
+	 * FIVE, not six: the global install's update child LEFT this inventory when this
+	 * branch moved it to `runInOwnProcessGroup` - the group stop is that module's
+	 * whole point - so it is asserted by name below, where this scan cannot see it.
+	 */
 	assert.equal(
 		calls.length,
-		4,
-		`expected the file's four runCommand call sites, found ${calls.length}`,
+		5,
+		`expected the file's five runCommand call sites, found ${calls.length}`,
 	);
 	/*
 	 * The fifth is `probeInstallerList`, and it runs python too - `uv` and `pipx`
@@ -1423,6 +1426,25 @@ test("every python-running runCommand call site in the update service passes the
 		probeCalls[0].text,
 		/env:\s*this\.pythonSpawnEnv\(\)/,
 		`the installer list probe must pass the guarded environment: ${probeCalls[0].text.replace(/\s+/g, " ")}`,
+	);
+	/*
+	 * THE SIXTH RUNS PYTHON WITH A COMMAND THE TEXT TEST CANNOT CLASSIFY, exactly
+	 * like the probe above and for the same structural reason: `python -m venv` is
+	 * handed the interpreter by `publishGeneration`, which is the only thing that
+	 * knows the managed runtime it has just resolved. It is the app-owned update
+	 * path creating the environment it will smoke - so it reaches the same runtime as
+	 * everything else here, and it carries the same guard for the same reason.
+	 */
+	const venvCalls = calls.filter(({ text }) => /"-m",\s*"venv"/.test(text));
+	assert.equal(
+		venvCalls.length,
+		1,
+		`expected the update path's one environment-creating runCommand call site, found ${venvCalls.length}`,
+	);
+	assert.match(
+		venvCalls[0].text,
+		/env:\s*this\.pythonSpawnEnv\(\)/,
+		`the update path's environment creation must pass the guarded environment: ${venvCalls[0].text.replace(/\s+/g, " ")}`,
 	);
 	/*
 	 * The global install's own update child, which is a Python process this app
@@ -2047,6 +2069,19 @@ function passThrough(file, name, index, why) {
  * interpreter here" after the command under it changed.
  */
 const SPAWN_SITES = [
+	runsCommand(
+		"src/main/install-group-run.ts",
+		"spawnSync",
+		1,
+		/"ps"/,
+		"reads the group leader's start stamp, so a recycled pid cannot be mistaken for the installer this app started; `ps` is a system tool, not an interpreter",
+	),
+	passThrough(
+		"src/main/install-group-run.ts",
+		"spawn",
+		1,
+		"the process-group runner's child - the install's own updater. Its environment is deliberately the CALLER's, so the guard is asserted where the environment is built: `update-service.ts`'s run site must pass `{ ...this.pythonSpawnEnv(), PATH: updatePath }`, which the update service's own case checks by name.",
+	),
 	runsPython(
 		"src/main/backend/managed-python.ts",
 		"spawn",
@@ -2151,19 +2186,6 @@ const SPAWN_SITES = [
 		2,
 		/jobProbe/,
 		"asks launchd whether ShipIt's job is loaded; `jobProbe` is `/bin/launchctl` from `watchdogSignals`",
-	),
-	passThrough(
-		"src/main/install-group-run.ts",
-		"spawn",
-		1,
-		"runs the install's own front end (`<resolved console script> update`) as its own GROUP LEADER, so an expired budget can signal the uv/pipx/pip that front end starts rather than only the front end itself. The environment is the caller's: `update-service.ts` hands it `pythonSpawnEnv()` plus the installer PATH, and this module builds none of its own",
-	),
-	runsCommand(
-		"src/main/install-group-run.ts",
-		"spawnSync",
-		1,
-		/"ps"/,
-		"reads a live pid's START STAMP (`ps -o lstart= -p <pid>`), which is the identity evidence a pending-update record is judged by - a pid is unique only among LIVE processes, so a recycled number would otherwise be read as this app's updater; `ps` starts no interpreter",
 	),
 	runsCommand(
 		"src/main/update-service.ts",

@@ -275,46 +275,6 @@ export const THEMES = [
 export const SESSION_SECTION =
 	"[data-panel-body] section:has(input[aria-label='Search sessions'])";
 
-/**
- * WHAT A FRAME MUST SHOW, for the states whose whole point is a sentence.
- *
- * WHY THIS EXISTS. `backend-update-in-flight-source-build` was committed as evidence
- * for copy that no reader could see: the stories' mock overwrote
- * `window.api.updater` with an object whose `onBackendUpdateProgress` was a no-op, so
- * zero listeners were registered, the panel painted the phase-null fallback, and the
- * frame was byte-identical to the release route's in all twelve themes. Every gate
- * passed - the story rendered, the frame was sharp, the count was right - because a
- * still cannot tell two sentences apart and nothing here was looking for one (QA Q-3 =
- * design D1 = UX U2, round 4). `storyDrew` counts elements; this asks whether the
- * sentence the story is ABOUT is on the screen, and refuses the shutter when it is not.
- *
- * Keep the substrings short and distinctive: each is asserted against the rendered
- * text, so a copy edit that moves the claim should fail here rather than quietly
- * shipping a frame of something else.
- */
-const STORY_CLAIMS = new Map([
-	[
-		"common-updatenotification--backend-update-in-flight-source-build",
-		"reinstalls the install in place",
-	],
-	[
-		"common-updatenotification--backend-update-offer-source-build",
-		"Rebuilds this checkout with `lop-update`. The rebuild happens in place",
-	],
-	[
-		"common-updatenotification--backend-update-offer-source-build-adopted",
-		"The rebuild happens in place",
-	],
-	[
-		"common-updatenotification--backend-update-failed-source-build",
-		"REFUSING to release a stale ref",
-	],
-	[
-		"common-updatenotification--backend-update-failed-orphan",
-		"something it started may still be replacing the install",
-	],
-]);
-
 export const STORIES = [
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
@@ -2537,13 +2497,6 @@ export const STORIES = [
 		1280,
 		900,
 	],
-	/*
-	 * The app-owned arm of the same panel: `ManualRemedyNote` returns null for it, no
-	 * fixture set `appOwned` before round 5, and so the state this fold's re-shoot was
-	 * about was the one state with no photograph (design D1 = QA Q-2). Same viewport,
-	 * because it is the same card.
-	 */
-	["common-updatenotification--backend-manual-required-app-owned", 1280, 900],
 	["common-updatenotification--backend-update-non-managed", 1280, 900],
 	/*
 	 * The two states the operator's own report produced (2026-09-15), and neither
@@ -2556,40 +2509,87 @@ export const STORIES = [
 	 * is their before-half.
 	 */
 	["common-updatenotification--backend-update-in-flight", 1280, 900],
+	/*
+	 * THE TWO PHASE PANELS, which the frame above is NOT (UX U6). `-in-flight` opens
+	 * on a press whose phase has not arrived, so it renders the phase-null fallback;
+	 * these two carry `installing` and `restarting`, which is what a reader watches
+	 * for the ~85 s of a publish and the seconds of the restart. They are declared so
+	 * a SWEEP produces them too: an undeclared story would leave its frames as an
+	 * unexplained directory on disk, which is the failure the sweep's own count
+	 * exists to prevent.
+	 */
+	["common-updatenotification--backend-update-installing", 1280, 900],
+	["common-updatenotification--backend-update-restarting", 1280, 900],
 	["common-updatenotification--backend-update-failed", 1280, 900],
 	/*
-	 * THE SOURCE-BUILD ROUTE, in the four states this pass added. The install is a
-	 * uv-tool build of this machine's checkout, so the app runs `lop-update` rather
-	 * than handing the command over - and every field of the panel differs from the
-	 * release case above: the consequence sentence names the rebuild and the
-	 * checkout's version, the provenance line says the checkout is rebuilt rather
-	 * than replaced by the published release, and the failure frame carries the
-	 * installer's own DIAGNOSIS (its verdict and the refs) instead of the last line
-	 * of its output, which advised bypassing the guard that just refused the user
-	 * (review round 2, U7). `--backend-update-failed-orphan` is the one sentence
-	 * this pass put in front of a user that had no frame at all: an updater stopped
-	 * on its budget with something it started still alive.
+	 * THE APP-OWNED ARM OF THE SKEW, and the pair this change is about: the install
+	 * is the published release, the daemon SERVING this app is the previous build,
+	 * and the app may restart it because it started it itself. `restartable` is the
+	 * reading that decides the panel's ending, so the story carries both numbers and
+	 * the flag - a frame whose subject is the control has to be the state that has
+	 * the control.
+	 *
+	 * Captured twice on purpose, and this entry is the second half: the same story on
+	 * the tree BEFORE the change states the fact and offers only "Understood", and
+	 * `docs/evidence/server-behind-app-owned-before/README.md` carries that arm's frame
+	 * and how it was taken. The difference between the two frames is renderer copy
+	 * and one control, so unlike a payload-only pair there is a real pre-change tree
+	 * to photograph - which is what makes this pair evidence rather than an
+	 * illustration.
 	 */
-	["common-updatenotification--backend-update-offer-source-build", 1280, 900],
+	["common-updatenotification--server-behind-app-owned", 1280, 900],
 	/*
-	 * The same offer on a machine where the app did NOT start the server. It had no frame
-	 * anywhere in the tree until round 4, and it is the arm users other than the operator
-	 * meet: the reassurance about the restart and the cost about the rebuild sit in one
-	 * paragraph there, and only a still can show whether a reader can tell them apart
-	 * (design D3). Same viewport as the app-owned arm, because the two are the same card.
+	 * THE FAILED RESTART, in both of its outcomes (design D1, UX U1). Neither had a
+	 * frame on any branch, and neither is reachable from a trigger flag: both exist
+	 * only as a COMPLETION the producer sends after a restart that did not take, so
+	 * the stories drive that payload. They are the two states this round's blocker
+	 * findings are about - the panel that contradicted itself, and the toast that
+	 * called a stopped server a success - and a finding about what a reader SEES
+	 * cannot be closed without the frame it is seen in.
 	 */
 	[
-		"common-updatenotification--backend-update-offer-source-build-adopted",
+		"common-updatenotification--server-behind-app-owned-restart-failed",
 		1280,
 		900,
 	],
+	["common-updatenotification--server-behind-app-owned-server-down", 1280, 900],
+	/*
+	 * THE UPDATE PANEL'S OWN STATES. Each of these is a sentence the reader meets, so
+	 * each carries its claim and the rig refuses the shutter without it.
+	 */
 	[
 		"common-updatenotification--backend-update-in-flight-source-build",
 		1280,
 		900,
+		{ expectText: "reinstalls the install in place" },
 	],
-	["common-updatenotification--backend-update-failed-source-build", 1280, 900],
-	["common-updatenotification--backend-update-failed-orphan", 1280, 900],
+	[
+		"common-updatenotification--backend-update-offer-source-build",
+		1280,
+		900,
+		{
+			expectText:
+				"Rebuilds this checkout with `lop-update`. The rebuild happens in place",
+		},
+	],
+	[
+		"common-updatenotification--backend-update-offer-source-build-adopted",
+		1280,
+		900,
+		{ expectText: "The rebuild happens in place" },
+	],
+	[
+		"common-updatenotification--backend-update-failed-source-build",
+		1280,
+		900,
+		{ expectText: "REFUSING to release a stale ref" },
+	],
+	[
+		"common-updatenotification--backend-update-failed-orphan",
+		1280,
+		900,
+		{ expectText: "something it started may still be replacing the install" },
+	],
 	["command-palette-commandpalette--default", 1280, 800],
 	/*
 	 * Two more than the set had, and both for a reason: `--filtered` is the only
@@ -5139,25 +5139,6 @@ const main = async () => {
 				prepared = probe?.drawn === true;
 				if (!prepared) await sleep(200);
 			}
-			/*
-			 * THE CLAIM CHECK, at the last moment before the shutter: the story says which
-			 * sentence it is evidence FOR, and a frame that does not carry it is not
-			 * evidence for anything. It runs here rather than in the probe so it costs a
-			 * round trip per captured frame and never blocks a story that has no claim.
-			 */
-			const claim = STORY_CLAIMS.get(story);
-			if (claim) {
-				const { result: claimResult } = await cdp.send("Runtime.evaluate", {
-					expression: "document.body.innerText || ''",
-					returnByValue: true,
-				});
-				const rendered = claimResult?.value ?? "";
-				if (!rendered.includes(claim)) {
-					throw new Error(
-						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. The story exists to show ${JSON.stringify(claim)}, and the rendered text does not contain it - a frame of the right size and the wrong copy is what shipped for this state once already (QA round 4, Q-3). Rendered text: ${JSON.stringify(rendered.replace(/\s+/g, " ").slice(0, 300))}`,
-					);
-				}
-			}
 			if (!prepared) {
 				throw new Error(
 					`${story} @ ${theme}: Storybook never finished preparing the story (60s). Last probe: ${JSON.stringify(probe)}. \`counted\` is the story's own elements with the decorator's two excluded, and \`drawn\` false with \`loading\`/\`pending\`/\`fonts\` clear means the element floor in \`storyDrew\` rejected it`,
@@ -6263,6 +6244,29 @@ const main = async () => {
 				if (!ok) {
 					throw new Error(
 						`${story} @ ${theme}: \`${claim.selector}\` carries ${claim.name}=${JSON.stringify(value)}, which does not satisfy ${JSON.stringify(claim.equals ?? `includes ${claim.includes}`)} - the press did not produce the state this frame is named for`,
+					);
+				}
+			}
+
+			/*
+			 * THE SENTENCE CLAIM, at the last moment before the shutter: a state whose whole
+			 * point is a sentence has to be photographed WITH that sentence on screen. The
+			 * control that makes this worth having is `backend-update-in-flight-source-build`:
+			 * it was committed as evidence for copy no reader could see, because the stories'
+			 * mock registered no listener, the panel painted the fallback, and the frame was
+			 * byte-identical to the release route's in all twelve themes. `storyDrew` counts
+			 * elements and the attribute checks ask about controls; neither can tell two
+			 * sentences apart (QA Q-3 = design D1 = UX U2, round 4).
+			 */
+			if (options?.expectText) {
+				const { result: claimResult } = await cdp.send("Runtime.evaluate", {
+					expression: "document.body.innerText || ''",
+					returnByValue: true,
+				});
+				const rendered = claimResult?.value ?? "";
+				if (!rendered.includes(options.expectText)) {
+					throw new Error(
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. The story exists to show ${JSON.stringify(options.expectText)}, and this frame is evidence for something else.`,
 					);
 				}
 			}

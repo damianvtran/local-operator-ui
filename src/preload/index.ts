@@ -342,6 +342,14 @@ const api = {
 				 * false (QA round 3, Q3-1).
 				 */
 				releaseRead?: boolean;
+				/**
+				 * Whether the INSTALL this check read is the app's own environment.
+				 *
+				 * The second ownership reading, and the one the skew panel's control needs:
+				 * `restartable` is true on a global install too, where the press behind that
+				 * control runs the install's own updater rather than a restart (design D5).
+				 */
+				appOwnedEnvironment?: boolean;
 			}) => void,
 		) => {
 			const handler = (_event, info) => callback(info);
