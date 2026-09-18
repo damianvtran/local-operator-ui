@@ -10973,9 +10973,41 @@ const driveAppOwnedUpdate = async ({
 		{
 			getStartupMode: () => service.LocalOperatorStartupMode[startupMode],
 			getBackendUrl: () => "http://127.0.0.1:9",
-			// The launch's own answer about who owns the daemon: true for an ADOPTED
-			// one, which is the reading review R8 found the completions contradicting.
+			/*
+			 * The launch's own answer about ADOPTION, which is still read on this path:
+			 * `update-service.ts` declines to bounce a daemon the launch attached to
+			 * instead of spawning, and it is the reading review R8 found the completions
+			 * contradicting.
+			 */
 			isUsingExternalBackend: () => externalBackend,
+			/*
+			 * THE OWNERSHIP READING `backendIsAppOwned()` NOW ASKS FOR, and it is a
+			 * second stub rather than a rename because the two answers are not the same
+			 * question. #321 (review round 1, R1) replaced that method's
+			 * `!isUsingExternalBackend()` body with the drift repair's own rule -
+			 * `backend-service.ts`'s `servingInstall().owned`, "can THIS app run stop the
+			 * process now" - so that the notice and the repair answer one way about one
+			 * daemon. The fixture's two shapes cover both arms of it exactly: the press
+			 * on a daemon this launch spawned is the app's to restart (`owned: true`),
+			 * and the press on one it ADOPTED is not (`owned: false`), which is
+			 * `servingInstallIsAppOwned`'s answer for a process this run does not hold
+			 * and the reason `externalBackend` stays the lever these cases drive.
+			 */
+			servingInstall: () => ({
+				readings: {
+					bootVersion: servingBeforeRestart,
+					prefix: `${globalThis.__loManagedRoot}/environments/g0`,
+					installKind: "pip",
+					startedByApp: externalBackend,
+				},
+				owned: {
+					owned: !externalBackend,
+					because: externalBackend
+						? "the process is not one this app run started and this app can only stop the generation it holds"
+						: "this app process started it and still holds the process",
+					startedByEarlierAppRun: externalBackend,
+				},
+			}),
 			setAutoUpdating: () => {},
 			stop: async () => {
 				calls.stops += 1;
