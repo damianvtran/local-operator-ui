@@ -238,6 +238,11 @@ export const CachedPaintOverflow: Story = {
  * and the footer timestamp ungated that painted "Start of conversation" above
  * "This conversation is no longer on this machine." plus a bare date floating
  * bottom-right (D2). This frame is the half that could show it.
+ *
+ * THE FOOTER HALF OF THAT IS DOUBLY HISTORICAL: the transcript's footer line was
+ * REMOVED entirely (operator report, 2026-09-17 — the same stamp painted under
+ * the working line during a live turn), so this state's foot is empty whatever
+ * the gate. What the `missing` gate still carries is the history slot's half.
  */
 export const ConversationGoneWithPaint: Story = {
 	render: () => (
