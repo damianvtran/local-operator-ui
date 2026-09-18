@@ -2,7 +2,9 @@ import {
 	DesktopControlError,
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
+import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
+import { transcriptionFailureMessage } from "@shared/api/local-operator/transcription-failure";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
 import { Button, Tooltip } from "@shared/components/ui";
@@ -37,6 +39,7 @@ import {
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	Check,
 	CircleAlert,
@@ -108,31 +111,59 @@ import {
 	CREDENTIAL_STORE_TIMEOUT_MS,
 	CREDENTIAL_TOKEN,
 	CREDENTIAL_TYPING_NOTICE,
+	CREDENTIAL_WORDS,
 	type CancelledToken,
 	type Capture,
 	type CredentialPayload,
 	IDLE_CAPTURE,
+	MASK_CELL,
 	type UnredactedDisclosure,
 	type UnstoredReason,
 	applyDomEdit,
 	armSpan,
 	cancelTypedCredential,
 	capturePasted,
+	charsOf,
 	citedPayloads,
 	credentialNamesFrom,
 	holdsCancelledToken,
 	isArmed,
 	isTyping,
 	mintTypedCredential,
+	pastedCredentialRun,
+	standsAsToken,
 	storedNotice,
 	substituteCredentials,
 	syncCapture,
 	typeIntoCapture,
 	unbackedMarkers,
+	unredactedBuffer,
 	unredactedNotice,
 	unredactedOverBuffer,
 	unstoredNotice,
 } from "./credential-capture";
+
+/**
+ * The capture's words, in the shape the planner takes them.
+ *
+ * Built ONCE, at module scope, because the words must not be written a second
+ * time here: `credential-capture.ts` owns the spellings its token is armed with,
+ * and this is that vocabulary handed to `planSlashSubmission` unchanged. See
+ * that argument's `commandLockedWords` for what the planner does with it, and
+ * the capture module for why the words are its to declare.
+ */
+const CREDENTIAL_LOCKED_WORDS: ReadonlySet<string> = new Set(CREDENTIAL_WORDS);
+
+/**
+ * Whether this platform spells its shortcuts with the command key.
+ *
+ * Module scope because the fact cannot change while the app runs, and because the
+ * sentence that PROMISES the key (`lockedCommandNote`, a constant) and the handler
+ * that LISTENS for it have to agree on one label. `navigator.platform` rather than
+ * the main process's answer, which is the shape `chat-header.tsx` and
+ * `chat-sidebar.tsx` already take for their own shortcut labels.
+ */
+const IS_MAC = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
 /**
  * The id the capture's notice carries, so the field it describes can name it.
@@ -196,6 +227,7 @@ import { completionFor } from "./slash-completion";
  */
 import {
 	extensionFor,
+	lockedCommandNote,
 	pickArmsCommand,
 	pointerPickRuns,
 	reassembledNote,
@@ -974,6 +1006,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				[conversationId],
 			),
 		);
+		/*
+		 * The cache the credential list lives in, read through the provider rather than
+		 * the module singleton so a harness can watch the invalidation happen: the store
+		 * seam below invalidates the picker's own key after a store (QA round 1, Q-5).
+		 */
+		const queryClient = useQueryClient();
 		const [isRecording, setIsRecording] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 		const [isTranscribing, setIsTranscribing] = useState(false);
@@ -1232,6 +1270,57 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const pickedToken = useRef<string | null>(null);
 		/*
+		 * The credential run a PASTE brought in, and its word (QA round 6, Q-1).
+		 *
+		 * The third provenance, and the one that had no record at all: the typed capture
+		 * arms for typing and the picker records its own write, but a pasted
+		 * `/credential <secret>` arrives with neither, sits in the box in the clear, and
+		 * `Esc` afterwards changes nothing — so one keystroke after the paste the in-word
+		 * forms reached the model. It is a record of its own rather than a re-widening of
+		 * the boundary, because the two drafts it separates are not look-alikes:
+		 * `the docs/credential rotation policy is stale` was never pasted, and stays prose.
+		 */
+		const pastedRun = useRef<{ word: string; run: string } | null>(null);
+		/*
+		 * The draft a LOCKED run consumed, and what the undo owes the user (UX round 1, U3).
+		 *
+		 * The words after a locked word are the command's ARGUMENT: the dispatcher strips
+		 * them, so they are neither run nor stored, and the splice removed them from the
+		 * box. What the user has left is a shorter sentence and no way to the words —
+		 * `Command+Z` in a textarea is the platform's own undo, which knows nothing about
+		 * a value the component wrote (`undo-after.png`). So the one press that can take a
+		 * secret out of a draft keeps the draft it took it from, and `handleLockedRunUndo`
+		 * puts it back on the key the note names.
+		 *
+		 * `text` IS THE AUTHOR'S OWN CHARACTERS, not the buffer's mask cells (UX round 2,
+		 * U8): `unredactedBuffer` replaces a live mask with the value it stands for, because
+		 * a restore that put the bullets back would be a box that LOOKS recovered and holds
+		 * nothing — the characters stand for no value any more, the capture died with the
+		 * run, and the next thing the user types lands in plain text beside them. A mask the
+		 * app cannot keep is worse than no undo at all, because the user stops looking for
+		 * the value.
+		 *
+		 * THE RECORD IS RETIRED BY EVENTS, NOT BY CONTENT (code review round 2, MINOR 1).
+		 * The first form restored only while the box still equalled what the run left there,
+		 * so a later send, an edit that returned the box to the same text, or a conversation
+		 * switch left it armed to hijack the platform's own `⌘Z` for a state the user had
+		 * left behind. It is cleared on the first edit of the box, on a send, and on a
+		 * conversation change, and it is spent by its own press.
+		 */
+		const lockedRun = useRef<{
+			/** The draft as the user typed it, with any live mask unredacted. */
+			text: string;
+			caret: number;
+			/**
+			 * HOW MANY CHARACTERS THE RUN TOOK — its argument, the span the receipt's own
+			 * sentence names — which is what the undo hands back and what the notice it
+			 * raises counts (review round 3, MAJOR 1). It is the dispatcher's own reading of
+			 * the argument (trimmed at its edges), which is the closest thing to an exact
+			 * count available at this seam.
+			 */
+			plain: number;
+		} | null>(null);
+		/*
 		 * Set when a submit has succeeded, so the payload map is retired with the
 		 * BUFFER rather than ahead of it. Clearing the map first left a window in
 		 * which the raw `[Credential #1, 19 chars]` painted un-pilled and an Enter
@@ -1380,6 +1469,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * alone would send a composer-local `[Credential #1, 52 chars]` the
 				 * model cannot use (`substitute_credentials`).
 				 */
+				/*
+				 * THE LIST THE USER IS ABOUT TO LOOK AT IS THE CACHED ONE (QA round 1, Q-5).
+				 *
+				 * A store that lands here used to leave `sessions.credential`'s list entry
+				 * fresh for the rest of its five-minute `staleTime`, so `/credential` then
+				 * mounted a picker over a list that predated the store: QA measured it
+				 * rendering "No credentials stored yet." while the same route answered with the
+				 * name that had just been stored, which takes the row the user opened the
+				 * picker for off its own screen. The key is `desktopKeys.credentials` — the
+				 * SAME one the picker reads — so this invalidation cannot drift from the read
+				 * it repairs. Nothing is invalidated when nothing stored: a refusal already
+				 * has its own notice, and an empty store must not make the picker re-ask for
+				 * the same empty list.
+				 */
+				if (stored.length > 0 && sessionId)
+					await queryClient.invalidateQueries({
+						queryKey: desktopKeys.credentials(sessionId),
+					});
 				return {
 					text: substituteCredentials(text, listed, refused),
 					stored,
@@ -1390,7 +1497,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					),
 				};
 			},
-			[credentialSessionId],
+			[credentialSessionId, queryClient],
 		);
 
 		const onSubmit = useMemo(
@@ -1502,6 +1609,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				retirePayloads.current = true;
 				setDisclosure(null);
+				/*
+				 * And the locked run's record goes with the buffer it was made from: the box a
+				 * SENT message left behind is not the box that ran the command, and an undo
+				 * pressed after the send used to put the consumed line back on screen (code
+				 * review round 2, MINOR 1).
+				 */
+				lockedRun.current = null;
 				if (conversationId) {
 					clearReplies(conversationId);
 					clearAttachments(conversationId);
@@ -1910,6 +2024,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			cancelledToken.current = null;
 			pickedToken.current = null;
+			/*
+			 * The locked run's record belongs to the BOX, and the box belongs to this
+			 * conversation: kept, an undo pressed in the NEXT conversation would put the
+			 * previous one's draft back on screen, secret and all (code review round 2,
+			 * MINOR 1).
+			 */
+			lockedRun.current = null;
 			setDisclosure(null);
 		}, [conversationId, setCapture, setDisclosure]);
 
@@ -2375,6 +2496,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// only one of the three vocabularies `/login`, `/logout`,
 					// `/credential`, `/stop`, `/fast` and `/move` appear in.
 					argumentCommands: slash.argumentCommands,
+					/*
+					 * The capture's own words, so a mid-draft `/credential <secret>` plans as
+					 * the COMMAND instead of as a message. The words are the module's, not
+					 * this file's, and they are handed over unchanged: a word nobody named
+					 * there cannot be locked by accident, and a spelling added there is a
+					 * locked word here without a second edit. See `slash-submit.ts`'s
+					 * `lockedWordPlan` for why the direction this decides is the safe one —
+					 * a refused command in front of the user rather than a secret in the
+					 * transcript.
+					 */
+					commandLockedWords: CREDENTIAL_LOCKED_WORDS,
+					/*
+					 * WHICH WORD'S RUN THIS DRAFT IS CARRYING, when the cancel record says it
+					 * put characters back — and NOTHING for a draft the app never un-masked.
+					 *
+					 * This is the whole difference between the two drafts that look alike:
+					 * `the docs/credential rotation policy is stale` is prose (no live run, so
+					 * the planner's boundary rule holds it to a word-opening slash, and the
+					 * sentence sends), while `please /credxential <secret>` one keystroke
+					 * after the app's own Escape is credential material (the run is still in
+					 * the box, so it is taken whatever spelling the word now has). The word
+					 * handed over is the record's own, and it is handed over only while the
+					 * run it restored is still in the draft — a record that restored nothing,
+					 * or whose characters have been edited away, hands nothing over. See
+					 * `carriesRestoredRun` above and `lockedWordPlan`.
+					 */
+					unmaskedRunWord: carriesRestoredRun(draft)
+						? cancelledToken.current?.text.trim().replace(/^\//, "")
+						: carriesPastedRun(draft)
+							? pastedRun.current?.word
+							: undefined,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
@@ -2486,10 +2638,124 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						: "pick",
 			[recordWord],
 		);
+		/**
+		 * The plan this draft's COMMAND-LOCKED word would run, or `null`.
+		 *
+		 * ONE QUESTION, ASKED OF THE PLANNER, for the three places that need it — the
+		 * exception below, the notice that says what the next Enter does, and the receipt
+		 * and undo a locked run owes — because the three must never disagree and a second
+		 * reading of "is this locked" is exactly how they would.
+		 *
+		 * WHAT SELECTS IT IS THE RECORD'S OWN COUNT — not the disclosure, and not "every
+		 * locked draft" (review round 4: this docblock stated the superseded form of the
+		 * rule). The disclosure was round 2's correction, and it closed the door QA round 2
+		 * measured: `unredactedOverBuffer` is a whole-buffer equality that ANY keystroke
+		 * clears, while `holdsCancelledToken` (which selects the exception) matches the
+		 * cancelled token's TEXT at its old offset and the record's text is the WORD plus its
+		 * space, never the secret — so one keystroke after the Escape the exception was handed
+		 * a box it sent, measured on the real app and byte-identical on `main`. Requiring the
+		 * planner for every locked draft then closed that door and cost the operator's own
+		 * sentence on the shape where a cancelled token was written after (§5 makes those
+		 * words theirs — round 3, MINOR 1). The callers now ask this only where the cancel
+		 * RECORDED that it put characters back (`cancelledToken.current.restored > 0`, at the
+		 * exception below): the record carries the distinction the disclosure could not, and
+		 * a span that restored nothing has no secret to keep. Its answer is still taken only
+		 * when that answer IS a locked run.
+		 */
+		const lockedRunOf = useCallback(
+			(draft: string, at: number) => {
+				const planned = planFor(draft, at);
+				if (planned.kind !== "whole" && planned.kind !== "splice") return null;
+				return planned.locked === true ? planned : null;
+			},
+			[planFor],
+		);
+		/**
+		 * Whether THIS DRAFT still holds the characters the cancel put back.
+		 *
+		 * The record's own reach (UX round 6, U24; code review round 6, MINOR 1). The
+		 * composer's record lives until a send, a dispatch or a conversation change —
+		 * that is the pane's history, and handing the record's word to the planner on
+		 * the strength of it alone applied the run's rule to drafts holding NONE of the
+		 * app's characters: `/credential <secret>` -> Escape -> clear the box -> write a
+		 * sentence -> Enter truncated the sentence, opened a Credential dialog for a
+		 * secret the operator does not have, and left it unsendable (round 5's loop, on
+		 * prose). The control — the same sentence with no Escape — was never consumed.
+		 *
+		 * So the byte comparison decides, not the history: the record counts only while
+		 * the run it restored is still in the box, which is exactly the state every
+		 * shape this branch closes is in at the press.
+		 */
+		const carriesRestoredRun = useCallback((draft: string): boolean => {
+			const cancelled = cancelledToken.current;
+			if (cancelled === null || cancelled.restored === 0) return false;
+			/*
+			 * AS A TOKEN, not as a substring (UX round 7, U27): `prod` restored from
+			 * `/credential prod` is not the `prod` inside `the prod/staging split is stale`,
+			 * and a sentence the operator wrote must not have its tail taken because two
+			 * characters of it happen to match a short value.
+			 */
+			return standsAsToken(draft, cancelled.restoredText);
+		}, []);
+		/**
+		 * Whether this draft still carries the run a PASTE brought in (QA round 6, Q-1).
+		 *
+		 * The same shape as `carriesRestoredRun` and for the same reason — the bytes
+		 * decide, not the history — with the pasted TAIL as the bytes: an edit inside the
+		 * word leaves the secret exposed and must stay covered, while a box that no longer
+		 * holds the pasted value is prose again.
+		 */
+		const carriesPastedRun = useCallback((draft: string): boolean => {
+			const pasted = pastedRun.current;
+			return pasted !== null && standsAsToken(draft, pasted.run);
+		}, []);
 		const planForDraft = useCallback(
 			(draft: string, at: number): SlashSubmissionPlan => {
 				const gesture = gestureFor(draft);
-				if (gesture === "send") return { kind: "send" };
+				if (gesture === "send") {
+					/*
+					 * §5's EXCEPTION, AND THE ONE DRAFT IT MAY NOT SEND.
+					 *
+					 * `send` here means "what you see is what gets sent" — the box cancelled this
+					 * token and the visible text is the operator's own prose (QA round 1 Q2; UX
+					 * round 2 U9). That reading cannot hold for a COMMAND-LOCKED word carrying a
+					 * tail, whose tail is a secret: measured on a live conversation, type
+					 * `/credential `, type the secret behind the mask, press Escape — which THIS APP
+					 * offers in its own notice — and the press put `/credential <the secret>` into
+					 * the conversation, on the remediation's first head and on `main` alike (UX
+					 * round 1, U1). The exception promises the user their own words, not their
+					 * secret's.
+					 *
+					 * WHAT THE CANCEL ITSELF RECORDED DECIDES, and it is the only fact that can
+					 * (review round 3, MINOR 1). The first form of this asked the DISCLOSURE
+					 * (`unredactedChars !== null`), a whole-buffer equality any keystroke clears — so
+					 * one keystroke after the Escape the exception answered `send` and the secret went
+					 * to the model (QA round 2, Q-1). The second form asked the planner for EVERY
+					 * draft holding a locked run: that closed the door, and it also cost the
+					 * operator's own sentence on the one shape where a locked word arrives through a
+					 * route the app has already told them is over — `/credential ` + Escape + words +
+					 * Enter deleted the words instead of sending them.
+					 *
+					 * `token.restored` is the fact both readings were guessing at, taken where it is
+					 * known. An EMPTY span puts nothing back, so the words written after it are the
+					 * operator's own (§5) and the composer sends them as prose — and where the draft
+					 * OPENS with the token, the leading-slash policy refuses that send outright and
+					 * the words stay in the box with nothing sent (UX round 4, U16 measured both, and
+					 * corrected this: the earlier claim here that the shape re-sends the sentence was
+					 * wrong — it is refused, and the gain over the previous head is that the words are
+					 * KEPT rather than consumed). A span that HELD characters puts a secret back, and
+					 * no later keystroke can make that untrue. Yielding is
+					 * still the planner's answer (`lockedRunOf`), not a second question asked here, and
+					 * every other draft keeps the exception's `send` to the letter — the bare-token
+					 * cancel included: a bare `/credential` carries no tail, so the planner answers
+					 * `send` too and nothing here changes.
+					 */
+					if ((cancelledToken.current?.restored ?? 0) > 0) {
+						const locked = lockedRunOf(draft, at);
+						if (locked !== null) return locked;
+					}
+					return { kind: "send" };
+				}
 				const plan =
 					gesture === "pick" ? planFor(draft, at, "pick") : planFor(draft, at);
 				if (gesture !== "pick" || plan.kind !== "send") return plan;
@@ -2519,7 +2785,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (index < 0) return plan;
 				return planFor(draft, index + word.length, "pick");
 			},
-			[gestureFor, planFor, recordWord],
+			[gestureFor, lockedRunOf, planFor, recordWord],
 		);
 
 		/**
@@ -2547,10 +2813,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				at: number,
 			) => {
 				/*
-				 * A non-`send` plan only exists with a dispatcher (`planFor` answers
-				 * `send` without one), so this is a wiring guard rather than a runtime
-				 * case: an optional call here would make a missing prop read as a
-				 * refusal that restores the draft (round 1 NIT-3).
+				 * A WIRING GUARD THAT IS NO LONGER VACUOUS (code review round 2, MINOR 5). It used to
+				 * be justified by "a non-`send` plan only exists with a dispatcher", and the locked
+				 * rule is now asked BEFORE the capability flag — deliberately, so that a host which
+				 * cannot run a command cannot send the secret either (the F2 decision, held closed).
+				 * `enabled` is `slash.available && Boolean(onSlashCommand)`, so a composer with NO
+				 * dispatcher can hold a locked plan, and this line is what the press meets: the box
+				 * is left exactly as the user typed it, nothing is sent and no note is raised, which
+				 * is the closed direction but a silently dead Enter. Production always wires the
+				 * dispatcher (`chat-content.tsx`, `chat-page.tsx`), so the state is reachable only
+				 * from a harness that mounts the composer alone — which is why the guard stays a
+				 * guard rather than becoming a refusal that restores the draft (round 1 NIT-3).
 				 */
 				const runSlashCommand = onSlashCommand;
 				if (!runSlashCommand) return;
@@ -2608,6 +2881,102 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					pendingCaret.current = next;
 					setNewMessage(text);
 					setCaret(next);
+					/*
+					 * A LOCKED RUN OWES THE USER TWO THINGS NO OTHER OUTCOME OWES (design round
+					 * 1, D1/D2; UX round 1, U2/U3; code review, F4).
+					 *
+					 * A SENTENCE, because the words after the token are now the command's argument
+					 * and the dispatcher strips it — nothing stored, nothing sent, and the box
+					 * quietly shorter while a dialog opens asking for a Name and a Value as though
+					 * nothing had been typed. It reaches the transcript through the same note idiom
+					 * the staged and list-open paths use, and it never echoes the value.
+					 *
+					 * AND A WAY BACK, because the tail is not run and not kept: this records the
+					 * draft the run consumed, which `handleLockedRunUndo` puts back on the key the
+					 * sentence names. Recovery, not data loss, for a pasted value (the clipboard
+					 * still holds it) and recovery in the only sense available for a typed one.
+					 * The record is kept OUTSIDE the draft store on purpose: it is not the draft,
+					 * it is what one press took from it.
+					 */
+					if (plan.locked === true) {
+						/*
+						 * THREE THINGS A LOCKED RUN OWES AND NO OTHER OUTCOME DOES (design round 1,
+						 * D1/D2; UX round 1, U2/U3; code review, F4).
+						 *
+						 * A SENTENCE, because the words after the token are now the command's argument
+						 * and the dispatcher strips it — nothing stored, nothing sent, and the box quietly
+						 * shorter while a dialog opens asking for a Name and a Value as though nothing
+						 * had been typed. It reaches the transcript through the same note idiom the staged
+						 * and list-open paths use, and it never echoes the value.
+						 *
+						 * THE TWO FACTS ITS VARIANT NEEDS, both of them the caller's rather than the
+						 * sentence's: whether this pane can address a session, and whether the catalogue
+						 * resolves the word the run hands the dispatcher — a word it cannot resolve
+						 * reaches its own `Unknown command` note and opens no dialog, so naming the
+						 * dialog's fields would promise a door that never opened (code review round 2,
+						 * MINOR 4). Those panes get the sentence without the fields and let the
+						 * dispatcher's own refusal or miss carry why nothing ran (UX round 2, U12).
+						 *
+						 * AND A WAY BACK, because the tail is not run and not kept: the record holds the
+						 * draft the run consumed — the AUTHOR'S characters, with a live mask unredacted
+						 * (UX round 2, U8) — and `handleLockedRunUndo` puts it back on the key the
+						 * sentence names. Recovery, not data loss, for a pasted value (the clipboard
+						 * still holds it) and for a typed one now genuinely recovered rather than
+						 * re-painted as a mask whose value is gone. The record is kept OUTSIDE the draft
+						 * store on purpose: it is not the draft, it is what one press took from it.
+						 */
+						/*
+						 * WHAT THE RECORD HOLDS, and what it refuses to hold (UX round 2, U8; review
+						 * round 3, MINOR 2). `unredactedBuffer` replaces a LIVE mask with the value it
+						 * stands for, so the record holds what the user typed rather than the bullets
+						 * the composer painted over it.
+						 *
+						 * THE RUN THE WORD OWNS IS WHERE A MASK CAN LIVE, so the scan for one is scoped to
+						 * that run rather than to the whole buffer: a `•` in the OPERATOR'S own prose — a
+						 * bulleted sentence that happens to carry the token — is a character they typed,
+						 * and it must not disarm a recovery the text can back. The cells this app paints
+						 * only ever sit in the argument, and §6 persists them there, so a cell INSIDE this
+						 * run is a mask whose value did not survive and a cell outside it is the operator's
+						 * text. Where a mask did not survive there is no honest restore to offer and NONE
+						 * IS ARMED: a box that looks recovered and holds nothing is worse than the silence
+						 * it replaced — the user types beside the bullets, gets plain text, and stops
+						 * looking.
+						 */
+						const restored = unredactedBuffer(draft, captureRef.current);
+						const owned =
+							plan.kind === "whole"
+								? restored
+								: restored.slice(plan.start, plan.end);
+						const restorable = !owned.includes(MASK_CELL);
+						lockedRun.current = restorable
+							? {
+									text: restored,
+									caret: at,
+									/*
+									 * THE CHARACTERS THE RUN TAKES — the dispatcher's own reading of the
+									 * argument, which is the span the sentence above names — because that is what
+									 * the undo hands back and what the notice it raises counts (review round 3,
+									 * MAJOR 1). The first source was the LIVE mask's length, and that is
+									 * unreachable: a live span answers Enter by minting and never reaches this
+									 * rule, so the count was always 0, the notice was never raised, and the undo
+									 * put a real secret back on screen undisclosed — the one state §5 says must
+									 * never be silent.
+									 */
+									plain: charsOf(plan.command.args).length,
+								}
+							: null;
+						onSlashNote?.(
+							lockedCommandNote(
+								plan.command.name,
+								{
+									dialog:
+										paneHasSession && slash.commandNames.has(plan.command.name),
+									undo: restorable,
+								},
+								IS_MAC,
+							),
+						);
+					}
 					return;
 				}
 				pendingCaret.current = at;
@@ -2618,6 +2987,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				onSlashCommand,
 				onSlashNote,
 				setNewMessage,
+				slash.commandNames,
 				slash.open,
 				slash.matches.length,
 				stage,
@@ -2978,6 +3348,59 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			},
 			[newMessage, caret, at, setNewMessage, isInputDisabled],
 		);
+
+		/**
+		 * The undo a LOCKED run owes the user (UX round 1, U3), in front of the platform's.
+		 *
+		 * `lockedRun` holds the draft the run consumed and the box it left; this restores
+		 * it while the box still holds exactly what the run left there. Both modifiers are
+		 * accepted because the handler cannot know which one the platform's undo uses, and
+		 * the note tells the user only its own spelling (`lockedRunUndoCap`).
+		 *
+		 * A `false` here is not a refusal: it hands the keystroke on, and the textarea's
+		 * native undo does exactly what it did before this feature existed.
+		 */
+		const handleLockedRunUndo = useCallback(
+			(event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
+				const record = lockedRun.current;
+				if (record === null) return false;
+				if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey)
+					return false;
+				if (event.key.toLowerCase() !== "z") return false;
+				// The record is retired by an edit, a send or a conversation change, never by
+				// comparing the box with what the run left there (code review round 2, MINOR 1).
+				lockedRun.current = null;
+				pendingCaret.current = record.caret;
+				/*
+				 * AND THE SENTENCE THAT DESCRIBES THE STATE IT RESTORES. Where the run took
+				 * characters, `record.text` is those characters — the operator's own — so the box
+				 * is holding a credential in plain text: exactly what §5's own Escape produces and
+				 * announces, and the one state this app says must never be silent (design round 2,
+				 * D2). `plain` is that run's count, so the announcement fires wherever the restore
+				 * is REAL rather than wherever a live mask was unredacted — a live mask never
+				 * reaches this record at all (it answers Enter by minting), so keying it on that
+				 * made this a dead line whose absence nothing could see (review round 3, MAJOR 1).
+				 * The notice's own word comes from the planner, asked of the RESTORED draft at the
+				 * render site, so the sentence and the next Enter cannot disagree: that press
+				 * really does take the restored characters as the command's argument.
+				 *
+				 * THE ANNOUNCEMENT GOES IN BEFORE THE TEXT, and that order is load-bearing rather
+				 * than tidy: `setNewMessage` is what PERSISTS the draft (the store's own writer
+				 * asks `disclosureOver` for the buffer it is about to write), so an undo that
+				 * wrote the characters first and the disclosure second would persist a plaintext
+				 * secret with `unredactedChars: 0`, silently — measured exactly that way: the
+				 * sentence right on screen, `0` in the store. The Escape path sets its disclosure
+				 * before its own persist for the same reason, and there is ONE such pair here.
+				 */
+				if (record.plain > 0)
+					setDisclosure({ chars: record.plain, over: record.text });
+				setNewMessage(record.text);
+				setCaret(record.caret);
+				return true;
+			},
+			[setDisclosure, setNewMessage],
+		);
+
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
 			(event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -3023,6 +3446,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * other handler sees the key at all. The TUI routes it the same way.
 				 */
 				if (handleCredentialKeyDown(event)) {
+					event.preventDefault();
+					return;
+				}
+				/*
+				 * Then the locked run's undo, which is this composer's own key: the box the
+				 * user is looking at was written by a component, so the native undo has no
+				 * entry that restores it (UX round 1, U3 — measured: `Command+Z` left the box
+				 * at the survivor). Its key is this one and no other, so it neither takes nor
+				 * needs an order against the mentions list above; it sits here because it must
+				 * run before the Enter branch below.
+				 */
+				if (handleLockedRunUndo(event)) {
 					event.preventDefault();
 					return;
 				}
@@ -3418,8 +3853,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				}
 				setAudioBlob(null); // Clear the blob after sending
 			} catch (error) {
+				// The raw server message stays on the console; the toast names the
+				// cause in a sentence a person can act on (see
+				// `transcriptionFailureMessage`), because "please try again" cannot
+				// fix an account with no credits or a refused sign-in.
 				console.error("Error transcribing audio:", error);
-				showErrorToast("Error transcribing audio. Please try again.");
+				showErrorToast(transcriptionFailureMessage(error));
 			} finally {
 				setIsTranscribing(false);
 			}
@@ -3600,6 +4039,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 			}
+			/*
+			 * AN ORDINARY PASTE IS ITS OWN PROVENANCE (QA round 6, Q-1). This is the
+			 * fall-through — no capture armed — so the browser's own insert is about to
+			 * happen and the payload is about to be IN the box, in the clear. Recording the
+			 * run it brought in is what lets the lock see the keystroke after it; the record
+			 * is asked for its word only while those bytes are still in the draft, exactly
+			 * like the cancel's, so an emptied box is prose again.
+			 */
+			if (pasted) pastedRun.current = pastedCredentialRun(pasted);
 			const items = event.clipboardData?.items;
 			if (items) {
 				for (let i = 0; i < items.length; i++) {
@@ -3719,7 +4167,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					? CREDENTIAL_EMPTY_SPAN_NOTICE
 					: CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE
 			: unredactedChars !== null
-				? unredactedNotice(unredactedChars)
+				? unredactedNotice(
+						unredactedChars,
+						/*
+						 * AND WHAT THE NEXT ENTER WILL DO WITH THEM. Where this draft holds a
+						 * command-locked run the press takes the restored characters as the
+						 * command's argument and sends nothing, so "Enter will expose them" is
+						 * false in the safe direction — the app's most trust-sensitive sentence
+						 * telling the user that the harmless press is the dangerous one (UX round
+						 * 2, U7). The word comes from the SAME planner call the press will use
+						 * (`lockedRunOf`), so the promise and the press cannot disagree.
+						 */
+						lockedRunOf(newMessage, caret)?.command.name,
+					)
 				: capture.arm !== null &&
 						// Measured at the END OF THE BUFFER rather than at the `caret` state,
 						// and the difference is a race rather than a nicety: `caret` lags one
@@ -4786,6 +5246,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 */
 										const next = e.target.value;
 										const at = e.target.selectionStart ?? next.length;
+										/*
+										 * ANY EDIT OF THE BOX RETIRES THE LOCKED RUN'S RECORD (code review round 2,
+										 * MINOR 1). The rule is "one edit ends it", and this is the edit: the
+										 * first keystroke, backspace, paste or drop that changes the draft. Content
+										 * equality could not say that — an edit that returned the box to the same
+										 * text left the record armed, and a `⌘Z` hours later put the consumed line
+										 * back. The programmatic writes the composer makes (a splice, a stage, the
+										 * undo itself) do not pass through here, so they do not clear it.
+										 */
+										lockedRun.current = null;
 										const applied = applyDomEdit(
 											captureRef.current,
 											newMessage,

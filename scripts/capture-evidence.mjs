@@ -2510,6 +2510,29 @@ export const STORIES = [
 	["chat-phantom-compose-rows--after-turn-death", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin-open", 1280, 800],
+	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
+	   not cover: its fixture is a finished turn (`streaming: false`), where a
+	   clockless frame that would create a row is refused. With a turn in flight
+	   the fold this change replaces painted it at the reader's arrival instead, and
+	   the operator's report is that state — opening session `c1c7072b735c` mid-turn
+	   painted the OPENING turn's eight `bash` calls, an hour earlier, under the
+	   running `wait`, each showing its output's first line where the command
+	   belongs. The `After` frames are built by the SHIPPED reducer from the real
+	   journal and the real snapshot seed of that session (`scripts/fixtures/
+	   trace-order.json`, harvested by `scripts/harvest-trace-order-fixture.mjs`);
+	   the `Before` frames by a story-local re-implementation of the pre-fix fold,
+	   because the state they are evidence about no longer exists in the shipped
+	   code and a pair shot from two trees cannot be re-captured once the base
+	   moves. `Report` folds the eight calls the report proves — the page at that
+	   moment names none of them (`page_names_ghosts: []`) — over the in-flight
+	   frame; `Live` folds the unmodified harvest — 100 retained ends, 59 of them
+	   naming a call the page cannot label. The pane is pinned here for the same
+	   reason as the pair above, and the arrival stamp is derived from the
+	   snapshot's own in-flight call so the frames do not move between captures. */
+	["chat-trace-order-while-live--before-report", 1280, 800],
+	["chat-trace-order-while-live--after-report", 1280, 800],
+	["chat-trace-order-while-live--before-live", 1280, 800],
+	["chat-trace-order-while-live--after-live", 1280, 800],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
 	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
 	   popup from wire-shaped fixtures — the rows the backend's
