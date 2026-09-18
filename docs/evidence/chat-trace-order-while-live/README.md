@@ -97,7 +97,10 @@ clip: it PAINTS BELOW ITS OWN BOX and inside the transcript's rectangle.
 shortened it (design round 2, D2-1; the third ink band measured (67,79) against a
 box ending at 64 and a pane starting at 72, in both themes), and the two halves
 of a pair have to wrap to the same number of lines for the pair to overlay at
-all. At a 420px column the same text needs four to five lines, which is why this
+all. At a 420px column the same text needs five to seven lines — five at a 468px
+viewport and six at a 420px one, where the caption's own column is 372px — and
+`after-live` is the worst of them at seven lines (six at the 468px viewport),
+its box scrolling at 117/137 against 40 (design round 3, D3-2). That is why this
 set still carries no narrow frame: the gap is recorded rather than papered over
 with a frame invented for it.
 
@@ -143,21 +146,33 @@ Every frame re-captures with its pixel differences confined to the TWO cells tha
 read the machine's clock at render — the running row's elapsed figure and the
 working line's age — and how far they move is a function of the GAP between the
 captures rather than a property of the commit, so the number belongs to the gap
-and not to the frame. Measured at a 5% fuzz (`magick compare -metric AE`), each
-re-capture against the committed bytes of the head it was taken at:
+and not to the frame. One pixel of one pair is the exception, and it is named
+because this sentence is the one a reader checks the frames with: in the light
+`after-live` frame of the round-3 re-stamp a single glyph-edge pixel sits outside
+the cells, which is encoder rounding at a descender rather than content, and the
+six-frame sentence below is exact at 0 px (design round 3, D3-3). Measured at a 5%
+fuzz (`magick compare -metric AE`), each re-capture against the committed bytes of
+the head it was taken at:
 
 | re-capture | gap | residual, both themes |
 | --- | --- | --- |
 | design round 2 (`af1b1cd70`) | ~42 min | 122–236 px of 1,308,160 |
 | QA round 2 (`af1b1cd70`) | hours | 116–324 px, the dark pair 156/161 |
 | remediation round 2, on the folded base | ~90 min | 87–170 px over the six frames this round does not change |
+| remediation round 3, re-stamp on the folded tree (`3d7b9e940`) | not recorded | 49–148 px over all eight, the clock alone |
 
 The set said "within 73 pixels" until design round 2's D2-2 measured it; 73 was
 never a bound those cells could hold. The third row of the table is the six of
-this set's eight frames whose CONTENT this round does not change — `after-live`
-is excluded because its caption was rewritten here (D2-1), which moves ~12,000 px
-and is a change rather than a residual. Every differing pixel on the six sits
-inside the two cells and nowhere else, which is the property the frame's own
+this set's eight frames whose CONTENT that round does not change; `after-live` is
+excluded from it, and it is excluded because it moved TWICE for two different
+reasons, which is why neither number may be quoted for the other event (design
+round 3, D3-1): the caption rewrite (`af1b1cd70` → `8567ffb5d`, D2-1) moved
+**12,139 px dark / 12,287 px light**, and the fold onto #312 that re-took the
+frame (`8567ffb5d` → `3d7b9e940`) moved **48,502 px dark / 63,734 px light**. The
+second is the larger by four times, it is the one the earlier wording's "~12,000"
+understated, and the theme has to be named because the two themes' figures differ
+by a third. Every differing pixel on the six sits inside the two cells and
+nowhere else, which is the property the frame's own
 footnote states — the pair count to the same anchor and move together: `4h10m` in
 the committed bytes against `4h52m` in a re-capture 42 minutes later, and the two
 figures agree inside each frame. Nothing else moves, and the line no longer
