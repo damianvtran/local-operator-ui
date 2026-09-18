@@ -1575,6 +1575,13 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 						"agents.favourited",
 						"agents.favourite_count",
 						"agents.download_count",
+						/*
+						 * The viewer's own like/favourite state for a whole page of agents. The
+						 * closed vocabulary has to name it here as well as in
+						 * `shared/api/radient/proxy.ts`, because this schema is what validates
+						 * the request the renderer actually sends.
+						 */
+						"agents.statuses",
 						"comments.list",
 						"comments.create",
 						"comments.update",
