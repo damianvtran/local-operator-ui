@@ -1030,6 +1030,130 @@ const PERCEPTIBLE = [
 		maxWeightChange: 2.0,
 		against: "canvas",
 	},
+	{
+		/*
+		 * THE MENTION CHIP'S FILL STEP, and why it is here rather than in `CONTROLS`.
+		 *
+		 * A chip inside the composer is a fill behind text the user wrote: it is not a
+		 * control, it is not the sole boundary of one, and `CONTROLS` asserts the
+		 * opposite shape - a control's fill OR border must clear 3:1 against its
+		 * ground. A ground step between two ADJACENT GROUNDS cannot: `surface` ->
+		 * `sunken` measures 3.75 ΔE00 at its worst and 1.03-1.30 as a luminance ratio,
+		 * and `sunken` is deliberately the role the app already uses for recessed
+		 * small objects (the neutral badge, the tabs track, the table header, the
+		 * skeleton bar). What the chip owes is being SEEN as one object, which is this
+		 * table's own question, so the row states that and nothing else.
+		 *
+		 * THE PAIRING DEPENDS ON THE BOX KEEPING `bg-surface`, which is why
+		 * `STRUCTURAL_CALL_SITES` pins that call site: against `canvas` the same fill
+		 * step collapses to 1.23 in `obsidian`, because `sunken` on `canvas` is the
+		 * weak step the loading bars already document.
+		 *
+		 * The two states are ONE WEIGHT, which is the other half: the outside-workspace
+		 * fill is a HUE step near this one, so a reader who cannot separate the two
+		 * hues must still read them as one kind of object rather than as two controls of
+		 * different importance. `maxWeightChange` 2.0 states exactly that.
+		 *
+		 * AND IT CANNOT SEE THE PAIR, which is design round 1's D1 stated where the
+		 * next person will read it. `maxWeightChange` is a CEILING on how far one
+		 * state's weight may move from the other's, so by construction it passes
+		 * hardest exactly when the two fills are identical - a pair with no weight
+		 * difference at all is the most comfortable input this half of the row can be
+		 * handed. The two `PERCEPTIBLE` rows therefore looked at the one pair their
+		 * own constraint is blind to and said nothing about it. The row below answers
+		 * the pair directly, by naming the other chip's ground in its own `on` list.
+		 */
+		name: "mention chip fill step",
+		role: "sunken",
+		on: ["surface"],
+		minDeltaE: 2.0,
+		pairedWith: "warningWash",
+		maxWeightChange: 2.0,
+		against: "surface",
+	},
+	{
+		/*
+		 * THE OUTSIDE-WORKSPACE CHIP'S FILL, and it is a row of its own rather than a
+		 * second `on` in the row above because the two FILLS differ, not the ground:
+		 * sharing one row would measure `warningWash` against `surface` under a name
+		 * that says `sunken`.
+		 *
+		 * Its separation IS chromatic, which is the one place ΔE00's chroma axis does
+		 * work a contrast ratio cannot - the luminance ratio for the same pair is
+		 * 1.06:1 and would fail a floor of 1.1. The chip asserts nothing about the
+		 * approval DECISION itself: the gate stays where it is, at submit, and the fill
+		 * says which references will be judged OUTSIDE THE WORKSPACE, which is the
+		 * containment question the renderer can answer (`at-mention-overlay.tsx`'s
+		 * `MENTION_CHIP_OUTSIDE_ROLE`, named for that fact rather than for the decision
+		 * - design round 1, D8).
+		 *
+		 * `on` NAMES THE OTHER CHIP'S GROUND, and that is the whole point of the row
+		 * (design round 1, D1). The pair a reader has to tell apart is
+		 * `warning-wash` against `sunken`, because those are the two fills that appear
+		 * side by side in one sentence - and the pair had never been measured: the two
+		 * rows above measured each fill against `surface`, the ground UNDER them. The
+		 * floor is the file's own `FIELD_SEPARATION_FLOOR`, the value it already calls
+		 * "a step the eye can see".
+		 *
+		 * THREE PALETTES DO NOT CLEAR IT TODAY and are pinned in `EXCEPTIONS` with
+		 * their measured values rather than hidden: `kanagawaLotus` at 0.72, `sage` at
+		 * 1.44 and `paper` at 1.61. The user-visible defect those three share is
+		 * answered everywhere by the SECOND channel the component ships - the
+		 * `border-warning-border` edge, ΔE00 23.4 or more from its own fill and from
+		 * `sunken` in every palette - which is why the fill pair can be pinned with a
+		 * measured exception list instead of holding the fix for a palette round.
+		 * Re-authoring those three washes is that round's work, not this one's.
+		 */
+		name: "mention chip outside-workspace fill step",
+		role: "warningWash",
+		on: ["surface", "sunken"],
+		minDeltaE: 2.0,
+		pairedWith: "sunken",
+		maxWeightChange: 2.0,
+		against: "surface",
+	},
+	{
+		/*
+		 * THE OUTSIDE-WORKSPACE CHIP'S EDGE, which is the state's ONLY signal in the
+		 * three palettes whose washes do not separate (review round 2, R2).
+		 *
+		 * The row above pins the fill pair, and in `kanagawaLotus` (0.72), `sage`
+		 * (1.44) and `paper` (1.61) it passes on a pinned exception, because those
+		 * three washes are within the perceptual floor of `sunken`. What carries the
+		 * state there is the 1px `border-warning-border` the chip paints as its second
+		 * channel - and until this row existed, nothing asserted it: the numbers were
+		 * in the component's comment and the call site was pinned as a string, so a
+		 * palette re-authoring that flattened `warningBorder` toward `warningWash`
+		 * kept every gate green while the state disappeared in exactly the palettes
+		 * the exception list exists for.
+		 *
+		 * Measured over the 59 palettes: ΔE00(edge, its own fill) is **23.40** at
+		 * worst (`catppuccinMocha`) and ΔE00(edge, `sunken`) **28.06** at worst
+		 * (`sage`), against the **4.0** floor this row sets - branding § 3's floor for
+		 * a 1px rule, which is the same floor the D1 remedy cites for this edge.
+		 *
+		 * THE FLOOR IS ΔE00 RATHER THAN A CONTRAST RATIO, and that is a measurement
+		 * rather than a preference: measured over the same 59 palettes, the edge clears
+		 * 3:1 against its own fill in only **34** of them (1.78:1 at worst,
+		 * `catppuccinMocha`) and against `sunken` in **55** (2.75:1 at worst, `sage`). So a
+		 * 3:1 non-text floor would fail on twenty-five palettes for a hairline whose job
+		 * is to be *seen* beside its own wash rather than to be a control's boundary. The
+		 * chip is not a control, and `CONTROLS`' shape — a fill OR a border clearing 3:1
+		 * against the ground behind it, with an ink on the fill — would assert a quota
+		 * this edge was never drawn to meet.
+		 *
+		 * NO `pairedWith`: this row has no second state to weigh against. The parity
+		 * half of this table is about ONE component in two states, and a rule that
+		 * exists only in the outside state has nothing to be parity with - inventing a
+		 * ceiling here would be an assertion that cannot bind. The loop below states
+		 * that shape explicitly instead of skipping a row whose parity fields are
+		 * absent, which is what it used to do silently.
+		 */
+		name: "mention chip outside-workspace edge",
+		role: "warningBorder",
+		on: ["warningWash", "sunken"],
+		minDeltaE: 4.0,
+	},
 ];
 
 /**
@@ -1117,6 +1241,54 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/browser/components/browser-tab-strip.tsx",
 		must: "border-control border-x border-t bg-canvas text-ink",
 		why: "the active tab's only marker a glance can find is its `border-control` edge; the ground step alone is a depth cue that measures under 1.4:1 in every palette",
+	},
+	{
+		/*
+		 * The mention chip's ground, at its call site.
+		 *
+		 * The palette rows prove `surface` -> `sunken` is a step worth drawing; only
+		 * this pin can see the edit that removes it - swapping the chip's fill for a
+		 * role that IS the ground (`surface`) leaves every ratio green while the chips
+		 * simply stop being visible, and the `PERCEPTIBLE` row above cannot see which
+		 * role a component paints.
+		 */
+		what: "mention chip fill",
+		file: "src/renderer/src/features/chat/components/at-mention-overlay.tsx",
+		must: 'MENTION_CHIP_ROLE = "rounded-sm bg-sunken"',
+		why: "the fill IS the chip's boundary - it takes no edge by design - so repainting it as the ground it sits on erases every mention in a sentence with no palette assertion able to see it",
+	},
+	{
+		/*
+		 * The outside-workspace chip's fill, pinned for the same reason from the other
+		 * side: the row above proves `warningWash` is a perceivable step from
+		 * `surface`, and nothing else proves the composer still USES it. An edit that
+		 * dropped this state would leave a path outside the workspace looking exactly
+		 * like one inside it, which is a claim about the containment question the
+		 * composer would then be making silently.
+		 *
+		 * The pin spans the WHOLE class list, including the `border-warning-border`
+		 * edge, because the edge is half of what makes the state visible in the three
+		 * palettes whose two washes are one hue (design round 1, D1): dropping it
+		 * would keep every palette row green while the state went back to being
+		 * carried by a step those palettes do not have.
+		 */
+		what: "mention chip outside-workspace fill",
+		file: "src/renderer/src/features/chat/components/at-mention-overlay.tsx",
+		must: 'MENTION_CHIP_OUTSIDE_ROLE =\n\t"box-border rounded-sm border border-warning-border bg-warning-wash"',
+		why: "the hue step plus its edge are the composer's signals that a reference will be judged outside the workspace; flattening either to the ordinary fill keeps every contrast ratio green while the state disappears",
+	},
+	{
+		/*
+		 * The composer box's own ground, which the chip's step is measured AGAINST.
+		 * Two roles decide the chip's legibility and only one of them is in the chip's
+		 * file: this pin closes the half a later edit could move - repainting the box
+		 * `canvas` collapses the same fill step to 1.23 ΔE00 in `obsidian`, below the
+		 * row's floor, and the row cannot see the box at all.
+		 */
+		what: "composer box ground",
+		file: "src/renderer/src/features/chat/components/message-input.tsx",
+		must: "border border-control bg-surface",
+		why: "the mention chip's fill step is measured against `surface`; `sunken` against `canvas` is 1.23 ΔE00 in obsidian, so the box's ground is half of that assertion and no palette row can see it",
 	},
 	{
 		what: "chat working surface ground",
@@ -1597,6 +1769,68 @@ const EXCEPTIONS = [
 		why: "same pair as monokai; 0.12 under the floor",
 	},
 ];
+
+/**
+ * Sub-floor `PERCEPTIBLE` pairs accepted with a reason, pinned to their ΔE00.
+ *
+ * The same idea as `EXCEPTIONS` one table up, for the other instrument: a pin is
+ * a DECISION, not a mute. Each entry records the measured ΔE00, so a palette move
+ * makes the entry stop matching and the gate fails until a human re-approves it —
+ * and an entry that is never consulted is itself a failure (see the staleness
+ * check beside the run's exit), which is what stops a fixed palette from leaving
+ * a permanent hole behind it.
+ *
+ * ONE PAIR LIVES HERE: the mention chip's two fills, `warningWash` against
+ * `sunken` — the pair the composer draws side by side in one sentence, measured
+ * for the first time in design round 1's D1. Three palettes cannot clear the
+ * 2.0 floor today because their ordinary and warning washes are the same warm
+ * near-white: the fills are within a couple of ΔE00 of each other, and no
+ * re-authoring of them belongs in this change. What ships INSTEAD of a palette
+ * round is the second channel that makes the state readable regardless — the
+ * outside chip's `border-warning-border` edge, which measures ΔE00 23.4 or more
+ * from its own fill and from `sunken` in all 59 palettes — so these entries
+ * document a known, bounded gap rather than the defect the round is about.
+ *
+ * @type {{theme: string, role: string, ground: string, got: number, why: string}[]}
+ */
+const PERCEPTIBLE_EXCEPTIONS = [
+	{
+		theme: "kanagawaLotus",
+		role: "warningWash",
+		ground: "sunken",
+		got: 0.72,
+		why: "worst of the three: the two washes are one colour to the eye, and the edge is the only signal in this palette",
+	},
+	{
+		theme: "sage",
+		role: "warningWash",
+		ground: "sunken",
+		got: 1.44,
+		why: "the palette design round 1 measured it in, and the reason the outside chip takes an edge at all",
+	},
+	{
+		theme: "paper",
+		role: "warningWash",
+		ground: "sunken",
+		got: 1.61,
+		why: "0.39 under the floor; same warm near-white pair",
+	},
+];
+
+/** Entries consulted during the run, so an exception that stops firing is caught. */
+const perceptibleSeen = new Set();
+
+const findPerceptibleException = (theme, role, ground, got) => {
+	const hit = PERCEPTIBLE_EXCEPTIONS.find(
+		(e) =>
+			e.theme === theme &&
+			e.role === role &&
+			e.ground === ground &&
+			Math.abs(e.got - got) < 0.01,
+	);
+	if (hit) perceptibleSeen.add(hit);
+	return hit;
+};
 
 /*
  * The step between a CONTROL's ink and a READOUT's ink, measured in one row.
@@ -2510,20 +2744,33 @@ for (const { id, palette: p } of palettes) {
 	/* Decorative lines: seen rather than contrasted, and stable across states. */
 	for (const item of PERCEPTIBLE) {
 		const role = p[item.role];
-		const sibling = p[item.pairedWith];
-		const ground = p[item.against];
-		if (!isHex(role) || !isHex(sibling) || !isHex(ground)) continue;
+		if (!isHex(role)) continue;
 		for (const g of item.on) {
 			if (!isHex(p[g])) continue;
 			assertions++;
 			const got = deltaE(role, p[g]);
-			if (got < item.minDeltaE) {
+			if (
+				got < item.minDeltaE &&
+				!findPerceptibleException(id, item.role, g, r2(got))
+			) {
 				fail(
 					`${id}: ${item.name} — ${item.role} ${role} on ${g} ${p[g]} is ΔE00 ${r2(got)}, need ${item.minDeltaE} to be seen at all`,
 				);
 			}
 		}
-		/* One component, two states: the weight may not jump. */
+		/*
+		 * ONE COMPONENT, TWO STATES: the weight may not jump. OPT-IN, because a row
+		 * can state a separation with no second state to weigh against — the mention
+		 * chip's edge is the first (review round 2, R2) — and the shape it used to
+		 * have was worse than either: a row missing `pairedWith`/`against` was skipped
+		 * WHOLE, so a row written without them looked like an assertion and was none
+		 * at all. A row that declares them gets the parity check; a row that does not
+		 * says so by leaving them out.
+		 */
+		if (!item.pairedWith || !item.against) continue;
+		const sibling = p[item.pairedWith];
+		const ground = p[item.against];
+		if (!isHex(sibling) || !isHex(ground)) continue;
 		assertions++;
 		const a = ratio(role, ground);
 		const b = ratio(sibling, ground);
@@ -2761,6 +3008,22 @@ if (stale.length > 0) {
 	process.exit(1);
 }
 
+/*
+ * And a ΔE00 exception that stopped firing is the same dead weight from the other
+ * side: it means the pair now clears its floor and the pin is describing a defect
+ * that is gone, or that the row it was written for no longer measures this pair
+ * at all.
+ */
+const stalePerceptible = PERCEPTIBLE_EXCEPTIONS.filter(
+	(e) => !perceptibleSeen.has(e),
+);
+if (stalePerceptible.length > 0) {
+	console.error(
+		`\nContrast contract FAILED: ${stalePerceptible.length} ΔE00 exception(s) were not needed (${stalePerceptible.map((e) => `${e.theme} ${e.role}/${e.ground}`).join(", ")}).`,
+	);
+	process.exit(1);
+}
+
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
 );
