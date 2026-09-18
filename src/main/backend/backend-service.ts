@@ -47,7 +47,11 @@ import {
 	requestDesktopMediaOutcome,
 } from "../desktop-media";
 import { DesktopStreamRelay } from "../desktop-stream";
-import { requestDesktop, requestDesktopOutcome } from "../desktop-transport";
+import {
+	desktopAnswerProvesPairing,
+	requestDesktop,
+	requestDesktopOutcome,
+} from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import {
 	readInstallIdentity,
@@ -580,7 +584,8 @@ export class BackendServiceManager {
 			this.backendUrl,
 			this.desktopToken,
 		).then(({ response, answered }) => {
-			if (answered) this.noteTransportAnswer();
+			if (answered)
+				this.noteTransportAnswer(desktopAnswerProvesPairing(input, response));
 			return response;
 		});
 	}
@@ -595,7 +600,8 @@ export class BackendServiceManager {
 			this.backendUrl,
 			this.desktopToken,
 		).then(({ response, answered }) => {
-			if (answered) this.noteTransportAnswer();
+			if (answered)
+				this.noteTransportAnswer(desktopAnswerProvesPairing(input, response));
 			return response;
 		});
 	}
@@ -611,19 +617,29 @@ export class BackendServiceManager {
 	 * `degraded` - which is not a state `checkBackendHealth` recovers from, so a
 	 * genuinely gone daemon could never be reported as gone.
 	 *
-	 * WHY this still counts EVERY answer, including a gated route's `401`/`403`:
-	 * the capability rules elsewhere in this file say a refusal is not a LIVENESS
-	 * signal, and that is about not calling it "connected". Turned around, a
-	 * refusal is the strongest liveness evidence this app has - a process read the
-	 * request and wrote a status line - which is exactly what a probe that ran out
-	 * of its 2 s budget failed to establish. Without this, one long agent turn was
-	 * enough to detach the connection and disable every read the daemon was still
-	 * answering.
+	 * `admitted` is the second, narrower question and the two are deliberately
+	 * separate calls rather than one boolean: an answer of ANY status is liveness
+	 * evidence (a `401`, a `403` or a `503` is a process that read the request and
+	 * wrote a status line, which is exactly what a probe that ran out of its 2 s
+	 * budget failed to establish - without that, one long agent turn was enough to
+	 * detach the connection and disable every read the daemon was still answering),
+	 * while only an answer the plane ADMITTED proves the pairing still holds.
+	 * Collapsing the two is the defect this split fixes, measured 2026-09-18: a
+	 * replaced daemon's refusals - plus the capability poll the renderer runs every
+	 * 15 s while the plane is shut, which the plane serves without admitting
+	 * anyone - each cleared the identity-failure count, so the app never detached,
+	 * never re-discovered and never re-claimed, and reported "not paired with the
+	 * running Local Operator server" until it was restarted (see
+	 * `daemon-status.ts`'s `recordTransportAnswer`/`recordTransportSuccess`).
 	 *
 	 * Only a state that actually moves pushes a snapshot: this runs on every
 	 * desktop call, and one IPC wake-up per request would be worse than the bug.
 	 */
-	private noteTransportAnswer(): void {
+	private noteTransportAnswer(admitted: boolean): void {
+		if (!admitted) {
+			this.daemonState.recordTransportAnswer();
+			return;
+		}
 		if (this.daemonState.recordTransportSuccess()) this.notifyStatus();
 	}
 	private isAppClosing = false; // Flag to track when the app is being closed
@@ -2657,18 +2673,27 @@ export class BackendServiceManager {
 				return probe.identity.pid === this.daemonState.snapshot().pid
 					? { kind: "identified" }
 					: {
-							kind: "failed",
+							kind: "contradicted",
 							detail:
 								"The answering daemon's PID no longer matches the attachment.",
 						};
 			case "identity-mismatch":
+				/*
+				 * An ANSWERED contradiction, not a `failed` probe: the address answered and
+				 * named a different process, which is what a daemon REPLACED under this app
+				 * looks like (a `lop` build swap is the ordinary cause on a developer box).
+				 * The successor refuses this app's credential until the app claims its
+				 * plane, so those refusals arrive as answers too - and if they were allowed
+				 * to excuse this observation, the count would never reach three and the app
+				 * would never re-discover or re-claim (see `daemon-status.ts`).
+				 */
 				return {
-					kind: "failed",
+					kind: "contradicted",
 					detail: `Another process is answering at ${this.backendUrl} (${probe.detail})`,
 				};
 			case "not-a-daemon":
 				return {
-					kind: "failed",
+					kind: "contradicted",
 					detail: `${this.backendUrl} answered but is not a Local Operator daemon (${probe.detail})`,
 				};
 			case "unreachable":
@@ -2876,7 +2901,22 @@ export class BackendServiceManager {
 				}
 				// A process that is still there is not ours to replace on a failed
 				// probe: paced and retried, never spawned over.
-				if (!processGone) return;
+				//
+				// A CONTRADICTION is the exception, and it is what the exception is
+				// for. The pid is alive, and it is still the process this app attached
+				// to - but it is demonstrably no longer the process ANSWERING this
+				// address, which is exactly what a `lop` build swap leaves behind: a
+				// successor holding the port while the process it replaced is still
+				// winding down. Discovery is the half that recovers from that, and it
+				// is a CLAIM on the successor the operator's own tooling started, not a
+				// spawn - spawning stays behind every guard below (`isExternalBackend`
+				// for an adopted daemon, the live owned child above), and this app may
+				// not replace a live process it did not start. Measured on the
+				// 2026-09-18 report: without this, an app that correctly detached on
+				// three answered contradictions still could not re-pair while the
+				// replaced process lingered, so the operator's only route back was the
+				// restart the banner asked for.
+				if (!processGone && observation.kind !== "contradicted") return;
 			}
 			// A live owned ChildProcess (including a legacy daemon without records)
 			// is not ours to kill just because HTTP timed out.
