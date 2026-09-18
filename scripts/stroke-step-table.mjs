@@ -133,23 +133,6 @@ const measure = (file) => {
 
 const before = measure(BEFORE);
 const after = measure(AFTER);
-/*
- * `magick compare` reports `AE` on stderr and exits **1** when the images differ,
- * which is the normal case here rather than a failure: only 0 (identical) and 1
- * (differing) are answers, anything else is the tool refusing.
- */
-const cmp = spawnSync(
-	"magick",
-	["compare", "-metric", "AE", BEFORE, AFTER, "null:"],
-	{
-		encoding: "utf8",
-	},
-);
-if (cmp.status !== 0 && cmp.status !== 1) {
-	throw new Error(`magick compare failed: ${cmp.stderr || cmp.status}`);
-}
-const differing = Number((cmp.stderr || cmp.stdout).trim().split(SPACES)[0]);
-
 const pct = (a, b) => `${(((b - a) / a) * 100).toFixed(1)}%`;
 
 console.log(
@@ -163,7 +146,14 @@ console.log(
 		"",
 		`ink mass    ${pct(before.mass, after.mass)}`,
 		`near-solid  ${before.solid.toFixed(0)} -> ${after.solid.toFixed(0)}  (${pct(before.solid, after.solid)})  <- the counter figure D8 is about`,
-		`difference  ${differing} pixels over the whole frame`,
+		/*
+		 * NO whole-frame difference here, deliberately. `magick compare -metric AE` over two lossy webp inputs
+		 * measures the codec, not the step: the same pair reads 308 px of 840,000 as lossless PNG and 5,742
+		 * re-encoded at the repo capture's own q88 (design round 4, D13). The crop-scoped figures above are the
+		 * honest ones, and the reference frame this script is pointed at is NOT committed - only its still is -
+		 * so a reader cannot re-run this command whichever way it is measured.
+		 */
+		"crop      the two frames named above, at the crop named above; the reference frame is not in this tree",
 	].join("\n"),
 );
 
