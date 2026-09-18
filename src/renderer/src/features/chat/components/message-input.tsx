@@ -125,6 +125,8 @@ import {
 	capturePasted,
 	charsOf,
 	citedPayloads,
+	clearCitedCredential,
+	clearedNotice,
 	credentialNamesFrom,
 	holdsCancelledToken,
 	isArmed,
@@ -187,6 +189,7 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
 const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
 import { sampleSuggestions } from "./composer-suggestions";
 import { ComposerTipRow } from "./composer-tip";
+import { CredentialChipLayer } from "./credential-chip-layer";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
 import { useAtResolution } from "../hooks/use-at-resolution";
@@ -1776,6 +1779,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * keystroke would land in the middle of the completed word.
 		 */
 		const pendingCaret = useRef<number | null>(null);
+
+		/*
+		 * THE MIRROR'S ELEMENT, held here because TWO components need it: the overlay
+		 * paints the chip's ground through it, and the chip layer measures the marker
+		 * runs' boxes off it (a textarea exposes no per-run geometry). One element, one
+		 * ref, so the two layers cannot end up describing two different layouts.
+		 */
+		const mirrorRef = useRef<HTMLDivElement | null>(null);
 		/*
 		 * The last buffer React committed, so `applyCapture` can tell a write that
 		 * MOVED the box from one that only re-affirmed it. Read by the caret rule
@@ -2153,7 +2164,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * can never paint a raw marker no map entry backs, and an Enter in that
 		 * window can never send a dangling citation.
 		 */
-		// biome-ignore lint/correctness/useExhaustiveDependencies: the buffer is the event
 		useEffect(() => {
 			if (!retirePayloads.current) return;
 			if (citedPayloads(newMessage, payloadsRef.current.values()).length > 0)
@@ -3743,6 +3753,105 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/*
+		 * ---------------------------------------------------------------------
+		 * The chip's `x`: throwing a credential away, in one edit
+		 * ---------------------------------------------------------------------
+		 *
+		 * The chip's control is the ONLY way to clear a reference, and it is the
+		 * composer's alone: the transcript's chip has none, because a sent message
+		 * cannot be un-sent (`credential-citation.tsx` states what one would take).
+		 *
+		 * WHAT IT DESTROYS, said plainly because the operator is told it too: the
+		 * payload is dropped from the map, and the value lived only there — the store on
+		 * the runtime is written at SUBMIT, so a reference dropped here was never
+		 * anywhere else, and only the operator can supply it again. That is why this
+		 * raises a sentence (`clearedNotice`) rather than being silent, and why it is
+		 * not offered on a marker nothing backs: there is nothing behind that chip to
+		 * clear.
+		 *
+		 * ONE EDIT, through the same door the mint uses (`applyCapture`), so the buffer,
+		 * the caret and the persisted draft move together and the empty-buffer guards
+		 * the mint relies on apply unchanged. The capture is re-synced with the
+		 * `"arrival"` origin — an app-initiated edit has neither the ARM nor the OPEN
+		 * power (§2's negative case), which is what keeps a marker's removal from
+		 * re-anchoring a latched arm onto some other `/credential` in the line.
+		 *
+		 * A LIVE MASKED SPAN IS ENDED BY IT, and that is the caret rule rather than an
+		 * oversight: the click moves the caret to the marker's start, so the mask span's
+		 * caret test fails and the held value is dropped with the state
+		 * (`syncCapture`'s "the caret left" branch) — exactly what clicking elsewhere in
+		 * the text already does. The alternative is a control that silently leaves a
+		 * half-typed secret armed in a buffer it no longer describes.
+		 *
+		 * IT ANSWERS TO THE REFUSAL, and the rebase onto #308's base is what made that a
+		 * requirement rather than a courtesy: the refused composer is `readOnly` now,
+		 * not `disabled`, so the box stays focusable and a control painted over it can
+		 * still be pressed - where a `disabled` textarea made the whole region inert.
+		 * This path WRITES into the buffer and discards a payload, so it carries the
+		 * same `isInputDisabled` predicate every other writer on the rebased base
+		 * carries (`handleSubmit`, `handleComposerKeyDown`, `handlePaste`,
+		 * `handleStartRecording`), asked FIRST for the same reason they ask it first.
+		 * The layer stops RENDERING the control while the composer refuses rather than
+		 * leaving a pressable `x` that does nothing: a control that cannot act is not
+		 * shown, which is the rule the transcript's chipless turn already follows.
+		 *
+		 * ONE EDIT, through the same door the mint uses (`applyCapture`), so the buffer,
+		 * the caret and the persisted draft move together and the empty-buffer guards
+		 * the mint relies on apply unchanged. The capture is re-synced with the
+		 * `"arrival"` origin — an app-initiated edit has neither the ARM nor the OPEN
+		 * power (§2's negative case), which is what keeps a marker's removal from
+		 * re-anchoring a latched arm onto some other `/credential` in the line.
+		 *
+		 * A LIVE MASKED SPAN IS ENDED BY IT, and that is the caret rule rather than an
+		 * oversight: the click moves the caret to the marker's start, so the mask span's
+		 * caret test fails and the held value is dropped with the state
+		 * (`syncCapture`'s "the caret left" branch) — exactly what clicking elsewhere in
+		 * the text already does. The alternative is a control that silently leaves a
+		 * half-typed secret armed in a buffer it no longer describes.
+		 *
+		 * FOCUS GOES BACK THROUGH `focusInput`, the composer's single door — UX round 1,
+		 * U2's rule for the reply chip (the control that had focus unmounts with it, and
+		 * the browser otherwise drops focus to `document.body`: no ring anywhere, and the
+		 * operator's next keystroke going nowhere), and `composer-field.ts`'s rule for
+		 * why the door rather than the node. It matters on the rebased base for a second
+		 * reason: the direct `.focus()` this used to call left `composerPointerTouched`
+		 * set, which SUPPRESSES the ask gate's next automatic hand-off - a second
+		 * implementation of the hand-off is exactly what `focusInput` exists to make
+		 * impossible. Applied HERE rather than through the reply chip's pending-ref
+		 * effect because the node it focuses does not unmount: the textarea outlives the
+		 * chip that sat over it, which is the one thing the quote's control cannot say.
+		 */
+		const clearCredential = useCallback(
+			(index: number) => {
+				if (isInputDisabled) return;
+				const payload = payloadsRef.current.get(index);
+				if (!payload) return;
+				const cleared = clearCitedCredential({
+					buffer: newMessage,
+					payload,
+				});
+				// Nothing spliced: the marker's tail was edited by hand, or the text is gone
+				// already. The buffer, the map and the notice are all left alone rather than
+				// reporting a removal that did not happen.
+				if (!cleared.cleared) return;
+				payloadsRef.current.delete(index);
+				applyCapture({
+					capture: syncCapture(
+						captureRef.current,
+						cleared.buffer,
+						cleared.caret,
+						"arrival",
+					),
+					buffer: cleared.buffer,
+					caret: cleared.caret,
+				});
+				showWarningToast(clearedNotice(payload.key));
+				focusInput();
+			},
+			[applyCapture, focusInput, isInputDisabled, newMessage],
+		);
+
+		/*
 		 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER A TURN ENDS.
 		 *
 		 * The reservation itself is argued at the row (see `data-interrupt-slot`
@@ -5260,6 +5369,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									payloads={payloadsRef.current}
 									capture={capture}
 									fieldRef={textareaRef}
+									mirrorRef={mirrorRef}
 									isSmallView={isSmallView}
 								/>
 								{/*
