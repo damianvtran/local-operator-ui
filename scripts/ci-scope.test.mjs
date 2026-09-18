@@ -6,6 +6,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	realpathSync,
+	rmSync,
 	writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
@@ -489,65 +490,73 @@ test("A9: only a path the table does not name raises the annotation", () => {
 	// Driven for real in a scratch repository, because this is a claim about what
 	// a reviewer SEES: a path the table does not name is annotated and runs the
 	// code suite, and a path it does name is silent.
-	const { repo, base } = scratchRepo();
-	writeFileSync(join(repo, "LICENSE"), "a licence\n");
-	commitAll(repo, "a root file the table does not name");
-	const annotated = runClassifier(
-		["--event", "pull_request", "--base", base],
-		repo,
-	);
-	assert.equal(annotated.status, 0);
-	assert.match(
-		annotated.stdout,
-		/::warning title=Path outside the category table::/,
-	);
-	assert.match(annotated.stdout, /`LICENSE` -> `other`/);
-	for (const flag of ["lint", "types", "unit", "pack"]) {
+	const { dir, repo, base } = scratchRepo();
+	try {
+		writeFileSync(join(repo, "LICENSE"), "a licence\n");
+		commitAll(repo, "a root file the table does not name");
+		const annotated = runClassifier(
+			["--event", "pull_request", "--base", base],
+			repo,
+		);
+		assert.equal(annotated.status, 0);
 		assert.match(
 			annotated.stdout,
-			new RegExp(`\`${flag}\` = \\*\\*true\\*\\*`),
-			`'${flag}' must run for a path the table does not name`,
+			/::warning title=Path outside the category table::/,
 		);
-	}
+		assert.match(annotated.stdout, /`LICENSE` -> `other`/);
+		for (const flag of ["lint", "types", "unit", "pack"]) {
+			assert.match(
+				annotated.stdout,
+				new RegExp(`\`${flag}\` = \\*\\*true\\*\\*`),
+				`'${flag}' must run for a path the table does not name`,
+			);
+		}
 
-	mkdirSync(join(repo, "src"), { recursive: true });
-	writeFileSync(join(repo, "src/main.ts"), "export const x = 1;\n");
-	commitAll(repo, "a source file the table names");
-	const quiet = runClassifier(
-		["--event", "pull_request", "--base", "HEAD^1"],
-		repo,
-	);
-	assert.equal(quiet.status, 0);
-	assert.match(quiet.stdout, /`src\/main.ts` -> `other`/);
-	assert.doesNotMatch(
-		quiet.stdout,
-		/::warning/,
-		"a path the table names was annotated: that is the noise which trains people to ignore the annotation that matters",
-	);
+		mkdirSync(join(repo, "src"), { recursive: true });
+		writeFileSync(join(repo, "src/main.ts"), "export const x = 1;\n");
+		commitAll(repo, "a source file the table names");
+		const quiet = runClassifier(
+			["--event", "pull_request", "--base", "HEAD^1"],
+			repo,
+		);
+		assert.equal(quiet.status, 0);
+		assert.match(quiet.stdout, /`src\/main.ts` -> `other`/);
+		assert.doesNotMatch(
+			quiet.stdout,
+			/::warning/,
+			"a path the table names was annotated: that is the noise which trains people to ignore the annotation that matters",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 test("A9: an unresolvable base runs every job, warns, and exits 0", () => {
-	const { repo, base } = scratchRepo();
-	// A SHA that is not in this repository at all: `resolveBase` tries the merge
-	// base and then the revision itself, and both fail.
-	const run = runClassifier(
-		["--event", "pull_request", "--base", "0".repeat(40)],
-		repo,
-	);
-	assert.equal(run.status, 0, "an unresolvable base must not fail the run");
-	assert.match(
-		run.stdout,
-		/::warning title=Change classification unavailable::/,
-	);
-	assert.match(run.stdout, /every job runs/);
-	for (const flag of FLAGS) {
+	const { dir, repo, base } = scratchRepo();
+	try {
+		// A SHA that is not in this repository at all: `resolveBase` tries the merge
+		// base and then the revision itself, and both fail.
+		const run = runClassifier(
+			["--event", "pull_request", "--base", "0".repeat(40)],
+			repo,
+		);
+		assert.equal(run.status, 0, "an unresolvable base must not fail the run");
 		assert.match(
 			run.stdout,
-			new RegExp(`\`${flag}\` = \\*\\*true\\*\\*`),
-			`'${flag}' was not left true on an unresolvable base`,
+			/::warning title=Change classification unavailable::/,
 		);
+		assert.match(run.stdout, /every job runs/);
+		for (const flag of FLAGS) {
+			assert.match(
+				run.stdout,
+				new RegExp(`\`${flag}\` = \\*\\*true\\*\\*`),
+				`'${flag}' was not left true on an unresolvable base`,
+			);
+		}
+		assert.notEqual(base, "");
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
 	}
-	assert.notEqual(base, "");
 });
 
 test("A9: no repository at all runs every job, warns, and exits 0", () => {
@@ -558,28 +567,32 @@ test("A9: no repository at all runs every job, warns, and exits 0", () => {
 	// tree it ships in (see `defaultRoot`) - that fallback is the second of the
 	// two independent fixes, and it is not the shape under test here.
 	const { dir } = scratchRepo();
-	const copy = copyModuleOutside(dir);
-	const probe = spawnSync("git", ["rev-parse", "--show-toplevel"], {
-		cwd: dir,
-		encoding: "utf8",
-	});
-	assert.notEqual(
-		probe.status,
-		0,
-		`${dir} is inside a repository (${tmpdir()} is not a neutral scratch location on this host), so this test would not be driving the no-repository shape`,
-	);
-	const run = runClassifier(
-		["--event", "pull_request", "--base", "HEAD"],
-		dir,
-		copy,
-	);
-	assert.equal(run.status, 0);
-	assert.match(
-		run.stdout,
-		/::warning title=Change classification unavailable::/,
-	);
-	for (const flag of FLAGS) {
-		assert.match(run.stdout, new RegExp(`\`${flag}\` = \\*\\*true\\*\\*`));
+	try {
+		const copy = copyModuleOutside(dir);
+		const probe = spawnSync("git", ["rev-parse", "--show-toplevel"], {
+			cwd: dir,
+			encoding: "utf8",
+		});
+		assert.notEqual(
+			probe.status,
+			0,
+			`${dir} is inside a repository (${tmpdir()} is not a neutral scratch location on this host), so this test would not be driving the no-repository shape`,
+		);
+		const run = runClassifier(
+			["--event", "pull_request", "--base", "HEAD"],
+			dir,
+			copy,
+		);
+		assert.equal(run.status, 0);
+		assert.match(
+			run.stdout,
+			/::warning title=Change classification unavailable::/,
+		);
+		for (const flag of FLAGS) {
+			assert.match(run.stdout, new RegExp(`\`${flag}\` = \\*\\*true\\*\\*`));
+		}
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
 	}
 });
 
@@ -594,29 +607,33 @@ test("A9: no repository at all runs every job, warns, and exits 0", () => {
  * Mutation: classify only the new path in `parseNameStatus`.
  */
 test("A10: a rename out of the inert set keeps the code suite", () => {
-	const { repo, base } = scratchRepo();
-	mkdirSync(join(repo, "src"), { recursive: true });
-	mv(join(repo, "docs/BUILD.md"), join(repo, "src/BUILD.md"), repo);
-	commitAll(repo, "move the doc into src");
-	const run = runClassifier(
-		[
-			"--event",
-			"pull_request",
-			"--base",
-			base,
-			"--summary",
-			join(repo, ".summary"),
-		],
-		repo,
-	);
-	assert.equal(run.status, 0);
-	assert.match(
-		run.stdout,
-		/`docs\/BUILD.md` -> `docs`/,
-		"the rename's OLD path was not classified",
-	);
-	assert.match(run.stdout, /`src\/BUILD.md` -> `other`/);
-	assert.match(run.stdout, /`lint` = \*\*true\*\*/);
+	const { dir, repo, base } = scratchRepo();
+	try {
+		mkdirSync(join(repo, "src"), { recursive: true });
+		mv(join(repo, "docs/BUILD.md"), join(repo, "src/BUILD.md"), repo);
+		commitAll(repo, "move the doc into src");
+		const run = runClassifier(
+			[
+				"--event",
+				"pull_request",
+				"--base",
+				base,
+				"--summary",
+				join(repo, ".summary"),
+			],
+			repo,
+		);
+		assert.equal(run.status, 0);
+		assert.match(
+			run.stdout,
+			/`docs\/BUILD.md` -> `docs`/,
+			"the rename's OLD path was not classified",
+		);
+		assert.match(run.stdout, /`src\/BUILD.md` -> `other`/);
+		assert.match(run.stdout, /`lint` = \*\*true\*\*/);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 // ---------------------------------------------------------------------------
@@ -819,87 +836,102 @@ test("A13: the step itself executes the base copy, and fails OPEN without it", (
 		"scripts/version-bump-guard.mjs": null,
 		"scripts/entry-point.mjs": null,
 	});
-	const ran = runClassifyStep(complete.repo);
-	assert.equal(
-		ran.status,
-		0,
-		`the classify step failed:\n${ran.stdout}\n${ran.stderr}`,
-	);
-	assert.match(
-		ran.stdout,
-		/BASE-REVISION-COPY/,
-		"the step did not execute the BASE revision's copy of the classifier: it ran the working tree's, which is a pull request shipping the code that decides its own gates",
-	);
-	assert.doesNotMatch(ran.stdout, /::warning/);
-	assert.deepEqual(
-		ran.output.trim().split("\n"),
-		FLAGS.map((flag) => `${flag}=false`),
-		"the base revision's copy wrote something other than what it was handed to write",
-	);
-
-	// (b) A base revision missing one of the module's imports warns and runs
-	// everything, with exit 0 - the branch the module's own header documents.
 	const incomplete = stepFixture({ "scripts/ci-scope.mjs": null });
-	const fellBack = runClassifyStep(incomplete.repo);
-	assert.equal(
-		fellBack.status,
-		0,
-		`a base revision without one of the copied files must not fail the step:\n${fellBack.stdout}\n${fellBack.stderr}`,
-	);
-	assert.match(
-		fellBack.stdout,
-		/::warning title=Change classification unavailable::/,
-	);
-	assert.deepEqual(
-		fellBack.output.trim().split("\n"),
-		FLAGS.map((flag) => `${flag}=true`),
-		"the fallback did not write every flag true, so an unclassifiable diff would skip jobs",
-	);
+	// Every scratch directory this case creates - the two fixture repositories and the
+	// two $RUNNER_TEMP copies - is removed on every path, INCLUDING a failed assertion: a
+	// leak here is a git repository per run in $TMPDIR, on a host whose scratch direction
+	// is /tmp.
+	const temps = [complete.dir, incomplete.dir];
+	try {
+		const ran = runClassifyStep(complete.repo);
+		temps.push(ran.runnerTemp);
+		assert.equal(
+			ran.status,
+			0,
+			`the classify step failed:\n${ran.stdout}\n${ran.stderr}`,
+		);
+		assert.match(
+			ran.stdout,
+			/BASE-REVISION-COPY/,
+			"the step did not execute the BASE revision's copy of the classifier: it ran the working tree's, which is a pull request shipping the code that decides its own gates",
+		);
+		assert.doesNotMatch(ran.stdout, /::warning/);
+		assert.deepEqual(
+			ran.output.trim().split("\n"),
+			FLAGS.map((flag) => `${flag}=false`),
+			"the base revision's copy wrote something other than what it was handed to write",
+		);
+
+		// (b) A base revision missing one of the module's imports warns and runs
+		// everything, with exit 0 - the branch the module's own header documents.
+		const fellBack = runClassifyStep(incomplete.repo);
+		temps.push(fellBack.runnerTemp);
+		assert.equal(
+			fellBack.status,
+			0,
+			`a base revision without one of the copied files must not fail the step:\n${fellBack.stdout}\n${fellBack.stderr}`,
+		);
+		assert.match(
+			fellBack.stdout,
+			/::warning title=Change classification unavailable::/,
+		);
+		assert.deepEqual(
+			fellBack.output.trim().split("\n"),
+			FLAGS.map((flag) => `${flag}=true`),
+			"the fallback did not write every flag true, so an unclassifiable diff would skip jobs",
+		);
+	} finally {
+		for (const dir of temps) rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 test("A13: the copied module classifies from the invocation directory, not its own path", () => {
 	const { dir, repo, base } = scratchRepo();
-	// A prose-only change: the answer this test reads is a FALSE, because a
-	// module that looked for its repository beside itself would fail every git
-	// call and answer "everything runs" instead.
-	append(join(repo, "docs/BUILD.md"), "more prose\n");
-	commitAll(repo, "docs only");
-	const copy = copyModuleOutside(dir);
-	const run = runClassifier(
-		["--event", "pull_request", "--base", base, "--verbose"],
-		repo,
-		copy,
-	);
-	assert.equal(run.status, 0, "the copied classifier failed to run");
-	assert.match(
-		run.stderr,
-		new RegExp(`ci-scope: root=${escapeRegExp(repo)}`),
-		"the copied module did not resolve its repository from the invocation directory: this is the exact defect that made the backend gate dead while its own run passed",
-	);
-	assert.match(
-		run.stdout,
-		/`docs\/BUILD.md` -> `docs`/,
-		"the copied module classified no path, so its git calls were answered by something other than this repository",
-	);
-	for (const flag of FLAGS) {
+	try {
+		// A prose-only change: the answer this test reads is a FALSE, because a
+		// module that looked for its repository beside itself would fail every git
+		// call and answer "everything runs" instead.
+		append(join(repo, "docs/BUILD.md"), "more prose\n");
+		commitAll(repo, "docs only");
+		const copy = copyModuleOutside(dir);
+		const run = runClassifier(
+			["--event", "pull_request", "--base", base, "--verbose"],
+			repo,
+			copy,
+		);
+		assert.equal(run.status, 0, "the copied classifier failed to run");
+		assert.match(
+			run.stderr,
+			new RegExp(`ci-scope: root=${escapeRegExp(repo)}`),
+			"the copied module did not resolve its repository from the invocation directory: this is the exact defect that made the backend gate dead while its own run passed",
+		);
 		assert.match(
 			run.stdout,
-			new RegExp(`\`${flag}\` = \\*\\*false\\*\\*`),
-			`a prose-only diff on the copied module left '${flag}' true, which is what a broken root looks like: fail-open, silently, forever`,
+			/`docs\/BUILD.md` -> `docs`/,
+			"the copied module classified no path, so its git calls were answered by something other than this repository",
 		);
+		for (const flag of FLAGS) {
+			assert.match(
+				run.stdout,
+				new RegExp(`\`${flag}\` = \\*\\*false\\*\\*`),
+				`a prose-only diff on the copied module left '${flag}' true, which is what a broken root looks like: fail-open, silently, forever`,
+			);
+		}
+		// And the wiring the workflow adds on top resolves the same repository from a
+		// cwd that is not in it at all, which is what `--root "$GITHUB_WORKSPACE"`
+		// buys: the step is independent of `defaultRoot`'s cleverness.
+		const elsewhere = join(dir, "elsewhere");
+		mkdirSync(elsewhere, { recursive: true });
+		const explicit = runClassifier(
+			["--event", "pull_request", "--base", base, "--root", repo],
+			elsewhere,
+			copy,
+		);
+		assert.equal(explicit.status, 0);
+		assert.match(explicit.stdout, /`docs\/BUILD.md` -> `docs`/);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
 	}
-	// And the wiring the workflow adds on top resolves the same repository from a
-	// cwd that is not in it at all, which is what `--root "$GITHUB_WORKSPACE"`
-	// buys: the step is independent of `defaultRoot`'s cleverness.
-	const elsewhere = join(dir, "elsewhere");
-	mkdirSync(elsewhere, { recursive: true });
-	const explicit = runClassifier(
-		["--event", "pull_request", "--base", base, "--root", repo],
-		elsewhere,
-		copy,
-	);
-	assert.equal(explicit.status, 0);
-	assert.match(explicit.stdout, /`docs\/BUILD.md` -> `docs`/);
 });
 
 // ---------------------------------------------------------------------------
@@ -1015,22 +1047,26 @@ test("A18: this suite is wired into a CI step and the desktop list", () => {
  * Mutation: drop the `git ls-files --others` half of `collectPaths`.
  */
 test("A19: a local run sees untracked and uncommitted work", () => {
-	const { repo, base } = scratchRepo();
-	mkdirSync(join(repo, "src"), { recursive: true });
-	writeFileSync(join(repo, "src/untracked.ts"), "export const x = 1;\n");
-	const local = runClassifier(["--since", base], repo);
-	assert.equal(local.status, 0);
-	assert.match(
-		local.stdout,
-		/`src\/untracked.ts` -> `other`/,
-		"an untracked file was not classified, so a local run would report on a diff the developer has not got",
-	);
-	assert.match(local.stdout, /`lint` = \*\*true\*\*/);
+	const { dir, repo, base } = scratchRepo();
+	try {
+		mkdirSync(join(repo, "src"), { recursive: true });
+		writeFileSync(join(repo, "src/untracked.ts"), "export const x = 1;\n");
+		const local = runClassifier(["--since", base], repo);
+		assert.equal(local.status, 0);
+		assert.match(
+			local.stdout,
+			/`src\/untracked.ts` -> `other`/,
+			"an untracked file was not classified, so a local run would report on a diff the developer has not got",
+		);
+		assert.match(local.stdout, /`lint` = \*\*true\*\*/);
 
-	// The CI shape deliberately does NOT see it: `--base` names the revision the
-	// checkout was built on, and an uncommitted file is not part of it.
-	const ci = runClassifier(["--event", "pull_request", "--base", base], repo);
-	assert.doesNotMatch(ci.stdout, /src\/untracked\.ts` -> /);
+		// The CI shape deliberately does NOT see it: `--base` names the revision the
+		// checkout was built on, and an uncommitted file is not part of it.
+		const ci = runClassifier(["--event", "pull_request", "--base", base], repo);
+		assert.doesNotMatch(ci.stdout, /src\/untracked\.ts` -> /);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 // ---------------------------------------------------------------------------
@@ -1044,20 +1080,24 @@ test("A19: a local run sees untracked and uncommitted work", () => {
  * Mutation: make `--all` return false for one flag.
  */
 test("A20: --all writes every flag true", () => {
-	const { repo } = scratchRepo();
-	const output = join(repo, ".github-output");
-	const run = runClassifier(
-		["--all", "--github-output", output, "--summary", join(repo, ".summary")],
-		repo,
-	);
-	assert.equal(run.status, 0);
-	const written = readFileSync(output, "utf8").trim().split("\n");
-	assert.deepEqual(
-		written,
-		FLAGS.map((flag) => `${flag}=true`),
-		"--all did not write every flag as true, so the fallback would skip jobs",
-	);
-	assert.match(readFileSync(join(repo, ".summary"), "utf8"), /### Jobs/);
+	const { dir, repo } = scratchRepo();
+	try {
+		const output = join(repo, ".github-output");
+		const run = runClassifier(
+			["--all", "--github-output", output, "--summary", join(repo, ".summary")],
+			repo,
+		);
+		assert.equal(run.status, 0);
+		const written = readFileSync(output, "utf8").trim().split("\n");
+		assert.deepEqual(
+			written,
+			FLAGS.map((flag) => `${flag}=true`),
+			"--all did not write every flag as true, so the fallback would skip jobs",
+		);
+		assert.match(readFileSync(join(repo, ".summary"), "utf8"), /### Jobs/);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 // ---------------------------------------------------------------------------
@@ -1254,6 +1294,9 @@ function runClassifyStep(repo) {
 		stderr: result.stderr ?? "",
 		output: readFileSync(output, "utf8"),
 		summary: readFileSync(summary, "utf8"),
+		// Handed back rather than removed here: the callers clean it up with the
+		// rest of their scratch, so a failed assertion cannot leave it behind.
+		runnerTemp,
 	};
 }
 
