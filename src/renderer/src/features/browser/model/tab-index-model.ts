@@ -235,11 +235,15 @@ export function tabsBySession<T extends TabInput>(
 }
 
 /**
- * What one conversation's sidebar row draws: how many tabs it has, what they are
- * doing, and whether anything is waiting on the user.
+ * One conversation's browser activity, in the shape the sidebar's rows used to
+ * draw it: how many tabs it has, what they are doing, and whether anything is
+ * waiting on the user.
  *
- * `pendingApprovals` is an ASK and the rest are FACTS, which is why the mark
- * gives it the accent badge and the count a quiet number (design R2, 5.1).
+ * `pendingApprovals` is an ASK and the rest are FACTS, which is how the deleted
+ * mark drew it — the ask as the accent badge, the facts as a quiet number (design
+ * R2, 5.1). The mark is gone (operator ask, 2026-09-18); the surviving consumer is
+ * the chat header's badge, which draws the ask alone and reads the same projection
+ * this shape comes from.
  */
 export interface ConversationBrowserSummary {
 	tabCount: number;

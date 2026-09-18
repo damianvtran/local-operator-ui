@@ -1,4 +1,3 @@
-import type { ConversationBrowserSummary } from "@features/browser/model/tab-index-model";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
@@ -201,17 +200,6 @@ let roster: WireRow[] = [];
  */
 let entities: { agents: string[]; teams: string[] } | null = null;
 
-/**
- * What the browser is doing in each conversation, for the `BrowserMarks` story.
- *
- * A FIXTURE RATHER THAN THE LIVE MAP, and the reason is the same one the roster above
- * has: the real counts come from `useConversationBrowserSummaries`, which reads the
- * shared projection through the browser bridge — and a story has no bridge and no host.
- * The page passes this map to the real `ChatSidebar`, which is the same prop the page
- * passes in the app, so what is faked is the transport and nothing above it.
- */
-let markFixtures: ReadonlyMap<string, ConversationBrowserSummary> = new Map();
-
 if (typeof window !== "undefined") {
 	const page = window as unknown as {
 		api?: {
@@ -373,18 +361,6 @@ const Readout: FC<{ rows?: number }> = ({ rows }) => {
 					…and {sessions.length - shown.length} more rows, in the list beside.
 				</p>
 			)}
-			<p data-readout-marks>
-				Browser marks:{" "}
-				{markFixtures.size === 0
-					? "none"
-					: sessions
-							.filter((row) => markFixtures.has(row.session_id))
-							.map((row) => {
-								const summary = markFixtures.get(row.session_id);
-								return `${row.title}: ${summary?.tabCount} tab(s), ${summary?.pendingApprovals} approval(s)`;
-							})
-							.join(" · ")}
-			</p>
 			<p data-readout-frames className="pt-2">
 				Frames delivered: {frames.length ? frames : "none"}
 			</p>
@@ -399,8 +375,6 @@ const Page: FC<{ readoutRows?: number }> = ({ readoutRows }) => (
 				selectedConversation={undefined}
 				onSelectConversation={() => undefined}
 				onStageDraft={() => undefined}
-				browserSummaries={markFixtures}
-				onOpenConversationBrowser={() => undefined}
 			/>
 		</div>
 		<Readout rows={readoutRows} />
@@ -504,57 +478,6 @@ export const GateParked: Story = {
  * "Complete, unread", and the row's tooltip carries the same words for a pointer
  * user.
  */
-/**
- * THE CONVERSATION MARK ON THE ROWS (design R2).
- *
- * The one story in this file about the browser, and it is here rather than beside the
- * mark's own stories because the claim is about the LIST: three conversations, two of
- * them with a browser doing something, and the marks sitting in the rows at the sidebar's
- * own width - on the resting ground and beside a row whose status glyph is already
- * talking, which is the pair that has to stay legible together.
- *
- * The counts are the ones `docs/evidence` frames as `chat-sidebar-browser-marks`: a
- * conversation with three tabs (one loading) and one approval, a second with two tabs
- * and nothing waiting, and a third with no browser at all drawn by the same list — the
- * last being the control case, because "the rule is that only rows with something to say
- * carry a mark" is invisible unless a row without one is in the frame.
- */
-export const BrowserMarks: Story = {
-	render: () => {
-		roster = [
-			wireRow(QUARTERLY, "Quarterly revenue model", 1_760_000_300, BUSY, 1),
-			wireRow(
-				RECONCILE,
-				"Reconcile the supplier ledger",
-				1_760_000_200,
-				IDLE,
-				1,
-			),
-			wireRow(MIGRATE, "Migrate the deploy script", 1_760_000_100, IDLE, 1),
-		];
-		markFixtures = new Map([
-			[
-				QUARTERLY,
-				{
-					tabCount: 3,
-					loadingCount: 1,
-					failedCount: 0,
-					pendingApprovals: 1,
-				},
-			],
-			[
-				RECONCILE,
-				{ tabCount: 2, loadingCount: 0, failedCount: 1, pendingApprovals: 0 },
-			],
-		]);
-		return <Page />;
-	},
-	play: async () => {
-		await catalogueSettled(3);
-		await sleep(300);
-	},
-};
-
 export const CompletionUnseen: Story = {
 	render: () => {
 		roster = [
@@ -1500,5 +1423,64 @@ export const CompletionCursorPartlyClipped: Story = {
 		deliver(catalogueFrame(2, 93));
 		await sleep(1200);
 		releaseShutter();
+	},
+};
+
+/* ----------------------------- a title long enough to reach the row's end */
+
+/**
+ * THE ROW'S TITLE BOX, ON A TITLE THAT ACTUALLY REACHES IT.
+ *
+ * The operator's reason for removing the per-row browser control was the space
+ * it held (`docs/evidence/chat-sidebar-browser-mark-baseline/README.md`), and the
+ * only artifact that ever stated that cost was the deleted
+ * `browser-conversation-mark--slot-cost` specimen: a caption reading "title 240px
+ * without the mark, 212px with it". The three states the baseline set re-captured
+ * cannot stand in for it - their titles end at x 180-207 while the slot begins at
+ * x 332, so the reserved 28px is invisible in them and the claim lived in prose
+ * (design round 1, D1).
+ *
+ * This state is that measurement in pixels: one row whose title is long enough to
+ * TRUNCATE at this panel's own width, so the `truncate` ellipsis sits where the
+ * box ends and the box's own edge is the thing the frame is about. Before/after
+ * are the same story on two trees (the before half is in
+ * `chat-sidebar-browser-mark-baseline/truncating-title/`, this half in the live
+ * set), which is the pair the deletion's width claim is judged on - and the
+ * difference between the two ellipsis positions IS the reclaimed width.
+ *
+ * It lives in THIS file because on the tree the before half is captured from,
+ * this is the only story file whose page passes the summary map the mark reads
+ * (`browserSummaries={markFixtures}`, an empty `Map` by default, which the base
+ * tree's `browserMarkFor` still draws a quiet Globe from). The other states here
+ * photograph the feed's transitions; this one photographs the row's geometry,
+ * and the two are the same component at the same width.
+ */
+const LEDGER_LONG = "5e6f708192a3";
+
+/** Long enough to truncate in BOTH halves, so what the frame compares is where
+    the ellipsis lands rather than whether there is one. */
+const LEDGER_LONG_TITLE =
+	"Reconcile the supplier ledger against the quarterly revenue model and the regional forecast";
+
+export const TruncatingTitle: Story = {
+	render: () => {
+		roster = [
+			wireRow(LEDGER_LONG, LEDGER_LONG_TITLE, 1_760_030_300, BUSY, 8),
+			wireRow(
+				RECONCILE,
+				"Reconcile the supplier ledger",
+				1_760_030_200,
+				BUSY,
+				7,
+			),
+			wireRow(MIGRATE, "Migrate the deploy script", 1_760_030_100, IDLE, 1),
+		];
+		return <Page />;
+	},
+	play: async () => {
+		/* The list is the subject, so the shutter waits only for it: no frame is
+		   delivered, and the rows keep the catalogue's own stamps. */
+		await catalogueSettled(3);
+		await sleep(300);
 	},
 };

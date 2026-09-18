@@ -13,14 +13,15 @@ import { useConversationBrowserSummaries } from "./use-conversation-browser-summ
  * count has to exist while the pane does not — and the pane's own instance of the
  * model goes away with the pane.
  *
- * IT IS NOW THE SAME COUNT AS THE SIDEBAR MARK'S (design R2), and that is a change of
- * mechanism rather than of number: both read `summariseConversations` over the one shared
- * projection, so a conversation's badge in the header and its mark in the sidebar cannot
- * disagree. The rule is unchanged — live requests (`expiresAt > now`) whose requester is
- * this conversation, counted off the app's single clock — but there is now one
- * implementation of it instead of two, which is what the earlier version of this comment
- * claimed for the queue model and what the sidebar would have quietly broken by counting
- * for itself.
+ * IT USED TO BE THE SAME COUNT AS THE SIDEBAR MARK'S (design R2), and that mark is
+ * gone (operator ask, 2026-09-18): the change of mechanism it made is kept, because it
+ * is the half that was ever load-bearing. Both the badge and the deleted mark read
+ * `summariseConversations` over the one shared projection, so a conversation's badge
+ * here cannot disagree with the pane's tray; the badge is now the only surface drawing
+ * it, and the rule is unchanged — live requests (`expiresAt > now`) whose requester is
+ * this conversation, counted off the app's single clock. What the deletion costs is
+ * stated where it belongs: nothing in the chrome now surfaces ANOTHER conversation's
+ * waiting request without opening the browser.
  *
  * A DRAFT OWNS NO REQUESTS: with no session id the count is zero rather than every
  * request in the app. A chat whose header badge counted another conversation's
