@@ -129,9 +129,12 @@ export type CredentialChipProps = {
 	 */
 	style?: CSSProperties;
 	/**
-	 * DESIGN-ROUND-8 SCRATCH: the field's own type step, so the chip's text is
-	 * the size of the marker run it covers rather than the app's body step at
-	 * both rungs.
+	 * The field's own type step, so the chip's text is the size of the line box it
+	 * covers rather than the app's body step: the composer passes its own
+	 * `isSmallView`, and the run box IS the field's line box (17px at the wide rung,
+	 * 16px at the compact one). Without it the compact rung's chip renders 14px over
+	 * a 13px run, a step too big and a pixel under the prose baseline (design round
+	 * 8, D20).
 	 */
 	small?: boolean;
 };
@@ -187,17 +190,21 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 			// NO `ml-auto` HERE IN EITHER REGISTER (design round 1, D1; round 2, D8).
 			// The composer's chip is painted in a box the MINT fixed
 			// (`[Credential #1, 19 chars]` is 157.33px wide at the 1024 rung) while the
-			// chip's own face is ~111px, so a count that takes the slack parks empty
+			// chip's own face is ~123px, so a count that takes the slack parks empty
 			// fill *between* the ordinal and the facts it belongs to: `#1` and
-			// `· 19 chars` read as two stranded clusters. Round 1 moved the slack to the
-			// control and left it on the count WHERE THERE IS NO CONTROL - so the
-			// unbacked register, the one a restored draft shows once its value is gone,
-			// kept the defect and 58px of it (round 2, D8: the widest void in the set).
-			// The arrangement is now the same in both registers, which is the honest
-			// reading of "the facts sit together": the face's own gaps are the four
-			// between glyph and ordinal and the five before the count, the slack falls
-			// at the far edge of the box, and the control - when there is one - is what
-			// the gutter precedes.
+			// `· 19 chars` read as two stranded clusters.
+			//
+			// WHERE THE SLACK GOES NOW (design round 8, D19): the root is
+			// `justify-between`, so it is divided ACROSS THE GAPS THE CHIP HAS rather
+			// than parked anywhere - and the two registers do not have the same number
+			// of gaps. Backed, with the control: three gaps of 10.69 / 10.68 / 10.69 at
+			// the 1024 rung. Unbacked (no control - a restored draft whose value is gone,
+			// or a composer refusing input): TWO gaps of 22.03 / 22.01, because there is
+			// no third item to spread them towards. That wider pair is intended rather
+			// than inherited: it is the price of a register that carries no control, the
+			// designer looked at the delivered frame and did not ask for it to change,
+			// and re-grouping the items to tighten it would re-price D19 itself (it
+			// takes the backed chip's own 10.7px band to about 20px).
 			<span className="shrink-0">{`· ${chars} chars`}</span>
 		)}
 		{onClear && (
@@ -209,8 +216,14 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 				// on the chip reaches the textarea underneath and places the caret; the
 				// control is the one part that takes the pointer, and it says so here.
 				//
-				// `ml-auto` IS THE GUTTER (design round 1, D1): the control, not the
-				// count, is what the slack sits before.
+				// THE TRAILING EDGE IS WHERE IT SITS (design round 8, D19): the root is
+				// `justify-between`, so the control is the last item and needs no
+				// `ml-auto` to reach the end - the utility it carried through rounds 1-7
+				// is gone. `-mr-1` is the optical margin that pairs with `px-3`: the
+				// control carries about 4px of its own bearing inside its 16px target
+				// (2px of padding plus the icon's own inset), so 12px of box padding on
+				// both ends leaves the PAINTED ends 4px apart; the negative margin takes
+				// that back, leaving 12.02 left against 12.81 right at the 1024 rung.
 				//
 				// `p-0.5` IS THE TARGET (design round 1, D2; UX round 1, U5): a bare
 				// `size-3` glyph was a 12x12 box, the smallest control in the composer

@@ -816,10 +816,17 @@ const main = async () => {
 				/*
 				 * THE FACE HAS TO FIT THE BOX IT COVERS (design review round 8, D21). The chip is
 				 * painted over the marker's run, so it takes the run's width; the face may be
-				 * narrower (the slack is what D19 distributes) but never wider, and today it has
-				 * 34.05px of headroom at 1024 and 29.14px at 440. A mutant that narrows a painted
-				 * box to 120px truncates the ordinal and fails here, which is the state the
-				 * `content == client` reading cannot see.
+				 * narrower (the slack is what D19 distributes) but never wider. Measured on this
+				 * head: 14.05px of headroom at 1024 (face 143.28 against a 157.33 box) and
+				 * **9.14px at 440** (138.53 against 147.67) - twenty pixels less than the chip
+				 * this comment first quoted, because D19's `px-1 -> px-3` and `gap-1 -> gap-1.5`
+				 * spend exactly that on padding and rhythm. The compact rung is therefore the
+				 * one with the least room, which is why the assertion below runs on EVERY phase
+				 * that draws a chip rather than inside the boundary sweep alone (code review
+				 * round 9, R9-2): the sweep is skipped wherever the field does not scroll, and
+				 * only one story scrolls. A mutant that widens the face by 10px
+				 * (`gap-1.5 px-3` -> `gap-1.5 px-[17px]`) truncates the 440 ordinal and fails
+				 * here, which is the state the `content == client` reading cannot see.
 				 */
 				for (const chip of at.chipsDetail ?? []) {
 					if (chip.face > chip.boxWidth) {
@@ -917,6 +924,23 @@ const main = async () => {
 			mobile: false,
 		});
 
+		/*
+		 * THE FACE FITS ITS BOX, ON EVERY PHASE THAT DRAWS ONE (code review round 9, R9-2).
+		 * D21's check first lived inside the boundary sweep's loop, and the sweep is skipped
+		 * wherever the field does not scroll - which is every story but one, at 1024. The
+		 * tightest rung (440, 9.14px of headroom) was therefore the one nothing checked, and a
+		 * face widened by one utility passed the whole rig. The readings are the probe's own
+		 * (`face`, `headroom`, both per chip), so this runs wherever a chip is painted.
+		 */
+		for (const phase of phases) {
+			for (const chip of phase.chips ?? []) {
+				if (typeof chip.face === "number" && chip.face > chip.box.width) {
+					throw new Error(
+						`${story} @ ${width}x${height} (${phase.phase}): the chip's face (${chip.face}px) is wider than the box it covers (${chip.box.width}px), so the reference's ordinal is truncated (design round 8, D21) - ${JSON.stringify(chip)}`,
+					);
+				}
+			}
+		}
 		results.push({
 			story,
 			viewport: `${width}x${height}`,
