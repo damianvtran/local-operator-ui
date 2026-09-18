@@ -255,13 +255,16 @@ const Page: FC<{ note: string }> = ({ note }) => (
 		<div className="w-[420px] shrink-0 space-y-3 p-4 text-meta text-ink-muted">
 			<p className="text-ink">{note}</p>
 			<p>
-				The current row is drawn on <code className="font-mono">highlight</code>
-				, a LIGHTNESS step off the panel's{" "}
-				<code className="font-mono">surface</code> in the direction the mode
-				runs (lighter on a dark theme, darker on a light one), plus{" "}
-				<code className="font-mono">font-medium</code>; the hover step the same
-				rows carry is <code className="font-mono">elevated</code>. The caps
-				carry no fill and no border on any of them.
+				The current row is drawn on{" "}
+				<code className="font-mono">rowSelected</code> — a tint of the theme's
+				own <code className="font-mono">accent</code> hue, though on the
+				monochrome theme it is a neutral step instead — off the panel's{" "}
+				<code className="font-mono">surface</code>, plus 2px of{" "}
+				<code className="font-mono">accent</code> on the leading edge and{" "}
+				<code className="font-mono">font-medium</code>. The pointer state the
+				rows around it carry is <code className="font-mono">rowHover</code>: the
+				two fills are one hue at two strengths, so the bar and the weight are
+				what rank them. The caps carry no fill and no border on any of them.
 			</p>
 			<p>
 				{selected
@@ -375,7 +378,8 @@ export const SettingsRail: Story = {
 				<p>
 					A menu row on the SAME <code className="font-mono">surface</code>{" "}
 					ground as the chat panel, carrying the same{" "}
-					<code className="font-mono">highlight</code> ground and the same{" "}
+					<code className="font-mono">rowSelected</code> ground, the same 2px{" "}
+					<code className="font-mono">accent</code> bar and the same{" "}
 					<code className="font-mono">font-medium</code> weight.
 				</p>
 				<p>{`activeSection = ${RAIL_ACTIVE}`}</p>

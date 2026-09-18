@@ -118,8 +118,8 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * lightness step toward the panel's hue, and lightness is the one axis the band
  * had already spent: 32 of the 41 dark palettes share one 230-306 degree family,
  * so a foot on that ladder is not a mark a reader can find. `rowSelected` is
- * asserted at ΔE00 **6.0** off `surface` AND 6.0 off `rowHover`, with a
- * 3.0-5.0 `L*` step in the direction the mode runs and a chroma ceiling; its doc
+ * asserted at ΔE00 **4.0** off `surface` AND **2.0** off `rowHover`, with a
+ * 1.5-5.0 `L*` step in the direction the mode runs and a chroma ceiling; its doc
  * in `palette-contract.ts` states the rule in full and
  * `scripts/contrast-contract.mjs` asserts it per palette.
  *
@@ -128,8 +128,9 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * by something that is not a colour distance at all: a 2px `accent` bar on the
  * row's leading edge, drawn with a `before:` pseudo-element so it costs no layout
  * and cannot shift the label, beside the `font-medium` the row already carried.
- * `accent` measures 4.60-11.8:1 against its own selected ground across all 59
- * palettes, so the 3:1 non-text floor holds everywhere, and the idiom is not new:
+ * `accent` measures 4.23-11.48:1 against its own selected ground across all 59
+ * palettes (the fleet's tightest is `tokyoNight`, its strongest `obsidian`), so
+ * the 3:1 non-text floor holds everywhere, and the idiom is not new:
  * `at-picker.tsx` and `slash-commands.tsx` mark the row Enter will apply with the
  * same bar for the same reason — their popup's active row was carried by hue
  * alone. The sidebar was the only selection in the app without one.
@@ -162,13 +163,15 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  *
  * THE HOVER'S OWN WEAKEST CASE, NAMED RATHER THAN LEFT TO PASS. On `obsidian`
  * the palette's accent is the off-white at C* 0, so neither role can spend chroma
- * and both are neutral steps at the ink cap: the hover measures ΔE00 2.23 off
- * `surface` and the selection 3.90, and the SELECTION's near-white bar (11.5:1)
+ * and both are neutral steps at the ink cap: the hover measures ΔE00 4.05 off
+ * `surface` and the selection 4.22, 3.56 apart, and the SELECTION's near-white bar
+ * (11.48:1)
  * is what carries the state. The hover therefore has the fill alone — there is no
  * second signal a component can give a hover here without giving every hover in
  * the fleet the selection's own bar, which would make the two states unrankable,
  * and an edge on a row is the ring this panel retired. It is recorded in
- * `ROW_STATE_PINS` in `scripts/contrast-contract.mjs` with its measured ceiling;
+ * `ROW_STATE_NEUTRAL_ACCENT` in `scripts/contrast-contract.mjs` - the CLASS it
+ * belongs to, not a ledger row - with its measured ceiling;
  * it is a value-level debt for the palette half, not something this layer can pay.
  *
  * WHY NOT `elevated`, AND WHY THE HOVER BESIDE THE SELECTION IS A ROLE OF ITS
@@ -214,8 +217,8 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * (radient 6.25 and synth 5.44 against marks of 4.01-4.15). The row-state pass
  * retired the pair rather than the cap: `rowHover` is asserted above the old
  * `elevated` step (ΔE00 4.0, against the median 2.45 that had made the operator
- * report it twice as a whisper) and `rowSelected` is asserted 6.0 off `surface`
- * AND 6.0 off `rowHover`, so the order of the two marks is a contract rather than
+ * report it twice as a whisper) and `rowSelected` is asserted 4.0 off `surface`
+ * AND 2.0 off `rowHover`, so the order of the two marks is a contract rather than
  * a coincidence of two values that happened to land the right way round. The bar
  * and `font-medium` remain the non-colour half.
  * `scripts/chat-sidebar-selection.test.mjs` resolves each expression through the

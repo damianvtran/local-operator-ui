@@ -77,20 +77,42 @@ export const obsidian: ThemeDefinition = {
 		sunken: "#1B1B1E",
 
 		/*
-		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
-		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
-		 * toward the panel's cast, which on the dark family is the axis the operator
-		 * reported as spent. The rule, and why neither role is a neutral step, are in the
-		 * two roles' doc in `palette-contract.ts`.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are steps
+		 * of THIS palette's own neutral ladder at the panel's h290 lean; the retired
+		 * role was the same kind of step at a lower strength. The rule, and why a
+		 * monochrome palette is a CLASS with its own floors rather than a ledger of
+		 * exemptions, are in the two roles' doc in `palette-contract.ts`.
 		 *
-		 * rowHover    #313134  accent hue, C* 2.03, +3.05 L*, ΔE00 2.23 off `surface`,
-		 *                       `inkDim` 5.43:1 on the fill, hue 0.06° off `accent`.
-		 * rowSelected #36363A  accent hue, C* 2.67, +5.75 L*, ΔE00 3.90 off
-		 *                       `surface` and 1.75 off `rowHover`, `inkDim` 5.04:1, and the
-		 *                       2px `accent` bar at 11.76:1 against it.
+		 * RE-AUTHORED IN REMEDIATION ROUND 1, and the measurement is why. The pair
+		 * that shipped here - #313134 / #36363A - put the hover at ΔE00 2.23 off
+		 * `surface`, which is 1.19 BELOW the 3.42 the retired `elevated` step it
+		 * replaced measured: on the one palette whose accent (#FAFAFA, C* 0) gives
+		 * its hover neither a colour nor a bar to help, the pass made the operator's
+		 * first-named complaint worse, and it was the fleet's only hover under 3.0.
+		 *
+		 * THE CEILING IS THE INK CAP AND THE RANK, not a class. Holding the fills to
+		 * this palette's own cast, the legal window runs L* 18.94-22.88, and the
+		 * SELECTION binds first: it must reach the ink cap (`inkDim` at 5:1) and sit
+		 * `ROW_STATE_HOVER_RANK` above the hover, so the hover can rise no higher
+		 * than L* 22.16. Measured at the shipped pair:
+		 *
+		 * rowHover    #353535  neutral step at the ink cap's shadow, C* 0.00, +4.99
+		 *                       L*, ΔE00 4.05 off `surface`, `inkDim` 5.13:1 on the
+		 *                       fill. The alternative that keeps the h290 lean
+		 *                       (C* 0.67) tops out at ΔE00 3.75 - stated because it
+		 *                       is the number the next pass will want, not because
+		 *                       it ships: the class asks for the NEUTRAL step, and a
+		 *                       castless value is at every hue at once.
+		 * rowSelected #37363B  C* 3.38 at h298, +5.72 L*, ΔE00 4.22 off `surface`
+		 *                       and 3.56 off `rowHover`, `inkDim` 5.01:1, and the 2px
+		 *                       `accent` bar at 11.48:1 against it.
+		 *
+		 * The pair's 3.56 clears the FLEET's ΔE00 2.0 separation, so this palette no
+		 * longer leans on the class's relaxed pair floor; the wash proximity is the
+		 * one relaxation the class still carries for it, and the class doc says so.
 		 */
-		rowHover: "#313134",
-		rowSelected: "#36363A",
+		rowHover: "#353535",
+		rowSelected: "#37363B",
 
 		ink: "#FAFAFA",
 		/*
