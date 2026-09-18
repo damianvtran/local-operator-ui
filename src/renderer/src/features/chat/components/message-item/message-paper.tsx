@@ -32,20 +32,17 @@
  * the hardcoded `1.05rem` this once used.
  *
  * The `thinking` field renders through `AgentReasoning`, which honours the
- * `showAgentReasoning` preference (default false, § 7). The word "Thinking"
- * in `loading-indicator.tsx` is unrelated — that is a job status.
+ * `showAgentReasoning` preference (default false, § 7).
  */
 
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { cn } from "@shared/lib/utils";
-import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
-import React, { type FC, useEffect, useMemo, useRef } from "react";
+import React, { type FC, useMemo, useRef } from "react";
 import type { Message } from "../../types/message";
 import { parseReplies } from "../../utils/reply-utils";
 import { ReplyPreview } from "../reply-preview";
 import { AgentReasoning } from "../trace";
 import { MessageControls } from "./message-controls";
-import { StreamingMessage } from "./streaming-message";
 
 // Props for the MessagePaper component
 type MessagePaperProps = {
@@ -53,7 +50,6 @@ type MessagePaperProps = {
 	children: React.ReactNode;
 	content?: string;
 	message?: Message;
-	onMessageComplete?: () => void;
 	isLastMessage: boolean;
 	isJobRunning: boolean;
 	agentId?: string;
@@ -89,7 +85,6 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 		children,
 		content,
 		message,
-		onMessageComplete,
 		agentId,
 		isSmallView,
 		metadataMode = "default",
@@ -145,86 +140,40 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			);
 		}
 
-		// Determine if the message is currently streaming
-		const isStreamable =
-			message?.is_streamable === true &&
-			message?.is_complete === false &&
-			!isUser;
-
-		// Check if streaming is truly complete by also checking the streaming
-		// messages store
-		const isStreamingActuallyComplete = useStreamingMessagesStore((state) =>
-			message?.id
-				? (state.streamingMessages[message.id]?.isComplete ?? false)
-				: true,
-		);
-
-		// Final determination of whether to show streaming component
-		const shouldShowStreaming = isStreamable && !isStreamingActuallyComplete;
-		const completionNotifiedRef = useRef<string | null>(null);
-
-		useEffect(() => {
-			if (!message?.id) return;
-
-			if (shouldShowStreaming) {
-				completionNotifiedRef.current = null;
-				return;
-			}
-
-			if (onMessageComplete && completionNotifiedRef.current !== message.id) {
-				completionNotifiedRef.current = message.id;
-				onMessageComplete();
-			}
-		}, [message?.id, onMessageComplete, shouldShowStreaming]);
-
-		const streamingMessageComponent = shouldShowStreaming && message && (
-			<StreamingMessage
-				messageId={message.id}
-				autoConnect={true}
-				conversationId={resolvedConversationId}
-				refetchOnComplete={true}
-				onComplete={() => {
-					if (onMessageComplete) {
-						onMessageComplete();
-					}
-				}}
-				styleProps={markdownStyleProps}
+		/*
+		 * No streaming branch any more. It existed to hand the row to the socket
+		 * transport while an in-flight `is_streamable` message was arriving, and that
+		 * transport is gone: an incomplete row now paints whatever text it carries
+		 * through the ordinary body below, rather than nothing at all.
+		 */
+		const messageBody = message ? (
+			<div
 				className={cn("relative w-full break-words text-ink")}
-			/>
-		);
-
-		const regularMessageComponents =
-			!shouldShowStreaming && message ? (
-				<div
-					className={cn("relative w-full break-words text-ink")}
-					ref={messageContentRef}
-				>
-					{replies.length > 0 && <ReplyPreview replies={replies} />}
-					{message.thinking && !isUser && (
-						<AgentReasoning label="Thinking" content={message.thinking} />
-					)}
-					{cloneContentChildren(children, remainingContent, markdownStyleProps)}
-					{resolvedConversationId && (
-						<TextSelectionControls
-							agentId={agentId}
-							targetRef={messageContentRef}
-							isUser={isUser}
-							conversationId={resolvedConversationId}
-							showSpeech
-							showCopy
-							showReply
-						/>
-					)}
-				</div>
-			) : null;
+				ref={messageContentRef}
+			>
+				{replies.length > 0 && <ReplyPreview replies={replies} />}
+				{message.thinking && !isUser && (
+					<AgentReasoning label="Thinking" content={message.thinking} />
+				)}
+				{cloneContentChildren(children, remainingContent, markdownStyleProps)}
+				{resolvedConversationId && (
+					<TextSelectionControls
+						agentId={agentId}
+						targetRef={messageContentRef}
+						isUser={isUser}
+						conversationId={resolvedConversationId}
+						showSpeech
+						showCopy
+						showReply
+					/>
+				)}
+			</div>
+		) : null;
 
 		return (
 			<div className="group relative w-full">
-				{streamingMessageComponent}
-				{regularMessageComponents}
-				{/* One hover affordance carrying copy, speak and the exact time.
-				 * The streaming state hides it with `invisible`, which wins over the
-				 * group-hover opacity rule regardless of utility order. */}
+				{messageBody}
+				{/* One hover affordance carrying copy, speak and the exact time. */}
 				{message && shouldRenderDefaultMetadata && (
 					<MessageControls
 						isUser={isUser}
@@ -232,7 +181,6 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 						messageId={message.id}
 						agentId={agentId}
 						timestamp={message.timestamp}
-						className={isStreamable ? "invisible" : undefined}
 					/>
 				)}
 			</div>
