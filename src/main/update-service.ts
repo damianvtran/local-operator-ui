@@ -447,22 +447,6 @@ const DRIFT_ABSENCE_REPORT: Record<DriftAbsence, string> = {
 };
 
 /**
- * The last few lines of an installer's stderr, for a panel's error sentence.
- *
- * The tail rather than the head, because an installer's own refusal is its last
- * line (`installer exited 127`, `error: Failed to install`), and bounded rather
- * than whole, because this text lands in a notification: the full streams are in
- * the update service log, which the sentence names.
- */
-function stderrTail(stderr: string, maxLines = 4): string {
-	const lines = stderr
-		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => line.length > 0);
-	return lines.slice(-maxLines).join("\n").slice(-600);
-}
-
-/**
  * Response from health check endpoint.
  */
 type HealthCheckResponse = {
