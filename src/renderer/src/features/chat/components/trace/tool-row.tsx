@@ -38,11 +38,13 @@
  *
  * Colour is by ROLE and each state's ground is a lightness step, never a
  * border: running is `elevated`, a settled failure is `danger-wash`, settled is
- * the surface it sits on, hover is `elevated`. Identity is HUELESS and only the
- * state takes a hue — the tool glyph and the name read one expression
- * (`rowInk`), which is why they cannot disagree. The duration stays `ink-dim` in
- * every state — `✓ 0.4s` is not all-green — and the outcome is carried by the
- * glyph's SHAPE so it survives with no colour at all.
+ * the surface it sits on, hover is `elevated`. Identity is the tool's CATEGORY —
+ * `read` and `meta` take a hue, the rest the neutral ramp — and the tool glyph
+ * and the name read ONE expression (`rowInk`), so the pair can never disagree.
+ * State outranks it: a running row is `accent` and a failed one `danger`
+ * whatever its tool was. The duration stays `ink-dim` in every state — `✓ 0.4s`
+ * is not all-green — and the outcome is carried by the glyph's SHAPE so it
+ * survives with no colour at all.
  *
  * The row keeps the app's one disclosure idiom (`Disclosure`, § 7): the whole
  * line is the trigger, it is a focus stop, and the detail is closed by default.
@@ -59,10 +61,12 @@ import {
 } from "./tool-glyphs";
 import {
 	TOOL_NAME_COL_MIN,
+	type ToolCategory,
 	displayName,
 	formatDuration,
 	formatSettledDuration,
 	isBareToolName,
+	toolCategory,
 } from "./tool-row-model";
 
 export type ToolRowOutcome =
@@ -114,9 +118,10 @@ export type ToolRowOutcome =
 	 *
 	 * THE INK IS NOT PART OF THAT DISTINCTION, and it is worth being exact about
 	 * because it used to be: the tool ICON took `ink-dim` here while the NAME took
-	 * `danger`, which is the glyph/name disagreement the colour pass fixed. Both
-	 * now read one expression (`rowInk`), so this row is `danger` on the name and
-	 * on the tool glyph and hueless on neither.
+	 * `danger`, which is the glyph/name disagreement the one-expression rule fixed.
+	 * Both now read `rowInk(outcome, toolName)`, so this row is `danger` on the
+	 * name and on the tool glyph and hueless on neither — `not-run` is a state,
+	 * and states outrank the category the tool would otherwise have taken.
 	 *
 	 * SCOPE OF THAT DISTINCTION, because it is on the LIVE path only. A row read
 	 * back from the durable transcript is the harness's record of a call it did
@@ -229,72 +234,87 @@ export type ToolRowProps = {
 };
 
 /**
+ * Settled identity ink by category, mirroring `_TOOL_CATEGORY`'s five bindings.
+ *
+ * The mapping is intent-preserving rather than hex-preserving — the TUI's
+ * `signal` blue is this app's `info`, its `label` violet is `accentAlt`, and its
+ * two `muted` categories are `ink-muted` — because this app's palette set is the
+ * user's to choose and the TUI ships one ramp. What ports is which categories
+ * are SEPARATE, not what colour each one was in the dark theme.
+ *
+ * ## Why `meta` is `accentAlt` and not `accent`
+ *
+ * `accent` is what this map bought `meta` before, and it is a COLLISION rather
+ * than a mapping: `accent` is this very row's LIVENESS ink (`running`, below),
+ * so a settled `hub` row and a running `bash` row differed only by their ground.
+ * `accentAlt` is the token the port sourced from the TUI's own `label` — the
+ * role `tool.row.name_meta` derives from — and `index.css` declares it for
+ * exactly this use: "identity and category, never interaction or selection".
+ * The palette contract separately holds it ΔE00 >= 15 from `accent` and >= 8
+ * from `info` on all 59 palettes, so the two routes are not interchangeable and
+ * this one is the one that cannot be mistaken for liveness.
+ *
+ * ## What is deliberately NOT a hue
+ *
+ * `mutate` and `exec` derive from `muted` — the neutral ramp — and `plain`
+ * resolves to the same `ink-muted` the unclassified fallback has always used.
+ * That is the TUI's own answer, not an oversight: a row that edited a file is
+ * not a warning, and an unknown tool must not be filed anywhere. So only `read`
+ * and `meta` are separate by COLOUR; all five stay separate by the tool glyph's
+ * SHAPE (`tool-glyphs.ts`), which is the channel that survives with no colour at
+ * all.
+ */
+const CATEGORY_INK: Record<ToolCategory, string> = {
+	read: "text-info",
+	mutate: "text-ink-muted",
+	exec: "text-ink-muted",
+	meta: "text-accent-alt",
+	plain: "text-ink-muted",
+};
+
+/**
  * The ink a row takes, for its NAME and for its TOOL GLYPH — one expression, so
  * the two can never disagree.
  *
- * They used to be two: the glyph read `running ? accent : failed ? danger :
- * ink-dim` while the name read a five-entry category map, which is what shipped
- * `task`/`hub`/`todo` with an accent name beside a grey glyph and answered
- * "the icon is not colored but the tool name is colored".
+ * That single-expression rule is the one thing the hueless pass got right, and
+ * it is the fix for the defect that started this: the glyph read `running ?
+ * accent : failed ? danger : ink-dim` while the name read the category table, so
+ * `task`/`hub`/`todo` shipped an accent name beside a grey glyph. One call, two
+ * spans, and the TUI does the same thing in the same place — `_build_row`
+ * assigns `icon_style = ... if running else name_style` after deriving
+ * `name_style` from the category (tool_card.py:3404-3406).
  *
- * ## Identity is HUELESS; state is the only colour in the column
+ * ## Liveness outranks identity
  *
- * Every settled row takes ONE ink, whatever its category (`read`/`mutate`/
- * `exec`/`meta`/`plain` and the `plain` fallback alike). Category is carried by
- * the tool glyph's SHAPE, which already differs per category and is documented
- * in `tool-glyphs.ts` as the thing that ports; colour was a second, partial copy
- * of it. The map this replaces spent two hues that mean something else elsewhere
- * — `info` ("here is a fact", on six other sites) and `accent` (this row's own
- * LIVENESS ink, three lines below) — and it did not even carry emphasis: on 26
- * of 41 dark themes the `read` name and on 30 of 41 the `meta` name measure LESS
- * contrast on `canvas` than the hueless ones they sat beside.
+ * State is checked FIRST and a settled row is the only row whose category is
+ * consulted, because a row cannot report "what kind of thing it was" and "what
+ * is happening now" in one ink: `running` is `accent`, `error` and `not-run` are
+ * `danger`, and everything else — success, `interrupted`, `receipt` — falls
+ * through to identity. Two signals on one span would mean the ledger said both
+ * things in the same place, which is how the outcome column lost its own meaning
+ * before D12 was narrowed.
  *
- * So the swap is a trade of `accent`/`info`/`ink-dim` for one hueless identity
- * ink, and the state keeps `accent` (running), `danger` (failed, and `not-run`,
- * whose call did not happen either) and `ink-dim` (interrupted is deliberately
- * hueless — a stop is not a failure, and the summary states the distinction:
- * `never sent`, not `failed`).
- *
- * A RECEIPT needs no branch: it is settled, so it takes the identity ink, which
- * is what it already chose for itself. `wake` is a `meta` tool, and the retired
- * table bought the wake RECEIPT the accent — the palette's LIVENESS colour —
- * making one receipt louder than the calls around it.
- *
- * ## The rule a new tool follows
- *
- * A new tool needs one entry in `TOOL_ICONS` and nothing else: it settles to
- * this ink like every other row and gets no colour. There is no category-to-hue
- * table left to extend, and no way for a new tool to be the one row that looks
- * different. A new STATE is the only change that touches colour, and that is a
- * deliberate edit to `ToolRowOutcome`.
+ * `interrupted` is NOT an exception to that, and it is worth being exact about
+ * because an earlier round recorded the opposite: it has no ink OF ITS OWN —
+ * correct, and unchanged — but it is a SETTLED row, so it takes the identity ink
+ * its tool earns, exactly as the TUI's own settled row does. An interrupted
+ * `read` is `info` and an interrupted `bash` is the neutral identity ink. What
+ * distinguishes the interrupt is its glyph (the slashed circle), its duration
+ * and its summary's own words (`never sent`, not `failed`) — the same three
+ * channels a settled `not-run` row would need if it had no colour, which it does.
  */
-const rowInk = (outcome: ToolRowOutcome): string => {
+const rowInk = (outcome: ToolRowOutcome, toolName: string): string => {
 	if (outcome === "running") return "text-accent";
 	if (outcome === "error" || outcome === "not-run") return "text-danger";
 	/*
-	 * `interrupted` and every settled success take the identity ink, and that is
-	 * a DECISION rather than a default (design round 1, D6: an interrupted call
-	 * is the only outcome with no colour of its own). Three reasons, and the
-	 * first is the one that decides it:
-	 *
-	 *  - the ink is the row's IDENTITY channel and the glyph is its STATE one.
-	 *    `interrupted` HAS its own glyph (the slashed circle) and its own
-	 *    duration, so it is already distinguished from a settled receipt without
-	 *    a tint; spending an ink here would put a third colour meaning "neither
-	 *    running nor failed" on a channel whose whole job is to be the same on
-	 *    every row of a tool.
-	 *  - a fourth ink would have to come from a role the palette has, and the
-	 *    only ones left are `ink-dim` (too quiet: it is the metadata register)
-	 *    and `warning` (a judgement about the interrupt, which the row does not
-	 *    have - an interrupt is often the user's own Escape).
-	 *  - the fleet cost is real: the trace is the densest surface in the app, and
-	 *    every extra colour there is one more thing that has to hold a floor on
-	 *    all 59 palettes for a state the glyph already carries.
-	 *
-	 * Recorded because "no colour" and "settled" are otherwise the same signal,
-	 * and a later round should meet the reasoning rather than the silence.
+	 * `receipt` needs no branch of its own. A receipt is settled, so it takes the
+	 * identity ink — which is what it always chose for itself, and which is now
+	 * derived the same way for a receipt as for a call. A `peer` row is
+	 * unclassified in the TUI's table as well (it is a glyph, not a tool), so it
+	 * lands on the neutral fallback; a `wake` receipt is `meta` there, so it takes
+	 * the meta ink. That is the map's answer rather than a special case here.
 	 */
-	return "text-ink-muted";
+	return CATEGORY_INK[toolCategory(toolName)];
 };
 
 /**
@@ -334,8 +354,10 @@ const DiffCounters = ({
  * What the outcome glyph says in words, for assistive tech.
  *
  * `interrupted` is "interrupted" rather than "failed" for the same reason its
- * glyph is hueless: the user stopped it, and reporting that as a failure blames
- * the agent for the user's own decision.
+ * OUTCOME MARK is hueless — `text-ink-dim` on the slashed circle, which is a
+ * statement about that mark and not about the row: the tool glyph beside it
+ * still takes its category ink. The user stopped the call, and reporting that
+ * as a failure blames the agent for the user's own decision.
  */
 const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
 	running: "",
@@ -427,9 +449,11 @@ const StatusCluster = ({
 			? "text-success"
 			: outcome === "error" || outcome === "not-run"
 				? "text-danger"
-				: // `interrupted` is deliberately hueless: a stop is not a failure,
-					// and giving it danger ink would report the user's own interrupt as
-					// something that went wrong.
+				: // `interrupted`'s OUTCOME MARK is deliberately hueless (`ink-dim`): a stop is
+					// not a failure, and giving it danger ink would report the user's own
+					// interrupt as something that went wrong. The MARK only — the row's tool
+					// glyph and name take their category ink like any other settled row, which
+					// is what `rowInk` decides in one expression for the pair of them.
 					"text-ink-dim";
 	/*
 	 * The status column of a RUNNING row, which is either its own clock or
@@ -519,11 +543,12 @@ export const ToolRow = ({
 					// THE ONE EXPRESSION. The tool glyph reads exactly the ink the name
 					// below reads, so identity and state cannot be painted differently
 					// inside one row — this pair used to be two expressions, and the
-					// mismatch it produced (`task`/`hub`/`todo` accent names beside
-					// grey glyphs) is the operator's own report. Liveness is the accent
-					// on this glyph plus the raised ground: a still frame has to read
-					// "live" without motion (D26).
-					rowInk(outcome),
+					// mismatch it produced (`task`/`hub`/`todo` accent names beside grey
+					// glyphs, and then a grey glyph on every settled row once the pair
+					// was collapsed the wrong way) is the operator's own report. Liveness
+					// is the accent on this glyph plus the raised ground: a still frame
+					// has to read "live" without motion (D26).
+					rowInk(outcome, toolName),
 				)}
 			>
 				<Icon />
@@ -541,7 +566,7 @@ export const ToolRow = ({
 					// text box and truncated the very name the column was sized for
 					// (`web_fetch` rendered as `web_fet…`).
 					"pr-1",
-					rowInk(outcome),
+					rowInk(outcome, toolName),
 				)}
 				// The shared column is a per-list measurement, so it cannot be a
 				// static class: Tailwind compiles the utilities it can see in the

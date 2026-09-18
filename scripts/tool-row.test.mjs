@@ -50,11 +50,13 @@ const {
 	formatSettledDuration,
 	isDiffBodyTool,
 	isDiffBodyRow,
+	TOOL_NAME_COL_MIN,
 	preferDiff,
 	outputFallbackLine,
 	requestDesktopMedia,
 	stripDiffHeader,
 	summaryFromArgs,
+	toolCategory,
 	toolNameColumn,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -2652,4 +2654,270 @@ test("every text a row exposes to a drag carries the marker", () => {
 			assert.match(tag, /select-text/, `marked but not selectable — ${tag}`);
 		}
 	}
+});
+
+/* ------------------------------------------------------------ the tool's ink
+ *
+ * The operator's report, twice, and the reason this section exists.
+ *
+ * FIRST: `task`/`hub`/`todo` rendered an accent NAME beside a grey GLYPH —
+ * two expressions inside one row, disagreeing. That was answered by collapsing
+ * both onto one hueless ink, which fixed the disagreement and, in the same move
+ * deleted the per-category colour the operator was comparing against the TUI
+ * ("it looks like a lot of color was lost ... please fix that"). The correction
+ * restores the map and keeps the one expression, so the two cannot disagree
+ * AGAIN while still carrying the category.
+ *
+ * A green suite would not have caught either half. The defect is a property of
+ * the PAIR of spans inside one rendered row, and the map's coverage is a
+ * property of a table nothing asserted. Both are asserted here, over the
+ * production component's own markup.
+ */
+const rowBundle = await build({
+	stdin: {
+		contents:
+			'export { ToolRow } from "./src/renderer/src/features/chat/components/trace/tool-row";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
+	loader: { ".css": "empty" },
+	jsx: "automatic",
+	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+});
+const rowPath = new URL("./_tool-row.bundle.mjs", import.meta.url);
+await writeFile(rowPath, rowBundle.outputFiles[0].text);
+const { ToolRow } = await import(rowPath.href);
+await unlink(rowPath);
+
+/** Render one row and return its markup as a string. */
+const renderRow = (toolName, outcome, over = {}) =>
+	renderToStaticMarkup(
+		h(ToolRow, {
+			toolName,
+			summary: `${toolName} arg`,
+			outcome,
+			durationS: outcome === "running" ? null : 0.4,
+			nameColumn: TOOL_NAME_COL_MIN,
+			...over,
+		}),
+	);
+
+/**
+ * The ink tokens on a tag, and ONLY the ink tokens.
+ *
+ * Filtered by name rather than by `/^text-/`, because every span in this row
+ * also carries type and alignment utilities — `text-mono-sm`, `text-right` —
+ * and a matcher that takes those for ink would compare two spans on their
+ * font size and call it a colour.
+ */
+const INK_TOKEN =
+	/^text-(?:ink|ink-muted|ink-dim|ink-disabled|accent|accent-hover|accent-active|accent-alt|info|danger|success|warning|token-command)$/;
+const inkOf = (tag) => {
+	const classes = (tag.match(/class="([^"]*)"/) ?? [])[1] ?? "";
+	return classes.split(/\s+/).filter((c) => INK_TOKEN.test(c));
+};
+
+/**
+ * The row's TOOL GLYPH span and its NAME span.
+ *
+ * Found structurally rather than by a class name, because the outcome mark's
+ * span carries the same box classes as the tool glyph's — one ink each, and a
+ * matcher keyed on the box would compare the pair wrongly. The name is the
+ * first span that titles itself; the tool glyph is the nearest span before it
+ * inside the same cluster. That is also the ORDER the reader sees, so an
+ * assertion over the pair is an assertion about what is on screen.
+ */
+const glyphAndName = (markup) => {
+	const spans = markup.match(/<span[^>]*>/g) ?? [];
+	const nameIndex = spans.findIndex((tag) => / title="/.test(tag));
+	assert.ok(nameIndex > 0, `no titled name span in ${markup.slice(0, 200)}`);
+	let glyphIndex = -1;
+	for (let i = nameIndex - 1; i >= 0; i--) {
+		if (/size-3\.5/.test(spans[i])) {
+			glyphIndex = i;
+			break;
+		}
+	}
+	assert.ok(glyphIndex >= 0, `no tool glyph before the name in ${markup}`);
+	return { glyph: spans[glyphIndex], name: spans[nameIndex] };
+};
+
+test("a tool's category is the TUI's own map, looked up case-insensitively", () => {
+	// `_TOOL_CATEGORY` (tool_card.py:218-238), category for category. The axis is
+	// what the call did to the machine, so what is asserted is the SET each tool
+	// lands in and not the spelling of the table.
+	for (const name of [
+		"read",
+		"glob",
+		"grep",
+		"web_fetch",
+		"web_search",
+		"browser",
+		"list_variables",
+		"read_variable",
+	]) {
+		assert.equal(toolCategory(name), "read", `${name} reads`);
+	}
+	for (const name of ["write", "edit"]) {
+		assert.equal(toolCategory(name), "mutate", `${name} mutates`);
+	}
+	for (const name of ["bash", "eval"]) {
+		assert.equal(toolCategory(name), "exec", `${name} executes`);
+	}
+	for (const name of ["task", "agent", "hub", "todo", "send", "wake", "ask"]) {
+		assert.equal(toolCategory(name), "meta", `${name} is meta`);
+	}
+
+	// MODEL-controlled, so the lookup cannot be exact-match: a provider that
+	// echoes `Bash` back has to land in the same category as `bash`, which is the
+	// same reasoning `toolIcon` states for its own table.
+	assert.equal(toolCategory("Bash"), "exec");
+	assert.equal(toolCategory("  EDIT  "), "mutate");
+	assert.equal(toolCategory("WEB_FETCH"), "read");
+	assert.equal(toolCategory("Task"), "meta");
+
+	// Unclassified is QUIET, never mis-filed: an MCP call, a builtin nobody has
+	// classified, and a name that is not a tool at all all take the neutral.
+	for (const name of [
+		"mcp__linear_create_issue",
+		"mcp__",
+		"peer",
+		"team",
+		"a_builtin_that_does_not_exist_yet",
+		"",
+	]) {
+		assert.equal(toolCategory(name), "plain", `${name} is unfiled`);
+	}
+});
+
+test("the glyph and the name take ONE ink, and it is the category's", () => {
+	// [tool name, outcome, the ink both spans must carry]. The first five are the
+	// categories; the rest are liveness outranking identity, which is the rule
+	// that must not be lost now that identity has colour again.
+	const CASES = [
+		["read", "success", "text-info"],
+		["grep", "success", "text-info"],
+		// The case-insensitive path, through the component and not only the table.
+		["Web_Fetch", "success", "text-info"],
+		["write", "success", "text-ink-muted"],
+		["edit", "success", "text-ink-muted"],
+		["bash", "success", "text-ink-muted"],
+		["eval", "success", "text-ink-muted"],
+		["task", "success", "text-accent-alt"],
+		["hub", "success", "text-accent-alt"],
+		// Unclassified, and a receipt whose name is not a tool: the neutral.
+		["mcp__linear_create_issue", "success", "text-ink-muted"],
+		["peer", "receipt", "text-ink-muted"],
+		// A wake receipt is `meta`, so it takes the meta ink — the map's answer
+		// for that name rather than an exception for receipts.
+		["wake", "receipt", "text-accent-alt"],
+		// STATE OUTRANKS IDENTITY. A running `read` is not blue and a failed `task`
+		// is not violet.
+		["read", "running", "text-accent"],
+		["task", "running", "text-accent"],
+		["bash", "running", "text-accent"],
+		["read", "error", "text-danger"],
+		["write", "error", "text-danger"],
+		["hub", "not-run", "text-danger"],
+		// `interrupted` is settled, so it takes the identity its tool earned —
+		// which is the record a previous round left stale when it wrote that the
+		// interrupted outcome was the one with no colour at all. The MARK stays
+		// hueless; the row's identity does not.
+		["grep", "interrupted", "text-info"],
+		["bash", "interrupted", "text-ink-muted"],
+		["task", "interrupted", "text-accent-alt"],
+	];
+
+	for (const [toolName, outcome, expected] of CASES) {
+		const markup = renderRow(toolName, outcome);
+		const { glyph, name } = glyphAndName(markup);
+		const glyphInk = inkOf(glyph);
+		const nameInk = inkOf(name);
+		assert.deepEqual(
+			glyphInk,
+			[expected],
+			`${toolName}/${outcome}: the tool glyph's ink — got ${glyphInk.join(" ")} on ${glyph}`,
+		);
+		assert.deepEqual(
+			nameInk,
+			glyphInk,
+			`${toolName}/${outcome}: the name and the glyph disagree — glyph ${glyphInk.join(" ")} against name ${nameInk.join(" ")}`,
+		);
+	}
+
+	// The command SUMMARY stays uncoloured, which is the operator's own wording
+	// from the report that started all of this ("the tool call preview does not
+	// need to be colored"): it is the machine voice beside the identity, never a
+	// second copy of it. Uncoloured means the neutral register — the summary has
+	// always taken one and that is not what this change moved — and specifically
+	// NOT a category hue, which is the part that would make the row say its
+	// category twice.
+	const HUE = [
+		"text-info",
+		"text-accent",
+		"text-accent-alt",
+		"text-danger",
+		"text-success",
+		"text-warning",
+	];
+	const NEUTRAL = ["text-ink", "text-ink-muted", "text-ink-dim"];
+	for (const outcome of ["success", "running", "error", "interrupted"]) {
+		const titled =
+			renderRow("read", outcome).match(/<span[^>]* title="[^"]*"/g) ?? [];
+		assert.equal(titled.length, 2, "the name and the summary tile themselves");
+		const summaryInk = inkOf(titled[1]);
+		assert.equal(
+			summaryInk.length,
+			1,
+			`the summary takes one ink — got ${summaryInk.join(" ")}`,
+		);
+		assert.ok(
+			NEUTRAL.includes(summaryInk[0]),
+			`the summary is uncoloured — got ${summaryInk[0]} on ${outcome}`,
+		);
+		for (const hue of HUE) {
+			assert.ok(
+				!summaryInk.includes(hue),
+				`the summary carries no category hue — got ${hue} on ${outcome}`,
+			);
+		}
+	}
+});
+
+test("the category-to-ink map is written once, and no second one shadows it", () => {
+	// Two maps that agree with each other are indistinguishable from two maps
+	// that are both correct, right up until one is edited. So the tokens the map
+	// spends are asserted to appear exactly once each in the component: a second
+	// table, or an inline expression per span, shows up here as a duplicate.
+	const source = readFileSync(
+		resolve("src/renderer/src/features/chat/components/trace/tool-row.tsx"),
+		"utf8",
+	);
+	for (const token of ["text-info", "text-accent-alt"]) {
+		const uses = source.split(`"${token}"`).length - 1;
+		assert.equal(
+			uses,
+			1,
+			`\`${token}\` is declared once, in the category map — got ${uses} uses`,
+		);
+	}
+	// And the ink the pair reads is derived, never written out: one call site per
+	// span, both naming the same function, so a future edit cannot colour one and
+	// leave the other. Matched with the call's own trailing comma, because the
+	// doc comments above name the expression too and prose is not a call site.
+	const calls = source.match(/rowInk\(outcome, toolName\),/g) ?? [];
+	assert.equal(
+		calls.length,
+		2,
+		`the glyph and the name read one expression each — got ${calls.length}`,
+	);
 });
