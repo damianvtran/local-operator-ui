@@ -670,7 +670,11 @@ test("a pull refusal names what was not downloaded, from the code when there is 
 			}),
 			"Inbox triage",
 		),
-		'The hub could not be reached, so "Inbox triage" was not downloaded.',
+		'The hub did not complete the download, so "Inbox triage" was not downloaded.',
+		// The typed arm serves BOTH causes - a hub that stayed silent and a hub that
+		// answered with something the transport codes `hub_unavailable` (this 502, a
+		// 429) - so its sentence names the outcome rather than asserting a reach
+		// failure the way round 4's M4-1 found it doing.
 	);
 	/*
 	 * No code: the transport's machine voice comes off, and what is LEFT is
@@ -693,6 +697,43 @@ test("a pull refusal names what was not downloaded, from the code when there is 
 		'The hub could not be reached, so "Inbox triage" was not downloaded.',
 		"a requests timeout is the retryable case, and reads the way the hub_unavailable arm reads",
 	);
+	/*
+	 * THE STATUSES THAT MEAN THE HUB ANSWERED, each said as itself - the branches
+	 * round 3's M3 split out of "could not be reached", pinned here because the
+	 * distinction is the whole finding: a 429 is retryable, a 401/403 is a refused
+	 * credential in the words the typed `hub_unauthorized` arm uses for the publish
+	 * path, and a 5xx is the hub failing its own work rather than staying silent.
+	 */
+	for (const [status, expected] of [
+		[
+			429,
+			'The hub is busy, so "Inbox triage" was not downloaded. Try again in a moment.',
+		],
+		[
+			401,
+			'The hub refused this machine\'s sign-in, so "Inbox triage" was not downloaded.',
+		],
+		[
+			403,
+			'The hub refused this machine\'s sign-in, so "Inbox triage" was not downloaded.',
+		],
+		[
+			503,
+			'The hub could not complete the download, so "Inbox triage" was not downloaded. Try again in a moment.',
+		],
+	]) {
+		assert.equal(
+			pullRefusalMessage(
+				new DesktopControlError(
+					status,
+					`Download agent from Radient failed: Failed to download agent from Radient Agent Hub: ${status} Server Error for url: https://api.radienthq.com/v1/agents/aa14759e-9c1f/download`,
+				),
+				"Inbox triage",
+			),
+			expected,
+			`${status} is the hub answering, not the hub being unreachable`,
+		);
+	}
 	// The other measured shape: the hub answered 404 for a listing that is gone,
 	// with its route and status class in the sentence. The listing id, the URL, the
 	// exception class and the port must not reach the reader, and the sentence is

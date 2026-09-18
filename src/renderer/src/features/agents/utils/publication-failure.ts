@@ -559,7 +559,17 @@ export const pullRefusalMessage = (
 				// The one refusal where nothing is worth retrying: the listing is gone.
 				return `${subject} is no longer on the hub, so nothing was downloaded.`;
 			case "hub_unavailable":
-				return `The hub could not be reached, so ${subject} was not downloaded.`;
+				/*
+				 * The typed twin of the arm above, and it serves the same TWO causes -
+				 * a hub that did not answer and a hub that answered with something the
+				 * transport codes as `hub_unavailable` (a 429 or a 5xx, most of all).
+				 * Round 4's M4-1 found it still asserting a reach failure for a hub
+				 * that had spoken, which is the defect round 2 filed on the publish
+				 * side and round 3's M3 fixed on this path's prose arm. The sentence
+				 * names the outcome instead, so it holds for both; the PROSE arm keeps
+				 * its reach-failure wording, because a transport failure really is one.
+				 */
+				return `The hub did not complete the download, so ${subject} was not downloaded.`;
 			default:
 				return `${subject} was not downloaded: ${error.message}`;
 		}
