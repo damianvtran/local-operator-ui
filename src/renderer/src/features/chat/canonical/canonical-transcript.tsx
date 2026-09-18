@@ -1039,11 +1039,13 @@ const NoticeRow = memo(function NoticeRow({
  * was the model-facing envelope verbatim — `<peer-session-message from_pid=92064
  * …>` and all.
  *
- * The peer row takes the shared name column and the outcome ink every receipt
- * takes (`rowInk("receipt")` is `text-ink-muted`), which is deliberate: giving it
- * an accent of its own would make a receipt louder than the calls around it. The
- * trace has ONE ink expression and no per-tool table, so there is nothing for a
- * new tool — or for this row — to be added to.
+ * The peer row takes the shared name column and the ink a row with no category
+ * takes: `peer` is a glyph in the TUI's table rather than a classified tool, so
+ * `toolCategory` files it `plain` and it settles to `ink-muted`. Giving a receipt
+ * an accent of its own would make it louder than the calls around it. Its sibling
+ * `WakeRow` IS classified — `wake` is a `meta` tool in both maps — so that receipt
+ * takes the meta ink, which is the map's answer rather than a special case for
+ * receipts.
  *
  * The disclosure is offered only when the expansion carries a fact the collapsed
  * row cannot (`peerHasDetail`): a body, or the pid/model the identity line adds
