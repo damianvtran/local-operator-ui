@@ -25,6 +25,7 @@ import {
 	renderEntitlementsPlist,
 	webauthnKeychainAccessGroup,
 } from "./render-mac-entitlements.mjs";
+import { hasWebauthnEntitlement } from "./verify-macos-artifacts.mjs";
 
 const COMMITTED = readFileSync(
 	new URL("../build/entitlements.mac.plist", import.meta.url),
@@ -145,4 +146,37 @@ test("the workflow command renders a lint-clean plist without printing the team 
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+test("the release gate accepts a rendered group and refuses a signature without one", () => {
+	/*
+	 * Reviewer round 1, finding 6. The renderer fails closed and the workflow
+	 * asserts its ordering, but nothing looked at the SIGNED artifact — and every
+	 * failure downstream of a missing entitlement is silent by design (the app logs
+	 * one line and stays inert), so a release could ship a passkey feature that can
+	 * never work with nothing in the pipeline saying so. The check reads the shape
+	 * rather than the value, because the team id is a release secret this gate does
+	 * not have.
+	 */
+	const group = webauthnKeychainAccessGroup(TEAM_ID, "com.local-operator");
+	const rendered = renderEntitlementsPlist(COMMITTED, [group]);
+	assert.equal(hasWebauthnEntitlement(rendered), true);
+
+	// An ad-hoc signature prints nothing at all for `-d --entitlements :-`
+	// (measured), which is the case this has to catch rather than accept.
+	assert.equal(hasWebauthnEntitlement(""), false);
+	// Entitlements that carry other keys but no keychain group are refused too.
+	assert.equal(
+		hasWebauthnEntitlement(
+			"<plist><dict><key>com.apple.security.cs.allow-jit</key><true/></dict></plist>",
+		),
+		false,
+	);
+	// A group with no `.webauthn` suffix is not the group the runtime requires.
+	assert.equal(
+		hasWebauthnEntitlement(
+			"<key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.shared</string></array>",
+		),
+		false,
+	);
 });

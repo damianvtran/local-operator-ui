@@ -3477,7 +3477,17 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 	const checks = artifactChecks({ appPath: APP, dmgPath: DMG });
 	assert.deepEqual(
 		checks.map((check) => check.id),
-		["app-codesign", "app-spctl", "app-stapler", "dmg-spctl", "dmg-stapler"],
+		[
+			"app-codesign",
+			"app-spctl",
+			"app-stapler",
+			// The passkey entitlement, asserted on the SIGNED bundle: every failure
+			// downstream of it is silent by design, so the release gate reads it off
+			// the artifact rather than trusting the build (review round 1, finding 6).
+			"app-webauthn-entitlement",
+			"dmg-spctl",
+			"dmg-stapler",
+		],
 	);
 
 	const codesign = checks.find((check) => check.id === "app-codesign");
@@ -3557,15 +3567,31 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	assert.equal(failing.ok, false);
 	assert.deepEqual(
 		failing.failures.map((result) => result.id),
-		["dmg-spctl", "dmg-stapler"],
+		// The app's own WebAuthn entitlement is the first thing wrong here: 0.17.0's
+		// signature carries no keychain access group, and the release gate reads that
+		// off the artifact rather than trusting the build (review round 1, finding 6).
+		["app-webauthn-entitlement", "dmg-spctl", "dmg-stapler"],
 	);
-	assert.match(failing.failures[0].output, /no usable signature/);
+	assert.match(
+		failing.failures.find((result) => result.id === "dmg-spctl").output,
+		/no usable signature/,
+	);
 
 	// The same artifacts after the fix: image signed, notarized and stapled.
 	const fixed = (command, args) => {
 		const joined = args.join(" ");
 		if (joined.includes("stapler validate")) {
 			return { status: 0, stdout: "The validate action worked!", stderr: "" };
+		}
+		if (joined.includes("--entitlements")) {
+			// The signed, entitled app: the group the release renderer writes into the
+			// build's entitlements plist, read back off the artifact.
+			return {
+				status: 0,
+				stdout:
+					"<key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array>",
+				stderr: "",
+			};
 		}
 		if (command === "/usr/bin/codesign") {
 			return { status: 0, stdout: "", stderr: "" };

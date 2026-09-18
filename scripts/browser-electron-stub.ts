@@ -122,3 +122,49 @@ export const app = {
 		app.webauthnConfigured = [];
 	},
 };
+
+/**
+ * `contextBridge` and `ipcRenderer`, as far as `src/preload/index.ts` needs them
+ * to LOAD.
+ *
+ * WHY THEY ARE HERE. The preload is where every inbound IPC payload is validated
+ * — including the passkey chooser's, which is parsed by `parseWebauthnRequest` —
+ * and a validator tested through a copy of itself is not tested. Importing the
+ * real module is what makes the test bind the shipped parser, and the module
+ * calls `contextBridge.exposeInMainWorld` at its own module scope, so the stub
+ * has to answer that call. `ipcRenderer` is present for the same reason: the
+ * module reads it at import time, and the channels that USE it are driven
+ * elsewhere (through `ipcMain`'s handler registry, as the renderer's `invoke`
+ * would).
+ *
+ * WHAT THEY ARE NOT: neither is a fake of Electron's bridge. `exposeInMainWorld`
+ * records nothing and returns nothing — the exposed object is reachable in a real
+ * renderer and is not simulated here — and `ipcRenderer.invoke` deliberately
+ * REJECTS, so a test that reaches for the real transport by accident fails loudly
+ * instead of silently talking to a stub.
+ */
+export const contextBridge = {
+	exposeInMainWorld(): void {
+		// Nothing to model: the exposure is a wiring step, and the wiring is
+		// covered by the desktop-transport contract tests that boot the preload.
+	},
+};
+
+export const ipcRenderer = {
+	on(): void {},
+	removeListener(): void {},
+	async invoke(channel: string): Promise<never> {
+		throw new Error(
+			`the electron stub has no transport: ${channel} was invoked directly`,
+		);
+	},
+};
+
+/**
+ * `webFrame`, which `@electron-toolkit/preload` imports at its module scope.
+ *
+ * Present so the preload MODULE loads. Nothing in this repo's own code calls a
+ * member of it, and the suite never reaches a zoom or routing call, so an empty
+ * object is the honest model rather than a set of methods that pretend to work.
+ */
+export const webFrame = {};

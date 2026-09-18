@@ -53,6 +53,32 @@ const SPCTL = "/usr/sbin/spctl";
 const XCRUN = "/usr/bin/xcrun";
 
 /**
+ * The rendered WebAuthn keychain access group, as it appears in a signed app's
+ * entitlements: `keychain-access-groups` carrying `<TEAM_ID>.<BUNDLE_ID>.webauthn`.
+ *
+ * WHY THE SHAPE AND NOT THE VALUE: the team id is a release secret
+ * (`APPLE_TEAM_ID`) that is not available to this gate, and the group is derived
+ * from it at build time (`scripts/render-mac-entitlements.mjs`). What a release
+ * can prove without the secret is that the entitlement LANDED and that the group
+ * has the one shape `src/main/webauthn.ts` accepts; the app itself compares the
+ * full value against its own signature at runtime and stays inert if it differs.
+ *
+ * WHY THIS CHECK EXISTS AT ALL (reviewer round 1, finding 6): every failure
+ * downstream of the entitlement is designed to be SILENT — the app logs one line
+ * naming the reason and goes inert — so a release whose rendered plist never
+ * reached the signature would ship a passkey feature that can never work, with
+ * nothing in the pipeline saying so.
+ */
+export const WEBAUTHN_GROUP_PATTERN =
+	/<key>keychain-access-groups<\/key>\s*<array>[\s\S]*?<string>[^<]*\.webauthn<\/string>/;
+
+/** Whether an entitlements plist (from `codesign -d --entitlements :-`) carries a
+ * WebAuthn keychain access group. Exported so its test can assert both verdicts. */
+export function hasWebauthnEntitlement(plistText) {
+	return WEBAUTHN_GROUP_PATTERN.test(plistText);
+}
+
+/**
  * The checks, in the order a user's machine performs them.
  *
  * `expect` is a predicate over the raw result rather than an exit code: `spctl`
@@ -90,6 +116,17 @@ export function artifactChecks({ appPath, dmgPath }) {
 				command: XCRUN,
 				args: ["stapler", "validate", appPath],
 				expect: (result) => result.status === 0,
+			},
+			{
+				id: "app-webauthn-entitlement",
+				scope: "app",
+				target: appPath,
+				description: "the signature carries the WebAuthn keychain access group",
+				// `:-` writes the plist to stdout and exits 0 with empty output for a
+				// signature that has none — which is exactly the failure this catches.
+				command: CODESIGN,
+				args: ["-d", "--entitlements", ":-", appPath],
+				expect: (result) => hasWebauthnEntitlement(result.stdout),
 			},
 		);
 	}

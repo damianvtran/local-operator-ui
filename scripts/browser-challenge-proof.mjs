@@ -127,6 +127,24 @@ function record(label, body) {
 	transcript.push(`### ${label}\n\n\`\`\`\n${body}\n\`\`\`\n`);
 }
 
+/**
+ * One assertion, reported into the transcript as well as the console.
+ *
+ * WHY THE WEBAUTHN ARM NEEDS THIS AND THE NAVIGATION ARMS DO NOT: a challenge
+ * arm's verdict is a rate over attempts, and its transcript is the samples. A
+ * chooser arm makes a dozen claims of different shapes — a row fits its own box,
+ * a sentence stays inside the panel, a callback carried a particular credential
+ * id — and a claim that is only `say`-ed cannot fail the run.
+ */
+function check(label, ok, detail) {
+	if (!ok) failures += 1;
+	say(
+		`[${ok ? "PASS" : "FAIL"}] ${label}${detail === undefined ? "" : `\n        ${detail}`}`,
+	);
+	record(label, `[${ok ? "PASS" : "FAIL"}] ${detail ?? ""}`);
+	return ok;
+}
+
 const sleep = (ms) => new Promise((resolveTick) => setTimeout(resolveTick, ms));
 
 function pickPort() {
@@ -243,7 +261,20 @@ async function freeDevtoolsPort(timeoutMs = 10_000) {
 	}
 }
 
-function launchApp(windowMode) {
+/**
+ * The MAIN-process inspector port, used by the WebAuthn arm only.
+ *
+ * WHY THE RIG NEEDS ONE AT ALL: a passkey request cannot be raised on this
+ * machine from a page — the platform authenticator is inert on an unsigned build
+ * (`src/main/webauthn.ts`'s gate), and Chromium answers a virtual authenticator
+ * inside the renderer without ever routing account selection to the embedder
+ * (QA round 1, Q2). So the one honest way to exercise the shipped listener, the
+ * chooser, the renderer dialog and the answer back into Electron is to emit
+ * `select-webauthn-account` on the real Session object from main, which is what
+ * the arm does. Everything downstream of that emit is the app's own code; only
+ * the trigger is synthetic, and the arm says so in its output.
+ */
+function launchApp(windowMode, { inspectPort = 0 } = {}) {
 	const env = withNotificationsOff({
 		...process.env,
 		HOME: join(SCRATCH, "home"),
@@ -259,6 +290,9 @@ function launchApp(windowMode) {
 	const child = spawn(
 		ELECTRON_BIN,
 		[
+			// The inspector switch must come BEFORE the app path: Electron reads it as
+			// a runtime flag, and a flag after the path belongs to the app's own argv.
+			...(inspectPort ? [`--inspect=${inspectPort}`] : []),
 			APP_TREE,
 			`--user-data-dir=${userData}`,
 			`--remote-debugging-port=${devtoolsPort}`,
@@ -387,10 +421,13 @@ async function targets() {
 	return await response.json();
 }
 
-async function connectTarget(match, label, timeoutMs = 60_000) {
+async function connectTarget(match, label, timeoutMs = 60_000, listUrl = null) {
 	const started = Date.now();
 	for (;;) {
-		const list = await targets().catch(() => []);
+		const list = await (listUrl
+			? fetch(listUrl).then((response) => response.json())
+			: targets()
+		).catch(() => []);
 		const target = list.find(match);
 		if (target?.webSocketDebuggerUrl) {
 			const ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -835,6 +872,593 @@ async function runRealSiteAttempt({ attempt, arm }) {
 	return passed;
 }
 
+// ---- the WebAuthn arm: the chooser, driven through the app's own listener ----
+
+/**
+ * The MAIN process inspector.
+ *
+ * The passkey arm's trigger lives here (see `launchApp`), because the one thing a
+ * page cannot do on this machine is raise the request: the platform authenticator
+ * is inert without a signed, entitled bundle, and Chromium services a virtual
+ * authenticator inside the renderer without routing account selection to the
+ * embedder. So the emitted event is synthetic and everything it reaches is not.
+ */
+const connectMainInspector = (port) =>
+	connectTarget(
+		(target) => typeof target.webSocketDebuggerUrl === "string",
+		"the main process inspector",
+		60_000,
+		`http://127.0.0.1:${port}/json/list`,
+	);
+
+/**
+ * Raise one `select-webauthn-account` on the app's real browser Session.
+ *
+ * WHY IT IS EMITTED RATHER THAN FETCHED: the event is what Electron fires at a
+ * live `credentials.get()`; there is no API to replay it, and no page here can
+ * trigger it. The arm records this as a limit of the evidence, and everything
+ * downstream — `WebauthnChooser`, the IPC push, the preload's validation, the
+ * shell's dialog, the answer travelling back into Electron's callback — is the
+ * shipped code.
+ */
+async function emitChooser(client, { requestId, relyingPartyId, accounts }) {
+	const expression = `(async () => {
+		// HOW ELECTRON IS REACHED FROM THE INSPECTOR, measured (2026-09-18): the app's
+		// main process is an ES module, so there is no ambient "require"; a dynamic
+		// import fails with "A dynamic import callback was not specified", because the
+		// inspector's Runtime.evaluate is a script context with no module loader. A
+		// require built by "node:module" resolves Electron's builtin through the same
+		// CJS loader the app's own dependencies use, and it is the one that works.
+		const { createRequire } = process.getBuiltinModule("node:module");
+		const { session } = createRequire(process.cwd() + "/probe.js")("electron");
+		const browser = session.fromPartition("persist:local-operator-browser");
+		globalThis.__webauthnAnswers ||= [];
+		globalThis.__webauthnEmitted ||= {};
+		const key = ${JSON.stringify(requestId)};
+		try {
+			// THE EVENT ARGUMENT IS PART OF THE CONTRACT, and leaving it out is
+			// measured rather than theorised: Electron's listener signature is
+			// "(event, details, callback)", so an emit that passes only (details,
+			// callback) reaches the app's listener as (_event = details, details =
+			// callback, callback = undefined) and the chooser throws on the missing
+			// callback. The first version of this arm did exactly that.
+			browser.emit(
+				"select-webauthn-account",
+				{},
+				{ relyingPartyId: ${JSON.stringify(relyingPartyId)}, accounts: ${JSON.stringify(accounts)}, frame: null },
+				(value) => { globalThis.__webauthnAnswers.push({ key, value: value ?? null, at: Date.now() }); },
+			);
+		} catch (error) {
+			return { emitError: String(error), stack: (error && error.stack) || null };
+		}
+		globalThis.__webauthnEmitted[key] = Date.now();
+		return { listeners: browser.listenerCount("select-webauthn-account") };
+	})()`;
+	const result = await evaluateValue(client, expression, 10_000);
+	// The listener count is the lifetime evidence: it must be exactly one however
+	// many times this arm emits, and it is what a second host start would break.
+	return result;
+}
+
+/** What Electron's callbacks have received, in order. */
+async function readAnswers(client) {
+	return await evaluateValue(
+		client,
+		"JSON.stringify(globalThis.__webauthnAnswers ?? [])",
+		5_000,
+	);
+}
+
+/** The chooser's own DOM state, as a few numbers and strings rather than a
+ * picture's worth of pixels. */
+const CHOOSER_STATE = `(() => {
+	const panel = document.querySelector('[data-tour-tag="browser-webauthn-dialog"]');
+	const dialog = document.querySelector('[role="dialog"]');
+	const rows = [...document.querySelectorAll('[data-tour-tag="browser-webauthn-account"]')];
+	const title = document.querySelector('[role="dialog"] h2, [role="dialog"] [id^="radix"]');
+	const paragraphs = [...document.querySelectorAll('[role="dialog"] p')].map((p) => p.textContent.trim());
+	const rect = (el) => { const r = el.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width) }; };
+	return {
+		open: Boolean(dialog),
+		title: title ? title.textContent.trim() : null,
+		paragraphs,
+		rows: rows.map((row) => {
+			const box = rect(row);
+			const spans = [...row.querySelectorAll("span")];
+			const span = spans[0] ?? null;
+			const detail = spans[1] ?? null;
+			const line = span ? rect(span) : null;
+			return {
+				label: span ? span.textContent.trim() : null,
+				detail: detail ? detail.textContent.trim() : null,
+				clientWidth: row.clientWidth,
+				scrollWidth: row.scrollWidth,
+				overflowing: row.scrollWidth > row.clientWidth + 1,
+				box,
+				labelRight: line ? line.right : null,
+				labelClipped: line && span ? span.scrollWidth > span.clientWidth + 1 : false,
+			};
+		}),
+		panel: panel ? rect(panel) : null,
+		// The Touch ID sentence lives in the dialog's footer; whether it is inside
+		// the panel's visible box is the whole D8 question.
+		// The note lives in the dialog's FOOTER, and "data-tour-tag" sits on the
+		// SCROLLING BODY inside the panel — so the comparison has to be against the
+		// dialog, not against the tagged box. Measured wrong once in this arm, which
+		// reported the pinned sentence as missing while it was on screen.
+		notePinned: (() => {
+			const el = [...document.querySelectorAll('[role="dialog"] p')].find((p) => p.textContent.includes("Touch ID"));
+			if (!el) return null;
+			const box = rect(el);
+			const outer = rect(el.closest('[role="dialog"]'));
+			return box.top >= outer.top && box.bottom <= outer.bottom;
+		})(),
+		activeElement: document.activeElement ? (document.activeElement.getAttribute("data-tour-tag") ?? document.activeElement.tagName) : null,
+		hash: window.location.hash,
+	};
+})()`;
+
+const chooserState = (renderer) =>
+	evaluateValue(renderer, CHOOSER_STATE, 8_000);
+
+/** Click the nth account row, or the dialog's own Cancel/Close control. */
+async function pressChooser(renderer, what) {
+	const expression =
+		what === "cancel"
+			? `(() => {
+				const button = [...document.querySelectorAll('[role="dialog"] button')].find((b) => ["Cancel", "Close"].includes(b.textContent.trim()));
+				if (!button) return false;
+				button.click();
+				return true;
+			})()`
+			: `(() => {
+				const rows = [...document.querySelectorAll('[data-tour-tag="browser-webauthn-account"]')];
+				const row = rows[${Number(what)}];
+				if (!row) return false;
+				row.click();
+				return true;
+			})()`;
+	return await evaluateValue(renderer, expression, 8_000);
+}
+
+/** Navigate the app's own router, the way a rail click does. */
+async function goRoute(renderer, hash) {
+	return await evaluateValue(
+		renderer,
+		`(() => { window.location.hash = ${JSON.stringify(hash)}; return window.location.hash; })()`,
+		8_000,
+	);
+}
+
+const NAMED = [
+	{
+		credentialId: "Y3JlZC1h",
+		displayName: "Ada Lovelace",
+		name: "ada@example.com",
+	},
+	{
+		credentialId: "Y3JlZC1i",
+		displayName: "Grace Hopper",
+		name: "grace@example.com",
+	},
+];
+const NAMELESS = [
+	{ credentialId: "Y3JlZC1uMQ", displayName: null, name: null },
+	{ credentialId: "Y3JlZC1uMg", displayName: "  ", name: "" },
+	{ credentialId: "Y3JlZC1uMw", displayName: null, name: null },
+];
+const LONG_NAMES = [
+	{
+		credentialId: "Y3JlZC1sMQ",
+		displayName: "Alexandra Featherstonehaugh-Wallington the Third (Personal)",
+		name: "alexandra.featherstonehaugh-wallington+personal@very-long-corporate-domain.example.com",
+	},
+	{
+		credentialId: "Y3JlZC1sMg",
+		displayName: null,
+		name: "a.much.longer.login.with.a.plus.tag+work@another-long-domain.example.com",
+	},
+];
+const MANY = Array.from({ length: 12 }, (_, index) => ({
+	credentialId: `Y3JlZC1t${index + 1}`,
+	displayName: `Account ${index + 1}`,
+	name: `account.${index + 1}@example.com`,
+}));
+
+async function runWebauthnAttempt() {
+	const inspectPort = await freeDevtoolsPort();
+	const launched = launchApp("headless", { inspectPort });
+	const renderer = await connectRenderer();
+	const main = await connectMainInspector(inspectPort);
+
+	await openBrowserRoute(renderer);
+	// Focus has to START somewhere real, or "focus came back" is a claim about
+	// body-to-body, which the first version of this arm made and which proved
+	// nothing. The rail's own row is the app's most reliable focusable control.
+	const seeded = await evaluateValue(
+		renderer,
+		"(() => { const el = document.querySelector('[data-tour-tag=\"nav-item-chat\"]') ?? document.querySelector('a[href=\"#/chat\"]'); if (!el) return null; el.focus(); return document.activeElement === el; })()",
+		8_000,
+	);
+	const focusedBefore = await evaluateValue(
+		renderer,
+		"document.activeElement ? (document.activeElement.getAttribute('data-tour-tag') ?? document.activeElement.tagName) : null",
+		8_000,
+	);
+
+	// An independent view of the settle push: the arm subscribes the way the app
+	// does, so the notice it waits for at the end can be told apart from "the push
+	// never arrived" and from "the push arrived and the surface did nothing".
+	const settleProbe = await evaluateValue(
+		renderer,
+		"(() => { window.__settles = []; if (!window.api?.browser?.onWebauthnSettled) return 'missing'; window.api.browser.onWebauthnSettled((p) => window.__settles.push(p)); return 'subscribed'; })()",
+		8_000,
+	);
+	say(`[webauthn] settle probe ${JSON.stringify(settleProbe)}`);
+
+	const mainProbe = await evaluateValue(
+		main,
+		`(() => {
+			const out = {};
+			try { out.getBuiltinModule = typeof process.getBuiltinModule; } catch (error) { out.e1 = String(error); }
+			try {
+				const el = process.getBuiltinModule("electron");
+				out.electronSession = typeof el?.session;
+			} catch (error) { out.e2 = String(error); }
+			try {
+				const { createRequire } = process.getBuiltinModule("node:module");
+				const req = createRequire(process.cwd() + "/probe.js");
+				const el = req("electron");
+				out.createRequireSession = typeof el?.session;
+				const browser = el.session.fromPartition("persist:local-operator-browser");
+				out.listeners = browser.listenerCount("select-webauthn-account");
+			} catch (error) { out.e3 = String(error); }
+			return out;
+		})()`,
+		10_000,
+	);
+	say(`[webauthn] main probe ${JSON.stringify(mainProbe)}`);
+	if (mainProbe?.error || mainProbe?.createRequireSession !== "object") {
+		record(
+			"the main-process inspector could not reach Electron",
+			JSON.stringify(mainProbe),
+		);
+		return false;
+	}
+	let listenerCount = await emitChooser(main, {
+		requestId: "webauthn-arm-1",
+		relyingPartyId: "accounts.example.com",
+		accounts: NAMED,
+	});
+	say(`[webauthn] emit returned ${JSON.stringify(listenerCount)}`);
+	await waitFor(
+		async () => (await chooserState(renderer))?.open,
+		"the chooser",
+		20_000,
+	);
+	const several = await chooserState(renderer);
+	await captureFrame("chooser-several-named", { renderer });
+	say(
+		`[webauthn] several-named rows=${several.rows.length} panel=${several.panel?.width}px listenerCount=${JSON.stringify(listenerCount)}`,
+	);
+	check(
+		"the chooser names the site and both accounts",
+		several.open &&
+			several.rows.length === 2 &&
+			several.paragraphs.some((p) => p.includes("accounts.example.com")),
+		`title=${several.title} rows=${several.rows.map((row) => row.label).join(", ")}`,
+	);
+	check(
+		"both rows fit their own box (design round 1, D1)",
+		several.rows.every((row) => !row.overflowing && !row.labelClipped),
+		several.rows
+			.map(
+				(row) =>
+					`${row.label}: client=${row.clientWidth} scroll=${row.scrollWidth} labelRight=${row.labelRight} panelRight=${several.panel?.right}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"the Touch ID sentence is inside the panel's visible box (design round 1, D8)",
+		several.notePinned === true,
+		`notePinned=${several.notePinned}`,
+	);
+
+	// Answer with the second row and read back what Electron received.
+	await pressChooser(renderer, "1");
+	await waitFor(
+		async () => !(await chooserState(renderer))?.open,
+		"the chooser to close",
+		15_000,
+	);
+	await captureFrame("chooser-answered", { renderer });
+	const afterAnswer = await readAnswers(main);
+	say(`[webauthn] answers=${afterAnswer}`);
+	check(
+		"the chosen credential reached Electron's callback",
+		String(afterAnswer).includes("Y3JlZC1i"),
+		String(afterAnswer),
+	);
+	const focusedAfter = await evaluateValue(
+		renderer,
+		"document.activeElement ? (document.activeElement.getAttribute('data-tour-tag') ?? document.activeElement.tagName) : null",
+		8_000,
+	);
+	check(
+		"focus comes back rather than landing on body (UX round 1, U5)",
+		focusedAfter !== null && focusedAfter !== "BODY",
+		`before=${focusedBefore} after=${focusedAfter} seeded=${seeded}`,
+	);
+
+	// The nameless case: three rows, and the copy has to say what the choice means.
+	await emitChooser(main, {
+		requestId: "webauthn-arm-2",
+		relyingPartyId: "accounts.example.com",
+		accounts: NAMELESS,
+	});
+	await waitFor(
+		async () => (await chooserState(renderer))?.open,
+		"the nameless chooser",
+		20_000,
+	);
+	const nameless = await chooserState(renderer);
+	await captureFrame("chooser-nameless", { renderer });
+	check(
+		"a nameless chooser explains the choice instead of offering ordinals (UX round 1, U1)",
+		nameless.paragraphs.some((p) => p.includes("did not give their names")) &&
+			nameless.paragraphs.some((p) =>
+				p.includes("the account you sign in as"),
+			) &&
+			nameless.rows.every((row) =>
+				(row.detail ?? "").includes("stored no name"),
+			),
+		nameless.paragraphs.join(" / "),
+	);
+	check(
+		"every nameless row says so rather than leaving a blank line (design round 1, D9)",
+		nameless.rows.every((row) => (row.label ?? "").startsWith("Passkey")),
+		nameless.rows.map((row) => row.label).join(", "),
+	);
+	await pressChooser(renderer, "cancel");
+	await waitFor(
+		async () => !(await chooserState(renderer))?.open,
+		"the chooser to close",
+		15_000,
+	);
+
+	// Long names: the D1 measurement, on the surface the finding was filed against.
+	await emitChooser(main, {
+		requestId: "webauthn-arm-3",
+		relyingPartyId: "identity.very-long-corporate-domain.example.com",
+		accounts: LONG_NAMES,
+	});
+	await waitFor(
+		async () => (await chooserState(renderer))?.open,
+		"the long-name chooser",
+		20_000,
+	);
+	const longNames = await chooserState(renderer);
+	await captureFrame("chooser-long-names", { renderer });
+	say(
+		`[webauthn] long-names ${longNames.rows
+			.map(
+				(row) =>
+					`client=${row.clientWidth} scroll=${row.scrollWidth} overflowing=${row.overflowing} panel=${longNames.panel?.width}`,
+			)
+			.join(" | ")}`,
+	);
+	check(
+		"a long login wraps or ellipsises instead of being cut at the panel edge (design round 1, D1)",
+		longNames.rows.every((row) => !row.overflowing),
+		longNames.rows
+			.map((row) => `client=${row.clientWidth} scroll=${row.scrollWidth}`)
+			.join(" | "),
+	);
+	await pressChooser(renderer, "cancel");
+	await waitFor(
+		async () => !(await chooserState(renderer))?.open,
+		"the chooser to close",
+		15_000,
+	);
+
+	// Twelve accounts: the list has to scroll and the sentence has to stay put.
+	await emitChooser(main, {
+		requestId: "webauthn-arm-4",
+		relyingPartyId: "accounts.example.com",
+		accounts: MANY,
+	});
+	await waitFor(
+		async () => (await chooserState(renderer))?.open,
+		"the many-account chooser",
+		20_000,
+	);
+	const many = await chooserState(renderer);
+	await captureFrame("chooser-many-accounts", { renderer });
+	check(
+		"a twelve-account list can scroll without the Touch ID sentence following it away",
+		many.rows.length === 12 && many.notePinned === true,
+		`rows=${many.rows.length} notePinned=${many.notePinned}`,
+	);
+	await pressChooser(renderer, "cancel");
+	await waitFor(
+		async () => !(await chooserState(renderer))?.open,
+		"the chooser to close",
+		15_000,
+	);
+
+	// Two requests at once: the second is NAMED as waiting, not silently swapped in
+	// (reviewer round 1, finding 7).
+	await emitChooser(main, {
+		requestId: "webauthn-arm-5a",
+		relyingPartyId: "first.example.com",
+		accounts: NAMED,
+	});
+	await waitFor(
+		async () => (await chooserState(renderer))?.open,
+		"the first chooser",
+		20_000,
+	);
+	await emitChooser(main, {
+		requestId: "webauthn-arm-5b",
+		relyingPartyId: "second.example.com",
+		accounts: NAMED,
+	});
+	await sleep(600);
+	const queued = await chooserState(renderer);
+	await captureFrame("chooser-queued", { renderer });
+	check(
+		"a second request is named as waiting rather than replacing the first (finding 7)",
+		queued.paragraphs.some((p) => p.includes("One more site is waiting")) &&
+			queued.paragraphs.some((p) => p.includes("first.example.com")),
+		queued.paragraphs.join(" / "),
+	);
+	await pressChooser(renderer, "cancel");
+	await sleep(600);
+	await pressChooser(renderer, "cancel");
+	await sleep(600);
+
+	// THE FLOW THE REVIEW FOUND UNREACHABLE (agent review round 1 finding 1, UX
+	// round 1 U2): raise the request with the browser surface NOT mounted.
+	await goRoute(renderer, "#/chat");
+	await sleep(900);
+	const onChat = await evaluateValue(
+		renderer,
+		"({ hash: window.location.hash, surface: Boolean(document.querySelector('[data-tour-tag=\"browser-content\"]')) })",
+		8_000,
+	);
+	await emitChooser(main, {
+		requestId: "webauthn-arm-6",
+		relyingPartyId: "accounts.example.com",
+		accounts: NAMED,
+	});
+	const reached = await waitFor(
+		async () => {
+			const state = await chooserState(renderer);
+			return state?.open ? state : null;
+		},
+		"the chooser raised off the browser route",
+		20_000,
+	);
+	await captureFrame("chooser-on-chat-route", { renderer });
+	say(
+		`[webauthn] off-route hash=${onChat?.hash} surface-mounted=${onChat?.surface} open=${reached.open} rows=${reached.rows.length}`,
+	);
+	check(
+		"a request raised while the browser surface is not mounted is still answerable (finding 1 / U2)",
+		reached.open && reached.rows.length === 2,
+		`hash=${onChat?.hash} surface=${onChat?.surface} open=${reached.open}`,
+	);
+	check(
+		"the native view is not mounted, so the dialog is the only surface",
+		onChat?.surface === false,
+		`surface=${onChat?.surface}`,
+	);
+
+	// Walking back to the surface must not lose it either.
+	await goRoute(renderer, "#/browser");
+	await sleep(900);
+	const afterReturn = await chooserState(renderer);
+	await captureFrame("chooser-after-return", { renderer });
+	check(
+		"returning to the surface still shows the same request (U2)",
+		afterReturn?.open === true && afterReturn.rows.length === 2,
+		JSON.stringify(afterReturn?.paragraphs ?? []),
+	);
+	await pressChooser(renderer, "0");
+	await sleep(600);
+
+	// The expiry, which used to be a silent death with a live-looking dialog (D2).
+	const expiryStart = Date.now();
+	await emitChooser(main, {
+		requestId: "webauthn-arm-7",
+		relyingPartyId: "slow.example.com",
+		accounts: NAMED,
+	});
+	await waitFor(
+		async () => (await chooserState(renderer))?.open,
+		"the expiring chooser",
+		20_000,
+	);
+	let notice = null;
+	const expiryDeadline = Date.now() + 95_000;
+	let lastTrace = 0;
+	while (Date.now() < expiryDeadline) {
+		const state = await chooserState(renderer);
+		const settles = await evaluateValue(
+			renderer,
+			"JSON.stringify(window.__settles ?? [])",
+			5_000,
+		);
+		// A trace every 15 s, because the failure this loop exists to catch is
+		// "the dialog is still up and nothing arrived" — which a silent poll reports
+		// as a bare timeout.
+		if (Date.now() - lastTrace > 15_000) {
+			say(
+				`[webauthn] waiting: open=${state?.open} rows=${state?.rows.length ?? "-"} settles=${settles}`,
+			);
+			lastTrace = Date.now();
+		}
+		const said = [state?.title ?? "", ...(state?.paragraphs ?? [])].join(" ");
+		if (state?.open && state.rows.length === 0 && /expired/i.test(said)) {
+			notice = state;
+			break;
+		}
+		await sleep(2_500);
+	}
+	if (!notice) throw new Error("timed out waiting for the expiry notice");
+	await captureFrame("chooser-expired", { renderer });
+	const elapsed = Date.now() - expiryStart;
+	say(
+		`[webauthn] expiry settled after ${elapsed}ms; notice="${notice.title}: ${notice.paragraphs[0]}"`,
+	);
+	check(
+		"an expired request says so instead of leaving a live-looking dialog (design round 1, D2)",
+		// The word is in the settled panel's TITLE and its body names the minute, so
+		// both are searched: the first version of this check looked at paragraphs
+		// only and failed a notice that was on screen.
+		notice.rows.length === 0 &&
+			/expired/i.test([notice.title ?? "", ...notice.paragraphs].join(" ")),
+		`${elapsed}ms; ${[notice.title, ...notice.paragraphs].join(" / ")}`,
+	);
+	const settles = await evaluateValue(
+		renderer,
+		"JSON.stringify(window.__settles ?? [])",
+		8_000,
+	);
+	say(`[webauthn] settle events seen in the renderer: ${settles}`);
+	const finalAnswers = await readAnswers(main);
+	check(
+		"the expired request settled Electron's callback with nothing",
+		String(finalAnswers).includes('"value":null'),
+		String(finalAnswers),
+	);
+	await pressChooser(renderer, "cancel");
+
+	// The listener lifetime: one session, several emits, still exactly one listener
+	// (reviewer round 1, finding 2).
+	listenerCount = await evaluateValue(
+		main,
+		`(() => {
+			const { createRequire } = process.getBuiltinModule("node:module");
+			const { session } = createRequire(process.cwd() + "/probe.js")("electron");
+			return session.fromPartition("persist:local-operator-browser").listenerCount("select-webauthn-account");
+		})()`,
+		8_000,
+	);
+	check(
+		"one Session carries exactly one chooser listener after nine requests",
+		listenerCount === 1,
+		`listenerCount=${listenerCount}`,
+	);
+
+	const log = readAppLog().filter((line) => line.includes("[webauthn]"));
+	record("the app's own webauthn log lines", log.join("\n"));
+	say(`[webauthn] log lines=${log.length}`);
+	for (const line of log.slice(0, 4)) say(`[webauthn] ${line.trim()}`);
+
+	return failures === 0 && !launched.exited();
+}
+
 async function main() {
 	rmSync(SCRATCH, { recursive: true, force: true });
 	for (const dir of [
@@ -850,7 +1474,7 @@ async function main() {
 	say(`[rig] scratch ${SCRATCH}`);
 
 	let servers = null;
-	if (ARM !== "cloudflare") {
+	if (ARM !== "cloudflare" && ARM !== "webauthn") {
 		// B first: A's page embeds an iframe whose src needs B's port.
 		const b = await startServer("origin B (the widget)", {
 			"/widget.html": WIDGET_PAGE,
@@ -870,7 +1494,14 @@ async function main() {
 	 * what the two trees differ in: the app's user agent, which is compiled in, so
 	 * the two arms ARE the two built trees.
 	 */
-	const modes = { local: "headless", cloudflare: "inactive", ua: "inactive" };
+	const modes = {
+		local: "headless",
+		cloudflare: "inactive",
+		ua: "inactive",
+		// The passkey arm needs no page and no visible window: what it drives is the
+		// APP's own surfaces, and a headless boot renders them at full fidelity.
+		webauthn: "headless",
+	};
 	const arms =
 		ARM === "both"
 			? ["local", "cloudflare"]
@@ -886,12 +1517,14 @@ async function main() {
 				say(
 					`[rig] ${arm} attempt ${attempt}/${ATTEMPTS} window-mode=${windowMode}`,
 				);
-				launchApp(windowMode);
+				if (arm !== "webauthn") launchApp(windowMode);
 				try {
 					const ok =
-						arm === "local"
-							? await runLocalAttempt({ attempt, servers })
-							: await runRealSiteAttempt({ attempt, arm });
+						arm === "webauthn"
+							? await runWebauthnAttempt()
+							: arm === "local"
+								? await runLocalAttempt({ attempt, servers })
+								: await runRealSiteAttempt({ attempt, arm });
 					if (ok) passed += 1;
 				} catch (error) {
 					say(`ERROR arm=${arm} attempt=${attempt} ${String(error)}`);
