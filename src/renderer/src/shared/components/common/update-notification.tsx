@@ -7,7 +7,7 @@ import {
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
 import {
-	serverUpdateFailureCopy,
+	serverUpdateFailureReason,
 	updateMessageFate,
 	updateMessageOf,
 } from "@shared/utils/update-error-copy";
@@ -1694,7 +1694,7 @@ export const UpdateNotification = ({
 					 * field; this is the other half of it.
 					 */
 					setBackendUpdateFailure({
-						message: serverUpdateFailureCopy(report.message),
+						message: serverUpdateFailureReason(report),
 						installerOutput: report.installerOutput,
 						logPath: report.logPath,
 					});
@@ -2028,7 +2028,17 @@ export const UpdateNotification = ({
 	if (manualUpdateRequired && manualUpdateInfo) {
 		return withErrorToast(
 			<UpdateContainer>
-				<UpdateHeading>The server needs updating by hand</UpdateHeading>
+				{/*
+				 * THE HEADING FOLLOWS THE ARM. On the app-owned arm the body names a restart
+				 * the user performs by relaunching - there is no hand action and no command -
+				 * so "needs updating by hand" described an action that is not on this screen
+				 * (review round 5, UX U5). The by-hand arms keep the words that fit them.
+				 */}
+				<UpdateHeading>
+					{manualUpdateInfo.appOwned
+						? "The app cannot update this server"
+						: "The server needs updating by hand"}
+				</UpdateHeading>
 				{/* Same emphasis as the other producer of this state
 				    (`backend-update-non-managed`, which used a warning hue): one sentence,
 				    the same weight, and the words carry which one needs the user

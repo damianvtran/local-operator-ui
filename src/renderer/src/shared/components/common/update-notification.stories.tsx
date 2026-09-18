@@ -139,6 +139,19 @@ const OFFER_DETAIL =
 const BY_HAND_DETAIL =
 	"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; `lop update` would install the published release over it.";
 
+/*
+ * The app-owned arm's copy, verbatim from `resolveBackendUpdatePlan`.
+ *
+ * Shared with the fixture so the frame cannot drift from the producer: this is the exact
+ * remedy and detail the managed arm returns, including the sentence that says no terminal
+ * command can update the environment correctly.
+ */
+const APP_OWNED_REMEDY =
+	"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own.";
+
+const APP_OWNED_DETAIL =
+	'The server serving this app runs from Local Operator\'s own managed environment at /Users/operator/Library/Application Support/Local Operator/managed-python/3.13, which the app owns rather than a package manager (the backend reports it as install kind "managed-venv"), at version 0.56.10.';
+
 const SOURCE_BUILD_REFUSAL_SENTENCE =
 	"The server update did not install: `lop-update` exited 1. This checkout is behind its remote, which is what `lop-update` refused to build from: bring the checkout up to date, and the next press here will build it. The installer's own output is below. You can also run `lop-update` yourself in a terminal.";
 
@@ -534,6 +547,12 @@ const mockUpdaterApi = () => {
 				latestVersion?: string | null;
 				currentVersion?: string | null;
 				sourceBuild?: boolean;
+				/**
+				 * Whether the app owns the environment the server runs from, which is the
+				 * reading `ManualRemedyNote` gates on: no package manager owns that tree, so
+				 * the panel names no command and this arm had no fixture until round 5.
+				 */
+				appOwned?: boolean;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
@@ -558,6 +577,26 @@ const mockUpdaterApi = () => {
 					latestVersion: "0.54.20",
 					currentVersion: "0.54.14",
 					sourceBuild: true,
+				});
+			}
+			/*
+			 * THE APP-OWNED ARM, which had no fixture and therefore no frame until round 5.
+			 * `ManualRemedyNote` returns null for `appOwned`, and the two fixtures here
+			 * never set it, so the state this fold's re-shoot was ABOUT was the one state
+			 * with no photograph (design D1 = UX U2 = QA Q-2). The payload is the producer's
+			 * own - the managed-arm remedy and detail verbatim from `resolveBackendUpdatePlan`,
+			 * with `updateCommand: ""` and `appOwned: true` - so the frame shows copy a real
+			 * machine can produce.
+			 */
+			if (window.triggerBackendUpdateManualRequiredAppOwned) {
+				callback({
+					message: APP_OWNED_REMEDY,
+					command: "",
+					detail: APP_OWNED_DETAIL,
+					latestVersion: "0.56.11",
+					currentVersion: "0.56.10",
+					sourceBuild: false,
+					appOwned: true,
 				});
 			}
 			// The same state reached the other way: the app attached to a server
@@ -784,6 +823,8 @@ declare global {
 		triggerBackendUpdateDevMode?: boolean;
 		triggerBackendUpdateManualRequired?: boolean;
 		triggerBackendUpdateManualRequiredExistingServer?: boolean;
+		/** The app-owned arm: `ManualRemedyNote` returns null for it, so it needs its own frame. */
+		triggerBackendUpdateManualRequiredAppOwned?: boolean;
 		triggerBackendUpdateNonManaged?: boolean;
 		triggerUpdateInstallBlocked?: boolean;
 		triggerUpdateInstallBlockedAtStartup?: boolean;
@@ -834,6 +875,8 @@ const meta = {
 					context.parameters.triggerBackendUpdateManualRequired;
 				window.triggerBackendUpdateManualRequiredExistingServer =
 					context.parameters.triggerBackendUpdateManualRequiredExistingServer;
+				window.triggerBackendUpdateManualRequiredAppOwned =
+					context.parameters.triggerBackendUpdateManualRequiredAppOwned;
 				window.triggerBackendUpdateNonManaged =
 					context.parameters.triggerBackendUpdateNonManaged;
 			}, [
@@ -847,6 +890,7 @@ const meta = {
 				context.parameters.triggerUpdateInstallFailed,
 				context.parameters.triggerBackendUpdateManualRequired,
 				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
+				context.parameters.triggerBackendUpdateManualRequiredAppOwned,
 				context.parameters.triggerBackendUpdateNonManaged,
 			]);
 
@@ -1267,6 +1311,7 @@ type UpdaterTriggerFlag =
 	| "triggerUpdateInstallInFlight"
 	| "triggerBackendUpdateManualRequired"
 	| "triggerBackendUpdateManualRequiredExistingServer"
+	| "triggerBackendUpdateManualRequiredAppOwned"
 	| "triggerBackendUpdateNonManaged"
 	| "triggerBackendUpdateError"
 	| "triggerBackendUpdateSourceBuild"
@@ -1530,6 +1575,21 @@ export const BackendUpdateOfferSourceBuild: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerBackendUpdateSourceBuild: true },
 	render: () => <Triggered flag="triggerBackendUpdateSourceBuild" />,
+};
+
+/**
+ * The by-hand panel on the arm where the app OWNS the environment.
+ *
+ * `ManualRemedyNote` returns null here, so this state is the one where the panel says
+ * nothing can move the install from a terminal - and until round 5 no fixture set
+ * `appOwned`, so it had no frame anywhere in the tree while two frames claimed to be
+ * about it (design D1 = QA Q-2). The body names the restart the app can do and the hand
+ * action it cannot, which is what the review asked to see judged from pixels.
+ */
+export const BackendUpdateManualRequiredAppOwned: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateManualRequiredAppOwned: true },
+	render: () => <Triggered flag="triggerBackendUpdateManualRequiredAppOwned" />,
 };
 
 /**
