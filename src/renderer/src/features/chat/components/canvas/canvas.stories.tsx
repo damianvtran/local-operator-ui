@@ -268,6 +268,62 @@ const DOCUMENTS: CanvasDocument[] = [
 	},
 ];
 
+/**
+ * A conversation that touched more files than the panel can show at once.
+ *
+ * The states that only exist when the list is LONGER than its panel - the render
+ * cost of every row, and the END of the list, where the clipped-rows defect lived
+ * - cannot be photographed from a fixture that fits, so this roster is generated:
+ * deterministic, numbered and plausible, forty-eight rows against a panel that
+ * holds about twenty. Its last three rows carry the states a long list's end can
+ * hold, because those are the rows a frame of the bottom shows: two files sharing
+ * a basename, and one that is gone.
+ */
+const manyDocument = (index: number): CanvasDocument => {
+	const name = `day-${String(index + 1).padStart(2, "0")}-ledger.md`;
+	return {
+		id: `/Users/dana/work/ledgers/${name}`,
+		title: name,
+		path: `/Users/dana/work/ledgers/${name}`,
+		content: "",
+		type: "markdown",
+		availability: "present",
+		sizeBytes: 3_072 * (index + 1),
+	};
+};
+
+const MANY_DOCUMENTS: CanvasDocument[] = [
+	...Array.from({ length: 44 }, (_, index) => manyDocument(index)),
+	{
+		id: "/Users/dana/work/reports/summary.md",
+		title: "summary.md",
+		path: "/Users/dana/work/reports/summary.md",
+		content: "",
+		type: "markdown",
+		availability: "present",
+		sizeBytes: 2_048,
+	},
+	{
+		id: "/Users/dana/work/archive/summary.md",
+		title: "summary.md",
+		path: "/Users/dana/work/archive/summary.md",
+		content: "",
+		type: "markdown",
+		availability: "present",
+	},
+	{
+		id: "/Users/dana/work/ledgers/february-ledger.csv",
+		title: "february-ledger.csv",
+		path: "/Users/dana/work/ledgers/february-ledger.csv",
+		content: "",
+		type: "spreadsheet",
+		availability: "missing",
+	},
+];
+
+/** Let a driven state paint before the frame is taken. */
+const settle = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /*
  * A session's namespace as the backend renders it.
  *
@@ -685,11 +741,16 @@ const CanvasFrame = ({
 	width = 720,
 	scan = null,
 	mentionedFiles = DOCUMENTS,
+	documents = DOCUMENTS,
 	variables,
 	sessionId = STORY_SESSION_ID,
 }: {
 	view: "documents" | "files" | "variables";
-	activeId: string;
+	/**
+	 * The document the panel has open, or `null` for the documents view with
+	 * nothing open - which is the state the empty canvas is.
+	 */
+	activeId: string | null;
 	width?: number;
 	/**
 	 * What this frame's desktop ops answer, replaced per frame.
@@ -722,6 +783,13 @@ const CanvasFrame = ({
 	 * (`canvas-file-viewer`'s empty-state guard, round 2 R2-1).
 	 */
 	mentionedFiles?: CanvasDocument[];
+	/**
+	 * What the DOCUMENTS view has open, as its tabs. Separate from
+	 * `mentionedFiles` because a conversation can have touched files while nothing
+	 * is open - which is exactly the state the empty canvas's Files action is for,
+	 * and the count it carries comes from `mentionedFiles`.
+	 */
+	documents?: CanvasDocument[];
 }) => {
 	// The story's backend state, installed before anything can ask for it.
 	useMemo(() => {
@@ -735,16 +803,16 @@ const CanvasFrame = ({
 				...state.conversations,
 				[CONVERSATION_ID]: {
 					isOpen: true,
-					files: DOCUMENTS,
+					files: documents,
 					mentionedFiles,
-					openTabs: DOCUMENTS.map((doc) => ({ id: doc.id, title: doc.title })),
+					openTabs: documents.map((doc) => ({ id: doc.id, title: doc.title })),
 					selectedTabId: activeId,
 					viewMode: view,
 					spreadsheetData: {},
 				},
 			},
 		}));
-	}, [view, activeId, mentionedFiles]);
+	}, [view, activeId, mentionedFiles, documents]);
 
 	return (
 		<SplitFrame>
@@ -754,11 +822,12 @@ const CanvasFrame = ({
 				className="h-full overflow-hidden border-l border-hairline"
 			>
 				<Canvas
-					activeDocumentId={activeId}
-					initialDocuments={DOCUMENTS}
+					activeDocumentId={activeId ?? undefined}
+					initialDocuments={documents}
 					conversationId={CONVERSATION_ID}
 					agentId="story-agent"
 					sessionId={sessionId ?? undefined}
+					fileCount={mentionedFiles.length}
 					scan={scan}
 					onChangeActiveDocument={() => {}}
 					onClose={() => {}}
@@ -838,7 +907,14 @@ const FocusedCanvasFrame = () => {
 	}, []);
 	return <CanvasFrame view="documents" activeId={DOCUMENTS[2].id} />;
 };
-/** Files view: the attachment grid. */
+/**
+ * Files view: the list, at the width the dock opens at.
+ *
+ * Twelve rows, one per file, with the three states that are about ROWS rather than
+ * about the scan: two files sharing a basename (both show their directory, so the
+ * pair is distinguishable at any width), one file gone from disk (the receipt takes
+ * the row's right-hand slot), and one row that is purely an image.
+ */
 export const Files: Story = {
 	render: () => <CanvasFrame view="files" activeId={DOCUMENTS[0].id} />,
 };
@@ -1876,4 +1952,146 @@ export const FilesScanStoppedEmpty: Story = {
 			}}
 		/>
 	),
+};
+
+/**
+ * The list at the dock's NARROWEST end (400px), which is where the directory-line
+ * decision was taken.
+ *
+ * The two `summary.md` rows still show their directory - including here, at the
+ * width where there is least room, because that is the one thing telling them
+ * apart - while every other row spends the whole line on its name. The design
+ * pass's comparison frames drew an always-on directory line at this width and two
+ * of seven names truncated to make room for a line most rows did not need.
+ */
+export const FilesNarrow: Story = {
+	render: () => (
+		<CanvasFrame view="files" activeId={DOCUMENTS[0].id} width={400} />
+	),
+};
+
+/**
+ * A query, typed into the real field, and the count that states what it hides.
+ *
+ * Driven rather than faked: the play types into the panel's own search field, so
+ * what is photographed is the path a user takes. The query reaches the DIRECTORY
+ * as well as the name, which is why three rows match - the third is found by the
+ * `summary` in `q1-summary.md`'s name and the first two by the paths that tell
+ * them apart.
+ */
+export const FilesFiltered: Story = {
+	render: () => <CanvasFrame view="files" activeId={DOCUMENTS[0].id} />,
+	play: async ({ canvasElement }) => {
+		holdShutter();
+		try {
+			const canvas = within(canvasElement);
+			const field = await canvas.findByLabelText(
+				"Search files by name or folder",
+			);
+			await userEvent.type(field, "summary");
+			await settle();
+		} catch (error) {
+			/*
+			 * The shutter is released before the error leaves: the sweep's readiness
+			 * probe waits on `capturePending`, so a play that threw with the shutter
+			 * still held would take the whole run down with it and every story after
+			 * this one would ship a stale frame.
+			 */
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * A query nothing matches: the escape hatch, in the body.
+ *
+ * The state that may never borrow the scan's copy. "No files yet" is a claim about
+ * the conversation and this list is empty because of a query, so the body names
+ * what the search matches, states how many files it is hiding, and offers the way
+ * out where the empty list is rather than only at the field - the query may have
+ * been typed before the view was switched.
+ */
+export const FilesNoMatches: Story = {
+	render: () => <CanvasFrame view="files" activeId={DOCUMENTS[0].id} />,
+	play: async ({ canvasElement }) => {
+		holdShutter();
+		try {
+			const canvas = within(canvasElement);
+			const field = await canvas.findByLabelText(
+				"Search files by name or folder",
+			);
+			await userEvent.type(field, "budget");
+			await settle();
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * The END of a long list, at maximum scroll - the frame the operator's report is
+ * about.
+ *
+ * Before the fix the last rows sat in a band the dock clipped: no amount of
+ * scrolling revealed them and the scroller's own bottom padding was inside that
+ * band. The play drives the scroll and THROWS if the list did not move - a
+ * bottom-aligned frame of a list that never scrolled would prove nothing - then
+ * asserts the geometry in the frame itself: the last row's bottom is inside the
+ * window and the scroller's own padding is below it. The app-level number is
+ * asserted by `scripts/mentioned-files-app-proof.mjs --geometry`, against the
+ * running application and a real transcript.
+ */
+export const FilesScrolled: Story = {
+	render: () => (
+		<CanvasFrame
+			view="files"
+			activeId={DOCUMENTS[0].id}
+			mentionedFiles={MANY_DOCUMENTS}
+		/>
+	),
+	play: async () => {
+		holdShutter();
+		try {
+			const scroller = document.querySelector<HTMLElement>(
+				'[data-tour-tag="files-scroller"]',
+			);
+			if (!scroller) throw new Error("the files scroller is not on screen");
+			scroller.scrollTop = scroller.scrollHeight;
+			await settle();
+			if (scroller.scrollTop === 0)
+				throw new Error("the list did not scroll, so the frame proves nothing");
+			const lastRow = scroller.querySelector("ul > li:last-child");
+			if (!lastRow) throw new Error("the list has no rows to measure");
+			const rowBottom = lastRow.getBoundingClientRect().bottom;
+			if (rowBottom > window.innerHeight)
+				throw new Error(
+					`the last row's bottom is ${Math.round(rowBottom - window.innerHeight)}px past the window`,
+				);
+			const inset = scroller.getBoundingClientRect().bottom - rowBottom;
+			if (inset < 4)
+				throw new Error(
+					`the scroller's bottom padding is not below the last row (${Math.round(inset)}px)`,
+				);
+		} catch (error) {
+			releaseShutter();
+			throw error;
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * The blank canvas, and the way into the files the conversation already touched.
+ *
+ * Nothing is open and the conversation has thirteen files, so the Files action is
+ * the panel's one `primary` and carries the count at the point of decision. The
+ * three actions keep this order in every state: an action that moves between
+ * conversations is the same defect as a row that re-sorts itself.
+ */
+export const NothingOpen: Story = {
+	render: () => <CanvasFrame view="documents" activeId={null} documents={[]} />,
 };
