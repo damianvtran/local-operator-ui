@@ -16,6 +16,7 @@ import type {
 	DesktopMediaRequest,
 	DesktopRequest,
 	DesktopStreamEvent,
+	FileActionOutcome,
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
@@ -176,7 +177,8 @@ const api = {
 		},
 	},
 	// Add methods to open files and URLs
-	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
+	openFile: (filePath: string): Promise<FileActionOutcome> =>
+		ipcRenderer.invoke("open-file", filePath),
 	readFile: (filePath: string, encoding?: BufferEncoding) =>
 		ipcRenderer.invoke("read-file", filePath, encoding),
 	/**
@@ -200,7 +202,7 @@ const api = {
 		ipcRenderer.invoke("list-directory", dir, cwd),
 
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
-	showItemInFolder: (filePath: string) =>
+	showItemInFolder: (filePath: string): Promise<FileActionOutcome> =>
 		ipcRenderer.invoke("show-item-in-folder", filePath),
 
 	// System information
