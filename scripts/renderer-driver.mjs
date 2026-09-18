@@ -4580,11 +4580,18 @@ async function sceneCanvasFreshness(cdp) {
 	mkdirSync(dir, { recursive: true });
 	const markdown = join(dir, "notes.md");
 	const code = join(dir, "report.py");
-	const second = (Date.now() / 1000) | 0;
-	const MARKDOWN_T0 = second - 120;
-	const MARKDOWN_T1 = second - 60;
-	const MARKDOWN_T2 = second - 30;
-	const CODE_T0 = second - 90;
+	/*
+	 * A FIXED epoch, not `Date.now()`. These mtimes are what the frames render on
+	 * the document's line, so a run-relative base would print a different minute in
+	 * every set - and "re-taken on the rebased head, byte-identical" is a claim
+	 * this repo asks for and a claim a clock base makes unprovable. A file's mtime
+	 * is a fact that can be set, so it is set.
+	 */
+	const BASE_SECOND = 1_760_000_000;
+	const MARKDOWN_T0 = BASE_SECOND;
+	const MARKDOWN_T1 = BASE_SECOND + 60;
+	const MARKDOWN_T2 = BASE_SECOND + 150;
+	const CODE_T0 = BASE_SECOND - 30;
 
 	const markdownBody = (marker) => `# Canvas freshness\n\n${marker}\n`;
 	writeFileSync(markdown, markdownBody("first-version"));
