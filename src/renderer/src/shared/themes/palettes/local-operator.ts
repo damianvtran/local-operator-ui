@@ -38,6 +38,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * accidental.
  *
  * @see docs/branding.md § 2 — the ramp and why it is tinted
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 
 /** Verified 2026-08-04 against docs/design-kit/tokens.json in the site repo. */
@@ -48,45 +64,30 @@ export const localOperatorDark: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#16130e",
-		surface: "#1e1a14",
-		elevated: "#282318",
-		sunken: "#0f0c08",
+		canvas: "#22201c",
+		surface: "#2b2721",
+		elevated: "#322D22",
+		sunken: "#1d1b19",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own warm
-		 * ramp 3.81 `L*`, carrying 1.87x the panel's chroma. ΔE00 4.15 from `surface`,
-		 * 2.25 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 8.44 from `sunken`. The row is 1.091x the panel's relative
-		 * luminance.
-		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#25211b)
-		 * stepped 3.46 `L*` off the panel, and this one steps 3.81. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 13.69:1, `ink-muted` 7.27:1, `ink-dim` 4.68:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.68:1. The brand default, and the palette whose ink floor caps the shortest step
-		 * of the twelve: 3.81 `L*` is the last step that keeps `ink-dim` over the bound.
-		 * The chroma-only step this one also replaces (#271f13, ΔE00 4.14) put the row at
-		 * 2.0x the panel's chroma with a 2.82 `L*` step, less light than the 3.46 it
-		 * replaced.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.5 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.85x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.43 from `surface`, 3.62 from `elevated`, 8.45
+		 * from `sunken`, 16.68 from `accentWash`; the inks on the ground are 11.6:1,
+		 * 7.11:1, 5.16:1. Continuity with the panel: hue 11.43 degrees off the
+		 * panel's (the assertion allows 12) and chroma 8.62 where the panel carries
+		 * 4.67.
 		 */
-		highlight: "#292116",
+		highlight: "#372d23",
 
 		ink: "#f1eee6",
-		inkMuted: "#b5afa2",
-		inkDim: "#918b7d",
+		inkMuted: "#c2bcaf",
+		inkDim: "#a6a091",
 		inkDisabled: "#5f5a4e",
 
-		hairline: "#353022",
+		hairline: "#403b2c",
 		borderControl: "#837c6d",
 
 		accent: "#38c96a",
@@ -96,18 +97,37 @@ export const localOperatorDark: ThemeDefinition = {
 		// accent ramp: ΔE00 10.0 from `accent` and 10.70:1 on surface, where the accent
 		// itself is 8.02:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#85DEA3",
+		tokenCommand: "#86b3f2",
+		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#16281d",
 		onAccent: "#16130e",
+		/*
+		 * No second hue to carry: this palette is desktop-only, so it has no TUI
+		 * `label` token and the hue is a ROTATION of `accent` rather than a value
+		 * that already existed — Δh 150° at `accent`'s own L*, its chroma walked
+		 * down from 68.97 to the first that clears every floor (C* 43.97).
+		 * Measured: ΔE00 47.92 from `accent`, 33.33 from its nearest semantic
+		 * (`danger`), 6.87:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#B0A7F7",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 14.27 and C* 11.65, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 21.01 from `accentWash` (the field floor is
+		 * 2.0), 7.19:1 for `accentAlt` on it, and 11.95 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#242233",
 
 		success: "#57c785",
 		successWash: "#16281d",
-		successBorder: "#417557",
+		successBorder: "#4f8465",
 		warning: "#e0b04b",
 		warningWash: "#2a2213",
-		warningBorder: "#857036",
+		warningBorder: "#8c773c",
 		danger: "#ef8078",
 		dangerWash: "#2e1b18",
-		dangerBorder: "#9e5a51",
+		dangerBorder: "#ac675d",
 		/*
 		 * The kit has no `info` role: on the site, "informational" is carried by
 		 * the accent, because a fourth semantic hue is a hue nobody can name.
@@ -137,7 +157,7 @@ export const localOperatorDark: ThemeDefinition = {
 		 */
 		info: "#86b3f2",
 		infoWash: "#192332",
-		infoBorder: "#5475a2",
+		infoBorder: "#5a7ba8",
 
 		overlayShadow: "0 12px 32px -12px rgb(0 0 0 / 0.6)",
 		scrim: "rgb(0 0 0 / 0.6)",
@@ -189,48 +209,43 @@ export const localOperatorLight: ThemeDefinition = {
 		 * Change one of these four and re-run `pnpm check-themes`; they are a
 		 * ladder and only make sense relative to each other.
 		 */
-		canvas: "#f5f0e6",
-		surface: "#faf8f1",
-		elevated: "#fffefb",
-		sunken: "#efe9db",
+		canvas: "#f2ede3",
+		surface: "#f7f5ee",
+		elevated: "#fefdfa",
+		sunken: "#ece6d8",
 
 		/*
-		 * The current row's own ground: `surface` stepped down its own warm
-		 * ramp 4.75 `L*`, carrying 1.85x the panel's chroma. ΔE00 4.02 from `surface`,
-		 * 6.15 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 2.36 from `sunken`. The row is 1.129x the panel's relative
-		 * luminance.
-		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#efede6)
-		 * stepped 3.83 `L*` off the panel, and this one steps 4.75. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 13.85:1, `ink-muted` 6.57:1, `ink-dim` 4.69:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.69:1. The brand light palette, and the third of the three the operator's report is
-		 * measured on. The chroma-only step this one also replaces (#f5f1e0, ΔE00 4.39)
-		 * put the row at 2.4x the panel's chroma with a 2.52 `L*` step, less dark than
-		 * the 3.83 it replaced.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.15 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.98x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.08 from `surface`, 6.49 from `elevated`, 2.52
+		 * from `sunken`, 5 from `accentWash`; the inks on the ground are 13.72:1,
+		 * 7.37:1, 5.16:1. Continuity with the panel: hue 8.1 degrees off the panel's
+		 * (the assertion allows 12) and chroma 7.22 where the panel carries 3.64.
 		 */
-		highlight: "#ECEBDE",
+		highlight: "#EBEADC",
 
 		ink: "#211e18",
-		inkMuted: "#565147",
-		inkDim: "#6c675c",
+		inkMuted: "#4e4940",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `sunken` binds it at 5.02:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#656056",
 		inkDisabled: "#9a9488",
 
 		// Deepened from #e5e0d5 alongside the ramp above. A hairline is the one
 		// role that has to move when its grounds do: left where it was, it fell
 		// to ΔE00 3.50 against the new `canvas` and 2.31 against `sunken`,
 		// undoing on the dividers exactly what the ramp bought on the panels.
-		hairline: "#ddd8ce",
+		hairline: "#dad5cb",
 		// #857f70 measures 3.29:1 on `sunken` and 3.95:1 on `elevated`. The
 		// binding ground is the darkest one, not the lightest — a mid grey has
 		// its easiest time against white — so `sunken` is the case that has to
@@ -239,17 +254,44 @@ export const localOperatorLight: ThemeDefinition = {
 		// boundary of every input in the app.
 		borderControl: "#857f70",
 
-		accent: "#147842",
+		/*
+		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `sunken` binds it there at
+		 * 4.51:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
+		 */
+		accent: "#137742",
 		accentHover: "#116036",
 		accentActive: "#0c4b2a",
 		// The chart's hover mark, a step AWAY from the plot ground rather than along the
 		// accent ramp: ΔE00 10.0 from `accent` and 7.82:1 on surface, where the accent
 		// itself is 5.21:1. See `chartBarHover` in the palette contract.
-		chartBarHover: "#0F5A31",
+		chartBarHover: "#0c5830",
+		tokenCommand: "#2368a8",
+		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#e7f1e8",
 		onAccent: "#F6FAF8",
+		/*
+		 * No second hue to carry: this palette is desktop-only, so it has no TUI
+		 * `label` token and the hue is a ROTATION of `accent` rather than a value
+		 * that already existed — Δh 150° at `accent`'s own L*, its chroma walked
+		 * down from 45.62 to the first that clears every floor (C* 35.62).
+		 * Measured: ΔE00 40.70 from `accent`, 33.38 from its nearest semantic
+		 * (`danger`), 4.51:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#6C5F9A",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 94.19 and C* 5.87, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 12.22 from `accentWash` (the field floor is
+		 * 2.0), 4.86:1 for `accentAlt` on it, and 7.89 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#F0EDF8",
 
-		success: "#1A774A",
+		success: "#19764a",
 		successWash: "#e6f1ea",
 		successBorder: "#3e6b4e",
 		warning: "#8a5800",

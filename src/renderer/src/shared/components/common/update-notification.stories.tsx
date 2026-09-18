@@ -226,8 +226,47 @@ const mockUpdaterApi = () => {
 			return () => {};
 		},
 		onBackendUpdateNotAvailable: (
-			callback: (info: { version: string }) => void,
+			callback: (info: {
+				version: string;
+				runningVersion?: string | null;
+				restartable?: boolean;
+				/**
+				 * The install's own ownership, carried on this event too (design D5).
+				 *
+				 * Declared here as well as forwarded below because this mock stands in for
+				 * the preload bridge, and a mock whose parameter type is narrower than the
+				 * bridge's is a story that cannot reach the arm its docstring describes.
+				 */
+				appOwnedEnvironment?: boolean;
+			}) => void,
 		) => {
+			/*
+			 * The SKEW payload is a different event on the same channel, and the difference
+			 * is the whole subject of the frames the flag below exists for: this is how the
+			 * app learns that the install on disk and the server SERVING it are on
+			 * different builds, which main sends on the state where there is nothing to
+			 * offer because the install is already the published release. The plain
+			 * `{ version }` arm is the channel's other use and the notice's own funnel
+			 * declines on it (no readable running reading, so no skew to state), which is
+			 * why a story that wants the panel has to carry the readings rather than a
+			 * placeholder.
+			 */
+			if (window.triggerBackendUpdateSkew && window.backendSkewReadings) {
+				callback({
+					version: window.backendSkewReadings.version,
+					runningVersion: window.backendSkewReadings.runningVersion,
+					restartable: window.backendSkewReadings.restartable,
+					/*
+					 * FORWARDED, not just declared. The flag on the readings is what the
+					 * panel's control is gated on (design D5), so a mock that dropped it
+					 * rendered the panel in its no-action state and the frame showed a
+					 * different surface than the story's own docstring describes - caught
+					 * by LOOKING at the re-taken frame, which is the only way this class
+					 * of gap is visible.
+					 */
+					appOwnedEnvironment: window.backendSkewReadings.appOwnedEnvironment,
+				});
+			}
 			// For stories that need to trigger this callback
 			if (window.triggerBackendUpdateNotAvailable) {
 				// Immediately trigger the callback
@@ -241,8 +280,10 @@ const mockUpdaterApi = () => {
 			// For stories that need to trigger this callback
 			if (window.triggerBackendUpdateCompleted) {
 				// Immediately trigger the callback. Null is the plain success payload;
-				// the shaped ones are what the skew stories drive.
-				callback(null);
+				// a shaped one is what a story that is about a FAILED attempt sets -
+				// `backendSkewCompletion` - so the frame shows what the producer actually
+				// sends on `restarted: false` rather than a thinner fixture.
+				callback(window.backendSkewCompletion ?? null);
 			}
 			return () => {};
 		},
@@ -500,7 +541,29 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
-		onBackendUpdateProgress: () => () => {},
+		onBackendUpdateProgress: (
+			callback: (progress: { phase: "installing" | "restarting" }) => void,
+		) => {
+			/*
+			 * THE PHASE, as a story state (UX U6). No story drove this channel, so
+			 * `backendUpdatePhase` was null in every captured frame - the `-in-flight`
+			 * frame in the set is the phase-null FALLBACK - while the panel a real user
+			 * watches for the install's ~85 s is one of the two phase panels. The
+			 * trigger is set before mount, like every other one here, so the phase has
+			 * arrived by the time the shipped listener subscribes.
+			 *
+			 * IT BELONGS IN THIS MOCK, and the first attempt at it did not: the same
+			 * method name appears in `createEmptyUpdaterMethods` above, which these
+			 * stories never take (the decorator installs this one), so a trigger written
+			 * there rendered the fallback and the frame looked plausible - which is why
+			 * the phase panels are checked by LOOKING at the frame and not by the
+			 * capture's exit code.
+			 */
+			if (window.triggerBackendUpdatePhase) {
+				callback({ phase: window.triggerBackendUpdatePhase });
+			}
+			return () => {};
+		},
 		onBeforeQuitForUpdate: () => {
 			return () => {};
 		},
@@ -527,9 +590,55 @@ declare global {
 		triggerUpdateNpxAvailable?: boolean;
 		triggerBackendUpdateAvailable?: boolean;
 		triggerBackendUpdateNotAvailable?: boolean;
+		/**
+		 * The skew notice's own readings, delivered on `backend-update-not-available`.
+		 *
+		 * Separate from the boolean flag above rather than another trigger name: the
+		 * panel's subject is the PAIR of versions, so a story has to state both - which
+		 * is why the flag only says "fire this event" and the readings say what the
+		 * event carries.
+		 */
+		triggerBackendUpdateSkew?: boolean;
+		backendSkewReadings?: {
+			version: string;
+			runningVersion: string;
+			restartable: boolean;
+			/**
+			 * Whether the INSTALL this check read is the app's own environment.
+			 *
+			 * The second ownership reading (design D5), and the one the panel's restart
+			 * control is gated on: `restartable` is true on a global install too, where
+			 * the press behind that control is the install's own updater.
+			 */
+			appOwnedEnvironment: boolean;
+		};
+		/**
+		 * The completion payload a story drives, instead of the plain success `null`.
+		 *
+		 * The failed-restart arms exist only as a COMPLETION - `restarted: false` with
+		 * the readings the attempt read afterwards - so a story that has to show what
+		 * the user sees after a restart that did not take has to send one. Both arms
+		 * of that failure are here: the daemon still answering an older build, and the
+		 * daemon that never came back at all (UX U1).
+		 */
+		backendSkewCompletion?: {
+			installVersion: string | null;
+			runningVersion: string | null;
+			restarted: boolean;
+			restartable?: boolean;
+			appOwnedEnvironment?: boolean;
+			serverDidNotComeBack?: boolean;
+		};
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateError?: boolean;
 		triggerBackendUpdateInFlight?: boolean;
+		/**
+		 * The phase the main process announces while the update runs, for the two
+		 * frames that show what the reader watches for the install itself (UX U6):
+		 * `installing` while the environment lands, `restarting` while the daemon
+		 * comes back onto it.
+		 */
+		triggerBackendUpdatePhase?: "installing" | "restarting";
 		triggerBackendUpdateDevMode?: boolean;
 		triggerBackendUpdateManualRequired?: boolean;
 		triggerBackendUpdateManualRequiredExistingServer?: boolean;
@@ -1134,6 +1243,124 @@ export const BackendUpdateNonManaged: Story = {
 	render: () => <Triggered flag="triggerBackendUpdateNonManaged" />,
 };
 /**
+ * THE APP-OWNED ARM OF THE SKEW, and the state this change is about.
+ *
+ * What the frame is: this machine's install is the published release and the daemon
+ * SERVING this app is still on the previous build - which the app may restart,
+ * because it started that daemon itself (`restartable`), and the install is the
+ * app's own managed environment (`appOwnedEnvironment`), which is what makes the
+ * press this panel offers the restart its label names (design D5). Where the two
+ * digits come from, stated exactly (design D9): the `0.56.8` half is a REAL
+ * reading - the live `/health` on the operator's machine, answered by the app's
+ * managed environment - while the `0.56.12` half is the published RELEASE that
+ * machine was offered, not a version measured on it (that box's app-owned tree held
+ * 0.56.8, and its recorded preparation stamp was older still). The frame is
+ * therefore the state this change produces - a landed publish whose restart has not
+ * happened - and it says so rather than implying both digits were read there.
+ *
+ * What the pair records is the panel's ENDING. Before, the sentence described the
+ * remedy and the panel's only control was "Understood" - a true fact with nothing
+ * to press, which left a reader who wanted the new build to work out that quitting
+ * the app was the step (UX U2). Now the panel offers the restart it has been
+ * talking about and the app performs it: `update-backend` on this install publishes
+ * nothing, because the install is already the release it would install, and
+ * restarts the daemon onto it.
+ *
+ * Same story, same readings, captured on the tree before this change and on the one
+ * after it; that set and its argument are under
+ * `docs/evidence/server-behind-app-owned-before/`, and the after half is
+ * `common-updatenotification/server-behind-app-owned/`, declared in
+ * `docs/evidence/manifest.json`.
+ */
+const ServerBehindAppOwnedBuild = () => {
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		window.backendSkewReadings = {
+			version: "0.56.12",
+			runningVersion: "0.56.8",
+			restartable: true,
+			/*
+			 * The install is the app's OWN managed environment, which is what makes the
+			 * panel's control offerable at all (design D5): the press behind it is
+			 * `update-backend`, and on a global install that is the install's own updater
+			 * rather than the restart the label names.
+			 */
+			appOwnedEnvironment: true,
+		};
+		window.triggerBackendUpdateSkew = true;
+		setReady(true);
+	}, []);
+	return ready ? <UpdateNotification autoCheck={false} /> : null;
+};
+
+export const ServerBehindAppOwned: Story = {
+	args: { autoCheck: false },
+	render: () => <ServerBehindAppOwnedBuild />,
+};
+
+/**
+ * THE RESTART THAT DID NOT TAKE, in both of its outcomes - the pair design D1 and
+ * UX U1 are filed against.
+ *
+ * These two states are reachable only as a COMPLETION: the app publishes nothing
+ * (the install is already the release), restarts the daemon onto it, and reports
+ * what it read afterwards. So the story drives the producer's own payload rather
+ * than a trigger flag, and the two cases differ in one field - whether the daemon
+ * answered at all:
+ *
+ * - `daemonBehind` (the D1 frame): `restartable: true` with the daemon still
+ *   answering the OLD build. The panel said, before this round, "the server serving
+ *   this app was started outside Local Operator, so it was left running on 0.56.8"
+ *   one paragraph above "This app started that server, so it can restart it onto
+ *   the new build now" - two contradictory sentences, and the first one false on
+ *   the arm the app's own button leads into.
+ * - `serverDown` (the U1 frame): the same restart with nothing answering afterwards
+ *   (`serverDidNotComeBack`). The success toast - "Server update completed
+ *   successfully" - was the whole surface for this state, about a server that is not
+ *   running.
+ *
+ * Both are photographed on the app's own arm (`appOwnedEnvironment: true`), which
+ * is the arm whose press produces them.
+ */
+const ServerBehindAppOwnedAfterRestart = ({
+	serverDown,
+}: { serverDown: boolean }) => {
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		window.backendSkewCompletion = serverDown
+			? {
+					installVersion: "0.56.12",
+					runningVersion: null,
+					restarted: false,
+					restartable: true,
+					appOwnedEnvironment: true,
+					serverDidNotComeBack: true,
+				}
+			: {
+					installVersion: "0.56.12",
+					runningVersion: "0.56.8",
+					restarted: false,
+					restartable: true,
+					appOwnedEnvironment: true,
+					serverDidNotComeBack: false,
+				};
+		window.triggerBackendUpdateCompleted = true;
+		setReady(true);
+	}, [serverDown]);
+	return ready ? <UpdateNotification autoCheck={false} /> : null;
+};
+
+export const ServerBehindAppOwnedRestartFailed: Story = {
+	args: { autoCheck: false },
+	render: () => <ServerBehindAppOwnedAfterRestart serverDown={false} />,
+};
+
+export const ServerBehindAppOwnedServerDown: Story = {
+	args: { autoCheck: false },
+	render: () => <ServerBehindAppOwnedAfterRestart serverDown />,
+};
+
+/**
  * The panel driven the way the user drives it: raise the offer, press its own
  * "Update server", and let the main process answer.
  *
@@ -1145,14 +1372,26 @@ export const BackendUpdateNonManaged: Story = {
  * `capturePending` holds the shutter until the press has painted - the pattern
  * `app-updates-section.stories.tsx` uses for its own press.
  */
-const PressUpdateServer = ({ outcome }: { outcome: "inflight" | "failed" }) => {
+const PressUpdateServer = ({
+	outcome,
+	phase = null,
+}: {
+	outcome: "inflight" | "failed";
+	/**
+	 * The phase the in-flight panel is opened on, when the story is about WHICH
+	 * sentence the reader reads while the update runs (UX U6). Null is the
+	 * phase-null fallback the older frame showed.
+	 */
+	phase?: "installing" | "restarting" | null;
+}) => {
 	const [ready, setReady] = useState(false);
 	useLayoutEffect(() => {
 		window.triggerBackendUpdateAvailable = true;
 		window.triggerBackendUpdateInFlight = outcome === "inflight";
 		window.triggerBackendUpdateError = outcome === "failed";
+		window.triggerBackendUpdatePhase = phase ?? undefined;
 		setReady(true);
-	}, [outcome]);
+	}, [outcome, phase]);
 	useEffect(() => {
 		if (!ready) return;
 		document.documentElement.dataset.capturePending = "1";
@@ -1206,6 +1445,33 @@ const PressUpdateServer = ({ outcome }: { outcome: "inflight" | "failed" }) => {
 export const BackendUpdateInFlight: Story = {
 	args: { autoCheck: false },
 	render: () => <PressUpdateServer outcome="inflight" />,
+};
+
+/**
+ * The panel WHILE THE INSTALL RUNS and WHILE THE RESTART RUNS - the two sentences a
+ * reader spends most of an update on, and neither had a frame (UX U6).
+ *
+ * `backend-update-in-flight` above is the phase-NULL fallback: it renders
+ * "Please wait while the server is being updated ...", which is a true sentence for
+ * a press whose phase has not arrived YET, but it is not what the user watches for
+ * the ~85 s of a publish. The sentences below are the ones design D2/R2-3 priced -
+ * the install's own statement that the server keeps serving until the new build
+ * lands, and the restart's that it is offline while it comes back - and a claim
+ * about what a reader is told cannot be checked without the frame they are told it
+ * in.
+ *
+ * Driven through the press, as the shipped component reaches them: the offer is
+ * raised, `Update server` is pressed, the attempt stays in flight, and the phase is
+ * the one the main process announces for that step (`update-service.ts`).
+ */
+export const BackendUpdateInstalling: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="inflight" phase="installing" />,
+};
+
+export const BackendUpdateRestarting: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="inflight" phase="restarting" />,
 };
 
 /**

@@ -20,6 +20,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * hue pulled toward `canvas` as far as it can go while still reading as an
  * edge. The TUI's `dim` and `edge-hi` move only as far as the floors require,
  * and the overlay tint is the theme's own well.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const desert: ThemeDefinition = {
 	id: "desert",
@@ -27,32 +43,76 @@ export const desert: ThemeDefinition = {
 	description: "Warm dark sand under a terracotta glow and cactus green.",
 	palette: {
 		mode: "dark",
-		canvas: "#271E12",
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +4.39, elevated +8.21, sunken -4.22 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #271E12 -> #271E13 (L* 11.98 -> 12)
+		 * surface #31271A -> #31271A (L* 16.4 -> 16.4)
+		 * elevated #392E20 -> #392E20 (L* 20.21 -> 19.75)
+		 * sunken #1D160C -> #1D160C (L* 7.78 -> 7.78)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
+		canvas: "#271E13",
 		surface: "#31271A",
-		elevated: "#3A2F21",
+		elevated: "#392E20",
 		sunken: "#1D160C",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.07 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.34 from `surface`, 2.9 from `elevated` and 9.94 from `sunken`;
-		 * the step is 4.41 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.69:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.3 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.44x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.19:1 on
+		 * the row's ground. ΔE00 4.23 from `surface`, 2.76 from `elevated`, 10.14
+		 * from `sunken`, 9.5 from `accentWash`; the inks on the ground are 10.43:1,
+		 * 7.1:1, 5.19:1. Continuity with the panel: hue 1.82 degrees off the panel's
+		 * (the assertion allows 12) and chroma 15.29 where the panel carries 10.62.
 		 */
-		highlight: "#3F2F20",
+		highlight: "#3E2F1C",
 
 		ink: "#F0E6D5",
 
 		// The TUI's muted, lifted 1.1 L*: 6.72:1 on `elevated`, the ground that caps
 		// secondary text here.
-		inkMuted: "#C7B8A3",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `highlight` binds it at 7.06:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#CEBEA9",
 
 		// The TUI's dim, lifted 8.0 L* to clear 4.5:1 on all four grounds — 4.78:1 on
 		// `elevated`, the ground that caps it — while staying ΔE00 8+ from `inkMuted`,
 		// so a control and a reading stay two inks.
-		inkDim: "#A89B83",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `highlight` binds it at 5.16:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#B0A38A",
 
 		// The TUI's own faint, and the one role exempt from the contrast floors: a
 		// disabled control that meets 4.5:1 does not read as disabled.
@@ -77,6 +137,10 @@ export const desert: ThemeDefinition = {
 		// the accent ramp: ΔE00 11.29 from `accent` and 9.77:1 on surface, where the
 		// accent itself is 6.52:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#FFC993",
+		tokenCommand: "#84BAD8",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
@@ -84,6 +148,21 @@ export const desert: ThemeDefinition = {
 
 		// The theme's own deepest ground, at 6.83:1 on all three accent fills.
 		onAccent: "#1D160C",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#cb9edc`), received unchanged because it already clears
+		 * every floor — ΔE00 36.78 from `accent`, 24.47 from its nearest semantic
+		 * (`danger`), 6.59:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#cb9edc",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 18.47 and C* 14.79, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 26.72 from `accentWash` (the field floor is
+		 * 2.0), 6.21:1 for `accentAlt` on it, and 18.02 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#36283B",
 
 		// Upstream success, clearing 7.21:1 at its tightest ground.
 		success: "#9AC275",
@@ -113,7 +192,12 @@ export const desert: ThemeDefinition = {
 
 		// The TUI's own attachment tint, and the ground every marker reads on.
 		infoWash: "#2C3843",
-		infoBorder: "#5F7C89",
+		/*
+		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.07:1.
+		 */
+		infoBorder: "#617E8B",
 
 		// The one shadow in the system, tinted with the theme's own well.
 		overlayShadow: "0 12px 32px -12px rgb(29 22 12 / 0.7)",

@@ -60,7 +60,8 @@
 import { KNOWN_EXTENSIONS, extensionOf } from "@features/chat/utils/file-kind";
 
 /**
- * Characters that make a candidate a shell glob or a placeholder, not a path.
+ * Characters that make a candidate a shell glob, a placeholder, or an
+ * ABBREVIATION, rather than a path.
  *
  * `$PID`, `*.log`, `{a,b}.ts` and `<name>` are text a transcript legitimately
  * contains — a prompt documenting a command, a heredoc placeholder — and every
@@ -70,8 +71,56 @@ import { KNOWN_EXTENSIONS, extensionOf } from "@features/chat/utils/file-kind";
  * and `<name` on screen. A path on disk may technically contain `$`, but the
  * trade is explicit: a placeholder tile is a click that fails, and the file is
  * still reachable through the structured tiers when an agent really touches it.
+ *
+ * `…` (U+2026) joins them for the same reason, and it was measured rather than
+ * assumed: a guide that prints its own example as
+ *
+ *   `…/scratchpad/probe.sh`
+ *
+ * puts an ABBREVIATED path in the transcript, and the ellipsis segment was
+ * admitted whole — `/…/scratchpad/probe.sh` reached the panel as a tile in a
+ * real run (QA round 1). The cost lands in the same place as `$` and is stated
+ * rather than hidden: a real file whose NAME contains an ellipsis is not
+ * admitted by any tier here, because a character that means "text was removed"
+ * is exactly the one a text-inferring scanner cannot tell from a name. That is
+ * the fail-safe direction this module trades in throughout — a missing tile,
+ * never a tile for a path no file has.
  */
-export const SHELL_METACHARACTERS = /[$*?{}<>]/;
+export const PLACEHOLDER_MARKERS = /[$*?{}<>…]/;
+
+/**
+ * An ABBREVIATED path: a segment that is only an ellipsis.
+ *
+ * The ASCII spelling of the same abbreviation `PLACEHOLDER_MARKERS` rejects in
+ * its Unicode form — `.../scratchpad/probe.sh` is the same truncated token as
+ * `…/scratchpad/probe.sh`. A segment of three or more dots is not a directory
+ * anyone names; a segment of exactly one or two dots is deliberately left alone,
+ * because `..` is the grammar's own parent segment and neither scanner is the
+ * place to decide what a relative path means.
+ */
+export const ELLIPSIS_SEGMENT = /(?:^|[/\\])\.{3,}(?=[/\\]|$)/;
+
+/**
+ * KNOWN GAP, recorded rather than fixed (QA round 3, Q-R3-2).
+ *
+ * Two other placeholder spellings for a path SEGMENT are still admitted whole,
+ * measured on this tree: `/sessions/%s/scratchpad/run/perf.md` and
+ * `/sessions/:id/scratchpad/run/perf.md`. `<id>` is covered (the angle bracket is
+ * in `PLACEHOLDER_MARKERS` and the tail is caught by `isPlaceholderTail`), and the
+ * ellipsis is covered by the two rules above, so the shape is a rule that knows
+ * THREE spellings of "standing in for a name" and not five.
+ *
+ * Deliberately not closed here. The honest fix is a segment rule beside
+ * `ELLIPSIS_SEGMENT` (a segment that is exactly `%s` or `:identifier`), because
+ * the alternative - adding `%` and `:` to the marker character class - would
+ * reject real names (`100%-done.md`, `final:notes.md`) for a placeholder it cannot
+ * even tell from them. That is a new rule with its own blast radius across both
+ * policies, and this change is scoped to the two shapes a real run produced
+ * (rounds 1-2); a rule that is merely adjacent belongs in its own round with its
+ * own evidence. The cost of leaving it is the same class of phantom tile the rest
+ * of this block exists to prevent, so it is worth closing soon - just not as a
+ * silent sixth change to a diff the reviewers have already cleared.
+ */
 
 /**
  * A `?`'s tail, when that tail reads as a query rather than as the rest of a
@@ -123,10 +172,10 @@ const LINE_BREAK = /[\n\r]/;
 export const WHITESPACE = /\s/;
 
 /**
- * The characters `FILE_URL`'s class stops at that are also shell
- * metacharacters, so a URL whose match ends on one of them was cut short by a
- * token that continued the path (`…/a*.log`, `…/{a,b}.ts`). `>`, `*` and `}`
- * are the overlap between that class and `SHELL_METACHARACTERS`.
+ * The characters `FILE_URL`'s class stops at that are also placeholder markers,
+ * so a URL whose match ends on one of them was cut short by a token that
+ * continued the path (`…/a*.log`, `…/{a,b}.ts`). `>`, `*` and `}` are the
+ * overlap between that class and `PLACEHOLDER_MARKERS`.
  */
 const URL_TRUNCATION = new Set(["*", "}", ">"]);
 
@@ -177,6 +226,46 @@ const PROSE_PATH = /(?:~\/|\/)[^\s"'`()\[\]{}<>,;*|]+/g;
 
 /** Trimmed from the END of a candidate before the extension test. */
 export const TRAILING_PUNCTUATION = /[.,;:)\]}"'`]+$/;
+
+/**
+ * Whether the candidate starting at `index` is the TAIL of an angle-bracket
+ * placeholder that sits INSIDE a path.
+ *
+ * A guide that documents its own result shape writes the shape as a TEMPLATE:
+ *
+ *   `/…/sessions/<id>/scratchpad/logs/run.md`
+ *
+ * The token scanner stops at `<` (it is excluded from `PROSE_PATH`), and the
+ * remainder after the `>` used to be picked up as a candidate in its own right —
+ * `/scratchpad/logs/run.md` measured as a tile for a file that does not exist
+ * (QA round 1). This is the SAME failure the `file://` scan guards with
+ * `URL_TRUNCATION`: a placeholder must be captured WHOLE so the placeholder rule
+ * can reject it, never cut short into a tile for whatever follows its bracket.
+ *
+ * The test looks at the WORD immediately before the candidate, and it is
+ * deliberately narrower than "ends with `>` and contains a `<`". That shape is
+ * also every HTML tag, every TypeScript generic and every heredoc or closing-tag
+ * glued to a path — measured in review round 2, `use <code>/tmp/real/notes.md`,
+ * `done </b>/tmp/real/notes.md`, `Map<T>/tmp/notes/real.md` and
+ * `<br/>/tmp/notes/real.md` are all real mentions that the first version
+ * dropped. So the placeholder must look like one: the text BEFORE its `<` has to
+ * be path-like — non-empty and carrying a `/`. That keeps the templated path
+ * above (its head is `/…/sessions/`) and drops the tags, the generics and the
+ * glue, while a tag at the START of a word (`<br/>`) can never qualify.
+ *
+ * RESIDUAL TRADE, stated because it is real and rare: a word that is BOTH
+ * path-like and carries a generic — `a/b<T>/tmp/real.md` — still loses the path
+ * after it. No transcript in this repository's corpus produces that shape, and
+ * the alternative (dropping every closing bracket) is the false negative above,
+ * which real transcripts do produce.
+ */
+function isPlaceholderTail(text: string, index: number): boolean {
+	const word = /[^\s]*$/.exec(text.slice(0, index))?.[0] ?? "";
+	if (!word.endsWith(">")) return false;
+	const bracket = word.indexOf("<");
+	if (bracket <= 0) return false;
+	return word.slice(0, bracket).includes("/");
+}
 
 /** Characters a path may legally follow in prose. */
 const ALLOWED_PREFIX = new Set([
@@ -236,8 +325,10 @@ export function normalizeCandidate(raw: string): string | null {
 	// candidate that still has some came from a value that was prose rather than
 	// a path, and admitting it would put a phrase in the panel.
 	if (WHITESPACE.test(candidate)) return null;
-	// A glob or a placeholder is not a file. See `SHELL_METACHARACTERS`.
-	if (SHELL_METACHARACTERS.test(candidate)) return null;
+	// A glob, a placeholder or an abbreviation is not a file. See
+	// `PLACEHOLDER_MARKERS` and `ELLIPSIS_SEGMENT`.
+	if (PLACEHOLDER_MARKERS.test(candidate)) return null;
+	if (ELLIPSIS_SEGMENT.test(candidate)) return null;
 	return candidate;
 }
 
@@ -308,7 +399,8 @@ export function normalizeFileUrl(raw: string): string | null {
 	if (!candidate) return null;
 	if (API_PATH_PREFIXES.some((prefix) => candidate.startsWith(prefix)))
 		return null;
-	if (SHELL_METACHARACTERS.test(candidate)) return null;
+	if (PLACEHOLDER_MARKERS.test(candidate)) return null;
+	if (ELLIPSIS_SEGMENT.test(candidate)) return null;
 	return candidate.startsWith("/") ? candidate : null;
 }
 
@@ -561,6 +653,8 @@ export function targetsIn(text: string, policy: TargetPolicy): TargetSpan[] {
 		const index = match.index ?? 0;
 		const previous = index > 0 ? masked[index - 1] : undefined;
 		if (previous !== undefined && !ALLOWED_PREFIX.has(previous)) continue;
+		// The tail of a placeholder is not a path; see `isPlaceholderTail`.
+		if (isPlaceholderTail(masked, index)) continue;
 		const raw = match[0];
 		/*
 		 * A FRAGMENT IS NOT A PATH, on this tier as much as on the `file://` one

@@ -176,26 +176,34 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  * what makes a frame comparable with the ones committed before it, and they
  * span both modes and the two brand ramps. The registry now carries
  * fifty-nine, so a full sweep is a 59/12 multiple of the swept set: from the
- * **4,925** frames committed today — `find docs/evidence -name '*.webp' | wc -l`
- * and `git ls-files docs/evidence | grep -c '\.webp$'`, both 4,925 at this head —
- * holding **196 MB** on disk — `du -sh docs/evidence`, the filesystem figure
- * rather than the 133.9 MiB the files' own bytes sum to — of which **4,184**
- * stand outside the 64 declared supplementary sets, to roughly **24,000 frames
- * and ~950 MB**. A run goes from about half an hour to several — on a box that
- * several other worktrees are working in at the same time.
+ * **6,832** frames committed today — `find docs/evidence -name '*.webp' | wc -l`
+ * and `git ls-files --cached --others --exclude-standard docs/evidence | grep -c
+ * '\.webp$'`, both 6,832 at this head —
+ * holding **262 MB** on disk — `du -sh docs/evidence`, the filesystem figure
+ * rather than the 189.8 MiB the files' own bytes sum to — of which **5,697**
+ * stand outside the 78 declared supplementary sets, to roughly **33,000 frames
+ * and ~1.3 GB**. A run goes from about half an hour to several — on a box that
+ * several other worktrees are working in at the same time, and this note's own
+ * arithmetic was measured wrong by that margin on 2026-09-18: a full set projected
+ * at half an hour took 7-33 s per frame under load averages above 400 with seven
+ * to eleven sibling capture rigs running, i.e. 11-52 hours. Treat the projection
+ * as a function of the box, not of the rig.
  *
  * Re-derive those three numbers from the tree this note ships in rather than
- * carrying them forward, and name the commands. Two earlier revisions of this
+ * carrying them forward, and name the commands. Three earlier revisions of this
  * note got that wrong in the same way, one fold apart: 4,379 / 167 MB / 3,762 and
  * a projection of ~21,000 (review round 1, M-2; QA round 1, Q-1 — the same
  * defect, found twice), then 4,851 / 195 MB / 4,110, which was the second fold's
  * triple and, worse, attributed 4,110 to `manifest.json`'s own `frames` while the
- * manifest carried 4,184 (round 2, M-1). The rule that keeps it right is not
- * "update the number" but "update the number AND the record it points at, from
- * the tree you are committing": 4,184 is the manifest's `frames` at this head,
- * 4,925 is what both count commands return, and the 741 difference is the frames
- * inside the declared sets. The conclusion survives all three corrections: a full
- * sweep is roughly five times this set and close to a gigabyte of WebP. The
+ * manifest carried 4,184 (round 2, M-1), and then 4,925 / 196 MB / 4,184 against a
+ * tree carrying 6,832 / 262 MB / 5,697 (re-derived 2026-09-18, the theme-legibility
+ * pass, by the commands above — main's own evidence work had grown the set by a
+ * third and nobody re-ran the step the note asks for). The rule that keeps it right
+ * is not "update the number" but "update the number AND the record it points at,
+ * from the tree you are committing": 5,697 is the manifest's `frames` at this
+ * head, 6,832 is what both count commands return, and the 1,135 difference is the
+ * frames inside the declared sets. The conclusion survives all four corrections: a
+ * full sweep is five to six times this set and over a gigabyte of WebP. The
  * twelve stay the spine because the
  * forty-seven they do not cover are covered where it matters rather than
  * silently dropped:
@@ -591,6 +599,34 @@ export const STORIES = [
 	   is exactly why `cb0d55dc6` refused to re-add the story - a frame of it would
 	   photograph a state no user can be in. */
 	["chat-message-input--conversation-gone", 1024, 300],
+
+	/* Mermaid's categorical fills, which are where the app spends a decorative hue
+	   on content rather than on chrome.
+
+	   WHY THIS STORY EXISTS NOW. `fillType0..7` (`mermaid-diagram.tsx`'s
+	   `WASH_CYCLE`) used to start on `infoWash`, so a diagram's second category
+	   was painted the colour that everywhere else means "here is a fact"; the
+	   second accent now sits at index 1. That change is two lines of source and
+	   has no other evidence anywhere: before this entry there was no frame under
+	   `docs/evidence` whose path contained `mermaid` at all, so the one site the
+	   accent change MOVES PIXELS ON was also the site with no picture.
+
+	   A JOURNEY DIAGRAM, because the ramp has to be legible in the frame to be
+	   evidence: the journey type spends `fillType0..7` per section, and its six
+	   sections therefore show all six entries of the cycle including the new one.
+	   It is also the type closest to what this app renders in practice.
+
+	   1280x900 is the transcript's own width, so the diagram is met at the size
+	   the chat column gives it. The story holds `capturePending` until the SVG is
+	   in the DOM — the module is a 3.6 MB dynamic import and the render is
+	   asynchronous, so a frame taken on the readiness poll alone would be the
+	   "Loading diagram..." placeholder in whichever themes lost the race, once per
+	   theme.
+
+	   Cost: +12 frames, one per sweep theme. A `--themes=` run covers the 47 the
+	   sweep does not, which is how a palette-specific concern (this ramp's
+	   index-2 adjacency) is checked where it matters rather than everywhere. */
+	["chat-mermaid-diagram--categorical-fills", 1280, 900],
 
 	/* The browser feature's own surfaces, added with the round that remediated its
 	   review. This is the ONE part of the visible browser a browser tool can
@@ -1552,14 +1588,21 @@ export const STORIES = [
 	 * pipeline (`hover`, the option the trigger-hover frames already use) and
 	 * shuts the shutter with the pointer still there.
 	 *
-	 * `data-chat-row:has(+ [data-chat-row][aria-current="page"])` is the row
-	 * immediately BEFORE the current one — the story's roster is newest-first and
-	 * its third row is the selected conversation, so this lands on "Migrate the
-	 * deploy script" while "Quarterly revenue model" is current. That is the pair
-	 * design round 1's D1 is measured on and the one a reader needs to judge the
-	 * hierarchy: the current row paints `highlight` and the row under the pointer
-	 * paints `elevated`, and whether the persistent mark still outranks the
-	 * transient one is a fact about two grounds side by side in one frame.
+	 * `data-chat-row` marks the ROW'S BUTTON, and since design R2 (folded in from
+	 * `main`) that button sits inside the row's own wrapper beside the browser mark,
+	 * so the wrapper is the element with a sibling row and the button is taken
+	 * inside it. The previous spelling —
+	 * `[data-chat-row]:has(+ [data-chat-row][aria-current="page"])` — described the
+	 * pre-R2 flat list and matched NOTHING at this head, which the rig reports
+	 * rather than photographing the resting state; it is written down here because a
+	 * hover frame's provenance is the selector that found it. The row above the
+	 * current one is still "Migrate the deploy script" while "Quarterly revenue
+	 * model" is current: the story's roster is newest-first and its third row is the
+	 * selected conversation. That is the pair design round 1's D1 is measured on and
+	 * the one a reader needs to judge the hierarchy: the current row paints
+	 * `highlight` and the row under the pointer paints `elevated`, and whether the
+	 * persistent mark still outranks the transient one is a fact about two grounds
+	 * side by side in one frame.
 	 *
 	 * An entry of its own with a `dir` rather than a second plain tuple: a plain
 	 * tuple for this story would write into `selected-row/` and overwrite the
@@ -1573,7 +1616,8 @@ export const STORIES = [
 		560,
 		{
 			dir: "selected-row-neighbour-hovered",
-			hover: '[data-chat-row]:has(+ [data-chat-row][aria-current="page"])',
+			hover:
+				'div:has(+ div > [data-chat-row][aria-current="page"]) > [data-chat-row]',
 		},
 	],
 	/*
@@ -1894,6 +1938,24 @@ export const STORIES = [
 	["chat-tool-rows--turn-timestamps", 1024, 760],
 	["chat-tool-rows--turn-timestamps-narrow", 420, 500],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
+	/* The agent-side caption, added the same day as the report that "the agent
+	   responses (just the final responses, not the in-progress tool
+	   intent/response) don't have a time displayed on them". `answer-in-progress`
+	   is the frame that separates the two halves of that sentence: a settled
+	   answer with its caption, and the answer still arriving with none, under one
+	   working line. `prose-between-calls` is the shape the caption's COUNT has to
+	   survive - three intermediate paragraphs interleaved with the calls they
+	   narrate, plus a closing answer - which was four captions in one turn under
+	   the first gate (design round 1's D1) and is one under the rule that replaced
+	   it, on the answer the turn ends on. `answer-then-statement` is the shape that
+	   lost the time entirely: a notice and a peer receipt painting after the
+	   answer, neither of which carries a `<time>` of its own nor a disclosure to
+	   open, which is design round 2's D2-1. Sized to their content, for the reason
+	   the turn-stamp pair is. */
+	["chat-tool-rows--answer-in-progress", 1024, 340],
+	["chat-tool-rows--prose-between-calls", 1024, 520],
+	["chat-tool-rows--prose-between-calls", 420, 700],
+	["chat-tool-rows--answer-then-statement", 1024, 470],
 	/* The cold engage: a send the app has admitted and the owner has not answered
 	   yet - the operator's "I hit send and nothing happens for three seconds".
 	   Captured as a PAIR with its baseline, because the claim is a difference:
@@ -2285,6 +2347,43 @@ export const STORIES = [
 	["canvas-workspace--edit-prompt", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
+
+	/*
+	 * The publish dialog, in every state its rewrite introduced (agent-hub
+	 * contract §6.2/§6.3): the consent copy that now says what is published, the
+	 * blocked-field list that disables submit, and each refusal with its own
+	 * headline, action and register. Six of the ten are reached by PRESSING the
+	 * consent box and Publish — a treatment rendered from a prop would not be
+	 * evidence that the flow reaches it.
+	 *
+	 * 980x860: the dialog at its own `sm` step (max-w-xl) plus the page it is
+	 * centred in. Declared rather than measured for the reason every entry here
+	 * is — a frame whose height depends on which refusal is showing is a frame a
+	 * reviewer cannot diff against the next round's.
+	 */
+	["agents-publish-dialog--default", 980, 860],
+	["agents-publish-dialog--pre-validation-blocked", 980, 860],
+	["agents-publish-dialog--name-taken", 980, 860],
+	["agents-publish-dialog--name-taken-by-you", 980, 860],
+	["agents-publish-dialog--name-claim-in-flight", 980, 860],
+	["agents-publish-dialog--reserved-builtin", 980, 860],
+	["agents-publish-dialog--reserved-builtin-refusal", 980, 860],
+	["agents-publish-dialog--moderation-rejected", 980, 860],
+	["agents-publish-dialog--moderation-unavailable", 980, 860],
+	["agents-publish-dialog--published", 980, 860],
+	["agents-publish-dialog--update-listing", 980, 860],
+	/*
+	 * The pull's four outcomes, each one real toast from the real hook against a
+	 * stubbed transport, held open with `toastDuration: Infinity` because an
+	 * auto-closed toast is a frame that cannot be reproduced. Sized tight to the
+	 * caption plus the toast: a taller viewport is mostly ground, which
+	 * `check-evidence` rejects as a story that painted nothing.
+	 */
+	["agents-pull-outcomes--downloaded", 980, 420],
+	["agents-pull-outcomes--adjusted-name", 980, 420],
+	["agents-pull-outcomes--already-held", 980, 420],
+	["agents-pull-outcomes--refused", 980, 420],
+	["agents-pull-outcomes--refused-prose", 980, 420],
 	/*
 	 * The Schedules page, re-shot whole when the page was harmonized onto the
 	 * wake primitive: its rows are conversations-with-wakes now, so every
@@ -2405,7 +2504,50 @@ export const STORIES = [
 	 * is their before-half.
 	 */
 	["common-updatenotification--backend-update-in-flight", 1280, 900],
+	/*
+	 * THE TWO PHASE PANELS, which the frame above is NOT (UX U6). `-in-flight` opens
+	 * on a press whose phase has not arrived, so it renders the phase-null fallback;
+	 * these two carry `installing` and `restarting`, which is what a reader watches
+	 * for the ~85 s of a publish and the seconds of the restart. They are declared so
+	 * a SWEEP produces them too: an undeclared story would leave its frames as an
+	 * unexplained directory on disk, which is the failure the sweep's own count
+	 * exists to prevent.
+	 */
+	["common-updatenotification--backend-update-installing", 1280, 900],
+	["common-updatenotification--backend-update-restarting", 1280, 900],
 	["common-updatenotification--backend-update-failed", 1280, 900],
+	/*
+	 * THE APP-OWNED ARM OF THE SKEW, and the pair this change is about: the install
+	 * is the published release, the daemon SERVING this app is the previous build,
+	 * and the app may restart it because it started it itself. `restartable` is the
+	 * reading that decides the panel's ending, so the story carries both numbers and
+	 * the flag - a frame whose subject is the control has to be the state that has
+	 * the control.
+	 *
+	 * Captured twice on purpose, and this entry is the second half: the same story on
+	 * the tree BEFORE the change states the fact and offers only "Understood", and
+	 * `docs/evidence/server-behind-app-owned-before/README.md` carries that arm's frame
+	 * and how it was taken. The difference between the two frames is renderer copy
+	 * and one control, so unlike a payload-only pair there is a real pre-change tree
+	 * to photograph - which is what makes this pair evidence rather than an
+	 * illustration.
+	 */
+	["common-updatenotification--server-behind-app-owned", 1280, 900],
+	/*
+	 * THE FAILED RESTART, in both of its outcomes (design D1, UX U1). Neither had a
+	 * frame on any branch, and neither is reachable from a trigger flag: both exist
+	 * only as a COMPLETION the producer sends after a restart that did not take, so
+	 * the stories drive that payload. They are the two states this round's blocker
+	 * findings are about - the panel that contradicted itself, and the toast that
+	 * called a stopped server a success - and a finding about what a reader SEES
+	 * cannot be closed without the frame it is seen in.
+	 */
+	[
+		"common-updatenotification--server-behind-app-owned-restart-failed",
+		1280,
+		900,
+	],
+	["common-updatenotification--server-behind-app-owned-server-down", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	/*
 	 * Two more than the set had, and both for a reason: `--filtered` is the only
@@ -3509,6 +3651,18 @@ export const STORIES = [
 	   the link's own text, on the same `conversationId` the chip reads. Also a
 	   scripted `Selection`, and also not reachable with a pointer. */
 	["chat-canonical-links--selection-in-link-staged", 1024, 820],
+	["chat-slash-highlight--command-alone", 900, 240],
+	["chat-slash-highlight--start-name-instruction", 900, 240],
+	["chat-slash-highlight--seeded-name-instruction", 900, 330],
+	["chat-slash-highlight--name-instruction-multiline", 900, 330],
+	["chat-slash-highlight--unknown-word", 900, 240],
+	["chat-slash-highlight--unknown-word-picking", 900, 390],
+	["chat-slash-highlight--prose-leading-command-word", 900, 240],
+	["chat-slash-highlight--mid-sentence-token", 900, 240],
+	["chat-slash-highlight--disabled-and-placeholder", 900, 460],
+	["chat-slash-highlight--clipped-boundary", 900, 240],
+	["chat-slash-highlight--geometry", 1000, 2600],
+	["chat-slash-highlight--scrolled-parity", 1000, 1000],
 ];
 
 /**
@@ -4086,6 +4240,32 @@ const main = async () => {
 				`Check ${ORIGIN}/index.json for the real ids.`,
 		);
 	}
+	/*
+	 * A FULL SWEEP WIPES BEFORE IT CAPTURES, and the run that dies mid-flight takes
+	 * the committed set with it. Measured on 2026-09-18 in this worktree, not
+	 * inferred, because the trap is invisible from the flags:
+	 *
+	 *   - this call is in the NON-partial branch and runs BEFORE the story loop, and
+	 *     it spares only paths under a declared supplementary set;
+	 *   - there is exactly one try/catch, the top-level one at the foot of this
+	 *     file, and no per-story catch - so a throw anywhere ends the run with the
+	 *     wiped tree left on disk;
+	 *   - `shell-app-shell--settings-appearance` (STORIES row 366 of 612) sets
+	 *     `documentElement.dataset.capturePending` and clears it only when the
+	 *     settings page renders the Appearance switch, which the offline page never
+	 *     does, so the readiness probe throws at its 60s bound and the sweep ENDS
+	 *     there. The repository's own measurement of that state is in
+	 *     `docs/evidence/manifest.json` under `keycapsCapture.blocked`:
+	 *     `{"drawn":false,"counted":88,"pending":true}`.
+	 *
+	 * So a bare `node scripts/capture-evidence.mjs` at this head deletes the frames
+	 * of the 245 rows after that one and exits with NO manifest written - which
+	 * leaves `frames` on disk disagreeing with the manifest and takes
+	 * `pnpm check-evidence` down for every session on the machine, not only for the
+	 * branch that ran it. Narrow the run instead: `--only=<surface>--` once per
+	 * surface is append mode, nothing is deleted, and it reaches every row except
+	 * that one and the row behind it (whose every substring it shares).
+	 */
 	// A narrowed run refreshes named frames in place and must not wipe the
 	// rest of the tree. A full sweep still must not take the supplementary
 	// sets with it — those are live-app captures this script cannot re-derive
@@ -4373,10 +4553,19 @@ const main = async () => {
 				}
 			};
 			if (!options?.liveMotion) {
+				/*
+				 * `*:not(textarea)` on the caret, and the exception is the whole point of
+				 * the composer's frames: the field there keeps its OWN caret so the
+				 * capture can read it, which is how the highlight's caret guard is
+				 * measured at all (the mirror paints over a transparent textarea, so
+				 * "the caret is still the app's" is a claim about a colour that a
+				 * blanket `caret-color: transparent` would have answered for us).
+				 * A field that cannot be typed into is not what these frames are of.
+				 */
 				await cdp.send("Runtime.evaluate", {
 					expression: `(() => {
 						const s = document.createElement("style");
-						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
+						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*:not(textarea){caret-color:transparent !important}";
 						document.head.appendChild(s);
 					})()`,
 				});
@@ -5820,10 +6009,11 @@ const main = async () => {
 						 * branch needs, and the one the blanket override could not
 						 * express. A transition in flight is a difference between the
 						 * two shutters that the hold does not pin and no document
-						 * declares; the caret is the same argument as above.
+						 * declares; the caret is the same argument as above, including
+						 * its :not(textarea) scope (no backticks in here: this block is inside a template literal).
 						 */
 						const s = document.createElement("style");
-						s.textContent = "*,*::before,*::after{transition:none !important}*{caret-color:transparent !important}";
+						s.textContent = "*,*::before,*::after{transition:none !important}*:not(textarea){caret-color:transparent !important}";
 						document.head.appendChild(s);
 					})()`,
 				});

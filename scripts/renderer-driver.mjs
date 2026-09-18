@@ -3040,7 +3040,7 @@ async function sceneSettingsModel(cdp) {
 	 * The list is read BEFORE the key so the check can name what the answer
 	 * should have been, rather than asserting "not the query".
 	 */
-	const beforeEnter = await readSettingField(cdp, "model_name");
+	await readSettingField(cdp, "model_name");
 	await cdp.send("Input.insertText", { text: "clau" });
 	const narrowedForFilter = await waitForScene(
 		cdp,
@@ -3061,7 +3061,7 @@ async function sceneSettingsModel(cdp) {
 		`marked rows: ${markedCount}`,
 		`${filterRead.options.length} rows offered, ${markedCount} marked`,
 	);
-	const typedRowFrame = await captureSettled(cdp, "settings-model-typed-row");
+	await captureSettled(cdp, "settings-model-typed-row");
 
 	await keystroke("Enter", "Enter", 13);
 	const afterEnter = await waitForScene(
@@ -4169,6 +4169,685 @@ async function sceneMentions(cdp) {
  * question is where the app RESOLVED its logs, and a run whose lines land in the
  * operator's directory is not isolated however many other paths are redirected.
  */
+/**
+ * The composer's syntax highlight, measured rather than described.
+ *
+ * The highlight is a `<textarea>` whose own text is transparent over a mirror
+ * that paints the glyphs, so the ONLY thing that makes it a highlight rather
+ * than a smear is that the two layers wrap at the same character. That is a
+ * metric property, and this scene is where it is measured: the mirror's
+ * `clientWidth` against the textarea's, the computed `font` string of each, the
+ * row count of a wrapped draft, the y of each painted run against the mirror's
+ * own first line box, and the right-padding correction the scrollbar forces.
+ *
+ * It needs a composer to measure, and without `--backend` (see the isolation
+ * notes above) the pane mounts none: the branch below records that rather than
+ * reporting an empty pass, and the same numbers are measured in the Storybook
+ * harness, which has the command vocabulary this surface requires.
+ *
+ * The drafts are the four shapes the rule has to keep apart, driven through the
+ * app's real input pipeline (`Input.insertText` after a React-compatible clear,
+ * the same domain `--scene palette` types through): a recognised command bar, a
+ * start command whose instruction spans lines, a slash token inside a sentence,
+ * and the operator's own prose draft that merely OPENS with a command word.
+ * Each is measured in both brand palettes, one is measured in a narrowed
+ * composer, and one is measured with a CLASSIC scrollbar forced onto the field
+ * — the state the padding correction exists for, and the one macOS overlay
+ * scrollbars would otherwise hide on this machine (stated as a limit rather
+ * than implied to have been reproduced).
+ *
+ * The numbers land in `composer-geometry.json` beside the frames, because a
+ * frame shows that the tint is somewhere near the word and only the numbers say
+ * whether it is ON it.
+ */
+/**
+ * The y term of a computed `transform`, in px, and 0 for `none`.
+ *
+ * The mirror's window is kept on the textarea's by writing `translateY(-scrollTop)`
+ * straight to the node, so the value under test is that term: `matrix(a, b, c, d,
+ * tx, ty)` keeps it last, and `translateY(y)` — which Chromium resolves to a matrix
+ * for any non-`none` value but need not in principle — has it first.
+ */
+function translateYOf(transform) {
+	if (!transform || transform === "none") return 0;
+	const parts = transform
+		.slice(transform.indexOf("(") + 1, transform.lastIndexOf(")"))
+		.split(",");
+	return Number.parseFloat(parts.length >= 6 ? parts[5] : parts[0]) || 0;
+}
+
+async function sceneComposer(cdp) {
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	/*
+	 * IS THERE A COMPOSER AT ALL? A run WITHOUT `--backend` has no backend, and the
+	 * chat pane says so: it renders its unreachable-backend state, in which the
+	 * composer is not mounted (measured — see the frame this branch captures). That
+	 * is not a failure of this scene and must not be reported as one: the
+	 * highlight's vocabulary comes from the backend's `commands.list`, so with no
+	 * backend there is nothing for the composer to recognise and nothing to
+	 * measure. The geometry is measured where a vocabulary exists — the Storybook
+	 * harness (`Chat/Slash highlight`, whose `geometry` story prints this same
+	 * readback into the frame) — and this branch records the fact rather than an
+	 * empty pass.
+	 *
+	 * WITH `--backend` THE COMPOSER MOUNTS, and the scene now REACHES that state
+	 * rather than describing it. QA round 2 Q2 is the reason this is code and not a
+	 * comment: the flag's contract is that the renderer was built against the same
+	 * `VITE_LOCAL_OPERATOR_API_URL` and that the run OWNS the daemon, but a fresh
+	 * profile in front of a fresh daemon sits on `/chat` with NO session — and the
+	 * chat pane mounts no composer until one is open, so `composerPresent` was false
+	 * by construction, the geometry below was unreachable from this rig's own entry
+	 * points, and a 30px clip-window displacement (also QA round 2, Q1) shipped
+	 * through a green scene claiming to measure exactly that state. The round-1
+	 * correction landed in this comment; it belongs in the path, so with `--backend`
+	 * the scene now does what a user does: create a conversation on the run's OWN
+	 * daemon, open the chat route, widen the sidebar's list and press the
+	 * conversation's row.
+	 *
+	 * The scene's other value is unchanged: it proves the absence branch and the
+	 * window-mode checks, and it holds the predicates the Storybook readback's
+	 * numbers must satisfy so the two rigs cannot drift. Its two predicates were
+	 * rewritten after round 1, because each could never pass where this scene runs:
+	 * `mirrorClientWidth === textareaClientWidth` is false by exactly the scrollbar
+	 * gutter, and the run-top origin was `paddingTop` rather than the line's own
+	 * inline box.
+	 */
+	if (BACKEND) {
+		/*
+		 * The conversation is created over the desktop API the app itself uses, with
+		 * the run's own bearer: a session that already exists is fine too, which is
+		 * why the row press below is guarded on the row being there rather than on
+		 * the POST's shape.
+		 */
+		const created = await createBackendSession();
+		note("a conversation on this run's own backend", JSON.stringify(created));
+		check(
+			"the composer's own state is reachable: a conversation exists on this run's backend",
+			Boolean(created.id),
+			JSON.stringify(created),
+		);
+		await verb(cdp, "navigate", "/chat");
+		/*
+		 * Asked of the DOM before pressing: `press` throws on a selector that matches
+		 * nothing, and a scene that died here would report nothing about the state it
+		 * was trying to reach. These are the two controls the browser-pane scene
+		 * already opens a conversation with, so this is the app's own path rather than
+		 * a test door.
+		 */
+		const visible = async (selector) =>
+			cdp.evaluate(
+				`Boolean(document.querySelector(${JSON.stringify(selector)}))`,
+			);
+		const row = '[data-tour-tag="chat-session-row"]';
+		if (await visible('[data-tour-tag="chat-all-chats"]')) {
+			await verb(cdp, "press", {
+				selector: '[data-tour-tag="chat-all-chats"]',
+			});
+		}
+		/*
+		 * AND THE ROW IS WAITED FOR, which the first form of this path got wrong: the
+		 * conversation was created (status 200, an id) and the app had it in its
+		 * catalogue (`sessionCount: 1`) while the list had not painted a row yet, so a
+		 * single 400ms look found nothing, nothing was pressed, and the scene quietly
+		 * took the absence branch with `activeSessionId: null` — the exact failure QA
+		 * round 2 Q2 named, one layer in. The list is fed by the app's own poll, so the
+		 * wait is bounded and its expiry is REPORTED rather than silently passing.
+		 */
+		let rowPressed = false;
+		const deadline = Date.now() + 20_000;
+		while (Date.now() < deadline) {
+			if (await visible(row)) {
+				await verb(cdp, "press", { selector: row });
+				rowPressed = true;
+				break;
+			}
+			await wait(500);
+		}
+		/*
+		 * A ROW THAT NEVER PAINTED IS A FAILURE (review round 3 MINOR 1). It was a
+		 * `note`, and `note` does not fail the run: the scene then fell into the
+		 * absence branch below, wrote a readback that says "no backend" about a run
+		 * whose backend had just answered, and exited 0 with none of the geometry
+		 * checks it exists for executed. That is QA round 2 Q2's failure mode one
+		 * layer in, and it is Q2's own lesson that a path which cannot fail is not a
+		 * gate — so the reachability of the state is asserted here, on the composer
+		 * this time rather than on the POST.
+		 */
+		check(
+			"the conversation catalogue painted a row for this run's conversation, so the composer can mount",
+			rowPressed,
+			`${row} never appeared within 20s — the conversation exists on the backend and the chat pane mounts no composer without an open one`,
+		);
+		if (rowPressed) await wait(600);
+		note(
+			"state (chat, after the conversation press)",
+			JSON.stringify(await verb(cdp, "state")),
+		);
+	}
+	const composerPresent = await cdp.evaluate(
+		`Boolean(document.querySelector('textarea[aria-label="Message"]'))`,
+	);
+	if (!composerPresent) {
+		const frame = await captureSettled(cdp, "composer-absent-no-backend");
+		/*
+		 * TWO ABSENCES, TWO SENTENCES (review round 3 MINOR 1). "No backend" and "the
+		 * backend answered but the catalogue never painted a row" leave the same
+		 * `composerPresent: false` behind and had one sentence between them, which is
+		 * how a scene can report the wrong cause on a path it also exited 0 from. The
+		 * difference does not live in the state string above: it is `rowPressed`.
+		 */
+		const readback = {
+			note: BACKEND
+				? "This run HAS an isolated backend and its conversation was created, but the chat pane never painted a conversation row within 20s, so no composer mounted and no draft could be typed into one. That is a failure of the state this scene asserts (see the check above), not an absence of a backend."
+				: "A driver run has no backend: the chat pane renders its unreachable-backend state, no composer is mounted, and no draft can be typed into one. The highlight's geometry is measured in the Storybook harness (`Chat/Slash highlight` -> `geometry`), the only surface with a command vocabulary. Recorded here rather than reported as a pass.",
+			measuredAt: new Date().toISOString(),
+			windowSize: facts.windowSize,
+			composerPresent: false,
+			frame: frame.path,
+		};
+		writeFileSync(
+			join(FRAMES, "composer-geometry.json"),
+			`${JSON.stringify(readback, null, 2)}\n`,
+		);
+		note("composer halted", JSON.stringify(readback));
+		return;
+	}
+	note(
+		"composer present",
+		"the chat pane mounted a composer, so this run measures it",
+	);
+
+	const geometryOf = () =>
+		cdp.evaluate(`(() => {
+			const ta = document.querySelector('textarea[aria-label="Message"]');
+			if (!ta) return { missing: "textarea" };
+			const t = getComputedStyle(ta);
+			const lineHeight = Number.parseFloat(t.lineHeight);
+			const padTop = Number.parseFloat(t.paddingTop);
+			const padBottom = Number.parseFloat(t.paddingBottom);
+			const out = {
+				draft: ta.value,
+				mirrorRendered: false,
+				textareaColor: t.color,
+				caretColor: t.caretColor,
+				textareaClientWidth: ta.clientWidth,
+				textareaOffsetWidth: ta.offsetWidth,
+				scrollbarGutter: ta.offsetWidth - ta.clientWidth,
+				textareaPaddingRight: Number.parseFloat(t.paddingRight),
+				textareaPaddingTop: padTop,
+				textareaFont: t.font,
+				lineHeight,
+				textareaRows: Math.round((ta.scrollHeight - padTop - padBottom) / lineHeight),
+				scrollTop: ta.scrollTop,
+			};
+			const mirror = document.querySelector('[data-composer-mirror]');
+			/*
+			 * The GLYPH layer, one node in from the clip window. The split is the fix for
+			 * QA round 2 Q1 and this readback has to keep the two apart: the transform and
+			 * the text metrics belong to the glyph layer, the box that clips belongs to
+			 * the window, and moving the transform onto the clip node displaces the window
+			 * with the paint (the field's bottom line unpainted, the mirror painting above
+			 * the composer's top edge).
+			 */
+			const paint = document.querySelector('[data-composer-mirror-paint]');
+			if (!mirror || !paint) return out;
+			const m = getComputedStyle(paint);
+			const box = paint.getBoundingClientRect();
+			const clip = mirror.getBoundingClientRect();
+			const field = ta.getBoundingClientRect();
+			let before = "";
+			const runs = [];
+			for (const node of paint.childNodes) {
+				if (node.nodeType === 3) { before += node.textContent || ""; continue; }
+				const text = node.textContent || "";
+				if (node.dataset && node.dataset.slashRun) {
+					const rect = node.getBoundingClientRect();
+					runs.push({
+						kind: node.dataset.slashRun,
+						text,
+						newlinesBefore: before.split("\\n").length - 1,
+						top: rect.top - box.top,
+						left: rect.left - box.left,
+						height: rect.height,
+					});
+				}
+				before += text;
+			}
+			return {
+				...out,
+				mirrorRendered: true,
+				mirrorClientWidth: paint.clientWidth,
+				mirrorOffsetWidth: paint.offsetWidth,
+				mirrorPaddingRight: Number.parseFloat(m.paddingRight),
+				mirrorPaddingTop: Number.parseFloat(m.paddingTop),
+				/*
+				 * WHICH BOX CLIPS WHAT IS PAINTED, the assertion the old one-node reading
+				 * could not make (QA round 2 Q1): the clip window's top against the field's
+				 * own, and the paint's top against the clip window's (the transform, i.e.
+				 * glyphs moving inside a window that does not). A displaced window satisfies
+				 * translateY == -scrollTop and equal content heights while hiding the line
+				 * the caret is on.
+				 */
+				clipBoxOffsetFromField: clip.top - field.top,
+				paintBoxOffsetFromClip: box.top - clip.top,
+				mirrorClipHeight: clip.height,
+				/*
+				 * The inline box the runs are measured AGAINST. paddingTop is the
+				 * wrong origin and this scene asserted against it: an inline element's
+				 * rect is its FONT's content box, half a leading below the line box, so
+				 * a run's top sits ~2.5px under paddingTop for a 14px font on a 21.7px
+				 * line — twelve "failures" that were how inline boxes are measured
+				 * rather than any drift (QA round 1 Q2). The mirror's own first text
+				 * node is the honest origin: both are inline boxes on the line the tint
+				 * names. (No backticks in here: this whole block is inside a template
+				 * literal.)
+				 */
+				mirrorFirstLineTop: (() => {
+					const node = paint.firstChild;
+					if (!node) return null;
+					const range = document.createRange();
+					range.selectNodeContents(node);
+					const rect = range.getBoundingClientRect();
+					return rect.top - box.top;
+				})(),
+				mirrorFont: m.font,
+				mirrorRows: Math.round((paint.scrollHeight - Number.parseFloat(m.paddingTop) - Number.parseFloat(m.paddingBottom)) / Number.parseFloat(m.lineHeight)),
+				mirrorScrollHeight: paint.scrollHeight,
+				textareaScrollHeight: ta.scrollHeight,
+				mirrorTransform: getComputedStyle(paint).transform,
+				runs,
+			};
+		})()`);
+
+	/** A React-compatible clear, then the app's own input pipeline types. */
+	const setDraft = async (text) => {
+		await cdp.evaluate(`(() => {
+			const ta = document.querySelector('textarea[aria-label="Message"]');
+			if (!ta) return "no textarea";
+			ta.focus();
+			const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
+			setter.call(ta, "");
+			ta.dispatchEvent(new Event("input", { bubbles: true }));
+			return "cleared";
+		})()`);
+		if (text) await cdp.send("Input.insertText", { text });
+		await wait(120);
+	};
+
+	const DRAFTS = [
+		// A recognised command bar. The mirror is on and the run is the word.
+		["command-alone", "/compact"],
+		// The operator's own shape: a start command whose instruction set spans
+		// lines, with the name tinted separately from the prose tail.
+		[
+			"start-name-instruction",
+			"/team frontend-guild review the queue\nand then ship it",
+		],
+		// A slash token inside a sentence: no run, so no mirror — the field keeps
+		// its native rendering.
+		["mid-sentence-token", "fix this /usage"],
+		// The screenshot: prose that merely OPENS with a command word.
+		[
+			"prose-leading-command-word",
+			"/mcp logout seems to cause a crash on the TUI,\ncan you review and fix that issue",
+		],
+		// A single line long enough to wrap in the composer: the row-count parity
+		// check, and the case the scrollbar correction exists for.
+		[
+			"wrapped-command-line",
+			"/compact please summarise the failing tests in the TUI crash report and then stop",
+		],
+	];
+	/**
+	 * WHICH DRAFTS THE PLAN SAYS CARRY A RUN, and therefore which must render the
+	 * mirror — asserted per state below rather than declared and ignored.
+	 *
+	 * WHY THIS REPLACED A TABLE NOBODY READ (QA round 3 Q1): the old `_EXPECTS_RUN`
+	 * was dead code that claimed two rows paint that do not, and the scene passed
+	 * them with `with no command vocabulary the field keeps its native ink` — a
+	 * message whose stated cause is false wherever a backend answers (39 options are
+	 * offered for a bare `/`). The three `false` rows are the rule's own answers,
+	 * measured on this scene's drafts: `/compact` with text after it is a draft the
+	 * planner sends as written (so nothing paints and Enter posts prose), and
+	 * `/team …` with a newline is the multi-line kill. Asserting paint ⇔ the plan is
+	 * what would have caught the round-2 gap this scene exists to close, so it is
+	 * asserted here instead of tabulated.
+	 */
+	const EXPECTS_PAINT = {
+		"command-alone": true,
+		"start-name-instruction": false,
+		"mid-sentence-token": false,
+		"prose-leading-command-word": false,
+		"wrapped-command-line": false,
+	};
+
+	const readback = {
+		note: "Beat 1 measured by --scene composer; mirror/text parity, run geometry and the scrollbar correction.",
+		measuredAt: new Date().toISOString(),
+		windowSize: facts.windowSize,
+		themes: {},
+		probes: {},
+	};
+	const frames = [];
+
+	for (const theme of ["localOperatorDark", "localOperatorLight"]) {
+		await verb(cdp, "setTheme", theme);
+		const seen = [];
+		for (const [label, draft] of DRAFTS) {
+			await setDraft(draft);
+			const geometry = await geometryOf();
+			seen.push({ label, ...geometry });
+			if (theme === "localOperatorDark" && label !== "wrapped-command-line") {
+				const frame = await captureSettled(cdp, `composer-${label}`);
+				frames.push({ label, path: frame.path, stable: frame.stable });
+			}
+		}
+		readback.themes[theme] = seen;
+	}
+
+	/*
+	 * The narrow composer. The driver's window is one size for the whole run, so
+	 * the column is narrowed on the box itself and the mirror is asked to survive
+	 * it: a narrower text column wraps earlier, which is exactly when a padding
+	 * or font disagreement moves the tint off its glyph.
+	 */
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await setDraft(
+		"/compact please summarise the failing tests in the TUI crash report and then stop",
+	);
+	const narrow = await cdp.evaluate(`(() => {
+		const box = document.querySelector('[data-tour-tag="chat-input-textarea"]');
+		if (!box) return "no composer box";
+		box.style.width = "360px";
+		window.dispatchEvent(new Event("resize"));
+		return box.getBoundingClientRect().width;
+	})()`);
+	await wait(150);
+	readback.probes.narrowColumn = {
+		boxWidthCssPx: narrow,
+		geometry: await geometryOf(),
+	};
+	const narrowFrame = await captureSettled(
+		cdp,
+		"composer-wrapped-command-narrow",
+	);
+	frames.push({
+		label: "wrapped-command-narrow",
+		path: narrowFrame.path,
+		stable: narrowFrame.stable,
+	});
+	await cdp.evaluate(`(() => {
+		const box = document.querySelector('[data-tour-tag="chat-input-textarea"]');
+		if (box) box.style.width = "";
+		window.dispatchEvent(new Event("resize"));
+		return true;
+	})()`);
+
+	/*
+	 * The scrollbar probe. macOS overlay scrollbars measure a 0px gutter, so the
+	 * correction the mirror applies would be unexercised on this machine; forcing
+	 * a CLASSIC scrollbar onto the field (a style the platform toggle produces)
+	 * makes the arithmetic real, and the row-count parity below is what says the
+	 * correction is what keeps the wrap points equal. Stated as a forced probe
+	 * rather than a reproduction of the OS setting.
+	 */
+	await setDraft(
+		"/compact please summarise the failing tests in the TUI crash report and then stop",
+	);
+	const forced = await cdp.evaluate(`(() => {
+		const ta = document.querySelector('textarea[aria-label="Message"]');
+		if (!ta) return "no textarea";
+		ta.style.overflowY = "scroll";
+		window.dispatchEvent(new Event("resize"));
+		return { gutter: ta.offsetWidth - ta.clientWidth, clientWidth: ta.clientWidth };
+	})()`);
+	await wait(150);
+	readback.probes.forcedScrollbar = { ...forced, geometry: await geometryOf() };
+	const scrollFrame = await captureSettled(cdp, "composer-forced-scrollbar");
+	frames.push({
+		label: "forced-scrollbar",
+		path: scrollFrame.path,
+		stable: scrollFrame.stable,
+	});
+	await cdp.evaluate(`(() => {
+		const ta = document.querySelector('textarea[aria-label="Message"]');
+		if (ta) ta.style.overflowY = "";
+		window.dispatchEvent(new Event("resize"));
+		return true;
+	})()`);
+
+	readback.frames = frames;
+
+	/*
+	 * THE SCROLLED PARITY (code review round 1 MINOR 1).
+	 *
+	 * The mirror's window is kept on the textarea's by `translateY(-scrollTop)`,
+	 * written per scroll frame, and nothing in either rig read it: the Storybook
+	 * probes measured a box that was not scrolled, and this scene did not run at
+	 * all. The failure it guards is a tint frozen one line behind its own glyphs
+	 * while the user drags the scrollbar, so the state has to be produced — the
+	 * composer scrolls its caret into view, so a draft taller than the box arrives
+	 * scrolled, and this probe writes the offset explicitly because a caret-driven
+	 * scroll can land at the bottom with the tinted first row already out of view.
+	 *
+	 * The draft is one logical line of the shape that PAINTS — a start command with
+	 * its name list — because the check below is about the MIRROR's window and a
+	 * draft the planner sends as written mounts no mirror at all (`/compact` with
+	 * text after it is prose: measured in this scene's own Enter-parity table, QA
+	 * round 2 Q4; a probe that dropped the mirror here would silently take the
+	 * no-vocabulary branch instead of asserting anything). It wraps past the box's
+	 * own `max-h-28`.
+	 */
+	await setDraft(
+		"/team frontend-guild review every file in this queue, note which of the failing cases are flaky and which are deterministic, summarise the crash reports from the TUI in the order they were filed and say which of them share a cause, call out the two wrappers that disagree about the line they paint and say which one of them is right, then hand the whole summary to the reviewer together with the commands that reproduce each of the failing cases, the backend version each of those commands was taken against, and the theme that was active at the time, so that nothing is lost in the handover and the next reader can start where this one left off without asking a question about what came before it or which of the two wrappers was telling the truth, and keep the instruction short enough that the box scrolls only a little rather than to its end",
+	);
+	const scrolled = await cdp.evaluate(`(() => {
+		const ta = document.querySelector('textarea[aria-label="Message"]');
+		if (!ta) return { missing: "textarea" };
+		const max = ta.scrollHeight - ta.clientHeight;
+		if (max <= 0) return { canScroll: false, maxScroll: 0, scrollTop: 0 };
+		/* One line down, so the tinted first row is still in the frame. */
+		ta.scrollTop = Math.min(Number.parseFloat(getComputedStyle(ta).lineHeight), max);
+		return { canScroll: true, maxScroll: max, scrollTop: ta.scrollTop };
+	})()`);
+	await wait(150);
+	readback.probes.scrolled = { ...scrolled, geometry: await geometryOf() };
+	const scrolledFrame = await captureSettled(cdp, "composer-scrolled-draft");
+	frames.push({
+		label: "scrolled-draft",
+		path: scrolledFrame.path,
+		stable: scrolledFrame.stable,
+	});
+
+	const readbackPath = join(FRAMES, "composer-geometry.json");
+	writeFileSync(readbackPath, `${JSON.stringify(readback, null, 2)}\n`);
+	note("geometry readback", readbackPath);
+
+	/*
+	 * The assertions, over the numbers just written.
+	 *
+	 * THE MIRROR IS NOT EXPECTED IN A BACKEND-LESS RUN, and that is a fact about this
+	 * harness rather than about the change: the highlight's vocabulary comes from the
+	 * backend's `commands.list`, a run without `--backend` has none (see the
+	 * isolation notes at the top), so the composer recognises no command and paints
+	 * nothing. What the scene can hold the app to is the state that follows from
+	 * that — the field keeps its native ink, its own font and its own rows — and the
+	 * mirror's parity is measured where a vocabulary exists: the Storybook harness
+	 * (`Chat/Slash highlight`, whose `geometry` story prints the same readback into
+	 * the frame) and this scene's own probes on a run whose backend HAS a session
+	 * (QA round 1 Q2). A mirror that appears here without a vocabulary would mean one
+	 * arrived from somewhere this run did not expect; its geometry is then checked
+	 * rather than excused.
+	 */
+	const geometryChecks = [];
+	for (const [theme, seen] of Object.entries(readback.themes)) {
+		for (const entry of seen)
+			geometryChecks.push([`${theme}/${entry.label}`, entry]);
+	}
+	geometryChecks.push([
+		"localOperatorDark/wrapped-command-line@360px",
+		readback.probes.narrowColumn.geometry,
+	]);
+	geometryChecks.push([
+		"localOperatorDark/wrapped-command-line@classic-scrollbar",
+		readback.probes.forcedScrollbar.geometry,
+	]);
+	geometryChecks.push([
+		"localOperatorDark/tall-command-line@scrolled",
+		readback.probes.scrolled.geometry,
+	]);
+
+	let mirrorsSeen = 0;
+	for (const [where, geometry] of geometryChecks) {
+		check(
+			`${where}: the field is a real textarea with a text column`,
+			geometry.textareaClientWidth > 0 && geometry.lineHeight > 0,
+			`clientWidth=${geometry.textareaClientWidth} lineHeight=${geometry.lineHeight}`,
+		);
+		check(
+			`${where}: the textarea's font is the composer's own`,
+			/\d+(\.\d+)?px/.test(geometry.textareaFont),
+			geometry.textareaFont,
+		);
+		/*
+		 * PAINT ⇔ PLAN, PER STATE (QA round 3 Q1). The draft's label is the tail of
+		 * `where` (`<theme>/<label>`, or `<theme>/<label>@<probe>` for the derived
+		 * probes), and `EXPECTS_PAINT` above is the plan's own answer for each draft
+		 * this scene types. This is the assertion the scene's dead table should have
+		 * been: a mirror without a run is the tint lying about Enter, and a run
+		 * without a mirror is the defect class QA round 1 Q1 measured.
+		 */
+		const draftLabel = where.split("/")[1]?.split("@")[0] ?? "";
+		const expectsPaint = EXPECTS_PAINT[draftLabel];
+		if (expectsPaint !== undefined) {
+			check(
+				`${draftLabel}: the mirror is mounted exactly where the plan says a run exists`,
+				geometry.mirrorRendered === expectsPaint,
+				`mirrorRendered=${geometry.mirrorRendered} expected=${expectsPaint}`,
+			);
+		}
+		if (!geometry.mirrorRendered) {
+			check(
+				`${where}: an unpainted draft keeps the field's native ink`,
+				geometry.textareaColor !== "rgba(0, 0, 0, 0)" &&
+					geometry.textareaColor !== "transparent",
+				`color=${geometry.textareaColor}`,
+			);
+			continue;
+		}
+		mirrorsSeen += 1;
+		/*
+		 * The mirror is not scrollable, so it spans the CONTENT box while the
+		 * textarea loses the scrollbar's width from its client box. Equality of the
+		 * two numbers is therefore false by exactly the gutter whenever one exists
+		 * — which is the case the `forced-scrollbar` probe of this scene exists for
+		 * (measured: `mirror=798 textarea=790`; QA round 1 Q2). What holds, and is
+		 * what wrap parity needs, is that the mirror spans the textarea's box plus
+		 * its gutter, with the padding-right correction asserted just below.
+		 */
+		check(
+			`${where}: the layer that clips is the field's own viewport`,
+			Math.abs(geometry.clipBoxOffsetFromField) <= 0.5,
+			`clip box ${geometry.clipBoxOffsetFromField}px off the field's top (the box the window is: ${geometry.mirrorClipHeight}px) — the transform belongs to the glyph layer, or the scroll moves the clip window with the paint (QA round 2 Q1)`,
+		);
+		check(
+			`${where}: the paint moves inside a window that does not`,
+			Math.abs(geometry.paintBoxOffsetFromClip + geometry.scrollTop) <= 0.5,
+			`paint box ${geometry.paintBoxOffsetFromClip}px from the clip box at scrollTop ${geometry.scrollTop}`,
+		);
+		check(
+			`${where}: the mirror spans the textarea's content box, gutter included`,
+			geometry.mirrorFirstLineTop === null ||
+				Math.abs(
+					geometry.mirrorClientWidth -
+						(geometry.textareaClientWidth + geometry.scrollbarGutter),
+				) <= 1,
+			`mirror=${geometry.mirrorClientWidth} textarea=${geometry.textareaClientWidth} gutter=${geometry.scrollbarGutter}`,
+		);
+		check(
+			`${where}: the two layers compute the same font`,
+			geometry.mirrorFont === geometry.textareaFont,
+			`mirror=${geometry.mirrorFont} textarea=${geometry.textareaFont}`,
+		);
+		check(
+			`${where}: the textarea's own text is transparent and its caret is not`,
+			(geometry.textareaColor === "rgba(0, 0, 0, 0)" ||
+				geometry.textareaColor === "transparent") &&
+				geometry.caretColor !== geometry.textareaColor,
+			`color=${geometry.textareaColor} caret=${geometry.caretColor}`,
+		);
+		check(
+			`${where}: the mirror's rows match the textarea's`,
+			geometry.mirrorRows === geometry.textareaRows,
+			`mirror=${geometry.mirrorRows} textarea=${geometry.textareaRows}`,
+		);
+		/*
+		 * Compare the mirror's CONTENT height, not only its row count: this is the
+		 * pair QA round 1 Q1 was measured in (34px against 55px), and the two can
+		 * disagree inside one row's worth of rounding without the row counts
+		 * differing. The mirror paints every glyph, so a mirror even a fraction of a
+		 * row taller is a mirror wrapping a character the textarea did not.
+		 */
+		check(
+			`${where}: the mirror's content height is the textarea's`,
+			Math.abs(geometry.mirrorScrollHeight - geometry.textareaScrollHeight) <=
+				1,
+			`mirror=${geometry.mirrorScrollHeight} textarea=${geometry.textareaScrollHeight}`,
+		);
+		/*
+		 * And the scrolled half of the same claim: the mirror's window is the
+		 * textarea's, by the transform the writer keeps in step with the scroll.
+		 */
+		check(
+			`${where}: the mirror's window follows the textarea's scroll`,
+			geometry.scrollTop === 0 ||
+				Math.abs(translateYOf(geometry.mirrorTransform) + geometry.scrollTop) <=
+					0.5,
+			`scrollTop=${geometry.scrollTop} transform=${geometry.mirrorTransform}`,
+		);
+		check(
+			`${where}: the right padding is the textarea's plus its scrollbar`,
+			Math.abs(
+				geometry.mirrorPaddingRight -
+					(geometry.textareaPaddingRight + geometry.scrollbarGutter),
+			) < 0.5,
+			`mirror=${geometry.mirrorPaddingRight} textarea=${geometry.textareaPaddingRight} gutter=${geometry.scrollbarGutter}`,
+		);
+		for (const run of geometry.runs) {
+			/* See `mirrorFirstLineTop`: the origin is the line's own first inline
+			   box, not `paddingTop`, and a run on the first content line shares it. */
+			const expected = geometry.mirrorFirstLineTop;
+			check(
+				`${where}: run "${run.text}" sits on the line it names`,
+				expected === null || Math.abs(run.top - expected) <= 0.5,
+				`top=${run.top} line=${expected}`,
+			);
+		}
+	}
+	note(
+		"mirrors painted by this run",
+		`${mirrorsSeen} of ${geometryChecks.length} states painted — and the count is NOT the claim: the plan decides per draft, so the states that paint are the ones whose draft carries a run (this scene's \`command-alone\` and its two derived scroll probes), and the rest are prose the planner sends as written or the multi-line kill. A run without \`--backend\` has no vocabulary at all and paints in none`,
+	);
+	note(
+		"scrollbar gutters measured",
+		JSON.stringify({
+			overlay: readback.themes.localOperatorDark.map(
+				(entry) => entry.scrollbarGutter,
+			),
+			forcedClassic: readback.probes.forcedScrollbar.gutter,
+		}),
+	);
+}
+
 function resolvedLogPaths() {
 	const lines = [];
 	for (const file of ["backend-installer.log", "backend-service.log"]) {
