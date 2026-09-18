@@ -4106,7 +4106,7 @@ export class UpdateService {
 	 * directions.
 	 */
 	private readRebuildMarkerState(
-		installPath: string | null = this.resolveLocalOperatorPath(),
+		installPath: string | null,
 	): SourceMarkerState {
 		const identity = readInstallIdentity(installPath);
 		return readSourceMarkerState(identity.venvPrefix ?? null);
@@ -5279,17 +5279,23 @@ export class UpdateService {
 	}
 
 	/**
-	 * The version the resolved global install reports on disk, or null.
+	 * The version an install reports on disk, or null.
 	 *
-	 * Shell-free, and deliberately a different read from the running backend's
-	 * `/health`: the install is what an update moves, and immediately after one it
-	 * is the only reading that has moved - the daemon lags until it is restarted.
-	 * Read through the same resolution the plan classified, because it is half of
-	 * the evidence that the install changed at all.
+	 * Shell-free, and deliberately a different read from the running backend's `/health`:
+	 * the install is what an update moves, and immediately after one it is the only reading
+	 * that has moved - the daemon lags until it is restarted.
+	 *
+	 * THE INSTALL IS A REQUIRED ARGUMENT, and that is a fix rather than a style. This read
+	 * used to default to `resolveLocalOperatorPath()` - the shim - and that default is how
+	 * the same seam kept arriving: a caller that forgot which install its attempt had run
+	 * silently read the shim instead, and four review rounds found it one site at a time
+	 * (the press against the check, the two evidence reads, then the unattended
+	 * reconciliation). A required argument turns that mistake into a compile error rather
+	 * than into a plausible number. The one caller with a record and no path - the
+	 * reconciliation reading a marker an older build wrote - names its fallback explicitly
+	 * and logs it.
 	 */
-	private readGlobalInstallVersion(
-		installPath: string | null = this.resolveLocalOperatorPath(),
-	): string | null {
+	private readInstallVersionAt(installPath: string | null): string | null {
 		return readInstallIdentity(installPath)?.version ?? null;
 	}
 
@@ -5630,8 +5636,7 @@ export class UpdateService {
 		 */
 		const installPath = servingScript ?? consolePath;
 		const freshPlan = resolveGlobalInstallPlan({
-			identity:
-				servingIdentity ?? readInstallIdentity(installPath ?? consolePath),
+			identity: servingIdentity ?? readInstallIdentity(installPath),
 			sourceRebuild: rebuildPath,
 		});
 		const rebuildRoute =
@@ -5659,8 +5664,7 @@ export class UpdateService {
 		// minutes apart, and `before` is half of the only evidence that anything
 		// moved.
 		const before =
-			this.readGlobalInstallVersion(installPath) ??
-			plan.installedInstallVersion;
+			this.readInstallVersionAt(installPath) ?? plan.installedInstallVersion;
 		/*
 		 * THE OTHER HALF OF THE EVIDENCE, for the rebuild route only: `.lop-source`. A
 		 * rebuild of the checkout keeps the version (`pyproject.toml` names the last
@@ -5701,6 +5705,12 @@ export class UpdateService {
 			deadlineAt: new Date(Date.now() + budgetMs).toISOString(),
 			groupPid: null,
 			groupStartedAt: null,
+			/*
+			 * The install this attempt runs, recorded so a later launch does not have to resolve
+			 * one of its own: the reconciliation reads this, and a marker without it (an older
+			 * build's) is the only case that falls back.
+			 */
+			installPath,
 		};
 		writePendingServerUpdateMarker(this.markerDir(), marker);
 		const run = await this.runGlobalUpdate(
@@ -5729,10 +5739,11 @@ export class UpdateService {
 					deadlineAt: marker.deadlineAt,
 					groupPid: pid,
 					groupStartedAt: readProcessStartStamp(pid),
+					installPath,
 				});
 			},
 		);
-		const after = this.readGlobalInstallVersion(installPath);
+		const after = this.readInstallVersionAt(installPath);
 		const markerAfter = rebuildRoute
 			? this.readRebuildMarkerState(installPath)
 			: null;
@@ -5960,7 +5971,28 @@ export class UpdateService {
 			);
 			return;
 		}
-		const after = this.readGlobalInstallVersion();
+		/*
+		 * THE INSTALL THE RECORD NAMES, not one this launch resolves. Pre-fix both sides of
+		 * this comparison were the shim, so they agreed by construction; once the press began
+		 * running the serving install, the `after` read had to follow it, or the
+		 * reconciliation reported the wrong tree - a landed update as "did not move the
+		 * install", and a no-op as a success when only the shim had moved (review round 7,
+		 * M1: the fourth site this seam was found at, one round at a time).
+		 *
+		 * A record from an older build carries no path. Falling back to the shim there is
+		 * deliberate and logged, because the alternative - saying nothing - would drop the
+		 * unattended report for an upgrade that really did happen.
+		 */
+		const recordPath = marker.installPath ?? null;
+		const after = this.readInstallVersionAt(
+			recordPath ?? this.resolveLocalOperatorPath(),
+		);
+		if (recordPath === null) {
+			logger.warn(
+				`The update record from ${marker.startedAt} names no install (written by an older build); reading the shim's resolution instead`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
 		clearPendingServerUpdateMarker(this.markerDir());
 		if (!after || after === marker.before) {
 			logger.info(
