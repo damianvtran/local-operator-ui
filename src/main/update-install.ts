@@ -135,6 +135,37 @@ export const PENDING_INSTALL_RECENCY_SECONDS =
 	WATCHDOG_HARD_TIMEOUT_SECONDS + PENDING_INSTALL_RECENCY_MARGIN_SECONDS;
 
 /**
+ * How much before the watchdog's hard bound a launch stops being held for an
+ * install.
+ *
+ * The hard bound is where the watchdog deliberately stops holding and starts the
+ * app INTO a live install, because a user with no app at all is worse than one
+ * whose stuck install the app it just opened may cancel (see
+ * `WATCHDOG_HARD_TIMEOUT_SECONDS`). That launch has to open normally, and this
+ * margin is what keeps the hold from swallowing it.
+ *
+ * It is needed because the two clocks are not the same clock: the watchdog is
+ * spawned a few milliseconds BEFORE the marker the hold reads is written, so at
+ * the watchdog's hard bound the marker is a hair YOUNGER than 1800 s. A hold
+ * that read the hard bound itself would therefore hold the very launch the
+ * watchdog had just made - and the hold ensures a watchdog on its way out, so
+ * that watchdog would wait out another hard bound and start the app again, and
+ * the user would end up with neither an install nor an app. The last minute of
+ * the wait belongs to the watchdog's decision, which is the one taken with the
+ * machine's state in front of it.
+ */
+export const LAUNCH_HOLD_END_MARGIN_SECONDS = 60;
+
+/**
+ * The marker age at which a launch stops being held out of an install's way.
+ *
+ * See `LAUNCH_HOLD_END_MARGIN_SECONDS` for why this is not simply the watchdog's
+ * hard bound, and `evaluateLaunchDuringInstall` for what is decided with it.
+ */
+export const PENDING_INSTALL_LAUNCH_HOLD_SECONDS =
+	WATCHDOG_HARD_TIMEOUT_SECONDS - LAUNCH_HOLD_END_MARGIN_SECONDS;
+
+/**
  * How long the watchdog's on-disk version read may take before it is killed.
  *
  * The read is the plan's plist reader (`plutil`) on the target bundle's own
@@ -1485,6 +1516,49 @@ export function isInstallInFlight(input: {
 }
 
 /**
+ * What a process starting up has to do about an install that may still be
+ * running.
+ *
+ * The 2026-09-18 incident this decides: an install four minutes into its work
+ * was aborted - `Aborting update attempt because there are 1 running instances
+ * of the target app`, `SQRLInstallerErrorDomain Code=-9` - because the app was
+ * started while it was installing. ShipIt asks whether any instance of the
+ * target app is running ONCE, as its last check before the swap, so a launch
+ * that settles into a normal run answers yes and throws the whole wait away; the
+ * app's own window was the only thing left that could make that happen once the
+ * quit paths were covered (UX U1, U2). A launch that finds a LIVE install
+ * therefore must not become that instance - it tells the user why nothing opened
+ * and leaves (`holdLaunchForLiveInstall`), which is an exposure measured in
+ * hundreds of milliseconds rather than in the minutes a person takes to read a
+ * window and act on it.
+ *
+ * Three answers are deliberately the same "open", and none of them is an
+ * accident:
+ *
+ * - no marker, and a marker whose install job is gone, are `isInstallInFlight`'s
+ *   own answers, and they are what keeps a FAILED install's leftover job (0.17.0:
+ *   `runs=3114`, loaded for hours) from holding every later launch forever;
+ * - a marker past `PENDING_INSTALL_LAUNCH_HOLD_SECONDS` is the watchdog's own
+ *   hard-bound launch, which exists so the user is never left with no app and
+ *   must open normally (see that constant);
+ * - an undated marker opens too, because nothing can say it is live, and opening
+ *   normally REPORTS the install rather than hiding it behind a notice.
+ */
+export function evaluateLaunchDuringInstall(input: {
+	marker: PendingInstallMarker | null;
+	jobLoaded: boolean;
+	now?: number;
+}): { kind: "open" } | { kind: "hold"; marker: PendingInstallMarker } {
+	const { marker } = input;
+	if (!marker || !isInstallInFlight(input)) return { kind: "open" };
+	const age = pendingInstallAgeSeconds(marker, input.now);
+	if (age === null || age > PENDING_INSTALL_LAUNCH_HOLD_SECONDS) {
+		return { kind: "open" };
+	}
+	return { kind: "hold", marker };
+}
+
+/**
  * Whether a launchd job is loaded, from a probe the caller supplies.
  *
  * `launchctl list <label>` exits 0 while the job is loaded and 113 when it is
@@ -1650,6 +1724,32 @@ export function installInFlightPayload(
 		targetVersion: marker.targetVersion,
 		message: `Version ${marker.targetVersion} can't finish installing while Local Operator is open — keeping it open cancels the install. Quit and leave it closed until the app opens again by itself.`,
 		detail: `Install started ${installStartedText(marker)} from ${marker.artifactPath || "an unknown artifact"}, while version ${runningVersion} was running.`,
+	};
+}
+
+/**
+ * What a launch that stands down for a live install tells the user.
+ *
+ * A banner rather than a panel, because the window IS the problem: this process
+ * exists only long enough to explain itself and leave (see
+ * `evaluateLaunchDuringInstall`). So the two facts a user needs travel in the
+ * notification itself - nothing has failed and nothing is broken, and they do
+ * not have to do anything - because there is no panel left to carry them.
+ *
+ * The target version is named for the same reason `installInFlightPayload` names
+ * it: "an update" with no number is a thing a user cannot tell from the one that
+ * was already there. The closing sentence states the promise rather than the
+ * advice: the relaunch watchdog is what opens the app again, and standing down
+ * is only honest if it says so.
+ */
+export type InstallLaunchHoldNotice = { title: string; body: string };
+
+export function installLaunchHoldNotice(
+	marker: PendingInstallMarker,
+): InstallLaunchHoldNotice {
+	return {
+		title: "Local Operator is still updating",
+		body: `Version ${marker.targetVersion} is still installing. Local Operator is closing again so the install can finish, and will open by itself when it is done — you do not need to do anything.`,
 	};
 }
 

@@ -1022,6 +1022,38 @@ retried and then allowed to proceed — "we could not ask" is not "the bundle is
 exists); this section and the files it names are authoritative for anything about
 where the interpreter lives or how it is updated.
 
+### A launch during a live install stands down
+
+Squirrel's ShipIt asks whether any instance of the target app is running ONCE, as its
+last check before it swaps the bundle, and abandons the install when one is (`App Still
+Running Error`, `SQRLInstallerErrorDomain Code=-9`). So a launch that finds a LIVE
+install does not open a window: `holdLaunchForLiveInstall`
+(`src/main/update-service.ts`) reads the pending marker, asks launchd for the install's
+job, tells the user and quits - inside `whenReady`, before the menu, the backend or a
+window exists. Measured on this machine against a packaged bundle: 0.8-2.5 s of process,
+no window, and no `Update service initialized` line. Three facts decide it, and each one
+is load-bearing:
+
+- **A loaded job plus a current marker is an install in flight** (`isInstallInFlight`),
+  and the launch is held. A marker whose job is gone, or one past
+  `PENDING_INSTALL_LAUNCH_HOLD_SECONDS`, opens normally instead, so start-up recovery can
+  report the failure it describes; the marker, the install's job and its staging tree are
+  never touched by the hold.
+- **The hold ends before the watchdog's hard bound** (`LAUNCH_HOLD_END_MARGIN_SECONDS`).
+  That bound is where the relaunch watchdog deliberately starts the app into a live
+  install rather than leave a user with no app; a hold that swallowed it would ensure a
+  watchdog on its way out and repeat forever.
+- **The notice is bounded rather than awaited, and the quit is bounded twice.** The banner
+  is the convenience and the quit is the point, so a system that never reports a banner
+  costs the user the banner (`LAUNCH_HOLD_NOTICE_DEADLINE_MS`) and a quit that wedges is
+  forced (`LAUNCH_HOLD_FORCE_QUIT_DEADLINE_MS`) - the same reason the headless path bounds
+  every quit. The relaunch promise holds here too: the watchdog is ensured BEFORE the
+  quit, which is the rule every other quit path follows.
+
+`scripts/update-window-report.mjs` measures the closed window this is about (read-only,
+with the baselines in its header), and `scripts/sec-check.c` times the code-signature call
+the install blocks in.
+
 ## Which pnpm may install and package
 
 Every workflow that INSTALLS pnpm pins it to **10.29.2** (the `version:` input
