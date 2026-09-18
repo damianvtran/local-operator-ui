@@ -18,8 +18,15 @@ Both rows are pixels of the panel window itself, captured from the BUILT app on
 this machine: `frames/before-identity.png` is a tree built at `origin/main`
 `f19827852` - the base this branch was rebased onto when round 1 shot it, and the
 last base whose About path is still Electron's `about` role, which is the fact
-the frame is evidence about - and `frames/after-identity.png` is this branch's own
-code, the tree whose `srcTree` `docs/evidence/manifest.json` pins. Neither is a
+the frame is evidence about - and `frames/after-identity.png` is this change's own
+code. The tree that frame was captured from is not the tree this branch's head
+carries, because `main` moved twice underneath it; what is evidence about is
+unchanged by that: `configureAboutPanel` and `createApplicationMenu` (the
+registration and the Darwin App menu item) are byte-identical between the capture
+tree and this head, `resolveAboutPanelAction` in `src/main/window-mode.ts` with
+them, and the only difference in those two files between the two trees is that
+comment below plus `main`'s own work from the folds - none of it in the path the
+frame photographs. Neither is a
 mock and neither is the app photographing itself: the About panel is AppKit's
 window, so it is photographed from outside, window-only, with `screencapture -l`
 (never the screen) while the app raised it in `inactive` mode. Both runs are
