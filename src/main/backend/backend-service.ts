@@ -600,8 +600,23 @@ export class BackendServiceManager {
 			this.backendUrl,
 			this.desktopToken,
 		).then(({ response, answered }) => {
-			if (answered)
-				this.noteTransportAnswer(desktopAnswerProvesPairing(input, response));
+			// A media answer is recorded as LIVENESS and nothing else, and the
+			// reason is structural rather than provisional: `desktopAnswerProvesPairing`
+			// parses its request against the JSON contract's op vocabulary, and the
+			// media vocabulary is outside it (`speech.create`, `agent.export`,
+			// `sessions.attachment`, ... - see `../desktop-media`'s own schema), so the
+			// predicate refuses the INPUT before it ever reads a path or a status. Its
+			// answer here could only be `false`, which would record a decision this
+			// relay is not able to make rather than the honest "an answer arrived".
+			//
+			// Nothing is lost by that: the two media ops whose paths are under the
+			// admitted prefix (`sessions.attachment`, `subagents.attachment`) are reads
+			// issued alongside the contract ops this app already sends - the presence
+			// beat every 15 s among them - and THOSE are what supply the pairing
+			// evidence, through the predicate written for them. If a media op ever
+			// needs to prove a pairing on its own, it needs its own predicate rather
+			// than a widened `input` type here.
+			if (answered) this.daemonState.recordTransportAnswer();
 			return response;
 		});
 	}
@@ -2910,12 +2925,24 @@ export class BackendServiceManager {
 				// winding down. Discovery is the half that recovers from that, and it
 				// is a CLAIM on the successor the operator's own tooling started, not a
 				// spawn - spawning stays behind every guard below (`isExternalBackend`
-				// for an adopted daemon, the live owned child above), and this app may
+				// for an adopted daemon, and the owned-child guard), and this app may
 				// not replace a live process it did not start. Measured on the
 				// 2026-09-18 report: without this, an app that correctly detached on
 				// three answered contradictions still could not re-pair while the
 				// replaced process lingered, so the operator's only route back was the
 				// restart the banner asked for.
+				//
+				// WHERE this exception sits is load-bearing: it is ABOVE the live
+				// owned-child guard directly below, and that guard still returns before
+				// `discoverAndAttach()`. So an app-OWNED child - a daemon this app
+				// SPAWNED - does NOT recover this way, and is not meant to: an owned
+				// child is governed by the environment this app spawned it with, so a
+				// successor contradicting its own record is not the reported shape
+				// there (that one is an adopted daemon, which does recover). Loosening
+				// the guard to let discovery run first would let `discoverAndAttach()`
+				// answer `false` and fall through to `start({ quiet: true })` below - a
+				// second daemon spawned over a live child, which is the one outcome
+				// that guard exists to prevent.
 				if (!processGone && observation.kind !== "contradicted") return;
 			}
 			// A live owned ChildProcess (including a legacy daemon without records)
