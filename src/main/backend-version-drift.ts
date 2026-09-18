@@ -230,49 +230,87 @@ export function servingInstallIsAppManaged(
 }
 
 /**
- * Whether the app may restart the daemon whose record this is.
+ * Whether this app may restart the daemon whose record this is, and why not when
+ * it may not.
  *
- * Three grounds, each one the daemon's own or this process's own answer:
+ * ONE GROUND, and the finding that removed the other two: `restart()` is
+ * `stop(true)` + `start()`, and `stop()` can only terminate a generation this
+ * process HOLDS (`BackendServiceManager.stopGeneration` - "A port or process name
+ * is not ownership"). A daemon this app adopted has no generation here, so a
+ * `restart()` of it is a stop that stops nothing followed by a `start()` that
+ * re-discovers and re-adopts the same live process. QA round 1 (Q1) drove exactly
+ * that on the real bundle: the skew was detected, no SIGTERM was ever sent, the pid
+ * never moved, and the app logged "Restarted the server onto the installed build"
+ * anyway - then latched itself inert on the pair it had not moved. Reporting a
+ * repair that did not happen is the defect this PR exists to delete, so the
+ * ownership question is now asked with what the repair can actually act on.
  *
- * 1. This app process started it (the child it still holds). The strongest and
- *    the pre-existing one.
- * 2. Its record says the app started it - an unspent claim key (see
- *    `ServingInstallReadings.startedByApp`). This is the ground that survives
- *    an app restart, which is the ordinary desktop lifecycle: the daemon
- *    outlives the app, and the next process adopts it as `EXISTING_SERVER`.
- * 3. It runs from an environment this instance manages. This is what makes the
- *    rule hold for a daemon whose record predates the claim handshake, and for
- *    one booted out of a superseded generation of the same environment tree - a
- *    daemon the app built and started, even though the pid belongs to a process
- *    this app process never saw.
- *
- * NOT a ground, and the finding this replaces: `!isUsingExternalBackend()`.
- * Adoption sets that flag, so a daemon this app started and then adopted was
- * reported to the reader as "a server this app did not start" and refused.
+ * WHY THE PROCESS IS NOT MOVED SOME OTHER WAY, because "this app built that
+ * environment" reads as permission and is not. The daemon's own contract refuses
+ * the exit: `server/retire.py` announces a build change in the record and keeps
+ * serving, because "a marker also supplies no guarantee that a successor is
+ * ready", because "neither an idle-looking daemon nor a claimed desktop daemon may
+ * therefore latch, refuse, or exit on build drift", and because its own lifespan
+ * shutdown cancels scheduler work the daemon owns. The app has no successor-ready
+ * handshake to offer in place of that, and a pid is not a handle: signalling a
+ * number this process never spawned is the recycled-pid write the codebase refuses
+ * everywhere else. So the honest answer for an adopted daemon is the second half of
+ * QA's own choice - the skew is REPORTED and the process is left running - and
+ * `startedByEarlierAppRun` below is what makes the sentence that reports it say
+ * which of the two cases the reader is in.
  */
+export type ServingOwnership = {
+	/**
+	 * Whether THIS app process can stop the serving daemon now - the only ground
+	 * `restart()` acts on, and therefore the only ground the repair may fire on.
+	 */
+	owned: boolean;
+	/** Why, in the log's own words. */
+	because: string;
+	/**
+	 * Whether an EARLIER Local Operator started it: an unspent claim key in its own
+	 * record, or a prefix inside an environment this instance manages.
+	 *
+	 * NOT a ground for the repair, and deliberately still read: it is the fact that
+	 * distinguishes "the app built this daemon and has lost the handle to it - the
+	 * ordinary desktop lifecycle" from "something outside this app started it", and
+	 * the refusal sentence has to say which one, because only the first is a daemon
+	 * the reader's own Local Operator put there.
+	 */
+	startedByEarlierAppRun: boolean;
+};
+
 export function servingInstallIsAppOwned(input: {
 	spawnedByThisProcess: boolean;
 	readings: ServingInstallReadings;
 	managedEnvironmentRoots: string[];
-}): { owned: boolean; because: string } {
-	if (input.spawnedByThisProcess)
-		return { owned: true, because: "this app process started it" };
-	if (input.readings.startedByApp)
-		return { owned: true, because: "its own record says the app started it" };
+}): ServingOwnership {
 	const root = input.managedEnvironmentRoots.find((candidate) =>
 		isInside(candidate, input.readings.prefix),
 	);
-	if (root !== undefined)
+	const builtByApp = input.readings.startedByApp || root !== undefined;
+	if (input.spawnedByThisProcess)
 		return {
 			owned: true,
-			because: `it runs from this app's own environment (${root})`,
+			because: "this app process started it and still holds the process",
+			startedByEarlierAppRun: builtByApp,
+		};
+	const where =
+		input.readings.prefix === ""
+			? "it names no environment this app can identify"
+			: `it runs from ${input.readings.prefix}`;
+	if (root !== undefined)
+		return {
+			owned: false,
+			because: `${where}, an environment this app manages, but the process is not one this app run started and this app can only stop the generation it holds`,
+			startedByEarlierAppRun: true,
 		};
 	return {
 		owned: false,
-		because:
-			input.readings.prefix === ""
-				? "it names no environment this app can identify"
-				: `it runs from ${input.readings.prefix}, which this app does not manage`,
+		because: input.readings.startedByApp
+			? `${where}, and its own record says an earlier Local Operator started it, but this app run does not hold that process`
+			: `${where}, which this app does not manage`,
+		startedByEarlierAppRun: builtByApp,
 	};
 }
 
@@ -285,60 +323,49 @@ export function servingInstallIsAppOwned(input: {
  * not run from - reports a skew that may not exist and then acts on it.
  */
 export type DriftInstallSource =
-	/** The install the update plan describes, which this process boots from. */
-	| "plan-install"
-	/** The environment the serving process boots from, read by that process. */
-	| "serving-environment"
+	/** The install the serving process runs from, read on disk at its own root. */
+	| "serving-install"
 	/** The two readings are not known to describe the same install. */
 	| "unknown";
 
 /**
  * The install reading the boot reading must be compared against.
  *
- * WHY THE PLAN'S OWN READING IS NOT ENOUGH, which is finding R1 of round 1. The
- * plan describes the install an update would MOVE. For `GLOBAL_INSTALL` that is
- * the install serving the app, and the comparison is exact. For
- * `APP_BUNDLED_VENV` the plan has no reading at all (the app owns that
- * environment), and for an adopted daemon the plan's install can be a DIFFERENT
- * install from the one the daemon runs - the operator's own log pairs them:
- * "Install on disk reports: 0.56.13, running backend reports: 0.56.8", where
- * 0.56.13 is the uv tool the reader's `lop` runs and 0.56.8 is the bundled
- * environment that daemon boots from.
+ * ONE ANSWER, and it is #318's (`fix(update-check): judge the install that serves
+ * the app, not the one the shim names`), which landed on `main` while this branch
+ * was open and answers the same question this function was invented for. It reads
+ * the root `/health` names (`prefix`, with the backend's own `install_kind` beside
+ * it) and takes the version on disk at THAT root, falling back to the shim's
+ * install only when the server named no root at all - which is the one case this
+ * function still has to refuse, and the reason it exists rather than the caller
+ * comparing `plan.installedInstallVersion` blindly.
  *
- * The fix for both is the same reading: the one the serving process's own
- * environment has ON DISK, which `/health` answers, because that payload's
- * `version` is recomputed from the metadata under the answering process's own
- * prefix. That is exactly why it must never be used as the RUNNING side - and
- * exactly why it is the right INSTALL side for the environment it recomputes.
- *
- * The order is the order of the evidence:
- *
- * 1. The plan's reading, when both prefixes are known and equal: the plan IS a
- *    statement about the serving install, and its reading is the one the update
- *    path is held to.
- * 2. The serving environment's own reading, when that environment is one this
- *    app manages: same install by construction, and the only reading that can
- *    exist in the modes where the plan has none.
- * 3. Otherwise `unknown`, with the plan's reading carried for the log and NO
- *    comparison made.
+ * What this branch's own first cut added beside it - a second reading of the same
+ * question from `identity.venvPrefix` and `/health`'s version, `driftInstallReading`
+ * picking between them by prefix equality - is RETIRED rather than reconciled line
+ * by line: two functions answering "which install is this about" is how the panel,
+ * the installer and this check come to disagree, and #318's answer is the stronger
+ * of the two (it reads the serving root's own dist-info, and corrects the one shape
+ * where that number is stale by construction - an editable or checkout-built
+ * install, where `/health` carries the real version). The trap this module documents
+ * is untouched by the reconciliation: `/health`'s version is still never the RUNNING
+ * side, only - when the install is editable - the install side.
  */
 export function driftInstallReading(input: {
 	planVersion: string | null;
-	planPrefix: string;
-	servingReadings: ServingInstallReadings;
-	servingIsAppManaged: boolean;
-	healthVersion: string | null;
+	/**
+	 * Whether the plan's reading describes the install SERVING this app.
+	 *
+	 * The plan resolves the serving install when the backend named a root; when it
+	 * named none, the plan's version can be the shim's install, which is a
+	 * different install from the one answering - a comparison across the two is
+	 * exactly the false skew this refuses.
+	 */
+	planDescribesServingInstall: boolean;
 }): { version: string | null; source: DriftInstallSource } {
-	const { planVersion, planPrefix, servingReadings } = input;
-	if (
-		planVersion !== null &&
-		planPrefix !== "" &&
-		planPrefix === servingReadings.prefix
-	)
-		return { version: planVersion, source: "plan-install" };
-	if (input.servingIsAppManaged)
-		return { version: input.healthVersion, source: "serving-environment" };
-	return { version: planVersion, source: "unknown" };
+	if (!input.planDescribesServingInstall)
+		return { version: input.planVersion, source: "unknown" };
+	return { version: input.planVersion, source: "serving-install" };
 }
 
 /**

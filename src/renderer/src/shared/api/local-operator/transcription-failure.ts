@@ -87,11 +87,21 @@ export function transcriptionFailureMessage(error: unknown): string {
 		 * reads as if the account were the reader's own (review round 1, D1). A
 		 * destination too long for a toast is not named at all - the neutral
 		 * sentence below is better than half a URL.
+		 *
+		 * AND THE INSTRUCTION IS CONDITIONAL, because the sentence's own subject says
+		 * the account need not be the reader's (round 2, D9): this app cannot tell a
+		 * bring-your-own-key install from a relay install - the relay holds the bearer -
+		 * so it cannot know whose account it is naming. A flat "Top it up" asked a
+		 * reader the sentence itself had just excluded to go and fund a third-party
+		 * account, which is the actionability defect this whole change exists to delete,
+		 * one clause down. "If it's yours" is what makes it true for both readers, and
+		 * the closing retry is spent on it rather than kept: at 4 lines this was the
+		 * tallest toast in the set and ended on a one-word widow (round 2, D10).
 		 */
 		if (destination !== null)
 			return provider === null
-				? `Dictation failed: the account behind dictation is out of credits. Top it up at ${destination}, then try again.`
-				: `Dictation failed: the ${provider} account behind dictation is out of credits. Top it up at ${destination}, then try again.`;
+				? `Dictation failed: the account behind dictation is out of credits. If it's yours, top it up at ${destination}.`
+				: `Dictation failed: the ${provider} account behind dictation is out of credits. If it's yours, top it up at ${destination}.`;
 		return TRANSCRIPTION_ACCOUNT_OUT_OF_CREDITS;
 	}
 	if (REFUSED_SIGN_IN.test(flat)) return SIGN_IN_REFUSED;
@@ -100,10 +110,43 @@ export function transcriptionFailureMessage(error: unknown): string {
 	 * CLIPPED reason takes a space instead: `… .` is not a sentence boundary,
 	 * it is a rendering artefact.
 	 */
-	const reason = reasonFrom(flat);
+	const reason = lowerOpening(reasonFrom(flat));
 	const end = reason.endsWith("…") ? " " : ". ";
 	return `Dictation failed: ${reason.replace(TRAILING_FULL_STOP, "")}${end}${UNKNOWN_ACTION}`;
 }
+
+/**
+ * The reason's own opening capital, lowered into the family's shape.
+ *
+ * Every sibling sentence starts lowercase after `Dictation failed: ` (round 2,
+ * D11), and a passed-through reason does not: the relayed body's own sentence
+ * begins with a capital, and quoting it verbatim is what made this frame the one
+ * place the family's shape broke. The reason is still the server's words - only its
+ * first letter moves, and only when doing so cannot corrupt them: a word with a
+ * capital anywhere but its first letter is a brand or an acronym (`OpenAI API
+ * error`, `HTTP 500`, `JSON`), and "openAI" is not the provider's name. Those keep
+ * their own case and take the family's shape from the same colon every sibling has.
+ */
+function lowerOpening(reason: string): string {
+	const [word] = OPENING_WORD.exec(reason) ?? [];
+	if (word === undefined || word.length < 2) return reason;
+	/*
+	 * A capital ANYWHERE BUT THE FIRST LETTER is the tell, and it is checked over the
+	 * whole word rather than the leading run of lowercase letters: the first cut of
+	 * this rule matched `OpenAI` as `Open`, found no capital inside that prefix, and
+	 * rendered the provider as "openAI".
+	 */
+	if (INTERNAL_CAPITAL.test(word.slice(1))) return reason;
+	if (!OPENING_CAPITAL.test(word)) return reason;
+	return reason[0].toLowerCase() + reason.slice(1);
+}
+
+/** The reason's first word, which is the whole of what this rule inspects. */
+const OPENING_WORD = /^[\p{L}\p{N}'’-]+/u;
+/** A capital or a digit past the first letter: a brand or an acronym's own spelling. */
+const INTERNAL_CAPITAL = /[\p{Lu}\p{N}]/u;
+/** A word opening in a capital, the only shape this rule lowers. */
+const OPENING_CAPITAL = /^\p{Lu}/u;
 
 /** A quoted reason's own sentence end, which the action's own full stop replaces. */
 const TRAILING_FULL_STOP = /\.$/;
@@ -118,7 +161,7 @@ const TRAILING_FULL_STOP = /\.$/;
  * D3).
  */
 const OUT_OF_RADIENT_CREDITS =
-	"Dictation failed: you're out of Radient credits. Get more credits, then try dictating again.";
+	"Dictation failed: you're out of Radient credits. Get more credits, then try again.";
 
 /**
  * The server answered and refused this app's credential.
@@ -129,40 +172,54 @@ const OUT_OF_RADIENT_CREDITS =
  * In the reader's terms rather than the machine's: "the server refused this
  * app's sign-in" was the product describing itself from the outside, in the one
  * sentence whose whole job is to make a person recognise their own credential
- * (review round 1, D4).
+ * (review round 1, D4). The doubled "again" the first revision of this sentence
+ * carried ("Sign in to Radient again, then try again", round 2's D12) is gone with
+ * it: the credential was refused, so the action is the sign-in, and the retry is
+ * the family's one closing verb.
  */
 const SIGN_IN_REFUSED =
-	"Dictation failed: your Radient sign-in was refused. Sign in to Radient again, then try again.";
+	"Dictation failed: your Radient sign-in was refused. Sign in to Radient, then try again.";
 
 /**
  * A provider's out-of-credits refusal that names no destination.
  *
  * Account-neutral on purpose: the app cannot know whose account this is - the
  * relay holds the bearer - so it names the account by what it does rather than
- * implying it is the reader's own (review round 1, D1). "Top it up" is the only
- * action available when the body names no surface.
+ * implying it is the reader's own (review round 1, D1), and the one action
+ * available when the body names no surface is conditional for the same reason
+ * (round 2, D9): "top it up" is advice the reader can take only if the account is
+ * theirs, and the sentence has just said it may not be.
  */
 const TRANSCRIPTION_ACCOUNT_OUT_OF_CREDITS =
-	"Dictation failed: the account behind dictation is out of credits. Top it up, then try again.";
+	"Dictation failed: the account behind dictation is out of credits. If it's yours, top it up.";
 
 /**
  * Nothing to quote, and no cause worth guessing at.
  *
  * NOT the sentence this change deletes, and not a near-clone of it either: "try
  * again" as the whole advice is precisely what cost the operator a day, so the
- * absence of a reason is stated as the absence it is (review round 1, D7).
+ * absence of a reason is stated as the absence it is (review round 1, D7). Its own
+ * prefix is the family's colon rather than a comma (round 2, D12): one shape for
+ * the five sentences that open `Dictation failed:` reads as one voice.
  */
 const NO_REASON =
-	"Dictation failed, and the server gave no reason. Try again, or report it with the console detail.";
+	"Dictation failed: the server gave no reason. Try again, or report it with the app's log.";
 
 /**
  * What to do about a failure whose cause the app cannot name.
  *
- * The raw body is already on the console (`console.error` at both call sites),
- * so the toast does not have to carry it - but it does have to say what to do
- * with it (review round 1, D2).
+ * The raw body stays on `error.message` for the logs and for support, so the toast
+ * does not have to carry it - but it does have to say what to do with it (review
+ * round 1, D2), and WHERE it goes (round 2, D8). The first revision named "the
+ * console detail", and the app as shipped has no console: DevTools are
+ * `isDev`-only (`src/main/index.ts`, both the `devTools` option and the View menu
+ * item), so the reader could not open the surface the sentence named. What does
+ * hold the detail is the app's own log - the main process forwards renderer
+ * warnings and errors to a durable file (`console-message` -> `LogFileType.BACKEND`,
+ * which is the `backend-service.log` support already asks for), so the sentence
+ * names the artifact that exists.
  */
-const UNKNOWN_ACTION = "Try again, or report it with the console detail.";
+const UNKNOWN_ACTION = "Try again, or report it with the app's log.";
 
 /**
  * The ways an upstream provider says "the account has no money on it".
@@ -216,12 +273,16 @@ const MAX_DESTINATION_CHARS = 40;
 /**
  * Where the reason stops, before a toast becomes a document.
  *
- * MEASURED, not chosen: the toast's text column holds about 50 characters, the
- * sentence's fixed halves (`Dictation failed: ` and the action) take 67, and the
- * frames this replaces were four-line dumps of URL and JSON punctuation (review
- * round 1, D2, which measured 83.2 CSS px against a 40 px one-line toast).
- * Bounding the reason here keeps the ordinary failure the height of its
- * predecessor.
+ * MEASURED, not chosen: at 1280x720 CSS the toast is Sonner's default 356 CSS px
+ * wide with a text column of about 318 px, which holds 43-44 characters of this
+ * type at this line height - so the fallback's fixed halves (`Dictation failed: `
+ * and the action) take most of two lines, and the bound keeps the ordinary failure
+ * at the three lines the re-captured frame shows. The earlier revision of this
+ * comment derived the same bound from a wrong measurement ("83.2 CSS px against a
+ * 40 px one-line toast", "about 50 characters", which described the toast at a
+ * `devicePixelRatio` of 2.5 rather than the 2 the frames are shot at); the bound
+ * itself was never in question, and the reason it is 80 rather than 50 is that a
+ * reason clipped mid-phrase is worse than a third line.
  */
 const MAX_DETAIL_CHARS = 80;
 

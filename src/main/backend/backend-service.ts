@@ -34,9 +34,9 @@ import type {
 import type { DesktopFeedFrame } from "../../shared/desktop-session-contract";
 import {
 	type ServingInstallReadings,
+	type ServingOwnership,
 	type ServingWorkState,
 	serveRecord,
-	servingInstallIsAppManaged,
 	servingInstallIsAppOwned,
 	servingInstallReadings,
 	servingWorkStateFromSessions,
@@ -2930,34 +2930,48 @@ export class BackendServiceManager {
 	 * A missing record, a torn read and a record that carries no version (an install
 	 * predating the field) are all absences - reported by the decision, never
 	 * papered over by a reading that cannot see a stale process.
+	 *
+	 * NOTHING HERE ANSWERS "MAY THE APP MOVE IT": that is `owned`, and it is asked of
+	 * the generation this process holds rather than of the record, because a record is
+	 * something the app can read about any daemon on the machine and a restart is only
+	 * legal for one it holds (QA round 1, Q1). `readings.prefix` and the ownership
+	 * rule's own environment roots are still read here, because the refusal sentence
+	 * turns on them - see `ServingOwnership.startedByEarlierAppRun`.
 	 */
 	servingInstall(): {
 		readings: ServingInstallReadings;
-		/** Whether this instance's own managed environment is the one it runs from. */
-		managedByThisApp: boolean;
-		owned: { owned: boolean; because: string };
+		owned: ServingOwnership;
 	} {
 		const readings = servingInstallReadings(this.servingRecord());
-		const managedEnvironmentRootsForInstance = this.managedEnvironmentRoots();
 		return {
 			readings,
-			managedByThisApp: servingInstallIsAppManaged(
-				readings.prefix,
-				managedEnvironmentRootsForInstance,
-			),
 			owned: servingInstallIsAppOwned({
 				/*
-				 * `?this.process` is the app's own child, whatever the record says: the
-				 * strongest ground, and the one that does not depend on a field a
-				 * predating build may not publish. Adoption sets `isExternalBackend`,
-				 * which is why that flag is no longer the ownership test - see
-				 * `servingInstallIsAppOwned` for the three that are.
+				 * "Does this app run HOLD the process" - the exact question `stop()` acts
+				 * on, and therefore the exact ground the drift repair may fire on. A
+				 * looser answer is what QA's Q1 caught: the record- and
+				 * environment-derived grounds read as permission while `restart()` had
+				 * nothing to stop, so the app logged a restart it never performed.
 				 */
-				spawnedByThisProcess: this.getOwnedPid() !== null,
+				spawnedByThisProcess: this.holdsServingGeneration(),
 				readings,
-				managedEnvironmentRoots: managedEnvironmentRootsForInstance,
+				managedEnvironmentRoots: this.managedEnvironmentRoots(),
 			}),
 		};
+	}
+
+	/**
+	 * Whether this manager holds a serve generation, i.e. a process `stop()` can end.
+	 *
+	 * Deliberately not `getOwnedPid() !== null`: that answers "which pid do I hold",
+	 * which is the quit path's question, while this answers "is there a generation here
+	 * to terminate". `stop()` acts on `ownedServe` (a generation whose spawn failed has
+	 * one and may have no pid yet), so this is the invariant the drift repair is
+	 * asking about, and anything else - an adopted daemon, a record read from the run
+	 * directory - is a process this app can READ but not MOVE.
+	 */
+	holdsServingGeneration(): boolean {
+		return this.ownedServe !== null;
 	}
 
 	/**

@@ -9,17 +9,61 @@ again.", whatever the server had said.
 
 ```
 before-generic.png                 Error transcribing audio. Please try again.
-after-provider-out-of-credits.png  Dictation failed: the OpenAI account behind dictation is out of credits. Top it up at platform.openai.com/account/billing, then try again.
-after-radient-credits.png          Dictation failed: you're out of Radient credits. Get more credits, then try dictating again.
-after-sign-in-refused.png          Dictation failed: your Radient sign-in was refused. Sign in to Radient again, then try again.
-after-server-message-clipped.png   Dictation failed: The audio could not be decoded: unsupported codec 'opus' in a webm container… Try again, or report it with the console detail.
-after-no-reason-given.png          Dictation failed, and the server gave no reason. Try again, or report it with the console detail.
+after-provider-out-of-credits.png  Dictation failed: the OpenAI account behind dictation is out of credits. If it's yours, top it up at platform.openai.com/account/billing.
+after-radient-credits.png          Dictation failed: you're out of Radient credits. Get more credits, then try again.
+after-sign-in-refused.png          Dictation failed: your Radient sign-in was refused. Sign in to Radient, then try again.
+after-server-message-clipped.png   Dictation failed: the audio could not be decoded: unsupported codec 'opus' in a webm container… Try again, or report it with the app's log.
+after-no-reason-given.png          Dictation failed: the server gave no reason. Try again, or report it with the app's log.
 ```
 
 `before-generic.png` and `after-provider-out-of-credits.png` are the pair: the
 **same** relay answer (the operator's own `insufficient_quota` body, drawn above
 the toast in every frame) under the copy this branch replaced and the copy it
 ships. The other four are the rest of the mapping's branches.
+
+## What round 2 changed in these frames
+
+All six frames were re-captured in one pass from one rig on this head, for the four
+copy findings design round 2 left open. The sentences above are what they now show,
+and each of the four is a change a reader can see:
+
+- **D8** — both fallbacks ended "or report it with the console detail", and the app
+  as shipped has no console: DevTools are `isDev`-only in `src/main/index.ts` (the
+  `devTools` option and the View menu item). The detail does survive one layer down
+  — the main process forwards renderer errors to the app's own durable log
+  (`console-message` -> `LogFileType.BACKEND`, the `backend-service.log` support
+  asks for) — so the clause now names that artifact.
+- **D9/D10** — the provider sentence's closing imperative asked a reader the same
+  sentence had just excluded to fund a third-party account, and at four lines it
+  was the tallest toast in the set, ending on the widow "again.". The instruction is
+  now conditional ("If it's yours, top it up at …") and the closing retry is spent
+  on it: **measured on these pixels, 101.5 CSS px / 4 lines before and 84 CSS px /
+  3 lines now** — the toast is 354 CSS px wide here, and this pass's own arithmetic
+  is 48 px for one line and +18 per line (66 for two, 84 for three), so the two
+  numbers are like for like. The destination the relayed body gave is still on the
+  screen in full.
+- **D11** — the passed-through reason kept the server's own capital and so broke the
+  family's shape (`Dictation failed: The audio could not be decoded: …`). A reason's
+  opening letter is now lowered into the sentence's shape, and only when that cannot
+  corrupt the word: a token with a capital anywhere but its first letter is a brand
+  or an acronym (`OpenAI API error`, `HTTP 500`), and those keep their own spelling.
+- **D12** — one prefix and one retry verb across the family. The no-reason sentence
+  opened `Dictation failed,`; it is now the colon every sibling uses, and the doubled
+  "again" in the sign-in sentence is gone ("Sign in to Radient, then try again.").
+
+The block that was inside the toast - the raw body - is still on the app's log
+rather than in the sentence, by `error.message`, as it was before this round.
+
+**The pass, so the photographs are comparable.** All six frames come from one rig in
+one pass at the viewport `The command` below describes, taken after the copy landed.
+Against the frames they replace, in device pixels of 3,686,400: `before-generic`
+22,803 differ - but its **maximum channel difference is 45 and only 29 pixels differ
+by more than 24**, i.e. the before-half's forced copy is the same pixels rendered by
+a different Chrome build - while `after-provider-out-of-credits` differs by 71,334
+(the toast is a line shorter), `after-server-message-clipped` by 42,125, and the
+three two-line frames by 18,350-20,255 inside the story's own content block. The
+before-half is re-captured with them rather than carried over, because the pair the
+design round reads has to be one photograph of one build.
 
 ## What round 1 changed in these frames
 

@@ -93,7 +93,7 @@ test("an out-of-credits provider is named, per status and per body", async () =>
 			kind: "error",
 			detail: "Payment Required",
 		}),
-		"Dictation failed: you're out of Radient credits. Get more credits, then try dictating again.",
+		"Dictation failed: you're out of Radient credits. Get more credits, then try again.",
 	);
 
 	// The upstream provider's refusal, with the provider named by its own error
@@ -107,7 +107,7 @@ test("an out-of-credits provider is named, per status and per body", async () =>
 			kind: "error",
 			detail: OPENAI_QUOTA,
 		}),
-		"Dictation failed: the OpenAI account behind dictation is out of credits. Top it up at platform.openai.com/account/billing, then try again.",
+		"Dictation failed: the OpenAI account behind dictation is out of credits. If it's yours, top it up at platform.openai.com/account/billing.",
 	);
 
 	// The same family with no destination to give: the account-neutral sentence.
@@ -119,7 +119,7 @@ test("an out-of-credits provider is named, per status and per body", async () =>
 				"insufficient_quota: no credits remaining",
 			),
 		),
-		"Dictation failed: the account behind dictation is out of credits. Top it up, then try again.",
+		"Dictation failed: the account behind dictation is out of credits. If it's yours, top it up.",
 	);
 
 	// A destination too long to show is not named: half a URL is not an address.
@@ -130,7 +130,7 @@ test("an out-of-credits provider is named, per status and per body", async () =>
 				"insufficient_quota: top up at https://billing.example-provider-with-a-long-host.invalid/accounts/12345/credits",
 			),
 		),
-		"Dictation failed: the account behind dictation is out of credits. Top it up, then try again.",
+		"Dictation failed: the account behind dictation is out of credits. If it's yours, top it up.",
 	);
 });
 
@@ -151,7 +151,7 @@ test("a body matching both families is answered by the credits family", () => {
 		"Unauthorized: no credits remaining. Visit https://platform.openai.com/account/billing to add credits.";
 	assert.equal(
 		transcriptionFailureMessage(new TranscriptionRequestError(500, both)),
-		"Dictation failed: the account behind dictation is out of credits. Top it up at platform.openai.com/account/billing, then try again.",
+		"Dictation failed: the account behind dictation is out of credits. If it's yours, top it up at platform.openai.com/account/billing.",
 		"a body matching both families must keep the credits remedy",
 	);
 
@@ -164,13 +164,13 @@ test("a body matching both families is answered by the credits family", () => {
 				"Unauthorized: invalid api key, insufficient_quota",
 			),
 		),
-		"Dictation failed: you're out of Radient credits. Get more credits, then try dictating again.",
+		"Dictation failed: you're out of Radient credits. Get more credits, then try again.",
 	);
 });
 
 test("a refused credential is a sign-in, not a retry", async () => {
 	const expected =
-		"Dictation failed: your Radient sign-in was refused. Sign in to Radient again, then try again.";
+		"Dictation failed: your Radient sign-in was refused. Sign in to Radient, then try again.";
 	for (const status of [401, 403]) {
 		assert.equal(
 			await throughTheClient({ status, kind: "error", detail: "Forbidden" }),
@@ -192,7 +192,7 @@ test("anything else quotes the server's reason, then says what to do", async () 
 		transcriptionFailureMessage(
 			new TranscriptionRequestError(500, "Could not decode the audio file."),
 		),
-		"Dictation failed: Could not decode the audio file. Try again, or report it with the console detail.",
+		"Dictation failed: could not decode the audio file. Try again, or report it with the app's log.",
 	);
 
 	// The shape the task warned about: a URL, the relay's own verb and status,
@@ -209,7 +209,7 @@ test("anything else quotes the server's reason, then says what to do", async () 
 		`the toast is ${clipped.length} characters, which is a document rather than a sentence: ${clipped}`,
 	);
 	assert.ok(
-		clipped.startsWith("Dictation failed: The audio could not be decoded"),
+		clipped.startsWith("Dictation failed: the audio could not be decoded"),
 		`the reason must lead, and be the provider's own words: ${clipped}`,
 	);
 	assert.ok(
@@ -217,7 +217,7 @@ test("anything else quotes the server's reason, then says what to do", async () 
 		`the clip must not hide the token a bug report needs: ${clipped}`,
 	);
 	assert.ok(
-		clipped.endsWith("Try again, or report it with the console detail."),
+		clipped.endsWith("Try again, or report it with the app's log."),
 		`every unnamed cause must end with an action: ${clipped}`,
 	);
 	assert.ok(
@@ -236,7 +236,7 @@ test("anything else quotes the server's reason, then says what to do", async () 
 		transcriptionFailureMessage(
 			new TranscriptionRequestError(500, "Bad audio."),
 		),
-		"Dictation failed: Bad audio. Try again, or report it with the console detail.",
+		"Dictation failed: bad audio. Try again, or report it with the app's log.",
 	);
 
 	// A JSON body whose reason is short keeps every word of it, wrapper removed.
@@ -247,7 +247,7 @@ test("anything else quotes the server's reason, then says what to do", async () 
 				'{"error":{"message":"Unsupported sample rate."}}',
 			),
 		),
-		"Dictation failed: Unsupported sample rate. Try again, or report it with the console detail.",
+		"Dictation failed: unsupported sample rate. Try again, or report it with the app's log.",
 	);
 
 	// A prose body with the relay's own wrapper still reads as the server's
@@ -259,7 +259,7 @@ test("anything else quotes the server's reason, then says what to do", async () 
 				"POST https://api.example.com/v1/audio/transcriptions returned 400 The audio was empty.",
 			),
 		),
-		"Dictation failed: The audio was empty. Try again, or report it with the console detail.",
+		"Dictation failed: the audio was empty. Try again, or report it with the app's log.",
 	);
 });
 
@@ -274,7 +274,7 @@ test("an absent reason states the absence rather than inventing a cause", () => 
 	]) {
 		assert.equal(
 			transcriptionFailureMessage(nothing),
-			"Dictation failed, and the server gave no reason. Try again, or report it with the console detail.",
+			"Dictation failed: the server gave no reason. Try again, or report it with the app's log.",
 			`${String(nothing)} produced an invented cause`,
 		);
 	}
@@ -312,8 +312,108 @@ test("no case still says the old generic line", async () => {
 		 */
 		assert.match(
 			sentence,
-			/^Dictation failed[.:,]/,
+			/^Dictation failed:/,
 			`"${sentence}" does not open with the feature's own name and what failed`,
+		);
+	}
+});
+
+/**
+ * D11 of round 2: the passed-through reason joins the family's shape, and the join
+ * does not damage the words it passes through.
+ *
+ * Every sibling starts lowercase after `Dictation failed: `. A relayed reason does
+ * not - it is a sentence of the server's - and keeping its capital is what made the
+ * fallback the one frame whose shape broke. Only its first LETTER moves, and only
+ * when that cannot corrupt a word: a token with a capital anywhere but its first
+ * letter is a brand or an acronym (`OpenAI API error`, `HTTP 500`, `JSON body`), and
+ * "openAI" is not the provider's name.
+ */
+test("a passed-through reason takes the family's shape without corrupting a brand", () => {
+	assert.equal(
+		transcriptionFailureMessage(
+			new TranscriptionRequestError(500, "The audio could not be decoded."),
+		),
+		"Dictation failed: the audio could not be decoded. Try again, or report it with the app's log.",
+	);
+
+	for (const reason of [
+		"OpenAI API error (server_error): the request timed out",
+		"HTTP 500 from the provider",
+		"JSON body was not a transcript",
+	]) {
+		const sentence = transcriptionFailureMessage(
+			new TranscriptionRequestError(500, reason),
+		);
+		assert.ok(
+			sentence.startsWith(`Dictation failed: ${reason}`),
+			`the token ${reason.split(" ")[0]} was rewritten by the shape: ${sentence}`,
+		);
+	}
+
+	// A reason that already opens lowercase is passed through untouched.
+	assert.equal(
+		transcriptionFailureMessage(
+			new TranscriptionRequestError(500, "the provider timed out"),
+		),
+		"Dictation failed: the provider timed out. Try again, or report it with the app's log.",
+	);
+});
+
+/**
+ * D12 of round 2: ONE prefix and one recovery verb across the family.
+ *
+ * The five sentences read as five voices before this: four opened `Dictation
+ * failed:` and the no-reason one opened `Dictation failed,`, and the retry was
+ * `then try again` (twice), `then try dictating again`, and `Try again, or report
+ * it…` - with the sign-in sentence doubling "again" inside one line. The colon is
+ * the house shape because it joins a named failure to its cause, and the retry is
+ * one verb, said once.
+ */
+test("the family is one shape and one voice", async () => {
+	const sentences = [
+		await throughTheClient({
+			status: 402,
+			kind: "error",
+			detail: "Payment Required",
+		}),
+		await throughTheClient({ status: 401, kind: "error", detail: "Forbidden" }),
+		await throughTheClient({
+			status: 500,
+			kind: "error",
+			detail: OPENAI_QUOTA,
+		}),
+		await throughTheClient({
+			status: 500,
+			kind: "error",
+			detail: "Could not decode the audio file.",
+		}),
+		await throughTheClient({ status: 503, kind: "error", detail: "" }),
+		transcriptionFailureMessage(
+			new TranscriptionRequestError(
+				500,
+				"insufficient_quota: no credits remaining",
+			),
+		),
+	];
+
+	for (const sentence of sentences) {
+		assert.match(
+			sentence,
+			/^Dictation failed: [a-z]/u,
+			`"${sentence}" does not open with the family's own prefix and a lowercase-led clause`,
+		);
+		assert.ok(
+			/[.!?]$/.test(sentence),
+			`"${sentence}" does not end in a full sentence with an action in it`,
+		);
+		assert.ok(
+			!sentence.includes("try dictating again"),
+			`"${sentence}" kept the second phrasing of the family's one retry verb`,
+		);
+		assert.ok(
+			(sentence.match(/again/gu) ?? []).length <= 1,
+			`"${sentence}" says "again" twice, which reads as a stutter rather than a next step`,
 		);
 	}
 });

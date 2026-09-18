@@ -305,30 +305,37 @@ test("the daemon's work state is read from its own roster", () => {
 });
 
 /**
- * WHICH INSTALL THE COMPARISON IS AGAINST, which is finding R1 of round 1.
+ * WHICH INSTALL THE COMPARISON IS AGAINST - finding R1 of round 1, RECONCILED with
+ * the reading that landed on `main` while this branch was open (#318, "judge the
+ * install that serves the app, not the one the shim names").
  *
- * The first cut compared the boot reading against the plan's
- * `installedInstallVersion`, and that field is null for every mode whose
- * environment the app owns - the mode the app spawns its own daemon in - so the
- * repair could not fire on the machine the incident came from, and said nothing.
- * `/health` cannot be the RUNNING side; as the INSTALL side, read by the serving
- * process about its own prefix, it is the only same-install reading there is.
+ * Both changes answer one question, and the answer kept is #318's: the install the
+ * plan resolves when the backend named the root it runs from - the version on disk
+ * at that root. This branch's own second reading (`identity.venvPrefix` equality
+ * plus `/health`'s version) is retired, because two functions answering "which
+ * install is this about" is how the panel, the installer and this check come to
+ * disagree; the trap this module exists for is untouched, because `/health`'s
+ * version is still never the RUNNING side.
+ *
+ * What is left for THIS check to refuse is the one case #318 still falls back in:
+ * a server that named no root, where the plan's reading is the shim's install -
+ * a different install from the one answering, and a skew across the two that may
+ * not exist.
  */
-test("the install reading is the install the serving process runs from", () => {
+test("the install reading is the serving install's own, and is refused when it is not", () => {
 	const bundled = servingInstallReadings(record());
 
-	// APP_BUNDLED_VENV: the plan has no reading, and the serving environment is
-	// this app's own, so `/health`'s answer is the install on disk.
+	// The plan's reading when it describes the serving install - the app-owned mode
+	// (#318 gives it a reading now: the version at the root the server named) and
+	// the mode where the serving root's own identity answered.
 	assert.deepEqual(
 		driftInstallReading({
-			planVersion: null,
-			planPrefix: "",
-			servingReadings: bundled,
-			servingIsAppManaged: true,
-			healthVersion: "0.56.11",
+			planVersion: "0.56.11",
+			planDescribesServingInstall: true,
 		}),
-		{ version: "0.56.11", source: "serving-environment" },
+		{ version: "0.56.11", source: "serving-install" },
 	);
+
 	// ...and it is still the skew to repair: 0.56.2 booted, 0.56.11 on disk.
 	assert.deepEqual(backendVersionDrift(bundled.bootVersion, "0.56.11"), {
 		kind: "stale",
@@ -336,71 +343,43 @@ test("the install reading is the install the serving process runs from", () => {
 		installVersion: "0.56.11",
 	});
 
-	// GLOBAL_INSTALL: the plan describes the install the daemon runs from, so its
-	// reading is the one the update path is held to.
-	assert.deepEqual(
-		driftInstallReading({
-			planVersion: "0.56.11",
-			planPrefix: bundled.prefix,
-			servingReadings: bundled,
-			servingIsAppManaged: true,
-			healthVersion: "0.56.11",
-		}),
-		{ version: "0.56.11", source: "plan-install" },
-	);
-
-	// An adopted daemon running a DIFFERENT install from the one the plan names
-	// (the operator's own pair: uv tool 0.56.13, bundled daemon 0.56.8). What the
-	// plan reads describes the install an update would MOVE; the daemon's own
-	// environment is the install that must be compared.
+	// A server that named no root leaves the plan on the shim's install (the
+	// operator's own pair: uv tool 0.56.13, bundled daemon 0.56.8). Comparing a boot
+	// reading against THAT is a skew between two installs nobody showed to be the
+	// same one.
 	assert.deepEqual(
 		driftInstallReading({
 			planVersion: "0.56.13",
-			planPrefix: "/Users/someone/.local/share/uv/tools/local-operator",
-			servingReadings: bundled,
-			servingIsAppManaged: true,
-			healthVersion: "0.56.11",
-		}),
-		{ version: "0.56.11", source: "serving-environment" },
-	);
-
-	// Neither install can be tied to the other and the environment is not this
-	// app's: the honest answer is that which install the process booted from
-	// cannot be told, and the decision refuses to act on it.
-	assert.deepEqual(
-		driftInstallReading({
-			planVersion: "0.56.13",
-			planPrefix: "/Users/someone/.local/share/uv/tools/local-operator",
-			servingReadings: bundled,
-			servingIsAppManaged: false,
-			healthVersion: "0.56.8",
+			planDescribesServingInstall: false,
 		}),
 		{ version: "0.56.13", source: "unknown" },
 	);
-
-	// A record that names no prefix at all is the same absence, not a default.
 	assert.deepEqual(
-		driftInstallReading({
-			planVersion: "0.56.13",
-			planPrefix: "/Users/someone/.local/share/uv/tools/local-operator",
-			servingReadings: servingInstallReadings(record({ prefix: "" })),
-			servingIsAppManaged: false,
-			healthVersion: "0.56.8",
+		driftRestartDecision({
+			...quiet,
+			drift: backendVersionDrift("0.56.2", "0.56.13"),
+			installSource: "unknown",
 		}),
-		{ version: "0.56.13", source: "unknown" },
+		{ restart: false, because: "serving-install-unknown" },
 	);
 });
 
 /**
- * WHO MAY BE RESTARTED, from what actually started the serving process.
+ * WHO MAY BE RESTARTED: the process THIS app run holds, and nothing else.
  *
- * The finding this replaces: ownership was `!isUsingExternalBackend()`, and
- * adoption sets that flag, so the daemon a PREVIOUS app process started - the
- * ordinary desktop lifecycle, and the daemon the operator's own log adopted as
- * `EXISTING_SERVER` 400 times - was refused as "a server this app did not
- * start".
+ * Narrowed by QA round 1's Q1, which drove the loose answer on the real bundle. The
+ * repair acts through `restart()` = `stop(true)` + `start()`; `stop()` can only
+ * terminate a generation this process HOLDS, so for a daemon discovery adopted
+ * there is nothing to stop, the pid cannot move, and "restarted" was a claim about
+ * a call rather than about the machine. Two readings that describe a daemon this app
+ * BUILT but does not hold - an unspent claim key, an environment this instance
+ * manages - are therefore reported as unrepairable instead of acted on, and
+ * `startedByEarlierAppRun` is what makes that refusal say which case the reader is
+ * in. The process is not killed by pid instead: the app has no successor-readiness
+ * handshake, `server/retire.py` refuses the exit by contract, and a pid is not a
+ * handle.
  */
-test("ownership follows what started the serving process", () => {
+test("only the process this app run holds may be restarted", () => {
 	const owned = (readings, spawnedByThisProcess = false) =>
 		servingInstallIsAppOwned({
 			spawnedByThisProcess,
@@ -409,65 +388,63 @@ test("ownership follows what started the serving process", () => {
 		});
 
 	// This process's own child, whatever its record says.
-	assert.deepEqual(
-		owned(servingInstallReadings(record({ desktop: false })), true),
-		{ owned: true, because: "this app process started it" },
-	);
+	const child = owned(servingInstallReadings(record({ desktop: false })), true);
+	assert.equal(child.owned, true);
+	assert.match(child.because, /this app process started it/);
 
-	// An adopted daemon whose record says the app started it (an unspent claim
-	// key): the app started it, a previous app process did.
+	// THE OPERATOR'S OWN MODE, and the case Q1 is about: adopted as
+	// `EXISTING_SERVER`, its record says the app started it (an unspent claim key)
+	// and it runs from an environment this instance manages - and it is NOT
+	// restarted, because this app run holds no process to stop.
 	const adopted = owned(servingInstallReadings(record()));
-	assert.equal(adopted.owned, true);
-	assert.match(adopted.because, /record says the app started it/);
+	assert.equal(adopted.owned, false);
+	assert.equal(adopted.startedByEarlierAppRun, true);
+	assert.match(adopted.because, /an environment this app manages/);
 
 	// A build predating the claim handshake publishes an empty key either way, so
-	// the environment is the ground that holds: an environment this instance
-	// manages is one whose daemon this app started.
-	assert.equal(
-		owned(servingInstallReadings(record({ desktop: false, claim_key: "" })))
-			.owned,
-		true,
+	// the environment is the reading that still says who built it - and the answer
+	// is the same one: reportable, not restarted.
+	const preHandshake = owned(
+		servingInstallReadings(
+			record({
+				desktop: false,
+				prefix:
+					"/Users/someone/Library/Application Support/Local Operator/managed-python/packaged/environments/28f0",
+			}),
+		),
 	);
-	assert.equal(
-		owned(
-			servingInstallReadings(
-				record({
-					desktop: false,
-					prefix:
-						"/Users/someone/Library/Application Support/Local Operator/managed-python/packaged/environments/28f0",
-				}),
-			),
-		).owned,
-		true,
-	);
+	assert.equal(preHandshake.owned, false);
+	assert.equal(preHandshake.startedByEarlierAppRun, true);
 
-	// The pre-split venv name is still the app's environment.
-	assert.equal(
-		owned(
-			servingInstallReadings(
-				record({
-					desktop: false,
-					prefix:
-						"/Users/someone/Library/Application Support/Local Operator/local-operator-venv",
-				}),
-			),
-		).owned,
-		true,
+	// The pre-split venv name is still the app's environment, and still not a
+	// process this app run holds.
+	const preSplit = owned(
+		servingInstallReadings(
+			record({
+				desktop: false,
+				prefix:
+					"/Users/someone/Library/Application Support/Local Operator/local-operator-venv",
+			}),
+		),
 	);
+	assert.equal(preSplit.owned, false);
+	assert.equal(preSplit.startedByEarlierAppRun, true);
 
 	// A daemon a PERSON started from a shell, which the app then CLAIMED: the
 	// record's `desktop` is true but the claim key is spent, and its install is
-	// not one this app manages. Not this app's to bounce.
+	// not one this app manages. Not this app's to bounce, and not an earlier app
+	// run's either - the sentence has to say so.
 	const claimed = owned(
 		servingInstallReadings(
 			record({
+				desktop: false,
 				prefix: "/Users/someone/.local/share/uv/tools/local-operator",
 				install_kind: "uv-tool",
-				claim_key: "b7d1",
 			}),
 		),
 	);
 	assert.equal(claimed.owned, false);
+	assert.equal(claimed.startedByEarlierAppRun, false);
 	assert.match(claimed.because, /does not manage/);
 
 	// And the packaged/dev split is not crossed: a DEV instance's roots do not

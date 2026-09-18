@@ -343,7 +343,7 @@ type HealthCheckResult = {
 const DRIFT_HOLD_REPORT: Record<DriftRestartHold, string> = {
 	"no-drift": "nothing to do",
 	"not-app-owned":
-		"this app does not restart a server it did not start, so the skew is reported and the process is left alone",
+		"this app restarts a server it started itself in THIS app run, and it does not hold the process serving it, so the skew is reported and the process is left running",
 	"update-in-flight":
 		"an update of this server is already running and will restart it",
 	"serving-install-unknown":
@@ -355,6 +355,37 @@ const DRIFT_HOLD_REPORT: Record<DriftRestartHold, string> = {
 	"session-stream-open":
 		"nothing is running in the server, but a conversation is open, so the restart waits for the next check",
 };
+
+/**
+ * How many restarts may fail to move the boot reading before the pair is left alone.
+ *
+ * Two, so that a repair which failed for a transient reason is retried once and the
+ * kill loop the first cut was pre-empting cannot run: the count is per pair, and the
+ * pair only survives while the successor keeps coming back on the same build.
+ */
+const DRIFT_STALLED_RESTARTS_BEFORE_HALT = 2;
+
+/**
+ * The hold sentence for a decision, in the log's own words.
+ *
+ * `not-app-owned` is the one hold with two very different readers behind it - a
+ * daemon an earlier Local Operator started and lost the handle to (the ordinary
+ * desktop lifecycle: it outlives the app process that spawned it), and a daemon
+ * something else started entirely - so it carries the ownership rule's own answer
+ * (`ServingOwnership.because`) rather than one sentence for both. Every other hold
+ * has one sentence, and the table above is it.
+ */
+function driftHoldReport(
+	hold: DriftRestartHold,
+	ownership: { because: string; startedByEarlierAppRun: boolean },
+): string {
+	if (hold !== "not-app-owned") return DRIFT_HOLD_REPORT[hold];
+	return `the skew is reported and the process is left running: ${ownership.because}${
+		ownership.startedByEarlierAppRun
+			? " (that daemon is one an earlier app run started, so the reader's own next step is to stop that server: Local Operator serves its own daemon once nothing else is answering)"
+			: ""
+	}`;
+}
 
 /**
  * Why there was nothing to compare, in the log's own words.
@@ -880,15 +911,27 @@ export class UpdateService {
 	private driftDeferrals = 0;
 
 	/**
-	 * The `booted -> installed` pair already restarted for, if any.
+	 * The `booted -> installed` pair a restart has been OBSERVED to move, if any.
 	 *
-	 * A restart for a skew that did not move is the one failure mode with no natural
-	 * end: the periodic check would restart the daemon every five minutes forever,
-	 * which is worse than the skew it is chasing. A successful restart changes the
-	 * boot reading (a new process, a new record) and therefore the pair, so this
-	 * blocks only the repeats.
+	 * A CLAIM ABOUT A TRANSITION, not about an attempt (QA round 1, Q1c). It used to be
+	 * set before the restart, which turned a `restart()` that could not move an adopted
+	 * daemon into a permanent silence: no signal was sent, the pid never changed, and
+	 * every later check only warned. A successful restart changes the boot reading (a
+	 * new process, a new record) and therefore the pair, so a moved pair cannot recur -
+	 * the only way this is reached again is the stall bound below.
 	 */
 	private driftRestartedFor: string | null = null;
+
+	/**
+	 * The pair whose restarts have not moved the boot reading, and how many have.
+	 *
+	 * RESET ON MOVEMENT, and the pair is latched INTO `driftRestartedFor` only at
+	 * `DRIFT_STALLED_RESTARTS_BEFORE_HALT` attempts: one failed restart is retried
+	 * (which is what Q1c asks for), and a machine whose successor will not take the
+	 * install stops being restarted rather than becoming a five-minute kill loop.
+	 */
+	private driftStalledFor: string | null = null;
+	private driftStalledRestarts = 0;
 
 	/**
 	 * A refusal this process found at start-up, if any.
@@ -3813,17 +3856,22 @@ export class UpdateService {
 		 * `identity.venvPrefix` - set only when a `pyvenv.cfg` sits in the prefix
 		 * (uv tools and pip venvs both write one), which is exactly the form the
 		 * serving daemon's own record publishes as its `sys.prefix`. Beside the
-		 * version for the one comparison the version alone cannot make: whether the
-		 * install an update would MOVE is the install the serving process RUNS FROM.
-		 * They are the same install in `GLOBAL_INSTALL`, and they can be two
-		 * different ones the moment discovery adopts a daemon - the operator's log
-		 * pairs the uv tool's 0.56.13 against a bundled daemon's 0.56.8 - and a
-		 * version compared across two installs is a skew that may not exist. Empty
-		 * for the app-owned modes, which have no plan install, and for a global
-		 * install in a non-venv base prefix, where the environment the daemon boots
-		 * from is not this one and the comparison must not be made on a guess.
+		 * Whether that reading IS the serving install's own, which is the one thing the
+		 * version cannot say by itself. The plan resolves the install the backend named
+		 * in its `/health` answer (`prefix`, with the backend's own `install_kind` beside
+		 * it), and falls back to the shim's install only when the server named no root at
+		 * all - the two are the same install on the machines this check was built for and
+		 * two different ones on exactly the machine it was reported from (the operator's
+		 * log pairs the uv tool's 0.56.13 against a bundled daemon's 0.56.8). A drift
+		 * comparison across two installs is a skew that may not exist, so the drift reads
+		 * this flag and refuses on `false` rather than comparing (`driftInstallReading`).
+		 *
+		 * True when the serving root itself answered the version - either through its own
+		 * dist-info or through its own console script - and false when the value came
+		 * from the `local-operator` shim on `PATH`.
 		 */
-		installedInstallPrefix: string;	}> {
+		installedInstallVersionDescribesServingInstall: boolean;
+	}> {
 		if (
 			startupMode === LocalOperatorStartupMode.EXISTING_SERVER ||
 			startupMode === LocalOperatorStartupMode.GLOBAL_INSTALL
@@ -3881,6 +3929,8 @@ export class UpdateService {
 					sourceBuild: false,
 					appOwned: true,
 					installedInstallVersion: serving.version,
+					installedInstallVersionDescribesServingInstall:
+						serving.version !== null,
 				};
 			}
 
@@ -3890,10 +3940,18 @@ export class UpdateService {
 			 * prefix is the install an update has to move, and classifying the shim
 			 * instead is how a global install at the published version came to speak
 			 * for an environment three releases behind it.
+			 *
+			 * `servingIdentity` is kept beside the fallback because it is also the second
+			 * reading that proves the plan's subject is the serving install: the version
+			 * below can come from the serving root's dist-info OR from its own console
+			 * script, and a root carrying neither leaves the shim's reading - which the
+			 * drift check refuses to compare against (`driftInstallReading`).
 			 */
-			const identity =
-				(serving.prefix ? this.servingInstallIdentity(serving.prefix) : null) ??
-				(await this.resolveInstallIdentity());
+			const servingIdentity =
+				serving.prefix !== null
+					? this.servingInstallIdentity(serving.prefix)
+					: null;
+			const identity = servingIdentity ?? (await this.resolveInstallIdentity());
 			const plan = resolveGlobalInstallPlan({ identity });
 			logger.info(
 				`External backend install (${startupMode}): ${plan.detail}; remedy is ` +
@@ -3909,7 +3967,13 @@ export class UpdateService {
 				sourceBuild: plan.sourceBuild,
 				appOwned: false,
 				installedInstallVersion: serving.version ?? identity.version ?? null,
-				installedInstallPrefix: identity.venvPrefix ?? "",			};
+				/*
+				 * Either reading of the serving root proves the subject: its dist-info's
+				 * version, or the identity read from its own console script.
+				 */
+				installedInstallVersionDescribesServingInstall:
+					serving.version !== null || servingIdentity !== null,
+			};
 		}
 
 		return {
@@ -3932,7 +3996,13 @@ export class UpdateService {
 			 * old build is visible as exactly that rather than as "nothing newer".
 			 */
 			installedInstallVersion: serving.version,
-			installedInstallPrefix: "",		};
+			/*
+			 * The app-managed environment's on-disk version is the serving install's own by
+			 * construction - it is read FROM the root the server named - so it describes the
+			 * subject whenever there is a reading at all.
+			 */
+			installedInstallVersionDescribesServingInstall: serving.version !== null,
+		};
 	}
 
 	/**
@@ -4149,7 +4219,7 @@ export class UpdateService {
 			const plan = await this.resolveBackendUpdatePlan(startupMode, serving);
 			// The two readings are the check's own, so the drift and the offer that
 			// follows are decided from one snapshot rather than two.
-			await this.settleBackendVersionDrift(plan, runningVersion);
+			await this.settleBackendVersionDrift(plan);
 			const latestVersion = await this.getLatestPypiVersion();
 			// Remembered for the by-hand prompt: that event is produced from a click
 			// rather than from a check, and it has to be able to name the published
@@ -4309,7 +4379,8 @@ export class UpdateService {
 			// the daemon that serves it has been restarted - and when they do, the
 			// check has to be answerable from the log. The install ROOT is on the line
 			// too, because the defect this check was reporting on was a comparison
-			// against an install that was not the one answering.			logger.info(
+			// against an install that was not the one answering.
+			logger.info(
 				`Install on disk reports: ${installVersion ?? "no reading"} (at ${serving.prefix ?? "an install the server did not name"}), running backend reports: ${runningVersion ?? "no reading"}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}, Server channel: ${channel.status} (${channel.state}), Startup mode: ${startupMode}`,
 				LogFileType.UPDATE_SERVICE,
 			);
@@ -4511,28 +4582,35 @@ export class UpdateService {
 	/**
 	 * Do something about a daemon that booted from a build older than the install.
 	 *
-	 * The defect: the process serving this app can be running code the disk has
-	 * already replaced, and nothing in the check used to look. The install moved, the
-	 * daemon kept serving its in-memory build, and the app reported the install up to
-	 * date - so a fix that had shipped was not in effect (see
-	 * `backend-version-drift.ts` for the incident, and for why `/health`'s version
-	 * cannot serve as the RUNNING reading).
+	 * WHAT FAILED WITHOUT THIS. The daemon started Sep 16 15:25 loaded build 0.56.2.
+	 * The environment under it was updated in place to 0.56.11 the next morning. The
+	 * process went on serving 0.56.2 out of memory for the rest of the day, and every
+	 * update check called the install current, because the comparison was
+	 * installed-against-published and never running-against-installed. Two of the
+	 * three readings this needs did not exist, and the third was taken from the wrong
+	 * field - see `backend-version-drift.ts` for why `/health` cannot serve as the
+	 * RUNNING reading, which is the trap that cost the day.
 	 *
-	 * TWO READINGS, AND WHICH INSTALL EACH DESCRIBES, because the first cut of this
-	 * function compared the wrong pair (review round 1, R1). The boot reading comes
-	 * from the serving process's own record; the install reading comes from
-	 * `driftInstallReading`, which resolves the install the serving process actually
-	 * runs from rather than the plan's install blindly - the plan's reading exists
-	 * only in the modes where the app does not own the environment, and in an
-	 * adopted daemon even that one can be a different install.
+	 * WHICH INSTALL IS COMPARED, and the reconciliation this round carries: the
+	 * install reading is the plan's, which is #318's `judge the install that serves
+	 * the app` - the version on disk at the root the backend named in its `/health`
+	 * answer. It landed on `main` while this branch was open and answers the same
+	 * question this check's own second reading was invented for, so the two are one
+	 * answer now (`driftInstallReading`), and the only thing left for this check to
+	 * refuse is a plan reading that is NOT the serving install's own.
 	 *
-	 * The action is the lifecycle's own restart, gated by the pure decision beside
-	 * the readings: only a daemon this app started is restarted, a process serving
-	 * code the app cannot identify the install of is not compared at all, nothing is
-	 * touched while the update flow is mid-flight, a turn in flight holds the restart
-	 * unboundedly (see `driftRestartDecision`), and a pair already restarted for is
-	 * not restarted again, because a skew a restart did not fix would otherwise
-	 * become a five-minute kill loop.
+	 * THE ACTION IS THE LIFECYCLE'S OWN RESTART, and ONLY FOR A PROCESS THIS APP
+	 * PROCESS HOLDS. `restart()` is `stop(true)` + `start()`, and `stop()` terminates
+	 * the generation this process holds - so QA round 1's Q1 is answered by asking
+	 * ownership that question rather than by a looser one: for a daemon discovery
+	 * ADOPTED (the operator's own mode, 400 rows of their log), `stop()` has nothing
+	 * to stop, the pid cannot move, and a "restart" is a re-adoption of the same live
+	 * process. That is reported as unrepairable, in those words, instead of being
+	 * claimed as repaired (`servingInstallIsAppOwned` states why the process is not
+	 * killed by pid instead). Beyond that: nothing is touched while the update flow
+	 * is mid-flight, a turn in flight holds the restart unboundedly (see
+	 * `driftRestartDecision`), and a pair a restart has OBSERVED to move is not
+	 * restarted again.
 	 *
 	 * Incapable of failing the check, and incapable of being SILENT: every branch
 	 * logs, including the ones that do nothing. That last part is not politeness -
@@ -4542,21 +4620,16 @@ export class UpdateService {
 	 * is "the install is current" must not become an error because the daemon could
 	 * not be moved onto it - and must not become quiet either.
 	 */
-	private async settleBackendVersionDrift(
-		plan: {
-			installedInstallVersion: string | null;
-			installedInstallPrefix: string;
-		},
-		healthVersion: string | null,
-	): Promise<void> {
+	private async settleBackendVersionDrift(plan: {
+		installedInstallVersion: string | null;
+		installedInstallVersionDescribesServingInstall: boolean;
+	}): Promise<void> {
 		const serving = this.backendService?.servingInstall() ?? null;
 		const readings = serving?.readings ?? servingInstallReadings(null);
 		const installReading = driftInstallReading({
 			planVersion: plan.installedInstallVersion,
-			planPrefix: plan.installedInstallPrefix,
-			servingReadings: readings,
-			servingIsAppManaged: serving?.managedByThisApp ?? false,
-			healthVersion,
+			planDescribesServingInstall:
+				plan.installedInstallVersionDescribesServingInstall,
 		});
 		const drift = backendVersionDrift(
 			readings.bootVersion,
@@ -4586,11 +4659,13 @@ export class UpdateService {
 		 * Ordered refusals before the holds, and the work state read ONLY when nothing
 		 * before it has already decided: the read is a request to the daemon, and a
 		 * daemon this app is not going to restart does not need to be asked whether it
-		 * is busy.
+		 * is busy. The ownership answer is the first refusal for that reason - a
+		 * daemon this app cannot move must not be interrogated about its turns.
 		 */
 		const ownership = serving?.owned ?? {
 			owned: false,
 			because: "there is no server manager to read a record from",
+			startedByEarlierAppRun: false,
 		};
 		const mustAskForWork =
 			installReading.source !== "unknown" &&
@@ -4619,62 +4694,143 @@ export class UpdateService {
 					? this.driftDeferrals + 1
 					: 0;
 			logger.info(
-				`The server serving this app booted on ${drift.bootVersion} while the install reading is ${drift.installVersion} (${installReading.source}); ${DRIFT_HOLD_REPORT[decision.because]}`,
+				`The server serving this app booted on ${drift.bootVersion} while the install reading is ${drift.installVersion} (${installReading.source}); ${driftHoldReport(decision.because, ownership)}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return;
 		}
 
 		this.driftDeferrals = 0;
-		this.driftRestartedFor = pair;
 		logger.info(
 			`The server serving this app booted on ${drift.bootVersion} while the install reading is ${drift.installVersion} (${installReading.source}); restarting it so the installed build serves. This app owns it because ${ownership.because}, and no turn is running in it.`,
 			LogFileType.UPDATE_SERVICE,
 		);
-		await this.restartBackendForVersionDrift(drift);
+		const moved = await this.restartBackendForVersionDrift(drift);
+		this.recordDriftRestartOutcome(pair, drift, moved);
 	}
 
 	/**
-	 * Restart the daemon this app owns so the install on disk takes effect.
+	 * What a restart attempt left behind, in the latch and in the log.
+	 *
+	 * THE LATCH IS THE OBSERVED TRANSITION (QA round 1, Q1c). It used to be set
+	 * before the restart, so a "restart" that could not move an adopted daemon
+	 * silenced every later check for the rest of the session - the repair going inert
+	 * on the strength of a call it had not made. It is now set only for a pair a
+	 * restart has been OBSERVED to move, and a restart that did not move the reading
+	 * logs the truth and is retried on the next check.
+	 *
+	 * The retry is bounded rather than unbounded, and the bound is the kill loop the
+	 * first cut was pre-empting: a restart that keeps coming back on the same build
+	 * WOULD be repeated every check. `DRIFT_STALLED_RESTARTS_BEFORE_HALT` restarts are
+	 * spent before the pair is left alone, so one failed repair is retried and a
+	 * machine that cannot be moved stops being restarted (review round 1, R1's
+	 * five-minute kill loop, answered without the silence).
+	 */
+	private recordDriftRestartOutcome(
+		pair: string,
+		drift: { bootVersion: string; installVersion: string },
+		moved: boolean,
+	): void {
+		if (moved) {
+			this.driftRestartedFor = pair;
+			this.driftStalledFor = null;
+			this.driftStalledRestarts = 0;
+			return;
+		}
+		const attempts =
+			this.driftStalledFor === pair ? this.driftStalledRestarts + 1 : 1;
+		this.driftStalledFor = pair;
+		this.driftStalledRestarts = attempts;
+		if (attempts < DRIFT_STALLED_RESTARTS_BEFORE_HALT) {
+			logger.warn(
+				`The server is still on ${drift.bootVersion} after a restart for install ${drift.installVersion}; the next check will try again.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
+		/*
+		 * The pair is latched HERE rather than on the attempt, and the sentence says
+		 * which of the two it is: a restart that does not move the reading would
+		 * otherwise become a kill loop every check.
+		 */
+		this.driftRestartedFor = pair;
+		logger.warn(
+			`The server is still on ${drift.bootVersion} after ${attempts} restarts for install ${drift.installVersion}; not restarting it again (a restart that does not move it would become a kill loop every check).`,
+			LogFileType.UPDATE_SERVICE,
+		);
+	}
+
+	/**
+	 * Restart the daemon this app holds so the install on disk takes effect.
 	 *
 	 * `restart()` rather than `start()`, and that is not a style choice:
 	 * `startOwned` returns the running state untouched when a generation is already
 	 * owned, so a `start()` here would report success while the old process kept
 	 * serving - which is the defect, not the repair. `restart()` is the same
 	 * stop-then-start the post-install path uses.
+	 *
+	 * THE CLAIM IS GATED ON THE SETTLED READING, not on the call having been made
+	 * (QA round 1, Q1b). The first cut logged `Restarted the server onto the
+	 * installed build` before it had observed anything, on a `restart()` that could
+	 * not move an adopted daemon at all, and the settled number in the same sentence
+	 * (`it booted on 0.56.2`) contradicted the claim in front of it. A message that
+	 * asserts a boot that did not happen is worse than no message - it is the shape of
+	 * the defect this PR exists to delete - so the sentence is written only from the
+	 * successor's own record, and each of the three things that record can say has its
+	 * own line: it moved (the repair), it did not move (the restart did not take), or
+	 * it could not be read yet (nothing is claimed).
+	 *
+	 * @returns whether the successor's own boot reading differs from the one the
+	 * failed repair was about - the only evidence a restart happened, and the only
+	 * thing that may latch the pair.
 	 */
 	private async restartBackendForVersionDrift(drift: {
 		bootVersion: string;
 		installVersion: string;
-	}): Promise<void> {
+	}): Promise<boolean> {
 		try {
 			const restarted = await this.backendService?.restart();
 			if (!restarted) {
 				logger.error(
-					`The server did not come back after being restarted to pick up install ${drift.installVersion}; it booted on ${drift.bootVersion} and is not serving.`,
+					`The server did not come back after being restarted to pick up install ${drift.installVersion}; it booted on ${drift.bootVersion} and is not serving. The next check will try again.`,
 					LogFileType.UPDATE_SERVICE,
 				);
-				return;
+				return false;
 			}
 			/*
 			 * What was OBSERVED after, not what was hoped for: the settled reading is the
 			 * successor process's own record, and the health probe is a separate fact
-			 * from it. A restart that came back on the same build is the case this line
-			 * exists to make visible in the log rather than in a claim.
+			 * from it.
 			 */
 			const settledBoot =
 				this.backendService?.servingInstall().readings.bootVersion ?? null;
 			const healthy = await this.checkBackendHealth();
+			if (settledBoot === null) {
+				logger.warn(
+					`The server was restarted to pick up install ${drift.installVersion}, and the successor's own record carries no boot reading yet (was ${drift.bootVersion}); its health probe ${healthy ? "answered" : "did not answer"}. Claiming nothing about which build it came back on, and the next check will read it.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return false;
+			}
+			if (settledBoot === drift.bootVersion) {
+				logger.error(
+					`The server is still serving ${settledBoot} after the restart meant to move it onto install ${drift.installVersion} (was ${drift.bootVersion}); its health probe ${healthy ? "answered" : "did not answer"}. The restart did not take.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return false;
+			}
 			logger.info(
-				`Restarted the server onto the installed build: it booted on ${settledBoot ?? "a reading that could not be taken"} (was ${drift.bootVersion}, install is ${drift.installVersion}) and its health probe ${healthy ? "answered" : "did not answer"}.`,
+				`Restarted the server onto the installed build: it booted on ${settledBoot} (was ${drift.bootVersion}, install is ${drift.installVersion}) and its health probe ${healthy ? "answered" : "did not answer"}.`,
 				LogFileType.UPDATE_SERVICE,
 			);
+			return true;
 		} catch (error) {
 			logger.error(
 				"Could not restart the server to pick up the installed build:",
 				LogFileType.UPDATE_SERVICE,
 				error,
 			);
+			return false;
 		}
 	}
 
