@@ -28,15 +28,78 @@ carries the sidebar, the session list or the transcript.
 ```
 aed35221da88585bae851ad20ccd18073a3cfcebeac20686780c54feb77d630d  scratchpad-files-panel-before.png  43545 B
 01361ab8c538a3236c68ea16cc0683ec54e03087c2766c587a26fbcfee7a7327  scratchpad-files-panel.png         31764 B
-8a5354fc86f3122ffb300961db6e9e34ea813b8d9bcd08d5b5ee5e4040c56553  scratchpad-markdown-canvas.png     77392 B
-ace2e801f12b1542fcf0b19f0c209e07e2de7d5ca8146e62cade60b4e4c6a2b1  scratchpad-csv-canvas.png          39171 B
-3ba9b1c6ff2f345f23c0d296d0fec9da242acf6b5f4b699fa1de72a9110104b0  scratchpad-text-canvas.png         55192 B
+d25484d7a33ab13824ee3a9276fa8e0e90bed07d6220e7fda6bc3a3059154ccf  scratchpad-markdown-canvas.png     73919 B
+9782e2aa8f0dea488ffe07782440e3c09eeb5cb4673e88541d770daa73ef89ab  scratchpad-csv-canvas.png          40382 B
+68ca92d87650332d3443c0fc64a0defd22d7dd1aaa35fe99153623cdc4a8440a  scratchpad-text-canvas.png         48919 B
 ```
 
 The panel pair differs by **15,273 pixels (0.67% of the frame)** - `magick
 compare -metric AE` - which is two tiles and one word of head copy, and nothing
 else. The two panel frames are byte-comparable because they are the same session
 on two builds: same names, same order, same grid.
+
+**Both panel frames survived the rebase byte-for-byte.** `scratchpad-files-panel.png`
+and `scratchpad-files-panel-before.png` were re-captured on the rebased tree, from
+a session with a different id, and came back with the SAME sha256 - 0 differing
+pixels from the frames committed before the rebase. That is the reading that says
+main's movement did not disturb this surface (see *Why the frames still describe
+this tree*).
+
+### Why the frames still describe this tree
+
+The frames were first taken on `3a5b66c54` and the branch has since folded two
+windows of `main` onto itself. Main's movement names the panel's own host files,
+so "nothing visual changed" has to be shown rather than assumed:
+
+- `chat-content.tsx` and `chat-page.tsx` DID change (+26 and +46 lines). Every
+  line is composer @-mention plumbing - `mentionsEnabled` and `mentionsUnsupported`
+  props threaded to `MessageInput` - and no line touches the canvas host, the
+  Files grid, the canvas container or any geometry the frames measure.
+- Nothing else in the render path moved: `git diff --stat` over
+  `features/chat/components/canvas/`, `features/chat/canonical/`,
+  `shared/themes/` and `styles/` is empty for both windows.
+- And the measurement agrees with the reading: the panel frame re-captured on the
+  rebased tree is **byte-identical** (0 differing pixels, same sha256), and the
+  `-before` frame likewise. A layout shift inside the canvas container would move
+  both.
+
+The canvas frames are re-taken from the run the rebased harness performs, so the
+whole set is one session on the current tree - the panel pair happens to hash the
+same as before, the three canvases carry the new run's own file contents.
+
+### What a fresh reader reproduces, and what they do not
+
+`run-scratchpad-files.sh` needs: `HOME` and `PATH` with the repo's own `electron`
+and `pnpm`, the sibling backend worktree at `$BACKEND_ROOT` (default
+`~/workspace/repos/lo-notes-protocol`) with its `.venv` and the `scratchpad://`
+feature, a provider credential at `$HOME/.local-operator/credentials.env`, a free
+port `1149`, and `python3` for the seeding step. `ISO=` names the scratch tree; it
+is created (`mkdir -p`) if it does not exist and then resolved to its physical
+path, so any writable location works. Port 1149 in use by another run is the one
+environmental hazard: the script starts its own backend and fails loudly if that
+backend does not answer.
+
+Reproducible from the script alone: **`scratchpad-files-panel.png`**,
+**`scratchpad-markdown-canvas.png`**, **`scratchpad-csv-canvas.png`** and
+**`scratchpad-text-canvas.png`** (four of the five - its own turn, its own seeding
+step, its own capture).
+
+NOT reproducible from the script: **`scratchpad-files-panel-before.png`**, which
+needs a second build of the same tree with the extractor checked out from main:
+
+```sh
+git checkout origin/main -- src/renderer/src/features/chat/canonical/mentioned-files.ts
+VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:1149 pnpm build
+# re-run the driver against the same scratch tree and session:
+NOTES_EVIDENCE_SCRATCH=$ISO LOCAL_OPERATOR_CONFIG_DIR=$ISO/config \
+  LOCAL_OPERATOR_DESKTOP_TOKEN=$(cat $ISO/token.txt) \
+  node docs/evidence/scratchpad-files/harness/scratchpad-files-proof.mjs $ISO/frames-before $SID
+git checkout HEAD -- src/renderer/src/features/chat/canonical/mentioned-files.ts
+```
+
+It is committed rather than merely described because it is the half that shows
+the defect: a reader who runs only the script sees a four-tile panel and no reason
+to believe it was ever anything else.
 
 ## What produced these frames
 
@@ -59,8 +122,11 @@ resolves for nobody but its author is not one. It is three files:
 - `seed-placeholder-lines.py` - see *Why the harness replays two lines*.
 
 The `before` frame is the same driver, the same session and the same backend on a
-build of the base tree (`git stash` the `src/` change, `pnpm build`, run, restore
-and rebuild) - which is why the pair is comparable rather than merely adjacent.
+build where ONE file is main's - `src/renderer/src/features/chat/canonical/mentioned-files.ts`,
+the extractor, checked out from `origin/main` and then restored. That is a
+narrower base than round 1's, which used the whole pre-PR tree, and a better one:
+the two builds differ by the extractor rule and nothing else, so the pair isolates
+the fix rather than the fix plus a rebase.
 
 ### Why the harness replays two lines
 
@@ -92,10 +158,10 @@ working-tree changes - `local_operator/scratchpad.py` sha256
 the run. Every string the panel inferred from is the feature's own:
 
 ```
-Created scratchpad://run/perf.md -> /private/tmp/…/sessions/645a5fa1c44f/scratchpad/run/perf.md
-Created scratchpad://run/metrics.csv -> /private/tmp/…/sessions/645a5fa1c44f/scratchpad/run/metrics.csv
-Created scratchpad://run/session-log.txt -> /private/tmp/…/sessions/645a5fa1c44f/scratchpad/run/session-log.txt
-Created scratchpad://run/run-config.json -> /private/tmp/…/sessions/645a5fa1c44f/scratchpad/run/run-config.json
+Created scratchpad://run/perf.md -> /private/tmp/…/sessions/7208bfe8ee16/scratchpad/run/perf.md
+Created scratchpad://run/metrics.csv -> /private/tmp/…/sessions/7208bfe8ee16/scratchpad/run/metrics.csv
+Created scratchpad://run/session-log.txt -> /private/tmp/…/sessions/7208bfe8ee16/scratchpad/run/session-log.txt
+Created scratchpad://run/run-config.json -> /private/tmp/…/sessions/7208bfe8ee16/scratchpad/run/run-config.json
 ```
 
 The turn ran on `openrouter/deepseek/deepseek-v4.1-flash` (the selector the
@@ -204,6 +270,21 @@ too. The two rules are pinned against the exact measured strings in
 `scripts/mentioned-files.test.mjs`, which also asserts the negatives that keep the
 rule honest: a real scratchpad result still tiles, and `convert in.png > /tmp/out.png`
 and its unspaced spelling `convert in.png>/tmp/out.png` are still mentions.
+
+**The placeholder guard is deliberately narrow, and review round 2 is why.**
+"The word before the candidate ends with `>` and contains a `<`" is also every
+HTML tag, every TypeScript generic and every heredoc or closing tag glued to a
+path - measured, `use <code>/tmp/real/notes.md`, `done </b>/tmp/real/notes.md`,
+`Map<T>/tmp/notes/real.md`, `<br/>/tmp/notes/real.md`,
+`compare <image-a.png>/tmp/real/notes.md` and `cat <<EOF>/tmp/real/notes.md` are
+all real mentions that the first version dropped. So the placeholder must also
+LOOK like one: the text before its `<` has to be path-like - non-empty and
+carrying a `/` - which keeps `/…/sessions/<id>/…` (its head is `/…/sessions/`) and
+drops the tags, the generics and the glue, while a `<` at the start of a word can
+never qualify. Both directions are asserted. The residual trade is stated in the
+code: a word that is BOTH path-like and carries a generic (`a/b<T>/tmp/real.md`)
+still loses the path after it, and no transcript in this corpus produces that
+shape.
 
 **The trade, stated rather than discovered later:** a real file whose NAME
 contains an ellipsis is admitted by no tier here. That is this module's standing
