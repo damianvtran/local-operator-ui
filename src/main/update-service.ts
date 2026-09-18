@@ -1193,7 +1193,14 @@ const LAUNCH_HOLD_LOG_FLUSH_MS = 300;
 const LAUNCH_HOLD_NOTICE_BUDGET_MS =
 	LAUNCH_HOLD_NOTICE_DEADLINE_MS +
 	LAUNCH_HOLD_SCRIPT_DEADLINE_MS +
-	LAUNCH_HOLD_LOG_FLUSH_MS;
+	LAUNCH_HOLD_LOG_FLUSH_MS +
+	/*
+	 * Headroom, so the quit and the flush it exists to allow cannot land in the same
+	 * millisecond (review R10): without it this budget IS its own worst case exactly,
+	 * and a host where `osascript` burns its whole deadline would make the record's
+	 * landing a coin flip rather than a guarantee.
+	 */
+	250;
 
 /**
  * Whether this launch asked for no banners at all.
@@ -1301,6 +1308,16 @@ function raiseThroughOsascript(notice: InstallLaunchHoldNotice): number | null {
  * it, so it is worth trying when that channel is unavailable or refuses - and it is
  * the whole answer off macOS.
  *
+ * WHAT THE RECORD DOES NOT CLAIM (review U8, QA Q5). `osascript display notification`
+ * exits 0 when the SCRIPT ran; macOS reports nothing about whether Notification
+ * Center displayed anything (Focus, banner settings, an unattributed identity), and
+ * the watchdog that uses the same channel calls it best-effort for exactly that
+ * reason. So the sentence for that branch says "handed to ... exit 0" and states
+ * that nothing here observes delivery, rather than the "sent" this round replaced -
+ * a reader of the log, or a support thread, must not mistake one for the other. The
+ * only leg with a delivery signal is the app's own banner, and on a signed bundle it
+ * is the leg that can be watched.
+ *
  * The ANSWER is what makes delivery checkable instead of assumed: the same
  * information QA round 1 could only record as BLOCKED, because nothing in the flow
  * said whether the system had shown anything. A sentence rather than a record type
@@ -1315,10 +1332,10 @@ async function showInstallHoldNotice(
 	}
 	const status = raiseThroughOsascript(notice);
 	if (status === 0) {
-		return "sent through the install's own notification channel (osascript), the one the install and its watchdog already use";
+		return "handed to the install's own notification channel (osascript, exit 0); nothing here observes whether the system displayed it";
 	}
 	if (await bannerReportedShown(notice, bannerDeadlineMs)) {
-		return "shown by the app's own banner, the install's channel being unavailable";
+		return "shown by the app's own banner, which is the one leg that reports delivery (the install's channel being unavailable)";
 	}
 	if (status == null) {
 		return "not raised: the install's channel is not available on this host, and the app's banner did not report itself shown";
@@ -1385,7 +1402,7 @@ export function holdLaunchForLiveInstall(options: {
 	const jobState = (options.jobState ?? probeShipItInstallJobState)();
 	const reading = evaluateLaunchDuringInstall({
 		marker,
-		jobRunning: jobState === "running",
+		jobState,
 		runningVersion: options.runningVersion ?? app.getVersion(),
 		now: options.now,
 	});
@@ -1952,10 +1969,12 @@ export class UpdateService {
 			// progress rather than an install that failed. A job that is registered
 			// but not running is the state a finished install leaves behind, and
 			// reading it as live is what held a launch - and so swallowed this very
-			// report - for ~29 minutes after every successful update (review U1, U2).
+			// report - for ~29 minutes after every successful update (review U1, U2);
+			// the one exception is the submission-to-exec gap, which
+			// `PENDING_INSTALL_EXEC_GRACE_SECONDS` bounds (review R6).
 			installInFlight: isInstallInFlight({
 				marker,
-				jobRunning: jobState === "running",
+				jobState,
 			}),
 		});
 
@@ -1984,7 +2003,7 @@ export class UpdateService {
 			case "in-flight": {
 				this.installWasInFlight = true;
 				logger.info(
-					`Update marker: the install of version ${outcome.marker.targetVersion} is still running (its install job is loaded). Leaving the marker, the install job and the relaunch watchdog in place.`,
+					`Update marker: the install of version ${outcome.marker.targetVersion} is still running (install job ${jobState}). Leaving the marker, the install job and the relaunch watchdog in place.`,
 					LogFileType.UPDATE_SERVICE,
 				);
 				// The user is told, because the app being open is what stops this
@@ -2370,7 +2389,7 @@ export class UpdateService {
 		if (!marker) return null;
 		return isInstallInFlight({
 			marker,
-			jobRunning: this.shipItInstallJobState() === "running",
+			jobState: this.shipItInstallJobState(),
 		})
 			? marker
 			: null;

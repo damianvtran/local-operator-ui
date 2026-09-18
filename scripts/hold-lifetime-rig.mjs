@@ -51,8 +51,32 @@
  *   a failed install (target ahead, job not running)     opens and reports it
  *
  * The last three are the review-U1/U2 cases, and they are the point of the rig as
- * much as the lifetime is: on this machine a registered job outlives its install,
- * so a launch must not be held for one.
+ * much as the lifetime is: a registration has to be read as "not an install" once the
+ * install is over, or the app cannot be opened after an update at all.
+ *
+ * WHAT ITS `registered` ARM IS, AND IS NOT (review R9). The job is submitted with
+ * `launchctl submit`, which creates a **KeepAlive** job - launchd restarts its program
+ * as soon as it exits - so the arm samples the gap between respawns, not a registration
+ * that outlives its install. The READING the app makes is the same in both (status 0,
+ * no `"PID" = n;`), which is why the arm still discriminates, but the mechanism is not
+ * the one the operator's machine shows (their app's job sits at `state = not running`,
+ * `runs = 1`, indefinitely). For that state exactly, bootstrap a `RunAtLoad` plist job
+ * with no `KeepAlive` and never let it run again - the shape QA round 2 and the round-2
+ * reviewer both used - because a later agent reading this header must not believe this
+ * rig reproduces the 72-minute linger.
+ *
+ * TWO THINGS A RUN NEEDS THAT ARE EASY TO MISS (review Q6, QA Q8):
+ *
+ *   - an `electron-builder --dir` artifact fails the app's OWN start-up seal check
+ *     (`code has no resources but signature indicates they must be present`), and the
+ *     app then reports a refusal panel - so a rig that reads a panel can be reading the
+ *     refusal instead of the panel under test. Sign the staged copy first:
+ *     `codesign --force --deep -s - "<the .app>"` (the log line to want is
+ *     `Start-up seal check: … is a sealed code object`).
+ *   - `--user-data-dir` is load-bearing for isolation and not only for the profile name:
+ *     `src/main/index.ts` calls `app.setName("Local Operator")`, so userData resolves to
+ *     the operator's own `~/Library/Application Support/Local Operator` for ANY build of
+ *     this app, whatever its bundle id - which is why this rig always passes it.
  *
  * USAGE
  *
@@ -242,10 +266,17 @@ async function main() {
 	mkdirSync(binDir, { recursive: true });
 
 	/*
-	 * The launchctl shim: `list` is passed THROUGH to the machine's own tool, so the
-	 * answer the app acts on is real, while every other subcommand fails, so the app
-	 * cannot remove the job this rig submitted. The app logs that refusal and carries
-	 * on; nothing in the operator's domain is touched.
+	 * The launchctl shim. It intercepts what the app's PROBE runs - the probe is spawned
+	 * by bare name, so PATH decides - and passes `list` THROUGH to the machine's own tool,
+	 * so the answer the app acts on is real while nothing else this rig does can change
+	 * the operator's launchd domain.
+	 *
+	 * It does NOT stop the app removing the rig's job, and the earlier version of this
+	 * comment said it did (UX round 2's note): the app's own removal is
+	 * `spawnSync("/bin/launchctl", [...])` - an ABSOLUTE path, so the shim is bypassed -
+	 * and an open-and-report arm does log `Removed the leftover install job …`. The hold
+	 * arms are unaffected (the app quits before recovery runs), but an arm that expects
+	 * the job to survive an opened launch will not find it.
 	 */
 	const shim = join(binDir, "launchctl");
 	writeFileSync(
@@ -299,8 +330,13 @@ exit 1
 			}
 			jobSubmitted = true;
 			if (options.job === "registered") {
-				// Wait for the trivial program to finish, so the job is registered and
-				// NOT running - the state review U1 is about.
+				/*
+				 * Wait for the trivial program to finish, so the job reads as registered with no
+				 * pid. What this samples is the gap between the respawns of a KeepAlive job
+				 * (`launchctl submit`), which the app reads exactly as it reads a registration
+				 * that outlives its install - see the header for the difference, and for the
+				 * plist shape that reproduces the durable one.
+				 */
 				spawnSync("/bin/sleep", ["1"]);
 			}
 			log(`job: ${jobLabel} submitted, ${options.job}`);
@@ -442,13 +478,25 @@ exit 1
 		}
 
 		/*
-		 * The expectation the state carries, stated here rather than inferred from
-		 * the numbers: a RUNNING job is a live install and the launch must stand
-		 * down; anything else is an install that is over (or never was) and the
-		 * app must open and report it. Review U1 and U2 are the second and third of
-		 * these, and they are why the rig exists at all.
+		 * The expectation the state carries, stated here rather than inferred from the
+		 * numbers: a RUNNING job is a live install and the launch must stand down; a
+		 * REGISTERED job is a live install too while the marker is inside the submission
+		 * window - launchd has the job before ShipIt has a pid (review R6) - and is the
+		 * leftover a finished install leaves once the marker is past it; an ABSENT job is
+		 * never an install. Review U1 and U2 are the last two of those, and they are why
+		 * the rig exists at all.
+		 *
+		 * `EXEC_GRACE_SECONDS` mirrors the app's `PENDING_INSTALL_EXEC_GRACE_SECONDS`. A
+		 * second copy of a constant is a defect in shipped code; in a rig it is the honest
+		 * shape, because the alternative is a rig that cannot state what it expects - and
+		 * `--hold-ms` runs either side of it are what keep the copy true.
 		 */
-		const expected = options.job === "running" ? "hold" : "open";
+		const EXEC_GRACE_SECONDS = 5;
+		const withinGrace = options.holdMs / 1000 <= EXEC_GRACE_SECONDS;
+		const expected =
+			options.job === "running" || (options.job === "registered" && withinGrace)
+				? "hold"
+				: "open";
 		const matched = expected === "hold" ? held : opened;
 		log(`expectation: ${expected} -> ${matched ? "PASS" : "FAIL"}`);
 		if (stdout.trim())

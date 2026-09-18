@@ -64,6 +64,7 @@ const {
 	INSTALL_DISK_SLACK_BYTES,
 	LAUNCH_HOLD_END_MARGIN_SECONDS,
 	PLIST_READ_TIMEOUT_SECONDS,
+	PENDING_INSTALL_EXEC_GRACE_SECONDS,
 	PENDING_INSTALL_LAUNCH_HOLD_SECONDS,
 	PENDING_INSTALL_MARKER_FILE,
 	PENDING_INSTALL_RECENCY_MARGIN_SECONDS,
@@ -1017,7 +1018,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	// The 2026-09-13 relaunch, to the second: 4:40 after the marker was written.
 	const now = Date.parse(started) + 280 * 1000;
 
-	assert.equal(isInstallInFlight({ marker, jobRunning: true, now }), true);
+	assert.equal(isInstallInFlight({ marker, jobState: "running", now }), true);
 	assert.equal(
 		evaluatePendingInstall({
 			marker,
@@ -1031,10 +1032,10 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	// marker with no job, and a job an old failure left loaded for hours (0.17.0:
 	// runs=3114) are all decided by the version: that is a failure.
 	assert.equal(
-		isInstallInFlight({ marker: null, jobRunning: true, now }),
+		isInstallInFlight({ marker: null, jobState: "running", now }),
 		false,
 	);
-	assert.equal(isInstallInFlight({ marker, jobRunning: false, now }), false);
+	assert.equal(isInstallInFlight({ marker, jobState: "absent", now }), false);
 	assert.equal(
 		evaluatePendingInstall({ marker, runningVersion: "0.19.4" }).kind,
 		"failed",
@@ -1066,7 +1067,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker,
-			jobRunning: true,
+			jobState: "running",
 			now: Date.parse(started) + WATCHDOG_HARD_TIMEOUT_SECONDS * 1000,
 		}),
 		true,
@@ -1074,7 +1075,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker,
-			jobRunning: true,
+			jobState: "running",
 			now: Date.parse(started) + PENDING_INSTALL_RECENCY_SECONDS * 1000,
 		}),
 		true,
@@ -1082,7 +1083,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker,
-			jobRunning: true,
+			jobState: "running",
 			now: Date.parse(started) + (PENDING_INSTALL_RECENCY_SECONDS + 1) * 1000,
 		}),
 		false,
@@ -1097,9 +1098,57 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker: { ...marker, startedAt: "" },
-			jobRunning: true,
+			jobState: "running",
 			now,
 		}),
+		false,
+	);
+
+	/*
+	 * Review R6, the submission-to-exec window: launchd reports the job's pid only
+	 * once ShipIt is EXECUTING, and the machine bounds the gap between the two from
+	 * its own lines - the app's `app quit for the in-flight install` at 11:59:00.520
+	 * and ShipIt's first line at 11:59:00.991, 471 ms. A launch landing there was
+	 * opening into a live install (the `Code=-9` cancellation this whole path exists
+	 * for), so a REGISTERED job is read as this install until the marker is older than
+	 * the grace, and only then as the leftover registration a finished install leaves.
+	 */
+	const grace = (seconds) => ({
+		...marker,
+		startedAt: new Date(now - seconds * 1000).toISOString(),
+	});
+	assert.equal(
+		isInstallInFlight({ marker: grace(2), jobState: "registered", now }),
+		true,
+		"a job launchd was handed two seconds ago is not an install that is over",
+	);
+	assert.equal(
+		isInstallInFlight({
+			marker: grace(PENDING_INSTALL_EXEC_GRACE_SECONDS),
+			jobState: "registered",
+			now,
+		}),
+		true,
+		"the grace is inclusive: at its own bound the gap may still be open",
+	);
+	assert.equal(
+		isInstallInFlight({
+			marker: grace(PENDING_INSTALL_EXEC_GRACE_SECONDS + 1),
+			jobState: "registered",
+			now,
+		}),
+		false,
+		"one second past the grace, a registration is the leftover it usually is",
+	);
+	// And the U1 case the grace must not resurrect: a COMPLETED install's marker is
+	// minutes old, so its registration still opens the app.
+	assert.equal(
+		isInstallInFlight({ marker: grace(280), jobState: "registered", now }),
+		false,
+	);
+	// An ABSENT job is not an install at any age - there is nothing to be handed.
+	assert.equal(
+		isInstallInFlight({ marker: grace(1), jobState: "absent", now }),
 		false,
 	);
 
@@ -10390,17 +10439,17 @@ test("a quit during an in-flight install takes the close over, and only then", a
 		return updateService;
 	};
 	const intervals = [];
-	const withService = (jobIsRunning) => {
+	const withService = (jobState) => {
 		const updateService = buildService();
 		intervals.push(updateService.updateCheckInterval);
-		updateService.installJobStateProbe = () =>
-			jobIsRunning ? "running" : "registered";
+		updateService.installJobStateProbe = () => jobState;
 		return updateService;
 	};
-	const idle = withService(true);
-	const live = withService(true);
-	const leftover = withService(false);
-	const aged = withService(true);
+	const idle = withService("running");
+	const live = withService("running");
+	const leftoverJob = withService("absent");
+	const freshRegistration = withService("registered");
+	const aged = withService("running");
 	const writeMarker = (startedAt) =>
 		writePendingInstallMarker(userData, {
 			targetVersion: "0.19.5",
@@ -10426,10 +10475,23 @@ test("a quit during an in-flight install takes the close over, and only then", a
 		// the install that is still running.
 		assert.equal(existsSync(pendingInstallMarkerPath(userData)), true);
 
-		// A marker the job probe answers no for is not an install. A FAILED install
-		// leaves its launchd job loaded for hours (0.17.0: runs=3114), which is the
-		// leftover the probe and the recency rule exist to tell apart.
-		assert.equal(leftover.quitForInFlightInstall("last window closed"), false);
+		// A marker whose install job is GONE is not an install. A FAILED install
+		// leaves its launchd job REGISTERED for hours (0.17.0: runs=3114), which is
+		// the leftover the probe and the recency rule exist to tell apart from a live
+		// install - and the state this one asserts is the other one, no job at all.
+		assert.equal(
+			leftoverJob.quitForInFlightInstall("last window closed"),
+			false,
+		);
+
+		// A REGISTERED job under a marker SECONDS old is the submission window rather
+		// than a leftover (review R6): launchd has the job before ShipIt has a pid, and
+		// a quit inside those seconds is still taken over - that close, left alone,
+		// would put a window-less instance into the install's running-instance check.
+		assert.equal(
+			freshRegistration.quitForInFlightInstall("last window closed"),
+			true,
+		);
 
 		// And a marker older than the recency bound is a failure's leftover too, so
 		// the ordinary close behaviour stands there.
@@ -10642,7 +10704,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: null,
-			jobRunning: true,
+			jobState: "running",
 			runningVersion: running,
 			now,
 		}),
@@ -10653,7 +10715,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(fresh),
-			jobRunning: false,
+			jobState: "absent",
 			runningVersion: running,
 			now,
 		}),
@@ -10664,7 +10726,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: { ...marker(""), startedAt: "" },
-			jobRunning: true,
+			jobState: "running",
 			runningVersion: running,
 			now,
 		}),
@@ -10674,7 +10736,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(pastHold),
-			jobRunning: true,
+			jobState: "running",
 			runningVersion: running,
 			now,
 		}),
@@ -10689,16 +10751,42 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(fresh),
-			jobRunning: true,
+			jobState: "running",
 			runningVersion: "0.19.5",
 			now,
 		}),
 		{ kind: "open" },
 	);
+	/*
+	 * Review R6 at the decision, which is where the window it closes lives: the same
+	 * REGISTERED job, read at two ages. Seconds old is the install launchd has just
+	 * been handed and ShipIt has not exec'd yet, so it holds; a minute old is an install
+	 * that is over, so it opens and recovery reports it - the U2 case QA walked.
+	 */
+	assert.equal(
+		evaluateLaunchDuringInstall({
+			marker: marker(new Date(now - 2000).toISOString()),
+			jobState: "registered",
+			runningVersion: running,
+			now,
+		}).kind,
+		"hold",
+		"a launch inside the submission window must not open into a live install",
+	);
+	assert.equal(
+		evaluateLaunchDuringInstall({
+			marker: marker(fresh),
+			jobState: "registered",
+			runningVersion: running,
+			now,
+		}).kind,
+		"open",
+		"and a minute past it the same registration is the leftover a finished install leaves",
+	);
 	// And a live install, which is the case this exists for.
 	const held = evaluateLaunchDuringInstall({
 		marker: marker(fresh),
-		jobRunning: true,
+		jobState: "running",
 		runningVersion: running,
 		now,
 	});
@@ -10706,7 +10794,7 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.equal(held.marker.targetVersion, "0.19.5");
 	const heldLate = evaluateLaunchDuringInstall({
 		marker: marker(withinHold),
-		jobRunning: true,
+		jobState: "running",
 		runningVersion: running,
 		now,
 	});

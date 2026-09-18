@@ -166,6 +166,33 @@ export const PENDING_INSTALL_LAUNCH_HOLD_SECONDS =
 	WATCHDOG_HARD_TIMEOUT_SECONDS - LAUNCH_HOLD_END_MARGIN_SECONDS;
 
 /**
+ * How long after its own start a marker is still an install launchd has only just
+ * been handed.
+ *
+ * WHY THIS EXISTS (review R6, and it is the last hole in the class this whole path
+ * closes). launchd reports the job's `"PID" = n;` field only once ShipIt is
+ * EXECUTING, and between Squirrel's submission and that exec the job reads
+ * `registered` with no pid - so a gate that calls a registration "the install is
+ * over" opens a window into a live install for the length of that gap. The machine
+ * bounds it from its own lines: the app's `app quit for the in-flight install` at
+ * 11:59:00.520 and ShipIt's first line at 11:59:00.991 - 471 ms, with the submission
+ * inside it.
+ *
+ * A handful of seconds rather than 471 ms because the fact is a chain of steps on a
+ * loaded machine (the quit writes the marker, launchd reads the plist, ShipIt execs)
+ * and because both ways of being wrong here are bounded: a launch held a few seconds
+ * too long only means the person clicks again (the watchdog still opens the app),
+ * while a launch that opens into a live install is the `Code=-9 App Still Running
+ * Error` cancellation - the four-minute wait thrown away.
+ *
+ * WHAT IT MUST NOT DO is bring back the review-U1 blocker, and it cannot: a
+ * COMPLETED install's marker is minutes old, never seconds - the one that made the
+ * app unreachable for half an hour was 280 s - so a registration past this grace is
+ * still read as "not an install", which is what the U1 and U2 fixes are built on.
+ */
+export const PENDING_INSTALL_EXEC_GRACE_SECONDS = 5;
+
+/**
  * How long the watchdog's on-disk version read may take before it is killed.
  *
  * The read is the plan's plist reader (`plutil`) on the target bundle's own
@@ -1519,21 +1546,32 @@ export function pendingInstallAgeSeconds(
  * an undated marker is that nothing can say it is live, and the failure path -
  * which reports rather than hides, and still carries the remedy - is the safe
  * direction to be wrong in.
+ *
+ * A REGISTERED job is the third case, and it means two things that a boolean cannot
+ * tell apart: launchd has the job and its program is not executing, which is what a
+ * finished or failed install leaves behind - and also what the submission-to-exec gap
+ * looks like for a few hundred milliseconds of every install's life
+ * (`PENDING_INSTALL_EXEC_GRACE_SECONDS`, review R6). The marker's age is what tells
+ * them apart, and it is the same age this function already reads.
  */
 export function isInstallInFlight(input: {
 	marker: PendingInstallMarker | null;
 	/**
-	 * Whether the install's own launchd job is RUNNING (`launchdJobPid`), not
-	 * merely registered (`installJobState`). The distinction is the point: see
-	 * this function's docstring for the machine's own measurement of it.
+	 * What the machine says the install's job is doing (`installJobState`). The state
+	 * rather than a boolean, because `registered` and `absent` are different facts and
+	 * only one of them can be an install launchd has just been handed.
 	 */
-	jobRunning: boolean;
+	jobState: InstallJobState;
 	now?: number;
 }): boolean {
-	if (!input.marker || !input.jobRunning) return false;
+	if (!input.marker) return false;
 	const age = pendingInstallAgeSeconds(input.marker, input.now);
 	if (age === null) return false;
-	return age >= 0 && age <= PENDING_INSTALL_RECENCY_SECONDS;
+	if (age < 0 || age > PENDING_INSTALL_RECENCY_SECONDS) return false;
+	if (input.jobState === "running") return true;
+	return (
+		input.jobState === "registered" && age <= PENDING_INSTALL_EXEC_GRACE_SECONDS
+	);
 }
 
 /**
@@ -1579,8 +1617,8 @@ export function isInstallInFlight(input: {
  */
 export function evaluateLaunchDuringInstall(input: {
 	marker: PendingInstallMarker | null;
-	/** See `isInstallInFlight` - running, not merely registered. */
-	jobRunning: boolean;
+	/** See `isInstallInFlight` - the state, so `registered` can mean two things. */
+	jobState: InstallJobState;
 	/** `app.getVersion()`, so a completed install is recognised as one. */
 	runningVersion: string;
 	now?: number;
@@ -1592,7 +1630,7 @@ export function evaluateLaunchDuringInstall(input: {
 		runningVersion: input.runningVersion,
 		installInFlight: isInstallInFlight({
 			marker,
-			jobRunning: input.jobRunning,
+			jobState: input.jobState,
 			now: input.now,
 		}),
 	});
