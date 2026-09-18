@@ -605,7 +605,7 @@ test("the composer and the mirror both make the calls these pins describe", () =
 	);
 	assert.match(
 		mirror,
-		/runInkClass\(segment\.kind, disabled\)/,
+		/runInkClass\(segment\.kind, refused\)/,
 		"the mirror must step its ink through the same helper the pin exercises",
 	);
 });

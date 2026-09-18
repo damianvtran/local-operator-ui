@@ -155,8 +155,12 @@ export type ComposerHighlightProps = {
 	 * not the other, would leave the mirror wrapping at a different character.
 	 */
 	fieldClassName?: string;
-	/** The disabled ink step, mirrored — disabled changes colour, never opacity. */
-	disabled?: boolean;
+	/** The refused ink step, mirrored — a refusal changes colour, never opacity. Named
+	 *  `refused` rather than `disabled` because the composer's own refusal is `readOnly`
+	 *  and `scripts/composer-refusal.test.mjs` pins that: a `disabled` on the field blurs
+	 *  it on the way in and makes the reader's own words unselectable. This prop only
+	 *  chooses which ink the mirror paints. */
+	refused?: boolean;
 	/** The textarea itself. */
 	children: ReactNode;
 };
@@ -166,7 +170,7 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 	runs,
 	textareaRef,
 	fieldClassName,
-	disabled = false,
+	refused = false,
 	children,
 }) => {
 	/*
@@ -271,7 +275,7 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 					data-composer-mirror=""
 					className={cn(
 						"pointer-events-none absolute inset-0 select-none overflow-hidden",
-						disabled ? "text-ink-disabled" : "text-ink",
+						refused ? "text-ink-disabled" : "text-ink",
 					)}
 				>
 					{/*
@@ -308,7 +312,7 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 									 * Branding's rule is "disabled changes colour, never opacity", so
 									 * the run's colour becomes the disabled ink rather than fading.
 									 */
-									className={cn(runInkClass(segment.kind, disabled))}
+									className={cn(runInkClass(segment.kind, refused))}
 								>
 									{segment.text}
 								</span>

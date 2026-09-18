@@ -5314,7 +5314,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									runs={slashRuns}
 									textareaRef={textareaRef}
 									fieldClassName={composerTextBox(isSmallView)}
-									disabled={isInputDisabled}
+									refused={isInputDisabled}
 								>
 								<textarea
 									ref={textareaRef}
@@ -5525,112 +5525,189 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											const applied = applyDomEdit(
 												captureRef.current,
 												newMessage,
-												field.selectionStart,
-												"caret",
-											),
-										);
-									}}
-									onKeyDown={handleComposerKeyDown}
-									onPointerDown={() => {
+												next,
+												at,
+												"typing",
+											);
+											if (applied.buffer !== next) {
+												// A real character reached the span through a route the
+												// keyboard gate could not see, and it is already replaced by
+												// its mask cell here.
+												pendingCaret.current = applied.caret;
+												setCaret(applied.caret);
+											} else {
+												setCaret(at);
+											}
+											if (applied.capture !== captureRef.current)
+												setCapture(applied.capture);
+											// Only the empty -> non-empty edge: the whole point is one
+											// statement of intent per composed message, and the
+											// consumer's latch should not be asked to absorb a
+											// per-character call it can only discard.
+											if (!newMessage && applied.buffer) onComposerInput?.();
+											/*
+											 * The capture's own write, stamped so the whole-buffer teardown can
+											 * tell it from a replacement some other writer made. A DOM change
+											 * reaches here without passing `applyCapture`, which is exactly why
+											 * the stamp is not optional: without it, the operator's own
+											 * keystroke would read as an external write and end the gesture it
+											 * is in the middle of.
+											 */
+											captureOwnedBuffer.current = applied.buffer;
+											// An abandoned capture (the drop and IME routes) settles the box
+											// here rather than through `applyCapture`, so the §6 write has to
+											// be asked for here too.
+											persistDraft(applied.capture, applied.buffer);
+											setNewMessage(applied.buffer);
+											// Editing the text answers the alert. Leaving it up over a
+											// draft the user has since changed is the defect this whole
+											// change replaces, and moving the banner to the composer
+											// would only have moved that defect closer to the eye.
+											//
+											// After a dwell, though: the message is two sentences plus up
+											// to three controls, and a user who reaches straight for the
+											// keyboard lost all of it before finishing the first word -
+											// including the remedy buttons. The alert still goes on the
+											// edit, just not before it can be read.
+											if (
+												Date.now() - alertShownAt.current >=
+												ALERT_READ_DWELL_MS
+											)
+												sendError?.onDismiss?.();
+										}}
+										onSelect={(e) => {
+											const field = e.target as HTMLTextAreaElement;
+											/*
+											 * A CARET REPORT THAT ARRIVES BEFORE THE COMPOSER'S OWN
+											 * CARET WRITE LANDS IS A REPORT ABOUT THE CARET IT REPLACED.
+											 *
+											 * `applyCapture` parks the caret it is about to set in
+											 * `pendingCaret` and the layout effect applies it with the
+											 * buffer. A `select`/`selectionchange` still in flight from the
+											 * PREVIOUS edit therefore reaches this handler between the state
+											 * write and its commit, carrying the older buffer (the render
+											 * closure has not moved yet) and the older offset — a pair that
+											 * is internally consistent and describes a state the composer
+											 * has already left. Re-syncing on it is how accepting the
+											 * `/credential` row closed the span that completion had just
+											 * opened: the report said "the caret is at 5, inside the token"
+											 * while the capture was already open at 6, so `syncCapture` read
+											 * a caret move out of the span.
+											 *
+											 * Skipping it is not a caret move being ignored: the offset that
+											 * arrives is the one this write is replacing, and the pending
+											 * value is applied by the layout effect either way. If the DOM
+											 * already agrees — a report about the caret we just set — the
+											 * marker is retired here so the guard cannot outlive its write.
+											 */
+											const pending = pendingCaret.current;
+											if (pending !== null) {
+												if (field.selectionStart === pending)
+													pendingCaret.current = null;
+												return;
+											}
+											setCaret(field.selectionStart);
+											/*
+											 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
+											 * caret move may do: it may keep a latched arm, re-anchor it, and
+											 * RE-OPEN a span the caret has returned to — but it may never ARM
+											 * by itself. The TUI asks both questions at the same reactive
+											 * (`watch_selection`), because a mouse click, an app-set
+											 * selection and a completion's caret all move the caret with no
+											 * caret key pressed: without the re-open, leaving and coming back
+											 * left an armed token whose next typed character landed in
+											 * PLAINTEXT; without the "may not arm" half, a click at the end of
+											 * a restored draft would swallow the next paste.
+											 */
+											setCapture(
+												syncCapture(
+													captureRef.current,
+													newMessage,
+													field.selectionStart,
+													"caret",
+												),
+											);
+										}}
+										onKeyDown={handleComposerKeyDown}
+										onPointerDown={() => {
+											/*
+											 * "I am about to type here." An ask gate can advance while the
+											 * user is on their way into this box, and the restore must not
+											 * move them off it: the characters they type would reach
+											 * nothing and the next `Space` would answer the next question
+											 * (UX round 4, U13).
+											 */
+											composerPointerTouched = true;
+										}}
+										onPaste={handlePaste}
+										rows={1}
 										/*
-										 * "I am about to type here." An ask gate can advance while the
-										 * user is on their way into this box, and the restore must not
-										 * move them off it: the characters they type would reach
-										 * nothing and the next `Space` would answer the next question
-										 * (UX round 4, U13).
-										 */
-										composerPointerTouched = true;
-									}}
-									onPaste={handlePaste}
-									rows={1}
-									/*
-									 * READ-ONLY, NOT DISABLED, and the difference is the caret — see the
-									 * `isInputDisabled` declaration above. `disabled` blurs the field when
-									 * it lands, which parks the caret on `document.body` and, on the
-									 * `unavailable` arm, never gives it back on that panel; and a
-									 * disabled textarea cannot be focused, selected or copied, so the
-									 * reader cannot even retrieve the sentence they were writing from
-									 * the state that just told them the conversation is gone.
-									 *
-									 * `aria-disabled` is what says the same thing to a screen reader now
-									 * that the native attribute is gone: the field is still focusable
-									 * and still readable, so the accessible name has to carry the
-									 * refusal the ink step carries visually. It is undefined (absent)
-									 * while the composer works, because `aria-disabled="false"` on a
-									 * textarea that takes input is a statement about a state the user
-									 * is not in.
-									 *
-									 * The refusal itself is enforced by the guard at the top of
-									 * `handleComposerKeyDown`: `readOnly` suppresses the EDIT (no `input`
-									 * event fires, so `onChange` never runs), but the keydown still
-									 * arrives — so Enter would submit without that guard. Every other
-									 * path that writes into this box or submits it carries the same
-									 * predicate, and `aria-describedby` ties the pane's own sentence
-									 * for the state to the control for as long as it refuses.
-									 */
-									readOnly={isInputDisabled}
-									aria-disabled={isInputDisabled || undefined}
-									aria-label="Message"
-									role="combobox"
-									/*
-									 * All THREE descriptions, space-separated as the attribute demands: the
-									 * credential capture's notice while one is owed, the mention sentence while
-									 * a reference points outside the workspace, and the pane's own sentence
-									 * while the conversation this machine would answer is gone. `undefined`
-									 * rather than an empty string when none applies, because an empty
-									 * `aria-describedby` is a reference to nothing. The three are independent
-									 * reasons to describe this box and any two of them can coincide, which is
-									 * why they are JOINED rather than chosen between.
-									 */
-									aria-describedby={
-										/*
-										 * THE REFUSAL IS DESCRIBED RATHER THAN ANNOUNCED (UX round 1, U3).
-										 * A screen reader in a refused box heard the value and "read-only,
-										 * disabled" and never WHY: the pane's statement of the state is a `<p>`
-										 * in the transcript with no programmatic tie to the control, and the
-										 * placeholder that carries the short form is painted and announced
-										 * only while the box is EMPTY - which is not the state this PR exists
-										 * for. Joining the other notices' ids rather than choosing between
-										 * them keeps each true at once; any two of the three can coincide.
+										 * READ-ONLY, NOT DISABLED, and the difference is the caret — see the
+										 * `isInputDisabled` declaration above. `disabled` blurs the field when
+										 * it lands, which parks the caret on `document.body` and, on the
+										 * `unavailable` arm, never gives it back on that panel; and a
+										 * disabled textarea cannot be focused, selected or copied, so the
+										 * reader cannot even retrieve the sentence they were writing from
+										 * the state that just told them the conversation is gone.
 										 *
-										 * Named only for the `unavailable` arm, which is the one with a sentence
-										 * in the pane to point at. The busy arm's band carries the state's own
-										 * action (Stop agent) and has no pane sentence; it is also unreachable
-										 * on a canonical pane (`currentJobId` is pinned to `null` there), so it
-										 * gets no invented one. An id that resolves to nothing is ignored by
-										 * assistive tech, which is what a composer mounted without a transcript
-										 * (a story, a rig) gets.
+										 * `aria-disabled` is what says the same thing to a screen reader now
+										 * that the native attribute is gone: the field is still focusable
+										 * and still readable, so the accessible name has to carry the
+										 * refusal the ink step carries visually. It is undefined (absent)
+										 * while the composer works, because `aria-disabled="false"` on a
+										 * textarea that takes input is a statement about a state the user
+										 * is not in.
 										 *
-										 * NOT A LIVE REGION. An announcement was the alternative, and it was
-										 * rejected: the state is already spoken by the transcript the reader is
-										 * in, this box is focusable precisely so the reader can go there, and a
-										 * polite region on every refusal is a second voice for one fact that
-										 * cannot be verified without an AT in this environment.
+										 * The refusal itself is enforced by the guard at the top of
+										 * `handleComposerKeyDown`: `readOnly` suppresses the EDIT (no `input`
+										 * event fires, so `onChange` never runs), but the keydown still
+										 * arrives — so Enter would submit without that guard. Every other
+										 * path that writes into this box or submits it carries the same
+										 * predicate, and `aria-describedby` ties the pane's own sentence
+										 * for the state to the control for as long as it refuses.
 										 */
-										[
-											credentialNotice ? CREDENTIAL_NOTICE_ID : null,
-											outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
-											unavailable ? MISSING_SESSION_NOTICE_ID : null,
-										]
-											.filter(Boolean)
-											.join(" ") || undefined
-									}
-									aria-expanded={slash.open || at.open}
-									aria-controls={
-										slash.open ? slash.listId : at.open ? at.listId : undefined
-									}
-									/*
-									 * The active option comes from whichever list is OPEN, and the popups rule
-									 * above guarantees only one is on top: handing both ids to one
-									 * `aria-activedescendant` would name an element in a list the user is not
-									 * looking at, which a screen reader announces as a row that does not exist.
-									 */
-									aria-activedescendant={
-										(slash.open
-											? slash.activeDescendantId
-											: at.activeDescendantId) ?? undefined
-									}
-								/>
+										readOnly={isInputDisabled}
+										aria-disabled={isInputDisabled || undefined}
+										aria-label="Message"
+										role="combobox"
+										aria-describedby={
+											/*
+											 * THE REFUSAL IS DESCRIBED RATHER THAN ANNOUNCED (UX round 1, U3).
+											 * A screen reader in a refused box heard the value and "read-only,
+											 * disabled" and never WHY: the pane's statement of the state is a `<p>`
+											 * in the transcript with no programmatic tie to the control, and the
+											 * placeholder that carries the short form is painted and announced
+											 * only while the box is EMPTY - which is not the state this PR exists
+											 * for. Joining the credential notice's id rather than choosing between
+											 * them keeps both true at once; the two can coincide.
+											 *
+											 * Named only for the `unavailable` arm, which is the one with a sentence
+											 * in the pane to point at. The busy arm's band carries the state's own
+											 * action (Stop agent) and has no pane sentence; it is also unreachable
+											 * on a canonical pane (`currentJobId` is pinned to `null` there), so it
+											 * gets no invented one. An id that resolves to nothing is ignored by
+											 * assistive tech, which is what a composer mounted without a transcript
+											 * (a story, a rig) gets.
+											 *
+											 * NOT A LIVE REGION. An announcement was the alternative, and it was
+											 * rejected: the state is already spoken by the transcript the reader is
+											 * in, this box is focusable precisely so the reader can go there, and a
+											 * polite region on every refusal is a second voice for one fact that
+											 * cannot be verified without an AT in this environment.
+											 */
+											[
+												credentialNotice ? CREDENTIAL_NOTICE_ID : null,
+												unavailable ? MISSING_SESSION_NOTICE_ID : null,
+											]
+												.filter(Boolean)
+												.join(" ") || undefined
+										}
+										aria-expanded={slash.open}
+										aria-controls={slash.open ? slash.listId : undefined}
+										aria-activedescendant={
+											slash.activeDescendantId ?? undefined
+										}
+									/>
 								</ComposerHighlight>
 							</div>
 						)}
