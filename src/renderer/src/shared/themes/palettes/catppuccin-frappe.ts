@@ -80,7 +80,7 @@ export const catppuccinFrappe: ThemeDefinition = {
 		 * from `surface`, 4.88 from `elevated`, 8.66 from `sunken`, 6.43 from
 		 * `accentWash`; the inks on the ground are 7.45:1, 7.18:1, 5.16:1.
 		 * Continuity with the panel: hue 8.45 degrees off the panel's (the assertion
-		 * allows 15) and chroma 18.8 where the panel carries 12.6.
+		 * allows 12) and chroma 18.8 where the panel carries 12.6.
 		 */
 		highlight: "#31425E",
 

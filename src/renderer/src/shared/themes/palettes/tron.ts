@@ -113,7 +113,7 @@ export const tron: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.04 from `surface`, 2.51 from `elevated`, 10.6 from
 		 * `sunken`, 8.41 from `accentWash`; the inks on the ground are 10.72:1,
 		 * 7.07:1, 5.21:1. Continuity with the panel: hue 5.3 degrees off the panel's
-		 * (the assertion allows 15) and chroma 14.11 where the panel carries 9.59.
+		 * (the assertion allows 12) and chroma 14.11 where the panel carries 9.59.
 		 */
 		highlight: "#1E2F42",
 

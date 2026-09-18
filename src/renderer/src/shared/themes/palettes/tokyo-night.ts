@@ -70,7 +70,7 @@ export const tokyoNight: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.16 from `surface`, 2.12 from `elevated`, 12.03 from
 		 * `sunken`, 2.77 from `accentWash`; the inks on the ground are 8.04:1,
 		 * 7.47:1, 5.41:1. Continuity with the panel: hue 0.79 degrees off the
-		 * panel's (the assertion allows 15) and chroma 19.09 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 19.09 where the panel carries
 		 * 13.26.
 		 */
 		highlight: "#28304c",

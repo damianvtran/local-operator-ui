@@ -81,7 +81,7 @@ export const nightfox: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.03 from `surface`, 2.17 from `elevated`, 10.42 from
 		 * `sunken`, 2.85 from `accentWash`; the inks on the ground are 7.94:1,
 		 * 5.89:1, 5.34:1. Continuity with the panel: hue 0.09 degrees off the
-		 * panel's (the assertion allows 15) and chroma 17.96 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 17.96 where the panel carries
 		 * 12.5.
 		 */
 		highlight: "#1F354E",

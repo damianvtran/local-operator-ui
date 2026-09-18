@@ -78,7 +78,7 @@ export const rosewood: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.34 from `surface`, 4.13 from `elevated`, 9.48
 		 * from `sunken`, 13.61 from `accentWash`; the inks on the ground are
 		 * 10.38:1, 7.19:1, 5.19:1. Continuity with the panel: hue 7.3 degrees off
-		 * the panel's (the assertion allows 15) and chroma 11.57 where the panel
+		 * the panel's (the assertion allows 12) and chroma 11.57 where the panel
 		 * carries 7.59.
 		 */
 		highlight: "#40292d",

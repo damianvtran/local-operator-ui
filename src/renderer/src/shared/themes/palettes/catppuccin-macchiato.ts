@@ -63,7 +63,7 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		 * from `surface`, 4.35 from `elevated`, 8.17 from `sunken`, 5.82 from
 		 * `accentWash`; the inks on the ground are 8.56:1, 7.13:1, 5.15:1.
 		 * Continuity with the panel: hue 8.92 degrees off the panel's (the assertion
-		 * allows 15) and chroma 21.03 where the panel carries 14.41.
+		 * allows 12) and chroma 21.03 where the panel carries 14.41.
 		 */
 		highlight: "#322F4E",
 

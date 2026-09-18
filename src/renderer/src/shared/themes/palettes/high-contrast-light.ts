@@ -51,7 +51,7 @@ export const highContrastLight: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.09 from `surface`, 6.72 from `elevated`, 2.06 from
 		 * `sunken`, 9.58 from `accentWash`; the inks on the ground are 14.86:1,
 		 * 8.93:1, 5.96:1. Continuity with the panel: hue 0 degrees off the panel's
-		 * (the assertion allows 15) and chroma 0 where the panel carries 0.
+		 * (the assertion allows 12) and chroma 0 where the panel carries 0.
 		 */
 		highlight: "#DFDFDF",
 

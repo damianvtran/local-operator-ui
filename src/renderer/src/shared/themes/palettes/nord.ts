@@ -68,7 +68,7 @@ export const nord: ThemeDefinition = {
 		 * from `surface`, 4.09 from `elevated`, 8.23 from `sunken`, 8.49 from
 		 * `accentWash`; the inks on the ground are 8.94:1, 7.63:1, 5.15:1.
 		 * Continuity with the panel: hue 11.53 degrees off the panel's (the
-		 * assertion allows 15) and chroma 13.04 where the panel carries 9.57.
+		 * assertion allows 12) and chroma 13.04 where the panel carries 9.57.
 		 */
 		highlight: "#314254",
 

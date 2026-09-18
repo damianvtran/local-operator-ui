@@ -59,7 +59,7 @@ export const tokyoNightStorm: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.16 from `surface`, 2.16 from `elevated`, 9.33
 		 * from `sunken`, 5.2 from `accentWash`; the inks on the ground are 7.93:1,
 		 * 7.25:1, 5.18:1. Continuity with the panel: hue 0.56 degrees off the
-		 * panel's (the assertion allows 15) and chroma 22.6 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 22.6 where the panel carries
 		 * 16.33.
 		 */
 		highlight: "#2F3759",

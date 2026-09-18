@@ -73,7 +73,7 @@ export const ayuMirage: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.09 from `surface`, 2.26 from `elevated`, 11.22
 		 * from `sunken`, 4.19 from `accentWash`; the inks on the ground are 7.29:1,
 		 * 7.17:1, 5.17:1. Continuity with the panel: hue 1.04 degrees off the
-		 * panel's (the assertion allows 15) and chroma 13.48 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 13.48 where the panel carries
 		 * 9.75.
 		 */
 		highlight: "#343E52",

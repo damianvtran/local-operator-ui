@@ -226,7 +226,29 @@ may pay a remainder; it may not pay the step. The constraints:
   binding inside a current row are drawn in it — and
 - stays **ΔE00 ≥ 2.0 from `elevated` and from `sunken`** (the field floor § 3
   enforces; 2.2 is the target to aim past, being where the original band's
-  separation was measured).
+  separation was measured),
+- carries the panel's own colour: chroma **at or above the panel's**, and at or
+  below **the looser of 1.5x the panel's and the panel's + 4** — the asserted
+  ceiling — with the peer round's tighter pair (**1.15x, or the panel's + 1.6**)
+  as the target, and
+- stays within **12 degrees of the panel's hue** (15 is the outer bound no value
+  may exceed; 12 is the tighter of the two rounds' measurements, the point where
+  a rotation stops reading as the panel's own colour and starts reading as one the
+  theme does not have).
+
+**The band is primary and has no exception.** The operator has now reported the
+current row twice — grey, then invisible beside a hovered neighbour — and ΔE00
+≥ 4.0 from `surface` is what answers that, so no palette trades it away for a
+tighter cast. The tighter chroma ceiling above is a target with a ledger rather
+than an asserted bound, and that is a measurement: 49 of the 59 palettes sit
+above it today, and on **26 of those the band is unreachable inside it at the
+palette's own ink caps** — `HIGHLIGHT_CONTINUITY_EXCEPTIONS` in
+`scripts/contrast-contract.mjs` names every palette that sits over the tighter
+clause with its ratio, the amount it is over, and the best ΔE00 that clause
+reaches on it. On the other 25 the band is reachable inside the tighter clause
+only by re-authoring the row onto a rotated cast, which the same table records
+with its rotation and reach. Do not re-open either continuity axis without
+re-running that ledger's measurement.
 
 Four of the twelve still carry a partly chroma-bought step — `dracula` 1.20x the
 panel's chroma, `monokai` 1.66x, `obsidian` 1.90x and `iceberg` 3.31x — each

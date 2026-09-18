@@ -79,7 +79,7 @@ export const synthwave: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.27 from `surface`, 2.18 from `elevated`, 9.91
 		 * from `sunken`, 5.89 from `accentWash`; the inks on the ground are 10.95:1,
 		 * 6.24:1, 5.16:1. Continuity with the panel: hue 0.46 degrees off the
-		 * panel's (the assertion allows 15) and chroma 22.31 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 22.31 where the panel carries
 		 * 15.94.
 		 */
 		highlight: "#343051",

@@ -2694,19 +2694,50 @@ const hueDelta = (x, y) => {
  * close. It is reported in the round's findings rather than pinned, because the
  * floor as stated is the one that has to hold for the other fifty-eight.
  *
- * `HIGHLIGHT_HUE_LIMIT` 15 is the operator's own threshold: the peer round
- * measured the breaks at 155-160 degrees and named 15 as the point past which the
- * row stops belonging to the panel. The clause below holds a palette's OWN
- * recessed plane to 45 degrees (a ground the palette did not author for a row);
- * this role IS authored, so the tighter number applies to it, and the fifty-nine
- * values on this branch sit at 0.0-14.65 degrees.
+ * `HIGHLIGHT_HUE_LIMIT` 12 is the peer round's number, adopted here because it is
+ * the tighter of the two the rounds measured: it named 12 as where the port's
+ * accent cast stops reading as a rotation of the panel's own colour and starts
+ * reading as a colour the palette does not have (it measured the port at 160
+ * degrees on `arcade`, 36 on `everforest`, 18 on `nord`), against this branch's
+ * earlier 15. The clause below holds a palette's OWN recessed plane to 45 degrees
+ * (a ground the palette did not author for a row); this role IS authored, so the
+ * tighter number applies to it. `HIGHLIGHT_HUE_OUTER_LIMIT` keeps this branch's
+ * 15 as the bound the measured exceptions sit under - nothing may exceed it, and
+ * each palette that needs more than 12 is named with its deviation in the ledger
+ * below.
+ *
+ * THE AXIS IS BOUNDED IN BOTH DIRECTIONS, and both bounds are asserted. Below,
+ * the row may not be greyer than the panel it steps off (the operator's FIRST
+ * report, measured on eight palettes at 0.62-0.76x). Above, it may not be louder
+ * than the looser of `HIGHLIGHT_CHROMA_RATIO`x the panel's chroma and the
+ * panel's + `HIGHLIGHT_CHROMA_BUDGET` (the peer round's over-cast finding,
+ * measured at up to 3.60x). THE PEER ROUND'S TIGHTER PAIR - 1.15x, or the
+ * panel's + 1.6 - is published as the target with its ledger rather than asserted
+ * as the ceiling, and the reason is a measurement rather than a preference: on 49
+ * of the 59 palettes the values this branch ships sit above it, and on 26 of
+ * those the tightened band is UNREACHABLE inside the tightened clause at the
+ * palette's own ink caps (`HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries the number
+ * each one reaches). A ceiling 26 palettes cannot meet is a different trade-off
+ * wearing a bound's name, so the exceptions are named instead of assumed. Do not
+ * re-litigate either axis without re-running the ledger's own measurement: it
+ * records, per palette, the best ΔE00 the tightened clause reaches and whether a
+ * rotated cast reaches the band inside it.
  */
-const HIGHLIGHT_HUE_LIMIT = 15;
+const HIGHLIGHT_HUE_LIMIT = 12;
+const HIGHLIGHT_HUE_OUTER_LIMIT = 15;
 const HIGHLIGHT_HUE_FLOOR = 1.0;
 const HIGHLIGHT_CHROMA_RATIO = 1.5;
 const HIGHLIGHT_CHROMA_BUDGET = 4;
 const HIGHLIGHT_CHROMA_FLOOR = 1.0;
 const HIGHLIGHT_CHROMA_TOLERANCE = 0.25;
+/* The peer round's tighter continuity clause, published as the target. */
+const HIGHLIGHT_TIGHT_CHROMA_REL_BAND = 0.15;
+const HIGHLIGHT_TIGHT_CHROMA_ABS_BAND = 1.6;
+const HIGHLIGHT_TIGHT_CHROMA_SLACK = 0.5;
+/* The envelope the ledger is re-derived with: twelve degrees either side of the
+   panel's hue, and five chroma levels across the tightened allowance. */
+const HIGHLIGHT_TIGHT_HUE_STEPS = [-12, -6, 0, 6, 12];
+const HIGHLIGHT_TIGHT_CHROMA_STEPS = [0, 0.25, 0.5, 0.75, 1];
 
 /*
  * The palettes whose OWN ink caps the lightness route below this file's step
@@ -2853,6 +2884,1010 @@ const mixHex = (from, to, alpha) => {
 };
 
 const HIGHLIGHT_WASH_PINS = [];
+
+/*
+ * THE MEASURED CONTINUITY LEDGER: every palette whose value the peer round's
+ * tighter clause does not grant, with the ratio it carries, the amount it is over,
+ * and the one number each entry's reason rests on - what that clause actually
+ * reaches on that palette.
+ *
+ * What the tighter clause is: chroma within `max(0.15x the panel's,
+ * the panel's + 1.6) + 0.5`, and hue within `HIGHLIGHT_HUE_LIMIT` degrees. What
+ * this branch asserts is the pair above, and the two differ for a measured
+ * reason rather than an oversight - a reading of the ledger's own numbers:
+ *
+ *   - 49 of the 59 palettes carry chroma above the tightened band, and 6 carry
+ *     hue past the tightened limit. On 26 of them the tightened BAND is
+ *     unreachable inside the tightened clause at the palette's own ink caps: the
+ *     `reach` below is the best ΔE00 the clause gets there, and every one of
+ *     those sits under the 4.0 the row is read at. Tightening the ceiling on
+ *     those palettes does not buy a tighter row, it buys a row the operator has
+ *     already reported as invisible twice.
+ *   - On the other 25 the band IS reachable inside the tightened clause, but only
+ *     by re-authoring the row onto a cast rotated off the panel's own hue (or, on
+ *     the palettes whose sample reaches it at zero rotation, onto a smaller cast);
+ *     `tightRotation` and `tightReach` record the search that found one, so the
+ *     next author inherits the work rather than the question.
+ *
+ * WHY THE REACH IS A SAMPLE RATHER THAN A SEARCH. Re-running the full cast-family
+ * search per palette inside this gate would cost seconds on a file that runs on
+ * every theme edit, so the gate re-derives the clause's own envelope instead -
+ * `HIGHLIGHT_TIGHT_HUE_STEPS` x `HIGHLIGHT_TIGHT_CHROMA_STEPS`, each at the
+ * largest step its cast's inks allow, every other bound in this file applied to
+ * the quantised value. A sample can only UNDERSTATE what the clause reaches,
+ * which is the direction a necessity claim has to err in; where it understates,
+ * `tightRotation` and `tightReach` carry the search's own answer, and the
+ * `why` says which of the two shapes the palette is.
+ *
+ * WHAT A FAILURE HERE MEANS: a palette over the tightened clause that is not in
+ * this table, an entry whose palette has come back inside it (retire the entry -
+ * that is a retirement, not a loss, exactly as `HIGHLIGHT_WASH_PINS` records for
+ * `rosePineDawn`), or an entry whose numbers have moved. The band itself is not
+ * in this table and cannot be: it has no exception, and no palette may trade it.
+ *
+ * @type {{theme: string, mode: string, ratio: number|null, chroma: number, over: number, ceiling: number, reach: number, dh: number, tightRotation: number|null, tightReach: number|null, tightChroma: number|null, inkRole: string, onGround: number, why: string}[]}
+ */
+const HIGHLIGHT_CONTINUITY_EXCEPTIONS = [
+	{
+		theme: "alucard",
+		mode: "light",
+		ratio: 1.53,
+		chroma: 3.04,
+		over: 1.44,
+		ceiling: 1.6,
+		reach: 3.41,
+		dh: 9.02,
+		dE: 4.05,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.17,
+		why: "its chroma sits 3.04 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.53x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 3.41 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "arcade",
+		mode: "dark",
+		ratio: 2.61,
+		chroma: 3.4,
+		over: 1.8,
+		ceiling: 1.6,
+		reach: 0.0,
+		dh: 5.39,
+		dE: 4.07,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.18,
+		why: "its chroma sits 3.4 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 2.61x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the sample admits NO value at all inside the clause - its inks and the field floors refuse every candidate - so the clause's reach there is ΔE00 0.00 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "arctic",
+		mode: "dark",
+		ratio: 1.41,
+		chroma: 4.48,
+		over: 2.83,
+		ceiling: 1.65,
+		reach: 4.24,
+		dh: 1.88,
+		dE: 4.23,
+		tightRotation: 7,
+		tightReach: 4.0,
+		tightChroma: 0.57,
+		inkRole: "inkDim",
+		onGround: 5.19,
+		why: "its chroma sits 4.48 C* over the panel where the tightened clause grants 1.65 + 0.5 of slack, at 1.41x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 7 degrees (ΔE00 4 at 0.57 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "autumn",
+		mode: "dark",
+		ratio: 1.52,
+		chroma: 3.73,
+		over: 2.13,
+		ceiling: 1.6,
+		reach: 2.9,
+		dh: 7.91,
+		dE: 4.2,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "its chroma sits 3.73 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.52x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 2.9 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "ayuDark",
+		mode: "dark",
+		ratio: 1.48,
+		chroma: 3.8,
+		over: 2.2,
+		ceiling: 1.6,
+		reach: 0.0,
+		dh: 2.5,
+		dE: 4.25,
+		tightRotation: 8,
+		tightReach: 4.09,
+		tightChroma: 1.58,
+		inkRole: "inkDim",
+		onGround: 5.17,
+		why: "its chroma sits 3.8 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.48x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 8 degrees (ΔE00 4.09 at 1.58 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "ayuLight",
+		mode: "light",
+		ratio: 1.68,
+		chroma: 1.97,
+		over: 0.37,
+		ceiling: 1.6,
+		reach: 0.0,
+		dh: 12.98,
+		dE: 4.19,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.47,
+		why: "and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the sample admits NO value at all inside the clause - its inks and the field floors refuse every candidate - so the clause's reach there is ΔE00 0.00 against the 4.0 band, so the value keeps the tightest chroma that still holds the band; its hue also sits 12.98 degrees off the panel's against the tightened 12 (the outer bound is 15), because at twelve degrees the band is unreachable inside the tightened chroma band at any chroma these inks allow",
+	},
+	{
+		theme: "ayuMirage",
+		mode: "dark",
+		ratio: 1.38,
+		chroma: 3.74,
+		over: 2.14,
+		ceiling: 1.6,
+		reach: 4.24,
+		dh: 1.04,
+		dE: 4.09,
+		tightRotation: -6,
+		tightReach: 4.02,
+		tightChroma: 0.95,
+		inkRole: "inkDim",
+		onGround: 5.17,
+		why: "its chroma sits 3.74 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.38x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 6 degrees (ΔE00 4.02 at 0.95 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "catppuccinFrappe",
+		mode: "dark",
+		ratio: 1.49,
+		chroma: 6.2,
+		over: 4.31,
+		ceiling: 1.89,
+		reach: 3.97,
+		dh: 8.45,
+		dE: 5.2,
+		tightRotation: -11,
+		tightReach: 4.11,
+		tightChroma: 1.06,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "its chroma sits 6.2 C* over the panel where the tightened clause grants 1.89 + 0.5 of slack, at 1.49x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 11 degrees (ΔE00 4.11 at 1.06 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "catppuccinLatte",
+		mode: "light",
+		ratio: 2.71,
+		chroma: 3.68,
+		over: 2.08,
+		ceiling: 1.6,
+		reach: 3.44,
+		dh: 5.44,
+		dE: 4.08,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.36,
+		why: "its chroma sits 3.68 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 2.71x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 3.44 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "catppuccinMacchiato",
+		mode: "dark",
+		ratio: 1.46,
+		chroma: 6.62,
+		over: 4.46,
+		ceiling: 2.16,
+		reach: 4.2,
+		dh: 8.92,
+		dE: 5.08,
+		tightRotation: 11,
+		tightReach: 4.2,
+		tightChroma: 2.02,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "its chroma sits 6.62 C* over the panel where the tightened clause grants 2.16 + 0.5 of slack, at 1.46x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 11 degrees (ΔE00 4.2 at 2.02 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "catppuccinMocha",
+		mode: "dark",
+		ratio: 1.45,
+		chroma: 5.06,
+		over: 3.37,
+		ceiling: 1.69,
+		reach: 4.39,
+		dh: 0.75,
+		dE: 4.54,
+		tightRotation: 6,
+		tightReach: 4.02,
+		tightChroma: 1.8,
+		inkRole: "inkDim",
+		onGround: 5.2,
+		why: "its chroma sits 5.06 C* over the panel where the tightened clause grants 1.69 + 0.5 of slack, at 1.45x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 6 degrees (ΔE00 4.02 at 1.8 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "cyberpunk",
+		mode: "dark",
+		ratio: 1.2,
+		chroma: 2.23,
+		over: 0.59,
+		ceiling: 1.63,
+		reach: 3.33,
+		dh: 14.28,
+		dE: 4.24,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "its chroma sits 2.23 C* over the panel where the tightened clause grants 1.63 + 0.5 of slack, at 1.2x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 3.33 against the 4.0 band, so the value keeps the tightest chroma that still holds the band; its hue also sits 14.28 degrees off the panel's against the tightened 12 (the outer bound is 15), because at twelve degrees the band is unreachable inside the tightened chroma band at any chroma these inks allow",
+	},
+	{
+		theme: "desert",
+		mode: "dark",
+		ratio: 1.44,
+		chroma: 4.67,
+		over: 3.07,
+		ceiling: 1.6,
+		reach: 4.19,
+		dh: 1.82,
+		dE: 4.23,
+		tightRotation: -7,
+		tightReach: 4.1,
+		tightChroma: 1.31,
+		inkRole: "inkDim",
+		onGround: 5.19,
+		why: "its chroma sits 4.67 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.44x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 7 degrees (ΔE00 4.1 at 1.31 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "dracula",
+		mode: "dark",
+		ratio: 1.2,
+		chroma: 2.81,
+		over: 0.68,
+		ceiling: 2.13,
+		reach: 5.48,
+		dh: 0.79,
+		dE: 4.11,
+		tightRotation: 1,
+		tightReach: 4.03,
+		tightChroma: 2.16,
+		inkRole: "inkDim",
+		onGround: 5.19,
+		why: "its chroma sits 2.81 C* over the panel where the tightened clause grants 2.13 + 0.5 of slack, at 1.2x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 1 degrees (ΔE00 4.03 at 2.16 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "dune",
+		mode: "dark",
+		ratio: 2.1,
+		chroma: 3.19,
+		over: 1.59,
+		ceiling: 1.6,
+		reach: 2.57,
+		dh: 11.95,
+		dE: 4.2,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "its chroma sits 3.19 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 2.1x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 2.57 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "duskfox",
+		mode: "dark",
+		ratio: 1.39,
+		chroma: 7.24,
+		over: 4.44,
+		ceiling: 2.8,
+		reach: 6.21,
+		dh: 0.35,
+		dE: 5.47,
+		tightRotation: 1,
+		tightReach: 4.04,
+		tightChroma: 0.06,
+		inkRole: "inkDim",
+		onGround: 5.21,
+		why: "its chroma sits 7.24 C* over the panel where the tightened clause grants 2.8 + 0.5 of slack, at 1.39x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 1 degrees (ΔE00 4.04 at 0.06 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "everforestLight",
+		mode: "light",
+		ratio: 1.22,
+		chroma: 2.9,
+		over: 0.94,
+		ceiling: 1.96,
+		reach: 5.78,
+		dh: 1.25,
+		dE: 4.3,
+		tightRotation: -1,
+		tightReach: 4.25,
+		tightChroma: 1.39,
+		inkRole: "inkDim",
+		onGround: 5.28,
+		why: "its chroma sits 2.9 C* over the panel where the tightened clause grants 1.96 + 0.5 of slack, at 1.22x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 1 degrees (ΔE00 4.25 at 1.39 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "forest",
+		mode: "dark",
+		ratio: 1.48,
+		chroma: 4.27,
+		over: 2.67,
+		ceiling: 1.6,
+		reach: 2.79,
+		dh: 2.03,
+		dE: 4.16,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.18,
+		why: "its chroma sits 4.27 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.48x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 2.79 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "githubLight",
+		mode: "light",
+		ratio: 2.57,
+		chroma: 2.9,
+		over: 1.3,
+		ceiling: 1.6,
+		reach: 0.0,
+		dh: 6.56,
+		dE: 4.06,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.28,
+		why: "its chroma sits 2.9 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 2.57x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the sample admits NO value at all inside the clause - its inks and the field floors refuse every candidate - so the clause's reach there is ΔE00 0.00 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "iceberg",
+		mode: "light",
+		ratio: 2.99,
+		chroma: 3.13,
+		over: 1.53,
+		ceiling: 1.6,
+		reach: 0.0,
+		dh: 4.58,
+		dE: 4.08,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.58,
+		why: "its chroma sits 3.13 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 2.99x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the sample admits NO value at all inside the clause - its inks and the field floors refuse every candidate - so the clause's reach there is ΔE00 0.00 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "kanagawaLotus",
+		mode: "light",
+		ratio: 1.19,
+		chroma: 4.4,
+		over: 0.97,
+		ceiling: 3.43,
+		reach: 6.69,
+		dh: 0.44,
+		dE: 4.11,
+		tightRotation: 1,
+		tightReach: 4.05,
+		tightChroma: 3.85,
+		inkRole: "inkDim",
+		onGround: 5.44,
+		why: "its chroma sits 4.4 C* over the panel where the tightened clause grants 3.43 + 0.5 of slack, at 1.19x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 1 degrees (ΔE00 4.05 at 3.85 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "kanagawaWave",
+		mode: "dark",
+		ratio: 1.49,
+		chroma: 4.44,
+		over: 2.84,
+		ceiling: 1.6,
+		reach: 4.33,
+		dh: 0.69,
+		dE: 4.4,
+		tightRotation: 7,
+		tightReach: 4.16,
+		tightChroma: 1.89,
+		inkRole: "inkDim",
+		onGround: 5.21,
+		why: "its chroma sits 4.44 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.49x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 7 degrees (ΔE00 4.16 at 1.89 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "lavender",
+		mode: "dark",
+		ratio: 1.44,
+		chroma: 5.34,
+		over: 3.53,
+		ceiling: 1.8,
+		reach: 3.57,
+		dh: 2.75,
+		dE: 4.19,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "its chroma sits 5.34 C* over the panel where the tightened clause grants 1.8 + 0.5 of slack, at 1.44x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 3.57 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "linen",
+		mode: "light",
+		ratio: 2.72,
+		chroma: 2.73,
+		over: 1.13,
+		ceiling: 1.6,
+		reach: 0.0,
+		dh: 1.43,
+		dE: 4.15,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.33,
+		why: "its chroma sits 2.73 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 2.72x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the sample admits NO value at all inside the clause - its inks and the field floors refuse every candidate - so the clause's reach there is ΔE00 0.00 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "localOperatorDark",
+		mode: "dark",
+		ratio: 1.85,
+		chroma: 3.95,
+		over: 2.35,
+		ceiling: 1.6,
+		reach: 2.79,
+		dh: 11.43,
+		dE: 4.43,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "its chroma sits 3.95 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.85x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 2.79 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "localOperatorLight",
+		mode: "light",
+		ratio: 1.98,
+		chroma: 3.58,
+		over: 1.98,
+		ceiling: 1.6,
+		reach: 2.88,
+		dh: 8.1,
+		dE: 4.08,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "its chroma sits 3.58 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.98x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 2.88 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "matrix",
+		mode: "dark",
+		ratio: 1.57,
+		chroma: 3.48,
+		over: 1.88,
+		ceiling: 1.6,
+		reach: 2.92,
+		dh: 8.25,
+		dE: 4.36,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.17,
+		why: "its chroma sits 3.48 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.57x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 2.92 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "monokai",
+		mode: "dark",
+		ratio: 1.52,
+		chroma: 2.51,
+		over: 0.91,
+		ceiling: 1.6,
+		reach: 3.93,
+		dh: 1.28,
+		dE: 4.04,
+		tightRotation: 7,
+		tightReach: 4.1,
+		tightChroma: 2.08,
+		inkRole: "inkDim",
+		onGround: 5.18,
+		why: "its chroma sits 2.51 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.52x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 7 degrees (ΔE00 4.1 at 2.08 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "neon",
+		mode: "dark",
+		ratio: 1.4,
+		chroma: 4.58,
+		over: 2.87,
+		ceiling: 1.71,
+		reach: 4.45,
+		dh: 1.71,
+		dE: 4.05,
+		tightRotation: -8,
+		tightReach: 4.04,
+		tightChroma: 0.86,
+		inkRole: "inkDim",
+		onGround: 5.21,
+		why: "its chroma sits 4.58 C* over the panel where the tightened clause grants 1.71 + 0.5 of slack, at 1.4x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 8 degrees (ΔE00 4.04 at 0.86 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "neonNoir",
+		mode: "dark",
+		ratio: 1.77,
+		chroma: 3.91,
+		over: 2.31,
+		ceiling: 1.6,
+		reach: 0.0,
+		dh: 8.15,
+		dE: 4.01,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.22,
+		why: "its chroma sits 3.91 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.77x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the sample admits NO value at all inside the clause - its inks and the field floors refuse every candidate - so the clause's reach there is ΔE00 0.00 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "nightfox",
+		mode: "dark",
+		ratio: 1.44,
+		chroma: 5.46,
+		over: 3.58,
+		ceiling: 1.88,
+		reach: 4.57,
+		dh: 0.09,
+		dE: 4.03,
+		tightRotation: -6,
+		tightReach: 4.21,
+		tightChroma: 1.89,
+		inkRole: "inkDim",
+		onGround: 5.34,
+		why: "its chroma sits 5.46 C* over the panel where the tightened clause grants 1.88 + 0.5 of slack, at 1.44x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 6 degrees (ΔE00 4.21 at 1.89 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "nord",
+		mode: "dark",
+		ratio: 1.36,
+		chroma: 3.47,
+		over: 1.87,
+		ceiling: 1.6,
+		reach: 3.14,
+		dh: 11.53,
+		dE: 4.26,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "its chroma sits 3.47 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.36x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 3.14 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "obsidian",
+		mode: "dark",
+		ratio: 2.58,
+		chroma: 3.29,
+		over: 1.69,
+		ceiling: 1.6,
+		reach: 0.0,
+		dh: 0.67,
+		dE: 4.49,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "its chroma sits 3.29 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 2.58x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the sample admits NO value at all inside the clause - its inks and the field floors refuse every candidate - so the clause's reach there is ΔE00 0.00 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "ocean",
+		mode: "dark",
+		ratio: 1.49,
+		chroma: 4.9,
+		over: 3.3,
+		ceiling: 1.6,
+		reach: 3.28,
+		dh: 3.18,
+		dE: 4.11,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.17,
+		why: "its chroma sits 4.9 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.49x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 3.28 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "oneDark",
+		mode: "dark",
+		ratio: 1.61,
+		chroma: 3.88,
+		over: 2.28,
+		ceiling: 1.6,
+		reach: 0.0,
+		dh: 2.06,
+		dE: 4.08,
+		tightRotation: -6,
+		tightReach: 4.01,
+		tightChroma: 1.77,
+		inkRole: "inkDim",
+		onGround: 5.26,
+		why: "its chroma sits 3.88 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.61x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 6 degrees (ΔE00 4.01 at 1.77 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "oneLight",
+		mode: "light",
+		ratio: null,
+		chroma: 3.98,
+		over: 2.38,
+		ceiling: 1.6,
+		reach: 0.0,
+		dh: 0.0,
+		dE: 4.18,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.55,
+		why: "its chroma sits 3.98 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, on a panel that carries no cast of its own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the sample admits NO value at all inside the clause - its inks and the field floors refuse every candidate - so the clause's reach there is ΔE00 0.00 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "outrun",
+		mode: "dark",
+		ratio: 1.33,
+		chroma: 6.98,
+		over: 3.82,
+		ceiling: 3.15,
+		reach: 5.7,
+		dh: 0.31,
+		dE: 4.03,
+		tightRotation: -7,
+		tightReach: 4.12,
+		tightChroma: 1.71,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "its chroma sits 6.98 C* over the panel where the tightened clause grants 3.15 + 0.5 of slack, at 1.33x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 7 degrees (ΔE00 4.12 at 1.71 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "palenight",
+		mode: "dark",
+		ratio: 1.45,
+		chroma: 5.47,
+		over: 3.64,
+		ceiling: 1.83,
+		reach: 3.81,
+		dh: 13.94,
+		dE: 6.05,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "its chroma sits 5.47 C* over the panel where the tightened clause grants 1.83 + 0.5 of slack, at 1.45x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 3.81 against the 4.0 band, so the value keeps the tightest chroma that still holds the band; its hue also sits 13.94 degrees off the panel's against the tightened 12 (the outer bound is 15), because at twelve degrees the band is unreachable inside the tightened chroma band at any chroma these inks allow",
+	},
+	{
+		theme: "radient",
+		mode: "dark",
+		ratio: 1.31,
+		chroma: 3.67,
+		over: 1.89,
+		ceiling: 1.78,
+		reach: 4.76,
+		dh: 1.58,
+		dE: 4.23,
+		tightRotation: 3,
+		tightReach: 4.01,
+		tightChroma: 2.23,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "its chroma sits 3.67 C* over the panel where the tightened clause grants 1.78 + 0.5 of slack, at 1.31x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 3 degrees (ΔE00 4.01 at 2.23 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "rosePine",
+		mode: "dark",
+		ratio: 1.42,
+		chroma: 5.41,
+		over: 3.49,
+		ceiling: 1.92,
+		reach: 3.7,
+		dh: 14.13,
+		dE: 5.88,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.15,
+		why: "its chroma sits 5.41 C* over the panel where the tightened clause grants 1.92 + 0.5 of slack, at 1.42x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 3.7 against the 4.0 band, so the value keeps the tightest chroma that still holds the band; its hue also sits 14.13 degrees off the panel's against the tightened 12 (the outer bound is 15), because at twelve degrees the band is unreachable inside the tightened chroma band at any chroma these inks allow",
+	},
+	{
+		theme: "rosePineDawn",
+		mode: "light",
+		ratio: 2.45,
+		chroma: 3.91,
+		over: 2.31,
+		ceiling: 1.6,
+		reach: 2.36,
+		dh: 4.71,
+		dE: 4.05,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.17,
+		why: "its chroma sits 3.91 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 2.45x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 2.36 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "rosePineMoon",
+		mode: "dark",
+		ratio: 1.34,
+		chroma: 5.65,
+		over: 3.13,
+		ceiling: 2.52,
+		reach: 5.64,
+		dh: 0.47,
+		dE: 4.07,
+		tightRotation: -4,
+		tightReach: 4.26,
+		tightChroma: 0.6,
+		inkRole: "inkDim",
+		onGround: 5.51,
+		why: "its chroma sits 5.65 C* over the panel where the tightened clause grants 2.52 + 0.5 of slack, at 1.34x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 4 degrees (ΔE00 4.26 at 0.6 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "rosewood",
+		mode: "dark",
+		ratio: 1.53,
+		chroma: 3.98,
+		over: 2.38,
+		ceiling: 1.6,
+		reach: 3.08,
+		dh: 7.3,
+		dE: 4.34,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.19,
+		why: "its chroma sits 3.98 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.53x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 3.08 against the 4.0 band, so the value keeps the tightest chroma that still holds the band",
+	},
+	{
+		theme: "solarizedDark",
+		mode: "dark",
+		ratio: 1.03,
+		chroma: 0.53,
+		over: -1.77,
+		ceiling: 2.3,
+		reach: 2.98,
+		dh: 14.32,
+		dE: 4.1,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 2.98 against the 4.0 band, so the value keeps the tightest chroma that still holds the band; its hue also sits 14.32 degrees off the panel's against the tightened 12 (the outer bound is 15), because at twelve degrees the band is unreachable inside the tightened chroma band at any chroma these inks allow",
+	},
+	{
+		theme: "synth",
+		mode: "dark",
+		ratio: 1.22,
+		chroma: 5.94,
+		over: 1.92,
+		ceiling: 4.02,
+		reach: 6.12,
+		dh: 0.37,
+		dE: 4.18,
+		tightRotation: -3,
+		tightReach: 4.08,
+		tightChroma: 4.3,
+		inkRole: "inkDim",
+		onGround: 5.17,
+		why: "its chroma sits 5.94 C* over the panel where the tightened clause grants 4.02 + 0.5 of slack, at 1.22x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 3 degrees (ΔE00 4.08 at 4.3 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "synthwave",
+		mode: "dark",
+		ratio: 1.4,
+		chroma: 6.36,
+		over: 3.97,
+		ceiling: 2.39,
+		reach: 4.45,
+		dh: 0.46,
+		dE: 4.27,
+		tightRotation: 9,
+		tightReach: 4.02,
+		tightChroma: 1.57,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "its chroma sits 6.36 C* over the panel where the tightened clause grants 2.39 + 0.5 of slack, at 1.4x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 9 degrees (ΔE00 4.02 at 1.57 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "tokyoNight",
+		mode: "dark",
+		ratio: 1.44,
+		chroma: 5.83,
+		over: 3.84,
+		ceiling: 1.99,
+		reach: 4.77,
+		dh: 0.79,
+		dE: 4.16,
+		tightRotation: -5,
+		tightReach: 4.05,
+		tightChroma: 2.42,
+		inkRole: "inkDim",
+		onGround: 5.41,
+		why: "its chroma sits 5.83 C* over the panel where the tightened clause grants 1.99 + 0.5 of slack, at 1.44x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 5 degrees (ΔE00 4.05 at 2.42 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "tokyoNightDay",
+		mode: "light",
+		ratio: 3.32,
+		chroma: 3.67,
+		over: 2.07,
+		ceiling: 1.6,
+		reach: 3.07,
+		dh: 14.65,
+		dE: 4.54,
+		tightRotation: null,
+		tightReach: null,
+		tightChroma: null,
+		inkRole: "inkDim",
+		onGround: 5.16,
+		why: "its chroma sits 3.67 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 3.32x the panel's own; and the tightened band is UNREACHABLE inside it on this palette: sampled over the clause at this palette's own ink caps - twelve degrees either side and five chroma levels across the allowance, each at the largest step its cast's inks allow - the best it reaches is ΔE00 3.07 against the 4.0 band, so the value keeps the tightest chroma that still holds the band; its hue also sits 14.65 degrees off the panel's against the tightened 12 (the outer bound is 15), because at twelve degrees the band is unreachable inside the tightened chroma band at any chroma these inks allow",
+	},
+	{
+		theme: "tokyoNightStorm",
+		mode: "dark",
+		ratio: 1.38,
+		chroma: 6.27,
+		over: 3.82,
+		ceiling: 2.45,
+		reach: 4.91,
+		dh: 0.56,
+		dE: 4.16,
+		tightRotation: 7,
+		tightReach: 4.08,
+		tightChroma: 2.94,
+		inkRole: "inkDim",
+		onGround: 5.18,
+		why: "its chroma sits 6.27 C* over the panel where the tightened clause grants 2.45 + 0.5 of slack, at 1.38x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 7 degrees (ΔE00 4.08 at 2.94 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "tron",
+		mode: "dark",
+		ratio: 1.47,
+		chroma: 4.52,
+		over: 2.92,
+		ceiling: 1.6,
+		reach: 3.66,
+		dh: 5.3,
+		dE: 4.04,
+		tightRotation: -10,
+		tightReach: 4.03,
+		tightChroma: 2.08,
+		inkRole: "inkDim",
+		onGround: 5.21,
+		why: "its chroma sits 4.52 C* over the panel where the tightened clause grants 1.6 + 0.5 of slack, at 1.47x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 10 degrees (ΔE00 4.03 at 2.08 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+	{
+		theme: "vaporwave",
+		mode: "dark",
+		ratio: 1.32,
+		chroma: 6.98,
+		over: 3.76,
+		ceiling: 3.22,
+		reach: 4.91,
+		dh: 0.04,
+		dE: 4.04,
+		tightRotation: -8,
+		tightReach: 4.07,
+		tightChroma: 1.8,
+		inkRole: "inkDim",
+		onGround: 5.21,
+		why: "its chroma sits 6.98 C* over the panel where the tightened clause grants 3.22 + 0.5 of slack, at 1.32x the panel's own; and the tightened band IS reachable here, but only by re-authoring the row onto a cast rotated 8 degrees (ΔE00 4.07 at 1.8 C* over the panel); the value as shipped holds the band at the hue deviation this entry records, so the tighter cast is deferred rather than taken",
+	},
+];
+
+/*
+ * What the peer round's tighter clause reaches on a palette, at that palette's own
+ * ink caps - the quantity every entry above is judged by, re-derived rather than
+ * trusted. Twelve degrees either side of the panel's hue and five chroma levels
+ * across the tightened allowance, each at the largest `L*` step its own cast's
+ * inks allow, with the chroma ceiling, the chroma floor, the hue limit, the field
+ * floors and the band's own neighbours applied to the QUANTISED value - the 8-bit
+ * round trip moves chroma and hue by enough to decide the question.
+ *
+ * It samples the clause rather than searching it (see the table's comment for
+ * why), so its answer is a lower bound on the clause's reach; the table's
+ * `tightReach` and `tightRotation` carry the full search's answer where the sample
+ * understates it.
+ */
+const measureTightClause = (p) => {
+	const [panelL, panelA, panelB] = toLab(p.surface);
+	const panelChroma = Math.hypot(panelA, panelB);
+	const panelHue = Math.atan2(panelB, panelA);
+	const tightCeiling =
+		panelChroma +
+		Math.max(
+			HIGHLIGHT_TIGHT_CHROMA_REL_BAND * panelChroma,
+			HIGHLIGHT_TIGHT_CHROMA_ABS_BAND,
+		);
+	const hues =
+		panelChroma < HIGHLIGHT_HUE_FLOOR ? [0] : HIGHLIGHT_TIGHT_HUE_STEPS;
+	let best = 0;
+	for (const turn of hues) {
+		const hue = panelHue + (turn * Math.PI) / 180;
+		for (const fraction of HIGHLIGHT_TIGHT_CHROMA_STEPS) {
+			const chroma = panelChroma + fraction * (tightCeiling - panelChroma);
+			/*
+			 * The cap is the largest step this cast's own inks allow - the same
+			 * scan `HIGHLIGHT_STEP_PINS` re-derives, at this cast rather than the
+			 * panel's own.
+			 */
+			let cap = 0;
+			for (
+				let step = 0.05;
+				step <= 9.0 + 1e-9;
+				step = Math.round((step + 0.05) * 100) / 100
+			) {
+				const at = labToHex([
+					panelL + (p.mode === "dark" ? step : -step),
+					chroma * Math.cos(hue),
+					chroma * Math.sin(hue),
+				]);
+				if (!at) break;
+				if (
+					INKS.every(
+						([role, floor]) =>
+							ratio(p[role], at) >= floor + HIGHLIGHT_INK_MARGIN,
+					)
+				) {
+					cap = step;
+				}
+			}
+			if (cap <= 0) continue;
+			const at = labToHex([
+				panelL + (p.mode === "dark" ? cap : -cap),
+				chroma * Math.cos(hue),
+				chroma * Math.sin(hue),
+			]);
+			if (!at) continue;
+			const measuredChroma = chromaOf(at);
+			if (measuredChroma > tightCeiling - 0.005) continue;
+			if (
+				panelChroma >= HIGHLIGHT_HUE_FLOOR * 2 &&
+				measuredChroma < panelChroma - HIGHLIGHT_CHROMA_TOLERANCE
+			) {
+				continue;
+			}
+			if (
+				panelChroma >= HIGHLIGHT_HUE_FLOOR &&
+				hueDelta(at, p.surface) > HIGHLIGHT_HUE_LIMIT
+			) {
+				continue;
+			}
+			if (
+				deltaE(at, p.elevated) < FIELD_SEPARATION_FLOOR ||
+				deltaE(at, p.sunken) < FIELD_SEPARATION_FLOOR ||
+				deltaE(at, p.accentWash) < FIELD_SEPARATION_FLOOR
+			) {
+				continue;
+			}
+			const got = deltaE(at, p.surface);
+			if (got > best) best = got;
+		}
+	}
+	return r2(best);
+};
 
 /*
  * The chart's hover mark, and why it is TWO assertions rather than one.
@@ -3140,9 +4175,22 @@ for (const { id, palette: p } of palettes) {
 	}
 	/*
 	 * 5. CONTINUITY with the panel - the axis the operator's second report moved,
-	 * and the one neither the band nor the lightness floor can see. See
-	 * `HIGHLIGHT_HUE_LIMIT` above for the numbers and the measurements behind
-	 * them.
+	 * and the one neither the band nor the lightness floor can see.
+	 *
+	 * THE ROUND'S RULING IS ENFORCED HERE, so it is stated here and not only
+	 * beside the constants: THE BAND IS PRIMARY AND HAS NO EXCEPTION. A current row
+	 * the reader cannot find is the defect this role exists to answer, no palette
+	 * is exempt from it, and no value may buy the band by leaving the panel's own
+	 * colour behind. The two continuity axes are bounded in BOTH directions - the
+	 * row may not be greyer than its panel, may not be louder than the looser of
+	 * `HIGHLIGHT_CHROMA_RATIO`x the panel's chroma and the panel's +
+	 * `HIGHLIGHT_CHROMA_BUDGET`, and may not sit further than
+	 * `HIGHLIGHT_HUE_OUTER_LIMIT` degrees off the panel's hue - and the peer
+	 * round's tighter clause (1.15x or the panel's + 1.6, and
+	 * `HIGHLIGHT_HUE_LIMIT` degrees) is enforced as the default with its measured
+	 * exceptions named in `HIGHLIGHT_CONTINUITY_EXCEPTIONS`. See that table for
+	 * why the tighter pair is a target with a ledger rather than the ceiling, and
+	 * do not re-open either axis without its measurement.
 	 */
 	if (isHex(p.highlight) && isHex(p.surface)) {
 		const panelChroma = chromaOf(p.surface);
@@ -3151,6 +4199,7 @@ for (const { id, palette: p } of palettes) {
 			HIGHLIGHT_CHROMA_RATIO * panelChroma,
 			panelChroma + HIGHLIGHT_CHROMA_BUDGET,
 		);
+		const entry = HIGHLIGHT_CONTINUITY_EXCEPTIONS.find((x) => x.theme === id);
 		assertions++;
 		if (rowChroma > chromaCeiling) {
 			fail(
@@ -3165,12 +4214,115 @@ for (const { id, palette: p } of palettes) {
 				);
 			}
 		}
-		if (panelChroma >= HIGHLIGHT_HUE_FLOOR) {
+		const hueDefined = panelChroma >= HIGHLIGHT_HUE_FLOOR;
+		const drift = hueDefined ? hueDelta(p.highlight, p.surface) : 0;
+		if (hueDefined) {
 			assertions++;
-			const drift = hueDelta(p.highlight, p.surface);
-			if (drift > HIGHLIGHT_HUE_LIMIT) {
+			if (drift > HIGHLIGHT_HUE_OUTER_LIMIT) {
 				fail(
-					`${id}: \`highlight\` ${p.highlight} sits ${r2(drift)} degrees off \`surface\` ${p.surface}'s hue (limit ${HIGHLIGHT_HUE_LIMIT}) — the current row must read as a step off THIS panel, not as a second hue beside it. The peer round measured the shipped rows at 155-160 degrees (\`arcade\`, \`oneLight\`) and named 15 as the point the row stops belonging to the panel; the clause below holds a palette's own recessed plane to 45, because that is a ground the palette did not author for a row`,
+					`${id}: \`highlight\` ${p.highlight} sits ${r2(drift)} degrees off \`surface\` ${p.surface}'s hue, past even the ${HIGHLIGHT_HUE_OUTER_LIMIT} degrees this file's outer bound holds — the row is a colour this palette does not have rather than a step off its own panel. Re-author at the panel's own hue: the ledger's entries run 4.7-14.65 degrees, and each of them is a measured case where the row's own colour was kept as far as the band allowed`,
+				);
+			}
+			assertions++;
+			const entryCoversHue =
+				entry !== undefined && entry.dh > HIGHLIGHT_HUE_LIMIT + 1e-9;
+			if (drift > HIGHLIGHT_HUE_LIMIT && !entryCoversHue) {
+				fail(
+					`${id}: \`highlight\` ${p.highlight} sits ${r2(drift)} degrees off \`surface\` ${p.surface}'s hue, past the ${HIGHLIGHT_HUE_LIMIT} the peer round measured the port's cast breaking the row's own colour at (160 degrees on \`arcade\`, 36 on \`everforest\`), and this palette is not named in \`HIGHLIGHT_CONTINUITY_EXCEPTIONS\`. Re-author the cast onto the panel's own hue inside ${HIGHLIGHT_HUE_LIMIT} degrees, or measure the palette with the ledger's own envelope and add its entry with the deviation and the reach its inks allow`,
+				);
+			}
+		}
+		/*
+		 * The tighter clause's ledger, re-derived rather than trusted: the name of
+		 * every palette sitting over it, the ratio and the over-band amount each one
+		 * carries, and the number the entry's reason rests on - the best ΔE00 the
+		 * tightened clause reaches on that palette. A palette over the tightened
+		 * clause that is not listed fails, an entry whose palette has come back
+		 * inside it fails (a retirement, not a loss), and an entry whose measured
+		 * numbers have moved fails.
+		 */
+		assertions++;
+		const tightCeiling =
+			panelChroma +
+			Math.max(
+				HIGHLIGHT_TIGHT_CHROMA_REL_BAND * panelChroma,
+				HIGHLIGHT_TIGHT_CHROMA_ABS_BAND,
+			);
+		const overTightChroma =
+			rowChroma > tightCeiling + HIGHLIGHT_TIGHT_CHROMA_SLACK + 1e-9;
+		const overTightHue = hueDefined && drift > HIGHLIGHT_HUE_LIMIT + 1e-9;
+		if ((overTightChroma || overTightHue) && !entry) {
+			fail(
+				`${id}: \`highlight\` ${p.highlight} sits past the peer round's tighter clause (${r2(rowChroma - panelChroma)} C* over the panel against its allowance of ${r2(tightCeiling - panelChroma)}, hue ${r2(drift)} degrees against its ${HIGHLIGHT_HUE_LIMIT}) and is not named in \`HIGHLIGHT_CONTINUITY_EXCEPTIONS\`. The band is primary and is not traded, but the tighter clause is the target: re-author inside it, or measure the palette with the ledger's own envelope and add the entry`,
+			);
+		}
+		if (!(overTightChroma || overTightHue) && entry) {
+			fail(
+				`${id}: \`highlight\` ${p.highlight} now sits INSIDE the tighter clause (${r2(rowChroma - panelChroma)} C* over the panel against its allowance of ${r2(tightCeiling - panelChroma)}, hue ${r2(drift)} degrees against its ${HIGHLIGHT_HUE_LIMIT}) while \`HIGHLIGHT_CONTINUITY_EXCEPTIONS\` still names it — the entry has been earned back and must be retired rather than left to read as a live exception, the same retirement \`HIGHLIGHT_WASH_PINS\` records for \`rosePineDawn\``,
+			);
+		}
+		if (entry) {
+			assertions++;
+			const measured = [
+				[
+					"the ratio to the panel's chroma",
+					entry.ratio,
+					panelChroma >= HIGHLIGHT_CHROMA_FLOOR
+						? r2(rowChroma / panelChroma)
+						: null,
+					0.02,
+				],
+				[
+					"the chroma over the panel",
+					entry.chroma,
+					r2(rowChroma - panelChroma),
+					0.05,
+				],
+				[
+					"the over-band amount",
+					entry.over,
+					r2(rowChroma - panelChroma - (tightCeiling - panelChroma)),
+					0.05,
+				],
+				[
+					"the reach inside the tightened clause",
+					entry.reach,
+					measureTightClause(p),
+					0.05,
+				],
+				[
+					"the ΔE00 separation from `surface`",
+					entry.dE,
+					r2(deltaE(p.highlight, p.surface)),
+					0.05,
+				],
+				["the hue deviation", entry.dh, r2(drift), 0.05],
+				[
+					`the binding ink \`${entry.inkRole}\` on the row's ground`,
+					entry.onGround,
+					r2(ratio(p[entry.inkRole], p.highlight)),
+					0.02,
+				],
+			];
+			const moved = measured.filter(
+				([, recorded, got, tolerance]) =>
+					recorded !== null && Math.abs(recorded - got) > tolerance,
+			);
+			if (entry.dE < HIGHLIGHT_SEPARATION_FLOOR) {
+				fail(
+					`${id}: the continuity exception records ΔE00 ${entry.dE} from \`surface\` ${p.surface}, under the ${HIGHLIGHT_SEPARATION_FLOOR} band — the band is the one bound this file does not trade, and an exception that sits under it is a row the operator has already reported as invisible. Re-author the value; the exception records the CAST, never the band`,
+				);
+			}
+			if (moved.length > 0) {
+				fail(
+					`${id}: the continuity exception no longer matches its record — ${moved
+						.map(
+							([what, recorded, got]) =>
+								`${what} recorded ${recorded}, measured ${r2(got)}`,
+						)
+						.join(
+							"; ",
+						)}. Re-measure the entry (and re-read \`HIGHLIGHT_CONTINUITY_EXCEPTIONS\` for what its \`reach\` means before updating it)`,
 				);
 			}
 		}
@@ -4139,5 +5291,5 @@ if (stalePerceptible.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${CONTROL_EDGE_PINNED.length} pinned control edge(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${CONTROL_EDGE_PINNED.length} pinned control edge(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_CONTINUITY_EXCEPTIONS.length} measured continuity exception(s), 0 over-band exception(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
 );

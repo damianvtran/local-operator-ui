@@ -188,10 +188,18 @@ export type ThemePalette = {
 	 * it did so - which is why the role has a THIRD bound, asserted beside the other
 	 * two:
 	 *
-	 * - hue within **15 degrees** of the panel's, where the panel carries a cast.
-	 *   That is the peer round's own measured break point; the clause this branch
-	 *   wrote for a palette's own recessed plane allows 45 degrees, and it covers a
-	 *   ground the palette did not author for a row, whereas this role is authored.
+	 * - hue within **12 degrees** of the panel's, where the panel carries a cast,
+	 *   with the 15 this branch first used kept as the outer bound. Twelve is the
+	 *   peer round's measured break point - where its cast stops reading as a
+	 *   rotation of the panel's own colour and starts reading as a colour the theme
+	 *   does not have (it measured the port at 160 degrees on `arcade`, 36 on
+	 *   `everforest`, 18 on `nord`) - and it is the tighter of the two numbers, so
+	 *   it is the one a new value is held to. The clause this branch wrote for a
+	 *   palette's own recessed plane allows 45 degrees, and it covers a ground the
+	 *   palette did not author for a row, whereas this role is authored.
+	 *   Six of the fifty-nine sit past the twelve and are named, with their own
+	 *   measured deviation, in `HIGHLIGHT_CONTINUITY_EXCEPTIONS`;
+	 *   `HIGHLIGHT_HUE_OUTER_LIMIT` asserts the 15 nothing may exceed.
 	 * - chroma **at or above the panel's own**, with the 8-bit quantisation's own
 	 *   tolerance (0.25 Lab units) rather than none. This is the operator's sentence
 	 *   read back: below this the row is a plain step, not the panel's tinted
@@ -203,13 +211,22 @@ export type ThemePalette = {
 	 *   these grounds leave the lightness route at 2.0-3.3 ΔE00, so the rest of the
 	 *   4.0 band has to come from chroma or hue, and 17 of the fifty-nine cannot hold
 	 *   a 1.5x cast on a 3 `L*` step at all (30 cannot without the hue axis).
+	 *   The peer round's TIGHTER pair - 1.15x, or the panel's + 1.6 - is the target
+	 *   a new value works to, published with the ledger that measures it rather than
+	 *   asserted as the ceiling: 49 of the fifty-nine sit above it, and on 26 of
+	 *   those the band is unreachable inside it at the palette's own ink caps. On
+	 *   those palettes a tighter ceiling buys an invisible row, not a tighter one.
+	 *   Do not re-open either axis without re-reading
+	 *   `HIGHLIGHT_CONTINUITY_EXCEPTIONS` in `scripts/contrast-contract.mjs`, which
+	 *   records per palette what the tighter clause reaches and whether a rotated
+	 *   cast reaches the band inside it.
 	 *
 	 * Where the band cannot be bought inside that bound at the panel's own hue, the
 	 * value takes the least ROTATION of the panel's cast that lets the step hold
 	 * inside it: nineteen of the fifty-nine ship that way, the largest at 14.65
-	 * degrees. That is branch H of the rule below, and the only thing this pass
-	 * changed about it is that the continuity bound - not the accent - sets how far
-	 * it may go.
+	 * degrees against the 15-degree outer bound. That is branch H of the rule below,
+	 * and the only thing this pass changed about it is that the continuity bound -
+	 * not the accent - sets how far it may go.
 	 *
 	 * ## The rule a porting author follows
 	 *
@@ -224,7 +241,10 @@ export type ThemePalette = {
 	 * `scripts/contrast-contract.mjs` also asserts **both the direction and a floor
 	 * on the step**, so no palette can satisfy the band while landing darker on a
 	 * dark theme: ΔE00 is a budget, and a chroma-bought step can spend all of it
-	 * while moving the wrong way. The port's forty-seven were re-authored to this rule when the
+	 * while moving the wrong way. And it holds the BAND with no exception at all:
+	 * a current row the reader cannot find is the defect this role exists to answer,
+	 * so the band is never traded for a tighter cast, and the tighter cast is
+	 * recorded per palette with the measurement that says whether it is reachable. The port's forty-seven were re-authored to this rule when the
 	 * raised band landed, at the branch the port itself used: a neutral step (its
 	 * branch L) where the palette's ramp affords one, a cast toward `accent` (its
 	 * branch H) where the hover step above the row blocks the lightness route.

@@ -79,7 +79,7 @@ export const dune: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.2 from `surface`, 2.22 from `elevated`, 8.89 from
 		 * `sunken`, 7.14 from `accentWash`; the inks on the ground are 11.96:1,
 		 * 7.1:1, 5.15:1. Continuity with the panel: hue 11.95 degrees off the
-		 * panel's (the assertion allows 15) and chroma 6.08 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 6.08 where the panel carries
 		 * 2.89.
 		 */
 		highlight: "#382e29",

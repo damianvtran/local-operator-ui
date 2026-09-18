@@ -77,7 +77,7 @@ export const localOperatorDark: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.43 from `surface`, 3.02 from `elevated`, 8.45
 		 * from `sunken`, 16.68 from `accentWash`; the inks on the ground are 11.6:1,
 		 * 7.11:1, 5.16:1. Continuity with the panel: hue 11.43 degrees off the
-		 * panel's (the assertion allows 15) and chroma 8.62 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 8.62 where the panel carries
 		 * 4.67.
 		 */
 		highlight: "#372d23",
@@ -222,7 +222,7 @@ export const localOperatorLight: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.08 from `surface`, 6.49 from `elevated`, 2.52
 		 * from `sunken`, 5 from `accentWash`; the inks on the ground are 13.72:1,
 		 * 7.37:1, 5.16:1. Continuity with the panel: hue 8.1 degrees off the panel's
-		 * (the assertion allows 15) and chroma 7.22 where the panel carries 3.64.
+		 * (the assertion allows 12) and chroma 7.22 where the panel carries 3.64.
 		 */
 		highlight: "#EBEADC",
 

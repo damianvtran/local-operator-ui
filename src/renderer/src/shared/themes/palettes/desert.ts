@@ -79,7 +79,7 @@ export const desert: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.23 from `surface`, 2.74 from `elevated`, 10.14
 		 * from `sunken`, 9.5 from `accentWash`; the inks on the ground are 10.43:1,
 		 * 7.1:1, 5.19:1. Continuity with the panel: hue 1.82 degrees off the panel's
-		 * (the assertion allows 15) and chroma 15.29 where the panel carries 10.62.
+		 * (the assertion allows 12) and chroma 15.29 where the panel carries 10.62.
 		 */
 		highlight: "#3E2F1C",
 

@@ -78,7 +78,7 @@ export const ayuDark: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.25 from `surface`, 2.63 from `elevated`, 10.97
 		 * from `sunken`, 7.14 from `accentWash`; the inks on the ground are 7.23:1,
 		 * 7.19:1, 5.17:1. Continuity with the panel: hue 2.5 degrees off the panel's
-		 * (the assertion allows 15) and chroma 11.7 where the panel carries 7.9.
+		 * (the assertion allows 12) and chroma 11.7 where the panel carries 7.9.
 		 */
 		highlight: "#2C3344",
 

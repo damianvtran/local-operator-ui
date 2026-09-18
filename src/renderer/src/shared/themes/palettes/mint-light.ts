@@ -81,7 +81,7 @@ export const mintLight: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.15 from `surface`, 7.01 from `elevated`, 4.6 from
 		 * `sunken`, 6.09 from `accentWash`; the inks on the ground are 11.59:1,
 		 * 7.5:1, 5.18:1. Continuity with the panel: hue 0.46 degrees off the panel's
-		 * (the assertion allows 15) and chroma 5.12 where the panel carries 3.57.
+		 * (the assertion allows 12) and chroma 5.12 where the panel carries 3.57.
 		 */
 		highlight: "#DCE6DF",
 

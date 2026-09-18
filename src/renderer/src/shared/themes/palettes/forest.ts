@@ -79,7 +79,7 @@ export const forest: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.16 from `surface`, 3.9 from `elevated`, 11.46
 		 * from `sunken`, 3.77 from `accentWash`; the inks on the ground are 10.55:1,
 		 * 7.21:1, 5.18:1. Continuity with the panel: hue 2.03 degrees off the
-		 * panel's (the assertion allows 15) and chroma 13.15 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 13.15 where the panel carries
 		 * 8.88.
 		 */
 		highlight: "#1F3427",

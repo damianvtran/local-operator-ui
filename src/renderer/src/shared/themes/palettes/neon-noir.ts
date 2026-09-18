@@ -106,7 +106,7 @@ export const neonNoir: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.01 from `surface`, 2.77 from `elevated`, 8.48 from
 		 * `sunken`, 8.05 from `accentWash`; the inks on the ground are 10.1:1,
 		 * 7.16:1, 5.22:1. Continuity with the panel: hue 8.15 degrees off the
-		 * panel's (the assertion allows 15) and chroma 8.96 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 8.96 where the panel carries
 		 * 5.05.
 		 */
 		highlight: "#2B2E3B",

@@ -54,7 +54,7 @@ export const kanagawaLotus: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.11 from `surface`, 5.75 from `elevated`, 2.18 from
 		 * `sunken`, 4.41 from `accentWash`; the inks on the ground are 7.69:1,
 		 * 5.96:1, 5.44:1. Continuity with the panel: hue 0.44 degrees off the
-		 * panel's (the assertion allows 15) and chroma 27.28 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 27.28 where the panel carries
 		 * 22.88.
 		 */
 		highlight: "#DAD39F",

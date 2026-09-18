@@ -70,7 +70,7 @@ export const radient: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.23 from `surface`, 2.12 from `elevated`, 13.05
 		 * from `sunken`, 6.79 from `accentWash`; the inks on the ground are 11.43:1,
 		 * 7.97:1, 5.15:1. Continuity with the panel: hue 1.58 degrees off the
-		 * panel's (the assertion allows 15) and chroma 15.57 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 15.57 where the panel carries
 		 * 11.89.
 		 */
 		highlight: "#2d344b",

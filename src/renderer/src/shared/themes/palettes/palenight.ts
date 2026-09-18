@@ -56,7 +56,7 @@ export const palenight: ThemeDefinition = {
 		 * from `surface`, 5.35 from `elevated`, 8.64 from `sunken`, 7.84 from
 		 * `accentWash`; the inks on the ground are 11.1:1, 7.06:1, 5.15:1.
 		 * Continuity with the panel: hue 13.94 degrees off the panel's (the
-		 * assertion allows 15) and chroma 17.66 where the panel carries 12.19.
+		 * assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 17.66 where the panel carries 12.19.
 		 */
 		highlight: "#263b54",
 

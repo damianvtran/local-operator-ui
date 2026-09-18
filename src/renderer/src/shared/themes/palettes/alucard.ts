@@ -84,7 +84,7 @@ export const alucard: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.05 from `surface`, 6.86 from `elevated`, 2.21
 		 * from `sunken`, 2.8 from `accentWash`; the inks on the ground are 13.28:1,
 		 * 7.26:1, 5.17:1. Continuity with the panel: hue 9.02 degrees off the
-		 * panel's (the assertion allows 15) and chroma 8.75 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 8.75 where the panel carries
 		 * 5.71.
 		 */
 		highlight: "#EEE6D6",

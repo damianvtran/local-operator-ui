@@ -58,7 +58,7 @@ export const arctic: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.23 from `surface`, 2.68 from `elevated`, 10.34
 		 * from `sunken`, 16.25 from `accentWash`; the inks on the ground are 9.95:1,
 		 * 7.13:1, 5.19:1. Continuity with the panel: hue 1.88 degrees off the
-		 * panel's (the assertion allows 15) and chroma 15.49 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 15.49 where the panel carries
 		 * 11.
 		 */
 		highlight: "#28384E",

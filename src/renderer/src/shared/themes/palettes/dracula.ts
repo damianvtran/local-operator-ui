@@ -75,7 +75,7 @@ export const dracula: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.11 from `surface`, 2.31 from `elevated`, 11.03
 		 * from `sunken`, 2.89 from `accentWash`; the inks on the ground are 10.05:1,
 		 * 5.82:1, 5.19:1. Continuity with the panel: hue 0.79 degrees off the
-		 * panel's (the assertion allows 15) and chroma 17.02 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 17.02 where the panel carries
 		 * 14.21.
 		 */
 		highlight: "#3a3c56",

@@ -103,7 +103,7 @@ export const cyberpunk: ThemeDefinition = {
 		 * from `surface`, 3.05 from `elevated`, 9.77 from `sunken`, 23.49 from
 		 * `accentWash`; the inks on the ground are 11.38:1, 6.92:1, 5.15:1.
 		 * Continuity with the panel: hue 14.28 degrees off the panel's (the
-		 * assertion allows 15) and chroma 13.12 where the panel carries 10.9.
+		 * assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 13.12 where the panel carries 10.9.
 		 */
 		highlight: "#342738",
 

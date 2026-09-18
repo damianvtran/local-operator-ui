@@ -69,7 +69,7 @@ export const tokyoNightDay: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.54 from `surface`, 6.39 from `elevated`, 2.35
 		 * from `sunken`, 2.3 from `accentWash`; the inks on the ground are 7.66:1,
 		 * 6.97:1, 5.16:1. Continuity with the panel: hue 14.65 degrees off the
-		 * panel's (the assertion allows 15) and chroma 5.25 where the panel carries
+		 * panel's (the assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 5.25 where the panel carries
 		 * 1.58.
 		 */
 		highlight: "#D7DEE7",
