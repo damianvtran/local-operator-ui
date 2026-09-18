@@ -75,6 +75,13 @@ about_init() {
 # is set because this rig has no backend to attach to and must not spawn one on
 # the operator's machine, and the notifications kill switch is set because the
 # app's own banner path reaches `osascript` on macOS.
+#
+# LOCAL_OPERATOR_LOG_DIR is set for the same reason HOME is, and HOME alone does
+# not do it: the app's logger composes its default from Electron's `home` — the
+# OS ACCOUNT's home, not the `HOME` variable — so without this override every
+# launch of this rig appends its lines to the operator's own
+# ~/Library/Application Support/Local Operator/logs/*.log, interleaved with his
+# app's. See `src/main/backend/log-dir.ts`.
 about_launch() {
 	echo "== $LABEL: tree=$TREE mode=$MODE window=$SIZE scratch=$SCRATCH"
 	(
@@ -85,6 +92,7 @@ about_launch() {
 			HOME="$SCRATCH/home" \
 			LOCAL_OPERATOR_CONFIG_DIR="$SCRATCH/config" \
 			LOCAL_OPERATOR_HOME="$SCRATCH/home" \
+			LOCAL_OPERATOR_LOG_DIR="$SCRATCH/logs" \
 			nohup "$ELECTRON_BIN" "$TREE" --inspect="$INSPECT_PORT" \
 			"--user-data-dir=$SCRATCH/profile" "--window-size=$SIZE" \
 			>"$SCRATCH/electron.log" 2>&1 &

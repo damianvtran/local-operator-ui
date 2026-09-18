@@ -9,8 +9,13 @@
  * exactly the way a green suite cannot see.
  *
  * What it does: runs the BUILT app (`out/`, from `pnpm build`) with
- * `LOCAL_OPERATOR_UI_WINDOW_MODE=headless` against a live backend, in an
- * ISOLATED user-data-dir so the operator's own UI state is untouched. Then it
+ * `LOCAL_OPERATOR_UI_WINDOW_MODE=headless` against a live backend, on scratch
+ * `HOME`, config, log and user-data directories so nothing of the operator's is
+ * read or written - his UI state, his caches, and his own log files included.
+ * (The log directory is the piece a scratch HOME does not cover: the app's
+ * logger defaults to Electron's `home`, the OS account's home rather than the
+ * `HOME` variable, so this rig hands the app its own `LOCAL_OPERATOR_LOG_DIR`.
+ * See `src/main/backend/log-dir.ts`.) Then it
  * drives the app over raw CDP - no dependency, the built-in WebSocket is the
  * transport - navigates to a real session, opens the canvas, switches to the
  * Files view, reads what the panel contains, clicks the PDF tile, and reads the
@@ -63,15 +68,17 @@ const log = [];
 /*
  * The child environment, with the operator's own session variables REMOVED.
  *
- * Several agents run this harness at once, and an inherited `CMUX_*` variable
- * names the operator's real workspace: a headless run that keeps it can rename
- * or drive the windows somebody is using right now. Stripping them here is the
- * same rule the QA matrix follows, and it belongs in the spawn rather than in
- * whatever shell happened to launch this.
+ * Several agents run this harness at once, and an inherited `CMUX_*` or `LOP_*`
+ * variable names the operator's real workspace or this harness session: a headless
+ * run that keeps one can rename or drive the windows somebody is using right now,
+ * and an inherited `LOP_MOBILE_CHILD_PROVIDER`/`_MODEL` silently reroutes a cell.
+ * Stripping them here is the same rule the QA matrix follows - and the same pair
+ * every other rig in this directory strips - and it belongs in the spawn rather
+ * than in whatever shell happened to launch this.
  */
 const childEnv = { ...process.env };
 for (const key of Object.keys(childEnv)) {
-	if (key.startsWith("CMUX_")) delete childEnv[key];
+	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete childEnv[key];
 }
 /*
  * The kill switch goes on for the same reason the cmux variables come off — and
@@ -106,6 +113,22 @@ const ELECTRON_BIN = createRequire(join(process.cwd(), "package.json"))(
 );
 /* Spelled once: the spawn and the profile scan below must name the same profile. */
 const USER_DATA = join(OUT, "user-data");
+/*
+ * Scratch HOME, config and log directories, beside the profile.
+ *
+ * The profile alone covers the UI's own storage and the single-instance lock; it
+ * does not cover the cache and home-root paths that resolve from `HOME`, nor the
+ * app's log directory, which is composed from Electron's `home` and therefore
+ * ignores both `HOME` and `--user-data-dir`. Without the log override this rig
+ * appended its lines to the operator's own
+ * `~/Library/Application Support/Local Operator/logs/*.log`; see the header.
+ */
+const HOME_DIR = join(OUT, "home");
+const CONFIG_DIR = join(OUT, "config");
+const LOG_DIR = join(OUT, "logs");
+for (const dir of [HOME_DIR, CONFIG_DIR, LOG_DIR]) {
+	mkdirSync(dir, { recursive: true });
+}
 
 const app = spawn(
 	ELECTRON_BIN,
@@ -121,6 +144,9 @@ const app = spawn(
 	{
 		env: {
 			...childEnv,
+			HOME: HOME_DIR,
+			LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+			LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
 			LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 			// The operator's backend is already live on :1111; this app must not
 			// try to manage or spawn one.

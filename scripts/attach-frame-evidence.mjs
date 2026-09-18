@@ -34,6 +34,15 @@
  * `LOCAL_OPERATOR_NO_TERMINAL_TITLE=1` go to every child: this runs on the
  * operator's desktop while they work.
  *
+ * The app's LOG directory is the one path the scratch HOME does not move —
+ * `src/main/backend/logger.ts` takes its default from Electron's `home`, the OS
+ * ACCOUNT's home, not the `HOME` variable — so each boot is handed
+ * `LOCAL_OPERATOR_LOG_DIR` under its own profile. Without that, every boot of
+ * this rig appended its lines to the operator's own
+ * `~/Library/Application Support/Local Operator/logs/*.log`, and the diagnostics
+ * this rig collects at the end (which it read from the profile) came back empty
+ * on macOS — one defect with two symptoms.
+ *
  * The first-run provider modal is stepped past by seeding the app's own
  * `onboarding-storage` in localStorage and reloading, which is the same key the
  * app's own store persists to. The alternative - configuring a provider in the
@@ -158,10 +167,23 @@ const baseEnv = {};
 for (const [name, value] of Object.entries(process.env)) {
 	if (inherited.has(name)) baseEnv[name] = value;
 }
-const childEnv = (configDir, apiUrl, { manager = false } = {}) => ({
+const childEnv = (
+	configDir,
+	apiUrl,
+	{ manager = false, logDir = null } = {},
+) => ({
 	...baseEnv,
 	HOME: ROOT,
 	LOCAL_OPERATOR_CONFIG_DIR: configDir,
+	/*
+	 * Where this child writes its logs, when it is the app. Named rather than left
+	 * to the app's default, which is the operator's real log directory however this
+	 * HOME is set: `logger.ts` composes it from Electron's `home`. A boot that
+	 * passes no `logDir` (the seeders and the stub daemon) never writes there
+	 * anyway. The caller keys it on the boot's own profile name, so a boot's log
+	 * stays attributable to that boot.
+	 */
+	LOCAL_OPERATOR_LOG_DIR: logDir ?? join(ROOT, "logs"),
 	LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 	LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
 	LOCAL_OPERATOR_NO_TERMINAL_TITLE: "1",
@@ -624,7 +646,12 @@ async function bootApp(name, apiUrl, configDir, debugPort, options) {
 			`--user-data-dir=${join(ROOT, `profile-${name}`)}`,
 			`--window-size=${WIDTH}x${HEIGHT}`,
 		],
-		childEnv(configDir, apiUrl, options),
+		childEnv(configDir, apiUrl, {
+			...options,
+			// Per boot rather than per run, so each profile's own log is the one read
+			// back at the end; this is also the directory the rig already looked in.
+			logDir: join(ROOT, `profile-${name}`, "logs"),
+		}),
 	);
 	const first = await waitForPage(debugPort); // The seed lands after the first paint and reloads, so the second read is the
 	// app as a returning user rather than the onboarding one.
@@ -1138,10 +1165,11 @@ try {
 		JSON.stringify(summary, null, 2),
 	);
 	/*
-	 * The app's own backend log, per booted profile. `--user-data-dir` IS the
-	 * userData path (measured), so the log lives beside the profile rather than under
-	 * the scratch HOME - where this rig used to look, which is why a broken scene
-	 * produced frames and no diagnostics at all.
+	 * The app's own backend log, per booted profile. This rig NAMES that path
+	 * (`LOCAL_OPERATOR_LOG_DIR` beside `--user-data-dir`), because the app's default
+	 * on macOS is the operator's real home and not the profile: the earlier version
+	 * of this loop read a directory the app never wrote on this platform, which is
+	 * why a broken scene produced frames and no diagnostics at all.
 	 */
 	for (const name of bootedProfiles) {
 		const logFile = join(
