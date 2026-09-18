@@ -120,6 +120,7 @@ import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
 	type TranscriptRecord,
 	type TranscriptState,
+	streamDiagnostics,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
 import {
@@ -525,8 +526,44 @@ const AssistantRow = memo(function AssistantRow({
 				className={cn("relative w-full break-words text-ink")}
 				aria-busy={record.streaming || undefined}
 				data-lo-streaming={record.streaming || undefined}
+				data-lo-truncated={record.truncated || undefined}
 			>
 				{replies.length > 0 && <ReplyPreview replies={replies} />}
+				{/*
+				 * AN HONEST ROW FOR A MESSAGE THIS VIEWER ONLY PARTLY RECEIVED.
+				 *
+				 * `truncated` is set by the reducer when the row's text is real but not
+				 * whole — a turn joined mid-stream, or a row that survived a receipt gap
+				 * that may have swallowed deltas. It used to be silent: the row painted
+				 * the chunk it held as if it were the answer, which is what "the message
+				 * starts mid-sentence" looks like on screen. The mark says what is
+				 * missing instead of inventing text, and it clears itself the moment
+				 * `message_end` (or a durable row) states the whole answer.
+				 *
+				 * ONE SENTENCE PER STATE, because one sentence is not true of both (design
+				 * round 1, D2; corroborated live by QA round 1's Q2). The join case really
+				 * is missing a prefix and has nothing on screen under the caption; a row
+				 * that lost continuity across a gap holds its OWN earlier text on screen,
+				 * so a caption there naming a missing prefix would deny the text directly
+				 * beneath it — and would be false whenever the withheld frame was one this
+				 * viewer had already applied. That state claims only what the app knows:
+				 * the receipt broke while this row was being written, so part of the
+				 * answer MAY be missing.
+				 *
+				 * A caption in the meta register rather than a glyph, and placed ABOVE the
+				 * prose because that is the side the missing text is on — the same quiet
+				 * treatment `Stopped before finishing` gets below. Its distance to the
+				 * chunk is 4px while the row itself takes the `mark` gap tier above it
+				 * (`transcript-rows.ts`), which is what attaches the line to THIS row
+				 * rather than to the answer above it (design round 1, D1).
+				 */}
+				{record.truncated && (
+					<p className={cn("mb-1 text-ink-dim text-meta")}>
+						{record.truncated === "prefix"
+							? "Earlier text of this answer is not on screen"
+							: "Part of this answer may be missing"}
+					</p>
+				)}
 				<MarkdownRenderer
 					content={remainingContent}
 					className={cn(refused && "[--md-ink:var(--lo-danger)]")}
@@ -1567,7 +1604,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			const p50 = flushes[Math.floor(flushes.length / 2)] ?? 0;
 			const max = flushes.at(-1) ?? 0;
 			setPerf(
-				`commits=${commits.current} rowRenders=${rowRenderCount.current} rows=${visible.length} flushes=${flushes.length} flushP50=${p50.toFixed(2)}ms flushMax=${max.toFixed(2)}ms`,
+				`commits=${commits.current} rowRenders=${rowRenderCount.current} rows=${visible.length} flushes=${flushes.length} flushP50=${p50.toFixed(2)}ms flushMax=${max.toFixed(2)}ms settledUpdates=${streamDiagnostics.settledAssistantUpdate} seedDeltasWithheld=${streamDiagnostics.seededDeltaWithheld}`,
 			);
 		}, 1000);
 		return () => window.clearInterval(timer);
