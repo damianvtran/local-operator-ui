@@ -403,12 +403,22 @@ export function publicationTreatment(
 				actions: ["sign-in"],
 			};
 		case "hub_unavailable":
+			/*
+			 * ONE TREATMENT, TWO CAUSES, so the headline asserts neither of them. This
+			 * arm serves a hub that did not answer AND a hub that answered with
+			 * something the transport routes here (a 429, most of all), and round 2's
+			 * review named the consequence: "The hub could not be reached" is a lie for a
+			 * hub that answered, at the one moment the user reads the headline rather
+			 * than the body. The body carries the hub's own words when the transport
+			 * handed any through, and the fallback no longer claims a reach failure
+			 * either. Splitting the two would need a code the backend does not emit.
+			 */
 			return {
 				variant: "warning",
-				headline: "The hub could not be reached",
+				headline: "The publication did not go through",
 				body: isInformative(failure.message)
 					? failure.message
-					: "The hub did not answer the way this app expects, so nothing was published. Try again, or update the backend if the hub has moved.",
+					: "Nothing was published. Try again in a moment, or update the backend if the hub has moved.",
 				note: null,
 				actions: ["retry"],
 			};
