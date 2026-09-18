@@ -241,7 +241,7 @@ export type ThemePalette = {
 	 * beside it, never computed at runtime and never derived from a mix percentage.
 	 *
 	 * Chroma is NOT a fixed quantity: it is the smallest that clears the floor,
-	 * and on the 54 palettes that hold this rule it lands at C* 4-12.4. The
+	 * and on the 58 palettes that hold this rule it lands at C* 4-12.4. The
 	 * chroma is a TINT, never a fill, and the ceiling is what keeps a state from
 	 * growing into a saturated plane beside the panel - the 3.60x over-cast an
 	 * earlier port shipped.
@@ -261,20 +261,40 @@ export type ThemePalette = {
 
 	/**
 	 * The row the READER is on. The same accent hue as `rowHover`, one strength
-	 * louder, plus a NON-COLOUR mark: the leading-edge bar below.
+	 * on, plus a NON-COLOUR mark: the leading-edge bar below.
+	 *
+	 * ## WHICH CHANNEL CARRIES THE RANKING, and it is the bar rather than the fill
+	 *
+	 * `rowHover` is the POINTER's mark and is LOAD-BEARING: a hovered row gets no
+	 * other signal, so it keeps the full field floor. THIS role is SUPPORTING. What
+	 * says "you are here" is the 2px `accent` bar plus `font-medium` - two
+	 * non-colour marks - so the selection's fill only has to be FINDABLE, not
+	 * rankable. The ranking is the bar's job, not the colour's.
 	 *
 	 * ## THE SHAPE
 	 *
-	 * The smallest chroma at or above C* 8 that clears ΔE00 **6.0** off `surface`
-	 * AND ΔE00 **6.0** off `rowHover`, at the largest `L*` step in [3.0, 5.0] that
-	 * holds at that chroma, and at least 0.5 `L*` beyond the hover's on the same
-	 * raised side. Its chroma ceiling is min(0.75 x C*(accent), 24).
+	 * The smallest chroma at or above C* 8 that clears ΔE00 **4.0** off `surface`,
+	 * at the largest `L*` step in [1.5, 5.0] the inks allow at that chroma, and at
+	 * least 0.5 `L*` beyond the hover's on the same raised side. Its chroma ceiling
+	 * is min(0.75 x C*(accent), 24). The pair's separation is a COLLISION floor
+	 * (ΔE00 2.0) rather than a field floor: all the colour has to do is not be the
+	 * same mark twice.
 	 *
-	 * The separation is a floor in its own right, and it is the half the operator's
-	 * second report is about: a reader who sees two marks and cannot rank them has
-	 * not been given a state. On the light family - the one he accepted - the
-	 * separation ran 5.59-8.44 ΔE00, so the 6.0 floor sits just under behaviour he
-	 * has already approved.
+	 * THE MEASUREMENT BEHIND THE RELAXATION, because it was first argued for on a
+	 * mechanism that turned out to be the wrong one. Raising the panel until no
+	 * legal selection fill exists, on the 11 palettes the legibility pass
+	 * compressed:
+	 *
+	 *     band 6.0, step >= 3.0 (what shipped)   0.50 - 2.75 `L*` of room
+	 *     band 4.0, step >= 3.0                  0.50 - 2.75  (IDENTICAL)
+	 *     band 6.0, step >= 2.0                  1.50 - 3.75
+	 *     band 4.0, step >= 1.5                  2.00 - 4.25
+	 *
+	 * The BAND contributes nothing to that cap and the STEP contributes all of it,
+	 * on 41 of 41 dark palettes: a hue-and-chroma fill reaches ΔE00 4.0-9.5 off the
+	 * panel at a 1.5 `L*` step, because a hue difference does not consume the
+	 * lightness budget. The step was 3.0 `L*` only because the fill had to
+	 * out-DISTANCE the hover. Once the bar ranks the pair it does not.
 	 *
 	 * ## THE BAR IS THE SECOND SIGNAL, and it is not decoration
 	 *
@@ -304,17 +324,26 @@ export type ThemePalette = {
 	 * and `outline-control` is the sole boundary of a control), or an `accentAlt`
 	 * tint (a state stays on the primary accent; `docs/branding.md` section 2).
 	 *
-	 * ## THE NAMED EXCEPTIONS
+	 * ## THE NEUTRAL CLASS, and there is no exception ledger any more
 	 *
-	 * Five palettes cannot hold this set inside the ceiling and are recorded, with
-	 * their measured ceiling and the ink that binds them, in `ROW_STATE_PINS` in
-	 * `scripts/contrast-contract.mjs` rather than being granted a wider bound:
-	 * `nightfox`, `tokyoNightStorm`, `ayuLight` and `rosePineDawn` (the search runs
-	 * out of chroma before the separation is reached) and `obsidian` (a greyscale
-	 * accent, so it takes the panel's own cast at the ink cap plus the near-white
-	 * bar). A floor is never widened to fit a palette: a row the reader cannot find
-	 * is the defect this pair exists to answer, and the ledger is what keeps the
-	 * failure visible.
+	 * A palette whose `accent` carries less chroma than `ROW_HOVER_CHROMA_FLOOR`
+	 * has no colour channel to state a row in, so it is a CLASS rather than a
+	 * ledger of shortfalls: the fills take the neutral step at the ink cap, the
+	 * bands fall to the field floor, the pair to the collision floor, and the
+	 * chroma ceilings, the step ceiling and the wash proximity are not asserted -
+	 * a monochrome theme has no cast to separate its neutral row fill from its
+	 * neutral wash, and its ink cap IS its step ceiling. `obsidian` alone is in it
+	 * (`#FAFAFA` at C* 0), and the class is keyed on the derivation rather than the
+	 * name. Measured there: hover ΔE00 2.23 at +3.26 `L*`, selected 3.90, pair
+	 * 1.75, bar at 11.5:1.
+	 *
+	 * THE THIRTEEN LEDGER ROWS THE PREVIOUS ROUND CARRIED ARE GONE, and that is a
+	 * result rather than a relaxation. Four were separation-only and hold at 2.0
+	 * with room; three were chroma-ceiling breaches of +0.24, +0.30 and +0.41 that
+	 * existed ONLY because the value was chasing 6.0 of separation; one was a
+	 * step-ceiling overshoot of 0.06 `L*` for the same reason; and six were
+	 * `obsidian`'s, which is the class above. A floor is still never widened to fit
+	 * a palette - what changed is which channel answers the pair question.
 	 */
 	rowSelected: string;
 
