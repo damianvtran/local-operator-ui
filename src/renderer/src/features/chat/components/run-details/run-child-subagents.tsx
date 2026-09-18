@@ -1,5 +1,5 @@
 /**
- * The subagents of the child whose page is open (`docs/run-sidebar.md` § 5).
+ * The subagents of the child whose page is open (`docs/run-sidebar.md` § 5.2b).
  *
  * WHY THIS EXISTS. The pane has modelled the whole delegation tree since the
  * reader shipped — `parentJobId` is the edge, `RunDetails.lineage` is every node,
@@ -84,7 +84,7 @@ export const ChildSubagents = ({
 			/*
 			 * The section's ACCESSIBLE NAME states whose children these are, which
 			 * the visible label cannot: the pane keeps its title in the breadcrumb
-			 * (`§ 5.2`) and a reader's page carries no visible heading of its own, so
+			 * (`§ 5.2`, `§ 5.2b`) and a reader's page carries no visible heading of its own, so
 			 * a section named `Subagents` on its own would be the one list in the
 			 * pane whose owner is nowhere on screen.
 			 */
