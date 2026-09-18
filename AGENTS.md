@@ -270,15 +270,16 @@ treated the same way; a value the app cannot parse is a *typo*, keeps its
 `normal` fallback, and is reported, because a caller who reached for the mode is
 asking to be told rather than defaulted at.
 
-The `packaged` half cuts the other way for a RIG, and it is the one case with no
-shape signal left to read. A launch of a **staged `.app`** — an artifact smoke
-test, a signature or update rehearsal, anything that boots a built bundle out of
-`/tmp` — is packaged as far as this rule can see, so it stays `normal` however it
-is piped and however it is spawned. That is the price of keeping a double-clicked
-app out of the assumption, and the consequence is that these launches must SAY
-what they are: name `--window-mode=headless` (or `inactive` for the one capture
-that cannot render hidden, per *Capturing the frame*). The bundle was staged to
-exercise the artifact, not to put it in front of the operator.
+The `packaged` half cuts the other way for a RIG, and the shape rule is the part
+it blinds. A launch of a **staged `.app`** — an artifact smoke test, a signature
+or update rehearsal, anything that boots a built bundle out of `/tmp` — is
+`packaged === true`, which is the half that keeps a double-clicked app out of the
+assumption, so shape alone resolves it `normal` **however it is piped**. The
+switch signal is packaging-blind and still applies: a scratch `--user-data-dir`
+or a `--remote-debugging-port` resolves `headless` for a bundled launch exactly as
+it does for a checkout. So a staged-bundle rig either passes one of those or names
+`--window-mode=headless` outright; the bundle was staged to exercise the artifact,
+not to put it in front of the operator.
 
 The shape signal is read on **macOS and Linux only**. Windows is deliberately
 outside it: a Windows GUI-subsystem process takes its stdio through
@@ -825,12 +826,13 @@ embedded browser page, and backend-gated screens among them).
 
 When the thing being captured genuinely cannot render hidden — a native macOS
 panel or sheet, a compositor effect, a frame that exists only while a window is
-ordered front — that is the one case `inactive` is for, and it is **one
-self-contained command**: launch, capture, reap by exact pid before it returns. A
-visible window held across the steps of a run is indistinguishable, to the person
-whose screen it is on, from the leak this section exists to prevent — and the
-run's own `[window-mode]` line, which says out loud that it was `headless`, is not
-what they see.
+ordered front — that is one of the two things `inactive` is for; the other is
+focus-dependent rendering, which *`headless` is a full-fidelity rendering path,
+not a degraded one* below handles. In both cases it is **one self-contained command**: launch,
+capture, reap by exact pid before it returns. A visible window held across the
+steps of a run is indistinguishable, to the person whose screen it is on, from the
+leak this section exists to prevent — and the run's own `[window-mode]` line,
+which names the mode it resolved (`window mode inactive`), is not what they see.
 
 ### Probes and carrier scripts are not the app
 
@@ -839,21 +841,29 @@ mechanism probe, a carrier hosting a fragment of the app, a one-file reproductio
 — inherits **none** of the above. The mode is resolved by this app's main process,
 so a probe that never loads it has no guard to inherit, and a `show: true` in such
 a script is a window on the operator's screen with nothing in the app to stop it.
-This is not hypothetical: on 2026-09-18 a probe iterating visibility configs
-(`view on/off`, `window on/off`) left a window titled after the mechanism itself
-in front of the operator while it measured them, and the app-side guard — already
-on `main` — could not see it, because that is the one surface it does not reach.
+This is not hypothetical. On 2026-09-18 a probe of this class swept five
+visibility configurations as **five processes** — each one launching Electron
+once, calling `showInactive()` once, and exiting — and left a window titled after
+the mechanism itself in front of the operator for the length of the sweep. Every
+launch was, in isolation, exactly the "one launch" this repository asks for; what
+made it noise was the MATRIX, and the app-side guard on `main` could not see any
+of it, because that is the one surface it does not reach.
 
-The rule for the class is the probe's own, and it is stricter rather than looser:
-measure with the window hidden (`win.isVisible()`, `win.isFocused()`,
-`BrowserWindow.getFocusedWindow()`, `capturePage()`, the app's log), and **never
-iterate `show()`/`focus()` variants in a loop** — a five-config matrix of
-visibility flags is five interruptions if each one shows a window. Where the
-effect under test IS the showing (first-responder state, focus theft), do it
-once, `showInactive()` where that answers the question, and reap by exact pid in
-the same command. If a probe cannot answer its question that way, bound it to ONE
-launch and say what it is measuring rather than sweeping a matrix across the
-desktop.
+The rule for the class is therefore about the sweep as much as the launch:
+
+- **Measure hidden.** `win.isVisible()`, `BrowserWindow.getFocusedWindow()`,
+  `capturePage()`, and the app's own `[window-mode]` line answer visibility
+  questions without a window on screen. Do NOT reach for `win.isFocused()` as the
+  proof of anything — the measured warning under *`headless` is a full-fidelity
+  rendering path, not a degraded one* applies to probes too.
+- **A sweep of N configurations is not N launches.** Bound it to one launch where
+  the question allows it; where a shown window is genuinely required per
+  configuration, prefer `showInactive()` over `show()`, reap by exact pid in the
+  same command, and say in advance how many windows the sweep will put up.
+- **Never loop `show()`/`focus()` variants across the desktop** to find the one
+  that reproduces. If a probe cannot answer its question hidden, do it once and
+  report the single measurement rather than sweeping a matrix in front of
+  somebody who did not ask for it.
 
 ### What already opens no window, so a rebase does not re-introduce one
 
