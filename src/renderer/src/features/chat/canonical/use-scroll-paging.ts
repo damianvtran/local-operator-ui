@@ -21,6 +21,7 @@ import {
 	noteFailed,
 	noteInput,
 	noteSettled,
+	spendWindows,
 } from "./scroll-paging";
 
 /**
@@ -182,6 +183,31 @@ export function useScrollPaging({
 	// refs: a demand arming or a settle timer firing must not repaint a list
 	// that repaints per token already.
 	const [failed, setFailed] = useState(false);
+	/*
+	 * Whether the pump is between dispatching a reveal and the reader being able
+	 * to see it — the same fact the policy holds in `busy` and `pageWidenOwed`,
+	 * mirrored into React state because one surface READS it: the top slot.
+	 *
+	 * Why the slot needs it (design round 1 D1-3, UX round 1 U1-2). Measured on
+	 * the real surface, one flick painted the row four times in 1.34s:
+	 *
+	 *   "40 earlier messages above - scroll up to load" -> "Load earlier messages"
+	 *   -> "Loading earlier messages" -> "100 earlier messages above - scroll up
+	 *   to load" -> "40 earlier messages above - scroll up to load"
+	 *
+	 * The two sentences in the middle of that are the pre-fix instruction this
+	 * whole change exists to remove, painted at a reader who is pinned at the hard
+	 * top mid-push and can act on neither: they say "scroll up to load" while the
+	 * app is loading exactly that, and the same sentence reappears 105ms later
+	 * with a different count. Holding the loading paint for as long as a reveal is
+	 * in flight OR owed leaves one statement per act and hands the reader the
+	 * count only once it is the count they can see.
+	 *
+	 * It is a mirror, not a second state machine: it is written in exactly one
+	 * place (the pump, from the decisions the policy just returned) and every
+	 * value it takes is derived from `busy`/`pageWidenOwed`.
+	 */
+	const [revealInFlight, setRevealInFlight] = useState(false);
 
 	// Latest values for the rAF pump, which must not be re-created per render.
 	const live = useRef({ hiddenRows, hasMore, onWiden, onLoadOlder });
@@ -194,6 +220,19 @@ export function useScrollPaging({
 	// Writes this hook makes to `scrollTop`. The resulting `scroll` event is our
 	// own motion and must never be attributed to the reader (clause A).
 	const programmatic = useRef(0);
+	/*
+	 * The reader's own motion, as the SCROLLER reported it at the last input.
+	 *
+	 * Measured from the offsets rather than from `deltaY`, because a wheel delta
+	 * is device-scaled and a trackpad's is a lie: the same gesture reports
+	 * different numbers on different hardware and neither number says how far the
+	 * content actually moved. `at: 0` means "no input yet", which is what makes
+	 * the first input carry no speed and no travel — there is no previous sample
+	 * to difference it against, and inventing one (the reader's distance from the
+	 * tail, say) would report a flick's worth of travel for a reader who has only
+	 * just put their fingers on the pad.
+	 */
+	const travel = useRef({ fromTail: 0, at: 0, extent: 0, clamped: false });
 	const pump = useRef<number>(0);
 	const settleTimer = useRef<number>(0);
 
@@ -338,6 +377,41 @@ export function useScrollPaging({
 				performance.now(),
 			);
 			state.current = next;
+			/*
+			 * The slot's paint follows the policy's own view of what is on its way:
+			 * a reveal just dispatched, one in flight, one owed, or a demand that is
+			 * armed AND inside a window the policy spends from — the same
+			 * computation `decide` makes, taken from `spendWindows` instead of being
+			 * re-derived here.
+			 *
+			 * The window test is not decoration. Without it EVERY armed demand paints
+			 * "Loading earlier messages", spinner and `aria-live` announcement
+			 * included, including one `decide` has already refused: a reader following
+			 * the tail arms a demand that the `followingTail` guard then returns on,
+			 * and it stays armed — measured against this module,
+			 * `{"action":"none","armed":true,"busy":false}`, re-decided every 120ms —
+			 * until a downward input or a session change, so the row claimed a load
+			 * that was not happening. With it, the paint stops at the same edge the
+			 * policy does.
+			 *
+			 * It NARROWS rather than closes the gap between a widen landing and the
+			 * fetch that frees it, and the earlier claim that it closed that gap was
+			 * wrong. The button still paints in that gap — 27, 181, 184, 310 and
+			 * 1657ms across the fling-shaped acts, from the `slotTransitions` in the
+			 * committed measurements — because the reader is outside both windows when
+			 * the widen lands, which is exactly when the policy has nothing in flight.
+			 * What makes it acceptable is where it happens rather than how long it
+			 * lasts: the slot is at least 350px above the viewport in every one of
+			 * those windows, so no reader sees the churn. Both halves are in the set's
+			 * README.
+			 */
+			const windows = spendWindows(geo, next, performance.now());
+			setRevealInFlight(
+				action !== "none" ||
+					next.busy ||
+					next.pageWidenOwed ||
+					(next.armed && (windows.inZone || windows.inLead)),
+			);
 			if (action === "none") {
 				// An armed demand waiting only on the settle debounce needs someone to
 				// ask again once the debounce expires: no further input is coming, by
@@ -388,10 +462,38 @@ export function useScrollPaging({
 			}
 			void live.current.onLoadOlder().then((ok) => {
 				setFailed(!ok);
-				state.current = ok
-					? noteSettled(state.current)
-					: noteFailed(state.current);
-				requestAnimationFrame(schedule);
+				if (!ok) {
+					state.current = noteFailed(state.current);
+					requestAnimationFrame(schedule);
+					return;
+				}
+				/*
+				 * Settle on the OBSERVED landing, exactly as the widen path does, and for
+				 * the same reason: `loadOlder` resolves as soon as it has SCHEDULED the
+				 * view update that carries the page's rows
+				 * (`use-canonical-session.ts`), so a settle read in this microtask sees
+				 * the pre-landing `hiddenRows` — and that zero is precisely the state
+				 * rule 6 is about. Measured on the real surface: a durable page landed
+				 * with `rows 200 -> 200` and `hiddenRows 0 -> 60`, i.e. the reader's
+				 * arrival was answered and nothing on screen changed. Polling the value
+				 * the decision reads is the fix that does not depend on knowing how
+				 * many frames React needs, and the cap is the same guard the widen path
+				 * uses: a page that legitimately mounts nothing must still settle.
+				 */
+				let waited = 0;
+				const awaitLanding = () => {
+					const after = live.current.hiddenRows;
+					if (after > 0 || waited >= COMMIT_WAIT_FRAMES) {
+						state.current = noteSettled(state.current, {
+							hiddenRowsAfter: after,
+						});
+						schedule();
+						return;
+					}
+					waited += 1;
+					requestAnimationFrame(awaitLanding);
+				};
+				requestAnimationFrame(awaitLanding);
 			});
 		});
 	}, [holdAnchor, measure]);
@@ -399,19 +501,59 @@ export function useScrollPaging({
 	/** Fold one real gesture in, then re-decide. */
 	const input = useCallback(
 		(direction: "up" | "down", continuous: boolean, deliberate = false) => {
+			const el = containerRef.current;
+			const at = performance.now();
 			const geo = measure();
+			const atHardTop =
+				(geo?.distanceFromTopPx ?? Number.POSITIVE_INFINITY) <= HARD_TOP_PX;
+			/*
+			 * What the reader's own input actually did, in the two terms the policy
+			 * reasons about (rule 3's lead and rule 4's travel record): a speed
+			 * toward the top in px/ms, and a distance travelled since the previous
+			 * input in px.
+			 *
+			 * Both are read from the scroller's OFFSETS at input time, which is the
+			 * only measurement that is the same on every input device — and both are
+			 * read HERE, at the input event, rather than from a `scroll` listener,
+			 * so a landing, a streamed token or the anchor correction can never look
+			 * like the reader moving (clause A).
+			 */
+			const held = travel.current;
+			const first = held.at === 0;
+			const fromTail = el ? Math.abs(el.scrollTop) : held.fromTail;
+			const extent = el ? el.scrollHeight : held.extent;
+			const elapsed = first ? 0 : at - held.at;
+			/*
+			 * Clamp-follow. Growth observed while the reader is ALREADY against the
+			 * top edge is the browser re-pinning them to the grown extent, not the
+			 * reader moving: mounting rows above a pinned reader moves `scrollTop`
+			 * by exactly the growth (measured on the real scroller: `scrollHeight`
+			 * +24px with `scrollTop` -24px and no input at all). Left in the
+			 * measurement, those 24px would read as travel — and travel is what
+			 * releases the clamp latch, so a finger resting on the top edge could
+			 * walk the whole conversation into memory through that door.
+			 */
+			const clampFollow =
+				held.clamped && extent > held.extent ? extent - held.extent : 0;
+			const moved = first ? 0 : fromTail - held.fromTail - clampFollow;
+			travel.current = { fromTail, at, extent, clamped: atHardTop };
 			state.current = noteInput(state.current, {
 				direction,
 				continuous,
 				deliberate,
-				atHardTop:
-					(geo?.distanceFromTopPx ?? Number.POSITIVE_INFINITY) <= HARD_TOP_PX,
-				at: performance.now(),
+				atHardTop,
+				at,
+				// Only motion TOWARD the top is a lead. A downward notch is the reader
+				// turning around, and `noteInput` answers it on its own branch, where
+				// a velocity toward the top would mean nothing.
+				travelVelocityPxPerMs:
+					direction === "up" && elapsed > 0 ? Math.max(0, moved) / elapsed : 0,
+				travelledPx: Math.max(0, moved),
 			});
 			if (deliberate) setFailed(false);
 			schedule();
 		},
-		[measure, schedule],
+		[containerRef, measure, schedule],
 	);
 
 	const requestOlder = useCallback(() => {
@@ -424,7 +566,19 @@ export function useScrollPaging({
 	useEffect(() => {
 		state.current = initialPagingState();
 		anchor.current = { sample: null, until: 0 };
+		/*
+		 * The DOM half's measurement state belongs to the conversation too
+		 * (review round 1, R1-6). Left alone, the first input of a NEW conversation
+		 * is differenced against the PREVIOUS conversation's offsets, so the travel
+		 * and the speed handed to the policy describe a layout change rather than
+		 * the reader's own motion — the one thing clause A requires them to be.
+		 * `at: 0` is what "no previous sample" means here, so the first notch of a
+		 * fresh conversation carries no speed and no travel, exactly as the first
+		 * notch of the first-ever conversation does.
+		 */
+		travel.current = { fromTail: 0, at: 0, extent: 0, clamped: false };
 		setFailed(false);
+		setRevealInFlight(false);
 		// A fresh conversation may already be shorter than its viewport with more
 		// history behind it, which is clause L's case and has no gesture to start
 		// it. `continuation` is the only demand kind `decide` will honour without
@@ -630,15 +784,25 @@ export function useScrollPaging({
 	}, [correctAnchor, rowCount]);
 
 	const exhaustedRetries = isExhausted(state.current);
-	const slotState: OlderHistoryState = loadingOlder
-		? "loading"
-		: failed && (exhaustedRetries || hiddenRows === 0)
-			? "failed"
-			: hiddenRows > 0
-				? "windowed"
-				: hasMore
-					? "idle"
-					: "exhausted";
+	/*
+	 * One statement per act, and the loading paint outranks the two sentences that
+	 * ask for a gesture. `loadingOlder` is the session hook's own in-flight flag
+	 * and `revealInFlight` the policy's, so the row stays on "Loading earlier
+	 * messages" from the moment a reveal is dispatched until the page's rows are
+	 * actually on screen — including the window in which a landed page's rows are
+	 * still held back and the count would otherwise be painted at a reader who
+	 * cannot see it yet. See the note on `revealInFlight`.
+	 */
+	const slotState: OlderHistoryState =
+		loadingOlder || revealInFlight
+			? "loading"
+			: failed && (exhaustedRetries || hiddenRows === 0)
+				? "failed"
+				: hiddenRows > 0
+					? "windowed"
+					: hasMore
+						? "idle"
+						: "exhausted";
 
 	return { slotState, requestOlder };
 }
