@@ -35,25 +35,28 @@
  *      added to a row cannot be resolved by nobody;
  *   3. every current-row state in those two panels takes the same role — the
  *      four chat call sites, the entity row's three elements, and the settings
- *      rail's row are one fact;
- *   4. the STATES that are not a ground are read the same way, off the resolved
- *      list rather than off a class string this file wrote: the mark's disclosure
- *      step (`expanded && "text-ink"`) is asserted as a TOKEN, because
- *      `text-ink-muted` and `hover:text-ink` both CONTAIN it as a substring — the
- *      distinction between "the state is visible" being a claim and being a
- *      checked one (review round 3, A-1);
- *   5. the SPECIMEN the mark's committed frames are taken through IMPORTS the
- *      role and is resolved on its two elements, so what it paints is what the
- *      app paints — the specimen was the third copy, and the copy D17 and D19
- *      were each raised against, a term apart. Both drifts landed at an ELEMENT
- *      (the wrapper painting the retired ground, the row button painting half
- *      the role) while the copied string above it stayed verbatim, so the pass
- *      that pinned the copy left both shapes green (round 5: design D22, agent
- *      A-7). The copy is gone and the elements are resolved instead; the two
- *      assertions below are one fact seen from each end — no class literal in
- *      the shipped tree spells the role a second time, AND the specimen's
- *      wrapper and row button each resolve to the whole role through the
- *      shipped `cn`;
+ *      rail's row are one fact.
+ *
+ * TWO OF THE INSTRUMENTS THIS FILE CARRIED ARE RETIRED WITH THE SURFACES THEY
+ * MEASURED (operator ask, 2026-09-18: the sidebar's per-row browser mark was removed),
+ * and they are recorded rather than deleted silently because both were answers to a
+ * review finding:
+ *
+ *   - the mark's disclosure step (`expanded && "text-ink"`) was asserted as a
+ *     TOKEN, because `text-ink-muted` and `hover:text-ink` both CONTAIN it as a
+ *     substring — the distinction between "the state is visible" being a claim
+ *     and being a checked one (review round 3, A-1). The control is gone, so no
+ *     current-row element carries a conditional ink step any more and there is no
+ *     token left to read;
+ *   - the SPECIMEN the mark's committed frames were taken through was a THIRD
+ *     import of the role, resolved on both of its elements, because the two drifts
+ *     this file exists for (rounds 3 and 4, D17 and D19) both landed at an ELEMENT
+ *     while the copied string above it stayed verbatim (round 5: design D22, agent
+ *     A-7). The story file and its `docs/evidence/browser-conversation-mark/` set
+ *     are deleted with the control. What that pair proved is still asserted, against
+ *     the consumers that remain: no class literal in the shipped tree spells the role
+ *     a second time, AND each consumer resolves the whole role through the shipped
+ *     `cn`;
  *
  * WHAT IT CANNOT PROVE: that the ground is *visible*, and that it steps in the
  * right DIRECTION. Both are properties of the role against its neighbours across
@@ -89,33 +92,10 @@ const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const SETTINGS_RAIL =
 	"src/renderer/src/features/settings/components/settings-sidebar.tsx";
-/* The conversation row's browser mark. It is a DIFFERENT FILE from the row it sits in —
- * which is exactly why it is in this table (review round 1, A7): the mark is a second
- * interactive control inside a current row, the sidebar's own comment claimed it "drops
- * its hover fill while the row is current", and nothing resolved the claim because the
- * class expression lives in the component rather than at the call site. Design R2 asks
- * for this pair by name. */
-const MARK =
-	"src/renderer/src/features/browser/components/browser-conversation-mark.tsx";
 /*
- * The SPECIMEN the mark's committed frames are taken through, and a different file again
- * from the row it draws. It is in this table because the two ELEMENTS of its current row are
- * a conditional APPLICATION of the role the app draws, hand-written here, and an application
- * is what drifted twice: design round 3's D17 found the wrapper painting the retired `sunken`
- * ground, round 4's D19 found the row button painting the ground without the `font-medium`
- * the ground had moved for - so 30 committed frames drew a row the app does not draw, through
- * the only evidence set that shows the mark on the selection ground. The role itself is no
- * longer copied here at all (round 5: design D22, agent A-7): the file imports `rowCurrent`
- * from the sidebar, and the two expressions below are the residue a specimen of a ROW cannot
- * avoid having - which is why they are resolved through the shipped `cn` like every other
- * entry in this table rather than compared to a string.
- */
-const SPECIMEN =
-	"src/renderer/src/features/browser/components/browser-conversation-mark.stories.tsx";
-/*
- * The path the two consumers import the role BY, named once because the one-spelling test
- * asserts it verbatim: this is the string that makes the settings rail and the specimen read
- * the chat panel's declaration instead of carrying their own, so it is the thing to hold.
+ * The path the one consumer imports the role BY, named once because the one-spelling test
+ * asserts it verbatim: this is the string that makes the settings rail read
+ * the chat panel's declaration instead of carrying its own, so it is the thing to hold.
  */
 const SIDEBAR_MODULE = "@features/chat/components/chat-sidebar";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
@@ -199,8 +179,6 @@ const stripComments = (text) => {
 const code = new Map([
 	[SIDEBAR, stripComments(read(SIDEBAR))],
 	[SETTINGS_RAIL, stripComments(read(SETTINGS_RAIL))],
-	[MARK, stripComments(read(MARK))],
-	[SPECIMEN, stripComments(read(SPECIMEN))],
 ]);
 
 /**
@@ -416,33 +394,6 @@ const CURRENT = [
 	},
 	{
 		/*
-		 * THE CONVERSATION ROW'S BROWSER MARK (design R2's "on the wrapper AND the row
-		 * button" pair, one control along — review round 1, A7). `current` is stubbed
-		 * rather than read from the sidebar because the component decides it: the row
-		 * passes the same expression that paints its own ground, and the mark may only
-		 * take the pointer's step when that is false. Without this entry the mark's
-		 * `hover:bg-elevated` painted over `highlight` on the selected row and no
-		 * instrument in the repository could see it.
-		 */
-		what: "the conversation row's browser mark",
-		file: MARK,
-		expression: () =>
-			expressionBefore(MARK, 'data-tour-tag="chat-session-browser"'),
-		/*
-		 * EVERY TERM THE EXPRESSION READS IS STUBBED, and `expanded` is one of them
-		 * (design review round 2, U8): the mark now carries the disclosure state in
-		 * its ink, so the resolved list has one more conditional in it. A term the
-		 * guard does not name throws `ReferenceError` inside the resolved
-		 * expression rather than failing an assertion, which is how this went red
-		 * when the state was added — the stub table is the instrument's contract, so
-		 * it moves with the component.
-		 */
-		stubs: { quiet: false, current: true, expanded: true },
-		ground: false,
-		notCurrent: { quiet: false, current: false, expanded: false },
-	},
-	{
-		/*
 		 * `rowCurrent` IS STUBBED HERE SINCE ROUND 5 (design D22, agent A-7), and the stub
 		 * moving with the component is the instrument's contract rather than a detail:
 		 * the rail's current branch reads the symbol it imports from the chat panel, so a
@@ -462,42 +413,6 @@ const CURRENT = [
 		stubs: { labelled: true, isActive: true, rowCurrent },
 		ground: true,
 		notCurrent: { labelled: true, isActive: false, rowCurrent },
-	},
-	{
-		/*
-		 * THE SPECIMEN ROW'S WRAPPER AND ITS ROW BUTTON, the two elements design
-		 * rounds 3 and 4 drifted one at a time (D17, D19). They are entries here for
-		 * the reason the mark's entry above is: the specimen is a picture of a row the
-		 * app draws, the frames in `docs/evidence/browser-conversation-mark/` are the
-		 * only evidence of the selection ground, and the two things that went wrong
-		 * were both ELEMENT-level applications of the role - a retired ground on the
-		 * wrapper, half the role on the button - while the copied string above them
-		 * stayed verbatim. The role is imported now (round 5: D22, A-7), so what is
-		 * left to assert is that these two expressions APPLY it, which is what
-		 * resolving them through the shipped `cn` does. `current` is stubbed rather
-		 * than read: it is the specimen's own prop, and both states are measured (see
-		 * the specimen test below for the resting half, which the table's generic
-		 * `notCurrent` case cannot cover for the wrapper - a wrapper has no hover step
-		 * of its own).
-		 */
-		what: "the specimen row's wrapper",
-		file: SPECIMEN,
-		expression: () =>
-			expressionAfter(SPECIMEN, 'data-slot={withoutMark ? "without" : "with"}'),
-		stubs: { rowCurrent, current: true },
-		ground: true,
-	},
-	{
-		what: "the specimen row's button",
-		file: SPECIMEN,
-		expression: () =>
-			expressionBefore(
-				SPECIMEN,
-				'"flex h-8 min-w-0 grow items-center gap-1 rounded-md px-1 text-left text-body-sm leading-5"',
-			),
-		stubs: { rowCurrent, current: true },
-		ground: true,
-		notCurrent: { rowCurrent, current: false },
 	},
 ];
 
@@ -565,74 +480,24 @@ test("a current row carries a non-colour step, and a row that is not current doe
 	);
 });
 
-test("the specimen's row APPLIES the app's whole current-row role, on both of its elements", () => {
-	/*
-	 * WHAT THIS REPLACES, AND WHY IT IS NOT A WEAKER ASSERTION. Until round 5 this case
-	 * compared the specimen's DECLARATION to the sidebar's verbatim, and it was green
-	 * through both drifts it was written for: at `422883acd^` the specimen's wrapper
-	 * painted `current && "bg-sunken"` and at `4279617d7^` its row button painted
-	 * `current ? "hover:bg-highlight" : "hover:bg-elevated"`, each time with the copied
-	 * string above them left intact — the drift lived at the ELEMENT, one indirection
-	 * from the string the case read, and both historical shapes were falsified against
-	 * this file at 14 pass / 0 fail (round 5: design D22, agent A-7). The role is imported
-	 * now, so there is no string left to compare; what a specimen of a ROW can still get
-	 * wrong is the APPLICATION, and that is what this resolves — both elements of the row
-	 * whose frames ship in `docs/evidence/browser-conversation-mark/`, through the shipped
-	 * `cn`, against the role's four terms as TOKENS (`text-ink` is a substring of
-	 * `text-ink-muted` and of `hover:text-ink`, which is why a substring test would not be
-	 * an assertion).
-	 */
-	const elements = CURRENT.filter((site) => site.file === SPECIMEN);
-	assert.equal(
-		elements.length,
-		2,
-		`the specimen's current row must be resolved on BOTH of its elements — the wrapper and the row button, the two the drifts landed on — but this file names ${elements.length} of them; a row resolved on one element is a row that can paint half a role on the other, which is D19`,
-	);
-	const terms = rowCurrent.split(" ");
-	for (const site of elements) {
-		const classes = merged(site.file, site.expression(), site.stubs).split(" ");
-		for (const term of terms) {
-			assert.ok(
-				classes.includes(term),
-				`${site.what} does not paint \`${term}\`, so the specimen is a picture of a row the app does not draw. Every frame in \`docs/evidence/browser-conversation-mark/\` is taken through it and nothing else reads it — and both of the drifts this file exists for were exactly this, one term at one element. Resolved:\n${classes.join(" ")}`,
-			);
-		}
-	}
-	/*
-	 * AND THE OTHER DIRECTION, because "the role is applied" is only half the property a
-	 * one-row specimen has to have: with `current` false the SAME two expressions must
-	 * paint none of the four terms. The table's generic `notCurrent` case cannot ask this
-	 * for the wrapper (it requires the pointer's own `hover:bg-elevated`, which a wrapper
-	 * has no reason to carry), so it is asked here for both elements — that is what catches
-	 * a stubbed-out predicate, the shape that paints every row as the current one.
-	 */
-	const resting = { rowCurrent, current: false };
-	for (const site of elements) {
-		const classes = merged(site.file, site.expression(), resting).split(" ");
-		for (const term of terms) {
-			assert.ok(
-				!classes.includes(term),
-				`${site.what} paints \`${term}\` on a row that is NOT current:\n${classes.join(" ")}`,
-			);
-		}
-	}
-});
-
 test("the current-row role is spelled once in the shipped tree, and imported everywhere else", () => {
 	/*
 	 * THE SINGLE SPELLING, ASSERTED RATHER THAN ASKED FOR. The pass-4 guard pinned the one
 	 * copy it knew about and could not see the class at all; the fix is that there is no
 	 * copy — the role is declared in the chat panel, which owns it, and imported by the
-	 * settings rail and the specimen. That is a convention until something reads it, so
-	 * this reads the whole renderer: any class literal carrying all four of the role's terms
-	 * is a second spelling, wherever it lands. The declaration itself has to be the ONLY
-	 * match — that is the assertion, not `>= 1` — because a second one is how the frames
-	 * came to show a row the app does not draw, twice.
+	 * settings rail. That is a convention until something reads it, so this reads the whole
+	 * renderer: any class literal carrying all four of the role's terms is a second spelling,
+	 * wherever it lands. The declaration itself has to be the ONLY match — that is the
+	 * assertion, not `>= 1` — because a second one is how the frames came to show a row the
+	 * app does not draw, twice.
 	 *
-	 * The import half is what keeps the three consumers ON the symbol: a file that re-spells
-	 * the terms fails above, and a file that quietly drops back to its own literal fails
-	 * above too, but a file that never takes the role at all (deleting the ground is a
-	 * visible change, not a silent one — the element loses it) has only this assertion.
+	 * The import half is what keeps the consumers ON the symbol: a file that re-spells the
+	 * terms fails above, and a file that quietly drops back to its own literal fails above
+	 * too, but a file that never takes the role at all (deleting the ground is a visible
+	 * change, not a silent one — the element loses it) has only this assertion. IT USED TO
+	 * WATCH TWO FILES, the settings rail and the browser mark's story specimen; the specimen
+	 * was deleted with the mark (operator ask, 2026-09-18), so the list below is one entry
+	 * shorter rather than pointing at a file that is not in the tree.
 	 *
 	 * `scripts/` is deliberately outside the walk: `scripts/contrast-contract.mjs` quotes
 	 * the declaration as a pin whose job is to FAIL when the role's terms change, so the
@@ -646,12 +511,12 @@ test("the current-row role is spelled once in the shipped tree, and imported eve
 	assert.deepEqual(
 		spelled,
 		[{ file: SIDEBAR, literal: rowCurrent }],
-		`the current-row role is spelled outside its one declaration. It is OWNED by ${SIDEBAR} and imported by the settings rail and the specimen; a copy is what drifted twice (design rounds 3 and 4, D17 and D19) and every frame in \`docs/evidence/browser-conversation-mark/\` is taken through the specimen, so a copy there is a committed picture of a row the app does not draw. Delete the copy and import \`rowCurrent\` instead: ${JSON.stringify(spelled)}`,
+		`the current-row role is spelled outside its one declaration. It is OWNED by ${SIDEBAR} and imported by the settings rail; a copy is what drifted twice (design rounds 3 and 4, D17 and D19), and a copy on a surface whose frames ship is a committed picture of a row the app does not draw. Delete the copy and import \`rowCurrent\` instead: ${JSON.stringify(spelled)}`,
 	);
 	/*
 	 * THE DECLARATION ITSELF, which the four-term read above cannot see once a copy has
-	 * drifted (the specimen's own `const rowCurrent = "bg-sunken …"` after D17 carried ONE
-	 * of the role's four terms, so a term-set search finds it only in the shapes a copy is
+	 * drifted (a copy carrying ONE
+	 * of the role's four terms is found only in the shapes a term-set search is
 	 * least likely to take). A second declaration is the reintroduction in its most
 	 * dangerous form — a local one SHADOWS the import, so the elements below still name
 	 * `rowCurrent` and resolve, through this file's own stub, to the app's role: the row
@@ -667,7 +532,7 @@ test("the current-row role is spelled once in the shipped tree, and imported eve
 		[SIDEBAR],
 		`\`rowCurrent\` is declared in ${declarations.length} file(s) (${JSON.stringify(declarations)}) where the tree keeps ONE, in ${SIDEBAR}. A second declaration shadows the import it sits beside, so the row still reads the name and paints something else: import the symbol, do not declare it`,
 	);
-	for (const file of [SETTINGS_RAIL, SPECIMEN]) {
+	for (const file of [SETTINGS_RAIL]) {
 		assert.ok(
 			code
 				.get(file)
@@ -792,51 +657,6 @@ test("a row that is NOT current still gets the pointer's step", () => {
 	}
 });
 
-test("the mark's disclosure state is in its ink, and only while it is expanded", () => {
-	/*
-	 * U8's VISIBLE HALF, ASSERTED RATHER THAN DESCRIBED (review round 3, A-1).
-	 *
-	 * The disclosure state reaches the user through two channels that are already
-	 * checked elsewhere — `aria-expanded` and a verb-carrying label, both read in
-	 * the running app — and one that was checked nowhere: the ink step the mark
-	 * takes while the pane is open on its conversation. Deleting that term left
-	 * THIS FILE 12 pass / 0 fail, because every assertion it held was about the
-	 * row's GROUND, so "the state is visible" was a claim the diff made and no
-	 * instrument repeated.
-	 *
-	 * WHY THE TOKENS ARE SPLIT rather than the merged string being searched: the
-	 * closed list carries `text-ink-muted` and `hover:text-ink`, so `includes` would
-	 * pass on a list that has no `text-ink` class at all and would keep passing if
-	 * the step were deleted. `classes.split(" ")` is the idiom the hover loop above
-	 * already uses for the same reason.
-	 *
-	 * BOTH STATES COME FROM THE ENTRY'S OWN STUBS, which is why this is one test and
-	 * not a second resolution mechanism: `stubs` is the expanded state and
-	 * `notCurrent` the closed one, and both already name `expanded` because a term
-	 * the guard does not name throws inside the evaluated expression.
-	 */
-	const mark = CURRENT.find(
-		(site) => site.what === "the conversation row's browser mark",
-	);
-	assert.notEqual(
-		mark,
-		undefined,
-		"the conversation row's browser mark is no longer in `CURRENT`",
-	);
-	const expanded = merged(mark.file, mark.expression(), mark.stubs).split(" ");
-	const closed = merged(mark.file, mark.expression(), mark.notCurrent).split(
-		" ",
-	);
-	assert.ok(
-		expanded.includes("text-ink"),
-		`the mark paints no ink step while its pane is open on this conversation, so a second press leaves the control looking exactly as it did one press earlier — indistinguishable from a press that did not register:\n${expanded.join(" ")}`,
-	);
-	assert.ok(
-		!closed.includes("text-ink"),
-		`the mark carries the expanded ink step while its pane is closed, so the state is painted for every row rather than for the row the pane is open on:\n${closed.join(" ")}`,
-	);
-});
-
 test("the file accounts for every hover ground the two panels declare", () => {
 	/*
 	 * The mechanism behind the file's headline claim, asserted instead of assumed.
@@ -958,23 +778,26 @@ test("the selected row's mark and its aria-current read the same terms", () => {
 	const source = code.get(SIDEBAR);
 	/*
 	 * THE PREDICATE IS NAMED ONCE, AND THAT IS THE PROPERTY (review round 1, A7).
-	 * It used to be written out at the wrapper, at the button and at the mark — and
-	 * the mark's own copy is what let it paint `hover:bg-elevated` over the selected
-	 * row's ground while the sidebar's comment claimed it dropped the fill there.
-	 * `current` is now the one read, so this test asserts BOTH halves of the old
-	 * property on the name: the declaration carries the two terms, `aria-current`
-	 * and the row's ground both read the name, and the mark is handed it too.
+	 * It used to be written out at the wrapper, at the button and at the deleted
+	 * browser mark — and the mark's own copy is what let it paint `hover:bg-elevated`
+	 * over the selected row's ground while the sidebar's comment claimed it dropped
+	 * the fill there. `current` is now the one read, so this test asserts BOTH halves
+	 * of the old property on the name: the declaration carries the two terms,
+	 * `aria-current` and the row's ground both read the name — and every further
+	 * element the row grows has to take it from here too, which the count below is
+	 * what enforces.
 	 *
 	 * A row that paints a ground the accessibility tree does not claim misreports
 	 * where the user is for a screen reader; one that claims a ground it does not
 	 * paint does it for everyone else. Two spellings of the predicate is how the
-	 * third element (the mark) came to disagree with both.
+	 * third element (the mark) came to disagree with both — and with the mark gone,
+	 * the pair that remains is still the pair that can disagree.
 	 */
 	const declaration =
 		"const current = selectedConversation === row.session_id && !activeDraftKey;";
 	assert.ok(
 		source.includes(declaration),
-		`the session row's current-row predicate is no longer one named read, so the wrapper, the button and the mark can disagree about it:\n${declaration}`,
+		`the session row's current-row predicate is no longer one named read, so the wrapper and the button can disagree about it:\n${declaration}`,
 	);
 	const ariaCurrent = 'aria-current={current ? "page" : undefined}';
 	assert.ok(
@@ -982,9 +805,12 @@ test("the selected row's mark and its aria-current read the same terms", () => {
 		`aria-current no longer reads the named predicate, so it and the row's ground can disagree:\n${ariaCurrent}`,
 	);
 	/*
-	 * Three reads after the declaration: the wrapper's ground, the button's ground
-	 * and the mark's `current` prop. Asserted as a COUNT rather than by anchor,
-	 * because the point is that nothing writes a second predicate.
+	 * Three reads after the declaration: the wrapper's ground, the button's ground and
+	 * `aria-current`. It was four while the mark was handed the same predicate as a prop;
+	 * the floor stays at three because it is the two grounds and the accessibility claim,
+	 * and a row that drops either half of that pair is the defect this case exists for.
+	 * Asserted as a COUNT rather than by anchor, because the point is that nothing writes
+	 * a second predicate.
 	 */
 	const reads =
 		source
@@ -992,6 +818,6 @@ test("the selected row's mark and its aria-current read the same terms", () => {
 			.match(/current &&|current=\{|current \?/g) ?? [];
 	assert.ok(
 		reads.length >= 3,
-		`the named predicate feeds fewer than three elements (${reads.length}), so one of the row's grounds or the mark is deciding for itself:\n${JSON.stringify(reads)}`,
+		`the named predicate feeds fewer than three elements (${reads.length}) — the wrapper's ground, the button's ground and \`aria-current\` — so one of them is deciding for itself:\n${JSON.stringify(reads)}`,
 	);
 });
