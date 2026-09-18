@@ -18,6 +18,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over `canvas` at the strongest alpha that keeps its own ink at 4.5:1 (the scheme's own
  * tints stand in where they clear it); a semantic border walks its hue toward the ground to
  * just above the 3:1 edge floor; the shadow and the scrim are the crust tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const catppuccinMocha: ThemeDefinition = {
 	id: "catppuccinMocha",
@@ -27,29 +43,63 @@ export const catppuccinMocha: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#1E1E2E",
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +3.36, elevated +5.91, sunken -3.12 L*), so the hierarchy the
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #1E1E2E -> #1F1F2F (L* 11.97 -> 12.46)
+		 * surface #252535 -> #262636 (L* 15.35 -> 15.82)
+		 * elevated #2A2A3D -> #2B2B3F (L* 17.85 -> 18.37)
+		 * sunken #181825 -> #191926 (L* 8.83 -> 9.34)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
+		canvas: "#1F1F2F",
 		// Seated between base and upstream surface0, which is ΔE00 6.1 from base on its own:
 		// one step where this ramp needs two. ΔE00 2.2 and 2.2 up the ladder.
-		surface: "#252535",
-		elevated: "#2A2A3D",
-		sunken: "#181825",
+		surface: "#262636",
+		elevated: "#2B2B3F",
+		sunken: "#191926",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.19 from `surface`, 2.19 from `elevated` and 8.34 from `sunken`;
-		 * the step is 5.11 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.66:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.65 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.45x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.2:1 on the
+		 * row's ground. ΔE00 4.54 from `surface`, 2.12 from `elevated`, 8.51 from
+		 * `sunken`, 3.26 from `accentWash`; the inks on the ground are 8.97:1,
+		 * 7.33:1, 5.2:1. Continuity with the panel: hue 0.75 degrees off the panel's
+		 * (the assertion allows 12) and chroma 16.31 where the panel carries 11.25.
 		 */
-		highlight: "#312F44",
+		highlight: "#2F2F47",
 
 		ink: "#CDD6F4",
 		inkMuted: "#BAC2DE",
 		// Upstream overlay2, taking the readout rung so the ink step clears (subtext0 is only
 		// ΔE00 5.7 from subtext1 and may not).
-		inkDim: "#939AB7",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `highlight` binds it at 5.19:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#9CA3C0",
 		inkDisabled: "#6C7086",
 
 		// Upstream surface1, seated at ΔE00 5.6 from `elevated`: a 1px line needs 4.0, and this
@@ -68,8 +118,37 @@ export const catppuccinMocha: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.3
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#E2CCFF",
-		accentWash: "#28283E",
+		tokenCommand: "#89B4FA",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
+		/*
+		 * Legibility pass: the wash is a hover and callout tint, not a selection
+		 * ground, and it gains one floor - ΔE00 2.0 against every ground it is painted
+		 * on - because it reads 1.00-1.24:1, so no ratio assertion can see it.
+		 * `elevated` is the tightest base at ΔE00 2.13. Lightness only, at the
+		 * wash's own hue.
+		 */
+		accentWash: "#25253B",
 		onAccent: "#11111B",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#b4befe`,
+		 * canonical lavender), moved onto the floors: as received it sat ΔE00 11.15
+		 * from `accent`. That is paid on HUE — the hue walked 15.3° off the source
+		 * and L* 78.28 → 62.82 — because a value that bought the separation by
+		 * darkening would be the same hue at another weight. Measured: ΔE00 20.16
+		 * from `accent`, 35.69 from its nearest semantic (`danger`), 5.15:1 on the
+		 * tightest ground (`surface`).
+		 */
+		accentAlt: "#719AD4",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 15.66 and C* 15.48, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 7.24 from `accentWash` (the field floor is
+		 * 2.0), 5.16:1 for `accentAlt` on it, and 6.65 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#18283D",
 
 		success: "#A6E3A1",
 		// The scheme has no green tint, so the wash is the green tinted over `canvas` at

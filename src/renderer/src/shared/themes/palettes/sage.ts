@@ -8,6 +8,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * be legible on. The ramp and the accent both had to move; the celadon
  * itself survives as the accent wash, which is where it was already doing
  * most of its work.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const sage: ThemeDefinition = {
 	id: "sage",
@@ -24,40 +40,72 @@ export const sage: ThemeDefinition = {
 		// Elevated is already within a hair of white, so the canvas/surface step has
 		// to be bought from below: F5F0E2 sat ΔE00 1.91 from surface, and two units
 		// down the same warm ramp reads 2.24 while keeping 3.04 down to sunken.
-		canvas: "#F3EEE0",
-		surface: "#FBF7EC",
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A light page ground is capped at L* 94 here, because `elevated`
+		 * at L* 100 is the end of sRGB's ramp and the minimum canvas-to-elevated
+		 * spread is 2.5 + 2.5 L*.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +3.11, elevated +5.8, sunken -4.18 L*), so the hierarchy the
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #F3EEE0 -> #F2EDE0 (L* 94.14 -> 93.81)
+		 * surface #FBF7EC -> #FAF6EB (L* 97.26 -> 96.92)
+		 * elevated #FFFEF9 -> #FFFEF9 (L* 99.61 -> 99.61)
+		 * sunken #E9E2D0 -> #E8E1CF (L* 89.99 -> 89.63)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
+		canvas: "#F2EDE0",
+		surface: "#FAF6EB",
 		elevated: "#FFFEF9",
-		sunken: "#E9E2D0",
+		sunken: "#E8E1CF",
 
 		/*
-		 * The current row's own ground: `surface` stepped down its own green-grey
-		 * ramp 6.62 `L*`, at 0.93x the panel's chroma. ΔE00 4.02 from `surface`,
-		 * 5.89 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 3.25 from `sunken`. The row is 1.186x the panel's relative
-		 * luminance.
-		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#f0ede2)
-		 * stepped 3.56 `L*` off the panel, and this one steps 6.62. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 11.42:1, `ink-muted` 6.80:1, `ink-dim` 4.75:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.75:1.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 6.45 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.22x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.15:1 on
+		 * the row's ground. ΔE00 4.12 from `surface`, 6.71 from `elevated`, 2.02
+		 * from `sunken`, 4.96 from `accentWash`; the inks on the ground are 11.34:1,
+		 * 7.39:1, 5.15:1. Continuity with the panel: hue 3.88 degrees off the
+		 * panel's (the assertion allows 12) and chroma 7.07 where the panel carries
+		 * 5.78.
 		 */
-		highlight: "#e8e4da",
+		highlight: "#e9e3d6",
 
 		ink: "#222C1F",
-		inkMuted: "#454F3A",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `sunken` binds it at 7.25:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#404935",
 		// Sage's ash gray 677657, darkened to clear 4.5:1 on sunken. In a light
 		// theme the darkest ground is what caps the tertiary ink, not the lightest.
-		inkDim: "#5A674C",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `highlight` binds it at 5.19:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#556147",
 		inkDisabled: "#96A088",
 
 		hairline: "#D5D3C5",
@@ -68,33 +116,82 @@ export const sage: ThemeDefinition = {
 		// Neither celadon B2CEB3 nor the darker sage 8DA985 can be read as text on
 		// near-white paper — they measure about 2.0:1 and 2.6:1. This is the
 		// theme's own deeper green, which its old file already used for icons.
-		accent: "#476E49",
+		/*
+		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `sunken` binds it there at
+		 * 4.53:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
+		 */
+		accent: "#476D49",
 		accentHover: "#35563A",
 		accentActive: "#294229",
 		// The chart's hover mark, a step AWAY from the plot ground rather than along the
 		// accent ramp: ΔE00 10.3 from `accent` and 8.37:1 on surface, where the accent
 		// itself is 5.46:1. See `chartBarHover` in the palette contract.
-		chartBarHover: "#345035",
+		/*
+		 * Legibility pass: `chartBarHover` follows `accent` - the ramp is one control seen
+		 * three times and the chart's hover mark has to stay ΔE00 10 clear of the
+		 * resting mark, so both move at their own hue rather than letting the accent
+		 * pull away from them.
+		 */
+		chartBarHover: "#334F35",
+		tokenCommand: "#3A659F",
+		/* The wire's own `info`, so the command word's rendering does not move. */
 		// The celadon, at the faintest tint that still lets the accent clear 4.5:1
 		// on it. This is where Sage's signature colour still shows.
 		accentWash: "#E6E9D8",
 		onAccent: "#F4F6F4",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#c39ede`),
+		 * moved onto the floors: as received it read 1.74:1 as text on all three
+		 * text grounds (`sunken` is the tightest). The shortfall is paid on
+		 * LIGHTNESS at the source hue — L* 70.41 → 42.54 — which is what this port
+		 * does to every one of its own tokens. Measured: ΔE00 36.53 from `accent`,
+		 * 31.18 from its nearest semantic (`danger`), 4.51:1 on the tightest ground
+		 * (`sunken`).
+		 */
+		accentAlt: "#785791",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 91.71 and C* 8.84, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 18.88 from `accentWash` (the field floor is
+		 * 2.0), 4.77:1 for `accentAlt` on it, and 12.59 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#EEE4F4",
 
 		success: "#446F26",
 		successWash: "#E9EBD3",
-		successBorder: "#669438",
+		/*
+		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `sunken` binds it at 3.01:1.
+		 */
+		successBorder: "#5F8D32",
 
 		// Sage's yellow-green 8EA604 sits about 24 degrees from its success green
 		// and the two are hard to tell apart at callout size, so warning rotates to
 		// ochre and keeps the theme's muted saturation.
 		warning: "#825C06",
 		warningWash: "#EAE2CC",
-		warningBorder: "#9E8549",
+		/*
+		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `sunken` binds it at 3:1.
+		 */
+		warningBorder: "#967E42",
 
 		// Sage has no red. A low-chroma brick, warm like the rest of the ramp.
 		danger: "#A8402F",
 		dangerWash: "#EDDED0",
-		dangerBorder: "#BF7462",
+		/*
+		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `sunken` binds it at 3.01:1.
+		 */
+		dangerBorder: "#B76D5C",
 
 		// This theme has no informational hue of its own, and a blue is the only
 		// cool colour in it — which is why `info` used to be the accent triple.
@@ -132,7 +229,12 @@ export const sage: ThemeDefinition = {
 		// own contrast (3.09/3.07/3.08). It carries more chroma than the border
 		// it replaces, not less: with the fill neutral the edge is what says
 		// which callout this is, and its ΔE00 from canvas is unchanged at 38.
-		infoBorder: "#6888BE",
+		/*
+		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `sunken` binds it at 3.02:1.
+		 */
+		infoBorder: "#6181B7",
 
 		overlayShadow: "0 12px 32px -12px rgb(34 44 31 / 0.22)",
 		scrim: "rgb(34 44 31 / 0.35)",

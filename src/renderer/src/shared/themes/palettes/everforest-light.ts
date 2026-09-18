@@ -24,6 +24,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * is that same green rather than a second hue: the scheme's aqua and its green
  * are one family, and a green a reader cannot name against the accent is not
  * worth a semantic.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const everforestLight: ThemeDefinition = {
 	id: "everforestLight",
@@ -38,19 +54,41 @@ export const everforestLight: ThemeDefinition = {
 		sunken: "#DCD7BC",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.08 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.03 from `surface`, 6.91 from `elevated` and 2.16 from `sunken`;
-		 * the step is -5.21 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.89:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 6.2 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.22x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.28:1 on
+		 * the row's ground. ΔE00 4.3 from `surface`, 7.01 from `elevated`, 2.09 from
+		 * `sunken`, 7.05 from `accentWash`; the inks on the ground are 7.43:1,
+		 * 7.61:1, 5.28:1. Continuity with the panel: hue 1.25 degrees off the
+		 * panel's (the assertion allows 12) and chroma 15.98 where the panel carries
+		 * 13.08.
 		 */
-		highlight: "#E4DFC0",
+		highlight: "#E4DBBD",
 
 		ink: "#394246",
-		inkMuted: "#3D4743",
-		inkDim: "#546058",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `sunken` binds it at 7.27:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#38413E",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `sunken` binds it at 5.04:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#4E5952",
 		inkDisabled: "#A6B0A0",
 
 		hairline: "#CAC5AC",
@@ -63,8 +101,30 @@ export const everforestLight: ThemeDefinition = {
 		// ΔE00 10.5 from `accent` and 8.9:1 on surface, where the accent is
 		// 5.7:1.
 		chartBarHover: "#3A4400",
+		tokenCommand: "#235976",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#D9DDCE",
 		onAccent: "#FDF6E3",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#A8317E`,
+		 * purple, darkened from canonical #DF69BA (2.83:1)), moved onto the floors:
+		 * as received it read 4.25:1 as text on `sunken`. The shortfall is paid on
+		 * LIGHTNESS at the source hue — L* 41.26 → 39.75 — which is what this port
+		 * does to every one of its own tokens. Measured: ΔE00 61.80 from `accent`,
+		 * 25.42 from its nearest semantic (`danger`), 4.50:1 on the tightest ground
+		 * (`sunken`).
+		 */
+		accentAlt: "#A42C7A",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 87.45 and C* 7.97, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 17.61 from `accentWash` (the field floor is
+		 * 2.0), 4.73:1 for `accentAlt` on it, and 16.60 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#E8D7E0",
 
 		success: "#566201",
 		successWash: "#DAD6B2",

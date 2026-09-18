@@ -44,12 +44,14 @@ export const highContrastLight: ThemeDefinition = {
 		sunken: "#D6D6D6",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` stepped 6.5 on the `L*` axis in the mode's direction — the
-		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
-		 * so the row takes no cast. ΔE00 4.09 from `surface`, 6.72 from
-		 * `elevated` and 2.06 from `sunken`; the step is -6.67 `L*`, and the band
-		 * this branch raised to ΔE00 4.0 is met without a cast.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 6.5 `L*` darker (branch L of this port's selection rule), and
+		 * carrying nullx the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.09-to-4 band
+		 * on `surface`. ΔE00 4.09 from `surface`, 6.72 from `elevated`, 2.06 from
+		 * `sunken`, 9.58 from `accentWash`; the inks on the ground are 14.86:1,
+		 * 8.93:1, 5.96:1. Continuity with the panel: hue 0 degrees off the panel's
+		 * (the assertion allows 12) and chroma 0 where the panel carries 0.
 		 */
 		highlight: "#DFDFDF",
 
@@ -90,6 +92,10 @@ export const highContrastLight: ThemeDefinition = {
 		// the accent ramp: ΔE00 11.24 from `accent` and 11.29:1 on surface, where the
 		// accent itself is 7.06:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#002393",
+		tokenCommand: "#004A8C",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
@@ -98,6 +104,22 @@ export const highContrastLight: ThemeDefinition = {
 		// The theme's own paper at the top of the ramp, at 7.91:1 on all three accent
 		// fills.
 		onAccent: "#FFFFFF",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#6a1f9e`, deep violet, 8.9:1), received unchanged because
+		 * it already clears every floor — ΔE00 16.20 from `accent`, 39.60 from its
+		 * nearest semantic (`danger`), 6.28:1 as text on the tightest ground
+		 * (`sunken`).
+		 */
+		accentAlt: "#6a1f9e",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 90.71 and C* 12.02, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 13.23 from `accentWash` (the field floor is
+		 * 2.0), 7.22:1 for `accentAlt` on it, and 11.37 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#EEE0F5",
 
 		// Upstream success, re-seated 7.6 L* to hold 6.09:1 on the deepest ground;
 		// upstream warning, danger and info re-seat the same way, only as far as their

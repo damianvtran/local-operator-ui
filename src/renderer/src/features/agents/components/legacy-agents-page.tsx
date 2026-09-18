@@ -16,10 +16,7 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
-import {
-	useExportAgent,
-	useUploadAgentToRadientMutation,
-} from "@shared/hooks/use-agent-mutations";
+import { useExportAgent } from "@shared/hooks/use-agent-mutations";
 import { useAgent } from "@shared/hooks/use-agents";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
@@ -56,14 +53,9 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth(); // Get auth status
 	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false); // State for dialog
-	const [uploadValidationIssues, setUploadValidationIssues] = useState<
-		string[]
-	>([]);
 
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
-	// Upload agent mutation
-	const uploadAgentMutation = useUploadAgentToRadientMutation();
 
 	// Get agent selection store functions
 	const { setLastAgentsPageAgentId, getLastAgentId } = useAgentSelectionStore();
@@ -105,40 +97,18 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 		}
 	};
 
-	// Validation for agent upload
-	const getAgentUploadValidationIssues = (
-		agent: AgentDetails | null,
-	): string[] => {
-		if (!agent) return ["No agent selected."];
-		const issues: string[] = [];
-		if (!agent.name || agent.name.trim() === "")
-			issues.push("Name is required.");
-		if (!agent.description || agent.description.trim() === "")
-			issues.push("Description is required.");
-		// Accept both category and categories (array or string), but require at least one
-		const hasCategory = agent.categories && agent.categories.length > 0;
-		if (!hasCategory) issues.push("At least one category is required.");
-		return issues;
-	};
-
-	// Handlers for the Upload Dialog
+	/*
+	 * The dialog owns the publication: the rules, the request and the refusal. This
+	 * page only decides WHICH agent is being published, because the checks the
+	 * dialog makes need the agent's own fields (its instruction body, its tool
+	 * surface) and nothing here has them.
+	 */
 	const handleOpenUploadDialog = () => {
-		const issues = getAgentUploadValidationIssues(selectedAgent ?? null);
-		setUploadValidationIssues(issues);
 		setIsUploadDialogOpen(true);
 	};
 
 	const handleCloseUploadDialog = () => {
 		setIsUploadDialogOpen(false);
-		setUploadValidationIssues([]);
-	};
-
-	const handleConfirmUpload = () => {
-		if (!selectedAgent || !isAuthenticated) return;
-
-		// Call the actual upload mutation
-		uploadAgentMutation.mutateAsync(selectedAgent.id);
-		handleCloseUploadDialog(); // Close dialog after initiating upload
 	};
 
 	const handleSelectAgent = (agent: AgentDetails) => {
@@ -217,16 +187,9 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 												<FileUp aria-hidden="true" />
 												<span>Export</span>
 											</DropdownMenuItem>
-											<DropdownMenuItem
-												disabled={uploadAgentMutation.isPending}
-												onSelect={handleOpenUploadDialog}
-											>
+											<DropdownMenuItem onSelect={handleOpenUploadDialog}>
 												<CloudUpload aria-hidden="true" />
-												<span>
-													{uploadAgentMutation.isPending
-														? "Uploading..."
-														: "Upload to hub"}
-												</span>
+												<span>Upload to hub</span>
 											</DropdownMenuItem>
 										</DropdownMenuContent>
 									</DropdownMenu>
@@ -255,13 +218,10 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 										data-tour-action="open-upload-dialog"
 										variant="secondary"
 										onClick={handleOpenUploadDialog}
-										disabled={uploadAgentMutation.isPending}
 										className="hidden @min-[400px]:inline-flex"
 									>
 										<CloudUpload aria-hidden="true" />
-										{uploadAgentMutation.isPending
-											? "Uploading..."
-											: "Upload to hub"}
+										Upload to hub
 									</Button>
 
 									{/* The only tooltip here: it names the agent, which the
@@ -297,10 +257,8 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 				<UploadAgentDialog
 					open={isUploadDialogOpen}
 					onClose={handleCloseUploadDialog}
-					agentName={selectedAgent?.name ?? ""}
+					agent={selectedAgent}
 					isAuthenticated={isAuthenticated}
-					onConfirmUpload={handleConfirmUpload}
-					validationIssues={uploadValidationIssues}
 				/>
 			)}
 		</div>

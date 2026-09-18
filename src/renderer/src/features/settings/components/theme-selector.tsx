@@ -241,8 +241,8 @@ const SELECTED_TILE_GROUND =
  * What it shows is chosen to be the part of a palette a user is actually
  * choosing between: the grounds in the arrangement the app uses them (sunken
  * rail, canvas page, surface panel, and now the elevated step — see below), the
- * active nav row in its accent wash, ink at two weights, the accent fill, and
- * one control edge.
+ * active nav row in its accent wash, ink at two weights, both decorative hues,
+ * and one control edge.
  * `aria-hidden` because the theme's name and description beside it are the real
  * label — a screen reader gains nothing from a dozen empty spans.
  *
@@ -267,6 +267,19 @@ const SELECTED_TILE_GROUND =
  * fill, then the control's own edge. It carries no border on purpose: elevation
  * in this system is a lightness step, so the one bordered mark stays the only
  * one, which is also what keeps `border-control` from reading as decoration.
+ *
+ * ## Why the SECOND accent is in it
+ *
+ * The contract has two decorative hues and this miniature used to show one, which
+ * under-sells every theme that names a second: the tile's whole job is to be
+ * COMPARED across fifty-nine palettes, and a theme's second colour is part of what
+ * a user is choosing between — a two-hue theme whose preview cannot show its
+ * second hue is advertising itself with half its palette. It is drawn as a
+ * `bg-accent-alt` bar directly beside the `bg-accent` fill, one step narrower, so
+ * the pair reads as one row of hues rather than as another ground. Carrying no
+ * text is the role's licence in full: this is `aria-hidden` wallpaper inside a
+ * scoped `[data-theme]` subtree, and it states no state — `accentAlt` is identity
+ * and category, never interaction (see `palette-contract.ts`).
  */
 const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
 	<div data-theme={id} aria-hidden="true" className="flex h-full bg-canvas">
@@ -285,6 +298,7 @@ const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
 			<div className="flex items-center gap-1">
 				<span className="h-2.5 w-6 rounded-xs bg-elevated" />
 				<span className="h-2.5 w-5 rounded-xs bg-accent" />
+				<span className="h-2.5 w-4 rounded-xs bg-accent-alt" />
 				<span className="h-2.5 w-4 rounded-xs border border-control" />
 			</div>
 		</div>

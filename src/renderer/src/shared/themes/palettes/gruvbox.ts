@@ -20,6 +20,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over `canvas` at the strongest alpha that keeps its own ink at 4.5:1 (the scheme's own
  * tints stand in where they clear it); a semantic border walks its hue toward the ground to
  * just above the 3:1 edge floor; the shadow and the scrim are the ground tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const gruvbox: ThemeDefinition = {
 	id: "gruvbox",
@@ -37,12 +53,15 @@ export const gruvbox: ThemeDefinition = {
 		sunken: "#1D2021",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` stepped 6.25 on the `L*` axis in the mode's direction — the
-		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
-		 * so the row takes no cast. ΔE00 4.54 from `surface`, 2.24 from
-		 * `elevated` and 10.39 from `sunken`; the step is 6.33 `L*`, and the band
-		 * this branch raised to ΔE00 4.0 is met without a cast.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 6.15 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 0.96x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.54 from `surface`, 2.24 from `elevated`, 10.39
+		 * from `sunken`, 12.11 from `accentWash`; the inks on the ground are 7.75:1,
+		 * 7.14:1, 5.16:1. Continuity with the panel: hue 0.07 degrees off the
+		 * panel's (the assertion allows 12) and chroma 1.11 where the panel carries
+		 * 1.16.
 		 */
 		highlight: "#403E3D",
 
@@ -50,8 +69,28 @@ export const gruvbox: ThemeDefinition = {
 		// Canonical fg2 D5C4A1 is 6.76:1 on `elevated` and only ΔE00 6.3 from fg3, which is
 		// under the 8 ink step. Lifted one step along the same warm grey so the readout rung
 		// below it takes a different name.
-		inkMuted: "#DECDA9",
-		inkDim: "#BDAE93",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `highlight` binds it at 7.14:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#E3D2AD",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `highlight` binds it at 5.16:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#C2B397",
 		inkDisabled: "#928374",
 
 		// A rule seated in the window a 1px line has: ΔE00 4.1 from every ground and
@@ -69,25 +108,72 @@ export const gruvbox: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.3
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#FFD78C",
+		tokenCommand: "#88AB9E",
+		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.31), at a
+		// cost of ΔE00 1.79 from the signal itself; 5.23:1 on `surface`.
 		accentWash: "#32321C",
 		onAccent: "#1D2021",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#d3869b`, canonical bright purple), received unchanged
+		 * because it already clears every floor — ΔE00 44.00 from `accent`, 17.21
+		 * from its nearest semantic (`danger`), 4.78:1 as text on the tightest
+		 * ground (`surface`).
+		 */
+		accentAlt: "#d3869b",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 20.22 and C* 14.63, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 24.95 from `accentWash` (the field floor is
+		 * 2.0), 4.74:1 for `accentAlt` on it, and 13.11 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#452930",
 
 		success: "#B8BB26",
 		successWash: "#464730",
 		successBorder: "#868902",
 
-		warning: "#FE8019",
+		/*
+		 * Legibility pass: `warning` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `highlight` binds it there at
+		 * 4.52:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 81.57 -> 74.1, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
+		 */
+		warning: "#FF8A32",
 		warningWash: "#45352C",
 		warningBorder: "#D06503",
 
 		// Upstream bright red FB4934 is 3.37:1 on `elevated` — the largest miss in the
 		// palette, and the only accent that could not ship as drawn. Lifted along the same
 		// red.
-		danger: "#FF7C67",
+		/*
+		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `highlight` binds it there at
+		 * 4.51:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 59.54 -> 54.52, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
+		 */
+		danger: "#FF8671",
 		dangerWash: "#3B2723",
 		dangerBorder: "#DA5B48",
 
-		info: "#83A598",
+		/*
+		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `highlight` binds it there at
+		 * 4.5:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
+		 */
+		info: "#8EB0A3",
 		infoWash: "#28353A",
 		infoBorder: "#698B7E",
 

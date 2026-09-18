@@ -1394,13 +1394,13 @@ test("every python-running runCommand call site in the update service passes the
 	);
 
 	// Asserted rather than assumed, so a reorganisation cannot make this pass by
-	// finding nothing: the probe, the pip upgrade and the global install's update
-	// child are the three that exist, beside `codesign` and the installer list
-	// probe below.
+	// finding nothing: the probe, the pip install, the global install's update child
+	// and the update path's own `python -m venv` are the ones that run python, beside
+	// `codesign` and the installer list probe below.
 	assert.equal(
 		calls.length,
-		5,
-		`expected the file's five runCommand call sites, found ${calls.length}`,
+		6,
+		`expected the file's six runCommand call sites, found ${calls.length}`,
 	);
 	/*
 	 * The fifth is `probeInstallerList`, and it runs python too - `uv` and `pipx`
@@ -1421,6 +1421,25 @@ test("every python-running runCommand call site in the update service passes the
 		probeCalls[0].text,
 		/env:\s*this\.pythonSpawnEnv\(\)/,
 		`the installer list probe must pass the guarded environment: ${probeCalls[0].text.replace(/\s+/g, " ")}`,
+	);
+	/*
+	 * THE SIXTH RUNS PYTHON WITH A COMMAND THE TEXT TEST CANNOT CLASSIFY, exactly
+	 * like the probe above and for the same structural reason: `python -m venv` is
+	 * handed the interpreter by `publishGeneration`, which is the only thing that
+	 * knows the managed runtime it has just resolved. It is the app-owned update
+	 * path creating the environment it will smoke - so it reaches the same runtime as
+	 * everything else here, and it carries the same guard for the same reason.
+	 */
+	const venvCalls = calls.filter(({ text }) => /"-m",\s*"venv"/.test(text));
+	assert.equal(
+		venvCalls.length,
+		1,
+		`expected the update path's one environment-creating runCommand call site, found ${venvCalls.length}`,
+	);
+	assert.match(
+		venvCalls[0].text,
+		/env:\s*this\.pythonSpawnEnv\(\)/,
+		`the update path's environment creation must pass the guarded environment: ${venvCalls[0].text.replace(/\s+/g, " ")}`,
 	);
 	assert.equal(
 		pythonCalls.length,
