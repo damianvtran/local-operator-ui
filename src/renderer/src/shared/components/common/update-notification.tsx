@@ -42,6 +42,13 @@ const skewKey = (notice: {
 	installVersion: string | null;
 	runningVersion: string | null;
 }): string => `${notice.installVersion ?? "?"}|${notice.runningVersion ?? "?"}`;
+/*
+ * DELIBERATELY THE READING PAIR AND NOTHING ELSE, including whether the release was
+ * read: the fact the reader dismisses is that THIS SERVER TRAILS THIS INSTALL, and a
+ * later check that must not call the install current (QA round 3, Q3-1) states the
+ * same fact about the same two readings. Keying on the phrasing instead would re-open
+ * a panel they have already answered with the other wording.
+ */
 
 /**
  * What the panel says when the server update failed and named no reason.
@@ -784,6 +791,16 @@ export const UpdateNotification = ({
 		/** The attempt landed while no app was watching it (UX U6). */
 		unattended: boolean;
 		/**
+		 * Whether the check that raised this notice READ the published release.
+		 *
+		 * False is the offline path (QA round 3, Q3-1): the pair is measured locally, so
+		 * an offline machine can still be told its daemon is a build behind, but nothing
+		 * on that pass compared the install against a release - so the sentence may not
+		 * call the install current. Defaults to true: a producer that does not say read
+		 * it, which is every other arrival here.
+		 */
+		releaseRead: boolean;
+		/**
 		 * Whether the app may restart the daemon that is behind.
 		 *
 		 * It decides the "what to do" line, and the two cases are opposite: an owned
@@ -1116,6 +1133,7 @@ export const UpdateNotification = ({
 			notRestarted: boolean;
 			unattended: boolean;
 			restartable: boolean;
+			releaseRead: boolean;
 			kind: "landed" | "up-to-date";
 		}): boolean => {
 			const install = readableVersion(notice.installVersion);
@@ -1542,6 +1560,12 @@ export const UpdateNotification = ({
 						notRestarted: true,
 						unattended: false,
 						restartable: info.restartable !== false,
+						/*
+						 * The offline check sends this event with the pair it measured locally and
+						 * nothing to compare the install against, so it says so (QA round 3, Q3-1).
+						 * Absent means read, which is every other producer of this event.
+						 */
+						releaseRead: info.releaseRead !== false,
 						kind: "up-to-date",
 					});
 				}
@@ -1586,6 +1610,12 @@ export const UpdateNotification = ({
 						notRestarted: !completion.restarted,
 						unattended: completion.unattended === true,
 						restartable: completion.restartable !== false,
+						/*
+						 * A completion is a landed install, so its own sentence makes no claim about
+						 * the release having been read: the install it names is the one the attempt
+						 * just landed.
+						 */
+						releaseRead: true,
 						kind: "landed",
 					})
 				) {
@@ -2476,8 +2506,14 @@ export const UpdateNotification = ({
 	 * status panel is up, because those already name both readings themselves.
 	 */
 	if (backendSkewNotice) {
-		const { installVersion, runningVersion, unattended, restartable, kind } =
-			backendSkewNotice;
+		const {
+			installVersion,
+			runningVersion,
+			unattended,
+			restartable,
+			kind,
+			releaseRead,
+		} = backendSkewNotice;
 		return withErrorToast(
 			<UpdateContainer>
 				<UpdateHeading>
@@ -2485,7 +2521,9 @@ export const UpdateNotification = ({
 				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">
 					{kind === "up-to-date"
-						? `This machine's install is up to date${installVersion ? ` (${installVersion})` : ""}, and the server serving this app is still running ${runningVersion ?? "an older build"}.`
+						? releaseRead
+							? `This machine's install is up to date${installVersion ? ` (${installVersion})` : ""}, and the server serving this app is still running ${runningVersion ?? "an older build"}.`
+							: `This machine's install is ${installVersion ?? "a newer build"}, and the server serving this app is still running ${runningVersion ?? "an older build"}.`
 						: unattended
 							? `An update you started before quitting finished while Local Operator was closed, so the install is now at ${installVersion ?? "a newer version"}. Nothing restarted the server that was serving you${runningVersion ? `, which still reports ${runningVersion}` : ""}.`
 							: `The install is now at ${installVersion ?? "the new version"}, but the server serving this app was started outside Local Operator, so it was left running${runningVersion ? ` on ${runningVersion}` : ""}.`}

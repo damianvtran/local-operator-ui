@@ -4206,34 +4206,15 @@ export class UpdateService {
 			await this.settleBackendVersionDrift(plan);
 
 			/*
-			 * A MACHINE THAT REPORTS NO NETWORK IS NOT ASKED FOR RELEASES. The read below
-			 * spends a request against the published release, and the operator's log has
-			 * this check's own failure beside the
-			 * app channel's at the dark-wake instant (`Error fetching from PyPI: Error:
-			 * getaddrinfo ENOTFOUND pypi.org`, same second). Skipping leaves the status
-			 * `unavailable`, which is what a channel that did not find out reports.
+			 * THE SUBJECT OF EVERY SENTENCE THIS CHECK SENDS, resolved HERE - above the
+			 * network gate rather than beside the offer - because the skew notice is built
+			 * from this pair and that notice is a statement about THIS MACHINE (QA round
+			 * 3, Q3-1). Both readings it needs are local: the plan classifies an install
+			 * on disk, and the process's own record says which build it loaded. Only the
+			 * published release needs the network - and that read is exactly what the gate
+			 * below skips - so resolving the pair once, here, is what lets the offline
+			 * report and the online one speak about ONE pair instead of two.
 			 *
-			 * AND THIS CHANNEL DOES NOT REPORT THE STATE, even when the check was the
-			 * user's: the app channel's ladder reaches the same reading first, fails with
-			 * the same code and is what the renderer is answered with, so a report here
-			 * would put a second sentence beside it for one condition (review round 2,
-			 * R2-1's rule, applied to the other channel).
-			 */
-			if (!this.networkIsReachable()) {
-				logger.info(
-					"Skipping the server update check: this machine reports no network right now (net.isOnline() is false). The app channel owns the report; the next scheduled check will try again.",
-					LogFileType.UPDATE_SERVICE,
-				);
-				return { status: "unavailable", info: null };
-			}
-
-			const latestVersion = await this.getLatestPypiVersion();
-			// Remembered for the by-hand prompt: that event is produced from a click
-			// rather than from a check, and it has to be able to name the published
-			// release the user is working towards (review U17).
-			if (latestVersion) this.lastPublishedBackendVersion = latestVersion;
-
-			/*
 			 * The version the OFFER and the comparison are about: the install that is
 			 * SERVING this app when the server named it, which is what an update would
 			 * move (`resolveBackendUpdatePlan` resolves exactly that subject, and falls
@@ -4289,6 +4270,67 @@ export class UpdateService {
 				installVersion && isReadableVersion(installVersion)
 					? installVersion
 					: runningVersion;
+
+			/*
+			 * A MACHINE THAT REPORTS NO NETWORK IS NOT ASKED FOR RELEASES. The read below
+			 * spends a request against the published release, and the operator's log has
+			 * this check's own failure beside the
+			 * app channel's at the dark-wake instant (`Error fetching from PyPI: Error:
+			 * getaddrinfo ENOTFOUND pypi.org`, same second). Skipping leaves the status
+			 * `unavailable`, which is what a channel that did not find out reports.
+			 *
+			/*
+			 * AND THIS CHANNEL DOES NOT REPORT THE STATE, even when the check was the
+			 * user's: the app channel's ladder reaches the same reading first, fails with
+			 * the same code and is what the renderer is answered with, so a report here
+			 * would put a second sentence beside it for one condition (review round 2,
+			 * R2-1's rule, applied to the other channel).
+			 *
+			 * THE SKEW IS NOT THAT STATE, and it is reported here (QA round 3, Q3-1).
+			 * `unavailable` is a statement about the RELEASE read this machine could not
+			 * make, and the app channel owns it; the pair below is a statement about the
+			 * install on disk and the build serving this app, both measured locally, and
+			 * nothing else in the app carries it. An adopted daemon this app correctly
+			 * refuses to move is refused and left serving with nothing said on exactly the
+			 * machine where the reader cannot go looking, so the notice goes out before
+			 * this return - with `releaseRead` false, because no release was read on this
+			 * pass and the panel's sentence may not call an install current it never
+			 * compared. The same reading pair, the same window guard and the same silent
+			 * rule as the success path: only the fact that the release was NOT read
+			 * travels differently.
+			 */
+			if (!this.networkIsReachable()) {
+				logger.info(
+					"Skipping the server update check: this machine reports no network right now (net.isOnline() is false). The app channel owns the report; the next scheduled check will try again.",
+					LogFileType.UPDATE_SERVICE,
+				);
+				this.sendBackendSkewNotice({
+					installedVersion,
+					/*
+					 * The serving process's OWN reading, taken here rather than beside the
+					 * first read of the pair: `settleBackendVersionDrift` above may have just
+					 * restarted the daemon onto the install, and a reading captured before it
+					 * would announce a skew a successful repair has already closed.
+					 */
+					eventRunning: this.eventRunningVersion(runningVersion),
+					silent,
+					releaseRead: false,
+				});
+				return { status: "unavailable", info: null };
+			}
+
+			const latestVersion = await this.getLatestPypiVersion();
+			// Remembered for the by-hand prompt: that event is produced from a click
+			// rather than from a check, and it has to be able to name the published
+			// release the user is working towards (review U17).
+			if (latestVersion) this.lastPublishedBackendVersion = latestVersion;
+
+			// The install/running pair these gates read is the check's own, resolved
+			// ABOVE the network gate (see its comment): only the published release needs
+			// the network, so the pair is settled once for both paths rather than
+			// re-derived on the one that also has a release to compare against. Which of
+			// the two readings is the subject, and why the NEWER one stands in when the
+			// server named no install, is argued with the derivation.
 
 			if (!installedVersion || !latestVersion) {
 				logger.error(
@@ -4529,43 +4571,23 @@ export class UpdateService {
 			 * on serving the old build unannounced. `eventRunning` is the process's own
 			 * reading; the divergence it can now see is what lets a silent pass speak.
 			 */
-			const readingsDiffer =
-				installedVersion !== null &&
-				eventRunning !== null &&
-				isReadableVersion(installedVersion) &&
-				isReadableVersion(eventRunning) &&
-				installedVersion.trim() !== eventRunning.trim();
-			if (
-				(!silent || readingsDiffer) &&
-				this.mainWindow &&
-				!this.mainWindow.isDestroyed() &&
-				this.mainWindow.webContents &&
-				!this.mainWindow.webContents.isDestroyed()
-			) {
-				this.mainWindow.webContents.send("backend-update-not-available", {
-					version: installedVersion,
-					/*
-					 * The second reading travels on THIS state too, which is the one QA
-					 * Q-1 found: an install already at the published version whose daemon
-					 * still serves the old build offers nothing, so the offer's detail was
-					 * never rendered and the user was told nothing at all - while the log
-					 * carried both readings and Settings could name the daemon. It is the
-					 * state design §5 exists for (right after a landed install, before the
-					 * restart), and no later check re-offers it, because the install itself
-					 * is up to date.
-					 *
-					 * AND IT IS THE PROCESS'S OWN READING (round 2, T1), which is what makes
-					 * the notice above reachable at all: fed from `/health` both sides of the
-					 * renderer's guard were the same string on exactly this machine. The
-					 * `restartable` flag beside it decides the sentence the reader then gets -
-					 * false here is the arm that names their own next step, because the app
-					 * correctly will not move a daemon this app run does not hold.
-					 */
-					runningVersion: eventRunning,
-					/** Whether the app may restart the daemon that is behind. */
-					restartable: this.backendIsAppOwned(),
-				});
-			}
+			/*
+			 * The two readings, the window guard and the silent rule live in
+			 * `sendBackendSkewNotice`, which the network-unavailable path calls too (QA round
+			 * 3, Q3-1) - so the pair an offline machine is told about and the pair an online
+			 * one is told about are the same construction rather than two.
+			 */
+			this.sendBackendSkewNotice({
+				installedVersion,
+				eventRunning,
+				silent,
+				/*
+				 * The published release WAS read on this path - the offer and the
+				 * affirmation above both turn on it - so the panel may call the install
+				 * current. The offline caller passes false for exactly that reason.
+				 */
+				releaseRead: true,
+			});
 
 			/*
 			 * `current` or `restart-required`, and never `unavailable`: the three
@@ -5050,6 +5072,103 @@ export class UpdateService {
 	 */
 	private eventRunningVersion(fallback: string | null): string | null {
 		return this.servingBootVersion() ?? fallback;
+	}
+
+	/**
+	 * THE ONE PLACE THE SKEW NOTICE IS SENT, for the two checks that can reach it.
+	 *
+	 * WHY A METHOD RATHER THAN THE TAIL OF THE SUCCESS PATH (QA round 3, Q3-1). The
+	 * fact this event carries is a statement about THIS MACHINE - the install on disk
+	 * against the build the serving process actually loaded - and BOTH of its readings
+	 * are local: the plan classifies an install on disk, and the process's own serve
+	 * record says which build it loaded. So the machine that reports no network is
+	 * precisely the machine that can still be told its daemon is a build behind, and
+	 * the send sat past the network gate, at the tail of the success path: an adopted
+	 * daemon this app correctly refuses to move was refused, logged, and left with no
+	 * surface at all - on an offline machine, where the reader cannot go looking. The
+	 * repair was moved above that gate for the same reason (round 1's R3); this is its
+	 * report, one surface further out.
+	 *
+	 * WHAT THIS EVENT IS NOT, because the gate's own comment states the opposite
+	 * rule: `unavailable` - a statement about the RELEASE read a machine could not
+	 * make - belongs to the app channel, which owns it and reaches it first (review
+	 * round 2, R2-1). The pair here is not that state, no other surface carries it,
+	 * and sending it puts no second sentence beside the app channel's.
+	 *
+	 * WHO HEARS IT, and why a SILENT check can still speak (UX U10). A launch and a
+	 * periodic check are silent, and silence used to swallow this event along with
+	 * everything else it suppresses - so the one state with no other surface to say it
+	 * (install current, the daemon serving the app a build behind) was invisible until
+	 * the user happened to press Check for updates. That is Q-1's discoverability half
+	 * surviving Q-1's fix: the launch that follows such an update ran the check and
+	 * reached the renderer with nothing. So the READINGS decide, not the caller: when
+	 * the two disagree, this event is sent even on a silent pass, because the
+	 * disagreement is the fact no other surface carries, and the renderer's own guard
+	 * keeps a pair that agrees silent - so an equal-reading machine still hears nothing
+	 * from a launch.
+	 *
+	 * AND THE PROCESS'S SIDE IS ITS OWN RECORD, not `/health` (review round 2, T1),
+	 * which is why the caller passes `eventRunning` rather than `/health`'s reading.
+	 * `/health` answers with the version installed on disk at that moment, so on the
+	 * machine this event exists for - a stale process, an install that has moved under
+	 * it - both sides of THIS comparison were the same string, the disagreement was
+	 * never seen, and a silent launch reached the renderer with nothing while an
+	 * adopted daemon (which the app correctly refuses to move) went on serving the old
+	 * build unannounced. `eventRunningVersion` owns that rule and the one case it falls
+	 * back in.
+	 *
+	 * AND THE SECOND READING TRAVELS, which is the one QA Q-1 found: an install already
+	 * at the published version whose daemon still serves the old build offers nothing,
+	 * so the offer's own detail was never rendered and the user was told nothing at all
+	 * - while the log carried both readings and Settings could name the daemon. It is
+	 * the state design §5 exists for (right after a landed install, before the
+	 * restart), and no later check re-offers it, because the install itself is up to
+	 * date. The `restartable` flag beside it decides the sentence the reader then gets
+	 * - false is the arm that names their own next step, because the app correctly will
+	 * not move a daemon this app run does not hold.
+	 *
+	 * `releaseRead` is false when this pass did NOT read the published release, and it
+	 * travels ONLY in that case: the renderer's sentence for this state names the
+	 * install, and a check that never saw a release may not call it current (the
+	 * panel's own rule - "a reading that cannot be taken is silence" - applied to one
+	 * clause of it). Every caller that did read the release, and every pre-existing
+	 * reader of this event, sees the payload it always saw.
+	 */
+	private sendBackendSkewNotice(options: {
+		installedVersion: string | null;
+		/** The serving process's OWN reading, from its serve record. */
+		eventRunning: string | null;
+		silent: boolean;
+		releaseRead: boolean;
+	}): void {
+		const { installedVersion, eventRunning, silent, releaseRead } = options;
+		const readingsDiffer =
+			installedVersion !== null &&
+			eventRunning !== null &&
+			isReadableVersion(installedVersion) &&
+			isReadableVersion(eventRunning) &&
+			installedVersion.trim() !== eventRunning.trim();
+		if (
+			(!silent || readingsDiffer) &&
+			this.mainWindow &&
+			!this.mainWindow.isDestroyed() &&
+			this.mainWindow.webContents &&
+			!this.mainWindow.webContents.isDestroyed()
+		) {
+			const payload: {
+				version: string | null;
+				runningVersion: string | null;
+				restartable: boolean;
+				releaseRead?: boolean;
+			} = {
+				version: installedVersion,
+				runningVersion: eventRunning,
+				/** Whether the app may restart the daemon that is behind. */
+				restartable: this.backendIsAppOwned(),
+			};
+			if (!releaseRead) payload.releaseRead = false;
+			this.mainWindow.webContents.send("backend-update-not-available", payload);
+		}
 	}
 
 	/**

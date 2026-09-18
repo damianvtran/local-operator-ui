@@ -6414,6 +6414,133 @@ test("a machine that reports no network still repairs the drift", async () => {
 });
 
 /**
+ * Q3-1 (QA round 3, MINOR): the same offline machine, one state further out.
+ *
+ * The repair was moved above the network gate because both of its readings are
+ * local (R3). The REPORT is about the same two readings - the install on disk and
+ * the build the serving process loaded - so an offline machine can still be told
+ * its daemon is a build behind, and the event that says so used to sit at the tail
+ * of the success path, past the gate: an adopted daemon this app correctly refuses
+ * to move was refused, logged, and left with no surface at all on the machine where
+ * the reader cannot go looking. Same rig, same adopted daemon, same install bump as
+ * the online case above - the ONE variable is the network reading - so this is the
+ * A/B that prices the finding.
+ *
+ * Driven on the SILENT pass for the reason the online case states: the launch and
+ * the five-minute check are the callers that told nobody anything, and the
+ * disagreement between these two readings is what lets them speak.
+ */
+test("an offline machine still reports the skew an adopted daemon leaves", async () => {
+	const { sent, restarts, logs, probeResult } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		// `net.isOnline()` false: the release read is skipped, the pair is not.
+		netIsOnline: false,
+		serverVersion: "0.56.11",
+		publishedVersion: "0.56.11",
+		installVersion: "0.56.11",
+		// What this process actually loaded, from its own serve record - the reading
+		// `/health` cannot give, because it answers with the disk.
+		bootVersion: "0.56.2",
+		servingInstall: { version: "0.56.11", appOwned: true, kind: "pip" },
+		owned: {
+			owned: false,
+			because:
+				"it runs from /Users/someone/Library/Application Support/Local Operator/managed-python/packaged/environments/183b, an environment this app manages, but the process is not one this app run started and this app can only stop the generation it holds",
+			startedByEarlierAppRun: true,
+		},
+		probe: async (service, sent) => {
+			const before = sent.length;
+			await service.checkForBackendUpdates(true);
+			return sent.slice(before);
+		},
+	});
+
+	assert.deepEqual(
+		restarts,
+		[],
+		"an adopted daemon must not be restarted, network or no network",
+	);
+	const notices = probeResult.filter(
+		({ channel }) => channel === "backend-update-not-available",
+	);
+	assert.equal(
+		notices.length,
+		1,
+		`the offline silent check said nothing: ${JSON.stringify(
+			probeResult.map(({ channel }) => channel),
+		)}`,
+	);
+	assert.equal(notices[0].payload.version, "0.56.11");
+	assert.equal(
+		notices[0].payload.runningVersion,
+		"0.56.2",
+		"the pair must carry the process's own reading, not `/health`'s",
+	);
+	assert.equal(notices[0].payload.restartable, false);
+	/*
+	 * AND IT SAYS NO RELEASE WAS READ, which is the half of this that is not the
+	 * gate: the pair is measured locally, so it is worth reporting offline - but
+	 * nothing on this pass compared the install against a published release, and the
+	 * renderer's sentence names the install. A payload that omitted this would have
+	 * the panel call an install "up to date" on a check that never looked.
+	 */
+	assert.equal(
+		notices[0].payload.releaseRead,
+		false,
+		"an offline check must not let the panel call the install current",
+	);
+	// The skip sentence is still what the release read does, and it still happens.
+	assert.ok(
+		logs.some((line) => line.includes("Skipping the server update check")),
+		`the release read was not skipped offline: ${logs.join(" | ")}`,
+	);
+	// Nothing was offered: the install is current, so the skew is the only news.
+	assert.ok(
+		!sent.some(({ channel }) => channel === "backend-update-available"),
+		JSON.stringify(sent.map(({ channel }) => channel)),
+	);
+});
+
+/**
+ * AND THE REPAIR'S OWN OUTCOME IS STILL NOT ANNOUNCED AS A SKEW.
+ *
+ * The offline report reads the pair at the moment of the send, and the send now
+ * sits directly after `settleBackendVersionDrift` - which may have just SIGTERMed
+ * the stale daemon and booted a successor on the install. A pair captured before
+ * that settle would put "The server is on an older build than the install" on the
+ * screen one instant after the app closed that gap, which is the round-1/round-2
+ * false-alarm shape returning on the patched path. So the app-owned offline case
+ * asserts SILENCE, from the successor's own reading.
+ */
+test("an offline repair is not announced as a skew it has just closed", async () => {
+	const { restarts, probeResult } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		netIsOnline: false,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.43",
+		servingInstall: { version: "0.54.44", appOwned: true, kind: "pip" },
+		probe: async (service, sent) => {
+			const before = sent.length;
+			await service.checkForBackendUpdates(true);
+			return sent.slice(before);
+		},
+	});
+
+	assert.deepEqual(restarts, ["0.54.43"], "the drift was not repaired");
+	assert.equal(
+		probeResult.filter(
+			({ channel }) => channel === "backend-update-not-available",
+		).length,
+		0,
+		`a closed skew was announced: ${JSON.stringify(
+			probeResult.map(({ channel, payload }) => [channel, payload]),
+		)}`,
+	);
+});
+
+/**
  * R1 and R7 of round 1: the paths that do NOT act, and what they say.
  *
  * The first cut returned before logging anything for every non-stale reading,
