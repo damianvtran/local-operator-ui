@@ -366,6 +366,17 @@ const MEASURE = `(() => {
  * inside the instrumented block and reaped correctly, which is why this one hid.
  */
 const PROFILE = mkdtempSync(join(tmpdir(), "lo-reveal-proof-"));
+/**
+ * Where the app this rig boots writes its logs.
+ *
+ * BESIDE THIS RUN'S PROFILE, and named through the app's own override, because the
+ * app's default is NOT the profile: `src/main/backend/logger.ts` composes it from
+ * Electron's `home`, the OS account's home on macOS, which neither the `HOME`
+ * variable nor `--user-data-dir` moves. Without this the rig appended its lines to
+ * the operator's own `~/Library/Application Support/Local Operator/logs/*.log`. A
+ * caller that wants them elsewhere names `LOCAL_OPERATOR_LOG_DIR` itself.
+ */
+const LOG_DIR = process.env.LOCAL_OPERATOR_LOG_DIR ?? join(PROFILE, "logs");
 /** The `npx` child, as soon as it exists, so a launch failure is reaped too. */
 let spawned = null;
 
@@ -488,6 +499,7 @@ const app = await (async () => {
 			env: (() => {
 				const env = {
 					...process.env,
+					LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
 					LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 				};
 				/*
