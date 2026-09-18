@@ -127,13 +127,15 @@ export const DocumentFreshnessBar: FC<{
 			 * keyboard reader gets the horizontal scroll too.
 			 */}
 			{/*
-			 * THE TOOLTIP CARRIES THE STAMP TOO (UX round 4, U15). The stamp is hidden
-			 * once the region is narrower than 22rem, because at that size the sentence -
-			 * the thing the row exists to state - is otherwise six pixels wide. The
-			 * figure itself is then one hover or one Tab away rather than lost.
+			 * THE TOOLTIP CARRIES THE STAMP TOO, and the sentence is the flexible half
+			 * (design D16, UX U17). The note is what shrinks and ellipsises when the row
+			 * is narrow, so the stamp - which cannot signal a truncation of its own - is
+			 * reachable here, one hover or one Tab away. NO PREFIX ON THE FIGURE: the
+			 * stamp's own string already begins "Modified", and "Last modified Modified
+			 * …" stuttered in every state (design D17).
 			 */}
 			<Tooltip
-				content={[detail, `Last modified ${stamp}`].filter(Boolean).join(" ")}
+				content={[detail, stamp].filter(Boolean).join(" · ")}
 				side="bottom"
 				delayDuration={1200}
 			>
@@ -166,7 +168,7 @@ export const DocumentFreshnessBar: FC<{
 					 */}
 					<span
 						className={cn(
-							"min-w-0 truncate whitespace-nowrap text-meta text-ink-muted tabular-nums",
+							"shrink-0 whitespace-nowrap text-meta text-ink-muted tabular-nums",
 						)}
 						data-tour-tag="canvas-document-modified"
 					>
@@ -189,7 +191,16 @@ export const DocumentFreshnessBar: FC<{
 					</output>
 					{note ? (
 						<span
-							className={cn("shrink-0 truncate text-meta text-ink-muted")}
+							/*
+							 * THE SENTENCE YIELDS, AND IT SAYS SO (design D16 / UX U17). It is
+							 * the flexible half (`min-w-0` lets it shrink below its content,
+							 * which is the only thing that lets `truncate`'s ellipsis fire at
+							 * all), and the stamp keeps its width beside it. Round 5 had it the
+							 * other way: a `shrink-0` note has a max-content box, so its own
+							 * ellipsis could never trigger and the region's `overflow-hidden`
+							 * sheared the text mid-word with no signal.
+							 */
+							className={cn("min-w-0 truncate text-meta text-ink-muted")}
 							data-tour-tag="canvas-document-freshness-note"
 						>
 							{note}

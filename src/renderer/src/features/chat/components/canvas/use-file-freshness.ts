@@ -2,7 +2,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import type { CanvasDocument } from "../../types/canvas";
-import { resetBufferToFile } from "./document-buffers";
+import { resetBufferToFile, resolveBuffer } from "./document-buffers";
 import {
 	type FreshnessFact,
 	type FreshnessOutcome,
@@ -214,7 +214,7 @@ export function answerFor(
 ): string | null | undefined {
 	switch (outcome.status) {
 		case "applied":
-			return "Reloaded";
+			return "Re-read";
 		/*
 		 * A byte-identical re-read is the answer to the one press that could not be
 		 * answered before (design D3, QA Q5, UX U3): the runner rewrites a forced
@@ -491,6 +491,14 @@ export function useFileFreshness({
 	const loadFile = useCallback(async () => {
 		setRefreshing(true);
 		try {
+			/*
+			 * CANCEL FIRST, THROUGH THE MECHANISM THE DISPOSITION NAMED (nit N2). Round
+			 * 4's note named `resolveBuffer` as the thing that kills every proposal born
+			 * before a resolution; the load cancelled through the registry directly, so
+			 * the named entry point had no caller under `src/`. It is the one that runs
+			 * now, and it does the same thing by construction.
+			 */
+			resolveBuffer(document.id);
 			const outcome = await runner.load(latest.current);
 			if ("document" in outcome) {
 				/*

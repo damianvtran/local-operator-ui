@@ -27,7 +27,6 @@ import {
 	proposeBuffer,
 	saveBuffer,
 } from "./document-buffers";
-import { setDocumentDirty } from "./file-freshness";
 
 type SpreadsheetPreviewProps = {
 	document: CanvasDocument;
@@ -739,9 +738,12 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	 * registry is what stops it, and this is the third surface that has to
 	 * report (see `file-freshness.ts`).
 	 */
-	useEffect(() => {
-		setDocumentDirty(document.id, hasUserChanges);
-	}, [document.id, hasUserChanges]);
+	/*
+	 * NO SECOND PUBLISHER (nit N4). This effect pushed the dirty registry itself, which
+	 * the owner already owns: every grid edit calls `proposeBuffer` with the revision
+	 * that carries the change, so the registry follows the buffer by construction. Two
+	 * publishers of one flag is the drift this round has been removing everywhere else.
+	 */
 	/*
 	 * THE BUFFER OWNER OWNS THIS SURFACE'S BYTES (round 4, I6).
 	 *
