@@ -24,6 +24,19 @@
  *                          Deterministic, so `--attempts` can honestly report
  *                          3/3 rather than "it passed once".
  *
+ *   --arm ua               The SAME run as `--arm cloudflare`, under the name that
+ *                          says what the two trees differ in for it: the app's user
+ *                          agent is compiled into the host
+ *                          (`src/main/browser/profile.ts`), so before/after IS
+ *                          two trees — origin/main presents
+ *                          `… Safari/537.36 LocalOperator/<version>` and this
+ *                          branch presents Chrome's own string with no product
+ *                          token. Every sample carries the UA the page ACTUALLY
+ *                          presented, and the arm's own lines report it, because
+ *                          an arm that sets a UA on a session the page is not in
+ *                          reports Electron's default and passes a challenge the
+ *                          real shape fails.
+ *
  *   --arm cloudflare       The real site from the operator's report, as
  *                          CORROBORATION ONLY. Two honest limits travel with it:
  *                          Cloudflare's own decisions differ per request, so the
@@ -54,7 +67,8 @@
  *     `app-tree-teardown.mjs` (group signal, then a `--user-data-dir` backstop).
  *
  * Usage:
- *   node scripts/browser-challenge-proof.mjs --app-tree <dir> [--arm local|cloudflare|both]
+ *   node scripts/browser-challenge-proof.mjs --app-tree <dir>
+ *     [--arm local|cloudflare|ua|both|all]
  *     [--attempts N] [--url <url>] [--keep] [--out <dir>]
  */
 
@@ -571,6 +585,11 @@ const PAGE_PROBE = `(() => {
   return {
     title: document.title,
     url: location.href,
+    // The UA the page ACTUALLY presented, not the one the app asked for: an arm
+    // that sets a UA on a session the page is not in reports Electron's default
+    // and passes a challenge the real shape fails, which is the trap this field
+    // exists to close.
+    ua: navigator.userAgent,
     vis: document.visibilityState,
     raf: typeof window.__raf === 'number' ? window.__raf : null,
     status: window.__challenge ?? 'n/a',
@@ -743,7 +762,7 @@ async function runLocalAttempt({ attempt, servers }) {
 	return outcome === "PASS";
 }
 
-async function runCloudflareAttempt({ attempt }) {
+async function runRealSiteAttempt({ attempt, arm }) {
 	const state = await waitForState();
 	const renderer = await connectRenderer();
 	await renderer.send("Runtime.enable").catch(() => {});
@@ -795,15 +814,15 @@ async function runCloudflareAttempt({ attempt }) {
 		(line) => line.split(": ").at(-1) ?? line,
 	);
 	say(
-		`RESULT arm=cloudflare attempt=${attempt} outcome=${passed ? "PASS" : "FAIL"} cookies=${JSON.stringify(cookies)} title=${JSON.stringify(last.title)} raf=${last.raf} vis=${last.vis} refusals=${refusalLines.length} refused=${JSON.stringify(refusedOrigins)}`,
+		`RESULT arm=${arm} attempt=${attempt} outcome=${passed ? "PASS" : "FAIL"} cookies=${JSON.stringify(cookies)} title=${JSON.stringify(last.title)} ua=${JSON.stringify(last.ua)} vis=${last.vis} refusals=${refusalLines.length} refused=${JSON.stringify(refusedOrigins)}`,
 	);
 	record(
-		`cloudflare attempt ${attempt}`,
-		`cookies ${JSON.stringify(cookies)}\nlast sample ${JSON.stringify(last)}\nrefused hops ${refusalLines.length}: ${JSON.stringify(refusedOrigins)}`,
+		`${arm} attempt ${attempt}`,
+		`cookies ${JSON.stringify(cookies)}\nlast sample ${JSON.stringify(last)}\nuser agent presented: ${last.ua}\nrefused hops ${refusalLines.length}: ${JSON.stringify(refusedOrigins)}`,
 	);
 	const rect = await contentRect(renderer);
 	const view = await viewport(renderer);
-	const frame = await captureFrame(`cloudflare-attempt${attempt}`, {
+	const frame = await captureFrame(`${arm}-attempt${attempt}`, {
 		renderer,
 		state,
 		token,
@@ -843,8 +862,21 @@ async function main() {
 	}
 
 	const results = [];
-	const modes = { local: "headless", cloudflare: "inactive" };
-	const arms = ARM === "both" ? ["local", "cloudflare"] : [ARM];
+	/*
+	 * The window mode per arm, and why the real-site arms differ from the local
+	 * one: a captcha can only be solved - and, for this app, only completed - in a
+	 * page whose window is on screen at all (the frozen-tab limit in the design
+	 * doc). `--arm ua` is the SAME run as `--arm cloudflare` under a name that says
+	 * what the two trees differ in: the app's user agent, which is compiled in, so
+	 * the two arms ARE the two built trees.
+	 */
+	const modes = { local: "headless", cloudflare: "inactive", ua: "inactive" };
+	const arms =
+		ARM === "both"
+			? ["local", "cloudflare"]
+			: ARM === "all"
+				? ["local", "cloudflare", "ua"]
+				: [ARM];
 	try {
 		for (const arm of arms) {
 			let passed = 0;
@@ -859,7 +891,7 @@ async function main() {
 					const ok =
 						arm === "local"
 							? await runLocalAttempt({ attempt, servers })
-							: await runCloudflareAttempt({ attempt });
+							: await runRealSiteAttempt({ attempt, arm });
 					if (ok) passed += 1;
 				} catch (error) {
 					say(`ERROR arm=${arm} attempt=${attempt} ${String(error)}`);

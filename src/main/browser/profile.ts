@@ -1,4 +1,4 @@
-import { type Session, app, session } from "electron";
+import { type Session, session } from "electron";
 
 /**
  * The persistent browsing profile, and the session-level handlers that go with
@@ -26,16 +26,43 @@ export const BROWSER_PARTITION = "persist:local-operator-browser";
 /**
  * The browser session's user agent.
  *
- * The design (16.4) is explicit that this is a judgement call with a real
- * hazard: sites sniff, and a jar that persists logins is worse than useless if
- * a bank refuses it. This follows the design's recommendation (c) — Chromium's
- * own Chrome-shaped string from the running runtime, with the `Electron/` token
- * dropped and a `LocalOperator/<app version>` product token kept, so the host
- * identifies itself honestly without presenting as a stock browser it is not.
+ * Chromium's own Chrome-shaped string from the running runtime, with NO product
+ * token: the `Electron/` suffix is dropped, and so is the
+ * `LocalOperator/<version>` one this used to carry.
+ *
+ * WHY THE TOKEN IS GONE, and the measurement that settled it. The design
+ * (`docs/design/ui-browser-tab.md` 16.4 in `damianvtran/local-operator`) framed
+ * this as a judgement call with three honest options and recommended (c) — a
+ * Chrome string with a `LocalOperator/` product token — naming the experiment
+ * that settles it: "probing the operator's own sites". That experiment has now
+ * been run on exactly the site in the operator's own report, same URL, same
+ * minute-scale window, no CDP, one variable changed:
+ *
+ *   - plain Chrome-shaped UA: the managed challenge completes in ~2 s
+ *     (title "Page not found – Muddy River News", no challenge element,
+ *     rAF ~430/s);
+ *   - the same string plus `LocalOperator/<version>`: the page stays on
+ *     "Performing security verification" for 30 s, with the page ALIVE
+ *     (rAF ~385/s, `document.visibilityState === "visible"`).
+ *
+ * So the stalled arm is not a frozen or throttled renderer: Cloudflare serves
+ * the interstitial and then never completes it for a UA it does not trust. The
+ * answer to 16.4's question is therefore (b), not (c) — and a browser that cannot
+ * get past a challenge is not one a user can use, however honestly it identifies
+ * itself. What is given up by dropping the token is stated plainly: this app is no
+ * longer distinguishable by UA. Anything that wants to identify it must do so on
+ * a channel it owns (its own requests and its own endpoints), not by a suffix on
+ * a string that third-party sites read and act on.
  *
  * Composed from `process.versions.chrome` rather than hardcoded: a frozen Chrome
  * version in a UA advertises a browser that shipped years ago, which is its own
  * compatibility problem on sites that gate features by version.
+ *
+ * The evidence arm that measures this is `scripts/browser-challenge-proof.mjs`'s
+ * real-site arm, which asserts the UA each attempt ACTUALLY presented
+ * (`navigator.userAgent`) rather than the one it asked for — an arm that sets a UA
+ * on a session the page is not in reports Electron's default and passes a
+ * challenge the real shape fails.
  */
 export function browserUserAgent(): string {
 	const chrome = process.versions.chrome ?? "0";
@@ -45,7 +72,7 @@ export function browserUserAgent(): string {
 			: process.platform === "win32"
 				? "Windows NT 10.0; Win64; x64"
 				: "X11; Linux x86_64";
-	return `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chrome} Safari/537.36 LocalOperator/${app.getVersion()}`;
+	return `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chrome} Safari/537.36`;
 }
 
 /** What the session handlers tell the rest of the app. */
