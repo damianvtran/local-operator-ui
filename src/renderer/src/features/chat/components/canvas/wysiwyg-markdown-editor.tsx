@@ -874,12 +874,13 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 * check driven off the store would see no change and overwrite the typing.
 	 */
 
-	/*
-	 * The unmount is one call: the owner flushes a write that should happen, commits
-	 * the buffer through the port registered above (an upsert, which is what makes it
-	 * work after the document has left the store's file list - code review round 4,
-	 * R4-7), and keeps the dirty flag while the document is held (R4-1).
-	 */
+	/* The unmount is one call: the owner flushes a write that should happen, hands the
+	 * buffer's current words to the store's copy of this document through the port
+	 * registered above, and keeps the dirty flag while the document is held (R4-1).
+	 * On the close path the document has already left `files`, so the commit updates
+	 * nothing - and that is the point: what it must NOT do is put the document back
+	 * (see `commitCanvasDocument`), because the words are the buffer owner's and it
+	 * hands them back to the screen if the file is opened again. */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document; the owner holds the text and the store handoff.
 	useEffect(() => () => closeBuffer(document.id), [document.id]);
 

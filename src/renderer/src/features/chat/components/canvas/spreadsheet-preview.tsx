@@ -800,10 +800,15 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	}, [conversationId, document, serialise]);
 	/*
 	 * The unmount is one call. The owner flushes a write that should happen THROUGH
-	 * THE GATE, and commits the reader's grid - serialised - through the port above,
-	 * whatever the file's state is: that is what closes this surface's old gap, since
-	 * a close while the document was held used to keep the words nowhere at all. The
-	 * dirty flag and the hold are the owner's to keep while the fact stands (R4-1).
+	 * THE GATE, and hands the reader's grid - serialised - to the store's copy of this
+	 * document through the port above, whatever the file's state is: that is what
+	 * closes this surface's old gap, since a close while the document was held used to
+	 * keep the words nowhere at all. Where the close removed the document from `files`
+	 * there is no copy to update, and none is invented (see `commitCanvasDocument`):
+	 * the owner keeps the serialised words, and `documentsForCanvas` hands them to this
+	 * component again - whose own parse of `document.content` restores the grid - when
+	 * the file is opened again. The dirty flag and the hold are the owner's to keep
+	 * while the fact stands (R4-1).
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document; the owner holds the bytes and the store handoff.
 	useEffect(() => () => closeBuffer(document.id), [document.id]);

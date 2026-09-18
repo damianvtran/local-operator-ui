@@ -46,8 +46,9 @@ import {
  *   await, so a proposal born before the resolution cannot land after it.
  * - **I5 - lifecycle is monotone.** The generation bumps, never deletes; a cancelled
  *   write stays cancelled; the dirty flag is KEPT for a held document; and closing a
- *   document commits the buffer through a port that works even when the document has
- *   already left the store's file list.
+ *   document commits the buffer to the store's copy of it if that document is still
+ *   open - never by re-listing a document the reader closed, which is what an
+ *   append here does (see `commitCanvasDocument`).
  *
  * WHY AN OWNER RATHER THAN FIXING THE FOUR SITES. Each of the four was fixed in
  * round 3 by adjusting where a component read its text or when it fired; each fix
@@ -127,6 +128,16 @@ type BufferEntry = {
 	 * state - never from a snapshot the caller took earlier (I1).
 	 */
 	serialize?: () => { text: string; encoding?: "utf-8" | "base64" };
+	/**
+	 * The last bytes this buffer materialised, and the token they were built from.
+	 *
+	 * Written where `serialize` is ALREADY called - a save and a close - and never
+	 * while a component renders: `serialize` exists precisely because building a
+	 * workbook is too expensive to do on every edit, and a projection that called it
+	 * from render would undo that. The token is compared before the text is used, so
+	 * a cached text is never handed out for words it was not built from.
+	 */
+	materialised?: { token: string; text: string };
 	/** The mtime of the file version the text on screen was read at. */
 	baselineMtime: number | undefined;
 	encoding?: "utf-8" | "base64";
@@ -139,12 +150,29 @@ type BufferEntry = {
 const buffers = new Map<string, BufferEntry>();
 
 /**
- * Put one document back into the store, whether or not it is still listed.
+ * The store's copy of a document that is OPEN - and nothing else.
  *
- * The editors' unmount commits used to map over `canvasState.files`, and closing a
- * tab removes the document from that list BEFORE the cleanup runs - so on the close
- * path the commit did nothing at all (code review R4-7). An upsert cannot lose the
- * case it exists for.
+ * A commit is the buffer owner's handoff of a document's current bytes and the
+ * mtime they were derived from, and it has one job: keep the store's copy of an
+ * OPEN document equal to what the reader sees. A document that is not in `files`
+ * is not open - the reader closed its tab - so there is nothing to keep equal,
+ * and APPENDING it back is how a closed tab returned from the dead. That append
+ * ran from the viewer's own unmount cleanup, which fires AFTER the close removed
+ * the document, so every close immediately re-opened what it had just closed:
+ * the flicker the reader reported, and the reason `files` is the list that
+ * decides both the strip and the pane.
+ *
+ * WHY AN UPDATE RATHER THAN A MAP OVER A SNAPSHOT (the case R4-7 named, kept):
+ * the editors' unmount commits used to map over a `canvasState.files` they had
+ * read earlier, so a commit that raced another store write dropped it - and on
+ * the close path it matched nothing at all, because the close had already
+ * removed the document. `updateOneFile` maps INSIDE the store's own `set` and is
+ * a no-op for an id that is not listed, which is exactly the stance this needs.
+ *
+ * WHERE THE READER'S UN-WRITTEN WORDS GO INSTEAD. Not here, and not into `files`:
+ * they stay in the buffer owner, which is the only thing that knows them, and
+ * `documentsForCanvas` puts them back on screen if the same document is opened
+ * again. That function states the promise in full.
  */
 export function commitCanvasDocument(
 	conversationId: string,
@@ -152,16 +180,14 @@ export function commitCanvasDocument(
 ): void {
 	const state = useCanvasStore.getState();
 	const conversation = state.conversations[conversationId];
-	if (!conversation) return;
-	const listed = conversation.files.some((file) => file.id === document.id);
-	state.setFiles(
-		conversationId,
-		listed
-			? conversation.files.map((file) =>
-					file.id === document.id ? document : file,
-				)
-			: [...conversation.files, document],
-	);
+	/*
+	 * NOT LISTED MEANS NOT OPEN, and a document that is not open has no store copy
+	 * to keep current. This is the whole fix for the reported tab, stated in one
+	 * line, and it is a guard rather than an append on purpose: the append is what
+	 * a reader watches a tab they closed come back from.
+	 */
+	if (!conversation?.files.some((file) => file.id === document.id)) return;
+	state.updateOneFile(conversationId, document);
 }
 
 const dirtyOf = (entry: BufferEntry): boolean =>
@@ -291,6 +317,75 @@ export function bufferText(documentId: string): string | null {
 	return entry.serialize ? entry.serialize().text : entry.token;
 }
 
+/**
+ * The documents as the canvas should RENDER them: where the buffer owner still
+ * holds words of its own, those are the document.
+ *
+ * WHAT THIS IS FOR, in the shape of the case that needs it. A close whose write
+ * the gate REFUSED (the file moved on disk under the reader, or is missing, or
+ * cannot be looked at) must not drop the words the reader typed, and the tab
+ * said it closed - so `files` no longer lists the document and no comment there
+ * can carry them. They are not lost: `closeBuffer` leaves the buffer, dirty and
+ * held, in this module. What was missing is a way BACK to them, because opening
+ * a document again goes through the files grid, whose click handler re-reads the
+ * FILE and REPLACES the entry ("the entry on screen may hold stale bytes from an
+ * earlier read of the same file"), so the store's copy is the file's version and
+ * the editor mounts from it.
+ *
+ * So the words win here, at the one place the store's open documents become the
+ * canvas's documents: a document whose buffer holds un-written words is handed
+ * over as those words, at the mtime they were derived from - which is the truth
+ * about the version on screen, and what makes the freshness check report the
+ * file as moved on rather than as current. The dirty and held registries are
+ * untouched, so the write gate still refuses the file's version over them.
+ *
+ * THE PROMISE, so it is stated once and can be argued with: the words survive
+ * the close and are back on screen when the same PATH is opened again IN THIS
+ * SESSION. They do not survive an app restart - the registry is module state -
+ * and that is the pre-existing shape of the hold rather than something a close
+ * adds: an OPEN held document loses the same words at the same moment, because
+ * the two registries that protect them die with the process while the store's
+ * bytes do not.
+ *
+ * WHAT THIS IS NOT. It is not a second `files`: the list it walks is still the
+ * open documents, it never adds one, and a document with nothing un-written is
+ * handed over as the store's own object. It is a projection over the READ, which
+ * is why it can read module state the store cannot observe - and why the same
+ * input array comes back by identity when nothing is projected, so a canvas with
+ * no un-written words renders exactly as it did before.
+ */
+export function documentsForCanvas(
+	documents: CanvasDocument[],
+): CanvasDocument[] {
+	let projected: CanvasDocument[] | null = null;
+	documents.forEach((document, index) => {
+		const entry = buffers.get(document.id);
+		if (!entry || !dirtyOf(entry)) return;
+		/*
+		 * A surface whose bytes are expensive to build (the grid's workbook) hands over
+		 * only what was ALREADY materialised for these exact words, i.e. at a save or a
+		 * close - which is where a held document's words come from. Nothing is built
+		 * here: this runs inside a render.
+		 */
+		const text = entry.serialize
+			? entry.materialised?.token === entry.token
+				? entry.materialised.text
+				: null
+			: entry.token;
+		if (text === null) return;
+		/* The store already holds these words: the projected document would be a
+		 * copy of it, and a new object identity per render for nothing. */
+		if (text === document.content) return;
+		if (!projected) projected = [...documents];
+		projected[index] = {
+			...document,
+			content: text,
+			readMtimeMs: entry.baselineMtime,
+		};
+	});
+	return projected ?? documents;
+}
+
 export function bufferIsDirty(documentId: string): boolean {
 	const entry = buffers.get(documentId);
 	return entry ? dirtyOf(entry) : false;
@@ -332,6 +427,11 @@ export async function saveBuffer(
 	 * reproduce it end to end, which is why the suite holds it instead.
 	 */
 	const sent = entry.token;
+	/* The bytes are materialised now, so the projection can hand them out without
+	 * building them again - see `materialised`. The token is the one these bytes came
+	 * from, so a keystroke that lands during the awaits below invalidates the cache
+	 * rather than mislabelling it. */
+	entry.materialised = { token: sent, text };
 	const path = entry.path;
 
 	const before = await ports.probe(path);
@@ -437,10 +537,14 @@ export async function saveBuffer(
 /**
  * Close a document: flush what should be written, keep what must not be lost.
  *
- * I5. The commit is the port the editor registered, and it is an upsert - which is
- * why it works even when the document has already left `canvasState.files`, the case
- * R4-7 measured (closing a tab removes it from that list BEFORE the cleanup runs, so
- * a commit that mapped over the list did nothing).
+ * I5. The commit is the port the editor registered, and it hands the store the
+ * words THIS buffer holds. Whether that document is still open is the store's
+ * question, not this one's: the close path has already taken it out of `files`
+ * (which is why a commit that mapped over a snapshot matched nothing at all -
+ * the case R4-7 measured), and re-listing it there is the reader's closed tab
+ * coming back. When the write is refused the words stay HERE - dirty and held -
+ * and `documentsForCanvas` puts them back on screen if the document is opened
+ * again in this session.
  *
  * The dirty flag is deliberately NOT cleared here while the document is held: the
  * fact is still true, and a following activation must not apply the file's version
@@ -451,6 +555,9 @@ export function closeBuffer(documentId: string): void {
 	if (!entry) return;
 	entry.closed = true;
 	const committed = entry.serialize ? entry.serialize().text : entry.token;
+	/* The close materialises the bytes anyway, so they are cached for the projection
+	 * (the words a refused write leaves on screen are handed back from here). */
+	entry.materialised = { token: entry.token, text: committed };
 	if (dirtyOf(entry)) {
 		void saveBuffer(documentId)
 			.catch(() => {
