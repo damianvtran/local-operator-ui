@@ -10785,6 +10785,60 @@ export const updateManagedPython = async (options, install, decision) =>
 `;
 
 /**
+ * A SYNTHETIC INTERPRETER for the app-owned publish, written into a scratch
+ * directory of this case's own.
+ *
+ * Review R6 asked for the failing case to be driven through
+ * `installEnvironmentInto`'s own pip branch rather than a hand-written error
+ * string, and this is the smallest thing that does it: a shell script that answers
+ * the `-m venv` step the way a working interpreter would (creating the new
+ * environment's `bin/python` as a copy of itself) and then fails every later
+ * invocation - the pip install, and the `pip show` read-back - with the machine's
+ * own words. The shipped code starts it, captures its output and reports it, so the
+ * text the assertions match on is the child's rather than the fixture's.
+ *
+ * WHY A PILOT RATHER THAN A REAL PIP: this case is about what the app does with a
+ * failure, not about pip, and the real path needs ~450 MB of free space and a wheel
+ * closure. The interpreter here is not a stub of the app - the app runs it for real.
+ */
+const writeInstallerPilot = ({ pipFailure = null, venvFailure = null }) => {
+	const dir = mkdtempSync(join(tmpdir(), "lo-installer-pilot-"));
+	const interpreter = join(dir, "python");
+	/*
+	 * TWO ARMS, because review R6 found the same gap on both failing steps of the
+	 * publish: `venvFailure` makes the FIRST step fail (nothing is created), while
+	 * `pipFailure` is the step that follows a successful creation - the ~100 MB
+	 * environment and the wheel closure, which is where a disk that fills mid-update
+	 * is most often met. Both write the machine's words to stderr and exit non-zero,
+	 * which is what a real interpreter does.
+	 */
+	const script = venvFailure
+		? `#!/bin/sh
+cat >&2 <<'LO_PILOT_VENV_FAILURE'
+${venvFailure}
+LO_PILOT_VENV_FAILURE
+exit 1
+`
+		: `#!/bin/sh
+# A synthetic interpreter: venv creation succeeds (the environment's interpreter is
+# a copy of this script, so the NEXT step is what fails), everything else is the pip
+# step and fails with the machine's own output.
+if [ "$1" = "-m" ] && [ "$2" = "venv" ]; then
+	mkdir -p "$3/bin"
+	cp "$0" "$3/bin/python"
+	chmod +x "$3/bin/python"
+	exit 0
+fi
+cat >&2 <<'LO_PILOT_PIP_FAILURE'
+${pipFailure}
+LO_PILOT_PIP_FAILURE
+exit 1
+`;
+	writeFileSync(interpreter, script, { mode: 0o755 });
+	return { dir, interpreter };
+};
+
+/**
  * One app-owned update attempt, driven end to end through `updateBackend`.
  *
  * WHAT IS REAL HERE: the dispatch (`updateBackend`'s APP_BUNDLED_VENV branch), the
@@ -10804,7 +10858,19 @@ const driveAppOwnedUpdate = async ({
 	target = "0.56.12",
 	installVersion = target,
 	replaced = true,
-	publishThrows = null,
+	/*
+	 * THE REAL INSTALLER, DRIVEN (review R6). Null means the callback is stubbed
+	 * (`calls.installCallbacks`), which is what every ordering case wants. A value
+	 * means `installEnvironmentInto` itself runs, driven by a SYNTHETIC INTERPRETER
+	 * written into this case's own scratch directory: it answers the `-m venv` step
+	 * the way a working interpreter would (creating the environment's interpreter as
+	 * a copy of itself) and then fails the pip step with the text below - which is
+	 * {"pipFailure": "..."}. That is the only way to drive the branch a full disk is
+	 * actually met on without a real pip and a real disk, and it is why the case no
+	 * longer hands the service a hand-written error string: the string this asserts
+	 * against is captured by the shipped code from a child it started.
+	 */
+	installerPilot = null,
 	servingBeforeRestart = null,
 	servingAfterRestart = installVersion,
 	restartOk = true,
@@ -10820,6 +10886,13 @@ const driveAppOwnedUpdate = async ({
 	 */
 	startupMode = "APP_BUNDLED_VENV",
 	servingAppOwned = false,
+	/*
+	 * Whether this launch ADOPTED the daemon rather than starting it - the other half
+	 * of `backendIsAppOwned()`, and the reading review R8 is about: an adopted daemon
+	 * serving the app's own environment is an install the app may MOVE but not one it
+	 * may RESTART.
+	 */
+	externalBackend = false,
 } = {}) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-app-owned-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-app-owned-userdata-"));
@@ -10841,17 +10914,36 @@ const driveAppOwnedUpdate = async ({
 	const order = [];
 	const sent = [];
 	const calls = { installers: [], installCallbacks: 0, stops: 0, restarts: 0 };
+	// The synthetic interpreter, when this case drives the real installer: it is the
+	// fixture's `python` argument, so the shipped `installEnvironmentInto` runs the
+	// `venv` and pip steps itself (review R6).
+	const pilot = installerPilot ? writeInstallerPilot(installerPilot) : null;
+	if (pilot) globalThis.__loManagedPilot = pilot.interpreter;
+	const extraScratch = pilot ? [pilot.dir] : [];
 	globalThis.__loManagedRoot = join(userData, "managed-python");
 	globalThis.__loManagedPublished = () => published;
 	globalThis.__loManagedUpdate = async ({ install, decision }) => {
 		order.push("publish");
-		if (publishThrows) throw new Error(publishThrows);
 		for (let index = 0; index < installRuns; index++) {
 			calls.installers.push(decision.target);
-			await install(
+			const landed = await install(
 				`${globalThis.__loManagedRoot}/environments/g${index}`,
-				"/synthetic/python",
+				globalThis.__loManagedPilot ?? "/synthetic/python",
 			);
+			/*
+			 * THE MODULE'S OWN CONVERSION, reproduced because this fixture stands AT
+			 * that boundary: the real `publishGeneration` turns the installer's `false`
+			 * into this fixed sentence and throws it. A fixture that ignored the
+			 * boolean - as this one did until review round 3 - let the attempt complete
+			 * as a success over an installer that had failed, which is precisely the
+			 * R6 defect: what the reader is told about a failure has to be asserted
+			 * through the shape the module actually produces, or the case proves the
+			 * wiring and not the behaviour.
+			 */
+			if (landed === false)
+				throw new Error(
+					"Backend preparation did not complete. Your previous environment and data were preserved.",
+				);
 		}
 		return {
 			selection: {
@@ -10881,7 +10973,9 @@ const driveAppOwnedUpdate = async ({
 		{
 			getStartupMode: () => service.LocalOperatorStartupMode[startupMode],
 			getBackendUrl: () => "http://127.0.0.1:9",
-			isUsingExternalBackend: () => false,
+			// The launch's own answer about who owns the daemon: true for an ADOPTED
+			// one, which is the reading review R8 found the completions contradicting.
+			isUsingExternalBackend: () => externalBackend,
 			setAutoUpdating: () => {},
 			stop: async () => {
 				calls.stops += 1;
@@ -10904,6 +10998,7 @@ const driveAppOwnedUpdate = async ({
 			"__loManagedRoot",
 			"__loManagedPublished",
 			"__loManagedUpdate",
+			"__loManagedPilot",
 		]) {
 			// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 			delete globalThis[name];
@@ -10914,6 +11009,10 @@ const driveAppOwnedUpdate = async ({
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
+		// By literal path, and only for a directory this run made: every teardown here
+		// removes a `mkdtemp` root of its own and nothing else.
+		for (const dir of extraScratch)
+			rmSync(dir, { recursive: true, force: true });
 	};
 	try {
 		updateService.backendUrl = "http://127.0.0.1:9";
@@ -10934,11 +11033,18 @@ const driveAppOwnedUpdate = async ({
 			order.push("wait-version");
 			return healthy && restartOk ? servingAfterRestart : null;
 		};
-		updateService.installEnvironmentInto = async () => {
-			calls.installCallbacks += 1;
-			order.push("install");
-			return true;
-		};
+		/*
+		 * The installer is stubbed for every ordering case - the real one creates an
+		 * environment and runs pip - and LEFT ALONE when the case supplied a pilot, so
+		 * the shipped branch runs and its own captured output is what the case reads
+		 * (review R6).
+		 */
+		if (!pilot)
+			updateService.installEnvironmentInto = async () => {
+				calls.installCallbacks += 1;
+				order.push("install");
+				return true;
+			};
 		/*
 		 * The serving install's own identity, for the arms that resolve it: the
 		 * routing case drives a global launch whose daemon runs from the app's
@@ -11133,19 +11239,31 @@ test("a restart that leaves the server down is reported as that, not as a succes
 	}
 });
 
-test("a publish that fails leaves the daemon serving and names an actionable cause", async () => {
+test("a publish whose pip step runs out of disk reaches the reader with the remedy", async () => {
 	/*
-	 * REVIEW R2, twice over: a full disk must reach the reader as the remedy this
-	 * product already has (the causes table, shared with the installer rather than
-	 * copied), and the machine's own words must travel as their OWN block, because
-	 * `splitInstallerOutput` renders the first blank line as the boundary between the
-	 * app's sentence and the monospace output a support conversation needs.
+	 * REVIEW R6, and what this case used to be is the finding. It handed the service a
+	 * HAND-WRITTEN error string (`publishThrows`) - an assertion about the wiring one
+	 * level above the behaviour, which is how the gap stayed green through round 1:
+	 * the string the module actually threw for a mid-install failure was the fixed
+	 * "Backend preparation did not complete..." sentence, which no entry in
+	 * `SETUP_FAILURE_CAUSES` matches, so the disk-space remedy this product already
+	 * owns was UNREACHABLE for the failure it was written for.
+	 *
+	 * Now the publish fails where a full disk actually stops it: the real
+	 * `installEnvironmentInto` runs, its `python -m venv` step succeeds against the
+	 * synthetic interpreter below, and its pip step (the ~100 MB environment plus the
+	 * wheel closure) fails with the machine's own words. The assertions are on the
+	 * message the READER receives, so they fail the moment that output stops travelling
+	 * (shown red by returning `false` from the installer again, which is exactly the
+	 * shipped shape this round removes).
 	 */
 	const driven = await driveAppOwnedUpdate({
 		published: "0.56.8",
 		target: "0.56.12",
-		publishThrows:
-			"Command failed: pip install local-operator==0.56.12\nError: [Errno 28] No space left on device",
+		installerPilot: {
+			pipFailure:
+				"ERROR: Could not install packages due to an OSError: [Errno 28] No space left on device",
+		},
 	});
 	try {
 		assert.equal(driven.result, false);
@@ -11161,6 +11279,9 @@ test("a publish that fails leaves the daemon serving and names an actionable cau
 			/ran out of disk space while setting up the backend\. Free some space and retry\./,
 			sentence,
 		);
+		// The machine's own words, in their OWN block: `splitInstallerOutput` renders the
+		// first blank line as the boundary between the app's sentence and the monospace
+		// output a support conversation needs.
 		assert.match(rest.join("\n\n"), /No space left on device/);
 		assert.equal(
 			driven.calls.restarts,
@@ -11168,6 +11289,87 @@ test("a publish that fails leaves the daemon serving and names an actionable cau
 			"a failure to publish may not move the daemon",
 		);
 		assert.deepEqual(completions(driven.sent), []);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a publish whose venv step fails carries the child's output too", async () => {
+	/*
+	 * The other half of R6's chain, and the reason it is a pair rather than one case:
+	 * BOTH failing steps used to `return false` and were converted, one level down,
+	 * into a sentence no cause table can read. A reader whose disk filled while the
+	 * environment was being created got the same remedy-less message as one whose pip
+	 * step failed, so each arm is driven rather than one standing in for both.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		published: "0.56.8",
+		target: "0.56.12",
+		installerPilot: {
+			venvFailure:
+				"python3: could not create /tmp/venv: [Errno 28] No space left on device",
+		},
+	});
+	try {
+		assert.equal(driven.result, false);
+		const errors = updateErrors(driven.sent);
+		assert.equal(errors.length, 1);
+		assert.match(
+			errors[0].payload.message,
+			/ran out of disk space while setting up the backend\. Free some space and retry\./,
+			errors[0].payload.message,
+		);
+		assert.match(
+			errors[0].payload.message,
+			/No space left on device/,
+			"and the child's own words travel with it",
+		);
+		assert.equal(driven.calls.restarts, 0);
+		assert.deepEqual(completions(driven.sent), []);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a completion on an adopted daemon reads the ownership of the daemon it did not start", async () => {
+	/*
+	 * REVIEW R8, on the arm where the two readings inside one launch disagreed. An
+	 * adopted daemon (`EXISTING_SERVER`, so `backendIsAppOwned()` is FALSE) that serves
+	 * from the app's own environment IS an install this app may move - `appOwnsInstall`
+	 * says so, and the press is routed to the publish path for exactly that reason. The
+	 * three app-owned completions nonetheless asserted `restartable: true`, so the
+	 * renderer offered "Restart the server" on a launch whose own answer about who owns
+	 * the daemon is no: the "action that cannot act" class design D5 named, re-created
+	 * from a hardcoded payload field rather than from the ownership predicate.
+	 *
+	 * This is the simplest of those three arms to reach - the press that published
+	 * nothing because the published release is already the install - and the assertion
+	 * is on the payload the renderer's control is gated by, so it fails while the field
+	 * is hardcoded.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		startupMode: "EXISTING_SERVER",
+		servingAppOwned: true,
+		externalBackend: true,
+		published: "0.56.12",
+		target: "0.56.12",
+		replaced: false,
+		servingBeforeRestart: "0.56.12",
+	});
+	try {
+		assert.equal(driven.result, true);
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1);
+		assert.equal(
+			completed[0].payload.restartable,
+			false,
+			`an adopted daemon is not the app's to restart: ${JSON.stringify(completed[0].payload)}`,
+		);
+		assert.equal(
+			completed[0].payload.appOwnedEnvironment,
+			true,
+			"while the ENVIRONMENT it serves from is still the app's own - the two readings differ on purpose",
+		);
 	} finally {
 		driven.dispose();
 	}

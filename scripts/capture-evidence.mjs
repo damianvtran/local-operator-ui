@@ -2509,6 +2509,17 @@ export const STORIES = [
 	 * is their before-half.
 	 */
 	["common-updatenotification--backend-update-in-flight", 1280, 900],
+	/*
+	 * THE TWO PHASE PANELS, which the frame above is NOT (UX U6). `-in-flight` opens
+	 * on a press whose phase has not arrived, so it renders the phase-null fallback;
+	 * these two carry `installing` and `restarting`, which is what a reader watches
+	 * for the ~85 s of a publish and the seconds of the restart. They are declared so
+	 * a SWEEP produces them too: an undeclared story would leave its frames as an
+	 * unexplained directory on disk, which is the failure the sweep's own count
+	 * exists to prevent.
+	 */
+	["common-updatenotification--backend-update-installing", 1280, 900],
+	["common-updatenotification--backend-update-restarting", 1280, 900],
 	["common-updatenotification--backend-update-failed", 1280, 900],
 	/*
 	 * THE APP-OWNED ARM OF THE SKEW, and the pair this change is about: the install

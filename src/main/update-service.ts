@@ -298,6 +298,27 @@ function runCommand(
 }
 
 /**
+ * A failed child's own words, as ONE block, for a caller that has to diagnose it.
+ *
+ * WHY THIS EXISTS (review R6): the app-owned publish turns the installer's failure
+ * into an error message, and `setupFailureCause` - the shared table the installer
+ * and this path both ask - matches on that message's TEXT. A failure reported as a
+ * bare `false` therefore arrived as the app's fixed sentence, which no cause entry
+ * matches, so the actionable remedies (disk space first among them) were
+ * unreachable for the failures they were written for. The child's `stderr` is the
+ * half that carries them: pip and `venv` report the machine's error there while
+ * `stdout` carries progress. Both are kept, `stderr` first, because "[Errno 28] No
+ * space left on device" is the sentence the reader and the cause table need and the
+ * progress log is what makes it interpretable.
+ */
+function installerOutputOf(run: { stdout: string; stderr: string }): string {
+	return [run.stderr.trim(), run.stdout.trim()]
+		.filter((part) => part.length > 0)
+		.join("\n")
+		.trim();
+}
+
+/**
  * The update service log, as a path a renderer surface can open.
  *
  * Every failing branch of this service ends with a sentence telling the reader the
@@ -5273,10 +5294,16 @@ export class UpdateService {
 	 * or lands on the by-hand panel - a control whose label promises a restart the
 	 * press does not perform.
 	 *
-	 * Only `APP_BUNDLED_VENV` is the app's own environment. `EXISTING_SERVER` and
-	 * `NOT_STARTED` are not installs the app may move at all, and the two are stated
-	 * rather than left to a default so a new mode has to be classified here on
-	 * purpose instead of inheriting an answer.
+	 * `APP_BUNDLED_VENV` is the app's own environment by construction and
+	 * `NOT_STARTED` has no daemon at all, so neither has anything to ask the serving
+	 * root about. `GLOBAL_INSTALL` and `EXISTING_SERVER` BOTH consult it rather than
+	 * being decided by the mode (review R8, which caught this paragraph saying the
+	 * opposite of the switch below): the mode answers who LAUNCHED the process, and
+	 * a process launched elsewhere can still read the app's managed tree - an
+	 * adopted daemon serving out of it is an install this app may move, and that was
+	 * the operator's own machine (design D5, #318). Both arms are stated rather than
+	 * left to a default so a new mode has to be classified here on purpose instead of
+	 * inheriting an answer.
 	 */
 	private appOwnsInstall(
 		startupMode: LocalOperatorStartupMode,
@@ -6231,7 +6258,7 @@ export class UpdateService {
 				installVersion,
 				runningVersion: servingBeforeRestart,
 				restarted: false,
-				restartable: true,
+				restartable: this.backendIsAppOwned(),
 				appOwnedEnvironment: true,
 			});
 			return true;
@@ -6263,9 +6290,14 @@ export class UpdateService {
 			 * install is current, the server is behind), and the action it offers - a
 			 * restart this app performs itself - is a thing the app can actually do.
 			 *
-			 * `restarted: false` is the whole reason that panel has something to say,
-			 * and `restartable: true` is true here by construction: this arm runs only
-			 * for a daemon the app started.
+			 * `restarted: false` is the whole reason that panel has something to say.
+			 * `restartable` IS THE READING RATHER THAN THE ARM'S OWN ASSUMPTION (review
+			 * R8): this path is reached on an ADOPTED daemon too, because the app may
+			 * move an install it owns even when it did not start the process reading it
+			 * (`appOwnsInstall`). Asserting `true` here offered that launch a "Restart
+			 * the server" control its own `backendIsAppOwned()` answers `false` for - the
+			 * "action that cannot act" class design D5 named, re-created from the
+			 * payload instead of from the ownership predicate.
 			 */
 			logger.error(
 				`The environment is published at ${installVersion} but the backend did not come back onto it (restart ${restarted ? "succeeded" : "failed"}, health ${healthy ? "ok" : "did not answer"})`,
@@ -6276,7 +6308,7 @@ export class UpdateService {
 				installVersion,
 				runningVersion: serving,
 				restarted: false,
-				restartable: true,
+				restartable: this.backendIsAppOwned(),
 				appOwnedEnvironment: true,
 				/*
 				 * THE MISSING READING IS THE NEWS (UX U1). `serving === null` is not only
@@ -6289,6 +6321,13 @@ export class UpdateService {
 				 * the operator's original report (a surface asserting what it had not
 				 * proved), which is why this branch exists rather than a softer sentence
 				 * on it.
+				 *
+				 * AND WITH `restartable` READ RATHER THAN ASSUMED (review R8) this field is
+				 * no longer only a shape a future producer could send: on an adopted daemon
+				 * whose restart did not take, `restartable` is false here, so the renderer's
+				 * `!actionRestartsTheServer` arm - "Nothing is serving this conversation
+				 * until that server is running again" - PAINTS. Design D14 filed that string
+				 * as copy no producer could reach; the arm is now reachable through this one.
 				 */
 				serverDidNotComeBack: serving === null,
 			});
@@ -6309,7 +6348,7 @@ export class UpdateService {
 				installVersion,
 				runningVersion: serving,
 				restarted: false,
-				restartable: true,
+				restartable: this.backendIsAppOwned(),
 				appOwnedEnvironment: true,
 				/*
 				 * This arm is NOT `serverDidNotComeBack` even when `serving` is null, and
@@ -6317,6 +6356,18 @@ export class UpdateService {
 				 * probe a moment ago (that is the branch above this one), so a missing
 				 * reading here is a version read that failed rather than a server that
 				 * never came back, and the panel may not claim the second.
+				 *
+				 * AND THE SUCCESS TOAST IS DELIBERATE HERE (UX U7, which asked for this
+				 * decision to be RECORDED where the reason already is rather than for a new
+				 * state). The completion is a claim about the update, and the update is what
+				 * happened: the environment moved, the app restarted the daemon onto it and
+				 * the daemon answered the probe - the only thing unread is WHICH build that
+				 * running process reports. The alternatives are worse rather than more
+				 * honest: a panel keyed on "a reading failed" would put a standing failed-
+				 * tone surface in front of a server that is up and serving, and it would
+				 * have to be dismissed by a user who has nothing to do about it, while the
+				 * sentence the toast carries says nothing about the build either way. What
+				 * the app may not do is CLAIM a build it did not read, and it does not.
 				 */
 			});
 			return true;
@@ -6354,6 +6405,14 @@ export class UpdateService {
 	 * having installed for a different interpreter, so the version read back out of
 	 * THIS environment is the only thing that answers whether the user got the
 	 * release they were offered.
+	 *
+	 * EVERY FAILING STEP HERE THROWS, and the caller's `false` is not this arm's to
+	 * send (review R6). The callback contract is `Promise<boolean>` because the
+	 * first-run installer shares it, but a boolean carries no words, and the words are
+	 * the whole remedy on a full disk: `publishGeneration` turns `false` into a fixed
+	 * sentence that `SETUP_FAILURE_CAUSES` does not match, so a publish that ran out of
+	 * space reached the reader with no disk-space remedy on it. Throwing the child's
+	 * captured output keeps that table's matching text intact end to end.
 	 */
 	private async installEnvironmentInto(
 		venv: string,
@@ -6365,11 +6424,26 @@ export class UpdateService {
 			env: this.pythonSpawnEnv(),
 		});
 		if (created.exitCode !== 0) {
+			const output = installerOutputOf(created);
 			logger.error(
-				`Could not create the update environment at ${venv}: ${(created.stderr || created.stdout).trim()}`,
+				`Could not create the update environment at ${venv}: ${output}`,
 				LogFileType.UPDATE_SERVICE,
 			);
-			return false;
+			/*
+			 * THROWN RATHER THAN RETURNED (review R6). The two failing steps below are
+			 * the ones that write the bulk of a publish - the ~100 MB environment and
+			 * the wheel closure - so they are where a disk that fills mid-update is
+			 * actually met. The callback's `false` is converted one level down into a
+			 * FIXED sentence ("Backend preparation did not complete..."), and that
+			 * sentence matches no entry in `SETUP_FAILURE_CAUSES`: the ENOSPC remedy
+			 * this product already owns ("free some space and retry") was therefore
+			 * unreachable for the very failure it was written for, and the reader got
+			 * the app's generic words instead. Carrying the child's own output into the
+			 * error is what puts the machine's words in front of `setupFailureCause`.
+			 */
+			throw new Error(
+				`Could not create the update environment at ${venv}.\n\n${output}`,
+			);
 		}
 		const interpreter = join(
 			venv,
@@ -6397,11 +6471,22 @@ export class UpdateService {
 		}
 		const installed = await this.readBundledBackendVersion(interpreter);
 		if (!didUpgradeLand({ before: null, after: installed, target })) {
+			const output = installerOutputOf(run);
 			logger.error(
-				`The new environment is not on ${target}: it reports ${installed ?? "no readable version"}`,
+				`The new environment is not on ${target}: it reports ${installed ?? "no readable version"}; the installer's own output follows:\n${output}`,
 				LogFileType.UPDATE_SERVICE,
 			);
-			return false;
+			/*
+			 * The pip branch, and the same throw for the same reason as the `venv` branch
+			 * above (review R6): the reader of a full disk has to be handed the remedy,
+			 * and only the child's own words ("[Errno 28] No space left on device", which
+			 * this run captured) reach the shared cause table. THIS is the branch a disk
+			 * that fills during an update most often goes through: the environment exists
+			 * by now and the wheel closure is landing in it.
+			 */
+			throw new Error(
+				`The environment was created but ${target} did not land in it; the installer reports ${installed ?? "no readable version"}.\n\n${output}`,
+			);
 		}
 		/*
 		 * The bytecode guard, written now that `site-packages` exists and before the

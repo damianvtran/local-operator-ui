@@ -541,7 +541,29 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
-		onBackendUpdateProgress: () => () => {},
+		onBackendUpdateProgress: (
+			callback: (progress: { phase: "installing" | "restarting" }) => void,
+		) => {
+			/*
+			 * THE PHASE, as a story state (UX U6). No story drove this channel, so
+			 * `backendUpdatePhase` was null in every captured frame - the `-in-flight`
+			 * frame in the set is the phase-null FALLBACK - while the panel a real user
+			 * watches for the install's ~85 s is one of the two phase panels. The
+			 * trigger is set before mount, like every other one here, so the phase has
+			 * arrived by the time the shipped listener subscribes.
+			 *
+			 * IT BELONGS IN THIS MOCK, and the first attempt at it did not: the same
+			 * method name appears in `createEmptyUpdaterMethods` above, which these
+			 * stories never take (the decorator installs this one), so a trigger written
+			 * there rendered the fallback and the frame looked plausible - which is why
+			 * the phase panels are checked by LOOKING at the frame and not by the
+			 * capture's exit code.
+			 */
+			if (window.triggerBackendUpdatePhase) {
+				callback({ phase: window.triggerBackendUpdatePhase });
+			}
+			return () => {};
+		},
 		onBeforeQuitForUpdate: () => {
 			return () => {};
 		},
@@ -610,6 +632,13 @@ declare global {
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateError?: boolean;
 		triggerBackendUpdateInFlight?: boolean;
+		/**
+		 * The phase the main process announces while the update runs, for the two
+		 * frames that show what the reader watches for the install itself (UX U6):
+		 * `installing` while the environment lands, `restarting` while the daemon
+		 * comes back onto it.
+		 */
+		triggerBackendUpdatePhase?: "installing" | "restarting";
 		triggerBackendUpdateDevMode?: boolean;
 		triggerBackendUpdateManualRequired?: boolean;
 		triggerBackendUpdateManualRequiredExistingServer?: boolean;
@@ -1343,14 +1372,26 @@ export const ServerBehindAppOwnedServerDown: Story = {
  * `capturePending` holds the shutter until the press has painted - the pattern
  * `app-updates-section.stories.tsx` uses for its own press.
  */
-const PressUpdateServer = ({ outcome }: { outcome: "inflight" | "failed" }) => {
+const PressUpdateServer = ({
+	outcome,
+	phase = null,
+}: {
+	outcome: "inflight" | "failed";
+	/**
+	 * The phase the in-flight panel is opened on, when the story is about WHICH
+	 * sentence the reader reads while the update runs (UX U6). Null is the
+	 * phase-null fallback the older frame showed.
+	 */
+	phase?: "installing" | "restarting" | null;
+}) => {
 	const [ready, setReady] = useState(false);
 	useLayoutEffect(() => {
 		window.triggerBackendUpdateAvailable = true;
 		window.triggerBackendUpdateInFlight = outcome === "inflight";
 		window.triggerBackendUpdateError = outcome === "failed";
+		window.triggerBackendUpdatePhase = phase ?? undefined;
 		setReady(true);
-	}, [outcome]);
+	}, [outcome, phase]);
 	useEffect(() => {
 		if (!ready) return;
 		document.documentElement.dataset.capturePending = "1";
@@ -1404,6 +1445,33 @@ const PressUpdateServer = ({ outcome }: { outcome: "inflight" | "failed" }) => {
 export const BackendUpdateInFlight: Story = {
 	args: { autoCheck: false },
 	render: () => <PressUpdateServer outcome="inflight" />,
+};
+
+/**
+ * The panel WHILE THE INSTALL RUNS and WHILE THE RESTART RUNS - the two sentences a
+ * reader spends most of an update on, and neither had a frame (UX U6).
+ *
+ * `backend-update-in-flight` above is the phase-NULL fallback: it renders
+ * "Please wait while the server is being updated ...", which is a true sentence for
+ * a press whose phase has not arrived YET, but it is not what the user watches for
+ * the ~85 s of a publish. The sentences below are the ones design D2/R2-3 priced -
+ * the install's own statement that the server keeps serving until the new build
+ * lands, and the restart's that it is offline while it comes back - and a claim
+ * about what a reader is told cannot be checked without the frame they are told it
+ * in.
+ *
+ * Driven through the press, as the shipped component reaches them: the offer is
+ * raised, `Update server` is pressed, the attempt stays in flight, and the phase is
+ * the one the main process announces for that step (`update-service.ts`).
+ */
+export const BackendUpdateInstalling: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="inflight" phase="installing" />,
+};
+
+export const BackendUpdateRestarting: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="inflight" phase="restarting" />,
 };
 
 /**

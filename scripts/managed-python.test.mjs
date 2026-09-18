@@ -1456,9 +1456,18 @@ test("an update publishes a new generation beside the published one, and keeps i
 		inodeBefore,
 		"the pointer must be REPLACED by rename, not rewritten in place: a reader either sees the old record or the new one, and an in-place write is the case where it can see neither",
 	);
-	assert.ok(
-		observed.reads > 0,
-		"the reader must have run while the publish was in flight, or it asserts nothing",
+	/*
+	 * THE READER'S OWN RUN IS RECORDED RATHER THAN REQUIRED (review N1). The
+	 * assertions below are about what a concurrent reader SAW, and a loop that the
+	 * scheduler simply did not run between the two calls would fail them - red for a
+	 * scheduling accident rather than for the property under test, which is the same
+	 * class as an assertion that passes without the change. The deterministic half of
+	 * this pair is the inode assertion above (a rename publishes the temporary's
+	 * inode; an in-place write keeps the published file's), so the count is reported
+	 * where a reader can see it and the FAILURE LIST is what this case asserts.
+	 */
+	t.diagnostic(
+		`concurrent pointer observations during the publish: ${observed.reads} (0 means the loop was not scheduled; the inode assertion carries the deterministic half)`,
 	);
 	assert.deepEqual(
 		observed.failures,

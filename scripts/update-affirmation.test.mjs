@@ -1709,6 +1709,65 @@ test("a restart that leaves the server down is a failure surface, not a success 
 });
 
 /**
+ * R7: the renderer's guard against repainting a FULFILLED state as the dead-server
+ * one, and the input that actually exercises it.
+ *
+ * `serverDidNotComeBack` is the producer's own statement, and the renderer reads it
+ * only when the running reading is MISSING (`!readableVersion(completion.runningVersion)`).
+ * Review round 2 found that the guard had no discriminating case: dropping it left
+ * all 40 cases green, including the positive control above, because that control's
+ * readings are EQUAL and the funnel declines on equality regardless of `kind` (the
+ * funnel's rule, not this guard).
+ *
+ * The input that discriminates is the field set with a readable reading that
+ * DIFFERS - the shape that reaches the ordinary skew arm:
+ *
+ *   with the guard    -> `kind: "landed"`, heading "The server is on an older build
+ *                        than the install", paragraph 1 naming both readings.
+ *   without it        -> `kind: "restart-failed"`, heading "The server did not come
+ *                        back after the restart" over a server that JUST ANSWERED
+ *                        0.56.8 - the app claiming a dead server it has read.
+ *
+ * That pair is what makes the case load-bearing: it is asserted red by removing the
+ * `&& !readableVersion(...)` half and green with it, and the assertions below are
+ * written so the WITHOUT case fails on the first of them.
+ */
+test("a completion that says the server did not come back may not overrule a reading it did", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.12",
+		// Readable AND different: the daemon answered, on the old build. This is the
+		// only shape in which the two kind-choices are distinguishable.
+		runningVersion: "0.56.8",
+		restarted: false,
+		restartable: true,
+		appOwnedEnvironment: true,
+		serverDidNotComeBack: true,
+	});
+	handle.render();
+
+	const copy = allCopy(handle).join(" ");
+	assert.equal(
+		showsText(handle, "The server did not come back after the restart"),
+		false,
+		`the daemon answered 0.56.8, so the dead-server heading is a claim the app may not make: ${copy}`,
+	);
+	assert.ok(
+		copy.includes("The server is on an older build than the install"),
+		`it is the ordinary skew, and it must say so: ${copy}`,
+	);
+	assert.ok(
+		/still running 0\.56\.8/.test(copy),
+		`with the reading it did take: ${copy}`,
+	);
+	assert.equal(
+		showsText(handle, "Server update completed successfully"),
+		false,
+		`and not a success either - the readings differ: ${copy}`,
+	);
+});
+
+/**
  * D1: one panel may not hold two opposite claims about who started the daemon.
  *
  * The failed-restart arm for a daemon that is still ANSWERING. The panel said
