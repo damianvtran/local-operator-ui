@@ -134,53 +134,68 @@ export function privatePythonSeedCheck(appPath, { expectArch = null } = {}) {
  */
 const LICENSE_ACCEPTANCE = "Y\n";
 
-/** The device this module currently has attached, if any.
+/** The devices this process attached and may still hold, and the exit/signal
+ * backstop that detaches them.
  *
  * A `finally` covers every path this module RETURNS through; it does not cover
  * SIGINT, SIGTERM or an uncaught crash, and a volume still attached to a scratch
  * image that the run no longer owns is exactly what makes macOS raise "Disk Not
- * Ejected Properly" on the operator's desktop. So the attachment is recorded
- * here as well, and the backstop below detaches whatever is recorded on the way
- * out of the process. Only one attachment is live at a time: these checks mount,
- * inspect and detach one container before moving to the next.
+ * Ejected Properly" on the operator's desktop. So an attachment is recorded here
+ * as well, and the backstop below detaches whatever is recorded on the way out
+ * of the process. A SET, not a slot: `verify-macos-artifacts.mjs` runs these
+ * checks over every DMG in one process, and a second attachment must not drop
+ * the record of a first one that is still attached.
+ *
+ * THE RECORD HOLDS ONLY ATTACHMENTS THIS PROCESS IS SHOWN TO HAVE PERFORMED.
+ * The attach runs through a runner the CALLER injects (`finalContainerChecks`'s
+ * `run`), so a runner that merely CLAIMS a device - a fixture in a test, a
+ * wrapper with a parsing bug - must not be able to arm a backstop that
+ * force-detaches that name with the real `hdiutil` at process exit. On a shared
+ * machine that name can be another session's live volume, and ejecting it is
+ * worse than the leak this backstop exists to stop. So the claim is confirmed
+ * before it is recorded: the device is recorded only when `hdiutil info` reports
+ * that same device mounted at the private mount point this call created.
  */
-let attachedTarget = null;
+const attachedTargets = new Set();
 let backstopRegistered = false;
 
-/** Detach the recorded target, synchronously and without ever throwing.
+/** Detach every recorded target, synchronously and without ever throwing.
  *
- * Idempotent by construction: the target is cleared BEFORE the attempt, so a
- * second call (the exit handler after a signal handler) is a no-op even when the
- * first attempt failed, and `-force` is what lets this win where the graceful
- * detach could not. `spawnSync` because a process exit handler may not await.
+ * SINGLE-SHOT PER TARGET, which is what a process exit handler can offer: the
+ * set is copied and cleared BEFORE the attempts, so a later call (an exit
+ * handler after a signal handler, or a re-entrant one) is a no-op rather than a
+ * second detach of something already gone, and `-force` is what lets this win
+ * where the graceful detach could not. `spawnSync` because a process exit
+ * handler may not await.
  */
-function detachRecordedTarget() {
-	const target = attachedTarget;
-	attachedTarget = null;
-	if (target == null) return;
-	try {
-		spawnSync("/usr/bin/hdiutil", ["detach", "-force", "-quiet", target], {
-			stdio: "ignore",
-		});
-	} catch {
-		// The backstop runs at process teardown: it may not throw, and there is
-		// nowhere left to report a failure to.
+function detachRecordedTargets() {
+	const targets = [...attachedTargets];
+	attachedTargets.clear();
+	for (const target of targets) {
+		try {
+			spawnSync("/usr/bin/hdiutil", ["detach", "-force", "-quiet", target], {
+				stdio: "ignore",
+			});
+		} catch {
+			// The backstop runs at process teardown: it may not throw, and there is
+			// nowhere left to report a failure to.
+		}
 	}
 }
 
-/** Record a live attachment and make sure the backstop is installed for it.
+/** Record a confirmed attachment and make sure the backstop is installed for it.
  *
  * Registered lazily - a run that never mounts an image (every zip, every seed
  * check) installs no signal handlers and pays nothing.
  */
 function recordAttachedTarget(target) {
-	attachedTarget = target;
+	attachedTargets.add(target);
 	if (backstopRegistered) return;
 	backstopRegistered = true;
-	process.on("exit", detachRecordedTarget);
+	process.on("exit", detachRecordedTargets);
 	for (const signal of ["SIGINT", "SIGTERM"]) {
 		const handler = () => {
-			detachRecordedTarget();
+			detachRecordedTargets();
 			// A registered listener SUPPRESSES node's own exit on a signal, so the
 			// default disposition has to be restored by hand: drop this handler and
 			// re-raise, so Ctrl-C still ends the run the way it did before.
@@ -191,7 +206,87 @@ function recordAttachedTarget(target) {
 	}
 }
 
-/** The DEVICE `hdiutil attach` mounted, read from its own output.
+/** Record `claimed`, the device an injected runner said it attached, but only
+ * once the TOOL confirms it: `hdiutil info` has to report that same device
+ * mounted at `mount`, the private directory this call created and owns. A
+ * fabricated name, a name belonging to some other process's volume, and a
+ * misparsed output all fail that confirmation, so none of them can arm the
+ * backstop. Nothing here is reported to the caller: the in-function detach is
+ * the mechanism, and this record only covers a crash before it runs.
+ */
+function recordConfirmedAttachment(claimed, mount) {
+	if (claimed === null) return;
+	if (mountedDevice(attachedVolumeOutput(), mount) !== claimed) return;
+	recordAttachedTarget(claimed);
+}
+
+/** Forget a target that came away, so the backstop neither re-detaches it nor
+ * names it at process exit. */
+function releaseAttachedTarget(target) {
+	attachedTargets.delete(target);
+}
+
+/** What the backstop would detach right now, for a fixture that has to assert
+ * that a path which never really attached did not arm it. */
+export function heldAttachTargets() {
+	return [...attachedTargets];
+}
+
+/** Drop every record without detaching anything: for a fixture, so a fabricated
+ * attach cannot leave a name behind for the real exit handler. */
+export function releaseAttachTargets() {
+	attachedTargets.clear();
+}
+
+/** `hdiutil info`'s own output, or "" when the tool cannot answer.
+ *
+ * The backstop and the confirmation above must not throw on a machine where
+ * `hdiutil` is missing (CI runs on Linux) or refuses: an unanswerable question
+ * is "no confirmation", which records nothing and touches nothing.
+ */
+function attachedVolumeOutput() {
+	try {
+		const result = spawnSync("/usr/bin/hdiutil", ["info"], {
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "ignore"],
+		});
+		return result.status === 0 ? String(result.stdout) : "";
+	} catch {
+		return "";
+	}
+}
+
+/** One row per entity `hdiutil` lists, its TAB-separated columns trimmed; the
+ * mount path is the last column when the row has one. */
+function attachedVolumeRows() {
+	return String(attachedVolumeOutput())
+		.split("\n")
+		.map((line) =>
+			line
+				.split("\t")
+				.map((cell) => cell.trim())
+				.filter((cell) => cell !== ""),
+		);
+}
+
+/** Is `target` - a device node, or the mount path this module mounts at - still
+ * attached? The guarantee is about the STATE, so this is what decides whether a
+ * detach really failed; `hdiutil`'s exit code does not. */
+export function isVolumeAttached(target) {
+	const paths = new Set([target]);
+	try {
+		paths.add(realpathSync(target));
+	} catch {
+		// Not a path on this filesystem (a device node, or an already-removed
+		// mount): the literal comparison is all that applies.
+	}
+	return attachedVolumeRows().some(
+		(row) =>
+			row[0] === target || (row.length >= 3 && paths.has(row[row.length - 1])),
+	);
+}
+
+/** The DEVICE `hdiutil attach` mounted at `mount`, read from its own output.
  *
  * `attach -mountpoint` prints one TAB-separated line per entity it exposed, the
  * mounted volume last, with the mount path as the final column:
@@ -201,12 +296,16 @@ function recordAttachedTarget(target) {
  * name THIS call chose for the volume, and `hdiutil detach <path>` re-resolves
  * that name at detach time - against a volume that could by then be a different
  * one, or the same name mounted somewhere else. The identity attaches and
- * detaches must agree on is the device, so that is what is recorded.
+ * detaches must agree on is the device, so that is what the caller detaches.
  *
  * `hdiutil` prints the RESOLVED path, and the scratch mount sits under a
- * symlinked `tmpdir`, so the literal and the resolved mount are both matched
- * before falling back to the last device line - which is the volume on every
- * output shape `hdiutil` has produced for this form.
+ * symlinked `tmpdir`, so the literal and the resolved mount are both matched.
+ *
+ * NO FALLBACK to the last device line, deliberately: when no row names this
+ * mount, the last device it printed can belong to another volume of the same
+ * image - a slice - and detaching one ejects the whole image. `null` says "this
+ * output did not name my volume", and the caller's own fallback (its private
+ * mount path, which is this call's own name for it) is the safe one.
  */
 export function mountedDevice(stdout, mount) {
 	const rows = String(stdout)
@@ -226,11 +325,7 @@ export function mountedDevice(stdout, mount) {
 	const named = rows.find(
 		(row) => row.length >= 3 && paths.has(row[row.length - 1]),
 	);
-	if (named) return named[0];
-	const devices = rows.filter(
-		(row) => row.length >= 3 && row[0].startsWith("/dev/"),
-	);
-	return devices.length > 0 ? devices[devices.length - 1][0] : null;
+	return named ? named[0] : null;
 }
 
 /** Check what users receive, not merely electron-builder's unpacked directory.
@@ -241,12 +336,15 @@ export function mountedDevice(stdout, mount) {
  *
  * It owns the mount from attach to detach and may not hand back a volume it
  * could not detach: the loopback device `hdiutil attach` exposed is detached by
- * device, once gracefully and once with `-force`, and a doubly-failed detach is
- * a failed result that names the mount and the device and leaves the scratch
- * tree - and with it the live mount point - in place, because deleting the
- * backing image under an attached volume is what raises macOS's "Disk Not
- * Ejected Properly" alert. No path of this function reports success over a
- * volume that is still attached.
+ * device, once gracefully and once with `-force`, and a detach whose target
+ * `hdiutil info` still lists is a failed result that names the mount and the
+ * device and leaves the scratch tree - and with it the live mount point - in
+ * place, because deleting the backing image under an attached volume is what
+ * raises macOS's "Disk Not Ejected Properly" alert. No path of this function
+ * reports success over a volume that is still attached, and a volume that is
+ * already gone is not a failure. The caller's injected `run` is the only thing
+ * that attaches: the backstop's record is armed from `hdiutil`'s own account of
+ * that attach, never from the runner's output alone.
  */
 export function finalContainerChecks(path, { run, checkApp }) {
 	const scratch = mkdtempSync(join(tmpdir(), "local-operator-artifact-"));
@@ -272,11 +370,12 @@ export function finalContainerChecks(path, { run, checkApp }) {
 				LICENSE_ACCEPTANCE,
 			);
 			// The device is what the finally block detaches; the path is only this
-			// invocation's name for the volume. It is recorded before the checks run,
-			// so a crash in them still has a target for the backstop.
+			// invocation's name for the volume. The backstop's record is armed from the
+			// tool's own account of it, not from this runner's output, so a runner that
+			// only claimed a device cannot get that device force-detached at exit.
 			device = mountedDevice(attached.stdout, mount);
 			mounted = true;
-			recordAttachedTarget(device ?? mount);
+			recordConfirmedAttachment(device, mount);
 			for (const name of readdirSync(mount).filter((name) =>
 				name.endsWith(".app"),
 			)) {
@@ -322,19 +421,28 @@ export function finalContainerChecks(path, { run, checkApp }) {
 			 * succeeds, and the difference is a live volume under a scratch tree that
 			 * is about to be deleted - i.e. the alert this exists to remove.
 			 *
+			 * WHETHER THAT FAILED IS A QUESTION ABOUT THE STATE, NOT THE EXIT CODE.
+			 * A volume somebody else already ejected is not a failure: `hdiutil detach`
+			 * answers exit 1 with `detach failed - No such file or directory` for a
+			 * device that is simply gone, `-force -quiet` included, and reporting that
+			 * as a failure would fail the run and leak a scratch tree over a volume
+			 * nobody has attached. So `hdiutil` is asked what is attached before a
+			 * failure is declared, and only a target it still lists is one.
+			 *
 			 * Detach may not be silent: this function may never report success while
 			 * a volume is attached, and it may never return quietly with one either,
-			 * because the caller cannot see the difference. So a detach that fails
-			 * twice is recorded as a FAILED RESULT that names the mount and the
-			 * device, and it stops the cleanup below.
+			 * because the caller cannot see the difference. So a target that is still
+			 * attached after both attempts is recorded as a FAILED RESULT naming the
+			 * mount and the device, and it stops the cleanup below.
 			 */
 			const target = device ?? mount;
 			let detached = run("/usr/bin/hdiutil", ["detach", target]);
 			if (detached.status !== 0)
 				detached = run("/usr/bin/hdiutil", ["detach", "-force", target]);
-			if (detached.status === 0) {
-				// Detached by this call: nothing is left for the backstop to do.
-				if (attachedTarget === target) attachedTarget = null;
+			if (detached.status === 0 || !isVolumeAttached(target)) {
+				// Detached by this call, or already gone: either way nothing is left for
+				// the backstop to do, and the set is the only place the record lives.
+				releaseAttachedTarget(target);
 			} else {
 				detachFailure = {
 					id: "artifact-unmount",
@@ -350,8 +458,8 @@ export function finalContainerChecks(path, { run, checkApp }) {
 		// The volume is still attached and this function cannot remove it. The
 		// scratch tree holds the live mount point, so it is NOT deleted: the backing
 		// image and the mount point both survive for the operator to eject by hand.
-		// The target stays recorded so the exit backstop gets one more attempt with
-		// `-force`.
+		// The target stays recorded so the exit backstop gets its single attempt at
+		// it - the one case where the backstop has work to do.
 		results.push(detachFailure);
 		return results;
 	}
