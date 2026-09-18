@@ -2,7 +2,7 @@
   "head": "6b4ba688746af915f1a2550010f941f523095bd2",
   "headNote": "The merge this evidence rides: `dd96fe413`. `head` names it rather than the evidence commit after it, because that commit moves `docs/` only - the same statement the fold rule makes for every other pass in this file. This manifest rides FOUR folds in one round (onto `2c8f66d33`, then onto `846ff92a5`, then onto `318cbb75e`, then onto `9a39bcbf1` as main moved again while the round was in review); all four brought main's own frames and records with them, so `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and `scriptsTree` are RE-DERIVED on the four-times-fused tree in the commits around it: the counts beside this note describe the tree that ships rather than either side's, which is group (4) of `citationConvention` and the fix for the stale `countsMean` round 1 filed as R5. The paragraphs inside `countsMean` are part of that derivation rather than commentary on it: `countsMeanFailures` in the gate derives the same numbers from the same walk and fails when a field's LEADING paragraph disagrees with it, so a fold that moves the stamps and leaves the paragraph behind now breaks the gate's fast half instead of waiting for a reviewer to re-walk this file (round 3, R3-1). THIS REMEDIATION ROUND RE-DERIVED THE STAMPS ONCE MORE, because it moves `src/` and `scripts/` as well as `docs/`: the focus-hold rule became its own module with a three-state record, the sidebar stories gained two measurement-only cells, the gate gained `countsMeanFailures` and the rig gained the ring reading and the settle budgets. So `srcTree`/`scriptsTree` name THIS commit's trees, and `head` still names `dd96fe413` - the merge the frames were captured from - because nothing in the round moves a pixel: the two stories it adds are deliberately NOT in the sweep's `STORIES` list, which is why `frames` and `surfaces` are unchanged by it. THE FOURTH FOLD MOVES THE STAMPS AND NO COUNT: #306 re-shot the composer's stop-slot sets under new story ids and #315 landed the 0.26.7 bump, so `srcTree`/`scriptsTree` move to the fused tree while `frames`, `surfaces` and `themes` are what that tree's own walk answers - the third fold's numbers, reached again rather than carried. THE FIFTH FOLD MOVES THE STAMPS AND ONE COUNT: `origin/main` moved to `09acb156a` (#323, the retired composer-story ids, then #308, the composer focus flow), which is the first move to touch this branch's own files - `docs/evidence/manifest.json`, the `test:desktop` list in `package.json` and `scripts/capture-evidence.mjs`. The fused `STORIES` literal is 615 rows - main's 611 plus this branch's four - against the 617 this branch folded onto, so `surfaces` moves with the fold while `frames` and `themes` are what the fused tree's own walk answers. A SIXTH FOLD, onto `9091a0aca` (PR #318, the update-check verdict), moved `docs/evidence/manifest.json` again - main's own pass rewrote this file for its app-updates sweep and preserved the previous aggregate's pass record under its own `preRebaseRecord.foldNineteenthMainPass` key - so `head`, `capturedAt` and `dirtyWorkingTree` stay this branch's, because they name the capture these four sets' frames came from, and main's own capture time lives in its `captureOrigin` record and its `foldNote`. A SEVENTH FOLD, onto `33373f748` (#325, change-scope CI), re-stamped the trees and no count: it moves `.github/workflows/ci.yml`, `AGENTS.md`, `scripts/ci-scope.mjs`, its test and `scripts/entry-point.test.mjs`, so `srcTree`/`scriptsTree` move to this commit's trees while `frames`, `surfaces` and `themes` are what the fused tree's own walk answers - the sixth fold's numbers, reached again rather than carried. The fold is proven by rule: `git range-diff 9091a0aca..1c17bc7c9 `33373f748`..HEAD` prints `=` for every commit of this branch, and its own file delta is exactly main's own seven files with `comm -3` empty in both directions. An EIGHTH FOLD, onto `afcd83772` (#314, the transcript-paging momentum pass, and then #332, the 0.26.11 bump), re-stamped the trees and no count: it moves `src/renderer/src/features/chat/canonical/{scroll-paging.ts,use-scroll-paging.ts}`, `scripts/{paging-evidence-arms.mjs,scroll-paging-evidence.mjs,transcript-paging.test.mjs}` and the `docs/evidence/transcript-scroll-paging/` set, so `srcTree`/`scriptsTree` move to this commit's trees while `frames` (5729 of 6848) and `surfaces` (618) are what the fused tree's own walk answers - the seventh fold's numbers, reached again rather than carried. MAIN ALSO REWROTE THIS FILE'S OWN SHAPE: it arrives tab-indented with non-ASCII escaped, so this fold takes main's file wholesale and re-applies this branch's parts inside that shape rather than re-formatting either side's file. The fold is proven by rule: `git range-diff 33373f748..bae795fe6 afcd83772..HEAD` prints `=` for every commit of this branch, and its own file delta is exactly main's own file set with `comm -3` empty in both directions. MAIN'S OWN RECORD FOR THIS FIELD, DISPLACED BY THIS FOLD AND KEPT HERE UNALTERED (main's tip at the fold was `afcd83772`): RE-STAMPED ON THE FINAL REBASE, onto `origin/main` at `33373f748`. Fourth rebase, same single file: `docs/evidence/manifest.json` is the only path main and this branch both move, and the resolution is take main's file and re-derive this round's parts (the entry, the leading `countsMean.frames` paragraph, `head`/`srcTree`/`scriptsTree`) rather than merge prose in the fields the gate reads. `head` names the commit carrying this round's frames, module and harness changes; the stamps are derived from `HEAD:src` / `HEAD:scripts` in the last commit of the series. A NINTH FOLD, onto `6f15f71e` (#297, the composer file mentions), moved the counts and the trees: it carries `src/` and `scripts/` - including `capture-evidence.mjs`, whose `STORIES` literal is what `surfaces` counts - and its own undeclared `chat-mention-chips` set, so `srcTree`/`scriptsTree` move to this commit's trees and the fused walk answers `frames` 6017 of 7136 and `surfaces` 642, against this branch's 5729/618 and main's own 6009/638. `main` ALSO RESTORED THIS FILE'S 2-SPACE SHAPE, undoing the tab-indented spelling the eighth fold folded onto, so this fold takes main's file wholesale again and re-applies this branch's parts inside that shape. Both shared files conflicted this time and both are resolved rather than taken. The fold is proven by rule: `git range-diff afcd83772..d4eb16660 6f15f71e..HEAD` prints `=` for every commit of this branch, and its own file delta is exactly main's own with `comm -3` empty in both directions.\n\nMAIN'S OWN RECORD FOR THIS FIELD, DISPLACED BY THIS FOLD AND KEPT HERE UNALTERED (main's tip at the fold was `6f15f71e`): TWELFTH FOLD: `origin/main` AT `3a5b66c54` (#314, `fix/transcript-paging-momentum`) FOLDED INTO THIS BRANCH - 15 commits and 38 files past `33373f748`, the head the ELEVENTH fold merged, and the THIRD fold in this session. ONE FILE CONFLICTED AND IT IS THIS ONE: `package.json` did not (the window does not touch it) and `message-input.tsx` did not either, its blob being `4af66278` on all three heads, so the three resolutions the tenth fold states and the two the eleventh states stand untouched rather than being re-made. Per field as those folds established: this branch's pass-describing fields, its `capturedAt`/`dirtyWorkingTree` disclosures and its declaring lists all stay, main's lists being subsets of this branch's here, and `captureOrigin.reStamps` is this branch's 15 entries with main's nine a subset of them. TWO THINGS ARE TAKEN FROM MAIN and they are different in kind: `supplementary[transcript-scroll-paging]` is main's ENTRY, because main re-captured that set in this window (7 frames -> 31, with `source`, `why` and `capturedAt` moved with it), this branch never wrote the entry, and keeping this branch's stale 7 would fail `check-evidence.mjs`'s per-declaration check against the tree the frames sit in; and `partialCapture.headRepointNote` is a key main added that this branch lacks, carried because group (5) refuses main's keys that spell out what a citation names only where the spelling is one this branch deleted (`refreshedAtHeadNote`), which this is not. THE COUNTS DID NOT MOVE, and that is the measurement this fold turns on rather than an absence of frames: main's window commits 24 frames under `docs/evidence`, every one of them INSIDE the already-declared `transcript-scroll-paging` set, so the swept count outside every declared set stays 6009 of 7128 on disk (1119 of them inside the sets) and `surfaces`, `themes` and `refreshedFrames` are unchanged as well - the set that grew is a declared one, which is exactly the case the supplementary declaration exists to keep out of the sweep's count. THE STAMPS name the tree this commit ships - `git rev-parse HEAD:src` / `HEAD:scripts` - and both moved with the window's two `src/` and two `scripts/` files; `head` stays the capture's commit, because a stamp cannot cite the commit that contains it and a re-derivation is not a re-capture. RE-STAMPED, NOT RE-CAPTURED: the window's surfaces are the canonical transcript's scroll paging, and no file this band renders moved for the third fold in a row.",
   "srcTree": "43bdb5eb600b2848d90cb0d414e6a7f705dc445b",
-  "scriptsTree": "dc4de092b6d111caf663ee77e608b8b99ecbae0b",
+  "scriptsTree": "d8e260dfcbec4428cb75e3493e467f56849a5958",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-17T07:08:08.000Z",
   "frames": 6017,
@@ -3883,31 +3883,31 @@
           "capturedAt": "2026-09-17T07:08:08.000Z"
         }
       },
-      {
-        "at": "2026-09-17, on `feat/composer-file-mentions`, on the FOLD OF `origin/main` AT `318cbb75e` INTO THIS BRANCH AS A MERGE",
-        "by": "PR #297",
-        "why": "This branch's third convergence with a moved `main`, and the first one that is a MERGE rather than a rebase: the branch is held for the harness half (`damianvtran/local-operator#1220`), so the commits the reviews have already read stay addressable instead of being rewritten. The resolution rule is the one this file's own `citationConvention` records, applied per FIELD rather than re-invented: main's version of this file kept WHOLE so no upstream line leaves the document, this branch's pass records and provenance re-applied beside it, the two declared lists unioned (`refreshedStories` 326 u 345 -> 352), and every derived field re-derived from the merged tree - `srcTree`, `scriptsTree`, `frames`, `surfaces`, `themes`, `countsMean` and `refreshedFrames`, the last read off the tree the way the manifest test reads it rather than added up, because the unioned directory list is larger than either side's pass rewrote on its own. Taking main's file whole would have certified these frames against a tree they were not taken from; taking this branch's would have lost the 28 commits' worth of record. The values this entry replaces were main's own, and they are named rather than described: `head` `ffd87ee67`, `srcTree` `fd8688374`, `scriptsTree` `0a917c1d3`, `capturedAt` `2026-09-17T07:08:08.000Z`, `frames` 5573, `surfaces` 597 and `refreshedFrames` 3132.",
-        "replaced": {
-          "head": "ffd87ee6782f5f52544fd8d49e8d501e1b4c194d",
-          "srcTree": "fd8688374073dfc68e202d08b2025ca1abb0bb0b",
-          "scriptsTree": "0a917c1d39e2c7fe046d9e6c5a75c813cfce2b95",
-          "capturedAt": "2026-09-17T07:08:08.000Z",
-          "frames": 5573,
-          "surfaces": 597,
-          "refreshedFrames": 3132
-        }
-      },
-      {
-        "at": "2026-09-17, on `feat/composer-file-mentions`, on the NINTH FOLD (the merge of `origin/main` at `44cb3af3c` into this branch)",
-        "by": "PR #297",
-        "why": "This branch's fold onto a moved `main`, re-stamped as its own commit because the trees it names can only be read once the tree that carries the frames exists. The resolution rule is the one this file's own headNote records from the previous fold, re-applied rather than re-invented: main's pass-describing fields displaced by this branch's per group (1), the declared lists unioned per group (2), every derived field re-derived from the merged tree per group (4), and no key main has that this branch lacks carried in per group (5). Taking either side's stamp block would have certified these frames against a tree they were not taken from. Whether the 226 files upstream moved reach what these frames photograph was ANSWERED BY FRAMES rather than argued: every composer-band state both trees hold is byte-identical across the window, and the renamed `stop-slot-reserved` -> `stop-slot-settled` pair differs in all twelve, so the instrument is calibrated in the same run that reports no change.",
-        "replaced": {
-          "head": "90373bc6030c4ce3ebaa4bbb9b98b3a067bbed5b",
-          "srcTree": "95d15774716371aa721a122ed1b4f9fc233f0411",
-          "scriptsTree": "98df12c96bd6dc30df8864e5bc31664ed290ab60",
-          "capturedAt": "2026-09-17T07:08:08.000Z"
-        }
-      },
+    {
+      "at": "2026-09-17, on `feat/composer-file-mentions`, on the FOLD OF `origin/main` AT `318cbb75e` INTO THIS BRANCH AS A MERGE",
+      "by": "PR #297",
+      "why": "This branch's third convergence with a moved `main`, and the first one that is a MERGE rather than a rebase: the branch is held for the harness half (`damianvtran/local-operator#1220`), so the commits the reviews have already read stay addressable instead of being rewritten. The resolution rule is the one this file's own `citationConvention` records, applied per FIELD rather than re-invented: main's version of this file kept WHOLE so no upstream line leaves the document, this branch's pass records and provenance re-applied beside it, the two declared lists unioned (`refreshedStories` 326 u 345 -> 352), and every derived field re-derived from the merged tree - `srcTree`, `scriptsTree`, `frames`, `surfaces`, `themes`, `countsMean` and `refreshedFrames`, the last read off the tree the way the manifest test reads it rather than added up, because the unioned directory list is larger than either side's pass rewrote on its own. Taking main's file whole would have certified these frames against a tree they were not taken from; taking this branch's would have lost the 28 commits' worth of record. The values this entry replaces were main's own, and they are named rather than described: `head` `ffd87ee67`, `srcTree` `fd8688374`, `scriptsTree` `0a917c1d3`, `capturedAt` `2026-09-17T07:08:08.000Z`, `frames` 5573, `surfaces` 597 and `refreshedFrames` 3132.",
+      "replaced": {
+        "head": "ffd87ee6782f5f52544fd8d49e8d501e1b4c194d",
+        "srcTree": "fd8688374073dfc68e202d08b2025ca1abb0bb0b",
+        "scriptsTree": "0a917c1d39e2c7fe046d9e6c5a75c813cfce2b95",
+        "capturedAt": "2026-09-17T07:08:08.000Z",
+        "frames": 5573,
+        "surfaces": 597,
+        "refreshedFrames": 3132
+      }
+    },
+    {
+      "at": "2026-09-17, on `feat/composer-file-mentions`, on the NINTH FOLD (the merge of `origin/main` at `44cb3af3c` into this branch)",
+      "by": "PR #297",
+      "why": "This branch's fold onto a moved `main`, re-stamped as its own commit because the trees it names can only be read once the tree that carries the frames exists. The resolution rule is the one this file's own headNote records from the previous fold, re-applied rather than re-invented: main's pass-describing fields displaced by this branch's per group (1), the declared lists unioned per group (2), every derived field re-derived from the merged tree per group (4), and no key main has that this branch lacks carried in per group (5). Taking either side's stamp block would have certified these frames against a tree they were not taken from. Whether the 226 files upstream moved reach what these frames photograph was ANSWERED BY FRAMES rather than argued: every composer-band state both trees hold is byte-identical across the window, and the renamed `stop-slot-reserved` -> `stop-slot-settled` pair differs in all twelve, so the instrument is calibrated in the same run that reports no change.",
+      "replaced": {
+        "head": "90373bc6030c4ce3ebaa4bbb9b98b3a067bbed5b",
+        "srcTree": "95d15774716371aa721a122ed1b4f9fc233f0411",
+        "scriptsTree": "98df12c96bd6dc30df8864e5bc31664ed290ab60",
+        "capturedAt": "2026-09-17T07:08:08.000Z"
+      }
+    },
       {
         "at": "2026-09-17, on `fix/composer-focus-flow`, at the round-1 remediation head",
         "by": "PR #308",
@@ -3996,37 +3996,45 @@
           "capturedAt": "2026-09-17T07:08:08.000Z"
         }
       },
+    {
+      "at": "2026-09-17, on `feat/composer-file-mentions`, on the TENTH FOLD (the merge of `origin/main` at `09acb156a` into this branch)",
+      "by": "PR #297",
+      "why": "This branch's fold onto a moved `main`, re-stamped as its own commit because the trees it names can only be read once the tree that carries the frames exists. The resolution rule is the one this file's own `citationConvention` records, applied per FIELD rather than re-invented: main's version of this file kept WHOLE, this branch's pass-describing fields and its own pass records re-applied beside it per group (1), the declaring lists unioned per group (2), every derived field re-derived from the merged tree per group (4). This fold also carried main's two new top-level keys (`beforeSetNote`, `phantomRowsPass`) rather than refusing them under group (5), and the reason is on the pull request rather than compressed here: neither spells out what a citation names - which is what group (5) refuses, and its example is the deleted `refreshedAtHeadNote` spelling this branch removed - and both are main's own records of main's own sets, one of which the union above brings in. Taking either side's stamp block would have certified these frames against a tree they were not taken from.",
+      "replaced": {
+        "head": "90373bc6030c4ce3ebaa4bbb9b98b3a067bbed5b",
+        "srcTree": "5034ceedbbde22ed16804358d50672535ce414fb",
+        "scriptsTree": "f537388033ddcc5210129599157508f74db52457",
+        "capturedAt": "2026-09-17T07:08:08.000Z"
+      }
+    },
+    {
+      "at": "2026-09-17, on `feat/composer-file-mentions`, on the ELEVENTH FOLD (the merge of `origin/main` at `33373f748` into this branch)",
+      "by": "PR #297",
+      "why": "This branch's fold onto a moved `main`, re-stamped as its own commit because the trees it names can only be read once the tree that carries the frames exists. The resolution rule is the one this file's own `citationConvention` records, applied per FIELD: main's version kept whole, this branch's pass-describing fields and its own pass records re-applied beside it per group (1), the declaring lists unioned per group (2), every derived field re-derived from the merged tree per group (4), and main's three new records (`foldNote`, `sectionRemediationNote`, `preRebaseRecord.foldNineteenthMainPass`) carried because none of them spells out what a citation names, which is all group (5) refuses. `capturedAt` and `dirtyWorkingTree` are this branch's against the plain three-way answer, for the reason the fold commit on the pull request states and does not compress: both are pass disclosures about the capture that produced these frames, and this file's `head` is that capture's commit.",
+      "replaced": {
+        "head": "90373bc6030c4ce3ebaa4bbb9b98b3a067bbed5b",
+        "srcTree": "42020f5e908e78ae3db5d29ab6b78a5f9a88cdb3",
+        "scriptsTree": "c9bb1f8da7dc1a74c85ed67ee4f300644fbf3134",
+        "capturedAt": "2026-09-17T07:08:08.000Z"
+      }
+    },
+    {
+      "at": "2026-09-17, on `feat/composer-file-mentions`, on the TWELFTH FOLD (the merge of `origin/main` at `3a5b66c54` into this branch)",
+      "by": "PR #297",
+      "why": "This branch's fold onto a moved `main`, re-stamped as its own commit because the trees it names can only be read once the tree that carries the frames exists. The resolution rule is `citationConvention`'s, applied per FIELD: this branch's pass-describing fields and its own pass records, its two pass disclosures against the plain three-way answer, and its declaring lists, which are supersets of main's here. Two things come from main and both are named in the fold commit on the pull request: `supplementary[transcript-scroll-paging]`, an entry main re-captured and this branch never wrote, and `partialCapture.headRepointNote`, a key main added that this branch lacks, carried under the reading of group (5) that refuses main's keys only where the spelling is one this branch deleted.",
+      "replaced": {
+        "head": "90373bc6030c4ce3ebaa4bbb9b98b3a067bbed5b",
+        "srcTree": "9bae0afaea9a4dd6c1f206db1109f1d7a2be0d01",
+        "scriptsTree": "b61857bc1b47bb1178fbe0a925ed1e98ced87ae6",
+        "capturedAt": "2026-09-17T07:08:08.000Z"
+      }
+    },
       {
-        "at": "2026-09-17, on `feat/composer-file-mentions`, on the TENTH FOLD (the merge of `origin/main` at `09acb156a` into this branch)",
-        "by": "PR #297",
-        "why": "This branch's fold onto a moved `main`, re-stamped as its own commit because the trees it names can only be read once the tree that carries the frames exists. The resolution rule is the one this file's own `citationConvention` records, applied per FIELD rather than re-invented: main's version of this file kept WHOLE, this branch's pass-describing fields and its own pass records re-applied beside it per group (1), the declaring lists unioned per group (2), every derived field re-derived from the merged tree per group (4). This fold also carried main's two new top-level keys (`beforeSetNote`, `phantomRowsPass`) rather than refusing them under group (5), and the reason is on the pull request rather than compressed here: neither spells out what a citation names - which is what group (5) refuses, and its example is the deleted `refreshedAtHeadNote` spelling this branch removed - and both are main's own records of main's own sets, one of which the union above brings in. Taking either side's stamp block would have certified these frames against a tree they were not taken from.",
+        "at": "2026-09-17, on `fix/stale-profile-sweep`, rebased onto `origin/main` at `6f15f71ea`",
+        "by": "PR #339",
+        "why": "A RE-STAMP, NOT A RECAPTURE, and the only stamp this re-derives is `scriptsTree`. What moves `scripts/` is the stale-profile sweep fix in `capture-evidence.mjs` - `sweepStaleProfiles` now takes only a name that decodes to the profile's own shape and validates the pid before the `kill`, instead of reaping anything under the `lo-evidence-` prefix - with its regression test in `capture-evidence.test.mjs`. This branch was rebased onto a moved `main` (`6f15f71ea`, which moved `scripts/` and this file of its own accord), so the re-stamp is re-derived against the tree this head carries rather than carried from the pre-rebase one; the value it displaces is main's own at that base, taken at the conflict the way the fold convention takes it. No swept frame was re-taken, no theme sweep was run, and none is claimed to describe this tree. `frames`, `surfaces` and `themes` are main's own re-derived counts and this branch does not move them: it adds no frame and no story row of its own. `srcTree` needed no re-derivation - this branch does not touch `src/`, and the value carried here is `HEAD:src` on this head as well. `head` and `capturedAt` are left as the capture's own record, which is what they are. `replaced` lists `scriptsTree` alone, the only field this entry displaced, and that single key is deliberate rather than an omission (review round 1's F2): every other entry in this array records a block its own fold moved, and padding this one with `head`, `srcTree` and `capturedAt` - none of which this branch touches, and all three of which main re-derived for itself at the base - would report displacements that did not happen. A reader reconstructing the pre-entry block should take `scriptsTree` from here and the other three from the values the file already carries, which is what this `why` names. `scriptsTree` is re-derived a second time in the round-1 remediation commit, whose comment corrections move `scripts/` again, so the stamp carried here is that head's own `HEAD:scripts` - while `replaced.scriptsTree` stays main's, which this branch has never carried.",
         "replaced": {
-          "head": "90373bc6030c4ce3ebaa4bbb9b98b3a067bbed5b",
-          "srcTree": "5034ceedbbde22ed16804358d50672535ce414fb",
-          "scriptsTree": "f537388033ddcc5210129599157508f74db52457",
-          "capturedAt": "2026-09-17T07:08:08.000Z"
-        }
-      },
-      {
-        "at": "2026-09-17, on `feat/composer-file-mentions`, on the ELEVENTH FOLD (the merge of `origin/main` at `33373f748` into this branch)",
-        "by": "PR #297",
-        "why": "This branch's fold onto a moved `main`, re-stamped as its own commit because the trees it names can only be read once the tree that carries the frames exists. The resolution rule is the one this file's own `citationConvention` records, applied per FIELD: main's version kept whole, this branch's pass-describing fields and its own pass records re-applied beside it per group (1), the declaring lists unioned per group (2), every derived field re-derived from the merged tree per group (4), and main's three new records (`foldNote`, `sectionRemediationNote`, `preRebaseRecord.foldNineteenthMainPass`) carried because none of them spells out what a citation names, which is all group (5) refuses. `capturedAt` and `dirtyWorkingTree` are this branch's against the plain three-way answer, for the reason the fold commit on the pull request states and does not compress: both are pass disclosures about the capture that produced these frames, and this file's `head` is that capture's commit.",
-        "replaced": {
-          "head": "90373bc6030c4ce3ebaa4bbb9b98b3a067bbed5b",
-          "srcTree": "42020f5e908e78ae3db5d29ab6b78a5f9a88cdb3",
-          "scriptsTree": "c9bb1f8da7dc1a74c85ed67ee4f300644fbf3134",
-          "capturedAt": "2026-09-17T07:08:08.000Z"
-        }
-      },
-      {
-        "at": "2026-09-17, on `feat/composer-file-mentions`, on the TWELFTH FOLD (the merge of `origin/main` at `3a5b66c54` into this branch)",
-        "by": "PR #297",
-        "why": "This branch's fold onto a moved `main`, re-stamped as its own commit because the trees it names can only be read once the tree that carries the frames exists. The resolution rule is `citationConvention`'s, applied per FIELD: this branch's pass-describing fields and its own pass records, its two pass disclosures against the plain three-way answer, and its declaring lists, which are supersets of main's here. Two things come from main and both are named in the fold commit on the pull request: `supplementary[transcript-scroll-paging]`, an entry main re-captured and this branch never wrote, and `partialCapture.headRepointNote`, a key main added that this branch lacks, carried under the reading of group (5) that refuses main's keys only where the spelling is one this branch deleted.",
-        "replaced": {
-          "head": "90373bc6030c4ce3ebaa4bbb9b98b3a067bbed5b",
-          "srcTree": "9bae0afaea9a4dd6c1f206db1109f1d7a2be0d01",
-          "scriptsTree": "b61857bc1b47bb1178fbe0a925ed1e98ced87ae6",
-          "capturedAt": "2026-09-17T07:08:08.000Z"
+          "scriptsTree": "5744a1827d7c52ee198640c3cc21e87ae6f1181a"
         }
       }
     ],
