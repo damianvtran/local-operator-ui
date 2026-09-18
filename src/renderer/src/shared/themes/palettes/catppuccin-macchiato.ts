@@ -24,6 +24,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over `canvas` at the strongest alpha that keeps its own ink at 4.5:1; a semantic
  * border walks its hue toward the ground to just above the 3:1 edge floor; the shadow and the
  * scrim are the ground tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const catppuccinMacchiato: ThemeDefinition = {
 	id: "catppuccinMacchiato",
@@ -38,24 +54,45 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		sunken: "#1E2132",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.12 toward `accent`, then stepped 1.75 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 2.5 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.67:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4 from `surface`, 3.38 from `elevated` and 7.23 from
-		 * `sunken`; the step of 1.74 `L*` is short of the 3 `L*` floor and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * The current row's own ground, and the one palette class this pass pins:
+		 * `surface` stepped 1.9 `L*` lighter at the panel's own hue, under the 3
+		 * `L*` the direction floor asks for, because this palette's own inks cap the
+		 * lightness route at 2.05 `L*`. The band is paid on the cast at 1.46x the
+		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
+		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 5.08
+		 * from `surface`, 4.35 from `elevated`, 8.17 from `sunken`, 5.82 from
+		 * `accentWash`; the inks on the ground are 8.56:1, 7.13:1, 5.15:1.
+		 * Continuity with the panel: hue 8.92 degrees off the panel's (the assertion
+		 * allows 12) and chroma 21.03 where the panel carries 14.41.
 		 */
-		highlight: "#312F4B",
+		highlight: "#322F4E",
 
 		ink: "#CAD3F5",
-		inkMuted: "#B8C0E0",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.94:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#B9C1E1",
 		// Upstream overlay2 939AB7, lifted a hundredth: the tone sits at 4.55:1 on the binding
 		// ground, and it is the next rung the ink step can reach (subtext0 is 5.2 away from
 		// subtext1 and may not be).
-		inkDim: "#969DBA",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.01:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#9DA4C1",
 		inkDisabled: "#6E738D",
 
 		hairline: "#3C4056",
@@ -72,8 +109,33 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#2A2C42",
+		/*
+		 * Legibility pass: the wash is a hover and callout tint, not a selection
+		 * ground, and it gains one floor - ΔE00 2.0 against every ground it is painted
+		 * on - because it reads 1.00-1.24:1, so no ratio assertion can see it.
+		 * `canvas` is the tightest base at ΔE00 2.08. Lightness only, at the
+		 * wash's own hue.
+		 */
+		accentWash: "#212339",
 		onAccent: "#24273A",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#b7bdf8`,
+		 * canonical lavender), moved onto the floors: as received it sat ΔE00 10.79
+		 * from `accent`. That is paid on HUE — the hue walked 30.0° off the source
+		 * and L* 78.02 → 78.47 — because a value that bought the separation by
+		 * darkening would be the same hue at another weight. Measured: ΔE00 22.64
+		 * from `accent`, 40.05 from its nearest semantic (`warning`), 7.60:1 on the
+		 * tightest ground (`surface`).
+		 */
+		accentAlt: "#8EC8FB",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 14.52 and C* 15.61, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 10.62 from `accentWash` (the field floor is
+		 * 2.0), 8.64:1 for `accentAlt` on it, and 9.09 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#0B273A",
 
 		success: "#A6DA95",
 		successWash: "#292D3D",

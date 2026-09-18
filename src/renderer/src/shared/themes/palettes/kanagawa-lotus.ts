@@ -16,6 +16,22 @@ import type { ThemeDefinition } from "../palette-contract";
  *
  * Roles the scheme has no value for follow the derivation rules recorded in
  * `rose-pine.ts`.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const kanagawaLotus: ThemeDefinition = {
 	id: "kanagawaLotus",
@@ -31,19 +47,51 @@ export const kanagawaLotus: ThemeDefinition = {
 		sunken: "#D3CB9C",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 6.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.06 from `surface`, 6.21 from `elevated` and 2.14 from `sunken`;
-		 * the step is -6.16 `L*`, in the band this branch raised to 4.0, with
-		 * inkMuted at 4.84:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 5.5 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.19x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.11-to-4 band
+		 * on `surface`. ΔE00 4.11 from `surface`, 5.75 from `elevated`, 2.18 from
+		 * `sunken`, 4.41 from `accentWash`; the inks on the ground are 7.69:1,
+		 * 5.96:1, 5.44:1. Continuity with the panel: hue 0.44 degrees off the
+		 * panel's (the assertion allows 12) and chroma 27.28 where the panel carries
+		 * 22.88.
 		 */
-		highlight: "#D6D1A7",
+		highlight: "#DAD39F",
 
-		ink: "#363557",
-		inkMuted: "#545363",
-		inkDim: "#57544F",
+		/*
+		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
+		 * is 7:1 on all six grounds and `sunken` binds it at 7.13:1.
+		 *
+		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
+		 * surface the operator's report is about.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		ink: "#353556",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `sunken` binds it at 5.53:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#484757",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `sunken` binds it at 5.04:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#514E4A",
 		inkDisabled: "#8A8980",
 
 		hairline: "#C2BA8E",
@@ -63,6 +111,25 @@ export const kanagawaLotus: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#CFCEA9",
 		onAccent: "#F2ECBC",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#9E5400`,
+		 * orange, darkened from canonical #CC6D00 (3.04:1)), moved onto the floors:
+		 * as received it read 3.44:1 as text on all three text grounds (`sunken` is
+		 * the tightest); sat ΔE00 14.13 from `warning`. That is paid on HUE — the
+		 * hue walked 15.2° off the source and L* 43.67 → 36.09 — because a value
+		 * that bought the separation by darkening would be the same hue at another
+		 * weight. Measured: ΔE00 37.93 from `accent`, 16.53 from its nearest
+		 * semantic (`danger`), 4.55:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#96350A",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 81.99 and C* 19.46, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 20.59 from `accentWash` (the field floor is
+		 * 2.0), 4.65:1 for `accentAlt` on it, and 19.17 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#EEC3B1",
 
 		success: "#495933",
 		successWash: "#D2CC9E",
