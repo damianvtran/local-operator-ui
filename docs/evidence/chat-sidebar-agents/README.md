@@ -29,19 +29,18 @@ The last three are driven by their stories' own `play` functions — a real clic
 the action, then a wait for the state under test — so they are pictures of the
 component reacting rather than of a prop that fakes a state.
 
-**PAUSED MID-CAPTURE — read this before judging this set.** The re-capture for
-design/UX round 1 was stopped by a host-load hold (the machine was pageout-bound)
-after the hub's frames landed and before this surface's run reached it. So:
+**Every frame in this directory is from the remediation pass on head
+`83d25dd39`** — all seven stories, twelve themes each, taken in one narrowed run
+(`--only=chat-sidebar-agents`) at that head. The pause on this surface is closed:
+`installing-mid-run` has its twelve frames here rather than none, and the other
+six states are re-shot against the meter, summary and copy changes in
+`add709df1`, so they are evidence for those changes rather than the previous
+round's captures.
 
-- `installing-mid-run` has NO frames committed on this head. The story exists,
-  it is declared in `capture-evidence.mjs`'s `STORIES`, and the line above
-  describes what it will show — but nothing has photographed it yet.
-- The six other states are the PREVIOUS round's captures, taken before the meter,
-  summary and copy changes in `add709df1`. They are not evidence for those
-  changes and should not be read as such.
-
-The frames are owed, not waived; the pause comment on the PR lists this as
-remaining work.
+What this set still cannot show is a *draw* of the bar's transition: every frame
+is a shutter on a state, so the fill is a reading of where the batch got to
+(1 of 6 in `installing`, 4 of 6 in `installing-mid-run`), not a picture of it
+moving.
 
 ## What these frames do NOT prove
 
@@ -79,5 +78,6 @@ that drops it fail a gate rather than a frame review.
 
 `installing-mid-run` exists because the set could not previously answer the
 question the bar raises: with only the starting frame, a bar that never moves is
-indistinguishable from a bar that is not drawn. Its frames are still owed on this
-head — see the pause note above.
+indistinguishable from a bar that is not drawn. Its frames are in this directory
+now, and the pair decides it: the bar holds a longer fill four installs in than
+it does at the press, and the sentence under it reports the same step.

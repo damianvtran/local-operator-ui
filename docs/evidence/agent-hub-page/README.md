@@ -43,15 +43,25 @@ reacting rather than of a prop that fakes a state.
 All but the last were captured at `1280x900`; `narrow-columns` declares `920x900`
 in `STORIES`, and that is the only place a story's viewport is stated.
 
-**PAUSED MID-CAPTURE — which frames on this head are from the remediation and
-which are not.** The re-capture for design/UX round 1 was stopped by a host-load
-hold (the machine was pageout-bound). Captured at `f04dbe2e6`, twelve themes
-each: the six states added above, and `grid`, `signed-in` and `loading`
-re-captured against the fixed code. NOT yet re-captured, so still the previous
-round's frames and not evidence for this round: `empty`, `load-failed`,
-`empty-category` and `page-change-keeps-the-grid` — every one of which the
-remediation touches (D6's capped panel, U5's alert copy, D1's skeleton and pager
-height). The pause comment on the PR lists them as remaining work.
+**Every frame in this directory is from the remediation pass on head
+`83d25dd39`** — all thirteen stories, twelve themes each, taken in one narrowed
+run (`--only=agent-hub-page`) at that head. The earlier pause on this surface is
+closed: `empty`, `load-failed`, `empty-category` and `page-change-keeps-the-grid`
+— the four the remediation changes the rendering of (D6's capped panel, U5's
+alert copy and U1's retry, the same panel under a filter, D1's skeleton and pager
+height) — are the frames below rather than the previous round's.
+
+**The whole directory was re-taken rather than those four because
+`search-miss` was WRONG before this pass.** Three of its twelve committed frames
+— the first three themes in `THEMES` order (`localOperatorDark`,
+`localOperatorLight`, `dracula`) — were 1280x1404 and photographed the grid
+BEFORE the search applied: "30 agents" and twelve cards, which is the `grid`
+story's own content height, against 1280x900 for the other nine. The story's
+`play` function types into the box, and those three shutters caught a pre-filter
+render. All twelve now show the search miss ("0 agents" and its own panel) and
+the set's height is uniform. Recorded because anything read off those three
+frames before this pass — the D8 sentence they were added for included — was read
+off a picture of the unfiltered grid.
 
 `agent-hub-page-baseline/grid/` is the same story captured from
 **unmodified `origin/main`** — see that directory's own README for what was
