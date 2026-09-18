@@ -208,29 +208,28 @@ test("a uv-tool SOURCE BUILD is managed by `lop-update` when the machine has it,
 	// The install tree the route rewrites, which is where its evidence lives.
 	assert.equal(managed.installPrefix, sourcePrefix);
 	/*
-	 * The copy states what the app does, the risk the operator accepted on
-	 * everyone's behalf, and the one thing it cannot promise: the version this
-	 * install reports afterwards is the checkout's. The in-place clause is pinned
-	 * here because it is the consent the decision recorded - the app ships to people
-	 * who did not make it, so nobody may meet the consequence by surprise.
+	 * The copy states what the app does, the risk the operator accepted on everyone's
+	 * behalf, and the one thing it cannot promise: the version this install reports
+	 * afterwards is the checkout's. The in-place clause is pinned here because it is the
+	 * consent the decision recorded - the app ships to people who did not make it, so
+	 * nobody may meet the consequence by surprise. The ALLOWANCE is pinned for the same
+	 * reason: it read "a few minutes" beside a 30-minute budget until round 4.
 	 */
-	assert.match(managed.remedy, /rebuilds this source checkout/);
-	assert.match(managed.remedy, /reinstalls the install in place/);
 	assert.match(
 		managed.remedy,
-		/sessions running on this machine can be interrupted/,
+		/Rebuilds this checkout with `lop-update`. The rebuild happens in place/,
 	);
-	assert.match(managed.remedy, /is the checkout's/);
+	assert.match(managed.remedy, /sessions on this machine can be interrupted/);
+	assert.match(managed.remedy, /up to half an hour/);
+	assert.match(managed.remedy, /keeps reporting the checkout's version/);
 	/*
 	 * THE RIBBON CARRIES MACHINE FACTS, not the app's explanation of them: the app's
 	 * own sentence lives in `remedy`, which the panel renders as prose, while this
 	 * details line was app prose wrapping to five ragged lines inside the mono block
 	 * (review round 3, D5). The assertion follows the string rather than the wording.
 	 */
-	assert.match(
-		managed.detail,
-		/the app rebuilds it with the checkout's own script/,
-	);
+	assert.match(managed.detail, /source build of this machine's checkout/);
+	assert.match(managed.detail, /an in-place rebuild/);
 
 	// No tool on the machine: today's refusal, unchanged, and no route.
 	const refused = resolveGlobalInstallPlan({ identity: sourceIdentity });

@@ -2724,10 +2724,11 @@ const TERMINAL_INSTRUCTION =
  * The rules, in order: drop guard-bypass lines entirely - and if that empties the
  * output, return nothing rather than the lines just dropped; take the head up to the
  * first terminal instruction (so the verdict and its evidence survive and the
- * by-hand recipe does not); cap at `maxLines`; and fall back to the tail when the
- * head yields nothing usable, because a short unexplained one-liner (`installer
- * exited 127`) must still reach the panel. The result is bounded, because it lands
- * in a panel sentence whose full streams are in the update service log.
+ * by-hand recipe does not); and cap at `maxLines`. There is no tail fallback: a short
+ * unexplained one-liner (`installer exited 127`) survives the filter and the head takes
+ * it, and the arm that claimed to fall back could not run (review round 4, N1). The
+ * result is bounded, because it lands in a panel sentence whose full streams are in the
+ * update service log.
  */
 export function installDiagnosisLines(text: string, maxLines = 6): string {
 	const lines = text
@@ -2744,8 +2745,8 @@ export function installDiagnosisLines(text: string, maxLines = 6): string {
 	 * disable-the-guard instruction as their remedy - the class this function was
 	 * written to keep out. There is no useful remainder in that case; the panel
 	 * then shows the app's own sentence and the log path instead (review round 3,
-	 * MINOR-1). The tail fallback still runs, but over the FILTERED lines, so a
-	 * crash's one-liner ("installer exited 127") is unaffected.
+	 * MINOR-1). A crash's one-liner ("installer exited 127") is unaffected: it does
+	 * not match the bypass advice, so it survives the filter.
 	 */
 	if (allowed.length === 0) return "";
 	const head: string[] = [];
@@ -2754,9 +2755,15 @@ export function installDiagnosisLines(text: string, maxLines = 6): string {
 		if (head.length > 0 && TERMINAL_INSTRUCTION.test(line)) break;
 		head.push(line);
 	}
-	return (head.length > 0 ? head : allowed.slice(-maxLines))
-		.join("\n")
-		.slice(0, 800);
+	/*
+	 * NO TAIL BRANCH HERE. There used to be `head.length > 0 ? head : allowed.slice(-maxLines)`,
+	 * which could only fire with `maxLines <= 0`: the filter above returns early on an
+	 * empty pool and the first iteration always pushes, so the fallback was dead code
+	 * dressed as a safety net. `maxLines` is a literal budget at every call site, and a
+	 * branch a comment calls live while it cannot run is the shape this suite exists to
+	 * catch elsewhere (review round 4, N1).
+	 */
+	return head.join("\n").slice(0, 800);
 }
 
 /** `local_operator-0.56.0.dist-info`, in either separator spelling. */
@@ -3485,13 +3492,13 @@ export function resolveGlobalInstallPlan(input: {
 			remedy: managed
 				? "The app updates this install and then restarts the server it started, so a turn that is in flight is dropped while the server comes back. This can take a minute or two."
 				: sourceRebuildRoute
-					? "The app rebuilds this source checkout with `lop-update` and then restarts the server it started. That rebuild reinstalls the install in place, so sessions running on this machine can be interrupted while it happens, and it can take a few minutes. The version this install reports afterwards is the checkout's, not the release the app offered."
+					? "Rebuilds this checkout with `lop-update`. The rebuild happens in place, so sessions on this machine can be interrupted while it runs, and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered."
 					: "This install predates the non-disruptive installer, so update it once from your terminal. This install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn; the app manages updates after that.",
 			detail: `${detail}${
 				managed
 					? provenance
 					: sourceRebuildRoute
-						? " source build of this machine's checkout; the app rebuilds it with the checkout's own script."
+						? " source build of this machine's checkout; an in-place rebuild."
 						: provenance
 			}`,
 			sourceBuild,

@@ -7,7 +7,7 @@ import {
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
 import {
-	updateErrorMessage,
+	serverUpdateFailureCopy,
 	updateMessageFate,
 	updateMessageOf,
 } from "@shared/utils/update-error-copy";
@@ -1679,19 +1679,22 @@ export const UpdateNotification = ({
 			window.api.updater.onBackendUpdateError((report) => {
 				if (report.phase === "update" && answerBackendUpdateAttempt()) {
 					/*
-					 * This channel's real strings are Node errno forms - the operator's
-					 * log shows `getaddrinfo ENOTFOUND pypi.org` on the version read
-					 * during a check - so it goes through the same copy as the app
-					 * channel rather than being painted as the machine wrote it.
-					 */
-					/*
-					 * The sentence is classified as copy because it IS one - the producer no
-					 * longer welds the installer's output onto it (review round 3, U1). Any
-					 * installer output travels in its own field and is rendered as it was
-					 * written.
+					 * AN ATTEMPT'S REPORT IS THE APP'S OWN SENTENCE, AND IT IS TRUSTED
+					 * VERBATIM. The old rule here - this channel's strings are Node errno
+					 * forms, so send them through the copy classifier like the app channel -
+					 * is true of a CHECK's report (the operator's log shows `getaddrinfo
+					 * ENOTFOUND pypi.org` on the version read during a check) and was wrong
+					 * for this one. The main process composes this sentence itself
+					 * (`serverUpdateFailureSentence`); it measured 401, 467 and 481-483
+					 * characters across the three routes, and the classifier's 400-character
+					 * reading of a long string as a machine dump replaced it with the check
+					 * stage's sentence on two of them - destroying the cost clause this delta
+					 * exists to show (reviewer M1 = UX U1 = QA Q-1, round 4). Round 3 fixed
+					 * the same class one layer down by giving the installer's words their own
+					 * field; this is the other half of it.
 					 */
 					setBackendUpdateFailure({
-						message: updateErrorMessage(report.message),
+						message: serverUpdateFailureCopy(report.message),
 						installerOutput: report.installerOutput,
 						logPath: report.logPath,
 					});
