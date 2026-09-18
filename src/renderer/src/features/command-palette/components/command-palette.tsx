@@ -1021,8 +1021,9 @@ const PaletteRow: FC<{
 				 * `sunken` is the repo's own answer for this exact shape of row: the
 				 * picker popup's keyboard row takes it for the same gesture on the same
 				 * kind of dialog, because it is the one ground that steps perceptibly away
-				 * from `elevated` in every palette (measured ΔE00 5.85-16.70 across all
-				 * 59). The `outline-control` ring is the half the wash could never carry:
+				 * from `elevated` in every palette (re-measured here: ΔE00 6.07-16.18
+				 * across all 59 on the grounds this branch ships). The `outline-control`
+				 * ring is the half the wash could never carry:
 				 * the pointer's tint is deliberately kept off this state, so the only
 				 * colour left is the row's own ink and the accent spent once, on the edge.
 				 * Both are asserted - the ground by the contract's selection row, the edge

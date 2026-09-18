@@ -87,7 +87,7 @@ for hours, so it has a floor rather than a band with discretion:
 
 | Rule | Value |
 |---|---|
-| dark `canvas` | **hard floor L\* 12**, declared band 12–20, hard ceiling L\* 22 |
+| dark `canvas` | **hard floor L\* 12**, **hard ceiling L\* 22**, target band 12–20 — three palettes sit above the target inside the ceiling, at `catppuccinFrappe` 21.99, `everforest` 21.65, `nord` 21.60 |
 | light `canvas` | **ceiling L\* 94** |
 | dark `elevated` | **ceiling L\* 30** |
 | light `sunken` | **floor L\* 80** |

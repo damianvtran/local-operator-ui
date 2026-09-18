@@ -139,7 +139,7 @@ export type ThemePalette = {
 	 * `picker-host.tsx` established it for the keyboard's row and the command
 	 * palette's active row takes it for the same reason: it is the one ground that
 	 * steps perceptibly away from `elevated` in every palette (measured ΔE00
-	 * 5.85-16.70 across all fifty-nine), where the accent wash collapses onto the
+	 * 6.07-16.18 across all fifty-nine), where the accent wash collapses onto the
 	 * dialog ground (`obsidian` ΔE00 0.77) and reads 1.00-1.24:1.
 	 *
 	 * A selection therefore takes this ground AND a non-colour mark beside it -
@@ -487,9 +487,11 @@ export type ThemePalette = {
 	 *   decoration from a failure.
 	 * - **ΔE00 >= 8 from `info`**, deliberately the lighter floor. `info` is the
 	 *   cool counterweight the port mapped `signal` onto, so on the palettes whose
-	 *   second hue is in that family (`catppuccinLatte` 6.5, `radient` 5.9,
-	 *   `catppuccinMocha` 9.1, `catppuccinFrappe` 9.6, `catppuccinMacchiato` 9.7)
-	 *   15 would fail BY CONSTRUCTION rather than by defect. 8 is the file's
+	 *   second hue is in that family 15 would fail BY CONSTRUCTION rather than by
+	 *   defect: the tightest are `catppuccinMocha` 8.01, `catppuccinMacchiato`
+	 *   8.58 and `catppuccinFrappe` 8.60 - the three whose second hue sits in
+	 *   `info`'s own family (2.68, 19.42 and 17.02 degrees off it, in that order) -
+	 *   then `localOperatorDark` 12.57 and `ayuLight` 13.57. 8 is the file's
 	 *   "reliably take different names rather than scraping the side-by-side
 	 *   threshold" floor (`SYNTAX_COMMENT_FLOOR`).
 	 * - **C* >= 15.** The second accent has to be a hue and not a second grey.
