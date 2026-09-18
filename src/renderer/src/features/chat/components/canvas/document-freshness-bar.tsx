@@ -126,18 +126,47 @@ export const DocumentFreshnessBar: FC<{
 			 * the ring paints (an element does not clip its own outline) and the
 			 * keyboard reader gets the horizontal scroll too.
 			 */}
-			<Tooltip content={detail ?? ""} side="bottom" delayDuration={1200}>
+			{/*
+			 * THE TOOLTIP CARRIES THE STAMP TOO (UX round 4, U15). The stamp is hidden
+			 * once the region is narrower than 22rem, because at that size the sentence -
+			 * the thing the row exists to state - is otherwise six pixels wide. The
+			 * figure itself is then one hover or one Tab away rather than lost.
+			 */}
+			<Tooltip
+				content={[detail, `Last modified ${stamp}`].filter(Boolean).join(" ")}
+				side="bottom"
+				delayDuration={1200}
+			>
 				<div
 					// biome-ignore lint/a11y/noNoninteractiveTabindex: this is a scroll container, which is the one non-interactive role a tab stop is for - D11's keyboard reader needs it to reach the sentence when it truncates, and it carries no action.
 					tabIndex={0}
+					/*
+					 * NO SCROLL INSIDE THE ROW (design round 4, D10; UX U15). Round 3
+					 * gave this region `overflow-x-auto` to make the truncation reachable
+					 * by keyboard, and traded a mid-glyph clip with no ellipsis for a
+					 * scrollbar that is a LAYOUT BOX: it grew the region, jumped the row's
+					 * text 4px on 3px of overflow, and still left the actionable clause off
+					 * screen. The sentence truncates with an ellipsis instead, its full
+					 * text is in the tooltip and the accessible description, and the `p-0.5`
+					 * is the room the focus ring needs to paint all four sides (D11).
+					 */
 					className={cn(
-						"flex min-w-0 flex-1 items-center gap-2 overflow-x-auto",
+						"flex min-w-0 flex-1 items-center gap-2 overflow-hidden p-0.5",
 					)}
 					data-tour-tag="canvas-document-freshness-region"
 				>
+					{/*
+					 * THE STAMP YIELDS, AND THE SENTENCE KEEPS ITS WIDTH (UX round 4, U15 -
+					 * deliberately the reverse of round 2's D7, which protected the stamp).
+					 * U15 measured the note at six pixels against 264px of text at a
+					 * 1024x700 window: at the size the app's own minimum window declares,
+					 * the fact the row exists to state was gone. The stamp truncates with an
+					 * ellipsis instead when the row cannot hold both, and the tooltip now
+					 * carries its figure as well as the claim, so nothing is lost.
+					 */}
 					<span
 						className={cn(
-							"shrink-0 whitespace-nowrap text-meta text-ink-muted tabular-nums",
+							"min-w-0 truncate whitespace-nowrap text-meta text-ink-muted tabular-nums",
 						)}
 						data-tour-tag="canvas-document-modified"
 					>
@@ -160,7 +189,7 @@ export const DocumentFreshnessBar: FC<{
 					</output>
 					{note ? (
 						<span
-							className={cn("min-w-0 truncate text-meta text-ink-muted")}
+							className={cn("shrink-0 truncate text-meta text-ink-muted")}
 							data-tour-tag="canvas-document-freshness-note"
 						>
 							{note}

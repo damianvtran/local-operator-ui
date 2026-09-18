@@ -581,7 +581,21 @@ const CanvasComponent: FC<CanvasProps> = ({
 								document={activeDocument}
 								conversationId={conversationId}
 							/>
+							{/*
+							 * KEYED BY THE DOCUMENT'S OWN IDENTITY (round 5). The viewers keep
+							 * local state - a buffer, a dirty flag, an original content ref -
+							 * and React reuses a component instance when the same type sits at
+							 * the same position, which is exactly what a tab switch is: the
+							 * prop changes and the state stays. A scene run caught the
+							 * consequence with the file's own bytes: open `ts-a.py`, type,
+							 * open `ts-b.py`, type, and `ts-b.py` came back holding A's
+							 * content with B's new keystrokes appended. The key makes a
+							 * switch a fresh mount, which is what every viewer already
+							 * assumes (its effects seed from `document` and it registers with
+							 * the buffer owner on mount).
+							 */}
 							<CanvasContent
+								key={activeDocument.id}
 								document={activeDocument}
 								conversationId={conversationId}
 								agentId={agentId}

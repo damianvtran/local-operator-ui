@@ -2,6 +2,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import type { CanvasDocument } from "../../types/canvas";
+import { resetBufferToFile } from "./document-buffers";
 import {
 	type FreshnessFact,
 	type FreshnessOutcome,
@@ -156,9 +157,9 @@ export type DocumentFreshness = {
  * one Tab or one hover away instead of never.
  */
 export const FACT_TEXT: Record<FreshnessFact, string> = {
-	missing: "No longer on disk - showing the version we last read.",
-	unreadable: "Could not be read - showing the version we last read.",
-	failed: "Could not be re-read - showing the version we last read.",
+	missing: "No longer on disk — showing the version we last read.",
+	unreadable: "Could not be read — showing the version we last read.",
+	failed: "Could not be re-read — showing the version we last read.",
 	/*
 	 * THE HOLD'S OWN SENTENCE (UX round 2 U1, tightened in round 3). Two ways out,
 	 * both of which exist: the control loads the file's version (letting the
@@ -166,7 +167,7 @@ export const FACT_TEXT: Record<FreshnessFact, string> = {
 	 * named, is not one of them - and the actionable clause leads here rather than
 	 * trailing, because it is the half a reader has to act on.
 	 */
-	"disk-changed": "Changed on disk - load it, or save to replace it.",
+	"disk-changed": "Changed on disk — load it, or save to replace it.",
 	"save-replaced": "Your save replaced the change on disk.",
 };
 
@@ -196,13 +197,24 @@ export const FACT_DETAIL: Record<FreshnessFact, string> = {
  */
 export const ANSWER_LIFETIME_MS = 8000;
 
+/**
+ * The row's ANSWER to a gesture: a short label, with the full claim beside it.
+ *
+ * WHY SHORT (design round 4, D12). At the dock's 400px floor the visible answer is
+ * whatever is left of the row after the stamp and the control, and "Updated from
+ * disk" came back as `Updated from di…` - ellipsised mid-word, which reads as a
+ * defect rather than as a sentence. A label that is a couple of words fits at every
+ * size the app allows, and `answerDetailFor` below carries the sentence a reader
+ * needs into the tooltip and the control's accessible description, one hover or Tab
+ * away - the same split `FACT_TEXT`/`FACT_DETAIL` already uses for state.
+ */
 export function answerFor(
 	outcome: FreshnessOutcome,
 	forced: boolean,
 ): string | null | undefined {
 	switch (outcome.status) {
 		case "applied":
-			return "Updated from disk";
+			return "Reloaded";
 		/*
 		 * A byte-identical re-read is the answer to the one press that could not be
 		 * answered before (design D3, QA Q5, UX U3): the runner rewrites a forced
@@ -211,9 +223,27 @@ export function answerFor(
 		 * produced nothing at all.
 		 */
 		case "identical":
-			return "Already up to date";
+			return "Up to date";
 		case "unchanged":
-			return forced ? "Already up to date" : undefined;
+			return forced ? "Up to date" : undefined;
+		case "unavailable":
+			return forced ? "No local file access" : undefined;
+		default:
+			return undefined;
+	}
+}
+
+/** The answer's full sentence, for the tooltip and the accessible description. */
+export function answerDetailFor(
+	outcome: FreshnessOutcome,
+	forced: boolean,
+): string | null | undefined {
+	switch (outcome.status) {
+		case "applied":
+			return "The file's version was re-read from disk and is now on screen.";
+		case "identical":
+		case "unchanged":
+			return forced ? "Already up to date — the file is unchanged." : undefined;
 		case "unavailable":
 			return forced
 				? "Local file access is unavailable, so there is nothing to re-read from."
@@ -300,9 +330,11 @@ export function useFileFreshness({
 	 * publishes - a probe per sentence, for ever. */
 	const factRef = useRef<FreshnessFact | null>(null);
 	factRef.current = fact;
-	const [answer, setAnswer] = useState<{ text: string; at: number } | null>(
-		null,
-	);
+	const [answer, setAnswer] = useState<{
+		text: string;
+		detail: string | null;
+		at: number;
+	} | null>(null);
 	/*
 	 * An ANSWER belongs to the document that produced it, so a tab switch starts the
 	 * new document's row without the last one's reply. A FACT deliberately does not:
@@ -431,7 +463,15 @@ export function useFileFreshness({
 				if (nextFact !== undefined) setDocumentFact(document.id, nextFact);
 				const nextAnswer = answerFor(outcome, force);
 				if (nextAnswer !== undefined) {
-					setAnswer(nextAnswer ? { text: nextAnswer, at: Date.now() } : null);
+					setAnswer(
+						nextAnswer
+							? {
+									text: nextAnswer,
+									detail: answerDetailFor(outcome, force) ?? null,
+									at: Date.now(),
+								}
+							: null,
+					);
 				}
 			} finally {
 				if (force) setRefreshing(false);
@@ -452,12 +492,34 @@ export function useFileFreshness({
 		setRefreshing(true);
 		try {
 			const outcome = await runner.load(latest.current);
-			if ("document" in outcome) apply(outcome.document);
+			if ("document" in outcome) {
+				/*
+				 * THE OWNER IS TOLD FIRST, and by the same rule the store is: the load's
+				 * bytes are the document's content now, so the buffer takes them and the
+				 * editor's own adopt (which refuses while the buffer is dirty) has nothing
+				 * left to refuse. Both halves in one place, in this order, so the screen
+				 * and the store cannot disagree about which version is on it.
+				 */
+				resetBufferToFile(
+					outcome.document.id,
+					outcome.document.content,
+					outcome.document.readMtimeMs ?? null,
+				);
+				apply(outcome.document);
+			}
 			const nextFact = factAfter(outcome, factRef.current);
 			if (nextFact !== undefined) setDocumentFact(document.id, nextFact);
 			const nextAnswer = answerFor(outcome, true);
 			if (nextAnswer !== undefined) {
-				setAnswer(nextAnswer ? { text: nextAnswer, at: Date.now() } : null);
+				setAnswer(
+					nextAnswer
+						? {
+								text: nextAnswer,
+								detail: answerDetailFor(outcome, true) ?? null,
+								at: Date.now(),
+							}
+						: null,
+				);
 			}
 		} finally {
 			setRefreshing(false);
@@ -530,7 +592,7 @@ export function useFileFreshness({
 		 * accessible description. The row's visible string has to fit a 32px chrome
 		 * bar at ordinary pane widths (design round 3, D10), so the short form is the
 		 * one on screen and the full one is the one a reader can ask for. */
-		detail: fact ? FACT_DETAIL[fact] : (answer?.text ?? null),
+		detail: fact ? FACT_DETAIL[fact] : (answer?.detail ?? answer?.text ?? null),
 		dirty,
 		// The control's meaning follows this: it LOADS the file's version in this
 		// state rather than merely re-reading it, and the row says so.

@@ -18,7 +18,6 @@ import { useDebounce } from "@shared/hooks/use-debounce";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import type { UndoManager } from "@shared/lib/undo-manager";
 import { cn } from "@shared/lib/utils";
-import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUndoManagerStore } from "@shared/store/undo-manager-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import {
@@ -41,12 +40,13 @@ import { type FC, memo } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import {
-	clearDocumentDirty,
-	isDocumentDirty,
-	releaseDocumentHold,
-	saveDocument,
-	setDocumentDirty,
-} from "./file-freshness";
+	adoptBuffer,
+	closeBuffer,
+	commitCanvasDocument,
+	proposeBuffer,
+	saveBuffer,
+} from "./document-buffers";
+import { isDocumentDirty } from "./file-freshness";
 import { InlineEdit } from "./inline-edit";
 import { InsertImageDialog } from "./wysiwyg/insert-image-dialog";
 import type { LinkDialogData } from "./wysiwyg/insert-link-dialog";
@@ -467,35 +467,31 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		}
 	}, []);
 
-	const { updateOneFile } = useCanvasStore();
-	const canvasState = useCanvasStore((state) =>
-		conversationId ? state.conversations[conversationId] : undefined,
-	);
-
 	/*
-	 * THE ONE WRITE PATH (QA round 3 Q9, code review round 3 A). The debounce here
-	 * is THREE seconds against a 2000ms poll, so a file rewritten on disk just
-	 * before it fired was overwritten by this save - and because the save then
-	 * recorded its own mtime as the baseline, no fact was ever raised. The gate
-	 * stats the file before writing and refuses when the mtime is not the one the
-	 * held bytes came from; an explicit save (the toolbar, ⌘S, an approved inline
-	 * edit) is never refused, and converts a standing fact instead.
+	 * THE BUFFER OWNER OWNS THIS DOCUMENT'S TEXT (round 4). The editor registers the
+	 * document, hands the owner a `commit` port for the store, and reports its text;
+	 * the owner is the only writer, and it writes its own current copy.
 	 */
-	const write = useCallback(
-		async (bytes: string, explicit: boolean) => {
-			const current =
-				canvasState?.files.find((file) => file.id === document.id) ?? document;
-			const outcome = await saveDocument(current, bytes, { explicit });
-			if (outcome.status !== "written") return outcome;
-			originalContentRef.current = bytes;
-			setHasUserChanges(false);
-			if (conversationId && canvasState) {
-				updateOneFile(conversationId, outcome.document);
-			}
-			return outcome;
-		},
-		[canvasState, conversationId, document, updateOneFile],
-	);
+	const latestDocumentRef = useRef(document);
+	latestDocumentRef.current = document;
+	useEffect(() => {
+		adoptBuffer({
+			documentId: document.id,
+			path: document.path,
+			text: document.content,
+			mtimeMs: document.readMtimeMs,
+			commit: (text, mtimeMs) => {
+				if (!conversationId) return;
+				const current = latestDocumentRef.current;
+				commitCanvasDocument(conversationId, {
+					...current,
+					content: text,
+					readMtimeMs: mtimeMs ?? current.readMtimeMs,
+					lastAgentModified: mtimeMs ?? current.lastAgentModified,
+				});
+			},
+		});
+	}, [conversationId, document]);
 
 	// Manual save function that bypasses debounce
 	const handleManualSave = useCallback(() => {
@@ -514,11 +510,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		 * honest about which version won: an explicit save over a file that had
 		 * changed replaces it, and the row says so in the same breath.
 		 */
-		void write(content, true)
+		proposeBuffer(document.id, content);
+		void saveBuffer(document.id, { explicit: true })
 			.then((outcome) => {
 				if (outcome.status !== "written") return;
 				showSuccessToast(
-					outcome.overwrote ? "File saved, replacing the change" : "File saved",
+					outcome.replaced ? "File saved, replacing the change" : "File saved",
 				);
 			})
 			.catch((error) => {
@@ -526,7 +523,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				// save attempts it again.
 				console.error("Could not save the document:", error);
 			});
-	}, [hasUserChanges, content, document.path, write]);
+	}, [content, document.id, document.path, hasUserChanges]);
 
 	const updateCurrentTextType = useCallback(() => {
 		const selection = window.getSelection();
@@ -578,13 +575,20 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			isInitialLoadRef.current = false;
 		}
 
+		/*
+		 * THE READER'S TEXT, reported to its owner (I1) on every change. The owner
+		 * recomputes the dirty flag from it - so an undo back to the file's own bytes
+		 * clears it (UX U11) - and publishes the registry the freshness check consults
+		 * before replacing anything.
+		 */
+		proposeBuffer(document.id, markdownContent);
 		if (markdownContent !== originalContentRef.current) {
 			setHasUserChanges(true);
 		}
 
 		updateCurrentTextType();
 		updateSelectedFormats();
-	}, [updateCurrentTextType, updateSelectedFormats]);
+	}, [document.id, updateCurrentTextType, updateSelectedFormats]);
 
 	const clearHighlights = useCallback(() => {
 		if (window.CSS && CSS.highlights) {
@@ -869,46 +873,15 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 * keystroke the store holds bytes the user has already replaced, and a
 	 * check driven off the store would see no change and overwrite the typing.
 	 */
-	useEffect(() => {
-		setDocumentDirty(document.id, hasUserChanges);
-	}, [document.id, hasUserChanges]);
+
 	/*
-	 * THE UNMOUNT OWES THREE THINGS (QA round 3, Q11; code review round 3's
-	 * hold-cleanup finding) - the same three the code editor owes, for the same
-	 * reasons: flush a write that should happen, keep a buffer that must not be
-	 * written by putting it in the persisted store, and release the hold (which
-	 * cannot lose anything once the buffer is in the store).
+	 * The unmount is one call: the owner flushes a write that should happen, commits
+	 * the buffer through the port registered above (an upsert, which is what makes it
+	 * work after the document has left the store's file list - code review round 4,
+	 * R4-7), and keeps the dirty flag while the document is held (R4-1).
 	 */
-	const latestRef = useRef({
-		content,
-		conversationId,
-		canvasState,
-	});
-	latestRef.current = { content, conversationId, canvasState };
-	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document on purpose - the body reads the latest buffer and store through `latestRef`.
-	useEffect(
-		() => () => {
-			const latest = latestRef.current;
-			if (latest.content !== originalContentRef.current) {
-				if (latest.conversationId && latest.canvasState) {
-					updateOneFile(latest.conversationId, {
-						...document,
-						content: latest.content,
-					});
-				}
-				void saveDocument(
-					latest.canvasState?.files.find((file) => file.id === document.id) ??
-						document,
-					latest.content,
-				).catch(() => {
-					/* Refused or failed: the fact is raised and the buffer is in the store. */
-				});
-			}
-			releaseDocumentHold(document.id);
-			clearDocumentDirty(document.id);
-		},
-		[document.id, updateOneFile],
-	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document; the owner holds the text and the store handoff.
+	useEffect(() => () => closeBuffer(document.id), [document.id]);
 
 	// Manage UndoManager lifecycle
 	useEffect(() => {
@@ -955,10 +928,13 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			debouncedContent !== originalContentRef.current &&
 			document.path
 		) {
-			/* The GATE decides, not this effect: a refusal raises the sticky sentence
-			 * and holds the document, and the reader's routes out are the row's control
-			 * and an explicit save. */
-			void write(debouncedContent, false)
+			/*
+			 * THE DEBOUNCE CARRIES NO TEXT (round 4): it asks the owner to save, and the
+			 * owner writes its own current text. Round 3's version sent
+			 * `debouncedContent` from here, which is how the reader's PRE-LOAD text
+			 * reached the file ~130ms after a press had loaded the file's version.
+			 */
+			void saveBuffer(document.id)
 				.then((outcome) => {
 					if (outcome.status === "written") showSuccessToast("File saved");
 				})
@@ -966,7 +942,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					console.error("Could not save the document:", error);
 				});
 		}
-	}, [debouncedContent, hasUserChanges, document.path, write]);
+	}, [debouncedContent, document.id, document.path, hasUserChanges]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect when content changes to restore the scroll position.
 	useEffect(() => {
@@ -1576,10 +1552,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		// through the gate: an approved inline edit is a save the READER asked for, so
 		// it is explicit and is never refused.
 		if (document.path && finalContent !== originalContentRef.current) {
-			void write(finalContent, true).then((outcome) => {
+			proposeBuffer(document.id, finalContent);
+			void saveBuffer(document.id, { explicit: true }).then((outcome) => {
 				if (outcome.status !== "written") return;
 				showSuccessToast(
-					outcome.overwrote ? "File saved, replacing the change" : "File saved",
+					outcome.replaced ? "File saved, replacing the change" : "File saved",
 				);
 			});
 		}
