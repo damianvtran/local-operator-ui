@@ -102,15 +102,28 @@ const SEARCH_DEBOUNCE_MS = 300;
  * The placeholder card, at the SETTLED card's own geometry.
  *
  * It is a placeholder of the shape that is coming, which only works if the
- * shape is the one that arrives: the previous version drew a title and three
+ * shape is the one that arrives: an earlier version drew a title and three
  * text lines and then jumped to the footer, omitting the tag row and the author
  * line that make a settled card 37px taller, so every first paint moved the
  * grid twice — the first row down, then each row growing (design round 1, D1:
  * placeholder box 220px against the settled card's 257px, row pitch 248 against
  * 283). The blocks below mirror `AgentCard`'s own: same `p-4`, same `gap-2`,
- * title, three clamped description lines, the tag row and author line where the
- * card's `mt-auto` group puts them, then the same divider above the same footer
- * with the counters and the action in their real sizes.
+ * title, three clamped description lines, the tag group and author line where
+ * the card's `mt-auto` group puts them, then the same divider above the same
+ * footer with the counters and the action in their real sizes.
+ *
+ * THE TAG GROUP IS TWO ROWS, because the settled card's is. `AgentCard`'s
+ * `flex-wrap` group wraps on every record this hub serves and at both widths
+ * the grid gives it — 306px cards in the four-column grid and 292px under
+ * `narrow-columns` — so the placeholder was drawing a 20px group where the card
+ * draws 50px (two 22px pill rows and the group's own `gap-1.5`), measured as a
+ * 225-228px box against the settled 259-263px and a 249-250px pitch against
+ * 282-285 in all twelve themes (design round 2, D1). Two explicit rows of
+ * `min-h-5.5` — the pill's own floor — are that 50px in every theme, and unlike
+ * three chips long enough to wrap in a `flex-wrap` group they do not depend on
+ * the column width the grid happens to hand them, so the box holds whatever the
+ * window is. The title takes `h-5.5` for the same reason: `text-heading`'s line
+ * box is 22.4px, not the 20px an `h-5` block stands in with.
  *
  * Six of them, which is what a grid at the hub's narrowest supported column
  * shows; the count is a deliberate choice of its own and not this comment's
@@ -119,17 +132,28 @@ const SEARCH_DEBOUNCE_MS = 300;
 const AgentCardSkeleton: React.FC = () => (
 	<div className="flex h-full flex-col overflow-hidden rounded-lg border border-hairline bg-surface">
 		<div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
-			<Skeleton className="h-5 w-2/3" />
+			<Skeleton className="h-5.5 w-2/3" />
 			<Skeleton className="h-3.5 w-full" />
 			<Skeleton className="h-3.5 w-full" />
 			<Skeleton className="h-3.5 w-1/2" />
-			{/* The `mt-auto` group: tag row, then the author line. */}
+			{/* The `mt-auto` group: tag rows, then the author line. */}
 			<div className="mt-auto flex flex-col gap-2 pt-2">
-				<div className="flex flex-wrap items-center gap-1.5">
-					<Skeleton className="h-5 w-16" />
-					<Skeleton className="h-5 w-20" />
+				<div className="flex flex-col gap-1.5">
+					<div className="flex items-center gap-1.5">
+						<Skeleton className="h-5.5 w-24" />
+						<Skeleton className="h-5.5 w-20" />
+					</div>
+					<div className="flex items-center gap-1.5">
+						<Skeleton className="h-5.5 w-24" />
+					</div>
 				</div>
-				<Skeleton className="h-4 w-32" />
+				{/*
+				 * `h-4.5` rather than `h-4`: the author line stands in for a
+				 * `text-meta` line box, which is 17.4px, and this is the step that
+				 * keeps the whole card on the settled height rather than 2.3px under
+				 * it (`h-4`) or 2.7px over (`h-5`).
+				 */}
+				<Skeleton className="h-4.5 w-32" />
 			</div>
 		</div>
 		{/* The settled card's own footer: same divider, same padding, same sizes. */}
@@ -238,6 +262,20 @@ export const AgentHubPage: React.FC = () => {
 		(searchRef.current ?? publishRef.current)?.focus();
 	}, [clearFocusNonce]);
 
+	/*
+	 * The retry, and where focus goes when it comes back.
+	 *
+	 * The alert and its retry unmount the moment a press is answered — the
+	 * skeleton grid IS the answer (UX round 1, U1) — so the browser drops focus
+	 * on `document.body` and the user's next Tab restarts at the top of the
+	 * window. A retry that fails AGAIN then returns the alert with nothing
+	 * announced and focus still on the body, because the failure is not an answer
+	 * the surface hands anywhere (UX round 2, U9). Same treatment as the cleared
+	 * filter above: read the DOM after the re-render, then move focus.
+	 */
+	const retryRef = useRef<HTMLButtonElement>(null);
+	const retryPressedRef = useRef(false);
+
 	// Accumulated rather than derived per render: see `seenCategories`.
 	const presentCategories = useMemo(
 		() => [
@@ -277,14 +315,36 @@ export const AgentHubPage: React.FC = () => {
 	 */
 	const isColdLoading = (isLoading || isFetching) && agentsData === undefined;
 	/*
-	 * Nothing to browse, so the controls cannot change anything: three filter
-	 * controls over zero records crowd the one action that matters, "Publish an
-	 * agent" (UX round 1, U3). A filter that IS active keeps them — else the
-	 * user could not clear it — and the loading state keeps them too, so the
-	 * grid does not reflow when the records land.
+	 * Whether the filter surfaces can change anything.
+	 *
+	 * Three filter controls over zero records crowd the one action that matters,
+	 * "Publish an agent" (UX round 1, U3), and round 2 measured two states that
+	 * rule left covered in controls it had not considered: a hub whose read FAILED
+	 * still drew the full search/scope/sort row above the alert, over zero records
+	 * and with no query to clear, and the rail still offered its lone "All
+	 * categories" row — the current selection, which cannot change anything — on
+	 * the settled empty hub (UX round 2, U12 and U13). One condition governs both
+	 * now, so they cannot disagree about the same question a third time.
+	 *
+	 * Two states keep everything: a filter that IS active (`!hasFilters`), else the
+	 * user could not clear it, and the cold load, so the grid does not reflow when
+	 * the records land.
 	 */
-	const hasNothingToBrowse =
-		!isColdLoading && !error && agents.length === 0 && !hasFilters;
+	const browseControlsAreInert =
+		!isColdLoading && !hasFilters && (error !== null || agents.length === 0);
+
+	/*
+	 * Focus comes back to the control that was pressed, and only for a press this
+	 * surface made: a first paint's own failure moves nothing, which is the
+	 * difference between recovering a user's place and stealing it. It waits for
+	 * the press to settle (`isColdLoading` is the skeleton the retry shows) so the
+	 * target exists when it is read.
+	 */
+	useEffect(() => {
+		if (!retryPressedRef.current || isColdLoading) return;
+		retryPressedRef.current = false;
+		if (error) retryRef.current?.focus();
+	}, [isColdLoading, error]);
 
 	const handlePageChange = (newPage: number) => {
 		setPage(newPage);
@@ -320,11 +380,20 @@ export const AgentHubPage: React.FC = () => {
 					className="mr-6 hidden w-60 shrink-0 md:block"
 					data-tour-tag="agent-hub-sidebar-container"
 				>
-					<AgentCategoriesSidebar
-						selectedCategory={selectedCategory}
-						onSelectCategory={handleSelectCategory}
-						categories={seenCategories}
-					/>
+					{/*
+					 * The rail's rows go with `browseControlsAreInert`, but the 240px
+					 * column stays: it is the grid's gutter, so the content column keeps
+					 * the centre it is measured against and the cards do not reflow when
+					 * records land. The heading goes too — a rail labelled "Categories"
+					 * over nothing is the same inert affordance in a different shape.
+					 */}
+					{!browseControlsAreInert && (
+						<AgentCategoriesSidebar
+							selectedCategory={selectedCategory}
+							onSelectCategory={handleSelectCategory}
+							categories={seenCategories}
+						/>
+					)}
 				</div>
 				<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
 					{/*
@@ -345,7 +414,7 @@ export const AgentHubPage: React.FC = () => {
 					 * toolbar of independent controls, where a box-wide ring points at the wrong
 					 * thing, while these two are the two halves of one field.
 					 */}
-					{!hasNothingToBrowse && (
+					{!browseControlsAreInert && (
 						<div className="mb-4 flex flex-wrap items-center gap-2">
 							<div
 								className={cn(
@@ -514,46 +583,73 @@ export const AgentHubPage: React.FC = () => {
 					 * component's user-facing fallback was unreachable (UX round 1, U5).
 					 * `backendLoadErrorMessage` is the app's own answer and names the
 					 * server in the user's words.
+					 *
+					 * The LEAD names this surface's scope and no culprit of its own. It
+					 * used to read "The Radient agent catalogue did not answer.", which
+					 * blamed the remote catalogue while the shared diagnosis beside it
+					 * blamed the local server — two causes for one failure the app cannot
+					 * tell apart, and the reader had no way to choose between them
+					 * (design round 2, D2). Every other surface pairs its own scope with
+					 * this same diagnosis, which is what the helper is for; for `unknown`
+					 * the lead is the whole sentence, which is why it must stand alone.
+					 *
+					 * The region is ALWAYS MOUNTED and written into, rather than the
+					 * alert being inserted already carrying its text: a live region that
+					 * is present and empty either side of the press is what makes a retry
+					 * that fails AGAIN announce its outcome, and `sr-only` costs no line
+					 * and no gap while there is nothing to report (UX round 2, U9).
 					 */}
-					{!isColdLoading && error && (
-						<Alert
-							variant="danger"
-							className="max-w-2xl"
-							aria-busy={isFetching}
-							data-testid="agent-hub-error"
-						>
-							<AlertTitle>The hub could not be loaded</AlertTitle>
-							<AlertDescription>
-								{backendLoadErrorMessage(
-									"The Radient agent catalogue did not answer.",
-									error,
-								)}
-							</AlertDescription>
-							{/*
-							 * The retry is a SIBLING of the description, not a child of it:
-							 * `AlertDescription` renders a `<p>`, and a button inside it is a
-							 * block inside a paragraph — invalid nesting React reports and the
-							 * browser silently re-parents. Both of this surface's error
-							 * treatments had it.
-							 *
-							 * It reports its own in-flight state. Measured before this: the
-							 * alert and the button were byte-identical 150ms after the press and
-							 * still identical at 4.5s, while the ledger grew by one request —
-							 * the hub's only recovery control looked dead (UX round 1, U1).
-							 */}
-							<div className="mt-2">
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => void refetch()}
-									disabled={isFetching}
-									aria-busy={isFetching}
-								>
-									{isFetching ? "Trying…" : "Try again"}
-								</Button>
-							</div>
-						</Alert>
-					)}
+					<output
+						aria-live="polite"
+						data-testid="agent-hub-outage"
+						className={cn(!isColdLoading && error ? "block" : "sr-only")}
+					>
+						{!isColdLoading && error && (
+							<Alert
+								variant="danger"
+								className="max-w-2xl"
+								aria-busy={isFetching}
+								data-testid="agent-hub-error"
+							>
+								<AlertTitle>The hub could not be loaded</AlertTitle>
+								<AlertDescription>
+									{backendLoadErrorMessage(
+										"The agent list could not be loaded.",
+										error,
+									)}
+								</AlertDescription>
+								{/*
+								 * The retry is a SIBLING of the description, not a child of it:
+								 * `AlertDescription` renders a `<p>`, and a button inside it is a
+								 * block inside a paragraph — invalid nesting React reports and the
+								 * browser silently re-parents. Both of this surface's error
+								 * treatments had it.
+								 *
+								 * It reports its own in-flight state. Measured before this: the
+								 * alert and the button were byte-identical 150ms after the press and
+								 * still identical at 4.5s, while the ledger grew by one request —
+								 * the hub's only recovery control looked dead (UX round 1, U1).
+								 *
+								 * It takes focus back when the press fails again (UX round 2, U9).
+								 */}
+								<div className="mt-2">
+									<Button
+										ref={retryRef}
+										variant="outline"
+										size="sm"
+										onClick={() => {
+											retryPressedRef.current = true;
+											void refetch();
+										}}
+										disabled={isFetching}
+										aria-busy={isFetching}
+									>
+										{isFetching ? "Trying…" : "Try again"}
+									</Button>
+								</div>
+							</Alert>
+						)}
+					</output>
 					{!isColdLoading && !error && (
 						/*
 						 * The column count comes from the room the grid actually has,
@@ -619,7 +715,7 @@ export const AgentHubPage: React.FC = () => {
 											? "Nothing in this category yet. Clear the filter to see the whole hub."
 											: hasFilters
 												? "No agent's name or description carries that. Clear it to see the whole hub."
-												: "Nobody has published an agent to the hub yet. Yours would be the first one."}
+												: "Nobody has published an agent yet. Yours could be the first."}
 									</p>
 									<div className="mt-2 flex flex-wrap items-center justify-center gap-2">
 										{hasFilters ? (
@@ -628,9 +724,16 @@ export const AgentHubPage: React.FC = () => {
 											 * the panel this button lives in is unmounted by the press, and
 											 * the browser drops the user on `document.body`, restarting
 											 * their Tab from the top of the window (UX round 1, U2).
+											 *
+											 * The LABEL uses the word of the control the user actually used.
+											 * Both misses clear the same two fields, but the query miss is
+											 * answered by the search box — whose own clear affordance sits in
+											 * its edge a few pixels away — while the category miss is a
+											 * filter, which is what "Clear filter" was written for (design
+											 * round 2, D5).
 											 */
 											<Button variant="secondary" onClick={handleClearFilters}>
-												Clear filter
+												{selectedCategory ? "Clear filter" : "Clear search"}
 											</Button>
 										) : (
 											<Button
