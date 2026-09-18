@@ -341,6 +341,22 @@ export type ThemePalette = {
 	 * the pointer repaints the selected row as the hover - one state painted as
 	 * the other.
 	 *
+	 * ## THE BAR IS DRAWN ONCE PER ROW
+	 *
+	 * The bar belongs to the row's LEADING EDGE, so exactly one element draws it: the
+	 * element that owns that edge. Where a row is written as a wrapper plus a button
+	 * (`chat-sidebar.tsx`'s conversation row and entity row), the wrapper takes the
+	 * whole role - the shipped `rowCurrent`, bar included - and the button takes its
+	 * GROUND HALF, `rowCurrentGround`, which is the same ground and the same `hover:`
+	 * restatement with no bar. The role is `before:left-0` on whatever carries it, so
+	 * two elements carrying it draw two bars: one where the two boxes share a left
+	 * edge, and TWO where the row has a control before the button. That is the
+	 * operator's report of 2026-09-18, "two highlight bars instead of one" on a
+	 * selected team, whose name button sits 24px in behind the disclosure control -
+	 * and the same shape on the agent list beside it. The button cannot drop the role
+	 * instead: it carries `rowStyle`'s `hover:` step, which would then repaint the
+	 * current row as the hovered one.
+	 *
 	 * ## WHAT IT MAY NOT BECOME
 	 *
 	 * A `sunken` well (a selection is not a hole), a ring or a four-sided border

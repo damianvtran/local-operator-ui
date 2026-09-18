@@ -312,6 +312,14 @@ const carriesGround = (classes) => classes.includes("bg-row-selected");
 
 const rowStyle = literalOf(SIDEBAR, "rowStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
+/*
+ * The role's GROUND HALF, read the same way and for the same reason: the two
+ * elements of a row written as a wrapper plus a button take different halves of
+ * one role (`rowCurrent` on the wrapper, which owns the row's leading edge and
+ * so draws the bar; this on the button), so an expression table that could only
+ * resolve the whole role would resolve neither element any more.
+ */
+const rowCurrentGround = literalOf(SIDEBAR, "rowCurrentGround");
 
 /*
  * The current row's mark, and which elements carry it.
@@ -334,7 +342,7 @@ const CURRENT = [
 		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
 		stubs: {
 			rowStyle,
-			rowCurrent,
+			rowCurrentGround,
 			nested: false,
 			current: true,
 		},
@@ -373,7 +381,7 @@ const CURRENT = [
 		what: "the entity row's name button",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity-name"),
-		stubs: { rowStyle, rowCurrent, staged: true },
+		stubs: { rowStyle, rowCurrentGround, staged: true },
 		ground: true,
 	},
 	{
@@ -732,8 +740,13 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// two `row*` roles exist to draw, and the test below holds it for
 				// every row surface in the tree.
 				"hover:bg-row-hover": 5,
-				// `rowCurrent` (1), the ground that beats the step above by merge order.
-				"hover:bg-row-selected": 1,
+				// `rowCurrent` (1) plus `rowCurrentGround` (1), the second element of a
+				// row: the wrapper takes the role with the bar and the button inside it
+				// takes the ground half, so the bar is drawn once. The split is the
+				// operator's "two highlight bars instead of one" (2026-09-18) — the two
+				// halves are ONE mark, and the merge order that lets it beat the step
+				// above is the same on both.
+				"hover:bg-row-selected": 2,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it. The bulk read receipt carries no reset of
 				// its own: it is the shared `Button` primitive now, whose disabled styling
