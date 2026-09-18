@@ -308,6 +308,21 @@ export const STORIES = [
 	["chat-mid-turn-join--before-join", 1280, 900],
 	["chat-mid-turn-join--after-join", 1280, 900],
 	["chat-mid-turn-join--after-join-settled", 1280, 900],
+	/*
+	 * The three surfaces the round-1 review rounds asked for by name, added beside
+	 * the pair above rather than replacing it:
+	 *  - `after-join-unrelated` is D1's "one frame whose row above is an unrelated
+	 *    complete answer", the fixture in which a caption that attaches upward is
+	 *    visibly a claim about somebody else's paragraph (the original fixture's row
+	 *    above is the same sentence's first half, which reads correctly either way).
+	 *  - `after-seed-withheld` and `after-gap` are D2's two states that had no frame
+	 *    at all: a row that kept its text across a reconnect and had a delta withheld,
+	 *    and a row a receipt gap marked uncertain. Both hold their OWN earlier text on
+	 *    screen, which is exactly what the old single sentence denied.
+	 */
+	["chat-mid-turn-join--after-join-unrelated", 1280, 900],
+	["chat-mid-turn-join--after-seed-withheld", 1280, 900],
+	["chat-mid-turn-join--after-gap", 1280, 900],
 
 	/* Session incidents on their own rows — the operator's report that an error
 	  row read only `session incident` with the message behind a chevron. The
