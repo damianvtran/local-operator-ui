@@ -4,12 +4,13 @@ Six frames from the **real built app**, driven by the repo's own harness
 (`scripts/renderer-driver.mjs --scene canvas-freshness`), of the document line
 this change adds and of the behaviour behind it.
 
-Provenance: the frames were captured from a built app on the round-5 code change
-BEFORE the `biome-ignore` comments were added to the editors - the commit `34836770e`
-contains those comments, so it is the tree the pixels did NOT come from, and the
-difference between them is comments only. The manifest's `srcTree`/`scriptsTree` name
-that commit's own trees, which is what the manifest test binds; this paragraph is here
-so a reader of these pixels knows which tree they came from.
+Provenance: the six frames were captured from a built app on this branch's
+`78e46042b` - the commit that gives the note its floor and lets the stamp ellipsise -
+so that is the tree their pixels came from, and the manifest entry's `capturedAtHead`
+names it. The
+manifest's `srcTree`/`scriptsTree` are a different pair by design: the manifest test
+binds them to the trees of the commit the manifest ships in, and the fold that
+followed re-serialised this entry without touching a pixel.
 
 They exist because the claims under review are claims about a running
 application, and a unit test with a fake bridge cannot reach any end of them:

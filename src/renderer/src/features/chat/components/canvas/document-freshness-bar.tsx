@@ -42,17 +42,27 @@ import { useFileFreshness } from "./use-file-freshness";
  * ring to the strip above and the dock's clip to the right, and its hover fill
  * covered the hairlines on both sides of it.
  *
- * THE STAMP HOLDS, THE SENTENCE YIELDS WITH AN ELLIPSIS, AND ONLY THE STAMP CAN
- * MAKE THE ROW SCROLL (design round 2 D7, corrected in round 3 by D10). Round 1
- * made both text elements shrinkable, which flex shrank in proportion to width -
- * so the STAMP lost its meridiem before the sentence beside it. Round 2's fix
- * made both `shrink-0` inside a scrolling region, which traded the ellipsis for a
- * scrollbar: the hold sentence needs 694px and the row offers about 320px at the
- * default pane, so the actionable clause was never on screen at any width, the
- * clip fell mid-glyph, and the app's 8px scrollbar grew the region and jumped the
- * row's text 4px. The order is now: the stamp is `shrink-0` (the fact the row
- * exists to state), the sentence truncates with an ellipsis, and the region
- * scrolls only in the one case neither can help - a stamp wider than the pane.
+ * THE NOTE KEEPS A FLOOR AND THE STAMP IS THE HALF THAT YIELDS (UX round 6's U18,
+ * superseding the policy recorded here through rounds 3 and 4). Round 1 made both
+ * text elements shrinkable and flex shrank them in proportion to width, so the
+ * STAMP lost its meridiem before the sentence beside it; round 2 made both
+ * `shrink-0` inside a scrolling region, which traded the ellipsis for a scrollbar
+ * - the hold sentence needs 694px and the row offered about 320px at the default
+ * pane, so the actionable clause was never on screen, the clip fell mid-glyph, and
+ * the app's 8px scrollbar grew the region and jumped the row's text 4px; round 5
+ * then protected the stamp absolutely, and at a real 1024x700 that alloted the
+ * sentence ZERO pixels. What holds now: both halves shrink proportionally (flex's
+ * own rule, not a choice either element makes), the note carries an `8ch` floor so
+ * a state and its verb survive, and the stamp ellipsises past it - its figure is in
+ * the tooltip, which carries the sentence too. The region scrolls only in the one
+ * case neither can help, a stamp wider than the pane.
+ *
+ * THE FLOOR IS NOT A GUARANTEE AT THE APP'S OWN SMALLEST WINDOW (UX U20, recorded
+ * rather than fixed). At 800x600 the canvas pane is 79px and the region 27px -
+ * narrower than the floor itself - so the note hard-clips mid-word and the stamp
+ * paints nothing. Design accepted that (D13) because the row still states what the
+ * file's state is at every width a reader normally works at, and the full strings
+ * remain in the tooltip and the accessible description.
  *
  * AND THE SENTENCE ITSELF IS SHORT (D10's other half): see `FACT_TEXT` in
  * `use-file-freshness.ts` for the copy that fits, with the full claim in
@@ -127,10 +137,18 @@ export const DocumentFreshnessBar: FC<{
 			 * keyboard reader gets the horizontal scroll too.
 			 */}
 			{/*
-			 * THE TOOLTIP CARRIES THE STAMP TOO, and the sentence is the flexible half
-			 * (design D16, UX U17). The note is what shrinks and ellipsises when the row
-			 * is narrow, so the stamp - which cannot signal a truncation of its own - is
-			 * reachable here, one hover or one Tab away. NO PREFIX ON THE FIGURE: the
+			 * THE TOOLTIP CARRIES THE STAMP TOO, AND IT IS THE STAMP THAT YIELDS (design
+			 * D16/UX U17, corrected by round 7's U18/D21/D26). Round 5 made the STAMP
+			 * `shrink-0` and the note the flexible half; at a real 1024x700 window that left
+			 * the sentence zero pixels. Both halves shrink PROPORTIONALLY now - that is what
+			 * flex does, and it is not a choice either element makes - and the note's `8ch`
+			 * floor is what binds once the region drops below about 125px, after which the
+			 * stamp is the half that keeps shrinking, ellipsises, and is reached here.
+			 * STATED LIMIT, deferred: an `8ch` floor does not by itself guarantee the whole
+			 * state-plus-verb phrase - that would need about 168px of floor, and design's
+			 * reason for not gating it is that the state is legible at every width (U20's
+			 * 27px region is the exception, where it hard-clips) and both full strings are
+			 * in this tooltip and the accessible description. NO PREFIX ON THE FIGURE: the
 			 * stamp's own string already begins "Modified", and "Last modified Modified
 			 * …" stuttered in every state (design D17).
 			 */}

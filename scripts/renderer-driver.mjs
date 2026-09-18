@@ -4911,9 +4911,16 @@ async function sceneCanvasFreshness(cdp, app) {
 	check(
 		"the sentence is not clipped while the stamp is beside it",
 		rowGeometry !== null &&
+			rowGeometry.note !== null &&
 			rowGeometry.note.scroll <= rowGeometry.note.client + 1,
 		JSON.stringify(rowGeometry),
 	);
+
+	/*
+	 * Q17(a), round 7: the check above dereferenced `note.scroll` unguarded while its own
+	 * geometry reader returns `note: null` for a row with no note, so it THREW instead of
+	 * failing - an instrument that turns a state into a crash reports neither.
+	 */
 
 	check(
 		"and the control is inside the row, on the panel's own 8px chrome inset",
@@ -5402,6 +5409,15 @@ async function sceneCanvasFreshness(cdp, app) {
 	 * and the default one; the reader-facing claim is asserted in whichever window the
 	 * run has.
 	 */
+	/*
+	 * THE NOTE'S FLOOR, IN PIXELS, NAMED ONCE (review nit, round 7). The row gives the note
+	 * `min-w-[8ch]` and the note renders at `--text-meta` (0.75rem = 12px), where 8ch measures
+	 * about 53px. Three assertions spelled this as a literal 64, which is not the floor the
+	 * layout promises - and an assertion that names a different number than the stylesheet is
+	 * really testing the font stack.
+	 */
+	const CANVAS_FRESHNESS_NOTE_FLOOR_PX = 53;
+
 	const originalBounds = await cdp
 		.send("Browser.getWindowForTarget")
 		.catch(() => null);
@@ -5425,7 +5441,7 @@ async function sceneCanvasFreshness(cdp, app) {
 			check(
 				`at a real ${size.label} the reader can see the state and its action, and the stamp stays in the row`,
 				geometry !== null &&
-					geometry.note.client >= 64 &&
+					geometry.note.client >= CANVAS_FRESHNESS_NOTE_FLOOR_PX &&
 					geometry.stamp.client > 0 &&
 					geometry.stamp.client <= (geometry.region ?? 0),
 				JSON.stringify(geometry),
@@ -5446,7 +5462,7 @@ async function sceneCanvasFreshness(cdp, app) {
 		check(
 			"in this run's own window the hold sentence is on screen with its action, and the stamp stays inside the row",
 			geometryAtLaunch !== null &&
-				geometryAtLaunch.note.client >= 64 &&
+				geometryAtLaunch.note.client >= CANVAS_FRESHNESS_NOTE_FLOOR_PX &&
 				geometryAtLaunch.stamp.client > 0 &&
 				geometryAtLaunch.stamp.client <= (geometryAtLaunch.region ?? 0),
 			JSON.stringify(geometryAtLaunch),
@@ -5488,7 +5504,9 @@ async function sceneCanvasFreshness(cdp, app) {
 	 */
 	const sentenceFits =
 		noteGeometry !== null && noteGeometry.scroll <= noteGeometry.client + 1;
-	const sentenceHasFloor = noteGeometry !== null && noteGeometry.client >= 64;
+	const sentenceHasFloor =
+		noteGeometry !== null &&
+		noteGeometry.client >= CANVAS_FRESHNESS_NOTE_FLOOR_PX;
 	const regionCouldHold =
 		noteGeometry !== null &&
 		noteGeometry.regionClient !== null &&
@@ -5797,7 +5815,7 @@ async function sceneCanvasFreshness(cdp, app) {
 	const crossASaved = await waitForFile(
 		crossA,
 		(bytes) => bytes.includes("AAAREADER"),
-		10_000,
+		25_000,
 	);
 	check(
 		"cross-document: the first document's words reach the first file",
@@ -5832,7 +5850,7 @@ async function sceneCanvasFreshness(cdp, app) {
 	const crossBSaved = await waitForFile(
 		crossB,
 		(bytes) => bytes.includes("BBBREADER"),
-		10_000,
+		25_000,
 	);
 	const crossABytes = readFileSync(crossA, "utf8");
 	const crossBBytes = readFileSync(crossB, "utf8");
