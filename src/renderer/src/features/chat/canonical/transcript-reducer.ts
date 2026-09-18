@@ -2916,8 +2916,7 @@ export function seedCallsMissingLabels(
 	for (const event of liveEvents ?? []) {
 		if (!event) continue;
 		const frame = event as LiveEvent;
-		if (frame.type !== "tool_execution_end" && !finishedDictationFrame(frame))
-			continue;
+		if (!settlesACall(frame) && !finishedDictationFrame(frame)) continue;
 		const callId = String(frame.tool_call_id ?? "");
 		if (!callId || missing.includes(callId) || labelled.has(callId)) continue;
 		missing.push(callId);
