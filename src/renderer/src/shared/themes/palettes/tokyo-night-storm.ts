@@ -52,7 +52,7 @@ export const tokyoNightStorm: ThemeDefinition = {
 		 *
 		 * THE HOVER STEP IS THE COLLISION: 0.50 to `elevated` is under the field floor,
 		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
-		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_ADJACENT_PINS` and is
 		 * on the row-hover work list.
 		 */
 		highlight: "#333854",

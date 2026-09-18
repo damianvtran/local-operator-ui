@@ -139,12 +139,30 @@ export type ThemePalette = {
 	 * in it. That floor is what caps the step, and it caps it below the ΔE00 4.0
 	 * band on thirty-six palettes: ΔE00 at a fixed hue is a function of the `L*`
 	 * step alone, the band needs 5.3-6.9 `L*`, and those palettes' own `ink-dim`
-	 * reaches its floor with headroom at 2.4-7.5. Each of them takes the largest
-	 * step its inks allow and is recorded in `HIGHLIGHT_CAP_PINS` with the cap,
-	 * the binder and both ratios, re-derived by the gate. Seven of those cannot
-	 * reach even the **ΔE00 2.5 floor every palette must hold** and carry
-	 * `subFloor: true` — a named list with its measurements, because buying the
-	 * difference back on chroma or hue is the defect above.
+	 * reaches its floor with headroom at 2.4-7.5. Twenty-eight of them take the
+	 * largest step their inks allow and are recorded in `HIGHLIGHT_CAP_PINS` with
+	 * the cap, the binder and both ratios, re-derived by the gate.
+	 *
+	 * ## The precedence, because two of those constraints can collide
+	 *
+	 * 1. the HUE is never broken — the panel's own, within 12°, everywhere;
+	 * 2. the CHROMA never falls below the panel's — the operator's own report, the
+	 *    one thing that cannot give way;
+	 * 3. the BAND is the default — chroma within the panel's, up to +15% or 1.6 C*;
+	 * 4. ΔE00 4.0 off `surface` is the TARGET, met as far as that palette's own
+	 *    inks and the band allow (`HIGHLIGHT_CAP_PINS`);
+	 * 5. ΔE00 2.5 off `surface` is a **HARD FLOOR**, and where the band caps a
+	 *    palette below it **the band gives way — over-band, and only over-band**:
+	 *    the hue stays the panel's, the step stays at the ink cap, and the smallest
+	 *    chroma past the ceiling that reaches the floor is added. Seven palettes
+	 *    take that exception and are pinned by name in `HIGHLIGHT_OVER_BAND_PINS`,
+	 *    with the ratio and the ΔE00 each was given; the gate re-derives the
+	 *    minimum and refuses a value that took more.
+	 *
+	 * The floor outranks the band because a mark under it is the operator's
+	 * EARLIER report returning ("way too subtle... make it brighter/more
+	 * contrasted"), on eight themes he has not looked at yet. Nothing here may
+	 * ship a selection a reader cannot see.
 	 *
 	 * Against the app's other selected-row mark: `accentWash` is what an active or
 	 * selected row wears elsewhere (`bg-accent-wash`), and a mark that keeps the
