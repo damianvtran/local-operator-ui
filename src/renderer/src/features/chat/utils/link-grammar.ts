@@ -361,6 +361,12 @@ const ALLOWED_PREFIX = new Set([
  * (`:86`): a token the asker could not have asked about is REFUSED, so the cost
  * is a missed link rather than an anchor whose existence depends on some other
  * row's cache.
+ *
+ * THE WALKER'S APPLICATION IS SCOPED TO AN AMBIGUOUS TOKEN (round 2, review
+ * R2-3). It is the ask that the refusal protects, and only an ambiguous token is
+ * asked about, so a caller applying this to a target the extension rule already
+ * admitted would be refusing a link for no reason - which is what it did before
+ * this note existed.
  */
 export function allowsProsePathAfter(character: string | undefined): boolean {
 	return character === undefined || ALLOWED_PREFIX.has(character);
@@ -958,15 +964,28 @@ const DISCOVERY_POLICY: TargetPolicy = {
  *
  * The pre-scan the renderer runs before its first parse, so the tokens whose
  * answer the disk owes are known in one pass and can be asked about in one
- * batch. It is a SUPERSET of what the linkifier will end up linking, and that is
- * ENGINEERED rather than asserted. The walker applies this module's own
- * predecessor rule (`allowsProsePathAfter`) to the character the SOURCE holds
- * before a node's first character, which is the one position where a node value
- * has no character of its own to test - so a token the raw scan could not name
- * is refused THERE rather than linked because a neighbour happened to prime the
+ * batch. It is a SUPERSET of what the linkifier will end up linking, and the half
+ * of that which is ENGINEERED rather than asserted is the NODE BOUNDARY the
+ * walker answers at. The walker applies this module's own predecessor rule
+ * (`allowsProsePathAfter`) to the character the SOURCE holds before an ambiguous
+ * node's first character, which is the one position where a node value has no
+ * character of its own to test - so a token the raw scan could not name is
+ * refused THERE rather than linked because a neighbour happened to prime the
  * cache (round 1, review R1-4, measured: `ambiguousTargetsIn` on
  * `"_/Users/x/workspace_"` returned `[]` while the plugin linked
  * `/Users/x/workspace` as soon as another row had asked about that spelling).
+ *
+ * WHERE THAT RULE DOES NOT REACH, stated because the sentence above is about the
+ * boundary and not about every index (round 2, review R2-4): markdown can also
+ * consume a character INSIDE a node value, where no boundary test can see it. In
+ * `see \/Users/x/workspace here` micromark decodes the escape, so the node value
+ * holds `see /Users/x/workspace here` - the token is at index 4, not at index 0 -
+ * while the raw text this function scans holds `\/…` with a predecessor no
+ * `ALLOWED_PREFIX` member admits. Measured: this returns `[]` for that document
+ * while the walker links the spelling as soon as a row has primed it, on this
+ * head and on `74f6ea96c` alike, so it is a gap this rule neither introduced nor
+ * closes (an entity before a token, `see &#47;…`, is the same class). It is
+ * pinned where the boundary is - `scripts/link-targets.test.mjs`.
  *
  * BEYOND THAT RULE the superset gap is the walker's own refusals: `text` is a
  * whole markdown document, so this sees a path inside a code fence or inside an
