@@ -64,7 +64,7 @@ export const rosePine: ThemeDefinition = {
 		 * from `surface`, 3.81 from `elevated`, 10.52 from `sunken`, 5.93 from
 		 * `accentWash`; the inks on the ground are 10.69:1, 8.15:1, 5.15:1.
 		 * Continuity with the panel: hue 14.13 degrees off the panel's (the
-		 * assertion allows 15) and chroma 18.18 where the panel carries 12.77.
+		 * assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 18.18 where the panel carries 12.77.
 		 */
 		highlight: "#33263F",
 

@@ -68,7 +68,7 @@ export const githubLight: ThemeDefinition = {
 		 * against its 2.0 field floor. ΔE00 4.06 from `surface`, 6.81 from
 		 * `elevated`, 2.02 from `sunken`, 5.2 from `accentWash`; the inks on the
 		 * ground are 12.73:1, 7.59:1, 5.28:1. Continuity with the panel: hue 6.56
-		 * degrees off the panel's (the assertion allows 15) and chroma 4.74 where
+		 * degrees off the panel's (the assertion allows 12) and chroma 4.74 where
 		 * the panel carries 1.84.
 		 */
 		highlight: "#DFE8EF",

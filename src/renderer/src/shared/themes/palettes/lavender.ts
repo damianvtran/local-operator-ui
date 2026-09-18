@@ -77,7 +77,7 @@ export const lavender: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.19 from `surface`, 2.76 from `elevated`, 10.34
 		 * from `sunken`, 7.39 from `accentWash`; the inks on the ground are 10.58:1,
 		 * 7.03:1, 5.16:1. Continuity with the panel: hue 2.75 degrees off the
-		 * panel's (the assertion allows 15) and chroma 17.36 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 17.36 where the panel carries
 		 * 12.02.
 		 */
 		highlight: "#312B44",

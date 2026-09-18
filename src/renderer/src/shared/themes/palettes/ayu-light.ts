@@ -56,7 +56,7 @@ export const ayuLight: ThemeDefinition = {
 		 * against its 2.0 field floor. ΔE00 4.19 from `surface`, 7.23 from
 		 * `elevated`, 2.07 from `sunken`, 3.01 from `accentWash`; the inks on the
 		 * ground are 7.69:1, 6.98:1, 5.47:1. Continuity with the panel: hue 12.98
-		 * degrees off the panel's (the assertion allows 15) and chroma 4.86 where
+		 * degrees off the panel's (the assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 4.86 where
 		 * the panel carries 2.89.
 		 */
 		highlight: "#DDE9EE",

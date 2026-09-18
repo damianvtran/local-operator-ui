@@ -101,7 +101,7 @@ export const outrun: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.03 from `surface`, 2.57 from `elevated`, 10.19
 		 * from `sunken`, 12.59 from `accentWash`; the inks on the ground are 10.9:1,
 		 * 6.97:1, 5.16:1. Continuity with the panel: hue 0.31 degrees off the
-		 * panel's (the assertion allows 15) and chroma 27.99 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 27.99 where the panel carries
 		 * 21.02.
 		 */
 		highlight: "#262B54",

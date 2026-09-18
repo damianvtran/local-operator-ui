@@ -102,7 +102,7 @@ export const vaporwave: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.04 from `surface`, 2.35 from `elevated`, 8.47 from
 		 * `sunken`, 4.97 from `accentWash`; the inks on the ground are 11.23:1,
 		 * 7.11:1, 5.21:1. Continuity with the panel: hue 0.04 degrees off the
-		 * panel's (the assertion allows 15) and chroma 28.46 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 28.46 where the panel carries
 		 * 21.48.
 		 */
 		highlight: "#342750",

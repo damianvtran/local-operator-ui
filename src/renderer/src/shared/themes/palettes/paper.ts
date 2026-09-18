@@ -57,7 +57,7 @@ export const paper: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.01 from `surface`, 6.38 from `elevated`, 2.79
 		 * from `sunken`, 7.69 from `accentWash`; the inks on the ground are 9.65:1,
 		 * 7.51:1, 5.16:1. Continuity with the panel: hue 2.53 degrees off the
-		 * panel's (the assertion allows 15) and chroma 8.38 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 8.38 where the panel carries
 		 * 8.13.
 		 */
 		highlight: "#DED6C7",

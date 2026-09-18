@@ -57,7 +57,7 @@ export const linen: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.15 from `surface`, 6.25 from `elevated`, 2.19
 		 * from `sunken`, 2.96 from `accentWash`; the inks on the ground are 9.9:1,
 		 * 7.77:1, 5.33:1. Continuity with the panel: hue 1.43 degrees off the
-		 * panel's (the assertion allows 15) and chroma 4.33 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 4.33 where the panel carries
 		 * 1.59.
 		 */
 		highlight: "#D9DCD4",

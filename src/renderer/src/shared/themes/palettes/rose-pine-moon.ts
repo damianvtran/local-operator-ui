@@ -78,7 +78,7 @@ export const rosePineMoon: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.07 from `surface`, 2.13 from `elevated`, 9.29 from
 		 * `sunken`, 8.91 from `accentWash`; the inks on the ground are 9.71:1,
 		 * 7.71:1, 5.51:1. Continuity with the panel: hue 0.47 degrees off the
-		 * panel's (the assertion allows 15) and chroma 22.44 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 22.44 where the panel carries
 		 * 16.79.
 		 */
 		highlight: "#322E4F",

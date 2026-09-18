@@ -78,7 +78,7 @@ export const iceberg: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.08 from `surface`, 5.99 from `elevated`, 2.04 from
 		 * `sunken`, 2.93 from `accentWash`; the inks on the ground are 9.33:1,
 		 * 8.11:1, 5.58:1. Continuity with the panel: hue 4.58 degrees off the
-		 * panel's (the assertion allows 15) and chroma 4.7 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 4.7 where the panel carries
 		 * 1.57.
 		 */
 		highlight: "#e3e5ee",

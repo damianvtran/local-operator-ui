@@ -86,7 +86,7 @@ export const solarizedLight: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.05 from `surface`, 6.72 from `elevated`, 2.82
 		 * from `sunken`, 8.13 from `accentWash`; the inks on the ground are 10.04:1,
 		 * 7.44:1, 5.18:1. Continuity with the panel: hue 0.06 degrees off the
-		 * panel's (the assertion allows 15) and chroma 6.38 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 6.38 where the panel carries
 		 * 6.28.
 		 */
 		highlight: "#E6E2D6",

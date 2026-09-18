@@ -111,7 +111,7 @@ export const matrix: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.36 from `surface`, 2.02 from `elevated`, 10.08
 		 * from `sunken`, 8.06 from `accentWash`; the inks on the ground are 10.5:1,
 		 * 6.61:1, 5.17:1. Continuity with the panel: hue 8.25 degrees off the
-		 * panel's (the assertion allows 15) and chroma 9.6 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 9.6 where the panel carries
 		 * 6.11.
 		 */
 		highlight: "#203129",

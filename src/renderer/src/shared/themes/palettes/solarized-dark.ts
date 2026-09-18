@@ -64,7 +64,7 @@ export const solarizedDark: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.1 from `surface`, 3.66 from `elevated`, 7.52 from
 		 * `sunken`, 6.2 from `accentWash`; the inks on the ground are 7.59:1,
 		 * 7.09:1, 5.16:1. Continuity with the panel: hue 14.32 degrees off the
-		 * panel's (the assertion allows 15) and chroma 15.85 where the panel carries
+		 * panel's (the assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 15.85 where the panel carries
 		 * 15.32.
 		 */
 		highlight: "#14394A",

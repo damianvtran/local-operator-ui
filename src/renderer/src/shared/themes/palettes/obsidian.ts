@@ -84,7 +84,7 @@ export const obsidian: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.49 from `surface`, 2.44 from `elevated`, 8.54
 		 * from `sunken`, 4 from `accentWash`; the inks on the ground are 11.82:1,
 		 * 7.2:1, 5.16:1. Continuity with the panel: hue 0.67 degrees off the panel's
-		 * (the assertion allows 15) and chroma 5.38 where the panel carries 2.08.
+		 * (the assertion allows 12) and chroma 5.38 where the panel carries 2.08.
 		 */
 		highlight: "#34343c",
 

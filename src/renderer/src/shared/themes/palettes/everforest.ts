@@ -57,7 +57,7 @@ export const everforest: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.78 from `surface`, 2.4 from `elevated`, 11.46
 		 * from `sunken`, 2.06 from `accentWash`; the inks on the ground are 7.22:1,
 		 * 7.22:1, 5.16:1. Continuity with the panel: hue 4.96 degrees off the
-		 * panel's (the assertion allows 15) and chroma 7.33 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 7.33 where the panel carries
 		 * 5.56.
 		 */
 		highlight: "#3D4D53",

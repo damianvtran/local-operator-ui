@@ -74,7 +74,7 @@ export const kanagawaWave: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.4 from `surface`, 2.1 from `elevated`, 11.08 from
 		 * `sunken`, 4.52 from `accentWash`; the inks on the ground are 8.61:1,
 		 * 6.79:1, 5.21:1. Continuity with the panel: hue 0.69 degrees off the
-		 * panel's (the assertion allows 15) and chroma 13.49 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 13.49 where the panel carries
 		 * 9.05.
 		 */
 		highlight: "#323246",

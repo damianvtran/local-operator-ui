@@ -71,7 +71,7 @@ export const rosePineDawn: ThemeDefinition = {
 		 * from `surface`, 6.44 from `elevated`, 2.56 from `sunken`, 2.96 from
 		 * `accentWash`; the inks on the ground are 7.95:1, 6.64:1, 5.17:1.
 		 * Continuity with the panel: hue 4.71 degrees off the panel's (the assertion
-		 * allows 15) and chroma 6.6 where the panel carries 2.7.
+		 * allows 12) and chroma 6.6 where the panel carries 2.7.
 		 */
 		highlight: "#F7EAE1",
 

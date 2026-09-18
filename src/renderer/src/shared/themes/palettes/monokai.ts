@@ -71,7 +71,7 @@ export const monokai: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.04 from `surface`, 2.07 from `elevated`, 8.97
 		 * from `sunken`, 7.42 from `accentWash`; the inks on the ground are 10.86:1,
 		 * 6.29:1, 5.18:1. Continuity with the panel: hue 1.28 degrees off the
-		 * panel's (the assertion allows 15) and chroma 7.31 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 7.31 where the panel carries
 		 * 4.8.
 		 */
 		highlight: "#383a2f",

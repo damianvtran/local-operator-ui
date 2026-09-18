@@ -81,7 +81,7 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * row's ground. ΔE00 4.54 from `surface`, 2.12 from `elevated`, 8.51 from
 		 * `sunken`, 3.26 from `accentWash`; the inks on the ground are 8.97:1,
 		 * 7.33:1, 5.2:1. Continuity with the panel: hue 0.75 degrees off the panel's
-		 * (the assertion allows 15) and chroma 16.31 where the panel carries 11.25.
+		 * (the assertion allows 12) and chroma 16.31 where the panel carries 11.25.
 		 */
 		highlight: "#2F2F47",
 

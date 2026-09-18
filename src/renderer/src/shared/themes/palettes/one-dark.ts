@@ -64,7 +64,7 @@ export const oneDark: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.08 from `surface`, 2.22 from `elevated`, 8.84 from
 		 * `sunken`, 5.59 from `accentWash`; the inks on the ground are 7.83:1,
 		 * 7.31:1, 5.26:1. Continuity with the panel: hue 2.06 degrees off the
-		 * panel's (the assertion allows 15) and chroma 10.24 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 10.24 where the panel carries
 		 * 6.36.
 		 */
 		highlight: "#353D4C",

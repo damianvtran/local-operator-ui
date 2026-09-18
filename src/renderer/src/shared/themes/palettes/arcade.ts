@@ -106,7 +106,7 @@ export const arcade: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.07 from `surface`, 2.82 from `elevated`, 8.5 from
 		 * `sunken`, 15.61 from `accentWash`; the inks on the ground are 10.92:1,
 		 * 7.19:1, 5.18:1. Continuity with the panel: hue 5.39 degrees off the
-		 * panel's (the assertion allows 15) and chroma 5.5 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 5.5 where the panel carries
 		 * 2.11.
 		 */
 		highlight: "#2F2E36",

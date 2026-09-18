@@ -78,7 +78,7 @@ export const ocean: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.11 from `surface`, 3.34 from `elevated`, 10.51
 		 * from `sunken`, 11.92 from `accentWash`; the inks on the ground are
 		 * 10.72:1, 7.09:1, 5.17:1. Continuity with the panel: hue 3.18 degrees off
-		 * the panel's (the assertion allows 15) and chroma 14.97 where the panel
+		 * the panel's (the assertion allows 12) and chroma 14.97 where the panel
 		 * carries 10.07.
 		 */
 		highlight: "#123444",

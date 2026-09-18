@@ -77,7 +77,7 @@ export const autumn: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.2 from `surface`, 4.18 from `elevated`, 9.68 from
 		 * `sunken`, 9.95 from `accentWash`; the inks on the ground are 10.15:1,
 		 * 7.09:1, 5.16:1. Continuity with the panel: hue 7.91 degrees off the
-		 * panel's (the assertion allows 15) and chroma 10.93 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 10.93 where the panel carries
 		 * 7.21.
 		 */
 		highlight: "#3D2C23",

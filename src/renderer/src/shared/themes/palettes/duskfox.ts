@@ -48,7 +48,7 @@ export const duskfox: ThemeDefinition = {
 		 * the row's ground. ΔE00 5.47 from `surface`, 2.05 from `elevated`, 13.33
 		 * from `sunken`, 7.99 from `accentWash`; the inks on the ground are 8.67:1,
 		 * 7.19:1, 5.21:1. Continuity with the panel: hue 0.35 degrees off the
-		 * panel's (the assertion allows 15) and chroma 25.89 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 25.89 where the panel carries
 		 * 18.65.
 		 */
 		highlight: "#39355C",

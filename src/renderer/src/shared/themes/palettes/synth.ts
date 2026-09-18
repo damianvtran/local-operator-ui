@@ -68,7 +68,7 @@ export const synth: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.18 from `surface`, 2.63 from `elevated`, 17.86
 		 * from `sunken`, 9.79 from `accentWash`; the inks on the ground are 12.07:1,
 		 * 7.14:1, 5.17:1. Continuity with the panel: hue 0.37 degrees off the
-		 * panel's (the assertion allows 15) and chroma 32.77 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 32.77 where the panel carries
 		 * 26.82.
 		 */
 		highlight: "#3b2554",

@@ -76,7 +76,7 @@ export const sage: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.12 from `surface`, 6.71 from `elevated`, 2.02
 		 * from `sunken`, 4.96 from `accentWash`; the inks on the ground are 11.34:1,
 		 * 7.39:1, 5.15:1. Continuity with the panel: hue 3.88 degrees off the
-		 * panel's (the assertion allows 15) and chroma 7.07 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 7.07 where the panel carries
 		 * 5.78.
 		 */
 		highlight: "#e9e3d6",

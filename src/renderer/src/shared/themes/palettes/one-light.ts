@@ -64,7 +64,7 @@ export const oneLight: ThemeDefinition = {
 		 * on `surface`. ΔE00 4.18 from `surface`, 5.59 from `elevated`, 4.51 from
 		 * `sunken`, 2.23 from `accentWash`; the inks on the ground are 9.47:1,
 		 * 7.96:1, 5.55:1. Continuity with the panel: hue 0 degrees off the panel's
-		 * (the assertion allows 15) and chroma 3.98 where the panel carries 0.
+		 * (the assertion allows 12) and chroma 3.98 where the panel carries 0.
 		 */
 		highlight: "#E6EBF2",
 

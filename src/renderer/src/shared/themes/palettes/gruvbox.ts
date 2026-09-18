@@ -60,7 +60,7 @@ export const gruvbox: ThemeDefinition = {
 		 * the row's ground. ΔE00 4.54 from `surface`, 2.24 from `elevated`, 10.39
 		 * from `sunken`, 12.11 from `accentWash`; the inks on the ground are 7.75:1,
 		 * 7.14:1, 5.16:1. Continuity with the panel: hue 0.07 degrees off the
-		 * panel's (the assertion allows 15) and chroma 1.11 where the panel carries
+		 * panel's (the assertion allows 12) and chroma 1.11 where the panel carries
 		 * 1.16.
 		 */
 		highlight: "#403E3D",
