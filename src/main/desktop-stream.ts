@@ -55,6 +55,52 @@ const WATCHDOG_TICK_MS = 1_000;
 /** Relay frame cap, matching the backend's per-frame bound. */
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 
+/**
+ * Split one SSE record off the head of `buffer`, per the wire format.
+ *
+ * WHY THIS IS NOT AN `indexOf("\n\n")`. Four properties of the framing are load
+ * bearing here, and the previous one-liner had only the first:
+ *
+ *  - A record ends at a BLANK LINE, whose newline may be `LF`, `CRLF` or a bare
+ *    `CR` — the spec's line endings, and a proxy between this app and its
+ *    backend is free to rewrite them.
+ *  - The terminator may be SPLIT across two reads (`"\r"` then `"\n\r\n"`), so the
+ *    buffer is re-scanned on every chunk rather than trusted to contain one.
+ *  - A field's value may itself contain a bare `CR` inside a `data:` JSON payload;
+ *    the blank-line test is therefore applied to the buffer, and the record's own
+ *    lines are then split on the same three endings.
+ *  - `data:` is one field among several. `event:`, `id:`, `retry:` and comments
+ *    (`:`) are metadata this relay has no consumer for, and a record that carries
+ *    none of them still delivers its data.
+ *
+ * Returns `{ record, rest }` with the record's data fields already unfolded (SSE
+ * joins them with a newline), or `null` when no complete record is buffered yet.
+ * The remaining bytes are returned rather than mutated, so the caller keeps
+ * ownership of its own buffer.
+ */
+function nextRecord(buffer: string): { data: string[]; rest: string } | null {
+	// The earliest blank line in any ending, and its length, so the caller can
+	// drop exactly the terminator that matched.
+	let end = -1;
+	let endLength = 0;
+	for (const terminator of ["\r\n\r\n", "\n\n", "\r\r"]) {
+		const at = buffer.indexOf(terminator);
+		if (at >= 0 && (end < 0 || at < end)) {
+			end = at;
+			endLength = terminator.length;
+		}
+	}
+	if (end < 0) return null;
+	const data: string[] = [];
+	for (const line of buffer.slice(0, end).split(/\r\n|\n|\r/)) {
+		if (!line.startsWith("data:")) continue;
+		// Exactly ONE optional space after the colon is the field's own separator.
+		const value = line.slice(5);
+		data.push(value.startsWith(" ") ? value.slice(1) : value);
+	}
+	return { data, rest: buffer.slice(end + endLength) };
+}
+
 export type RelaySubscribeArgs = {
 	sessionId: string;
 	epoch?: string;
@@ -261,11 +307,16 @@ export class DesktopStreamRelay {
 					// sake.
 					lastActivity = Date.now();
 					buffer += decoder.decode(value, { stream: true });
-					// SSE records terminate on a blank line. Everything before it is
-					// flushed record-by-record; a partial record stays in the buffer.
+					// SSE records terminate on a blank line, and every line ending is legal:
+					// the spec's `CRLF`, `LF` or bare `CR`, in any combination, and the
+					// terminator may itself be split across two reads. What is NOT legal is
+					// guessing: this loop used to look for `"\n\n"` alone, so a proxy that
+					// rewrote line endings to CRLF produced a buffer that never matched —
+					// records piled up in memory and the stream died at the 8 MB cap
+					// instead of delivering a single frame.
 					for (;;) {
-						const boundary = buffer.indexOf("\n\n");
-						if (boundary < 0) {
+						const record = nextRecord(buffer);
+						if (record === null) {
 							if (buffer.length > MAX_FRAME_BYTES) {
 								emit({
 									streamId,
@@ -277,18 +328,17 @@ export class DesktopStreamRelay {
 							}
 							break;
 						}
-						const record = buffer.slice(0, boundary);
-						buffer = buffer.slice(boundary + 2);
-						for (const line of record.split("\n")) {
-							if (line.startsWith("data:")) {
-								const data = line.slice(5).replace(/^ /, "");
-								this.observer?.(sessionId, data);
-								emit({ streamId, kind: "data", data });
-							}
-							// Comments (heartbeats) and id:/event:/retry: lines are
-							// transport metadata; the backend's heartbeat records arrive as
-							// data frames and pass through like any other.
-						}
+						buffer = record.rest;
+						// One record is one event, and its `data:` fields are FOLDED into
+						// one payload: SSE joins a multi-line `data` field with "\n", and a
+						// relay that emitted each line as its own frame would hand the
+						// renderer a fragment it cannot parse. `event:`/`id:`/`retry:` and
+						// comments stay transport metadata; the backend's heartbeat records
+						// arrive as data frames and pass through like any other.
+						if (record.data.length === 0) continue;
+						const data = record.data.join("\n");
+						this.observer?.(sessionId, data);
+						emit({ streamId, kind: "data", data });
 					}
 				}
 			} finally {
