@@ -121,8 +121,10 @@ export const ayuLight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `success` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
-		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.52:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		success: "#516B00",
 		successWash: "#DBE4E1",
@@ -131,8 +133,12 @@ export const ayuLight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warning` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
-		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.51:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 51.8 -> 50.71, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
 		 */
 		warning: "#855A01",
 		warningWash: "#E0E3E3",
@@ -141,8 +147,10 @@ export const ayuLight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
-		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.52:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		danger: "#B23537",
 		dangerWash: "#E4E1E8",
@@ -151,8 +159,10 @@ export const ayuLight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `accentWash` binds it there at
-		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.52:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		info: "#7F46B6",
 		infoWash: "#DFE1F0",

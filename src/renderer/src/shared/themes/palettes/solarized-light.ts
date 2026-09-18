@@ -145,8 +145,10 @@ export const solarizedLight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `sunken` binds it there at
-		 * 4.5:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.5:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		accent: "#12689E",
 		accentHover: "#155B8A",
@@ -172,8 +174,12 @@ export const solarizedLight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `success` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `sunken` binds it there at
-		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.51:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 52.85 -> 51.28, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
 		 */
 		success: "#5A6A01",
 		successWash: "#EDE9CF",
@@ -189,8 +195,12 @@ export const solarizedLight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warning` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `sunken` binds it there at
-		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.52:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 50.97 -> 49.78, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
 		 */
 		warning: "#7E5E00",
 		warningWash: "#F2E8D0",
@@ -205,8 +215,10 @@ export const solarizedLight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `sunken` binds it there at
-		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.52:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		danger: "#C5131C",
 		dangerWash: "#FCEFE6",
@@ -222,8 +234,12 @@ export const solarizedLight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `sunken` binds it there at
-		 * 4.55:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.55:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 30.47 -> 29.3, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
 		 */
 		info: "#016F65",
 		infoWash: "#E4ECEC",

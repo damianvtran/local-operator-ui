@@ -128,8 +128,10 @@ export const nord: ThemeDefinition = {
 		/*
 		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
-		 * 4.5:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.5:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		info: "#90B1D1",
 		infoWash: "#2B3B4E",

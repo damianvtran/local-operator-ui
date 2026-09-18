@@ -118,8 +118,12 @@ export const gruvbox: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warning` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `highlight` binds it there at
-		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.52:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 81.57 -> 74.1, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
 		 */
 		warning: "#FF8A32",
 		warningWash: "#45352C",
@@ -131,8 +135,12 @@ export const gruvbox: ThemeDefinition = {
 		/*
 		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `highlight` binds it there at
-		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.51:1.
+		 *
+		 * LIGHTNESS FIRST, and the chroma comes down only because the required `L*`
+		 * leaves sRGB at this chroma: C* 59.54 -> 54.52, hue held. That is the
+		 * lift rule's own exception - desaturate only where the gamut forces it - not a
+		 * re-pick of the palette's colour.
 		 */
 		danger: "#FF8671",
 		dangerWash: "#3B2723",
@@ -141,8 +149,10 @@ export const gruvbox: ThemeDefinition = {
 		/*
 		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `highlight` binds it there at
-		 * 4.5:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.5:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		info: "#8EB0A3",
 		infoWash: "#28353A",

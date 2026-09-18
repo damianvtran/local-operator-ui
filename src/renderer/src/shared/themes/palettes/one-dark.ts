@@ -119,8 +119,10 @@ export const oneDark: ThemeDefinition = {
 		/*
 		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
-		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.51:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		accent: "#63B1F1",
 		accentHover: "#8DCBFF",
@@ -157,8 +159,10 @@ export const oneDark: ThemeDefinition = {
 		/*
 		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
 		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
-		 * 4.5:1. Lightness only, along the role's own hue: the palette's identity,
-		 * not its legibility, is what the ramp change was allowed to keep.
+		 * 4.5:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		info: "#58B8C4",
 		infoWash: "#263647",
