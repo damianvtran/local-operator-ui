@@ -1690,6 +1690,26 @@ export const STORIES = [
 	["chat-sidebar-current-row--bound-row-current", 780, 560],
 	["chat-sidebar-current-row--nested-row-current", 780, 560],
 	/*
+	 * The two states where a draft has TARGETED an entity, so the role lands on two
+	 * elements of one row rather than one: a team's row and an agent's row, added
+	 * with the fix for the operator's "two highlight bars instead of one".
+	 *
+	 * They are the pair this set was missing, and the missing half is geometric
+	 * rather than chromatic: `entity()` marks the wrapper AND the name button —
+	 * deliberately, because the button's own hover step would otherwise paint over
+	 * the wrapper's ground — and the name button is the `ROW SURFACE` in this panel
+	 * with a sibling control before it, so the role's 2px leading-edge bar has two
+	 * different left edges to land on here and nowhere else. A frame is the only
+	 * instrument that can see that; every class assertion in
+	 * `scripts/chat-sidebar-selection.test.mjs` resolves the two elements one at a
+	 * time and is green either way.
+	 *
+	 * The before half is `chat-sidebar-current-row-baseline/` — the same two states,
+	 * same story file, same viewports, on this branch with the fix reverted.
+	 */
+	["chat-sidebar-current-row--team-row-current", 780, 560],
+	["chat-sidebar-current-row--agent-row-current", 780, 560],
+	/*
 	 * The SAME story with a real pointer on the neighbour row ABOVE the current
 	 * one, because the pair it produces is a state a still at rest cannot hold:
 	 * a hover is browser state, so the rig moves a real pointer through the input

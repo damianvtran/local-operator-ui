@@ -102,6 +102,13 @@ const DEFAULT_ROSTER = [
 ];
 let roster = DEFAULT_ROSTER;
 
+/*
+ * The TEAM catalogue the entity lists are built from, empty unless a story needs
+ * a team row — the same arrangement, and the same reason, as `agentCatalogue`
+ * below: an entity row nobody can reach is a surface nobody has looked at.
+ */
+let teamCatalogue: unknown[] = [];
+
 /* The agent an agent-bound conversation is bound to. Named because the binding
    label, the entity row's name and the profile fixture all have to agree. */
 const LOPDEV = "lopdev";
@@ -159,6 +166,73 @@ const LOPDEV_PROFILE = {
 	delegate: false,
 };
 
+/* The `teams.list` wire row, in the fields the entity list reads. */
+const team = (name: string) => ({
+	id: name,
+	name,
+	description: "",
+	manager: "manager",
+	members: [],
+});
+
+/*
+ * The teams the entity list is built from, with the operator's own four rows:
+ * the report this pair of states exists for is a screenshot of THIS list, and a
+ * fixture team nobody has rendered is a row that cannot be compared with it.
+ *
+ * The counts are not fixtures — an entity row draws `children(kind, name).length`,
+ * so a team's number is however many chats `roster` binds to it.
+ */
+const TEAM_ROSTER = [
+	team(LOPDEV),
+	team("data-investigations"),
+	team("data-quality"),
+	team("minervadev"),
+];
+
+/*
+ * The roster the two entity-row states below render against: the default three
+ * chats, plus one row bound to each of three teams and one bound to the agent.
+ *
+ * THE BOUND ROWS ARE INACTIVE, and that is what keeps each drawn once. The flat
+ * Active chats partition draws every active row, entity children included, so an
+ * active bound row appears in two lists at the same time — the arrangement
+ * `NestedRowCurrent` states for itself.
+ */
+const ENTITY_ROSTER = [
+	wireRow(REVENUE, "Quarterly revenue model", 1_760_000_300),
+	wireRow(LEDGER, "Reconcile the supplier ledger", 1_760_000_200),
+	wireRow(DEPLOY, "Migrate the deploy script", 1_760_000_100),
+	wireRow(
+		"5e6f708192a3",
+		"Rank the investigation queue",
+		1_760_000_050,
+		{ agent: null, team: "data-investigations" },
+		false,
+	),
+	wireRow(
+		"6f708192a3b4",
+		"Audit the quality rules",
+		1_760_000_040,
+		{ agent: null, team: "data-quality" },
+		false,
+	),
+	wireRow(
+		"708192a3b4c5",
+		"Spec the topology rename",
+		1_760_000_030,
+		{ agent: null, team: LOPDEV },
+		false,
+	),
+	wireRow(
+		"8192a3b4c5d6",
+		"Draft the migration note",
+		1_760_000_020,
+		{ agent: LOPDEV, team: null },
+		false,
+	),
+];
+
 /** Which conversation is marked current, per story. */
 let selected: string | undefined = REVENUE;
 
@@ -215,7 +289,7 @@ if (typeof window !== "undefined") {
 			case "profiles.list":
 				return ok({ profiles: agentCatalogue });
 			case "teams.list":
-				return ok({ teams: [] });
+				return ok({ teams: teamCatalogue });
 			default:
 				throw new Error(`unexpected desktop op in this story: ${request.op}`);
 		}
@@ -234,6 +308,34 @@ const catalogueSettled = async (rows: number, timeoutMs = 4_000) => {
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Stage a draft against an ENTITY, which is the whole of the state the two
+ * states below are about.
+ *
+ * `staged` in the component is `draft?.target?.kind === kind &&
+ * draft.target.name === name`, so an entity row is marked current by a draft
+ * that CARRIES that target — it is not a selection the row can hold by itself.
+ * `@-picker` and `slash-commands` mark the row Enter will apply the same way.
+ *
+ * Written straight to the store rather than through `onStageDraft`, which is a
+ * no-op in this harness: the panel's own `onStageDraft` is the app's, and what
+ * this state needs is the store field it reads.
+ */
+const stageEntityDraft = (target: { kind: "agent" | "team"; name: string }) => {
+	const key = `draft-${target.kind}-${target.name}`;
+	useCanonicalSessionsStore.setState({
+		activeDraftKey: key,
+		drafts: {
+			[key]: {
+				key,
+				target,
+				createRequestId: `story-${key}`,
+				admissionRequestId: `story-${key}`,
+			},
+		},
+	});
+};
 
 /**
  * The panel at the width the app gives it, plus a caption.
@@ -476,6 +578,74 @@ export const NestedRowCurrent: Story = {
 			}
 			await sleep(100);
 		}
+		await sleep(300);
+	},
+};
+
+/**
+ * A TEAM's entity row is the current one — the row a staged draft has TARGETED.
+ * `AgentRowCurrent` below is the same state one list down.
+ *
+ * WHY THESE TWO STATES NEEDED A FRAME. Every other current-row state in this file
+ * marks ONE element, and the two entity rows are the ones a draft marks across
+ * TWO: the wrapper paints the ground over the row's own box (the gaps and the
+ * rounded corners the 24px controls do not cover) and the name button paints it
+ * again, because `rowStyle`'s own `hover:` step is what would otherwise paint over
+ * the wrapper's ground under the pointer. That pair is deliberate — the guard in
+ * `scripts/chat-sidebar-selection.test.mjs` asserts both halves of it — and it is
+ * also the only arrangement in the panel where the role's leading-edge bar has two
+ * DIFFERENT left edges to land on: the wrapper's and the name button's, which the
+ * disclosure control's 24px push apart. What the pair of frames shows is therefore
+ * a fact about pixels that no class assertion can state: whether the row carries
+ * ONE mark or two.
+ *
+ * The teams are the operator's own four rows, because the report is a screenshot
+ * of this list and a fixture nobody has rendered is a row that cannot be compared
+ * with it. The counts are derived, not written: an entity row draws the number of
+ * chats bound to it, and `ENTITY_ROSTER` binds one to each of three teams and one
+ * to the agent.
+ */
+export const TeamRowCurrent: Story = {
+	render: () => {
+		roster = ENTITY_ROSTER;
+		agentCatalogue = [LOPDEV_PROFILE];
+		teamCatalogue = TEAM_ROSTER;
+		selected = undefined;
+		draftKey = "draft-team-lopdev";
+		return (
+			<Page note="A team's entity row is current — the draft is staged against it" />
+		);
+	},
+	play: async () => {
+		await catalogueSettled(ENTITY_ROSTER.length);
+		stageEntityDraft({ kind: "team", name: LOPDEV });
+		await sleep(300);
+	},
+};
+
+/**
+ * An AGENT's entity row is the current one.
+ *
+ * The operator's own guess — "presumably the same issue would be there when
+ * selecting an agent" — is not a fact about the agent list until it is a frame:
+ * the two lists share `entity()`, so they share whatever it draws, and a fix that
+ * only ever looked at the team list would be a fix nobody checked. Same roster,
+ * same catalogues, same two elements; only the draft's target kind moves.
+ */
+export const AgentRowCurrent: Story = {
+	render: () => {
+		roster = ENTITY_ROSTER;
+		agentCatalogue = [LOPDEV_PROFILE];
+		teamCatalogue = TEAM_ROSTER;
+		selected = undefined;
+		draftKey = "draft-agent-lopdev";
+		return (
+			<Page note="An agent's entity row is current — the draft is staged against it" />
+		);
+	},
+	play: async () => {
+		await catalogueSettled(ENTITY_ROSTER.length);
+		stageEntityDraft({ kind: "agent", name: LOPDEV });
 		await sleep(300);
 	},
 };
