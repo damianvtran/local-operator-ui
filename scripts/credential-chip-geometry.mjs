@@ -31,7 +31,7 @@
  *
  * Raw CDP against a private headless Chrome, the same approach as
  * `chat-alignment-geometry.mjs` and `capture-evidence.mjs` (fresh user-data-dir
- * under /tmp, `--use-mock-keychain` so no keychain prompt can reach the
+ * under /tmp, the mock-keychain switch `./chrome-keychain.mjs` owns so no prompt can reach the
  * operator's screen, killed on exit, no browser-automation dependency added to
  * the repo). Duplicating that driver rather than importing it is the smaller
  * evil for the reason the alignment rig states: the sweep's loop writes one webp
@@ -66,6 +66,17 @@ const STORIES = [
 	["chat-message-input--credential-pill-at-line-start", 1024, 300],
 	["chat-message-input--credential-pill-unbacked", 1024, 300],
 	["chat-message-input--credential-pill-small-view", 440, 300],
+	/*
+	 * THE SCROLLED RUNG (UX round 1, U1 - the round's BLOCKER). Every row above
+	 * measures a field at `scrollTop 0`, which is exactly why the shipped rig read
+	 * `0,0,0,0` on all four while the chip was `fieldScrollTop` px off its run in
+	 * any composer long enough to scroll: the measurement added the mirror's own
+	 * scroll to a rect that is already viewport-relative. This story mints the
+	 * reference at the END of a fifteen-line buffer and scrolls its own field in
+	 * its play function, so the row measures a scrolled composer - and the sweep
+	 * below adds a middle and an end position on top of whatever the story left.
+	 */
+	["chat-message-input--credential-pill-scrolled", 1024, 300],
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -264,22 +275,146 @@ const main = async () => {
 			);
 		}
 		/* One settled frame after layout, so the rects are post-reflow. */
-		await cdp.send("Runtime.evaluate", {
-			awaitPromise: true,
-			expression:
-				"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
-		});
-		const { result } = await cdp.send("Runtime.evaluate", {
-			returnByValue: true,
-			expression: PROBE,
-		});
-		if (result.value?.error) {
-			throw new Error(`${story} @ ${width}x${height}: ${result.value.error}`);
+		const settle = async () => {
+			await cdp.send("Runtime.evaluate", {
+				awaitPromise: true,
+				expression:
+					"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
+			});
+		};
+		await settle();
+		const probe = async () => {
+			const { result } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: PROBE,
+			});
+			if (result.value?.error) {
+				throw new Error(`${story} @ ${width}x${height}: ${result.value.error}`);
+			}
+			return result.value;
+		};
+		const phases = [{ phase: "as painted", ...(await probe()) }];
+
+		/*
+		 * THE SCROLL SWEEP (U1). The field is scrolled THROUGH ITS OWN PROPERTY, and
+		 * the `scroll` event is dispatched as well: the layer subscribes to the field,
+		 * and a rig that moved the offset without the event would measure a chip that
+		 * had not been told - which is the state the subscription exists for. Two
+		 * positions, because one is a point and the shape of the defect was
+		 * `deltaTop === fieldScrollTop` at every offset.
+		 */
+		const scrollTo = async (fraction) => {
+			const { result } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				awaitPromise: true,
+				expression: `(async () => {
+					const f = document.querySelector("textarea");
+					if (!f) return { scrollable: false };
+					const max = f.scrollHeight - f.clientHeight;
+					if (max <= 1) return { scrollable: false };
+					f.scrollTop = Math.round(max * ${fraction});
+					f.dispatchEvent(new Event("scroll"));
+					await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+					return { scrollable: true, scrollTop: f.scrollTop };
+				})()`,
+			});
+			return result.value;
+		};
+		for (const [label, fraction] of [
+			["scrolled to its middle", 0.5],
+			["scrolled to its end", 1],
+		]) {
+			const moved = await scrollTo(fraction);
+			if (!moved?.scrollable) {
+				phases.push({
+					phase: label,
+					skipped: "the field does not scroll in this story",
+				});
+				continue;
+			}
+			phases.push({
+				phase: `${label} (scrollTop ${moved.scrollTop})`,
+				...(await probe()),
+			});
 		}
+
+		/*
+		 * THE RESIZE CASE (code review round 1, R1-3), which no story can drive and
+		 * which the viewport cannot produce for these stories either: each one pins
+		 * its own column width (`style={{ width: 1024 }}`), so narrowing the VIEWPORT
+		 * leaves the textarea exactly as wide as it was - the first version of this
+		 * phase measured that and proved nothing, which is why the wrapper's own width
+		 * is what changes here, the way a pane resize changes it in the app.
+		 *
+		 * The failure it exists for: the textarea is `w-full` and re-wraps with no
+		 * React render at all, so the mirror keeps its inline `width =
+		 * field.clientWidth` px and the chip keeps the rect it measured before - an
+		 * opaque ground over glyphs it does not stand for. A `ResizeObserver` on the
+		 * field is the fix in both layers and this is the only place it can be proven.
+		 *
+		 * ASSERTED rather than printed: a measurement that reports a 60px drift and
+		 * exits 0 reads as a pass to every pipeline that looks at the exit code, which
+		 * is the defect these numbers exist to catch. The field's own `clientWidth` is
+		 * read before and after, so a resize that did not land fails the run instead of
+		 * passing as "the chip held".
+		 */
+		const narrow = await cdp.send("Runtime.evaluate", {
+			returnByValue: true,
+			awaitPromise: true,
+			expression: `(async () => {
+				const f = document.querySelector("textarea");
+				if (!f) return { ok: false, why: "no field" };
+				let wrapper = f.parentElement;
+				while (wrapper && wrapper !== document.body) {
+					if (wrapper.style && wrapper.style.width) break;
+					wrapper = wrapper.parentElement;
+				}
+				if (!wrapper || wrapper === document.body) return { ok: false, why: "no wrapper with an inline width" };
+				const before = f.clientWidth;
+				wrapper.style.width = Math.max(260, before - 200) + "px";
+				await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+				return { ok: true, before, after: f.clientWidth };
+			})()`,
+		});
+		const resized = narrow.result.value;
+		if (!resized?.ok) {
+			throw new Error(
+				`${story} @ ${width}x${height}: the resize case could not run - ${resized?.why ?? "no answer"}`,
+			);
+		}
+		if (resized.after === resized.before) {
+			throw new Error(
+				`${story} @ ${width}x${height}: the wrapper width changed and the field's did not (${resized.before} -> ${resized.after}), so this phase would prove nothing`,
+			);
+		}
+		await settle();
+		const after = await probe();
+		const drift = after.deltas.filter(
+			(delta) =>
+				delta && (Math.abs(delta.left) > 0.5 || Math.abs(delta.top) > 0.5),
+		);
+		if (drift.length > 0) {
+			throw new Error(
+				`${story} @ ${width}x${height}: the chip does not follow a resize of its own box - ${JSON.stringify({ clientWidth: resized, drift, before: phases[0].deltas, after: after.deltas })}`,
+			);
+		}
+		phases.push({
+			phase: `box narrowed ${resized.before} -> ${resized.after}px`,
+			...after,
+		});
+
+		await cdp.send("Emulation.setDeviceMetricsOverride", {
+			width,
+			height,
+			deviceScaleFactor: 1,
+			mobile: false,
+		});
+
 		results.push({
 			story,
 			viewport: `${width}x${height}`,
-			...result.value,
+			...phases[0],
+			phases,
 		});
 	}
 
@@ -289,27 +424,34 @@ const main = async () => {
 	}
 	for (const entry of results) {
 		console.log(`\n${entry.story}  @ ${entry.viewport}  (${ORIGIN})`);
-		console.log(`  buffer           ${JSON.stringify(entry.value)}`);
-		entry.runs.forEach((run, i) => {
-			const chip = entry.chips[i];
-			const delta = entry.deltas[i];
-			console.log(
-				`  run ${i}            ${JSON.stringify(run.text)} rects=${run.rects.length}` +
-					` box=${JSON.stringify(run.box)}`,
-			);
-			if (!chip) {
-				console.log("    no chip at this run (a wrapped run keeps the wash)");
-				return;
+		for (const phase of entry.phases) {
+			console.log(`\n  -- ${phase.phase}`);
+			if (phase.skipped) {
+				console.log(`  skipped          ${phase.skipped}`);
+				continue;
 			}
-			console.log(
-				`    chip           box=${JSON.stringify(chip.box)} content=${chip.content} client=${chip.client} clipped=${chip.clipped}`,
-			);
-			console.log(`    delta          ${JSON.stringify(delta)}`);
-		});
-		if (entry.wrapped > 0) {
-			console.log(
-				`  wrapped runs     ${entry.wrapped} (no chip: documented fallback)`,
-			);
+			console.log(`  buffer           ${JSON.stringify(phase.value)}`);
+			phase.runs.forEach((run, i) => {
+				const chip = phase.chips[i];
+				const delta = phase.deltas[i];
+				console.log(
+					`  run ${i}            ${JSON.stringify(run.text)} rects=${run.rects.length}` +
+						` box=${JSON.stringify(run.box)}`,
+				);
+				if (!chip) {
+					console.log("    no chip at this run (a wrapped run keeps the wash)");
+					return;
+				}
+				console.log(
+					`    chip           box=${JSON.stringify(chip.box)} content=${chip.content} client=${chip.client} clipped=${chip.clipped}`,
+				);
+				console.log(`    delta          ${JSON.stringify(delta)}`);
+			});
+			if (phase.wrapped > 0) {
+				console.log(
+					`  wrapped runs     ${phase.wrapped} (no chip: documented fallback)`,
+				);
+			}
 		}
 	}
 };

@@ -642,12 +642,19 @@ const CONTROLS = [
 	 * what would otherwise apply here: this row is what would fail if someone gave
 	 * the chip its own fill later.
 	 *
-	 * The control's own pairs need no row of their own, and that is a measurement
-	 * rather than a shrug: the `x` is `text-ink` on this same fill (the `ink` above)
-	 * and its hover ground is `elevated`, which the INKS loop already asserts at the
-	 * strong-text floor on all four grounds. Both registers are listed because both
-	 * are chipped — a live reference and one nothing backs — and the transcript
-	 * draws the same two chips inside the user bubble's `surface`.
+	 * The control's own RESTING ink is a row of its own, below, and that is design round
+	 * 1, D3's fix rather than bookkeeping: the `x` used to rest at `text-ink`, so the
+	 * only step it could take on hover was a GROUND one (`bg-elevated`), which measures
+	 * 1.00-1.33:1 against the chip's own fill - 16 of the 59 palettes at or under
+	 * 1.05:1, `obsidian` at ΔE00 0.77, and the default theme greyscale-identical. A
+	 * state that rests on hue is the same class of separation the round-4 dash rule
+	 * rejected for the two registers. The perceivable step is the INK now
+	 * (`inkMuted` -> `ink`), which is also the working-directory chip's own
+	 * prune-control idiom, and `hover:bg-elevated active:bg-sunken` stays as the
+	 * primitive's ghost pair and as the pressed state the control had none of. Both
+	 * registers are listed because both are chipped — a live reference and one nothing
+	 * backs — and the transcript draws the same two chips inside the user bubble's
+	 * `surface`.
 	 */
 	{
 		name: "credential chip",
@@ -662,6 +669,32 @@ const CONTROLS = [
 		fill: "warningWash",
 		border: "warningBorder",
 		ink: "ink",
+	},
+	{
+		/*
+		 * THE CLEAR CONTROL'S RESTING INK (design round 1, D3).
+		 *
+		 * A pair the component actually paints and no other row asserts: `inkMuted` on
+		 * the chip's own wash. `inkDim` is the next step down and it is NOT available
+		 * here — 4.07:1 in the weakest palette, under this app's 4.5 text floor — so the
+		 * control rests at the lightest role that is legal on this fill and steps TO
+		 * `ink` on hover, and the two rows below are what hold that claim across all
+		 * fifty-nine palettes. The hover and pressed grounds (`elevated`, `sunken`) need
+		 * no row beyond the INKS loop's, which already asserts `ink` on both at the
+		 * strong-text floor.
+		 */
+		name: "credential chip clear",
+		on: ["canvas", "surface"],
+		fill: "infoWash",
+		border: "infoBorder",
+		ink: "inkMuted",
+	},
+	{
+		name: "credential chip clear (unbacked)",
+		on: ["canvas", "surface"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "inkMuted",
 	},
 	/*
 	 * The `ask` gate's option buttons (`trace/ask-options.tsx`).

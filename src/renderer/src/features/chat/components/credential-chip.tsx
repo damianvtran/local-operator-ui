@@ -176,10 +176,18 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 		)}
 		<span className="truncate">{label}</span>
 		{chars !== null && (
-			// `ml-auto` so the count and the control hug the chip's right edge when
-			// the run box is wider than the words, which is what makes the chip read
-			// as one object rather than as text with a chip's border around it.
-			<span className="ml-auto shrink-0">{`· ${chars} chars`}</span>
+			// NO `ml-auto` HERE (design round 1, D1). The composer's chip is painted
+			// in a box the MINT fixed (`[Credential #1, 19 chars]` is 157.33px wide at
+			// the 1024 rung) while the chip's own face is ~111px, so a count that took
+			// the slack parked 44px of empty fill *between* the ordinal and the facts
+			// it belongs to: `#1` and `· 19 chars` read as two stranded clusters. The
+			// slack goes to the CLEAR CONTROL instead, where it is a gutter before the
+			// one element on the chip that is not a fact. A chip with no control (the
+			// transcript's, and the composer's unbacked one) has nothing to push
+			// against, so there the count keeps the right edge it always had.
+			<span
+				className={cn("shrink-0", !onClear && "ml-auto")}
+			>{`· ${chars} chars`}</span>
 		)}
 		{onClear && (
 			<button
@@ -189,13 +197,53 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 				// The chip layer is `pointer-events-none` so that a click anywhere else
 				// on the chip reaches the textarea underneath and places the caret; the
 				// control is the one part that takes the pointer, and it says so here.
-				// Its ink and hover ground are the roles this app already asserts (ink on
-				// the chip's fill and on `elevated`), so the control adds no new triple
-				// to the contrast contract — see its rows.
-				className="pointer-events-auto -mr-0.5 flex shrink-0 items-center rounded-xs text-ink hover:bg-elevated"
+				//
+				// `ml-auto` IS THE GUTTER (design round 1, D1): the control, not the
+				// count, is what the slack sits before.
+				//
+				// `p-0.5` IS THE TARGET (design round 1, D2; UX round 1, U5): a bare
+				// `size-3` glyph was a 12x12 box, the smallest control in the composer
+				// and the only one whose click destroys a held secret. 4px of padding
+				// makes it 16x16, which is as far as this chip's run box allows - the
+				// box is 17px tall at the 1024 rung and 16px at the shipped 440 rung, so
+				// a 24x24 target would put the chip's own ground over the lines above
+				// and below and swallow their clicks. The deviating number is recorded
+				// rather than left silent: 16x16 against WCAG 2.2 SC 2.5.8's 24x24, with
+				// the box the constraint (see the design record's §7.1).
+				//
+				// THE INK STEPS, THE GROUND IS THE APP'S GHOST PAIR (design round 1,
+				// D3). `hover:bg-elevated` alone was the only feedback, and measured
+				// across the palettes it is 1.00-1.33:1 against the chip's fill (16 of
+				// 59 at or under 1.05:1; `obsidian` ΔE00 0.77, the default theme
+				// greyscale-identical) - a state resting on hue, which this app's
+				// doctrine forbids. The perceivable step is therefore the INK, from
+				// `ink-muted` (4.56:1 at worst on this fill, over all 59) to `ink`
+				// (6.99:1 at worst), which is also the working-directory chip's own
+				// prune-control idiom. `hover:bg-elevated active:bg-sunken` is the
+				// button primitive's ghost pair, kept as the second channel and as the
+				// pressed state the control had none of.
+				//
+				// `focus-visible:outline-offset-1!` is the primitive's dense-size
+				// offset, for the primitive's reason: the global `:focus-visible` rule
+				// draws a 2px ring at a 2px offset, which on a 16px control bleeds 3px
+				// past its box - out over the chip's own edge and into the words beside
+				// it. `!` because the global rule and a utility carry the same
+				// specificity, exactly as `button.tsx` spells it.
+				className="pointer-events-auto -mr-0.5 ml-auto flex shrink-0 cursor-pointer items-center rounded-xs p-0.5 text-ink-muted hover:bg-elevated hover:text-ink focus-visible:outline-offset-1! active:bg-sunken"
 			>
 				<X aria-hidden="true" className="size-3" />
 			</button>
 		)}
+		{/*
+		 * THE SENTENCE STAYS IN THE ACCESSIBILITY TREE (design round 1, D5; UX round
+		 * 1, U4). The full sentence the chip stands for was rendered text before
+		 * this change; putting it only in a native `title` on a non-focusable span
+		 * made it a pointer-only affordance, and `title` support on a span is
+		 * inconsistent - so a screen reader got the name and the count and lost the
+		 * one clause that says the value cannot be read. A visually hidden element
+		 * carries the same words without touching what the chip paints, and nothing
+		 * stored, sent or logged changes with it.
+		 */}
+		{title && <span className="sr-only">{title}</span>}
 	</span>
 );

@@ -2105,6 +2105,47 @@ export const STORIES = [
 	   read off these pictures. */
 	["chat-message-input--credential-pill-small-view", 440, 300],
 	["chat-message-input--credential-pill-cleared", 1024, 300],
+	/*
+	 * THE FOUR STATES ROUND 1 HAD NO FRAME FOR (each finding's own frame, as the
+	 * review asked for).
+	 *
+	 * `scrolled` is UX round 1's blocker: the chip's measurement added the mirror's
+	 * own scroll to a viewport-relative rect, so in any message long enough to
+	 * scroll the chip sat exactly `fieldScrollTop` px off its run - an opaque ground
+	 * and a live `x` over unrelated prose. The row scrolls the field itself
+	 * (`scrollToEnd` sets the textarea's own `scrollTop` and FAILS if nothing
+	 * scrolled), and the story's play measures the pair in a real browser at that
+	 * offset as well, so the frame and the number agree.
+	 *
+	 * `hover` and `focused` are the control's own states (design round 1, D2/D3):
+	 * `:hover` and `:focus-visible` are browser state no story can set, so the rig
+	 * puts the real pointer on the control and walks to it with real Tab presses -
+	 * and a selector that matches nothing throws rather than photographing the
+	 * resting state under a name that claims otherwise.
+	 *
+	 * `cleared-undone` is UX round 1, U2's second channel: the toast's own `Undo`
+	 * pressed, through a real click on the toast, with the play function asserting
+	 * the marker and the payload are back.
+	 */
+	[
+		"chat-message-input--credential-pill-scrolled",
+		1024,
+		300,
+		{ scrollToEnd: "textarea" },
+	],
+	[
+		"chat-message-input--credential-pill-hover",
+		1024,
+		300,
+		{ hover: 'button[aria-label^="Remove credential"]' },
+	],
+	[
+		"chat-message-input--credential-pill-focused",
+		1024,
+		300,
+		{ tabTo: 'button[aria-label^="Remove credential"]' },
+	],
+	["chat-message-input--credential-pill-cleared-undone", 1024, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
 	/* The SETTLED idle row (UX round 1's U1 / QA's Q1, and the operator's report
 	   that the first fix left a standing gap) at both rungs, the two shorter notice
