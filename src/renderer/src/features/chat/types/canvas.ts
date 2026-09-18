@@ -39,8 +39,30 @@ export type CanvasDocument = {
 
 	/**
 	 * Timestamp when the document was last modified by an agent
+	 *
+	 * Also the blob cache's key for the viewers that read their own bytes
+	 * (`file:<path>:<mtime>`), so a document whose bytes were re-read is served
+	 * under a new key. Written by paths that are NOT probes (`file-attachment`
+	 * stamps `Date.now()`), which is why it is not the freshness baseline - see
+	 * `readMtimeMs`.
 	 */
 	lastAgentModified?: number;
+
+	/**
+	 * The file's mtime, ms since epoch, at the moment `content` was read from
+	 * disk - the baseline the canvas's freshness check compares a probe against
+	 * (`canvas/file-freshness.ts`).
+	 *
+	 * ABSENT means "never read through a path that took a probe", not "zero":
+	 * a document created in the panel, opened through the OS dialog, or restored
+	 * from a persisted store written before this field existed. The check ADOPTS
+	 * the file's current mtime for those rather than re-reading them, so an
+	 * upgrade cannot rewrite every restored buffer on the first tick.
+	 *
+	 * Only ever written from a probe answer, which is what keeps it a fact about
+	 * the file rather than about this process's clock.
+	 */
+	readMtimeMs?: number;
 
 	/**
 	 * Type of the document/file

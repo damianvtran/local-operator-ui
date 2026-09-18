@@ -30,6 +30,12 @@ import { useCanvasStore } from "../../../../shared/store/canvas-store";
 import { getCodeMirrorTheme } from "../../../../shared/themes/code-mirror-theme";
 import type { CanvasDocument } from "../../types/canvas";
 import { diffHighlight } from "./code-editor-diff";
+import {
+	clearDocumentDirty,
+	documentAfterSelfWrite,
+	probeLocalFile,
+	setDocumentDirty,
+} from "./file-freshness";
 import { InlineEdit } from "./inline-edit";
 
 type CodeEditorProps = {
@@ -170,6 +176,22 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		}
 	}, [document.title]);
 
+	/*
+	 * Publish "this buffer differs from the file", for the canvas's freshness
+	 * check to consult before it replaces anything.
+	 *
+	 * The store cannot answer this question and that is the whole reason the
+	 * registry exists: between a keystroke and the debounced write below, the
+	 * store still holds the OLD bytes, so a check driven by the store's own copy
+	 * would see "nothing has changed here" and overwrite what is being typed.
+	 * The unmount cleanup is the other half - a closed tab must not leave a
+	 * suppression behind for the next document that reuses the path.
+	 */
+	useEffect(() => {
+		setDocumentDirty(document.id, hasUserChanges);
+	}, [document.id, hasUserChanges]);
+	useEffect(() => () => clearDocumentDirty(document.id), [document.id]);
+
 	useEffect(() => {
 		if (
 			editable &&
@@ -179,18 +201,42 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 			document.path &&
 			window.api.saveFile
 		) {
-			window.api.saveFile(document.path, debouncedContent);
-			originalContentRef.current = debouncedContent;
-			setHasUserChanges(false);
+			/*
+			 * The write and the baseline it produces are ONE step.
+			 *
+			 * The file's mtime changes because of our own save, and the canvas's
+			 * freshness check compares a probe against exactly that value - so a save
+			 * that did not advance it would make the next tick re-read the bytes we
+			 * just wrote. The probe is the only thing that can say what the write's
+			 * mtime IS (a renderer cannot `stat`, and `Date.now()` is this process's
+			 * clock, not the file's), and it runs before the dirty flag clears: a
+			 * check landing mid-save must not replace a buffer whose bytes are not
+			 * yet on disk.
+			 */
+			void (async () => {
+				try {
+					await window.api.saveFile(document.path, debouncedContent);
+					const probe = await probeLocalFile(document.path);
+					originalContentRef.current = debouncedContent;
+					setHasUserChanges(false);
 
-			if (conversationId && canvasState) {
-				const updatedFiles = canvasState.files.map((file) =>
-					file.id === document.id
-						? { ...file, content: debouncedContent }
-						: file,
-				);
-				setFiles(conversationId, updatedFiles);
-			}
+					if (conversationId && canvasState) {
+						const updatedFiles = canvasState.files.map((file) =>
+							file.id === document.id
+								? documentAfterSelfWrite(file, probe, debouncedContent)
+								: file,
+						);
+						setFiles(conversationId, updatedFiles);
+					}
+				} catch (error) {
+					/*
+					 * The write failed, so nothing on disk matches the buffer: the dirty
+					 * flag stays set (the next debounce tries again) and the check keeps
+					 * out of the way.
+					 */
+					console.error("Could not save the document:", error);
+				}
+			})();
 		}
 	}, [
 		debouncedContent,

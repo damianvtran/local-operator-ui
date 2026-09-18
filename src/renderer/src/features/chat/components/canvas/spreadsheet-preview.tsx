@@ -20,6 +20,12 @@ import type {
 import { iconSetQuartz } from "ag-grid-community";
 import type { CanvasDocument } from "../../types/canvas";
 import { getFileTypeFromPath } from "../../utils/file-types";
+import {
+	clearDocumentDirty,
+	documentAfterSelfWrite,
+	probeLocalFile,
+	setDocumentDirty,
+} from "./file-freshness";
 
 type SpreadsheetPreviewProps = {
 	document: CanvasDocument;
@@ -681,6 +687,18 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		}
 	}, [document.content, document.path, parseFile]);
 
+	/*
+	 * The same dirty publication the two editors make: this grid parses
+	 * `document.content`, so a freshness check landing while cells are typed but
+	 * unsaved would re-parse the file's older bytes over the user's edits. The
+	 * registry is what stops it, and this is the third surface that has to
+	 * report (see `file-freshness.ts`).
+	 */
+	useEffect(() => {
+		setDocumentDirty(document.id, hasUserChanges);
+	}, [document.id, hasUserChanges]);
+	useEffect(() => () => clearDocumentDirty(document.id), [document.id]);
+
 	const saveChanges = useCallback(async () => {
 		if (
 			!document.path ||
@@ -757,10 +775,16 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				isCsv ? "utf8" : "base64",
 			);
 
-			// Update canvas store with new content only after successful save
+			// Update canvas store with new content only after successful save, and
+			// with the baseline that save produced: the write moved the file's mtime,
+			// so the canvas's freshness check must be told what it moved to or the
+			// next tick reads this save back.
 			if (conversationId && canvasState) {
+				const probe = await probeLocalFile(document.path);
 				const updatedFiles = canvasState.files.map((file) =>
-					file.id === document.id ? { ...file, content: newContent } : file,
+					file.id === document.id
+						? documentAfterSelfWrite(file, probe, newContent)
+						: file,
 				);
 				setFiles(conversationId, updatedFiles);
 			}
