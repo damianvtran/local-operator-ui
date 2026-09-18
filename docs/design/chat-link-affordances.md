@@ -106,15 +106,42 @@ explains itself rather than a silent refusal.
 
 ## 4. What a click does, and the three traps
 
+**A local path this app can SHOW opens in the pane's own canvas.** That is the
+operator's ask of 2026-09-18 ("opening up files ... supported by canvas view
+(PDFs, XLSX/csvs, text, markdown, etc) by default are opened in the canvas
+instead of opened by the OS unless the user clicks to open with default
+application in the hover popup (add this)"), and it is the one row of this table
+that changed. "Can SHOW" is `viewerFor(path, type)` in
+`utils/viewer-routing.ts` returning a kind rather than `null` — one predicate the
+canvas already routes by, reused here rather than re-derived. Where it answers
+`null` (a `.zip`, a `.dmg`, an unknown binary) nothing moves: the press is the OS
+hand-off it always was.
+
 | target | click | toolbar |
 |---|---|---|
-| `http(s)://…` | unchanged: `target="_blank"` → `setWindowOpenHandler` → `shell.openExternal` | `Copy link`, `Open in browser` |
-| `file://…` | decoded path → `openFile` | as a file path |
-| `~/…`, `/abs…` | `openFile` (main expands `~`) | `Copy path`, `Open`, `Open folder` |
+| `http(s)://…` | unchanged: `target="_blank"` → `setWindowOpenHandler` → `shell.openExternal` | `Copy link` · `Open in browser` · `Quote` |
+| a local path with a canvas viewer, in a pane | the CANVAS: `openPathInCanvas` → the document, the right-hand slot, the tab | `Copy path` · `Open in canvas` · `Open in default app` · `Open folder` · `Quote` |
+| the same path where there is no pane (no provider) | `openFile` (main expands `~`) — the press it had before this change | the four-action strip (`Open`, `Open folder`) |
+| `file://…` | decoded path → as the row above | as the row above |
+| `~/…`, `/abs…` with no viewer (`.zip`, `.dmg`, unknown) | `openFile` | `Copy path` · `Open` · `Open folder` · `Quote` |
 | a directory | `openFile` | `Copy path`, `Open` (no `Open folder`) |
-| a path that is not there | `openFile` fails → error toast | `Copy path`, plus the reason `No file at …` |
+| a path that is not there | the canvas is SKIPPED (the probe's cached answer already says so) → `openFile` fails → error toast | `Copy path`, plus the reason `No file at …` |
 | bare relative `notes.md` | unchanged (an anchor, `target="_blank"`) | not a target: no toolbar |
 | `ftp://`, `mailto:`, unknown schemes | unchanged | not a target: no toolbar |
+
+**Two presses, one meaning each.** The id `open` means THE CANVAS wherever the
+app can show the path, and the OS's application gets an id of its own
+(`open-default`, labelled with the string the canvas's own viewer chrome already
+ships — `OpenInOsButton`, `file-viewer-state.tsx`). Two buttons whose only
+difference is their tooltip would be one control with an ambiguous press; two ids
+are two answers, and each one is assertable without a browser
+(`scripts/link-actions.test.mjs`).
+
+**The fallback is part of the rule.** `openPathInCanvas` answers `false` when the
+pane would not take the path — a type with no viewer, a read that failed, a path
+the probe already knows is gone — and the click then does exactly what it did
+before: the OS attempt and its `Could not open …` sentence. A refusal that
+produced nothing would be the silent no-op this whole matrix exists to remove.
 
 Three traps, all of which would ship a plausible-looking no-op or a broken
 window:
@@ -291,8 +318,8 @@ and a streaming row re-renders per delta.
 
 | the reader's state | the row's subject | what is offered |
 |---|---|---|
-| pointer over a link, nothing highlighted | that link | `Copy path` · `Open` · `Open folder` · **Quote** |
-| a highlight wholly inside a link (part or whole) | that link | **Quote** · `Copy path` · `Open` · `Open folder` |
+| pointer over a link, nothing highlighted | that link | `Copy path` · `Open in canvas` · `Open in default app` · `Open folder` · **Quote** (a canvas-openable file; see § 4 for the four other shapes) |
+| a highlight wholly inside a link (part or whole) | that link | **Quote** · `Copy path` · `Open in canvas` · `Open in default app` · `Open folder` |
 | a highlight spanning a link and the prose beside it | none — the turn's Quote control | Quote only |
 | a highlight across two links in one turn | none — the turn's Quote control | Quote only |
 | a highlight spanning two turns | none — `quote-model.ts`'s own rule | Quote on the turn it began in |
@@ -344,7 +371,10 @@ so the next reveal asks again.
 Each action is the shared `Button` (`variant="ghost"`, `size="icon-sm"`) with an
 `aria-label` and a `Tooltip`; the strip is `role="toolbar"` with its own
 `aria-label="Actions for report.xlsx"`; the anchor's accessible name stays its own
-visible text.
+visible text. The two opens carry their own labels as both the tooltip and the
+accessible name (`Open in canvas`, `Open in default app`), which is the whole
+reason they are two actions rather than one: a screen-reader reader hears which
+destination each press reaches, and neither is named after the icon it wears.
 
 **The keyboard contract, stated because the DOM's own order cannot express it**
 (round 1, UX U1 and U2). The strip is rendered ONCE per turn, after the whole
@@ -433,7 +463,22 @@ Stated because a reviewer will look for them:
 - **No hover reveal for the turn's Quote control.** It is raised by a highlight
   and nothing else, which is the operator's earlier ask and is untouched here.
 - **No new interaction with the `files` panel or the canvas tiles.** They already
-  have their own actions menu; this change does not touch it.
+  have their own actions menu; this change does not touch it. The panel's CLICK is
+  the one other place that opens a path in this canvas, and it deliberately keeps
+  its own implementation: it REPLACES an existing document in the store so a tile
+  re-opened after the agent rewrote the file shows the new bytes
+  (`canvas-file-freshness`), it carries the tile's own facts onto the document, and
+  its failure toast is worded for a tile the reader was looking at.
+  `utils/open-in-canvas.ts`'s header states all three. What the two share is the
+  RULE, not the code: `viewerFor` decides, and both call it.
+- **No canvas routing on the trace rows, the gate card, or the legacy
+  `message-item` rows.** Those surfaces render markdown OUTSIDE the pane provider
+  (`canvas-pane.tsx`), so `useCanvasPane()` answers `null` there and the press is
+  the press of before. This is the same boundary as the first two exclusions and
+  it is one rule rather than two: the canvas action lives ON the link toolbar, and
+  the toolbar exists on the transcript's own rows only, so the routing is provided
+  to exactly the surface that offers the press. A markdown surface added later gets
+  neither until somebody provides the pane deliberately.
 
 ## 9. Evidence
 
@@ -444,8 +489,12 @@ Stated because a reviewer will look for them:
   offsets, the `#` cut, and the href trap.
 - `scripts/link-actions.test.mjs` — classification, the percent-decoding boundary
   (space, literal `%`, non-ASCII, malformed escape), the click decision and its
-  drag refusal, the probe's caching rules, the missing-path reason, and the
-  selection-in-link boundary set.
+  drag refusal (plus the canvas outcome, with the no-pane fallback asserted beside
+  it), the toolbar matrix in BOTH shapes — the five-action canvas strip and the
+  four-action strip a surface with no pane keeps — including the directory and
+  known-missing vetoes on the canvas action, `canvasActionFor` as the one
+  predicate the matrix and the icon map share, the probe's caching rules, the
+  missing-path reason, and the selection-in-link boundary set.
 - `scripts/chat-link-affordances.test.mjs` — the SHIPPED components in jsdom: the
   rendered anchor's decoded `href`/`data-lo-target`, a hand-written
   `file://` markdown link, the scheme matrix against the transform itself
@@ -457,16 +506,27 @@ Stated because a reviewer will look for them:
   placement's re-measure when the subject changes inside one turn, the pointer
   CORRIDOR between a link and its toolbar, and the keyboard contract (`Tab` into
   the focused link's toolbar in the mixed pointer/keyboard state, `Escape` out of
-  it and back to the link). The boxes are stubbed throughout — jsdom has no layout
-  — so the arithmetic and the wiring are what these assert; the pixels are the
-  rig's.
+  it and back to the link). WHERE A PRESS GOES is asserted here too, against the
+  real stores rather than a stub: a press inside a pane writes the document, the
+  selected tab and the right-hand slot and never calls `openFile`; a text path is
+  read as `utf-8` and a PDF is not read at all; the same press with NO provider is
+  the press of before; a type with no viewer and a path the probe already knows is
+  gone are both handed to the OS with no tab; and the strip's own two opens are
+  pressed by their accessible names (`Open in canvas`, `Open in default app`) with
+  each reaching its own destination. The boxes are stubbed throughout — jsdom has
+  no layout engine — so the arithmetic and the wiring are what these assert; the
+  pixels are the rig's.
 - `scripts/message-quote.test.mjs` — the `QUOTE_TOOLKIT_ATTR` exclusion asserted
   against the link toolbar (which renders real text, so the exclusion is not
   theoretical), plus the mid-row flip and its fallback.
 - `src/renderer/src/features/chat/canonical/link-targets.stories.tsx` — the eight
   admission shapes, the narrow column, the selection-in-link state and the press
-  that follows it, and the two SPANNING highlights (a link and its prose, and two
-  links in one turn).
+  that follows it, the two SPANNING highlights (a link and its prose, and two
+  links in one turn), and `NoViewerTargets`: a `.zip` and a `.dmg` beside an
+  `.xlsx`, which is the UNCHANGED half of the routing rule. That one is a story of
+  its own rather than two more sentences in the fixture the rest of the set
+  photographs, because adding to that fixture moves the links below it and
+  re-measures every strip in the set.
 - `docs/evidence/chat-canonical-links/` — the rendered frames, including the
   pointer-revealed toolbars (the rig's own CDP `Input.dispatchMouseEvent`, because
   a story `play` cannot produce a real pointer) and the states round 1's review
@@ -478,7 +538,10 @@ Stated because a reviewer will look for them:
   at 16ms and at every pixel, in both placements and back out to the prose, each
   of which fails on the pre-remediation tree. Its README states the gesture behind
   each directory, and the one limit this branch could not remove from the code
-  side — a highlight inside an anchor, which no mouse gesture makes.
+  side — a highlight inside an anchor, which no mouse gesture makes. `hover-file`
+  and `hover-toolbar-button` are the new matrix in pixels (the five-action strip,
+  and the tooltip of its `Open in canvas` button), and `hover-no-viewer` is the
+  other side of the routing rule.
 
 ### What the evidence set does NOT have, and why
 
@@ -521,3 +584,58 @@ Stated because a reviewer will look for them:
   table 316px in a 420px viewport, `table-layout: auto`). It is the table's own
   `word-break` behaviour at a narrow width, it exists on `main`, and fixing it
   would change every table in every transcript — out of this change's scope.
+
+## 10. Where a press opens: the pane identity, and the two modules this adds
+
+`viewerFor(path, type)` (`utils/viewer-routing.ts`) is the app's existing
+definition of "supported by canvas view", and this change reuses it rather than
+writing a second list of extensions: the canvas's own click, the document tile and
+this press all route through the same predicate, so a format added to the viewer
+list is openable from a link in the same commit.
+
+**`utils/open-in-canvas.ts` owns the rule and the effect.** `opensInCanvas(pane,
+path)` answers the decision (a pane in reach AND a viewer for the type);
+`openPathInCanvas(conversationId, path)` performs it: probe answer consulted from
+the CACHE, the document built, the text kinds read, `setCanvasOpen(true)` then
+`addFileAndSelect`. Its answer is a boolean, and the caller's fallback is the
+point of it — a refusal means "do what this app did before", which is the OS
+hand-off and its own sentence.
+
+Three bounds are deliberate and are stated in that module rather than here:
+
+- **the probe is the cache, not a new round trip.** The toolbar already asked on
+  reveal, and asking again per press would be the stat storm that design is built
+  to avoid. `null` — nothing known — attempts the canvas anyway, which is the
+  optimistic direction `probeTarget` documents;
+- **a refusal never leaves a dead tab.** A directory, a type with no viewer or a
+  path the cached answer already calls gone gets no document at all: the tab is
+  written only after every check has passed;
+- **the document carries no freshness baseline.** `readMtimeMs`/`sizeBytes` come
+  from a probe answer and the cached one is two booleans, so a link-opened document
+  is built the way ⌘O's is (`canvas/index.tsx`'s `handleOpenFile`) and carries
+  neither. The cost is that the canvas's own "changed on disk" comparison has to
+  adopt what the file says on its first read. Widening the probe cache is the change
+  that removes it, and it is not this one.
+
+**`utils/canvas-pane.tsx` is how the pane reaches the two components that need it.**
+The anchor is `MarkdownRenderer`'s (`MarkdownAnchor`), which every markdown surface
+in the app renders and which takes no pane prop and must not grow one; the toolbar
+is mounted by the transcript's own rows. `CanvasPaneProvider` is mounted around the
+transcript's ROW LIST — one place, the only place where both consumers live — and
+its value is the OPENER bound to that conversation, not the id:
+
+- the id already has a reader with a different contract (`LinkToolkit`'s
+  `conversationId`: the key a staged quote is filed under), so publishing it here
+  would be two sources of one value, which `use-quote-press.ts`'s own header
+  refuses;
+- the value is memoised on the id, because a transcript re-renders per streaming
+  delta and a fresh context value would re-render every anchor in every row;
+- an absent `conversationId` provides `null` rather than skipping the provider, so a
+  story, a session-less draft and the run panel's child reader all get the same
+  "no pane in reach" answer and the same behaviour they had before this module
+  existed (`scripts/chat-link-affordances.test.mjs` asserts that press).
+
+The consequence worth naming: **canvas routing is provided to exactly the surface
+that offers the toolbar.** The trace rows, the gate card and the legacy
+`message-item` rows render markdown outside it (see § 8), so a link there opens in
+the OS as it always did — one boundary rather than two rules that could drift.
