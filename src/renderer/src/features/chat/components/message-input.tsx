@@ -96,12 +96,6 @@ import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
-/*
- * The composer's syntax highlight. `ComposerHighlight` owns the mirror, the
- * scroll write and the geometry correction; the gate below decides whether the
- * transparent-text technique is in play at all.
- */
-import { ComposerHighlight, highlightPaints } from "./composer-highlight";
 import { ComposerStatusRow } from "./composer-status-row";
 /*
  * The composer's inline credential capture (design §1-§9). The pure module owns
@@ -209,6 +203,7 @@ import { AtMentionOverlay } from "./at-mention-overlay";
 import { AtSuggestionsPopup, handleAtKeyDown, useAtPicker } from "./at-picker";
 import type { AtRow } from "./at-rank";
 import { atPickerToken, atReference } from "./at-token";
+import { ComposerHighlight, highlightPaints } from "./composer-highlight";
 import {
 	DirectoryIndicator,
 	type DirectoryIndicatorHandle,
@@ -246,10 +241,6 @@ import {
  * command runs.
  */
 import type { SlashDispatchOutcome } from "./slash-dispatch";
-/*
- * The TUI's own slash-run rule, ported (`slash-highlight.ts`), and the
- * narrowing that makes a painted run mean what Enter does (`runsMatchingPlan`).
- */
 import { runsMatchingPlan, slashHighlightRuns } from "./slash-highlight";
 import { planSlashArming, planSlashSubmission } from "./slash-submit";
 import type {
@@ -1699,15 +1690,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		// Slash completion reads the caret position, so it lives above the
 		// textarea's own onChange rather than deriving position from the value.
 		const [caret, setCaret] = useState(0);
-		/*
-		 * An IME composition is in flight.
-		 *
-		 * The composition string is drawn by the BROWSER and is not in the
-		 * highlight's mirror, so under `text-transparent` it would be invisible
-		 * while it is being typed. This is the one bit of state the highlight adds,
-		 * and it exists to switch the technique OFF: see the runs gate below, which
-		 * reads it together with the runs themselves.
-		 */
 		const [composing, setComposing] = useState(false);
 		/*
 		 * The live session this composer addresses, or undefined for a draft.
@@ -1794,51 +1776,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * keystroke would land in the middle of the completed word.
 		 */
 		const pendingCaret = useRef<number | null>(null);
-		/*
-		 * THE DRAFT'S OWN CARET, for a draft that arrives without a gesture.
-		 *
-		 * `caret` starts at 0, which is not a position a restored draft ever means
-		 * (design round 1 D1; QA round 1 Q3): the composer mounts holding the store's
-		 * text with no keystroke behind it, the state says 0 while the DOM selection
-		 * sits at the end of the draft, and every caret-anchored reading is then about
-		 * a position the user is not in. Two visible halves: the highlight asks the
-		 * planner, so a restored `/team <name> <instruction>` draft wears no tint where
-		 * the same draft paints the moment it is typed; and Enter consults the same
-		 * state (`planForDraft(newMessage, caret)`), so the restored draft is posted to
-		 * the model as prose where the identical draft a keystroke earlier was run as a
-		 * command.
-		 *
-		 * It reuses the rule this file already has for restored text — the caret goes
-		 * to the END of what was restored (`adoptRefusedPayload`: a composer left at
-		 * position 0 reads a leading line as the command to RUN) — and parks the write
-		 * in `pendingCaret` so the DOM selection and the state agree in this paint
-		 * rather than on the user's next gesture.
-		 *
-		 * ONCE per mount, and that is the whole reason for the ref: every later value
-		 * change re-runs the effect below, and seeding again would drag a caret the
-		 * user had moved to the end of the box.
-		 */
-		const caretSeeded = useRef(false);
-		/*
-		 * THE FIRST NON-EMPTY VALUE IS THE TRIGGER, not the mount, and the difference is
-		 * a real one: `useMessageInput` seeds its own `inputValue` from the store in an
-		 * EFFECT (`useState("")` then "if (storedDraft && !inputValue)"), so on the first
-		 * render this composer is empty even when the store already holds a draft — and
-		 * a mount-only version of this effect took the empty string as its answer and
-		 * left the caret at 0, which is the very state it exists to remove (measured in
-		 * the Storybook probes: the seeded `/agent coder …` draft painted nothing while
-		 * the typed copy of it painted both runs). The ref still makes it ONCE: every
-		 * later edit changes `newMessage` again, and seeding there would drag a caret
-		 * the user had moved to the end of the box.
-		 */
-		// biome-ignore lint/correctness/useExhaustiveDependencies: the first value is the trigger; the ref makes it once
-		useLayoutEffect(() => {
-			if (caretSeeded.current) return;
-			if (!newMessage) return;
-			caretSeeded.current = true;
-			pendingCaret.current = newMessage.length;
-			setCaret(newMessage.length);
-		}, [newMessage]);
 		/*
 		 * The last buffer React committed, so `applyCapture` can tell a write that
 		 * MOVED the box from one that only re-affirmed it. Read by the caret rule
@@ -2541,18 +2478,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * Both halves of `enabled` matter: a command needs the feature ON and
 		 * somewhere to hand it. With neither, the planner answers `send`, so nothing
 		 * is ever spliced on a path that could not run it.
-		 *
-		 * THERE IS NO OVERRIDE, and that is load-bearing (code review round 1 MAJOR 1).
-		 * This used to take an `enabled` override so the syntax highlight could ask
-		 * "is this word a command in this draft" instead of "can this mount run it" —
-		 * because the Storybook harness mounts a composer with no dispatcher. That
-		 * made the paint and Enter answer from DIFFERENT capabilities: with the
-		 * `commands` feature off, a bare `/compact` wore the command tint while Enter
-		 * posted it to the model as prose, which is the exact class this gate exists to
-		 * prevent, one layer up. A mount that paints a run must be a mount that would
-		 * run it, so the harness supplies the missing half of its own capability (a
-		 * recording dispatcher, `slash-highlight.stories.tsx`) and every caller gets
-		 * this mount's answer.
 		 */
 		const planFor = useCallback(
 			(draft: string, at: number, gesture: "typed" | "pick" = "typed") =>
@@ -2619,74 +2544,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				onSlashCommand,
 			],
 		);
-
-		/*
-		 * The composer's syntax highlight, and the ONE gate that decides whether the
-		 * transparent-text technique is in play.
-		 *
-		 * `slashHighlightRuns` is the pure port of the TUI's own rule
-		 * (`editor.py:4232-4359`), fed the vocabularies this component already holds
-		 * for the planner plus the roster snapshot the completion list's query already
-		 * holds (`slash.nameChoices`) — no second vocabulary, no new request on the
-		 * render path. `picking` is the list's own open state, which is what
-		 * suppresses the "unknown word" tint while a word is still being chosen.
-		 *
-		 * `composing` is the IME half, and it is why this is one predicate rather than
-		 * two: the composition string is drawn by the BROWSER, is not in the mirror,
-		 * and would therefore be invisible under `text-transparent` while it is being
-		 * typed. Zero runs turns both the mirror and the transparency off together, so
-		 * the native path — including a squiggle the operator never asked to lose — is
-		 * what an ordinary draft gets.
-		 */
-		const slashRuns = useMemo(() => {
-			if (composing) return [];
-			const runs = slashHighlightRuns({
-				draft: newMessage,
-				commandNames: slash.commandNames,
-				nameListCommands: slash.nameListCommands,
-				nameChoices: slash.nameChoices,
-				picking: slash.open && slash.matches.length > 0,
-			});
-			if (runs.length === 0) return runs;
-			/*
-			 * THE TINT HAS TO MEAN WHAT ENTER DOES. The run rule is the TUI's, and it
-			 * paints a word that OPENS the line whether or not this host will run it:
-			 * on this composer a single-line draft whose trailing text the command does
-			 * not own is SENT as a message (design D6 / QA Q4 — `/compact hello` wore the
-			 * command tint while Enter posted it to the model). So the plan is asked
-			 * here, once, and a draft Enter will not run paints nothing — which also
-			 * makes two line counts of the same prose agree, since the multi-line rule
-			 * below already paints nothing.
-			 *
-			 * The `unknown` run is narrowed the same way: `/teem` is a word whose own
-			 * line the app refuses (the "unknown command" note keeps the draft), so its
-			 * documented meaning — "inert text that WILL be sent" — only holds where the
-			 * word is the whole line. With text after it nothing is painted.
-			 */
-			/*
-			 * THE PLAN IS THIS MOUNT'S OWN, asked once and read by both the tint and
-			 * Enter (code review round 1 MAJOR 1). No capability override here: the
-			 * gate used to ask `enabled: true` so the harness's dispatcher-less
-			 * composer would still paint, which let a commands-off mount show a
-			 * tinted word Enter posts as prose. `planFor` knows this mount's
-			 * capability, and the harness supplies its half of it.
-			 */
-			const plan = planFor(newMessage, caret, "typed");
-			return runsMatchingPlan(runs, newMessage, {
-				sendsAsWritten: plan.kind === "send",
-			});
-		}, [
-			newMessage,
-			caret,
-			composing,
-			planFor,
-			slash.commandNames,
-			slash.nameListCommands,
-			slash.nameChoices,
-			slash.open,
-			slash.matches.length,
-		]);
-		const highlighting = highlightPaints(slashRuns);
 
 		/**
 		 * Put a line in the box and say what the key DID NOT do.
@@ -2933,6 +2790,73 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			},
 			[gestureFor, lockedRunOf, planFor, recordWord],
 		);
+		/*
+		 * The composer's syntax highlight, and the ONE gate that decides whether the
+		 * transparent-text technique is in play.
+		 *
+		 * `slashHighlightRuns` is the pure port of the TUI's own rule
+		 * (`editor.py:4232-4359`), fed the vocabularies this component already holds
+		 * for the planner plus the roster snapshot the completion list's query already
+		 * holds (`slash.nameChoices`) — no second vocabulary, no new request on the
+		 * render path. `picking` is the list's own open state, which is what
+		 * suppresses the "unknown word" tint while a word is still being chosen.
+		 *
+		 * `composing` is the IME half, and it is why this is one predicate rather than
+		 * two: the composition string is drawn by the BROWSER, is not in the mirror,
+		 * and would therefore be invisible under `text-transparent` while it is being
+		 * typed. Zero runs turns both the mirror and the transparency off together, so
+		 * the native path — including a squiggle the operator never asked to lose — is
+		 * what an ordinary draft gets.
+		 */
+		const slashRuns = useMemo(() => {
+			if (composing) return [];
+			const runs = slashHighlightRuns({
+				draft: newMessage,
+				commandNames: slash.commandNames,
+				nameListCommands: slash.nameListCommands,
+				nameChoices: slash.nameChoices,
+				picking: slash.open && slash.matches.length > 0,
+			});
+			if (runs.length === 0) return runs;
+			/*
+			 * THE TINT HAS TO MEAN WHAT ENTER DOES. The run rule is the TUI's, and it
+			 * paints a word that OPENS the line whether or not this host will run it:
+			 * on this composer a single-line draft whose trailing text the command does
+			 * not own is SENT as a message (design D6 / QA Q4 — `/compact hello` wore the
+			 * command tint while Enter posted it to the model). So the plan is asked
+			 * here, once, and a draft Enter will not run paints nothing — which also
+			 * makes two line counts of the same prose agree, since the multi-line rule
+			 * below already paints nothing.
+			 *
+			 * The `unknown` run is narrowed the same way: `/teem` is a word whose own
+			 * line the app refuses (the "unknown command" note keeps the draft), so its
+			 * documented meaning — "inert text that WILL be sent" — only holds where the
+			 * word is the whole line. With text after it nothing is painted.
+			 */
+			/*
+			 * THE PLAN IS THIS MOUNT'S OWN, asked once and read by both the tint and
+			 * Enter (code review round 1 MAJOR 1). No capability override here: the
+			 * gate used to ask `enabled: true` so the harness's dispatcher-less
+			 * composer would still paint, which let a commands-off mount show a
+			 * tinted word Enter posts as prose. `planFor` knows this mount's
+			 * capability, and the harness supplies its half of it.
+			 */
+			const plan = planFor(newMessage, caret, "typed");
+			return runsMatchingPlan(runs, newMessage, {
+				sendsAsWritten: plan.kind === "send",
+			});
+		}, [
+			newMessage,
+			caret,
+			composing,
+			planFor,
+			slash.commandNames,
+			slash.nameListCommands,
+			slash.nameChoices,
+			slash.open,
+			slash.matches.length,
+		]);
+		const highlighting = highlightPaints(slashRuns);
 
 		/**
 		 * Carry out a plan that is not a plain send, and decide what the box holds
@@ -5301,6 +5225,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									isSmallView={isSmallView}
 								/>
 								{/*
+								 * The mention chips, in the same `isolate` wrapper and at the same depth as
+								 * the credential pill: both draw behind the glyphs the textarea paints, and
+								 * neither takes the pointer. The two never overlap in practice — a chip is a
+								 * path token and a pill is a credential marker — but if they ever did, the
+								 * chip's fill would sit under the pill's, which is the right way round: the
+								 * pill marks a value the app holds and the chip marks a file the text names.
+								 */}
+								<AtMentionOverlay
+									text={newMessage}
+									spans={atMentions.spans}
+									resolved={atMentions.resolved}
+									fieldRef={textareaRef}
+									isSmallView={isSmallView}
+								/>
+								{/*
 								 * The highlight's two layers. `ComposerHighlight` owns the mirror, the
 								 * scroll write and the geometry correction; this JSX owns the input, so
 								 * the composer's key handling, its autosize and its refs are untouched by
@@ -5497,10 +5436,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										}
 										value={newMessage}
 										/*
-										 * The IME half of the highlight: the composition string is drawn by
-										 * the BROWSER, is not in the mirror, and would be invisible under
-										 * `text-transparent`, so `composing` turns both the runs and the
-										 * transparency off while it is being typed.
+										 * The IME half of the paint: the composition string is drawn by the BROWSER, is not
+										 * in the mirror, and would be invisible under `text-transparent`, so zero runs turn
+										 * both the runs and the transparency off while it is being typed.
 										 */
 										onCompositionStart={() => setComposing(true)}
 										onCompositionEnd={() => setComposing(false)}
@@ -5670,6 +5608,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										aria-disabled={isInputDisabled || undefined}
 										aria-label="Message"
 										role="combobox"
+										/*
+										 * All THREE descriptions, space-separated as the attribute demands: the
+										 * credential capture's notice while one is owed, the mention sentence while
+										 * a reference points outside the workspace, and the pane's own sentence
+										 * while the conversation this machine would answer is gone. `undefined`
+										 * rather than an empty string when none applies, because an empty
+										 * `aria-describedby` is a reference to nothing. The three are independent
+										 * reasons to describe this box and any two of them can coincide, which is
+										 * why they are JOINED rather than chosen between.
+										 */
 										aria-describedby={
 											/*
 											 * THE REFUSAL IS DESCRIBED RATHER THAN ANNOUNCED (UX round 1, U3).
@@ -5678,8 +5626,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 * in the transcript with no programmatic tie to the control, and the
 											 * placeholder that carries the short form is painted and announced
 											 * only while the box is EMPTY - which is not the state this PR exists
-											 * for. Joining the credential notice's id rather than choosing between
-											 * them keeps both true at once; the two can coincide.
+											 * for. Joining the other notices' ids rather than choosing between
+											 * them keeps each true at once; any two of the three can coincide.
 											 *
 											 * Named only for the `unavailable` arm, which is the one with a sentence
 											 * in the pane to point at. The busy arm's band carries the state's own
@@ -5697,15 +5645,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 */
 											[
 												credentialNotice ? CREDENTIAL_NOTICE_ID : null,
+												outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
 												unavailable ? MISSING_SESSION_NOTICE_ID : null,
 											]
 												.filter(Boolean)
 												.join(" ") || undefined
 										}
-										aria-expanded={slash.open}
-										aria-controls={slash.open ? slash.listId : undefined}
+										aria-expanded={slash.open || at.open}
+										aria-controls={
+											slash.open
+												? slash.listId
+												: at.open
+													? at.listId
+													: undefined
+										}
+										/*
+										 * The active option comes from whichever list is OPEN, and the popups rule
+										 * above guarantees only one is on top: handing both ids to one
+										 * `aria-activedescendant` would name an element in a list the user is not
+										 * looking at, which a screen reader announces as a row that does not exist.
+										 */
 										aria-activedescendant={
-											slash.activeDescendantId ?? undefined
+											(slash.open
+												? slash.activeDescendantId
+												: at.activeDescendantId) ?? undefined
 										}
 									/>
 								</ComposerHighlight>
