@@ -3829,7 +3829,7 @@ export const STORIES = [
 	 * toolbar is otherwise indistinguishable from one of the resting state.
 	 *
 	 * SELF-ASSERTING ACROSS THE TWO HEADS, which is why it is not filed as a resting
-	 * frame under a hover name: on the BEFORE head (`9c58e7bb7`, the story-fixture-
+	 * frame under a hover name: on the BEFORE head (`9c58e7bb7`, rebased as `b4d12e7a8`; the story-fixture-
 	 * only commit whose frames are the `chat-canonical-links-before` set) EVERY
 	 * `/new` run in this paragraph is inside an anchor, so the aim throws with
 	 * `no text run matching "/new" outside a link or a button` - measured by design
