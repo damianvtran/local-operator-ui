@@ -1,4 +1,3 @@
-import { useConversationBrowserSummaries } from "@features/browser/hooks/use-conversation-browser-summaries";
 import {
 	desktopResult,
 	userFacingMessage,
@@ -31,7 +30,6 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	useCallback,
@@ -2075,27 +2073,6 @@ export function ChatPage() {
 		2,
 	);
 	const active = useCanonicalSessionsStore((state) => state.activeSessionId);
-	/*
-	 * WHICH CONVERSATION'S BROWSER IS UP (design review round 2, U8).
-	 *
-	 * The sidebar's mark TOGGLES (round 2, U6, ruled), so it needs the state of the thing
-	 * it toggles: only the pane's own lens says whether a press will close it. It is read
-	 * ONCE here and handed down as the id the pane is open on, for the same reason the
-	 * summaries are (see `browserMarkFor`): forty rows subscribing to the pane's store is
-	 * the cost that read exists to remove, and a story can photograph either state from a
-	 * prop.
-	 *
-	 * THE EXPRESSION IS THE HANDLER'S OWN ("open AND scoped to the conversation AND that
-	 * conversation current"), so the mark's `aria-expanded` and the press's effect cannot
-	 * disagree: a pane left on `All tabs` is open but not open HERE, and a press there
-	 * normalises the lens instead of closing.
-	 */
-	const browserPaneOpen = useUiPreferencesStore((s) => s.isBrowserPaneOpen);
-	const browserPaneScope = useUiPreferencesStore((s) => s.browserPaneScope);
-	const browserPaneOpenOn =
-		browserPaneOpen && browserPaneScope === "conversation"
-			? (active ?? undefined)
-			: undefined;
 	const draftKey = useCanonicalSessionsStore((state) => state.activeDraftKey);
 	const draft = useCanonicalSessionsStore((state) =>
 		draftKey ? state.drafts[draftKey] : undefined,
@@ -2177,55 +2154,6 @@ export function ChatPage() {
 		setRouteError(null);
 		void openConversation(navigate, id);
 	};
-	/*
-	 * THE BROWSER, FROM A CONVERSATION'S OWN ROW (design R2).
-	 *
-	 * The counts come from the ONE shared projection, read here rather than in each row:
-	 * forty rows subscribing to `/browser-state` is the cost the store exists to remove.
-	 * Read at this level, the sidebar stays a presentational list and a story can hand it
-	 * a fixture map.
-	 */
-	const { summaries: browserSummaries } = useConversationBrowserSummaries();
-	/**
-	 * A press on a conversation's mark — and it TOGGLES (design review round 2, U6, ruled).
-	 *
-	 * WHY: a second press on the same mark used to be inert — the state before and after
-	 * were identical — which is indistinguishable from a press that did not register. Now a
-	 * press while the pane is ALREADY open on that conversation closes it, and every other
-	 * press selects the conversation, sets the lens to `conversation` and opens, all three
-	 * in ONE handler so React batches them into a single render.
-	 *
-	 * THE THREE CONDITIONS ARE THE WHOLE RULE, and the lens is one of them: a pane left on
-	 * `All tabs` is not "open on this conversation" in the sense the control means, so a
-	 * press there normalises it to `conversation` and leaves it up rather than closing a
-	 * surface the user is looking at for another reason.
-	 *
-	 * THE HEADER GLOBE IS NOT THIS, AND IS DELIBERATELY LEFT ALONE: it renders only while
-	 * the pane is shut (`chat-header.tsx`: `onOpenBrowser && !isBrowserPaneOpen`), so it has
-	 * no second-press state to make inert and it already behaves as a one-way toggle by
-	 * disappearing. The two controls therefore differ — this one dismisses, that one hides
-	 * itself — and the difference is disclosed here rather than widened into the header by
-	 * this change.
-	 *
-	 * THE LENS OVERWRITE ON THE OPENING PATH IS DELIBERATE (design open question 7): the
-	 * control says "this conversation's browser", so what it opens has to BE that one, even
-	 * if the user last left the pane showing All tabs. One click in the pane's own switch
-	 * takes the lens back, and the switch's value is what the pane shows.
-	 */
-	const openConversationBrowser = (sessionId: string) => {
-		const preferences = useUiPreferencesStore.getState();
-		if (
-			preferences.isBrowserPaneOpen &&
-			preferences.browserPaneScope === "conversation" &&
-			active === sessionId
-		) {
-			preferences.setBrowserPaneOpen(false);
-			return;
-		}
-		select(sessionId);
-		preferences.setBrowserPaneScope("conversation");
-		preferences.setBrowserPaneOpen(true);
-	};
 	// Keyed on the SESSION once one exists, so admitting a draft does not unmount
 	// the panel mid-send. The rule and its reasoning live in `panelIdentityFor`;
 	// `panelSessionIdOfView` is the id this pane reads, extracted so a surface
@@ -2241,9 +2169,6 @@ export function ChatPage() {
 					selectedConversation={active ?? undefined}
 					onSelectConversation={select}
 					onStageDraft={stage}
-					browserSummaries={browserSummaries}
-					browserPaneOpenOn={browserPaneOpenOn}
-					onOpenConversationBrowser={openConversationBrowser}
 				/>
 			}
 			content={
