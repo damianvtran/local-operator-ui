@@ -8,8 +8,9 @@ import type {
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	DesktopAPI,
+	DirectoryListing,
 	FileActionOutcome,
-	DirectoryListing,	ProbedFile,
+	ProbedFile,
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
 import type { DevDriverBridge } from "./dev-driver";

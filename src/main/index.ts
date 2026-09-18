@@ -22,8 +22,9 @@ import {
 	BACKEND_STATUS_EVENT,
 } from "../shared/backend-status";
 import {
+	type DirectoryListing,
 	type FileActionOutcome,
-	type DirectoryListing,	MAX_FILE_READ_BYTES,
+	MAX_FILE_READ_BYTES,
 	MAX_PROBE_PATHS,
 	type ProbedFile,
 	type ReadFileBytesResponse,
