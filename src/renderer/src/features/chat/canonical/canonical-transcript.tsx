@@ -458,11 +458,13 @@ const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
 	showAvatar,
+	closesTurn,
 	conversationId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
+	closesTurn: boolean;
 	conversationId?: string;
 }) {
 	const turnRef = useRef<HTMLDivElement>(null);
@@ -555,6 +557,37 @@ const AssistantRow = memo(function AssistantRow({
 					/>
 				)}
 			</div>
+			{/*
+			 * One caption per TURN, on the answer it was working towards - not one per
+			 * settled answer. `closesTurn` is computed over the whole record list by
+			 * `closingAnswerIds` and passed in, because "is this a settled answer" is a fact
+			 * about a record while "is this the turn's answer" is a fact about the turn:
+			 * the operator's "just the final responses, not the in-progress tool
+			 * intent/response" contrasts with the prose an agent writes BETWEEN calls, and
+			 * gating on `!record.streaming` alone painted one clock per paragraph (round
+			 * 1's D1/Q-2). `stopReason` is not the test either
+			 * way: a durable entry can carry a null stop reason.
+			 */}
+			{/*
+			 * OUTSIDE the content box above, so a selection drag over the answer cannot
+			 * sweep a clock into a quote (`turnRef` is what the toolkit reads, and the
+			 * stamp must not be inside it). `mt-1` is the same 4px the user-side
+			 * caption takes from its column's `gap-1`; it is a margin here because this
+			 * row's parent is the message container rather than a flex column, and
+			 * wrapping the answer in one to borrow the gap would change how the
+			 * markdown's own block margins collapse.
+			 */}
+			{/*
+			 * Left-aligned by the container's own `pl-10` gutter, which is the padding
+			 * the answer's prose already starts at - so the caption and the prose share
+			 * one left edge structurally rather than by a second measurement (the frame
+			 * is where that is checked; see `docs/evidence/chat-tool-rows/README.md`).
+			 */}
+			{closesTurn && (
+				<div className={cn("mt-1")}>
+					<TurnTimestamp timestamp={record.ts} scope="answer" />
+				</div>
+			)}
 		</MessageContainer>
 	);
 });
@@ -584,15 +617,12 @@ const ToolRow = memo(function ToolRow({
 	showAvatar,
 	nameColumn,
 	scope,
-	onOpenChange,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
-	/** Reports this row's open state upward; the transcript's footer gates on it. */
-	onOpenChange?: (open: boolean) => void;
 }) {
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
@@ -762,7 +792,7 @@ const ToolRow = memo(function ToolRow({
 			 * that ground is a different change from this one.
 			 */}
 			<div className={cn("flex justify-end pr-4")}>
-				<TurnTimestamp timestamp={record.ts} scope="turn" />
+				<TurnTimestamp timestamp={record.ts} scope="tool" />
 			</div>
 		</>
 	) : undefined;
@@ -814,7 +844,6 @@ const ToolRow = memo(function ToolRow({
 				nameColumn={nameColumn}
 				details={details}
 				media={media}
-				onOpenChange={onOpenChange}
 			/>
 		</MessageContainer>
 	);
@@ -1126,15 +1155,12 @@ const TranscriptRow = memo(function TranscriptRow({
 	nameColumn,
 	scope,
 	conversationId,
-	onToolOpenChange,
 }: {
 	row: Row;
 	isSmallView: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
 	conversationId?: string;
-	/** Forwarded to a ledger row so the transcript can gate its footer on it. */
-	onToolOpenChange?: (id: string, open: boolean) => void;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -1156,6 +1182,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					showAvatar={row.showAvatar}
+					closesTurn={row.closesTurn}
 					conversationId={conversationId}
 				/>
 			);
@@ -1168,11 +1195,6 @@ const TranscriptRow = memo(function TranscriptRow({
 					showAvatar={row.showAvatar}
 					nameColumn={nameColumn}
 					scope={scope}
-					onOpenChange={
-						onToolOpenChange
-							? (open) => onToolOpenChange(record.id, open)
-							: undefined
-					}
 				/>
 			);
 			break;
@@ -1556,55 +1578,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		[visible],
 	);
 
-	const lastRecord = transcript.records[transcript.records.length - 1];
-
-	/*
-	 * The footer's gate, and it asks the ROW rather than reading the row's kind.
-	 *
-	 * The footer states when the last thing in the conversation happened. A user
-	 * turn states that itself (its stamp is one line above), and so does a ledger
-	 * row the reader has OPENED — its stamp sits at the foot of the expanded
-	 * section. Gating on `kind !== "user"` covered only the first, so a transcript
-	 * ending in an open call printed the same clock twice, eight pixels apart
-	 * (`chat-tool-rows/diff-body`, design round 1 D1 / QA round 1 Q-1).
-	 *
-	 * The rule is therefore "the last row paints no stamp of its own", and the
-	 * disclosure's open state is what decides the second half of it. A CLOSED
-	 * ledger row keeps the footer: it has no stamp of its own, so the footer is the
-	 * only time on screen there, which is its job.
-	 *
-	 * MEMBERSHIP, NOT IDENTITY, and the first attempt got this wrong in a way that
-	 * mattered (review round 2, R2-1 / design D2-1). It held ONE id, assigned on
-	 * every report, so it answered "which row reported last" rather than "is the
-	 * last row open": with the last row open the footer went away, and opening any
-	 * EARLIER row overwrote the id with its own and brought the footer back beside
-	 * the still-open last row's stamp - both orders, since closing the earlier row
-	 * then nulled the slot too. `Disclosure` owns its state per row, so several rows
-	 * are open at once as a matter of ordinary use (`chat-tool-rows/mixed-run`
-	 * paints three). The set below is what the rule actually needs: the question is
-	 * membership of `lastRecord.id`, and an id that leaves the set takes nothing
-	 * with it.
-	 *
-	 * The callback is stable and returns the SAME set when nothing changed, so the
-	 * memoised rows keep skipping: a row that reports a state it is already in
-	 * (which every `defaultOpen` row does on mount) causes no render.
-	 */
-	const [openStampRowIds, setOpenStampRowIds] = useState<ReadonlySet<string>>(
-		() => new Set<string>(),
-	);
-	const handleToolOpenChange = useCallback((id: string, open: boolean) => {
-		setOpenStampRowIds((previous) => {
-			if (previous.has(id) === open) return previous;
-			const next = new Set(previous);
-			if (open) next.add(id);
-			else next.delete(id);
-			return next;
-		});
-	}, []);
-	const lastRowPaintsStamp =
-		lastRecord?.kind === "user" ||
-		(lastRecord?.kind === "tool" && openStampRowIds.has(lastRecord.id));
-
 	// What the working line says, and which phase it is timing. The derivation
 	// (and its copy contract, including the one branch this app drives from its
 	// own admitted send rather than from a frame) lives in
@@ -1983,7 +1956,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								nameColumn={nameColumn}
 								scope={mediaScope}
 								conversationId={conversationId}
-								onToolOpenChange={handleToolOpenChange}
 							/>
 						))}
 
@@ -2121,43 +2093,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    start it -- two empty states for one empty state (design D6).
 				    The composer's version wins because it offers the action; this
 				    one only described the situation. */}
-					{/* Gated on `missing` for the same reason as the history slot: the
-					    failure path keeps the cached rows, so an ungated footer left a bare
-					    timestamp floating bottom-right under a state that says this
-					    conversation does not exist here (design review round 1, D2).
-
-					    AND NOT UNDER A ROW THAT STATES THE TIME ITSELF (`lastRowPaintsStamp`,
-					    defined beside `lastRecord`). This line is the transcript's own answer
-					    to "when was the last thing here", which is the same fact a stamp
-					    states - so it is suppressed for a USER TURN, whose stamp is one line
-					    above it (`12:13 PM` over `12:13 PM`, the duplicate that first take of
-					    the `turn-timestamps` frame found), and for a LEDGER ROW THE READER HAS
-					    OPENED, whose stamp sits at the foot of its expanded section (the same
-					    clock twice eight pixels apart in `chat-tool-rows/diff-body`; design
-					    round 1, D1, and QA round 1, Q-1, which hit it with a real press).
-
-					    IT KEEPS ITS JOB EVERYWHERE ELSE, and the CLOSED ledger row is why the
-					    rule is stated about stamps rather than about row kinds: a settled row
-					    that has never been opened paints nothing, so this line is the only
-					    time on screen there - which is what the frames show, and what the
-					    render tests assert (the footer present on an answer and on a closed
-					    tool row, absent under a user turn and under an open one).
-
-					    IT RENDERS `TurnTimestamp` FOR THE SAME REASON IT IS GATED HERE AT
-					    ALL: it states the same fact a turn's stamp states, so it has to state
-					    it in the same words. It used to be a `MessageTimestamp` - the hover
-					    row's component - which formats for a reader already looking at the
-					    message (`10:40 AM` today, `Monday` inside the week, `yyyy-MM-dd`
-					    after that). With a turn stamp on screen that put two spellings of one
-					    clock in one column, which is the defect `date-utils.ts` documents in
-					    `formatCalendarDate`'s and `formatCalendarDateTime`'s own comments
-					    (`August 5, 2026` beside `8/5/2026, 10:40:00 AM`), and the frames
-					    showed it as `2025-10-09` directly under `Oct 9, 2025, 4:53 AM`. */}
-					{lastRecord && !missing && !lastRowPaintsStamp && (
-						<div className="mt-1 flex justify-end">
-							<TurnTimestamp timestamp={lastRecord.ts} scope="footer" />
-						</div>
-					)}
 				</div>
 			</div>
 		</div>

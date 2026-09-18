@@ -1983,6 +1983,24 @@ export const STORIES = [
 	["chat-tool-rows--turn-timestamps", 1024, 760],
 	["chat-tool-rows--turn-timestamps-narrow", 420, 500],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
+	/* The agent-side caption, added the same day as the report that "the agent
+	   responses (just the final responses, not the in-progress tool
+	   intent/response) don't have a time displayed on them". `answer-in-progress`
+	   is the frame that separates the two halves of that sentence: a settled
+	   answer with its caption, and the answer still arriving with none, under one
+	   working line. `prose-between-calls` is the shape the caption's COUNT has to
+	   survive - three intermediate paragraphs interleaved with the calls they
+	   narrate, plus a closing answer - which was four captions in one turn under
+	   the first gate (design round 1's D1) and is one under the rule that replaced
+	   it, on the answer the turn ends on. `answer-then-statement` is the shape that
+	   lost the time entirely: a notice and a peer receipt painting after the
+	   answer, neither of which carries a `<time>` of its own nor a disclosure to
+	   open, which is design round 2's D2-1. Sized to their content, for the reason
+	   the turn-stamp pair is. */
+	["chat-tool-rows--answer-in-progress", 1024, 340],
+	["chat-tool-rows--prose-between-calls", 1024, 520],
+	["chat-tool-rows--prose-between-calls", 420, 700],
+	["chat-tool-rows--answer-then-statement", 1024, 470],
 	/* The cold engage: a send the app has admitted and the owner has not answered
 	   yet - the operator's "I hit send and nothing happens for three seconds".
 	   Captured as a PAIR with its baseline, because the claim is a difference:
