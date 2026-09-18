@@ -18,7 +18,14 @@ import { homedir } from "node:os";
 import * as path from "node:path";
 import { basename, join } from "node:path";
 import { promisify } from "node:util";
-import { net, type BrowserWindow, app, ipcMain, powerMonitor } from "electron";
+import {
+	net,
+	type BrowserWindow,
+	Notification,
+	app,
+	ipcMain,
+	powerMonitor,
+} from "electron";
 import { type UpdateInfo, autoUpdater } from "electron-updater";
 import {
 	type DriftAbsence,
@@ -77,6 +84,7 @@ import {
 	type InstallFailurePayload,
 	type InstallIdentity,
 	type InstallInFlightPayload,
+	type InstallLaunchHoldNotice,
 	type LastInstallAttempt,
 	type PendingInstallMarker,
 	type SealBlockContext,
@@ -94,12 +102,14 @@ import {
 	didSourceRebuildLand,
 	didUpgradeLand,
 	evaluateBundleSeal,
+	evaluateLaunchDuringInstall,
 	evaluatePendingInstall,
 	evaluatePendingServerUpdateMarker,
 	healPythonBytecode,
 	installDiagnosisLines,
 	installFailurePayload,
 	installInFlightPayload,
+	installLaunchHoldNotice,
 	installedBundleSealBlock,
 	installerSearchPath,
 	isInstallInFlight,
@@ -929,6 +939,356 @@ export function isWithinAnyRoot(roots: string[], candidate: string): boolean {
 	});
 }
 
+// ---------------------------------------------------------------------------
+// The launch that finds an install still running
+// ---------------------------------------------------------------------------
+
+/**
+ * How long the hold's notice has to report itself before the quit stops waiting
+ * for it.
+ *
+ * The notice and the quit are one action with two halves, and the half that
+ * matters is the quit: a process still running when ShipIt takes its final check
+ * is exactly what cancels the install (`App Still Running Error`, -9). So the
+ * notice is given a bounded moment - measured on this machine at ~40 ms from
+ * `show()` to the `show` event, with the whole launch held to ~0.3 s end to end -
+ * rather than an unbounded wait, and a system that never reports a banner costs
+ * the user the banner instead of the install.
+ */
+const LAUNCH_HOLD_NOTICE_DEADLINE_MS = 2_000;
+
+/**
+ * How long a held launch may outlive its own quit before it is forced out.
+ *
+ * The second bound, and the one that makes the first one a promise rather than a
+ * hope: a quit that wedges is measured on this app - a `app.quit()` from a signal
+ * never reached `will-quit` and never completed, at 45 s and 70 s - and a wedged
+ * quit here is the bug this whole path removes, not a slow shutdown. 10 s is an
+ * order of magnitude over the teardown a launch with no window and no backend has
+ * to do, so it fires only on a quit that is not finishing.
+ */
+const LAUNCH_HOLD_FORCE_QUIT_DEADLINE_MS = 10_000;
+
+/**
+ * The bundle identifier of the app THIS process is running out of, or null.
+ *
+ * Read from the running bundle's own `Info.plist` rather than from a constant, so
+ * a build whose `appId` drifted cannot have us cleaning up, or asking launchd
+ * about, some other app's install job. Extracted from the service method of the
+ * same job because the launch hold below decides whether an install is live before
+ * any service exists (see `holdLaunchForLiveInstall`).
+ */
+function runningBundleIdentifier(): string | null {
+	const bundlePath = appBundleFromExecutable(process.execPath);
+	if (!bundlePath) return null;
+	const value = readCommandOutput("/usr/bin/defaults", [
+		"read",
+		join(bundlePath, "Contents", "Info.plist"),
+		"CFBundleIdentifier",
+	]);
+	return value && BUNDLE_ID_REGEX.test(value) ? value : null;
+}
+
+/** The launchd job Squirrel's install runs under, by label. */
+function shipItJobForRunningBundle(): string | null {
+	const bundleId = runningBundleIdentifier();
+	return bundleId ? shipItJobLabel(bundleId) : null;
+}
+
+/**
+ * Whether this app's ShipIt install job is loaded, right now.
+ *
+ * The production answer, and the machine's own answer to "is an install in
+ * flight". It is asked of launchd by label rather than inferred from a process
+ * name, so nothing else on the machine can be mistaken for it. Off macOS there is
+ * no launchd to ask, so the answer is a plain no.
+ *
+ * The command comes from the same place the watchdog's own probe does, so there is
+ * one answer to "which command asks launchd about this job" and the two cannot
+ * disagree. It is invoked by name rather than by path, which is also what makes
+ * the service's own probe substitutable in a harness: PATH resolves it to
+ * `/bin/launchctl` on any machine with launchd.
+ */
+function probeShipItInstallJobLoaded(): boolean {
+	const jobProbe = watchdogSignals(process.platform).jobProbe;
+	if (!jobProbe) return false;
+	return launchdJobLoaded(shipItJobForRunningBundle(), (label) => {
+		const result = spawnSync(jobProbe, ["list", label], {
+			encoding: "utf8",
+			timeout: 5000,
+		});
+		// No exit status is not an answer: a probe that could not run must not read
+		// as "loaded", and `launchdJobLoaded` treats null as not loaded.
+		return result.error || result.status == null ? null : result.status;
+	});
+}
+
+/**
+ * Start the detached relaunch watchdog.
+ *
+ * Spawned detached so it survives this process exiting, with stdio ignored so it
+ * holds no pipe open and cannot keep the app alive.
+ *
+ * Takes its version and log rather than reading them off the service, because the
+ * launch hold needs one too and it runs before any service exists: one watchdog
+ * for both callers instead of a second copy of the plan (see
+ * `holdLaunchForLiveInstall`).
+ */
+function startRelaunchWatchdog(input: {
+	targetVersion: string | null;
+	runningVersion: string;
+	log: (message: string) => void;
+}): number | null {
+	if (process.platform !== "darwin" || !app.isPackaged) return null;
+	const bundlePath = appBundleFromExecutable(process.execPath);
+	if (!bundlePath) return null;
+
+	const plan = buildWatchdogPlan({
+		appBundlePath: bundlePath,
+		executableName: basename(process.execPath),
+		// The app's own pid, captured here - before the quit - because the
+		// watchdog cannot ask a name about its own ancestor (review R1).
+		appPid: process.pid,
+		shipItJob: shipItJobForRunningBundle(),
+		// What "the install is over" is measured against on disk (review R11):
+		// the updater's advertised version, and nothing that is already in place
+		// (review R15).
+		targetVersion: watchdogSwapTarget({
+			target: input.targetVersion,
+			running: input.runningVersion,
+		}),
+		// Stated rather than read off `process.platform` at the plan: this
+		// watchdog exists for Squirrel.Mac's ShipIt, the guard above already
+		// refuses it anywhere else, and the script's two probes (launchd's job
+		// lookup, `plutil`) are generated for the platform the script runs on
+		// rather than for whichever host planned it (see `watchdogSignals`).
+		platform: "darwin",
+	});
+
+	try {
+		const child = spawn("sh", ["-c", plan.script], {
+			detached: true,
+			stdio: "ignore",
+			env: { ...process.env, ...plan.env },
+		});
+		child.unref();
+		// The bound is the promise the user is given, so it is stated here with
+		// what shortens it rather than as a bare timeout (review R11) - and the
+		// second bound is stated because it is the one that now applies when the
+		// install is demonstrably still working (2026-09-13: a launch at the
+		// first bound is what aborted the install, so the script holds for the
+		// harder one instead of starting the app into the swap).
+		input.log(
+			`Started the update relaunch watchdog (pid ${child.pid ?? "unknown"}): it starts the app again as soon as the install's job goes or version ${plan.env.LO_UPDATE_WATCHDOG_TARGET_VERSION || "unknown"} is in place, and at the ${plan.timeoutSeconds}s bound if neither happens - or at the ${plan.hardTimeoutSeconds}s hard bound when the install's job is still loaded at the first, which is the case where starting the app would cancel the install.`,
+		);
+		return child.pid ?? null;
+	} catch (error) {
+		input.log(`Could not start the update relaunch watchdog: ${String(error)}`);
+		return null;
+	}
+}
+
+/**
+ * Make sure something will start the app again after a quit that is only getting
+ * out of an install's way.
+ *
+ * The watchdog from the original install is usually still there - it holds while
+ * the job is loaded now, rather than starting the app into the swap - but it may
+ * have run out its own bounds, and the user may be quitting hours later. Quitting
+ * without one would leave them with no app at all, which is the outcome this whole
+ * change exists to remove. Nothing is started when ours is alive, because two
+ * watchdogs relaunching at the same moment is a race with nothing to gain. The
+ * marker is left exactly as it is: its start time is what tells recovery this is
+ * still the same install.
+ *
+ * The starter is a collaborator rather than a call, for the same reason
+ * `reapFailedInstall` takes its own: the service passes its own method (which a
+ * harness substitutes), and the launch hold passes the module function - so the
+ * rule is one rule and the seam survives.
+ */
+function ensureRelaunchWatchdog(input: {
+	marker: PendingInstallMarker;
+	startWatchdog: (targetVersion: string | null) => number | null;
+	log: (message: string) => void;
+}): void {
+	const pid = input.marker.watchdogPid;
+	const commandLine =
+		pid == null
+			? null
+			: readCommandOutput("/bin/ps", ["-o", "command=", "-p", String(pid)]);
+	if (
+		watchdogIsOurs({
+			alive: commandLine != null,
+			commandLine,
+			installSucceeded: true,
+		})
+	) {
+		input.log(
+			`Relaunch watchdog ${pid} is still running; it will start the app when the install settles.`,
+		);
+		return;
+	}
+	const launched = input.startWatchdog(input.marker.targetVersion);
+	input.log(
+		launched
+			? `Started relaunch watchdog ${launched} for the install already in flight; it will start the app when the install's job goes.`
+			: "No relaunch watchdog is running for the install in flight and none could be started; the app will need starting by hand after it quits.",
+	);
+}
+
+/**
+ * Raise the hold's banner, and answer once the system has shown it.
+ *
+ * The promise is what makes the banner the temporary reason this process is still
+ * alive rather than a message racing its own death: on this path the process's
+ * exit is the operation, and a banner only queued when the app quits can be lost
+ * with it. It resolves when the system reports the notification shown, and the
+ * caller's own deadline covers a system that never reports.
+ *
+ * A platform that cannot raise one resolves immediately. The notice is a
+ * convenience; the quit is the point.
+ */
+function showInstallHoldNotice(notice: InstallLaunchHoldNotice): Promise<void> {
+	if (!Notification.isSupported()) return Promise.resolve();
+	return new Promise((resolve) => {
+		try {
+			const notification = new Notification({
+				title: notice.title,
+				body: notice.body,
+				silent: false,
+			});
+			notification.on("show", () => resolve());
+			// Electron's own banner API on a `Notification`, not a window:
+			// `scripts/window-mode.test.mjs` allow-lists this exact call.
+			notification.show();
+		} catch {
+			// A banner that cannot be raised is a missing convenience, never a reason
+			// to stay open.
+			resolve();
+		}
+	});
+}
+
+/**
+ * Get this launch out of the way of an install that is still running.
+ *
+ * WHAT THIS REPLACES, AND WHY. A launch that came back mid-install used to settle
+ * into a normal run - a window, a renderer, a panel saying "the update is still
+ * installing" and a button offering to quit - and that is the shape the 2026-09-18
+ * install died of: four minutes in, `Aborting update attempt because there are 1
+ * running instances of the target app` (`SQRLInstallerErrorDomain Code=-9`),
+ * because ShipIt asks whether any instance of the target app is running as its
+ * last check before the swap. A window is an instance. A notice is not, so a live
+ * install is answered with a notification that says what is happening and a quit
+ * that takes the process out of the check's way - hundreds of milliseconds of
+ * exposure instead of however long a person leaves the window open.
+ *
+ * The three facts this must not break, each of them a rule from an earlier
+ * incident: the MARKER is left exactly as it is (its start time is what tells the
+ * install's own recovery this is still the same install); a STALE marker or a dead
+ * job is not this path at all, and opens normally so recovery can explain what
+ * happened (`evaluateLaunchDuringInstall`); and the relaunch promise is kept by
+ * the same `ensureRelaunchWatchdog` every other quit path uses, so standing down
+ * can never be the reason the user has no app.
+ *
+ * Returns true when the launch was held and a quit is under way, so the caller
+ * knows not to build the window - and everything that comes with one - that this
+ * exists to prevent.
+ */
+export function holdLaunchForLiveInstall(options: {
+	/** Records what was decided, for the same log every update decision lands in. */
+	log: (message: string) => void;
+	/** Defaults to the launchctl probe; a harness substitutes it. */
+	jobLoaded?: () => boolean;
+	/** Defaults to the real detached watchdog; a harness substitutes it. */
+	startWatchdog?: (targetVersion: string | null) => number | null;
+	/** Defaults to Electron's own banner; a harness substitutes it. */
+	showNotice?: (notice: InstallLaunchHoldNotice) => Promise<void>;
+	/** Defaults to `app.quit`; a harness substitutes it. */
+	quit?: () => void;
+	/** Defaults to `app.exit(0)`; a harness substitutes it. */
+	forceQuit?: () => void;
+	now?: number;
+}): boolean {
+	/*
+	 * Only the packaged app acts, for the reason `recoverPendingInstall` states at
+	 * length: the marker, the install's job and the staging tree describe an install
+	 * of the packaged bundle, and an unpackaged instance is not that bundle. A
+	 * `pnpm dev` run that stood down for the operator's install would be a worktree
+	 * launch that never starts, and its own userData landing on the packaged app's
+	 * is an Electron naming accident rather than a rule.
+	 */
+	if (!app.isPackaged) return false;
+	const marker = readPendingInstallMarker(app.getPath("userData"));
+	const reading = evaluateLaunchDuringInstall({
+		marker,
+		jobLoaded: (options.jobLoaded ?? probeShipItInstallJobLoaded)(),
+		now: options.now,
+	});
+	if (reading.kind === "open") return false;
+
+	options.log(
+		`Holding this launch for the install of version ${reading.marker.targetVersion} that is still running: a window here would make this process the running instance Squirrel's final check aborts the install on, so the app tells the user and quits.`,
+	);
+	// Before the quit, never after: the notice promises the app comes back, and
+	// once this process is gone it is the only thing that can keep that promise.
+	ensureRelaunchWatchdog({
+		marker: reading.marker,
+		startWatchdog: options.startWatchdog ?? defaultStartRelaunchWatchdog,
+		log: options.log,
+	});
+
+	const quit = options.quit ?? (() => app.quit());
+	const forceQuit = options.forceQuit ?? (() => app.exit(0));
+	// Bounded twice, for the reason the headless path arms a deadline for every
+	// quit rather than only the two that ask for one: a quit that wedges is a
+	// property of the quit path, and here a wedged quit is not a slow shutdown but
+	// the running instance this function exists to remove.
+	const noticeDeadline = setTimeout(quit, LAUNCH_HOLD_NOTICE_DEADLINE_MS);
+	const forceDeadline = setTimeout(
+		forceQuit,
+		LAUNCH_HOLD_FORCE_QUIT_DEADLINE_MS,
+	);
+	noticeDeadline.unref();
+	forceDeadline.unref();
+	const notice = installLaunchHoldNotice(reading.marker);
+	const showNotice = options.showNotice ?? showInstallHoldNotice;
+	/*
+	 * Logged BEFORE the notice is raised rather than after it settles, because this
+	 * line is the record of a decision and the process is about to stop being able
+	 * to write one: a log line queued after the banner is a line the next quit can
+	 * outrun (measured: it landed on one run of three, and the write is what the
+	 * exit raced). What it says is what this call is doing, not what the system did
+	 * with the banner - a system that never reports one still takes the same action,
+	 * which is why the notice is bounded rather than awaited.
+	 */
+	options.log(
+		`Telling the user the install of version ${reading.marker.targetVersion} is still running, and closing this launch so the install's final check finds no running instance of the app; the relaunch watchdog will open the app when the install settles.`,
+	);
+	void showNotice(notice).finally(() => {
+		clearTimeout(noticeDeadline);
+		quit();
+	});
+	return true;
+}
+
+/**
+ * The production watchdog starter for the launch hold.
+ *
+ * Named rather than written inline so `holdLaunchForLiveInstall`'s collaborator
+ * has a real default that reads the app's own version, exactly as the service's
+ * method does.
+ */
+function defaultStartRelaunchWatchdog(
+	targetVersion: string | null,
+): number | null {
+	return startRelaunchWatchdog({
+		targetVersion,
+		runningVersion: app.getVersion(),
+		log: (message) => logger.info(message, LogFileType.UPDATE_SERVICE),
+	});
+}
+
 /**
  * Service to handle application updates using electron-updater
  * and backend updates using pip
@@ -1507,26 +1867,11 @@ export class UpdateService {
 	/**
 	 * This app's bundle identifier, as macOS records it.
 	 *
-	 * Read from the running bundle rather than from `package.json`: the running
-	 * app is the only thing whose ShipIt job and cache directory this process may
-	 * touch, and a build whose `appId` drifted would otherwise have us cleaning up
-	 * some other app's leftovers.
+	 * The service's name for `runningBundleIdentifier`, which the launch hold needs
+	 * before a service exists; the rule itself lives there.
 	 */
 	private bundleIdentifier(): string | null {
-		const bundlePath = appBundleFromExecutable(process.execPath);
-		if (!bundlePath) return null;
-		const value = readCommandOutput("/usr/bin/defaults", [
-			"read",
-			join(bundlePath, "Contents", "Info.plist"),
-			"CFBundleIdentifier",
-		]);
-		return value && BUNDLE_ID_REGEX.test(value) ? value : null;
-	}
-
-	/** The launchd job Squirrel's install runs under, by label. */
-	private shipItJob(): string | null {
-		const bundleId = this.bundleIdentifier();
-		return bundleId ? shipItJobLabel(bundleId) : null;
+		return runningBundleIdentifier();
 	}
 
 	/**
@@ -1725,22 +2070,7 @@ export class UpdateService {
 	 */
 	private shipItInstallJobLoaded(): boolean {
 		if (this.installJobLoadedProbe) return this.installJobLoadedProbe();
-		// The command comes from the same place the watchdog's own probe does, so
-		// there is one answer to "which command asks launchd about this job" and
-		// the two cannot disagree. It is invoked by name, exactly as the script
-		// invokes it, which is also what makes this probe substitutable in a
-		// harness: PATH resolves it to /bin/launchctl on any machine with launchd.
-		const jobProbe = watchdogSignals(process.platform).jobProbe;
-		if (!jobProbe) return false;
-		return launchdJobLoaded(this.shipItJob(), (label) => {
-			const result = spawnSync(jobProbe, ["list", label], {
-				encoding: "utf8",
-				timeout: 5000,
-			});
-			// No exit status is not an answer: a probe that could not run must not
-			// read as "loaded", and `launchdJobLoaded` treats null as not loaded.
-			return result.error || result.status == null ? null : result.status;
-		});
+		return probeShipItInstallJobLoaded();
 	}
 
 	/**
@@ -1815,41 +2145,18 @@ export class UpdateService {
 	 * Make sure something will start the app again after a quit that is only
 	 * getting out of an install's way.
 	 *
-	 * The watchdog from the original install is usually still there - it holds
-	 * while the job is loaded now, rather than starting the app into the swap -
-	 * but it may have run out its own bounds, and the user may be quitting hours
-	 * later. Quitting without one would leave them with no app at all, which is
-	 * the outcome this whole change exists to remove. Nothing is started when ours
-	 * is alive, because two watchdogs relaunching at the same moment is a race
-	 * with nothing to gain. The marker is left exactly as it is: its start time is
-	 * what tells recovery this is still the same install.
+	 * The rule is `ensureRelaunchWatchdog`'s, shared with the launch hold; what is
+	 * the service's own here is the starter, which a harness substitutes.
 	 */
 	private ensureWatchdogAfterInFlightQuit(marker: PendingInstallMarker): void {
-		const pid = marker.watchdogPid;
-		const commandLine =
-			pid == null
-				? null
-				: readCommandOutput("/bin/ps", ["-o", "command=", "-p", String(pid)]);
-		if (
-			watchdogIsOurs({
-				alive: commandLine != null,
-				commandLine,
-				installSucceeded: true,
-			})
-		) {
-			logger.info(
-				`Relaunch watchdog ${pid} is still running; it will start the app when the install settles.`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			return;
-		}
-		const launched = this.launchWatchdog(marker.targetVersion);
-		logger.info(
-			launched
-				? `Started relaunch watchdog ${launched} for the install already in flight; it will start the app when the install's job goes.`
-				: "No relaunch watchdog is running for the install in flight and none could be started; the app will need starting by hand after it quits.",
-			LogFileType.UPDATE_SERVICE,
-		);
+		ensureRelaunchWatchdog({
+			marker,
+			// The service's own method, not the module function, because a harness
+			// substitutes this one: substituting the seam is how a test counts the
+			// watchdogs a quit leaves running without spawning any.
+			startWatchdog: (targetVersion) => this.launchWatchdog(targetVersion),
+			log: (message) => logger.info(message, LogFileType.UPDATE_SERVICE),
+		});
 	}
 
 	/**
@@ -2438,61 +2745,16 @@ export class UpdateService {
 	/**
 	 * Start the detached relaunch watchdog.
 	 *
-	 * Spawned detached so it survives this process exiting, with stdio ignored so
-	 * it holds no pipe open and cannot keep the app alive.
+	 * The service's name for `startRelaunchWatchdog`, which the launch hold also
+	 * uses; the plan, the bounds and the log line live there. Kept as a method
+	 * because a harness substitutes it to count watchdogs without spawning one.
 	 */
 	private launchWatchdog(targetVersion: string | null): number | null {
-		if (process.platform !== "darwin" || !app.isPackaged) return null;
-		const bundlePath = appBundleFromExecutable(process.execPath);
-		if (!bundlePath) return null;
-
-		const plan = buildWatchdogPlan({
-			appBundlePath: bundlePath,
-			executableName: basename(process.execPath),
-			// The app's own pid, captured here - before the quit - because the
-			// watchdog cannot ask a name about its own ancestor (review R1).
-			appPid: process.pid,
-			shipItJob: this.shipItJob(),
-			// What "the install is over" is measured against on disk (review R11):
-			// the updater's advertised version, and nothing that is already in place
-			// (review R15).
-			targetVersion: watchdogSwapTarget({
-				target: targetVersion,
-				running: app.getVersion(),
-			}),
-			// Stated rather than read off `process.platform` at the plan: this
-			// watchdog exists for Squirrel.Mac's ShipIt, the guard above already
-			// refuses it anywhere else, and the script's two probes (launchd's job
-			// lookup, `plutil`) are generated for the platform the script runs on
-			// rather than for whichever host planned it (see `watchdogSignals`).
-			platform: "darwin",
+		return startRelaunchWatchdog({
+			targetVersion,
+			runningVersion: app.getVersion(),
+			log: (message) => logger.info(message, LogFileType.UPDATE_SERVICE),
 		});
-
-		try {
-			const child = spawn("sh", ["-c", plan.script], {
-				detached: true,
-				stdio: "ignore",
-				env: { ...process.env, ...plan.env },
-			});
-			child.unref();
-			// The bound is the promise the user is given, so it is stated here with
-			// what shortens it rather than as a bare timeout (review R11) - and the
-			// second bound is stated because it is the one that now applies when the
-			// install is demonstrably still working (2026-09-13: a launch at the
-			// first bound is what aborted the install, so the script holds for the
-			// harder one instead of starting the app into the swap).
-			logger.info(
-				`Started the update relaunch watchdog (pid ${child.pid ?? "unknown"}): it starts the app again as soon as the install's job goes or version ${plan.env.LO_UPDATE_WATCHDOG_TARGET_VERSION || "unknown"} is in place, and at the ${plan.timeoutSeconds}s bound if neither happens - or at the ${plan.hardTimeoutSeconds}s hard bound when the install's job is still loaded at the first, which is the case where starting the app would cancel the install.`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			return child.pid ?? null;
-		} catch (error) {
-			logger.error(
-				`Could not start the update relaunch watchdog: ${String(error)}`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			return null;
-		}
 	}
 
 	/**

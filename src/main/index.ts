@@ -73,7 +73,7 @@ import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
 } from "./picker-directory";
-import { UpdateService } from "./update-service";
+import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
 import {
@@ -1608,6 +1608,38 @@ app
 				`LOCAL_OPERATOR_UI_READY electron=${process.versions.electron}`,
 			);
 			app.exit(0);
+			return;
+		}
+
+		/*
+		 * A launch that finds its own install still running gets out of the way.
+		 *
+		 * WHY IT IS THIS EARLY, AND WHAT IT SAVES. An install four minutes into its
+		 * work was aborted on 2026-09-18 (`Aborting update attempt because there are 1
+		 * running instances of the target app`, `SQRLInstallerErrorDomain Code=-9`)
+		 * because the app was open while it was installing: ShipIt asks whether any
+		 * instance of the target app is running as its LAST check before the swap, so
+		 * any instance at all spends the whole wait. Building a window and starting a
+		 * backend is what makes an instance; a process that only has to raise one
+		 * banner and quit is not one for the two seconds it lives, and nothing below
+		 * here is started for it - no menu, no backend, no browser host, no window.
+		 *
+		 * WHAT IT DOES NOT TOUCH. The marker, the install's launchd job and the
+		 * staging tree are left exactly as they are, because they are the install's
+		 * and its own watchdog is what completes it; a marker that is stale, or one
+		 * whose job is gone, is not this path at all and opens normally so recovery
+		 * can explain what happened; and the notice's promise that the app returns is
+		 * kept by the same watchdog ensure every other quit path uses, which happens
+		 * before this process stops being able to make it.
+		 *
+		 * The decision and its bounds are `holdLaunchForLiveInstall` in
+		 * `update-service.ts`; this is only the place in the launch that acts on it.
+		 */
+		if (
+			holdLaunchForLiveInstall({
+				log: (message) => logger.info(message, LogFileType.UPDATE_SERVICE),
+			})
+		) {
 			return;
 		}
 
