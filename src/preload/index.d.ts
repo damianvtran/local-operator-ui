@@ -440,7 +440,13 @@ declare global {
 				 */
 				onBackendUpdateProgress: (
 					callback: (progress: {
-						phase: "installing" | "restarting";
+						/**
+						 * `draining` is the wait before anything is installed or restarted: the app
+						 * holds the update back while the sessions on this machine finish the turns
+						 * they are running. It is its own phase because it can last minutes and no
+						 * install has begun.
+						 */
+						phase: "draining" | "installing" | "restarting";
 						/** True when the run is the checkout REBUILD rather than the release path. */
 						sourceRebuild?: boolean;
 					}) => void,

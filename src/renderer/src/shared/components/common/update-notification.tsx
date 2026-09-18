@@ -66,30 +66,43 @@ const skewKey = (notice: {
  * no longer be withdrawn: "the server is offline while it comes back ... and
  * anything in flight is dropped".
  *
+ * THAT LAST CLAUSE IS NO LONGER TRUE AND NO LONGER SAID. A restart now waits for
+ * the fleet to drain first, so what a reader gives up is TIME rather than work in
+ * flight; the sentence here says the wait, and the in-flight copy says the wait
+ * again in its own phase.
+ *
  * ONE LEAF, TWO STATES, AND THE DIFFERENCE IS THE CLAUSE RATHER THAN A SECOND
  * SENTENCE (design D13). Two sentences would drift, so what the two arms SHARE is
  * the bound - `RESTART_OUTAGE_BOUND` - and each arm states its own half around it.
  * That split exists because the shared sentence billed a cost already paid on one
  * of the arms: the panel whose own heading is "The server did not come back after
- * the restart" was telling the reader the restart "puts the server offline ... and
- * drops anything that is in flight" about a server that is already offline and
- * work that was already dropped. Spelled once is still achieved - twice, not twice
- * stated.
+ * the restart" was pricing the outage and the wait for a server that is already
+ * offline. Spelled once is still achieved - twice, not twice stated.
  */
 const RESTART_OUTAGE_BOUND = "usually a few seconds, up to half a minute";
 
 /**
  * The cost of the restart for a server that is UP and behind the install: this
- * press is what takes it offline, and in-flight work is what it drops.
+ * press is what takes it offline, and the wait is what it costs.
+ *
+ * IT NO LONGER PRICES DROPPED WORK. The press drains the fleet first
+ * (`backend/fleet-drain.ts`), so what a reader gives up is the time the running
+ * turns take to finish - stated, because a panel that promises a prompt restart
+ * and then holds the button for minutes is the silence this component keeps
+ * removing - and nothing in flight is cut off.
  */
-const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND} - and drops anything that is in flight.`;
+const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND}. It waits for the turns running on this machine to finish first, so nothing in flight is cut off.`;
 
 /**
  * The cost of the SAME press on a server that is not running (design D13): the
- * outage and the dropped work are already facts, so the only thing left to price is
- * the wait for it to come back - which is the half the two arms share.
+ * outage is already a fact, so the only thing left to price is the wait for it to
+ * come back - which is the half the two arms share.
+ *
+ * IT DOES NOT CLAIM DROPPED WORK. It used to, and the claim is not available any
+ * more: the press drains the fleet before it restarts anything, so a server in this
+ * state went offline over an idle machine.
  */
-const RESTART_COST_SENTENCE_SERVER_DOWN = `The server is already offline and anything in flight has already been dropped, so the only cost left is the wait for it to come back - ${RESTART_OUTAGE_BOUND}.`;
+const RESTART_COST_SENTENCE_SERVER_DOWN = `The server is already offline, so the only cost left is the wait for it to come back - ${RESTART_OUTAGE_BOUND}.`;
 
 /**
  * What the panel says when the server update failed and named no reason.
@@ -173,6 +186,14 @@ type BackendUpdateInfo = {
 	 * takes the app-owned answer - see `serverRestartsWithInstall`.
 	 */
 	restartable?: boolean;
+	/**
+	 * Whether the press behind this offer restarts the server (see the main process's
+	 * own field of the same name). Distinct from `restartable`, which answers whether
+	 * the app STARTED the daemon: on a generation install the press installs beside
+	 * the running build and does not bounce anything, so the sentences that promise a
+	 * restart ask this one.
+	 */
+	restartsServer?: boolean;
 	/**
 	 * Whether the environment `update-backend` would move is the app's OWN one.
 	 *
@@ -657,24 +678,25 @@ const serverRestartsWithInstall = (
 	info:
 		| {
 				restartable?: boolean;
+				restartsServer?: boolean;
 		  }
 		| null
 		| undefined,
-): boolean => info?.restartable !== false;
+): boolean => info?.restartsServer ?? info?.restartable !== false;
 
 /**
  * WHAT THE CLICK COSTS, chosen by who would actually be restarted (UX U9).
  *
  * The sentence the plan carries is the app-owned one, and the plan cannot know
  * ownership: it classifies the INSTALL. On a machine where discovery adopted a
- * server, the offer therefore promised "restarts the server it started, so a turn
- * that is in flight is dropped" - a cost that cannot be incurred there, and one
- * the app's own completion notice denies four minutes later ("Local Operator does
- * not restart a server it did not start"). So the arm reads the ownership flag the
- * event carries (`restartable`) and says what happens to the server the reader is
+ * server, the offer therefore promised a restart and its cost - a cost that cannot
+ * be incurred there, and one the app's own completion notice denies four minutes
+ * later ("Local Operator does not restart a server it did not start"). So the arm
+ * reads the ownership flag the event carries (`restartable`, and the press's own
+ * `restartsServer` beside it) and says what happens to the server the reader is
  * talking to:
  *
- * - app-owned: the restart and its cost, before the press (review U3).
+ * - app-owned: the wait and the restart, before the press (review U3).
  * - adopted: the install moves, the server keeps serving the old build until it
  *   restarts on its own, and nothing in flight is dropped.
  * - unstated (an older main process sends no reading): see
@@ -689,7 +711,7 @@ const managedCostSentence = (info: {
 	}
 	return (
 		info.remedy ??
-		"The app updates this install and then restarts the server it started."
+		"The app updates this install, waits for the turns running on this machine to finish, and then restarts the server it started, so nothing in flight is cut off."
 	);
 };
 
@@ -906,7 +928,7 @@ export const UpdateNotification = ({
 	const dismissedSkewRef = useRef<string | null>(null);
 	/** Which phase the running update is in, announced as it changes (UX U4). */
 	const [backendUpdatePhase, setBackendUpdatePhase] = useState<
-		"installing" | "restarting" | null
+		"draining" | "installing" | "restarting" | null
 	>(null);
 	const [manualUpdateRequired, setManualUpdateRequired] = useState(false);
 	const [manualUpdateInfo, setManualUpdateInfo] =
@@ -2131,7 +2153,14 @@ export const UpdateNotification = ({
 						? backendUpdatePhase === "installing"
 							? rebuildInFlight
 								? /* THE REBUILD'S OWN SENTENCE - the release path's reassurance is false here. */
-									`Rebuilding the server from this machine's checkout. This reinstalls the install in place, so sessions running on this machine can be interrupted while it runs, and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
+									/*
+										The WAIT is named because it is the app's own answer to the one hazard
+										this route has: a rebuild rewrites a tree a live runtime is reading,
+										so the app drains the fleet before it starts. The residue - a turn
+										STARTED while the rebuild runs - is real and is not dressed up; it is
+										what the second half of the sentence still warns about.
+									*/
+									`Rebuilding the server from this machine's checkout. The app waited for the turns running on this machine to finish first, and the rebuild reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
 								: /*
 									 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
 									 * ~47 s cold, against ~15 s for the restart - and the old single
@@ -2154,10 +2183,12 @@ export const UpdateNotification = ({
 											: ""
 									}. This can take a minute or two on a normal connection, and longer on a slow one, and the update can't be interrupted once it has started.`
 							: backendUpdatePhase === "restarting"
-								? "The new build has landed. The server is restarting onto it now, so it is offline while it comes back - usually a few seconds, up to half a minute - and anything in flight is dropped."
-								: serverRestartsWithInstall(backendUpdateInfo)
-									? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
-									: "Please wait while the server is being updated. The update can't be interrupted once it has started."
+								? "The new build has landed. The server is restarting onto it now, so it is offline while it comes back - usually a few seconds, up to half a minute. The app waited for the turns running on this machine to finish first, so nothing in flight was cut off."
+								: backendUpdatePhase === "draining"
+									? "Waiting for the turns running on this machine to finish before updating, so nothing in flight is cut off. The update waits up to ten minutes, and it is refused rather than cutting a turn short."
+									: serverRestartsWithInstall(backendUpdateInfo)
+										? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
+										: "Please wait while the server is being updated. The update can't be interrupted once it has started."
 						: "Please wait while we check for available updates..."}
 				</p>
 				<ProgressContainer>
@@ -2839,8 +2870,8 @@ export const UpdateNotification = ({
 										 * the difference between an outcome and a paragraph the reader can only
 										 * tell apart from the one they pressed by memory. The arm exists
 										 * because the app's own restart did not take, the only control offered
-										 * is the one just pressed, and pressing it again costs a second outage
-										 * with in-flight work dropped. Its sibling arm - the restart that left
+										 * is the one just pressed, and pressing it again costs a second outage and
+										 * another wait for the fleet to drain. Its sibling arm - the restart that left
 										 * NOTHING answering - got a heading of its own for the same reason; this
 										 * is the clause that closes the asymmetry, and it needs no new guard:
 										 * `landed` plus this branch's non-unattended, `restartable` reading is
@@ -2866,9 +2897,9 @@ export const UpdateNotification = ({
 					 *
 					 * AND WHAT THE PRESS COSTS, BEFORE THE PRESS (design D3). This panel used
 					 * to be the one commit control in this component with no cost line above it:
-					 * the price - the server going down and in-flight work being dropped - was
-					 * stated only in the in-flight panel, one batch later, when it could no
-					 * longer be withdrawn. The same press is offered in two states - the server
+					 * the price - the server going down, and the wait for the turns already
+					 * running to finish - was stated only in the in-flight panel, one batch later,
+					 * when it could no longer be withdrawn. The same press is offered in two states - the server
 					 * behind the install, and the server that did not come back - and each has
 					 * its own sentence over the bound they share (`RESTART_COST_SENTENCE`,
 					 * `RESTART_COST_SENTENCE_SERVER_DOWN` and `RESTART_OUTAGE_BOUND` above,

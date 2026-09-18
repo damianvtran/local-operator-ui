@@ -34,9 +34,11 @@ import type {
 } from "../../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../../shared/desktop-session-contract";
 import {
+	type FleetRosterRow,
 	type ServingInstallReadings,
 	type ServingOwnership,
 	type ServingWorkState,
+	fleetRosterFromSessions,
 	serveRecord,
 	servingInstallIsAppOwned,
 	servingInstallReadings,
@@ -3254,6 +3256,34 @@ export class BackendServiceManager {
 			return servingWorkStateFromSessions(response.body);
 		} catch {
 			return "unknown";
+		}
+	}
+
+	/**
+	 * The session roster itself: the same read as `servingWorkState`, with the
+	 * rows kept rather than reduced to one verdict.
+	 *
+	 * The update path's fleet gate needs the rows for two jobs a verdict cannot
+	 * do: naming the sessions it waited for in a refusal, and taking the before
+	 * and after snapshots that tell it which runtimes a restart displaced
+	 * (`backend/fleet-drain.ts`). Both callers read ONE route, and the row shape
+	 * and the busy spelling come from the same module, so there is no second
+	 * reading of what "busy" means.
+	 *
+	 * Null rather than an empty array when the route did not answer: an empty
+	 * roster is a machine with no sessions, which is a different fact from a read
+	 * that could not be taken.
+	 */
+	async servingSessionFleet(): Promise<FleetRosterRow[] | null> {
+		try {
+			const response = await this.requestDesktop({
+				op: "sessions.list",
+				limit: 500,
+			});
+			if (response.status !== 200) return null;
+			return fleetRosterFromSessions(response.body);
+		} catch {
+			return null;
 		}
 	}
 

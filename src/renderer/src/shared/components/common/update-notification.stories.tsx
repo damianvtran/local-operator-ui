@@ -110,7 +110,7 @@ const ORPHANED_UPDATER_OUTPUT = [
 ].join("\n");
 
 const SOURCE_BUILD_REMEDY =
-	"Rebuilds this checkout with `lop-update`. The rebuild happens in place, so sessions on this machine can be interrupted while it runs, and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.";
+	"Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.";
 
 const OFFER_DETAIL =
 	"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; an in-place rebuild.";
@@ -749,7 +749,7 @@ const mockUpdaterApi = () => {
 		},
 		onBackendUpdateProgress: (
 			callback: (progress: {
-				phase: "installing" | "restarting";
+				phase: "draining" | "installing" | "restarting";
 				sourceRebuild?: boolean;
 			}) => void,
 		) => {
@@ -893,7 +893,7 @@ declare global {
 		 * `installing` while the environment lands, `restarting` while the daemon
 		 * comes back onto it.
 		 */
-		triggerBackendUpdatePhase?: "installing" | "restarting";
+		triggerBackendUpdatePhase?: "draining" | "installing" | "restarting";
 		triggerBackendUpdateDevMode?: boolean;
 		triggerBackendUpdateManualRequired?: boolean;
 		triggerBackendUpdateManualRequiredExistingServer?: boolean;
@@ -1707,7 +1707,7 @@ const PressUpdateServer = ({
 	 * sentence the reader reads while the update runs (UX U6). Null is the
 	 * phase-null fallback the older frame showed.
 	 */
-	phase?: "installing" | "restarting" | null;
+	phase?: "draining" | "installing" | "restarting" | null;
 }) => {
 	const [ready, setReady] = useState(false);
 	useLayoutEffect(() => {
@@ -1800,10 +1800,20 @@ export const BackendUpdateInFlight: Story = {
  * about what a reader is told cannot be checked without the frame they are told it
  * in.
  *
+ * `BackendUpdateDraining` is the third and newest: the press is waiting for the
+ * turns running on this machine to finish before it touches anything, which is the
+ * state the fleet gate creates and the state the old copy described as a dropped
+ * turn instead.
+ *
  * Driven through the press, as the shipped component reaches them: the offer is
  * raised, `Update server` is pressed, the attempt stays in flight, and the phase is
  * the one the main process announces for that step (`update-service.ts`).
  */
+export const BackendUpdateDraining: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="inflight" phase="draining" />,
+};
+
 export const BackendUpdateInstalling: Story = {
 	args: { autoCheck: false },
 	render: () => <PressUpdateServer outcome="inflight" phase="installing" />,

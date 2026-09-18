@@ -397,22 +397,102 @@ export type ServingWorkState = "idle" | "busy" | "unknown";
  * that stopped reporting, i.e. somebody else's silence rather than this
  * daemon's work, and holding on it would make the repair inert forever.
  */
-export function servingWorkStateFromSessions(body: unknown): ServingWorkState {
+/**
+ * One session row of a `sessions.list` answer, reduced to what a reader outside
+ * the chat surface needs.
+ *
+ * The ROW rather than only the verdict, because two callers ask two questions
+ * of the same read and must not answer them from two parses: the version-drift
+ * gate asks whether anything is running (`servingWorkStateFromSessions`), and
+ * the update path's fleet gate names who was running and re-engages the
+ * sessions a restart displaced (`backend/fleet-drain.ts`).
+ *
+ * `liveState` is `null` when the daemon does not publish `live_state` AT ALL -
+ * which is a fact about the build rather than about the session, and the
+ * difference between that and a cold row is what stops this being read as
+ * "idle" on a server too old to say.
+ */
+export type FleetRosterRow = {
+	sessionId: string;
+	/** The row's own display name, for a sentence that has to name somebody. */
+	name: string;
+	/** The record's own kind: "tui", "exec", "daemon", or "" for a cold row. */
+	kind: string;
+	/** `live_state`, or null when the daemon predates the field. */
+	liveState: string | null;
+};
+
+/**
+ * The roster `sessions.list` answered with, or null when there is no roster.
+ *
+ * Null is a read that could not be taken - a body that is not the answer to
+ * this route, a response whose `sessions` is not an array - and it is NOT an
+ * empty fleet. Every caller treats the two differently.
+ */
+export function fleetRosterFromSessions(
+	body: unknown,
+): FleetRosterRow[] | null {
 	const sessions = (body as { result?: { sessions?: unknown } } | null)?.result
 		?.sessions;
-	if (!Array.isArray(sessions)) return "unknown";
-	const rows = sessions.filter(
-		(row): row is Record<string, unknown> =>
-			typeof row === "object" && row !== null,
-	);
-	if (rows.some((row) => row.live_state === "busy")) return "busy";
+	if (!Array.isArray(sessions)) return null;
+	return sessions
+		.filter(
+			(row): row is Record<string, unknown> =>
+				typeof row === "object" && row !== null,
+		)
+		.map((row) => ({
+			sessionId: typeof row.id === "string" ? row.id : "",
+			name: typeof row.name === "string" ? row.name : "",
+			kind: typeof row.kind === "string" ? row.kind : "",
+			liveState: typeof row.live_state === "string" ? row.live_state : null,
+		}));
+}
+
+/**
+ * The rows whose session is running a turn, i.e. the ones a restart may not cut
+ * off.
+ *
+ * THE busy SPELLING, stated once for both readers of this roster. A `wedged`
+ * row is deliberately NOT in here - see `servingWorkStateFromSessions` for why
+ * somebody else's silence must not hold a repair forever.
+ */
+export function busyRosterRows(
+	rows: readonly FleetRosterRow[],
+): FleetRosterRow[] {
+	return rows.filter((row) => row.liveState === "busy");
+}
+
+/**
+ * The daemon's work state, read from the roster `sessions.list` answers with.
+ *
+ * WHY THIS SIGNAL. The app has no turn-in-flight signal of its own: the daemon
+ * knows whether a turn is running and main does not. What the daemon does
+ * publish is `live_state` on every session row, set from the session record's
+ * own `busy` bit (`server/utils/desktop_feed.py::_row_for`), which is published
+ * by the runtime's turn-boundary hook and therefore means exactly "a turn is
+ * running in this conversation". That is a real signal about work in flight,
+ * which a count of open renderer subscriptions is not: a mounted chat holds a
+ * subscription while it sits idle, and a background turn in a conversation
+ * nobody has open holds none - the correlation the old guard had backwards.
+ *
+ * WHAT IT DOES NOT COVER, stated rather than implied: work the daemon owns
+ * outside any session (its scheduler's own tick) is not on this roster, and the
+ * daemon's finer-grained predicates are not reachable over the desktop surface.
+ * A `wedged` row does not hold the restart either - a wedged row is a live pid
+ * that stopped reporting, i.e. somebody else's silence rather than this
+ * daemon's work, and holding on it would make the repair inert forever.
+ */
+export function servingWorkStateFromSessions(body: unknown): ServingWorkState {
+	const rows = fleetRosterFromSessions(body);
+	if (rows === null) return "unknown";
+	if (busyRosterRows(rows).length > 0) return "busy";
 	/*
 	 * No row carrying `live_state` at all is a daemon predating the field, not a
 	 * quiet machine: `_row_for` always sets it ("" for a cold row), so the key's
 	 * absence is a fact about the build rather than about the work. Reading that
 	 * as idle would restart under work this app cannot see.
 	 */
-	if (rows.length > 0 && rows.every((row) => !("live_state" in row)))
+	if (rows.length > 0 && rows.every((row) => row.liveState === null))
 		return "unknown";
 	return "idle";
 }
