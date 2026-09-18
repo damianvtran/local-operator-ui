@@ -6240,6 +6240,125 @@ test("an adopted daemon is reported, not claimed as repaired", async () => {
 });
 
 /**
+ * THE USER-VISIBLE HALF OF THE CASE ABOVE (review round 2, T1): the refusal was
+ * right and reached nobody.
+ *
+ * `settleBackendVersionDrift` sends nothing to the renderer, and the panel that
+ * carries this state is fed by `/health` - the very reading this branch's own
+ * module documents as blind to staleness. So on this machine (a process serving
+ * 0.56.2 out of memory, an install already at 0.56.11) the event's two readings
+ * were the SAME string, the renderer's `install === running` guard suppressed the
+ * notice by construction, and the `restartable: false` copy that names the
+ * reader's next step was unreachable. The event has to carry the serving
+ * process's own record, which is also the pair the refusal above is about.
+ *
+ * Driven on the SILENT pass deliberately: the launch and the five-minute check
+ * are the callers that told nobody anything, and the only thing that lets them
+ * speak is the disagreement between these two readings.
+ */
+test("the skew an adopted daemon leaves reaches the renderer on a silent check", async () => {
+	const { sent, restarts, logs, probeResult } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		// `/health` answers with the build installed on disk - the trap, exactly as
+		// the operator's machine walked into it.
+		serverVersion: "0.56.11",
+		publishedVersion: "0.56.11",
+		installVersion: "0.56.11",
+		// What this process actually loaded, from its own serve record.
+		bootVersion: "0.56.2",
+		servingInstall: { version: "0.56.11", appOwned: true, kind: "pip" },
+		owned: {
+			owned: false,
+			because:
+				"it runs from /Users/someone/Library/Application Support/Local Operator/managed-python/packaged/environments/183b, an environment this app manages, but the process is not one this app run started and this app can only stop the generation it holds",
+			startedByEarlierAppRun: true,
+		},
+		// The silent server check, which is `checkForBackendUpdates(true)` - the
+		// caller behind every launch and every periodic pass.
+		probe: async (service, sent) => {
+			const before = sent.length;
+			await service.checkForBackendUpdates(true);
+			return sent.slice(before);
+		},
+	});
+
+	assert.deepEqual(restarts, [], "an adopted daemon must not be restarted");
+	const silent = probeResult.filter(
+		({ channel }) => channel === "backend-update-not-available",
+	);
+	assert.equal(
+		silent.length,
+		1,
+		`the silent check said nothing: ${JSON.stringify(probeResult.map(({ channel }) => channel))}`,
+	);
+	assert.equal(silent[0].payload.version, "0.56.11");
+	/*
+	 * THE RECORD'S READING, and the assertion that holds the whole fix: with the
+	 * running side taken from `/health` again this is "0.56.11", the two readings
+	 * are equal, and the renderer's guard mutes the notice - which is the state this
+	 * round found.
+	 */
+	assert.equal(silent[0].payload.runningVersion, "0.56.2");
+	/*
+	 * And WHO CAN CLOSE THE GAP: false, because this app run holds no generation for
+	 * that daemon - so the panel is the arm that names the reader's own step rather
+	 * than promising a restart the app will not perform.
+	 */
+	assert.equal(silent[0].payload.restartable, false);
+	assert.ok(
+		logs.some((line) =>
+			line.includes("the skew is reported and the process is left running"),
+		),
+		`the refusal was not logged: ${logs.join(" | ")}`,
+	);
+	// The check's own verdict is still about the INSTALL, which is what the event's
+	// `version` field is, and the whole check still earns nothing: the install is
+	// current, so there is no offer to carry the skew either.
+	assert.ok(
+		!sent.some(({ channel }) => channel === "backend-update-available"),
+		JSON.stringify(sent.map(({ channel }) => channel)),
+	);
+});
+
+/**
+ * T3 of round 2: a restart that MOVED the reading but did not land on the install.
+ *
+ * `settledBoot !== drift.bootVersion` used to be the whole test for "landed on the
+ * installed build", so a successor that came back on a THIRD build was announced
+ * as being on the install with the contradiction inside the same sentence ("it
+ * booted on 0.54.45 (was 0.54.43, install is 0.54.44)"). The claim is now made
+ * from the comparison against the install, with its own line for the case that is
+ * neither reading.
+ */
+test("a successor on a third build is not claimed as the installed one", async () => {
+	const { restarts, logs } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.43",
+		successorBootVersion: "0.54.45",
+		servingInstall: { version: "0.54.44", appOwned: true, kind: "pip" },
+	});
+
+	assert.deepEqual(restarts, ["0.54.43"], "the drift was not repaired");
+	assert.ok(
+		!logs.some((line) =>
+			line.includes("Restarted the server onto the installed build"),
+		),
+		`a successor that did not land on the install was claimed as it: ${logs.join(" | ")}`,
+	);
+	assert.ok(
+		logs.some(
+			(line) =>
+				line.includes("came back on 0.54.45") &&
+				line.includes("neither the build it was serving"),
+		),
+		`the fourth sentence is missing: ${logs.join(" | ")}`,
+	);
+});
+
+/**
  * R1 and R7 of round 1: the paths that do NOT act, and what they say.
  *
  * The first cut returned before logging anything for every non-stale reading,

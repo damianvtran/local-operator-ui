@@ -4390,6 +4390,28 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 
+			/*
+			 * THE RUNNING READING THE EVENTS BELOW CARRY, which is deliberately not always
+			 * `runningVersion` above: that one is `/health`, which cannot see a process
+			 * serving code the disk has already replaced, so a pair taken from it has both
+			 * sides equal on the very machine this check is about and the renderer's own
+			 * guard then suppresses the notice (review round 2, T1). The process's own
+			 * record is the honest side; `eventRunningVersion` owns the rule and the one
+			 * case it falls back in.
+			 *
+			 * Read HERE rather than beside the first reading because the drift repair runs
+			 * in between and may have restarted the daemon: this is the process that is
+			 * serving when the events are sent, which is what every sentence about the
+			 * daemon has to describe.
+			 */
+			const eventRunning = this.eventRunningVersion(runningVersion);
+			if (eventRunning !== runningVersion) {
+				logger.info(
+					`The events this check sends carry the serving process's own reading: ${eventRunning ?? "no reading"} (the record it booted with), against /health's ${runningVersion ?? "no reading"}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+
 			if (channel.state === "restart-required") {
 				/*
 				 * THE INSTALL IS CURRENT AND THE SERVER IS NOT (status
@@ -4416,7 +4438,16 @@ export class UpdateService {
 				const updateInfo: BackendUpdateInfo = {
 					currentVersion: installedVersion,
 					latestVersion,
-					runningVersion,
+					/*
+					 * THE PROCESS'S OWN READING, not `/health`'s (review round 2, T1): the
+					 * panel's sentence is "the server you are using is running X until it
+					 * restarts", and `/health` answers with the install's own number, so on a
+					 * stale daemon it named the build the reader is NOT using. The check's
+					 * verdict above still turns on the `/health` pair, which is what decides
+					 * whether there is an offer at all; this is the reading every sentence here
+					 * is about.
+					 */
+					runningVersion: eventRunning,
 					updateCommand: plan.updateCommand,
 					canManageUpdate: plan.canManageUpdate,
 					appOwned: plan.appOwned,
@@ -4481,13 +4512,22 @@ export class UpdateService {
 			 * install"): a check that compared an unrelated install and then announced a
 			 * skew between it and the daemon would be reporting a disagreement the reader
 			 * cannot act on.
+			 *
+			 * AND THE PROCESS'S SIDE IS ITS OWN RECORD, not `/health` (review round 2,
+			 * T1). `/health` answers with the version installed on disk at that moment, so
+			 * on the machine this event exists for - a stale process, an install that has
+			 * moved under it - both sides of THIS comparison were the same string, the
+			 * disagreement was never seen, and a silent launch reached the renderer with
+			 * nothing while an adopted daemon (which the app correctly refuses to move) went
+			 * on serving the old build unannounced. `eventRunning` is the process's own
+			 * reading; the divergence it can now see is what lets a silent pass speak.
 			 */
 			const readingsDiffer =
 				installedVersion !== null &&
-				runningVersion !== null &&
+				eventRunning !== null &&
 				isReadableVersion(installedVersion) &&
-				isReadableVersion(runningVersion) &&
-				installedVersion.trim() !== runningVersion.trim();
+				isReadableVersion(eventRunning) &&
+				installedVersion.trim() !== eventRunning.trim();
 			if (
 				(!silent || readingsDiffer) &&
 				this.mainWindow &&
@@ -4506,8 +4546,15 @@ export class UpdateService {
 					 * state design §5 exists for (right after a landed install, before the
 					 * restart), and no later check re-offers it, because the install itself
 					 * is up to date.
+					 *
+					 * AND IT IS THE PROCESS'S OWN READING (round 2, T1), which is what makes
+					 * the notice above reachable at all: fed from `/health` both sides of the
+					 * renderer's guard were the same string on exactly this machine. The
+					 * `restartable` flag beside it decides the sentence the reader then gets -
+					 * false here is the arm that names their own next step, because the app
+					 * correctly will not move a daemon this app run does not hold.
 					 */
-					runningVersion,
+					runningVersion: eventRunning,
 					/** Whether the app may restart the daemon that is behind. */
 					restartable: this.backendIsAppOwned(),
 				});
@@ -4777,8 +4824,9 @@ export class UpdateService {
 	 * asserts a boot that did not happen is worse than no message - it is the shape of
 	 * the defect this PR exists to delete - so the sentence is written only from the
 	 * successor's own record, and each of the three things that record can say has its
-	 * own line: it moved (the repair), it did not move (the restart did not take), or
-	 * it could not be read yet (nothing is claimed).
+	 * own line: it moved onto the install (the repair), it moved but not onto the
+	 * install (its own sentence, review round 2 T3), it did not move (the restart did
+	 * not take), or it could not be read yet (nothing is claimed).
 	 *
 	 * @returns whether the successor's own boot reading differs from the one the
 	 * failed repair was about - the only evidence a restart happened, and the only
@@ -4819,8 +4867,33 @@ export class UpdateService {
 				);
 				return false;
 			}
-			logger.info(
-				`Restarted the server onto the installed build: it booted on ${settledBoot} (was ${drift.bootVersion}, install is ${drift.installVersion}) and its health probe ${healthy ? "answered" : "did not answer"}.`,
+			/*
+			 * THE CLAIM IS THAT IT LANDED ON THE INSTALL, not merely that the reading
+			 * CHANGED (review round 2, T3). "Moved" was tested as `settledBoot !== drift
+			 * .bootVersion`, so a successor that came back on a THIRD build (older than the
+			 * install, or newer, or one this check cannot order) was announced as being on
+			 * the installed build with the contradiction visible in the same sentence
+			 * ("it booted on X (was A, install is B)", X ≠ B). The comparison is against
+			 * the install with the codebase's own ordering, and the case that is neither
+			 * the old reading nor the install has its own line that claims exactly what the
+			 * successor's record shows.
+			 */
+			const landedOrder = compareVersions(settledBoot, drift.installVersion);
+			if (landedOrder === 0) {
+				logger.info(
+					`Restarted the server onto the installed build: it booted on ${settledBoot} (was ${drift.bootVersion}, install is ${drift.installVersion}) and its health probe ${healthy ? "answered" : "did not answer"}.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return true;
+			}
+			/*
+			 * MOVED, BUT NOT ONTO THE INSTALL. Still `true`: the successor's own record
+			 * differs from the build the failed repair was about, which is the only evidence
+			 * that a restart happened and the only thing that may latch the pair - claiming
+			 * otherwise would send the next check back at a process this one just moved.
+			 */
+			logger.warn(
+				`The server was restarted for install ${drift.installVersion} and came back on ${settledBoot} - neither the build it was serving (${drift.bootVersion}) nor the install itself${landedOrder === null ? ", and these two versions cannot be ordered" : landedOrder > 0 ? ", which it is newer than (the install on disk is a downgrade)" : ""}; its health probe ${healthy ? "answered" : "did not answer"}. Not claiming the install is serving; the next check reads the settled pair.`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return true;
@@ -4930,6 +5003,46 @@ export class UpdateService {
 	 */
 	private backendIsAppOwned(): boolean {
 		return this.backendService?.servingInstall().owned.owned ?? false;
+	}
+
+	/**
+	 * The build the daemon serving this app BOOTED with, or null when its record
+	 * carries no reading.
+	 *
+	 * THE HONEST RUNNING SIDE OF EVERY USER-FACING SENTENCE, and the reason the panel
+	 * this PR exists for could not render. `/health` computes its `version` from the
+	 * metadata on disk at the moment it answers (the trap
+	 * `backend-version-drift.ts` documents at length), so a process serving old code
+	 * out of memory reports the NEWER install: install `X`, `/health` `X`, the
+	 * process's own record `Y`. Every pair built from that reading has two EQUAL
+	 * sides, and the renderer's skew notice is silent unless its two readings differ
+	 * (`announceBackendSkew`'s `install === running` guard) - so the one state the
+	 * repair exists for was suppressed by construction, and an adopted daemon (which
+	 * the app correctly refuses to move) left the reader told nothing at all, with
+	 * the `restartable: false` copy that names their next step unreachable.
+	 *
+	 * The record's reading is the one the drift decision already compares
+	 * (`settleBackendVersionDrift`), so the notice and the refusal finally speak about
+	 * the same pair rather than about two different questions.
+	 */
+	private servingBootVersion(): string | null {
+		return this.backendService?.servingInstall().readings.bootVersion ?? null;
+	}
+
+	/**
+	 * The running reading an update event carries to the renderer.
+	 *
+	 * The record first, because it is the only reading that can see a stale process
+	 * (`servingBootVersion`). `/health` stands in ONLY where no record reading exists
+	 * at all - a daemon predating the record format, or a legacy fixed-port adoption -
+	 * and it is the same fallback the drift decision reports as `no-boot-reading`: an
+	 * absence is not a licence to claim an agreement, but it is also not a skew the
+	 * app can see, and the pre-existing behaviour for that shape (which the fixture
+	 * pins) is the pair the check already holds. Never the other way round: preferring
+	 * `/health` is exactly what made the pair equal and the notice mute.
+	 */
+	private eventRunningVersion(fallback: string | null): string | null {
+		return this.servingBootVersion() ?? fallback;
 	}
 
 	/**
@@ -5151,9 +5264,17 @@ export class UpdateService {
 		 * (`refresh_daemons_after_upgrade`), and the existing probe loop re-attaches.
 		 */
 		if (backend.isUsingExternalBackend()) {
-			const running = await this.getInstalledBackendVersion();
+			const health = await this.getInstalledBackendVersion();
+			/*
+			 * The reading that travels is the PROCESS's own, not `/health`'s (round 2,
+			 * T1). In the case this branch exists for they are the same install and
+			 * `/health` has already moved with it, so a pair built from it is equal and
+			 * the renderer's guard suppresses the notice by construction - while the
+			 * daemon the reader is talking to still serves the old build.
+			 */
+			const running = this.eventRunningVersion(health);
 			logger.info(
-				`Install moved to ${after ?? "unknown"}; the attached backend still reports ${running ?? "no reading"}`,
+				`Install moved to ${after ?? "unknown"}; the attached backend still reports ${running ?? "no reading"}${running === health ? "" : ` (its own record; /health answers ${health ?? "no reading"})`}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			/*
@@ -5285,10 +5406,19 @@ export class UpdateService {
 		 * renderer's own guard can say whether the two readings actually differ and
 		 * stay silent when they agree. Unreadable stays null, and null is silence: the
 		 * panel may not claim a skew it cannot see.
+		 *
+		 * AND IT IS THE PROCESS'S OWN RECORD (review round 2, T1), not `/health`: the
+		 * install just landed on disk, so `/health` on this launch answers with ITS
+		 * version - the two readings are equal by construction and the guard mutes the
+		 * very skew this event exists to carry. The record is what the daemon loaded,
+		 * which on the app-owned path is the landed install (both agree and the panel
+		 * stays silent, as UX U14 requires) and on an adopted one is the older build the
+		 * reader has to restart themselves.
 		 */
-		const running = await this.getInstalledBackendVersion();
+		const health = await this.getInstalledBackendVersion();
+		const running = this.eventRunningVersion(health);
 		logger.info(
-			`A server update that no app was supervising landed: ${marker.before ?? "unknown"} -> ${after}; the backend serving this launch reports ${running ?? "no reading"}`,
+			`A server update that no app was supervising landed: ${marker.before ?? "unknown"} -> ${after}; the backend serving this launch reports ${running ?? "no reading"}${running === health ? "" : ` (its own record; /health answers ${health ?? "no reading"})`}`,
 			LogFileType.UPDATE_SERVICE,
 		);
 		this.sendToRenderer("backend-update-completed", {

@@ -1142,10 +1142,21 @@ export const UpdateNotification = ({
 			 * build than the install" over a machine whose Settings row read the new
 			 * version one second later. A reading that cannot be taken is silence for
 			 * the same reason: this panel may not claim a skew it cannot see.
+			 *
+			 * AND ONLY WHEN THE SERVER IS THE OLDER SIDE (review round 2, T1's back half).
+			 * The producer now sends the PROCESS's own reading rather than `/health`'s, so
+			 * this funnel can be handed a pair where the daemon is AHEAD of the install -
+			 * a build newer than what is on disk (a downgrade, or a leftover record from a
+			 * newer build), which `backend-version-drift.ts` refuses to act on for exactly
+			 * the same reason (`running-ahead`: "restarting there would replace a newer
+			 * serving process with an older install"). Inequality alone is not a skew:
+			 * every sentence below this heading is about a server BEHIND the install, so
+			 * the same falsity the equal-pair guard removes would come back one-sided.
 			 */
 			if (!install || !running || install === running) {
 				return false;
 			}
+			if (atLeastVersion(running, install)) return false;
 			const key = skewKey(notice);
 			if (dismissedSkewRef.current === key) return false;
 			setBackendSkewNotice(notice);

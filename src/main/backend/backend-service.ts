@@ -2229,6 +2229,17 @@ export class BackendServiceManager {
 		};
 		this.ownedServe = generation;
 		this.process = child;
+		/*
+		 * An adopted daemon's record stops describing the daemon serving this app the
+		 * moment this process holds its own child (review round 2, T2). Left in place it
+		 * outlived the adoption, and the reads that take a record - the drift's boot
+		 * reading, and the post-restart one that is re-read from the same document -
+		 * answered with the OLDER process's numbers, so a skew could be reported against
+		 * a daemon that is not serving and a restart that did move the reading could be
+		 * recorded as "did not take". The adoption arms set this field themselves
+		 * (`attachTo`, the fixed-port adopt), so clearing it here loses nothing.
+		 */
+		this.attachedRecord = null;
 		const exited = (code?: number | null) => {
 			if (generation.exited) return;
 			generation.exited = true;
@@ -2980,11 +2991,22 @@ export class BackendServiceManager {
 	 * `null` for a daemon with no record at all - a legacy fixed-port adoption, or
 	 * a build that predates the record format. The caller reports that absence
 	 * rather than substituting another reading for it.
+	 *
+	 * THE GENERATION THIS APP HOLDS WINS (review round 2, T2). The adopted record was
+	 * returned first unconditionally, so a manager that had adopted a daemon and then
+	 * spawned its own would read every drift reading off the OLDER process's record -
+	 * a phantom skew against a process that is not serving, and the successor re-read
+	 * from the same document afterwards. A pid is only ever read for a generation this
+	 * process holds (`this.process`), which is the same invariant `stop()` acts on, so
+	 * the two arms cannot be confused: while a generation is held, its own record is
+	 * the answer even when that read fails or is not written yet - an absence the
+	 * decision reports as `no-boot-reading` rather than papering over with another
+	 * process's numbers.
 	 */
 	private servingRecord(): ServeRecord | null {
-		const adopted = this.attachedRecord?.record ?? null;
-		if (adopted) return adopted;
-		return serveRecord(this.process?.pid ?? null, serveRunDir());
+		if (this.process)
+			return serveRecord(this.process.pid ?? null, serveRunDir());
+		return this.attachedRecord?.record ?? null;
 	}
 
 	/**

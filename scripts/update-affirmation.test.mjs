@@ -1399,6 +1399,41 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 });
 
 /**
+ * AND ONLY WHEN THE SERVER IS THE OLDER SIDE (review round 2, T1's back half).
+ *
+ * The producer sends the serving PROCESS's own reading now rather than
+ * `/health`'s, so this funnel can be handed a pair whose daemon is AHEAD of the
+ * install - a build newer than what is on disk (a downgrade, or a leftover record
+ * from a newer build). The producer's own decision leaves that state alone
+ * (`backend-version-drift.ts`: `running-ahead` - "restarting there would replace a
+ * newer serving process with an older install"), and every sentence under this
+ * heading is about a server BEHIND the install. Inequality alone is not a skew, so
+ * the falsity the equal-pair guard removes would otherwise come back one-sided:
+ * the panel would head a machine running 0.56.3 with "The server is on an older
+ * build than the install (0.56.2)".
+ */
+test("a daemon ahead of the install raises no skew notice", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.3",
+		restartable: true,
+	});
+	handle.render();
+	const copy = allCopy(handle);
+	assert.equal(
+		copy.some((text) => /older build than the install/.test(text)),
+		false,
+		JSON.stringify(copy),
+	);
+	assert.equal(
+		copy.some((text) => /is still running 0\.56\.3/.test(text)),
+		false,
+		JSON.stringify(copy),
+	);
+});
+
+/**
  * U9: the offer states the cost THIS machine pays, not the one the layout implies.
  *
  * The managed arm's sentence comes from the plan, and the plan is an install
