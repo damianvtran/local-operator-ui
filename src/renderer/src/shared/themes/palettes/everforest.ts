@@ -50,15 +50,17 @@ export const everforest: ThemeDefinition = {
 		sunken: "#232A2E",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.07 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 3.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.17 from `surface`, 3.39 from `elevated` and 9.86 from `sunken`;
-		 * the step is 3.27 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.67:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 5.65 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.32x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.78 from `surface`, 2.4 from `elevated`, 11.46
+		 * from `sunken`, 2.06 from `accentWash`; the inks on the ground are 7.22:1,
+		 * 7.22:1, 5.16:1. Continuity with the panel: hue 4.96 degrees off the
+		 * panel's (the assertion allows 15) and chroma 7.33 where the panel carries
+		 * 5.56.
 		 */
-		highlight: "#3B4747",
+		highlight: "#3D4D53",
 
 		// fg D3C6AA is 5.57:1 on `elevated`, under the 7:1 floor; lifted.
 		/*

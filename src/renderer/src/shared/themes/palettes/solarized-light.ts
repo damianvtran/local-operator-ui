@@ -79,15 +79,17 @@ export const solarizedLight: ThemeDefinition = {
 		sunken: "#E5DFCC",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4 from `surface`, 4.52 from `elevated` and 4.98 from `sunken`;
-		 * the step is -5.15 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.71:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 6.55 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.02x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
+		 * the row's ground. ΔE00 4.05 from `surface`, 6.72 from `elevated`, 2.82
+		 * from `sunken`, 8.13 from `accentWash`; the inks on the ground are 10.04:1,
+		 * 7.44:1, 5.18:1. Continuity with the panel: hue 0.06 degrees off the
+		 * panel's (the assertion allows 15) and chroma 6.38 where the panel carries
+		 * 6.28.
 		 */
-		highlight: "#EBECE4",
+		highlight: "#E6E2D6",
 
 		ink: "#073642",
 		// Canonical base01 586E75 is 4.39:1 on `sunken` — under the 4.5 floor, and only

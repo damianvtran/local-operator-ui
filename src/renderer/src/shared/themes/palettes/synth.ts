@@ -61,28 +61,17 @@ export const synth: ThemeDefinition = {
 		sunken: "#1C1A20",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own neon-purple
-		 * ramp 6.08 `L*`, at 1.14x the panel's chroma. ΔE00 4.14 from `surface`,
-		 * 2.37 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 17.33 from `sunken`. The row is 1.133x the panel's relative
-		 * luminance.
-		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#231236)
-		 * stepped 3.53 `L*` off the panel, and this one steps 6.08. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 14.87:1, `ink-muted` 7.54:1, `ink-dim` 5.29:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 5.29:1.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.95 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.22x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
+		 * the row's ground. ΔE00 4.18 from `surface`, 2.63 from `elevated`, 17.86
+		 * from `sunken`, 9.79 from `accentWash`; the inks on the ground are 12.07:1,
+		 * 7.14:1, 5.17:1. Continuity with the panel: hue 0.37 degrees off the
+		 * panel's (the assertion allows 15) and chroma 32.77 where the panel carries
+		 * 26.82.
 		 */
-		highlight: "#281641",
+		highlight: "#3b2554",
 
 		// The old file borrowed the generic dark theme's F9FAFB and 9CA3AF for its
 		// text, which is a cool grey ramp sitting on a purple one. The inks here are

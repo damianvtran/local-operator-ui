@@ -77,30 +77,16 @@ export const obsidian: ThemeDefinition = {
 		sunken: "#1B1B1E",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own violet-tinted neutral
-		 * ramp 5.58 `L*`, carrying 1.90x the panel's chroma. ΔE00 4.01 from `surface`,
-		 * 2.36 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 8.37 from `sunken`. The row is 1.134x the panel's relative
-		 * luminance.
-		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#1f1f22)
-		 * stepped 3.51 `L*` off the panel, and this one steps 5.58. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 14.97:1, `ink-muted` 6.10:1, `ink-dim` 4.87:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.87:1. The step here is still partly chroma-bought (1.90x the panel's, a faint violet
-		 * on a near-black neutral); the ordering above is what a re-authoring should
-		 * follow.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 5 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 2.59x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.49 from `surface`, 2.44 from `elevated`, 8.54
+		 * from `sunken`, 4 from `accentWash`; the inks on the ground are 11.82:1,
+		 * 7.2:1, 5.16:1. Continuity with the panel: hue 0.67 degrees off the panel's
+		 * (the assertion allows 15) and chroma 5.38 where the panel carries 2.08.
 		 */
-		highlight: "#232329",
+		highlight: "#34343c",
 
 		ink: "#FAFAFA",
 		/*

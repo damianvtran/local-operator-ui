@@ -49,15 +49,17 @@ export const ayuLight: ThemeDefinition = {
 		sunken: "#DBE4EB",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.1 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.12 from `surface`, 7.43 from `elevated` and 2.21 from `sunken`;
-		 * the step is -4.55 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.85:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 5.7 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.68x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `sunken` at ΔE00 2.07
+		 * against its 2.0 field floor. ΔE00 4.19 from `surface`, 7.23 from
+		 * `elevated`, 2.07 from `sunken`, 3.01 from `accentWash`; the inks on the
+		 * ground are 7.69:1, 6.98:1, 5.47:1. Continuity with the panel: hue 12.98
+		 * degrees off the panel's (the assertion allows 15) and chroma 4.86 where
+		 * the panel carries 2.89.
 		 */
-		highlight: "#DFECF5",
+		highlight: "#DDE9EE",
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor

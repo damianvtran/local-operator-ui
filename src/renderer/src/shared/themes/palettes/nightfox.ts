@@ -74,15 +74,17 @@ export const nightfox: ThemeDefinition = {
 		sunken: "#131A24",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.34 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 3.75 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.11 from `surface`, 2.12 from `elevated` and 10.76 from `sunken`;
-		 * the step is 3.79 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.75:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.4 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.44x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.03-to-4 band
+		 * on `surface`. ΔE00 4.03 from `surface`, 2.17 from `elevated`, 10.42 from
+		 * `sunken`, 2.85 from `accentWash`; the inks on the ground are 7.94:1,
+		 * 5.89:1, 5.34:1. Continuity with the panel: hue 0.09 degrees off the
+		 * panel's (the assertion allows 15) and chroma 17.96 where the panel carries
+		 * 12.5.
 		 */
-		highlight: "#20374F",
+		highlight: "#1F354E",
 
 		ink: "#CDCECF",
 		/*

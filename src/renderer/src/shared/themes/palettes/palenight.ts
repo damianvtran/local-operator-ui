@@ -47,16 +47,18 @@ export const palenight: ThemeDefinition = {
 		elevated: "#353B4E",
 		sunken: "#232736",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.10 toward `accent`, then stepped 2.22 on the `L*` axis — branch H
-		 * of this port's selection rule, capped by this palette's OWN ink: `inkDim` reaches
-		 * its floor with the 0.15 of headroom at 2.25 `L*` here (4.70:1), so the band is paid
-		 * on the cast. Design round 3 (D2) found the first cut stopping at 0.73 `L*` with cap
-		 * to spare, so the step now runs to the cap: ΔE00 4.87 from `surface`, 4.85 from
-		 * `elevated`, 7.74 from `sunken`. The step is under the 3 `L*` floor and is pinned
-		 * against the cap, which the gate re-derives.
+		 * The current row's own ground, and the one palette class this pass pins:
+		 * `surface` stepped 2.15 `L*` lighter at the panel's own hue, under the 3
+		 * `L*` the direction floor asks for, because this palette's own inks cap the
+		 * lightness route at 2.45 `L*`. The band is paid on the cast at 1.45x the
+		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
+		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 6.05
+		 * from `surface`, 5.35 from `elevated`, 8.64 from `sunken`, 7.84 from
+		 * `accentWash`; the inks on the ground are 11.1:1, 7.06:1, 5.15:1.
+		 * Continuity with the panel: hue 13.94 degrees off the panel's (the
+		 * assertion allows 15) and chroma 17.66 where the panel carries 12.19.
 		 */
-		highlight: "#383750",
+		highlight: "#263b54",
 
 		ink: "#EEFFFF",
 		/*

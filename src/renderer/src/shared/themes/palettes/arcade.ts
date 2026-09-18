@@ -99,15 +99,17 @@ export const arcade: ThemeDefinition = {
 		sunken: "#1A1A1A",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.03 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 3.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.14 from `surface`, 4.44 from `elevated` and 6 from `sunken`;
-		 * the step is 3.38 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.71:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.7 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 2.61x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
+		 * the row's ground. ΔE00 4.07 from `surface`, 2.82 from `elevated`, 8.5 from
+		 * `sunken`, 15.61 from `accentWash`; the inks on the ground are 10.92:1,
+		 * 7.19:1, 5.18:1. Continuity with the panel: hue 5.39 degrees off the
+		 * panel's (the assertion allows 15) and chroma 5.5 where the panel carries
+		 * 2.11.
 		 */
-		highlight: "#1C1B19",
+		highlight: "#2F2E36",
 
 		ink: "#E8E8E4",
 		/*

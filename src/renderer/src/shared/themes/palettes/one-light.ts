@@ -57,16 +57,16 @@ export const oneLight: ThemeDefinition = {
 		elevated: "#FFFFFF",
 		sunken: "#E1E0E0",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` and stepped 3.18 on the `L*` axis — branch H
-		 * of this port's selection rule. The cast is not decoration here: this palette's
-		 * `accentWash` (the app's active-row tint, `bg-accent-wash`) sits close enough to its
-		 * panel that a ground carrying only the band was ΔE00 **0.70** from the wash — the
-		 * same mark as the app's other selected row — so the row ground has to separate from
-		 * it by the contract's field floor: measured 2.92 here. ΔE00 4.03 from `surface`,
-		 * 5.44 from `elevated`, 4.62 from `sunken`, `inkDim` 5.09:1.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.4 `L*` darker (branch L of this port's selection rule), and
+		 * carrying nullx the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.18-to-4 band
+		 * on `surface`. ΔE00 4.18 from `surface`, 5.59 from `elevated`, 4.51 from
+		 * `sunken`, 2.23 from `accentWash`; the inks on the ground are 9.47:1,
+		 * 7.96:1, 5.55:1. Continuity with the panel: hue 0 degrees off the panel's
+		 * (the assertion allows 15) and chroma 3.98 where the panel carries 0.
 		 */
-		highlight: "#E5ECF1",
+		highlight: "#E6EBF2",
 
 		ink: "#383A42",
 		// Canonical mono-2 696C77 is 3.97:1 on `sunken` (< 4.5) — darkened along the same

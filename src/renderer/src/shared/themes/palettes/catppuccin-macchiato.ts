@@ -54,17 +54,18 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		sunken: "#1E2132",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.12 toward `accent`, then stepped 1.75 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 2.5 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.67:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4 from `surface`, 3.38 from `elevated` and 7.23 from
-		 * `sunken`; the step of 1.74 `L*` is short of the 3 `L*` floor and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * The current row's own ground, and the one palette class this pass pins:
+		 * `surface` stepped 1.9 `L*` lighter at the panel's own hue, under the 3
+		 * `L*` the direction floor asks for, because this palette's own inks cap the
+		 * lightness route at 2.05 `L*`. The band is paid on the cast at 1.46x the
+		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
+		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 5.08
+		 * from `surface`, 4.35 from `elevated`, 8.17 from `sunken`, 5.82 from
+		 * `accentWash`; the inks on the ground are 8.56:1, 7.13:1, 5.15:1.
+		 * Continuity with the panel: hue 8.92 degrees off the panel's (the assertion
+		 * allows 15) and chroma 21.03 where the panel carries 14.41.
 		 */
-		highlight: "#312F4B",
+		highlight: "#322F4E",
 
 		ink: "#CAD3F5",
 		/*

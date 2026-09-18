@@ -82,15 +82,16 @@ export const catppuccinLatte: ThemeDefinition = {
 		sunken: "#DADEE6",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.1 from `surface`, 6.16 from `elevated` and 2.03 from `sunken`;
-		 * the step is -5.36 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.66:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.1 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 2.70x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.08-to-4 band
+		 * on `surface`. ΔE00 4.08 from `surface`, 6.28 from `elevated`, 2.12 from
+		 * `sunken`, 2.19 from `accentWash`; the inks on the ground are 8.28:1,
+		 * 7.7:1, 5.36:1. Continuity with the panel: hue 5.44 degrees off the panel's
+		 * (the assertion allows 15) and chroma 5.84 where the panel carries 2.16.
 		 */
-		highlight: "#E1E1E9",
+		highlight: "#E1E5F0",
 
 		// Canonical text 4C4F69 is 6.04:1 on `sunken` — under the 7:1 body floor. Deepened
 		// along the same indigo-blue.

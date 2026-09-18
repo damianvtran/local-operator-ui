@@ -81,15 +81,17 @@ export const gruvboxLight: ThemeDefinition = {
 		sunken: "#EFE2B9",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.06 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.08 from `surface`, 4.81 from `elevated` and 6.3 from `sunken`;
-		 * the step is -4.64 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.69:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 5.7 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.03x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.06 from `surface`, 8.44 from `elevated`, 4.86
+		 * from `sunken`, 2.8 from `accentWash`; the inks on the ground are 9.24:1,
+		 * 7.33:1, 5.16:1. Continuity with the panel: hue 6.82 degrees off the
+		 * panel's (the assertion allows 15) and chroma 15.99 where the panel carries
+		 * 15.49.
 		 */
-		highlight: "#EAEAD0",
+		highlight: "#E9E7C8",
 
 		ink: "#3C3836",
 		// Canonical dark3 665C54 is 5.18:1 on `sunken` and only ΔE00 5.6 from dark4, under

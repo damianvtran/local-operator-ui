@@ -70,32 +70,17 @@ export const localOperatorDark: ThemeDefinition = {
 		sunken: "#1d1b19",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own warm
-		 * ramp 3.81 `L*`, carrying 1.87x the panel's chroma. ΔE00 4.15 from `surface`,
-		 * 2.25 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 8.44 from `sunken`. The row is 1.091x the panel's relative
-		 * luminance.
-		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#25211b)
-		 * stepped 3.46 `L*` off the panel, and this one steps 3.81. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 13.69:1, `ink-muted` 7.27:1, `ink-dim` 4.68:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.68:1. The brand default, and the palette whose ink floor caps the shortest step
-		 * of the twelve: 3.81 `L*` is the last step that keeps `ink-dim` over the bound.
-		 * The chroma-only step this one also replaces (#271f13, ΔE00 4.14) put the row at
-		 * 2.0x the panel's chroma with a 2.82 `L*` step, less light than the 3.46 it
-		 * replaced.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.5 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.85x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.43 from `surface`, 3.02 from `elevated`, 8.45
+		 * from `sunken`, 16.68 from `accentWash`; the inks on the ground are 11.6:1,
+		 * 7.11:1, 5.16:1. Continuity with the panel: hue 11.43 degrees off the
+		 * panel's (the assertion allows 15) and chroma 8.62 where the panel carries
+		 * 4.67.
 		 */
-		highlight: "#292116",
+		highlight: "#372d23",
 
 		ink: "#f1eee6",
 		inkMuted: "#c2bcaf",
@@ -230,31 +215,16 @@ export const localOperatorLight: ThemeDefinition = {
 		sunken: "#ece6d8",
 
 		/*
-		 * The current row's own ground: `surface` stepped down its own warm
-		 * ramp 4.75 `L*`, carrying 1.85x the panel's chroma. ΔE00 4.02 from `surface`,
-		 * 6.15 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 2.36 from `sunken`. The row is 1.129x the panel's relative
-		 * luminance.
-		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#efede6)
-		 * stepped 3.83 `L*` off the panel, and this one steps 4.75. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 13.85:1, `ink-muted` 6.57:1, `ink-dim` 4.69:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.69:1. The brand light palette, and the third of the three the operator's report is
-		 * measured on. The chroma-only step this one also replaces (#f5f1e0, ΔE00 4.39)
-		 * put the row at 2.4x the panel's chroma with a 2.52 `L*` step, less dark than
-		 * the 3.83 it replaced.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.15 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.98x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.08 from `surface`, 6.49 from `elevated`, 2.52
+		 * from `sunken`, 5 from `accentWash`; the inks on the ground are 13.72:1,
+		 * 7.37:1, 5.16:1. Continuity with the panel: hue 8.1 degrees off the panel's
+		 * (the assertion allows 15) and chroma 7.22 where the panel carries 3.64.
 		 */
-		highlight: "#ECEBDE",
+		highlight: "#EBEADC",
 
 		ink: "#211e18",
 		inkMuted: "#4e4940",

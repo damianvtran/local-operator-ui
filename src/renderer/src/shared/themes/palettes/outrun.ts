@@ -94,15 +94,17 @@ export const outrun: ThemeDefinition = {
 		sunken: "#171A2B",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.04 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 3.75 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.1 from `surface`, 3.79 from `elevated` and 9.37 from `sunken`;
-		 * the step is 3.6 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.69:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.1 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.33x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.03 from `surface`, 2.57 from `elevated`, 10.19
+		 * from `sunken`, 12.59 from `accentWash`; the inks on the ground are 10.9:1,
+		 * 6.97:1, 5.16:1. Continuity with the panel: hue 0.31 degrees off the
+		 * panel's (the assertion allows 15) and chroma 27.99 where the panel carries
+		 * 21.02.
 		 */
-		highlight: "#231D3C",
+		highlight: "#262B54",
 
 		ink: "#E6E6F2",
 		/*

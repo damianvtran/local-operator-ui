@@ -57,17 +57,17 @@ export const solarizedDark: ThemeDefinition = {
 		sunken: "#00252E",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.1 toward `accent`, then stepped 2.5 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 3.25 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.71:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4.04 from `surface`, 3.58 from `elevated` and 7.12 from
-		 * `sunken`; the step of 2.65 `L*` is short of the 3 `L*` floor and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.25 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.03x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.1 from `surface`, 3.66 from `elevated`, 7.52 from
+		 * `sunken`, 6.2 from `accentWash`; the inks on the ground are 7.59:1,
+		 * 7.09:1, 5.16:1. Continuity with the panel: hue 14.32 degrees off the
+		 * panel's (the assertion allows 15) and chroma 15.85 where the panel carries
+		 * 15.32.
 		 */
-		highlight: "#023A42",
+		highlight: "#14394A",
 
 		// Upstream base1 93A1A1 — the tone the scheme paints body text with — is 6.13:1 on
 		// `elevated`, under the 7:1 floor. Lifted along the same grey-teal.

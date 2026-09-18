@@ -50,15 +50,17 @@ export const linen: ThemeDefinition = {
 		sunken: "#D3D5D0",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.07 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.02 from `surface`, 6.27 from `elevated` and 2.32 from `sunken`;
-		 * the step is -4.98 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 5.07:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.95 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 2.72x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.33:1 on
+		 * the row's ground. ΔE00 4.15 from `surface`, 6.25 from `elevated`, 2.19
+		 * from `sunken`, 2.96 from `accentWash`; the inks on the ground are 9.9:1,
+		 * 7.77:1, 5.33:1. Continuity with the panel: hue 1.43 degrees off the
+		 * panel's (the assertion allows 15) and chroma 4.33 where the panel carries
+		 * 1.59.
 		 */
-		highlight: "#D6DCD8",
+		highlight: "#D9DCD4",
 
 		ink: "#2B2E2C",
 

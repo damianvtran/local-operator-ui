@@ -72,28 +72,17 @@ export const dune: ThemeDefinition = {
 		sunken: "#1B1A1A",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own warm
-		 * ramp 6.44 `L*`, at 1.00x the panel's chroma. ΔE00 4.08 from `surface`,
-		 * 4.09 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 8.41 from `sunken`. The row is 1.156x the panel's relative
-		 * luminance.
-		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#211e1b)
-		 * stepped 3.52 `L*` off the panel, and this one steps 6.44. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 13.98:1, `ink-muted` 7.51:1, `ink-dim` 5.07:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 5.07:1.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.5 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 2.10x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.15:1 on
+		 * the row's ground. ΔE00 4.2 from `surface`, 2.22 from `elevated`, 8.89 from
+		 * `sunken`, 7.14 from `accentWash`; the inks on the ground are 11.96:1,
+		 * 7.1:1, 5.15:1. Continuity with the panel: hue 11.95 degrees off the
+		 * panel's (the assertion allows 15) and chroma 6.08 where the panel carries
+		 * 2.89.
 		 */
-		highlight: "#272421",
+		highlight: "#382e29",
 
 		// The old primary text was F9FAFB, a blue-white. Every other neutral here
 		// holds R greater than G greater than B, and one cool value in an otherwise

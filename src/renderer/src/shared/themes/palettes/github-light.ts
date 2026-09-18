@@ -61,15 +61,17 @@ export const githubLight: ThemeDefinition = {
 		sunken: "#DDE2E8",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.06 from `surface`, 6.81 from `elevated` and 2.13 from `sunken`;
-		 * the step is -4.4 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.89:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.95 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 2.58x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `sunken` at ΔE00 2.02
+		 * against its 2.0 field floor. ΔE00 4.06 from `surface`, 6.81 from
+		 * `elevated`, 2.02 from `sunken`, 5.2 from `accentWash`; the inks on the
+		 * ground are 12.73:1, 7.59:1, 5.28:1. Continuity with the panel: hue 6.56
+		 * degrees off the panel's (the assertion allows 15) and chroma 4.74 where
+		 * the panel carries 1.84.
 		 */
-		highlight: "#E1E9F2",
+		highlight: "#DFE8EF",
 
 		ink: "#1F2328",
 		// fg.subtle 6E7781 is 3.49:1 on `sunken`, so the readout rung darkens to clear the 4.5

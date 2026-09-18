@@ -16,7 +16,7 @@
 	--lo-surface: #F8F5EA;
 	--lo-elevated: #FEFDF8;
 	--lo-sunken: #EAE5D2;
-	--lo-highlight: #EAE7E0;
+	--lo-highlight: #EEE6D6;
 	--lo-ink: #1F1F1F;
 	--lo-ink-muted: #4E4937;
 	--lo-ink-dim: #655F45;
@@ -53,7 +53,7 @@
 	--lo-surface: #27272A;
 	--lo-elevated: #313135;
 	--lo-sunken: #1A1A1A;
-	--lo-highlight: #1C1B19;
+	--lo-highlight: #2F2E36;
 	--lo-ink: #E8E8E4;
 	--lo-ink-muted: #BEBEB9;
 	--lo-ink-dim: #A1A19E;
@@ -90,7 +90,7 @@
 	--lo-surface: #232E3D;
 	--lo-elevated: #2C3949;
 	--lo-sunken: #121A25;
-	--lo-highlight: #2B3946;
+	--lo-highlight: #28384E;
 	--lo-ink: #E3ECF4;
 	--lo-ink-muted: #B8CBD9;
 	--lo-ink-dim: #95AFBF;
@@ -127,7 +127,7 @@
 	--lo-surface: #312720;
 	--lo-elevated: #3A3027;
 	--lo-sunken: #1D1815;
-	--lo-highlight: #35271D;
+	--lo-highlight: #3D2C23;
 	--lo-ink: #EDDFD0;
 	--lo-ink-muted: #CFBAA5;
 	--lo-ink-dim: #B09F8A;
@@ -164,7 +164,7 @@
 	--lo-surface: #242934;
 	--lo-elevated: #2F3541;
 	--lo-sunken: #18191C;
-	--lo-highlight: #1D2835;
+	--lo-highlight: #2C3344;
 	--lo-ink: #C6C4BC;
 	--lo-ink-muted: #BAC5CE;
 	--lo-ink-dim: #9DA7B2;
@@ -201,7 +201,7 @@
 	--lo-surface: #F2F8FC;
 	--lo-elevated: #FFFFFF;
 	--lo-sunken: #DBE4EB;
-	--lo-highlight: #DFECF5;
+	--lo-highlight: #DDE9EE;
 	--lo-ink: #42464A;
 	--lo-ink-muted: #494C4F;
 	--lo-ink-dim: #525C6B;
@@ -238,7 +238,7 @@
 	--lo-surface: #2D3442;
 	--lo-elevated: #383F4E;
 	--lo-sunken: #191D27;
-	--lo-highlight: #313F50;
+	--lo-highlight: #343E52;
 	--lo-ink: #D6D5CE;
 	--lo-ink-muted: #BED6ED;
 	--lo-ink-dim: #A4B6CA;
@@ -275,7 +275,7 @@
 	--lo-surface: #363B4E;
 	--lo-elevated: #3D4255;
 	--lo-sunken: #2A2D3E;
-	--lo-highlight: #403F57;
+	--lo-highlight: #31425E;
 	--lo-ink: #D4DCFB;
 	--lo-ink-muted: #CED8FD;
 	--lo-ink-dim: #B0B8D8;
@@ -312,7 +312,7 @@
 	--lo-surface: #EFF1F5;
 	--lo-elevated: #F8F9FA;
 	--lo-sunken: #DADEE6;
-	--lo-highlight: #E1E1E9;
+	--lo-highlight: #E1E5F0;
 	--lo-ink: #3B3E57;
 	--lo-ink-muted: #404359;
 	--lo-ink-dim: #585A70;
@@ -349,7 +349,7 @@
 	--lo-surface: #2A2D42;
 	--lo-elevated: #30334A;
 	--lo-sunken: #1E2132;
-	--lo-highlight: #312F4B;
+	--lo-highlight: #322F4E;
 	--lo-ink: #CAD3F5;
 	--lo-ink-muted: #B9C1E1;
 	--lo-ink-dim: #9DA4C1;
@@ -386,7 +386,7 @@
 	--lo-surface: #262636;
 	--lo-elevated: #2B2B3F;
 	--lo-sunken: #191926;
-	--lo-highlight: #312F44;
+	--lo-highlight: #2F2F47;
 	--lo-ink: #CDD6F4;
 	--lo-ink-muted: #BAC2DE;
 	--lo-ink-dim: #9CA3C0;
@@ -423,7 +423,7 @@
 	--lo-surface: #282332;
 	--lo-elevated: #312A3E;
 	--lo-sunken: #1D1C22;
-	--lo-highlight: #1E171F;
+	--lo-highlight: #342738;
 	--lo-ink: #EAE5F2;
 	--lo-ink-muted: #BCB1CF;
 	--lo-ink-dim: #A496BF;
@@ -460,7 +460,7 @@
 	--lo-surface: #31271A;
 	--lo-elevated: #3A2F21;
 	--lo-sunken: #1D160C;
-	--lo-highlight: #3F2F20;
+	--lo-highlight: #3E2F1C;
 	--lo-ink: #F0E6D5;
 	--lo-ink-muted: #CEBEA9;
 	--lo-ink-dim: #B0A38A;
@@ -534,7 +534,7 @@
 	--lo-surface: #2C2825;
 	--lo-elevated: #393028;
 	--lo-sunken: #1B1A1A;
-	--lo-highlight: #272421;
+	--lo-highlight: #382e29;
 	--lo-ink: #F8F3EC;
 	--lo-ink-muted: #C9BCB0;
 	--lo-ink-dim: #ACA092;
@@ -571,7 +571,7 @@
 	--lo-surface: #2D2A45;
 	--lo-elevated: #373354;
 	--lo-sunken: #191726;
-	--lo-highlight: #3B3753;
+	--lo-highlight: #39355C;
 	--lo-ink: #E0DEF4;
 	--lo-ink-muted: #CDCBE0;
 	--lo-ink-dim: #B1ABCC;
@@ -608,7 +608,7 @@
 	--lo-surface: #343F44;
 	--lo-elevated: #3D484D;
 	--lo-sunken: #232A2E;
-	--lo-highlight: #3B4747;
+	--lo-highlight: #3D4D53;
 	--lo-ink: #F0E8D6;
 	--lo-ink-muted: #E2EBE3;
 	--lo-ink-dim: #BEC9C1;
@@ -645,7 +645,7 @@
 	--lo-surface: #F4EDD4;
 	--lo-elevated: #FDF6E3;
 	--lo-sunken: #DCD7BC;
-	--lo-highlight: #E4DFC0;
+	--lo-highlight: #E4DBBD;
 	--lo-ink: #394246;
 	--lo-ink-muted: #38413E;
 	--lo-ink-dim: #4E5952;
@@ -682,7 +682,7 @@
 	--lo-surface: #1F2C23;
 	--lo-elevated: #28352C;
 	--lo-sunken: #151A17;
-	--lo-highlight: #1F2E21;
+	--lo-highlight: #1F3427;
 	--lo-ink: #DDE8DD;
 	--lo-ink-muted: #B0C4B1;
 	--lo-ink-dim: #92A795;
@@ -719,7 +719,7 @@
 	--lo-surface: #F2F5F8;
 	--lo-elevated: #FFFFFF;
 	--lo-sunken: #DDE2E8;
-	--lo-highlight: #E1E9F2;
+	--lo-highlight: #DFE8EF;
 	--lo-ink: #1F2328;
 	--lo-ink-muted: #3F4751;
 	--lo-ink-dim: #575E68;
@@ -793,7 +793,7 @@
 	--lo-surface: #FDF6D8;
 	--lo-elevated: #FFFEF2;
 	--lo-sunken: #EFE2B9;
-	--lo-highlight: #EAEAD0;
+	--lo-highlight: #E9E7C8;
 	--lo-ink: #3C3836;
 	--lo-ink-muted: #4F4640;
 	--lo-ink-dim: #685C53;
@@ -867,7 +867,7 @@
 	--lo-surface: #F2F3F6;
 	--lo-elevated: #FDFDFF;
 	--lo-sunken: #E0E1E6;
-	--lo-highlight: #e5e7f1;
+	--lo-highlight: #e3e5ee;
 	--lo-ink: #33374C;
 	--lo-ink-muted: #3C4056;
 	--lo-ink-dim: #54586D;
@@ -904,7 +904,7 @@
 	--lo-surface: #E9E2B6;
 	--lo-elevated: #F2ECBC;
 	--lo-sunken: #D3CB9C;
-	--lo-highlight: #D6D1A7;
+	--lo-highlight: #DAD39F;
 	--lo-ink: #353556;
 	--lo-ink-muted: #484757;
 	--lo-ink-dim: #514E4A;
@@ -941,7 +941,7 @@
 	--lo-surface: #292936;
 	--lo-elevated: #353545;
 	--lo-sunken: #16161D;
-	--lo-highlight: #2F3445;
+	--lo-highlight: #323246;
 	--lo-ink: #DCD7BA;
 	--lo-ink-muted: #C8C093;
 	--lo-ink-dim: #ABA4BA;
@@ -978,7 +978,7 @@
 	--lo-surface: #292637;
 	--lo-elevated: #332E41;
 	--lo-sunken: #191821;
-	--lo-highlight: #2C263C;
+	--lo-highlight: #312B44;
 	--lo-ink: #E6E2F0;
 	--lo-ink-muted: #BEB8D1;
 	--lo-ink-dim: #A49CBB;
@@ -1015,7 +1015,7 @@
 	--lo-surface: #E8E9E6;
 	--lo-elevated: #F4F4F1;
 	--lo-sunken: #D3D5D0;
-	--lo-highlight: #D6DCD8;
+	--lo-highlight: #D9DCD4;
 	--lo-ink: #2B2E2C;
 	--lo-ink-muted: #393F3B;
 	--lo-ink-dim: #515753;
@@ -1052,7 +1052,7 @@
 	--lo-surface: #2b2721;
 	--lo-elevated: #363025;
 	--lo-sunken: #1d1b19;
-	--lo-highlight: #292116;
+	--lo-highlight: #372d23;
 	--lo-ink: #f1eee6;
 	--lo-ink-muted: #c2bcaf;
 	--lo-ink-dim: #a6a091;
@@ -1089,7 +1089,7 @@
 	--lo-surface: #f7f5ee;
 	--lo-elevated: #fefdfa;
 	--lo-sunken: #ece6d8;
-	--lo-highlight: #ECEBDE;
+	--lo-highlight: #EBEADC;
 	--lo-ink: #211e18;
 	--lo-ink-muted: #4e4940;
 	--lo-ink-dim: #656056;
@@ -1126,7 +1126,7 @@
 	--lo-surface: #1F2822;
 	--lo-elevated: #253328;
 	--lo-sunken: #1B1D1B;
-	--lo-highlight: #1A231C;
+	--lo-highlight: #203129;
 	--lo-ink: #D4E6D6;
 	--lo-ink-muted: #99BD9F;
 	--lo-ink-dim: #72AC7F;
@@ -1163,7 +1163,7 @@
 	--lo-surface: #F0F7F2;
 	--lo-elevated: #FBFDFB;
 	--lo-sunken: #D5E8DA;
-	--lo-highlight: #DEE5E0;
+	--lo-highlight: #DCE6DF;
 	--lo-ink: #1C2B21;
 	--lo-ink-muted: #38493E;
 	--lo-ink-dim: #4F6155;
@@ -1200,7 +1200,7 @@
 	--lo-surface: #2E2F28;
 	--lo-elevated: #3C3B31;
 	--lo-sunken: #1E1F1A;
-	--lo-highlight: #37392d;
+	--lo-highlight: #383a2f;
 	--lo-ink: #F8F8F2;
 	--lo-ink-muted: #BFBFBF;
 	--lo-ink-dim: #B1AE9C;
@@ -1237,7 +1237,7 @@
 	--lo-surface: #212737;
 	--lo-elevated: #2B324A;
 	--lo-sunken: #1B1B1F;
-	--lo-highlight: #1c2231;
+	--lo-highlight: #253047;
 	--lo-ink: #E0E0E0;
 	--lo-ink-muted: #BEBECE;
 	--lo-ink-dim: #A2A1B4;
@@ -1274,7 +1274,7 @@
 	--lo-surface: #25282F;
 	--lo-elevated: #2D313A;
 	--lo-sunken: #191B1E;
-	--lo-highlight: #1E272E;
+	--lo-highlight: #2B2E3B;
 	--lo-ink: #DCDFE4;
 	--lo-ink-muted: #B7BDCA;
 	--lo-ink-dim: #98A2B0;
@@ -1311,7 +1311,7 @@
 	--lo-surface: #202D3E;
 	--lo-elevated: #29394F;
 	--lo-sunken: #131A24;
-	--lo-highlight: #20374F;
+	--lo-highlight: #1F354E;
 	--lo-ink: #CDCECF;
 	--lo-ink-muted: #B1B2B3;
 	--lo-ink-dim: #9BABBE;
@@ -1348,7 +1348,7 @@
 	--lo-surface: #343B49;
 	--lo-elevated: #3B4252;
 	--lo-sunken: #272C36;
-	--lo-highlight: #30404E;
+	--lo-highlight: #314254;
 	--lo-ink: #ECEFF4;
 	--lo-ink-muted: #D8DEE9;
 	--lo-ink-dim: #AFB8C7;
@@ -1385,7 +1385,7 @@
 	--lo-surface: #2A2A2D;
 	--lo-elevated: #37363A;
 	--lo-sunken: #1B1B1E;
-	--lo-highlight: #232329;
+	--lo-highlight: #34343c;
 	--lo-ink: #FAFAFA;
 	--lo-ink-muted: #C5C5CE;
 	--lo-ink-dim: #A7A7AF;
@@ -1422,7 +1422,7 @@
 	--lo-surface: #1A2C37;
 	--lo-elevated: #223540;
 	--lo-sunken: #131A20;
-	--lo-highlight: #183038;
+	--lo-highlight: #123444;
 	--lo-ink: #DCEBEE;
 	--lo-ink-muted: #A9C3CA;
 	--lo-ink-dim: #87A8B1;
@@ -1459,7 +1459,7 @@
 	--lo-surface: #2F343D;
 	--lo-elevated: #3A404B;
 	--lo-sunken: #21252B;
-	--lo-highlight: #333E4B;
+	--lo-highlight: #353D4C;
 	--lo-ink: #D3DBE7;
 	--lo-ink-muted: #CBD4E3;
 	--lo-ink-dim: #AAB5C4;
@@ -1496,7 +1496,7 @@
 	--lo-surface: #F4F4F4;
 	--lo-elevated: #FFFFFF;
 	--lo-sunken: #E1E0E0;
-	--lo-highlight: #E5ECF1;
+	--lo-highlight: #E6EBF2;
 	--lo-ink: #383A42;
 	--lo-ink-muted: #43454F;
 	--lo-ink-dim: #5B5C63;
@@ -1533,7 +1533,7 @@
 	--lo-surface: #232543;
 	--lo-elevated: #2A2E4F;
 	--lo-sunken: #171A2B;
-	--lo-highlight: #231D3C;
+	--lo-highlight: #262B54;
 	--lo-ink: #E6E6F2;
 	--lo-ink-muted: #B6B8D9;
 	--lo-ink-dim: #9A9DC7;
@@ -1570,7 +1570,7 @@
 	--lo-surface: #2F3446;
 	--lo-elevated: #353B4E;
 	--lo-sunken: #232736;
-	--lo-highlight: #383750;
+	--lo-highlight: #263b54;
 	--lo-ink: #EEFFFF;
 	--lo-ink-muted: #C3CAEB;
 	--lo-ink-dim: #A8ADC6;
@@ -1607,7 +1607,7 @@
 	--lo-surface: #EFE8D9;
 	--lo-elevated: #F9F3E6;
 	--lo-sunken: #DFD7C1;
-	--lo-highlight: #DDD6C8;
+	--lo-highlight: #DED6C7;
 	--lo-ink: #332B20;
 	--lo-ink-muted: #443C31;
 	--lo-ink-dim: #5D5445;
@@ -1644,7 +1644,7 @@
 	--lo-surface: #25293A;
 	--lo-elevated: #303550;
 	--lo-sunken: #181A1D;
-	--lo-highlight: #272c3d;
+	--lo-highlight: #2d344b;
 	--lo-ink: #F2F7FC;
 	--lo-ink-muted: #C2D2E0;
 	--lo-ink-dim: #91ABBF;
@@ -1681,7 +1681,7 @@
 	--lo-surface: #262436;
 	--lo-elevated: #2e2a42;
 	--lo-sunken: #191822;
-	--lo-highlight: #2F2131;
+	--lo-highlight: #33263F;
 	--lo-ink: #e0def4;
 	--lo-ink-muted: #c5c2dd;
 	--lo-ink-dim: #9d99b7;
@@ -1718,7 +1718,7 @@
 	--lo-surface: #f9f4f0;
 	--lo-elevated: #fdfcfa;
 	--lo-sunken: #f2e7da;
-	--lo-highlight: #FDEFEA;
+	--lo-highlight: #F7EAE1;
 	--lo-ink: #464268;
 	--lo-ink-muted: #544e6c;
 	--lo-ink-dim: #636071;
@@ -1755,7 +1755,7 @@
 	--lo-surface: #2a273f;
 	--lo-elevated: #373350;
 	--lo-sunken: #1b192a;
-	--lo-highlight: #38334B;
+	--lo-highlight: #322E4F;
 	--lo-ink: #e0def4;
 	--lo-ink-muted: #c9c6e0;
 	--lo-ink-dim: #aaa7c3;
@@ -1792,7 +1792,7 @@
 	--lo-surface: #342526;
 	--lo-elevated: #3D2E2F;
 	--lo-sunken: #201718;
-	--lo-highlight: #372428;
+	--lo-highlight: #40292d;
 	--lo-ink: #EEE0DC;
 	--lo-ink-muted: #D1B9B4;
 	--lo-ink-dim: #B29D98;
@@ -1829,7 +1829,7 @@
 	--lo-surface: #FAF6EB;
 	--lo-elevated: #FFFEF9;
 	--lo-sunken: #E8E1CF;
-	--lo-highlight: #e8e4da;
+	--lo-highlight: #e9e3d6;
 	--lo-ink: #222C1F;
 	--lo-ink-muted: #404935;
 	--lo-ink-dim: #556147;
@@ -1866,7 +1866,7 @@
 	--lo-surface: #05333F;
 	--lo-elevated: #0D3C49;
 	--lo-sunken: #00252E;
-	--lo-highlight: #023A42;
+	--lo-highlight: #14394A;
 	--lo-ink: #C2CECE;
 	--lo-ink-muted: #B9C8C8;
 	--lo-ink-dim: #98ACAE;
@@ -1903,7 +1903,7 @@
 	--lo-surface: #F9F5E9;
 	--lo-elevated: #FEFDF9;
 	--lo-sunken: #E5DFCC;
-	--lo-highlight: #EBECE4;
+	--lo-highlight: #E6E2D6;
 	--lo-ink: #073642;
 	--lo-ink-muted: #33484F;
 	--lo-ink-dim: #4B5F67;
@@ -1940,7 +1940,7 @@
 	--lo-surface: #2E1D42;
 	--lo-elevated: #3A2A51;
 	--lo-sunken: #1C1A20;
-	--lo-highlight: #281641;
+	--lo-highlight: #3b2554;
 	--lo-ink: #F7F2FB;
 	--lo-ink-muted: #C7B8D8;
 	--lo-ink-dim: #AB9BBD;
@@ -1977,7 +1977,7 @@
 	--lo-surface: #2D2A41;
 	--lo-elevated: #35314C;
 	--lo-sunken: #1E1B2A;
-	--lo-highlight: #392F4B;
+	--lo-highlight: #343051;
 	--lo-ink: #F2EFF8;
 	--lo-ink-muted: #BCB3D4;
 	--lo-ink-dim: #9DA4D6;
@@ -2014,7 +2014,7 @@
 	--lo-surface: #25293C;
 	--lo-elevated: #30344E;
 	--lo-sunken: #18181F;
-	--lo-highlight: #313342;
+	--lo-highlight: #28304c;
 	--lo-ink: #C0CAF5;
 	--lo-ink-muted: #BBC3E8;
 	--lo-ink-dim: #9FA6C6;
@@ -2051,7 +2051,7 @@
 	--lo-surface: #EAEBEE;
 	--lo-elevated: #F3F4F5;
 	--lo-sunken: #D8DAE1;
-	--lo-highlight: #DCE3ED;
+	--lo-highlight: #D7DEE7;
 	--lo-ink: #223D7B;
 	--lo-ink-muted: #34427D;
 	--lo-ink-dim: #4F577F;
@@ -2088,7 +2088,7 @@
 	--lo-surface: #2B3048;
 	--lo-elevated: #333955;
 	--lo-sunken: #1D2032;
-	--lo-highlight: #2D3858;
+	--lo-highlight: #2F3759;
 	--lo-ink: #CAD4FF;
 	--lo-ink-muted: #C1CBF5;
 	--lo-ink-dim: #A1ACD5;
@@ -2125,7 +2125,7 @@
 	--lo-surface: #1F2734;
 	--lo-elevated: #273141;
 	--lo-sunken: #1A1B1E;
-	--lo-highlight: #0F1E2B;
+	--lo-highlight: #1E2F42;
 	--lo-ink: #D8E6F2;
 	--lo-ink-muted: #A5BED2;
 	--lo-ink-dim: #83A4BE;
@@ -2162,7 +2162,7 @@
 	--lo-surface: #2C2240;
 	--lo-elevated: #342A4C;
 	--lo-sunken: #1C152D;
-	--lo-highlight: #362241;
+	--lo-highlight: #342750;
 	--lo-ink: #EDE8F2;
 	--lo-ink-muted: #C4B6D8;
 	--lo-ink-dim: #A89AC5;

@@ -63,31 +63,17 @@ export const tokyoNight: ThemeDefinition = {
 		sunken: "#18181F",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own blue
-		 * ramp 5.09 `L*`, at 0.76x the panel's chroma, i.e. less tinted than the ground it sits on. ΔE00 4.09 from `surface`,
-		 * 4.74 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 10.53 from `sunken`. The row is 1.167x the panel's relative
-		 * luminance.
-		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#2b2f42)
-		 * stepped 3.26 `L*` off the panel, and this one steps 5.09. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 7.73:1, `ink-muted` 5.91:1, `ink-dim` 4.72:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.72:1. The theme in the operator's own screenshot, where the row measured ΔE00 2.23 and read as no mark at all beside a hovered neighbour at 4.58.
-		 * The chroma-only step this one also replaces (#262d4a, ΔE00 4.24) bought the band
-		 * with 1.50x the panel's chroma at a 2.61 `L*` step — less light than the value
-		 * before it, which is the state he had already seen.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.25 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.44x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.16-to-4 band
+		 * on `surface`. ΔE00 4.16 from `surface`, 2.12 from `elevated`, 12.03 from
+		 * `sunken`, 2.77 from `accentWash`; the inks on the ground are 8.04:1,
+		 * 7.47:1, 5.41:1. Continuity with the panel: hue 0.79 degrees off the
+		 * panel's (the assertion allows 15) and chroma 19.09 where the panel carries
+		 * 13.26.
 		 */
-		highlight: "#313342",
+		highlight: "#28304c",
 
 		ink: "#C0CAF5",
 		/*

@@ -71,17 +71,18 @@ export const catppuccinFrappe: ThemeDefinition = {
 		elevated: "#3D4255",
 		sunken: "#2A2D3E",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.12 toward `accent`, then stepped 2.52 on the `L*` axis — branch H
-		 * of this port's selection rule, and this palette's OWN ink is what caps the step:
-		 * `inkDim` reaches its floor with the 0.15 of headroom at 2.75 `L*` on this panel
-		 * (4.66:1 there), so the band is paid on the cast. Design round 3 (D2) found the
-		 * first cut stopping at 0.31 `L*` — an eighth of that cap — so the step now runs to
-		 * the cap and the cast pays only the remainder: ΔE00 4.34 from `surface`, 4.09 from
-		 * `elevated`, 7.21 from `sunken`. The step is still short of the 3 `L*` floor and is
-		 * pinned against the cap in `scripts/contrast-contract.mjs`, which re-derives it.
+		 * The current row's own ground, and the one palette class this pass pins:
+		 * `surface` stepped 2.4 `L*` lighter at the panel's own hue, under the 3
+		 * `L*` the direction floor asks for, because this palette's own inks cap the
+		 * lightness route at 2.4 `L*`. The band is paid on the cast at 1.49x the
+		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
+		 * What binds this one is `ink-dim` at 5.16:1 on the row's ground. ΔE00 5.2
+		 * from `surface`, 4.88 from `elevated`, 8.66 from `sunken`, 6.43 from
+		 * `accentWash`; the inks on the ground are 7.45:1, 7.18:1, 5.16:1.
+		 * Continuity with the panel: hue 8.45 degrees off the panel's (the assertion
+		 * allows 15) and chroma 18.8 where the panel carries 12.6.
 		 */
-		highlight: "#403F57",
+		highlight: "#31425E",
 
 		// Canonical text C6D0F5 is 6.52:1 on `elevated` — under the 7:1 body floor. Lifted
 		// along the same lavender-white.

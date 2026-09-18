@@ -50,14 +50,17 @@ export const paper: ThemeDefinition = {
 		sunken: "#DFD7C1",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` stepped 6.25 on the `L*` axis in the mode's direction — the
-		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
-		 * so the row takes no cast. ΔE00 4.03 from `surface`, 6.34 from
-		 * `elevated` and 3.06 from `sunken`; the step is -6.34 `L*`, and the band
-		 * this branch raised to ΔE00 4.0 is met without a cast.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 6.2 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.03x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.01 from `surface`, 6.38 from `elevated`, 2.79
+		 * from `sunken`, 7.69 from `accentWash`; the inks on the ground are 9.65:1,
+		 * 7.51:1, 5.16:1. Continuity with the panel: hue 2.53 degrees off the
+		 * panel's (the assertion allows 15) and chroma 8.38 where the panel carries
+		 * 8.13.
 		 */
-		highlight: "#DDD6C8",
+		highlight: "#DED6C7",
 
 		ink: "#332B20",
 
