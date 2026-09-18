@@ -2066,26 +2066,26 @@ export const UpdateNotification = ({
 								? /* THE REBUILD'S OWN SENTENCE - the release path's reassurance is false here. */
 									`Rebuilding the server from this machine's checkout. This reinstalls the install in place, so sessions running on this machine can be interrupted while it runs, and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
 								: /*
-								 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
-								 * ~47 s cold, against ~15 s for the restart - and the old single
-								 * sentence described only the restart, so a user watching the panel
-								 * for a minute could not tell this phase from a hang, nor from the
-								 * phase that had not started. The server really is still serving here:
-								 * under generations nothing running is rewritten.
-								 */
-								`Installing the new server build. The server you are using keeps serving while this runs${
-									/*
-									 * THE CLAUSE IS THE PROMISE (UX U13). It is true when the app will
-									 * bounce the daemon the reader is talking to, and false on a machine
-									 * where discovery adopted one - where the offer two seconds earlier
-									 * already said so, and where the app's own completion notice says it
-									 * again ("Local Operator does not restart a server it did not
-									 * start"). The sentence keeps every other fact either way.
+									 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
+									 * ~47 s cold, against ~15 s for the restart - and the old single
+									 * sentence described only the restart, so a user watching the panel
+									 * for a minute could not tell this phase from a hang, nor from the
+									 * phase that had not started. The server really is still serving here:
+									 * under generations nothing running is rewritten.
 									 */
-									serverRestartsWithInstall(backendUpdateInfo)
-										? ", and it restarts once the install lands"
-										: ""
-								}. This can take a minute or two on a normal connection, and longer on a slow one, and the update can't be interrupted once it has started.`
+									`Installing the new server build. The server you are using keeps serving while this runs${
+										/*
+										 * THE CLAUSE IS THE PROMISE (UX U13). It is true when the app will
+										 * bounce the daemon the reader is talking to, and false on a machine
+										 * where discovery adopted one - where the offer two seconds earlier
+										 * already said so, and where the app's own completion notice says it
+										 * again ("Local Operator does not restart a server it did not
+										 * start"). The sentence keeps every other fact either way.
+										 */
+										serverRestartsWithInstall(backendUpdateInfo)
+											? ", and it restarts once the install lands"
+											: ""
+									}. This can take a minute or two on a normal connection, and longer on a slow one, and the update can't be interrupted once it has started.`
 							: backendUpdatePhase === "restarting"
 								? "The new build has landed. The server is restarting onto it now, so it is offline while it comes back - usually a few seconds, up to half a minute - and anything in flight is dropped."
 								: serverRestartsWithInstall(backendUpdateInfo)
@@ -2429,7 +2429,10 @@ export const UpdateNotification = ({
 		 * split stays for them and nothing else.
 		 */
 		const failure = backendUpdateFailure.installerOutput
-			? { sentence: backendUpdateFailure.message, output: backendUpdateFailure.installerOutput }
+			? {
+					sentence: backendUpdateFailure.message,
+					output: backendUpdateFailure.installerOutput,
+				}
 			: splitInstallerOutput(backendUpdateFailure.message);
 		return withErrorToast(
 			<UpdateContainer tone="failed">

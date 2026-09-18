@@ -1454,8 +1454,18 @@ test("every python-running runCommand call site in the update service passes the
 	 * own lookup reads. Asserted here because the `runCommand` inventory above can no
 	 * longer reach it.
 	 */
-	const runnerCall = source.slice(source.indexOf("runInOwnProcessGroup({"));
-	assert.ok(runnerCall.length > 0, "the update child is not spawned by name");
+	/*
+	 * THE INDEX IS ASSERTED, not sliced blind (review round 9, N1). `indexOf` returns -1 on a
+	 * miss, and `slice(-1)` then yields the file's LAST CHARACTER - so the old `length > 0`
+	 * check passed on exactly the case it was written for, and the regex below only failed by
+	 * the accident of that character not matching. A miss has to fail here, by name.
+	 */
+	const runnerAt = source.indexOf("runInOwnProcessGroup({");
+	assert.ok(
+		runnerAt >= 0,
+		"the update child is not spawned by name: no `runInOwnProcessGroup({` call site in the update service, so this guard has nothing to read",
+	);
+	const runnerCall = source.slice(runnerAt);
 	assert.match(
 		runnerCall,
 		/env:\s*\{\s*\.\.\.this\.pythonSpawnEnv\(\),\s*PATH:\s*updatePath\s*\}/,

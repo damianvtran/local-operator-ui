@@ -2622,7 +2622,7 @@ export const STORIES = [
 		1280,
 		900,
 		{
-			expectSentence: "something it started may still be replacing the install",
+			expectSentence: "Resolved 55 packages in 1.25s",
 		},
 	],
 	[

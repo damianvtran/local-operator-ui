@@ -164,25 +164,6 @@ const mockUpdaterApi = () => {
 				return new Promise<boolean>(() => {});
 			}
 			/*
-			 * THE TWO ARMS THE RE-LANDING'S STORIES WERE BUILT ON (recorded on the PR): the
-			 * source-build refusal and the stopped-updater timeout. Their flags are the
-			 * app-owned lane's vocabulary now, so nothing sets them today - the payloads stay
-			 * here, and used, because they are the fixtures the copy case reads to prove the
-			 * sentences it asserts are ones the producer can actually compose (QA Q-2).
-			 */
-			if (window.triggerBackendUpdateSourceBuildFailed) {
-				for (const listener of [...backendUpdateErrorListeners]) {
-					listener({ message: SOURCE_BUILD_REFUSAL_SENTENCE, phase: "update" });
-				}
-				return false;
-			}
-			if (window.triggerBackendUpdateFailedOrphan) {
-				for (const listener of [...backendUpdateErrorListeners]) {
-					listener({ message: ORPHANED_UPDATER_SENTENCE, phase: "update" });
-				}
-				return false;
-			}
-			/*
 			 * THE FAILURE THAT CARRIES A DIAGNOSIS. `SOURCE_BUILD_REFUSAL_OUTPUT` is the operator's
 			 * OWN `lop-update` output - captured by driving the real script in an isolated
 			 * repository whose `main` is one commit behind its `origin/main`, so it refuses before
@@ -1564,7 +1545,7 @@ const PressUpdateServer = ({
 		}
 		window.triggerBackendUpdatePhase = phase ?? undefined;
 		setReady(true);
-	}, [outcome, phase]);
+	}, [outcome, phase, variant]);
 	useEffect(() => {
 		if (!ready) return;
 		document.documentElement.dataset.capturePending = "1";
