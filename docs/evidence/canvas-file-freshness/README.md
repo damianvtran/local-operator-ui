@@ -1,30 +1,33 @@
 # Canvas file freshness
 
-Three frames from the **real built app**, driven by the repo's own harness
-(`scripts/renderer-driver.mjs --scene canvas-freshness`), of the one surface this
-change adds: the document's own line — the file's last modification, in the
-reader's local timezone, with the control that re-reads the file — and the
-behaviour behind it.
+Five frames from the **real built app**, driven by the repo's own harness
+(`scripts/renderer-driver.mjs --scene canvas-freshness`), of the document line
+this change adds and of the behaviour behind it.
 
 They exist because the claims under review are claims about a running
-application, and a unit test with a fake bridge cannot reach either end of them:
+application, and a unit test with a fake bridge cannot reach any end of them:
 
 - a file written **by another process, on disk**, while its tab is open has to
   appear with no interaction. Only a real `statSync` in main, a real `readFile`
   over IPC and a real mount can show that;
-- the rewrite that matters most is the one no probe can see — same mtime,
-  different bytes — so its only witness is a frame before and after a press;
+- the rewrite that matters most is the one no probe can see - same mtime,
+  different bytes - so its only witness is a frame before and after a press;
 - "the tab that is not on screen is left alone" is a claim about what does NOT
-  happen, which is why the run reads the app's own persisted store rather than
-  trusting a frame.
+  happen, which is why the run counts the app's own `fs` calls rather than
+  trusting a frame;
+- the HTML viewer renders a URL the **backend** serves, inside an iframe, so the
+  store write alone changed nothing on screen until this round: its proof is a
+  request, and the frame is what that request produced.
 
 | frame | what it shows |
 | --- | --- |
 | [`before/localOperatorDark.webp`](before/localOperatorDark.webp) | The document opened from disk: the line reads `Modified October 9, 2025 at 4:53 AM` (the file's own mtime, rendered in the capturing machine's timezone) with the re-read control at the right, above the markdown toolbar. The editor holds `first-version`, which is what the file says. |
-| [`after/localOperatorDark.webp`](after/localOperatorDark.webp) | The same tab after a rewrite whose mtime was restored to the value the app already held — a write the two-second poll cannot see, because the mtime is what decides. The press on the re-read control is what applied it, and the editor now holds `third-version` under a line reading `Modified October 9, 2025 at 4:54 AM`. |
-| [`activation/localOperatorDark.webp`](activation/localOperatorDark.webp) | Two tabs, the second document on screen, and `notes.md` re-selected after its file was rewritten off screen. The switch applied the new bytes (`fourth-version`) and the line moved with them: `Modified October 9, 2025 at 4:55 AM`. |
+| [`after/localOperatorDark.webp`](after/localOperatorDark.webp) | The same tab after a rewrite whose mtime was restored to the value the app already held - a write the two-second poll cannot see, because the mtime is what decides. The press on the re-read control is what applied it, the editor now holds `third-version`, and the row's register says `Updated from disk`. |
+| [`activation/localOperatorDark.webp`](activation/localOperatorDark.webp) | Two tabs, the second document on screen, and `notes.md` re-selected after its file was rewritten off screen. The switch applied the new bytes (`fourth-version`) and the line moved with them: `Modified October 9, 2025 at 4:55 AM`. The off-screen window is where the run counted **0 probes** for this document and 2 for the one on screen. |
+| [`html-before/localOperatorDark.webp`](html-before/localOperatorDark.webp) | An HTML document in the viewer whose bytes the BACKEND fetches, showing `html-first-version` at `Modified October 9, 2025 at 4:48 AM`. |
+| [`html-after/localOperatorDark.webp`](html-after/localOperatorDark.webp) | The same viewer after the file was rewritten from outside: `html-second-version` is on screen, the line moved to `4:50 AM`, and the row says `Updated from disk`. This is code review round 1's M1, which the store write alone could not reach: before the fix the line moved, the store held the new bytes, and the preview kept showing the old document. The run asserts the re-fetch directly as well - a new request for `panel.html` appears on the renderer's own request log - because the iframe is cross-origin from the app and its DOM cannot be read back. |
 
-All three are full-window frames of an **isolated** run: a scratch `HOME`, a
+All five are full-window frames of an **isolated** run: a scratch `HOME`, a
 scratch `LOCAL_OPERATOR_CONFIG_DIR`, a scratch `--user-data-dir`, the app's own
 `headless` window mode (never shown, never focusable), `CMUX_*`/`LOP_*` stripped
 from the child environment, and a backend this run started and reaped itself. The
@@ -56,28 +59,47 @@ node scripts/renderer-driver.mjs --scene canvas-freshness \
   --out /tmp/canvas-freshness-frames --clean
 ```
 
-The scene writes both subject files (`notes.md`, `report.py`) and sets their
-mtimes explicitly - to a FIXED epoch, not to `Date.now()` - so every claim in it
-is exact rather than clock-dependent and the frames reproduce byte-for-byte on a
-re-run (measured: two runs on the rebased head produced identical PNGs, `shasum
--a 256`). It fails rather than skips if any claim does not hold. The run's own output —
-every check, the mtimes it set, the stamped line it read back, the geometry it
-measured and the two latencies — is quoted in the pull request.
+Two harness accommodations are worth knowing, because neither is a property of
+the app and both are visible from outside:
+
+- **The CSP is widened in the BUILD OUTPUT.** The renderer's `frame-src` names
+  the operator's own `:1111` hosts and this run's backend is on a port picked for
+  it, so the HTML viewer's iframe is refused before a request is made (`src/` is
+  untouched and `out/` is gitignored; the run says what it widened). The
+  `mentioned-files-app` rig records the same accommodation for its media frames.
+- **The probe counter is installed in MAIN.** The page cannot be counted from
+  itself (`window.api` is a `contextBridge` object, so a wrapper assigned over one
+  of its properties is silently ignored - measured, and it is why this scene's
+  first version read zero for a run in which probes happened), so the run launches
+  with `--inspect=<port>` and wraps the `fs` calls `probe-files` makes, limited to
+  the run's own scratch root. Every run PROVES the instrument before measuring: a
+  probe issued from the renderer through the app's own bridge must appear in the
+  log (`{"before":2,"after":3,"counted":true}` in the captured run).
+
+The scene writes its subject files (`notes.md`, `report.py`, `panel.html`) and
+sets their mtimes explicitly - to a FIXED epoch, not to `Date.now()` - so every
+claim in it is exact rather than clock-dependent and the frames reproduce
+byte-for-byte on a re-run (measured: two runs on a folded head produced identical
+PNGs, `shasum -a 256`). It fails rather than skips if any claim does not hold.
+The run's own output is quoted on the pull request.
 
 ## What it does not show
 
 - **A genuinely hidden window.** The run's renderer reports
   `document.visibilityState === "visible"` (a headless Electron window is not a
   hidden one), so the `visibilitychange` half of the trigger cannot be produced
-  here. The check it guards is the same check the poll runs, and the
-  `hidden` half is asserted in `scripts/canvas-file-freshness.test.mjs` at the
-  level the decision lives at.
-- **A real reader's typing**, so the dirty-buffer suppression is not in these
-  frames: it is covered against the shipped module by
-  `scripts/canvas-file-freshness.test.mjs` (a dirty document is not even probed;
-  a forced check reports that the file moved on and applies nothing). A frame of
-  it would need a typing gesture this harness has no verb for.
-- **The other viewers.** Every document in the canvas gets the line and the
-  control, and the byte viewers re-read by moving the object URL's cache key,
-  but only the markdown and code surfaces appear above. The viewers' own
-  re-read is the same store write the tests assert, not a second mechanism.
+  here. The check it guards is the same check the poll runs, and the `hidden`
+  half is asserted in `scripts/canvas-file-freshness.test.mjs` at the level the
+  decision lives at.
+- **A real reader's typing.** The dirty-buffer behaviour is driven against the
+  shipped modules by `scripts/canvas-file-freshness.test.mjs` (a dirty document
+  is probed and reports whether the file moved on; nothing is applied over it;
+  a keystroke that lands mid-read still wins), and this harness has no typing verb
+  to photograph it. The per-frame claims above are therefore about the file, never
+  about a buffer with unsaved edits in it.
+- **The other byte viewers.** Every document in the canvas gets the line and the
+  control, and pdf/image/audio re-read by moving the object URL's cache key while
+  video re-keys on both of the document's version fields - the same store write
+  the tests assert, not a second mechanism. Nothing here plays a video or paints a
+  PDF: this set trades those for the HTML case, which was the one viewer kind the
+  store write could not reach at all.
