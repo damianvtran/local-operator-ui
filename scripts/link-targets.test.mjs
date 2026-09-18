@@ -696,6 +696,50 @@ test("a token the markdown SPLIT is not linked as if it were whole", async () =>
 	]);
 });
 
+test("an editor line reference is trimmed on the prose tier too, and the span stops short of it", () => {
+	/*
+	 * `LINE_REFERENCE` used to be a `file://`-tier rule only, and prose got the
+	 * right answer by accident: `/a/run.mjs:59` was refused because its extension
+	 * read `mjs:59`. So a real file named in an editor reference had no link, and
+	 * the two tiers of one grammar disagreed about what a name is - the same class
+	 * of divergence this module exists to prevent.
+	 *
+	 * The span is asserted, not only the target: a link whose TARGET is the `.mjs`
+	 * while its TEXT still covers `:59` would claim a file that does not exist, and
+	 * the off-by-one is invisible in the target alone.
+	 */
+	const text = "see /Users/x/proj/run.mjs:59 here";
+	const [span] = targetsIn(text, LINK_POLICY);
+	assert.equal(span.target, "/Users/x/proj/run.mjs");
+	assert.equal(text.slice(span.start, span.end), "/Users/x/proj/run.mjs");
+	/* A range (`:59:12`) is the same suffix. */
+	const ranged = "see /Users/x/proj/run.mjs:59:12 here";
+	const [rangedSpan] = targetsIn(ranged, LINK_POLICY);
+	assert.equal(rangedSpan.target, "/Users/x/proj/run.mjs");
+	assert.equal(
+		ranged.slice(rangedSpan.start, rangedSpan.end),
+		"/Users/x/proj/run.mjs",
+	);
+	/* And through the plugin, which is what renders the anchor. */
+	assert.deepEqual(linksIn(text), [
+		{ url: "/Users/x/proj/run.mjs", text: "/Users/x/proj/run.mjs" },
+	]);
+	/*
+	 * The trim is the same rule the `file://` tier already applied, so the two
+	 * spellings of one reference now agree - which is the point of one grammar.
+	 */
+	assert.deepEqual(
+		found("see file:///Users/x/proj/run.mjs:59 here", LINK_POLICY),
+		["file-url:/Users/x/proj/run.mjs"],
+	);
+	/*
+	 * A sentence colon is not a line reference: nothing to trim, nothing lost.
+	 */
+	assert.deepEqual(found("wrote /tmp/notes.md: and stopped", LINK_POLICY), [
+		"path:/tmp/notes.md",
+	]);
+});
+
 /* ---------------------------------------------------- existing markdown, untouched */
 
 const MARKDOWN_ONLY = [
