@@ -30,6 +30,20 @@ completion.
   each with its check, and the control beside the group's own count — its label
   naming the number the click will clear (`Mark all 3 read`), which is the set the
   request carries, because the same predicate produces both.
+- **`mark-all-read-unseen-without-mark/`** — the operator's report from the other
+  side, and the state that produced this control's own count fix: three rows that
+  still carry `unseen` and a completion token, whose live state has taken the row
+  over (a session waiting on its subagents, a parked approval, a runtime that
+  stopped answering), so each draws a spinner, a gate or a "not answering" row and
+  NONE draws a mark. There is no control and the readout says `0 unread row(s) it
+  would name`, with `unseen, no mark drawn` printed per row so the frame shows
+  both halves of the disagreement. Before the fix the same roster offered
+  `Mark all 3 read`, because the count read `unseen` alone while the glyph read
+  the runtime's derived `status.code` as well — and a click would have
+  acknowledged completions that were never on screen, which nothing can undo.
+  The readout's own line is the same one every frame in this set carries, so the
+  absence is stated in words rather than left to be inferred from a missing
+  button.
 - **`mark-all-read-partly-read/`** — the state the whole per-item verdict exists
   for. Two marks cleared, one REFUSED (`superseded`: the conversation completed
   again between the render and the click, so the token this client held is no
@@ -81,20 +95,42 @@ completion.
 Storybook, through the repo's own `scripts/capture-evidence.mjs`:
 
 ```
-npx storybook dev -p 6017 --ci --quiet
-node scripts/capture-evidence.mjs http://localhost:6017 \
+npx storybook dev -p 6037 --ci --quiet
+node scripts/capture-evidence.mjs http://localhost:6037 \
   --only=chat-sidebar-status-feed-- --allow-backend
 ```
 
 `--allow-backend` is required while the operator's own backend is answering on
 the default port (1111): the capturer's pre-flight guard refuses to run against a
 live one, and these stories stub their own transport, so no frame can show any
-backend's replies. The frames in this set were taken on port **6027** because
-6017 was serving another session's worktree at the time — the port is the
-capturer's first argument and nothing about the frames depends on it. Both lines
-are the command that actually produced them; a README that records a different
-command from the run is a claim a reproducer cannot trust (agent review round 1,
-R6).
+backend's replies. The frames in this set were taken on port **6037** because
+6017 and 6027 were serving other sessions' worktrees at the time — the port is
+the capturer's first argument and nothing about the frames depends on it. Both
+lines are the command that actually produced them; a README that records a
+different command from the run is a claim a reproducer cannot trust (agent review
+round 1, R6).
+
+**Run this set as a WHOLE, never one story at a time** — the states in it share
+module state (`entities`, the agents and teams a story stages) that no story
+resets, so a story captured alone is a picture of a fixture the sweep does not
+build. Measured: a narrowed `--only=chat-sidebar-status-feed--mark-all-read-pile`
+run and the same frame from a full sweep agree byte for byte, and both differ
+from the committed one by the line below — so a narrowed run is not a cheaper
+re-take of a state.
+
+**One line in this set's older frames is NOT a picture of the current tree, and it
+is not this change's.** The rest of the surface was last re-taken at `7d41e63e3`;
+`c1dfcc27f` (the built-ins summary fix, later the same morning) gave the agents
+section an empty state of its own, so a re-capture now draws `No agents yet`
+where those frames carry nothing. Measured, on the two frames this change is
+about and on the whole surface: a re-take differs from the committed frame by
+12,656 pixels (`gate-answered`) and 11,830 (`mark-all-read-pile`), with the agents
+line the whole of the difference, and it is DETERMINISTIC rather than a settle
+race — the same bytes with this change in the tree, with it stashed back out, and
+across repeated runs. So this PR ships the new state's frames and leaves every
+other frame in the set at its committed bytes: folding a 23-story re-take of
+somebody else's line into a one-predicate fix would bury the change the frames
+exist to show.
 
 The stories (`chat-sidebar-status-feed.stories.tsx`) drive the REAL
 `ChatSidebar` — including `ChatSessionStatus`'s glyph, ink and accessible name —
