@@ -472,122 +472,15 @@ export type DocumentWritePorts = {
 	) => Promise<void>;
 };
 
-export type DocumentWriteOutcome =
-	/** Written. `document` carries the advanced baseline for the store. */
-	| { status: "written"; document: CanvasDocument; overwrote: boolean }
-	/** Not written: the file moved on, or is gone, or cannot be looked at. */
-	| { status: "blocked"; fact: FreshnessFact; document: CanvasDocument }
-	/** The write itself failed. */
-	| { status: "failed"; error: string }
-	/** Abandoned because a resolution bumped the epoch while this save was in
-	 * flight: the reader has already chosen the file's version. */
-	| { status: "cancelled" };
-
-export async function saveDocument(
-	document: CanvasDocument,
-	content: string,
-	{
-		explicit = false,
-		encoding,
-		ports,
-	}: {
-		explicit?: boolean;
-		encoding?: "utf-8" | "base64";
-		ports?: DocumentWritePorts;
-	} = {},
-): Promise<DocumentWriteOutcome> {
-	const resolved: DocumentWritePorts = ports ?? {
-		probe: (path) => probeLocalFile(path),
-		write: async (path, bytes, writeEncoding) => {
-			await window.api.saveFile(path, bytes, writeEncoding);
-		},
-	};
-	const epoch = currentWriteEpoch(document.id);
-	const stale = (against: number): boolean =>
-		currentWriteEpoch(document.id) !== against;
-	if (stale(epoch)) return { status: "cancelled" };
-
-	const baseline = baselineOf(document);
-	const before = await resolved.probe(document.path);
-	if (stale(epoch)) return { status: "cancelled" };
-	if (!before)
-		return { status: "failed", error: "the local-file bridge is unavailable" };
-
-	/*
-	 * The three refusals, in the order the reader would want them reported. A
-	 * `stat` that failed is its own state - the file may well be there - and a
-	 * missing file is not the same claim as "something changed in it".
-	 */
-	const absent = before.exists === false;
-	const unreadable = before.error !== null && before.error !== undefined;
-	const moved = !absent && !unreadable && before.mtimeMs !== baseline;
-	if (absent && !explicit) {
-		setDocumentFact(document.id, "missing");
-		setAutosaveHeld(document.id, true);
-		return { status: "blocked", fact: "missing", document };
-	}
-	if (unreadable && !explicit) {
-		setDocumentFact(document.id, "unreadable");
-		setAutosaveHeld(document.id, true);
-		return { status: "blocked", fact: "unreadable", document };
-	}
-	if (moved && !explicit) {
-		setDocumentFact(document.id, "disk-changed");
-		setAutosaveHeld(document.id, true);
-		return { status: "blocked", fact: "disk-changed", document };
-	}
-
-	/*
-	 * The write bumps the epoch BEFORE it writes: any check that started before this
-	 * save is reading a version the save is about to supersede, and must not apply
-	 * its bytes afterwards. `mine` is the epoch this save owns - a later `load` bumps
-	 * it again, and then this save abandons itself rather than clobbering the file
-	 * the reader asked to see.
-	 */
-	cancelPendingWrites(document.id);
-	const mine = currentWriteEpoch(document.id);
-	try {
-		await resolved.write(document.path, content, encoding);
-	} catch (error) {
-		return {
-			status: "failed",
-			error: error instanceof Error ? error.message : String(error),
-		};
-	}
-	if (stale(mine)) return { status: "cancelled" };
-
-	/*
-	 * The write owes the baseline the mtime it produced, and the reader owes a
-	 * sentence when what they wrote replaced something: an explicit save over a
-	 * file that had changed, or over one that was gone. Both are the case the row
-	 * must not hide - the reader is being told their bytes are the ones on disk
-	 * now, at the cost of what was there.
-	 */
-	const after = await resolved.probe(document.path);
-	const overwrote = explicit && (moved || absent);
-	if (overwrote) setDocumentFact(document.id, "save-replaced");
-	else if (documentFact(document.id) === "disk-changed") {
-		/* An explicit save over an unmoved file answers nothing new, but it does
-		 * resolve a fact that was standing: the bytes on disk are its own again. */
-		setDocumentFact(document.id, null);
-	}
-	setAutosaveHeld(document.id, false);
-	return {
-		status: "written",
-		document: after
-			? documentAfterSelfWrite(document, after, content)
-			: { ...document, content },
-		overwrote,
-	};
-}
-
 /*
- * The explicit save no longer needs its own registry: the gate above sets the
- * fact (`save-replaced`) at the moment it knows the reader's write replaced
- * something, which is strictly better information than "a save happened". The
- * hook reads `documentFact` instead.
+ * THE ROUND-3 GATE THAT TOOK THE CALLER'S BYTES IS GONE (code review rounds 4 and 5,
+ * R5-2). `saveDocument(document, content, ...)` was a second, exported, tested
+ * implementation of the same gate whose signature was the round-4 harms' whole cause:
+ * it wrote whatever text the caller passed, so a stale snapshot or another document's
+ * buffer reached a file through it. `document-buffers.ts` is the one writer now, and
+ * its gate reads the text from the buffer it owns. Nothing in `src/` called this; five
+ * tests did, and they are gone with it.
  */
-
 /**
  * The answer for a check that found a mounted editor's unsaved buffer.
  *
@@ -625,20 +518,6 @@ async function dirtyOutcome(
 	setAutosaveHeld(document.id, diskChanged || missing || unreadable);
 	return { status: "skipped-dirty", diskChanged, missing, unreadable };
 }
-
-/**
- * The checker for one on-screen document.
- *
- * ONE READ IN FLIGHT PER DOCUMENT, and the de-duplication is the returned
- * promise rather than a queue: two triggers firing in the same tick (a tab
- * switch and a window focus event, say) must produce one `read-file`, not two,
- * and the second caller wants the FIRST one's answer rather than a second read
- * of the same bytes. The map is keyed by path, because the path is the file -
- * the store's own identity for a document.
- *
- * `isDirty` is injected rather than imported so the check reads the registry at
- * the moment it runs, not at the moment the runner was created.
- */
 export function createFreshnessRunner(
 	ports: FreshnessPorts,
 	isDirty: (documentId: string) => boolean = isDocumentDirty,

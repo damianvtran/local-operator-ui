@@ -53,7 +53,6 @@ const bundle = await build({
 				documentFact,
 				setDocumentFact,
 				subscribeDocumentFact,
-				saveDocument,
 				cancelPendingWrites,
 				currentWriteEpoch,
 			} from "./src/renderer/src/features/chat/components/canvas/file-freshness";
@@ -99,7 +98,6 @@ const {
 	documentFact,
 	setDocumentFact,
 	subscribeDocumentFact,
-	saveDocument,
 	cancelPendingWrites,
 	currentWriteEpoch,
 	answerFor,
@@ -738,152 +736,14 @@ test("load takes the file's version over the reader's buffer, and releases the h
 	assert.equal(calls.probes.length, 2, "and it probed again before it read");
 });
 
-test("the write gate refuses an autosave whose file moved on, and says why", async () => {
-	/*
-	 * QA round 3, Q9 - the finding that sank the round-2 design. The poll is a 2s
-	 * timer and the editors' debounces are 1s and 3s, so a file rewritten on disk
-	 * shortly before a debounce fired was overwritten by the app's own save before
-	 * any probe could read it, and the save then recorded its own mtime as the
-	 * baseline so no fact was ever raised. The gate is inside the write, so the
-	 * ordering cannot matter: this test never runs a check at all.
-	 */
-	const path = "/tmp/gate.md";
-	const files = new Map([[path, { mtimeMs: 500, content: "external\n" }]]);
-	const writes = [];
-	const { ports } = bridge(files);
-	const gatePorts = {
-		probe: ports.probe,
-		write: async (target, content) => {
-			writes.push({ target, content });
-			files.set(target, { mtimeMs: 900, content });
-		},
-	};
-	const document = doc(path, { readMtimeMs: 100, content: "reader\n" });
-
-	const blocked = await saveDocument(document, "reader typed\n", {
-		ports: gatePorts,
-	});
-	assert.equal(blocked.status, "blocked");
-	assert.equal(blocked.fact, "disk-changed");
-	assert.equal(writes.length, 0, "nothing reached the file");
-	assert.equal(
-		files.get(path).content,
-		"external\n",
-		"the file's version is intact",
-	);
-	assert.equal(documentFact(path), "disk-changed");
-	assert.equal(isAutosaveHeld(path), true);
-	setDocumentFact(path, null);
-	releaseDocumentHold(path);
-});
-
-test("an explicit save is never refused, and converts the fact instead", async () => {
-	const path = "/tmp/gate.md";
-	const files = new Map([[path, { mtimeMs: 500, content: "external\n" }]]);
-	const { ports } = bridge(files);
-	const gatePorts = {
-		probe: ports.probe,
-		write: async (target, content) => {
-			files.set(target, { mtimeMs: 900, content });
-		},
-	};
-	const document = doc(path, { readMtimeMs: 100, content: "reader\n" });
-
-	const written = await saveDocument(document, "reader wins\n", {
-		explicit: true,
-		ports: gatePorts,
-	});
-	assert.equal(written.status, "written");
-	assert.equal(
-		written.overwrote,
-		true,
-		"the reader is told what their save replaced",
-	);
-	assert.equal(files.get(path).content, "reader wins\n");
-	assert.equal(
-		written.document.readMtimeMs,
-		900,
-		"the baseline is the write's own mtime",
-	);
-	assert.equal(documentFact(path), "save-replaced");
-	assert.equal(
-		isAutosaveHeld(path),
-		false,
-		"a save the reader asked for is never held",
-	);
-	setDocumentFact(path, null);
-});
-
-test("a file that is gone refuses the autosave and allows the reader's save", async () => {
-	const path = "/tmp/gate-gone.md";
-	const files = new Map();
-	const { ports } = bridge(files);
-	const gatePorts = {
-		probe: ports.probe,
-		write: async (target, content) => {
-			files.set(target, { mtimeMs: 900, content });
-		},
-	};
-	const document = doc(path, { readMtimeMs: 100, content: "reader\n" });
-
-	const blocked = await saveDocument(document, "reader typed\n", {
-		ports: gatePorts,
-	});
-	assert.equal(blocked.status, "blocked");
-	assert.equal(blocked.fact, "missing");
-	assert.equal(
-		files.has(path),
-		false,
-		"an autosave does not resurrect a file the reader has not decided about",
-	);
-
-	const written = await saveDocument(document, "reader\n", {
-		explicit: true,
-		ports: gatePorts,
-	});
-	assert.equal(written.status, "written");
-	assert.equal(files.get(path).content, "reader\n");
-	setDocumentFact(path, null);
-});
-
-test("a resolution cancels a write already in flight, whatever the filesystem says", async () => {
-	const path = "/tmp/gate-cancel.md";
-	const files = new Map([[path, { mtimeMs: 100, content: "original\n" }]]);
-	const { ports } = bridge(files);
-	let release;
-	const gate = new Promise((resolve) => {
-		release = resolve;
-	});
-	const wrote = [];
-	const gatePorts = {
-		probe: async (target) => {
-			await gate;
-			return ports.probe(target);
-		},
-		write: async (target, content) => {
-			wrote.push(content);
-			files.set(target, { mtimeMs: 200, content });
-		},
-	};
-	const document = doc(path, { readMtimeMs: 100, content: "reader\n" });
-
-	/*
-	 * The reader's save is past its own start, and the reader presses the control
-	 * while it is waiting on the probe: that is the ordering UX round 3 (U9)
-	 * watched destroy the version the press was loading.
-	 */
-	const inFlight = saveDocument(document, "reader typed\n", {
-		ports: gatePorts,
-	});
-	cancelPendingWrites(path);
-	release();
-	const outcome = await inFlight;
-	assert.equal(outcome.status, "cancelled");
-	assert.deepEqual(wrote, [], "the cancelled save wrote nothing");
-	assert.equal(files.get(path).content, "original\n");
-	assert.equal(currentWriteEpoch(path), 1);
-	releaseDocumentHold(path);
-});
+/*
+ * THE ROUND-3 GATE'S OWN TESTS ARE GONE WITH THE GATE (code review round 5, R5-2).
+ * They drove `saveDocument(document, content, ...)`, the second implementation of the
+ * write gate that took the CALLER's bytes - the signature the round-4 harms came out
+ * of. The invariants below drive `document-buffers.ts`, which is the only writer the
+ * app has: in-flight cancellation is "I4: a resolution kills a proposal that predates
+ * it", the refused write is "I2", and the explicit-save conversion is "I3".
+ */
 
 test("a load that cannot read changes nothing about the buffer or its protection", async () => {
 	/*
@@ -930,7 +790,7 @@ test("the answer to a forced check that found identical bytes says so", () => {
 	 */
 	assert.equal(answerFor({ status: "identical" }, true), "Up to date");
 	assert.equal(answerFor({ status: "identical" }, false), "Up to date");
-	assert.equal(answerFor({ status: "applied" }, false), "Reloaded");
+	assert.equal(answerFor({ status: "applied" }, false), "Re-read");
 	// The full sentence lives beside the label (design round 4, D12), so a short
 	// visible answer never costs the reader the claim.
 	assert.match(
@@ -1401,6 +1261,60 @@ test("I6: every surface's shape holds - code, markdown, HTML (text) and the grid
 	const second = await saveBuffer("sheet");
 	assert.equal(second.status, "clean");
 	assert.equal(grid.writes.length, 1);
+
+	setBufferPorts(null);
+	resetBuffers();
+});
+
+test("R5-1: a keystroke inside the write window is not reported as saved", async () => {
+	const bridge = ownerCase();
+	const path = "/tmp/owner-inflight-typing.md";
+	bridge.seed(path, "v1\n");
+	adoptBuffer({ documentId: "doc", path, text: "v1\n", mtimeMs: 1000 });
+	proposeBuffer("doc", "v1\ntyped");
+
+	/*
+	 * The write is held open, and the reader types again while it is in flight. Code
+	 * review round 5 (R5-1): the buffer was marked clean against the token as it is
+	 * AFTER the awaits, so this keystroke was neither written nor reported - the file
+	 * held `v1\ntyped`, the buffer said `v1\ntyped-MORE`, `bufferIsDirty` was false, no
+	 * fact was raised and the next save answered `clean`. QA could not reproduce it
+	 * end to end; this is the test that holds it.
+	 */
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const realWrite = bridge.ports.write;
+	setBufferPorts({
+		probe: bridge.ports.probe,
+		write: async (target, text, encoding) => {
+			await gate;
+			return realWrite(target, text, encoding);
+		},
+	});
+
+	const inFlight = saveBuffer("doc");
+	proposeBuffer("doc", "v1\ntyped-MORE");
+	release();
+	const outcome = await inFlight;
+	assert.equal(outcome.status, "written");
+	assert.equal(
+		bridge.writes[0].text,
+		"v1\ntyped",
+		"the write carried the text it was born with",
+	);
+	assert.equal(
+		bufferIsDirty("doc"),
+		true,
+		"the keystroke that landed during the write is still unsaved",
+	);
+
+	// And the next save carries it, rather than answering `clean`.
+	const second = await saveBuffer("doc");
+	assert.equal(second.status, "written");
+	assert.equal(bridge.writes[1].text, "v1\ntyped-MORE");
+	assert.equal(bufferIsDirty("doc"), false);
 
 	setBufferPorts(null);
 	resetBuffers();

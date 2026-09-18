@@ -5130,6 +5130,68 @@ async function sceneCanvasFreshness(cdp, app) {
 			rowGeometry.note.scroll <= rowGeometry.note.client + 1,
 		JSON.stringify(rowGeometry),
 	);
+	/*
+	 * THE ROW AT THE WIDTHS THE DESIGN AND UX ROUNDS MEASURED (design D16 / UX U17).
+	 *
+	 * The finding was that the sentence was SHEARED mid-word with no truncation signal,
+	 * because a `shrink-0` note has a max-content box and its own ellipsis can never
+	 * fire. The geometry above is the default pane; these two are the sizes the streams
+	 * cited, emulated on the renderer (`Emulation.setDeviceMetricsOverride`), and the
+	 * assertion is the signal itself: the note must be narrower than its own content,
+	 * which is the only state in which `truncate` paints an ellipsis.
+	 *
+	 * The 400px DOCK floor is not here, and that is a rig limit stated rather than
+	 * implied: it is the panel's width, not the window's, and this driver has no verb
+	 * that drags the splitter. The two streams' own measurements at that width stand as
+	 * recorded on the PR.
+	 */
+	const rowGeometryAt = () =>
+		cdp.evaluate(`(() => {
+			const stamp = document.querySelector('[data-tour-tag="canvas-document-modified"]');
+			const note = document.querySelector('[data-tour-tag="canvas-document-freshness-note"]');
+			if (!stamp || !note) return null;
+			return {
+				stamp: { client: stamp.clientWidth, scroll: stamp.scrollWidth },
+				note: { client: note.clientWidth, scroll: note.scrollWidth },
+				region: note.parentElement ? note.parentElement.clientWidth : null,
+			};
+		})()`);
+	for (const size of [
+		{ label: "1024x700", width: 1024, height: 700, assertSignal: true },
+		{ label: "800x600", width: 800, height: 600, assertSignal: false },
+	]) {
+		await cdp.send("Emulation.setDeviceMetricsOverride", {
+			width: size.width,
+			height: size.height,
+			deviceScaleFactor: 1,
+			mobile: false,
+		});
+		const geometry = await rowGeometryAt();
+		note(`row geometry at ${size.label}`, JSON.stringify(geometry));
+		/*
+		 * THE SIGNAL IS ASSERTED WHERE THE ROW HAS ROOM TO SHOW ANYTHING. At 1024x700
+		 * the row's region is ~250px: the note ellipsises (`client < scroll`) and the
+		 * stamp keeps its width, which is exactly the state D16/U17 asked for. At
+		 * 800x600 the emulated WINDOW leaves the canvas pane ~27px wide - the sidebar's
+		 * share of an 800px window, not the row's own behaviour - so the note is zero
+		 * pixels wide and no assertion about shearing means anything there. That number
+		 * is recorded rather than asserted, and it is an observation for the design
+		 * round: the canvas pane at the app's declared minimum window is nearly gone,
+		 * which is a property of the shell's split, not of this row.
+		 */
+		if (size.assertSignal) {
+			check(
+				`at ${size.label} the sentence ellipsises instead of shearing, and the stamp keeps its width`,
+				geometry !== null &&
+					geometry.note.client > 0 &&
+					geometry.note.client < geometry.note.scroll &&
+					geometry.stamp.client >= geometry.stamp.scroll,
+				JSON.stringify(geometry),
+			);
+		}
+	}
+	await cdp.send("Emulation.clearDeviceMetricsOverride");
+
 	check(
 		"and the control is inside the row, on the panel's own 8px chrome inset",
 		rowGeometry !== null &&
@@ -7149,10 +7211,19 @@ async function main() {
 				 * operator's default address, which is what a careless build would leave
 				 * inlined.
 				 */
-				check(
-					"the renderer was built against the backend this run started",
-					hello.apiBaseUrl === BACKEND,
-					`the renderer reports ${hello.apiBaseUrl}, --backend is ${BACKEND} — build with VITE_LOCAL_OPERATOR_API_URL=${BACKEND}`,
+				/*
+				 * RECORDED, NOT ASSERTED (nit N5). The URL the renderer reports is a
+				 * RUNTIME value - the app adopts it during boot - so a check against the
+				 * flag this run passed is phase-dependent: the same tree and the same
+				 * command gave PASS on three runs and FAIL on a fourth, with every app
+				 * claim in all four passing. What the isolation claim actually rests on is
+				 * the two connection checks below: the app reaches THIS run's backend, and
+				 * it reaches nothing else - least of all the operator's default address,
+				 * which is what a careless build would leave inlined.
+				 */
+				note(
+					"renderer's api base URL at hello, against --backend",
+					JSON.stringify({ apiBaseUrl: hello.apiBaseUrl, backend: BACKEND }),
 				);
 				const mine = await connectionsTo(handle.pid, BACKEND);
 				const theirs = await connectionsTo(handle.pid, OPERATOR_BACKEND_URL);

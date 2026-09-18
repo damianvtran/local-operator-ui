@@ -97,7 +97,13 @@ export type BufferSaveOutcome =
 			status: "blocked";
 			fact: "disk-changed" | "missing" | "unreadable";
 	  }
-	/** A resolution landed while this save was in flight: it wrote nothing. */
+	/**
+	 * A resolution landed while this save was in flight. THE BYTES MAY ALREADY BE ON
+	 * THE FILE: the epoch is checked before and after the write, and a resolution that
+	 * lands DURING `ports.write` cannot recall it. What is promised is that nothing
+	 * further is applied from this save - no baseline advance, no store commit, no
+	 * fact - so the reader's resolution is the state that stands.
+	 */
 	| { status: "cancelled" }
 	/** The bridge is unavailable, so nothing can be known about the file. */
 	| { status: "unavailable" }
@@ -315,6 +321,17 @@ export async function saveBuffer(
 		? entry.serialize()
 		: { text: entry.token, encoding: entry.encoding };
 	const text = payload.text;
+	/*
+	 * THE TOKEN THE BYTES CAME FROM (code review round 5, R5-1). Everything the write
+	 * needs is captured HERE, in one place, because the awaits below are a window a
+	 * keystroke can land in: a `propose` during the probe or the write moves
+	 * `entry.token`, and marking the buffer clean against the token as it is AFTER
+	 * those awaits would report a buffer as saved whose latest words were never
+	 * written - clean, no fact, and a next save answering `clean`. Round 4's shape was
+	 * exactly that (`entry.writtenToken = entry.token` at the end); QA could not
+	 * reproduce it end to end, which is why the suite holds it instead.
+	 */
+	const sent = entry.token;
 	const path = entry.path;
 
 	const before = await ports.probe(path);
@@ -387,7 +404,7 @@ export async function saveBuffer(
 	 * baseline is the write's own mtime, so the next check does not re-read our save,
 	 * and a resolution that lands here is honoured by the generation checks above.
 	 */
-	entry.writtenToken = entry.token;
+	entry.writtenToken = sent;
 	entry.baselineMtime = mtimeMs ?? undefined;
 	publishDirty(entry);
 	entry.commit?.(text, mtimeMs);
@@ -404,6 +421,16 @@ export async function saveBuffer(
 		setDocumentFact(documentId, null);
 	}
 	setAutosaveHeld(documentId, false);
+	/*
+	 * THE EPOCH BUMPS AFTER THE WRITE LANDS (code review round 5, R5-3). Round 3's
+	 * gate did this, and the apply-side guard reads that counter, so leaving it alone
+	 * made the guard inert for saves: a check that started before this write could
+	 * still apply the version the write just superseded. It is bumped HERE rather than
+	 * before the write so this save's own post-write checks compare against the epoch
+	 * it began with - the write has landed, and everything it owes (the baseline, the
+	 * store commit, the fact) is already done.
+	 */
+	cancelPendingWrites(documentId);
 	return { status: "written", mtimeMs, replaced };
 }
 
