@@ -29,16 +29,32 @@ The last three are driven by their stories' own `play` functions — a real clic
 the action, then a wait for the state under test — so they are pictures of the
 component reacting rather than of a prop that fakes a state.
 
-**Every frame in this directory is from the ROUND-2 remediation pass on head
-`40db9e792`** — all seven stories, twelve themes each, taken in one narrowed run
-(`--only=chat-sidebar-agents --allow-backend`) at that head, the commit the
-round's code changes ship in, after the branch was folded onto `origin/main` =
-`2f85777b0`. The set was re-taken whole rather than in the states the round's
-findings move, for the reason `agent-hub-page/`'s own README gives: the fold
-moved the sidebar and its primitives, and the carried frames were pictures of a
-tree that no longer renders that way. `installing-mid-run` keeps the twelve
-frames it was added for, and every state here is now a picture of the meter,
-summary, announcement and copy this round ships.
+**Every frame in this directory is from the FOLD onto `origin/main` =
+`c69f78b92` on head `742448248`** — all seven stories, twelve themes each, taken
+in one narrowed run (`--only=chat-sidebar-agents --allow-backend`) at that head,
+the merge commit that carries `main`'s #313 (`feat(chat): mark all as read in one
+gesture`) into this branch. #313 rewrote `chat-sidebar.tsx` itself — the
+bulk-read control — and `shared/store/canonical-sessions-store.ts` and the two
+`shared/api/local-operator/desktop-*` modules, which the sidebar renders through,
+so the frames this directory carried were pictures of the previous sidebar. The
+set was re-taken whole rather than in the states that moved, for the reason
+`agent-hub-page/`'s own README gives: the fold moved the surface, and the carried
+frames were pictures of a tree that no longer renders that way.
+`installing-mid-run` keeps the twelve frames it was added for, and every state
+here is still a picture of the meter, summary, announcement and copy this round
+ships. These frames replace the round-2 re-capture on head `40db9e792` (after the
+fold onto `2f85777b0`), which is the pass the manifest's `headNote` records
+before this one.
+
+**The re-capture came back byte-identical in all 84 frames**, and that is a
+measurement rather than a claim that the set was left alone: every file in this
+directory was rewritten by that run (its mtime is the run's, `git diff` against
+the committed frames is empty for each of them). The reason is the shape of
+#313's change — the bulk-read control renders on rows carrying an unacknowledged
+completion, and none of these stories' fixture rows carries one, so the sidebar's
+Agents section paints the same pixels on both trees. Recorded here because a
+reader diffing this directory sees no frame move and would otherwise have to
+guess whether the fold was checked or assumed.
 
 **The batch's announcement and its focus are read from the page, not from these
 stills.** UX round 2's U10 and U11 were both about what happens BETWEEN frames:
