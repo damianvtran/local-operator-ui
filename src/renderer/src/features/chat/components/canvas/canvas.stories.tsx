@@ -146,6 +146,21 @@ def outstanding(frame: pd.DataFrame, today: pd.Timestamp) -> pd.DataFrame:
  * the panel's behaviour - which is why the design's PDF and image frames come
  * from the real app rather than from the storybook sweep.
  */
+/*
+ * The instant every fixture's file was last written, and the one the canvas's
+ * freshness line renders. Fixed rather than `Date.now()`: a frame has to be the
+ * same frame on the next capture, and a stamp seeded from the wall clock would
+ * print a different minute in every set. The LINE renders it in the capturing
+ * machine's own timezone - that is the feature, so a frame taken in another
+ * zone reads differently and that is not a diff to chase.
+ *
+ * `readMtimeMs` is the baseline the freshness check compares a probe against
+ * (`file-freshness.ts`). A fixture with no bridge to probe (Storybook) still has
+ * one, so the bar shows what a reader sees in the app rather than its
+ * never-yet-read state.
+ */
+const MODIFIED_AT = 1_760_000_000_000;
+
 const DOCUMENTS: CanvasDocument[] = [
 	{
 		id: "/Users/dana/work/reports/march-invoice-review.md",
@@ -153,6 +168,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/reports/march-invoice-review.md",
 		content: MARKDOWN,
 		type: "markdown",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/invoices/march.csv",
@@ -160,6 +176,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/invoices/march.csv",
 		content: CSV,
 		type: "spreadsheet",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/scripts/reconcile.py",
@@ -167,6 +184,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/scripts/reconcile.py",
 		content: PYTHON,
 		type: "code",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/scripts/ledger-import-and-normalise.py",
@@ -174,6 +192,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/scripts/ledger-import-and-normalise.py",
 		content: "# a long file name, to exercise tab truncation\n",
 		type: "code",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/notes.md",
@@ -181,6 +200,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/notes.md",
 		content: "Call Northwind on Tuesday.\n",
 		type: "markdown",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/reports/q1-summary.md",
@@ -188,6 +208,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/reports/q1-summary.md",
 		content: "# Q1 summary\n",
 		type: "markdown",
+		readMtimeMs: MODIFIED_AT,
 	},
 	{
 		id: "/Users/dana/work/reports/summary.md",
@@ -195,6 +216,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/reports/summary.md",
 		content: "",
 		type: "markdown",
+		readMtimeMs: MODIFIED_AT,
 		availability: "present",
 	},
 	{
@@ -203,6 +225,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/archive/summary.md",
 		content: "",
 		type: "markdown",
+		readMtimeMs: MODIFIED_AT,
 		availability: "present",
 	},
 	{
@@ -211,6 +234,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/invoices/february.csv",
 		content: "",
 		type: "spreadsheet",
+		readMtimeMs: MODIFIED_AT,
 		availability: "missing",
 	},
 	{
@@ -219,6 +243,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/reports/q1-invoice-review.pdf",
 		content: "",
 		type: "pdf",
+		readMtimeMs: MODIFIED_AT,
 		availability: "present",
 		sizeBytes: 348_512,
 	},
@@ -228,6 +253,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/shots/dashboard.png",
 		content: "",
 		type: "image",
+		readMtimeMs: MODIFIED_AT,
 		availability: "present",
 		sizeBytes: 96_204,
 	},
@@ -237,6 +263,7 @@ const DOCUMENTS: CanvasDocument[] = [
 		path: "/Users/dana/work/notes/todo.txt",
 		content: "",
 		type: "text",
+		readMtimeMs: MODIFIED_AT,
 		availability: "present",
 	},
 ];
@@ -1661,6 +1688,7 @@ const viewerDocument = (
 	availability: "present",
 	sizeBytes,
 	lastAgentModified: 1_760_000_000_000,
+	readMtimeMs: MODIFIED_AT,
 });
 
 const PDF_DOCUMENT = viewerDocument(
