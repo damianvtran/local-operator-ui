@@ -5729,7 +5729,7 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 			 * pass while the function the app calls answered something else.
 			 */
 			contents:
-				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/venv-paths";',
+				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/venv-paths"; export * from "./src/main/backend-version-drift";',
 			resolveDir: process.cwd(),
 		},
 		bundle: true,
@@ -8584,6 +8584,24 @@ const driveGlobalUpdate = async ({
 	 * comparison inside it is the thing under test.
 	 */
 	stubWait = true,
+	/*
+	 * THE FLEET THE GATE SEES. `workState` is the app's existing busy reading
+	 * (`servingWorkState`), and a LIST is consumed one entry per read, which is how
+	 * "busy, then idle" - the drain that had to wait - is driven. `fleet` is the
+	 * roster itself, read for the refusal's names and for the before/after pair the
+	 * re-engage compares.
+	 */
+	workState = "idle",
+	fleet = [],
+	drainBudgetMs = 5,
+	drainPollMs = 1,
+	/*
+	 * The plan's own route reading, which the offer and the restart decision now
+	 * both consult: `"entry-point"` is the harness's GENERATION layout - the one
+	 * where the install lands beside every running process - and null is the
+	 * fixture's default subject, an install whose updater the app runs in place.
+	 */
+	managedRoute = null,
 } = {}) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-global-update-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-global-update-userdata-"));
@@ -8637,7 +8655,14 @@ const driveGlobalUpdate = async ({
 			managedByThisApp: false,
 			owned: { owned: !external, because: "this fixture's own answer" },
 		}),
-		servingWorkState: async () => "idle",
+		servingWorkState: async () =>
+			Array.isArray(workState) ? (workState.shift() ?? "idle") : workState,
+		/*
+		 * The roster, in the WIRE's own field names, converted by the shipped parse -
+		 * the same read and the same shape the gate sees in the app.
+		 */
+		servingSessionFleet: async () =>
+			service.fleetRosterFromSessions({ result: { sessions: fleet } }),
 		hasOpenSessionStreams: () => false,
 		checkIsAutoUpdating: () => false,
 	};
@@ -8663,6 +8688,12 @@ const driveGlobalUpdate = async ({
 	try {
 		// Keep the health probe off anything real, as every case in this file does.
 		updateService.backendUrl = "http://127.0.0.1:9";
+		/*
+		 * The drain's own bounds, on the arm whose press reaches the gate before it
+		 * installs and again before it restarts.
+		 */
+		updateService.fleetDrainBudgetMs = drainBudgetMs;
+		updateService.fleetDrainPollMs = drainPollMs;
 		updateService.resolveBackendUpdatePlan = async () => ({
 			canManageUpdate: true,
 			updateCommand: "lop update",
@@ -8670,6 +8701,7 @@ const driveGlobalUpdate = async ({
 				"The app updates this install and then restarts the server it started.",
 			detail: "synthetic plan",
 			sourceBuild: false,
+			managedRoute,
 			installedInstallVersion: before,
 		});
 		updateService.resolveLocalOperatorPath = () => shimPath;
@@ -12355,6 +12387,25 @@ const driveAppOwnedUpdate = async ({
 	 * may RESTART.
 	 */
 	externalBackend = false,
+	/*
+	 * THE FLEET THE GATE SEES, on the arm where the app is the only thing that can
+	 * wait for the move to be safe. `workState` is the app's own busy reading
+	 * (`servingWorkState`), and a LIST is consumed one entry per read - which is how
+	 * "busy, then idle" drives a drain that had to wait. `fleet` is the roster the
+	 * refusal names and the re-engage compares, taken before the move; `fleetAfter`
+	 * is the roster read AFTER it, and its default is `fleet` (nothing moved).
+	 */
+	workState = "idle",
+	fleet = [],
+	fleetAfter = null,
+	/*
+	 * The drain's own bounds, in milliseconds. The shipped ones are ten minutes and
+	 * five seconds (`fleet-drain.ts`), which no case should pay, so the fixture
+	 * drives them at the smallest values that still exercise a WAIT rather than a
+	 * single read.
+	 */
+	drainBudgetMs = 5,
+	drainPollMs = 1,
 } = {}) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-app-owned-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-app-owned-userdata-"));
@@ -12375,7 +12426,14 @@ const driveAppOwnedUpdate = async ({
 	globalThis.__loTestAppIsPackaged = false;
 	const order = [];
 	const sent = [];
-	const calls = { installers: [], installCallbacks: 0, stops: 0, restarts: 0 };
+	let fleetReads = 0;
+	const calls = {
+		installers: [],
+		installCallbacks: 0,
+		stops: 0,
+		restarts: 0,
+		desktop: [],
+	};
 	// The synthetic interpreter, when this case drives the real installer: it is the
 	// fixture's `python` argument, so the shipped `installEnvironmentInto` runs the
 	// `venv` and pip steps itself (review R6).
@@ -12471,6 +12529,36 @@ const driveAppOwnedUpdate = async ({
 				},
 			}),
 			setAutoUpdating: () => {},
+			/*
+			 * The app's existing busy reading, and the ROSTER beside it - the two the fleet
+			 * gate waits on (`drainFleetForUpdate`). A `workState` list is the machine that
+			 * was busy when the press arrived and idle a poll later; absent defaults keep
+			 * every older case in this file exactly where it was, because an idle first read
+			 * is the drain that costs one round trip and changes nothing.
+			 */
+			servingWorkState: async () =>
+				Array.isArray(workState) ? (workState.shift() ?? "idle") : workState,
+			/*
+			 * The roster is CONSUMED in the order the attempt reads it: the fleet gate
+			 * snapshots it before the move, and the re-engage then reads it again to
+			 * work out what did not come back. `fleetAfter === null` is the default - a
+			 * machine where nothing moved - so every read answers the same roster. The
+			 * rows are the WIRE's own (`id`/`name`/`kind`/`live_state`) and the shipped
+			 * parse is what converts them, so a case cannot assert against a shape the
+			 * route does not send.
+			 */
+			servingSessionFleet: async () => {
+				fleetReads += 1;
+				const wire =
+					fleetAfter === null || fleetReads === 1 ? fleet : fleetAfter;
+				return wire === null
+					? null
+					: service.fleetRosterFromSessions({ result: { sessions: wire } });
+			},
+			requestDesktop: async (request) => {
+				calls.desktop.push(request);
+				return { status: 200, body: { result: {} } };
+			},
 			stop: async () => {
 				calls.stops += 1;
 				order.push("stop");
@@ -12510,6 +12598,8 @@ const driveAppOwnedUpdate = async ({
 	};
 	try {
 		updateService.backendUrl = "http://127.0.0.1:9";
+		updateService.fleetDrainBudgetMs = drainBudgetMs;
+		updateService.fleetDrainPollMs = drainPollMs;
 		updateService.getLatestPypiVersion = async () => target;
 		updateService.freeBytesAt = () => freeBytes;
 		updateService.checkBackendHealth = async () => {
@@ -13025,9 +13115,15 @@ test("the app-owned offer states the restart and its cost, not the filler twice"
 		);
 		assert.match(
 			plan.remedy,
-			/restarts the server it started, so a turn that is in flight is dropped/,
+			/publishes the new build beside the one the server is using, waits for the turns already running on this machine to finish/,
 			plan.remedy,
 		);
+		/*
+		 * AND IT MAY NOT PROMISE A DROPPED TURN any more: this arm's whole press now
+		 * drains the fleet first, so the sentence states that nothing in flight is
+		 * cut off rather than admitting what it destroys.
+		 */
+		assert.doesNotMatch(plan.remedy, /turn that is in flight is dropped/);
 		assert.equal(plan.canManageUpdate, true);
 	} finally {
 		if (interval) clearInterval(interval);
@@ -14010,5 +14106,347 @@ test("a start-up that observes an install arrived retires the record, and a fail
 		assert.equal(record?.runningVersion, "0.29.1");
 	} finally {
 		failed.dispose();
+	}
+});
+/*
+ * ---------------------------------------------------------------- the fleet gate
+ *
+ * THE RULE THESE CASES EXIST FOR, in the operator's words: "nothing should kill
+ * runtimes en masse, ever". A restart of the server serving this app is
+ * `stop(true)` - SIGTERM, ten seconds, SIGKILL - and the daemon's own `retire.py`
+ * declines that exit for exactly this reason. So an update press now drains the
+ * fleet first (`drainFleetForUpdate` -> `backend/fleet-drain.ts`), refuses rather
+ * than cutting off a turn on a timer, and puts back what a move displaced.
+ *
+ * The busy signal is the app's EXISTING one - the roster's `live_state`, read by
+ * `servingWorkState`, which the version-drift gate already asks for - so the
+ * fixtures below answer the two readers the manager already has
+ * (`servingWorkState`, `servingSessionFleet`) rather than a new notion of busy.
+ */
+
+test("a press that cannot drain does not restart the server, and says why", async () => {
+	const driven = await driveAppOwnedUpdate({
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+		/*
+		 * The machine the operator's own report describes: somebody else's turn is
+		 * running when the press arrives, and a listed name, so the refusal can name
+		 * it rather than saying "something is busy".
+		 */
+		workState: "busy",
+		fleet: [
+			{
+				id: "aaaaaaaaaaa1",
+				name: "Nightly enrichment",
+				kind: "daemon",
+				live_state: "busy",
+			},
+			{
+				id: "bbbbbbbbbbb2",
+				name: "Idle chat",
+				kind: "tui",
+				live_state: "idle",
+			},
+		],
+	});
+	try {
+		assert.equal(
+			driven.result,
+			false,
+			"an update that cannot drain is REFUSED, not forced",
+		);
+		assert.equal(
+			driven.calls.restarts,
+			0,
+			"nothing may restart the daemon while a turn is in flight",
+		);
+		/*
+		 * The phase is announced as a wait: a press that sits still for minutes
+		 * behind an "installing" that has not started is the silence this panel's
+		 * copy exists to remove.
+		 */
+		assert.ok(
+			phases(driven.sent).includes("draining"),
+			JSON.stringify(phases(driven.sent)),
+		);
+		const refused = updateErrors(driven.sent);
+		assert.equal(refused.length, 1, JSON.stringify(refused));
+		assert.match(refused[0].payload.message, /still running a turn/);
+		assert.match(refused[0].payload.message, /Nightly enrichment/);
+		/*
+		 * The published environment IS on disk by then, and the sentence says so:
+		 * telling the reader an update did not happen when one did is the mirror of
+		 * the promise this change removes.
+		 */
+		assert.match(refused[0].payload.message, /install itself has landed/);
+		assert.deepEqual(
+			completions(driven.sent),
+			[],
+			"a refused press reports the refusal, not a completion",
+		);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a press that had to wait installs anyway once the fleet drains", async () => {
+	const driven = await driveAppOwnedUpdate({
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+		/*
+		 * Busy on the FIRST read and idle on the next: the drain is a wait rather
+		 * than a refusal here, which is the whole difference between this case and
+		 * the one above.
+		 */
+		workState: ["busy", "idle"],
+		fleet: [
+			{
+				id: "aaaaaaaaaaa1",
+				name: "Nightly enrichment",
+				kind: "daemon",
+				live_state: "busy",
+			},
+		],
+	});
+	try {
+		assert.equal(driven.result, true);
+		assert.equal(driven.calls.restarts, 1);
+		assert.deepEqual(
+			phases(driven.sent),
+			["installing", "draining", "restarting"],
+			JSON.stringify(phases(driven.sent)),
+		);
+		assert.deepEqual(updateErrors(driven.sent), []);
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1);
+		assert.equal(completed[0].payload.restarted, true);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("the move re-engages the sessions it displaced, and only those", async () => {
+	const driven = await driveAppOwnedUpdate({
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+		/*
+		 * Three sessions before the move: one that was working, one unwatched
+		 * `daemon`-kind session, and a COLD conversation with no runtime at all.
+		 * After it, the working one and the cold one are as they were and the
+		 * daemon-kind one is gone - which is the session nothing else revives, and
+		 * the only one that may be engaged.
+		 */
+		fleet: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "busy" },
+			{
+				id: "ccccccccccc3",
+				name: "Delegated run",
+				kind: "daemon",
+				live_state: "idle",
+			},
+			{ id: "ddddddddddd4", name: "Cold chat", kind: "", live_state: "" },
+		],
+		fleetAfter: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "idle" },
+			{ id: "ddddddddddd4", name: "Cold chat", kind: "", live_state: "" },
+		],
+	});
+	try {
+		assert.equal(driven.result, true);
+		assert.deepEqual(
+			driven.calls.desktop.map(
+				(request) => `${request.op}:${request.sessionId}`,
+			),
+			["sessions.watch:ccccccccccc3", "sessions.warm:ccccccccccc3"],
+			JSON.stringify(driven.calls.desktop),
+		);
+		/*
+		 * The lease is taken FIRST and is the route's own precondition: `warm`
+		 * cancels itself when nothing else holds the bridge, so a warm without the
+		 * lease would be a 200 that spawns nothing. Its id has to satisfy the
+		 * transport's pattern, which a uuid's dashes do not.
+		 */
+		const watch = driven.calls.desktop[0];
+		assert.match(watch.subscriptionId, /^[a-f0-9]{32}$/);
+		assert.equal(watch.visible, true);
+		assert.equal(watch.canNotify, false);
+	} finally {
+		driven.dispose();
+	}
+});
+
+/**
+ * A harness GENERATION install on disk: `<root>/generations/<id>/tools/local-operator`,
+ * with the `current` entry beside it that makes the layout one the app may move
+ * (`generationInstallRoot`) and the venv markers `classifyGlobalInstall` reads.
+ *
+ * The route is RE-DECIDED inside the press from a real resolution, so a case about
+ * the generation rule cannot stub it: the tree has to exist for the same reason it
+ * has to exist in the app.
+ */
+	/*
+	 * RENAMED AT THE REBASE ONTO `main` (round 4, PR #371). main grew its own
+	 * `generationInstall` while this branch had this one - a generation under a caller's
+	 * stable root for the pointer cases, against a synthetic generation in its own temp
+	 * root for the fleet-gate case - and the two are different fixtures rather than two
+	 * versions of one, so they cannot share the name. The new one is the file's own
+	 * vocabulary (`syntheticInstall`) applied to what this builds.
+	 */
+const syntheticGenerationInstall = (id = "g0001") => {
+	const root = tempDir("lo-generation-");
+	mkdirSync(join(root, "generations", id), { recursive: true });
+	writeFileSync(join(root, "current"), join(root, "generations", id), "utf8");
+	const prefix = join(root, "generations", id, "tools", "local-operator");
+	mkdirSync(join(prefix, "bin"), { recursive: true });
+	writeFileSync(
+		join(prefix, "bin", "local-operator"),
+		`#!${join(prefix, "bin", "python3")}\n`,
+		{
+			mode: 0o755,
+		},
+	);
+	writeFileSync(join(prefix, "bin", "python3"), "", { mode: 0o755 });
+	writeFileSync(join(prefix, "pyvenv.cfg"), "home = /synthetic\n", "utf8");
+	/*
+	 * The uv receipt, because the ROUTE is chosen from the classification and not
+	 * from the path: a generation root whose install classifies as an ordinary venv
+	 * takes the legacy arm, and a fixture that skipped this line would assert the
+	 * generation rule against a route that is not one.
+	 */
+	writeFileSync(
+		join(prefix, "uv-receipt.toml"),
+		'[tool]\nname = "local-operator"\n',
+		"utf8",
+	);
+	const distInfo = join(
+		prefix,
+		"lib",
+		"python3.12",
+		"site-packages",
+		"local_operator-0.56.0.dist-info",
+	);
+	mkdirSync(distInfo, { recursive: true });
+	writeFileSync(
+		join(distInfo, "METADATA"),
+		"Metadata-Version: 2.1\nName: local-operator\nVersion: 0.56.0\n",
+		"utf8",
+	);
+	writeFileSync(join(distInfo, "INSTALLER"), "uv\n", "utf8");
+	return { root, prefix, script: join(prefix, "bin", "local-operator") };
+};
+
+test("a generation install announces and leaves the app-owned daemon on its build", async () => {
+	/*
+	 * The harness installs into per-generation roots behind a `current` pointer, and
+	 * the daemon keeps serving the generation it booted from - the install lands in a
+	 * tree no running process is reading. Restarting it would spend a bounce, and
+	 * whatever is in flight, to buy nothing: the runtime adopts the new build at its
+	 * own next idle. So the press reports the skew and leaves the process alone.
+	 */
+	const install = syntheticGenerationInstall();
+	const run = await driveGlobalUpdate({
+		before: "0.55.10",
+		after: "0.56.0",
+		target: "0.56.0",
+		daemonReports: "0.55.10",
+		servingPrefix: install.prefix,
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
+		assert.deepEqual(
+			run.calls.installers,
+			[install.script],
+			"the generation layout takes the ENTRY POINT route - the serving install's own front end - not the rebuild",
+		);
+		assert.equal(
+			run.calls.restarts,
+			0,
+			"a generation install may not restart the daemon it started",
+		);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.restarted, false);
+		assert.equal(completed.payload.installVersion, "0.56.0");
+		assert.equal(
+			completed.payload.runningVersion,
+			"0.55.10",
+			"the server keeps running the build it loaded, and the payload says which",
+		);
+		assert.deepEqual(backendErrors(run.sent), []);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("a press with nothing left to install still moves the daemon, through the drain", async () => {
+	/*
+	 * The skew panel's own control: the install is already current, so there is
+	 * nothing to install and the restart IS the work the reader asked for. It is the
+	 * one press on the generation layout that moves the server, and it goes through
+	 * the same drain as every other restart.
+	 */
+	const install = syntheticGenerationInstall("g0002");
+	const run = await driveGlobalUpdate({
+		before: "0.56.0",
+		after: "0.56.0",
+		target: "0.56.0",
+		daemonReports: "0.56.0",
+		servingPrefix: install.prefix,
+		workState: ["busy", "idle"],
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
+		assert.equal(run.calls.restarts, 1);
+		assert.ok(
+			backendPhases(run.sent).includes("draining"),
+			JSON.stringify(backendPhases(run.sent)),
+		);
+		const completed = backendCompletion(run.sent);
+		assert.equal(completed.payload.restarted, true);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("the offer carries whether this press restarts the server", async () => {
+	/*
+	 * `restartable` answers whether the app STARTED the daemon and was used by every
+	 * sentence that promised a restart - true on a generation install too, where the
+	 * press no longer bounces anything. The second reading travels with it so the
+	 * offer's cost sentence and the install phase's clause can ask the question they
+	 * mean.
+	 */
+	const generation = await driveGlobalUpdate({
+		daemonReports: "0.55.10",
+		managedRoute: "entry-point",
+	});
+	try {
+		generation.updateService.getLatestPypiVersion = async () => "0.56.2";
+		await generation.updateService.checkForBackendUpdates(true);
+		const offer = generation.sent.find(
+			({ channel }) => channel === "backend-update-available",
+		);
+		assert.ok(offer, JSON.stringify(generation.sent.map((c) => c.channel)));
+		assert.equal(offer.payload.restartsServer, false);
+		assert.equal(
+			offer.payload.restartable,
+			true,
+			"the ownership fact is unchanged - only the promise about THIS press differs",
+		);
+	} finally {
+		generation.dispose();
+	}
+
+	const inPlace = await driveGlobalUpdate({ daemonReports: "0.55.10" });
+	try {
+		inPlace.updateService.getLatestPypiVersion = async () => "0.56.2";
+		await inPlace.updateService.checkForBackendUpdates(true);
+		const offer = inPlace.sent.find(
+			({ channel }) => channel === "backend-update-available",
+		);
+		assert.ok(offer, JSON.stringify(inPlace.sent.map((c) => c.channel)));
+		assert.equal(offer.payload.restartsServer, true);
+	} finally {
+		inPlace.dispose();
 	}
 });
