@@ -103,6 +103,54 @@ export const SubagentStateIcon = ({ status }: { status: ChildStatus }) => {
 };
 
 /**
+ * The row's second line (`docs/run-sidebar.md` §4.1), which is one of two
+ * different kinds of text.
+ *
+ * It lives beside `SubagentRowBody` rather than in the roster that first drew
+ * it, and that is the same argument this file's own header makes: the body takes
+ * the second line as a PROP, so the body and the only component that renders
+ * that prop's value are one decision — a list that picked up the body without it
+ * would draw a child twice with two different amounts of its story. The roster
+ * and the reader's own subagents section draw it; the Jobs section deliberately
+ * draws no second line at all (`docs/composer-activity-chips.md` § 4).
+ *
+ * Both variants take `ink-muted`, where the activity line used to take
+ * `ink-dim`: at 12px on the panel ground `dim` measures ≈4.7:1 — the tightest
+ * text on the surface — and it is the ink the TUI deliberately moved AWAY from
+ * for this same field (`subagent_panel.py:1069-1071`).
+ *
+ * `errorLine` is MACHINE VOICE: `font-mono`, matching every other exception the
+ * app prints, kept VERBATIM — a fabricated translation of an exception is a
+ * claim nobody can check — and wrapped to at most two lines so the identifier
+ * survives.
+ */
+export const DetailLine = ({ row }: { row: SubagentRow }) => {
+	if (row.errorLine) {
+		return (
+			<span
+				className={cn(
+					"line-clamp-2 font-mono text-ink-muted text-mono-sm leading-4",
+				)}
+				title={row.errorLine}
+			>
+				{row.errorLine}
+			</span>
+		);
+	}
+	if (row.activity) {
+		return (
+			<span
+				className={cn("truncate text-ink-muted text-meta leading-4")}
+				title={row.activity}
+			>
+				{row.activity}
+			</span>
+		);
+	}
+	return null;
+};
+
+/**
  * One row's CONTENT, shared by every list that draws a row: the state mark, the
  * label, the state in words and the numbers run.
  *
@@ -129,10 +177,22 @@ export const SubagentStateIcon = ({ status }: { status: ChildStatus }) => {
 export const SubagentRowBody = ({
 	row,
 	detail = null,
+	trailing = null,
 }: {
 	row: SubagentRow;
 	/** The row's second line, or nothing (see above). */
 	detail?: ReactNode;
+	/**
+	 * A last segment on the row's FIRST line, after the numbers run.
+	 *
+	 * A prop for the same reason `detail` is: it is a fact the calling list has
+	 * and the row's own grammar has no slot for. The reader's subagents section is
+	 * its one caller and passes the count of the row's OWN children — the count is
+	 * what says there is a level below the row — which the roster has no room for
+	 * and no reason to want: a member's own children are the pane's `N children`
+	 * control's subject, one level up.
+	 */
+	trailing?: ReactNode;
 }) => (
 	<>
 		<span className={cn("pt-0.5")}>
@@ -150,6 +210,7 @@ export const SubagentRowBody = ({
 				</span>
 				<span className={cn("sr-only")}>{childStateLabel(row)}</span>
 				<NumberRun row={row} />
+				{trailing}
 			</div>
 			{detail}
 		</div>

@@ -1079,6 +1079,22 @@ export const STORIES = [
 	["chat-run-panel--reader-settled", 1280, 900],
 	["chat-run-panel--reader-failed", 1280, 900],
 	["chat-run-panel--reader-nested", 1280, 900],
+	/* The nesting change's own three states (`§ 5`): a mid-level page that LISTS
+	   its child's subagents, a grandchild's page whose row carries its own count,
+	   and the leaf whose page has no section at all — the absence is the state a
+	   reader has to be able to tell from "not loaded yet". */
+	["chat-run-panel--reader-descendants", 1280, 900],
+	["chat-run-panel--reader-deep-children", 1280, 900],
+	["chat-run-panel--reader-childless", 1280, 900],
+	/* The same three states with the pane at its 320px floor, which is the width
+	   the row mark's shed rule exists for (design round 1, D1): at the default
+	   420px the mark is drawn, at the floor it is dropped whole so the label keeps
+	   the characters it would have spent. 800x700 for `narrow-800`'s reason — the
+	   pane plus the chat column's own floor — and the pane is pinned to 320px by
+	   the story itself, the way `reader-deep-floor` pins it. */
+	["chat-run-panel--reader-descendants-floor", 800, 700],
+	["chat-run-panel--reader-deep-children-floor", 800, 700],
+	["chat-run-panel--reader-childless-floor", 800, 700],
 	/* A member's page whose child count is ONE: the descend control's singular
 	   label and its accessible name, in the only state that can show either
 	   (round 1, Q8/U1-6), beside the peer stepper for the same child. */

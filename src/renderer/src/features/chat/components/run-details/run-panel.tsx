@@ -57,6 +57,7 @@ import {
 	type McpServerRow,
 	type RunDetails,
 	type SubagentRow,
+	childrenOf,
 	isOpenChildStatus,
 } from "./run-detail-model";
 import { RunDetailsPanel } from "./run-details-panel";
@@ -129,19 +130,16 @@ export type RunPanelProps = {
  * would skip the children the cap hid and change step as the slice moved. The
  * TUI makes the same choice and says why (`app.py:24187-24215`): a list that
  * loses the selected node's position oscillates over the first two children.
+ *
+ * Its DOWNWARD twin — a row's own children — is the model's `childrenOf`, which
+ * the chrome bar's descend control and the reader's own subagents section share,
+ * because `SubagentRow.childCount` is that predicate's count half (`§ 4`, `§ 5`).
  */
 const siblingsOf = (
 	rows: readonly SubagentRow[],
 	row: SubagentRow,
 ): SubagentRow[] =>
 	rows.filter((candidate) => candidate.parentJobId === row.parentJobId);
-
-/** The child's own children, in the same authoritative order. */
-const childrenOf = (
-	rows: readonly SubagentRow[],
-	row: SubagentRow,
-): SubagentRow[] =>
-	rows.filter((candidate) => candidate.parentJobId === row.id);
 
 export const RunPanel = ({
 	details,
@@ -917,6 +915,23 @@ export const RunPanel = ({
 					measuredAtMs={details.measuredAtMs}
 					measuredAtRealMs={details.measuredAtRealMs}
 					previewPage={previewPage}
+					/*
+					 * The child's own children, the capability they are opened under, and the
+					 * pane's own `openChild` — the reader's subagents section walks DOWN the
+					 * tree with exactly the three things the chrome bar's descend control
+					 * uses, so a row in that list and that control cannot come to different
+					 * answers about which children exist or whether they can be opened.
+					 */
+					childRows={children}
+					childrenOpenable={childrenOpenable}
+					onOpenChild={openChild}
+					/*
+					 * The pane's own width, so the reader's subagents section sheds its rows'
+					 * count mark on the same measurement every other section's budget uses
+					 * (`§ 8`, `childCountFitsInline`) — the reader is a page inside this pane,
+					 * not a surface with a width of its own.
+					 */
+					paneWidth={paneWidth}
 					onUnopenable={() => {
 						onReaderChildChange(null);
 						setUnopenable(true);
