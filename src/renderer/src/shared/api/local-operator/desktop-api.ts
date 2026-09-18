@@ -11,7 +11,6 @@ import {
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_CODE,
 	DESKTOP_REFUSAL_SENTENCE,
-	type DesktopRefusalCode,
 	desktopEndpoint,
 	desktopRefusalCodeForStatus,
 	desktopRequestDeadlineMs,
@@ -277,13 +276,26 @@ export function userFacingMessage(error: unknown, fallback: string): string {
  * sentence we recognise is translated as the app's own fact rather than as the
  * daemon's, which the development proxy (which does not declare a code) needs.
  */
-function desktopRefusalCode(
+function desktopErrorMessageCode(
 	request: DesktopRequest,
 	status: number,
 	detail: string | null,
 	declared: string | undefined,
-): DesktopRefusalCode | undefined {
-	if (isDesktopRefusalCode(declared)) return declared;
+): string | undefined {
+	/*
+	 * A code the transport DECLARED always wins, whatever it is: the envelope's
+	 * `detail.code` is the server's own category (`unresolved_attachment`, a
+	 * `store_busy`, the deadline's `deadline_exceeded`), and re-deriving one from the
+	 * status instead would throw away a distinction the answering process made -
+	 * which is how a profile conflict's category was lost. The status names a code
+	 * only on a route the desktop plane has to admit, and only for the two statuses
+	 * that plane uses to refuse this app.
+	 *
+	 * The app's own two machine sentences are recognised as well, because the
+	 * development proxy forwards a refusal body without declaring a code, and "this
+	 * app holds no credential" must not be read as "the plane is shut".
+	 */
+	if (typeof declared === "string") return declared;
 	if (detail === DESKTOP_MACHINE_DETAIL.noCredential)
 		return DESKTOP_REFUSAL_CODE.noCredential;
 	if (detail === DESKTOP_MACHINE_DETAIL.transportFailed)
@@ -309,7 +321,7 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 			detail ??
 				"This backend does not support the requested desktop control. Update the backend and try again.",
 			undefined,
-			desktopRefusalCode(
+			desktopErrorMessageCode(
 				request,
 				response.status,
 				detail,
@@ -548,7 +560,7 @@ export async function desktopMedia(
 			// The development proxy forwards a refusal body without declaring a code, so
 			// only the app's OWN machine sentence can be recognised here - and telling
 			// "this app holds no credential" apart from "the plane is shut" is exactly
-			// the distinction the code exists for (see `desktopRefusalCode`).
+			// the distinction the code exists for (see `desktopErrorMessageCode`).
 			code:
 				detail === DESKTOP_MACHINE_DETAIL.noCredential
 					? DESKTOP_REFUSAL_CODE.noCredential
