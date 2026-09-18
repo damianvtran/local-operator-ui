@@ -359,18 +359,18 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			 *
 			 * The two checks were in the other order, and that turned a click on a
 			 * missing file whose type has no viewer into nothing at all: `kind ===
-			 * null` handed it to the OS first, so a missing tile that said `Open
+			 * null` handed it to the OS first, so a missing row that said `Open
 			 * in default app` to nobody swallowed the click. A click must always
 			 * produce something - a viewer, the OS, or a sentence.
 			 *
-			 * The probe is unconditional now, where it used to run only for a tile
+			 * The probe is unconditional now, where it used to run only for a row
 			 * that already knew its file was gone, and the extra `stat` buys three
 			 * facts the document it opens needs: the mtime its bytes are being read
 			 * at (both the freshness baseline the canvas checks against later and
 			 * the blob cache's key), the size the viewers state "too large" from,
-			 * and `availability`. The tile's own copy of those is a reading taken
-			 * when the tile was scanned, and the interval between that and this
-			 * click is exactly when an agent writes the file.
+			 * and `availability`. The document's own copy of those is a reading
+			 * taken when the mention was scanned, and the interval between that and
+			 * this click is exactly when an agent writes the file.
 			 */
 			const normalizedPath = stripFileUrl(fileDoc.path);
 			/*
@@ -391,7 +391,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 						// What to do next, not only what happened: the path alone leaves
 						// the reader with a three-line wrap and nowhere to go.
 						description:
-							"Copy its path from the tile's ⋯ menu to look for it, or check whether the agent wrote it somewhere else.",
+							"Copy its path from the row's ⋯ menu to look for it, or check whether the agent wrote it somewhere else.",
 					},
 				);
 				return;
@@ -531,9 +531,11 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	 * NOTHING FOUND BY A QUERY is a third state, and it may borrow NEITHER of the
 	 * two above: "there are no files" is a claim about the conversation, and the
 	 * query is what emptied this list. The copy names what the search matches and
-	 * states how many files it is hiding, and the way out sits in the BODY rather
-	 * than only at the field, because the query may have been typed before the user
-	 * switched views (the field is only reachable while this view is showing).
+	 * states how many files it is hiding, and the way out sits in the BODY as
+	 * well as at the field, because the body is where the absence is read: an
+	 * empty panel with a field, a count and nothing else leaves the reader to
+	 * work out that emptying the field is the way back, and the head's three
+	 * controls do not say so in words.
 	 *
 	 * The two sentences the spec fixes verbatim are the query's; the type-filter
 	 * sentence is written here to match them, because a filter can empty the list on
@@ -696,7 +698,16 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 								) : null}
 							</search>
 							<KindFilterMenu kinds={kinds} onChange={setKinds} />
-							<span className={cn("shrink-0 text-meta text-ink-dim")}>
+							{/*
+							 * `pr-8` is the row's own trailing gutter, and it is what makes the count
+							 * sit over the column it counts: a row reserves 28px for its `⋯`
+							 * (`file-row.tsx`), so the size and receipt inks end 32px short of the row's
+							 * right edge. Without it the head's two right-ragged text columns sat 32px
+							 * apart, and the offset only explains itself while a row happens to be
+							 * hovered. The count is directly above the sizes it summarises (design
+							 * round 1, D3).
+							 */}
+							<span className={cn("shrink-0 pr-8 text-meta text-ink-dim")}>
 								{count}
 							</span>
 						</div>
@@ -727,11 +738,24 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 								"flex w-full flex-wrap items-center gap-x-3 gap-y-1",
 							)}
 						>
-							<span className={cn("text-meta text-ink-dim")}>
+							{/*
+							 * `min-w-0 flex-1` on the sentence and `ml-auto` on the button, so the
+							 * head has ONE trailing edge in both stop states. As plain flow items the
+							 * button's x was set by the sentence's width, which is set by the digit
+							 * count of `scan.scanned` - the panel's only action moved whenever the
+							 * number it describes gained a digit, which is the same class of movement
+							 * the row above it was fixed for (design round 1, D2).
+							 */}
+							<span className={cn("min-w-0 flex-1 text-meta text-ink-dim")}>
 								Searched the most recent {scan.scanned} messages; earlier
 								messages are not searched yet.
 							</span>
-							<Button variant="outline" size="sm" onClick={scan.resume}>
+							<Button
+								variant="outline"
+								size="sm"
+								className={cn("ml-auto")}
+								onClick={scan.resume}
+							>
 								Search earlier messages
 							</Button>
 						</div>
