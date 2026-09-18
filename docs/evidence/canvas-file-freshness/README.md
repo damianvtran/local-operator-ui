@@ -20,9 +20,9 @@ application, and a unit test with a fake bridge cannot reach either end of them:
 
 | frame | what it shows |
 | --- | --- |
-| [`before/localOperatorDark.webp`](before/localOperatorDark.webp) | The document opened from disk: the line reads `Modified September 18, 2026 at 12:13 AM` (the file's own mtime, rendered in the capturing machine's timezone) with the re-read control at the right, above the markdown toolbar. The editor holds `first-version`, which is what the file says. |
-| [`after/localOperatorDark.webp`](after/localOperatorDark.webp) | The same tab after a rewrite whose mtime was restored to the value the app already held — a write the two-second poll cannot see, because the mtime is what decides. The press on the re-read control is what applied it, and the editor now holds `third-version` under a line reading `Modified September 18, 2026 at 12:14 AM`. |
-| [`activation/localOperatorDark.webp`](activation/localOperatorDark.webp) | Two tabs, the second document on screen, and `notes.md` re-selected after its file was rewritten off screen. The switch applied the new bytes (`fourth-version`) and the line moved with them: `Modified September 18, 2026 at 12:15 AM`. |
+| [`before/localOperatorDark.webp`](before/localOperatorDark.webp) | The document opened from disk: the line reads `Modified October 9, 2025 at 4:53 AM` (the file's own mtime, rendered in the capturing machine's timezone) with the re-read control at the right, above the markdown toolbar. The editor holds `first-version`, which is what the file says. |
+| [`after/localOperatorDark.webp`](after/localOperatorDark.webp) | The same tab after a rewrite whose mtime was restored to the value the app already held — a write the two-second poll cannot see, because the mtime is what decides. The press on the re-read control is what applied it, and the editor now holds `third-version` under a line reading `Modified October 9, 2025 at 4:54 AM`. |
+| [`activation/localOperatorDark.webp`](activation/localOperatorDark.webp) | Two tabs, the second document on screen, and `notes.md` re-selected after its file was rewritten off screen. The switch applied the new bytes (`fourth-version`) and the line moved with them: `Modified October 9, 2025 at 4:55 AM`. |
 
 All three are full-window frames of an **isolated** run: a scratch `HOME`, a
 scratch `LOCAL_OPERATOR_CONFIG_DIR`, a scratch `--user-data-dir`, the app's own
@@ -57,8 +57,10 @@ node scripts/renderer-driver.mjs --scene canvas-freshness \
 ```
 
 The scene writes both subject files (`notes.md`, `report.py`) and sets their
-mtimes explicitly, so every claim in it is exact rather than clock-dependent; it
-fails rather than skips if any of them does not hold. The run's own output —
+mtimes explicitly - to a FIXED epoch, not to `Date.now()` - so every claim in it
+is exact rather than clock-dependent and the frames reproduce byte-for-byte on a
+re-run (measured: two runs on the rebased head produced identical PNGs, `shasum
+-a 256`). It fails rather than skips if any claim does not hold. The run's own output —
 every check, the mtimes it set, the stamped line it read back, the geometry it
 measured and the two latencies — is quoted in the pull request.
 
