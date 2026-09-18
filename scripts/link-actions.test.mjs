@@ -27,15 +27,18 @@ const bundle = await build({
 				classifyHref,
 				clickDecision,
 				canvasActionFor,
+				evidenceFor,
 				hasHighlight,
 				forgetProbe,
 				linkToolbarModel,
 				missingNote,
 				probeStateFor,
 				probeTarget,
+				probeTargets,
 				resetProbeCache,
 				selectionLinkIn,
 				selectionWhollyWithin,
+				subscribeProbes,
 				LINK_TARGET_ATTR,
 			} from "./src/renderer/src/features/chat/utils/link-actions";
 		`,
@@ -61,15 +64,18 @@ const {
 	classifyHref,
 	clickDecision,
 	canvasActionFor,
+	evidenceFor,
 	forgetProbe,
 	hasHighlight,
 	linkToolbarModel,
 	missingNote,
 	probeStateFor,
 	probeTarget,
+	probeTargets,
 	resetProbeCache,
 	selectionLinkIn,
 	selectionWhollyWithin,
+	subscribeProbes,
 	LINK_TARGET_ATTR,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -725,6 +731,149 @@ test("no bridge and a throwing bridge both leave the answer unknown", async () =
 	   NOT cached as a negative - the same rule `use-mentioned-files` states for
 	   its tiles. */
 	assert.equal(probeStateFor("/tmp/b.pdf"), undefined);
+});
+
+/* ------------------------------------------------- the grammar's read of the probe */
+
+test("`evidenceFor` answers the grammar's question in three states", async () => {
+	/*
+	 * The transcript's linkifier decides whether an extensionless token is a LINK
+	 * from this function (`TargetPolicy.evidence`), so its three answers are the
+	 * difference between an anchor and plain text - and "unknown" is not a
+	 * smaller yes: the grammar refuses on it.
+	 */
+	resetProbeCache();
+	assert.equal(evidenceFor("/new"), "unknown", "nothing has asked");
+	await probeTarget("/new", async () => [{ exists: false, isFile: false }]);
+	assert.equal(evidenceFor("/new"), "missing");
+	await probeTarget("/Users/you/workspace", async () => [
+		{ exists: true, isFile: false },
+	]);
+	assert.equal(evidenceFor("/Users/you/workspace"), "exists");
+	/*
+	 * The same reset the stories use: one cache, so clearing the toolbar's answers
+	 * clears the grammar's evidence too and the token demotes to plain text rather
+	 * than keeping a claim nobody can now check.
+	 */
+	resetProbeCache();
+	assert.equal(evidenceFor("/new"), "unknown");
+	assert.equal(evidenceFor("/Users/you/workspace"), "unknown");
+});
+
+test("a batch is deduped, chunked at maxBatch and asked in order", async () => {
+	/*
+	 * 65 paths with one repeat: one call per `maxBatch` chunk and no call for the
+	 * repeat, which is the whole reason this entry point exists rather than a loop
+	 * over `probeTarget`. The cap is a PARAMETER rather than `MAX_PROBE_PATHS`
+	 * imported here, because this module is bundled by a bare `node --test` file and
+	 * importing `desktop-contract` would drag zod in behind it; 64 is the value the
+	 * renderer passes.
+	 */
+	resetProbeCache();
+	const asks = [];
+	const ask = async (paths) => {
+		asks.push(paths);
+		return paths.map(() => ({ exists: true, isFile: true }));
+	};
+	const paths = Array.from(
+		{ length: 65 },
+		(_, index) => `/tmp/batch/${index}.pdf`,
+	);
+	await probeTargets([...paths, paths[0]], ask, 64);
+	assert.deepEqual(
+		asks.map((chunk) => chunk.length),
+		[64, 1],
+		"one call per chunk, the repeat not asked at all",
+	);
+	assert.deepEqual(asks[1], ["/tmp/batch/64.pdf"]);
+	assert.equal(evidenceFor("/tmp/batch/64.pdf"), "exists");
+	/* An answer already in the cache is not asked again, whatever the batch is. */
+	asks.length = 0;
+	await probeTargets([paths[0], "/tmp/batch/fresh.pdf"], ask, 64);
+	assert.deepEqual(asks, [["/tmp/batch/fresh.pdf"]]);
+});
+
+test("two askers of one spelling in the same frame cost one call", async () => {
+	/*
+	 * The shape the transcript produces in bulk: two rows carrying `/tmp` paint in
+	 * the same frame, see a cold cache and would both ask. Main stats
+	 * SYNCHRONOUSLY on its own event loop, so the duplicate is an app-wide stall
+	 * rather than one row's delay - which is why the in-flight set exists on top of
+	 * the cache.
+	 */
+	resetProbeCache();
+	let calls = 0;
+	let release = () => {};
+	const ask = (paths) => {
+		calls += 1;
+		return new Promise((resolve) => {
+			release = () =>
+				resolve(paths.map(() => ({ exists: true, isFile: true })));
+		});
+	};
+	const first = probeTargets(["/tmp/dup", "/tmp/other"], ask, 64);
+	const second = probeTargets(["/tmp/dup"], ask, 64);
+	assert.equal(calls, 1, "the second asker waits on the first");
+	release();
+	await Promise.all([first, second]);
+	assert.equal(calls, 1);
+	assert.deepEqual(probeStateFor("/tmp/dup"), { exists: true, isFile: true });
+});
+
+test("a landed answer notifies with the spellings it landed, once", async () => {
+	/*
+	 * The subscription is how the component that owns the parse learns an answer
+	 * arrived (it has no prop for this and is memoised), so the PAYLOAD matters as
+	 * much as the call: a row armed on three tokens must not re-parse when an
+	 * unrelated spelling comes back, and a listener that unsubscribed must not be
+	 * called at all.
+	 */
+	resetProbeCache();
+	const landed = [];
+	const stop = subscribeProbes((changed) => landed.push([...changed]));
+	const ask = async (paths) =>
+		paths.map((input) => ({ exists: input !== "/new", isFile: false }));
+	await probeTargets(["/new", "/tmp", "/other"], ask, 2);
+	assert.deepEqual(landed, [["/new", "/tmp"], ["/other"]]);
+	stop();
+	await probeTarget("/tmp/after-stop", ask);
+	assert.equal(landed.length, 2, "an unsubscribed listener hears nothing");
+});
+
+test("a throwing chunk leaves its spellings unknown and warns once", async () => {
+	/*
+	 * A stat that failed says nothing about whether the file exists, so those
+	 * spellings stay `unknown` - which the grammar refuses - rather than being
+	 * cached as absent. The warning is per CALL and not per chunk: one broken bridge
+	 * is one fact, and a batch of chunks failing is the same fact repeated.
+	 */
+	resetProbeCache();
+	const warnings = [];
+	const original = console.warn;
+	console.warn = (...args) => warnings.push(args);
+	try {
+		await probeTargets(
+			["/tmp/x.pdf", "/tmp/y.pdf"],
+			async () => {
+				throw new Error("stat failed");
+			},
+			1,
+		);
+	} finally {
+		console.warn = original;
+	}
+	assert.equal(warnings.length, 1);
+	assert.equal(probeStateFor("/tmp/x.pdf"), undefined);
+	assert.equal(probeStateFor("/tmp/y.pdf"), undefined);
+	assert.equal(evidenceFor("/tmp/x.pdf"), "unknown");
+	/*
+	 * And the failed chunk left the in-flight set clean, so the next asker retries
+	 * instead of inheriting a token that is permanently "being asked about".
+	 */
+	await probeTarget("/tmp/x.pdf", async (paths) =>
+		paths.map(() => ({ exists: true, isFile: false })),
+	);
+	assert.equal(evidenceFor("/tmp/x.pdf"), "exists");
 });
 
 /* ------------------------------------------------- the selection-in-link rule */

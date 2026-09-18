@@ -20,7 +20,7 @@
  *
  * ## Where the two surfaces deliberately differ
  *
- * EXACTLY TWO ADMISSION DIFFERENCES, both expressed on `TargetPolicy` so a
+ * EXACTLY THREE ADMISSION DIFFERENCES, all expressed on `TargetPolicy` so a
  * reviewer can reject one alone, plus one difference in what the answer is FOR:
  *
  * 1. **`knownExtensionRequired`.** The Files panel admits a prose `/abs` or
@@ -40,7 +40,27 @@
  *    own prose - and this file's - claimed the extension filter was the only
  *    admission difference: `/tmp/out/report.pdf(banana)` is admitted by the panel
  *    and refused by the linkifier, so there are TWO, and both are here.
- * 3. **What the answer is FOR.** The panel wants a set of paths, in first-mention
+ * 3. **`evidence`.** WHAT THE SHAPE ALONE CANNOT ANSWER. A bare `/abs` or `~/`
+ *    token with no extension is a DIRECTORY, a slash COMMAND (`/new`), or a
+ *    typo, and no amount of reading the token tells them apart - the disk does.
+ *    The linkifier is given the session's own oracle (`evidenceFor`, which reads
+ *    the answer the toolbar's probe already cached), so an ambiguous candidate
+ *    is admitted only when the disk says it EXISTS; the panel supplies none, and
+ *    an absent oracle REFUSES, which is the fail-safe direction this module
+ *    trades in throughout (a missed link, never an anchor whose claim is wrong).
+ *
+ *    On the panel's side this difference is unobservable in practice, and
+ *    deliberately so: `knownExtensionRequired` above has already refused every
+ *    ambiguous shape before the evidence question is reached, so
+ *    `MENTION_POLICY` refuses an ambiguous candidate whether or not an oracle is
+ *    supplied. The ORDER is therefore load-bearing (see `targetsIn`), and it is
+ *    what makes this third difference the LINKIFIER's alone - the property
+ *    `scripts/link-targets.test.mjs` asserts rather than assumes.
+ *
+ *    Without this gate the linkifier underlines `/new` in a sentence about
+ *    starting a conversation and the toolbar then answers `No file at /new`: an
+ *    anchor whose whole claim is wrong, on the surface a reader reads most.
+ * 4. **What the answer is FOR.** The panel wants a set of paths, in first-mention
  *    order, deduplicated; the linkifier wants SPANS, so a substring can be
  *    replaced in place. `targetsIn` answers both by returning spans whose `target`
  *    is already canonicalised, and the panel's list producers are one-line filters
@@ -52,9 +72,16 @@
  * panel's per-record `WeakMap` memo is the caller's and stays the caller's, and
  * the linkifier runs once per markdown parse rather than per frame.
  *
+ * It CONSULTS the oracle it is handed and never calls it twice for one token,
+ * but it does not run it at all for the shapes an extension answers for - so the
+ * number of injected calls is the count of DISTINCT extensionless tokens, and
+ * `evidenceFor` answers from a cache rather than from a stat.
+ *
  * Pure: no React, no DOM, no Electron - `import type` only - so the rules below
  * are asserted by `scripts/link-targets.test.mjs` and
- * `scripts/mentioned-files.test.mjs` under plain `node --test`.
+ * `scripts/mentioned-files.test.mjs` under plain `node --test`. An INJECTED
+ * function is not a dependency: the grammar imports nothing for it, and the two
+ * pure suites hand it a stub rather than a live bridge.
  */
 
 import { KNOWN_EXTENSIONS, extensionOf } from "@features/chat/utils/file-kind";
@@ -333,6 +360,54 @@ export function normalizeCandidate(raw: string): string | null {
 }
 
 /**
+ * Whether the SHAPE alone cannot answer "is this a path".
+ *
+ * TRUE for a token with no extension, which is the only positive evidence of
+ * file-hood this scanner has without the disk - `/new` (a slash command the
+ * transcript is full of), `/tmp` (a directory), and an invented `/v2/things` are
+ * one shape to a text scanner, and only the disk tells them apart. FALSE for
+ * everything the extension rule already answers for, and for the two families
+ * this module treats as known-good on shape alone:
+ *
+ * - A `file://` URL is never ambiguous: that tier is written BY the app, so its
+ *   spelling is a statement about a file rather than a guess at one. (The tier
+ *   is also unreachable here - `isAmbiguousCandidate` is only asked about a
+ *   canonical `path` target - and the guard is stated rather than left implicit,
+ *   because the predicate is exported and a second caller would not know.)
+ * - A DOTFILE basename is not ambiguous either, even though it has no
+ *   extension: `extensionOf` returns null for `.zshrc` as a SYNTAX artifact (a
+ *   dot whose only occurrence is the first character of the name, `file-kind.ts`)
+ *   rather than because the name has no extension. Reading that null as
+ *   "ambiguous" would send `/Users/x/.zshrc` - a spelling nobody types by
+ *   accident - to the disk gate, and a stat that came back `unknown` would
+ *   demote it.
+ *
+ * SEGMENT COUNT, TRAILING SLASH AND THE SHAPE OF THE FIRST SEGMENT ARE NOT PART
+ * OF IT. A single-segment rule would fix `/new` and leave `/v2/things` and
+ * `/out/whatever` underlining away, which is the same defect in a longer string;
+ * and a trailing slash is how a transcript writes "this is a directory", not a
+ * statement about whether it exists. The cost of the broad rule is stated at
+ * `TargetPolicy.evidence`: an existing extensionless path is one stat away from
+ * its link, and an absent one renders plain.
+ */
+/**
+ * Trailing path separators, which a token may carry and a NAME may not.
+ *
+ * `/Users/x/Downloads/` is how a transcript writes "this is a directory", and the
+ * basename of that spelling is `Downloads` rather than the empty string a
+ * `split("/")` finds without this. Module scope rather than inline for the same
+ * reason `TRAILING_PUNCTUATION` is: a regex literal built inside a function is
+ * rebuilt per call.
+ */
+const TRAILING_SLASHES = /[/\\]+$/;
+
+export function isAmbiguousCandidate(target: string): boolean {
+	const name = target.replace(TRAILING_SLASHES, "").split("/").pop() ?? "";
+	if (name.startsWith(".")) return false;
+	return extensionOf(target) === null;
+}
+
+/**
  * Strip a `file://` prefix and canonicalise, for candidates that arrived as a
  * URL and therefore do not need the absolute-path test.
  *
@@ -471,7 +546,9 @@ export type TargetPolicy = {
 	 *
 	 * OFF for the linkifier (`LINK_POLICY`): the link renders what the agent
 	 * wrote, and an extensionless path is the directory case the toolbar's
-	 * "Open folder" exists for.
+	 * "Open folder" exists for. The extension it drops is not replaced by
+	 * nothing on that side: `evidence` below answers the question the extension
+	 * was standing in for.
 	 */
 	knownExtensionRequired: boolean;
 	/**
@@ -487,15 +564,49 @@ export type TargetPolicy = {
 	 * link to `/tmp/` and the screenshot renders one to `screen`, i.e. an anchor
 	 * whose whole claim is wrong, in a way a missing tile never was.
 	 *
-	 * ON for the linkifier for exactly that reason, and it is the SECOND of the two
-	 * ways the two surfaces differ in what they ADMIT (with `knownExtensionRequired`;
-	 * see the module header). Kept as its own flag rather than folded into the
-	 * extension one so a reviewer can reject it alone — and so that a future
-	 * decision to bring the panel the same guard is one line here rather than a
-	 * rewrite of both.
+	 * ON for the linkifier for exactly that reason, and it is the SECOND of the
+	 * THREE ways the two surfaces differ in what they ADMIT (with
+	 * `knownExtensionRequired` and `evidence`; see the module header). Kept as its
+	 * own flag rather than folded into the extension one so a reviewer can reject
+	 * it alone — and so that a future decision to bring the panel the same guard
+	 * is one line here rather than a rewrite of both.
 	 */
 	rejectFragments: boolean;
+	/**
+	 * What is on disk, for the shapes the extension test cannot answer.
+	 *
+	 * INJECTED, and that is the point: this module is pure and importable by
+	 * `node --test`, so it holds no bridge to the filesystem and knows nothing
+	 * about Electron. The one caller that has a disk - the transcript - passes the
+	 * session's own answer (`link-actions.ts`'s `evidenceFor`, which reads the
+	 * probe cache the link toolbar already fills).
+	 *
+	 * ABSENT MEANS NO EVIDENCE IS AVAILABLE, and an ambiguous candidate is then
+	 * REFUSED. That is the fail-safe default and the one both pure suites assert,
+	 * so a policy assembled without thinking about the disk misses links rather
+	 * than inventing them.
+	 *
+	 * ONLY consulted for an ambiguity - `isAmbiguousCandidate` - which is what
+	 * keeps it off the hot path: the two shapes every transcript is full of (an
+	 * extensioned path, a `file://` URL) never reach it, and a dotfile does not
+	 * either, because `extensionOf` answering null for a dotfile is a SYNTAX
+	 * artifact rather than a statement that the name has no extension.
+	 */
+	evidence?: TargetOracle;
 };
+
+/**
+ * What the disk says about one spelling.
+ *
+ * Three states rather than a boolean, because "the stat failed" is not "the file
+ * is missing": `use-mentioned-files` states the same rule for its tiles, and a
+ * failed stat that demoted a real path to plain text would be a link lost to a
+ * flaky IPC rather than to a fact.
+ */
+export type TargetEvidence = "exists" | "missing" | "unknown";
+
+/** The disk oracle, as this module consumes it. */
+export type TargetOracle = (target: string) => TargetEvidence;
 
 /** The Files panel's admission: a known extension on every bare prose token. */
 export const MENTION_POLICY: TargetPolicy = {
@@ -503,12 +614,22 @@ export const MENTION_POLICY: TargetPolicy = {
 	rejectFragments: false,
 };
 
-/** The transcript linkifier's admission: shape only, never a claim about disk. */
+/**
+ * The transcript linkifier's admission, as the two pure suites see it: shape
+ * only, and no oracle.
+ *
+ * NOTE THE CONSEQUENCE, which is the design rather than an oversight: with no
+ * `evidence`, every AMBIGUOUS candidate is refused here too, so a caller that
+ * imports this constant gets the fail-safe answer. The renderer does not use it
+ * directly - `remark-linkify-targets.ts` spreads it and injects the session's
+ * oracle as `LINK_POLICY_EVIDENCED` - and this constant stays oracle-free so a
+ * `node --test` bundle can keep asserting the gate's INJECTED behaviour with a
+ * stub instead of a live bridge.
+ */
 export const LINK_POLICY: TargetPolicy = {
 	knownExtensionRequired: false,
 	rejectFragments: true,
 };
-
 /*
  * NOT A POLICY: the `#` cut in `targetsIn`'s prose branch, which BOTH surfaces
  * take. A fragment is not a path - the rule `normalizeFileUrl` already states
@@ -684,13 +805,37 @@ export function targetsIn(text: string, policy: TargetPolicy): TargetSpan[] {
 		if (!candidate) continue;
 		/*
 		 * The extension test, after the trim, so `saved to /tmp/a.pdf.` matches.
-		 * `~` paths carry their extension after the last dot exactly like
-		 * absolute ones. This is ONE of the two admission differences between the
-		 * policies - see `TargetPolicy.knownExtensionRequired`.
+		 * `~` paths carry their extension after the last dot exactly like absolute
+		 * ones. This is ONE of the THREE admission differences between the policies
+		 * - see `TargetPolicy.knownExtensionRequired` - and it runs BEFORE the
+		 * evidence gate below on purpose: it is what keeps the panel's answer
+		 * unchanged whether or not an oracle is supplied.
 		 */
 		if (policy.knownExtensionRequired) {
 			const extension = extensionOf(candidate);
 			if (!extension || !KNOWN_EXTENSIONS.has(extension)) continue;
+		}
+		/*
+		 * The evidence gate, AFTER the extension test and after the canonicalisation,
+		 * in that order and for a measured reason: an AMBIGUOUS candidate - a token
+		 * whose canonical form has no extension, so the shape cannot say whether it
+		 * names a directory, a slash command or nothing - is admitted only when the
+		 * caller's oracle says the disk has it. See `isAmbiguousCandidate` for what
+		 * "ambiguous" is exactly, and `TargetPolicy.evidence` for why this is the
+		 * linkifier's difference and not the panel's.
+		 *
+		 * ABSENT ORACLE AND "unknown" BOTH REFUSE, which is the module's fail-safe
+		 * direction (`:86`: a missing tile, never a tile for a path no file has) and
+		 * the reason `/new` is plain text rather than an anchor that answers `No file
+		 * at /new`. The visible cost is stated at `TargetPolicy.evidence`: an
+		 * extensionless path that really exists links one round trip after the row
+		 * paints, and one created after the message painted stays plain.
+		 */
+		if (
+			isAmbiguousCandidate(candidate) &&
+			policy.evidence?.(candidate) !== "exists"
+		) {
+			continue;
 		}
 		found.push({
 			start: index,
@@ -702,4 +847,55 @@ export function targetsIn(text: string, policy: TargetPolicy): TargetSpan[] {
 	}
 
 	return found.sort((a, b) => a.start - b.start);
+}
+
+/**
+ * The policy that SUSPENDS the evidence question, for the pre-scan below.
+ *
+ * `evidence: () => "exists"` admits every ambiguous candidate, which is what
+ * makes the ambiguity *visible* to `ambiguousTargetsIn` - and it is a policy
+ * object rather than a second scanner for the reason this module exists at all:
+ * two scanners are two answers to "where does a path end", and they agree until
+ * one of them is fixed.
+ *
+ * Module-private, and deliberately NOT exported: nothing outside the query below
+ * has any business admitting a token the disk has not vouched for, and an
+ * exported suspend-everything policy is one import away from being used for
+ * rendering.
+ */
+const DISCOVERY_POLICY: TargetPolicy = {
+	...LINK_POLICY,
+	evidence: () => "exists",
+};
+
+/**
+ * Every AMBIGUOUS candidate in `text`, deduped, in document order.
+ *
+ * The pre-scan the renderer runs before its first parse, so the tokens whose
+ * answer the disk owes are known in one pass and can be asked about in one
+ * batch. It is a SUPERSET of what the linkifier will end up linking, and that is
+ * stated rather than engineered away: `text` is a whole markdown document, so
+ * this sees a path inside a code fence or inside an existing link's label, which
+ * the plugin's walker refuses. The cost is at most a handful of extra answers per
+ * row, asked once per spelling per session and cached by the same map the toolbar
+ * uses (`link-actions.ts`'s `evidenceFor`); the alternative is a second scanner
+ * (`docs/branding.md` § 9) or a two-pass parse.
+ *
+ * The property that makes it checkable rather than merely plausible: for any
+ * `text`, this returns exactly the `path` targets that `DISCOVERY_POLICY` admits
+ * and `{ ...LINK_POLICY, evidence: () => "missing" }` refuses - asserted in
+ * `scripts/link-targets.test.mjs`, which is what keeps the query and the gate
+ * from drifting apart.
+ */
+export function ambiguousTargetsIn(text: string): string[] {
+	const seen = new Set<string>();
+	const suspects: string[] = [];
+	for (const span of targetsIn(text, DISCOVERY_POLICY)) {
+		if (span.kind !== "path") continue;
+		if (!isAmbiguousCandidate(span.target)) continue;
+		if (seen.has(span.target)) continue;
+		seen.add(span.target);
+		suspects.push(span.target);
+	}
+	return suspects;
 }

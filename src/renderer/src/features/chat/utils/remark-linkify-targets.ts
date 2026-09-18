@@ -25,14 +25,21 @@
  *
  * ## What it admits, and what it deliberately does not
  *
- * The grammar is `link-grammar.ts` — the SAME token grammar the Files panel
- * uses, called with `LINK_POLICY`. The two surfaces differ in exactly TWO
- * admissions, both named on `TargetPolicy` and both measured: the known-extension
- * filter (dropped here, because a link is a rendering of what was written rather
- * than a claim that a file exists) and the fragment guard (kept here, because a
- * bare token that stopped inside a longer name renders an anchor whose claim is
- * wrong). Relative tokens (`notes.md`, `src/foo.ts`) are admitted by NEITHER:
- * with no cwd, admitting one means guessing a root.
+ * The grammar is `link-grammar.ts` - the SAME token grammar the Files panel
+ * uses, called with `LINK_POLICY_EVIDENCED` below. The two surfaces differ in
+ * exactly THREE admissions, all named on `TargetPolicy` and all measured: the
+ * known-extension filter (dropped here, because a link is a rendering of what
+ * was written rather than a claim that a file exists), the fragment guard (kept
+ * here, because a bare token that stopped inside a longer name renders an anchor
+ * whose claim is wrong), and the EVIDENCE gate (dropped here because the
+ * linkifier can ask the disk, which is what the extension filter stands in for
+ * on the panel's side). That third one is this file's job to supply: the
+ * renderer has one "does it exist" knowledge - the probe cache the link toolbar
+ * already fills - and `LINK_POLICY_EVIDENCED` injects it, so `/new` in a
+ * sentence about starting a conversation stays plain text instead of rendering
+ * an anchor that answers `No file at /new`. Relative tokens (`notes.md`,
+ * `src/foo.ts`) are admitted by NEITHER: with no cwd, admitting one means
+ * guessing a root.
  *
  * Two node kinds are rewritten and no others:
  *
@@ -77,11 +84,38 @@
  * Pure: no React, no DOM. Asserted by `scripts/link-targets.test.mjs`.
  */
 
+import { evidenceFor } from "@features/chat/utils/link-actions";
 import {
 	LINK_POLICY,
+	type TargetPolicy,
 	type TargetSpan,
 	targetsIn,
 } from "@features/chat/utils/link-grammar";
+
+/**
+ * The policy this walker actually runs, which is the linkifier's plus the disk.
+ *
+ * ONE module-scope constant, because building it per call would hand the grammar
+ * a fresh object per node - cheap in itself, but the shape that makes "the
+ * policy is one decision a reviewer can see" true is a constant rather than an
+ * expression buried in two call sites.
+ *
+ * `evidenceFor` reads the probe cache the link toolbar fills, so a spelling the
+ * reader already hovered is answered from memory and a spelling nobody has asked
+ * about answers `unknown`, which the grammar's gate REFUSES. Plain text until
+ * the disk says otherwise is the direction this module trades in throughout (a
+ * missing link, never an anchor whose claim is wrong); the probe that fills the
+ * cache for the transcript's own rows is issued by `useLinkEvidence` in
+ * `markdown-renderer.tsx`, inside the component that owns the parse.
+ *
+ * The import direction is deliberate and one-way: a grammar that imported this
+ * module would stop being importable by a bare `node --test`, which is the whole
+ * reason the oracle is injected rather than called.
+ */
+const LINK_POLICY_EVIDENCED: TargetPolicy = {
+	...LINK_POLICY,
+	evidence: evidenceFor,
+};
 
 /**
  * The shape this walker needs from mdast, declared here rather than imported.
@@ -150,7 +184,7 @@ const codeLinkAtom = (url: string, code: MdastNode): MdastNode => ({
  * in the text atom on the correct side of the link.
  */
 function atomsFor(value: string): MdastNode[] {
-	const targets = targetsIn(value, LINK_POLICY);
+	const targets = targetsIn(value, LINK_POLICY_EVIDENCED);
 	if (targets.length === 0) return [];
 	const atoms: MdastNode[] = [];
 	let cursor = 0;
@@ -178,7 +212,7 @@ function atomsFor(value: string): MdastNode[] {
  * command line, which is exactly the reading the whole-span rule prevents.
  */
 function wholeSpanTarget(value: string): TargetSpan | null {
-	const targets = targetsIn(value, LINK_POLICY);
+	const targets = targetsIn(value, LINK_POLICY_EVIDENCED);
 	const [only] = targets;
 	if (!only || targets.length > 1) return null;
 	return only.start === 0 && only.end === value.length ? only : null;
