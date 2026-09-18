@@ -822,12 +822,7 @@ test("the slash-command battery: 38 named cases, cold and with the disk answerin
 		["ipv6 cidr", "the range 2001:db8::1/64 is fine", [], []],
 		["comment style", "// this is a comment", [], []],
 		["markdown heading", "#/ heading weirdness", [], []],
-		[
-			"shell redirect",
-			"echo hi > /dev/null",
-			[],
-			["/dev/null"],
-		],
+		["shell redirect", "echo hi > /dev/null", [], ["/dev/null"]],
 		["glob", "/tmp/agent-out/*.log", [], []],
 		["placeholder", "write to /tmp/<name>.json", [], []],
 		[
