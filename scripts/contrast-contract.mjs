@@ -574,6 +574,44 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE SAME BADGE, ON A CONVERSATION ROW (design R2; review round 1, D3).
+		 *
+		 * The row above says the quiet part out loud: when a badge lands on another
+		 * ground, "its ground is a row this file would have to grow rather than quietly
+		 * inherit". PR 2 put an identical `Badge variant="attention"` on the sidebar's
+		 * conversation rows — the mark's approvals badge, which is the one state that
+		 * means "an agent here is blocked on you" — and no row covered it, so the twelve
+		 * palettes were asserting the badge against `canvas` alone.
+		 *
+		 * FOUR GROUNDS, because this control is drawn on all four:
+		 *   - `surface`, the sidebar panel: the mark at rest;
+		 *   - `elevated`, the row's hover step, which a ROW that is not current paints
+		 *     under the pointer;
+		 *   - `highlight`, the CURRENT row's ground (`chat-sidebar.tsx`'s `rowCurrent`,
+		 *     this app's role for it) - and the ground the `browser-conversation-mark`
+		 *     row specimen paints since design round 3's D17 moved it off the retired
+		 *     `sunken`, so the frames reviewers judge cover the state that ships;
+		 *   - `sunken`, kept in this list rather than dropped with the specimen that
+		 *     used to paint it: a palette step can put this control back on a recessed
+		 *     ground, and a ground dropped in the same commit that moves a specimen is a
+		 *     silent shrink of this row's asserted set - the coverage gap this entry
+		 *     exists to close, one turn of the same screw. Dropping it is a deliberate
+		 *     decision for whoever takes the next palette pass, not a side effect of a
+		 *     story edit.
+		 * Measured across the twelve palettes when this row was added: `ink` on
+		 * `warningWash` 8.39:1 at worst (tokyoNight) and `borderControl` on the ground
+		 * 3.13:1 at worst (iceberg on `sunken`) — a coverage gap rather than a violation
+		 * (the badge's own `ring-canvas`, added the same round for D4, is a `canvas` ring
+		 * on these grounds and is not part of this triple).
+		 */
+		name: "conversation browser mark badge",
+		on: ["surface", "elevated", "highlight", "sunken"],
+		fill: "warningWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * THE PANE'S SCOPE SWITCH (spec §7.2), which is the one control PR 2 adds, and
 		 * the reason it needs a row of its own: it is the segmented primitive ON A
 		 * `sunken` GROUND, where the primitive's own track role (`sunken`) is the ground
@@ -912,6 +950,31 @@ const GRAPHICS = [
 		on: ["surface"],
 		fg: "accent",
 	},
+	{
+		/*
+		 * The link toolbar's own ION: the icon in a hovered action button, which is
+		 * `hover:bg-accent-wash hover:text-accent` on `button.tsx`'s ghost variant.
+		 *
+		 * A graphic object rather than a control triple, and the difference is the
+		 * whole reason this row, is here. The hovered button paints a wash and a NEW
+		 * ink, and it paints no edge: `accentWash` against the strip's own `elevated`
+		 * measures 1.00-1.38:1 across the twelve palettes, so a `CONTROLS` row asking
+		 * for its fill or border to clear 3:1 could only pass by inventing an edge the
+		 * design does not have - and a hover that grows a border is a state change,
+		 * not the colour step § 2 permits.
+		 *
+		 * What a hovered ICON owes is being legible against the wash it sits on, which
+		 * is exactly what `GRAPHICS` asserts: `accent` on `accentWash` measures
+		 * 4.53-14.47:1, clear of the 3:1 non-text floor in every palette. The RESTING
+		 * ink (`inkDim` on `elevated`) needs no row of its own: it is a role on a
+		 * ground, and `INKS` asserts it on all four at the text floor (worst 4.51:1,
+		 * obsidian) - the same argument the context-wheel rows already make for not
+		 * repeating a pairing another loop covers.
+		 */
+		name: "link toolbar action icon (hovered)",
+		on: ["accentWash"],
+		fg: "accent",
+	},
 ];
 
 /**
@@ -1153,6 +1216,56 @@ const PERCEPTIBLE = [
 		role: "warningBorder",
 		on: ["warningWash", "sunken"],
 		minDeltaE: 4.0,
+	},
+	{
+		/*
+		 * THE LINK TOOLBAR'S OWN GROUND STEP, and why it is HERE rather than in
+		 * `CONTROLS`.
+		 *
+		 * The toolbar (the transcript's link actions, `link-toolkit.tsx`) is a
+		 * floating strip with its own fill and its own border, which the section
+		 * above says means a row - and it cannot have a `CONTROLS` row, for the
+		 * reason the browser-tab hover fill above cannot: `elevated` on the grounds
+		 * it floats over measures 1.03-1.40:1 against `canvas` and `surface`, and a
+		 * fill step between adjacent grounds is under the 3:1 floors by construction.
+		 * Listing it there would either fail on a property the design deliberately
+		 * does not have, or force a heavier edge onto a strip whose whole look IS the
+		 * lightness step - and `hairline`, the edge it actually wears, is capped below
+		 * 2:1 by design (see the "usage bar track boundary" pin, which exists because
+		 * `hairline` was the tempting weight there too).
+		 *
+		 * What the strip owes is being SEEN against what is behind it, which is this
+		 * table's question. TWO measurements are quoted, because they answer different
+		 * questions and round 1 (design D5) found only the wider one here: this gate
+		 * measures the WORST of all fifty-nine palettes - `elevated` against `surface`
+		 * is ΔE00 2.09 at worst (catppuccinMacchiato) and against `canvas` 3.90
+		 * (rosePineDawn), which is why the floor is 2.0 - while the rows the design
+		 * actually judged are the twelve the evidence set paints, where the rendered
+		 * step from the canvas it floats over measures 4.52 (iceberg) to 12.00
+		 * (radient). The floor is the wider reading (§ 3's "a human can tell these
+		 * apart"); the narrower one is what the review round looked at, and quoting it
+		 * here is what stops the two numbers looking like a contradiction.
+		 *
+		 * § 9.8 says a component with its own fill and its own border goes into
+		 * `CONTROLS`, and this row plus the browser-tab hover fill above are its two
+		 * worked exceptions. Named HERE, beside the row, rather than only in the row's
+		 * comment: a reader comparing the two is looking at this table, and an
+		 * exception a reader has to reconstruct from prose is one nobody can check.
+		 *
+		 * BOTH GROUNDS, because both are reachable and one of them is new here: the
+		 * strip floats over the assistant's `canvas` column AND over a user turn's
+		 * `surface` bubble (the row it is pinned to contains both). The weight half is
+		 * a ratio ceiling against `canvas` for the reason the chip row records about
+		 * its own - a hover step measures ~1.05-1.4 either way - so read it as "the
+		 * step must not stop being a step", not as a proof about this strip.
+		 */
+		name: "link toolbar ground step (a § 9.8 exception - see this row's comment)",
+		role: "elevated",
+		on: ["canvas", "surface"],
+		minDeltaE: 2.0,
+		pairedWith: "canvas",
+		maxWeightChange: 2.0,
+		against: "canvas",
 	},
 ];
 
@@ -1500,11 +1613,19 @@ const STRUCTURAL_CALL_SITES = [
 		 * The class is one shared constant for all four current-row states in
 		 * this panel (the selected conversation, the All chats filter, the New
 		 * chat row and the entity row staging a draft), so pinning the
-		 * declaration is what holds all four.
+		 * declaration is what holds all four. It is EXPORTED since round 5
+		 * (design D22, agent A-7) and the settings rail and the mark's story
+		 * specimen import it rather than restating it, which is why the pin is
+		 * here and the rail's own entry below names the symbol. The pinned text
+		 * carries the formatter's line break as well as the four terms, on
+		 * purpose: a term REMOVED is a term that fits back on one line, so the
+		 * pin fails on either direction of change, which is the whole point of
+		 * it - a term change has to fail this file until the palette half is
+		 * re-measured.
 		 */
 		what: "chat sidebar current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'const rowCurrent = "bg-highlight font-medium text-ink hover:bg-highlight";',
+		must: 'export const rowCurrent =\n\t"bg-highlight font-medium text-ink hover:bg-highlight";',
 		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05) and `sunken` is a 3.75-14.94 recessed box; `highlight` is the role authored for the current row, `font-medium` is one non-colour step against the pointer's mark, and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the wrong ground or a lost second signal arriving",
 	},
 	{
@@ -1517,17 +1638,36 @@ const STRUCTURAL_CALL_SITES = [
 		 * `!activeDraftKey` is in the pin because it is the same term the row's
 		 * `aria-current` reads: the row may not paint a ground the accessibility
 		 * tree does not claim, and it may not claim one it does not paint.
+		 *
+		 * ONE READ, THREE ELEMENTS (review round 1, A7): the predicate used to be
+		 * written out at the wrapper, at the button and at the mark, which is how the
+		 * mark came to paint its own hover step over the selected row's ground while
+		 * the sidebar's comment claimed it dropped it. The name is the pin now — the
+		 * three consumers read `current`, so they cannot disagree — and the ground's
+		 * two home call sites are pinned by the entries below.
 		 */
 		what: "chat session row current-row predicate",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "const isCurrent =\n\t\t\tselectedConversation === row.session_id && !activeDraftKey;",
+		must: "const current = selectedConversation === row.session_id && !activeDraftKey;",
 		why: "the row the operator reported is marked on two terms — the ground and `aria-current` — and the predicate is named once so the two cannot drift apart. A weakened predicate un-marks the conversation in both places at once, which is why the pin is on the declaration rather than on one use",
 	},
 	{
 		what: "chat session row current-row mark",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "isCurrent && rowCurrent,",
-		why: "the mark the operator reported on is the ground plus the weight; the declaration above pins what the constant HOLDS, and this pins that the selected conversation actually reaches it — dropping the reference, or weakening the predicate, is a one-word edit that no palette assertion can see and that leaves the row unmarked while every floor stays green",
+		must: "const current = selectedConversation === row.session_id && !activeDraftKey;",
+		why: "this is the mark the operator reported missing; the predicate and the ground have to stay on the row together, which is what `aria-current` on the same two terms asserts to a screen reader, and the single read is what keeps the wrapper, the button and the mark from disagreeing about it",
+	},
+	{
+		/*
+		 * The row BUTTON's half of that pair, pinned because the ground has two home
+		 * call sites on this row and a reader can delete either one: the button carries
+		 * `rowStyle`, so this is the expression whose `hover:` half has to lose to the
+		 * ground (the same reason the entity row's button is pinned below).
+		 */
+		what: "chat session row current-row ground",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: '"min-w-0 grow text-left",',
+		why: "the button shares the wrapper with the mark and has to carry the ground as well, or the current conversation loses its mark on the element the pointer and the caret land on",
 	},
 	{
 		/*
@@ -1590,11 +1730,20 @@ const STRUCTURAL_CALL_SITES = [
 		 * uses that palette pair; the frames' own bytes render about one step off it
 		 * in both values, which `docs/evidence/chat-sidebar-selection/README.md`
 		 * states where it gives the frame readings.
+		 *
+		 * THE RAIL NO LONGER SPELLS THE CLASS (round 5: design D22, agent A-7). It
+		 * imported the chat panel's declaration after the copy that stood here — the
+		 * one design round 4's D19 was raised against — turned out to be the second
+		 * of two that drifted a term each. So this pin names the SYMBOL the rail
+		 * applies, and the four terms themselves are pinned once, at the declaration
+		 * above; a rail that stops applying the role fails here, a role whose terms
+		 * change fails there, and `scripts/chat-sidebar-selection.test.mjs` resolves
+		 * this very expression through the shipped `cn` and fails without the ground.
 		 */
 		what: "settings rail current-row ground",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '"bg-highlight font-medium text-ink hover:bg-highlight"',
-		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer, and the weight is in it because the row's mark is the ground plus the weight — there is no longer an `outline-control` half in either panel (design round 1, D3): the ring is retired, because that role is § 2's sole boundary of a control and both rails drew it with the search field's own ink and geometry. This rail INLINES the class rather than importing the chat panel's constants, which is why the pin is a string here and the two must be changed together",
+		must: "? rowCurrent",
+		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer, and the weight is in it because the row's mark is the ground plus the weight — there is no longer an `outline-control` half in either panel (design round 1, D3): the ring is retired, because that role is § 2's sole boundary of a control and both rails drew it with the search field's own ink and geometry. The rail applies the chat panel's exported `rowCurrent` rather than a copy of its terms (round 5, D22): one role, one declaration, and no string here left to drift a term",
 	},
 	{
 		/*
@@ -1865,6 +2014,85 @@ const INK_STEP_PINNED = [
 	{ theme: "localOperatorLight", got: 7.93 },
 ];
 const inkStepSeen = new Set();
+
+/*
+ * A CONTROL's edge on the SELECTION ground, three palettes that cannot reach 3:1
+ * there.
+ *
+ * The attention badge this branch's conversation mark draws is a SHARED control
+ * (`Badge variant="attention"`), and its sole boundary is `borderControl` against
+ * whatever ground it is painted on. On `highlight` - the row a reader is currently
+ * on, which is a real state for the mark, since the mark is drawn on every
+ * conversation's row including the current one - `borderControl` measures 2.81 to
+ * 2.91:1 in these three palettes and the badge's `warningWash` fill measures 1.09
+ * to 1.59:1, so neither edge reaches the floor. WHAT THAT IS AND IS NOT, at the
+ * precision it was measured at: the edge is PAINTED and faint rather than absent - it is
+ * 0.09 to 0.19 under the floor, which is the SMALLEST of the three falls this badge's
+ * surfaces take there (the fill and `ring-canvas` fall 1.4 to 1.9 under it: `ring-canvas`
+ * measures 1.27 cat, 1.38 duskfox, 1.39 gruvbox) - so the edge is the TALLEST of the
+ * three surfaces the badge paints there and is still under the floor, and no surface of
+ * the badge clears the contract's number.
+ *
+ * THIS PIN IS THE MINIMUM THE PALETTE SET ALLOWS, and that is a measurement rather
+ * than a preference (design round 3, D18). The obvious local fix - the badge's own
+ * semantic border, `warningBorder`, in place of `borderControl` - MISSES 3:1 on
+ * `highlight` in 12 of 59 palettes against 3 of 59 for `borderControl` (miss counts both,
+ * so the swap clears in 47 of 59 where the pin clears in 56; worst `warningBorder` 2.69 in
+ * `dracula` and `monokai`), so the swap would pin MORE palettes rather than fewer. Re-derived on the tree this comment ships in, with
+ * the palettes read through `scripts/palette-source.mjs`, so the pair is a
+ * measurement of the registry rather than a remembered number.
+ *
+ * PINNED RATHER THAN FIXED, deliberately, and for the reason the `danger` pairs
+ * above are pinned: both available fixes are app-wide visual changes owned by the
+ * palettes' own design review rather than by a rebase. Lifting `borderControl`
+ * moves every control's edge in the palette, and re-authoring `highlight` moves
+ * the whole selection band that `main` re-authored in #281 - and either one would
+ * invalidate the `HIGHLIGHT_STEP_PINS` and `HIGHLIGHT_WASH_PINS` above, which are
+ * measurements of those same two roles. What this list records meanwhile is the
+ * defect, at the precision it was measured at: a pin must still measure what it
+ * says, and a palette re-authored out of the floor FAILS until its pin is deleted,
+ * so the list cannot outlive the defect it records.
+ *
+ * KEYED BY THE CONTROL AND THE GROUND IT WAS MEASURED ON, not by the theme alone
+ * (review round 3, A-2). A `(theme, got)` key could excuse a DIFFERENT control's
+ * sub-floor edge that happened to land within 0.01 of the pinned ratio - the gate
+ * would stay green, the stale check would be satisfied, and the summary would still
+ * report the pin as used with no way to tell which row it excused. `EXCEPTIONS` is
+ * keyed `(theme, fg, bg)` for the same reason. `control` is the control's own
+ * `name`, which is the identity `CONTROLS` carries; a pin that names a control or
+ * ground nothing measures fails the stale check below rather than passing quietly.
+ *
+ * @type {{control: string, ground: string, theme: string, got: number}[]}
+ */
+const CONTROL_EDGE_PINNED = [
+	{
+		control: "conversation browser mark badge",
+		ground: "highlight",
+		theme: "catppuccinMocha",
+		got: 2.85,
+	},
+	{
+		control: "conversation browser mark badge",
+		ground: "highlight",
+		theme: "duskfox",
+		got: 2.91,
+	},
+	{
+		control: "conversation browser mark badge",
+		ground: "highlight",
+		theme: "gruvbox",
+		got: 2.81,
+	},
+];
+const controlEdgeSeen = new Set();
+
+/**
+ * The identity of one pinned measurement: which control, on which ground, in which
+ * palette. Used for BOTH the match and the stale check so the two cannot disagree
+ * about what a pin covers - the defect review round 3's A-2 named, one key along.
+ */
+const controlEdgeKey = (control, ground, theme) =>
+	`${control} on ${ground} in ${theme}`;
 
 /* ---- 5. the run --------------------------------------------------------- */
 
@@ -2709,10 +2937,32 @@ for (const { id, palette: p } of palettes) {
 			assertions++;
 			const fillEdge = ratio(fill, ground);
 			const borderEdge = isHex(border) ? ratio(border, ground) : 0;
-			if (Math.max(fillEdge, borderEdge) < FLOOR.nonText) {
-				fail(
-					`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
+			const edge = Math.max(fillEdge, borderEdge);
+			if (edge < FLOOR.nonText) {
+				/*
+				 * This assertion had no pin path, which made it the one floor in this
+				 * file that a shared control's colour could only satisfy by being
+				 * changed where it was measured. `CONTROL_EDGE_PINNED` records the
+				 * case instead, under the same rule as `INK_STEP_PINNED`: the pin is
+				 * consulted only when the edge is still under the floor, and the stale
+				 * check below fails a pin whose palette no longer needs it.
+				 */
+				const pin = CONTROL_EDGE_PINNED.find(
+					(x) =>
+						x.control === c.name &&
+						x.ground === g &&
+						x.theme === id &&
+						Math.abs(x.got - r2(edge)) < 0.01,
 				);
+				if (pin) {
+					controlEdgeSeen.add(
+						controlEdgeKey(pin.control, pin.ground, pin.theme),
+					);
+				} else {
+					fail(
+						`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
+					);
+				}
 			}
 		}
 	}
@@ -2997,6 +3247,21 @@ if (staleInk.length > 0) {
 	process.exit(1);
 }
 
+/*
+ * A pin whose palette has been lifted out of the floor is dead weight too, and the
+ * one that matters most: it would keep a fixed defect looking measured forever. This
+ * is the same rule `INK_STEP_PINNED` follows, asked of the edge pins.
+ */
+const staleControlEdge = CONTROL_EDGE_PINNED.filter(
+	(e) => !controlEdgeSeen.has(controlEdgeKey(e.control, e.ground, e.theme)),
+);
+if (staleControlEdge.length > 0) {
+	console.error(
+		`\nContrast contract FAILED: ${staleControlEdge.length} pinned control edge(s) no longer under the floor (${staleControlEdge.map((e) => controlEdgeKey(e.control, e.ground, e.theme)).join(", ")}) - delete the pin, the palette clears it now.`,
+	);
+	process.exit(1);
+}
+
 /* An unpinned exception is dead weight that hides a fixed defect. */
 const stale = EXCEPTIONS.filter(
 	(e) => !palettes.some(({ id }) => id === e.theme),
@@ -3025,5 +3290,5 @@ if (stalePerceptible.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${CONTROL_EDGE_PINNED.length} pinned control edge(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
 );

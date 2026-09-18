@@ -316,6 +316,19 @@ export class DesktopStreamRelay {
 		this.streams.delete(streamId);
 	}
 
+	/**
+	 * How many session streams the renderer holds open right now.
+	 *
+	 * A VIEWS count rather than a turns count - a mounted conversation keeps its
+	 * subscription while it sits idle - which is exactly the limit the drift
+	 * restart's deferral is built on (see `backend-version-drift.ts`). It is read
+	 * rather than awaited, so a caller asking about the machine's quietness does not
+	 * have to be in the event path.
+	 */
+	openStreamCount(): number {
+		return this.streams.size;
+	}
+
 	dispose(): void {
 		for (const controller of this.streams.values()) controller.abort();
 		this.streams.clear();

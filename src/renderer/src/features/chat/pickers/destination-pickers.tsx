@@ -2320,7 +2320,7 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 	const [confirmForget, setConfirmForget] = useState(false);
 	const op = useOperation();
 	const list = useQuery({
-		queryKey: ["desktop", "credentials", sessionId],
+		queryKey: desktopKeys.credentials(sessionId),
 		queryFn: () =>
 			desktopResult<unknown>({
 				op: "sessions.credential",
