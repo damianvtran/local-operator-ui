@@ -101,6 +101,28 @@ export const PLACEHOLDER_MARKERS = /[$*?{}<>…]/;
 export const ELLIPSIS_SEGMENT = /(?:^|[/\\])\.{3,}(?=[/\\]|$)/;
 
 /**
+ * KNOWN GAP, recorded rather than fixed (QA round 3, Q-R3-2).
+ *
+ * Two other placeholder spellings for a path SEGMENT are still admitted whole,
+ * measured on this tree: `/sessions/%s/scratchpad/run/perf.md` and
+ * `/sessions/:id/scratchpad/run/perf.md`. `<id>` is covered (the angle bracket is
+ * in `PLACEHOLDER_MARKERS` and the tail is caught by `isPlaceholderTail`), and the
+ * ellipsis is covered by the two rules above, so the shape is a rule that knows
+ * THREE spellings of "standing in for a name" and not five.
+ *
+ * Deliberately not closed here. The honest fix is a segment rule beside
+ * `ELLIPSIS_SEGMENT` (a segment that is exactly `%s` or `:identifier`), because
+ * the alternative - adding `%` and `:` to the marker character class - would
+ * reject real names (`100%-done.md`, `final:notes.md`) for a placeholder it cannot
+ * even tell from them. That is a new rule with its own blast radius across both
+ * policies, and this change is scoped to the two shapes a real run produced
+ * (rounds 1-2); a rule that is merely adjacent belongs in its own round with its
+ * own evidence. The cost of leaving it is the same class of phantom tile the rest
+ * of this block exists to prevent, so it is worth closing soon - just not as a
+ * silent sixth change to a diff the reviewers have already cleared.
+ */
+
+/**
  * A `?`'s tail, when that tail reads as a query rather than as the rest of a
  * filename.
  *

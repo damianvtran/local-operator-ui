@@ -27,30 +27,30 @@ carries the sidebar, the session list or the transcript.
 
 ```
 aed35221da88585bae851ad20ccd18073a3cfcebeac20686780c54feb77d630d  scratchpad-files-panel-before.png  43545 B
-d43ab0e750400880a906c71711b4e967f08f199164a46516402f31b8775c2b8c  scratchpad-files-panel.png         31769 B
-934b246daada49e10aed7037af3d04d1ece89dd062e0c781bf346fdd294a52c4  scratchpad-markdown-canvas.png     73943 B
-07603f5fafa045b2bdfc39bf935c264e333fd803742345bd99789bf712a16c5e  scratchpad-csv-canvas.png          40423 B
-1137172db0df04a8f564964037a9d6c64020605cacd4c637623eb6ad1956bf7d  scratchpad-text-canvas.png         48894 B
+01361ab8c538a3236c68ea16cc0683ec54e03087c2766c587a26fbcfee7a7327  scratchpad-files-panel.png         31764 B
+4adc3e09d295f7ce2713cbfb7019c742049f14b2cedc8da5db7a5141e0978cb6  scratchpad-markdown-canvas.png     87185 B
+2a4b872a4fddf06022e88de3b45627a7e3bb83d718dac129337d8312b77a8584  scratchpad-csv-canvas.png          39617 B
+beb6c889e1e597fd9d8b7ad35539e23d401b1ca0d30a079651d8360e8785b314  scratchpad-text-canvas.png         50342 B
 ```
 
-The panel pair differs by **15,276 pixels (0.67% of the frame)** - `magick
+The panel pair differs by **15,273 pixels (0.67% of the frame)** - `magick
 compare -metric AE` - which is two tiles and one word of head copy, and nothing
-else. The same measurement on the previous pair, a different session, read
-**15,273** - so the delta is stable to three pixels and the difference is the two
-phantom tiles, not the run. The two panel frames are byte-comparable because both
-are the panel-only canvas layout: same names, same order, same grid.
+else. That is the same number the pair measured before the folds, and the panel
+frame is the same file: the delta is the two phantom tiles, not the run. The two
+panel frames are byte-comparable because both are the panel-only canvas layout:
+same names, same order, same grid.
 
-**The panel frame has now survived three folds of `main`.** It was first re-captured
-on the `2de7ae977` fold, from a session with a different id, and came back with the
-SAME sha256 - 0 differing pixels. After the `0.27.0` release fold it came back
-**4 pixels** different: `x 1155-1215, y 39-44`, channel deltas of one unit
-(`1D1A16` vs `1D1B16`), which is the anti-aliasing of one header icon and not a
-layout. And after the `feat/chat-link-affordances` fold - the one that refactored
-the extractor's rules into `utils/link-grammar.ts`, so the only fold here that DID
-touch this PR's own files - it reproduced **byte-for-byte** again (same sha256).
-All three readings say main's movement did not disturb this surface (see *Why the
-frames still describe this tree*), and the committed frame is the one from the
-final tree.
+**The frame now committed is the frame that was reviewed at `0f8a017ab`, byte for
+byte.** Blob `0f643412c399` there and sha256 `01361ab8c538a3236c68ea16` here, over
+a fresh run on the folded tree. One intermediate re-capture in round 2 produced a
+frame 4 pixels away from it - `x 1155/1215/1212`, `y 39/43/44`, channel deltas of
+one unit (`1D1A16` vs `1D1B16`), the anti-aliasing of one header icon - and that
+frame was briefly what this directory held (blob `53d0d6c00664`, sha256
+`d43ab0e7`). It is not what is committed now, and round 3 was right to ask for the
+numbers rather than the word "identical": the delta belongs to the RUN, not to a
+folded tree, which is what re-running the harness on the current head demonstrated
+by reproducing `01361ab8` exactly. A reader comparing the committed frame with the
+one at `0f8a017ab` will find zero differing pixels.
 
 **The mention list is PERSISTED, and that bit this rig once.** The panel's tiles
 live in the app's `localStorage` (`canvas-store` -> `conversations[<id>].mentionedFiles`),
@@ -65,14 +65,16 @@ reach for it before concluding the fix regressed.
 
 ### Why the frames still describe this tree
 
-The frames were first taken on `3a5b66c54` and the branch has since folded two
+The frames were first taken on `3a5b66c54` and the branch has since folded four
 windows of `main` onto itself. Main's movement names the panel's own host files,
 so "nothing visual changed" has to be shown rather than assumed:
 
-- `chat-content.tsx` and `chat-page.tsx` DID change (+26 and +46 lines). Every
-  line is composer @-mention plumbing - `mentionsEnabled` and `mentionsUnsupported`
-  props threaded to `MessageInput` - and no line touches the canvas host, the
-  Files grid, the canvas container or any geometry the frames measure.
+- `chat-content.tsx` and `chat-page.tsx` DID change (+26 and +121 lines across the
+  folded windows). Round 3 caught the second number when it was stale at +46; the
+  extra 75 lines are the browser-pane plumbing (`browserPaneOpenOn`, the
+  conversation-scoped lens read once and handed down). Every line in both files is
+  composer @-mention or sidebar-browser plumbing - no line touches the canvas
+  host, the Files grid, the canvas container or any geometry the frames measure.
 - Nothing else in the render path moved: `git diff --stat` over
   `features/chat/components/canvas/`, `features/chat/canonical/`,
   `shared/themes/` and `styles/` is empty for both windows.
@@ -81,10 +83,11 @@ so "nothing visual changed" has to be shown rather than assumed:
   and the scanner into one policy-driven `targetsIn`. The rules were ported there
   (see the re-stamp commit), the contract suite is unchanged and green, and the
   panel frame came back byte-for-byte.
-- And the measurement agrees with the reading: the panel frame re-captured on the
-  folded tree is within **4 pixels** of the committed one (anti-aliasing on a single
-  header icon), and two of the three folds reproduced it byte-for-byte. A layout
-  shift inside the canvas container would move thousands.
+- And the measurement agrees with the reading: every re-capture on a folded tree
+  reproduces the committed frame exactly. The one movement measured anywhere in
+  this history is the 4-pixel icon anti-aliasing stated above, and re-running the
+  harness showed it to belong to one RUN rather than to a tree. A layout shift
+  inside the canvas container would move thousands.
 
 The canvas frames are re-taken from the run the rebased harness performs, so the
 whole set is one session on the current tree - the panel pair happens to hash the
@@ -313,17 +316,31 @@ code: a word that is BOTH path-like and carries a generic (`a/b<T>/tmp/real.md`)
 still loses the path after it, and no transcript in this corpus produces that
 shape.
 
-**The trade, stated rather than discovered later:** a real file whose NAME
-contains an ellipsis is admitted by no tier here. That is this module's standing
-direction - a missing tile, never a tile for a path no file has - and the
-asymmetry is deliberate: a character that means "text was removed" is the one
-thing a text-inferring scanner cannot tell from a name. It has its own test.
+**The trade, stated exactly rather than discovered later:** TWO shapes are
+rejected in every tier here - `…` (U+2026) anywhere in the token, and an ASCII
+`...` that IS a whole path SEGMENT (`/tmp/notes/.../a.md`). A real file whose NAME
+contains either pays for it, and that is this module's standing direction - a
+missing tile, never a tile for a path no file has - because a character that means
+"text was removed" is the one thing a text-inferring scanner cannot tell from a
+name.
 
-**What changed in the existing suite:** nothing. The 50 rows that passed on
-`95181c3cc` still pass unchanged (each new rule's fixtures are new rows), the row
-that used to PIN the phantom tile is now the row that asserts it is gone, and the
-suite is 52 rows. Verified the other way too: reverting the extractor hunk turns
-the new assertions red and leaves every old row green.
+**What the rule does NOT cover**, because review round 3 measured it and a comment
+that overstates a fail-safe rule is the kind of thing a later reader deletes the
+rule on the strength of: a `...` inside a NAME. `/tmp/notes/a...b.md` is admitted
+by all three tiers, since the rule reads segments and `a...b` is not one. All
+three directions in that paragraph are asserted - the two rejections on prose,
+`file://` and a path key, and the mid-name admission on the same three tiers.
+
+**What changed in the existing suite:** nothing. Every row that passed on
+`95181c3cc` still passes unchanged (each new rule's fixtures are new rows), and the
+row that used to PIN the phantom tile is now the row that asserts it is gone. The
+suite is 54 rows, and `scripts/link-targets.test.mjs` gained one - the shared
+scanner's rules apply to `LINK_POLICY` too, so that widening is pinned on the
+surface a reader actually sees it on (round 3, R3-1). Verified the other way too,
+one probe per rule: reverting the extractor hunk reddens the new assertions and
+leaves every old row green; so does deleting the ellipsis rule at either of the two
+canonicalisers it was unpinned at (53/1 each), and deleting the placeholder-tail
+guard from `targetsIn` reddens the link row (22/1).
 
 ## The `.txt` branch: a guard, not a user-visible fix
 
