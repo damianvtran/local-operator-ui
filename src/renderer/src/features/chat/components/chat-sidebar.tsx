@@ -525,10 +525,37 @@ export function ChatSidebar({
 	 * he asked for in the same breath. The current conversation's browser is opened from
 	 * the header's Globe trigger, which stays.
 	 *
-	 * WHAT THAT COSTS, STATED SO THE DELETION IS NOT READ AS FREE: a conversation that is
-	 * NOT the current one can no longer have its browser opened from this list without
-	 * being selected first, and with the mark goes the only thing that surfaced ANOTHER
-	 * conversation's pending browser approvals — the header's badge counts this one only.
+	 * WHAT THAT COSTS, STATED SO THE DELETION IS NOT READ AS FREE - the full inventory, not
+	 * its first line, because four review streams found the shorter version under-listed it
+	 * (code review R3, design D3, UX U1, QA Q17/Q18 on PR #345):
+	 *
+	 *  - a conversation that is NOT the current one can no longer have its browser opened
+	 *    from this list without being selected first (the header's Globe follows the
+	 *    selection, so `select, then press the Globe` is the path that survives);
+	 *  - this list was the only place OUTSIDE the browser showing a conversation's tab
+	 *    COUNT and its LOADING state, for any conversation, the current one included -
+	 *    the header's badge carries approvals only;
+	 *  - it was the only surface reporting ANOTHER conversation's pending browser approvals
+	 *    without opening the browser: the header's badge counts this conversation only, so
+	 *    it is null for a foreign request and nothing in the sidebar reports one now (QA
+	 *    round 1 rendered exactly that against a foreign `request_access`);
+	 *  - it was the only thing that NORMALISED the pane's lens on the way in. The pane's
+	 *    scope is one sticky preference (`ui-preferences-store.ts:452`, read at
+	 *    `browser-pane.tsx:89`) which the deleted handler reset to the conversation, and
+	 *    the header's Globe is unmounted while the pane is open (`chat-header.tsx:161`) so
+	 *    it cannot be pressed to re-scope: with the pane last left on `All tabs`, that is
+	 *    where the header's Globe reopens it and the in-pane switch is the only way back.
+	 *    The toggle and its `aria-expanded` cue went the same way.
+	 *
+	 * One surface outside this component still reports another conversation's approvals:
+	 * `src/main/browser/consent-notifier.ts` raises a native "Site approval needed" banner
+	 * naming the count and the oldest origin, focus-gated and naming no conversation. It is
+	 * unobservable in this repo's headless rigs (native banners are suppressed there), so
+	 * that is a record of what the code does rather than a measurement. A one-line fix
+	 * exists if the lens is wanted back - keep the header's Globe mounted so it toggles and
+	 * normalises the scope - and it is deliberately NOT taken here: the control's
+	 * focus-return and spacing rules are pinned by tests and are not this change's to
+	 * alter.
 	 */
 	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
 		const trailing = rowTrailingStatement({
