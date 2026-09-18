@@ -2698,6 +2698,53 @@ test("a document change under any non-navigating action discards its result", as
 	}
 });
 
+test("the gate disables the Page domain it enabled, and nothing else", async () => {
+	// Reviewer round 1, finding 5. `Page.enable` is what makes `getFrameTree`
+	// answer, and nothing else in the host consumes the domain — so a gate that
+	// left it on would keep an always-attached debugger domain alive for the rest
+	// of an agent tab's life, and would quietly become part of any later
+	// experiment that measures "the debugger attachment" against the Cloudflare
+	// stall. Enabled by this call, disabled by this call.
+	const { host, cdp } = makeHost();
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	await host.dispatch("open", params, "open");
+	const count = (method) =>
+		cdp.calls.filter((call) => call.method === method).length;
+	assert.equal(count("Page.enable"), 1, "the gate read the frame tree once");
+	assert.equal(
+		count("Page.disable"),
+		1,
+		"the domain it enabled was disabled in the finally",
+	);
+	assert.equal(count("Fetch.enable"), 1);
+	assert.equal(count("Fetch.disable"), 1);
+
+	// A gate that could not read the frame tree never ENABLED Page, so it must not
+	// disable a domain something else may be relying on.
+	const failing = makeHost();
+	const send = failing.cdp.send;
+	failing.cdp.send = async (contents, method, callParams) => {
+		if (method === "Page.enable") throw new Error("no document");
+		return send(contents, method, callParams);
+	};
+	await failing.host.dispatch("request_access", params, "request");
+	failing.host.respondToConsent(
+		failing.host.chromeState().pendingConsent[0].entryId,
+		"site",
+	);
+	await failing.host.dispatch("open", params, "open");
+	assert.equal(
+		failing.cdp.calls.filter((call) => call.method === "Page.disable").length,
+		0,
+		"a read that never enabled the domain does not disable it",
+	);
+});
+
 test("the per-hop gate is armed for the actions that can navigate, and only those", async () => {
 	// Review round 1, R5, as a RULING: `Fetch.enable` intercepts the page's own
 	// Document-stage loads too, so arming it around an action that cannot change

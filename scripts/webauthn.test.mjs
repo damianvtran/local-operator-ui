@@ -30,6 +30,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/main/webauthn";',
 			'export * from "./src/renderer/src/features/browser/model/webauthn-chooser";',
+			'export * from "./src/shared/webauthn-request";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -58,6 +59,15 @@ const {
 	readAppSignature,
 	webauthnKeychainAccessGroup,
 	accountChoiceDetail,
+	accountChoiceVoice,
+	accountsAreNameless,
+	attachWebauthnChooser,
+	chooserLead,
+	chooserPageNote,
+	chooserQueueNote,
+	parseWebauthnRequest,
+	settledChooserCopy,
+	UNNAMED_ACCOUNT_DETAIL,
 	accountChoiceLabel,
 } = mod;
 
@@ -342,6 +352,10 @@ test("a multi-match request is surfaced with its accounts and answered with the 
 		{
 			requestId: "req-1",
 			relyingPartyId: "example.test",
+			// The source is null here because this call passes no `describeSource`,
+			// which is the shape a host that cannot resolve the frame produces.
+			tabId: null,
+			pageTitle: null,
 			accounts: [
 				{
 					credentialId: "Y3JlZC0x",
@@ -392,8 +406,8 @@ test("a request with no account, a dismissal and an unknown request id all settl
 	);
 	assert.deepEqual(
 		emptyArgs,
-		[],
-		"the page's request is cancelled, not left hanging",
+		[undefined],
+		"the page's request is cancelled with no credential, not left hanging",
 	);
 
 	let dismissed = "unset";
@@ -503,5 +517,307 @@ test("the chooser labels an account without inventing an identity", () => {
 		),
 		null,
 	);
-	assert.equal(accountChoiceDetail(null, 0), null);
+	// An account with NO name of any kind now says so rather than leaving a blank
+	// second line (design round 1, D9; UX round 1, U1): the row is the only place
+	// the user can learn that the choice is arbitrary.
+	assert.equal(accountChoiceDetail(null, 0), UNNAMED_ACCOUNT_DETAIL);
+});
+
+/**
+ * A `Session` as far as the chooser's registration uses one: the two listener
+ * methods and the emit, so a test can watch what the SESSION would deliver rather
+ * than what one chooser happens to hold.
+ */
+function makeSession() {
+	const listeners = new Map();
+	return {
+		listeners,
+		on(event, listener) {
+			const current = listeners.get(event) ?? [];
+			listeners.set(event, [...current, listener]);
+		},
+		removeListener(event, listener) {
+			const current = listeners.get(event) ?? [];
+			listeners.set(
+				event,
+				current.filter((entry) => entry !== listener),
+			);
+		},
+		emit(event, ...args) {
+			for (const listener of listeners.get(event) ?? []) listener(...args);
+		},
+		count(event = "select-webauthn-account") {
+			return (listeners.get(event) ?? []).length;
+		},
+	};
+}
+
+test("a second host start leaves ONE listener, and one request settles one callback", () => {
+	// Reviewer round 1, finding 2 (MAJOR). `session.fromPartition` returns the same
+	// Session for the life of the process, so a listener registered inside the
+	// host's startup accumulates across a window close plus a Dock click — and
+	// Electron's contract for this event is that its callback is invoked exactly
+	// once. Both halves are asserted here: the registration is idempotent, and the
+	// callback is guarded where it is created, so a second delivery cannot answer
+	// twice even if something else registers a listener.
+	const session = makeSession();
+	const first = makeChooser();
+	const second = makeChooser();
+	const detachFirst = attachWebauthnChooser(session, first.chooser, () => {});
+	attachWebauthnChooser(session, second.chooser, () => {});
+	assert.equal(
+		session.count(),
+		1,
+		"the previous listener was removed, not joined by a second",
+	);
+
+	const answers = [];
+	const callback = (value) => answers.push(value);
+	session.emit(
+		"select-webauthn-account",
+		{},
+		{ relyingPartyId: "example.test", accounts: ACCOUNTS, frame: null },
+		callback,
+	);
+	assert.deepEqual(first.notified, [], "the replaced chooser saw nothing");
+	assert.equal(second.notified.length, 1);
+	assert.equal(second.chooser.respond("req-1", "Y3JlZC0y"), true);
+	// The stale chooser holding the SAME request id must not answer the callback a
+	// second time — it is the same native callback, and the guard is keyed on it.
+	assert.deepEqual(answers, ["Y3JlZC0y"]);
+
+	// Detaching is what the stop path does, and it must leave nothing behind.
+	detachFirst();
+	session.emit(
+		"select-webauthn-account",
+		{},
+		{ relyingPartyId: "example.test", accounts: ACCOUNTS, frame: null },
+		callback,
+	);
+	assert.equal(second.notified.length, 2, "the live chooser still receives");
+	const secondListener = (session.listeners.get("select-webauthn-account") ??
+		[])[0];
+	session.removeListener("select-webauthn-account", secondListener);
+	assert.equal(session.count(), 0);
+});
+
+test("a surface that mounts late reads the pending queue oldest-first, with the page it came from", () => {
+	// UX round 1, U2: the request is raised while nothing is mounted, so the push
+	// had nowhere to go. Main is the source of truth for the queue, and the order
+	// is arrival order because the surface offers the oldest and names the rest.
+	const { chooser } = makeChooser({
+		describeSource: (frame) =>
+			frame === null
+				? { tabId: null, pageTitle: null }
+				: { tabId: 7, pageTitle: "Quincy Beginnings" },
+	});
+	chooser.handle(
+		{ relyingPartyId: "example.test", accounts: ACCOUNTS, frame: null },
+		() => {},
+	);
+	chooser.handle(
+		{ relyingPartyId: "other.test", accounts: [ACCOUNTS[0]], frame: { id: 1 } },
+		() => {},
+	);
+	assert.deepEqual(
+		chooser.pendingRequests().map((request) => ({
+			requestId: request.requestId,
+			relyingPartyId: request.relyingPartyId,
+			tabId: request.tabId,
+			pageTitle: request.pageTitle,
+			accounts: request.accounts.length,
+		})),
+		[
+			{
+				requestId: "req-1",
+				relyingPartyId: "example.test",
+				tabId: null,
+				pageTitle: null,
+				accounts: 2,
+			},
+			{
+				requestId: "req-2",
+				relyingPartyId: "other.test",
+				tabId: 7,
+				pageTitle: "Quincy Beginnings",
+				accounts: 1,
+			},
+		],
+	);
+	chooser.respond("req-1", null);
+	assert.deepEqual(
+		chooser.pendingRequests().map((request) => request.requestId),
+		["req-2"],
+	);
+});
+
+test("every settle path reports its outcome, which is what the surface explains", () => {
+	// Design round 1, D2: the dialog stayed up after main had cancelled the
+	// request, and a later click was discarded in silence. The push is what closes
+	// that gap, and the OUTCOME is what decides whether the user is told anything
+	// — their own answer needs no explanation, an expiry does.
+	const settled = [];
+	const { chooser } = makeChooser({
+		onSettled: (requestId, outcome) => settled.push([requestId, outcome]),
+		timeoutMs: 5,
+	});
+	const request = {
+		relyingPartyId: "example.test",
+		accounts: ACCOUNTS,
+		frame: null,
+	};
+	chooser.handle(request, () => {});
+	chooser.respond("req-1", "Y3JlZC0x");
+	chooser.handle(request, () => {});
+	chooser.respond("req-2", null);
+	chooser.handle(request, () => {});
+	chooser.respond("req-3", "not-offered");
+	chooser.handle(request, () => {});
+	// An id main never minted is refused rather than settling anything.
+	assert.equal(chooser.respond("req-9", null), false);
+	chooser.dispose();
+	assert.deepEqual(settled, [
+		["req-1", "chosen"],
+		["req-2", "dismissed"],
+		["req-3", "credential-not-offered"],
+		["req-4", "host-stopped"],
+	]);
+});
+
+test("an expired request reports 'expired' rather than only cancelling", async () => {
+	const settled = [];
+	const { chooser } = makeChooser({
+		onSettled: (requestId, outcome) => settled.push([requestId, outcome]),
+		timeoutMs: 20,
+	});
+	chooser.handle(
+		{ relyingPartyId: "example.test", accounts: ACCOUNTS, frame: null },
+		() => {},
+	);
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	assert.deepEqual(settled, [["req-1", "expired"]]);
+});
+
+test("a nameless multi-match is explained rather than offered as an arbitrary choice", () => {
+	// UX round 1, U1 (MAJOR) and design round 1, D3 (the copy contradicted the
+	// rows under it). Three nameless credentials is the case where the user has
+	// nothing to choose by, and the honest answer is to say so.
+	const nameless = [
+		{ credentialId: "a", displayName: null, name: null },
+		{ credentialId: "b", displayName: "  ", name: "" },
+	];
+	const request = {
+		requestId: "req-1",
+		relyingPartyId: "example.test",
+		accounts: nameless,
+		tabId: null,
+		pageTitle: null,
+	};
+	assert.equal(accountsAreNameless(nameless), true);
+	assert.match(chooserLead(request), /did not give their names/);
+	assert.match(chooserLead(request), /the account you sign in as/);
+	// One account is not "more than one of your passkeys matches".
+	assert.equal(
+		chooserLead({ ...request, accounts: [nameless[0]] }),
+		"example.test asked for a passkey. Pick it to sign in.",
+	);
+	// A named pair keeps the existing sentence, which is true of it.
+	assert.match(
+		chooserLead({
+			...request,
+			accounts: [
+				{ credentialId: "a", displayName: "Ada", name: "ada@x.test" },
+				{ credentialId: "b", displayName: "Grace", name: null },
+			],
+		}),
+		/More than one of your passkeys matches/,
+	);
+	// The voice follows the field the label came from (design round 1, D4).
+	assert.equal(accountChoiceVoice(nameless[0]), "machine");
+	assert.equal(
+		accountChoiceVoice({ credentialId: "a", displayName: "Ada", name: "a@x" }),
+		"human",
+	);
+	assert.equal(
+		accountChoiceVoice({ credentialId: "a", displayName: null, name: "a@x" }),
+		"machine",
+	);
+	// And nothing at all for a request that came from no page.
+	assert.equal(chooserPageNote(request), null);
+	assert.equal(
+		chooserPageNote({ ...request, pageTitle: "Quincy Beginnings" }),
+		"The page asking is \u201cQuincy Beginnings\u201d.",
+	);
+	// The requests waiting behind are named, not hidden (reviewer round 1, 7).
+	assert.equal(chooserQueueNote(0), null);
+	assert.equal(chooserQueueNote(1), "One more site is waiting for a passkey.");
+	assert.equal(chooserQueueNote(2), "2 more sites are waiting for a passkey.");
+});
+
+test("only the endings the user did not choose carry copy", () => {
+	// The dialog shows a settled request's outcome in words; a choice or a
+	// dismissal is the user's own act and gets no paragraph.
+	assert.equal(settledChooserCopy("chosen"), null);
+	assert.equal(settledChooserCopy("dismissed"), null);
+	for (const outcome of [
+		"expired",
+		"host-stopped",
+		"credential-not-offered",
+		"no-accounts",
+	]) {
+		const copy = settledChooserCopy(outcome);
+		assert.ok(copy, `${outcome} has copy`);
+		assert.ok(copy.title.length > 0 && copy.body.length > 0);
+	}
+});
+
+test("an inbound chooser payload is validated once, for both channels", () => {
+	// The push and the pull share one parser, so a payload shaped one way when it
+	// arrives and another way when it is asked for cannot exist. Malformed input is
+	// refused rather than rendered as a dialog with no rows.
+	const good = {
+		requestId: "req-1",
+		relyingPartyId: "example.test",
+		accounts: [
+			{ credentialId: "a", displayName: "Ada", name: "ada@x.test" },
+			{ credentialId: "b", displayName: 7, name: null },
+		],
+		tabId: 4,
+		pageTitle: "A page",
+	};
+	assert.deepEqual(parseWebauthnRequest(good), {
+		requestId: "req-1",
+		relyingPartyId: "example.test",
+		accounts: [
+			{ credentialId: "a", displayName: "Ada", name: "ada@x.test" },
+			{ credentialId: "b", displayName: null, name: null },
+		],
+		tabId: 4,
+		pageTitle: "A page",
+	});
+	// The source fields are optional on the wire: absent means "could not resolve".
+	assert.deepEqual(
+		parseWebauthnRequest({ ...good, tabId: "7", pageTitle: "" }),
+		{
+			requestId: "req-1",
+			relyingPartyId: "example.test",
+			accounts: [
+				{ credentialId: "a", displayName: "Ada", name: "ada@x.test" },
+				{ credentialId: "b", displayName: null, name: null },
+			],
+			tabId: null,
+			pageTitle: null,
+		},
+	);
+	for (const bad of [
+		null,
+		"req-1",
+		{},
+		{ requestId: "" },
+		{ requestId: "req-1" },
+		{ requestId: "req-1", accounts: [] },
+		{ requestId: "req-1", accounts: [{ name: "no id" }] },
+	]) {
+		assert.equal(parseWebauthnRequest(bad), null, JSON.stringify(bad));
+	}
 });
