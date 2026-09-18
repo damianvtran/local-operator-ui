@@ -1,6 +1,6 @@
 # Chat link affordances: the transcript's detected links, in twelve themes
 
-Twenty-three states × twelve themes = **276 frames**, of the canonical transcript's
+Twenty-two states × twelve themes = **264 frames**, of the canonical transcript's
 link affordances: a path the agent wrote, rendered as a link you can press, the
 toolbar a hover raises on it, the pointer paths that reach its buttons, and what
 happens to a highlight that starts inside it. The set's own entry in
@@ -23,11 +23,17 @@ highlights, one frame each.
 ## Method
 
 ```sh
-cd ~/local-operator-ui-worktrees/chat-link-affordances
-env -u CMUX_* -u LOP_* HOME=/tmp/lo311-ev/home \
-    node_modules/.bin/storybook dev -p 6017 --no-open --quiet
-node scripts/capture-evidence.mjs --only=chat-canonical-links --allow-backend
+cd ~/local-operator-ui-worktrees/linkify-slash
+env -u CMUX_* -u LOP_* HOME=/tmp/lo357ev/home TMPDIR=/tmp/lo357ev/tmp \
+    node_modules/.bin/storybook dev -p 6033 --no-open --quiet
+env -u CMUX_* -u LOP_* HOME=/tmp/lo357ev/home TMPDIR=/tmp/lo357ev/tmp \
+    node scripts/capture-evidence.mjs http://localhost:6033 \
+        --only=chat-canonical-links --allow-backend
 ```
+
+The rows below are the states this run writes, so a reader can bisect one of them
+without re-taking the set: `--dirs=<state>` narrows the same command to the
+directories named in the left-hand column.
 
 The rig is the repository's own (`scripts/capture-evidence.mjs`): a private
 headless Chromium over raw CDP, a fresh `--user-data-dir` under `/tmp`, real
@@ -50,12 +56,13 @@ backend was answering, not that one was used.
 
 | Directory | Story | Gesture | What the picture shows |
 | --- | --- | --- | --- |
-| `detected-targets/` | `--detected-targets` | none (resting) | The eight admission shapes at rest: the operator's own report path, a backticked path, a `file://` URL, a bare `https://` URL (already a link, not doubled), a path in a table cell, a directory, a path that is not there, and one long enough to wrap. |
-| `hover-file/` | `--detected-targets` | CDP `mouseMoved` | The file matrix, five actions since this branch's pass: `Copy path · Open in canvas · Open in default app · Open folder · Quote` (`[175,334,330,363]`, 156px wide, 30px tall — § 5 of the design doc), 8px above the link's own box. The link is on the row's FIRST line, which is why the strip is above it (see `hover-directory/` for the other side of that rule). |
+| `detected-targets/` | `--detected-targets` | none (resting) | The nine admission shapes at rest: the operator's own report path, a backticked path, a `file://` URL, a bare `https://` URL (already a link, not doubled), a path in a table cell, a directory, a path that is not there, one long enough to wrap, and the ninth, the shape this change is about — a slash command in prose and a second one in backticks, neither a file, beside an extensionless directory that IS one. |
+| `hover-file/` | `--detected-targets` | CDP `mouseMoved` | The file matrix: `Copy path · Open · Open folder · Quote`, 8px above the link's own box. The link is on the row's FIRST line, which is why the strip is above it (see `hover-directory/` for the other side of that rule). |
 | `hover-url/` | `--detected-targets` | `mouseMoved` | The URL matrix: `Copy link · Open in browser · Quote`, no `Open folder`. |
 | `hover-directory/` | `--detected-targets` | `mouseMoved` | The matrix's deliberate omission: `Copy path · Open · Quote`, no `Open folder` (a Finder reveal of a directory selects its parent). Mid-paragraph, so the strip sits BELOW its anchor — the D2 rule in pixels. |
 | `hover-missing/` | `--detected-targets` | `mouseMoved` | The state that replaced a press which silently did nothing: `Copy path · Quote` plus the reason, naming the FILE (`No file at report-2026-09-17.pdf`). |
 | `hover-prose/` | `--detected-targets` | `mouseMoved` at a text run | The pointer on the turn's own prose, in a paragraph that also holds links: **nothing is raised** — the turn's Quote control comes from a highlight and nothing else. |
+| `hover-command-prose/` | `--detected-targets` | `mouseMoved` at a text run, with `expectGone` | This change's own claim, and the one the design round could not photograph (D2): the pointer on the PROSE `/new` — a slash command the paragraph names, not a path — and after 500ms **no `[data-lo-link-toolbar]` exists at all**, where the same point on the before head raised `No file at /new`. The entry is falsifiable (an absent strip cannot be told from a resting frame otherwise) and self-asserting across the two heads: see *The before half*. |
 | `hover-same-turn-second-link/` | `--detected-targets` | two `mouseMoved` steps | Design D1's regression: the strip is raised on the missing path and then the pointer moves onto the directory link in the SAME turn. The frame shows the strip attached to the SECOND link, and the entry's `expectAnchored` claim fails if it is not. |
 | `hover-toolbar-button/` | `--detected-targets` | two-step pointer (one move per selector) | The strip's own button under the pointer: one colour step, no transform, no shadow. The pointer arrives by the rig's single-move form, which is a teleport; the entries that prove the button is reachable along a path a mouse makes are the `hover-gap-*` rows below, and those are assertions. |
 | `copy-pressed/` | `--detected-targets` | two-step pointer + a real press | The press that follows: the button swaps to the tick and its accessible name to `Copied`, which the entry asserts. |
@@ -63,7 +70,7 @@ backend was answering, not that one was used.
 | `hover-gap-long/` | `--detected-targets` | pointer path, 4 samples @16ms | The same arrival at a slower hand's spacing — the case lost at step 2. |
 | `hover-gap-fine/` | `--detected-targets` | pointer path, 1 sample per PIXEL @8ms | A mid-paragraph link, whose strip is placed BELOW it: the other placement, sampled every pixel, which is the path lost on the first pixel off the anchor's own box. |
 | `hover-gap-leave/` | `--detected-targets` | pointer path onto the button, then out to the prose | The dismissal half of the same claim: the strip survives the arrival and is GONE once the pointer moves onto the words beside the link (`expectKept: false`). Without this frame "keep the subject" could be satisfied by never dismissing. |
-| `hover-cell/` | `--detected-targets` | `mouseMoved` | A TABLE-CELL anchor (round 2, design D4). The cell's link box is `[255,544,612,561]` and the table's last painted rule is at y=568, so the strip (`[256,565,411,594]`, the live five-button width — see § 5) hangs 26px out of the table over the paragraph below, covering 587 ink px of it at this head's five-button width (483 at the same registration's 126 px width) — the cost § 5 records beside the rule. |
+| `hover-cell/` | `--detected-targets` | `mouseMoved` | A TABLE-CELL anchor (round 2, design D4). The cell's link box is `[255,544,612,561]` and the table ends at 573, so the strip (`[255,569,383,601]`, the live four-button width — see § 5) hangs 28px out of the table over the paragraph below, covering 671 ink px of it — the cost § 5 records beside the rule, re-measured in round 3. |
 | `escape-dismisses/` | `--detected-targets` | `mouseMoved` + a real `Escape` | The strip raised by the POINTER, then one Escape with focus wherever the reader left it: the strip is gone, which the entry asserts (`expectGone`). |
 | `selection-in-link/` | `--selection-in-link` | story `Selection` (NOT a drag — see the limits) | A highlight inside a link: the LINK's toolbar, with `Quote` leading. |
 | `selection-in-link-staged/` | `--selection-in-link-staged` | story `Selection` + a press | The same highlight and then the toolbar's own `Quote` pressed, with the composer in frame: the chip carries the link's own text. |
@@ -71,8 +78,24 @@ backend was answering, not that one was used.
 | `selection-two-links/` | `--selection-across-links` | story `Selection` | A highlight across two links in one turn: the same answer, and the same assertion. |
 | `detected-targets-narrow/` | `--detected-targets-narrow` | none (resting) | The same shapes in a 420px column, where the long path wraps. |
 | `hover-narrow/` | `--detected-targets-narrow` | `mouseMoved` | The strip for a WRAPPED link: 8px BELOW its last line, inside the pane, clear of the timestamp. (Round 2, design D3: this row described the pre-remediation placement.) |
-| `no-viewer-targets/` | `--no-viewer-targets` | none (resting) | This branch's second story: `bundle.zip` and `local-operator-0.28.4.dmg` are local, existing files with NO viewer, and the same paragraph ends on the `.xlsx` that does open here — so the paragraph itself is the routing rule. Resting, because the matrix is what the row below hovers. |
-| `hover-no-viewer/` | `--no-viewer-targets` | `mouseMoved` | The other half of the claim in one frame: the `.zip` link's FOUR-action strip (`Copy path · Open · Open folder · Quote`, 126px, `Open` still the OS) above the sentence whose `.xlsx` carries five. Read beside `hover-file/`, the pair is the rule — the new default is about files this app can SHOW, not about every path an agent writes. |
+
+## The before half
+
+`docs/evidence/chat-canonical-links-before/` is the same story, the same fixtures,
+the same twelve themes and the same rig entries on the head that adds the ninth
+shape and NOTHING of the fix (`9c58e7bb7`, the story-fixture-only commit; the
+manifest declares it as a supplementary set with that `capturedAtHead`). In it the
+operator's own sentence still underlines `/new` and the hover still answers
+`No file at /new`, and every state sits at the same paragraph position, so a
+reader can put the two halves side by side without hunting for the row.
+
+It has TWENTY-ONE states and not twenty-two, and that asymmetry is the D2
+assertion rather than a gap. `hover-command-prose` aims at a `/new` text run
+OUTSIDE an anchor; on the before head every `/new` run in that paragraph IS an
+anchor, so the aim throws (`no text run matching "/new" outside a link or a
+button`) and there is no frame to take. That throw is what makes "a slash command
+raises no strip" falsifiable across the two heads instead of a claim about one
+still.
 
 ## Claims the rig asserts
 
@@ -82,9 +105,10 @@ between evidence and a picture:
 - `expectAnchored` (`hover-same-turn-second-link`) — the raised strip must sit 8px
   from THAT selector's own box, and its accessible name must name that target.
   This is design D1's regression, and it fails on the pre-remediation tree.
-- `expectGone` / `expectPresent` (`escape-dismisses`,
+- `expectGone` / `expectPresent` (`escape-dismisses`, `hover-command-prose`,
   `selection-link-and-prose`, `selection-two-links`) — one Escape takes the strip
-  away; a spanning highlight leaves the turn's control as the only one up.
+  away; the prose `/new` raises none in the first place; a spanning highlight
+  leaves the turn's control as the only one up.
 - `expectAttribute` (`copy-pressed`) — the press produced the state the frame is
   named for.
 - `hoverPath`'s `expectKept` (`hover-gap-crossing`, `hover-gap-long`,
@@ -97,24 +121,27 @@ between evidence and a picture:
 
 ## Honest limits of this set
 
-- **The whole set describes THIS branch's tree: the pass re-took every frame in
-  one run.** The frames commit's own diff over this directory is **252 modified +
-  24 added** (`git diff --name-status <frames-commit>^ <frames-commit> --
-  docs/evidence/chat-canonical-links`), the 24 being the two new states × 12
-  themes — so all 23 states × 12 themes = **276 frames** were painted on this
-  branch's tree by one run of the rig, not carried from an earlier head. What an
-  earlier head still supplies is NUMBERS, not pixels: § 5's ink column keeps the
-  previous capture's figures for the three matrices whose registration differs by
-  the 4 px offset § 5 records, because an ink pair only compares inside one
-  registration. `docs/evidence/manifest.json`'s `countsMean`/`partialCapture`
-  carry the arithmetic.
+- **THE FRAMES COME FROM ONE HEAD, AND THE BEFORE HALF FROM ANOTHER.** Every frame
+  of the twenty-two states above was taken in one pass at this branch's
+  review-remediation head, so the set no longer carries the multi-head caveat an
+  earlier round's fold left here (a narrowed fold once re-took two states and kept
+  nineteen from the head before it). The `before/` half is a DIFFERENT head by
+  construction — it is the tree before the fix — and the manifest's
+  `supplementary` entry for it names which. Two independent re-takes of one state
+  still differ under **sub-perceptual rasterisation jitter** (34/36 and 11/12
+  measured, antialiasing deltas of at most 17/255, with no element appearing,
+  disappearing or moving), so a reader comparing a frame here against a fresh
+  capture should expect that, not a hash match.
 
-  Frames are still frames, though: rasterisation is not a hash match, and an
-  earlier draft of this bullet claimed byte-identity where two independent
-  re-takes found sub-perceptual jitter instead (34/36 and 11/12 per state, at
-  antialiasing deltas of at most 17/255, with no element appearing, disappearing
-  or moving). A reader comparing a frame here against a fresh capture should
-  expect that, not an equality.
+- **The `path:line` register is UNPHOTOGRAPHED** (design round 1, D1), and that is
+  stated rather than papered over: no state in this set contains an editor line
+  reference, so the half of this change that stops `…/run.mjs:59` being underlined
+  as part of the name cannot be falsified from these frames. It is pinned where a
+  still cannot reach it — `scripts/link-targets.test.mjs` asserts the span and the
+  anchor's visible text on both tiers, and `scripts/mentioned-files.test.mjs`
+  asserts both of the panel's — and the design round judged its mechanics on a
+  scratch tenth shape rather than filing frames for a fixture it would have had to
+  change first.
 
 - **The two `selection-in-link*` states, and the two spanning ones, are built by a
   scripted `Selection`, not by a drag — and round 2 settled WHICH side of that
@@ -148,31 +175,3 @@ between evidence and a picture:
 - **Twelve themes of fifty-nine.** The gate covers the rest
   (`pnpm check-themes`), and any other palette can be captured on demand with
   `--themes=<id>`.
-
-- **No frame here shows a URL being denied the canvas mark, and none can.** The
-  fixture's upstream link is `https://example.com/reports/adverse-media-2026-09`,
-  whose last segment names no viewer, so `viewerFor` answers `null` and a guarded
-  and an unguarded strip look identical in every frame. The case review round 2
-  asked for - a URL whose last segment DOES name a viewer
-  (`https://example.com/reports/paper.pdf`) wearing the browser's mark rather than
-  the canvas panel's - is therefore asserted, not photographed:
-  `scripts/chat-link-affordances.test.mjs`'s "a URL's browser press wears the
-  browser mark, never the canvas one" mounts the transcript, focuses that URL's
-  anchor, reads the button's own SVG class, and then does the same for a file link
-  as the positive control. Giving this fixture's URL an extension would move the
-  strip's own column position in ~20 states, so the fixture stays as it is and the
-  limit is stated rather than paid for.
-
-- **No frame shows the above-ceiling strip, and none can.** The story's probe stub
-  answers one size for the fixture's paths, so the state round 3 fixed - a
-  canvas-openable FILE whose press would refuse it for `MAX_EAGER_READ_BYTES`, which
-  drops `Open in canvas` and shows the note `Too large for the canvas preview` - is
-  not reachable from this story without a second fixture and a >1 MiB file behind
-  it. It is covered where it can be driven instead:
-  `scripts/link-actions.test.mjs`'s "a file above the read ceiling keeps the OS shape
-  and says why" (the matrix, beside the two neighbours that must NOT change: a 40 MB
-  PDF keeps its canvas action and a small CSV is untouched) and
-  `scripts/chat-link-affordances.test.mjs`'s "above the read ceiling the strip loses
-  the canvas and says why" (the mounted strip). Adding the state to the story and
-  re-shooting the set is a real change of the set's own scope and is not part of this
-  round.
