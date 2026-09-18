@@ -106,8 +106,11 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  * not a state.
  *
  * The active row is the rail's single accent spend (its accent icon, over the
- * `highlight` ground this branch gave the row),
- * so hover is a neutral ground step to `elevated` rather than a second tint.
+ * `rowSelected` ground this rail imports from the chat panel, plus that role's
+ * 2px accent bar and `font-medium`), so hover takes the OTHER row role,
+ * `rowHover`, rather than a second tint. Both are the palette's own accent hue
+ * at two strengths; neither is a ground, and `elevated` is not a row state at
+ * all — that boundary is the reason the pair exists.
  * Its label stays `ink` rather than going accent: tinting the ground and the
  * mark and the text is three signals for one state, and it makes the row you
  * are already on the loudest text in the rail.
@@ -186,17 +189,22 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					"transition-colors duration-fast ease-out-quart",
 					labelled ? "justify-start gap-2 px-3" : "justify-center",
 					/*
-					 * The current destination's ground: `highlight`, the role authored for a
-					 * current row, a step off the panel's `surface` in the direction the mode
-					 * runs. It was authored at ΔE00 2.18-2.28 for a selection the operator had
-					 * asked to be SUBTLE; he has since seen it rendered and reported the row as
-					 * being lost beside a hovered neighbour, so the role now carries ΔE00
-					 * 4.01-4.15 from `surface` on all twelve palettes — a LIGHTNESS step, 3.81
-					 * to 6.62 `L*` in the direction the mode runs, with chroma paying only the
-					 * remainder. That ordering, and the direction, are stated in
-					 * `docs/branding.md` § 2 and asserted in `scripts/contrast-contract.mjs`.
-					 * (The earlier reading of this palette, "3.51 on `iceberg`, capped by its
-					 * own well", was wrong: iceberg measures 4.12, above the band's floor.)
+					 * The current destination's ground: `rowSelected` — the role authored for
+					 * the row the reader is ON, one of the two the row-state pass added, with
+					 * `rowHover` for the row under the pointer. Both are tints of the
+					 * palette's own `accent` hue at two strengths rather than of the panel's
+					 * own cast, and the selected one is asserted at ΔE00 **6.0** off `surface`
+					 * AND 6.0 off `rowHover`, with a 3.0-5.0 `L*` step in the direction the
+					 * mode runs, a chroma ceiling, and the 2px `accent` bar the role brings
+					 * with it. Its doc in `palette-contract.ts` states the rule;
+					 * `scripts/contrast-contract.mjs` asserts it per palette.
+					 *
+					 * The role it replaced was `highlight`: a step toward the PANEL's own
+					 * cast, bought on LIGHTNESS — the one axis the band had already spent —
+					 * which is why the operator twice reported the row as lost beside a
+					 * hovered neighbour. (The earlier reading of this palette, "3.51 on
+					 * `iceberg`, capped by its own well", was wrong: iceberg measures 4.12,
+					 * above that band's floor.)
 					 *
 					 * It was `accentWash` before that role existed, which is ΔE00 **1.05** on
 					 * this ground in tokyoNight (`#262B3F` on `#24283B`, the pair the app
@@ -212,7 +220,10 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					 * 3.75-14.94 from `surface` — a dark box rather than a highlight.
 					 * `hover:` states the ground again because a hover variant outranks a
 					 * bare background, so without it the pointer would replace the mark on
-					 * the row the user is already on.
+					 * the row the user is already on — and the INACTIVE branch takes
+					 * `hover:bg-row-hover`, because a row's hover is a row state too and
+					 * `elevated`, which it used, is a GROUND: it is every menu, popover and
+					 * tooltip in the app. That boundary is what the two roles exist to draw.
 					 *
 					 * No EDGE, deliberately, and this rail is the second place the boundary was
 					 * retired from rather than the first: an earlier round of this branch drew a
@@ -220,8 +231,8 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					 * visual boundary of an input, select, checkbox or outlined button* — and
 					 * both rails drew it with the same 1px, radius and ink as the search field
 					 * above the chat list, so the row read as a filled field (design round 1,
-					 * D3). The mark is the ground plus the weight, which is what the app rail
-					 * already used for the same fact. See
+					 * D3). The mark is the ground, the weight and the bar, and the bar is the
+					 * non-boundary-shaped second signal this role owns. See
 					 * `features/chat/components/chat-sidebar.tsx`'s `rowCurrent` block: one
 					 * decision, two call sites — and since round 5 (design D22, agent A-7) the
 					 * terms are IMPORTED from that block rather than spelled a second time
@@ -231,7 +242,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					 */
 					isActive
 						? rowCurrent
-						: "text-ink-muted hover:bg-elevated hover:text-ink",
+						: "text-ink-muted hover:bg-row-hover hover:text-ink",
 				)}
 			>
 				{/* Decorative in both layouts: labelled, the text beside it names the

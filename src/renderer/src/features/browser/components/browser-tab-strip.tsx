@@ -1041,7 +1041,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										floor,
 										active
 											? "border-control border-x border-t bg-canvas text-ink"
-											: "text-ink-muted hover:bg-elevated hover:text-ink",
+											: "text-ink-muted hover:bg-row-hover hover:text-ink",
 										// The tab whose actions row is open keeps a visible selected treatment:
 										// the row is a band under the whole strip, and the only other tie to its
 										// owner was a `:focus-visible` ring, which a mouse click does not paint
@@ -1512,7 +1512,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										}}
 										aria-current={tab.tabId === activeTabId}
 										data-tab-id={tab.tabId}
-										className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-elevated hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+										className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-row-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
 										data-tour-tag="browser-tab-overflow-row"
 									>
 										<Check

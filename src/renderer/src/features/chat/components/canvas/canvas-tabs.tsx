@@ -214,7 +214,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 							className={cn(
 								"group flex h-6 shrink-0 items-center rounded-sm pr-0.5",
 								"transition-colors duration-fast ease-out-quart",
-								isSelected ? "bg-surface" : "hover:bg-elevated",
+								isSelected ? "bg-surface" : "hover:bg-row-hover",
 							)}
 						>
 							<button

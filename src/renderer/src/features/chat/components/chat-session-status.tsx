@@ -50,7 +50,12 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 									: HelpCircle;
 	const ink =
 		code === "busy"
-			? "text-info motion-safe:animate-spin"
+			? // LIVENESS IS `accent` (or motion). It was `info` here and the accent
+				// in the transcript, so one fact wore two hues depending on which
+				// surface carried it — and `info` means "here is a fact" on the six
+				// sites that own it. Motion still carries the state on its own; the
+				// accent is the second channel, not the only one.
+				"text-accent motion-safe:animate-spin"
 			: code === "error" || code === "wedged"
 				? "text-danger"
 				: code === "approval" || code === "answer" || code === "interrupted"
