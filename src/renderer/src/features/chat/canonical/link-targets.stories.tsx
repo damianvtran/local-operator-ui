@@ -352,9 +352,11 @@ export default meta;
 type Story = StoryObj;
 
 /**
- * The eight shapes at rest, which is also the case the operator reported from the
+ * The nine shapes at rest, which is also the case the operator reported from the
  * other side: before this change every path here was dead text, and the frame
- * that shows them plain is the "before" half of that comparison.
+ * that shows them plain is the "before" half of that comparison. The ninth - the
+ * slash-command paragraph this change is about - is listed with the others in
+ * `CONVERSATION` above.
  */
 export const DetectedTargets: Story = {
 	render: () => <Frame />,

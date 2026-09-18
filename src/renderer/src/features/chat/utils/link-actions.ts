@@ -335,9 +335,13 @@ export async function probeTarget(
 export const evidenceFor = (target: string): TargetEvidence => {
 	const known = probeCache.get(target);
 	/*
-	 * `null` is `ProbedTarget`'s own spelling for "nothing is known yet", so it
-	 * answers `unknown` beside `undefined` rather than being read as a missing
-	 * file: an entry nobody wrote is not evidence about the disk.
+	 * The truthiness test is the whole check, and its rationale has to be true:
+	 * `probeCache` is only ever WRITTEN with an object (`probeTargets`'s set, below),
+	 * so the value observed here is `undefined` until an answer lands - `null` is
+	 * `probeStateFor`'s pre-existing spelling for "nothing is known yet" on the
+	 * TOOLBAR's side and this map never holds it (round 1, review R1-7). Either way
+	 * an entry nobody wrote is not evidence about the disk, so both answer `unknown`
+	 * and the grammar's gate REFUSES it.
 	 */
 	if (!known) return "unknown";
 	return known.exists ? "exists" : "missing";

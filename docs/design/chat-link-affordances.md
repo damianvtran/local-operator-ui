@@ -78,13 +78,15 @@ are enumerated on `TargetPolicy` so a reviewer can reject one alone:
 | `file://` needs an extension | no | no (the same on both sides) |
 | relative tokens (`notes.md`, `src/foo.ts`) | never | never — no cwd, so no root to guess |
 | fragment guard (`rejectFragments`) | off | on |
+| evidence gate (`evidence`) | off — no oracle is supplied, and an absent oracle REFUSES | on — the session's own probe cache answers |
 
-The two surfaces differ in exactly **two admissions**, both of them flags on
+The two surfaces differ in exactly **three admissions**, each of them expressed on
 `TargetPolicy` so a reviewer can reject one alone (round 1, review M2: this table
 said "exactly one" for the extension filter, and two other comments counted a
-"fourth" difference; the truth is two, and `targetsIn("see
-/tmp/out/report.pdf(banana) here", …)` falsifies the old claim in one line). The
-fragment guard is the one that needed a decision. The panel never needed it,
+"fourth" difference; that round's answer was two, and this change measured a third
+— see below for why the count moved, and why the evidence gate is not something the
+panel could switch on). The fragment guard is the one that needed a decision. The
+panel never needed it,
 because the extension rule was doing its job by accident: `/tmp/{a,b}.ts` arrived
 as `/tmp/` and was refused for having no extension. The linkifier drops that rule,
 so without the guard the brace expansion renders a link to `/tmp/` and macOS's
@@ -93,6 +95,18 @@ wrong, where a missing tile never was. The guard admits the file-url scanner's o
 shape (an opening bracket that closes further along the token is a name carrying
 on) and drops the fragment rather than guessing, which is the direction
 `scanFileUrls` already takes.
+
+**The evidence gate is the third admission, and it is the only one that is not a
+boolean.** A bare extensionless token — `/new`, `/tmp`, `/v2/things` — is one
+shape to a text scanner and three different things to a reader: a slash command
+the transcript is full of, a directory, or a typo. Only the disk tells them apart,
+so the linkifier takes an ORACLE (`evidenceFor`, reading the answers the toolbar's
+probe already cached) and admits such a candidate only when the disk says it
+exists. The panel supplies no oracle and needs none: its extension rule has
+already refused every ambiguous shape before that question is reached, which is
+why the order in `targetsIn` is load-bearing and why an absent oracle REFUSES
+rather than admits. Without it the linkifier underlined `/new` in the operator's
+own sentence and the hover answered `No file at /new`.
 
 **A `#` is not part of a path, on either surface** (round 1, review M4). This is
 grammar rather than policy: the same rule `normalizeFileUrl` already applies to a

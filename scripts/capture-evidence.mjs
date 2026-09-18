@@ -3704,16 +3704,19 @@ export const STORIES = [
 	 * trigger-hover frames use - and the toolbar is raised by the shipped
 	 * `pointerover` handler reacting to it.
 	 *
-	 * `DetectedTargets` is the resting half and carries the eight admission shapes
+	 * `DetectedTargets` is the resting half and carries the nine admission shapes
 	 * in one frame (a `~` path, the operator's own report; a backticked path; a
 	 * `file://` URL; a bare https URL that remark-gfm already linked, which must not
 	 * be linked twice; a path in a table cell; a directory; a path that is not
-	 * there; and one long enough to wrap). There is NO `main`-side before half for it,
-	 * and there cannot be: the story file is ADDED by this branch, so no frame of it
-	 * exists on `main` at all. What the set does have is the story's own RESTING
-	 * state - the same text with no pointer on it and no highlight in it - and the
-	 * change it is the "before" of is "the previous behaviour was no anchor at
-	 * all", which round 1 (review M5) corrected in this file and in the design doc.
+	 * there; one long enough to wrap; and the ninth, the operator's own report of
+	 * this defect - a slash command in prose and a second one in backticks, neither
+	 * a file, beside an extensionless token that is a real directory). There is NO
+	 * `main`-side before half for it, and there cannot be: the story file is ADDED
+	 * by this branch, so no frame of it exists on `main` at all. What the set does
+	 * have is the story's own RESTING state - the same text with no pointer on it
+	 * and no highlight in it - and the change it is the "before" of is "the previous
+	 * behaviour was no anchor at all", which round 1 (review M5) corrected in this
+	 * file and in the design doc.
 	 *
 	 * `hover-file` is the file case (Copy, Open in canvas, Open in default app, Open
 	 * folder), which is the operator's ask in one frame: a canvas-openable file
@@ -3816,6 +3819,31 @@ export const STORIES = [
 			hoverText: "is gone, and",
 			hoverSettleMs: 500,
 			dir: "hover-prose",
+		},
+	],
+	/*
+	 * THE AFTER HALF'S CENTRAL CLAIM, as an assertion rather than a picture
+	 * (design D2): a slash command raises NO strip. `hoverText` is the instrument
+	 * because the token is prose - no selector can name a text node - and
+	 * `expectGone` is what makes the frame falsifiable: a still of an absent
+	 * toolbar is otherwise indistinguishable from one of the resting state.
+	 *
+	 * SELF-ASSERTING ACROSS THE TWO HEADS, which is why it is not filed as a resting
+	 * frame under a hover name: on the BEFORE head (`9c58e7bb7`, the story-fixture-
+	 * only commit whose frames are the `chat-canonical-links-before` set) EVERY
+	 * `/new` run in this paragraph is inside an anchor, so the aim throws with
+	 * `no text run matching "/new" outside a link or a button` - measured by design
+	 * round 1 on that head - and this entry cannot produce a frame there at all.
+	 */
+	[
+		"chat-canonical-links--detected-targets",
+		1024,
+		720,
+		{
+			hoverText: "/new",
+			hoverSettleMs: 500,
+			expectGone: "[data-lo-link-toolbar]",
+			dir: "hover-command-prose",
 		},
 	],
 	[
