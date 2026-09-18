@@ -104,6 +104,14 @@ const unread = (sessionId, over = {}) => ({
 });
 
 /**
+ * The derived status pair every wire row carries for a finished, unread turn
+ * (`CatalogEntry.status_code`). It is part of the row rather than decoration:
+ * `unreadMarkKind` reads it to decide what a row is DRAWING, so a fixture
+ * without one is a row the backend cannot produce.
+ */
+const COMPLETE = { code: "complete", label: "Unseen completion" };
+
+/**
  * The receipts each case stages, plus the request log the assertions read.
  *
  * `held` is a promise the case resolves by hand, which is how the in-flight
@@ -349,12 +357,14 @@ const PILE = [
 		session_id: SESSION,
 		title: "Reconcile the supplier ledger",
 		active: true,
+		status: COMPLETE,
 		attention: unread(SESSION),
 	},
 	{
 		session_id: OTHER,
 		title: "Quarterly revenue model",
 		active: true,
+		status: COMPLETE,
 		attention: unread(OTHER),
 	},
 ];
