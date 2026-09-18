@@ -29,13 +29,29 @@ The last three are driven by their stories' own `play` functions — a real clic
 the action, then a wait for the state under test — so they are pictures of the
 component reacting rather than of a prop that fakes a state.
 
-**Every frame in this directory is from the remediation pass on head
-`83d25dd39`** — all seven stories, twelve themes each, taken in one narrowed run
-(`--only=chat-sidebar-agents`) at that head. The pause on this surface is closed:
-`installing-mid-run` has its twelve frames here rather than none, and the other
-six states are re-shot against the meter, summary and copy changes in
-`add709df1`, so they are evidence for those changes rather than the previous
-round's captures.
+**Every frame in this directory is from the ROUND-2 remediation pass on head
+`40db9e792`** — all seven stories, twelve themes each, taken in one narrowed run
+(`--only=chat-sidebar-agents --allow-backend`) at that head, the commit the
+round's code changes ship in, after the branch was folded onto `origin/main` =
+`2f85777b0`. The set was re-taken whole rather than in the states the round's
+findings move, for the reason `agent-hub-page/`'s own README gives: the fold
+moved the sidebar and its primitives, and the carried frames were pictures of a
+tree that no longer renders that way. `installing-mid-run` keeps the twelve
+frames it was added for, and every state here is now a picture of the meter,
+summary, announcement and copy this round ships.
+
+**The batch's announcement and its focus are read from the page, not from these
+stills.** UX round 2's U10 and U11 were both about what happens BETWEEN frames:
+the progress sentence and the summary were two live regions each inserted already
+holding their text — the shape assistive technology is least reliable about — and
+focus sat on `document.body` for the whole 3.7s run and again after `Done`. Both
+are now one region, mounted with the section (`sr-only` and empty when idle) and
+written into at each step and at the end, which is also the focus target while
+the batch runs. Measured on the rendered page: focus on
+`install-builtins-live` mid-run with the region reading "Installing 4 of 6 —
+architect…", on `Done` when the batch settles, and back on "Install all built-in
+agents" once the summary is dismissed. A frame cannot show a focus move or an
+announcement; what the stills here show is the state each reading was taken in.
 
 What this set still cannot show is a *draw* of the bar's transition: every frame
 is a shutter on a state, so the fill is a reading of where the batch got to
@@ -62,6 +78,16 @@ moving.
   the skip rule and the sentence the user reads are held by
   `scripts/install-builtin-batch.test.mjs`, which runs the shipped batch module
   against a scripted installer.
+- **Not the post-install list.** The fixture's `profiles.list` never changes, so
+  `installing-mid-run` reads "No agents yet" over three answered installs and
+  `install-summary` ends over the same empty list. That is a fixture artefact
+  rather than a state a user can reach (design round 2, D6 named it): the real
+  section gains rows as its invalidated read returns, and that is the live app's
+  surface, not a story's.
+- **Not a focus move or an announcement.** These are stills. Where focus lands at
+  each transition, and that the region is a persistent one written into, was read
+  off the rendered page (above); the frames show the states those readings were
+  taken in.
 
 ## The two meters, and why the frames decide
 

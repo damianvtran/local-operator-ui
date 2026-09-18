@@ -10,14 +10,39 @@ A second worktree at `origin/main` (`da9e75a61`, the 0.25.16 merge; `4cdd06a0a`
 before it), `pnpm install`, its own Storybook, and the same rig:
 
 **Both bases, so the pair can be re-checked rather than trusted.** The `after`
-half was rebased three times and its current merge-base with `origin/main` is
-`740796091`, not the `da9e75a61` this set was captured from. The pair still
-isolates the change, and that is checkable rather than argued:
-`git diff da9e75a61 740796091 -- src/renderer/src/features/agent-hub` is empty, so
-the hub files are byte-identical at both, and the sidebar-relevant difference
-between the two commits is one unrelated file (`run-panel.tsx`) — which the
-`chat-sidebar-agents` set's own README covers by capturing no `before` half at
-all.
+half has been folded onto `origin/main` five times; its current merge-base is
+`2f85777b0` (the 0.28.2 window), not the `da9e75a61` this set was captured from.
+Of the five files under `src/renderer/src/features/agent-hub` that changed
+between those two commits, four changed COMMENTS only — checked rather than
+asserted, by taking the diff's `+`/`-` lines that are not comment lines and
+finding none:
+
+```
+git diff da9e75a61 2f85777b0 -- \
+  src/renderer/src/features/agent-hub/agent-card.tsx \
+  src/renderer/src/features/agent-hub/agent-details-page.tsx
+git diff --name-only da9e75a61 2f85777b0 -- \
+  src/renderer/src/features/agent-hub/agent-hub.stories.tsx    # empty
+```
+
+so the story these frames photograph renders identically at both bases and the
+pair still isolates this branch's change. The fifth file,
+`use-download-agent-mutation.ts`, DID change on `main`: its pull refusals grew a
+`pullRefusalMessage` toast. That is the one semantic merge of this branch's fold
+— this branch renders that failure inline beside the control that produced it,
+and two channels cannot announce one failure, so the toast went and the hook
+carries the backend's sentence on `mutation.error`. Nothing in these frames is of
+it, because the change renders on a pull and this set photographs a settled grid;
+which is also why the pair says nothing about that surface either way.
+
+**When these frames were taken, and how the manifest's entry says so.** The entry
+for this set carries a `capturedAt` DERIVED rather than invented (design round 2,
+D4). `git log -1 --format=%cI -- docs/evidence/agent-hub-page-baseline` at
+`5b14b58aa` returns the commit date of `6504cdaa9`, this directory's last write
+before the round-2 pass; the frames themselves were added to the branch by
+`01d6a12e2`. Those two differ because `6504cdaa9` rewrote this README after the
+frames had landed. Neither is a wall clock: the capture ran in a second worktree,
+and the repository does not record when.
 
 ```
 node scripts/capture-evidence.mjs http://localhost:<port> --only=agent-hub-page --allow-backend
@@ -46,12 +71,14 @@ from the diff.
   hub with its transport answered by hand, which is the state a user saw.
 - **Not what a real backend sends.** The payloads are fixtures, as in the `after`
   set — the same ones, so the pair differs in the hub's own code and nothing else.
-- **Not a `main` that includes the change.** This set is `origin/main` at
-  `da9e75a61`; the `after` set is the branch, rebased onto a base that has since
-  moved to `740796091`. The hub files are byte-identical across those two commits
-  (`git diff da9e75a61 740796091 -- src/renderer/src/features/agent-hub` is
-  empty), so the pair isolates the change rather than a move of `main` — re-check
-  it with that command rather than taking this sentence's word for it.
+- **Not a `main` that includes the change**, and not a `main` that is this
+  branch's own base either: this set is `origin/main` at `da9e75a61`, while the
+  `after` half is the branch, now folded onto `2f85777b0`. The hub components
+  differ between the two commits in comment text only and the story file not at
+  all — the commands above are the check, rather than this sentence's word — so
+  the pair isolates the change rather than a move of `main`. What it does NOT
+  cover is the pull's failure channel: `main` changed it in between and this
+  branch resolved that semantic merge differently (above).
 - **Not the sidebar.** `chat-sidebar.tsx` has moved twice across this branch's
   rebases
   (main's current-row work), which is the reason this baseline set carries the
