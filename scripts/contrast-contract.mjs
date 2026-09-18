@@ -2337,7 +2337,18 @@ const findPerceptibleException = (theme, role, ground, got) => {
  * dead weight the rule above exists to refuse.
  */
 const INK_STEP_PINNED = [];
+/** Every palette whose ink step was MEASURED - the stale check's theme-existence set. */
 const inkStepSeen = new Set();
+/**
+ * The pins the run actually looked up, which is what the summary line reports. The
+ * two sets are not the same thing and the difference is the whole of review round
+ * 2's F1: every measured palette is added to `inkStepSeen`, so printing ITS size
+ * reported 59 pinned ink steps against a table with no rows - a headline asserting
+ * a pin population the tree does not have, one field to the right of the fix made
+ * for exactly that. A pin whose theme is gone is never looked up, so it cannot be
+ * counted here, and the stale check below fails it.
+ */
+const inkStepPinSeen = new Set();
 
 /*
  * NO CONTROL EDGE IS PINNED TODAY, and what the list held is kept here because the
@@ -2406,8 +2417,13 @@ const fail = (msg) => {
  * fixed is never looked up - and a table that only checks the entry still
  * DESCRIBES something (the theme still exists, the pair still measures what the
  * row says) will keep a dead row alive for as long as nobody asks. Counted here,
- * failed below. Its siblings `perceptibleSeen`, `inkStepSeen` and
- * `controlEdgeSeen` are the same mechanism; this table was the one missing it.
+ * failed below. Its siblings `perceptibleSeen`, `controlEdgeSeen` and
+ * `inkStepPinSeen` are the same mechanism - each holds the entries the run
+ * CONSULTED rather than the entries the table declares - and this table was the one
+ * missing it. The remaining set, `inkStepSeen`, is deliberately not one of them: it
+ * holds the palettes whose ink step was measured, which is the question the ink-step
+ * stale check asks, and the summary line reads `inkStepPinSeen` instead precisely
+ * because the two are not interchangeable.
  */
 const exceptionSeen = new Set();
 
@@ -3587,6 +3603,7 @@ for (const { id, palette: p } of palettes) {
 		inkStepSeen.add(id);
 		const got = deltaE(p.inkMuted, p.inkDim);
 		const pin = INK_STEP_PINNED.find((e) => e.theme === id);
+		if (pin) inkStepPinSeen.add(pin);
 		if (got < INK_STEP_FLOOR) {
 			if (!pin)
 				fail(
@@ -4030,8 +4047,17 @@ const FLEET_LIGHT_HIGH_CEILING = 12;
 const FLEET_LIGHT_SUB1_CEILING = 1;
 /** A near-neutral canvas has no cast to be told apart by, only depth. */
 const FLEET_NEAR_NEUTRAL_CHROMA = 2.5;
-/** Measured 0.00 - `arcade` and `obsidian` ship the SAME hex; target `>= 2.5`. */
-const FLEET_NEUTRAL_LADDER_FLOOR = 0;
+/** The register's own spec target, in `L*`: the step a near-neutral is told apart by. */
+const FLEET_NEAR_NEUTRAL_TARGET = 2.5;
+/**
+ * Measured 9, and the spec's target is 0 pairs: the dark register's `arcade`/
+ * `obsidian` ship the SAME hex (0.000 `L*` apart) with `dune` 0.001 off both, and the
+ * light family's near-whites are closer still (0.163-1.40). A floor cannot say that -
+ * the minimum gap is 0.000 by construction, so the branch was unreachable while the
+ * run still counted it as an assertion (review round 2, F2) - so the population is
+ * carried instead, the way the identical-pair rule carries its ceiling.
+ */
+const FLEET_NEAR_NEUTRAL_PAIRS_CEILING = 9;
 
 /**
  * The three movers' re-solve rules, as the values are actually held.
@@ -4053,23 +4079,58 @@ const FLEET_NEUTRAL_LADDER_FLOOR = 0;
  * inside the envelope its own quantisation allows. `HUE_PIN_DEGREES` is kept as the
  * second clause so a value that rotates further than a step still fails on its
  * degrees, and the reported figure is the move set's: the fleet line prints how many
- * of the 44 moved ground values sit above the 1 degree pin WHILE STAYING inside the
- * envelope (18 at this head, and 0 outside it over the whole 168-value move set),
- * so the number that ran as "the pin fails" in review is the number the gate now
- * reports rather than one it hides.
+ * of the 168 moved values sit above the 1 degree pin WHILE STAYING inside the
+ * envelope (33 at this head, and 0 outside it), so the number that ran as "the pin
+ * fails" in review is the number the gate now reports rather than one it hides.
+ *
+ * The hue half is DISCLOSURE, not the operative measure, and two measured facts
+ * should stop the next reader treating it as one (review round 2, F3 and its NIT):
+ * the pin can never bind on this move set, because `pin = max(1, envelope)` and the
+ * smallest envelope over the 168 values is 1.88 degrees (`vaporwave.elevated`), so
+ * the 1 degree term only ever adds strictness below the chroma where the lattice
+ * allows less than a degree; and the chroma clause is exercised by no shipped value
+ * either, because the move set's single spend is `tokyoNight.ink` at 0.800 x - and
+ * that role has no in-gamut re-solve, so it takes the `GAMUT_EDGE_MOVES` branch
+ * before the clause is reached. The channel step is the clause that decides, and the
+ * two clauses beside it are kept for the spec's sake rather than as coverage.
  *
  * Where the pure-L* re-solve is outside sRGB there is no candidate to compare, so
  * the role is named with its reason instead of being waved through - the two
- * entries in `GAMUT_EDGE_MOVES` are the whole set.
+ * entries in `GAMUT_EDGE_MOVES` are the whole set, asserted in both directions.
+ *
+ * WHAT THIS RULE COVERS, because an unasserted coverage claim is how the last
+ * version of it passed review while holding 44 of the 168 values (review round 2,
+ * MAJOR): the walk below is over `REGISTER_MOVES`' own pre-values, which are every
+ * role value this pass moved, so all 168 are held to all three clauses, and the
+ * fleet line reports the count it walked. An entry whose role has left the palette,
+ * or whose value is back at the pre value it names, fails rather than being skipped:
+ * the population is the claim, so a table that no longer describes the move set has
+ * to fail instead of quietly narrowing.
  */
 const HUE_PIN_DEGREES = 1;
 const MOVED_CHANNEL_STEP_TOLERANCE = 1;
 const MOVED_CHROMA_FLOOR = 0.9;
 
 /**
- * The eleven palettes the identity re-solve moved, with the four ground values
- * each of them shipped BEFORE it - the values their own file records as the
- * previous ones (`canvas #1A1B26 -> #1E1F2A -> #2A2A35`).
+ * The move set's size, as the record states it. The walk asserts it rather than
+ * assuming it, so "0 outside the envelope over the whole move set" is a number the
+ * gate can fail on rather than a count somebody made once by hand.
+ */
+const MOVED_VALUE_COUNT = 168;
+
+/**
+ * The eleven palettes the identity re-solve moved, with EVERY role value each of
+ * them shipped BEFORE it - the values their own file records as the previous ones
+ * (`canvas #1A1B26 -> #1E1F2A -> #2A2A35`).
+ *
+ * 168 values across the eleven palettes, which is the move set the record names. Two
+ * roles are deliberately absent: `rowHover` and `rowSelected` are NEW here (11 x 2
+ * values have no predecessor on `origin/main` to hold a move against, and their
+ * separation is the row-state assertions' business), and `highlight` was deleted.
+ * Every value carried here is one the walk can assert three ways - hue inside the
+ * lattice envelope, within one channel step of the pure-`L*` re-solve, no chroma
+ * spent - where the previous table carried only the four grounds and covered 44 of
+ * them (review round 2, MAJOR).
  *
  * The pre-values are carried here rather than read from git because a gate that
  * needs history cannot run in CI; they are the same values `origin/main` carries,
@@ -4078,93 +4139,249 @@ const MOVED_CHROMA_FLOOR = 0.9;
 const REGISTER_MOVES = [
 	{
 		id: "autumn",
-		canvas: "#261E1A",
-		surface: "#312720",
-		elevated: "#362D24",
-		sunken: "#1D1815",
+		pre: {
+			canvas: "#261E1A",
+			surface: "#312720",
+			elevated: "#362D24",
+			sunken: "#1D1815",
+			inkMuted: "#CFBAA5",
+			inkDim: "#B09F8A",
+			hairline: "#48382F",
+			borderControl: "#8B7768",
+			accentWash: "#292312",
+			accentAltWash: "#2B1F2F",
+			successBorder: "#757F4D",
+			warningBorder: "#97752C",
+			dangerBorder: "#B76355",
+			infoBorder: "#627E91",
+		},
 	},
 	{
 		id: "catppuccinMocha",
-		canvas: "#1F1F2F",
-		surface: "#262636",
-		elevated: "#2B2B3F",
-		sunken: "#191926",
+		pre: {
+			canvas: "#1F1F2F",
+			surface: "#262636",
+			elevated: "#2B2B3F",
+			sunken: "#191926",
+			ink: "#CDD6F4",
+			inkMuted: "#BAC2DE",
+			inkDim: "#9CA3C0",
+			hairline: "#363653",
+			borderControl: "#727589",
+			tokenCommand: "#89B4FA",
+			accentWash: "#25253B",
+			accentAlt: "#719AD4",
+			accentAltWash: "#18283D",
+			successBorder: "#498346",
+			warningBorder: "#A6663B",
+			dangerBorder: "#B75673",
+			info: "#89B4FA",
+			infoBorder: "#4E76B7",
+		},
 	},
 	{
 		id: "desert",
-		canvas: "#271E13",
-		surface: "#31271A",
-		elevated: "#392E20",
-		sunken: "#1D160C",
+		pre: {
+			canvas: "#271E13",
+			surface: "#31271A",
+			elevated: "#392E20",
+			sunken: "#1D160C",
+			inkMuted: "#CEBEA9",
+			inkDim: "#B0A38A",
+			hairline: "#4A3C2A",
+			borderControl: "#8E7B63",
+			accentWash: "#2F2E18",
+			accentAltWash: "#36283B",
+			successBorder: "#6C804D",
+			warningBorder: "#977632",
+			danger: "#F58384",
+			dangerBorder: "#BD6865",
+			infoBorder: "#617E8B",
+		},
 	},
 	{
 		id: "forest",
-		canvas: "#18221B",
-		surface: "#1F2C23",
-		elevated: "#26322A",
-		sunken: "#151A17",
+		pre: {
+			canvas: "#18221B",
+			surface: "#1F2C23",
+			elevated: "#26322A",
+			sunken: "#151A17",
+			inkMuted: "#B0C4B1",
+			inkDim: "#92A795",
+			hairline: "#2E4033",
+			borderControl: "#69806E",
+			accentWash: "#1A2A1A",
+			accentAltWash: "#2B2335",
+			successBorder: "#55865E",
+			warningBorder: "#8E793E",
+			dangerBorder: "#AB695D",
+			infoBorder: "#55828D",
+		},
 	},
 	{
 		id: "lavender",
-		canvas: "#211E2B",
-		surface: "#292637",
-		elevated: "#302B3D",
-		sunken: "#191821",
+		pre: {
+			canvas: "#211E2B",
+			surface: "#292637",
+			elevated: "#302B3D",
+			sunken: "#191821",
+			inkMuted: "#BEB8D1",
+			inkDim: "#A49CBB",
+			hairline: "#3C3656",
+			borderControl: "#7D749E",
+			accentWash: "#1F2333",
+			accentAltWash: "#2F1E2A",
+			successBorder: "#578365",
+			warningBorder: "#927543",
+			dangerBorder: "#AE6372",
+			infoBorder: "#5D7C9E",
+		},
 	},
 	{
 		id: "neonNoir",
-		canvas: "#1D2025",
-		surface: "#25282F",
-		elevated: "#2A2E37",
-		sunken: "#191B1E",
+		pre: {
+			canvas: "#1D2025",
+			surface: "#25282F",
+			elevated: "#2A2E37",
+			sunken: "#191B1E",
+			inkMuted: "#B7BDCA",
+			inkDim: "#98A2B0",
+			hairline: "#383E48",
+			borderControl: "#727A88",
+			accentWash: "#1F2D34",
+			accentAltWash: "#2F2932",
+			successBorder: "#578271",
+			warningBorder: "#887857",
+			danger: "#E07A8A",
+			dangerBorder: "#9D6C76",
+			infoBorder: "#667C96",
+		},
 	},
 	{
 		id: "ocean",
-		canvas: "#142228",
-		surface: "#1A2C37",
-		elevated: "#1E323C",
-		sunken: "#131A20",
+		pre: {
+			canvas: "#142228",
+			surface: "#1A2C37",
+			elevated: "#1E323C",
+			sunken: "#131A20",
+			inkMuted: "#A9C3CA",
+			inkDim: "#87A8B1",
+			hairline: "#254049",
+			borderControl: "#5E818C",
+			accentWash: "#12302C",
+			accentAltWash: "#2D293A",
+			successBorder: "#49876D",
+			warningBorder: "#8B7A47",
+			dangerBorder: "#AC6967",
+			infoBorder: "#5280A0",
+		},
 	},
 	{
 		id: "rosePine",
-		canvas: "#201e2b",
-		surface: "#262436",
-		elevated: "#2B283F",
-		sunken: "#191822",
+		pre: {
+			canvas: "#201e2b",
+			surface: "#262436",
+			elevated: "#2B283F",
+			sunken: "#191822",
+			inkMuted: "#c5c2dd",
+			inkDim: "#9d99b7",
+			hairline: "#363644",
+			tokenCommand: "#9ccfd8",
+			accentWash: "#2e2430",
+			accentAltWash: "#2B2532",
+			success: "#5f9bb8",
+			successBorder: "#417d99",
+			warningBorder: "#8c7241",
+			danger: "#eb6f92",
+			dangerBorder: "#aa5f73",
+			info: "#9ccfd8",
+			infoBorder: "#4f8189",
+		},
 	},
 	{
 		id: "rosewood",
-		canvas: "#2A1C1D",
-		surface: "#342526",
-		elevated: "#3A2C2D",
-		sunken: "#201718",
+		pre: {
+			canvas: "#2A1C1D",
+			surface: "#342526",
+			elevated: "#3A2C2D",
+			sunken: "#201718",
+			inkMuted: "#D1B9B4",
+			inkDim: "#B29D98",
+			hairline: "#4B3635",
+			borderControl: "#8E7571",
+			accentWash: "#2B2318",
+			accentAltWash: "#27222E",
+			successBorder: "#6D805C",
+			warningBorder: "#957543",
+			dangerBorder: "#B2655D",
+			infoBorder: "#657D93",
+		},
 	},
 	{
 		id: "tokyoNight",
-		canvas: "#1E1F2A",
-		surface: "#25293C",
-		elevated: "#2A2E48",
-		sunken: "#18181F",
+		pre: {
+			canvas: "#1E1F2A",
+			surface: "#25293C",
+			elevated: "#2A2E48",
+			sunken: "#18181F",
+			ink: "#C0CAF5",
+			inkMuted: "#BBC3E8",
+			inkDim: "#9FA6C6",
+			hairline: "#3D4462",
+			borderControl: "#757EA9",
+			accent: "#7AA2F7",
+			chartBarHover: "#AAC3FA",
+			accentWash: "#2A2F44",
+			accentAltWash: "#342C41",
+			successBorder: "#6C8754",
+			warningBorder: "#967A56",
+			danger: "#F7768E",
+			dangerBorder: "#B66779",
+			infoBorder: "#5684A3",
+		},
 	},
 	{
 		id: "vaporwave",
-		canvas: "#241B35",
-		surface: "#2C2240",
-		elevated: "#312749",
-		sunken: "#1C152D",
+		pre: {
+			canvas: "#241B35",
+			surface: "#2C2240",
+			elevated: "#312749",
+			sunken: "#1C152D",
+			inkMuted: "#C4B6D8",
+			inkDim: "#A89AC5",
+			hairline: "#40355D",
+			borderControl: "#8070A1",
+			accentWash: "#3B2A46",
+			accentAltWash: "#2D2E4C",
+			successBorder: "#5A7F7B",
+			warningBorder: "#897562",
+			danger: "#F2808A",
+			dangerBorder: "#A26779",
+			infoBorder: "#587D91",
+		},
 	},
 ];
 
 /**
  * The moved roles whose pure-`L*` re-solve leaves sRGB, so there is no lattice
  * candidate to hold them to. Both are the same palette's, both are the gamut edge
- * the record discloses, and neither is a silent exemption: a role that lands here
- * without an entry FAILS below.
+ * the record discloses, and neither is a silent exemption.
+ *
+ * The keys are `<palette>.<role>` and the walk below visits EVERY role the pass
+ * moved, which is what makes them reachable and the set checkable in both
+ * directions: a moved value whose re-solve leaves sRGB with no entry here fails the
+ * walk, and an entry the walk never consults fails the check after it. That
+ * consultation guard is the one this table was missing (review round 2, MAJOR): its
+ * two keys were non-ground roles inside a loop that only ever built ground keys, so
+ * neither could be looked up and the rule held 44 of the 168 moved values while its
+ * comment claimed the whole set.
  */
 const GAMUT_EDGE_MOVES = new Set([
 	"tokyoNight.ink", // C* 22.95 -> 18.36: at L* 88.23 this hue sustains C* 18.37
 	"tokyoNight.chartBarHover",
 ]);
+/** The entries above that the walk consults; a dead exemption fails the check below. */
+const gamutEdgeSeen = new Set();
 
 /** Hue in degrees, in `[0, 360)`, from a Lab triple. */
 const hueDeg = ([, a, b]) => {
@@ -4238,7 +4455,8 @@ const pairsWithin = (rows, floor) => {
 	for (let i = 0; i < rows.length; i++) {
 		for (let j = i + 1; j < rows.length; j++) {
 			const d = deltaE(rows[i].hex, rows[j].hex);
-			if (d < floor) out.push({ a: rows[i].id, b: rows[j].id, got: d });
+			if (d < floor)
+				out.push({ a: rows[i].id, b: rows[j].id, hex: rows[i].hex, got: d });
 		}
 	}
 	return out.sort((x, y) => x.got - y.got);
@@ -4258,7 +4476,7 @@ const state = {
 	darkWindow: widestRegister(darkFleet, FLEET_WINDOW),
 	darkDeep: darkFleet.filter((r) => r.L < FLEET_DARK_DEEP_L).length,
 	darkSub1: pairsWithin(darkFleet, 1),
-	darkIdentical: pairsWithin(darkFleet, Number.EPSILON).length,
+	darkIdenticalPairs: pairsWithin(darkFleet, Number.EPSILON),
 	darkUpper: darkFleet.filter(
 		(r) => r.L >= FLEET_DARK_UPPER_LO && r.L <= FLEET_DARK_UPPER_HI,
 	).length,
@@ -4301,9 +4519,9 @@ if (state.darkSub1.length > FLEET_DARK_SUB1_CEILING) {
 	);
 }
 assertions++;
-if (state.darkIdentical > FLEET_DARK_IDENTICAL_CEILING) {
+if (state.darkIdenticalPairs.length > FLEET_DARK_IDENTICAL_CEILING) {
 	fail(
-		`the fleet: ${state.darkIdentical} dark canvas pairs are BYTE-IDENTICAL (max ${FLEET_DARK_IDENTICAL_CEILING}, was 3 before the identity re-solve; the spec's target is 0) - a palette that ships another palette's exact canvas has no depth of its own`,
+		`the fleet: ${state.darkIdenticalPairs.length} dark canvas pairs are BYTE-IDENTICAL (max ${FLEET_DARK_IDENTICAL_CEILING}, was 3 before the identity re-solve; the spec's target is 0): ${state.darkIdenticalPairs.map((pair) => `${pair.a}/${pair.b} ${pair.hex}`).join(", ")} - a palette that ships another palette's exact canvas has no depth of its own`,
 	);
 }
 assertions++;
@@ -4338,27 +4556,32 @@ if (state.lightSub1 > FLEET_LIGHT_SUB1_CEILING) {
 }
 
 /*
- * The near-neutral ladder. A canvas with no cast is told apart by depth only, and
- * `arcade` and `obsidian` ship the same hex (#202021), so this rule CANNOT hold at
- * the measured floor of 0.00 - it is carried at its measurement, with the spec's
- * 2.5 L* target named, and the pair that fails it named with it.
+ * The near-neutral ladder, as a RATCHET rather than a floor. A canvas with no cast
+ * is told apart by depth only, and this fleet ships FOUR near-neutrals in one 0.00-
+ * 1.53 L* knot: `arcade` and `obsidian` are the same hex (#202021, 0.00 L* apart)
+ * and `dune` (#21201E) is 0.0013 L* off both, against the register's 2.5 L* target.
+ *
+ * A floor could never state that - the minimum gap is 0.00 by construction, so the
+ * branch was unreachable and the run still counted it as an assertion (review round
+ * 2, F2) - so the population is carried instead, the way this file's identical-pair
+ * rule carries its ceiling: the three colliding pairs are tolerated, a fourth fails,
+ * and every pair it counts is named in the message rather than summarised.
  */
 const neutrals = fleetRows.filter((r) => r.chroma < FLEET_NEAR_NEUTRAL_CHROMA);
-let neutralGap = Number.POSITIVE_INFINITY;
-let neutralPair = null;
+const neutralPairs = [];
 for (let i = 0; i < neutrals.length; i++) {
 	for (let j = i + 1; j < neutrals.length; j++) {
 		const gap = Math.abs(neutrals[i].L - neutrals[j].L);
-		if (gap < neutralGap) {
-			neutralGap = gap;
-			neutralPair = `${neutrals[i].id}/${neutrals[j].id}`;
-		}
+		if (gap < FLEET_NEAR_NEUTRAL_TARGET)
+			neutralPairs.push(
+				`${neutrals[i].id}/${neutrals[j].id} ${gap.toFixed(3)}`,
+			);
 	}
 }
 assertions++;
-if (neutralGap < FLEET_NEUTRAL_LADDER_FLOOR) {
+if (neutralPairs.length > FLEET_NEAR_NEUTRAL_PAIRS_CEILING) {
 	fail(
-		`the fleet: the closest near-neutral canvases (C* < ${FLEET_NEAR_NEUTRAL_CHROMA}) are ${neutralPair} at ${r2(neutralGap)} L* apart (floor ${FLEET_NEUTRAL_LADDER_FLOOR} = the measurement; the spec's target is ${FLEET_NEAR_NEUTRAL_CHROMA}) - a near-neutral canvas has no cast to be recognised by, so depth is the whole of its identity`,
+		`the fleet: ${neutralPairs.length} near-neutral canvas pair(s) (C* < ${FLEET_NEAR_NEUTRAL_CHROMA}) sit closer than the register's ${FLEET_NEAR_NEUTRAL_TARGET} L* target (max ${FLEET_NEAR_NEUTRAL_PAIRS_CEILING}): ${neutralPairs.join(", ")} - a near-neutral canvas has no cast to be recognised by, so depth is the whole of its identity, and a new collision in this register is a palette that reads as another`,
 	);
 }
 
@@ -4367,6 +4590,7 @@ if (neutralGap < FLEET_NEUTRAL_LADDER_FLOOR) {
  * ground. Three clauses, and the middle one is the measure described above.
  */
 let hueOverPinByLattice = 0;
+let movedValuesSeen = 0;
 for (const move of REGISTER_MOVES) {
 	const palette = palettes.find(({ id }) => id === move.id);
 	assertions++;
@@ -4376,18 +4600,44 @@ for (const move of REGISTER_MOVES) {
 		);
 		continue;
 	}
-	for (const ground of GROUNDS) {
-		const post = palette.palette[ground];
-		const pre = move[ground];
-		if (!isHex(post) || !isHex(pre)) continue;
-		const [preL, preA, preB] = toLab(pre);
+	/*
+	 * Every role value this palette's re-solve moved, at its pre value - not the four
+	 * grounds: the rule is about the MOVE, and 124 of the 168 values are not grounds
+	 * (review round 2, MAJOR). Each entry also has to still describe a move, because
+	 * the population is what the fleet line reports; an entry whose role has left the
+	 * palette, or whose value is back where it started, fails rather than being
+	 * skipped past.
+	 */
+	for (const [name, pre] of Object.entries(move.pre)) {
+		const post = palette.palette[name];
+		const role = `${move.id}.${name}`;
+		assertions++;
+		movedValuesSeen++;
+		if (!isHex(pre)) {
+			fail(
+				`the fleet: \`${role}\`'s pre value ${pre} in \`REGISTER_MOVES\` is not an 8-bit colour - the table has to carry the hex the palette shipped before the move`,
+			);
+			continue;
+		}
+		if (!isHex(post)) {
+			fail(
+				`the fleet: \`${role}\` is in \`REGISTER_MOVES\`' pre-values and has no colour value on the palette (\`${post}\`) - the move this entry records no longer exists, so neither does the value it holds`,
+			);
+			continue;
+		}
+		if (post.toLowerCase() === pre.toLowerCase()) {
+			fail(
+				`the fleet: \`${role}\` is in \`REGISTER_MOVES\` at ${pre} and the palette still ships ${post} - the move did not happen, so the entry is dead weight and the rule's population overstates what it holds; delete it`,
+			);
+			continue;
+		}
+		const [, preA, preB] = toLab(pre);
 		const [postL] = toLab(post);
 		const preChroma = Math.hypot(preA, preB);
 		const postChroma = Math.hypot(...toLab(post).slice(1));
 		const gotHue = hueDelta(hueDeg(toLab(pre)), hueDeg(toLab(post)));
 		const envelope = latticeHueEnvelope(pre);
 		const reSolved = labToHex([postL, preA, preB]);
-		const role = `${move.id}.${ground}`;
 
 		/* The spec's pin, as an OR: one degree, or the envelope one step allows. */
 		const pin = Math.max(HUE_PIN_DEGREES, envelope);
@@ -4410,6 +4660,8 @@ for (const move of REGISTER_MOVES) {
 				fail(
 					`the fleet: \`${role}\` ${post} has no in-gamut pure-L* re-solve at L* ${r2(postL)} on ${pre}'s cast, and it is not named in \`GAMUT_EDGE_MOVES\` - name it with its reason or re-author the value`,
 				);
+			} else {
+				gamutEdgeSeen.add(role);
 			}
 			continue;
 		}
@@ -4429,6 +4681,34 @@ for (const move of REGISTER_MOVES) {
 			);
 		}
 	}
+}
+
+/*
+ * The exemption table's own consultation guard, on the same rule `EXCEPTIONS` and
+ * `CONTROL_EDGE_PINNED` are held to: an entry the walk never reached is describing
+ * a re-solve that is back inside sRGB, or a role that is no longer a moved value,
+ * and either way it is coverage the run cannot claim (review round 2, MAJOR).
+ */
+const staleGamutEdge = [...GAMUT_EDGE_MOVES].filter(
+	(r) => !gamutEdgeSeen.has(r),
+);
+if (staleGamutEdge.length > 0) {
+	fail(
+		`the fleet: \`GAMUT_EDGE_MOVES\` names ${staleGamutEdge.join(", ")} and the walk never consulted ${staleGamutEdge.length === 1 ? "it" : "them"} - the pure-L* re-solve is back inside sRGB, or the role is no longer a moved value; delete the entry rather than carrying an exemption nothing needs`,
+	);
+}
+
+/*
+ * And the population the walk above claims to hold. "0 outside the envelope over
+ * the whole move set" is a claim about a population, so the population itself is
+ * asserted rather than assumed: a table that has quietly lost a value is a rule
+ * covering less than the fleet line says it covers.
+ */
+assertions++;
+if (movedValuesSeen !== MOVED_VALUE_COUNT) {
+	fail(
+		`the fleet: the re-solve rule walked ${movedValuesSeen} moved value(s) and the move set it is written against is ${MOVED_VALUE_COUNT} - the table and the claim have parted`,
+	);
 }
 
 /* ---- 6. report ---------------------------------------------------------- */
@@ -4539,7 +4819,7 @@ if (stalePerceptible.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${exceptionSeen.size} consulted exception(s), ${perceptibleSeen.size} ΔE00 exception(s) consulted, ${inkStepSeen.size} pinned ink step(s), ${controlEdgeSeen.size} pinned control edge(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${exceptionSeen.size} consulted exception(s), ${perceptibleSeen.size} ΔE00 exception(s) consulted, ${inkStepPinSeen.size} pinned ink step(s), ${controlEdgeSeen.size} pinned control edge(s).`,
 );
 /*
  * And the FLEET's own line, because these are the numbers that ran in prose and a
@@ -4549,5 +4829,5 @@ console.log(
  * moved.
  */
 console.log(
-	`Fleet: ${state.darkWindow} dark canvas(es) in a ${FLEET_WINDOW} L* window (max ${FLEET_DARK_WINDOW_CEILING}), ${state.darkDeep} below L* ${FLEET_DARK_DEEP_L}, spread ${r2(state.darkSpread)} L*; ${state.darkSub1.length} sub-1.0 and ${state.darkIdentical} identical dark canvas pair(s); light ${state.lightWindow} in a ${FLEET_WINDOW} L* window, ${state.lightHigh} at or above L* ${FLEET_LIGHT_HIGH_L}, ${state.lightSub1} sub-1.0 pair(s); ${hueOverPinByLattice} moved value(s) over the ${HUE_PIN_DEGREES} degree hue pin and inside the 8-bit envelope.`,
+	`Fleet: ${state.darkWindow} dark canvas(es) in a ${FLEET_WINDOW} L* window (max ${FLEET_DARK_WINDOW_CEILING}), ${state.darkDeep} below L* ${FLEET_DARK_DEEP_L}, spread ${r2(state.darkSpread)} L*; ${state.darkSub1.length} sub-1.0 and ${state.darkIdenticalPairs.length} identical dark canvas pair(s); light ${state.lightWindow} in a ${FLEET_WINDOW} L* window, ${state.lightHigh} at or above L* ${FLEET_LIGHT_HIGH_L}, ${state.lightSub1} sub-1.0 pair(s); ${hueOverPinByLattice} moved value(s) over the ${HUE_PIN_DEGREES} degree hue pin and inside the 8-bit envelope.`,
 );
