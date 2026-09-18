@@ -508,3 +508,41 @@ remove, so the spacing is the lever.
   `scripts/chat-sidebar-selection.test.mjs` pins that the row's box is the same
   in both states (`rowStyle` is untouched, which is what the retired `capEdge`
   outline was there for).
+
+## The colour-application pass (18 September 2026), at head `4755b126c`
+
+EVERY FRAME IN THIS SET WAS RE-SHOT by the colour pass, and the note above about
+`highlight` describes the frames that used to be here rather than these. The
+role was retired: a row's pointer state is now `rowHover` and the row the reader
+is ON is `rowSelected` — a quieter fill **plus a 2px `accent` bar and
+`font-medium`**, because the two fills are one hue at two strengths and the last
+increment of "which one am I on" is not a colour distance. The pair this is
+judged on is `selected-row-neighbour-hovered/` and
+`settings-rail-neighbour-hovered/`: a selected row and a hovered row in ONE
+frame is the only arrangement that answers whether the persistent mark still
+outranks the transient one.
+
+- **Thirty-eight themes, not the twenty-three the port carried.** The set now
+  also covers the eleven palettes `4755b126c` re-solved (autumn,
+  catppuccinMocha, desert, forest, lavender, neonNoir, ocean, rosePine,
+  rosewood, tokyoNight, vaporwave) plus `paper`, because a value move is only
+  visible where the values land.
+- **The before half is re-shot too**, from `origin/main` = `4b0ee7849`, at the
+  same thirty-eight themes and the same viewports; the frames are in
+  `../chat-sidebar-current-row-baseline/` and every pair is therefore a
+  difference in the rendering and not in the capture.
+- **Two contact sheets** in `contact-sheet/`, composed with `magick` from these
+  frames (the rig has no montage facility): `sidebar-row-states.png` is three
+  columns — `origin/main` current row, `4755b126c` current row, `4755b126c`
+  current row with its neighbour under the pointer — over all eighteen themes the
+  brief's spread and the re-solve share; `settings-rail-row-states.png` is the
+  same three columns for the rail. Each cell is the same crop of the same story
+  at the same viewport, so a column is a like-for-like.
+- **The stories' own captions were NOT re-worded** and still name `highlight`:
+  `SelectedRow`'s panel reads "drawn on `highlight`" and `SettingsRail`'s reads
+  "the same `highlight` ground". The frames are of the shipped components, so the
+  rendering is right and only the prose in the picture is stale.
+- **Still owed**: the four remaining baseline directories
+  (`bound-row-current/`, `nested-row-current/`, `new-chat-row-current/`,
+  `focused-row-current/`) are NOT re-shot at this head, so their frames picture
+  the retired role.
