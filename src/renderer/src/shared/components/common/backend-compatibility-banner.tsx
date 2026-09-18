@@ -32,7 +32,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { Alert, AlertDescription, Button } from "@shared/components/ui";
 import {
-	updateErrorMessage,
+	serverUpdateFailureReason,
 	updateMessageOf,
 } from "@shared/utils/update-error-copy";
 import { useQueryClient } from "@tanstack/react-query";
@@ -87,7 +87,14 @@ export const BackendCompatibilityBanner = () => {
 				 * transport.
 				 */
 				if (report.phase === "update") {
-					reason = updateErrorMessage(report.message);
+					/*
+					 * VERBATIM, not classified: an attempt's report is the app's own composed
+					 * sentence, and the classifier's 400-character reading of a long string as
+					 * a machine dump deleted it on this surface while the notification panel
+					 * had been fixed (review round 5, M1). `serverUpdateFailureReason` is the
+					 * one place that rule lives now.
+					 */
+					reason = serverUpdateFailureReason(report);
 				}
 			});
 		try {
