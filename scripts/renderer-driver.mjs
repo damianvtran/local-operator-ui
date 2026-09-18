@@ -791,8 +791,14 @@ function widenCspForBackend(backendUrl) {
 	const before = readFileSync(file, "utf8");
 	if (before.includes(origin)) return `already widened for ${origin}`;
 	const widened = before
-		.replace(/frame-src ([^"]*?)"/, (_m, list) => `frame-src ${list.trim()} ${origin}"`)
-		.replace(/media-src ([^"]*?)"/, (_m, list) => `media-src ${list.trim()} ${origin}"`);
+		.replace(
+			/frame-src ([^"]*?)"/,
+			(_m, list) => `frame-src ${list.trim()} ${origin}"`,
+		)
+		.replace(
+			/media-src ([^"]*?)"/,
+			(_m, list) => `media-src ${list.trim()} ${origin}"`,
+		);
 	if (widened === before) return "no frame-src/media-src directive to widen";
 	writeFileSync(file, widened);
 	return `out/renderer/index.html: ${origin} added to frame-src and media-src (build output only; src/ untouched)`;
