@@ -5474,6 +5474,14 @@ async function sceneCanvasFreshness(cdp, app) {
 	 */
 	await new Promise((resolveDelay) => setTimeout(resolveDelay, 4200));
 	const hashWhileHeld = fileHash(typedPath);
+	note(
+		"hashes: the file's sha256 before the external rewrite, the external version, and after 4.2s of held ticks",
+		JSON.stringify({
+			beforeExternal: hashBeforeExternal,
+			external: externalHash,
+			afterHoldWindow: hashWhileHeld,
+		}),
+	);
 	check(
 		"no in-app write reached the file while the fact stood",
 		hashWhileHeld === externalHash,
@@ -5530,6 +5538,16 @@ async function sceneCanvasFreshness(cdp, app) {
 	);
 	await new Promise((resolveDelay) => setTimeout(resolveDelay, 1500));
 	const hashAfterPress = fileHash(typedPath);
+	note(
+		"hashes: the file around the press that loads its version",
+		JSON.stringify({
+			beforePress: hashBeforePress,
+			afterPress: hashAfterPress,
+			external: externalHash,
+			identical:
+				hashAfterPress === hashBeforePress && hashAfterPress === externalHash,
+		}),
+	);
 	check(
 		"the press loaded the file's version and did not write to the file",
 		adopted.ok && hashAfterPress === hashBeforePress,
@@ -5587,6 +5605,14 @@ async function sceneCanvasFreshness(cdp, app) {
 			return Boolean(note) && /replaced/i.test(note.textContent ?? "");
 		})()`,
 		8_000,
+	);
+	note(
+		"hashes: the file after the reader's Meta+S",
+		JSON.stringify({
+			afterSave: fileHash(typedPath),
+			external: externalHash,
+			readerWon: fileHash(typedPath) !== externalHash,
+		}),
 	);
 	const savedBytes = await waitForFile(
 		typedPath,
