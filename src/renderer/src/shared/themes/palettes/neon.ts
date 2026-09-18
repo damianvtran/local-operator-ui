@@ -63,28 +63,17 @@ export const neon: ThemeDefinition = {
 		sunken: "#1B1B1F",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own blue
-		 * ramp 6.39 `L*`, at 0.95x the panel's chroma. ΔE00 4.04 from `surface`,
-		 * 3.44 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 9.94 from `sunken`. The row is 1.147x the panel's relative
-		 * luminance.
-		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#171c2b)
-		 * stepped 3.55 `L*` off the panel, and this one steps 6.39. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 12.03:1, `ink-muted` 6.16:1, `ink-dim` 4.69:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.69:1.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.05 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.40x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.21:1 on
+		 * the row's ground. ΔE00 4.05 from `surface`, 2.07 from `elevated`, 11.4
+		 * from `sunken`, 10.93 from `accentWash`; the inks on the ground are 9.99:1,
+		 * 7.19:1, 5.21:1. Continuity with the panel: hue 1.71 degrees off the
+		 * panel's (the assertion allows 15) and chroma 15.99 where the panel carries
+		 * 11.4.
 		 */
-		highlight: "#1c2231",
+		highlight: "#253047",
 
 		ink: "#E0E0E0",
 		/*

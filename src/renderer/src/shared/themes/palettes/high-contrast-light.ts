@@ -44,12 +44,14 @@ export const highContrastLight: ThemeDefinition = {
 		sunken: "#D6D6D6",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` stepped 6.5 on the `L*` axis in the mode's direction — the
-		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
-		 * so the row takes no cast. ΔE00 4.09 from `surface`, 6.72 from
-		 * `elevated` and 2.06 from `sunken`; the step is -6.67 `L*`, and the band
-		 * this branch raised to ΔE00 4.0 is met without a cast.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 6.5 `L*` darker (branch L of this port's selection rule), and
+		 * carrying nullx the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.09-to-4 band
+		 * on `surface`. ΔE00 4.09 from `surface`, 6.72 from `elevated`, 2.06 from
+		 * `sunken`, 9.58 from `accentWash`; the inks on the ground are 14.86:1,
+		 * 8.93:1, 5.96:1. Continuity with the panel: hue 0 degrees off the panel's
+		 * (the assertion allows 15) and chroma 0 where the panel carries 0.
 		 */
 		highlight: "#DFDFDF",
 

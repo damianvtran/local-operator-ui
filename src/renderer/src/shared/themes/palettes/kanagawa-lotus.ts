@@ -47,15 +47,17 @@ export const kanagawaLotus: ThemeDefinition = {
 		sunken: "#D3CB9C",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 6.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.06 from `surface`, 6.21 from `elevated` and 2.14 from `sunken`;
-		 * the step is -6.16 `L*`, in the band this branch raised to 4.0, with
-		 * inkMuted at 4.84:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 5.5 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.19x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.11-to-4 band
+		 * on `surface`. ΔE00 4.11 from `surface`, 5.75 from `elevated`, 2.18 from
+		 * `sunken`, 4.41 from `accentWash`; the inks on the ground are 7.69:1,
+		 * 5.96:1, 5.44:1. Continuity with the panel: hue 0.44 degrees off the
+		 * panel's (the assertion allows 15) and chroma 27.28 where the panel carries
+		 * 22.88.
 		 */
-		highlight: "#D6D1A7",
+		highlight: "#DAD39F",
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor

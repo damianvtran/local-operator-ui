@@ -59,17 +59,18 @@ export const nord: ThemeDefinition = {
 		sunken: "#272C36",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.19 toward `accent`, then stepped 1.5 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 2.25 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.83:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4.35 from `surface`, 4.94 from `elevated` and 7.44 from
-		 * `sunken`; the step of 1.53 `L*` is short of the 3 `L*` floor and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * The current row's own ground, and the one palette class this pass pins:
+		 * `surface` stepped 2.4 `L*` lighter at the panel's own hue, under the 3
+		 * `L*` the direction floor asks for, because this palette's own inks cap the
+		 * lightness route at 2.4 `L*`. The band is paid on the cast at 1.36x the
+		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
+		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 4.26
+		 * from `surface`, 4.09 from `elevated`, 8.23 from `sunken`, 8.49 from
+		 * `accentWash`; the inks on the ground are 8.94:1, 7.63:1, 5.15:1.
+		 * Continuity with the panel: hue 11.53 degrees off the panel's (the
+		 * assertion allows 15) and chroma 13.04 where the panel carries 9.57.
 		 */
-		highlight: "#30404E",
+		highlight: "#314254",
 
 		ink: "#ECEFF4",
 		inkMuted: "#D8DEE9",

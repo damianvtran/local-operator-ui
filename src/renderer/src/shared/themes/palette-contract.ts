@@ -172,34 +172,59 @@ export type ThemePalette = {
 	 * rendered and reported the current row as lost beside a hovered neighbour,
 	 * so the intent is reversed and the step now lands at **ΔE00 4.0 or better on
 	 * every palette in the tree** — the twelve this change was authored against at
-	 * 4.01-4.15, and the forty-seven the theme port added at 4.00-5.97 (`rosePine` sets the top),
-	 * re-authored
-	 * to this rule in the same round. It is a LIGHTNESS step first — the row sits
-	 * **3.81 to 6.62 `L*`** from its panel on those twelve, and **3.0 or better**
-	 * across the rest except six palettes whose OWN ink caps the lightness route
-	 * below 3 `L*`: those take the cap, pay the band on the accent cast, and are
-	 * pinned in `scripts/contrast-contract.mjs` with the ink number — and chroma pays
-	 * only what is left over. The cast's OWN cause is narrower than it reads: of the
-	 * forty-one palettes that take it, the hover step is the binding wall for only
-	 * TWO (`kanagawaWave`, `rosePineMoon`); on the other thirty-nine what binds is
-	 * the ink cap and the band, and the cast is how those two are paid together. Three palettes had reached the band on chroma alone
-	 * (tokyoNight, `localOperatorDark`, `localOperatorLight`), at a `L*` step
-	 * *smaller* than the ΔE00 2.2 value they had already reported as invisible;
-	 * they were re-authored to +5.09, +3.81 and −4.75 `L*` respectively, and
-	 * `scripts/contrast-contract.mjs` now asserts **both the direction and a floor
-	 * on the step**, so no palette can satisfy the band while landing darker on a
-	 * dark theme. That is the trap this doc exists to close: ΔE00 is a budget, and
-	 * a chroma-bought step can spend all of it while moving the wrong way.
+	 * 4.01-4.15 and the forty-seven the theme port added at 4.00-5.97, both
+	 * re-authored to this rule in their rounds, and all fifty-nine at 4.01-6.05
+	 * after the legibility pass lifted the ground under them.
+	 *
+	 * ## Continuity: the row is the PANEL'S colour, not merely a different one
+	 *
+	 * The band and the field floors can both be satisfied by a row that has stopped
+	 * being the panel's tint at all, and the operator reported exactly that once the
+	 * first re-authoring landed: rows walked toward grey on eight palettes (worst
+	 * `cyberpunk` at 0.62x its panel's Lab chroma, `tokyoNight` 0.76x), lifted to
+	 * 3.60x on thirteen (`tokyoNightDay` 3.60x, `iceberg` 3.31x) and rotated off
+	 * the panel's hue by 155-160 degrees on eleven (`arcade` 160, `oneLight` 155).
+	 * Each of those rows passed every floor in `scripts/contrast-contract.mjs` while
+	 * it did so - which is why the role has a THIRD bound, asserted beside the other
+	 * two:
+	 *
+	 * - hue within **15 degrees** of the panel's, where the panel carries a cast.
+	 *   That is the peer round's own measured break point; the clause this branch
+	 *   wrote for a palette's own recessed plane allows 45 degrees, and it covers a
+	 *   ground the palette did not author for a row, whereas this role is authored.
+	 * - chroma **at or above the panel's own**, with the 8-bit quantisation's own
+	 *   tolerance (0.25 Lab units) rather than none. This is the operator's sentence
+	 *   read back: below this the row is a plain step, not the panel's tinted
+	 *   current row.
+	 * - chroma at or below **max(1.5x the panel's, the panel's + 4)** - the looser
+	 *   of the ratio the peer round measured over-cast at and the `else` branch of
+	 *   this branch's own clause for a near-neutral base. The ratio is NOT stated
+	 *   alone, and that is a measurement rather than a preference: at the ink cap
+	 *   these grounds leave the lightness route at 2.0-3.3 ΔE00, so the rest of the
+	 *   4.0 band has to come from chroma or hue, and 17 of the fifty-nine cannot hold
+	 *   a 1.5x cast on a 3 `L*` step at all (30 cannot without the hue axis).
+	 *
+	 * Where the band cannot be bought inside that bound at the panel's own hue, the
+	 * value takes the least ROTATION of the panel's cast that lets the step hold
+	 * inside it: nineteen of the fifty-nine ship that way, the largest at 14.65
+	 * degrees. That is branch H of the rule below, and the only thing this pass
+	 * changed about it is that the continuity bound - not the accent - sets how far
+	 * it may go.
 	 *
 	 * ## The rule a porting author follows
 	 *
 	 * Take the `L*` step first, at the panel's own hue, as far as the ink floors
 	 * allow; buy only the shortfall to the band's floor of ΔE00 4.0 on the chroma
-	 * axis at that same hue. Chroma may pay a remainder; it may not pay the step.
-	 * Some of the twelve still carry a partly chroma-bought step (dracula 1.20x
-	 * the panel's chroma, monokai 1.66x, obsidian 1.90x, iceberg 3.31x, each
-	 * recorded at its own value) and those are the palettes a re-authoring should
-	 * take next. The port's forty-seven were re-authored to this rule when the
+	 * axis at that same hue, inside the continuity clause above; and where the
+	 * continuity clause cannot hold at that hue, rotate the cast by the least angle
+	 * that lets the step fit inside it. Chroma may pay a remainder; it may not pay
+	 * the step. This pass's fifty-nine run 2.00-6.67 `L*` in the mode's direction,
+	 * and the seven whose own ink cap holds the route under 3 `L*` are pinned in
+	 * `scripts/contrast-contract.mjs` with their measured cap and their binding ink.
+	 * `scripts/contrast-contract.mjs` also asserts **both the direction and a floor
+	 * on the step**, so no palette can satisfy the band while landing darker on a
+	 * dark theme: ΔE00 is a budget, and a chroma-bought step can spend all of it
+	 * while moving the wrong way. The port's forty-seven were re-authored to this rule when the
 	 * raised band landed, at the branch the port itself used: a neutral step (its
 	 * branch L) where the palette's ramp affords one, a cast toward `accent` (its
 	 * branch H) where the hover step above the row blocks the lightness route.
@@ -216,14 +241,17 @@ export type ThemePalette = {
 	 * Against the app's other selected-row mark: `accentWash` is what an active or
 	 * selected row wears elsewhere (`bg-accent-wash`), and this role is a step toward
 	 * the same family, so the two converge on a palette whose wash sits close to
-	 * `surface` — four of the port's palettes landed under the field floor that way and
-	 * were re-authored, and `rosePineDawn` cannot reach it at all (its ink caps the
-	 * route and the best cast it can afford measures 1.75), recorded as a pinned
-	 * exception. That pair is asserted beside the separations below.
+	 * `surface` — four of the port's palettes landed under the field floor that way
+	 * and were re-authored. `rosePineDawn` was the fifth and the ONLY palette this
+	 * role ever had to pin: its wash sat 0.93 from the row inside the cast family it
+	 * then had. The legibility pass moved its ink cap, the sweep now re-derives a
+	 * ceiling of 3.44 for the pair, and the value this pass ships measures 2.96 — so
+	 * that pin is RETIRED by re-authoring rather than re-recorded, and the file
+	 * carries no wash pin at all. That pair is asserted beside the separations below.
 	 *
 	 * Beside it: a row's `hover:` step is `elevated`, so a hovered row must STILL
-	 * be a different ground from the current one — worst pair ΔE00 2.25
-	 * (localOperatorDark), asserted at the field floor. `elevated` is ALSO every
+	 * be a different ground from the current one — worst pair ΔE00 2.02
+	 * (`matrix`), asserted at the field floor. `elevated` is ALSO every
 	 * menu, popover and tooltip ground in the app, so it is not a value that can
 	 * come down to meet the selection: on eight of the twelve palettes it was measured
 	 * against (design round 1, D2), the hover

@@ -55,17 +55,18 @@ export const rosePine: ThemeDefinition = {
 		elevated: "#2e2a42",
 		sunken: "#191822",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast toward `accent` and stepped 3.29 on the `L*` axis — branch H of
-		 * this port's selection rule, with the cast sized by the same rule as `oneLight`'s:
-		 * the row has to clear the palette's own `accentWash` by the contract's field floor,
-		 * and the value that carried only the band measured ΔE00 **0.98** against it. Here
-		 * the wash separation is 2.75, at the cost of the louder total (ΔE00 5.97 from
-		 * `surface`, 5.73 from `elevated`, 9.41 from `sunken`, `inkDim` 4.65:1) — a
-		 * deliberate trade of loudness for two distinguishable selected-row idioms, and the
-		 * frame in the window's pixel list is where it is judged.
+		 * The current row's own ground, and the one palette class this pass pins:
+		 * `surface` stepped 2.45 `L*` lighter at the panel's own hue, under the 3
+		 * `L*` the direction floor asks for, because this palette's own inks cap the
+		 * lightness route at 2.6 `L*`. The band is paid on the cast at 1.42x the
+		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
+		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 5.88
+		 * from `surface`, 3.81 from `elevated`, 10.52 from `sunken`, 5.93 from
+		 * `accentWash`; the inks on the ground are 10.69:1, 8.15:1, 5.15:1.
+		 * Continuity with the panel: hue 14.13 degrees off the panel's (the
+		 * assertion allows 15) and chroma 18.18 where the panel carries 12.77.
 		 */
-		highlight: "#2F2131",
+		highlight: "#33263F",
 
 		ink: "#e0def4",
 		// subtle, lifted; see the header. Canonical muted 6e6a86 is the inert

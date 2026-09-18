@@ -72,15 +72,16 @@ export const desert: ThemeDefinition = {
 		sunken: "#1D160C",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.07 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.34 from `surface`, 2.9 from `elevated` and 9.94 from `sunken`;
-		 * the step is 4.41 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.69:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.3 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.44x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.19:1 on
+		 * the row's ground. ΔE00 4.23 from `surface`, 2.74 from `elevated`, 10.14
+		 * from `sunken`, 9.5 from `accentWash`; the inks on the ground are 10.43:1,
+		 * 7.1:1, 5.19:1. Continuity with the panel: hue 1.82 degrees off the panel's
+		 * (the assertion allows 15) and chroma 15.29 where the panel carries 10.62.
 		 */
-		highlight: "#3F2F20",
+		highlight: "#3E2F1C",
 
 		ink: "#F0E6D5",
 

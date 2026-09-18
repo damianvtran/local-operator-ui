@@ -51,15 +51,17 @@ export const arctic: ThemeDefinition = {
 		sunken: "#121A25",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.12 from `surface`, 2.01 from `elevated` and 9.87 from `sunken`;
-		 * the step is 4.7 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.82:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.65 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.41x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.19:1 on
+		 * the row's ground. ΔE00 4.23 from `surface`, 2.68 from `elevated`, 10.34
+		 * from `sunken`, 16.25 from `accentWash`; the inks on the ground are 9.95:1,
+		 * 7.13:1, 5.19:1. Continuity with the panel: hue 1.88 degrees off the
+		 * panel's (the assertion allows 15) and chroma 15.49 where the panel carries
+		 * 11.
 		 */
-		highlight: "#2B3946",
+		highlight: "#28384E",
 
 		ink: "#E3ECF4",
 

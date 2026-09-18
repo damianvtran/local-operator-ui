@@ -70,15 +70,17 @@ export const autumn: ThemeDefinition = {
 		sunken: "#1D1815",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.17 from `surface`, 2.36 from `elevated` and 9.96 from `sunken`;
-		 * the step is 4.87 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.66:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.2 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.52x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.2 from `surface`, 4.18 from `elevated`, 9.68 from
+		 * `sunken`, 9.95 from `accentWash`; the inks on the ground are 10.15:1,
+		 * 7.09:1, 5.16:1. Continuity with the panel: hue 7.91 degrees off the
+		 * panel's (the assertion allows 15) and chroma 10.93 where the panel carries
+		 * 7.21.
 		 */
-		highlight: "#35271D",
+		highlight: "#3D2C23",
 
 		ink: "#EDDFD0",
 		/*

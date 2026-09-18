@@ -74,15 +74,16 @@ export const catppuccinMocha: ThemeDefinition = {
 		sunken: "#191926",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.19 from `surface`, 2.19 from `elevated` and 8.34 from `sunken`;
-		 * the step is 5.11 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.66:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.65 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.45x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.2:1 on the
+		 * row's ground. ΔE00 4.54 from `surface`, 2.12 from `elevated`, 8.51 from
+		 * `sunken`, 3.26 from `accentWash`; the inks on the ground are 8.97:1,
+		 * 7.33:1, 5.2:1. Continuity with the panel: hue 0.75 degrees off the panel's
+		 * (the assertion allows 15) and chroma 16.31 where the panel carries 11.25.
 		 */
-		highlight: "#312F44",
+		highlight: "#2F2F47",
 
 		ink: "#CDD6F4",
 		inkMuted: "#BAC2DE",

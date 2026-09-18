@@ -70,15 +70,17 @@ export const lavender: ThemeDefinition = {
 		sunken: "#191821",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.13 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.11 from `surface`, 2.08 from `elevated` and 10.24 from `sunken`;
-		 * the step is 4.46 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.73:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.15 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.44x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.19 from `surface`, 2.76 from `elevated`, 10.34
+		 * from `sunken`, 7.39 from `accentWash`; the inks on the ground are 10.58:1,
+		 * 7.03:1, 5.16:1. Continuity with the panel: hue 2.75 degrees off the
+		 * panel's (the assertion allows 15) and chroma 17.36 where the panel carries
+		 * 12.02.
 		 */
-		highlight: "#2C263C",
+		highlight: "#312B44",
 
 		ink: "#E6E2F0",
 		/*

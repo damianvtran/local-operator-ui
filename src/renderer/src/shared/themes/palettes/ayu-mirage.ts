@@ -66,15 +66,17 @@ export const ayuMirage: ThemeDefinition = {
 		sunken: "#191D27",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.08 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.14 from `surface`, 2.95 from `elevated` and 11.3 from `sunken`;
-		 * the step is 4.02 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.73:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.65 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.38x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
+		 * the row's ground. ΔE00 4.09 from `surface`, 2.26 from `elevated`, 11.22
+		 * from `sunken`, 4.19 from `accentWash`; the inks on the ground are 7.29:1,
+		 * 7.17:1, 5.17:1. Continuity with the panel: hue 1.04 degrees off the
+		 * panel's (the assertion allows 15) and chroma 13.48 where the panel carries
+		 * 9.75.
 		 */
-		highlight: "#313F50",
+		highlight: "#343E52",
 
 		ink: "#D6D5CE",
 		// upstream's blue-tinted muted rung.

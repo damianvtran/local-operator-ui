@@ -53,12 +53,15 @@ export const gruvbox: ThemeDefinition = {
 		sunken: "#1D2021",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` stepped 6.25 on the `L*` axis in the mode's direction — the
-		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
-		 * so the row takes no cast. ΔE00 4.54 from `surface`, 2.24 from
-		 * `elevated` and 10.39 from `sunken`; the step is 6.33 `L*`, and the band
-		 * this branch raised to ΔE00 4.0 is met without a cast.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 6.15 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 0.96x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.54 from `surface`, 2.24 from `elevated`, 10.39
+		 * from `sunken`, 12.11 from `accentWash`; the inks on the ground are 7.75:1,
+		 * 7.14:1, 5.16:1. Continuity with the panel: hue 0.07 degrees off the
+		 * panel's (the assertion allows 15) and chroma 1.11 where the panel carries
+		 * 1.16.
 		 */
 		highlight: "#403E3D",
 

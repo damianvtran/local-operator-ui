@@ -77,15 +77,17 @@ export const alucard: ThemeDefinition = {
 		sunken: "#EAE5D2",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.03 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 6.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.11 from `surface`, 4.86 from `elevated` and 4.97 from `sunken`;
-		 * the step is -6.18 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.67:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.9 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.53x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
+		 * the row's ground. ΔE00 4.05 from `surface`, 6.86 from `elevated`, 2.21
+		 * from `sunken`, 2.8 from `accentWash`; the inks on the ground are 13.28:1,
+		 * 7.26:1, 5.17:1. Continuity with the panel: hue 9.02 degrees off the
+		 * panel's (the assertion allows 15) and chroma 8.75 where the panel carries
+		 * 5.71.
 		 */
-		highlight: "#EAE7E0",
+		highlight: "#EEE6D6",
 
 		ink: "#1F1F1F",
 		/*

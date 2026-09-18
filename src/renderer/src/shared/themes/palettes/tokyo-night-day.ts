@@ -62,14 +62,17 @@ export const tokyoNightDay: ThemeDefinition = {
 		// recess. This is one just-visible step under canvas (ΔE00 2.06).
 		sunken: "#D8DAE1",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.09 toward `accent` and stepped 3.07 on the `L*` axis — branch H
-		 * of this port's selection rule, with the cast raised from the earlier 0.06 because
-		 * this palette's `accentWash` sat ΔE00 **1.54** from the ground it produced, under the
-		 * contract's field floor for two states; measured 2.13 now. ΔE00 4.12 from `surface`,
-		 * 5.83 from `elevated`, 2.94 from `sunken`, `inkDim` 4.94:1.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.95 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 3.32x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.54 from `surface`, 6.39 from `elevated`, 2.35
+		 * from `sunken`, 2.3 from `accentWash`; the inks on the ground are 7.66:1,
+		 * 6.97:1, 5.16:1. Continuity with the panel: hue 14.65 degrees off the
+		 * panel's (the assertion allows 15) and chroma 5.25 where the panel carries
+		 * 1.58.
 		 */
-		highlight: "#DCE3ED",
+		highlight: "#D7DEE7",
 
 		// Generated foreground 3760BF is 4.19:1 on `sunken` — a syntax blue, not a body ink,
 		// which is what the 7:1 floor is for. Deepened along the same indigo to 7.33:1.

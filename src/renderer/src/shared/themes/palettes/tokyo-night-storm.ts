@@ -52,15 +52,17 @@ export const tokyoNightStorm: ThemeDefinition = {
 		sunken: "#1D2032",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.14 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 3.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.01 from `surface`, 2.1 from `elevated` and 9.2 from `sunken`;
-		 * the step is 3.55 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.7:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.55 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.38x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
+		 * the row's ground. ΔE00 4.16 from `surface`, 2.16 from `elevated`, 9.33
+		 * from `sunken`, 5.2 from `accentWash`; the inks on the ground are 7.93:1,
+		 * 7.25:1, 5.18:1. Continuity with the panel: hue 0.56 degrees off the
+		 * panel's (the assertion allows 15) and chroma 22.6 where the panel carries
+		 * 16.33.
 		 */
-		highlight: "#2D3858",
+		highlight: "#2F3759",
 
 		// Upstream fg C0CAF5 is 7.00:1 on `elevated` — exactly the floor, with no room for
 		// rounding. Lifted along the same periwinkle.

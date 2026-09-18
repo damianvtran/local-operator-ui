@@ -41,14 +41,17 @@ export const duskfox: ThemeDefinition = {
 		sunken: "#191726",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` stepped 6 on the `L*` axis in the mode's direction — the
-		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
-		 * so the row takes no cast. ΔE00 4.26 from `surface`, 2.18 from
-		 * `elevated` and 11.64 from `sunken`; the step is 6.04 `L*`, and the band
-		 * this branch raised to ΔE00 4.0 is met without a cast.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 5.8 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.39x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.21:1 on
+		 * the row's ground. ΔE00 5.47 from `surface`, 2.05 from `elevated`, 13.33
+		 * from `sunken`, 7.99 from `accentWash`; the inks on the ground are 8.67:1,
+		 * 7.19:1, 5.21:1. Continuity with the panel: hue 0.35 degrees off the
+		 * panel's (the assertion allows 15) and chroma 25.89 where the panel carries
+		 * 18.65.
 		 */
-		highlight: "#3B3753",
+		highlight: "#39355C",
 
 		ink: "#E0DEF4",
 		inkMuted: "#CDCBE0",

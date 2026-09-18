@@ -72,13 +72,17 @@ export const synthwave: ThemeDefinition = {
 		elevated: "#35314C",
 		sunken: "#1E1B2A",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule —
-		 * and stepped 3.27 on the `L*` axis, which is the whole of what the band needed:
-		 * ΔE00 4.02 from `surface` (4.52 before design round 3's D1 re-derivation), 2.43
-		 * from `elevated`, 9.24 from `sunken`, `inkDim` 4.65:1.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.5 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.40x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.27 from `surface`, 2.18 from `elevated`, 9.91
+		 * from `sunken`, 5.89 from `accentWash`; the inks on the ground are 10.95:1,
+		 * 6.24:1, 5.16:1. Continuity with the panel: hue 0.46 degrees off the
+		 * panel's (the assertion allows 15) and chroma 22.31 where the panel carries
+		 * 15.94.
 		 */
-		highlight: "#392F4B",
+		highlight: "#343051",
 
 		ink: "#F2EFF8",
 		inkMuted: "#BCB3D4",

@@ -67,15 +67,17 @@ export const kanagawaWave: ThemeDefinition = {
 		sunken: "#16161D",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.14 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.04 from `surface`, 2.66 from `elevated` and 10.56 from `sunken`;
-		 * the step is 4.34 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 5.08:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.6 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.49x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.21:1 on
+		 * the row's ground. ΔE00 4.4 from `surface`, 2.1 from `elevated`, 11.08 from
+		 * `sunken`, 4.52 from `accentWash`; the inks on the ground are 8.61:1,
+		 * 6.79:1, 5.21:1. Continuity with the panel: hue 0.69 degrees off the
+		 * panel's (the assertion allows 15) and chroma 13.49 where the panel carries
+		 * 9.05.
 		 */
-		highlight: "#2F3445",
+		highlight: "#323246",
 
 		// fujiWhite, 8.16:1 on the lightest ground.
 		ink: "#DCD7BA",

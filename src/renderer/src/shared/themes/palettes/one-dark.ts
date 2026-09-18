@@ -57,15 +57,17 @@ export const oneDark: ThemeDefinition = {
 		sunken: "#21252B",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.08 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.05 from `surface`, 2.35 from `elevated` and 8.64 from `sunken`;
-		 * the step is 4.16 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.79:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.2 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.61x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.08-to-4 band
+		 * on `surface`. ΔE00 4.08 from `surface`, 2.22 from `elevated`, 8.84 from
+		 * `sunken`, 5.59 from `accentWash`; the inks on the ground are 7.83:1,
+		 * 7.31:1, 5.26:1. Continuity with the panel: hue 2.06 degrees off the
+		 * panel's (the assertion allows 15) and chroma 10.24 where the panel carries
+		 * 6.36.
 		 */
-		highlight: "#333E4B",
+		highlight: "#353D4C",
 
 		// Canonical mono-4 BEC4D0 is 5.95:1 on `elevated` — the 7:1 body floor is more than a
 		// reach for a syntax foreground. Lifted along the same cool neutral.

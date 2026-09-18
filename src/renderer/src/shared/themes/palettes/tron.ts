@@ -106,15 +106,16 @@ export const tron: ThemeDefinition = {
 		sunken: "#1A1B1E",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.04 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.05 from `surface`, 2.64 from `elevated` and 9.28 from `sunken`;
-		 * the step is 4.42 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.66:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.25 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.47x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.04-to-4 band
+		 * on `surface`. ΔE00 4.04 from `surface`, 2.51 from `elevated`, 10.6 from
+		 * `sunken`, 8.41 from `accentWash`; the inks on the ground are 10.72:1,
+		 * 7.07:1, 5.21:1. Continuity with the panel: hue 5.3 degrees off the panel's
+		 * (the assertion allows 15) and chroma 14.11 where the panel carries 9.59.
 		 */
-		highlight: "#0F1E2B",
+		highlight: "#1E2F42",
 
 		ink: "#D8E6F2",
 		/*

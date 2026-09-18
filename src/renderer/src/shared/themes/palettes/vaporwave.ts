@@ -95,15 +95,17 @@ export const vaporwave: ThemeDefinition = {
 		sunken: "#1C152D",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.17 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 3.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.26 from `surface`, 3.76 from `elevated` and 8.12 from `sunken`;
-		 * the step is 3.35 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.66:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.4 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.32x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.04-to-4 band
+		 * on `surface`. ΔE00 4.04 from `surface`, 2.35 from `elevated`, 8.47 from
+		 * `sunken`, 4.97 from `accentWash`; the inks on the ground are 11.23:1,
+		 * 7.11:1, 5.21:1. Continuity with the panel: hue 0.04 degrees off the
+		 * panel's (the assertion allows 15) and chroma 28.46 where the panel carries
+		 * 21.48.
 		 */
-		highlight: "#362241",
+		highlight: "#342750",
 
 		ink: "#EDE8F2",
 		/*

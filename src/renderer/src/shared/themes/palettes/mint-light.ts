@@ -74,14 +74,16 @@ export const mintLight: ThemeDefinition = {
 		sunken: "#D5E8DA",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` stepped 6.5 on the `L*` axis in the mode's direction — the
-		 * neutral step, branch L of this port's selection rule; the ramp affords it here,
-		 * so the row takes no cast. ΔE00 4.03 from `surface`, 6.08 from
-		 * `elevated` and 6.24 from `sunken`; the step is -6.65 `L*`, and the band
-		 * this branch raised to ΔE00 4.0 is met without a cast.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 6.3 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 1.43x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
+		 * the row's ground. ΔE00 4.15 from `surface`, 7.01 from `elevated`, 4.6 from
+		 * `sunken`, 6.09 from `accentWash`; the inks on the ground are 11.59:1,
+		 * 7.5:1, 5.18:1. Continuity with the panel: hue 0.46 degrees off the panel's
+		 * (the assertion allows 15) and chroma 5.12 where the panel carries 3.57.
 		 */
-		highlight: "#DEE5E0",
+		highlight: "#DCE6DF",
 
 		ink: "#1C2B21",
 

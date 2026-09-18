@@ -94,23 +94,18 @@ export const cyberpunk: ThemeDefinition = {
 		elevated: "#312A3E",
 		sunken: "#1D1C22",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast toward `accent` and stepped 3.1 on the `L*` axis — branch H of this
-		 * port's selection rule, and here the cast is MANDATORY rather than preferred: the
-		 * ink floor caps this palette's lightness route at 3.1 `L*` (`inkDim` 4.65:1 there
-		 * and under the bound at 3.5), and a 3.1 `L*` step at the panel's own hue is only
-		 * ΔE00 1.94 — under the band. So the pair that binds is the ink cap plus the band,
-		 * and NOT `elevated`: at the cap the row is already ΔE00 5.74 clear of it.
-		 * The first cut of this value let the displacement run to the full ΔE00 10.35 the
-		 * rule's fixed fraction produced, which made it 2.3x the loudest row in the tree
-		 * against `gruvbox` 4.54; design round 3 (D1) measured the band as reachable at 40%
-		 * of that displacement, and this is that point: ΔE00 4.14 from `surface`, 5.74 from
-		 * `elevated`, 5.58 from `sunken`, with `inkDim` at 4.65:1 the ink that binds it —
-		 * that is the contract's own ratio for this ground, and the raw value is 4.654, so
-		 * the margin it keeps is nothing rather than 0.01: this is the palette whose step
-		 * is at the ink cap by construction, not by slack.
+		 * The current row's own ground, and the one palette class this pass pins:
+		 * `surface` stepped 2.9 `L*` lighter at the panel's own hue, under the 3
+		 * `L*` the direction floor asks for, because this palette's own inks cap the
+		 * lightness route at 3 `L*`. The band is paid on the cast at 1.20x the
+		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
+		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 4.24
+		 * from `surface`, 3.05 from `elevated`, 9.77 from `sunken`, 23.49 from
+		 * `accentWash`; the inks on the ground are 11.38:1, 6.92:1, 5.15:1.
+		 * Continuity with the panel: hue 14.28 degrees off the panel's (the
+		 * assertion allows 15) and chroma 13.12 where the panel carries 10.9.
 		 */
-		highlight: "#1E171F",
+		highlight: "#342738",
 
 		ink: "#EAE5F2",
 		/*

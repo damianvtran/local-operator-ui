@@ -62,17 +62,18 @@ export const rosePineDawn: ThemeDefinition = {
 		sunken: "#f2e7da",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.12 toward `accent`, then stepped 2.11 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 2.75 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.67:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4.09 from `surface`, 6.3 from `elevated` and 4.64 from
-		 * `sunken`; the step is 2.11 `L*` in that direction, short of the 3 `L*` floor, and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * The current row's own ground, and the one palette class this pass pins:
+		 * `surface` stepped 2.9 `L*` darker at the panel's own hue, under the 3 `L*`
+		 * the direction floor asks for, because this palette's own inks cap the
+		 * lightness route at 3.3 `L*`. The band is paid on the cast at 2.44x the
+		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
+		 * What binds this one is `ink-dim` at 5.17:1 on the row's ground. ΔE00 4.05
+		 * from `surface`, 6.44 from `elevated`, 2.56 from `sunken`, 2.96 from
+		 * `accentWash`; the inks on the ground are 7.95:1, 6.64:1, 5.17:1.
+		 * Continuity with the panel: hue 4.71 degrees off the panel's (the assertion
+		 * allows 15) and chroma 6.6 where the panel carries 2.7.
 		 */
-		highlight: "#FDEFEA",
+		highlight: "#F7EAE1",
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
