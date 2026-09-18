@@ -2548,6 +2548,38 @@ export const STORIES = [
 		900,
 	],
 	["common-updatenotification--server-behind-app-owned-server-down", 1280, 900],
+	/*
+	 * THE UPDATE PANEL'S OWN STATES, each carrying the sentence it is evidence for. The flags
+	 * and payloads behind them are this branch's; the harness they render through is this
+	 * file's.
+	 */
+	[
+		"common-updatenotification--backend-update-offer-source-build",
+		1280,
+		900,
+		{ expectSentence: "Rebuilds this checkout with `lop-update`" },
+	],
+	[
+		"common-updatenotification--backend-update-offer-source-build-adopted",
+		1280,
+		900,
+		{ expectSentence: "The app updates this install itself" },
+	],
+	[
+		"common-updatenotification--backend-update-failed-orphan",
+		1280,
+		900,
+		{
+			expectSentence: "something it started may still be replacing the install",
+		},
+	],
+	[
+		"common-updatenotification--backend-manual-required-app-owned",
+		1280,
+		900,
+		{ expectSentence: "cannot update this server" },
+	],
+
 	["command-palette-commandpalette--default", 1280, 800],
 	/*
 	 * Two more than the set had, and both for a reason: `--filtered` is the only
@@ -6202,6 +6234,32 @@ const main = async () => {
 				if (!ok) {
 					throw new Error(
 						`${story} @ ${theme}: \`${claim.selector}\` carries ${claim.name}=${JSON.stringify(value)}, which does not satisfy ${JSON.stringify(claim.equals ?? `includes ${claim.includes}`)} - the press did not produce the state this frame is named for`,
+					);
+				}
+			}
+
+			/*
+			 * THE SENTENCE CLAIM, at the last moment before the shutter: a state whose whole point
+			 * is a sentence has to be photographed WITH that sentence on screen. The control that
+			 * makes this worth having is `backend-update-in-flight-source-build`, which was once
+			 * committed as evidence for copy no reader could see - the stories' mock registered no
+			 * listener, the panel painted the fallback, and the frame was byte-identical to the
+			 * release route's in all twelve themes. `storyDrew` counts elements and the attribute
+			 * checks ask about controls; neither can tell two sentences apart.
+			 *
+			 * A DISTINCT OPTION from the `select.expectText` above, which asserts a text SELECTION
+			 * and not a sentence the reader is meant to read: one name for two meanings is how a
+			 * guard stops guarding.
+			 */
+			if (options?.expectSentence) {
+				const { result: claimRead } = await cdp.send("Runtime.evaluate", {
+					expression: "document.body.innerText || ''",
+					returnByValue: true,
+				});
+				const painted = String(claimRead?.value ?? "");
+				if (!painted.includes(options.expectSentence)) {
+					throw new Error(
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(options.expectSentence)}, and a frame without it is evidence for something else.`,
 					);
 				}
 			}
