@@ -3,6 +3,7 @@ import {
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
+import { transcriptionFailureMessage } from "@shared/api/local-operator/transcription-failure";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
 import { Button, Tooltip } from "@shared/components/ui";
@@ -3418,8 +3419,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				}
 				setAudioBlob(null); // Clear the blob after sending
 			} catch (error) {
+				// The raw server message stays on the console; the toast names the
+				// cause in a sentence a person can act on (see
+				// `transcriptionFailureMessage`), because "please try again" cannot
+				// fix an account with no credits or a refused sign-in.
 				console.error("Error transcribing audio:", error);
-				showErrorToast("Error transcribing audio. Please try again.");
+				showErrorToast(transcriptionFailureMessage(error));
 			} finally {
 				setIsTranscribing(false);
 			}
