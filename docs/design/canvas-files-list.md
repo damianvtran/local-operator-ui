@@ -88,7 +88,10 @@ Three rules, each of which replaced a defect:
   survives, and the full path stays the tooltip.
 - **`missing` is a receipt, never a filter.** The row stays in place, in append
   order, with a working Copy path, and clicking re-probes once and explains
-  rather than opening nothing.
+  rather than opening nothing. A missing row shows the type **glyph**, not a
+  thumbnail, whatever its type: the receipt is the glyph plus the sentence in the
+  meta slot, and a thumbnail request for a path that no longer resolves can only
+  come back empty (or as the browser's broken-image icon) on every render.
 
 ### One decision: the directory line is drawn on a CLASH ONLY
 
@@ -128,9 +131,13 @@ filtered on the next launch with no visible cause, and a query stored per
 conversation would silently change what a panel shows when the user switches
 sessions.
 
-The cost, stated rather than hidden: switching views unmounts the panel, so the
-query resets. That is cheap to re-type, where a stale filter is not — and while
-either control narrows the list the head states both numbers.
+The cost, stated rather than hidden, is that the narrowing is per-open rather
+than per-session, and it resets in two places: **switching views** unmounts the
+panel, and **switching to another conversation** remounts it (`key={conversationId}`
+on `<CanvasFileViewer>`, which is what stops one conversation's query from
+narrowing the next one's list — the failure this section exists to avoid). Both
+are cheap to re-type, where a stale filter is not — and while either control
+narrows the list the head states both numbers, so nothing is hidden silently.
 
 ---
 
