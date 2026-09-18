@@ -1690,8 +1690,9 @@ export const DESKTOP_REFUSAL_CODE = {
 	 */
 	planeClosed: "pairing.plane-closed",
 	/**
-	 * A 409 from a `/v1/desktop/` route: the plane governs under a record or key
-	 * that is not this app's, so the credential it holds is stale.
+	 * The plane governs under a record or key that is not this app's, so the
+	 * credential it holds is stale. DECLARED by the answer rather than read off a
+	 * status: see {@link desktopRefusalCodeForStatus} for why 409 cannot name it.
 	 */
 	stale: "pairing.stale",
 	/**
@@ -1769,8 +1770,14 @@ export function desktopRefusalCodeForStatus(
 ): DesktopRefusalCode | undefined {
 	if (!path.startsWith("/v1/desktop/")) return undefined;
 	if (status === 401 || status === 403) return DESKTOP_REFUSAL_CODE.refused;
-	if (status === 409) return DESKTOP_REFUSAL_CODE.stale;
 	if (status === 503) return DESKTOP_REFUSAL_CODE.planeClosed;
+	/*
+	 * A 409 is deliberately NOT read this way. A conflict about the RESOURCE (a
+	 * profile repair, a store that is busy) answers 409 on the same routes as a
+	 * conflict about the PLANE, and only the answering process can say which - which
+	 * is what its declared `pairing.stale` is for. Measured: reading the status
+	 * alone ate a profile conflict's own category.
+	 */
 	return undefined;
 }
 
