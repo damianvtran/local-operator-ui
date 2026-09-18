@@ -444,7 +444,25 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	 * here is ever a silent omission.
 	 */
 	return (
-		<div className={cn("flex h-full flex-col")}>
+		/*
+		 * `min-h-0 flex-1` AND NOT `h-full`, and that one class is the fix for the
+		 * clipped last rows.
+		 *
+		 * This box is a sibling of the 40px chrome bar inside the canvas section's
+		 * `flex h-full flex-col`, so `h-full` made it 100% of the pane PLUS the bar
+		 * - 40px taller than the space it has - and the dock's `overflow-hidden`
+		 * cut that strip off. The scroller inside therefore had a viewport 40px
+		 * taller than what the user could see, reached its own maximum scroll with
+		 * the last rows still under the clip, and left its own bottom padding
+		 * unreachable. `flex-1` states what this element is (the rest of the
+		 * column, not all of a box that also holds the bar) and `min-h-0` removes
+		 * the floor that `h-full`'s specified size was imposing through the
+		 * content-based minimum (CSS Flexbox § 4.5). Measured in the running app at
+		 * 1380x900, before: the scroller's bottom 40px past the window edge, 2 rows
+		 * clipped, the last row's bottom 15.67px past it, visible fraction 0.89;
+		 * after: 0 / 0 / 843.67, inside the window, fraction 1.00.
+		 */
+		<div className={cn("flex min-h-0 flex-1 flex-col")}>
 			{(tiles.length > 0 || scan?.paging || scan?.stopped) && (
 				<div
 					data-tour-tag="files-scanner-head"
