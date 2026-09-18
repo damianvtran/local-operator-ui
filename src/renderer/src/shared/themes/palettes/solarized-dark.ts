@@ -22,6 +22,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over `canvas` at the strongest alpha that keeps its own ink at 4.5:1 (the scheme's own
  * tints stand in where they clear it); a semantic border walks its hue toward the ground to
  * just above the 3:1 edge floor; the shadow and the scrim are the ground tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const solarizedDark: ThemeDefinition = {
 	id: "solarizedDark",
@@ -37,33 +53,63 @@ export const solarizedDark: ThemeDefinition = {
 		surface: "#05333F",
 		// A step ABOVE base02: base03 to base02 measures ΔE00 3.4 in total, so two 2.0
 		// steps cannot fit inside upstream's ramp and the top ground is derived.
-		elevated: "#0D3C49",
+		elevated: "#093A46",
 		sunken: "#00252E",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.1 toward `accent`, then stepped 2.5 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 3.25 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.71:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4.04 from `surface`, 3.58 from `elevated` and 7.12 from
-		 * `sunken`; the step of 2.65 `L*` is short of the 3 `L*` floor and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 3.25 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.03x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
+		 * the row's ground. ΔE00 4.1 from `surface`, 4.20 from `elevated`, 7.52 from
+		 * `sunken`, 6.2 from `accentWash`; the inks on the ground are 7.59:1,
+		 * 7.09:1, 5.16:1. Continuity with the panel: hue 14.32 degrees off the
+		 * panel's (the assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 15.85 where the panel carries
+		 * 15.32.
 		 */
-		highlight: "#023A42",
+		highlight: "#14394A",
 
 		// Upstream base1 93A1A1 — the tone the scheme paints body text with — is 6.13:1 on
 		// `elevated`, under the 7:1 floor. Lifted along the same grey-teal.
-		ink: "#BECACA",
+		/*
+		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
+		 * is 7:1 on all six grounds and `elevated` binds it at 7.63:1.
+		 *
+		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
+		 * surface the operator's report is about.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		ink: "#C2CECE",
 		// Base1 and base0 sit ΔE00 4.5 apart, so the readout rung below could not hold the
 		// 8 ink step against upstream's control tone. This is base1's own grey-teal seated a
 		// step up, which keeps the readout rung quiet and still distinct.
-		inkMuted: "#B1C0C0",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.13:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#B9C8C8",
 		// Base0 839496 is 3.77:1 on `elevated` (< 4.5) and only ΔE00 4 from base1. Lifted
 		// along the same grey-teal to the floor corner, which is also what separates it from
 		// the control rung above.
-		inkDim: "#91A4A6",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.19:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#98ACAE",
 		inkDisabled: "#586E75",
 
 		// Derived: the scheme's recessed tones are panel fills, not 1px lines. Holds ΔE00
@@ -76,23 +122,69 @@ export const solarizedDark: ThemeDefinition = {
 
 		// Upstream cyan 2AA198 is 3.78:1 on `elevated` (< 4.5). Lifted along the same cyan;
 		// the scheme's defining hue, kept.
-		accent: "#32A79D",
+		/*
+		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
+		 * 4.52:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
+		 */
+		accent: "#3DB0A5",
 		accentHover: "#53C3B8",
 		// A step toward the ground from the accent: the pressed fill has to stay an edge on
 		// the lightest ground and keep the page tone legible on itself.
 		accentActive: "#249D94",
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.2
 		// from `accent`. See `chartBarHover` in the palette contract.
-		chartBarHover: "#5CCBC0",
+		/*
+		 * Legibility pass: `chartBarHover` follows `accent` - the ramp is one control seen
+		 * three times and the chart's hover mark has to stay ΔE00 10 clear of the
+		 * resting mark, so both move at their own hue rather than letting the accent
+		 * pull away from them.
+		 */
+		chartBarHover: "#66D5C9",
 		tokenCommand: "#53A7EB",
 		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.05), at a
 		// cost of ΔE00 3.31 from the signal itself; 5.22:1 on `surface`.
-		accentWash: "#01333D",
+		/*
+		 * Legibility pass: the wash is a hover and callout tint, not a selection
+		 * ground, and it gains one floor - ΔE00 2.0 against every ground it is painted
+		 * on - because it reads 1.00-1.24:1, so no ratio assertion can see it.
+		 * `surface` is the tightest base at ΔE00 2.22. Lightness only, at the
+		 * wash's own hue.
+		 */
+		accentWash: "#00323B",
 		onAccent: "#00252E",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#8489d4`),
+		 * moved onto the floors: as received it read 4.20:1 as text on `surface`.
+		 * The shortfall is paid on LIGHTNESS at the source hue — L* 59.48 → 61.87 —
+		 * which is what this port does to every one of its own tokens. Measured:
+		 * ΔE00 32.58 from `accent`, 37.00 from its nearest semantic (`danger`),
+		 * 4.54:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#8B8FDB",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 18.35 and C* 15.43, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 19.09 from `accentWash` (the field floor is
+		 * 2.0), 4.64:1 for `accentAlt` on it, and 17.32 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#2A2B41",
 
 		// Upstream green 859900 is 3.72:1 on `elevated` (< 4.5). Lifted along the same
 		// olive.
-		success: "#8BA013",
+		/*
+		 * Legibility pass: `success` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
+		 * 4.52:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
+		 */
+		success: "#94A91F",
 		successWash: "#0B3338",
 		successBorder: "#778A01",
 
@@ -112,7 +204,15 @@ export const solarizedDark: ThemeDefinition = {
 		// Upstream blue 268BD2 is 3.24:1 on `elevated` (< 4.5). Lifted along the same blue,
 		// and kept distinct from the cyan accent so a callout does not read as a primary
 		// action.
-		info: "#3D9DE3",
+		/*
+		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
+		 * 4.52:1.
+		 *
+		 * Lightness only, along the role's own hue: the palette's identity, not its
+		 * legibility, is what the ramp change was allowed to keep.
+		 */
+		info: "#49A6EC",
 		infoWash: "#023241",
 		infoBorder: "#2087CB",
 
