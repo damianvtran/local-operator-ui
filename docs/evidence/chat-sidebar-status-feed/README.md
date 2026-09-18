@@ -168,23 +168,42 @@ change's.** They were last re-taken at `7d41e63e3` (05:48), and two commits on
   re-capture draws `No agents yet` where those frames carry nothing.
 - `ab76b06f3` (11:11) moved a busy row's ink from `info` to `accent`, so their
   spinners are the retired blue where a frame taken now is green. Census over the
-  glyph column (x 8-38, every theme's frame at 780x600), counting pixels with hue
-  200-255, S>0.18, 0.15<L<0.92 in `localOperatorDark`: `completion-reordered` 95,
+  glyph column (x 8-38) of each state's `localOperatorDark` frame, counting pixels
+  with hue 200-255 and **HSL** S>0.18, 0.15<L<0.92: `completion-reordered` 95,
   `completion-acknowledged` 93, `completion-in-place` 93, `gate-answered` 86,
   `completion-unseen` 85, `truncating-title` 85, `completion-second-in-band` 47,
-  `gate-parked` 42 — and **0 in all fifteen `mark-all-read-*` states**, which this
-  branch took after the move (arc stroke sampled in `gate-answered`: `rgb(156,
-  176,206)`, hue 216°, the `info` role; the same theme's ground is byte-identical
-  between the two epochs, so the difference is the ink and not the palette).
+  `gate-parked` 42. Three things about those numbers that the sentence above used to
+  leave out. **They are not one viewport**: `gate-answered`, `gate-parked`,
+  `truncating-title` and `completion-unseen` are 780x560 and the other four are
+  780x660 (the `mark-all-read-*` states are the 780x600 ones, two of them narrower
+  and one taller). **They are one colour model**: the same eight under HSV's S/V
+  read 174, 168, 177, 125, 131, 127, 86, 65, so HSL is part of the figure rather
+  than a detail. And **they are the whole population**, not a sample: the census was
+  widened over all 24 frame directories in this set and no others carry the arc.
+  The arc stroke sampled in `gate-answered` is `rgb(156,176,206)`, hue 216°, the
+  `info` role, and the same theme's ground is byte-identical between the two epochs,
+  so the difference is the ink and not the palette.
+- **The zero in the `mark-all-read-*` states proves less than it looks like it
+  proves, and the sentence above it used to overclaim.** Fifteen `mark-all-read-*`
+  states read 0 in the same census, but THIRTEEN of them were also written at
+  `7d41e63e3` and stage NO busy row at all, so a zero there is what the census gives
+  over a roster that draws no spinner — it says nothing about the ink a spinner
+  carries. It is worth spelling out because it is the shape of the mistake this
+  paragraph exists to stop: only the two states this branch added
+  (`mark-all-read-unseen-without-mark`, `mark-all-read-mixed-marks`) stage a busy
+  row, and being captured after the move their spinners are `accent` — a fact about
+  this branch's frames, not evidence about the older thirteen.
 
 This paragraph replaces one that said the agents line was "the whole of the
-difference": the 12,656-pixel figure it quoted for `gate-answered` (11,830 for
-`mark-all-read-pile`) is a `7d41e63e3`-epoch reading in which a re-take ALSO
-repaints those busy glyphs, so it measures both deltas together and could not be
-carried onto this tree as written (design round 1, **D1**, measured there and
-reproduced here). The re-take is DETERMINISTIC rather than a settle race — the
-same bytes with this change in the tree, with it stashed back out, and across
-repeated runs.
+difference", and the two figures it quoted have to be split rather than
+re-attributed as a pair. The **12,656-pixel** reading for `gate-answered` is a
+`7d41e63e3`-epoch measure of the agents line AND that story's repainted busy glyphs
+TOGETHER — that roster draws a spinner. The **11,830** for `mark-all-read-pile` is
+the agents line ALONE: that roster stages no busy row, so nothing else in those
+frames moves under a re-take. Both figures hold; the attribution was what was wrong
+(design round 1, **D1**, and its second half, **D7**). The re-take is DETERMINISTIC
+rather than a settle race — the same bytes with this change in the tree, with it
+stashed back out, and across repeated runs.
 
 So this branch ships the new state's frames and leaves those eight states at the
 bytes `main` holds. Re-taking them is a pass for `ab76b06f3` and `c1dfcc27f`
