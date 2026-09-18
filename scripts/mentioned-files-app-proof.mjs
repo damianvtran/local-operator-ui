@@ -815,6 +815,24 @@ try {
 			ws.close();
 			process.exit(await finish(1));
 		}
+		/*
+		 * A run that measured NOTHING is a failure too, not a pass by omission.
+		 *
+		 * There are two ways to end with no vertical read: `files-grid` never resolved
+		 * (the rows container moved, or the surface is in a state that renders none),
+		 * or the panel had no rows to measure (an empty list - a conversation with no
+		 * file mentions, or a view that never scanned). Both were silent zeros while
+		 * this block only tested `=== false`: the run printed a PASS-shaped report and
+		 * exited 0 having said nothing about the claim it exists to make, which is
+		 * exactly the state a change to this surface is most likely to produce. So the
+		 * only exit 0 here is a run that measured the verticals and found them good;
+		 * everything else names what it could not measure.
+		 */
+		console.error(
+			`geometry: measured NOTHING to make the claim about - the vertical read is ${JSON.stringify(report.bottomClip)} (rows container: ${report.filesGrid?.grid ? "present" : "ABSENT"}, rows measured: ${report.filesGrid?.tileCount ?? 0}). A run without a positive read says nothing about the last rows; check that the Files view is showing a populated list and that the files-grid/files-scroller tour tags still exist.`,
+		);
+		ws.close();
+		process.exit(await finish(1));
 		ws.close();
 		process.exit(await finish(0));
 	}
