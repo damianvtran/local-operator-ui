@@ -2686,9 +2686,13 @@ const HIGHLIGHT_INK_MARGIN = 0.15;
  * every palette, and "louder" here is a lightness fact: the row is LIGHTER on a
  * dark palette and DARKER on a light one. The field floor above says only that
  * the two are two different grounds, which is consistent with the pointer's row
- * being the brighter one - which is what shipped at the merge base on 36 of the
- * 41 dark palettes, so the row was misread beside a hover on 88% of the dark
- * family while every floor in this file was green.
+ * being the brighter one - which is what shipped at the merge base
+ * (`f09c3beec`) on 29 of the 41 dark palettes, and this branch's own lift
+ * widened it to 36 of the 41 at its pre-pass head (`451d54c2b`), so the row was
+ * misread beside a hover on 71% of the dark family there and on 88% of it after
+ * the lift, while every floor in this file was green. Both counts are quantities
+ * of the refs they name rather than of this head, which is why they are spelled
+ * with them.
  *
  * WHY THE STEP IS 0.5 AND NOT MORE. It is the largest floor the binders allow
  * across the family, and the binders are stated here rather than left to a
@@ -2705,11 +2709,14 @@ const HIGHLIGHT_INK_MARGIN = 0.15;
  *     hover number (`HOVER_DELTA_E`, asserted on `accentWash`).
  *
  * The usable window is therefore `cap - panel floor`, measured at 0.4-5.2 L* on
- * the dark family and 5.5-11.0 on the light one - and on eleven palettes it is
+ * the dark family and 5.5-11.0 on the light one - and on twelve palettes it is
  * narrower than this step or closed outright, which `HIGHLIGHT_HOVER_ORDER_
  * EXCEPTIONS` below records palette by palette rather than lowering the floor
- * for everybody. THE ORDERING IS WHAT THIS PASS BOUGHT WHERE IT COULD BE
- * BOUGHT, AND THE SEPARATION IS WHAT IT COST: bringing the hovered rung down to
+ * for everybody. Eleven of the twelve are that window case; the twelfth,
+ * `neonNoir`, is not, and its entry says which bound refuses it instead.
+ *
+ * THE ORDERING IS WHAT THIS PASS BOUGHT WHERE IT COULD BE BOUGHT, AND THE
+ * SEPARATION IS WHAT IT COST: bringing the hovered rung down to
  * its floor shortens the pair's ΔE00 as well as flipping which of the two is
  * lighter, so on the dark family the two marks sit 2.02-4.98 apart rather than
  * 4.44 at the merge base on `arcade`. The design round asked for both; they
@@ -2733,19 +2740,42 @@ const HIGHLIGHT_HOVER_ORDER_STEP = 0.5;
 const ELEVATED_PANEL_DELTA_E = 2.0;
 
 /**
- * The palettes whose ink cap leaves the row/hover window under
- * `HIGHLIGHT_HOVER_ORDER_STEP` - and on five of them, closed outright.
+ * The palettes whose row/hover window cannot hold `HIGHLIGHT_HOVER_ORDER_STEP`,
+ * in TWELVE entries and TWO cases - the count is twelve rather than eleven, and
+ * one of the twelve is not a window case at all:
  *
- * THE BINDER IS THE SAME ON EVERY ONE: `inkDim` at its 5.0 floor with this
- * file's 0.15 of headroom, which caps the row at 2.00-3.50 `L*` above the
- * panel, while a hovered rung that is perceptibly off that panel
+ *   - the ELEVEN whose ink cap leaves the window under the step, five of them
+ *     closed outright (a negative margin) - the case the paragraph below
+ *     argues, and the one `HIGHLIGHT_STEP_PINS` already records a sibling of.
+ *   - `neonNoir`, whose window is 0.69 `L*` (cap 3.50, panel floor 2.81) and so
+ *     is WIDER than the step: the ink cap does not close it, and what refuses
+ *     the row is the ΔE00 pair - see its own entry.
+ *
+ * `neonNoir`'s own entry opens by saying which case it is, so a reader taking a
+ * single line out of this list cannot mistake the twelfth for the eleven.
+ *
+ * THE BINDER IS `inkDim` AT ITS 5.0 FLOOR ON THE ELEVEN WINDOW CASES: with this
+ * file's 0.15 of headroom it caps the row at 2.00-4.75 `L*` above the panel,
+ * while a hovered rung that is perceptibly off that panel
  * (`ELEVATED_PANEL_DELTA_E`) needs 2.6-3.1 - so the row cannot get above the
- * hover on these palettes without putting the caps inside a current row under
+ * hover on those palettes without putting the caps inside a current row under
  * their floor. The alternative would be to re-author `inkDim` with the ground
  * (the coupling `palette-contract.ts` describes) - a text change on eleven
  * themes for a row mark, and a bigger one than this finding - or to give the
  * hovered row a ground of its own, which is a role decision rather than a
  * value and is not taken here.
+ *
+ * `neonNoir` IS NOT AN INK-CAP CASE, and the distinction is stated because the
+ * assertion cannot see it: the guard below re-derives the AUTHORED order (0.26)
+ * and the ink cap, so a reader who takes "the ink floors cap it" as the invariant
+ * would not learn that this row is refused by the ΔE00 floors. At the row that
+ * would clear the step on that palette - `surface` + 3.32 `L*` at the surface's
+ * own hue, `#2C2F37` - the pair measures ΔE00 0.75 against `elevated` where
+ * `FIELD_SEPARATION_FLOOR` needs 2.0 and ΔE00 2.31 against `surface` where the
+ * band (`HIGHLIGHT_SEPARATION_FLOOR`) needs 4.0, while `inkDim` still has 5.18:1
+ * on that ground. So on that one the two marks cannot be both far enough apart
+ * and ordered, and the ledger is recording a floor collision rather than an ink
+ * ceiling.
  *
  * WHAT EACH ENTRY RECORDS is the same pin-not-mute shape as
  * `HIGHLIGHT_STEP_PINS`: the margin the pair actually measures (negative where
@@ -2756,9 +2786,12 @@ const ELEVATED_PANEL_DELTA_E = 2.0;
  * instead of leaving it green, and an entry whose pair now clears the step is
  * dead weight and fails as stale.
  *
- * `arcade`, `cyberpunk`, `tron`, `matrix`, `obsidian` and `tokyoNight` - the
- * six dark palettes the design round measured the pair on - are NOT here: their
- * windows run 0.72-2.78 `L*` and they hold the step.
+ * `arcade`, `cyberpunk`, `tron`, `matrix` and `tokyoNight` - five of the six
+ * dark palettes the design round measured the pair on - are NOT here: their
+ * windows run 0.65-2.07 `L*` and they hold the step. The sixth, `obsidian`, IS
+ * here: its window is -0.02 `L*` (the accent wash, not `ELEVATED_PANEL_DELTA_E`,
+ * is what forbids the rung), so it orders the pair by 0.05 `L*` inside a window
+ * narrower than the step and is recorded like the rest.
  *
  * @type {{theme: string, margin: number, cap: number, inkRole: string, onGround: number, why: string}[]}
  */
@@ -2833,7 +2866,7 @@ const HIGHLIGHT_HOVER_ORDER_EXCEPTIONS = [
 		cap: 3.5,
 		inkRole: "inkDim",
 		onGround: 5.22,
-		why: "cap 3.50 against a panel floor of 2.81; `inkDim` has 0.04 of headroom left on this ground, which is why the row cannot take the extra step the window would allow",
+		why: "NOT an ink-cap case, and the one entry of the twelve that is not: cap 3.50 against a panel floor of 2.81 leaves a 0.69 `L*` window, WIDER than the 0.5 step, so the row could be raised past the hover. The value is refused by the ΔE00 pair instead - at `#2C2F37` (surface + 3.32 `L*`, the row that would clear the step) the pair measures ΔE00 0.75 against `elevated` (need 2.0) and 2.31 against `surface` (need 4.0), with `inkDim` at 5.18:1 on it, so the floors and not the ink are what close this one",
 	},
 	{
 		theme: "rosePine",
