@@ -711,6 +711,17 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 		const owner = {
 			installPreflightInFlight: false,
 			runInstallPreflight: async () => null,
+			/*
+			 * The app-owned staging is a collaborator of this handler now, and this
+			 * slice is about the ORDER of the owned cleanup against the handoff - so it
+			 * is stubbed to refuse, which is the Squirrel path this case pins
+			 * (`stageInstallerHandoff` returning null is exactly "stage it the old
+			 * way"). The direct path's own ordering is pinned in
+			 * `scripts/update-shipit.test.mjs`, against the shipped service rather than
+			 * a slice.
+			 */
+			stageInstallerHandoff: async () => null,
+			startInstaller: () => null,
 			backendService: {
 				stop: () => {
 					actions.push("stop");

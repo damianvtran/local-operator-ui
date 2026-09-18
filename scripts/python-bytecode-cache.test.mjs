@@ -2254,8 +2254,22 @@ const SPAWN_SITES = [
 	),
 	runsCommand(
 		"src/main/update-service.ts",
+		"spawnSync",
+		3,
+		/extractionArguments\(/,
+		"the update extraction: `/usr/bin/ditto` unzips the release into the app's own staging root. A system tool, and the argv comes from `update-shipit.ts`; no interpreter runs under it",
+	),
+	runsCommand(
+		"src/main/update-service.ts",
 		"spawn",
 		1,
+		/plan\.args/,
+		"the installer spawner: a shell that waits for this process's pid to go and then `exec`s Apple's ShipIt. It runs no interpreter - the process it becomes is Apple's installer - and its `env` is the inherited one plus the plan's four variables (`update-shipit.ts`'s `buildInstallerSpawn`)",
+	),
+	runsCommand(
+		"src/main/update-service.ts",
+		"spawn",
+		2,
 		/"sh"/,
 		"the relaunch watchdog: a shell script that waits for the swap and starts the app again. It runs no interpreter; the app it starts applies the guards to its own spawns, and the watchdog's `env` is the inherited one plus the plan's variables",
 	),
