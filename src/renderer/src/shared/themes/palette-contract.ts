@@ -123,6 +123,43 @@ export type ThemePalette = {
 	 * palettes. The grounds, the ink weights and `borderControl` therefore land in
 	 * the same commit or not at all, which is a rule about this system rather than
 	 * about one palette.
+	 *
+	 * ## The measured ceiling on any further band move (2026-09-18)
+	 *
+	 * The "some themes feel a lot more grey now" report is real and it is
+	 * measured: the pass above solved 23 palettes onto the same L* 12 floor, so
+	 * 9.47 L* of authored depth came to occupy 0.46 L*, and the dark fleet's
+	 * `canvas` spread fell from 19.5 to 10.0 L*. The rule for undoing it - the
+	 * four depth registers, cast spent rather than withdrawn - was solved in full
+	 * and then WITHDRAWN, because this fleet cannot pay for it. The numbers, so
+	 * the next pass starts from them rather than rediscovering them:
+	 *
+	 * - **The band's own headroom is 0 to +2.94 L*, and +0 on seven palettes.**
+	 *   Past that, one of the roles this file already asserts goes under its floor
+	 *   - `infoBorder`/`dangerBorder`/`warningBorder`/`accent` at 3:1 on
+	 *   `elevated`, `success`/`danger`/`info`/`accent` at 4.5:1 as text, `inkDim`
+	 *   at 5:1. Each sits 0.01-0.06:1 above its own floor today, so the fleet is
+	 *   at the ceiling that §1.3's registers (L* 14.5-18.4) are above.
+	 * - **The row window caps it lower still, and that is the binding one.** The
+	 *   row states live between `surface` and the ink cap, and the ladder's
+	 *   `surface -> elevated` step is only 2-3 L*; once `surface` passes ~L* 13
+	 *   the selection cannot reach ΔE00 6.0 off it inside the cap. Respecting
+	 *   both, the movers have 0.09-0.20 L* to spend - i.e. nothing.
+	 * - **The fleet is at its edge on every axis.** The lowest `canvas -> surface`
+	 *   ΔE00 is 2.08 against a 2.0 floor, the lowest `canvas -> sunken` is 2.02
+	 *   against 2.0, and the lowest `canvas` L* is 12.00 against the band's 12.0,
+	 *   so a cast change alone (`catppuccinMacchiato`, `rosePine`,
+	 *   `rosePineMoon`, `obsidian`, `autumn`, `vaporwave`) breaks a step floor.
+	 *   "Cast is spent, never withdrawn" is available in principle and not in
+	 *   this fleet's state.
+	 * - **The un-taken route, named so it is a decision and not an oversight:**
+	 *   authorizing the four semantic tones and the four `*Border` roles to move
+	 *   WITH the band is the only way to the registers, and it re-authors what
+	 *   green, red and amber mean on ~16 palettes. It is one approval away and it
+	 *   is deliberately not taken here.
+	 *
+	 * What this leaves is a fleet that is legible, spread where spread is free,
+	 * and honest about the axis it can no longer buy.
 	 */
 	canvas: string;
 	/** One step raised: cards, panels, inputs, the message paper. */
