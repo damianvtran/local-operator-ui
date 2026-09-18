@@ -259,10 +259,18 @@ test("a newer mtime re-reads the file and applies its bytes", async () => {
 	const outcome = await runner.check(doc(path, { readMtimeMs: 100 }));
 	assert.equal(outcome.status, "applied");
 	assert.equal(outcome.document.content, "two\n");
-	// The baseline moves with the bytes, and so does the blob cache's key: the
-	// viewers that hold their own object URL are keyed on `lastAgentModified`.
+	// The baseline is the file's own mtime, which is what the next check compares
+	// against.
 	assert.equal(outcome.document.readMtimeMs, 200);
-	assert.equal(outcome.document.lastAgentModified, 200);
+	/*
+	 * `lastAgentModified` is NOT the mtime here, and that is deliberate: for a
+	 * text document it is the reload signal the markdown editor watches (its
+	 * content lives in a contenteditable, so the prop alone is not enough), and a
+	 * forced re-read is exactly the case where the bytes move and the mtime does
+	 * not. It must therefore change on any content-changing apply.
+	 */
+	assert.notEqual(outcome.document.lastAgentModified, 200);
+	assert.equal(typeof outcome.document.lastAgentModified, "number");
 	assert.equal(outcome.document.availability, "present");
 	assert.deepEqual(calls.reads, [{ path, encoding: "utf-8" }]);
 });
