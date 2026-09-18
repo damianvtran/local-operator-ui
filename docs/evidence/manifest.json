@@ -1,8 +1,8 @@
 {
   "head": "09cfe2d92",
   "headNote": "PR #343 FOLDED ONTO `origin/main` = `d64a31e59` (the 0.28.4 release). Two conflicts, both bookkeeping: `package.json` (main's released version and test list plus this branch's `canvas-file-freshness.test.mjs` registration - the branch carries no version change of its own) and this file (main's 85 declared sets plus this branch's entry, 86 in total). The stamps and the counts reading are re-derived from the folded tree in the commit after the merge. Main's 30 commits touch none of this branch's canvas files, so the fold is content-neutral for the feature; `git range-diff 4b0ee7849..996e29a29 origin/main~30..HEAD` replays every commit `=`.",
-  "srcTree": "36b87a0d076d77a22c6b3a6c88185ba74920d5db",
-  "scriptsTree": "852762490966afb36992254394a0f9460fb432fa",
+  "srcTree": "9a6b7e8b25d1bed6e0437cdef257964b98bf0684",
+  "scriptsTree": "f56c5dd2e40dfad9b8f42b20b822c7a7ad00cd16",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-17T07:08:08.000Z",
   "frames": 7350,
