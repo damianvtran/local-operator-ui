@@ -49,11 +49,11 @@ export const ayuDark: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.37, elevated +9.88, sunken -3.41 L*), so the hierarchy the
+		 * (surface +4.37, elevated +9.88, sunken -3.41 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #10141C -> #1C2028 (L* 6.27 -> 12.18)
 		 * surface #181D27 -> #242934 (L* 10.7 -> 16.55)
-		 * elevated #222834 -> #2F3541 (L* 16.03 -> 22.06)
+		 * elevated #222834 -> #2C323E (L* 16.03 -> 20.69)
 		 * sunken #080A0F -> #18191C (L* 2.74 -> 8.77)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -67,7 +67,7 @@ export const ayuDark: ThemeDefinition = {
 		 */
 		canvas: "#1C2028",
 		surface: "#242934",
-		elevated: "#2F3541",
+		elevated: "#2C323E",
 		sunken: "#18191C",
 
 		/*
@@ -75,7 +75,7 @@ export const ayuDark: ThemeDefinition = {
 		 * stepped 4.85 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.48x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
-		 * the row's ground. ΔE00 4.25 from `surface`, 2.63 from `elevated`, 10.97
+		 * the row's ground. ΔE00 4.25 from `surface`, 2.55 from `elevated`, 10.97
 		 * from `sunken`, 7.14 from `accentWash`; the inks on the ground are 7.23:1,
 		 * 7.19:1, 5.17:1. Continuity with the panel: hue 2.5 degrees off the panel's
 		 * (the assertion allows 12) and chroma 11.7 where the panel carries 7.9.
@@ -84,7 +84,7 @@ export const ayuDark: ThemeDefinition = {
 
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
-		 * is 7:1 on all six grounds and `elevated` binds it at 7.05:1.
+		 * is 7:1 on all six grounds and `elevated` binds it at 7.36:1.
 		 *
 		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
 		 * surface the operator's report is about.
@@ -95,7 +95,7 @@ export const ayuDark: ThemeDefinition = {
 		ink: "#C6C4BC",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.01:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.33:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -107,7 +107,7 @@ export const ayuDark: ThemeDefinition = {
 		// the scheme's dim rung, relaxed to clear ΔE00 8 from `inkMuted`.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.04:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.27:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -122,7 +122,7 @@ export const ayuDark: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 4.08.
+		 * `elevated` is the tightest ground at ΔE00 5.02.
 		 */
 		hairline: "#3B414B",
 		// upstream's ui line 2B3038 is 1.11:1 on `elevated` — a ground colour

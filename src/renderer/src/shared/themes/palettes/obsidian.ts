@@ -42,11 +42,11 @@ export const obsidian: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.88, elevated +10.56, sunken -2.41 L*), so the hierarchy the
+		 * (surface +4.88, elevated +10.56, sunken -2.41 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #09090B -> #202021 (L* 2.51 -> 12.29)
 		 * surface #18181B -> #2A2A2D (L* 8.36 -> 17.17)
-		 * elevated #27272A -> #37363A (L* 15.75 -> 22.85)
+		 * elevated #27272A -> #353438 (L* 15.75 -> 21.94)
 		 * sunken #030307 -> #1B1B1E (L* 0.9 -> 9.88)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -67,7 +67,7 @@ export const obsidian: ThemeDefinition = {
 		 */
 		canvas: "#202021",
 		surface: "#2A2A2D",
-		elevated: "#37363A",
+		elevated: "#353438",
 		// The old file already used a near-black 060609 for its message view, which
 		// measures 1.02:1 against zinc 950 — too close to read as a separate
 		// ground. This is two levels lower on the same blue-leaning zinc lean
@@ -81,7 +81,7 @@ export const obsidian: ThemeDefinition = {
 		 * stepped 5 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 2.59x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.49 from `surface`, 2.44 from `elevated`, 8.54
+		 * the row's ground. ΔE00 4.49 from `surface`, 2.35 from `elevated`, 8.54
 		 * from `sunken`, 4 from `accentWash`; the inks on the ground are 11.82:1,
 		 * 7.2:1, 5.16:1. Continuity with the panel: hue 0.67 degrees off the panel's
 		 * (the assertion allows 12) and chroma 5.38 where the panel carries 2.08.
@@ -91,7 +91,7 @@ export const obsidian: ThemeDefinition = {
 		ink: "#FAFAFA",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 7:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.21:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -104,7 +104,7 @@ export const obsidian: ThemeDefinition = {
 		// a dimmer weight; this sits between zinc 500 and zinc 600 instead.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.02:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.17:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -119,7 +119,7 @@ export const obsidian: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 4.14.
+		 * `elevated` is the tightest ground at ΔE00 4.75.
 		 */
 		hairline: "#424244",
 		// Zinc 500 measures 2.86:1 on zinc 800, a hair under the structural floor,
@@ -193,7 +193,7 @@ export const obsidian: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.12:1.
 		 */
 		successBorder: "#668777",
 
@@ -202,7 +202,7 @@ export const obsidian: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.09:1.
 		 */
 		warningBorder: "#8E7D61",
 
@@ -211,7 +211,7 @@ export const obsidian: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.10:1.
 		 */
 		dangerBorder: "#A17473",
 

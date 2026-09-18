@@ -49,11 +49,11 @@ export const rosePineMoon: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.11, elevated +8.97, sunken -4.13 L*), so the hierarchy the
+		 * (surface +3.11, elevated +8.97, sunken -4.13 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #232136 -> #232136 (L* 13.89 -> 13.89)
 		 * surface #2a273f -> #2A273F (L* 17 -> 17)
-		 * elevated #393552 -> #373350 (L* 23.75 -> 22.86)
+		 * elevated #393552 -> #2F2B47 (L* 23.75 -> 19.17)
 		 * sunken #1b192a -> #1B192A (L* 9.76 -> 9.76)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -67,7 +67,7 @@ export const rosePineMoon: ThemeDefinition = {
 		 */
 		canvas: "#232136",
 		surface: "#2a273f",
-		elevated: "#373350",
+		elevated: "#2F2B47",
 		sunken: "#1b192a",
 
 		/*
@@ -75,7 +75,7 @@ export const rosePineMoon: ThemeDefinition = {
 		 * stepped 3.9 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.34x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is the ΔE00 4.07-to-4 band
-		 * on `surface`. ΔE00 4.07 from `surface`, 2.13 from `elevated`, 9.29 from
+		 * on `surface`. ΔE00 4.07 from `surface`, 2.03 from `elevated`, 9.29 from
 		 * `sunken`, 8.91 from `accentWash`; the inks on the ground are 9.71:1,
 		 * 7.71:1, 5.51:1. Continuity with the panel: hue 0.47 degrees off the
 		 * panel's (the assertion allows 12) and chroma 22.44 where the panel carries

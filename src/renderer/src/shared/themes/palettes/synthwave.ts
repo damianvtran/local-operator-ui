@@ -69,14 +69,14 @@ export const synthwave: ThemeDefinition = {
 
 		canvas: "#262335",
 		surface: "#2D2A41",
-		elevated: "#35314C",
+		elevated: "#332F4A",
 		sunken: "#1E1B2A",
 		/*
 		 * The current row's own ground: the panel's cast at the panel's own hue,
 		 * stepped 3.5 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.40x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.27 from `surface`, 2.18 from `elevated`, 9.91
+		 * the row's ground. ΔE00 4.27 from `surface`, 2.19 from `elevated`, 9.91
 		 * from `sunken`, 5.89 from `accentWash`; the inks on the ground are 10.95:1,
 		 * 6.24:1, 5.16:1. Continuity with the panel: hue 0.46 degrees off the
 		 * panel's (the assertion allows 12) and chroma 22.31 where the panel carries
@@ -99,7 +99,7 @@ export const synthwave: ThemeDefinition = {
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
 		inkDim: "#9DA4D6",
-		// The TUI `faint` 575071 lifted to 2.3:1 on `elevated`.
+		// The TUI `faint` 575071 lifted to 2.37:1 on `elevated`.
 		inkDisabled: "#6D6688",
 
 		// The TUI `edge` 443F5E, already inside the hairline's 1.15-2.0:1 band and

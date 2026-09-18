@@ -73,11 +73,11 @@ export const cyberpunk: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +2.53, elevated +6.28, sunken -1.72 L*), so the hierarchy the
+		 * (surface +2.53, elevated +6.28, sunken -1.72 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #0E0A16 -> #211F28 (L* 3.33 -> 12.33)
 		 * surface #16101F -> #282332 (L* 5.78 -> 14.86)
-		 * elevated #1E172A -> #312A3E (L* 9.45 -> 18.61)
+		 * elevated #1E172A -> #2E273B (L* 9.45 -> 17.22)
 		 * sunken #080510 -> #1D1C22 (L* 1.78 -> 10.61)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -91,7 +91,7 @@ export const cyberpunk: ThemeDefinition = {
 		 */
 		canvas: "#211F28",
 		surface: "#282332",
-		elevated: "#312A3E",
+		elevated: "#2E273B",
 		sunken: "#1D1C22",
 		/*
 		 * The current row's own ground, and the one palette class this pass pins:
@@ -100,7 +100,7 @@ export const cyberpunk: ThemeDefinition = {
 		 * lightness route at 3 `L*`. The band is paid on the cast at 1.20x the
 		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
 		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 4.24
-		 * from `surface`, 3.05 from `elevated`, 9.77 from `sunken`, 23.49 from
+		 * from `surface`, 3.01 from `elevated`, 9.77 from `sunken`, 23.49 from
 		 * `accentWash`; the inks on the ground are 11.38:1, 6.92:1, 5.15:1.
 		 * Continuity with the panel: hue 14.28 degrees off the panel's (the
 		 * assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 13.12 where the panel carries 10.9.
@@ -110,7 +110,7 @@ export const cyberpunk: ThemeDefinition = {
 		ink: "#EAE5F2",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.74:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.03:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -123,7 +123,7 @@ export const cyberpunk: ThemeDefinition = {
 		// on `elevated`, both under the floor.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.02:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.24:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -143,7 +143,7 @@ export const cyberpunk: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 5.06.
+		 * `elevated` is the tightest ground at ΔE00 5.63.
 		 */
 		hairline: "#3D3250",
 		// The TUI `edge-hi` 3D2F54 lifted in L* until it clears 3:1 on `elevated`.
@@ -194,7 +194,7 @@ export const cyberpunk: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.13:1.
 		 */
 		successBorder: "#3E835A",
 
@@ -203,7 +203,7 @@ export const cyberpunk: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.13:1.
 		 */
 		warningBorder: "#9C6B44",
 
@@ -225,7 +225,7 @@ export const cyberpunk: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.13:1.
 		 */
 		dangerBorder: "#BD545F",
 
@@ -236,7 +236,7 @@ export const cyberpunk: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.13:1.
 		 */
 		infoBorder: "#24818E",
 

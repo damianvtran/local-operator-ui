@@ -47,7 +47,7 @@ export const arctic: ThemeDefinition = {
 		mode: "dark",
 		canvas: "#1A2431",
 		surface: "#232E3D",
-		elevated: "#2C3949",
+		elevated: "#2A3747",
 		sunken: "#121A25",
 
 		/*
@@ -55,7 +55,7 @@ export const arctic: ThemeDefinition = {
 		 * stepped 4.65 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.41x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.19:1 on
-		 * the row's ground. ΔE00 4.23 from `surface`, 2.68 from `elevated`, 10.34
+		 * the row's ground. ΔE00 4.23 from `surface`, 2.64 from `elevated`, 10.34
 		 * from `sunken`, 16.25 from `accentWash`; the inks on the ground are 9.95:1,
 		 * 7.13:1, 5.19:1. Continuity with the panel: hue 1.88 degrees off the
 		 * panel's (the assertion allows 12) and chroma 15.49 where the panel carries
@@ -160,7 +160,7 @@ export const arctic: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.11:1.
 		 */
 		successBorder: "#4F8D75",
 		warning: "#DCB45E",
@@ -168,7 +168,7 @@ export const arctic: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.11:1.
 		 */
 		warningBorder: "#937F50",
 		danger: "#F08D90",
@@ -188,7 +188,7 @@ export const arctic: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.09:1.
 		 */
 		infoBorder: "#5D85A6",
 

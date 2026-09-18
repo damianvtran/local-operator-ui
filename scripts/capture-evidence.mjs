@@ -1590,14 +1590,21 @@ export const STORIES = [
 	 * pipeline (`hover`, the option the trigger-hover frames already use) and
 	 * shuts the shutter with the pointer still there.
 	 *
-	 * `data-chat-row:has(+ [data-chat-row][aria-current="page"])` is the row
-	 * immediately BEFORE the current one — the story's roster is newest-first and
-	 * its third row is the selected conversation, so this lands on "Migrate the
-	 * deploy script" while "Quarterly revenue model" is current. That is the pair
-	 * design round 1's D1 is measured on and the one a reader needs to judge the
-	 * hierarchy: the current row paints `highlight` and the row under the pointer
-	 * paints `elevated`, and whether the persistent mark still outranks the
-	 * transient one is a fact about two grounds side by side in one frame.
+	 * `data-chat-row` marks the ROW'S BUTTON, and since design R2 (folded in from
+	 * `main`) that button sits inside the row's own wrapper beside the browser mark,
+	 * so the wrapper is the element with a sibling row and the button is taken
+	 * inside it. The previous spelling —
+	 * `[data-chat-row]:has(+ [data-chat-row][aria-current="page"])` — described the
+	 * pre-R2 flat list and matched NOTHING at this head, which the rig reports
+	 * rather than photographing the resting state; it is written down here because a
+	 * hover frame's provenance is the selector that found it. The row above the
+	 * current one is still "Migrate the deploy script" while "Quarterly revenue
+	 * model" is current: the story's roster is newest-first and its third row is the
+	 * selected conversation. That is the pair design round 1's D1 is measured on and
+	 * the one a reader needs to judge the hierarchy: the current row paints
+	 * `highlight` and the row under the pointer paints `elevated`, and whether the
+	 * persistent mark still outranks the transient one is a fact about two grounds
+	 * side by side in one frame.
 	 *
 	 * An entry of its own with a `dir` rather than a second plain tuple: a plain
 	 * tuple for this story would write into `selected-row/` and overwrite the
@@ -1611,7 +1618,8 @@ export const STORIES = [
 		560,
 		{
 			dir: "selected-row-neighbour-hovered",
-			hover: '[data-chat-row]:has(+ [data-chat-row][aria-current="page"])',
+			hover:
+				'div:has(+ div > [data-chat-row][aria-current="page"]) > [data-chat-row]',
 		},
 	],
 	/*

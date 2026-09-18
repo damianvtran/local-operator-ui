@@ -66,7 +66,7 @@ export const localOperatorDark: ThemeDefinition = {
 
 		canvas: "#22201c",
 		surface: "#2b2721",
-		elevated: "#363025",
+		elevated: "#322D22",
 		sunken: "#1d1b19",
 
 		/*
@@ -74,7 +74,7 @@ export const localOperatorDark: ThemeDefinition = {
 		 * stepped 3.5 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.85x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.43 from `surface`, 3.02 from `elevated`, 8.45
+		 * the row's ground. ΔE00 4.43 from `surface`, 3.62 from `elevated`, 8.45
 		 * from `sunken`, 16.68 from `accentWash`; the inks on the ground are 11.6:1,
 		 * 7.11:1, 5.16:1. Continuity with the panel: hue 11.43 degrees off the
 		 * panel's (the assertion allows 12) and chroma 8.62 where the panel carries

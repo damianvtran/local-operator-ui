@@ -39,11 +39,11 @@ export const tokyoNight: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +4.9, elevated +10.31, sunken -3.57 L*), so the hierarchy the
+		 * (surface +4.9, elevated +10.31, sunken -3.57 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #1A1B26 -> #1E1F2A (L* 10.13 -> 12.11)
 		 * surface #24283B -> #25293C (L* 16.54 -> 17.01)
-		 * elevated #2F334D -> #30344E (L* 21.97 -> 22.42)
+		 * elevated #2F334D -> #2A2E48 (L* 21.97 -> 19.70)
 		 * sunken #14141B -> #18181F (L* 6.58 -> 8.54)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -57,28 +57,39 @@ export const tokyoNight: ThemeDefinition = {
 		 */
 		canvas: "#1E1F2A",
 		surface: "#25293C",
-		elevated: "#30344E",
+		elevated: "#2A2E48",
 		// Upstream bg_dark is 16161E, which measures 1.05:1 against canvas. Two
 		// levels deeper for a little more separation.
 		sunken: "#18181F",
 
 		/*
 		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 3.25 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.44x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is the ΔE00 4.16-to-4 band
-		 * on `surface`. ΔE00 4.16 from `surface`, 2.12 from `elevated`, 12.03 from
-		 * `sunken`, 2.77 from `accentWash`; the inks on the ground are 8.04:1,
-		 * 7.47:1, 5.41:1. Continuity with the panel: hue 0.79 degrees off the
-		 * panel's (the assertion allows 12) and chroma 19.09 where the panel carries
+		 * stepped 4.9 `L*` lighter (branch L of this port's selection rule), and
+		 * carrying 1.47x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is the ΔE00 4.98-to-4 band
+		 * on `surface`. ΔE00 4.98 from `surface`, 2.08 from `elevated`, 12.91 from
+		 * `sunken`, 3.32 from `accentWash`; the inks on the ground are 7.67:1,
+		 * 7.12:1, 5.15:1. Continuity with the panel: hue 0.39 degrees off the
+		 * panel's (the assertion allows 12) and chroma 19.55 where the panel carries
 		 * 13.26.
+		 *
+		 * RAISED BY THE ROW/HOVER PASS, and this is the palette the pass's own gate
+		 * line spends: the 1.50 `L*` of headroom the legibility pass left under this
+		 * row is exactly what the row/hover ordering needed, because the hover rung's
+		 * own floor (ΔE00 2.0 off the panel, `ELEVATED_PANEL_DELTA_E`) sits where the
+		 * shorter row was. No rung can be both perceptibly off the panel and BELOW a
+		 * row this low, so the row came up to outrank the pointer's. The step is the
+		 * largest this palette's inks allow - `inkDim` is the binder at 5.15:1 on the
+		 * ground against its 5.0 floor - which is why
+		 * `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries re-measured numbers for this
+		 * palette.
 		 */
-		highlight: "#28304c",
+		highlight: "#2C3350",
 
 		ink: "#C0CAF5",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 7:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.63:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -149,7 +160,7 @@ export const tokyoNight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.31:1.
 		 */
 		successBorder: "#6C8754",
 
@@ -159,7 +170,7 @@ export const tokyoNight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.02:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.29:1.
 		 */
 		warningBorder: "#967A56",
 
@@ -169,7 +180,7 @@ export const tokyoNight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.29:1.
 		 */
 		dangerBorder: "#B66779",
 
@@ -179,7 +190,7 @@ export const tokyoNight: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.03:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.30:1.
 		 */
 		infoBorder: "#5684A3",
 

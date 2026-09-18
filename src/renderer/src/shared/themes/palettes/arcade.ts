@@ -74,11 +74,11 @@ export const arcade: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.46, elevated +8.18, sunken -3.02 L*), so the hierarchy the
+		 * (surface +3.46, elevated +8.18, sunken -3.02 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #0A0A0C -> #202021 (L* 2.78 -> 12.29)
 		 * surface #141417 -> #27272A (L* 6.42 -> 15.75)
-		 * elevated #1D1D21 -> #313135 (L* 10.92 -> 20.47)
+		 * elevated #1D1D21 -> #2D2D31 (L* 10.92 -> 18.61)
 		 * sunken #010102 -> #1A1A1A (L* 0.29 -> 9.26)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -92,7 +92,7 @@ export const arcade: ThemeDefinition = {
 		 */
 		canvas: "#202021",
 		surface: "#27272A",
-		elevated: "#313135",
+		elevated: "#2D2D31",
 		// The TUI's 050506 darkened one step to clear the four-ground separation
 		// floor: against `canvas` it measured 1.030:1, sitting exactly on the
 		// contract's 1.03.
@@ -103,7 +103,7 @@ export const arcade: ThemeDefinition = {
 		 * stepped 3.7 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 2.61x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
-		 * the row's ground. ΔE00 4.07 from `surface`, 2.82 from `elevated`, 8.5 from
+		 * the row's ground. ΔE00 4.07 from `surface`, 2.72 from `elevated`, 8.5 from
 		 * `sunken`, 15.61 from `accentWash`; the inks on the ground are 10.92:1,
 		 * 7.19:1, 5.18:1. Continuity with the panel: hue 5.39 degrees off the
 		 * panel's (the assertion allows 12) and chroma 5.5 where the panel carries
@@ -114,7 +114,7 @@ export const arcade: ThemeDefinition = {
 		ink: "#E8E8E4",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.94:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.35:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -127,7 +127,7 @@ export const arcade: ThemeDefinition = {
 		// on `elevated`, both under the floor.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.29:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.
@@ -147,7 +147,7 @@ export const arcade: ThemeDefinition = {
 		 * Legibility pass: a hairline is the one role that has to move when its grounds
 		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
-		 * `elevated` is the tightest ground at ΔE00 4.03.
+		 * `elevated` is the tightest ground at ΔE00 5.20.
 		 */
 		hairline: "#3C3C43",
 		// The TUI `edge-hi` 3A3A42 lifted in L* until it clears 3:1 on `elevated`.
@@ -194,7 +194,7 @@ export const arcade: ThemeDefinition = {
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.18:1.
 		 */
 		successBorder: "#458848",
 
@@ -205,7 +205,7 @@ export const arcade: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.04:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.22:1.
 		 */
 		warningBorder: "#A46F40",
 
@@ -225,7 +225,7 @@ export const arcade: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.19:1.
 		 */
 		dangerBorder: "#B7615E",
 
@@ -235,7 +235,7 @@ export const arcade: ThemeDefinition = {
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.19:1.
 		 */
 		infoBorder: "#547EA2",
 

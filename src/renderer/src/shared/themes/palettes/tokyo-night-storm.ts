@@ -48,7 +48,7 @@ export const tokyoNightStorm: ThemeDefinition = {
 
 		canvas: "#24283B",
 		surface: "#2B3048",
-		elevated: "#333955",
+		elevated: "#303652",
 		sunken: "#1D2032",
 
 		/*
@@ -56,7 +56,7 @@ export const tokyoNightStorm: ThemeDefinition = {
 		 * stepped 3.55 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.38x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
-		 * the row's ground. ΔE00 4.16 from `surface`, 2.16 from `elevated`, 9.33
+		 * the row's ground. ΔE00 4.16 from `surface`, 2.07 from `elevated`, 9.33
 		 * from `sunken`, 5.2 from `accentWash`; the inks on the ground are 7.93:1,
 		 * 7.25:1, 5.18:1. Continuity with the panel: hue 0.56 degrees off the
 		 * panel's (the assertion allows 12) and chroma 22.6 where the panel carries
@@ -68,7 +68,7 @@ export const tokyoNightStorm: ThemeDefinition = {
 		// rounding. Lifted along the same periwinkle.
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
-		 * is 7:1 on all six grounds and `elevated` binds it at 7.74:1.
+		 * is 7:1 on all six grounds and `elevated` binds it at 8.10:1.
 		 *
 		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
 		 * surface the operator's report is about.
@@ -79,7 +79,7 @@ export const tokyoNightStorm: ThemeDefinition = {
 		ink: "#CAD4FF",
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.07:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.40:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.

@@ -53,7 +53,7 @@ export const oneDark: ThemeDefinition = {
 		// Upstream mono-2, and `elevated` is mono-3: the scheme's own two raised tones.
 		// ΔE00 2.2 and 2.4 up the ladder, with the well one step under mono-0.
 		surface: "#2F343D",
-		elevated: "#3A404B",
+		elevated: "#353B46",
 		sunken: "#21252B",
 
 		/*
@@ -61,7 +61,7 @@ export const oneDark: ThemeDefinition = {
 		 * stepped 4.2 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.61x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is the ΔE00 4.08-to-4 band
-		 * on `surface`. ΔE00 4.08 from `surface`, 2.22 from `elevated`, 8.84 from
+		 * on `surface`. ΔE00 4.08 from `surface`, 2.02 from `elevated`, 8.84 from
 		 * `sunken`, 5.59 from `accentWash`; the inks on the ground are 7.83:1,
 		 * 7.31:1, 5.26:1. Continuity with the panel: hue 2.06 degrees off the
 		 * panel's (the assertion allows 12) and chroma 10.24 where the panel carries
@@ -73,7 +73,7 @@ export const oneDark: ThemeDefinition = {
 		// reach for a syntax foreground. Lifted along the same cool neutral.
 		/*
 		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
-		 * is 7:1 on all six grounds and `elevated` binds it at 7.47:1.
+		 * is 7:1 on all six grounds and `elevated` binds it at 8.07:1.
 		 *
 		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
 		 * surface the operator's report is about.
@@ -86,7 +86,7 @@ export const oneDark: ThemeDefinition = {
 		// so the readout rung below it keeps the ΔE00 8 ink step.
 		/*
 		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
-		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.98:1.
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 7.54:1.
 		 *
 		 * The contract's ΔE00 8 step from `inkDim` is what set this
 		 * value as much as the floor did.
@@ -99,7 +99,7 @@ export const oneDark: ThemeDefinition = {
 		// not a UI metadata tone. Lifted along its own neutral to the floor corner.
 		/*
 		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
-		 * is 5:1 on all six grounds and `elevated` binds it at 5.02:1.
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.42:1.
 		 *
 		 * The contract's ΔE00 8 step to `inkMuted` is what set this
 		 * value as much as the floor did.

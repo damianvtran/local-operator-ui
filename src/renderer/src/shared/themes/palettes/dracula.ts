@@ -42,11 +42,11 @@ export const dracula: ThemeDefinition = {
 		 * other without one of them breaking its own floor.
 		 *
 		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.66, elevated +9.4, sunken -3.81 L*), so the hierarchy the
+		 * (surface +3.66, elevated +9.4, sunken -3.81 L*), so the hierarchy the THE `elevated` OFFSET ABOVE IS THE LIFT'S AUTHORING INPUT, NOT THE SHIPPED RUNG, since the row/hover pass: the ground was moved down to the ladder's floor so the current row can outrank a hovered neighbour, and the measured line below carries the `L*` this file ships.
 		 * hover states and the borders depend on survives the move. Measured:
 		 * canvas #282A36 -> #282A36 (L* 17.34 -> 17.34)
 		 * surface #2F3146 -> #2F3146 (L* 20.99 -> 20.99)
-		 * elevated #3D4055 -> #3B3E53 (L* 27.61 -> 26.73)
+		 * elevated #3D4055 -> #383B50 (L* 27.61 -> 25.41)
 		 * sunken #21222C -> #21222C (L* 13.53 -> 13.53)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
@@ -64,7 +64,7 @@ export const dracula: ThemeDefinition = {
 		// light can carry a third ink weight — inkDim would have to land within a
 		// hair of inkMuted to clear 4.5:1 on it — so elevated steps one stop back
 		// down the same blue-grey ramp and selection stays available for hovers.
-		elevated: "#3B3E53",
+		elevated: "#383B50",
 		sunken: "#21222C",
 
 		/*
@@ -72,7 +72,7 @@ export const dracula: ThemeDefinition = {
 		 * stepped 5.25 `L*` lighter (branch L of this port's selection rule), and
 		 * carrying 1.20x the panel's own chroma — the shortfall the ΔE00 4.0 band
 		 * needed, and nothing more. What binds this one is `ink-dim` at 5.19:1 on
-		 * the row's ground. ΔE00 4.11 from `surface`, 2.31 from `elevated`, 11.03
+		 * the row's ground. ΔE00 4.11 from `surface`, 2.26 from `elevated`, 11.03
 		 * from `sunken`, 2.89 from `accentWash`; the inks on the ground are 10.05:1,
 		 * 5.82:1, 5.19:1. Continuity with the panel: hue 0.79 degrees off the
 		 * panel's (the assertion allows 12) and chroma 17.02 where the panel carries
@@ -156,7 +156,7 @@ export const dracula: ThemeDefinition = {
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		warningBorder: "#A8825D",
 
@@ -177,7 +177,7 @@ export const dracula: ThemeDefinition = {
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
-		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 * only by a pin in the contract. `elevated` binds it at 3.15:1.
 		 */
 		dangerBorder: "#CB6E73",
 
