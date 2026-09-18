@@ -893,6 +893,54 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			completionToken: z.string().uuid(),
 		})
 		.strict(),
+	/*
+	 * Bulk acknowledgement: mark many completions read in ONE user gesture
+	 * (`POST /v1/desktop/attention/seen`).
+	 *
+	 * Its OWN op rather than a loop over `sessions.seen`, for two reasons that are
+	 * both about what the receipt MEANS. The backend writes the whole batch in one
+	 * `BEGIN IMMEDIATE`, so an observer sees the pre-batch or the post-batch receipt
+	 * set and never a prefix; N round trips would expose a partial batch to every
+	 * poller, and a failure half way would leave the user unable to tell which
+	 * marks went. And the items are TOKEN-bound on purpose: the batch names exactly
+	 * the completions the client has RENDERED, so a completion published between
+	 * the render and the click is not in it and stays unread. A watermark sweep
+	 * ("acknowledge everything now") would clear exactly that result instead, which
+	 * is the hazard the per-session receipt exists to prevent — so this op never
+	 * carries a time, a count or a "all" flag, only the pairs the client observed.
+	 *
+	 * `items` is 1..500: 500 is the catalogue's own maximum page, so every row the
+	 * sidebar can hold is sendable in one call and `markAllRead` never has to
+	 * chunk (chunking would break "one gesture, one request").
+	 */
+	z
+		.object({
+			op: z.literal("attention.seen"),
+			items: z
+				.array(
+					z
+						.object({
+							sessionId,
+							// A REAL uuid, like `sessions.seen`: a token that is not one cannot
+							// name a completion, so it is refused here rather than round-tripped
+							// to answer `unknown` for an item the client should not have sent.
+							completionToken: z.string().uuid(),
+						})
+						/*
+						 * `.strict()` on the ITEM as well as on the arm, because the
+						 * sibling repository's input model is `extra="forbid"`: without
+						 * it an item carrying a third field is stripped here while the
+						 * request is answered 422 on the far side — and in the other
+						 * direction a future caller's extra field would be silently
+						 * dropped rather than refused. The two frozen surfaces now
+						 * refuse the same (agent review round 1, R5).
+						 */
+						.strict(),
+				)
+				.min(1)
+				.max(500),
+		})
+		.strict(),
 	// Cross-surface delivery claim, NOT a read receipt. `claim_delivery`
 	// serialises the observers that can see one completion (a TUI, this app) so
 	// exactly one of them toasts it. It deliberately never advances the read
@@ -1921,6 +1969,49 @@ export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
 export const DESKTOP_DEADLINE_EXCEEDED_CODE = "deadline_exceeded";
 
 /**
+ * The refusal main answers a READ RECEIPT with when the window is not in the
+ * foreground, and the sentence the user reads for it.
+ *
+ * ONE sentence rather than a machine register translated into copy, unlike the
+ * stream details in `shared/desktop-stream-notice.ts`: this refusal is already
+ * addressed to the reader ("View these completions in the foreground..."), and
+ * user copy is the register that names the true condition in the reader's own
+ * terms. A second sentence for the same fact would be a second authority.
+ *
+ * THE SENTENCE SPEAKS IN THE SET'S TERMS AND NAMES NO COUNT, and both halves are
+ * deliberate (UX round 4, U4-1). The control the reader just clicked says
+ * `Mark all 2 read` over its own count, so a refusal answering in the singular
+ * ("this completion ... it") disagreed with the gesture it was answering at
+ * every count above one — measured with one row and with two. Nothing here names
+ * a number, so nothing here can disagree at any count: the count is the
+ * control's, and on success the receipt's, which pluralises by count the way
+ * `markAllReadReceipt` does ("1 has a newer result and stays unread" against
+ * "2 have newer results and stay unread"). Pluralising THIS sentence by count
+ * would instead need main to build it per request, and that is incompatible with
+ * the property the next paragraph relies on: ONE constant, produced by main and
+ * matched by the renderer across a boundary that carries only text.
+ *
+ * Declared here, and as a STRING, for the deadline code's reason above — it has
+ * to survive IPC and a re-throw — with one consequence specific to it:
+ * `ipcRenderer.invoke` rebuilds main's rejection as a plain `Error` and keeps
+ * only the message, so the renderer's transport has no typed field to read and
+ * must recognise the refusal by the words main sent. That makes this constant
+ * the ONE authority for both halves: the producer (`src/main/desktop-ipc.ts`)
+ * refuses with it, and the classifier (`desktop-api.ts`, `isForegroundRequired`)
+ * reads it. A test pins the two together
+ * (`scripts/attention-seen.test.mjs`), because a reworded producer against an
+ * unchanged classifier is how a deliberate refusal would quietly go back to
+ * being reported as an unreachable backend.
+ *
+ * It is NOT the sentence for a transport failure, and the two must stay
+ * distinguishable in the renderer: a refusal means the backend was never asked,
+ * and a retry against a focused window is the reader's own next move.
+ */
+export const DESKTOP_FOREGROUND_REQUIRED_CODE = "foreground_required";
+export const DESKTOP_FOREGROUND_REQUIRED_MESSAGE =
+	"View these completions in the foreground before marking them read.";
+
+/**
  * Ops that change nothing on the server, and so may be told "nothing was read".
  *
  * An ALLOWLIST, deliberately, and the direction of the guess is the point: an
@@ -2656,6 +2747,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/seen`,
 				method: "POST",
 				body: { completion_token: request.completionToken },
+			};
+		case "attention.seen":
+			return {
+				/*
+				 * A path with no `{session_id}` in it, deliberately: the batch spans
+				 * sessions, and `/v1/desktop/attention/seen` cannot be shadowed by the
+				 * per-session route at any registration order. The body is snake_case
+				 * like every other route in that module, and the conversation identity
+				 * is NEVER taken from the client — the backend derives `session/<id>`
+				 * from the validated session id, the rule `/seen` already follows.
+				 */
+				path: "/v1/desktop/attention/seen",
+				method: "POST",
+				body: {
+					items: request.items.map((item) => ({
+						session_id: item.sessionId,
+						completion_token: item.completionToken,
+					})),
+				},
 			};
 		case "sessions.notified":
 			return {

@@ -848,10 +848,17 @@ toggle, and § Motion reserves transitions for entrances.
 
 The canonical implementation is `@shared/components/ui/disclosure`. Import it.
 
-Two places legitimately cannot: `canvas-variables-viewer` and
+Three places legitimately cannot: `canvas-variables-viewer` and
 `chat-settings` both place action buttons as *siblings* of the trigger, and a
 button nested in a button is not markup a browser can resolve. Reimplementing
 the trigger is allowed there; reinventing the signal is not.
+
+`chat-sidebar` is the third, for the same reason and one specific action: the
+Active chats header carries the bulk read receipt beside its trigger, because
+the alternative is one hit area for two acts — clearing the pile AND collapsing
+the group under it — on an acknowledgement nothing can withdraw. The signal is
+not reinvented there either: same chevron swap, same `data-chat-row` stamp, so
+the header keeps its place in the arrow walk.
 
 This rule exists because the codebase reached three disclosure idioms, two of
 them carrying comments that each declared themselves "the app's one disclosure
