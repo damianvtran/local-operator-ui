@@ -296,7 +296,11 @@ declare global {
 				 * cold cache they are ~47 s and ~15 s of it (UX U4).
 				 */
 				onBackendUpdateProgress: (
-					callback: (progress: { phase: "installing" | "restarting" }) => void,
+					callback: (progress: {
+						phase: "installing" | "restarting";
+						/** True when the run is the checkout REBUILD rather than the release path. */
+						sourceRebuild?: boolean;
+					}) => void,
 				) => () => void;
 				/**
 				 * A server update that failed: the reason from the main process, and the

@@ -7,7 +7,7 @@ import {
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
 import {
-	updateErrorMessage,
+	serverUpdateFailureReason,
 	updateMessageFate,
 	updateMessageOf,
 } from "@shared/utils/update-error-copy";
@@ -800,9 +800,12 @@ export const UpdateNotification = ({
 	 * above the offer panel, it also took **Update server** off the screen for the
 	 * rest of the session (design D1, UX U1).
 	 */
+	const [rebuildInFlight, setRebuildInFlight] = useState(false);
 	const [backendUpdateFailure, setBackendUpdateFailure] = useState<{
 		/** The main process's own sentence. */
 		message: string;
+		/** The installer's own lines, when the failing branch had any to send. */
+		installerOutput?: string;
 		/**
 		 * The update service log the failing branch wrote, when it named one.
 		 *
@@ -1764,8 +1767,16 @@ export const UpdateNotification = ({
 		 * a cold cache, distinguishable only by the bar's motion (UX U4).
 		 */
 		const removeBackendUpdateProgressListener =
-			window.api.updater.onBackendUpdateProgress(({ phase }) => {
+			window.api.updater.onBackendUpdateProgress(({ phase, sourceRebuild }) => {
 				setBackendUpdatePhase(phase);
+				/*
+				 * WHICH ROUTE IS RUNNING, not only which phase (review round 3, D2 = U3). The
+				 * release path's reassurance is false for a checkout rebuild: that run rewrites the
+				 * install in place, which is exactly what can interrupt a session here. The event
+				 * carries it because the offer that named the cost unmounted the moment the press
+				 * landed - this is the only place left that can say it.
+				 */
+				setRebuildInFlight(sourceRebuild === true);
 			});
 
 		/**
@@ -1803,7 +1814,17 @@ export const UpdateNotification = ({
 					 * channel rather than being painted as the machine wrote it.
 					 */
 					setBackendUpdateFailure({
-						message: updateErrorMessage(report.message),
+						/*
+						 * VERBATIM, not classified: an attempt's report is the app's own composed
+						 * sentence, and the classifier's length rule reads a long one as a machine dump
+						 * and deletes it - which is how the installer's diagnosis was lost on this
+						 * surface (review round 5, M1). `serverUpdateFailureReason` is the one place
+						 * that phase rule lives, shared with the run panel and the banner.
+						 */
+						message: serverUpdateFailureReason(report),
+						// The installer's own lines travel with the report (the producer's own field),
+						// rather than being re-derived from the sentence here (review round 5, M1).
+						installerOutput: report.installerOutput,
 						logPath: report.logPath,
 					});
 					setBackendUpdatePhase(null);
@@ -2041,27 +2062,30 @@ export const UpdateNotification = ({
 				<p className="mb-2 text-body text-ink-muted">
 					{updatingBackend
 						? backendUpdatePhase === "installing"
-							? /*
-								 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
-								 * ~47 s cold, against ~15 s for the restart - and the old single
-								 * sentence described only the restart, so a user watching the panel
-								 * for a minute could not tell this phase from a hang, nor from the
-								 * phase that had not started. The server really is still serving here:
-								 * under generations nothing running is rewritten.
-								 */
-								`Installing the new server build. The server you are using keeps serving while this runs${
-									/*
-									 * THE CLAUSE IS THE PROMISE (UX U13). It is true when the app will
-									 * bounce the daemon the reader is talking to, and false on a machine
-									 * where discovery adopted one - where the offer two seconds earlier
-									 * already said so, and where the app's own completion notice says it
-									 * again ("Local Operator does not restart a server it did not
-									 * start"). The sentence keeps every other fact either way.
+							? rebuildInFlight
+								? /* THE REBUILD'S OWN SENTENCE - the release path's reassurance is false here. */
+									`Rebuilding the server from this machine's checkout. This reinstalls the install in place, so sessions running on this machine can be interrupted while it runs, and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
+								: /*
+									 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
+									 * ~47 s cold, against ~15 s for the restart - and the old single
+									 * sentence described only the restart, so a user watching the panel
+									 * for a minute could not tell this phase from a hang, nor from the
+									 * phase that had not started. The server really is still serving here:
+									 * under generations nothing running is rewritten.
 									 */
-									serverRestartsWithInstall(backendUpdateInfo)
-										? ", and it restarts once the install lands"
-										: ""
-								}. This can take a minute or two on a normal connection, and longer on a slow one, and the update can't be interrupted once it has started.`
+									`Installing the new server build. The server you are using keeps serving while this runs${
+										/*
+										 * THE CLAUSE IS THE PROMISE (UX U13). It is true when the app will
+										 * bounce the daemon the reader is talking to, and false on a machine
+										 * where discovery adopted one - where the offer two seconds earlier
+										 * already said so, and where the app's own completion notice says it
+										 * again ("Local Operator does not restart a server it did not
+										 * start"). The sentence keeps every other fact either way.
+										 */
+										serverRestartsWithInstall(backendUpdateInfo)
+											? ", and it restarts once the install lands"
+											: ""
+									}. This can take a minute or two on a normal connection, and longer on a slow one, and the update can't be interrupted once it has started.`
 							: backendUpdatePhase === "restarting"
 								? "The new build has landed. The server is restarting onto it now, so it is offline while it comes back - usually a few seconds, up to half a minute - and anything in flight is dropped."
 								: serverRestartsWithInstall(backendUpdateInfo)
@@ -2132,7 +2156,17 @@ export const UpdateNotification = ({
 	if (manualUpdateRequired && manualUpdateInfo) {
 		return withErrorToast(
 			<UpdateContainer>
-				<UpdateHeading>The server needs updating by hand</UpdateHeading>
+				{/*
+				 * THE HEADING FOLLOWS THE ARM. On the app-owned arm the body names a restart the
+				 * user performs by relaunching - there is no hand action and no command - so
+				 * "needs updating by hand" described an action that is not on this screen
+				 * (review round 5, UX U5).
+				 */}
+				<UpdateHeading>
+					{manualUpdateInfo.appOwned
+						? "The app cannot update this server"
+						: "The server needs updating by hand"}
+				</UpdateHeading>
 				{/* Same emphasis as the other producer of this state
 				    (`backend-update-non-managed`, which used a warning hue): one sentence,
 				    the same weight, and the words carry which one needs the user
@@ -2387,7 +2421,19 @@ export const UpdateNotification = ({
 	 * point at, and that is its own change.
 	 */
 	if (backendUpdateFailure) {
-		const failure = splitInstallerOutput(backendUpdateFailure.message);
+		/*
+		 * THE FIELD FIRST, the split only as a fallback (review round 5, M1). The producer sends
+		 * the installer's output as `installerOutput`, and a surface that re-derives it from the
+		 * sentence is a second way to get the same fact - which drifts the moment the sentence
+		 * changes. Reports written before that field existed still arrive as one string, so the
+		 * split stays for them and nothing else.
+		 */
+		const failure = backendUpdateFailure.installerOutput
+			? {
+					sentence: backendUpdateFailure.message,
+					output: backendUpdateFailure.installerOutput,
+				}
+			: splitInstallerOutput(backendUpdateFailure.message);
 		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">

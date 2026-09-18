@@ -53,9 +53,17 @@ import {
 	managedVenvPath,
 } from "./backend/venv-paths";
 import {
+	GROUP_EXIT_WAIT_MS,
+	isInstallGroupAlive,
+	readProcessStartStamp,
+	runInOwnProcessGroup,
+	waitForInstallGroupGone,
+} from "./install-group-run";
+import {
 	ensureVenvBytecodeGuard,
 	withPythonBytecodeCache,
 } from "./python-bytecode-cache";
+import { serverUpdateFailureSentence } from "./server-update-copy";
 import {
 	type UpdateChannelStatus,
 	type UpdateCheckVerdict,
@@ -74,6 +82,7 @@ import {
 	type SealBlockContext,
 	type SealProbe,
 	type SealVerdict,
+	type SourceMarkerState,
 	type UpdateFileMetadata,
 	appBundleFromExecutable,
 	buildPipUpgradeCommand,
@@ -82,10 +91,13 @@ import {
 	clearPendingInstallMarker,
 	clearPendingServerUpdateMarker,
 	compareVersions,
+	didSourceRebuildLand,
 	didUpgradeLand,
 	evaluateBundleSeal,
 	evaluatePendingInstall,
+	evaluatePendingServerUpdateMarker,
 	healPythonBytecode,
+	installDiagnosisLines,
 	installFailurePayload,
 	installInFlightPayload,
 	installedBundleSealBlock,
@@ -100,6 +112,7 @@ import {
 	readLastInstallAttempt,
 	readPendingInstallMarker,
 	readPendingServerUpdateMarker,
+	readSourceMarkerState,
 	reapFailedInstall,
 	reapStagedTree,
 	recordInstallFailure,
@@ -123,6 +136,29 @@ import {
 const VERSION_LINE_REGEX = /Version:\s*([^\n]+)/;
 const VERSION_CLEAN_REGEX = /^v/i;
 const BETA_VERSION_REGEX = /v\d+\.\d+\.\d+\.beta\.\d+/;
+
+/**
+ * How long one `<resolved console path> update` may take before it is stopped.
+ *
+ * A cold `lop update` on this machine is ~47s of install plus ~15s of daemon
+ * refresh; the budget is the point at which the app stops WAITING, not the point
+ * at which the updater stops working - which is why the verdict keeps its own
+ * honesty about a group that survived the stop (`runInOwnProcessGroup`). It is
+ * also what the durable record's deadline is derived from, so the two cannot
+ * drift apart.
+ */
+const GLOBAL_UPDATE_TIMEOUT_MS = 15 * 60 * 1000;
+
+/**
+ * How long one `lop-update` rebuild may take before it is stopped.
+ *
+ * Longer than the entry point's, because it is doing more: `lop-update` archives
+ * the checkout's ref into a snapshot, builds a wheel from it, and reinstalls the
+ * tool - minutes of real work on a cold cache, where `<console path> update`
+ * mostly moves a pointer. The budget is still bounded, and the group stop still
+ * applies: an expired budget stops the group rather than the direct child.
+ */
+const SOURCE_REBUILD_TIMEOUT_MS = 30 * 60 * 1000;
 
 /** A reverse-DNS bundle identifier, and nothing else. */
 const BUNDLE_ID_REGEX = /^[\w.-]+$/;
@@ -462,22 +498,6 @@ const DRIFT_ABSENCE_REPORT: Record<DriftAbsence, string> = {
 };
 
 /**
- * The last few lines of an installer's stderr, for a panel's error sentence.
- *
- * The tail rather than the head, because an installer's own refusal is its last
- * line (`installer exited 127`, `error: Failed to install`), and bounded rather
- * than whole, because this text lands in a notification: the full streams are in
- * the update service log, which the sentence names.
- */
-function stderrTail(stderr: string, maxLines = 4): string {
-	const lines = stderr
-		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => line.length > 0);
-	return lines.slice(-maxLines).join("\n").slice(-600);
-}
-
-/**
  * Response from health check endpoint.
  */
 type HealthCheckResponse = {
@@ -641,6 +661,24 @@ export type BackendUpdateErrorReport = {
 	 * button.
 	 */
 	logPath?: string;
+	/**
+	 * The INSTALLER's own output, in the installer's own voice.
+	 *
+	 * WHY IT IS A FIELD AND NOT A PARAGRAPH OF `message`. This output used to be
+	 * welded onto the app's sentence with a blank line, and the renderer had to
+	 * guess the seam - and it could not: the composed string is longer than the
+	 * copy module's `AUTHORED_SENTENCE_MAX_LENGTH`, so `updateErrorMessage` read
+	 * the whole thing as a machine dump and replaced it with the check stage's
+	 * sentence, taking the installer's diagnosis with it. Measured on the
+	 * source-build refusal: a 475-character message carrying an 18-line refusal
+	 * rendered as "The update check could not finish", and the two failure frames
+	 * were byte-identical for it (review round 3, D1 = Q-1 = U1).
+	 *
+	 * The installer's words are machine voice and belong in the mono block; the
+	 * app's sentence is copy and belongs at reading weight. One string cannot be
+	 * both, so the producer says which is which and no heuristic decides it.
+	 */
+	installerOutput?: string;
 };
 
 /**
@@ -3877,12 +3915,26 @@ export class UpdateService {
 	 * machines this check exists for. Null when the prefix carries no console
 	 * script, which is "we could not classify it" rather than a guess.
 	 */
-	private servingInstallIdentity(prefix: string): InstallIdentity | null {
+	/**
+	 * The console script an install root exposes, or null when it has none.
+	 *
+	 * ONE PLACE, because two callers must agree: the identity the app CLASSIFIES an
+	 * install by, and the command it RUNS for that install. They used to be derived
+	 * separately - the check read `<prefix>/bin/local-operator` while the press ran
+	 * whatever the shim resolved to - which is how the two halves came to describe
+	 * different installs (review round 5, Q-1 = M2).
+	 */
+	private servingConsoleScript(prefix: string): string | null {
 		const script =
 			process.platform === "win32"
 				? join(prefix, "Scripts", "local-operator.exe")
 				: join(prefix, "bin", "local-operator");
-		return existsSync(script) ? readInstallIdentity(script) : null;
+		return existsSync(script) ? script : null;
+	}
+
+	private servingInstallIdentity(prefix: string): InstallIdentity | null {
+		const script = this.servingConsoleScript(prefix);
+		return script === null ? null : readInstallIdentity(script);
 	}
 
 	/**
@@ -3913,6 +3965,16 @@ export class UpdateService {
 		remedy: string;
 		detail: string;
 		sourceBuild: boolean;
+		/**
+		 * Which managed route the app may run, and the install tree it rewrites.
+		 *
+		 * Both travel beside the plan because the CLICK is a later decision than the
+		 * check that offered it: `updateBackend` re-decides the route from a fresh
+		 * resolution before it spawns anything, and these are what the check told the
+		 * user they were choosing between.
+		 */
+		managedRoute: "entry-point" | "source-build" | null;
+		installPrefix: string | null;
 		/**
 		 * The version the resolved install reports on disk, or null.
 		 *
@@ -4011,6 +4073,15 @@ export class UpdateService {
 				return {
 					canManageUpdate: false,
 					updateCommand: "",
+					/*
+					 * NO ROUTE AND NO PREFIX: this arm names no installer, which is the whole point
+					 * of the sentence above - there is nothing here for the app to run, so the
+					 * managed-route fields are empty rather than pointing at the managed tree.
+					 * (This arm is upstream's, arrived in the fold; the fields are this branch's,
+					 * and the type is what required them to be stated.)
+					 */
+					managedRoute: null,
+					installPrefix: null,
 					remedy:
 						"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own.",
 					detail,
@@ -4040,7 +4111,22 @@ export class UpdateService {
 					? this.servingInstallIdentity(serving.prefix)
 					: null;
 			const identity = servingIdentity ?? (await this.resolveInstallIdentity());
-			const plan = resolveGlobalInstallPlan({ identity });
+			/*
+			 * `lop-update` IS RESOLVED THE SAME WAY EVERY OTHER TOOL HERE IS, through
+			 * `resolveCommandPath` rather than the shell's `which`: the app is normally
+			 * launched by Finder, whose PATH does not contain `~/.local/bin`, so a PATH
+			 * lookup would report the rebuild tool missing on every machine that has it.
+			 * Its absence is the refusal's trigger, so the resolution decides whether the
+			 * app offers to run the checkout rebuild at all.
+			 *
+			 * The SUBJECT is upstream's own reading, unchanged: this branch only tells the
+			 * plan which rebuild tool the machine has, so the offer and the press still
+			 * judge the install the server named.
+			 */
+			const plan = resolveGlobalInstallPlan({
+				identity,
+				sourceRebuild: resolveCommandPath("lop-update"),
+			});
 			logger.info(
 				`External backend install (${startupMode}): ${plan.detail}; remedy is ` +
 					`\`${plan.updateCommand || "nothing the app can name"}\`; install version ` +
@@ -4061,6 +4147,8 @@ export class UpdateService {
 				 */
 				installedInstallVersionDescribesServingInstall:
 					serving.version !== null || servingIdentity !== null,
+				managedRoute: plan.managedRoute,
+				installPrefix: plan.installPrefix,
 			};
 		}
 
@@ -4101,7 +4189,26 @@ export class UpdateService {
 			 * subject whenever there is a reading at all.
 			 */
 			installedInstallVersionDescribesServingInstall: serving.version !== null,
+			managedRoute: "entry-point",
+			installPrefix: null,
 		};
+	}
+
+	/**
+	 * `.lop-source` for the install currently resolved, read from a fresh resolution.
+	 *
+	 * Re-resolved on every call rather than captured with the plan, for the reason
+	 * this whole path re-reads its evidence: between a check and a click the install
+	 * can move (a generations swap re-points `current`, and `lop-update` rewrites the
+	 * uv tool root), so a prefix held from minutes ago can name a tree nothing is
+	 * using any more. The reading is what `didSourceRebuildLand` compares, in both
+	 * directions.
+	 */
+	private readRebuildMarkerState(
+		installPath: string | null,
+	): SourceMarkerState {
+		const identity = readInstallIdentity(installPath);
+		return readSourceMarkerState(identity.venvPrefix ?? null);
 	}
 
 	/**
@@ -5332,17 +5439,24 @@ export class UpdateService {
 
 	/**
 	 * The version the resolved global install reports on disk, or null.
+	 * The version an install reports on disk, or null.
 	 *
-	 * Shell-free, and deliberately a different read from the running backend's
-	 * `/health`: the install is what an update moves, and immediately after one it
-	 * is the only reading that has moved - the daemon lags until it is restarted.
-	 * Read through the same resolution the plan classified, because it is half of
-	 * the evidence that the install changed at all.
+	 * Shell-free, and deliberately a different read from the running backend's `/health`:
+	 * the install is what an update moves, and immediately after one it is the only reading
+	 * that has moved - the daemon lags until it is restarted.
+	 *
+	 * THE INSTALL IS A REQUIRED ARGUMENT, and that is a fix rather than a style. This read
+	 * used to default to `resolveLocalOperatorPath()` - the shim - and that default is how
+	 * the same seam kept arriving: a caller that forgot which install its attempt had run
+	 * silently read the shim instead, and four review rounds found it one site at a time
+	 * (the press against the check, the two evidence reads, then the unattended
+	 * reconciliation). A required argument turns that mistake into a compile error rather
+	 * than into a plausible number. The one caller with a record and no path - the
+	 * reconciliation reading a marker an older build wrote - names its fallback explicitly
+	 * and logs it.
 	 */
-	private readGlobalInstallVersion(): string | null {
-		return (
-			readInstallIdentity(this.resolveLocalOperatorPath())?.version ?? null
-		);
+	private readInstallVersionAt(installPath: string | null): string | null {
+		return readInstallIdentity(installPath)?.version ?? null;
 	}
 
 	/**
@@ -5369,11 +5483,23 @@ export class UpdateService {
 	 * cannot land inside the sealed bundle. `shell: true` is never used - this is a
 	 * resolved shim path, not a command line.
 	 */
-	private async runGlobalUpdate(consolePath: string): Promise<{
-		exitCode: number;
+	private async runGlobalUpdate(
+		command: { path: string; args: string[] },
+		timeoutMs: number,
+		/**
+		 * Called with the group leader the moment it exists, so the caller's record can
+		 * carry the pid and the stamp that make it identifiable later. Optional because
+		 * the run itself does not need it.
+		 */
+		onSpawn?: (pid: number) => void,
+	): Promise<{
+		exitCode: number | null;
 		stdout: string;
 		stderr: string;
 		ran: boolean;
+		groupPid: number | null;
+		timedOut: boolean;
+		groupStillRunning: boolean;
 	}> {
 		// The same bytecode-cache discipline the pip path uses (`pythonSpawnEnv`),
 		// because the child is another Python process this app is responsible for -
@@ -5381,23 +5507,49 @@ export class UpdateService {
 		// reads. See `installerSearchPath` for why the child cannot inherit it.
 		const updatePath = installerSearchPath(process.env, homedir());
 		logger.info(
-			`Executing the install's own updater: ${consolePath} update (PATH: ${updatePath})`,
+			`Executing the install's own updater: ${command.path} ${command.args.join(" ")} (PATH: ${updatePath})`,
 			LogFileType.UPDATE_SERVICE,
 		);
-		const run = await runCommand(consolePath, ["update"], {
-			timeoutMs: 15 * 60 * 1000,
+		/*
+		 * ITS OWN PROCESS GROUP, NOT `runCommand`'s TIMEOUT (review round 3, M1).
+		 * `runCommand` is `execFile` with a `timeout`, and that timeout signals the
+		 * direct child - which here is a front end that runs `uv`/`pipx`/`pip` as its
+		 * own child. So an expired budget signalled the front end and left the real
+		 * installer replacing the install tree while the app declared the update
+		 * failed. `runInOwnProcessGroup` signals the group and takes its verdict on the
+		 * timer; see that module for the measurements this shape comes from.
+		 *
+		 * The rebuild route needs the same treatment for the same reason and one more:
+		 * `lop-update` IS a shell script, so everything it does - archive, build,
+		 * `uv tool install` - is a grandchild of the app's child.
+		 */
+		const run = await runInOwnProcessGroup({
+			command: command.path,
+			args: command.args,
+			timeoutMs,
+			// A neutral working directory, never the app's resources dir, so an updater
+			// that resolves a relative path from where it stands cannot land inside the
+			// sealed bundle.
+			cwd: homedir(),
 			env: { ...this.pythonSpawnEnv(), PATH: updatePath },
+			onSpawn,
+			log: (line, level) => {
+				if (level === "error") logger.error(line, LogFileType.UPDATE_SERVICE);
+				else if (level === "warn")
+					logger.warn(line, LogFileType.UPDATE_SERVICE);
+				else logger.info(line, LogFileType.UPDATE_SERVICE);
+			},
 		});
 		// Both streams, both to the update service log: the installer's own output is
 		// the only thing that can say WHY it refused, and the panel's error line is a
-		// tail of it. Same capture discipline as the pip branch.
+		// selection of it. Same capture discipline as the pip branch.
 		logger.info(
-			`lop update stdout: ${run.stdout.trim() || "(empty)"}`,
+			`${command.path} stdout: ${run.stdout.trim() || "(empty)"}`,
 			LogFileType.UPDATE_SERVICE,
 		);
 		if (run.stderr.trim().length > 0) {
 			logger.warn(
-				`lop update stderr: ${run.stderr.trim()}`,
+				`${command.path} stderr: ${run.stderr.trim()}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 		}
@@ -5439,6 +5591,73 @@ export class UpdateService {
 		plan: { installedInstallVersion: string | null },
 		target: string | null,
 	): Promise<boolean> {
+		/*
+		 * THE RECORD IS CONSULTED HERE, NOT ONLY WRITTEN (review round 3, Q-3's
+		 * sibling). `serverUpdateInFlight` is one process's memory, and the durable
+		 * record beside it was written for the case the memory cannot cover: a second
+		 * app instance, or a relaunch after a crash, where the updater the last launch
+		 * started is still replacing the install tree. Nothing read it before deciding
+		 * whether to start another, so a relaunch could put a second `lop update` on
+		 * one install root - the collision the guard exists to prevent.
+		 *
+		 * Two evidences decide whether the record names a run that is really still
+		 * going, because a pid alone does not: the stamp the kernel reports for the
+		 * recorded group leader (a recycled pid answers with a different one, and
+		 * `EPERM` counts as alive in `isInstallGroupAlive`), and the record's own
+		 * deadline, which bounds a record that carries no identity at all. A record
+		 * that fails either test EXPIRES here rather than refusing for ever.
+		 */
+		const recorded = readPendingServerUpdateMarker(this.markerDir());
+		const recordedPid = recorded?.groupPid ?? null;
+		const recordedGroupAlive =
+			recordedPid !== null && isInstallGroupAlive(recordedPid);
+		const outcome = evaluatePendingServerUpdateMarker({
+			marker: recorded,
+			groupAlive: recordedGroupAlive,
+			liveGroupStamp:
+				recordedGroupAlive && recordedPid !== null
+					? readProcessStartStamp(recordedPid)
+					: null,
+		});
+		if (outcome.kind === "expired") {
+			logger.warn(
+				`A recorded server update (${outcome.marker.startedAt}) is not running any more (${outcome.reason}); clearing the record so this attempt can proceed`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			clearPendingServerUpdateMarker(this.markerDir());
+		}
+		if (outcome.kind === "running") {
+			logger.warn(
+				`A server update recorded by an earlier launch is still running (group ${outcome.marker.groupPid}, ${outcome.reason}, started ${outcome.marker.startedAt}); refusing to start a second beside it`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			/*
+			 * THE REFUSAL NAMES THE RUN IT FOUND. This is the arm a relaunch reaches - a
+			 * record left by an app that died mid-update - and its reader has no way to
+			 * know that from a sentence about "a server update", which is the same one the
+			 * press beside them produces. Naming when that run started and which process
+			 * group holds it is what makes the refusal specific enough to act on: an
+			 * install that is genuinely still running is a wait, and one that has stopped
+			 * responding is a log file, and the sentence has to leave the reader able to
+			 * tell which they are looking at.
+			 */
+			const startedAtMs = Date.parse(outcome.marker.startedAt);
+			const ageMinutes = Number.isFinite(startedAtMs)
+				? Math.max(0, Math.round((Date.now() - startedAtMs) / 60_000))
+				: null;
+			const age =
+				ageMinutes === null
+					? "at a time that could not be read"
+					: ageMinutes < 1
+						? "moments ago"
+						: `${ageMinutes} minute${ageMinutes === 1 ? "" : "s"} ago`;
+			this.sendToRenderer("backend-update-error", {
+				message: `A server update this app started ${age} is still running (process group ${outcome.marker.groupPid}), so a second one will not be started beside it. If that update is no longer responding, the update service log says what it was doing.`,
+				phase: "update",
+				logPath: serverUpdateLogPath(),
+			});
+			return false;
+		}
 		if (this.serverUpdateInFlight) {
 			logger.warn(
 				"A global install update is already running; refusing to start a second beside it",
@@ -5453,11 +5672,70 @@ export class UpdateService {
 			return false;
 		}
 		this.serverUpdateInFlight = true;
+		let handedOff = false;
 		try {
-			return await this.runGlobalUpdateAttempt(backend, plan, target);
+			const landed = await this.runGlobalUpdateAttempt(backend, plan, target);
+			/*
+			 * THE GUARD IS HANDED OFF, NOT DROPPED, WHEN A STOPPED GROUP IS STILL
+			 * ALIVE. The attempt left its record on disk in that case, because the run it
+			 * names has not ended; the watcher below holds this process's guard until the
+			 * group really goes, so a second press cannot put another updater beside the
+			 * one still writing into the install root.
+			 */
+			const stillRunning = this.recordedUpdateStillRunning();
+			if (stillRunning !== null) {
+				handedOff = true;
+				void this.holdGlobalInstallGuardUntilGroupGone(stillRunning);
+			}
+			return landed;
 		} finally {
-			this.serverUpdateInFlight = false;
+			if (!handedOff) this.serverUpdateInFlight = false;
 		}
+	}
+
+	/**
+	 * The group a record on disk still names, or null when nothing is running.
+	 *
+	 * Read rather than passed, because it is the SAME evidence the next launch reads:
+	 * a guard that decided from an in-memory value would disagree with the launch
+	 * that follows a crash, which is the whole class this pass is closing.
+	 */
+	private recordedUpdateStillRunning(): number | null {
+		const recorded = readPendingServerUpdateMarker(this.markerDir());
+		const pid = recorded?.groupPid ?? null;
+		if (pid === null) return null;
+		const alive = isInstallGroupAlive(pid);
+		const outcome = evaluatePendingServerUpdateMarker({
+			marker: recorded,
+			groupAlive: alive,
+			liveGroupStamp: alive ? readProcessStartStamp(pid) : null,
+		});
+		return outcome.kind === "running" ? pid : null;
+	}
+
+	/**
+	 * Hold the install guard until a signalled group is really gone.
+	 *
+	 * Fire-and-forget on purpose: the verdict has already been delivered to the user,
+	 * and awaiting this would put a descendant that outlived its stop signal back in
+	 * the panel's path. The record is cleared only once the group is gone, because
+	 * until then it is the evidence that an updater is still writing into the install
+	 * root - the thing another launch has to see.
+	 */
+	private async holdGlobalInstallGuardUntilGroupGone(
+		groupPid: number,
+	): Promise<void> {
+		let gone = await waitForInstallGroupGone(groupPid, GROUP_EXIT_WAIT_MS);
+		while (!gone) {
+			logger.warn(
+				`The updater's process group ${groupPid} outlived the stop signal and the ${Math.round(GROUP_EXIT_WAIT_MS / 1000)}s wait; another server update will not be started until it exits`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			await new Promise((resolve) => setTimeout(resolve, 5_000));
+			gone = !isInstallGroupAlive(groupPid);
+		}
+		clearPendingServerUpdateMarker(this.markerDir());
+		this.serverUpdateInFlight = false;
 	}
 
 	/** The attempt itself, under the guard above. */
@@ -5470,7 +5748,63 @@ export class UpdateService {
 		// `lop` name either: the app has to run the front end of the install it is
 		// about to hold to the result, or it updates one tree and verifies another.
 		const consolePath = this.resolveLocalOperatorPath();
-		if (!consolePath) {
+		/*
+		 * THE ROUTE IS RE-DECIDED HERE, from a FRESH resolution, for the same reason the
+		 * version below is re-read: a check and a click can be minutes apart, and this
+		 * machine's `lop-update` can appear (or go away) between them. The decision is the
+		 * same function the check used, given the same two inputs, so the app runs the
+		 * route it classified rather than a route it remembers - and since round 5 the
+		 * SUBJECT is the serving install too, so the command run and the identity
+		 * classified are the same install's.
+		 *
+		 * `lop-update` is absent from most machines, and that is not an error: the plan
+		 * falls back to the refusal and its command, which is what the panel renders.
+		 */
+		const rebuildPath = resolveCommandPath("lop-update");
+		/*
+		 * ONE IDENTITY FOR ONE PRESS. The check offers this update on the SERVING
+		 * install's identity - `/health` names the root, and upstream's fold made that
+		 * the subject - while this branch's press used to re-decide from the SHIM. On a
+		 * machine where the two differ, the panel therefore described one install and the
+		 * press moved another: measured in both directions, an offer promising the
+		 * checkout rebuild and its half-hour allowance while the press ran the entry
+		 * point with its 900 s budget, and the inverse - "a minute or two" plus a restart
+		 * offered while the press started a 1800 s in-place rebuild (review round 5,
+		 * Q-1 = M2). The route is still re-decided from a FRESH resolution, because a
+		 * check and a click can be minutes apart and `lop-update` can appear or go away
+		 * between them; what is no longer fresh is the SUBJECT, which is the install the
+		 * panel described.
+		 */
+		const running = await this.readRunningBackend();
+		const serving = this.readServingInstall(running);
+		const servingScript = serving.prefix
+			? this.servingConsoleScript(serving.prefix)
+			: null;
+		const servingIdentity = serving.prefix
+			? this.servingInstallIdentity(serving.prefix)
+			: null;
+		/*
+		 * THE ONE INSTALL THIS PRESS ACTS ON, named once and used for all three jobs: the
+		 * command that runs, the identity the route is decided from, and the two readings
+		 * that decide whether it landed.
+		 *
+		 * Round 5 moved the COMMAND onto the serving install (`servingScript ?? consolePath`)
+		 * and left the EVIDENCE on the shim, so a press could run one install and verify
+		 * another: measured on a synthetic two-install host with the version read unstubbed,
+		 * an installer that reached the serving install and moved it 0.55.10 -> 0.56.0 was
+		 * reported as "did not take effect", and a run that moved nothing was reported as a
+		 * success (review round 6, M1 = QA Q-1). Main never had this defect - it ran and
+		 * verified the same `consolePath` - so this is exposure the branch introduced when it
+		 * moved one half and not the other.
+		 */
+		const installPath = servingScript ?? consolePath;
+		const freshPlan = resolveGlobalInstallPlan({
+			identity: servingIdentity ?? readInstallIdentity(installPath),
+			sourceRebuild: rebuildPath,
+		});
+		const rebuildRoute =
+			freshPlan.managedRoute === "source-build" && rebuildPath !== null;
+		if (!consolePath && !rebuildRoute) {
 			this.sendToRenderer("backend-update-error", {
 				message:
 					"The global install could not be found on this machine, so the update did not run. See the update service log.",
@@ -5479,12 +5813,32 @@ export class UpdateService {
 			});
 			return false;
 		}
+		/*
+		 * The rebuild does more than move a pointer: it snapshots the checkout's ref,
+		 * builds a wheel from it and reinstalls the tool. Measured on this machine, a
+		 * cold `lop-update` is minutes - so it gets its own budget, and the record's
+		 * deadline is derived from the budget the run actually gets.
+		 */
+		const budgetMs = rebuildRoute
+			? SOURCE_REBUILD_TIMEOUT_MS
+			: GLOBAL_UPDATE_TIMEOUT_MS;
 
 		// Re-read rather than trusting the plan's reading: a check and a click can be
 		// minutes apart, and `before` is half of the only evidence that anything
 		// moved.
 		const before =
-			this.readGlobalInstallVersion() ?? plan.installedInstallVersion;
+			this.readInstallVersionAt(installPath) ?? plan.installedInstallVersion;
+		/*
+		 * THE OTHER HALF OF THE EVIDENCE, for the rebuild route only: `.lop-source`. A
+		 * rebuild of the checkout keeps the version (`pyproject.toml` names the last
+		 * release), so the version is not what moves - the marker's ref is - and reading
+		 * the marker before the run is what makes the after reading comparable at all.
+		 * Read through a fresh resolution here and again after the run, never from the
+		 * prefix the check happened to see.
+		 */
+		const markerBefore = rebuildRoute
+			? this.readRebuildMarkerState(installPath)
+			: null;
 		/*
 		 * The phase is announced BEFORE the child starts, because on a realistic cold
 		 * cache the install is ~47 s and the restart ~15 s of one unchanging panel:
@@ -5492,7 +5846,10 @@ export class UpdateService {
 		 * install from a hung one, and the panel's only cost claim ("will temporarily
 		 * go offline") described the phase that had not started yet (UX U4).
 		 */
-		this.sendToRenderer("backend-update-progress", { phase: "installing" });
+		this.sendToRenderer("backend-update-progress", {
+			phase: "installing",
+			sourceRebuild: rebuildRoute,
+		});
 		/*
 		 * The durable record of an attempt that nobody is watching (UX U6). It is
 		 * written BEFORE the spawn because the case it exists for is the app dying
@@ -5502,35 +5859,109 @@ export class UpdateService {
 		 * is cleared as soon as this attempt reaches its own verdict, which is the
 		 * only thing that makes it mean "nobody saw this end".
 		 */
-		writePendingServerUpdateMarker(this.markerDir(), {
+		const marker = {
 			before,
 			target,
 			startedAt: new Date().toISOString(),
-		});
-		const run = await this.runGlobalUpdate(consolePath);
-		const after = this.readGlobalInstallVersion();
-		// The verdict is in THIS process, so the marker's remaining job is gone: the
-		// panel carries the outcome, and a later launch must not report it twice.
-		clearPendingServerUpdateMarker(this.markerDir());
+			// The record's own budget, so a reader can tell a run that is going from a
+			// record that outlived it without consulting a clock the app chose later.
+			deadlineAt: new Date(Date.now() + budgetMs).toISOString(),
+			groupPid: null,
+			groupStartedAt: null,
+			/*
+			 * The install this attempt runs, recorded so a later launch does not have to resolve
+			 * one of its own: the reconciliation reads this, and a marker without it (an older
+			 * build's) is the only case that falls back.
+			 */
+			installPath,
+		};
+		writePendingServerUpdateMarker(this.markerDir(), marker);
+		const run = await this.runGlobalUpdate(
+			rebuildRoute && rebuildPath !== null
+				? { path: rebuildPath, args: [] }
+				: /*
+					 * THE SERVING INSTALL'S OWN FRONT END when it has one, and the shim's
+					 * resolution only as the fallback: the identity above is that script's, so
+					 * running anything else would update one install and verify another - the
+					 * seam this case classifies (review round 5, Q-1 = M2).
+					 */
+					{ path: installPath ?? "", args: ["update"] },
+			budgetMs,
+			(pid) => {
+				/*
+				 * THE IDENTITY, TAKEN WHILE THE LEADER IS CERTAINLY ALIVE. A pid outlives its
+				 * meaning once the process is gone - the number is handed to anything - so the
+				 * record carries the stamp the kernel reports for the group it started, and a
+				 * later reader compares the two rather than asking whether some pid answers
+				 * `kill -0` (review round 3, Q-3's sibling).
+				 */
+				writePendingServerUpdateMarker(this.markerDir(), {
+					before,
+					target,
+					startedAt: marker.startedAt,
+					deadlineAt: marker.deadlineAt,
+					groupPid: pid,
+					groupStartedAt: readProcessStartStamp(pid),
+					installPath,
+				});
+			},
+		);
+		const after = this.readInstallVersionAt(installPath);
+		const markerAfter = rebuildRoute
+			? this.readRebuildMarkerState(installPath)
+			: null;
+		/*
+		 * A STOPPED GROUP THAT IS STILL ALIVE KEEPS ITS RECORD. The verdict is in this
+		 * process, so on every other path the record's job is done and the panel carries
+		 * the outcome; but when the stop signal left a live group behind, a real installer
+		 * may still be replacing the install tree, and the record is what makes the next
+		 * launch (or the next press) see that before starting a second one. The watcher
+		 * clears it when the group goes.
+		 */
+		const groupSurvived =
+			run.timedOut && run.groupStillRunning && run.groupPid !== null;
+		if (!groupSurvived) clearPendingServerUpdateMarker(this.markerDir());
 		const landed =
-			run.exitCode === 0 && didUpgradeLand({ before, after, target });
+			run.exitCode === 0 &&
+			(rebuildRoute
+				? didSourceRebuildLand({
+						before: markerBefore ?? { ref: null, mtimeMs: null },
+						after: markerAfter ?? { ref: null, mtimeMs: null },
+					})
+				: didUpgradeLand({ before, after, target }));
 		if (!landed) {
 			const running = await this.getInstalledBackendVersion();
-			const tail = stderrTail(run.stderr);
+			/*
+			 * THE DIAGNOSIS, NOT THE TAIL. `stderrTail` took the last lines, which for
+			 * `lop-update` is the line that tells the reader to bypass the guard that just
+			 * refused them (`--skip-remote-check`), while the verdict and the SHAs sit at
+			 * the head (review round 2, U7). `installDiagnosisLines` is where that rule
+			 * lives, and it applies to both routes: an installer's last line is its exit
+			 * reason for a crash and its bypass advice for a refusal, and the app must not
+			 * hand over the second as the remedy.
+			 */
+			const diagnosis = installDiagnosisLines(
+				run.stderr.length > 0 ? run.stderr : run.stdout,
+			);
 			logger.error(
-				`Global install update did not land (exited ${run.exitCode}, ran ${run.ran}): ${before ?? "unknown"} -> ${after ?? "unknown"}, running backend reports ${running ?? "no reading"}`,
+				`${rebuildRoute ? "Source rebuild" : "Global install update"} did not land (exited ${run.exitCode}, ran ${run.ran}${groupSurvived ? `, group ${run.groupPid} still alive` : ""}): ${before ?? "unknown"} -> ${after ?? "unknown"}${rebuildRoute ? `, marker ${markerBefore?.ref ?? "none"} -> ${markerAfter?.ref ?? "none"}` : ""}, running backend reports ${running ?? "no reading"}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			// Nothing moved, so nothing is restarted: the daemon that was serving is
 			// still serving, on the build it loaded.
 			this.sendToRenderer("backend-update-error", {
-				message: `${
-					!run.ran
-						? "The server update did not finish: the installer could not be run to a verdict or timed out."
-						: run.exitCode !== 0
-							? `The server update did not install: \`lop update\` exited ${run.exitCode}.`
-							: `The server update to ${target ?? "the new release"} did not take effect: the install still reports ${after ?? before ?? "its previous version"}.`
-				} The running backend is still serving${running ? ` version ${running}` : ""}; see the update service log for the installer's output.${tail ? `\n\n${tail}` : ""}`,
+				message: serverUpdateFailureSentence({
+					rebuildRoute,
+					ran: run.ran,
+					exitCode: run.exitCode,
+					groupSurvived,
+					diagnosis,
+					target,
+					after,
+					before,
+					updateCommand: freshPlan.updateCommand ?? null,
+				}),
+				installerOutput: diagnosis || undefined,
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -5631,7 +6062,14 @@ export class UpdateService {
 				return false;
 			}
 		}
-		const reported = await this.waitForBackendVersion(target);
+		const reported = await this.waitForBackendVersion(
+			// The rebuild keeps the version, so there is no target to hold it to: the
+			// version the restarted daemon reports is the CHECKOUT's, and holding it to
+			// the release the app offered would fail a restart that landed (the same
+			// reasoning as `sourceBuild` in the prompt). What is held is that the daemon
+			// is back and answering at all.
+			rebuildRoute ? null : target,
+		);
 		if (reported === null) {
 			logger.error(
 				`Backend restarted onto the updated install but did not report ${target ?? "the target version"}`,
@@ -5675,7 +6113,55 @@ export class UpdateService {
 	private async reportUnattendedServerUpdate(): Promise<void> {
 		const marker = readPendingServerUpdateMarker(this.markerDir());
 		if (!marker) return;
-		const after = this.readGlobalInstallVersion();
+		/*
+		 * A RECORD WHOSE GROUP IS STILL OURS IS LEFT ALONE. This path exists to report
+		 * an update that landed while nothing was watching, and it clears the record as
+		 * it reports; but a record naming a live, unexpired group is a run that has not
+		 * ended, and clearing it here would take away the evidence the next press reads
+		 * before it refuses to start a second updater (review round 3, Q-3's sibling).
+		 * The generation's own workspaces are the other half of this: nothing here
+		 * signals anything.
+		 */
+		const recordedPid = marker.groupPid ?? null;
+		const recordedAlive =
+			recordedPid !== null && isInstallGroupAlive(recordedPid);
+		const outcome = evaluatePendingServerUpdateMarker({
+			marker,
+			groupAlive: recordedAlive,
+			liveGroupStamp:
+				recordedAlive && recordedPid !== null
+					? readProcessStartStamp(recordedPid)
+					: null,
+		});
+		if (outcome.kind === "running") {
+			logger.warn(
+				`A server update recorded at ${marker.startedAt} is still running (group ${recordedPid}, ${outcome.reason}); leaving its record in place`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
+		/*
+		 * THE INSTALL THE RECORD NAMES, not one this launch resolves. Pre-fix both sides of
+		 * this comparison were the shim, so they agreed by construction; once the press began
+		 * running the serving install, the `after` read had to follow it, or the
+		 * reconciliation reported the wrong tree - a landed update as "did not move the
+		 * install", and a no-op as a success when only the shim had moved (review round 7,
+		 * M1: the fourth site this seam was found at, one round at a time).
+		 *
+		 * A record from an older build carries no path. Falling back to the shim there is
+		 * deliberate and logged, because the alternative - saying nothing - would drop the
+		 * unattended report for an upgrade that really did happen.
+		 */
+		const recordPath = marker.installPath ?? null;
+		const after = this.readInstallVersionAt(
+			recordPath ?? this.resolveLocalOperatorPath(),
+		);
+		if (recordPath === null) {
+			logger.warn(
+				`The update record from ${marker.startedAt} names no install (written by an older build); reading the shim's resolution instead`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
 		clearPendingServerUpdateMarker(this.markerDir());
 		if (!after || after === marker.before) {
 			logger.info(
