@@ -2543,6 +2543,92 @@ export const STORIES = [
 	["canvas-workspace--files-no-matches", 1280, 900],
 	["canvas-workspace--files-scrolled", 1280, 900],
 	/*
+	 * THE STATES THE SET HAD NO PICTURE OF, one entry each (design round 1, D1 and
+	 * D4). They are not decoration: the dock's own default width is 450px, the
+	 * hierarchy's no-files branch had never been rendered, and the filter's empty
+	 * body was the one copy on this surface no round had seen.
+	 */
+	["canvas-workspace--files-dock-default", 1280, 900],
+	["canvas-workspace--files-media", 1280, 900],
+	["canvas-workspace--files-single", 1280, 900],
+	["canvas-workspace--files-filtered-empty", 1280, 900],
+	["canvas-workspace--files-no-files", 1280, 900],
+	["canvas-workspace--nothing-open-empty", 1280, 900],
+	/*
+	 * THE ROW'S INTERACTIVE STATES (design round 1, D1), each driven by the rig
+	 * rather than by a story's play function - because `:hover` is set only by real
+	 * pointer input and a `:focus-visible` ring only by a real keyboard
+	 * interaction, so a story that dispatched its own events would photograph the
+	 * resting row and file it under a hover. `chat-sidebar-current-row` measured
+	 * exactly that: its programmatic `.focus()` came back with the ground and no
+	 * ring.
+	 *
+	 * Six entries over two stories, three states each at the dock's 720 and two at
+	 * its 400px floor, plus the field's own clear control - which only exists while
+	 * a query does, so it hangs off the query story rather than off these. The
+	 * pointer frames wait for the reveal's transition (`hoverSettleMs`) instead of
+	 * trusting that it landed.
+	 */
+	[
+		"canvas-workspace--files-row-states",
+		1280,
+		900,
+		{
+			dir: "files-row-hover",
+			hover: '[data-tour-tag="file-row"]:nth-child(3) > button',
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"canvas-workspace--files-row-states",
+		1280,
+		900,
+		{
+			dir: "files-row-focused",
+			tabTo: '[data-tour-tag="file-row"]:nth-child(3) > button',
+		},
+	],
+	[
+		"canvas-workspace--files-row-states",
+		1280,
+		900,
+		{
+			dir: "files-row-actions-hover",
+			hover:
+				'[data-tour-tag="file-row"]:nth-child(3) [aria-label="File actions"]',
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"canvas-workspace--files-row-states-narrow",
+		1280,
+		900,
+		{
+			dir: "files-row-hover-narrow",
+			hover: '[data-tour-tag="file-row"]:nth-child(3) > button',
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"canvas-workspace--files-row-states-narrow",
+		1280,
+		900,
+		{
+			dir: "files-row-focused-narrow",
+			tabTo: '[data-tour-tag="file-row"]:nth-child(3) > button',
+		},
+	],
+	[
+		"canvas-workspace--files-filtered",
+		1280,
+		900,
+		{
+			dir: "files-filtered-clear-hover",
+			hover: '[aria-label="Clear search"]',
+			hoverSettleMs: 400,
+		},
+	],
+	/*
 	 * The blank canvas, with the conversation's own file count on its Files action.
 	 * The third way out of the dead end this state used to be.
 	 */
