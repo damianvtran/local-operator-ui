@@ -1,4 +1,4 @@
-import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
+import { agentActionFailureMessage } from "@features/agents/utils/publication-failure";
 import type { Agent, AgentViewerStatus } from "@shared/api/radient/types";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import type React from "react";
@@ -82,14 +82,29 @@ export const AgentCardContainer: React.FC<AgentCardContainerProps> = ({
 
 	// The failure belongs to the control that produced it, so the message is
 	// looked up by which action is showing it rather than kept alongside it —
-	// one place that can be stale instead of three.
+	// one place that can be stale instead of three. The SENTENCE follows the same
+	// rule: `agentActionFailureMessage` is the one home of "which vocabulary does
+	// this failure speak", because the pull is answered by the hub and the other
+	// three by the local server.
 	const failure = !failedAction
 		? null
 		: failedAction === "like"
-			? { error: likeMutation.error, retry: handleLikeToggle }
+			? {
+					action: "like" as const,
+					error: likeMutation.error,
+					retry: handleLikeToggle,
+				}
 			: failedAction === "favourite"
-				? { error: favouriteMutation.error, retry: handleFavouriteToggle }
-				: { error: downloadMutation.error, retry: handleDownload };
+				? {
+						action: "favourite" as const,
+						error: favouriteMutation.error,
+						retry: handleFavouriteToggle,
+					}
+				: {
+						action: "download" as const,
+						error: downloadMutation.error,
+						retry: handleDownload,
+					};
 
 	return (
 		<AgentCard
@@ -105,10 +120,7 @@ export const AgentCardContainer: React.FC<AgentCardContainerProps> = ({
 			viewerStateKnown={viewerStateKnown}
 			actionError={
 				failure
-					? backendLoadErrorMessage(
-							"The action did not complete.",
-							failure.error,
-						)
+					? agentActionFailureMessage(failure.action, failure.error, agent.name)
 					: null
 			}
 			onRetryAction={failure?.retry}

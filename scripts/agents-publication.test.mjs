@@ -27,6 +27,7 @@ const bundle = await build({
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export * from "./src/renderer/src/features/agents/utils/publication-failure";
 			export * from "./src/renderer/src/features/agents/utils/publication-validation";
+			export { backendLoadErrorMessage } from "./src/renderer/src/shared/api/local-operator/backend-error";
 			export {
 				desktopRequestSchema,
 				desktopEndpoint,
@@ -73,6 +74,8 @@ const {
 	localNameCollision,
 	toolsFromAgentTags,
 	pullRefusalMessage,
+	agentActionFailureMessage,
+	backendLoadErrorMessage,
 	desktopRequestSchema,
 	desktopEndpoint,
 	publicationNameRule,
@@ -782,6 +785,104 @@ test("a pull refusal names what was not downloaded, from the code when there is 
 		pullRefusalMessage(new Error("boom"), "Inbox triage"),
 		'"Inbox triage" could not be downloaded.',
 	);
+});
+
+/*
+ * WHICH VOCABULARY A FAILED ACTION SPEAKS (design round 3, D1).
+ *
+ * The card, the details page and the onboarding batch all ask
+ * `agentActionFailureMessage` for the sentence under the control that failed, so
+ * this is the rule those three surfaces read - and the finding was that the PULL
+ * was classified against the LOCAL server instead. Driven end to end through the
+ * real card, a 404 `agent_not_found` arrived as "The Local Operator server is
+ * older than this app expects. Update the server and try again." and a 503
+ * `hub_unavailable` as "The Local Operator server is not answering. Restart the
+ * app so it can start its own server." Both are true sentences about a process
+ * that had nothing to do with the refusal, and each names a remedy the user
+ * cannot act on; three more refusals arrived as "The action did not complete."
+ * with no reason at all, because a code this client has no treatment for is not
+ * something the local classifier can speak about either.
+ *
+ * PINNED HERE RATHER THAN IN A FRAME because the set that used to photograph this
+ * cannot settle: `agents-pull-outcomes--refused` waits on a toast sentence the
+ * hook no longer produces, the failure having become the caller's to render (D4
+ * in the same round).
+ *
+ * The `notEqual` against the local classifier is the load-bearing half rather
+ * than a tautology: it is the assertion that would have failed before this fix and
+ * fails again the moment a surface reaches for the wrong vocabulary, and it fails
+ * on the WORDING rather than on the wiring.
+ */
+test("a failed action is answered by the process that refused it, never the other one", () => {
+	const localSentence = (error) =>
+		backendLoadErrorMessage("The action did not complete.", error);
+	const refusals = [
+		[
+			"a listing the hub no longer has",
+			publicationErrorFromBody(404, {
+				detail: { code: "agent_not_found", message: "Agent not found." },
+			}),
+		],
+		[
+			"a hub that is not answering",
+			publicationErrorFromBody(503, {
+				detail: { code: "hub_unavailable", message: "unreachable" },
+			}),
+		],
+		[
+			"a code this client has no treatment for",
+			publicationErrorFromBody(400, {
+				detail: {
+					code: "invalid_instruction_set",
+					message: "The reviewer refused these instructions.",
+				},
+			}),
+		],
+		[
+			"a name the hub already holds",
+			publicationErrorFromBody(409, {
+				detail: { code: "name_taken", message: "That name is taken." },
+			}),
+		],
+		[
+			"an older backend's single prose refusal",
+			new DesktopControlError(
+				400,
+				"Error downloading agent from Radient: Failed to download agent hub-1f4c9a " +
+					"from Radient Agent Hub due to a requests error: HTTPSConnectionPool(host='api.radienthq.com', port=443): Read timed out.",
+			),
+		],
+	];
+	for (const [what, error] of refusals) {
+		const sentence = agentActionFailureMessage(
+			"download",
+			error,
+			"Inbox triage",
+		);
+		assert.equal(
+			sentence,
+			pullRefusalMessage(error, "Inbox triage"),
+			`${what}: the pull speaks the hub's vocabulary`,
+		);
+		assert.notEqual(
+			sentence,
+			localSentence(error),
+			`${what}: and never the local server's, which answers about another process`,
+		);
+	}
+	/*
+	 * The other three actions on those two surfaces ARE local-server calls and keep
+	 * the classifier that names their remedy, so the split follows the process that
+	 * answers rather than the shape the failure arrived in.
+	 */
+	for (const action of ["like", "favourite", "delist"]) {
+		const error = new Error("the local server did not answer");
+		assert.equal(
+			agentActionFailureMessage(action, error, "Inbox triage"),
+			localSentence(error),
+			`${action} is answered by the local server`,
+		);
+	}
 });
 
 test("the local collision check folds, so Coder beside coder is found", () => {
