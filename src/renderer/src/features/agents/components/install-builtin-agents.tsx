@@ -62,6 +62,16 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 	const [current, setCurrent] = useState<string | null>(null);
 	const [summary, setSummary] = useState<InstallSummary | null>(null);
 	const dismissRef = useRef<HTMLButtonElement>(null);
+	/* The action that starts the batch: where focus returns after the summary is
+	 * dismissed, because it is the section's own next control and it is what the
+	 * user is looking at again. */
+	const actionRef = useRef<HTMLButtonElement>(null);
+	/* The batch's one live region: mounted with the section, written into at each
+	 * step and at the end (UX round 2, U11). */
+	const liveRef = useRef<HTMLOutputElement>(null);
+	/* Whether the summary on screen was dismissed BY THE USER, which is the only
+	 * case that hands focus on: it also becomes null when a new run starts. */
+	const dismissedRef = useRef(false);
 
 	/*
 	 * The finish line lands focus on the control that clears it.
@@ -75,6 +85,28 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 	 */
 	useEffect(() => {
 		if (summary) dismissRef.current?.focus();
+	}, [summary]);
+
+	/*
+	 * The two transitions either side of the batch, both of which used to leave
+	 * focus on `document.body`.
+	 *
+	 * Pressing the action unmounts it, so within ~150ms focus was on the body and
+	 * stayed there for the whole 3.7s run — a `focusin` trail of INPUT, Agents,
+	 * install with nothing in between — and pressing `Done` unmounts that too, so
+	 * the next Tab restarted at the window's first control. The progress region is
+	 * the thing that survives the press and reports the run, and the action is what
+	 * survives the dismissal (UX round 2, U10). Both moves are deliberate, and both
+	 * are read AFTER the re-render that swapped the controls.
+	 */
+	useEffect(() => {
+		if (running) liveRef.current?.focus();
+	}, [running]);
+
+	useEffect(() => {
+		if (summary || !dismissedRef.current) return;
+		dismissedRef.current = false;
+		actionRef.current?.focus();
 	}, [summary]);
 
 	const run = useCallback(async () => {
@@ -136,6 +168,7 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 				!summary &&
 				(presentation === "primary" ? (
 					<Button
+						ref={actionRef}
 						variant="secondary"
 						className="w-full"
 						onClick={() => void run()}
@@ -144,6 +177,7 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 					</Button>
 				) : (
 					<button
+						ref={actionRef}
 						type="button"
 						onClick={() => void run()}
 						className={cn(
@@ -163,108 +197,136 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 					</button>
 				))}
 
-			{running && (
-				<div
-					className={cn("flex flex-col gap-1.5", pad)}
-					data-testid="install-builtins-progress"
-				>
-					<Progress
-						value={step}
-						max={total}
-						aria-label={`Installing built-in agents, ${step} of ${total}`}
-						/*
-						 * The track carries the STRUCTURAL role rather than the sunken step the
-						 * primitive defaults to. `sunken` on `surface` measures 1.11-1.26:1
-						 * across the twelve palettes, so at 0% the bar read as blank card and at
-						 * 100% as a coloured rule rather than a meter — measured on the
-						 * rendered installing frames as 1.15:1 in light, 1.3:1 in dark and
-						 * 1.4:1 in neon, i.e. fainter than the app's own section hairline in the
-						 * same frame (design round 1, D2). A meter's track is the reference its
-						 * fill is read against, so removing it loses information and 3:1 applies;
-						 * `border-control` is the only role that carries that floor. Same
-						 * treatment and same reasoning as the quota bar's track in
-						 * `usage-view.tsx`.
-						 *
-						 * `h-1.5` rather than the primitive's `h-1`: the 1px border would other-
-						 * wise take half the meter, which the quota bar found too and answers the
-						 * same way. The interior stays 4px, so the datum is no thinner than it
-						 * was.
-						 *
-						 * This class string is pinned in `scripts/contrast-contract.mjs`, so the
-						 * edit that drops the track's role fails a gate rather than needing a
-						 * frame review to notice.
-						 */
-						className="h-1.5 border border-control"
-					/>
-					{/*
-					 * A determinate count and the name in flight, so a slow install
-					 * of the fourth agent does not read as a hung first one. The
-					 * count is of COMPLETED installs; the name is the one running.
-					 */}
-					<p aria-live="polite" className="text-meta text-ink-muted">
-						{current
-							? `Installing ${step} of ${total} — ${current}…`
-							: `Installing ${done} of ${total}…`}
-					</p>
-				</div>
-			)}
-
-			{summary && (
-				/*
-				 * `aria-live` EXPLICIT, and the role implicit. This block replaces the live
-				 * region the progress line was, so it is the announcement now; the element
-				 * is an `<output>`, which carries `role="status"` itself — the reason a
-				 * measurement of the `role` ATTRIBUTE reads null on a region that is
-				 * nonetheless announced, and the reason none is written here. The line
-				 * under the check is `body-sm` in full ink rather than a `text-meta`
-				 * fragment, because it is the answer to the action the user just took
-				 * (D7).
-				 */
-				<output
-					aria-live="polite"
-					className={cn("flex flex-col gap-2", pad)}
-					data-testid="install-builtins-summary"
-				>
-					<p className="flex items-center gap-1.5 text-body-sm text-ink">
-						<Check
-							className="size-3.5 shrink-0 text-success"
-							aria-hidden="true"
-						/>
-						<span>{summarySentence(summary)}</span>
-					</p>
-					{/*
-					 * ONE line for the skips, led by its count and a capital: the previous
-					 * shape began a lower-case fragment per name ("skipped: you have an
-					 * agent called "reviewer"") under a sentence that had already counted
-					 * it, which is a sentence broken across two paragraphs (design round 1,
-					 * D7). A failure still gets its own line, because each carries its own
-					 * message rather than contributing to a count.
-					 */}
-					{exceptionLine && (
-						<p className="text-body-sm text-ink-muted">{exceptionLine}</p>
-					)}
-					{summary.failed.map((failure) => (
-						<p key={failure.name} className="text-body-sm text-danger">
-							{failure.name}: {failure.message}
-						</p>
-					))}
-					{/*
-					 * A real control at the app's own small size (28px) rather than a 30x11
-					 * underlined word with no padding target, which was the only way out of
-					 * this state and under the 24px floor every other control here holds
-					 * (D7, U4). It takes focus when the batch ends.
-					 */}
-					<Button
-						ref={dismissRef}
-						variant="ghost"
-						size="sm"
-						className="w-fit"
-						onClick={() => setSummary(null)}
+			{/*
+			 * ONE live region for the whole batch, mounted with the section and written
+			 * into at each step and at the end — not the two regions this used to be, each
+			 * INSERTED already holding its text, which is the shape assistive technology
+			 * is least reliable about: `install-builtins-progress` arrived with 26
+			 * characters already inside it and `install-builtins-summary` with 16, and
+			 * whether either was announced depended on how the AT treats a `role=status`
+			 * node that appears with its content already in it (UX round 2, U11). Nothing
+			 * here is announced because a region APPEARED: the sentence changes and the
+			 * region that was always there says so. `sr-only` while idle, so it costs no
+			 * line and no gap in a section that is usually showing only its action.
+			 *
+			 * It is also where focus goes for the run, and `tabIndex={-1}` is what makes
+			 * that possible: a region is not a control and must not join the tab order,
+			 * but it is the thing on screen that survives the press (UX round 2, U10).
+			 */}
+			<output
+				ref={liveRef}
+				aria-live="polite"
+				tabIndex={-1}
+				data-testid="install-builtins-live"
+				className={cn("flex flex-col gap-2", !running && !summary && "sr-only")}
+			>
+				{running && (
+					<div
+						className={cn("flex flex-col gap-1.5", pad)}
+						data-testid="install-builtins-progress"
 					>
-						Done
-					</Button>
-				</output>
-			)}
+						<Progress
+							value={step}
+							max={total}
+							aria-label={`Installing built-in agents, ${step} of ${total}`}
+							/*
+							 * The track carries the STRUCTURAL role rather than the sunken step the
+							 * primitive defaults to. `sunken` on `surface` measures 1.11-1.26:1
+							 * across the twelve palettes, so at 0% the bar read as blank card and at
+							 * 100% as a coloured rule rather than a meter — measured on the
+							 * rendered installing frames as 1.15:1 in light, 1.3:1 in dark and
+							 * 1.4:1 in neon, i.e. fainter than the app's own section hairline in the
+							 * same frame (design round 1, D2). A meter's track is the reference its
+							 * fill is read against, so removing it loses information and 3:1 applies;
+							 * `border-control` is the only role that carries that floor. Same
+							 * treatment and same reasoning as the quota bar's track in
+							 * `usage-view.tsx`.
+							 *
+							 * `h-1.5` rather than the primitive's `h-1`: the 1px border would other-
+							 * wise take half the meter, which the quota bar found too and answers the
+							 * same way. The interior stays 4px, so the datum is no thinner than it
+							 * was.
+							 *
+							 * This class string is pinned in `scripts/contrast-contract.mjs`, so the
+							 * edit that drops the track's role fails a gate rather than needing a
+							 * frame review to notice.
+							 */
+							className="h-1.5 border border-control"
+						/>
+						{/*
+						 * A determinate count and the name in flight, so a slow install
+						 * of the fourth agent does not read as a hung first one. The
+						 * count is of COMPLETED installs; the name is the one running.
+						 *
+						 * No `aria-live` of its own: the sentence is written into the
+						 * region above, which is what makes it announced (U11), and a
+						 * second live region here would announce the same step twice.
+						 */}
+						<p className="text-meta text-ink-muted">
+							{current
+								? `Installing ${step} of ${total} — ${current}…`
+								: `Installing ${done} of ${total}…`}
+						</p>
+					</div>
+				)}
+
+				{summary && (
+					/*
+					 * A `<div>` rather than the `<output>` this was, and no `aria-live` of its
+					 * own: it IS the region's content now, and a `role="status"` node nested
+					 * inside a polite region announces the same sentence twice. The line under
+					 * the check is `body-sm` in full ink rather than a `text-meta` fragment,
+					 * because it is the answer to the action the user just took (D7).
+					 */
+					<div
+						className={cn("flex flex-col gap-2", pad)}
+						data-testid="install-builtins-summary"
+					>
+						<p className="flex items-center gap-1.5 text-body-sm text-ink">
+							<Check
+								className="size-3.5 shrink-0 text-success"
+								aria-hidden="true"
+							/>
+							<span>{summarySentence(summary)}</span>
+						</p>
+						{/*
+						 * ONE line for the skips, led by its count and a capital: the previous
+						 * shape began a lower-case fragment per name ("skipped: you have an
+						 * agent called "reviewer"") under a sentence that had already counted
+						 * it, which is a sentence broken across two paragraphs (design round 1,
+						 * D7). A failure still gets its own line, because each carries its own
+						 * message rather than contributing to a count.
+						 */}
+						{exceptionLine && (
+							<p className="text-body-sm text-ink-muted">{exceptionLine}</p>
+						)}
+						{summary.failed.map((failure) => (
+							<p key={failure.name} className="text-body-sm text-danger">
+								{failure.name}: {failure.message}
+							</p>
+						))}
+						{/*
+						 * A real control at the app's own small size (28px) rather than a 30x11
+						 * underlined word with no padding target, which was the only way out of
+						 * this state and under the 24px floor every other control here holds
+						 * (D7, U4). It takes focus when the batch ends, and hands it back to the
+						 * action that started the batch when it dismisses the summary (U10).
+						 */}
+						<Button
+							ref={dismissRef}
+							variant="ghost"
+							size="sm"
+							className="w-fit"
+							onClick={() => {
+								dismissedRef.current = true;
+								setSummary(null);
+							}}
+						>
+							Done
+						</Button>
+					</div>
+				)}
+			</output>
 		</div>
 	);
 };
