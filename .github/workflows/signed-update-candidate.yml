@@ -480,16 +480,40 @@ jobs:
         env:
           INCUMBENT_TAG: ${{ needs.derive.outputs.incumbent_tag }}
         run: |
-          # Exit 2 is BLOCKED - a capability this VM lacks, the verdict the
-          # harness prefers over a surrogate result. Exit 1 is the harness's own
-          # FAIL, a candidate failing a check about what was assembled, and it is
-          # also what node exits with when the harness is not there at all, which
-          # is what a candidate predating it hits. The absent-harness case is named
-          # separately below rather than left to read as a candidate failure: the
-          # harness is a file at the candidate's own commit, so "the exercise could
-          # not run" and "the candidate failed" must not be the same verdict. Both
-          # fail the job - a verification that reports success without running is
-          # the one outcome worth failing for.
+          # The three outcomes the harness distinguishes, and what each does to
+          # this job.
+          #
+          # Exit 0 is PASS. Exit 2 is BLOCKED - a capability this runner lacks, the
+          # verdict the harness prefers over a surrogate result - and it does NOT
+          # fail the job. Exit 1 is the harness's own FAIL, a candidate failing a
+          # check about what was assembled, and it is also what node exits with
+          # when the harness is not there at all, which is what a candidate
+          # predating it hits. FAIL keeps failing the job.
+          #
+          # WHY BLOCKED STOPPED FAILING, reversing the earlier policy recorded
+          # here. That policy failed both outcomes, on the argument that "a
+          # verification that reports success without running is the one outcome
+          # worth failing for". The argument was sound and the outcome was not:
+          # `publish.yml` dispatches this workflow after EVERY release, and this
+          # VM has no native GUI launchd session, so the exercise is BLOCKED every
+          # time - a permanent red on `main` that teaches everyone to ignore the
+          # workflow instead of reading it, which is how a real FAIL gets missed.
+          #
+          # The gap is real and is not being hidden: it is reported as a
+          # `::warning::` annotation AND in the step summary, in words that say the
+          # exercise did not run, name the capability that is missing, and say
+          # plainly that this is therefore no evidence about the candidate. What
+          # must never collapse is the pair this workflow exists to keep apart:
+          # "we could not check" (BLOCKED - exit 0, a warning, no PASS heading) and
+          # "we checked and it passed" (PASS - exit 0, no warning) stay different
+          # verdicts, and a candidate that genuinely fails a check still reddens
+          # this pipeline.
+          #
+          # The absent-harness case below is deliberately NOT routed through this
+          # policy and still exits 2: the harness is a file at the candidate's own
+          # commit, so a candidate that carries none is a missing capability IN the
+          # candidate, which is a real failure of this job rather than a gap in the
+          # runner.
           if [ ! -f scripts/verify-signed-update.mjs ]; then
             {
               echo '### Signed update exercise: BLOCKED - the harness is absent from this commit'
@@ -506,16 +530,54 @@ jobs:
             --incumbent-tag "$INCUMBENT_TAG" \
             --evidence signed-update-evidence || status=$?
           case "$status" in
-            0) verdict='PASS' ;;
-            2) verdict='BLOCKED - a capability this runner lacks; not a candidate failure' ;;
-            *) verdict="FAIL - the exercise did not complete (exit $status); the log says whether a candidate check failed or the harness never started" ;;
+            0)
+              {
+                echo '### Signed update exercise: PASS'
+                echo
+                echo 'harness exit code: 0'
+              } >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            2)
+              # The missing capability, READ BACK from the evidence the harness
+              # publishes before it blocks rather than restated here: `record()`
+              # writes every row into matrix.json, and `blocked()` writes its
+              # message there before it throws. Reading it is what keeps the
+              # summary naming the thing the harness actually named, instead of a
+              # sentence this file guessed and would have to keep in sync.
+              capability="$(node -e '
+                const fs = require("node:fs");
+                try {
+                  const rows = JSON.parse(fs.readFileSync("signed-update-evidence/matrix.json", "utf8"));
+                  const blocked = rows.filter((row) => row.verdict === "BLOCKED").pop();
+                  if (blocked && blocked.actual) process.stdout.write(String(blocked.actual).replace(/\\r?\\n/g, " "));
+                } catch {}
+              ' || true)"
+              message="Signed update exercise: BLOCKED - the exercise did NOT run. Missing capability: ${capability:-the harness reported BLOCKED without publishing a reason}. This is no evidence about the candidate: nothing was exercised, so it is neither cleared nor failed."
+              # One line on purpose: a newline in an annotation is escaped as %0A
+              # and a long one is truncated, so the prose belongs in the summary
+              # and the annotation carries the same claim in one sentence.
+              echo "::warning::${message}"
+              {
+                echo '### Signed update exercise: BLOCKED - the exercise did NOT run'
+                echo
+                echo "Missing capability: ${capability:-the harness reported BLOCKED without publishing a reason}"
+                echo
+                echo 'harness exit code: 2'
+                echo
+                echo 'Nothing was exercised, so this is **no evidence about the candidate**: it neither clears nor fails it. Read it as "not checked", never as a pass.'
+              } >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            *)
+              {
+                echo "### Signed update exercise: FAIL - the exercise did not complete (exit $status)"
+                echo
+                echo "harness exit code: $status"
+                echo
+                echo 'The log above says whether a candidate check failed or the harness never started.'
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit "$status"
+              ;;
           esac
-          {
-            echo "### Signed update exercise: $verdict"
-            echo
-            echo "harness exit code: $status"
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit "$status"
       # `if-no-files-found: warn` rather than `error`: the step above already
       # fails the job on a non-zero exit, and when the harness dies before its
       # first record - exactly what happens against a SHA predating it - `error`
