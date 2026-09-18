@@ -1331,9 +1331,9 @@ derivation to guard. What remains:
   than decoration: `git diff` prints an unchanged line as context when it falls
   inside a hunk, and `"version"` sits on line 3, so an unanchored grep cannot tell
   an unmoved version line from a moved one. A non-empty diff that touches only
-  other fields is expected rather than alarming — a feature PR adding a `scripts` entry makes the
-  diff non-empty most windows, and an owner who reads the diff's non-emptiness as
-  the signal stalls a window that is perfectly legitimate.
+  other fields is expected rather than alarming — a feature PR adding a `scripts`
+  entry makes the diff non-empty most windows, and an owner who reads the diff's
+  non-emptiness as the signal stalls a window that is perfectly legitimate.
 
 ### Invariants a future agent must not break
 
@@ -1367,10 +1367,10 @@ derivation to guard. What remains:
 - **A version bump on a feature branch is still a defect.** There is no longer a
   derivation to refuse over it, which makes it *easier* to miss rather than safer:
   `main` advertising a version nobody released is now caught by the owner's
-  `git diff <last-tag>..origin/main -- package.json | grep '^[-+].*"version"'` check in the
-  procedure above and by nothing else. A branch that ships its own bump consumes a
-  number the next window has to skip, and the tag that finally lands carries code
-  nobody reviewed under that number.
+  `git diff <last-tag>..origin/main -- package.json | grep '^[-+].*"version"'` check
+  in the procedure above and by nothing else. A branch that ships its own bump
+  consumes a number the next window has to skip, and the tag that finally lands
+  carries code nobody reviewed under that number.
 - **A `DIRTY` branch gets no CI at all, so a green head is not evidence on its
   own.** GitHub does not run workflows on a merge commit it cannot create: a PR with
   a conflict keeps the *older* green run and acquires no new one. Check
