@@ -49,6 +49,10 @@ export const duskfox: ThemeDefinition = {
 		// ΔE00 10.5 from `accent` and 8.7:1 on surface, where the accent is
 		// 5.7:1.
 		chartBarHover: "#98D7EE",
+		tokenCommand: "#9CCFD8",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2E354A",
 		onAccent: "#191726",
 

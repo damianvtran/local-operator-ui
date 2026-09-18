@@ -68,6 +68,10 @@ export const rosePine: ThemeDefinition = {
 		// ΔE00 10.5 from `accent` and 13.8:1 on surface, where the accent is
 		// 9.8:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#FFE5E2",
+		tokenCommand: "#9ccfd8",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2e2430",
 		onAccent: "#191724",
 

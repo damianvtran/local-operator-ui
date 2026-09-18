@@ -74,6 +74,9 @@ export const radient: ThemeDefinition = {
 		// accent ramp: ΔE00 10.1 from `accent` and 11.15:1 on surface, where the accent
 		// itself is 7.93:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#C1D7F3",
+		tokenCommand: "#E3B457",
+		/* This palette's second hue: its `info` IS its accent, so the token takes
+		   the hue the same palette's editor already paints string literals in. */
 		accentWash: "#1F2835",
 		// The old theme paired white with this blue, which measures 2.2:1. Ink on
 		// the accent fill is the page ground instead.

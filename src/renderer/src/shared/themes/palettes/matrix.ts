@@ -79,6 +79,10 @@ export const matrix: ThemeDefinition = {
 		// A step AWAY from the plot ground: mixed toward `ink` to ΔE00 10.5 from
 		// `accent` and 11.96:1 on `surface`, where the accent measures 10.51:1.
 		chartBarHover: "#87E3A8",
+		tokenCommand: "#3FD0C9",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#092814",
 		onAccent: "#000701",
 

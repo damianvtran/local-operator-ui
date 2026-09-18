@@ -214,6 +214,38 @@ test("the documented false-positive family still falls out", () => {
 	}
 });
 
+test("a placeholder tail and an abandoned abbreviation are not links either", () => {
+	/*
+	 * Round 3, R3-1: the abbreviation and placeholder-tail rules live in the SHARED
+	 * scanner (`targetsIn`), so landing them there widened them onto `LINK_POLICY`
+	 * as well as the panel's `MENTION_POLICY`. This test is that widening STATED
+	 * rather than discovered - the right direction, because a link to
+	 * `/…/scratchpad/probe.sh` is exactly as bogus as a tile for it, and pressing
+	 * it opens nothing.
+	 *
+	 * Both directions, because the guard is only safe in one of them, and this
+	 * policy is also the one a reader is most likely to see fire (chat text).
+	 */
+	for (const text of [
+		"see /…/sessions/<id>/scratchpad/run/perf.md there",
+		"open /Users/x/.../scratchpad/probe.sh now",
+		"read /…/scratchpad/probe.sh next",
+	]) {
+		assert.deepEqual(found(text, LINK_POLICY), [], text);
+	}
+	// The narrowing, on this policy too: a real path after a tag, a generic or a
+	// heredoc seam is still a link.
+	for (const text of [
+		"use <code>/tmp/real/notes.md here",
+		"done </b>/tmp/real/notes.md here",
+		"Map<T>/tmp/notes/real.md",
+		"<br/>/tmp/notes/real.md",
+		"cat <<EOF>/tmp/real/notes.md",
+	]) {
+		assert.equal(found(text, LINK_POLICY).length, 1, text);
+	}
+});
+
 test("a path in prose keeps its sentence punctuation out of the span", () => {
 	const matches = targetsIn("saved to /tmp/a.pdf. See it.", LINK_POLICY);
 	assert.equal(matches.length, 1);

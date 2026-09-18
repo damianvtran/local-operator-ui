@@ -905,7 +905,16 @@ A good description helps you and others understand what the agent does and any s
 		// Targets the UploadAgentDialog modal, which should be open after clicking "Upload to Hub"
 		attachTo: { element: '[data-tour-tag="upload-agent-dialog"]', on: "right" },
 		title: "Upload agent to hub",
-		text: "This dialog allows you to share your agent with the community. You need to have a Radient account to upload an agent, which is free to create and doesn't cost anything per upload.  You can review the agent details and confirm the upload. Make sure your agent meets the required criteria before submitting.  Also be aware that any conversation history and learnings for this agent will be part of its training and will be visible to the public.  So don't share agents publicly that know sensitive information.",
+		/*
+		 * The same correction the dialog itself carries: this step used to
+		 * promise that "any conversation history and learnings for this agent
+		 * will be part of its training and will be visible to the public",
+		 * which stopped being true when the publish path started shipping an
+		 * instruction set and nothing else. Two surfaces describing one
+		 * publication cannot disagree about what leaves the machine, and the
+		 * wrong one here was the more alarming of the two.
+		 */
+		text: "This dialog publishes your agent's instruction set to the community. You need a Radient account to publish, which is free to create and costs nothing per agent. You can review the details before confirming. What is published is what describes the agent - its name, description, instructions and tool surface; no conversation, execution history, memory, plan or machine-specific configuration leaves your computer. Make sure your agent meets the required criteria before submitting.",
 		buttons: [
 			{
 				text: "Back",

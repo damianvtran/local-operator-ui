@@ -70,6 +70,8 @@ export const tokyoNight: ThemeDefinition = {
 		// accent ramp: ΔE00 10.0 from `accent` and 8.25:1 on surface, where the accent
 		// itself is 5.78:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#AAC3FA",
+		tokenCommand: "#7DCFFF",
+		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#262B3F",
 		onAccent: "#1A1B26",
 

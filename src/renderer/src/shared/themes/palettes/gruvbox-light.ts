@@ -75,6 +75,10 @@ export const gruvboxLight: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.2
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#004755",
+		tokenCommand: "#3B7050",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#F0EBC3",
 		onAccent: "#FBF1C7",
 

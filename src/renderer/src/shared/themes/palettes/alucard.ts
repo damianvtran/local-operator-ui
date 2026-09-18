@@ -62,6 +62,10 @@ export const alucard: ThemeDefinition = {
 		// ΔE00 10.4 from `accent` and 9.4:1 on surface, where the accent is
 		// 5.9:1.
 		chartBarHover: "#4A27A6",
+		tokenCommand: "#036A96",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#FAF5EA",
 		onAccent: "#FFFBEB",
 

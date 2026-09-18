@@ -84,6 +84,10 @@ export const outrun: ThemeDefinition = {
 		// A step AWAY from the plot ground: mixed toward `ink` to ΔE00 10.6 from
 		// `accent` and 6.27:1 on `surface`, where the accent measures 4.82:1.
 		chartBarHover: "#F76192",
+		tokenCommand: "#2DE2E6",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2C1230",
 		onAccent: "#050522",
 
