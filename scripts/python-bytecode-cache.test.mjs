@@ -2188,7 +2188,7 @@ const SPAWN_SITES = [
 		"spawnSync",
 		1,
 		/jobProbe/,
-		"asks launchd whether ShipIt's job is loaded; `jobProbe` is `/bin/launchctl` from `watchdogSignals`. This is the file's FIRST spawnSync because the probe moved out of the class to module scope, where the launch hold can reach it before any service exists (see `probeShipItInstallJobLoaded`)",
+		"asks launchd what ShipIt's install job is doing (running, registered, absent or unread); `jobProbe` is `/bin/launchctl` from `watchdogSignals`. This is the file's FIRST spawnSync because the probe moved out of the class to module scope, where the launch hold can reach it before any service exists (see `probeShipItInstallJobState`)",
 	),
 	runsCommand(
 		"src/main/update-service.ts",

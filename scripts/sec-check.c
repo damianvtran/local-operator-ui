@@ -16,27 +16,34 @@
  * at 4.3% CPU over 4.5 minutes (~11 s of CPU). The process was BLOCKED on the
  * system's code-signing path, not computing.
  *
- * THE FINDING THIS PROGRAM EXISTS FOR, and the reason it has two modes: the same
- * call, on the same content, costs seconds at normal scheduling priority and
- * MINUTES under the background class. Measured on 2026-09-18 on this machine
- * (load 119-155):
+ * THE FINDING THIS PROGRAM EXISTS FOR: the same call, on the same content, costs
+ * seconds from an ordinary process and MINUTES in the context an install runs it
+ * in. Measured on 2026-09-18 on this machine, load 119-300, same bundle:
  *
- *   foreground, Squirrel's flags, the 376 MB bundle     2.4 - 3.8 s
- *   background (`taskpolicy -b`), same content         556 s, 777 s, 351 s
- *                                                      (0.7-1.1 s of user CPU)
- *   foreground, one Mach-O (Electron Framework)          2.97 s
- *   background, the same Mach-O                          597 s
+ *   foreground, Squirrel's flags (8 runs today)         0.25 - 3.85 s
+ *   submitted as a launchd job (`--via-launchd`)        33.3 s
+ *     - same bundle, same minute as a 3.45 s shell run
+ *   background class (`taskpolicy -b`), same content    331, 351, 556, 597, 777 s
+ *                                                       (0.7-1.1 s of user CPU)
+ *   ShipIt, during the 11:59 install                    4 min 27 s inside this call
+ *                                                       at 4.3% of a core
  *
  * A warm-up explains nothing: validating the same content twice at foreground
- * first (0.34 s, 0.40 s) still left the background run at 351 s. So this is not a
- * cold cache and not validation work - it is the SCHEDULING CLASS plus the load
- * on the machine, and it is why 4 min 27 s of an install sits inside a call that
- * takes a third of a second from a shell.
+ * first (0.34 s, 0.40 s) still left a background run at 351 s. So this is not a
+ * cold cache and not validation work.
  *
- * WHY AN INSTALL IS IN THAT CLASS AT ALL: Squirrel submits its installer as a
- * launchd job (`SMJobSubmit`, `SQRLUpdater.m:406`), and launchd runs it in the
- * background class. That is the whole of the mechanism, and it is why the closed
- * window is not a property of this app's bundle size.
+ * WHAT THE DIFFERENCE IS, STATED NO FURTHER THAN THE EVIDENCE GOES (review R1).
+ * The install's cost was attributed to launchd's SCHEDULING CLASS, and the machine
+ * does not support that attribution: the app's own job carries `nice = -1` with no
+ * background process type (`grep -c ProcessType` on Squirrel's binary: 0), and the
+ * capture of the running ShipIt printed a priority that reads as the ordinary
+ * class. What reproduces is the CONTEXT, not the class: a job submission inflates
+ * the same call ~10x on the same content in the same minute, and the background
+ * class ~100-300x. WHICH part of that context costs the time - launchd's
+ * scheduling, the Security framework's own worker threads, or this machine's
+ * contention - IS NOT ESTABLISHED, and this tool does not claim it. What it does
+ * claim, and what the next change has to move, is the two numbers above: seconds
+ * from a shell, minutes in the installer's context.
  *
  * WHAT IT IS NOT, measured rather than assumed: file COUNT is not the lever. A
  * `ditto` of the full 1808-file bundle produced 19-21 Gatekeeper scans, and the
@@ -58,26 +65,35 @@
  * gets it from `SecCodeCopyDesignatedRequirement`; passing NULL instead would
  * measure a different question.
  *
- * WHAT IT DOES NOT MEASURE, said out loud: it asks the question on a machine that
- * is not running an install, so it cannot reproduce launchd's submission itself -
- * `taskpolicy -b` enters the class, it does not become the job. And it says
- * nothing about the app's own health.
+ * WHAT IT DOES NOT MEASURE, said out loud: it does not run an install, so it cannot
+ * measure the closed window itself - that is `scripts/update-window-report.mjs`'s
+ * job, and the two together are the whole picture (how long the window was, and
+ * what fills it). It says nothing about the app's own health.
  *
  * BUILD AND RUN (macOS only; no build system, one line):
  *
  *   clang -O2 -o /tmp/lo-sec-check scripts/sec-check.c \
  *     -framework Security -framework CoreFoundation
  *   /tmp/lo-sec-check "/Applications/Local Operator.app"
+ *   /tmp/lo-sec-check --via-launchd "/Applications/Local Operator.app"
  *   /tmp/lo-sec-check --repeat 3 --background "/Applications/Local Operator.app"
  *
  * or, through the repository's package script:
  *
  *   pnpm sec-check "/Applications/Local Operator.app"
+ *   pnpm sec-check --via-launchd "/Applications/Local Operator.app"
  *   pnpm sec-check --background "/Applications/Local Operator.app"
  *
+ * `--via-launchd` re-runs the same measurement in a CHILD SUBMITTED TO LAUNCHD,
+ * which is the context Squirrel's installer runs in (`SMJobSubmit`,
+ * `SQRLUpdater.m:406`), and prints it beside the foreground number. The label is
+ * synthetic and carries this process's pid, so it can never collide with or replace
+ * an app's own `<bundle id>.ShipIt` job, and the job is removed before the program
+ * returns - a probe must not leave a submission behind in the user's domain.
+ *
  * `--background` re-runs the same measurement in a child of this process under
- * `/usr/bin/taskpolicy -b` and prints both numbers side by side. IT TAKES MINUTES
- * - that is the finding, not a defect of the tool - so it is opt-in.
+ * `/usr/bin/taskpolicy -b` and prints both numbers side by side. Both modes TAKE
+ * MINUTES - that is the finding, not a defect of the tool - so they are opt-in.
  *
  * On a host that is not macOS there is no Security.framework to link and no
  * code-signing database to ask, so the program compiles to a single line that
@@ -88,6 +104,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #ifdef __APPLE__
 #include <CoreFoundation/CoreFoundation.h>
@@ -95,7 +112,11 @@
 #include <mach/mach_time.h>
 
 /**
- * Where the scheduling-class tool lives, and the class Squirrel's job runs in.
+ * Where the scheduling-class tool lives.
+ *
+ * It measures the BACKGROUND CLASS, which is what `--background` reproduces - not
+ * a claim about which class the installer itself runs in (see the header: that is
+ * not established, and the machine's own evidence points away from it).
  *
  * `/usr/sbin` on this macOS (measured), with `/usr/bin` kept as the other spelling
  * the tool has shipped under - the program reports plainly when neither is there
@@ -266,6 +287,126 @@ static double measure(const char *path, int verbose) {
 	return validateStatus == noErr ? validateSeconds : -1.0;
 }
 
+/**
+ * How long a submitted job is waited for before the probe gives up on it.
+ *
+ * Generous on purpose: the whole finding is that this context is slow, and a
+ * deadline that fired during a legitimately slow run would report a failure where
+ * the measurement is the answer. 15 minutes is far past every number measured here
+ * (33 s - 777 s) and still bounded, because a probe that hangs forever is not a
+ * measurement.
+ */
+static const int LAUNCHD_DEADLINE_SECONDS = 900;
+
+/**
+ * Measure the same call the way an install runs it: submitted to launchd.
+ *
+ * WHY THIS MODE EXISTS (review R1). The install's cost had been attributed to
+ * launchd's scheduling class, and the machine does not support that attribution -
+ * the app's job carries `nice = -1` with no background process type, and the live
+ * capture printed a priority that reads as the ordinary class. What DOES reproduce
+ * is the context: the same bundle measured in the same minute cost 3.45 s from a
+ * shell and 33.3 s as a submitted job. This mode is that experiment, re-runnable
+ * from the repository, so the number can be checked rather than quoted - and so a
+ * later change can show it moved.
+ *
+ * The job's label is synthetic and carries this process's pid, so it can never
+ * collide with, or replace, an app's own `<bundle id>.ShipIt` job; the job is
+ * removed before this function returns, whatever happened.
+ */
+static int measure_via_launchd(const char *self, const char *path, int repeat,
+                               double *secondsOut) {
+	char label[128];
+	char outPath[4096];
+	char errPath[4096];
+	const char *tmpDir = getenv("TMPDIR");
+	if (tmpDir == NULL || tmpDir[0] == '\0') {
+		tmpDir = "/tmp";
+	}
+	snprintf(label, sizeof(label), "com.local-operator.sec-check.%d",
+	         (int)getpid());
+	snprintf(outPath, sizeof(outPath), "%s/lo-sec-check-launchd-%d.out", tmpDir,
+	         (int)getpid());
+	snprintf(errPath, sizeof(errPath), "%s/lo-sec-check-launchd-%d.err", tmpDir,
+	         (int)getpid());
+	remove(outPath);
+	remove(errPath);
+
+	/*
+	 * ONE measurement per submission, whatever `--repeat` says: each submission IS
+	 * the experiment, and polling for a second number from the same job would mean
+	 * either killing it when the first arrives (which measures nothing) or waiting
+	 * for the job to disappear (a second way of deciding the same thing).
+	 */
+	char command[8192];
+	snprintf(command, sizeof(command),
+	         "/bin/launchctl submit -l '%s' -o '%s' -e '%s' -- '%s' "
+	         "--emit-seconds --repeat 1 '%s'",
+	         label, outPath, errPath, self, path);
+	(void)repeat;
+	printf("\nlaunchd submission: %s\n", command);
+	printf("waiting for the submitted job (this is the context being measured, "
+	       "so it can take minutes)...\n");
+	fflush(stdout);
+
+	int submitStatus = system(command);
+	if (submitStatus != 0) {
+		fprintf(stderr,
+		        "sec-check: `launchctl submit` exited %d; the job was not "
+		        "submitted\n",
+		        submitStatus);
+		return 1;
+	}
+
+	double fastest = -1.0;
+	for (int waited = 0; waited < LAUNCHD_DEADLINE_SECONDS; waited++) {
+		FILE *out = fopen(outPath, "r");
+		if (out != NULL) {
+			char line[1024];
+			while (fgets(line, sizeof(line), out) != NULL) {
+				double createSeconds = 0.0;
+				double validateSeconds = 0.0;
+				if (sscanf(line, "SECONDS %lf %lf", &createSeconds,
+				           &validateSeconds) == 2) {
+					printf("launchd attempt: create %.4f s, validate %.4f s\n",
+					       createSeconds, validateSeconds);
+					if (fastest < 0.0 || validateSeconds < fastest) {
+						fastest = validateSeconds;
+					}
+				}
+			}
+			fclose(out);
+		}
+		if (fastest >= 0.0) {
+			break;
+		}
+		sleep(1);
+	}
+
+	/*
+	 * Removed whatever happened: a probe that leaves a submission behind in the
+	 * user's launchd domain is exactly the kind of thing this repository's rules
+	 * exist to prevent, and a stale job would also make the next run's label
+	 * ambiguous.
+	 */
+	char removeCommand[256];
+	snprintf(removeCommand, sizeof(removeCommand), "/bin/launchctl remove '%s'",
+	         label);
+	(void)system(removeCommand);
+	remove(outPath);
+	remove(errPath);
+
+	if (fastest < 0.0) {
+		fprintf(stderr,
+		        "sec-check: the submitted job reported no measurement within "
+		        "%d s\n",
+		        LAUNCHD_DEADLINE_SECONDS);
+		return 1;
+	}
+	*secondsOut = fastest;
+	return 0;
+}
+
 /** The path this program was run as, for the child that re-enters the class. */
 static void self_path(const char *argv0, char *buffer, size_t size) {
 	if (argv0 != NULL && strchr(argv0, '/') != NULL) {
@@ -280,6 +421,7 @@ int main(int argc, char **argv) {
 	const char *argv0 = argc > 0 ? argv[0] : NULL;
 	int repeat = 1;
 	int background = 0;
+	int viaLaunchd = 0;
 	int emit_seconds = 0;
 
 	for (int index = 1; index < argc; index++) {
@@ -294,6 +436,10 @@ int main(int argc, char **argv) {
 			background = 1;
 			continue;
 		}
+		if (strcmp(argv[index], "--via-launchd") == 0) {
+			viaLaunchd = 1;
+			continue;
+		}
 		if (strcmp(argv[index], "--emit-seconds") == 0) {
 			emit_seconds = 1;
 			continue;
@@ -304,8 +450,8 @@ int main(int argc, char **argv) {
 	}
 	if (path == NULL) {
 		fprintf(stderr,
-		        "usage: sec-check [--repeat N] [--background] <path to an .app "
-		        "bundle>\n"
+		        "usage: sec-check [--repeat N] [--background] [--via-launchd] "
+		        "<path to an .app bundle>\n"
 		        "\n"
 		        "Times Squirrel.Mac's own code-signature call - "
 		        "SecStaticCodeCreateWithPath then\n"
@@ -315,10 +461,13 @@ int main(int argc, char **argv) {
 		        "verdict.\n"
 		        "\n"
 		        "  --repeat N    measure N times and report the fastest validate\n"
-		        "  --background  also measure under `taskpolicy -b`, the class "
-		        "launchd runs\n"
-		        "                Squirrel's installer in, and print both. TAKES "
-		        "MINUTES.\n");
+		        "  --background  also measure under `taskpolicy -b` (the "
+		        "background class)\n"
+		        "                and print both. TAKES MINUTES.\n"
+		        "  --via-launchd also measure as a job SUBMITTED TO LAUNCHD, the "
+		        "context\n"
+		        "                Squirrel's installer runs in, and print both. "
+		        "TAKES MINUTES.\n");
 		return 2;
 	}
 
@@ -366,24 +515,40 @@ int main(int argc, char **argv) {
 	if (failures == repeat) {
 		return 1;
 	}
-	if (!background) {
+	if (!background && !viaLaunchd) {
 		return 0;
 	}
 
 	/*
-	 * The class the install is actually in. Re-entered through `taskpolicy -b`
-	 * rather than approximated, because the whole finding is that the class is
-	 * what changes: the same content and the same call cost seconds here and
-	 * minutes there.
+	 * Both modes are re-entered rather than approximated - one as a submitted job,
+	 * one through `taskpolicy -b` - because the whole finding is that the CONTEXT
+	 * changes the number: the same content and the same call cost seconds from this
+	 * process and minutes in either of those.
 	 */
 	char self[4096];
 	self_path(argv0, self, sizeof(self));
 	if (self[0] == '\0') {
 		fprintf(stderr,
-		        "sec-check: --background needs to know the path it was run as, "
-		        "and argv[0] is not one (%s); run it by path\n",
+		        "sec-check: --background and --via-launchd need to know the path "
+		        "this program was run as, and argv[0] is not one (%s); run it by "
+		        "path\n",
 		        argv0 != NULL ? argv0 : "(absent)");
 		return 2;
+	}
+
+	if (viaLaunchd) {
+		double launchdFastest = -1.0;
+		if (measure_via_launchd(self, path, repeat, &launchdFastest) != 0) {
+			return 1;
+		}
+		printf("\nlaunchd-submitted validate:         %.4f s\n", launchdFastest);
+		if (fastest > 0.0) {
+			printf("cost of the context alone:          %.0fx\n",
+			       launchdFastest / fastest);
+		}
+		if (!background) {
+			return 0;
+		}
 	}
 	const char *taskpolicyPath = taskpolicy_path();
 	if (taskpolicyPath == NULL) {
@@ -439,10 +604,14 @@ int main(int argc, char **argv) {
 	printf("background validate (`taskpolicy -b`): %.4f s\n", backgroundFastest);
 	printf("cost of the class alone:            %.0fx\n",
 	       fastest > 0.0 ? backgroundFastest / fastest : 0.0);
-	printf("\nThe install runs in the class the second number measures "
-	       "(Squirrel submits its\ninstaller as a launchd job). Nothing about "
-	       "this app's bundle makes the call that\nexpensive, which is why a "
-	       "smaller bundle does not shorten the closed window.\n");
+	printf("\nThe install's context is what the extra numbers measure, and "
+	       "seconds against\nminutes on identical content is the finding. Which "
+	       "part of that context costs the\ntime is not established (review R1): "
+	       "the installer's own job carries no background\nprocess type and a "
+	       "priority that reads as the ordinary class, while both a submission\n"
+	       "and the background class reproduce the inflation. Nothing about this "
+	       "app's bundle\nmakes the call expensive, which is why a smaller "
+	       "bundle does not shorten the window.\n");
 	return 0;
 }
 

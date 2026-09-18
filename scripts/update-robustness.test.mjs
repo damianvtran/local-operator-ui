@@ -91,7 +91,8 @@ const {
 	isPythonBytecodePath,
 	isSourceBuildRef,
 	lastInstallAttemptPath,
-	launchdJobLoaded,
+	launchdJobPid,
+	installJobState,
 	matchArtifactMetadata,
 	measureDirectoryBytes,
 	parsePendingInstallMarker,
@@ -1016,7 +1017,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	// The 2026-09-13 relaunch, to the second: 4:40 after the marker was written.
 	const now = Date.parse(started) + 280 * 1000;
 
-	assert.equal(isInstallInFlight({ marker, jobLoaded: true, now }), true);
+	assert.equal(isInstallInFlight({ marker, jobRunning: true, now }), true);
 	assert.equal(
 		evaluatePendingInstall({
 			marker,
@@ -1030,10 +1031,10 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	// marker with no job, and a job an old failure left loaded for hours (0.17.0:
 	// runs=3114) are all decided by the version: that is a failure.
 	assert.equal(
-		isInstallInFlight({ marker: null, jobLoaded: true, now }),
+		isInstallInFlight({ marker: null, jobRunning: true, now }),
 		false,
 	);
-	assert.equal(isInstallInFlight({ marker, jobLoaded: false, now }), false);
+	assert.equal(isInstallInFlight({ marker, jobRunning: false, now }), false);
 	assert.equal(
 		evaluatePendingInstall({ marker, runningVersion: "0.19.4" }).kind,
 		"failed",
@@ -1065,7 +1066,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker,
-			jobLoaded: true,
+			jobRunning: true,
 			now: Date.parse(started) + WATCHDOG_HARD_TIMEOUT_SECONDS * 1000,
 		}),
 		true,
@@ -1073,7 +1074,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker,
-			jobLoaded: true,
+			jobRunning: true,
 			now: Date.parse(started) + PENDING_INSTALL_RECENCY_SECONDS * 1000,
 		}),
 		true,
@@ -1081,7 +1082,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker,
-			jobLoaded: true,
+			jobRunning: true,
 			now: Date.parse(started) + (PENDING_INSTALL_RECENCY_SECONDS + 1) * 1000,
 		}),
 		false,
@@ -1096,7 +1097,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(
 		isInstallInFlight({
 			marker: { ...marker, startedAt: "" },
-			jobLoaded: true,
+			jobRunning: true,
 			now,
 		}),
 		false,
@@ -1153,26 +1154,61 @@ test("an install still in flight is not a failure, and a loaded job alone is not
  * on a machine whose launchd is unreachable would strand the marker and the job
  * nobody ever clears.
  */
-test("the install job probe reads launchd's exit status, and cannot run reads as not loaded", () => {
+test("the install job probe separates a running installer from a registration left behind", () => {
 	const asked = [];
 	const probe = (label) => {
 		asked.push(label);
-		return 0;
+		return { status: 0, output: `"PID" = 55322;` };
 	};
-	assert.equal(launchdJobLoaded("com.local-operator.ShipIt", probe), true);
+	assert.equal(installJobState("com.local-operator.ShipIt", probe), "running");
 	assert.deepEqual(asked, ["com.local-operator.ShipIt"]);
+	// Registered, not running: the state a FINISHED install leaves behind on this
+	// machine (measured 2026-09-18: launchd still lists the app's job 72 minutes
+	// after a successful install, with no pid) - and the reading that, taken as
+	// liveness, held every launch for ~29 minutes after an update.
 	assert.equal(
-		launchdJobLoaded("com.local-operator.ShipIt", () => 113),
-		false,
+		installJobState("com.local-operator.ShipIt", () => ({
+			status: 0,
+			output: `\t"Label" = "com.local-operator.ShipIt";\n\t"OnDemand" = false;`,
+		})),
+		"registered",
+	);
+	// launchd's other output shape for the same fact: the table form, where a job
+	// it is not running has `-` in the pid column.
+	assert.equal(launchdJobPid("55934\t0\tcom.local-operator.ShipIt"), 55934);
+	assert.equal(launchdJobPid("-\t0\tcom.local-operator.ShipIt"), null);
+	assert.equal(
+		installJobState("com.local-operator.ShipIt", () => ({
+			status: 0,
+			output: "-\t0\tcom.local-operator.ShipIt",
+		})),
+		"registered",
+	);
+	// 113 is launchd's "no job of that name".
+	assert.equal(
+		installJobState("com.local-operator.ShipIt", () => ({
+			status: 113,
+			output: "",
+		})),
+		"absent",
+	);
+	// A probe that could not run is neither loaded nor running, and output this
+	// cannot parse is not a licence to hold: the app opens and reports instead.
+	assert.equal(
+		installJobState("com.local-operator.ShipIt", () => null),
+		"unread",
 	);
 	assert.equal(
-		launchdJobLoaded("com.local-operator.ShipIt", () => null),
-		false,
+		installJobState("com.local-operator.ShipIt", () => ({
+			status: 0,
+			output: "something this code has never seen",
+		})),
+		"registered",
 	);
 	// No job label means nothing to ask, which is not the same as asking.
 	assert.equal(
-		launchdJobLoaded(null, () => 0),
-		false,
+		installJobState(null, () => ({ status: 0, output: "" })),
+		"unread",
 	);
 });
 
@@ -10354,10 +10390,11 @@ test("a quit during an in-flight install takes the close over, and only then", a
 		return updateService;
 	};
 	const intervals = [];
-	const withService = (jobLoaded) => {
+	const withService = (jobIsRunning) => {
 		const updateService = buildService();
 		intervals.push(updateService.updateCheckInterval);
-		updateService.installJobLoadedProbe = () => jobLoaded;
+		updateService.installJobStateProbe = () =>
+			jobIsRunning ? "running" : "registered";
 		return updateService;
 	};
 	const idle = withService(true);
@@ -10469,7 +10506,7 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 		);
 		intervals.push(updateService.updateCheckInterval);
 		updateService.backendUrl = "http://127.0.0.1:9";
-		updateService.installJobLoadedProbe = () => true;
+		updateService.installJobStateProbe = () => "running";
 		/*
 		 * The seam is `launchWatchdog`, substituted rather than run for real.
 		 *
@@ -10523,7 +10560,7 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 		);
 		intervals.push(fromWindowClose.updateCheckInterval);
 		fromWindowClose.backendUrl = "http://127.0.0.1:9";
-		fromWindowClose.installJobLoadedProbe = () => true;
+		fromWindowClose.installJobStateProbe = () => "running";
 		const windowEnsures = [];
 		fromWindowClose.launchWatchdog = (targetVersion) => {
 			windowEnsures.push(targetVersion);
@@ -10600,8 +10637,15 @@ test("a launch is held only for an install that is live, and never past the watc
 		WATCHDOG_HARD_TIMEOUT_SECONDS,
 	);
 
+	const running = "0.19.4";
+
 	assert.deepEqual(
-		evaluateLaunchDuringInstall({ marker: null, jobLoaded: true, now }),
+		evaluateLaunchDuringInstall({
+			marker: null,
+			jobRunning: true,
+			runningVersion: running,
+			now,
+		}),
 		{ kind: "open" },
 	);
 	// A marker with no job: a failed install's leftover, which must never hold a
@@ -10609,7 +10653,8 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(fresh),
-			jobLoaded: false,
+			jobRunning: false,
+			runningVersion: running,
 			now,
 		}),
 		{ kind: "open" },
@@ -10619,7 +10664,8 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: { ...marker(""), startedAt: "" },
-			jobLoaded: true,
+			jobRunning: true,
+			runningVersion: running,
 			now,
 		}),
 		{ kind: "open" },
@@ -10628,7 +10674,23 @@ test("a launch is held only for an install that is live, and never past the watc
 	assert.deepEqual(
 		evaluateLaunchDuringInstall({
 			marker: marker(pastHold),
-			jobLoaded: true,
+			jobRunning: true,
+			runningVersion: running,
+			now,
+		}),
+		{ kind: "open" },
+	);
+	// Review U1's case, and the one a person meets after EVERY successful update:
+	// the install landed, so the running version has reached the marker's target
+	// while the job launchd holds is still there - `evaluatePendingInstall` calls
+	// that `succeeded`, and this launch has to open so recovery can clear the
+	// marker and report the install. Holding it left the app unreachable for ~29
+	// minutes behind a banner promising it would come back by itself.
+	assert.deepEqual(
+		evaluateLaunchDuringInstall({
+			marker: marker(fresh),
+			jobRunning: true,
+			runningVersion: "0.19.5",
 			now,
 		}),
 		{ kind: "open" },
@@ -10636,14 +10698,16 @@ test("a launch is held only for an install that is live, and never past the watc
 	// And a live install, which is the case this exists for.
 	const held = evaluateLaunchDuringInstall({
 		marker: marker(fresh),
-		jobLoaded: true,
+		jobRunning: true,
+		runningVersion: running,
 		now,
 	});
 	assert.equal(held.kind, "hold");
 	assert.equal(held.marker.targetVersion, "0.19.5");
 	const heldLate = evaluateLaunchDuringInstall({
 		marker: marker(withinHold),
-		jobLoaded: true,
+		jobRunning: true,
+		runningVersion: running,
 		now,
 	});
 	assert.equal(heldLate.kind, "hold");
@@ -10660,18 +10724,33 @@ test("a launch is held only for an install that is live, and never past the watc
  * quitting itself, so a "quit" in this body would be asking for an act the user
  * cannot perform on a window that never appears.
  */
-test("the hold's notice names the version and promises the relaunch, and asks for nothing", () => {
-	const notice = installLaunchHoldNotice({
+test("the hold's notice names the version and the wait, states the click, and asks for nothing", () => {
+	const marker = {
 		targetVersion: "0.19.5",
 		artifactPath: "/tmp/local-operator-ui-0.19.5-universal.zip",
 		startedAt: new Date().toISOString(),
 		watchdogPid: null,
-	});
+	};
+	const notice = installLaunchHoldNotice(marker);
 	assert.match(notice.title, /still updating/);
 	assert.ok(notice.body.includes("0.19.5"), notice.body);
-	assert.match(notice.body, /will open by itself when it is done/);
-	assert.match(notice.body, /you do not need to do anything/);
+	assert.match(notice.body, /will open by itself when the install finishes/);
+	// The duration, in the words the install's own notice already used (review U4):
+	// one wait, one expectation.
+	assert.match(notice.body, /this can take a few minutes/);
+	// What a click does (review U5): macOS activates the app, which is held again,
+	// so the copy says so rather than leaving a control with no readable outcome.
+	assert.match(notice.body, /Clicking this notice will not open it any sooner/);
 	assert.doesNotMatch(notice.body, /[Qq]uit/);
+
+	// And the branch that could not arrange a relaunch does not promise one
+	// (review R2): the log says the app needs starting by hand, and the banner used
+	// to say "do nothing" over it.
+	const noRelaunch = installLaunchHoldNotice(marker, {
+		relaunchEnsured: false,
+	});
+	assert.match(noRelaunch.body, /start Local Operator by hand/);
+	assert.doesNotMatch(noRelaunch.body, /will open by itself/);
 });
 
 /**
@@ -10687,7 +10766,8 @@ test("the hold's notice names the version and promises the relaunch, and asks fo
  */
 const holdLaunch = async ({
 	marker = null,
-	jobLoaded = true,
+	jobState = "running",
+	runningVersion = "0.28.4",
 	packaged = true,
 	showNotice,
 } = {}) => {
@@ -10713,7 +10793,8 @@ const holdLaunch = async ({
 		if (marker) writePendingInstallMarker(userData, marker);
 		const held = service.holdLaunchForLiveInstall({
 			log: (message) => events.logs.push(message),
-			jobLoaded: () => jobLoaded,
+			jobState: () => jobState,
+			runningVersion,
 			startWatchdog: (targetVersion) => {
 				events.order.push("watchdog");
 				events.watchdogs.push(targetVersion);
@@ -10724,7 +10805,7 @@ const holdLaunch = async ({
 				((notice) => {
 					events.order.push("notice");
 					events.notices.push(notice);
-					return Promise.resolve();
+					return Promise.resolve("raised by the test's own stub");
 				}),
 			quit: () => {
 				events.order.push("quit");
@@ -10755,12 +10836,16 @@ const liveMarker = () => ({
 
 test("a launch that finds a live install tells the user, ensures the relaunch and quits", async () => {
 	const { held, events } = await holdLaunch({ marker: liveMarker() });
-	// The deadline is a real timer, so the quit lands a microtask later rather than
-	// during the call: the answer is "the launch is held", and the quit follows.
-	await new Promise((resolve) => setImmediate(resolve));
+	// The quit is held back by the flush grace, which is a real timer: the answer is
+	// "the launch is held", and the quit follows a few hundred milliseconds later
+	// so that the record of what the user was told lands first.
+	assert.equal(events.quits, 0);
+	await new Promise((resolve) => setTimeout(resolve, 600));
 
 	assert.equal(held, true);
-	assert.deepEqual(events.notices, [installLaunchHoldNotice(liveMarker())]);
+	assert.deepEqual(events.notices, [
+		installLaunchHoldNotice(liveMarker(), { relaunchEnsured: true }),
+	]);
 	assert.equal(events.quits, 1);
 	assert.equal(events.forceQuits, 0);
 	// The promise comes before the quit, and the watchdog before both: the notice
@@ -10772,6 +10857,16 @@ test("a launch that finds a live install tells the user, ensures the relaunch an
 		events.logs.some((line) => line.includes("Holding this launch")),
 		JSON.stringify(events.logs),
 	);
+	// And the record review U3 asked for: what the system did with the notice, in
+	// the same log, before the quit that ends the process which could write it.
+	assert.ok(
+		events.logs.some(
+			(line) =>
+				line.includes("The notice for the install of version 0.28.5") &&
+				line.includes("raised by the test's own stub"),
+		),
+		JSON.stringify(events.logs),
+	);
 });
 
 test("nothing is started, shown or quit for a launch that is not held", async () => {
@@ -10780,7 +10875,10 @@ test("nothing is started, shown or quit for a launch that is not held", async ()
 	assert.equal(idle.held, false);
 	// A stale marker whose job is gone: a failed install's leftover, which has to
 	// open so recovery can explain what happened.
-	const deadJob = await holdLaunch({ marker: liveMarker(), jobLoaded: false });
+	const deadJob = await holdLaunch({
+		marker: liveMarker(),
+		jobState: "registered",
+	});
 	assert.equal(deadJob.held, false);
 	// A live marker, but this process is not the bundle an install replaces - the
 	// state is the packaged app's and a worktree launch may not act on it.
@@ -10812,12 +10910,15 @@ test("nothing is started, shown or quit for a launch that is not held", async ()
 /**
  * A notice the system never reports must not be what keeps the app open.
  *
- * The notice is a convenience; the quit is the point. So the hold's FIRST bound is
- * the notice's (2 s) and the second is the quit's own (10 s), and this case drives
- * the first one: a system that never fires `show` - a muted Notification Center, a
- * policy that blocks the banner, no notifier at all - costs the user the notice,
- * not the install. Measured here rather than described, because a timer nothing
- * waits for is indistinguishable from one that never fires.
+ * The notice is a convenience; the quit is the point. So the hold's first bound is
+ * the notice's own budget (the app's banner, then the install's own channel, then
+ * the flush grace) and the second is the quit's own force deadline at 10 s, and
+ * this case drives the first one: a system that never fires `show` - a muted
+ * Notification Center, a policy that blocks the banner, no notifier at all - costs
+ * the user the notice, not the install. Measured here rather than described,
+ * because a timer nothing waits for is indistinguishable from one that never
+ * fires. The substituted notice never settles at all, which is a harder case than
+ * a system that never reports: the caller's own bound has to be what closes it.
  */
 test("a notice that never reports itself does not hold the app open", async () => {
 	const started = Date.now();
@@ -10826,12 +10927,8 @@ test("a notice that never reports itself does not hold the app open", async () =
 		showNotice: () => new Promise(() => {}),
 	});
 	assert.equal(held, true);
-	assert.equal(
-		events.quits,
-		0,
-		"the quit must wait for its own bound, not a tick",
-	);
-	const deadline = 4_000;
+	assert.equal(events.quits, 0, "the quit must wait for its bound, not a tick");
+	const deadline = 9_000;
 	const settled = await new Promise((resolve) => {
 		const poll = setInterval(() => {
 			if (events.quits > 0) {
@@ -10846,13 +10943,15 @@ test("a notice that never reports itself does not hold the app open", async () =
 	});
 	assert.ok(
 		settled !== null,
-		`no quit within ${deadline}ms of a notice that never reported`,
+		`no quit within ${deadline}ms of a notice that never settled`,
 	);
-	// Still the notice's bound rather than the quit's own force deadline: a quit
-	// that arrived at 10 s would mean the first bound never fired at all.
-	assert.ok(
-		settled < 9_000,
-		`the quit came from the force deadline (${settled}ms)`,
+	// The notice's budget rather than the quit's own force deadline: a quit that
+	// arrived at 10 s would mean the caller's bound never fired at all, and the
+	// force deadline is the backstop for a wedged QUIT rather than a wedged notice.
+	assert.equal(
+		events.forceQuits,
+		0,
+		"the force deadline closed this, not the notice bound",
 	);
 });
 

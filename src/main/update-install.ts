@@ -1486,7 +1486,7 @@ export function pendingInstallAgeSeconds(
 }
 
 /**
- * Whether a loaded ShipIt job plus this marker describe a live install.
+ * Whether a RUNNING ShipIt job plus this marker describe a live install.
  *
  * All three facts are needed and each one alone is wrong. The job alone is not
  * an answer: a failed install never unloads it (0.17.0: `runs=3114`, still
@@ -1498,6 +1498,23 @@ export function pendingInstallAgeSeconds(
  * the watchdog starts at its hard bound cannot read the same install as a
  * failure before it has drawn a panel.
  *
+ * WHY THE JOB HAS TO BE RUNNING AND NOT MERELY REGISTERED (2026-09-18, review
+ * U1). Measured on this machine: `launchctl list com.local-operator.ShipIt` exits
+ * 0 with `state = not running` for as long as any install has EVER run here -
+ * and so do other applications' ShipIt jobs in the same domain, with no install
+ * outstanding. The job is submitted with a fixed label and unloaded when Apple
+ * unloads it, not when the install ends, so a registration answers "has an
+ * install ever started", not "is one alive". Reading it as liveness turned the
+ * recency window into the whole test: right after a SUCCESSFUL install (marker
+ * present and 280 s old, job registered, running version already at the marker's
+ * target) a launch was held, so the app the watchdog had just reopened showed a
+ * banner and quit, and every click for the next ~29 minutes did the same. The
+ * app's own version check cannot catch that case alone either - it is asked
+ * before recovery has had a chance to clear a succeeded marker - so both facts
+ * are needed and this one is the machine's own statement that ShipIt's process
+ * is executing now: `launchctl list` carries the job's `"PID" = <n>;` field
+ * while it runs and drops the field when it stops.
+ *
  * A marker with no readable `startedAt` is NOT current: the honest reading of
  * an undated marker is that nothing can say it is live, and the failure path -
  * which reports rather than hides, and still carries the remedy - is the safe
@@ -1505,11 +1522,15 @@ export function pendingInstallAgeSeconds(
  */
 export function isInstallInFlight(input: {
 	marker: PendingInstallMarker | null;
-	/** The answer the caller got from the launchd job probe. */
-	jobLoaded: boolean;
+	/**
+	 * Whether the install's own launchd job is RUNNING (`launchdJobPid`), not
+	 * merely registered (`installJobState`). The distinction is the point: see
+	 * this function's docstring for the machine's own measurement of it.
+	 */
+	jobRunning: boolean;
 	now?: number;
 }): boolean {
-	if (!input.marker || !input.jobLoaded) return false;
+	if (!input.marker || !input.jobRunning) return false;
 	const age = pendingInstallAgeSeconds(input.marker, input.now);
 	if (age === null) return false;
 	return age >= 0 && age <= PENDING_INSTALL_RECENCY_SECONDS;
@@ -1535,22 +1556,47 @@ export function isInstallInFlight(input: {
  * Three answers are deliberately the same "open", and none of them is an
  * accident:
  *
- * - no marker, and a marker whose install job is gone, are `isInstallInFlight`'s
- *   own answers, and they are what keeps a FAILED install's leftover job (0.17.0:
- *   `runs=3114`, loaded for hours) from holding every later launch forever;
+ * - no marker, and a marker whose install job is not running, are
+ *   `isInstallInFlight`'s own answers, and they are what keeps a FAILED install's
+ *   leftover registration (0.17.0: `runs=3114`, loaded for hours) from holding
+ *   every later launch forever;
+ * - a marker the running version has reached or moved past opens, because that
+ *   is `evaluatePendingInstall`'s `succeeded` / `stale` and recovery acts on it:
+ *   this is the state every SUCCESSFUL install leaves behind on this machine
+ *   (marker present, job still registered), and holding it made the app
+ *   unreachable for ~29 minutes after every update - the case review U1 walked;
  * - a marker past `PENDING_INSTALL_LAUNCH_HOLD_SECONDS` is the watchdog's own
  *   hard-bound launch, which exists so the user is never left with no app and
  *   must open normally (see that constant);
  * - an undated marker opens too, because nothing can say it is live, and opening
  *   normally REPORTS the install rather than hiding it behind a notice.
+ *
+ * The classification is `evaluatePendingInstall`'s rather than a second copy of
+ * it (review U1): one place decides what a marker plus a running version mean,
+ * so the launch hold and the recovery that runs seconds later cannot disagree
+ * about the same install - the failure panel review U2 walked is reachable
+ * precisely because both now read the same three facts the same way.
  */
 export function evaluateLaunchDuringInstall(input: {
 	marker: PendingInstallMarker | null;
-	jobLoaded: boolean;
+	/** See `isInstallInFlight` - running, not merely registered. */
+	jobRunning: boolean;
+	/** `app.getVersion()`, so a completed install is recognised as one. */
+	runningVersion: string;
 	now?: number;
 }): { kind: "open" } | { kind: "hold"; marker: PendingInstallMarker } {
 	const { marker } = input;
-	if (!marker || !isInstallInFlight(input)) return { kind: "open" };
+	if (!marker) return { kind: "open" };
+	const outcome = evaluatePendingInstall({
+		marker,
+		runningVersion: input.runningVersion,
+		installInFlight: isInstallInFlight({
+			marker,
+			jobRunning: input.jobRunning,
+			now: input.now,
+		}),
+	});
+	if (outcome.kind !== "in-flight") return { kind: "open" };
 	const age = pendingInstallAgeSeconds(marker, input.now);
 	if (age === null || age > PENDING_INSTALL_LAUNCH_HOLD_SECONDS) {
 		return { kind: "open" };
@@ -1559,29 +1605,101 @@ export function evaluateLaunchDuringInstall(input: {
 }
 
 /**
- * Whether a launchd job is loaded, from a probe the caller supplies.
+ * What one `launchctl list <label>` said.
  *
- * `launchctl list <label>` exits 0 while the job is loaded and 113 when it is
- * not, and that is the whole question - so the probe reports the command's exit
- * status and nothing else. It is an argument rather than a `spawnSync` here for
- * the same reason `reapFailedInstall` takes its collaborators: the contract
- * tests drive this without a launchd domain, and the only caller in production
- * is the app's own.
+ * Both halves travel together because the machine answers two different questions
+ * in one call, and the difference between them is what review U1 turned on: the
+ * exit STATUS says whether launchd has a job of that name at all (0) or nothing
+ * by that name (113), while the OUTPUT carries the job's own `"PID" = <n>;`
+ * field, which is present only while its program is executing. A registration
+ * outlives the install that submitted it - measured here, on this app's job and
+ * on other applications' ShipIt jobs in the same domain, all of them sitting at
+ * status 0 with no pid for hours.
+ */
+export type LaunchdJobReading = {
+	/** The command's exit status, or null when it could not be run at all. */
+	status: number | null;
+	/** The command's stdout. */
+	output: string;
+};
+
+/**
+ * A `launchctl list <label>` reading, from a probe the caller supplies.
+ *
+ * It is an argument rather than a `spawnSync` here for the same reason
+ * `reapFailedInstall` takes its collaborators: the contract tests drive this
+ * without a launchd domain, and the only caller in production is the app's own.
  *
  * A probe that could not run at all (`null`) is not an answer, and it must not
- * read as one: "cannot ask" is reported as not loaded, which is the direction
- * that lets recovery proceed, because the alternative - refusing to act on a
- * machine whose launchd is unreachable - would strand the user with a marker
- * and a job nobody ever clears.
+ * read as one: "cannot ask" is reported as `unread`, which is neither loaded nor
+ * running, and that is the direction that lets recovery proceed - the
+ * alternative, refusing to act on a machine whose launchd is unreachable, would
+ * strand the user with a marker and a job nobody ever clears.
  */
-export type LaunchdJobProbe = (label: string) => number | null;
+export type LaunchdJobProbe = (label: string) => LaunchdJobReading | null;
 
-export function launchdJobLoaded(
+/**
+ * The process id launchd reports for a job, or null when nothing of that label is
+ * running.
+ *
+ * This is the machine's own answer to "is the installer executing right now",
+ * and it is what `isInstallInFlight` is built on. Two output shapes are parsed
+ * because `launchctl` prints both on this machine (macOS 25, measured):
+ *
+ *     "PID" = 55322;                          # `launchctl list <label>`
+ *     55934	0	com.local-operator.ShipIt     # `launchctl list`, the table form
+ *
+ * The table form writes `-` in the pid column for a job it is not running, and
+ * both shapes answer null there. Anything unrecognised answers null too: the
+ * honest reading of output this cannot parse is "not running", because the
+ * direction that opens the app is the one that REPORTS an install rather than
+ * hiding it behind a notice.
+ */
+export function launchdJobPid(output: string): number | null {
+	const dictionary = /"PID"\s*=\s*(\d+)\s*;/.exec(output);
+	if (dictionary) {
+		const pid = Number.parseInt(dictionary[1], 10);
+		return pid > 0 ? pid : null;
+	}
+	for (const line of output.split("\n")) {
+		const columns = line.trim().split(/\s+/);
+		if (columns.length < 3) continue;
+		// pid, exit status, label - the table form's three columns. `-` in the pid
+		// column is a registered job that is not running, and is not a number, so
+		// the line is skipped rather than misread as pid 0.
+		if (!/^\d+$/.test(columns[0]) || !/^\d+$/.test(columns[1])) continue;
+		const pid = Number.parseInt(columns[0], 10);
+		return pid > 0 ? pid : null;
+	}
+	return null;
+}
+
+/**
+ * What the machine says about this install's job, in the four states a caller can
+ * be in.
+ *
+ * `running` is a live install; `registered` is a job launchd still holds whose
+ * program has stopped - the state a FINISHED or failed install leaves behind, and
+ * the one whose misreading as "live" made the app unreachable after every
+ * successful update (review U1); `absent` is no job at all; `unread` is a probe
+ * that could not answer, which is reported as neither.
+ *
+ * The distinction between the first two is carried all the way to the log rather
+ * than collapsed into a boolean, because it is the fact a person reading
+ * `update-service.log` after a slow or stuck update needs: "registered but not
+ * running" says the install is over and only its job was left behind.
+ */
+export type InstallJobState = "running" | "registered" | "absent" | "unread";
+
+export function installJobState(
 	jobLabel: string | null,
 	probe: LaunchdJobProbe,
-): boolean {
-	if (!jobLabel) return false;
-	return probe(jobLabel) === 0;
+): InstallJobState {
+	if (!jobLabel) return "unread";
+	const reading = probe(jobLabel);
+	if (reading == null || reading.status == null) return "unread";
+	if (reading.status !== 0) return "absent";
+	return launchdJobPid(reading.output) == null ? "registered" : "running";
 }
 
 export type InstallFailurePayload = {
@@ -1738,18 +1856,37 @@ export function installInFlightPayload(
  *
  * The target version is named for the same reason `installInFlightPayload` names
  * it: "an update" with no number is a thing a user cannot tell from the one that
- * was already there. The closing sentence states the promise rather than the
- * advice: the relaunch watchdog is what opens the app again, and standing down
- * is only honest if it says so.
+ * was already there. Three things this copy carries deliberately (review U4, U5,
+ * U7):
+ *
+ * - the DURATION, in the same words the watchdog's own notice uses ("this can
+ *   take a few minutes"), because the install already told the user that and a
+ *   second message about one wait should not be silent on the only question it
+ *   answers - how long am I waiting;
+ * - the roofline for the click. macOS activates the app when its notification is
+ *   clicked, and on this path that lands in another hold and another notice
+ *   seconds later, so the copy SAYS a click will not open the app sooner rather
+ *   than leaving a control whose outcome nobody can guess;
+ * - the relaunch, stated as what actually happened. `ensureRelaunchWatchdog` can
+ *   fail to arrange one (the branch that tells the log "the app will need
+ *   starting by hand"); the banner used to promise the relaunch unconditionally,
+ *   so that case told the user to do nothing while the log said they must start
+ *   the app themselves. `relaunchEnsured: false` is that case, and it is the
+ *   caller's fact to pass because only the caller knows the answer.
  */
 export type InstallLaunchHoldNotice = { title: string; body: string };
 
 export function installLaunchHoldNotice(
 	marker: PendingInstallMarker,
+	options: { relaunchEnsured?: boolean } = {},
 ): InstallLaunchHoldNotice {
+	const relaunch =
+		options.relaunchEnsured === false
+			? "No relaunch could be arranged for this install, so start Local Operator by hand when it finishes."
+			: "Local Operator will open by itself when the install finishes.";
 	return {
 		title: "Local Operator is still updating",
-		body: `Version ${marker.targetVersion} is still installing. Local Operator is closing again so the install can finish, and will open by itself when it is done — you do not need to do anything.`,
+		body: `The update to version ${marker.targetVersion} is still installing — this can take a few minutes, and opening the app now would cancel it. ${relaunch} Clicking this notice will not open it any sooner.`,
 	};
 }
 
@@ -1761,13 +1898,23 @@ export function installLaunchHoldNotice(
  * The launchd job Squirrel's ShipIt runs an install under.
  *
  * Squirrel builds this label as `<bundle id>.ShipIt` (`shipItJobLabel` in
- * SQRLShipItLauncher) and the job is submitted as part of the app's quit and
- * unloaded when the install is over. Its presence in the user's launchd domain
- * is therefore the machine's own answer to "is an install still in flight" -
- * and the answer for a *hung* install, which is the case that left the operator
- * with no app. The watchdog used to ask `pgrep -f ShipIt` instead, which matched
- * any process whose command line merely contains that word (a reviewer's
- * sampling loop held it open past the deadline; review R7).
+ * SQRLShipItLauncher) and submits the job as part of the app's quit. What it does
+ * NOT do is unload the job when the install ends: measured on this machine
+ * (2026-09-18), the registration is still there 72 minutes after a successful
+ * install - `state = not running`, no pid - and so are other applications' ShipIt
+ * jobs in the same launchd domain, indefinitely. A registration therefore says
+ * "an install has run here and its job has not been reaped", never "an install is
+ * running now": `installJobState` is what tells those apart, and
+ * `isInstallInFlight` needs the running one.
+ *
+ * The WATCHDOG still asks the registered question, deliberately. Its job is to
+ * keep the app from opening back into its own install, and a registration that
+ * outlives the install is the conservative direction there: it waits out its own
+ * bounds and opens the app anyway. A LAUNCH must not be held for an install that
+ * is over, and holding one is exactly what made the app unreachable after every
+ * successful update (review U1). The watchdog used to ask `pgrep -f ShipIt`
+ * instead, which matched any process whose command line merely contains that word
+ * (a reviewer's sampling loop held it open past the deadline; review R7).
  */
 export function shipItJobLabel(bundleId: string): string {
 	return `${bundleId}.ShipIt`;
