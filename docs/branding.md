@@ -44,7 +44,7 @@ graph LR
 ```
 
 - **`src/renderer/src/shared/themes/palettes/*.ts`** — the single source of
-  truth. Fifty-nine `ThemePalette` objects, 31 roles each, every value a literal
+  truth. Fifty-nine `ThemePalette` objects, 33 roles each, every value a literal
   string.
 - **MUI** consumes them as hex, because roughly 299 `alpha()` call sites need a
   real colour and cannot take a `var()`. This half shrinks as the port
@@ -318,11 +318,66 @@ and must clear 3:1. If no, delete it rather than reaching for `hairline`.
 
 ### Accent
 
-One accent, spent about **three times per screen**. Primary action, active
-state, focus ring. A second decorative hue is not available.
+One accent is spent about **three times per screen**. Primary action, active
+state, focus ring.
 
 If a screen needs the accent a fourth time, something on it is not as important
 as it thinks.
+
+That budget belongs to the **primary** accent, and it is exactly why the second
+hue below is allowed to exist: a decorative hue that no screen budget governs is
+a hue that gets spent everywhere.
+
+### The second accent
+
+`accent-alt` / `accent-alt-wash` are the theme's decorative PAIR: **identity and
+category, never a state**. They exist because most themes name two colours and
+the app could not show the second one anywhere — the theme picker's miniature
+drew one accent, and mermaid's categorical fills started on the semantic washes,
+so a diagram's second category was painted `info`, the colour that everywhere
+else means "here is a fact". That is the mistake this section's own
+`success`/`info` paragraph below records, in one more place.
+
+**Where the value comes from.** These palettes are ports of the TUI's token set,
+which names three non-neutral hues per theme: `accent`, `signal` (which the port
+mapped to `info`) and `label` — the "violet meta" hue — which the port had no
+role for and dropped. `accent-alt` is that `label` token in 52 of the 59
+palettes, so it is the scheme's own second colour rather than an invention: 24
+clear every floor as received and 28 are moved onto them, on **lightness** where
+the text floor binds and on **hue** where the value collides with the accent, a
+semantic or `info`. The seven desktop-only palettes have no `label` and take a
+rotation of their accent's own `L*` and `C*` instead. Each palette file carries
+its own derivation and the measurement it was authored against.
+
+**What may spend it** — two sites today: the theme picker's miniature (a
+`bg-accent-alt` bar beside the accent fill, so a two-hue theme advertises both of
+its colours) and mermaid's categorical fills (`accent-alt-wash` at index 1 of the
+wash cycle, ahead of the semantics).
+
+**What may not, and this list is the rule:** every selection and hover ground,
+the focus ring and the caret, primary/ghost/outline buttons and chips, links, the
+agent's question callout, checked controls, progress and proportion bars, the
+liveness marks, charts, syntax tokens, the semantic triples and the brand mark.
+**A selection is a state, and this app has exactly one state vocabulary** — a
+reader looking at a highlighted row must never have to work out which accent
+means "current". The selection ground is also the most fragile role in the tree
+(ΔE00 0.77 against `elevated` in `obsidian`), so it must not become a function of
+two hues' relationship.
+
+**And one hard rule until `on-accent-alt` exists:** `bg-accent-alt` may not
+become a text-bearing fill anywhere. Ink on a solid alt fill is an unmeasured
+pair — no palette authors a value for it and no `CONTROLS` row asserts it — and
+neither of the two sites above paints text.
+
+**The floors** are in § 3: 4.5:1 as text on `canvas`, `surface` and `sunken`;
+ΔE00 15 from `accent`; ΔE00 15 from `success`, `warning` and `danger`; ΔE00 8
+from `info`, the reduced floor because `info` is the cool counterweight the port
+mapped `signal` onto, so on the palettes whose second hue is in that family the
+two are the same colour by construction rather than by defect; and C\* 15, so a
+second accent cannot be bought as a second grey. The property those floors stand
+in for is asserted by the values themselves: every derived `accent-alt` sits at
+least 18.6° of hue away from its own accent, so no palette satisfies the 15 by
+darkening.
 
 ### Semantic
 
@@ -359,7 +414,14 @@ the weakest pair anywhere in the system is sage at 8.4.
 | `ink-muted`, `ink-dim` on each of the six grounds | 5.5:1 / 5.0:1 |
 | `ink-disabled` against `ink-dim`, on each of the six grounds | ≤ 0.8 × |
 | `accent` and each semantic colour as text on all six grounds | 4.5:1 |
+| `accent-alt` as text on `canvas`, `surface` and `sunken` | 4.5:1 |
+| `accent-alt` against `accent` | ΔE00 15 |
+| `accent-alt` against `success`, `warning`, `danger` | ΔE00 15 |
+| `accent-alt` against `info` | ΔE00 8 |
+| `accent-alt`'s chroma | C\* 15 |
+| `accent-alt-wash` against `accent-wash` | ΔE00 2.0 |
 | `on-accent` on the accent fill | 4.5:1 |
+| The alt wash chip: `accent-alt` on `accent-alt-wash`, with `accent-alt` as its edge | 4.5:1 ink, 3:1 edge |
 | `border-control`, `accent` and each semantic `-border` on each of the four grounds | 3:1 |
 | Any two grounds, mutually | 1.03:1 |
 | Any adjacent ground pair | ΔE00 2.0 |
