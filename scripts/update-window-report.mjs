@@ -24,17 +24,28 @@
  *   `Security::CodeSigning::SecStaticCode::staticValidate` ->
  *   `Security::Dispatch::Group::wait` -> `__ulock_wait`, at 4.3% CPU over 4.5
  *   minutes (~11 s of CPU). It was BLOCKED, not computing.
- * - That exact call, with Squirrel's flags, takes 0.25-0.38 s on this machine on
+ * - That exact call, with Squirrel's flags, takes 0.25-0.80 s on this machine on
  *   a freshly extracted copy of the same 376 MB bundle, warm and cold alike
  *   (`scripts/sec-check.c` measures it; `codesign --verify --strict --deep` is
- *   0.43-0.45 s). So the stall is NOT validation work and NOT a cold cache: the
- *   system's code-signing/trust path is queueing behind the flood of files the
- *   install itself writes - the same windows log 127-162 Gatekeeper
- *   `GK performScan` calls and tens of thousands of syspolicyd/trustd messages.
+ *   0.35-0.45 s). So the stall is NOT validation work and NOT a cold cache.
+ * - It is the SCHEDULING CLASS, measured on 2026-09-18: the same call on the same
+ *   content takes 2.4-3.8 s at normal priority and 351-777 s under
+ *   `taskpolicy -b`, with 0.7-1.1 s of user CPU - and a warm-up changes nothing
+ *   (two foreground validations at 0.34 s and 0.40 s still left the background run
+ *   at 351 s). Squirrel submits its installer as a launchd job (`SMJobSubmit`,
+ *   `SQRLUpdater.m:406`), and launchd runs it in that background class, which is
+ *   why four and a half minutes of an install sit inside a call that takes a third
+ *   of a second from a shell, at 4.3% CPU. `pnpm sec-check --background <path>`
+ *   prints both numbers side by side.
+ * - Not file count, either: a `ditto` of the full 1808-file bundle produced 19-21
+ *   Gatekeeper scans and the same write with the Python seed removed (269 files)
+ *   produced 32 and 17. A 6x smaller write bought no fewer scans, so the earlier
+ *   "the trust path queues behind the install's own file flood" reading is refuted
+ *   and does not belong in this report's explanations.
  * - Same-size installs the day before: 73 s -> 226 s, and on a calm machine
  *   1.7 s -> 15.6 s in that phase. The wall time tracks machine load, which is
  *   why every number this prints comes with the load average and the swap it was
- *   taken at.
+ *   taken at, and why `ps` facts for a RUNNING install are printed with them.
  * - 09:37 install, CANCELLED after 4 minutes: `Aborting update attempt because
  *   there are 1 running instances of the target app` and `Installation
  *   cancelled: ... SQRLInstallerErrorDomain Code=-9 "App Still Running Error"`.
@@ -42,11 +53,15 @@
  *   while the install was live, and a running instance is what that check
  *   aborts on.
  *
- * THE TWO LEVERS THAT WOULD SHRINK IT, named with their measured sizes so nobody
- * has to rediscover them: moving the 1818-file Python seed out of the bundle,
- * and the 212-file locale strip. Both are follow-ups, not part of the change this
- * report was written alongside; what that change does is stop a launch during an
- * install from cancelling it, and make this window measurable.
+ * WHAT WOULD ACTUALLY SHRINK IT, named so nobody has to rediscover it: nothing
+ * about the bundle. The install has to stop running Apple's validation inside a
+ * launchd job - either by spawning the installer ourselves so its validation is
+ * scheduled like a foreground process, or by owning the swap. Moving the 1818-file
+ * Python seed out of the bundle and the 212-file locale strip (the second declined
+ * by the operator) are separately worth doing and are NOT this: the file-count
+ * measurement above says they will not shorten this window. The change this report
+ * was written alongside is the launch-cancellation fix; this instrument is how the
+ * window is read, and the scheduling facts below are how it is explained.
  *
  * USAGE
  *
@@ -411,7 +426,57 @@ export function machineState() {
 	return {
 		loadAverage: { one, five, fifteen },
 		swap: swapUsage(),
+		shipit: shipItProcesses(),
 	};
+}
+
+/**
+ * The scheduling facts of an install that is running RIGHT NOW, if one is.
+ *
+ * WHY `ps` AND NOT THE LOGS: this is the field that makes the next slow install
+ * self-explanatory. Squirrel submits its installer as a launchd job, launchd runs
+ * it in the background class, and the same validation call costs seconds in the
+ * foreground and minutes in that class (see the header). So a report read during
+ * an install should name the process, its priority and its CPU, and the shape of
+ * the reading - minutes elapsed against ~4% CPU - is what says "blocked in the
+ * class" rather than "doing work".
+ *
+ * Matched on `/Squirrel.framework/Resources/ShipIt`, which is the installer's own
+ * path inside the app, rather than on the word `ShipIt`: measured on this machine,
+ * a rig's capture script carrying `shipit` in its name is NOT an install and would
+ * be reported as one by a loose match.
+ */
+export function parseShipItProcesses(psOutput) {
+	const processes = [];
+	for (const line of psOutput.split("\n")) {
+		const match = /^\s*(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)$/.exec(line);
+		if (!match) continue;
+		const [, pid, nice, priority, cpuPercent, command] = match;
+		if (!command.includes("/Squirrel.framework/Resources/ShipIt")) continue;
+		processes.push({
+			pid: Number(pid),
+			nice: Number(nice),
+			priority: Number(priority),
+			cpuPercent: Number(cpuPercent),
+			command,
+		});
+	}
+	return processes;
+}
+
+function shipItProcesses() {
+	if (process.platform !== "darwin") return [];
+	try {
+		const result = spawnSync(
+			"/bin/ps",
+			["-eo", "pid=,ni=,pri=,pcpu=,command="],
+			{ encoding: "utf8", timeout: 5000 },
+		);
+		if (result.error || result.status !== 0) return [];
+		return parseShipItProcesses(result.stdout ?? "");
+	} catch {
+		return [];
+	}
 }
 
 /** The two numbers `sysctl vm.swapusage` prints, in its own spelling. */
@@ -472,6 +537,15 @@ function renderText(report) {
 	out.push(`  ShipIt log: ${report.logs.shipit}`);
 	out.push(`  app log:    ${report.logs.app ?? "(not read)"}`);
 	out.push(`  machine now: ${load}, ${swap}`);
+	if (machine.shipit.length === 0) {
+		out.push("  install now: none (no ShipIt process is running)");
+	}
+	for (const process_ of machine.shipit) {
+		out.push(
+			`  install now: pid ${process_.pid} nice ${process_.nice} priority ${process_.priority} cpu ${process_.cpuPercent}% - Squirrel's installer, in launchd's background class (a validation that costs seconds in the foreground takes minutes here)`,
+		);
+		out.push(`    ${process_.command}`);
+	}
 	out.push("");
 	for (const install of report.installs) {
 		const heading =
