@@ -256,7 +256,117 @@ followed. No frame is ordered, moved or captioned around it any more.
   D3/D4).
 - **No focus ring and no caret.** A headless capture cannot show a caret, and the
   composer's `:focus-visible` ring belongs to the box, unchanged by this feature.
-- **The pill's geometry is not restated here.** The pill is drawn by a
-  background-only overlay behind the textarea, so a frame shows the pill and the
-  marker text in their real positions; the box model that keeps the two aligned
-  is shared by construction (`composerTextBox`) rather than measured in a still.
+- **The pill's geometry was not restated here, and now it is a separate rig.** A
+  frame shows the chip and the marker text in their real positions, but a still
+  cannot say by HOW MUCH one covers the other — the operator's requirement is
+  that the chip covers the marker run's box exactly, and a couple of pixels of
+  drift reads as a chip sitting slightly off its characters in a picture nobody
+  can measure by eye. That pair of rects is printed by
+  `scripts/credential-chip-geometry.mjs`, which is also the only place the
+  chip's own content is compared against the box it was given (a clipped label
+  and a short one look the same in a still). The box model that keeps the mirror
+  and the textarea aligned is still shared by construction (`composerTextBox`).
+
+---
+
+## The rebase onto PR #308's base
+
+`origin/main` moved to `09acb156a` (`fix/composer-focus-flow`) while this branch
+was in review, and PR #308 rewrote the composer's caret and refusal paths — one
+of them `message-input.tsx`, which this branch also rewrites. The rebase
+conflicted in one field of one file (`manifest.json`'s `srcTree`/`scriptsTree`,
+re-derived from the fused tree, both sides' prose and records kept), and TWO OF
+THIS FEATURE'S DECISIONS HAD TO FOLLOW THE NEW BASE rather than be carried across
+it:
+
+- **The chip's `x` refuses with the composer.** The refused composer is
+  `readOnly` now, not `disabled`, so the box stays focusable and a control painted
+  OVER the textarea is newly PRESSABLE while every writer is refused. The clear
+  writes into the buffer and discards a payload, so it carries the same
+  `isInputDisabled` predicate every other writer carries, and the layer draws no
+  control at all while the composer refuses rather than an `x` whose verb cannot
+  run. Pinned in `scripts/composer-refusal.test.mjs`, which is where that file's
+  own rule says a newly added path has to be declared.
+- **Focus goes back through `focusInput`.** `composer-field.ts` now names the
+  composer's registered hand-off the single place focus is given, flag reset
+  included; a second `.focus()` call site leaves `composerPointerTouched` set and
+  suppresses the ask gate's next automatic hand-off. The clear's focus return
+  uses the door.
+
+Nothing else in the credential path moved — `credential-capture.ts` has zero
+removed lines against the base, and `credential-overlay.ts`,
+`markdown-renderer.tsx` and `message-item/message-content.tsx` are untouched by
+#308 at all.
+
+**Both narrowed runs were re-taken at this head, and compared frame by frame.**
+The transcript set reproduced 36/36 byte-identical. The composer set reproduced
+100 of 120 byte-identical; seven differ only below a 5% per-channel fuzz (the
+masked run's blinking caret, the phenomenon the round-3 section above already
+records), and the twelve `credential-pill-cleared` frames differ because the
+MINTED KEY NAME is random per run — the toast sentence the story photographs
+carries it, `LOP_SECRET_7PKRK7FT` in the earlier capture against
+`LOP_SECRET_9K7KCGRB` here. Those twenty frames are committed from this run, so
+every frame in the set is a picture of this branch's own head; the box numbers
+were re-derived at the same head by `scripts/credential-chip-geometry.mjs` and
+are unchanged (157.33 x 17 at 1024, 147.67 x 16 at 440, all four deltas zero).
+
+**The second rebase moved none of this under the composer.** `origin/main`
+moved again to `3a5b66c54` (PR #314, `fix/transcript-paging-momentum`, and the
+commits folded with it), and that range moves no file in the composer's paint
+path at all — `message-input.tsx`, `credential-overlay.ts`,
+`credential-capture.ts`, `composer-field.ts` and `composer-caret.ts` are
+byte-identical between `09acb156a` and `3a5b66c54` — so this set was re-captured
+rather than argued about: the 120 frames came back with 100 byte-identical, 8
+differing only below a 20% threshold at all (the masked run's blinking caret;
+seven of them are 0 pixels at a 5% fuzz), and the 12 `credential-pill-cleared`
+frames differing only inside the toast sentence, whose minted key name is random
+per run (`LOP_SECRET_9KF23QXN` this time). Those 20 are committed from this run.
+
+---
+
+## Operator report, 2026-09-17: the pill becomes a chip, and the transcript
+## keeps it
+
+Two frames the operator's own screenshot named, and the pair that answers them.
+The pill was a wash painted behind the literal marker text `[Credential #1, 19
+chars]`, which reads as a TUI-style square-bracketed marker rather than as a
+component; and a message SENT with a pasted secret printed the whole citation
+sentence in the reader's own turn. The composer's pill is now a real chip (key
+glyph, `#1`, `· 19 chars`, an `x` that clears the reference) painted OVER the
+marker run, and the transcript renders the same chip in the same two registers.
+
+TEN STATES on this surface now, twelve themes, 120 frames — the eight the
+gesture already had plus `credential-pill-small-view` (the same minted reference
+at the shipped compact rung, where the run's box is narrower) and
+`credential-pill-cleared` (the `x` pressed, driven by a real `userEvent.click` on
+the control):
+
+```
+npx storybook dev -p 6018 --host 127.0.0.1 --no-open --disable-telemetry
+node scripts/capture-evidence.mjs --only=chat-message-input--credential \
+  --allow-backend http://127.0.0.1:6018
+```
+
+THE BEFORE HALF is `../chat-message-input-credential-before/`: the three states
+this change repaints, on unmodified `origin/main` at `a42bf4739`, same fixtures,
+same 1024x300 viewports, same twelve themes. That set carries no README of its
+own — its recipe, its frame count and its `why` are the `manifest.json`
+`supplementary` entry that declares it, which is where a reader with a question
+about the set's provenance should look. **That half was RE-VERIFIED when the
+branch was rebased onto `09acb156a` (PR #308), not re-declared:** the three
+states were captured again with the moved base's own `message-input.tsx` over
+this branch's story file, and 31 of the 36 frames came back byte-identical with
+the other five differing only by the WebP encoder's noise (0 pixels at a 5%
+fuzz). See the rebase section below and the `supplementary` entry's own note. The
+other five states are not in it deliberately — the pre-change run reproduced 93
+of their 96 frames byte-for-byte.
+
+WHAT THE CHIP'S FRAMES CANNOT SAY, and where each is said instead: the box
+algebra (run box against chip box, and the chip's content against its own
+client width) is `scripts/credential-chip-geometry.mjs`, quoted in the design
+record's §7.1; that the cleared payload is really GONE is
+`scripts/credential-capture.test.mjs` (`clearCitedCredential` and the
+`citedPayloads`/`substituteCredentials` outcome beside it); and that the cleared
+chip's `x` is reachable by a pointer is the `credential-pill-cleared` story's own
+play function, which throws rather than releasing the shutter if the click did
+not land.

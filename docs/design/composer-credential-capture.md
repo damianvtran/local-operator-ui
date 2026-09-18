@@ -410,17 +410,87 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
 
 1. **Pill rendering, and the two cues the port cannot have.** The composer is a
    plain `<textarea>` over a plain string draft, so there are no styled nodes to
-   hang a chip on. The pill is drawn by a **background-only overlay**: a mirror
-   element behind the textarea, with the same box model and typography
-   (`whitespace-pre-wrap`, same font, size, line-height, letter-spacing,
-   padding, border-box width), that paints a pill background under each marker
-   span and **no text at all**. The textarea keeps painting every glyph, so a
-   failure of the overlay can never make the user's text invisible, and the
-   marker text and the pill can never disagree. The overlay is mounted whenever
-   the buffer has anything to paint — a marker, a mask run, or the armed token —
-   so the ordinary composer keeps exactly today's render path. Scroll offset is
-   synchronised when the textarea scrolls internally (it only does so past
-   `max-h`).
+   hang a chip on. The marker's treatment is therefore drawn in TWO LAYERS behind
+   and over the field, and the split is what the operator's report of 2026-09-17
+   turned on:
+
+   - a **background-only overlay**: a mirror element behind the textarea, with the
+     same box model and typography (`whitespace-pre-wrap`, same font, size,
+     line-height, letter-spacing, padding, border-box width), that paints the
+     chip's ground under each marker span and **no text at all**. The textarea
+     keeps painting every glyph, so a failure of this layer can never make the
+     user's text invisible, and the marker text and the chip's ground can never
+     disagree. It is mounted whenever the buffer has anything to paint — a marker,
+     a mask run, or the armed token — so the ordinary composer keeps exactly
+     today's render path. Scroll offset is synchronised when the textarea scrolls
+     internally (it only does so past `max-h`).
+   - an **opaque chip painted OVER the marker run** (`credential-chip-layer.tsx`),
+     because a wash behind the literal characters `[Credential #1, 19 chars]`
+     still reads as a TUI-style square-bracketed marker: it IS those characters.
+     The chip carries a key glyph, the reference's own label, its count and a
+     clear control, and it is positioned from the MIRROR's rects — measured with
+     `getClientRects()` in a layout effect, because a textarea exposes no
+     per-run geometry and the mirror is the only element that knows where the
+     field's text has been scrolled to. `scripts/credential-chip-geometry.mjs`
+     prints the pair: at the composer's 1024 rung the run box is
+     **157.33 x 17 (left 188.98, top 86.39)** and the chip's box is identical, so
+     the four deltas are 0,0,0,0; at the compact rung (a 440px column) the pair is
+     **147.67 x 16**, also 0,0,0,0.
+     **The label is the index alone (`#1`), and the measurement is why**: the
+     run's box is 157.33px there while the words `Credential #1` plus
+     `· 19 chars`, a glyph, a control, their paddings and three gaps measure
+     **191.3px** in the same frame. A chip that wide cannot be drawn over the run
+     — its ground is opaque, so the 34px it overhangs would cover the first word
+     of the sentence after the reference, or the chip would truncate its own name
+     to `Credenti…`. `#1` with the count measures **126px**, which fits with 31px
+     to spare, and the count keeps its unit because it is the half of the pair the
+     operator cannot recover from anywhere else (`editor.py:523-540`).
+     **A run that WRAPS keeps the wash and draws no chip**, and it is a
+     documented fallback rather than an oversight: a wrapped marker reports more
+     than one rect, so there is no single box to cover, and the mirror's
+     `box-decoration-clone` ground is the treatment such a run already had. The
+     same fallback covers a run the marker grammar does not parse, because a chip
+     with the wrong label is worse than the wash it replaces.
+     **The clear control is the composer's alone.** Clicking `x` splices the
+     marker and its trailing space out of the buffer in ONE edit through the same
+     door the mint uses, drops the payload for that index and tells the operator
+     that the value is gone and only they can supply it again
+     (`clearedNotice`). An UNBACKED marker gets no control: nothing is behind it
+     to clear, and a disabled-looking `x` would promise a verb the state cannot
+     honour. So does a chip on a composer that is REFUSING input (a conversation
+     this machine does not have, or a turn already running): the refusal on this
+     base is `readOnly` rather than `disabled`, so the box stays focusable and a
+     control painted over it stays pressable, and this path writes into the buffer
+     and discards a value — it carries the same predicate every other writer
+     carries, and the chart is not drawn rather than drawn inert. The caret goes
+     back through `focusInput`, the composer's single focus door, so the press
+     cannot leave `composerPointerTouched` set and suppress the ask gate's next
+     hand-off (see `composer-field.ts`). In the TRANSCRIPT there is no `x` at all,
+     and that is deliberate: a
+     sent message cannot be un-sent, so the only two meanings such a control
+     could have are both wrong — deleting a line from a record the model has
+     already read, or deleting the key from the session's store, which would
+     break a `bash` call the agent may be about to make from another pane. It
+     would need a verb that withdraws the credential from the store AND reports
+     what the model has already read, i.e. a conversation-store change.
+   **The transcript renders the same chip, for the same reference.** A sent
+   message carries the citation (`credentialCitation`, §9), and the operator's
+   report is that a reader met a wall of technical text there two seconds after
+   the composer had shown them a chip. A user turn's body now renders every
+   citation in place as that chip — the key's name and its count, with the full
+   sentence in the native `title`, which is what keeps the agent-facing words
+   reachable without printing them. This is a RENDER-ONLY transform: the text
+   the model is given and the text the transcript stores do not change by one
+   byte. It runs as a remark plugin over the mdast `text` nodes
+   (`credential-citation-remark.ts`), gated on an explicit `credentialCitations`
+   prop that only the two user-turn render paths set, so agent output — which
+   mentions these sentences as prose about a credential rather than as a receipt
+   the app issued — is untouched. Three rules are load-bearing and pinned: only
+   the whole sentence with **its two names agreeing** is a citation (a hand-typed
+   lookalike stays prose), nothing inside `code`/`inlineCode` is ever touched (a
+   citation the operator quoted in a fence is source, not a reference), and the
+   chip's fill/edge/ink are the same roles as the composer's, in the two
+   registers the composer already distinguishes.
    **The armed run, measured** (design round 2; the figure below is recomputed
    from all twelve palettes the set then held rather than quoted, and it corrects
    the range round 1 recorded, whose low end was sage's 3.99 where the minimum is
@@ -440,15 +510,26 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    amber token run and a glyph swap, of which the glyph is the one that survives
    `NO_COLOR` and a monochrome terminal (`local_operator.tcss:624`). A
    `<textarea>` carries no per-run colour and has no glyph to swap, so the port
-   has one channel for the token and the pill — a background wash — and it spends
+   has one channel for the token — a background wash — and it spends
    that channel on the armed token (`bg-warning-wash`, the role the TUI's amber
-   names), on the pill (the `info` wash plus its 1px outline), and — since round 3
-   — on the NOT-STORED chip: a marker no payload backs (a restored draft) takes
+   names), on the mask run, and (since round 3) on the NOT-STORED register: a
+   marker no payload backs (a restored draft) takes
    `bg-warning-wash`, so the one state where the value behind a citation is gone
    says so in the box rather than only in the citation the model receives (UX
    round 3, U13). Three states, three treatments, and the contract's `CONTROLS`
    carries a row per component triple (`credential pill`, `credential pill
-   (unbacked)`).
+   (unbacked)` for the wash, `credential chip`, `credential chip (unbacked)` for
+   the chip painted over it since 2026-09-17).
+   **THE TOKEN AND THE MASK STILL HAVE THAT ONE CHANNEL; THE CHIP HAS TWO MORE**,
+   which the operator's report bought and which is worth stating against the TUI
+   comparison above: because the chip is a real element painted over the run, it
+   carries A GLYPH — a key for a live reference, a triangle for one nothing backs
+   — and A CONTROL. So the port now marks the two chipped registers exactly the
+   way the TUI marks its armed token, while the armed token and the in-progress
+   mask keep the wash alone (neither is chipped: one is a word the operator is
+   still typing, the other a run whose length changes on every keystroke). The
+   glyph is also what the not-stored chip relies on once hue has failed, which is
+   the second half of the dash argument below.
    **AND THE WASH ALONE WAS NOT ENOUGH FOR TWO OF THOSE THREE, so round 4 spends
    a second channel: the outline's STYLE** (design round 4, D2; code review round
    4, MINOR 2; UX round 4, U17). The warning wash against the pill's info wash is
@@ -739,6 +820,29 @@ on a minted pill.
   nothing holds.
 - The pill and the masked span are legible in **every theme** (contrast
   floors from the branding contract), not only the two brand palettes.
+- **The chip covers the marker's own box, at both rungs.** The claim is a pair of
+  rects and not a description: `scripts/credential-chip-geometry.mjs` prints the
+  run's box and the chip's box per story and viewport, and all four deltas are
+  zero (157.33 x 17 at 1024, 147.67 x 16 at 440, measured on the committed
+  stories). A run that WRAPS has no single box and keeps the wash, with no chip.
+- **The chip's content fits the box it is given.** Its words are the label, the
+  count's unit and the control; the natural width of the full `Credential #1`
+  wording is 191.3px against a 157.33px run, which is why the label is the index
+  (§7.1) and why the rig reports `content` against `client` — a chip that clipped
+  its own count would look exactly like one that fits.
+- **The clear control destroys the reference and says so.** One edit, marker and
+  trailing space, the payload dropped, the sentence the operator reads naming the
+  key and where the value went; an unbacked marker offers no control at all; the
+  composer's focus returns to the field through `focusInput`, so the keystroke
+  after the click is not lost; and a composer that is REFUSING input offers no
+  control either, because the clear is a write into the box and the refusal
+  gates every write (`isInputDisabled`, the predicate the textarea, the submit
+  path, paste, dictation and the slash pick all read).
+- **The transcript renders the same chip for the same citation**, on both render
+  paths (canonical and legacy), with the citation's text unchanged in everything
+  that is stored, sent or logged: a `git diff` of the message text across the
+  change is empty, and only the user's own turn opts in (agent output, the
+  streaming path and reasoning are unaffected).
 
 ## 11. Out of scope
 
