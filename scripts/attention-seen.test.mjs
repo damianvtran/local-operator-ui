@@ -52,7 +52,12 @@ const contractBundle = await build({
 	platform: "node",
 	write: false,
 });
-const { desktopEndpoint, desktopRequestSchema } = await import(
+const {
+	desktopEndpoint,
+	desktopRequestSchema,
+	DESKTOP_FOREGROUND_REQUIRED_CODE,
+	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(contractBundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -584,6 +589,134 @@ test("a batch of states is ONE commit", () => {
 
 /* ------------------------------------------------------------ main gate */
 
+/* ---------------------------------------------- the refusal, as the user reads it */
+
+/*
+ * A refusal has to survive the IPC boundary as a CLASSIFIED failure.
+ *
+ * `ipcRenderer.invoke` rebuilds main's rejection as a plain `Error` and keeps
+ * only the message, so the renderer can tell a deliberate refusal (the backend
+ * was never asked) from a real transport failure only if the transport
+ * classifies the sentence main sent. That classification lives in
+ * `desktop-api.ts`, which every desktop caller shares, and these tests pin both
+ * halves of it: the failure main produces, and the reading the renderer derives
+ * from it. Before it, a background click on "Mark all as read" told the user
+ * "Desktop controls could not reach the backend process." about a backend that
+ * was answering the whole time (QA round 1, Q2) -- and the wrong sentence is a
+ * wrong NEXT MOVE: there is nothing to retry against a backend that was never
+ * called, the window is what has to move.
+ */
+const apiBundle = await build({
+	stdin: {
+		contents:
+			'export { desktopRequest, desktopResult, userFacingMessage, isForegroundRequired, isServerUnreachable, DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	desktopRequest,
+	desktopResult,
+	userFacingMessage,
+	isForegroundRequired,
+	isServerUnreachable,
+	DesktopControlError,
+	UserFacingError,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(apiBundle.outputFiles[0].text).toString("base64")}`
+);
+
+/**
+ * Stand in for the preload bridge, with main's side rejecting.
+ *
+ * The message is wrapped the way Electron wraps it (`Error invoking remote
+ * method '<channel>': Error: <message>`) rather than passed through bare, so the
+ * classifier is exercised against the shape a real rejection has: main's
+ * sentence inside text the renderer did not author.
+ */
+const ipcRejectsWith = (detail) => {
+	/*
+	 * Plain assignment rather than a typed stub: this is a `.mjs` harness, and the
+	 * bridge the renderer reads (`window.api.desktop.request`) is what matters.
+	 */
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: () =>
+					Promise.reject(
+						new Error(
+							`Error invoking remote method 'desktop-request': Error: ${detail}`,
+						),
+					),
+			},
+		},
+	};
+};
+
+test("main's refusal reaches the reader as its own sentence, not as an unreachable backend", async () => {
+	ipcRejectsWith(DESKTOP_FOREGROUND_REQUIRED_MESSAGE);
+	const failure = await desktopRequest({
+		op: "attention.seen",
+		items: [item()],
+	}).catch((error) => error);
+
+	// The transport's half of the toast the sidebar composes. The clause it adds
+	// itself ("The unread marks were not cleared.") stays true, and is the
+	// caller's; the false sentence was this one.
+	assert.equal(
+		userFacingMessage(failure, "The backend did not answer."),
+		DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+	);
+	assert.ok(
+		failure instanceof UserFacingError,
+		"refusal copy, by construction",
+	);
+	assert.equal(isForegroundRequired(failure), true);
+	// The two readings must not both be true: the backend was reachable, and no
+	// retry of the same click would have helped while the window was out of view.
+	assert.equal(isServerUnreachable(failure), false);
+	assert.equal(failure instanceof DesktopControlError, false);
+});
+
+test("a genuine transport failure keeps the unreachable sentence", async () => {
+	ipcRejectsWith("net::ERR_CONNECTION_REFUSED");
+	const failure = await desktopRequest({
+		op: "attention.seen",
+		items: [item()],
+	}).catch((error) => error);
+
+	assert.equal(
+		userFacingMessage(failure, "fallback"),
+		"Desktop controls could not reach the backend process.",
+	);
+	assert.equal(isForegroundRequired(failure), false);
+	assert.equal(isServerUnreachable(failure), true);
+});
+
+test("every desktop caller gets the classification, not just the bulk one", async () => {
+	// The single receipt rides the same gate, and its caller polls until the
+	// window is in the foreground again -- which is only meaningful if the refusal
+	// is recognisable there too. Asserted through the whole result path
+	// (`desktopResult`) rather than `desktopRequest`, because that is what the
+	// callers use.
+	ipcRejectsWith(DESKTOP_FOREGROUND_REQUIRED_MESSAGE);
+	const failure = await desktopResult({
+		op: "sessions.seen",
+		sessionId: SESSION,
+		completionToken: TOKEN,
+	}).catch((error) => error);
+
+	assert.equal(isForegroundRequired(failure), true);
+	assert.equal(isServerUnreachable(failure), false);
+	assert.equal(
+		userFacingMessage(failure, "fallback"),
+		DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+	);
+});
+
 const mainBundle = await build({
 	stdin: {
 		contents:
@@ -681,4 +814,31 @@ test("the foreground gate covers the bulk receipt, by name", async () => {
 		2,
 		"a delivery claim is still admitted in the background",
 	);
+});
+
+test("the refusal and its code are one authority, so the producer cannot drift from the classifier", async () => {
+	// The pin the contract's comment promises: main refuses with the SHARED
+	// sentence, and the renderer classifies by it. A reworded producer against an
+	// unchanged classifier is how a refusal goes back to reading as an unreachable
+	// backend, and a code that exists only in the renderer would be a second
+	// authority for the same fact.
+	const state = { visible: false, minimized: true, focused: false };
+	const owner = {
+		isDestroyed: () => false,
+		isVisible: () => state.visible,
+		isMinimized: () => state.minimized,
+		isFocused: () => state.focused,
+	};
+	const guarded = guardForegroundReceipts(
+		() => owner,
+		async () => ({ status: 200, body: { result: {} } }),
+	);
+	await assert.rejects(
+		() => guarded({ op: "attention.seen", items: [item()] }),
+		(error) => {
+			assert.equal(error.message, DESKTOP_FOREGROUND_REQUIRED_MESSAGE);
+			return true;
+		},
+	);
+	assert.equal(DESKTOP_FOREGROUND_REQUIRED_CODE, "foreground_required");
 });

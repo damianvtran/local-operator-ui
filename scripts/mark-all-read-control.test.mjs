@@ -154,6 +154,20 @@ const STUB_CONTENTS = {
 	"@shared/api/local-operator/desktop-api": `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 	)}
+/*
+ * The REAL transport, under a second name, for the one case that has to drive a
+ * refusal through it: the classification this file's last case asserts lives
+ * inside it (desktopRequest), so a case that used the stub for that step would
+ * be asserting the caller against an answer the caller never receives from the
+ * app. Everything else here uses the stub, because the store's own error copy is
+ * not what those cases are about.
+ */
+export {desktopResult as realDesktopResult} from ${JSON.stringify(
+		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
+	)}
+export {DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE} from ${JSON.stringify(
+		`${process.cwd()}/src/shared/desktop-contract.ts`,
+	)}
 export const desktopResult = request => globalThis.__ack(request);`,
 	/*
 	 * Capabilities: the one the CONTROL's own gate reads, so its key is present at
@@ -189,7 +203,15 @@ const bundle = await build({
 	stdin: {
 		contents:
 			'export { ChatSidebar } from "./src/renderer/src/features/chat/components/chat-sidebar";' +
-			' export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			' export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";' +
+			/*
+			 * The container that PAINTS a toast, for the one case about the sentence a
+			 * reader gets: the control composes the copy but the app's own container is
+			 * what renders it, so reading the sentence off the rendered toast is the
+			 * whole chain rather than the half of it this harness stubs.
+			 */
+			' export { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";' +
+			' export { realDesktopResult, DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE } from "@shared/api/local-operator/desktop-api";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -234,9 +256,14 @@ const bundlePath = new URL(
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
-const { ChatSidebar, useCanonicalSessionsStore: store } = await import(
-	bundlePath.href
-);
+const {
+	ChatSidebar,
+	useCanonicalSessionsStore: store,
+	ThemedToastContainer,
+	realDesktopResult,
+	DESKTOP_FOREGROUND_REQUIRED_CODE,
+	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+} = await import(bundlePath.href);
 const { createRoot } = await import("react-dom/client");
 
 /** Mount the shipped sidebar and return the handles a case drives it with. */
@@ -439,6 +466,104 @@ test("clearing the last mark hands focus to the section, not to <body>", async (
 			"focus was left on <body>, so the next Tab leaves the list",
 		);
 	} finally {
+		await harness.unmount();
+	}
+});
+
+test("a foreground refusal reads as a refusal, not as an unreachable backend", async () => {
+	/*
+	 * QA round 1 (Q2), measured in the built app: a click from a window main will
+	 * not accept — the operator's own rule, and the reason that pass could not
+	 * click this control at all — came back to the reader as "Desktop controls
+	 * could not reach the backend process." That is a false sentence about a
+	 * backend that was answering, and it names the wrong next move: there is
+	 * nothing to retry, the window is what has to come forward.
+	 *
+	 * The chain driven here is the app's, with only the preload bridge standing in
+	 * for Electron's: a rejection carrying main's refusal (wrapped the way Electron
+	 * wraps it, so the classifier is handed the shape it really meets) → the
+	 * shipped transport's classification → the shipped control's receipt → the
+	 * app's own toast container, read off the DOM. The transport step is the REAL
+	 * one under a second name (`realDesktopResult`), because the stub the other
+	 * cases use would answer with an error the app never produced — and therefore
+	 * would not test the classification at all.
+	 *
+	 * The second half of the case is what makes the first half mean something: a
+	 * genuine transport failure still reads as one, so the two are distinguishable
+	 * rather than one sentence having replaced the other.
+	 */
+	const harness = await mount(PILE);
+	const toastHost = document.createElement("div");
+	document.body.append(toastHost);
+	const toastRoot = createRoot(toastHost);
+	await act(async () => {
+		toastRoot.render(React.createElement(ThemedToastContainer));
+	});
+	/** Every sentence on screen, so the assertion does not depend on the DOM
+	 *  shape sonner happens to use. */
+	const notices = () => document.body.textContent ?? "";
+	try {
+		globalThis.__ack = (request) => realDesktopResult(request);
+		/*
+		 * Only the RECEIPT is refused, so the sidebar keeps the populated state the
+		 * control lives in: a stub that refused everything would photograph this
+		 * case's copy over the catalogue read's own error panel instead.
+		 */
+		window.api = {
+			desktop: {
+				request: (request) =>
+					request.op === "attention.seen"
+						? Promise.reject(
+								new Error(
+									`Error invoking remote method 'desktop-request': Error: ${DESKTOP_FOREGROUND_REQUIRED_MESSAGE}`,
+								),
+							)
+						: Promise.resolve({
+								status: 200,
+								body: { result: { sessions: PILE, truncated: false } },
+							}),
+			},
+		};
+		await harness.click(harness.control());
+		assert.match(notices(), /foreground/, "the refusal was not named");
+		assert.doesNotMatch(
+			notices(),
+			/could not reach the backend process/,
+			"a reachable backend was reported as unreachable",
+		);
+		assert.equal(
+			store.getState().sessions.filter((row) => row.attention?.unseen).length,
+			PILE.length,
+			"a refused batch cleared marks",
+		);
+
+		// The distinction, on the same control: a real transport failure keeps the
+		// sentence that is true of it, so the refusal's copy did not simply replace
+		// this one.
+		window.api = {
+			desktop: {
+				request: (request) =>
+					request.op === "attention.seen"
+						? Promise.reject(
+								new Error(
+									"Error invoking remote method 'desktop-request': Error: net::ERR_CONNECTION_REFUSED",
+								),
+							)
+						: Promise.resolve({
+								status: 200,
+								body: { result: { sessions: PILE, truncated: false } },
+							}),
+			},
+		};
+		await harness.click(harness.control());
+		assert.match(
+			notices(),
+			/could not reach the backend process/,
+			"a transport failure lost its own sentence",
+		);
+	} finally {
+		await act(async () => toastRoot.unmount());
+		toastHost.remove();
 		await harness.unmount();
 	}
 });

@@ -5,7 +5,10 @@ import {
 	shell,
 } from "electron";
 import type { DesktopResponse } from "../shared/desktop-contract";
-import { SUBSCRIPTION_ID_PATTERN } from "../shared/desktop-contract";
+import {
+	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+	SUBSCRIPTION_ID_PATTERN,
+} from "../shared/desktop-contract";
 import type { DesktopMediaResponse } from "./desktop-media";
 import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
@@ -78,13 +81,16 @@ export function guardForegroundReceipts(
 				owner.isMinimized() ||
 				!owner.isFocused()
 			) {
-				// Not user-facing copy: the renderer treats a refusal as "not read
-				// yet" and retries, so this text only ever reaches a log.
-				return Promise.reject(
-					new Error(
-						"View this completion in the foreground before marking it read.",
-					),
-				);
+				/*
+				 * The refusal IS the reader's copy, and it is declared once in the shared
+				 * contract rather than written here. Only a rejection's MESSAGE survives
+				 * IPC, so the renderer's transport recognises the refusal by these words
+				 * (`desktop-api.ts`, `isForegroundRequired`) and shows them instead of its
+				 * unreachable-backend sentence — a rewrite here against an unchanged
+				 * classifier is how a reachable backend goes back to being reported as
+				 * unreachable (QA round 1, Q2).
+				 */
+				return Promise.reject(new Error(DESKTOP_FOREGROUND_REQUIRED_MESSAGE));
 			}
 		}
 		return send(input);
