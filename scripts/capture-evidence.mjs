@@ -3246,12 +3246,32 @@ const PROFILE_DIR_NAME = /^lo-evidence-(\d+)$/;
  * be stated by the name itself: there is no way to sweep a directory by
  * forgetting a check.
  *
- * `Number.isInteger` and the `MAX_PID` bound are NOT redundant with the `\d+`
- * above. A suffix long enough to overflow a double is still all digits, and
- * `process.kill` answers a pid that is not an integer in range with a
- * `TypeError`/`RangeError` instead of a signal - a throw the sweep reads as
- * "no such process". The guard is what keeps that class of mistake from
- * reaching the `kill` at all.
+ * The range check is NOT redundant with the `\d+` above, and this is the half of
+ * the rule that is easiest to drop as belt-and-braces. A suffix long enough to
+ * overflow a double is still all digits, so `\d+` alone admits it, and
+ * `process.kill` answers a pid that is not an integer in range with a throw
+ * instead of a signal - measured on node 26.5.0:
+ *
+ *     process.kill(NaN, 0)           -> TypeError ERR_INVALID_ARG_TYPE
+ *     process.kill(1e20, 0)          -> TypeError ERR_INVALID_ARG_TYPE
+ *     process.kill(2147483648, 0)    -> TypeError ERR_INVALID_ARG_TYPE
+ *     process.kill(2_147_483_647, 0) -> Error ESRCH
+ *     process.kill(0, 0)             -> no throw, and it tests no process
+ *
+ * Every one of the first three was reaching the bare `catch` in the sweep below
+ * and being read as "no such process", which is the deletion this rule exists to
+ * stop. `MAX_PID` is exactly where node stops accepting a pid, so
+ * `lo-evidence-2147483648` - all digits, and above any pid a kernel hands out -
+ * is refused before the `kill` rather than answering a `TypeError` that reads as
+ * a death certificate.
+ *
+ * `pid > 0` is load-bearing for the same reason, and its job is smaller than it
+ * looks: `kill(0, 0)` does not throw, because to POSIX pid 0 means "the whole
+ * process group" rather than "no such process", so a `lo-evidence-0` directory
+ * would otherwise be read as a profile that is still in use. It is kept either
+ * way - the sweep would `continue` on it - and what the guard buys is the honest
+ * answer ("not ours") instead of a false one ("in use"), which is the whole
+ * claim this predicate makes.
  */
 export const profileOwnerPid = (name) => {
 	const match = PROFILE_DIR_NAME.exec(name);
@@ -3284,9 +3304,31 @@ export const profileOwnerPid = (name) => {
  * `TypeError`, and the bare `catch` below read a throw that was never about a
  * process as "no such process, so the profile is abandoned" and deleted a LIVE
  * tree out from under a test that was walking it. It presented as flakiness
- * rather than as a deletion - six `countsMean` cells of that file failing
- * together with an `ENOENT` on the scratch root - which is the worst shape a
- * bug in here can take on a machine running several lanes at once.
+ * rather than as a deletion - that file's six `countsMean` cells share one
+ * module-scope scratch root, and the five of them that walk it fail together
+ * with an `ENOENT` on it while the sixth returns early without touching the
+ * tree (review round 1, F1) - which is the worst shape a bug in here can take
+ * on a machine running several lanes at once.
+ *
+ * What this does NOT close, in the same breath (review round 1): the `catch`
+ * below still reads ANY throw from `kill` as "abandoned", so this narrows the
+ * class of names that can reach it rather than making the throw unambiguous.
+ * For a name that is now well-formed, only two throws are left: `ESRCH`, which
+ * is the intended "gone, reap it", and `EPERM`, the decoded pid being alive and
+ * owned by somebody else - and `EPERM` still converges on the deletion. That
+ * second one is out of reach here for a structural reason rather than a lucky
+ * one: `os.tmpdir()` is per-user, this loop walks only its own temp directory,
+ * and a name in it was written by a process of this user, so the profile being
+ * deleted cannot be a live one this user does not own. On a host with a SHARED
+ * `/tmp` and a second user running this script it could be, and
+ * `lo-evidence-1` is the measured demonstration that `EPERM` is an answer this
+ * code path currently reads as a death certificate.
+ *
+ * The follow-up that would close it - reap only on `e.code === "ESRCH"`, and
+ * warn or rethrow on anything else - is deliberately not bundled here: it
+ * changes what a capture does with a live-but-unreadable profile, which is a
+ * different decision from this fix and would want its own review rather than a
+ * ride on this one.
  *
  * Exported for the same reason `clearSweptFrames` is: the name-to-pid rule and
  * the reap have to be exercisable against a synthetic temp root, without a
