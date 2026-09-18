@@ -102,7 +102,7 @@ and `main`'s code did.
 | `mark-on-every-row/` | `chat-sidebar-status-feed--completion-unseen` on `origin/main`: three long-titled rows, each with its own status glyph, and **a dim Globe at the end of every one** — the shape the operator's screenshot showed | `docs/evidence/chat-sidebar-status-feed/completion-unseen/`, re-captured on this branch: the same story, the same roster, the same viewport, **no Globe on any row** and the readout's `Browser marks:` line gone with the fixture that fed it |
 | `mark-populated/` | `chat-sidebar-status-feed--browser-marks` on `origin/main`: the populated cascade the mark existed for — a row with three tabs (one loading) and one waiting approval, a second with two tabs, and a third with no browser as the control case | **nothing can be shot**: the fixtures, the story and the control are all deleted. The state is the absence itself, and this frame is the record of what it looked like |
 | `bound-row-current/` | `chat-sidebar-current-row--bound-row-current` on `origin/main`: the current row carrying a `· lopdev` binding — the arrangement the operator's own screenshot shows, and the one the mark's 28px was paid out of | `docs/evidence/chat-sidebar-current-row/bound-row-current/`, **unchanged**: this story passes no summary map on either tree, so the mark was never drawn here and this pair is the non-regression half — re-captured on the branch and compared with the committed frames, see the measurements below |
-| `truncating-title/` | `chat-sidebar-status-feed--truncating-title` on `origin/main`: one row whose title is long enough to truncate at this panel's width, with the mark's slot still reserved — so the ellipsis lands 28px short of where it lands without it, and the dim Globe sits between the two | `docs/evidence/chat-sidebar-status-feed/truncating-title/`, re-captured on this branch: the same story, the same roster, the same viewport, **no Globe on any row** and the same title truncating later — the width pair this set existed without, added in round 1's remediation (design D1) |
+| `truncating-title/` | `chat-sidebar-status-feed--truncating-title` rendered against `origin/main` at `10926b782` with the story **TRANSPLANTED**: that state's story and its `STORIES` row existed on neither tree and were written into both, which the manifest's own `source` states. One row whose title is long enough to truncate at this panel's width, with the mark's slot still reserved — so the ellipsis lands 28px short of where it lands without it, and the dim Globe sits between the two | `docs/evidence/chat-sidebar-status-feed/truncating-title/`, re-captured on this branch: the same story, the same roster, the same viewport, **no Globe on any row** and the same title truncating later — the width pair this set existed without, added in round 1's remediation (design D1) |
 
 ## What these frames do and do not show
 
@@ -136,6 +136,11 @@ and `main`'s code did.
   The row claim above is measured on the row. Whole-frame, the pair reads 5,957–21,271 px
   at >0/255 and 2,145–2,278 px at >8/255; the sidebar half alone reads 2,506–7,435 and
   543–602.
+
+  **Every frame here, and every `chat-sidebar-status-feed` state re-captured beside it,
+  was shot before `#346` (`fd6ec6086`) moved each palette's page ground, so the LAYOUT
+  and width claim they carry is palette-invariant and stands while their APPEARANCE is
+  superseded by `#346`.**
 - **The themes are the twelve the sweep uses**, which is what makes these frames
   comparable with the sets they are read beside rather than with the fifty-nine the
   registry carries.
