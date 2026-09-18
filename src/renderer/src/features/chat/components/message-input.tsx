@@ -3825,9 +3825,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * payload is dropped from the map, and the value lived only there — the store on
 		 * the runtime is written at SUBMIT, so a reference dropped here was never
 		 * anywhere else, and only the operator can supply it again. That is why this
-		 * raises a sentence (`clearedStaleNotice`) rather than being silent, and why it is
-		 * not offered on a marker nothing backs: there is nothing behind that chip to
-		 * clear.
+		 * raises the durable sentence that names the key and offers the way back (the
+		 * copy that speaks a refusal left this module with the state that could show it -
+		 * R5-2), and why it is not offered on a marker nothing backs: there is nothing
+		 * behind that chip to clear.
 		 *
 		 * ONE EDIT, through the same door the mint uses (`applyCapture`), so the buffer,
 		 * the caret and the persisted draft move together and the empty-buffer guards
@@ -3959,10 +3960,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * `restoreClearedCredential` answers `null` for exactly that case (and for a
 		 * clear that spliced nothing).
 		 *
-		 * AND THE REFUSAL IS SPOKEN (UX round 2, U7). It used to be silent: the toast
-		 * closed on the same click and every channel went quiet on the one flow whose
-		 * promise is that a credential's fate is never silent. The refusal raises the
-		 * sentence about what the operator actually lost — the same notice authority as
 		 * NO REFUSAL SENTENCE EXISTS ANY MORE (code review round 5, R5-2). `restoreClear`'s
 		 * `stale` register was the only reachable state of that copy, and R4-6's guard made
 		 * it unreachable: the withdrawal effect retires a slot on exactly the predicate the
@@ -4037,9 +4034,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * produced — and the notice line already compares exactly that (`held.over !==
 		 * newMessage`). This is the same comparison applied to the toast: the first
 		 * edit withdraws it, with its payload, rather than leaving a live-looking
-		 * button whose click silently does nothing. The reason stays reachable because
-		 * the refusal has a voice of its own (`restoreClear`), which is what makes
-		 * withdrawing the affordance honest rather than merely quiet.
+		 * button whose click silently does nothing. Withdrawing it is honest because the
+		 * durable line already carries the fact and the way back; the refusal itself is
+		 * silent by design (R5-2), since the only state that could speak it is the one this
+		 * effect retires.
 		 *
 		 * The toast is dismissed by its own id, the id `showWarningToast` returned; a
 		 * slot that is no longer current (a newer clear replaced it, or the undo ran)

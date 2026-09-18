@@ -652,7 +652,15 @@ const main = async () => {
 		if (boundary.runs.length > 0) {
 			const seen = [];
 			let skipped = null;
-			for (let offset = -6; offset <= 2; offset += 1) {
+			/*
+			 * THE RANGE CROSSES THE FLOOR (code review round 6, R6-2). The visible strip is the
+			 * offset itself (the run's top lands on the box's bottom edge plus 'offset'), so the
+			 * first version's '-6..+2' walked strips of 0 to 2 pixels against a 6px floor: no
+			 * chip could be drawn at any position, and BOTH assertions this phase carries - the
+			 * round-4 hit-testing one and the round-5 strip one - were gated on a chip the range
+			 * could not produce. '-6..+10' puts the drawn/absent transition inside the walk.
+			 */
+			for (let offset = -6; offset <= 10; offset += 1) {
 				const parkedAt = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
 					awaitPromise: true,
@@ -768,7 +776,10 @@ const main = async () => {
 		 *
 		 * It fails on the pre-fix code with `active: "BODY"` and the chip dropped, which is the
 		 * measurement the reviewer made; a phase that only asserted "the chip is gone" would
-		 * pass either way, since a dropped chip is the premise rather than the result.
+		 * pass either way, since a dropped chip is the premise rather than the result - and the
+		 * first version of this phase asserted a state it could not reach (round 6, R6-1: a 1px
+		 * park against a 6px floor, and a motion that raised the strip). It is proven by the
+		 * reversion run recorded in the round-6 reply, not asserted here.
 		 */
 		{
 			const parked = await cdp.send("Runtime.evaluate", {
@@ -781,12 +792,18 @@ const main = async () => {
 					if (max <= 1) return { ok: false, why: "the field does not scroll" };
 					const run = document.querySelector("[data-credential-run]");
 					if (!run) return { ok: false, why: "no run" };
-					// A chip is drawn on this strip - the sweep above barely leaves it. The caret
-					// goes to the start first, for the reason the sweep's own comment gives.
+					/*
+					 * PARKED ON A STRIP A CHIP IS DRAWN ON (code review round 6, R6-1): +10, not
+					 * +1. The first version parked with one pixel of run inside the box against a
+					 * floor of 6, so the layer drew nothing, the phase's
+					 * 'else' branch always ran, and it reported 'skipped: "no chip was drawn to
+					 * drop"' - a guard that could not fire, which is the class it was written to
+					 * catch. The caret goes to the start first, for the reason above.
+					 */
 					f.setSelectionRange(0, 0);
 					const runTopInContent =
 						run.getBoundingClientRect().top - f.getBoundingClientRect().top + f.scrollTop;
-					f.scrollTop = Math.max(0, Math.min(max, Math.round(runTopInContent - f.clientHeight + 1)));
+					f.scrollTop = Math.max(0, Math.min(max, Math.round(runTopInContent - f.clientHeight + 10)));
 					f.dispatchEvent(new Event("scroll"));
 					f.focus();
 					await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -825,10 +842,17 @@ const main = async () => {
 					await cdp.send("Runtime.evaluate", {
 						returnByValue: true,
 						awaitPromise: true,
+						/*
+						 * THE ONE NOTCH GOES THE OTHER WAY (code review round 6, R6-1). The strip
+						 * is `scrollTop - (runTopInContent - clientHeight)`, so scrolling FURTHER
+						 * raises it and keeps the chip: the first version moved `+12` and could not
+						 * produce the drop it asserts. The drop is the other direction - the UX
+						 * round's own row drops at `207 -> 201`.
+						 */
 						expression: `(async () => {
 							const f = document.querySelector("textarea");
 							f.setSelectionRange(0, 0);
-							f.scrollTop = Math.min(f.scrollHeight - f.clientHeight, f.scrollTop + 12);
+							f.scrollTop = Math.max(0, f.scrollTop - 12);
 							f.dispatchEvent(new Event("scroll"));
 							await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 							return { ok: true };
@@ -846,8 +870,17 @@ const main = async () => {
 							`${story} @ ${width}x${height}: the clip dropped the focused chip and the keyboard was left on ${after.active} (code review round 5, R5-1) - ${JSON.stringify(after)}`,
 						);
 					}
+					/*
+					 * A record the printer can walk: this phase paints nothing of its own, so it
+					 * carries empty run/chip/delta lists (code review round 6, R6-1 - the first
+					 * shape had no `runs`, and the printer throws on it the moment the phase stops
+					 * skipping, which is the only state in which anyone reads it).
+					 */
 					phases.push({
 						phase: "focus drop",
+						runs: [],
+						chips: [],
+						deltas: [],
 						held: onControl,
 						after,
 					});
@@ -957,7 +990,19 @@ const main = async () => {
 				console.log(`  skipped          ${phase.skipped}`);
 				continue;
 			}
-			console.log(`  buffer           ${JSON.stringify(phase.value)}`);
+			if (phase.value !== undefined) {
+				console.log(`  buffer           ${JSON.stringify(phase.value)}`);
+			}
+			/*
+			 * A PHASE THAT PAINTS NOTHING OF ITS OWN (code review round 6, R6-1): `focus drop`
+			 * records what it did rather than what was drawn, so it carries no `runs`, and the
+			 * printer used to throw on it the moment the phase stopped skipping - i.e. in the
+			 * only state where its record is worth reading.
+			 */
+			if (!Array.isArray(phase.runs)) {
+				console.log(`             ${JSON.stringify(phase, null, 0)}`);
+				continue;
+			}
 			phase.runs.forEach((run, i) => {
 				const chip = phase.chips[i];
 				const delta = phase.deltas[i];
