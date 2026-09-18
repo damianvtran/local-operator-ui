@@ -193,7 +193,21 @@ export const CredentialChipLayer = ({
 			 * reads it.
 			 */
 			data-credential-chips=""
-			className="pointer-events-none absolute inset-0 overflow-hidden"
+			/*
+			 * `overflow-clip` AND NOT `overflow-hidden` (UX round 2, U6 - a BLOCKER). The
+			 * two look interchangeable and are not: `hidden` makes this layer a SCROLL
+			 * CONTAINER, so when the control takes focus the browser scrolls its nearest
+			 * scrollable ancestor - this layer - and the chip is painted `-219px` from its
+			 * marker, over unrelated prose, with a live `x`. One real `Tab` from the field
+			 * reached it (measured: `layer.scrollTop 0 -> 219`, `scrollHeight` 331 in a
+			 * 112px box, `deltaTop -219`), and pressing Enter there destroyed a credential
+			 * the operator could not see. `clip` clips exactly the same way and creates no
+			 * scroll container, so focus cannot move it; the same `Tab` then leaves
+			 * `layer.scrollTop` at 0 and the chip on its run. The story that owns this is
+			 * `credential-pill-scrolled`, whose play presses `Tab` and asserts the three
+			 * numbers the reviewer measured.
+			 */
+			className="pointer-events-none absolute inset-0 overflow-clip"
 		>
 			{boxes.map((box) => {
 				const segment = plan[box.planIndex];

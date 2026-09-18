@@ -35,6 +35,7 @@ import {
 } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
+	dismissToast,
 	showErrorToast,
 	showSuccessToast,
 	showWarningToast,
@@ -105,7 +106,6 @@ import { ComposerStatusRow } from "./composer-status-row";
  * for why that split is the point rather than tidiness.
  */
 import {
-	CREDENTIAL_ARMED_NOTICE,
 	CREDENTIAL_CLEAR_UNDO_LABEL,
 	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
@@ -127,13 +127,13 @@ import {
 	charsOf,
 	citedPayloads,
 	clearCitedCredential,
-	clearedNotice,
-	clearedNoticeLine,
+	clearedToastLine,
 	credentialNamesFrom,
 	holdsCancelledToken,
 	isArmed,
 	isTyping,
 	mintTypedCredential,
+	noticeLineFor,
 	pastedCredentialRun,
 	restoreClearedCredential,
 	standsAsToken,
@@ -1250,12 +1250,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [clearedReference, setClearedReferenceState] = useState<{
 			key: string;
 			over: string;
+			/**
+			 * WHICH SENTENCE THIS IS (UX round 2, U7). `false` is the report of a
+			 * removal; `true` is the refusal of a restore the buffer has moved past,
+			 * which is the same fact with different words — and the same authority
+			 * (`noticeLineFor`), so the two can never disagree about the key.
+			 */
+			stale: boolean;
 		} | null>(null);
-		const clearedReferenceRef = useRef<{ key: string; over: string } | null>(
-			null,
-		);
+		const clearedReferenceRef = useRef<{
+			key: string;
+			over: string;
+			stale: boolean;
+		} | null>(null);
 		const setClearedReference = useCallback(
-			(next: { key: string; over: string } | null) => {
+			(next: { key: string; over: string; stale: boolean } | null) => {
 				clearedReferenceRef.current = next;
 				setClearedReferenceState(next);
 			},
@@ -3614,6 +3623,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * needs an order against the mentions list above; it sits here because it must
 				 * run before the Enter branch below.
 				 */
+				if (handleClearedUndo(event)) {
+					event.preventDefault();
+					return;
+				}
 				if (handleLockedRunUndo(event)) {
 					event.preventDefault();
 					return;
@@ -3804,7 +3817,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * payload is dropped from the map, and the value lived only there — the store on
 		 * the runtime is written at SUBMIT, so a reference dropped here was never
 		 * anywhere else, and only the operator can supply it again. That is why this
-		 * raises a sentence (`clearedNotice`) rather than being silent, and why it is
+		 * raises a sentence (`clearedStaleNotice`) rather than being silent, and why it is
 		 * not offered on a marker nothing backs: there is nothing behind that chip to
 		 * clear.
 		 *
@@ -3874,7 +3887,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			index: number;
 			payload: CredentialPayload;
 			cleared: { buffer: string; caret: number; removed: string };
+			/** The toast offering this undo, so it can be withdrawn with the offer. */
+			toastId: string | number | null;
 		};
+		/*
+		 * DECLARED HERE, ABOVE THE KEY CHAIN, AND THAT IS LOAD-BEARING RATHER THAN
+		 * TIDY (UX round 2, U8). The composer's own `Cmd+Z` is where a credential
+		 * edit's undo belongs — `#302`'s locked-run handler beside this one states the
+		 * rule: the box was written by a component, so the platform's undo has no
+		 * entry that restores it — and the key chain is declared ABOVE this block, so
+		 * a callback it names has to exist here. A `const` declared below a
+		 * `useCallback` whose dependency array names it is in the temporal dead zone
+		 * during that render and the component throws, which is the trap
+		 * `isInputDisabled`'s own comment records.
+		 */
 		const pendingClearRef = useRef<PendingClear | null>(null);
 		/*
 		 * THE BUFFER AS THE UNDO MUST SEE IT, which is the LIVE one rather than this
@@ -3909,26 +3935,42 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, []);
 
 		/**
-		 * The `x`'s undo: the marker and the payload back, in one edit.
+		 * The clear's own undo, run from either route: the marker and the payload
+		 * back, in one edit, or the reason it cannot be.
+		 *
+		 * ONE MECHANISM, TWO ROUTES (UX round 2, U8). The toast's action and the
+		 * composer's `Cmd+Z` are the same edit asked for twice — a gesture that
+		 * disappears with its toast, and the reflex key that already exists in this
+		 * composer for the credential command-lock — so the mechanics live here once,
+		 * and each caller does its own follow-up (the toast returns focus to the box,
+		 * the key press does not need to: the box already has it).
 		 *
 		 * IT REFUSES WHEN THE BUFFER HAS MOVED ON, which is the guard that makes the
 		 * recorded offset safe to use: the operator may have typed since the clear, and
 		 * an insert at a stale offset would corrupt their prose.
 		 * `restoreClearedCredential` answers `null` for exactly that case (and for a
-		 * clear that spliced nothing), so this is a no-op rather than a guess — the
-		 * value is gone either way and the notice line still says so.
+		 * clear that spliced nothing).
 		 *
-		 * The payload was never dropped, so the restored marker is a backed chip again
-		 * the moment the buffer carries it: `paintPlan` reads the buffer and the map
-		 * together, and the textarea's own marker text comes back with the splice.
+		 * AND THE REFUSAL IS SPOKEN (UX round 2, U7). It used to be silent: the toast
+		 * closed on the same click and every channel went quiet on the one flow whose
+		 * promise is that a credential's fate is never silent. The refusal raises the
+		 * sentence about what the operator actually lost — the same notice authority as
+		 * the report, in its `stale` register.
 		 */
-		const undoClear = useCallback(
-			(slot: PendingClear) => {
+		const restoreClear = useCallback(
+			(slot: PendingClear): boolean => {
 				const restored = restoreClearedCredential({
 					buffer: bufferRef.current,
 					cleared: slot.cleared,
 				});
-				if (!restored) return;
+				if (!restored) {
+					setClearedReference({
+						key: slot.payload.key,
+						over: bufferRef.current,
+						stale: true,
+					});
+					return false;
+				}
 				/*
 				 * THE PAYLOAD COMES BACK FROM THE SLOT, not from the map, and that is what
 				 * makes the undo independent of the toast's own dismissal order: sonner
@@ -3950,11 +3992,62 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					caret: restored.caret,
 				});
 				// The sentence described the buffer the clear produced; the reference is
-				// back, so it is stale by the rule the retirement effect above uses.
+				// back, so it is stale by the rule the retirement effect for the notice uses.
 				setClearedReference(null);
-				focusInput();
+				return true;
 			},
-			[applyCapture, focusInput, setClearedReference],
+			[applyCapture, setClearedReference],
+		);
+
+		/**
+		 * The offer never outlives what it can do (UX round 2, U7 / R2-2 / Q-R2-1).
+		 *
+		 * `restoreClearedCredential` refuses once the buffer has moved, so the toast
+		 * that offers the undo can only act while the buffer is still the one the clear
+		 * produced — and the notice line already compares exactly that (`held.over !==
+		 * newMessage`). This is the same comparison applied to the toast: the first
+		 * edit withdraws it, with its payload, rather than leaving a live-looking
+		 * button whose click silently does nothing. The reason stays reachable because
+		 * the refusal has a voice of its own (`restoreClear`), which is what makes
+		 * withdrawing the affordance honest rather than merely quiet.
+		 *
+		 * The toast is dismissed by its own id, the id `showWarningToast` returned; a
+		 * slot that is no longer current (a newer clear replaced it, or the undo ran)
+		 * is a no-op, the same identity rule `retireClear` states.
+		 */
+		useLayoutEffect(() => {
+			const slot = pendingClearRef.current;
+			if (slot === null) return;
+			if (slot.cleared.buffer === newMessage) return;
+			if (slot.toastId !== null) dismissToast(slot.toastId);
+			retireClear(slot);
+		}, [newMessage, retireClear]);
+
+		/**
+		 * The clear on the composer's own undo key (UX round 2, U8), beside `#302`'s
+		 * locked-run undo and ahead of it in the chain: a clear is the more recent
+		 * destructive edit, and a locked run's record is retired by the edit that
+		 * followed it, so the two cannot both have something to put back. A `false`
+		 * here hands the keystroke on, exactly as `handleLockedRunUndo` does.
+		 */
+		const handleClearedUndo = useCallback(
+			(event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
+				const slot = pendingClearRef.current;
+				if (slot === null) return false;
+				if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey)
+					return false;
+				if (event.key.toLowerCase() !== "z") return false;
+				restoreClear(slot);
+				return true;
+			},
+			[restoreClear],
+		);
+
+		const undoClear = useCallback(
+			(slot: PendingClear) => {
+				if (restoreClear(slot)) focusInput();
+			},
+			[focusInput, restoreClear],
 		);
 		const clearCredential = useCallback(
 			(index: number) => {
@@ -3980,7 +4073,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					pendingClearRef.current = null;
 					payloadsRef.current.delete(previous.index);
 				}
-				const slot: PendingClear = { index, payload, cleared };
+				const slot: PendingClear = {
+					index,
+					payload,
+					cleared,
+					toastId: null,
+				};
 				pendingClearRef.current = slot;
 				applyCapture({
 					capture: syncCapture(
@@ -3992,8 +4090,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					buffer: cleared.buffer,
 					caret: cleared.caret,
 				});
-				setClearedReference({ key: payload.key, over: cleared.buffer });
-				showWarningToast(clearedNotice(payload.key), {
+				setClearedReference({
+					key: payload.key,
+					over: cleared.buffer,
+					stale: false,
+				});
+				/*
+				 * THE TOAST'S WORDS ARE ITS OWN (UX round 2, U9). It used to print the
+				 * notice line's whole sentence — 110 characters twice at once, with the
+				 * `Undo` immediately beside "its value is gone", a claim the button
+				 * contradicts for as long as the button exists. The durable channel keeps
+				 * the fact and the manual path; this one says what it alone can do, which
+				 * is name the reference that went and offer to put it back.
+				 *
+				 * ITS ID IS KEPT, because the offer must not outlive its ability: the
+				 * effect above withdraws the toast on the first edit that would make the
+				 * undo refuse, and a toast can only be withdrawn by the id it was raised
+				 * with.
+				 */
+				slot.toastId = showWarningToast(clearedToastLine(index), {
 					action: {
 						label: CREDENTIAL_CLEAR_UNDO_LABEL,
 						onClick: () => undoClear(slot),
@@ -4546,44 +4661,47 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				: credentialSessionId
 					? CREDENTIAL_EMPTY_SPAN_NOTICE
 					: CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE
-			: unredactedChars !== null
-				? unredactedNotice(
-						unredactedChars,
-						/*
-						 * AND WHAT THE NEXT ENTER WILL DO WITH THEM. Where this draft holds a
-						 * command-locked run the press takes the restored characters as the
-						 * command's argument and sends nothing, so "Enter will expose them" is
-						 * false in the safe direction — the app's most trust-sensitive sentence
-						 * telling the user that the harmless press is the dangerous one (UX round
-						 * 2, U7). The word comes from the SAME planner call the press will use
-						 * (`lockedRunOf`), so the promise and the press cannot disagree.
-						 */
-						lockedRunOf(newMessage, caret)?.command.name,
-					)
-				: /*
-					 * THE CLEARED SENTENCE COMES AFTER THE DISCLOSURE, and the order is a
-					 * precedence rather than an accident: the unredacted notice is about what the
-					 * NEXT ENTER will do with a secret that is still in the buffer, while the
-					 * cleared one is about a value that is already gone. If both are true — the
-					 * operator escaped a mask and then cleared a different reference — the one
-					 * that still threatens to disclose something outranks the one that reports a
-					 * loss.
+			: noticeLineFor({
+					unredacted:
+						unredactedChars !== null
+							? unredactedNotice(
+									unredactedChars,
+									/*
+									 * AND WHAT THE NEXT ENTER WILL DO WITH THEM. Where this draft holds a
+									 * command-locked run the press takes the restored characters as the
+									 * command's argument and sends nothing, so "Enter will expose them" is
+									 * false in the safe direction — the app's most trust-sensitive sentence
+									 * telling the user that the harmless press is the dangerous one (UX round
+									 * 2, U7). The word comes from the SAME planner call the press will use
+									 * (`lockedRunOf`), so the promise and the press cannot disagree.
+									 */
+									lockedRunOf(newMessage, caret)?.command.name,
+								)
+							: null,
+					/*
+					 * ARMED OUTRANKS CLEARED (UX round 2, U10), and it is the same rule that puts
+					 * the disclosure first: the sentence that knows what the NEXT keystroke will do
+					 * beats the one reporting the last edit. Measured on round 1's order: arm the
+					 * capture at the end of the buffer, clear a chip, and the line stopped saying
+					 * the capture was armed while it still was.
+					 *
+					 * Measured at the END OF THE BUFFER rather than at the `caret` state, and the
+					 * difference is a race rather than a nicety: `caret` lags one commit behind the
+					 * keystroke that moved it, so a derivation that read it here would flicker the
+					 * armed notice on and off between renders — and in the evidence play functions
+					 * it did, producing a frame with the notice in one theme and not in the next.
+					 * The line's tail is the true subject of the predicate (`CREDENTIAL_ARM` is
+					 * anchored to the caret's own line end), and the end of the buffer is that same
+					 * tail in every state the operator can be typing in.
 					 */
-					clearedReference !== null
-					? clearedNoticeLine(clearedReference.key)
-					: capture.arm !== null &&
-							// Measured at the END OF THE BUFFER rather than at the `caret` state,
-							// and the difference is a race rather than a nicety: `caret` lags one
-							// commit behind the keystroke that moved it, so a derivation that read it
-							// here would flicker the armed notice on and off between renders — and in
-							// the evidence play functions it did, producing a frame with the notice in
-							// one theme and not in the next. The line's tail is the true subject of the
-							// predicate (`CREDENTIAL_ARM` is anchored to the caret's own line end), and
-							// the end of the buffer is that same tail in every state the operator can
-							// be typing in.
-							armSpan(newMessage, newMessage.length) !== null
-						? CREDENTIAL_ARMED_NOTICE
-						: null;
+					armed:
+						capture.arm !== null &&
+						armSpan(newMessage, newMessage.length) !== null,
+					cleared:
+						clearedReference === null
+							? null
+							: { key: clearedReference.key, stale: clearedReference.stale },
+				});
 
 		const shortcutText = useMemo(() => {
 			if (platform === "darwin") {

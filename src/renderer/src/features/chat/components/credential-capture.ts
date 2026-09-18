@@ -1945,6 +1945,72 @@ export const clearedNoticeLine = (key: string): string => clearedNotice(key);
 export const CREDENTIAL_CLEAR_UNDO_LABEL = "Undo";
 
 /**
+ * The toast's own half of the clear (UX round 2, U9).
+ *
+ * The two channels used to print the same 110 characters, and the toast's `Undo`
+ * sat immediately beside "its value is gone" — a claim the button next to it
+ * contradicts for as long as the button exists. So the durable channel keeps the
+ * fact and the manual path ({@link clearedNoticeLine}), and the transient one
+ * says only what it alone can do: which reference went, and the offer to put it
+ * back. The index is the one the operator just clicked, and it is the same
+ * number the control's accessible name carries.
+ */
+export const clearedToastLine = (index: number): string =>
+	`Credential #${index} removed`;
+
+/**
+ * The sentence for a restore the buffer has moved past (UX round 2, U7).
+ *
+ * `restoreClearedCredential` refuses once the operator has typed since the clear
+ * — correctly, because the recorded offset no longer names their text — and that
+ * refusal used to be silent: the toast closed on the same click and every
+ * channel went quiet. A control that cannot act should not be offered (this
+ * file's rule for the `x`); where the operator asks anyway, the app owes them
+ * the reason and the one gesture that still works.
+ */
+export const clearedStaleNotice = (key: string): string =>
+	`${key} cannot be put back — the message has changed since it was removed. Paste the value again after /credential to reuse it.`;
+
+/** Which sentence the composer's notice line carries, as one decision. */
+export type ComposerNoticeInput = {
+	/** The sentence for a draft holding characters a mask was escaped from, if any. */
+	unredacted: string | null;
+	/** Whether an armed capture sits at the caret's own line end. */
+	armed: boolean;
+	/** The reference a clear removed, while its sentence has not been retired. */
+	cleared: { key: string; stale: boolean } | null;
+};
+
+/**
+ * THE NOTICE LINE'S PRECEDENCE, in one place (UX round 2, U10).
+ *
+ * The line has four things that want it, and the order between them is the
+ * line's own rule rather than a preference: the sentence that knows what the
+ * NEXT KEYSTROKE will do outranks the one that reports what the last one did.
+ *
+ * - The unredacted warning stays first: a secret is still in the buffer and the
+ *   next Enter may disclose it (its own comment argues this).
+ * - THE ARMED NOTICE OUTRANKS THE CLEARED SENTENCE, which is the step round 1
+ *   got wrong: an armed capture is about the next keystroke — the operator is
+ *   about to type or paste into it — while the cleared sentence is about the last
+ *   one. Measuring round 1's order: arm the capture at the end of the buffer,
+ *   clear a chip, and the line stopped saying the capture was armed while it
+ *   still was.
+ * - The cleared sentence keeps the line whenever nothing actionable wants it,
+ *   which is the state the cleared frames photograph.
+ */
+export const noticeLineFor = (input: ComposerNoticeInput): string | null => {
+	if (input.unredacted !== null) return input.unredacted;
+	if (input.armed) return CREDENTIAL_ARMED_NOTICE;
+	if (input.cleared !== null) {
+		return input.cleared.stale
+			? clearedStaleNotice(input.cleared.key)
+			: clearedNoticeLine(input.cleared.key);
+	}
+	return null;
+};
+
+/**
  * The `x` control's edit: one payload's marker — and its trailing space — out
  * of `buffer`, in one step.
  *
