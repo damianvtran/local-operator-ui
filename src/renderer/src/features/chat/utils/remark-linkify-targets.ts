@@ -94,10 +94,10 @@
 
 import { evidenceFor } from "@features/chat/utils/link-actions";
 import {
-	allowsProsePathAfter,
 	LINK_POLICY,
 	type TargetPolicy,
 	type TargetSpan,
+	allowsProsePathAfter,
 	targetsIn,
 } from "@features/chat/utils/link-grammar";
 
@@ -402,8 +402,7 @@ function walk(node: MdastNode, source: string | undefined): void {
  * The plugin. Optionless by design; see this file's header.
  */
 export const remarkLinkifyTargets =
-	() =>
-	(tree: MdastNode, file?: ParsedFile) => {
+	() => (tree: MdastNode, file?: ParsedFile) => {
 		/*
 		 * The source travels with the tree rather than being read off it, because the
 		 * predecessor test needs a character the node value no longer holds (see
