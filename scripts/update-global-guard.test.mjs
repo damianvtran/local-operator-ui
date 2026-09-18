@@ -341,12 +341,25 @@ test("the recorded group is believed only when it is ours, and its deadline boun
 		}),
 		["expired", "expired"],
 	);
-	// 5. No group at all is the third reason, and an absent record is not a refusal.
+	// 5. A group that is gone is `gone`, and an absent record is not a refusal.
 	assert.deepEqual(decide({ marker: marker(), groupAlive: false }), [
 		"expired",
 		"gone",
 	]);
 	assert.deepEqual(decide({ marker: null, groupAlive: false }), ["none", null]);
+	/*
+	 * 5b. A record with NO GROUP NAMED expires as well, for the reason the marker is
+	 *     rewritten with the group's pid the moment the spawn reports one: a record
+	 *     still carrying `null` is an app that died before starting anything, and
+	 *     treating it as live would wedge every later update behind a run that never
+	 *     began. Its REASON is `unproven` rather than `gone` - the record never held a
+	 *     pid, so "gone" would be a claim about evidence it does not have (review
+	 *     round 3, N1).
+	 */
+	assert.deepEqual(
+		decide({ marker: marker({ groupPid: null }), groupAlive: false }),
+		["expired", "unproven"],
+	);
 	// 6. The parsed shape: the identity fields are additive, so a record written
 	//    before them reads as "no evidence" rather than as a live group.
 	const legacy = parsePendingServerUpdateMarker(
@@ -365,7 +378,9 @@ test("the recorded group is believed only when it is ours, and its deadline boun
 			groupAlive: false,
 			now: Date.parse("2026-09-17T02:01:00.000Z"),
 		}),
-		["expired", "gone"],
+		// No pid was ever recorded in this one, so the honest reason is `unproven`
+		// (review round 3, N1): the record never held a group that could be gone.
+		["expired", "unproven"],
 	);
 	assert.ok(PENDING_SERVER_UPDATE_GRACE_MS > 0);
 });

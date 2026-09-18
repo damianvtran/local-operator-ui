@@ -382,25 +382,14 @@ export const InstallerOutput = ({ output }: { output: string }) => {
 	);
 };
 
-/**
- * Split a failure report into its sentence and the installer's output.
- *
- * The producer writes them as `sentence\n\ntail`, and the contract is one blank
- * line: everything after the first one is machine voice. Absent a blank line the
- * whole message is the sentence, which is the shape every report without a tail
- * already has.
+/*
+ * `splitInstallerOutput` used to live here, recovering the installer's block by
+ * splitting a failure sentence on its blank line. It is gone rather than kept as a
+ * fallback: the seam it guessed at is exactly where the copy classifier had already
+ * replaced the whole message, so it could not see the installer's words at all, and a
+ * second way to find them beside `installerOutput` would be a second way to get it
+ * wrong (review round 3, D1 = Q-1 = U1).
  */
-export const splitInstallerOutput = (
-	message: string,
-): { sentence: string; output: string | null } => {
-	const index = message.indexOf("\n\n");
-	if (index === -1) return { sentence: message, output: null };
-	const output = message.slice(index + 2).trim();
-	return {
-		sentence: message.slice(0, index),
-		output: output.length > 0 ? output : null,
-	};
-};
 
 /**
  * A command the user has to run themselves, with a way to take it with them.
@@ -518,8 +507,15 @@ const ManualRemedyNote = ({
 					 * Details line said the opposite (review D2, UX U2). The harness settles it:
 					 * `git_snapshot_notice()` prints "this runtime was built from git; lop update
 					 * will replace it with the PyPI wheel".
+					 *
+					 * IT NO LONGER POINTS AT A SCRIPT THIS ARM CANNOT HAVE (review round 3, U7 =
+					 * D4). This branch of the note renders exactly when the machine has no
+					 * `lop-update` - that is what put the reader on the by-hand route - so the
+					 * old clause sent them looking for the one thing it knows is missing. The
+					 * managed route is what runs that script, and it is chosen before this note
+					 * is reachable.
 					 */
-					"Run this in a terminal. This install was built from this machine's checkout, so `lop update` installs the published release over it - and if this machine has `lop-update`, the script that rebuilds this install from the checkout, run that afterwards to keep following it."
+					"Run this in a terminal. This install was built from this machine's checkout, so `lop update` installs the published release over it - which ends the checkout this install was following. This panel is the by-hand route because no script here can rebuild it in place."
 				: command
 					? "Run this in a terminal, then check for updates again to pick up the new server version."
 					: "Then check for updates again to pick up the new server version."}
@@ -616,12 +612,42 @@ const managedCostSentence = (info: {
 	remedy?: string;
 }): string => {
 	if (!serverRestartsWithInstall(info)) {
-		return "The app updates this install itself. The server you are using was started outside Local Operator, so it keeps running the old build until it restarts, and nothing in flight is dropped.";
+		/*
+		 * THE ADOPTED ARM STILL CARRIES THE PLAN'S OWN CONSEQUENCE (review round 3,
+		 * U2 = D2). This branch swaps the app-owned sentence for the reassurance -
+		 * correctly, because the restart and its cost cannot be incurred here - but
+		 * the plan's sentence is not only about the restart. A source-build plan says
+		 * the app rebuilds the checkout IN PLACE, and that cost is incurred on this
+		 * arm exactly as on the other one; dropping the whole sentence lost the
+		 * disclosure on the arm where users who never started the server meet it,
+		 * which is the opposite of what the authorisation requires. So the arm keeps
+		 * the reassurance AND every later sentence of the plan's own text, minus the
+		 * first one that made a promise this arm cannot keep.
+		 */
+		const consequence = afterFirstSentence(info.remedy ?? "");
+		return `The app updates this install itself. The server you are using was started outside Local Operator, so it keeps running the old build until it restarts, and nothing in flight is dropped.${
+			consequence ? ` ${consequence}` : ""
+		}`;
 	}
 	return (
 		info.remedy ??
 		"The app updates this install and then restarts the server it started."
 	);
+};
+
+/**
+ * Everything a plan sentence says AFTER its first sentence.
+ *
+ * The plan writes one sentence about what the app runs and then, where there is
+ * one, the sentence about what that costs. The two arms of the offer need the cost
+ * without the first sentence on one of them, so the split has to be made rather
+ * than the text rewritten twice (review round 3, U2). A single-sentence plan -
+ * every release-path install, where there is no cost beyond the restart - returns
+ * nothing.
+ */
+const afterFirstSentence = (text: string): string => {
+	const match = /^[^.!?]*[.!?]\s*([\s\S]+)$/.exec(text.trim());
+	return match ? match[1].trim() : "";
 };
 
 const backendVersionSentence = ({
@@ -750,6 +776,19 @@ export const UpdateNotification = ({
 		/** The main process's own sentence. */
 		message: string;
 		/**
+		 * The INSTALLER's own output, verbatim, when the failing branch had some.
+		 *
+		 * It is stored apart from `message` because the two are different voices and
+		 * only one of them may be classified as copy: `message` goes through
+		 * `updateErrorMessage`, whose length limit reads a long dump as machine text
+		 * and replaces the whole thing with its stage's sentence - which is what
+		 * happened to a refusal welded onto the app's sentence, taking the installer's
+		 * diagnosis with it and leaving two failure frames pixel-identical (review
+		 * round 3, D1 = Q-1 = U1). Installer output never passes through that
+		 * classifier: it is machine voice by definition and renders in the mono block.
+		 */
+		installerOutput?: string;
+		/**
 		 * The update service log the failing branch wrote, when it named one.
 		 *
 		 * The panel's sentence points at that log, so the pointer is only honest if
@@ -809,6 +848,16 @@ export const UpdateNotification = ({
 	const [backendUpdatePhase, setBackendUpdatePhase] = useState<
 		"installing" | "restarting" | null
 	>(null);
+	/**
+	 * Whether the running attempt is the checkout REBUILD rather than the release path.
+	 *
+	 * It travels with the phase because the two routes promise different things while
+	 * they run: the release path installs under generations and nothing serving is
+	 * rewritten, while a rebuild rewrites the install IN PLACE. The panel used to say
+	 * the first sentence on both, which on the route this branch adds is false and is
+	 * the one fact a reader needs (review round 3, U3 = D2).
+	 */
+	const [rebuildInFlight, setRebuildInFlight] = useState(false);
 	const [manualUpdateRequired, setManualUpdateRequired] = useState(false);
 	const [manualUpdateInfo, setManualUpdateInfo] =
 		useState<ManualUpdateInfo | null>(null);
@@ -1596,8 +1645,9 @@ export const UpdateNotification = ({
 		 * a cold cache, distinguishable only by the bar's motion (UX U4).
 		 */
 		const removeBackendUpdateProgressListener =
-			window.api.updater.onBackendUpdateProgress(({ phase }) => {
+			window.api.updater.onBackendUpdateProgress(({ phase, sourceRebuild }) => {
 				setBackendUpdatePhase(phase);
+				setRebuildInFlight(sourceRebuild === true);
 			});
 
 		/**
@@ -1634,8 +1684,15 @@ export const UpdateNotification = ({
 					 * during a check - so it goes through the same copy as the app
 					 * channel rather than being painted as the machine wrote it.
 					 */
+					/*
+					 * The sentence is classified as copy because it IS one - the producer no
+					 * longer welds the installer's output onto it (review round 3, U1). Any
+					 * installer output travels in its own field and is rendered as it was
+					 * written.
+					 */
 					setBackendUpdateFailure({
 						message: updateErrorMessage(report.message),
+						installerOutput: report.installerOutput,
 						logPath: report.logPath,
 					});
 					setBackendUpdatePhase(null);
@@ -1865,27 +1922,39 @@ export const UpdateNotification = ({
 				<p className="mb-2 text-body text-ink-muted">
 					{updatingBackend
 						? backendUpdatePhase === "installing"
-							? /*
-								 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
-								 * ~47 s cold, against ~15 s for the restart - and the old single
-								 * sentence described only the restart, so a user watching the panel
-								 * for a minute could not tell this phase from a hang, nor from the
-								 * phase that had not started. The server really is still serving here:
-								 * under generations nothing running is rewritten.
-								 */
-								`Installing the new server build. The server you are using keeps serving while this runs${
-									/*
-									 * THE CLAUSE IS THE PROMISE (UX U13). It is true when the app will
-									 * bounce the daemon the reader is talking to, and false on a machine
-									 * where discovery adopted one - where the offer two seconds earlier
-									 * already said so, and where the app's own completion notice says it
-									 * again ("Local Operator does not restart a server it did not
-									 * start"). The sentence keeps every other fact either way.
+							? rebuildInFlight
+								? /*
+									 * THE REBUILD'S OWN SENTENCE (review round 3, D2 = U3). The release
+									 * path's reassurance is false here: this run reinstalls the install
+									 * in place, which is exactly what can interrupt a session that is
+									 * running. It also names the allowance the route actually has - the
+									 * script archives and builds, so it gets half an hour, not the few
+									 * minutes of a wheel install (U5). The cost was named on the offer
+									 * before the press, and it is named again here while it is being
+									 * paid.
 									 */
-									serverRestartsWithInstall(backendUpdateInfo)
-										? ", and it restarts once the install lands"
-										: ""
-								}. This can take a minute or two, and the update can't be interrupted once it has started.`
+									`Rebuilding the server from this machine's checkout. This reinstalls the install in place, so sessions running on this machine can be interrupted while it runs, and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
+								: /*
+									 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
+									 * ~47 s cold, against ~15 s for the restart - and the old single
+									 * sentence described only the restart, so a user watching the panel
+									 * for a minute could not tell this phase from a hang, nor from the
+									 * phase that had not started. The server really is still serving here:
+									 * under generations nothing running is rewritten.
+									 */
+									`Installing the new server build. The server you are using keeps serving while this runs${
+										/*
+										 * THE CLAUSE IS THE PROMISE (UX U13). It is true when the app will
+										 * bounce the daemon the reader is talking to, and false on a machine
+										 * where discovery adopted one - where the offer two seconds earlier
+										 * already said so, and where the app's own completion notice says it
+										 * again ("Local Operator does not restart a server it did not
+										 * start"). The sentence keeps every other fact either way.
+										 */
+										serverRestartsWithInstall(backendUpdateInfo)
+											? ", and it restarts once the install lands"
+											: ""
+									}. This can take a minute or two, and the update can't be interrupted once it has started.`
 							: backendUpdatePhase === "restarting"
 								? "The new build has landed. The server is restarting onto it now, so it is offline while it comes back - usually a few seconds, up to half a minute - and anything in flight is dropped."
 								: serverRestartsWithInstall(backendUpdateInfo)
@@ -2211,20 +2280,23 @@ export const UpdateNotification = ({
 	 * point at, and that is its own change.
 	 */
 	if (backendUpdateFailure) {
-		const failure = splitInstallerOutput(backendUpdateFailure.message);
 		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
 					The server update didn't finish
 				</UpdateHeading>
-				<p className="mb-2 text-body text-ink-muted">{failure.sentence}</p>
+				<p className="mb-2 text-body text-ink-muted">
+					{backendUpdateFailure.message}
+				</p>
 				{/*
-				 * The installer's own words as their own block, not welded onto the
-				 * sentence above: the producer separates them with a blank line and the
-				 * tail carries uv's nested `Caused by:` lines, which is the only part
-				 * that says whether this was the network or the disk (reviews D1, U5).
+				 * The installer's own words as their own block, in its own voice, taken from
+				 * the field the producer filled rather than recovered from the sentence: the
+				 * seam used to be guessed by splitting on a blank line, and by then the
+				 * classifier had already replaced the whole message (review round 3, D1).
 				 */}
-				{failure.output && <InstallerOutput output={failure.output} />}
+				{backendUpdateFailure.installerOutput && (
+					<InstallerOutput output={backendUpdateFailure.installerOutput} />
+				)}
 				{/*
 				 * The sentence above points at the update service log, and this is what
 				 * makes that pointer a next step rather than a dead end: the renderer

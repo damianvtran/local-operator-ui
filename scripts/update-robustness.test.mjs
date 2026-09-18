@@ -2859,7 +2859,7 @@ test("a global install is never pip'd into, and names its own updater", () => {
 	assert.equal(sourceBuilt.canManageUpdate, false);
 	assert.equal(sourceBuilt.updateCommand, "lop update");
 	assert.equal(sourceBuilt.sourceBuild, true);
-	assert.match(sourceBuilt.detail, /installs the published release over it/);
+	assert.match(sourceBuilt.detail, /install the published release over it/);
 
 	// The remedy is the install's own front end in BOTH layouts. `lop-update` is
 	// the release owner's out-of-tree script and `uv tool upgrade local-operator`

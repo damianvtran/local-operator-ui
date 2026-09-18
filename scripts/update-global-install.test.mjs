@@ -167,7 +167,7 @@ test("a legacy uv-tool install with no `lop-update` on the machine names `lop up
 	assert.match(plan.remedy, /rewrites the shared environment in place/);
 	assert.doesNotMatch(plan.remedy, /:$/);
 	assert.match(plan.detail, /classified as uv-tool\./);
-	assert.match(plan.detail, /installs the published release over it/);
+	assert.match(plan.detail, /install the published release over it/);
 	assert.doesNotMatch(plan.detail, /rewrites the shared environment in place/);
 });
 
@@ -221,7 +221,16 @@ test("a uv-tool SOURCE BUILD is managed by `lop-update` when the machine has it,
 		/sessions running on this machine can be interrupted/,
 	);
 	assert.match(managed.remedy, /is the checkout's/);
-	assert.match(managed.detail, /rebuilds the checkout rather than installing/);
+	/*
+	 * THE RIBBON CARRIES MACHINE FACTS, not the app's explanation of them: the app's
+	 * own sentence lives in `remedy`, which the panel renders as prose, while this
+	 * details line was app prose wrapping to five ragged lines inside the mono block
+	 * (review round 3, D5). The assertion follows the string rather than the wording.
+	 */
+	assert.match(
+		managed.detail,
+		/the app rebuilds it with the checkout's own script/,
+	);
 
 	// No tool on the machine: today's refusal, unchanged, and no route.
 	const refused = resolveGlobalInstallPlan({ identity: sourceIdentity });
