@@ -129,13 +129,6 @@ export const maskCitations = (content: string): string | null => {
 	return maskedAny ? masked : null;
 };
 
-/**
- * Whether the math pipeline should be enabled for `content`.
- *
- * The one the renderer calls. See this file's header for the rule and for what
- * it costs; the short version is that a citation present in a document that holds
- * any other `$` wins, and the formula is shown as source.
- */
 /** How many citation runs the document holds, whether or not a payload backs them. */
 export const citationRunCount = (content: string): number =>
 	citationSegments(content).filter((segment) => segment.kind !== "text").length;
