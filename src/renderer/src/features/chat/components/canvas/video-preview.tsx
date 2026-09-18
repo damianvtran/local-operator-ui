@@ -26,6 +26,17 @@ import {
  * running. When it is not, the media element's own error is what we have, so
  * `onError` turns it into the same state every other viewer shows and offers the
  * OS — which for a video is usually the better player anyway.
+ *
+ * ## A rewritten file reaches this player only through the URL
+ *
+ * Every other viewer re-reads because the canvas hands it a document carrying a
+ * new mtime; this one has no bytes to re-read, so the mtime has to be spent on
+ * the request. Two things are needed and neither works alone: the URL has to
+ * change, or Chromium answers from the response it already holds, and the
+ * ELEMENT has to be re-created, because assigning `src` on a playing element
+ * leaves the old media on screen until something makes the browser re-evaluate
+ * it. Hence the `v=<mtime>` token (the route reads `path` and ignores the extra
+ * parameter) and the `key` below.
  */
 const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	document,
@@ -35,9 +46,23 @@ const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 		() => createLocalOperatorClient(apiConfig.baseUrl),
 		[],
 	);
+	/*
+	 * Read once, used for both the token and the key: two spellings of
+	 * "which version is this" would be a way for them to disagree.
+	 *
+	 * BOTH FIELDS, because both move for a reason and a viewer keyed on one alone
+	 * misses a case the control exists for (code review round 1, M2). An ordinary
+	 * re-read moves `readMtimeMs`; a FORCED one - the file's bytes changed and its
+	 * mtime did not, which is what `cp -p`, two writes inside one filesystem tick
+	 * or a restored timestamp produce - moves `lastAgentModified` instead and
+	 * deliberately leaves the file's own timestamp alone. Keyed on `readMtimeMs`
+	 * only, that press re-created nothing and requested the same URL the element
+	 * already held, so the reader's re-read was a no-op on screen.
+	 */
+	const version = `${document.readMtimeMs ?? 0}:${document.lastAgentModified ?? 0}`;
 	const url = useMemo(
-		() => client.static.getVideoUrl(document.path),
-		[client, document.path],
+		() => `${client.static.getVideoUrl(document.path)}&v=${version}`,
+		[client, document.path, version],
 	);
 
 	return (
@@ -56,6 +81,7 @@ const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 				>
 					{/* biome-ignore lint/a11y/useMediaCaption: the operator's own video file has no caption track to offer. */}
 					<video
+						key={version}
 						src={url}
 						controls
 						preload="metadata"
