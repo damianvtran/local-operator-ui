@@ -43,13 +43,36 @@ reacting rather than of a prop that fakes a state.
 All but the last were captured at `1280x900`; `narrow-columns` declares `920x900`
 in `STORIES`, and that is the only place a story's viewport is stated.
 
-**Every frame in this directory is from the remediation pass on head
-`83d25dd39`** — all thirteen stories, twelve themes each, taken in one narrowed
-run (`--only=agent-hub-page`) at that head. The earlier pause on this surface is
-closed: `empty`, `load-failed`, `empty-category` and `page-change-keeps-the-grid`
-— the four the remediation changes the rendering of (D6's capped panel, U5's
-alert copy and U1's retry, the same panel under a filter, D1's skeleton and pager
-height) — are the frames below rather than the previous round's.
+**Every frame in this directory is from the ROUND-2 remediation pass on head
+`40db9e792`** — all thirteen stories, twelve themes each, taken in one narrowed
+run (`--only=agent-hub-page --allow-backend`) at that head, the commit the
+round's code changes ship in. The directory was re-taken WHOLE rather than in the
+few frames the round's findings move, because the branch was folded onto
+`origin/main` = `2f85777b0` in between and that fold moved the surfaces this set
+photographs: `main` changed the hub components, `chat-sidebar.tsx`, six shared
+primitives and both stylesheets between this set's previous head (`83d25dd39`,
+its frames committed in `4c24e4190`) and this one, so the frames it carried were
+pictures of a tree the app no longer renders that way. The pass before that one
+had itself re-shot all thirteen against D6's capped panel, U5's alert copy and
+U1's retry, U12's panel width and D1's skeleton and pager height; those frames
+are history now.
+
+**The loading placeholder holds the settled card's box, and that is measured
+rather than eyeballed.** Design round 2's D1 was the second round it was raised
+in. Read at column x=295 on `loading/<theme>.webp` against `grid/<theme>.webp`,
+the placeholder's box and row pitch are the settled card's own in every theme the
+read can separate them in: 259px and 283px in ten of the twelve, 260px and 284px
+in `dune` and `synth` where the lossy frame rounds the hairline the other way,
+and identical between the pair in each case. The same read before the fix gave
+225-228px and 249-250px against 259-263px and 282-285px. `monokai` is the one
+theme the pixel read cannot separate — its surface and its canvas are within the
+6/255 a lossy frame carries, so the card has no edge to find — and there the
+rendered page measured 259.0px and 283.0px against the settled 259.3px and
+283.3px, which is the number these frames are the picture of. The composition,
+read off the same column: the tag group is TWO rows in both frames — two 22px
+pill rows and the group's own 6px gap inside `mt-auto`'s group — which is what a
+settled card does on every record this hub serves at both widths the grid gives
+it, and is the 30px of the 34 the placeholder was not paying.
 
 **The whole directory was re-taken rather than those four because
 `search-miss` was WRONG before this pass.** Three of its twelve committed frames
@@ -117,3 +140,12 @@ moment has arrived.
 - **Nothing about a real signed-in account's likes.** The batched read is
   exercised against a fixture, so the filled hearts are the rendering of
   `liked: true`, not of a like that exists.
+- **Not that the grid is still while the placeholder is up at the narrowest
+  column.** The placeholder matches the settled card's box at the widths this set
+  photographs. At `narrow-columns`' 292px cards the settled card's FOOTER wraps
+  to a second line — the card goes from 259.3px to 291.3px, the degradation the
+  comment in `agent-hub-page.tsx` names as intended — while the placeholder's
+  footer is fixed-size chips that never wrap, so at that one width a first paint
+  would still move every row below it. Nothing here photographs it: `loading` is
+  captured at 1280 only, and a placeholder whose wrap depended on the real
+  counts' text width could only imitate the card by guessing the column.
