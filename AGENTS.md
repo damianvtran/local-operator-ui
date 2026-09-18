@@ -375,8 +375,13 @@ for the process's own plan instead.
 
 A `headless` request that NAMES A CONVERSATION against an app that already HAS a
 window delivers the conversation to that window and raises nothing, which is the
-mode's promise; against an app with NO window it creates nothing and parks the
-conversation instead, and the operator's next window opens it. An invisible window
+mode's promise — with ONE exception, the refusal below: when that window is the one
+the operator is USING, a `second-instance` delivery is PARKED rather than applied
+(`applied=parked+in-use`), because installing it re-keys the panel and costs him the
+caret he was typing into. Against an app with NO window it creates nothing and parks
+the conversation instead, and the NEXT WINDOW THE APP CREATES opens it — a park is
+drained by a window's creation, not by a window being open, which is why a park can
+be waiting while the app has a window up. An invisible window
 is not a harmless one: macOS keeps the app alive with the renderer warm, so the
 Dock icon would activate an app showing nothing while a conversation sat in a
 screen nobody could reach. Nothing appears and nothing is raised — and a park is
@@ -398,7 +403,15 @@ that one conversation while every other entry survived (review round 4, MAJOR-1)
 window closed before its renderer finishes loading therefore leaves the conversation
 queued (`applied=left+waiting`, one line PER entry, each with its own requester) for
 the next window rather than taking it away silently, and anything still waiting when
-the process quits is written as `trigger=app-quit ... applied=dropped+quit`. All of
+the process quits is written as `trigger=app-quit ... applied=dropped+quit`. A park
+that was a REFUSAL is written as `applied=parked+in-use` rather than
+`applied=parked`, and that token is the only one here that means somebody tried to
+take the screen the operator was working on: the delivery it names leaves no other
+trace, because the one plan a refusal applies to is `never`, which is silent by
+design. A delivery that REPLACES the conversation an existing window was showing
+says so, whatever verb it arrived on
+(`delivered=<id> applied=conversation+replaced` — logged by the send rather than by
+the trigger, because under `never` nothing else is written for one). All of
 those names come from the app's own `[window-raise]` line, and
 `scripts/window-mode.test.mjs` holds the shapes.
 
@@ -427,8 +440,10 @@ open is the instance answering (profile: <path>), and this launch's window mode
 (<mode>) was handed to it — <what the running app will do>. Quit that app to start
 a fresh instance. Exiting.` The profile path is the proof a rig needs and the app-is-
 already-open fact is what a person can act on; the effect names what the mode can
-actually do (a `headless` request's conversation is delivered once a window is open,
-not when the request lands). It does NOT print the `[window-mode]` line, which
+actually do (a `headless` request's conversation is delivered when the app has a
+window to deliver it to — the one already open, or the next one it creates when that
+window is in use — and not when the request lands). It does NOT print the
+`[window-mode]` line, which
 describes the window this process never creates.
 
 An `inactive` request orders a window that is already on screen and never
@@ -458,7 +473,12 @@ into one. `mode` is the mode token a reader greps for; `requested` is the show
 policy it produced; `pid`/`cwd` are printed only when the requester declared them
 across the single-instance boundary, and their absence means this process asked
 itself. A mode that raises nothing writes nothing: a headless run leaves no trace,
-its log included.
+its log included. The one line near this that is not a raise is
+`reportConversationReplaced`'s (`delivered=<id> applied=conversation+replaced`),
+which records a delivery that installed a conversation over the one an existing
+window was showing — written for EVERY such delivery rather than for the viewer's
+only, because under `never` it moves the window nowhere and reports nothing, so that
+line is the only account of it.
 
 ### An agent-driven run does not banner either
 
