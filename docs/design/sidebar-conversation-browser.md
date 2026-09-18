@@ -14,6 +14,32 @@ conversation-scoped pane, §9 the PR split, §10 the evidence plan),
 
 ---
 
+## Superseded in part — the per-row browser mark is removed (2026-09-18)
+
+**Every section below that designs the corner mark on a conversation row is HISTORY,
+not the contract.** The operator asked for that affordance, saw it rendered in use, and
+asked for it back out:
+
+> "I don't think we need a browser button for each chat row in local-operator-ui, can
+you remove that? Especially since we're going to have a pin icon that should show up on
+hover, it takes up too much space for a button that would be infrequently used."
+
+That reverses §2's "a corner affordance on every conversation row" — and with it R2's
+state table (the quiet Globe state, the count, the badge), §3's toggle and its
+`aria-expanded` grammar, and the reserved 28px slot the row paid for on every title.
+What survives is the entry point §1 recorded as the ONLY one before R2 existed: the
+header's Globe trigger for the conversation you are in. The cost is stated in the pull
+request and at the deletion site in `chat-sidebar.tsx`: a conversation that is not the
+current one can no longer have its browser opened from the sidebar, and nothing in the
+chrome now surfaces ANOTHER conversation's pending browser approvals without opening
+the browser.
+
+The sections are left as written because they are the record of a decision that was
+taken and then reversed, and this note is what keeps that record from reading as the
+contract. The components (`features/browser/components/browser-conversation-mark.tsx`),
+its stories, its `docs/evidence/browser-conversation-mark/` set, its `renderer-driver`
+scene and its contrast-contract rows are deleted rather than kept dark.
+
 ## 1. The problem as I found it
 
 ### 1.1 A tab opened in a conversation is unattributed, and no sidebar control exists

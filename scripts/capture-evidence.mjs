@@ -683,34 +683,14 @@ export const STORIES = [
 	["browser-approvals-dock--empty", 1280, 720],
 	["browser-approvals-dock--narrow", 560, 720],
 	/*
-	 * THE CONVERSATION MARK (design R2), in the states the sidebar can put it in. Nine
-	 * of them because the mark is small and its states differ by one glyph, one count or
-	 * one badge: a frame that showed two of them would leave a reviewer guessing at the
-	 * other seven. EVERY ONE OF THEM RENDERS THE MARK IN A ROW, and `on-both-grounds` is
-	 * the pair that matters most: the mark is never seen alone, the badge's ring paints
-	 * `canvas` on whatever ground the row owns, and the two grounds sit on opposite sides
-	 * of the panel's own step. (The harness's element floor is the mechanical half of the
-	 * same decision - a lone 24px control is not a drawn surface.)
+	 * THE SIDEBAR'S PER-ROW BROWSER MARK WAS CAPTURED HERE, in nine states, and the rows
+	 * are gone with the control (operator ask, 2026-09-18): `browser-conversation-mark--*`
+	 * wrote `docs/evidence/browser-conversation-mark/`, that set is deleted, and a STORIES
+	 * row naming a story that no longer exists is the drift this table's own count is
+	 * checked against. The rows that reach the sidebar's conversation rows - the
+	 * `chat-sidebar-status-feed--*` states - are what remains, and they are where a row's
+	 * own layout is photographed now.
 	 */
-	["browser-conversation-mark--nothing-open", 320, 64],
-	["browser-conversation-mark--has-tabs", 320, 64],
-	["browser-conversation-mark--loading", 320, 64],
-	["browser-conversation-mark--one-approval", 320, 64],
-	["browser-conversation-mark--three-approvals", 320, 64],
-	["browser-conversation-mark--many-approvals", 320, 64],
-	["browser-conversation-mark--everything", 320, 64],
-	["browser-conversation-mark--focused", 320, 64],
-	["browser-conversation-mark--on-both-grounds", 320, 128],
-	/*
-	 * THE TWO ADDED BY REVIEW ROUND 1. `trailing-statement` is D8's coverage gap: the
-	 * design justifies the reserved slot with a 28px cost per title, and no frame put the
-	 * mark in a row that already spends width on `· Not sent yet`. `slot-cost` is D2/A4's
-	 * before/after pair: the same row in the base tree's shape (no slot at all) and on
-	 * this branch's, with the two measured title widths printed in the frame so the cost
-	 * is read rather than argued.
-	 */
-	["browser-conversation-mark--trailing-statement", 320, 64],
-	["browser-conversation-mark--slot-cost", 320, 128],
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
@@ -1637,9 +1617,6 @@ export const STORIES = [
 	 * because there is no panel to fit - a caption and two blocks.
 	 */
 	["chat-sidebar-current-row--wash-swatches", 780, 260],
-	/* The marks on the rows, at the panel's own width: two conversations with a browser
-	   doing something and a third with none, which is the control case. */
-	["chat-sidebar-status-feed--browser-marks", 780, 560],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
