@@ -1881,15 +1881,19 @@ const STRUCTURAL_CALL_SITES = [
 		 * Contrast is equally useless as an instrument here: the two colours
 		 * differ in hue rather than luminance, so the pair reads 1.04:1.
 		 *
-		 * WHY `highlight` AND NOT A PALETTE ROW FOR THE WASH. `accent-wash` is not
-		 * invisible everywhere: the app rail paints it on `sunken`, where it
+		 * WHY A ROLE OF ITS OWN, AND NOT A PALETTE ROW FOR THE WASH. `accent-wash` is
+		 * not invisible everywhere: the app rail paints it on `sunken`, where it
 		 * measures 9.6 in tokyoNight, and the settings rail is the OTHER `surface`
-		 * panel and is fixed with this one (the pin below). Strengthening the role
-		 * would make every hover tint in the app louder to fix the two panels that
-		 * draw it on `surface`. A role of their own was the alternative, and it is
-		 * what shipped: `highlight`, a step off `surface` in the direction the mode
-		 * runs, asserted against `surface` at its own band floor and against `elevated`
-		 * and `sunken` at the field floor in the loop above.
+		 * panel and takes the same role (the pin below). Strengthening the role
+		 * would make every hover tint in the app louder to fix the panels that draw
+		 * it on `surface`. A role of their own was the alternative, and it is what
+		 * shipped: the ROW-STATE pair, `rowHover` and `rowSelected`, asserted against
+		 * `surface` at their own band floors, against each other at the separation
+		 * floor, and against `elevated`, `sunken` and the wash at the field floor in
+		 * the loops above. The two roles retired the wash AND the `elevated` step the
+		 * neighbouring rows used to carry — `elevated` is a ground (it is every menu,
+		 * popover and tooltip in the app), so it could never be raised to meet a
+		 * hover, and the operator reported it twice as a whisper.
 		 *
 		 * WHY NOT `sunken`, WHICH IS WHAT THIS ROW SPENT A ROUND ON. `sunken` is
 		 * RECESSED — a well, not a mark — and 3.75-14.94 from `surface`, which is
@@ -1901,48 +1905,46 @@ const STRUCTURAL_CALL_SITES = [
 		 * What no palette assertion can see is the CLASS on the row, which is how
 		 * that shipped: every row in this file stayed green while painting a ground
 		 * the user could not see, and later while painting one that shouted.
-		 * Reverting this line to a wash, or to `sunken`, fails here and nowhere
-		 * else in THIS file (`scripts/chat-sidebar-selection.test.mjs` catches it
-		 * too, by resolving the row's own class expression through the shipped
-		 * `cn`); a palette edit that collapsed `highlight` onto `surface`,
-		 * `elevated` or `sunken` fails the `highlight` loop above.
+		 * Reverting this line to a wash, to a ground role, or to the retired
+		 * `highlight`, fails here and nowhere else in THIS file
+		 * (`scripts/chat-sidebar-selection.test.mjs` catches it too, by resolving
+		 * the row's own class expression through the shipped `cn`); a palette edit
+		 * that collapsed `rowSelected` onto `surface`, `elevated`, `sunken` or the
+		 * wash fails the row-state loops above.
 		 *
-		 * AND WHY `font-medium` IS IN THIS PIN, NOT JUST THE ROLE. The rows around a
-		 * current one carry `hover:bg-elevated`, which on eight of the twelve palettes
-		 * is still the LARGER step off `surface` than the row's own mark — and that is
-		 * a bound no palette value can lift, since `elevated` is also every menu,
-		 * popover and tooltip ground in the app. The weight is the non-colour step
-		 * against the pointer's mark, and it is the whole of that second step: the 1px
-		 * `outline-control` boundary an earlier round put beside the ground is RETIRED
-		 * (it is § 2's *sole boundary of a control* and rendered as the search field
-		 * above the list — design round 1, D3), so the pin below is what holds this
-		 * half of the mark now. The operator's second report on this row — having
-		 * asked first for a SUBTLE selection and then seen the rendered result — is
-		 * why the ground itself rose from the 2.18-2.28 band to the 4.0-4.4 one, on
-		 * the lightness axis rather than the chroma one.
+		 * AND WHY THE WEIGHT AND THE BAR ARE IN THIS PIN, NOT JUST THE ROLE. The
+		 * rows around a current one now carry `hover:bg-row-hover`, whose own floor
+		 * (ΔE00 4.0 off `surface`) is asserted above — but the fills are one hue at
+		 * two strengths, so the last increment of "which one am I on" is not a colour
+		 * distance at all. It is `font-medium` plus a 2px `accent` bar on the row's
+		 * leading edge, and the bar is why `relative` is in the literal too: the bar
+		 * is absolutely positioned, so the element that carries the role is also its
+		 * containing block. The 1px `outline-control` boundary an earlier round put
+		 * beside the ground stays RETIRED (it is § 2's *sole boundary of a control*
+		 * and rendered as the search field above the list — design round 1, D3), so
+		 * the pin below is what holds the non-colour half of the mark now.
 		 *
 		 * The `hover:` half is part of the ground, not decoration: `rowStyle`
-		 * carries `hover:bg-elevated`, and the hover variant outranks a bare
+		 * carries `hover:bg-row-hover`, and the hover variant outranks a bare
 		 * background in the cascade, so without it the pointer REPLACED the
-		 * selection ground on the row the user is on — in obsidian those two
-		 * grounds are ΔE00 0.77 apart, so hovering the current row erased it.
-		 * The class is one shared constant for all four current-row states in
-		 * this panel (the selected conversation, the All chats filter, the New
-		 * chat row and the entity row staging a draft), so pinning the
-		 * declaration is what holds all four. It is EXPORTED since round 5
-		 * (design D22, agent A-7) and the settings rail and the mark's story
-		 * specimen import it rather than restating it, which is why the pin is
-		 * here and the rail's own entry below names the symbol. The pinned text
-		 * carries the formatter's line break as well as the four terms, on
-		 * purpose: a term REMOVED is a term that fits back on one line, so the
-		 * pin fails on either direction of change, which is the whole point of
-		 * it - a term change has to fail this file until the palette half is
-		 * re-measured.
+		 * selection ground on the row the user is on — the two fills are both steps
+		 * off `surface` on the dark family rather than opposites, so hovering the
+		 * current row would erase it (in obsidian the retired pair, wash and
+		 * `elevated`, were ΔE00 0.77 apart). The class is one shared constant for
+		 * all four current-row states in this panel (the selected conversation, the
+		 * All chats filter, the New chat row and the entity row staging a draft), so
+		 * pinning the declaration is what holds all four. It is EXPORTED since round
+		 * 5 (design D22, agent A-7) and imported rather than restated by the settings
+		 * rail, the app rail, both agent rosters and the agent-categories sidebar,
+		 * which is why the pin is here and each of those surfaces is left to the
+		 * component guard. The pinned text is the literal as the formatter writes it,
+		 * on ONE line: a term change has to fail this file until the palette half is
+		 * re-measured, and that is the whole point of the pin.
 		 */
 		what: "chat sidebar current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'export const rowCurrent =\n\t"bg-highlight font-medium text-ink hover:bg-highlight";',
-		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05) and `sunken` is a 3.75-14.94 recessed box; `highlight` is the role authored for the current row, `font-medium` is one non-colour step against the pointer's mark, and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the wrong ground or a lost second signal arriving",
+		must: 'export const rowCurrent =\n\t"relative bg-row-selected font-medium text-ink hover:bg-row-selected before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent";',
+		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05) and `sunken` is a 3.75-14.94 recessed box; `rowSelected` is the role authored for the row the reader is ON, `font-medium` and the 2px `accent` bar are the non-colour half, and a bare background loses to `rowStyle`'s `hover:bg-row-hover` on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the wrong ground or a lost second signal arriving",
 	},
 	{
 		/*
@@ -2777,7 +2779,7 @@ const ROW_STATE_PINS = [
 		need: ROW_HOVER_BAND,
 		binder:
 			"the panel's own cast: `accent` is #FAFAFA at C* 0, so the chroma route is degenerate (B2)",
-		why: "a greyscale accent admits no chroma ceiling at all, so this pair takes the panel's own cast at the ink cap and the near-white bar (11.5:1) carries the remainder; its two fills measure 2.23 and 3.90 ΔE00 off `surface` and 1.75 apart",
+		why: "a greyscale accent admits no chroma ceiling at all, so this pair takes the panel's own cast at the ink cap and the near-white bar (11.5:1) carries the remainder; its two fills measure 2.23 and 3.90 ΔE00 off `surface` and 1.75 apart. THE HOVER IS THE FLEET'S WEAKEST AND CARRIES NO SECOND SIGNAL: the bar is the SELECTION's non-colour mark, so the hover has the fill alone, and 2.23 is BELOW the 3.42 the retired `elevated` step measured here - this palette's hover is weaker than the one it had. No component route closes it (an edge on a row is the retired ring, a second bar makes the two states unrankable, and `accent` here IS `ink`, so the accent channel has nowhere to go that the ink cap does not already own), and no floor is widened to fit a palette; the value half owns the decision to move this fill, and this entry is the record that it is owed one",
 	},
 	{
 		theme: "obsidian",
