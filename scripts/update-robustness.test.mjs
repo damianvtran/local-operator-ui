@@ -931,6 +931,9 @@ test("pending marker survives a write, detects failure or success, and clears", 
 		artifactPath: "/tmp/local-operator-ui-0.18.0-arm64.zip",
 		startedAt: "2026-09-11T22:36:48.000Z",
 		watchdogPid: 4242,
+		// The pid of an install the app started itself. Null is Squirrel's own
+		// path, which is what this case is about.
+		installerPid: null,
 	});
 	assert.deepEqual(readPendingInstallMarker(dir), marker);
 
@@ -1016,7 +1019,7 @@ test("a superseded marker is stale, not a failed update", () => {
  * update had not completed, two seconds before ShipIt aborted the install on its
  * own final check.
  */
-test("an install still in flight is not a failure, and a loaded job alone is not an install", () => {
+test("an install still in flight is not a failure, and a live installer signal alone is not an install", () => {
 	const started = "2026-09-13T09:39:00.991Z";
 	const marker = {
 		targetVersion: "0.19.5",
@@ -1028,7 +1031,15 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	// The 2026-09-13 relaunch, to the second: 4:40 after the marker was written.
 	const now = Date.parse(started) + 280 * 1000;
 
-	assert.equal(isInstallInFlight({ marker, jobState: "running", now }), true);
+	assert.equal(
+		isInstallInFlight({
+			marker,
+			jobState: "running",
+			installerRunning: true,
+			now,
+		}),
+		true,
+	);
 	assert.equal(
 		evaluatePendingInstall({
 			marker,
@@ -1038,14 +1049,28 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 		"in-flight",
 	);
 
-	// Every fact is needed, and each one alone is wrong. A job with no marker, a
-	// marker with no job, and a job an old failure left loaded for hours (0.17.0:
-	// runs=3114) are all decided by the version: that is a failure.
+	// Every fact is needed, and each one alone is wrong. A live installer signal
+	// with no marker, a marker with no live installer signal, and the signal an old
+	// failure left behind for hours (0.17.0: a job loaded with runs=3114) are all
+	// decided by the version: that is a failure.
 	assert.equal(
-		isInstallInFlight({ marker: null, jobState: "running", now }),
+		isInstallInFlight({
+			marker: null,
+			jobState: "running",
+			installerRunning: true,
+			now,
+		}),
 		false,
 	);
-	assert.equal(isInstallInFlight({ marker, jobState: "absent", now }), false);
+	assert.equal(
+		isInstallInFlight({
+			marker,
+			jobState: "absent",
+			installerRunning: false,
+			now,
+		}),
+		false,
+	);
 	assert.equal(
 		evaluatePendingInstall({ marker, runningVersion: "0.19.4" }).kind,
 		"failed",
@@ -1078,6 +1103,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 		isInstallInFlight({
 			marker,
 			jobState: "running",
+			installerRunning: true,
 			now: Date.parse(started) + WATCHDOG_HARD_TIMEOUT_SECONDS * 1000,
 		}),
 		true,
@@ -1086,6 +1112,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 		isInstallInFlight({
 			marker,
 			jobState: "running",
+			installerRunning: true,
 			now: Date.parse(started) + PENDING_INSTALL_RECENCY_SECONDS * 1000,
 		}),
 		true,
@@ -1094,6 +1121,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 		isInstallInFlight({
 			marker,
 			jobState: "running",
+			installerRunning: true,
 			now: Date.parse(started) + (PENDING_INSTALL_RECENCY_SECONDS + 1) * 1000,
 		}),
 		false,
@@ -1109,6 +1137,7 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 		isInstallInFlight({
 			marker: { ...marker, startedAt: "" },
 			jobState: "running",
+			installerRunning: true,
 			now,
 		}),
 		false,
@@ -1833,7 +1862,11 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	 */
 	assert.equal(plan.hardTimeoutSeconds, WATCHDOG_HARD_TIMEOUT_SECONDS);
 	assert.match(plan.script, /hard_deadline=\$\(\( \$\(now\) \+ 1800 \)\)/);
-	assert.match(plan.script, /&& shipit_loaded; then\n\t\t\tholding=1/);
+	// The hold is keyed on `install_live`, which is the installer's own pid for an
+	// install this app started itself and `shipit_loaded` for one Squirrel
+	// submitted - and NOT on the job when there is a pid, because this machine
+	// keeps the job registered long after a successful install.
+	assert.match(plan.script, /&& install_live; then\n\t\t\tholding=1/);
 	assert.match(plan.script, /if \[ "\$holding" -eq 1 \]; then/);
 	assert.match(plan.script, /notify\(\) \{/);
 	assert.match(plan.script, /osascript -e 'on run argv'/);
@@ -1863,13 +1896,17 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// Without a label there is no job to ask about, and the script still waits on
 	// the pid alone rather than falling back to a name.
 	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_SHIPIT_JOB, "");
+	// The installer's pid is the second signal, and empty is what "this install has
+	// no installer of ours" means - which is what makes the script's liveness
+	// signal the job here, exactly as it was before this field existed.
+	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_INSTALLER_PID, "");
 	assert.equal(bounded.env.LO_UPDATE_WATCHDOG_TARGET_VERSION, "0.18.0");
 	// And with no label the appear window is skipped rather than spent pretending
 	// to observe a job it cannot see, which used to end in a relaunch carrying no
 	// evidence about the install at all (review R14).
 	assert.match(
 		bounded.script,
-		/if \[ "\$job_known" -eq 1 \]; then\n\tappear_deadline=/,
+		/if \[ "\$signal_known" -eq 1 \]; then\n\tappear_deadline=/,
 	);
 
 	assert.equal(
@@ -2962,7 +2999,7 @@ test("size, sha512 and free space are each required before the install is offere
 	 */
 	assert.equal(
 		needed,
-		ARTIFACT.size + INSTALLED * 2 + INSTALL_DISK_SLACK_BYTES,
+		ARTIFACT.size + INSTALLED * 3 + INSTALL_DISK_SLACK_BYTES,
 	);
 	assert.ok(needed > ARTIFACT.size * 3);
 
@@ -2970,7 +3007,7 @@ test("size, sha512 and free space are each required before the install is offere
 	assert.equal(full.ok, false);
 	assert.equal(full.block.code, "insufficient-disk-space");
 	assert.match(full.block.message, /version 0\.18\.0/);
-	assert.match(full.block.detail, /two 1\.0 GiB app copies/);
+	assert.match(full.block.detail, /three 1\.0 GiB app copies/);
 
 	// The old boundary would have passed here and failed inside the install.
 	assert.equal(staged(ARTIFACT.size * 3).ok, false);
