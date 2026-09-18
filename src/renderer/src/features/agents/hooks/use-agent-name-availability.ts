@@ -33,6 +33,19 @@ const AVAILABILITY_DEBOUNCE_MS = 400;
 const MIN_QUERY_CHARS = 2;
 
 /**
+ * Whether a name is long enough to be worth a round trip.
+ *
+ * Counted in CODE POINTS, the way every other length in this feature is counted
+ * (`publicationCharCount` in `src/shared/desktop-contract.ts`): `String.length`
+ * is UTF-16 units, so a name of two emoji reads as 4 there and 2 anywhere a
+ * person counts. The difference is harmless for a courtesy check — nothing here
+ * blocks on it — and inconsistent with the rule its own neighbours follow, which
+ * is the entire cost of not doing it.
+ */
+const longEnoughToAsk = (value: string): boolean =>
+	[...value].length >= MIN_QUERY_CHARS;
+
+/**
  * What the dialog can say about a name, from the hub.
  *
  * `checking` is a state the dialog draws as a quiet line rather than as a
@@ -80,7 +93,7 @@ export const useAgentNameAvailability = (
 	const askable =
 		enabled &&
 		debounced === trimmed &&
-		debounced.length >= MIN_QUERY_CHARS &&
+		longEnoughToAsk(debounced) &&
 		isPublishableName(debounced);
 
 	const query = useQuery({

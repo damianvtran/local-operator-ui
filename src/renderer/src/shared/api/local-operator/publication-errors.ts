@@ -52,6 +52,13 @@ export const PUBLICATION_ERROR_CODES = [
 	"agent_not_found",
 	/** The hub could not be reached, or answered something unrecognisable. */
 	"hub_unavailable",
+	/**
+	 * The hub refused THIS MACHINE's credential. The app's own `isAuthenticated`
+	 * can be true when this arrives - the stored session is valid for the local
+	 * backend and refused by the hub - and the remedy is re-running the Radient
+	 * sign-in, which is a control the publish dialog already owns.
+	 */
+	"hub_unauthorized",
 	/** This machine failed before the hub was asked anything. */
 	"local_failure",
 ] as const;

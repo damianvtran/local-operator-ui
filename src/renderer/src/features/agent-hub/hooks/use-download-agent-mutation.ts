@@ -24,10 +24,11 @@ import { useNavigate } from "react-router-dom";
  * A pulled agent as the import path reports it.
  *
  * `renamed_from` is the backend's own note about a name it had to change on the
- * way in (contract §3.6): the pulled agent landed as `<name> (2)` because the
- * local registry already held `<name>`. It is optional because the disambiguation
- * is not on `main` yet, and this hook must be honest in BOTH states rather than
- * assume the better one.
+ * way in (contract §3.6): the pulled agent landed as `<name>-2` because the local
+ * registry already held `<name>` under the same `name_key`. It is optional
+ * because a backend older than that fix sends nothing, and this hook must be
+ * honest in BOTH states rather than assume the better one — which is what the
+ * cache-based arm below is for.
  */
 type PulledAgent = AgentDetails & {
 	renamed_from?: string;

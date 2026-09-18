@@ -53,9 +53,20 @@ import {
 	Label,
 } from "@shared/components/ui";
 import { useAgentSystemPrompt } from "@shared/hooks/use-agent-system-prompt";
-import { usePublishedListing } from "@shared/store/published-listings-store";
+import { cn } from "@shared/lib/utils";
+import {
+	usePublishedListing,
+	usePublishedListingsStore,
+} from "@shared/store/published-listings-store";
 import type { FC } from "react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useAgentNameAvailability } from "../hooks/use-agent-name-availability";
 import { usePublishAgent } from "../hooks/use-publish-agent";
@@ -121,7 +132,10 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	const [name, setName] = useState("");
 	const [failure, setFailure] = useState<PublicationFailure | null>(null);
 	const [published, setPublished] = useState<PublishedOutcome | null>(null);
+	// Whether the sign-in control the `hub_unauthorized` refusal offers is open.
+	const [reauthenticating, setReauthenticating] = useState(false);
 	const nameInput = useRef<HTMLInputElement>(null);
+	const resultRegion = useRef<HTMLDivElement>(null);
 	const navigate = useNavigate();
 	const publish = usePublishAgent();
 	const listing = usePublishedListing(agent?.id ?? null);
@@ -151,6 +165,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			setAgreedToTerms(false);
 			setFailure(null);
 			setPublished(null);
+			setReauthenticating(false);
 		}
 	}, [open]);
 
@@ -204,9 +219,30 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 
 	const submitting = publish.isPending;
 
-	const submit = async () => {
+	/**
+	 * Publish this agent, as a new listing unless the app remembers one for it.
+	 *
+	 * `asNewListing` OVERRIDES that memory, and it exists because the memory can
+	 * be STALE: a listing that was delisted, or that belongs to another account,
+	 * turns every later attempt into a republish of a row the user cannot address,
+	 * and it is only this app's persisted note that made the attempt an update in
+	 * the first place. The escape is offered on exactly those refusals, and it has
+	 * to send the request the store's presence would otherwise prevent — reading
+	 * the store again here would undo the action that was just pressed.
+	 */
+	const submit = async (options?: { asNewListing?: boolean }) => {
 		if (!agent || submitting || issues.length > 0) return;
 		setFailure(null);
+		const hubAgentId = options?.asNewListing
+			? null
+			: (listing?.hubAgentId ?? null);
+		/*
+		 * Captured BEFORE the request. The accepted-publication path writes the
+		 * store on the way back, so a receipt that read it afterwards would report
+		 * "update" whatever actually happened — which is the title defect this
+		 * value's one reader exists to remove.
+		 */
+		const republishing = Boolean(hubAgentId);
 		try {
 			/*
 			 * Only the name is overridden. Everything else in the document is read
@@ -218,13 +254,13 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			const response = await publish.mutateAsync({
 				agentId: agent.id,
 				document,
-				hubAgentId: listing?.hubAgentId ?? null,
+				hubAgentId,
 			});
 			const result = response.result;
 			const outcome: PublishedOutcome = {
 				name: result?.name ?? name.trim(),
 				hubAgentId: result?.agent_id ?? null,
-				republished: Boolean(listing?.hubAgentId),
+				republished: republishing,
 			};
 			setPublished(outcome);
 			// Only when the hub returned a listing to point at: there is nothing to
@@ -254,15 +290,25 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	const runAction = (action: PublicationAction) => {
 		switch (action) {
 			case "focus-name":
-				// The refusal is cleared because it is about the name that is no longer
-				// in the field: leaving it up while the user types would keep answering
-				// the previous question.
+				/*
+				 * The refusal is cleared — it is about a name the user is about to change,
+				 * and leaving it up while they type would keep answering the previous
+				 * question — but the VALUE IS KEPT AND SELECTED. Clearing it made this
+				 * dialog report "Name must not be empty." immediately afterwards, a failure
+				 * the app caused, drawn as the user's; selecting the text is what typing
+				 * over it needs, which is what the clear was for.
+				 */
 				setFailure(null);
-				setName("");
-				requestAnimationFrame(() => nameInput.current?.focus());
+				requestAnimationFrame(() => {
+					nameInput.current?.focus();
+					nameInput.current?.select();
+				});
 				break;
 			case "update-listing": {
-				const existing = failure?.details?.existing_agent_id;
+				// The refusal's own id first — it names the row the hub just said it holds —
+				// and the remembered one as the fallback the treatment's gate also accepts.
+				const existing =
+					failure?.details?.existing_agent_id ?? listing?.hubAgentId;
 				if (existing) {
 					onClose();
 					navigate(`/agent-hub/${existing}`);
@@ -274,18 +320,42 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					failure?.details?.builtin_name ?? availability.builtinName;
 				if (builtin) {
 					onClose();
-					navigate(`/agents/${encodeURIComponent(builtin)}`);
+					/*
+					 * The reusable-PROFILE surface, which is where the Install control is.
+					 * Not `/agents/<name>`: that route's param resolves through an id-keyed
+					 * lookup (`GET /v1/agents/<param>`), and a built-in's name is not its
+					 * id, so the name landed on that page's "No agent selected" empty state
+					 * — an action that navigated somewhere and offered nothing.
+					 */
+					navigate(`/agents?kind=agent&name=${encodeURIComponent(builtin)}`);
 				}
 				break;
 			}
 			case "edit-instructions":
-				// The instruction body is edited on the agent's own page; this dialog
-				// has no field for it, and inventing one would be a second editor with
-				// its own save path.
+			case "edit-agent":
+				// The instruction body, the description and the rest of the document are
+				// edited on the agent's own page; this dialog has no field for them, and
+				// inventing one would be a second editor with its own save path.
 				if (agent) {
 					onClose();
 					navigate(`/agents/${agent.id}`);
 				}
+				break;
+			case "publish-as-new":
+				/*
+				 * The escape from a remembered listing this account cannot address.
+				 * Dropping the record is what makes the next attempt a publication of a NEW
+				 * listing rather than an update of a row the user cannot reach; it is a
+				 * deliberate press, so nothing is published that was not asked for.
+				 */
+				if (agent) usePublishedListingsStore.getState().forget(agent.id);
+				void submit({ asNewListing: true });
+				break;
+			case "sign-in":
+				// The remedy is a control this dialog already owns — the credential the
+				// hub refused is the one the Radient sign-in replaces; the refusal state
+				// simply had no way to reach it.
+				setReauthenticating(true);
 				break;
 			case "refresh-hub":
 				onClose();
@@ -298,9 +368,66 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	};
 
 	const agentName = agent?.name ?? "";
-	const title = listing
-		? `Update the Agent hub listing for "${agentName}"?`
-		: `Publish "${agentName}" to the Agent hub?`;
+	/*
+	 * The title describes the action, and once the action has been ANSWERED it
+	 * describes what happened: a receipt is not a question about updating. WHY it is
+	 * not derived from `listing` alone: an accepted publication writes
+	 * `published-listings-store` while this dialog is still open, so a first publish
+	 * flipped its own headline to "Update the Agent hub listing …" above a panel
+	 * saying the listing was CREATED — and the two states became impossible to tell
+	 * apart from their own frames.
+	 */
+	const title = published
+		? published.republished
+			? `Updated the Agent hub listing for "${agentName}"`
+			: `Published "${agentName}" to the Agent hub`
+		: listing
+			? `Update the Agent hub listing for "${agentName}"?`
+			: `Publish "${agentName}" to the Agent hub?`;
+
+	/*
+	 * Where focus goes when a RESULT renders, and why it goes to a SINK.
+	 *
+	 * WHAT WAS WRONG. Radix moves focus into the dialog container as the panel
+	 * opens, and this dialog's own submit button leaves the DOM the moment an
+	 * outcome replaces the form. Blink then resolves the focus that element was
+	 * holding DURING that mutation, and the target it picks is not fixed: sometimes
+	 * the container, sometimes the newly rendered action row. So the result states
+	 * drew the theme's 2px accent ring around whatever won — a ring pointing at
+	 * something nobody can use, the accent spent twice in the light themes — and
+	 * left Enter doing nothing.
+	 *
+	 * WHY NOT "FOCUS THE PRIMARY ACTION", which is the obvious repair and the one
+	 * this change shipped first. It does pin WHERE focus goes (a layout effect runs
+	 * after the mutations and before the paint, so it beats the engine's fixup), but
+	 * it does NOT pin whether the ring is DRAWN. `:focus-visible` for a
+	 * programmatically focused element is decided from the engine's last-interaction
+	 * modality — the app cannot set that, and in this rig a synthetic click does not
+	 * set it deterministically — so the same code photographed a ringed primary
+	 * action on one theme-pass and a bare one on the next. Measured: two
+	 * twelve-theme passes of `published`, 1-2 themes flipping between exactly two
+	 * hashes, the difference confined to the footer's action row (`204x72+604+520`,
+	 * max delta 13/255, sub-perceptual, which is why a `-fuzz 5%` comparison had
+	 * called it clean). A frame that records the engine's modality guess is not
+	 * reproducible evidence.
+	 *
+	 * SO THE RING IS REMOVED INSTEAD, on a region that is not a control, and the
+	 * panel's own container is silenced with it (`dialogProps` on the primitive
+	 * below). The sink is a plain container: it carries `outline-none`, which is the
+	 * stylesheet's own sanctioned case ("focus is moved there programmatically and a
+	 * ring would be noise" — `styles/index.css`), and it is the only thing focused in
+	 * these states, so no ring can appear wherever the engine's heuristic lands. The
+	 * actions stay reachable in one Tab press, which is where their own rings come
+	 * from.
+	 *
+	 * Keyed on the two pieces of state rather than on the derived treatment: the
+	 * treatment object is rebuilt on every render, so an effect on it would steal
+	 * focus back from the user while they type.
+	 */
+	useLayoutEffect(() => {
+		if (!failure && !published) return;
+		resultRegion.current?.focus();
+	}, [failure, published]);
 
 	const actions = published ? (
 		<>
@@ -359,6 +486,25 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			>
 				Cancel
 			</SecondaryButton>
+			{/*
+			 * The pre-flight block names fields this dialog has NO control for (the
+			 * description, the instruction body), so the block gets a route with them:
+			 * the agent's own page holds both. Without it the state was a list of
+			 * problems above a disabled button and nothing to do about them — the same
+			 * defect the refusal treatments now answer for the fields they name.
+			 */}
+			{issues.some((issue) => issue.field !== "name") && (
+				<SecondaryButton
+					onClick={() => {
+						if (agent) {
+							onClose();
+							navigate(`/agents/${agent.id}`);
+						}
+					}}
+				>
+					Edit the agent
+				</SecondaryButton>
+			)}
 			{isAuthenticated && (
 				<PrimaryButton
 					data-testid="publish-submit"
@@ -382,8 +528,41 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			fullWidth
 			actions={actions}
 			dataTourTag="upload-agent-dialog"
+			/*
+			 * The container is a focus SINK, not a control: Radix moves focus onto it as
+			 * the panel opens, and it is the element that holds focus in every pre-submit
+			 * state. A ring around the whole panel is a ring around something nobody can
+			 * use — the defect design round 1 filed as D5 — and, because `:focus-visible`
+			 * for a programmatically focused element is decided by the engine's
+			 * last-interaction modality, whether that ring is DRAWN flips between
+			 * otherwise-identical passes. That is what made `pre-validation-blocked`'s
+			 * frames unreproducible even after the result states were pinned.
+			 *
+			 * Scoped to this dialog through `dialogProps` rather than changed in
+			 * `BaseDialog`, deliberately: the primitive is shared with five other dialogs
+			 * whose frames this change does not re-take, and a shared visual change would
+			 * silently invalidate them. `outline-none` here is the stylesheet's own
+			 * sanctioned case for it ("focus is moved there programmatically and a ring
+			 * would be noise"), and it is why the container keeps `tabIndex` and the
+			 * focus trap: only the ring goes.
+			 */
+			dialogProps={{ className: "outline-none" }}
 		>
-			<div className="flex flex-col gap-4">
+			{/*
+			 * The result region is also the focus SINK for a refusal or a receipt: see
+			 * the layout effect above for why focus is moved here rather than onto the
+			 * action, and `styles/index.css` for the `outline-none` case it is the
+			 * sanctioned example of. In the pre-submit states the sink is not focusable
+			 * and the ring belongs to the name field, which is where Radix puts focus.
+			 */}
+			<div
+				ref={resultRegion}
+				tabIndex={failure || published ? -1 : undefined}
+				className={cn(
+					"flex flex-col gap-4",
+					(failure || published) && "outline-none",
+				)}
+			>
 				{!isAuthenticated ? (
 					<div className="flex flex-col items-center gap-6 text-center">
 						<p className="text-body text-ink">
@@ -438,6 +617,32 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					</Alert>
 				) : null}
 
+				{treatment && reauthenticating && (
+					/*
+					 * The `hub_unauthorized` remedy. This is the sign-in control rather than
+					 * the signed-out panel above because the two facts are different: the app's
+					 * own `isAuthenticated` can be true while the hub refuses the credential
+					 * this machine presents, which is exactly when the backend emits that code.
+					 */
+					<div className="flex flex-col items-center gap-6 text-center">
+						<p className="text-body text-ink">
+							Sign in to Radient again to replace the credential the hub
+							refused.
+						</p>
+						<RadientAuthButtons
+							titleText="Sign in again"
+							descriptionText=""
+							onSignInSuccess={() => {
+								// The refusal was about the credential, so it stops being the question
+								// on screen the moment a new one is in hand.
+								setReauthenticating(false);
+								setFailure(null);
+								onSignInSuccess?.();
+							}}
+						/>
+					</div>
+				)}
+
 				{!published && !treatment && (
 					<>
 						<p className="text-body text-ink">
@@ -487,9 +692,16 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 								id={`${nameInputId}-hint`}
 								className="text-meta text-ink-muted"
 							>
-								No spaces, and no "/", "\" or ":". Up to 128 characters.
+								{/*
+								 * No word about spaces. The hub is mid-relaxation on exactly that rule
+								 * and stores names spelled the way a person spells them, so a hint
+								 * promising "no spaces" would state a rule the server does not have
+								 * — and a reader who believed it would stop typing the name they
+								 * wanted. The separators and the cap are the rules that hold.
+								 */}
+								No "/", "\" or ":". Up to 128 characters.
 							</p>
-							{availabilityLine(availability, name)}
+							{availabilityLine(availability)}
 						</div>
 
 						<div className="flex gap-3">
@@ -554,10 +766,10 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
  * where it comes with a code and a next step. What this line buys is that the
  * author usually finds out before submitting.
  */
-const availabilityLine = (
-	availability: { state: string; builtinName: string | null },
-	name: string,
-) => {
+const availabilityLine = (availability: {
+	state: string;
+	builtinName: string | null;
+}) => {
 	switch (availability.state) {
 		case "checking":
 			return (
@@ -582,11 +794,19 @@ const availabilityLine = (
 				</p>
 			);
 		case "reserved":
+			/*
+			 * The field line holds only what it uniquely holds: the built-in's canonical
+			 * spelling — the one the author has to type — and that the reservation is the
+			 * HUB's rather than this app's opinion. The refusal itself is the alert above,
+			 * which already says that a built-in's name cannot be published; restating it
+			 * here put one fact on screen twice, 40px apart, and made a courtesy line
+			 * outrank the alert's refusal ink in the slot's own register (§9).
+			 */
 			return (
-				<p className="text-meta text-ink">
+				<p className="text-meta text-ink-muted">
 					{availability.builtinName
-						? `"${availability.builtinName}" is the name of a built-in agent, which the hub reserves.`
-						: `"${name.trim()}" is a name the hub reserves for its built-in agents.`}
+						? `The hub reserves "${availability.builtinName}" for one of its built-in agents.`
+						: "The hub reserves this name for one of its built-in agents."}
 				</p>
 			);
 		default:
@@ -604,6 +824,9 @@ const ACTION_LABEL: Record<PublicationAction, string> = {
 	"install-builtin": "Install the built-in instead",
 	retry: "Try again",
 	"edit-instructions": "Edit the instructions",
+	"edit-agent": "Edit the agent",
+	"publish-as-new": "Publish as a new listing",
+	"sign-in": "Sign in again",
 	"refresh-hub": "Refresh the hub",
 };
 

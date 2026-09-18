@@ -338,6 +338,11 @@ const configUpdate = z
  * below REFINES ON these functions rather than restating their rules: what this
  * renderer would send and what it would refuse cannot disagree with the field
  * sentence the publish dialog renders.
+ *
+ * ONE RULE IS DELEGATED RATHER THAN MIRRORED, and it is named here so nobody
+ * reads the claim above as covering it: the hub bans no whitespace in a
+ * published name, because it is mid-relaxation on exactly that rule. See
+ * `publicationNameRule`.
  */
 
 /** 128 after `trim`, the same bound the desktop profiles route already uses. */
@@ -358,8 +363,8 @@ export const PUBLICATION_TOOLS_MAX_ITEMS = 64;
 const publicationCharCount = (value: string): number => [...value].length;
 
 /*
- * The three character classes a name is checked against, written as predicates
- * over CODE POINTS rather than as character-class literals.
+ * The character classes a name is checked against, written as predicates over
+ * CODE POINTS rather than as character-class literals.
  *
  * Two reasons, and the second is why this is the form rather than a taste.
  * These sets are statements about code points — "a name may not contain a
@@ -371,17 +376,19 @@ const publicationCharCount = (value: string): number => [...value].length;
  */
 
 /**
- * The Unicode White_Space property, plus `U+001C`-`U+001F`.
+ * Python's `str.isspace()`: the White_Space property, plus `U+001C`-`U+001F`.
  *
- * Those four are not White_Space, and Python's `str.isspace()` — which is what
- * the hub's mirror of this rule is written in — says they are. Including them
- * changes only WHICH rule fires for such a name (they are control characters
- * too, and the whitespace rule is the one the hub checks first), so this stays
- * a faithful mirror of the order the hub reports rules in.
+ * Those four are not White_Space and Python's `isspace()` says they are, which
+ * is why this is a set rather than a property lookup.
  *
- * `U+FEFF` is deliberately absent: JavaScript's `\s` matches it, the White_Space
- * property and both server implementations do not, so matching it here would
- * refuse a name the hub accepts.
+ * It is used for `strip`, for the collapse `name_key` folds with, and for
+ * nothing else — NOT for the name rule, because the hub deliberately bans no
+ * whitespace in a published name (see `publicationNameRule`). The whitespace the
+ * rule does refuse is the narrower set below.
+ *
+ * `U+FEFF` is deliberately absent here too, for a different reason: JavaScript's
+ * `\s` matches it and Python's `isspace()` does not, so trimming it would take a
+ * character off a name the hub keeps.
  */
 const isPublicationWhiteSpace = (point: number): boolean =>
 	(point >= 0x09 && point <= 0x0d) ||
@@ -396,9 +403,49 @@ const isPublicationWhiteSpace = (point: number): boolean =>
 	point === 0x205f ||
 	point === 0x3000;
 
+/**
+ * The whitespace that is ALSO a control character: the hub's
+ * `_CONTROL_WHITESPACE`.
+ *
+ * The one whitespace refusal the hub still has, and the reason the rule cannot
+ * simply drop its whitespace arm: no legitimate name contains a tab, a vertical
+ * tab, a form feed, a line control or NEL, and the hub reports those as
+ * whitespace rather than as control characters — so dropping the check would put
+ * a different `details.rule` on the same input than the hub's.
+ *
+ * Spelled out rather than written as an intersection with the set above, because
+ * Python's `str.isspace()` additionally calls `U+001C`-`U+001F` whitespace while
+ * the hub's own list reports those as control characters, and a client that
+ * disagrees with the hub about WHICH rule a name broke is what this mirror
+ * exists to prevent.
+ */
+const isPublicationControlWhitespace = (point: number): boolean =>
+	point === 0x09 ||
+	point === 0x0a ||
+	point === 0x0b ||
+	point === 0x0c ||
+	point === 0x0d ||
+	point === 0x85;
+
 /** Python's `unicodedata.category(c) == "Cc"`, which is what the hub checks. */
 const isPublicationControl = (point: number): boolean =>
 	point <= 0x1f || (point >= 0x7f && point <= 0x9f);
+
+/**
+ * Python's `unicodedata.category(c) == "Cf"` — the format characters.
+ *
+ * A property escape rather than a range set like the three beside it, because
+ * `Cf` is a live category — `U+13430`-`U+1343F` and the tag characters arrived
+ * in recent Unicode versions — and a hand-copied range list is how a mirror
+ * drifts from the tables it claims to be. `\p{Cf}` IS the category, so it moves
+ * with the engine's.
+ *
+ * The class is not decoration: a format character renders as nothing, so
+ * `reviewer` with a U+200B in it and `reviewer` draw identically while being two
+ * different keys — the shadowing an exact local name lookup cannot see.
+ */
+const isPublicationFormat = (point: number): boolean =>
+	/\p{Cf}/u.test(String.fromCodePoint(point));
 
 /** The bidi overrides a rendered name would use to differ from its bytes. */
 const isPublicationBidiOverride = (point: number): boolean =>
@@ -419,7 +466,7 @@ const publicationHasCodePoint = (
  * Python's `str.strip()`, over the set above.
  *
  * Not `String.prototype.trim()`, which strips the ECMAScript WhiteSpace set:
- * the four `U+001C`-`U+001F` characters the rule above includes are exactly the
+ * the four `U+001C`-`U+001F` characters the set above includes are exactly the
  * ones JS leaves alone, so a name trailing one of them would be trimmed by the
  * hub and not here — two different names out of one string.
  */
@@ -462,10 +509,27 @@ const publicationCollapseWhiteSpace = (value: string): string => {
  * The rule a published NAME breaks, or `null` when it is publishable.
  *
  * Rule text included, because it is what the dialog shows and what the hub's
- * `details.rule` carries — one sentence whichever side refused. The check order
- * is the hub's own, and the order decides which rule a name breaks for, so a
- * client that reported a different one would send its author looking for a
- * character that is not there.
+ * `details.rule` carries — one sentence whichever side refused — and in the
+ * HUB'S ORDER, because the order decides which sentence a name that breaks two
+ * rules gets: `code\u202ere viewer` is a bidi override first and a space second,
+ * and a client that reported the other one would send its author looking for a
+ * character that is not the problem.
+ *
+ * THE WHITESPACE BAN IS DELIBERATELY ABSENT, and this is the one place the
+ * function is not a mirror. The hub is mid-relaxation on exactly that rule: the
+ * live marketplace is already spelled with ordinary spaces, so agent-server's
+ * rule is moving to "collapse every run of Unicode whitespace to one U+0020 and
+ * trim the ends". A client cannot mirror a rule that is moving — refusing an
+ * ordinary space here would refuse a name the hub accepts, and only after the
+ * change would the same release behave differently against two hub versions. So
+ * whitespace that is not a control character travels as the author wrote it and
+ * the hub decides: today with a 422 `invalid_instruction_set` whose
+ * `details.rule` this dialog renders, and after the relaxation by normalising
+ * and storing the name. `name_key` still folds whitespace, so the local
+ * duplicate and reservation checks keep asking the hub's own question.
+ *
+ * The sentences and the order are `local_operator/clients/radient.py`'s
+ * `_name_rule`, which is the function to keep this in step with.
  */
 export function publicationNameRule(name: string): string | null {
 	const trimmed = publicationTrim(name);
@@ -473,12 +537,14 @@ export function publicationNameRule(name: string): string | null {
 	if (publicationCharCount(trimmed) > PUBLICATION_NAME_MAX_CHARS)
 		return `must be at most ${PUBLICATION_NAME_MAX_CHARS} characters`;
 	if (/[/\\:]/.test(trimmed)) return 'must not contain "/", "\\" or ":"';
-	if (publicationHasCodePoint(trimmed, isPublicationWhiteSpace))
+	if (publicationHasCodePoint(trimmed, isPublicationBidiOverride))
+		return "must not contain Unicode bidirectional override characters";
+	if (publicationHasCodePoint(trimmed, isPublicationControlWhitespace))
 		return "must not contain whitespace";
 	if (publicationHasCodePoint(trimmed, isPublicationControl))
 		return "must not contain control characters";
-	if (publicationHasCodePoint(trimmed, isPublicationBidiOverride))
-		return "must not contain Unicode bidirectional override characters";
+	if (publicationHasCodePoint(trimmed, isPublicationFormat))
+		return "must not contain invisible Unicode formatting characters";
 	const characters = [...trimmed];
 	if (
 		"-.".includes(characters[0]) ||

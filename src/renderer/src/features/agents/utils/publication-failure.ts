@@ -26,7 +26,11 @@ import {
 	isModerationCategory,
 	isPublicationError,
 } from "@shared/api/local-operator/publication-errors";
-import { PUBLICATION_INSTRUCTIONS_MAX_CHARS } from "../../../../../shared/desktop-contract";
+import {
+	PUBLICATION_INSTRUCTIONS_MAX_CHARS,
+	publicationNameKey,
+} from "../../../../../shared/desktop-contract";
+import { isTransientTransportFailure } from "../../../../../shared/transport-failure";
 
 /**
  * The refusal, narrowed to what a treatment needs.
@@ -49,6 +53,9 @@ export type PublicationAction =
 	| "install-builtin"
 	| "retry"
 	| "edit-instructions"
+	| "edit-agent"
+	| "publish-as-new"
+	| "sign-in"
 	| "refresh-hub";
 
 export type PublicationTreatment = {
@@ -60,8 +67,6 @@ export type PublicationTreatment = {
 	note: string | null;
 	/** Ordered, first is primary. */
 	actions: PublicationAction[];
-	/** The field to mark as refused, when the refusal is about one. */
-	focus: "name" | "instructions" | null;
 };
 
 export type PublicationContext = {
@@ -151,36 +156,36 @@ function moderationCategoryLine(details?: PublicationDetails): string {
 function invalidDocumentBody(
 	message: string,
 	details?: PublicationDetails,
-): { body: string; focus: "name" | "instructions" | null } {
+): { body: string; field: string | null } {
 	const rule = details?.rule ? ` ${details.rule}` : "";
 	switch (details?.field) {
 		case "name":
 			return {
 				body: `Name${rule || " is not acceptable"}.`,
-				focus: "name",
+				field: "name",
 			};
 		case "instructions":
 			return {
 				body: rule
 					? `The instruction body${rule}.`
 					: `The instruction body must be between 1 and ${PUBLICATION_INSTRUCTIONS_MAX_CHARS} characters.`,
-				focus: "instructions",
+				field: "instructions",
 			};
 		case "description":
-			return { body: `Description${rule}.`, focus: null };
+			return { body: `Description${rule}.`, field: "description" };
 		case "tools":
-			return { body: `Tools${rule}.`, focus: null };
+			return { body: `Tools${rule}.`, field: "tools" };
 		case "when_to_use":
-			return { body: `When to use${rule}.`, focus: null };
+			return { body: `When to use${rule}.`, field: "when_to_use" };
 		case "categories":
-			return { body: `Categories${rule}.`, focus: null };
+			return { body: `Categories${rule}.`, field: "categories" };
 		case "tags":
-			return { body: `Tags${rule}.`, focus: null };
+			return { body: `Tags${rule}.`, field: "tags" };
 		default:
 			// Dialog-level, with the backend's own sentence: the field is one this
 			// dialog has no control for (kind, version, document_type), so pointing at
 			// a control would be pointing at nothing.
-			return { body: message, focus: null };
+			return { body: message, field: null };
 	}
 }
 
@@ -206,13 +211,18 @@ export function publicationTreatment(
 					headline: "You already published this agent",
 					body: `You published "${name}" already. Update that listing instead of publishing a second one.`,
 					note: null,
-					// "Update the existing listing" needs the listing id; without one
-					// (a hub row this app never published, or an older app version) the
-					// only honest offer is a different name.
-					actions: context.hubAgentId
-						? ["update-listing", "focus-name"]
-						: ["focus-name"],
-					focus: "name",
+					// "Update the existing listing" needs a hub id. The REFUSAL'S OWN id is
+					// preferred, because it names the row the hub just told us it holds;
+					// the remembered one is the fallback. Gating the offer on the store
+					// alone (as this did) printed "update that listing instead" beside a
+					// single "Choose another name" — the copy naming a remedy the action
+					// set did not contain — for exactly the reader who has no remembered
+					// listing, which is every fresh profile and every agent published
+					// before this app kept the link.
+					actions:
+						failure.details?.existing_agent_id || context.hubAgentId
+							? ["update-listing", "focus-name"]
+							: ["focus-name"],
 				};
 			}
 			return {
@@ -221,7 +231,6 @@ export function publicationTreatment(
 				body: `"${name}" is already published on the hub by another account. Agent names are unique across the hub.`,
 				note: null,
 				actions: ["focus-name"],
-				focus: "name",
 			};
 		}
 		case "name_claim_in_flight":
@@ -231,8 +240,8 @@ export function publicationTreatment(
 			 * seconds-long reservation for this name, nothing is published under it,
 			 * and retrying is usually all it takes. Rendering it as "that name is
 			 * taken" would push an author to abandon a name that is free a moment
-			 * later, and the name field is NOT focused here for the same reason —
-			 * there is nothing to change.
+			 * later, and its single action is a retry rather than a route to the name
+			 * field for the same reason — there is nothing to change there.
 			 *
 			 * `GET /v1/agent-name-availability` deliberately does not consult the
 			 * reservation collection, so the live check can say "free" and the submit
@@ -246,22 +255,41 @@ export function publicationTreatment(
 				body: `Someone is publishing an agent called "${name}" at this moment. It is not claimed — try again in a moment.`,
 				note: null,
 				actions: ["retry"],
-				focus: null,
 			};
 		case "name_reserved_builtin": {
-			// The built-in's NAME is shown and its source URL is not: the name is what
-			// the author has to stop using, and a link to where the hub's own
-			// definition came from answers a question nobody asked here.
+			/*
+			 * THE SUBJECT IS THE NAME BEING PUBLISHED, and the built-in appears as the
+			 * agent that reserves it — which is the shape the backend's own sentence
+			 * has (`The name "<submitted>" is reserved by the built-in agent
+			 * "<builtin>".`) and what `details.builtin_name` means: WHICH built-in
+			 * reserved it, not which of the author's names was refused. The previous
+			 * sentence made the built-in its subject, so a refusal of
+			 * `adverse-media-screener` read `"reviewer" is the name of a built-in
+			 * agent` — telling the reader to stop using a name that was not on their
+			 * screen and never naming the one that was.
+			 *
+			 * The ``when the two names coincide`` arm is the common case: the
+			 * reservation is keyed the way the local pre-check keys it, so a
+			 * submitted name that IS the built-in's names the same string twice, and
+			 * one clause says it once. The built-in's canonical SPELLING is still what
+			 * is shown, which is the part the author has to type.
+			 *
+			 * Its source URL is not shown: a link to where the hub's definition came
+			 * from answers a question nobody asked here.
+			 */
 			const builtin = failure.details?.builtin_name;
+			const sameName = builtin
+				? publicationNameKey(builtin) === publicationNameKey(name)
+				: false;
 			return {
 				variant: "danger",
 				headline: "That name is reserved",
-				body: builtin
-					? `"${builtin}" is the name of a built-in agent. Built-in names cannot be published to the hub.`
-					: `"${name}" is the name of a built-in agent. Built-in names cannot be published to the hub.`,
+				body:
+					builtin && !sameName
+						? `"${name}" is reserved by the built-in agent "${builtin}". Built-in names cannot be published to the hub.`
+						: `"${builtin ?? name}" is the name of a built-in agent. Built-in names cannot be published to the hub.`,
 				note: null,
 				actions: ["focus-name", "install-builtin"],
-				focus: "name",
 			};
 		}
 		case "moderation_rejected":
@@ -274,7 +302,6 @@ export function publicationTreatment(
 				body: failure.details?.reason?.trim() || failure.message,
 				note: moderationCategoryLine(failure.details),
 				actions: ["edit-instructions"],
-				focus: "instructions",
 			};
 		case "moderation_unavailable":
 			return {
@@ -285,10 +312,9 @@ export function publicationTreatment(
 				body: "We could not review this agent just now. Nothing was published. Try again in a minute.",
 				note: null,
 				actions: ["retry"],
-				focus: null,
 			};
 		case "invalid_instruction_set": {
-			const { body, focus } = invalidDocumentBody(
+			const { body, field } = invalidDocumentBody(
 				failure.message,
 				failure.details,
 			);
@@ -297,8 +323,22 @@ export function publicationTreatment(
 				headline: "The agent document is not valid",
 				body,
 				note: null,
-				actions: focus === "name" ? ["focus-name"] : [],
-				focus,
+				/*
+				 * EVERY field this refusal can name gets a route, because the sentence
+				 * names it and a body that says "the instruction body must be at most
+				 * 8000 characters" beside a lone "Close" leaves the author with nothing
+				 * to do. Two actions rather than one because they are two destinations
+				 * in the reader's terms: the name is a control in THIS dialog, and the
+				 * rest of the document is edited on the agent's own page — where the
+				 * description and the instruction body both live, which is why they
+				 * share one action rather than having one apiece.
+				 */
+				actions:
+					field === "name"
+						? ["focus-name"]
+						: field === "instructions"
+							? ["edit-instructions"]
+							: ["edit-agent"],
 			};
 		}
 		case "payload_too_large": {
@@ -310,27 +350,57 @@ export function publicationTreatment(
 					? `The instruction set is larger than ${Math.round(limit / 1024)} KiB. Shorten the instructions.`
 					: "The instruction set is larger than the hub accepts. Shorten the instructions.",
 				note: null,
-				actions: [],
-				focus: null,
+				// The same route as `moderation_rejected`: the body says "shorten the
+				// instructions", and this is where the instructions are. An empty
+				// action set here made the one sentence and the one control disagree.
+				actions: ["edit-instructions"],
 			};
 		}
 		case "not_owner":
+			/*
+			 * The remembered listing is not addressable BY THIS ACCOUNT, and it is
+			 * only this app's memory of the publication that made the app try to
+			 * update it at all: a refusal here leaves the agent permanently
+			 * unpublishable from the UI otherwise, because `submit` sends the
+			 * remembered id on every later attempt. So the offer is the way out of
+			 * the memory — publish this agent as a NEW listing — and it is explicit,
+			 * so no publication happens that the user did not ask for.
+			 */
 			return {
 				variant: "danger",
 				headline: "You cannot update this listing",
 				body: "This listing belongs to another account.",
 				note: null,
-				actions: [],
-				focus: null,
+				actions: ["publish-as-new"],
 			};
 		case "agent_not_found":
+			// The other half of the same memory problem: the listing the app
+			// remembers has been delisted, so every later attempt addresses a row
+			// that is not there. Publishing as a new listing is the recovery;
+			// "Refresh the hub" stays as the second step, for the reader who wants
+			// to see for themselves that it is gone.
 			return {
 				variant: "danger",
 				headline: "That listing no longer exists",
 				body: "It may have been delisted.",
 				note: null,
-				actions: ["refresh-hub"],
-				focus: null,
+				actions: ["publish-as-new", "refresh-hub"],
+			};
+		case "hub_unauthorized":
+			/*
+			 * A REFUSED CREDENTIAL, WHICH IS NOT THE SAME FACT AS `isAuthenticated` —
+			 * the local backend can hold a session the hub itself refuses, which is
+			 * exactly when the backend emits this code. The remedy is re-running the
+			 * Radient sign-in, and it is a control this dialog already owns, so the
+			 * refusal offers it instead of rendering as the generic panel whose fix
+			 * was two screens away.
+			 */
+			return {
+				variant: "danger",
+				headline: "The hub refused this machine's sign-in",
+				body: "Nothing was published. Sign in to Radient again to replace the credential the hub refused, then publish again.",
+				note: null,
+				actions: ["sign-in"],
 			};
 		case "hub_unavailable":
 			return {
@@ -341,7 +411,6 @@ export function publicationTreatment(
 					: "The hub did not answer the way this app expects, so nothing was published. Try again, or update the backend if the hub has moved.",
 				note: null,
 				actions: ["retry"],
-				focus: null,
 			};
 		case "local_failure":
 			return {
@@ -352,7 +421,6 @@ export function publicationTreatment(
 				// Safe to retry: the failure happened before the hub was asked
 				// anything, so no listing can exist from this attempt.
 				actions: ["retry"],
-				focus: null,
 			};
 		default:
 			return {
@@ -360,23 +428,97 @@ export function publicationTreatment(
 				headline: "The agent could not be published",
 				body: failure.message,
 				note: null,
-				actions: [],
-				focus: null,
+				/*
+				 * An untyped refusal — an older backend's single sentence, or a code this
+				 * build does not know — has no field and no hub detail to build a remedy
+				 * from, and the copy beside a lone "Close" left the author with nothing
+				 * to do. `retry` is the one step that is honest at this level: nothing in
+				 * this arm establishes that a second attempt is unsafe, and an attempt
+				 * that fails again comes back with whatever the transport can author,
+				 * which is either this panel once more or a code that has a real next
+				 * step. It is NOT offered for a code with a known-bad retry — the state
+				 * this arm exists beside says `local_failure` is safe and
+				 * `moderation_rejected` is not, and guessing for an unknown code would
+				 * undo that distinction.
+				 */
+				actions: ["retry"],
 			};
 	}
 }
 
 /**
- * The prefix the pull path puts in front of every failure sentence.
+ * The machine-voice wrappers the pull path puts in front of every failure
+ * sentence.
  *
- * Two layers of it: the local route wraps the client's exception
- * (`Error downloading agent from Radient: ...`) and this client used to wrap the
- * route's own detail. Both are machine voice — they name the transport, not the
- * problem — so they are stripped before the sentence reaches a toast, and the
- * remainder is what the reader can act on.
+ * THREE layers, and the third is the one this app used to leave on screen. The
+ * local route wraps the client's exception (`Error downloading agent from
+ * Radient: ...`) and this client used to wrap the route's own detail; deeper
+ * again the hub proxy composes `Failed to download agent <hub id> from Radient
+ * Agent Hub due to a requests error: <repr>`, and the Python client's own
+ * exception renders as `HTTPSConnectionPool(host='api.radienthq.com',
+ * port=443): Read timed out.`
+ *
+ * MEASURED, both against the committed `refused-prose` frames and against a real
+ * backend: stripping the outer two left the reader with an internal listing id, a
+ * connection-pool class, a hostname, a port, a URL and the name of a Python
+ * library — every one of them machinery, and the listing id the most misleading
+ * of them, because it looks like a handle the reader could act on.
+ *
+ * Applied in order and each anchored at the START, because an anchored strip
+ * cannot cut a word out of the middle of an authored sentence, which a global
+ * replace would.
  */
-const PULL_PROSE_PREFIX =
-	/^(?:Download agent from Radient failed: )?(?:Error downloading agent from Radient: )?\s*/;
+const PULL_PROSE_WRAPPERS = [
+	/^(?:Download agent from Radient failed: )?(?:Error downloading agent from Radient: )?\s*/,
+	/^Failed to download agent(?: [^\s]+)? from Radient Agent Hub(?: due to a requests error)?:\s*/,
+	// The exception repr: `HTTPSConnectionPool(host='…', port=443): ` and its
+	// shorter siblings. Anchored on a NAME followed by a parenthesised argument
+	// list, so an authored sentence that merely contains a bracket is left alone.
+	/^[A-Za-z_][\w.]*\([^)]*\):\s*/,
+];
+
+/** The hub's own answer, as the Python client renders it: the status leads. */
+const PULL_HUB_STATUS = /^(\d{3})\b/;
+
+/** The statuses that mean the listing is gone rather than that the hub failed. */
+const PULL_GONE_STATUSES = new Set([404, 410]);
+
+/**
+ * The transport families a PYTHON client reports, in the reader's vocabulary.
+ *
+ * The counterpart of `shared/transport-failure.ts`'s tables, which are built from
+ * the Chromium `net::ERR_*` and Node errno families and deliberately do not list
+ * these: the failure here is authored by a DIFFERENT process's HTTP client, so
+ * extending that module's lists would change what MAIN retries for a failure main
+ * will never see. Matched by clause rather than by exception class because the
+ * class is stripped as machine voice above; the clause is what is left.
+ */
+const PULL_TRANSPORT_CLAUSES = [
+	"read timed out",
+	"connection timed out",
+	"connection refused",
+	"connection aborted",
+	"connection reset",
+	"connectionerror",
+	"connecttimeout",
+	"remote end closed connection",
+	"max retries exceeded",
+	"temporary failure in name resolution",
+	"name or service not known",
+	"no route to host",
+];
+
+/** Whether a residue is a transport failure rather than something the hub said. */
+const isPullTransportFailure = (reason: string): boolean => {
+	const lower = reason.toLowerCase();
+	return (
+		PULL_TRANSPORT_CLAUSES.some((clause) => lower.includes(clause)) ||
+		// The families main already classifies, for the same reason: this app's own
+		// transport can be the one that failed, and one table answering for both is
+		// what keeps the two from drifting apart.
+		isTransientTransportFailure(reason)
+	);
+};
 
 /**
  * The sentence a refused pull shows, from the refusal's code when there is one.
@@ -384,9 +526,9 @@ const PULL_PROSE_PREFIX =
  * The pull's failures arrive through the same vocabulary as a publication's —
  * a hub row that is gone, a hub that cannot be reached, this machine failing to
  * write the row — so they are described here rather than in the hook, and tested
- * with them. The two codes with a genuinely different next step get their own
- * sentence; everything else keeps the backend's own words, because a pull has no
- * field to point at and no remedy this layer can invent.
+ * with them. The refusals whose transport the hub or the backend reports get the
+ * sentence that fact deserves; anything else keeps the backend's own words,
+ * because a pull has no field to point at and no remedy this layer can invent.
  *
  * Deliberately no retry action: retrying is the user's to decide, and the hub's
  * 404 for a delisted agent is not something a retry can change.
@@ -412,13 +554,31 @@ export const pullRefusalMessage = (
 				return `${subject} was not downloaded: ${error.message}`;
 		}
 	}
-	// No code: an older backend's prose, with the transport's machine-voice
-	// prefixes stripped so what is left is the reason and not the route it came
-	// from.
-	const reason = userFacingMessage(error, "")
-		.replace(PULL_PROSE_PREFIX, "")
-		.trim();
-	return reason
-		? `${subject} was not downloaded: ${reason}`
-		: `${subject} could not be downloaded.`;
+	/*
+	 * No code: an older backend's prose. The wrappers come off first and what is
+	 * left is CLASSIFIED, because a residue that is itself machine voice is not a
+	 * reason — the two sentences below are the same ones the typed arms above use
+	 * for the same two facts, so a hub that is unreachable reads the same whether
+	 * the backend that tried to reach it could say so in a code or not.
+	 */
+	const reason = PULL_PROSE_WRAPPERS.reduce(
+		(text, wrapper) => text.replace(wrapper, ""),
+		userFacingMessage(error, "").trim(),
+	).trim();
+	if (!reason) return `${subject} could not be downloaded.`;
+	const status = Number(PULL_HUB_STATUS.exec(reason)?.[1] ?? Number.NaN);
+	if (PULL_GONE_STATUSES.has(status))
+		return `${subject} is no longer on the hub, so nothing was downloaded.`;
+	if (
+		isPullTransportFailure(reason) ||
+		status === 408 ||
+		status === 429 ||
+		status >= 500
+	)
+		return `The hub could not be reached, so ${subject} was not downloaded.`;
+	if (status >= 400)
+		return `The hub refused the download, so ${subject} is not here.`;
+	// An authored sentence the hub or the backend wrote: shown as it is, which is
+	// what the two arms above exist to avoid doing with machinery.
+	return `${subject} was not downloaded: ${reason}`;
 };
