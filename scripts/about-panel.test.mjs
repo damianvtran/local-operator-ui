@@ -187,6 +187,37 @@ test("the panel is raised from exactly one place, and only past the suppression 
 	);
 });
 
+test("the app's own menu is installed before the ready handler awaits anything", () => {
+	/*
+	 * The finding this pins (code review round 1, F1): until the app installs its
+	 * own menu, Electron's DEFAULT menu is live and its first item is `About
+	 * Electron` with `about`'s role - a click no handler of ours is in, so the
+	 * window mode cannot suppress it. Below the backend startup that is seconds of
+	 * an agent-triggerable panel per launch; above it, there is no window at all.
+	 */
+	// Sliced from the READY call itself, not from the first mention of it: the
+	// module explains the ready/window-mode ordering in prose above, and a slice
+	// that began at that comment would measure the wrong region of the file.
+	const ready = codeLines(
+		indexSource.slice(indexSource.search(/\.whenReady\(\)\s*\n\s*\.then\(/)),
+	);
+	const install = ready.indexOf("createApplicationMenu();");
+	const firstAwait = ready.search(/\bawait\b/);
+	assert.notEqual(install, -1, "the ready handler must install the menu");
+	assert.notEqual(
+		firstAwait,
+		-1,
+		"the ready handler is expected to await something",
+	);
+	assert.ok(
+		install < firstAwait,
+		"the menu must be installed before the first await, or the default menu is reachable meanwhile",
+	);
+	// One call site: a second install would leave the earlier one to be replaced
+	// rather than to be a decision.
+	assert.equal(countIn(mainSources(), "createApplicationMenu();"), 1);
+});
+
 test("the app registers its own identity for the About panel", () => {
 	const options = aboutOptionsSource();
 	/*

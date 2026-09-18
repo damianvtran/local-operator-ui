@@ -1552,6 +1552,28 @@ app
 		}
 
 		/*
+		 * The app's own menu, installed BEFORE THIS HANDLER AWAITS ANYTHING.
+		 *
+		 * Why the position is load-bearing rather than tidy (code review round 1,
+		 * F1): until this runs, Electron's DEFAULT application menu is live, and its
+		 * first item is `About Electron` carrying Electron's own `about` role - a
+		 * click with no handler of ours in the path, so the window mode cannot
+		 * suppress it and a `headless` run has an un-gated About item for as long as
+		 * this install has not happened. It used to sit below the backend startup in
+		 * this handler, which is seconds of an agent-triggerable panel for every
+		 * launch that has to install or reach a backend.
+		 *
+		 * Nothing below is needed to build it: the template reads `app.name`,
+		 * `process.env.ELECTRON_RENDERER_URL` and the module-level `mainWindow`
+		 * (through handlers that check it at click time), all of which exist here.
+		 * It sits after the smoke-test branch above on purpose - that path exits the
+		 * process immediately and wants no menu - and still before any `await` in
+		 * this handler.
+		 */
+		configureAboutPanel();
+		createApplicationMenu();
+
+		/*
 		 * A headless run does not outlive the process that launched it.
 		 *
 		 * The window is never shown and macOS keeps a windowless app alive, so an
@@ -2465,10 +2487,6 @@ app
 				}
 			}
 		}
-
-		// Create custom application menu
-		configureAboutPanel();
-		createApplicationMenu();
 
 		// --- Helper to manage main window and update service lifecycle ---
 		let updateService: UpdateService | null = null;

@@ -728,8 +728,9 @@ export function resolveSecondLaunchShow(input: {
  *
  * `inactive` KEEPS the panel, and that half is a measurement rather than a hope.
  * Measured on this host (macOS 25.6, Electron 44.3.0): `app.showAboutPanel()`
- * orders the panel front - the window server lists it, 284x170, `onscreen: true`
- * - WITHOUT making the app the active application; `app.isActive()` stays false
+ * orders the panel front - the window server lists it, `284x191` at the sizes
+ * these runs use, `onscreen: true` - WITHOUT making the app the active
+ * application; `app.isActive()` stays false
  * and the frontmost pid never moves (0 of 30 samples in the run recorded in
  * `docs/evidence/about-panel`). That is exactly the promise `inactive` makes, so
  * the panel is allowed there. `normal` is the operator's own app and behaves as
