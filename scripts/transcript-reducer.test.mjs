@@ -3659,7 +3659,11 @@ test("a seeded delta extends only a row with no text, and marks the row incomple
 		"the answer so far",
 		"the seed's delta is not applied a second time",
 	);
-	assert.equal(row.truncated, "interrupted", "the row says its continuity broke");
+	assert.equal(
+		row.truncated,
+		"interrupted",
+		"the row says its continuity broke",
+	);
 	assert.equal(streamDiagnostics?.seededDeltaWithheld, withheld + 1);
 
 	// (ii) The row this seed's own `message_start` mints: the delta is its first
@@ -3721,7 +3725,11 @@ test("a gap marks a row it cannot vouch for, and leaves a joined row's own claim
 	);
 	state = applyEvent(
 		state,
-		{ type: "message_update", delta: "written before the gap", message: assistant("a2", "") },
+		{
+			type: "message_update",
+			delta: "written before the gap",
+			message: assistant("a2", ""),
+		},
 		2,
 	);
 	state = applyEvent(

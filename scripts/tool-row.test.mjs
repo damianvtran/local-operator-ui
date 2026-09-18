@@ -655,15 +655,24 @@ test("a row whose caption says its text is not whole takes the mark gap", () => 
 	);
 	// The D1 case that was worst before the tier existed: a marked row directly
 	// under a tool row used to inherit the 2px hairline.
-	const afterTool = buildRows([toolRecord("t1"), prose("a1", { truncated: "interrupted" })], []);
+	const afterTool = buildRows(
+		[toolRecord("t1"), prose("a1", { truncated: "interrupted" })],
+		[],
+	);
 	assert.equal(
 		afterTool[1].gap,
 		"mark",
 		"a marked row under a ledger row does not take the hairline",
 	);
 	// And an UNMARKED row is untouched, including the small view's narrower item.
-	const plain = buildRows([{ kind: "user", id: "u1", ts: 1, text: "go", images: [] }, prose("a1")], []);
-	assert.deepEqual(plain.map((row) => row.gap), ["first", "turn"]);
+	const plain = buildRows(
+		[{ kind: "user", id: "u1", ts: 1, text: "go", images: [] }, prose("a1")],
+		[],
+	);
+	assert.deepEqual(
+		plain.map((row) => row.gap),
+		["first", "turn"],
+	);
 });
 
 test("an invisible record does not consume the avatar or a turn boundary", () => {
