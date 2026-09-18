@@ -282,13 +282,27 @@ Three facts follow, and they are why this feature is gated rather than enabled:
 
 1. the call never throws, so nothing fails at startup to warn anybody;
 2. Chromium logs the missing entitlement itself, but only in the FIDO layer;
-3. **the page's `credentials.create()` promise never settles at all** — not a
-   clean `NotAllowedError` a site can handle, a hang.
+3. **the page's `credentials.create()` promise did not settle within a 60 s
+   observation in that same never-shown window.**
 
-A site that offers a passkey which cannot complete is worse than a site that never
-offers one, and a hung promise is the worst of the three. So the authenticator is
-configured **only** when the running app's own signature really carries the
-entitlement for the exact group about to be passed.
+**What item 3 does and does not show (QA round 1, Q1, correcting this document and
+`src/main/webauthn.ts`'s own header).** The pending promise is NOT caused by the
+missing configuration. Measured with the authenticator **off**, on a real RP origin
+(`http://localhost:<port>`, so an IP-literal origin's `SecurityError` is out of the
+picture), a page calling `credentials.create()` with `userVerification: "required"`
+was **still pending after 20 s**, twice — so a never-shown window leaves that
+request pending whether or not anything is configured, which points at Chromium
+waiting on a native prompt such a window cannot present rather than at this module.
+
+The difference the gate actually buys is the one a site's own feature detection
+reads, and it is the one measured here: with the entitlement missing,
+`PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` is
+**`false`**, so a well-behaved site does not offer a passkey it cannot complete. A
+site that offers a passkey which cannot complete is worse than a site that never
+offers one — that is why the authenticator is configured **only** when the running
+app's own signature really carries the entitlement for the exact group about to be
+passed, and why the verifiable claim is the feature-detection flag rather than a
+hang this machine cannot attribute.
 
 ### 3.2 The gate, and why it reads the signature instead of a config value
 
@@ -330,18 +344,63 @@ and the contract is explicit: with no listener — or one that passes no
 end for anybody with two passkeys for one site, so the app now answers it:
 
 - main holds the pending requests (`WebauthnChooser`), sends
-  `browser-webauthn-request` to the app's own window, and settles Electron's
-  callback exactly once per request;
-- the renderer shows `BrowserWebauthnDialog` — the shape of the existing hand-over
-  dialog, the same `BaseDialog` and roles, sentence case, no emoji, `cn` for
-  class names (branding contract) — and answers with the chosen `credentialId`;
+  `browser-webauthn-request` to the app's own window, and answers Electron's
+  callback **exactly once** per request. Exactly-once is now a property of the
+  callback rather than of the bookkeeping around it: the wrapper is keyed by the
+  callback itself (`onceAnswer`), because Electron delivers one event to every
+  registered listener with the *same* callback — and the registration is
+  idempotent per `Session` (`attachWebauthnChooser`), which is what a macOS
+  window close followed by a Dock click otherwise doubles (review round 1,
+  finding 2: `session.fromPartition` returns the same Session for the life of the
+  process, so a listener added inside the host's startup accumulates);
+- **the chooser is rendered by the APP SHELL**, not by the browser surface
+  (`browser-webauthn-prompt.tsx` in `app.tsx`, with the queue mirrored in
+  `shared/browser-webauthn-queue.ts`). Round 1 shipped it inside `BrowserSurface`,
+  which is mounted only on `/browser` or as the chat side pane — so a request
+  raised while the user was anywhere else was pushed to nobody and died at the
+  60 s bound (agent review round 1, finding 1 MAJOR; UX round 1, U2 MAJOR). The
+  consent band had already paid for this defect and its fix is the same shape;
+- **main is the source of truth for the queue, and the renderer pulls it**
+  (`browser-webauthn-pending`) when the prompt mounts, so a request raised while
+  nothing was listening is recoverable rather than lost, and returning to the
+  surface never has to reconstruct what it missed;
+- **every settle is pushed back** (`browser-webauthn-settled`, with the outcome),
+  so a dialog whose request main has already cancelled is closed rather than left
+  on screen offering buttons that cannot do anything (design round 1, D2). The
+  outcome travels with it because the endings differ for the user: `chosen` and
+  `dismissed` are their own act and get no paragraph, while an expiry, a host
+  stop and a credential that was not offered are explained in words;
+- requests are offered **oldest first**, and the ones behind are named
+  ("One more site is waiting for a passkey.") rather than silently replacing the
+  request they displaced (review round 1, finding 7);
+- the dialog is the existing hand-over dialog's shape — the same `BaseDialog` and
+  roles, sentence case, no emoji, `cn` for class names (branding contract) — and
+  everything it says is **derived from the request**: the lead sentence says which
+  case the user is in (one account, several named, or several whose names the OS
+  never supplied, where the copy says what the choice actually decides rather than
+  offering three ordinals), an unnamed row says so instead of leaving a blank
+  second line, the page the request came from is named when the event's frame
+  resolves to a tab, a long login wraps or ellipsises instead of being cut
+  mid-character at the panel edge, the Touch ID sentence is pinned in the footer
+  rather than left below a scrolling list, and the panel's width is a fixed step
+  so the same dialog is the same size for every site;
 - a dismissal, an unknown request id, a credential that was not offered, and the
   60 s timeout all answer Electron with **nothing** and log a line, because an
-  unanswered callback is the hang in §3.1 all over again;
-- stopping the host cancels what is pending, so a window that is going away does
-  not leave a page's promise pending.
+  unanswered callback is the dead end this feature exists to remove;
+- stopping the host cancels what is pending — and removes the Session listener —
+  so a window that is going away does not leave a page's promise pending, and a
+  second host start in the same process cannot find a second chooser.
 
 A single matching credential never reaches any of this: Electron dispatches it.
+
+**What the chooser cannot be exercised through on this machine.** Electron fires
+this event out of the OS credential path, so it needs the signed, entitled
+bundle: a CDP virtual authenticator answers a multi-credential request *inside
+the renderer* and never routes account selection to the embedder (QA round 1, Q2,
+measured twice). The evidence below therefore raises the event on the app's real
+`Session` from the main process and says so — everything downstream of that emit
+(chooser, IPC, preload validation, dialog, callback) is the shipped code, and the
+trigger is the one synthetic part.
 
 ### 3.4 The entitlement in the release path
 
@@ -369,6 +428,18 @@ behaviour and the reason the OS sheet cannot be verified here (§4).
 runs before the build, binds the team id to the secret and nothing else, and the
 build consumes `$ENTITLEMENTS_PLIST`; the committed plist carries no
 `keychain-access-groups` at all.
+
+**And the signed artifact is now asserted, not trusted** (review round 1, finding
+6). Every failure downstream of a missing entitlement is silent by design — the
+app logs one line and goes inert — so a release whose rendered plist never reached
+the signature would ship a passkey feature that can never work with nothing in the
+pipeline saying so. `scripts/verify-macos-artifacts.mjs` — the gate that already
+decides whether a macOS release is promotable — gained a check that reads the
+**signed bundle's** own entitlements (`codesign -d --entitlements :- <app>`) and
+requires a `keychain-access-groups` entry whose value has the group's shape,
+`<TEAM_ID>.<BUNDLE_ID>.webauthn`. The shape rather than the value, because the team
+id is a release secret this gate does not hold; the runtime compares the full value
+against its own signature and stays inert if they differ.
 
 ### 3.5 What Electron's implementation cannot do (stated plainly)
 
@@ -460,10 +531,24 @@ briefed with:
 
 What could be measured here: the gate's decision in a real boot of the built app
 (§4.2's log line, once per launch), the pure logic and the chooser's mapping
-(`scripts/webauthn.test.mjs`, 14 cases), the entitlements renderer including
+(`scripts/webauthn.test.mjs`, 21 cases), the entitlements renderer including
 `plutil -lint` over a rendered plist and the secret-hygiene assertion that the
-team id never reaches stdout (`scripts/render-mac-entitlements.test.mjs`), and the
+team id never reaches stdout (`scripts/render-mac-entitlements.test.mjs`, which
+also asserts the release gate's own entitlement check in both directions), and the
 unentitled-behaviour probe in §3.1.
+
+**And the chooser end to end, in a real boot**: `scripts/browser-challenge-proof.mjs
+--arm webauthn` (committed, re-runnable) boots the built app headless, emits
+`select-webauthn-account` on the app's real `Session` from the main process — the
+one synthetic step, forced by Q2 below — and captures the app's own renderer frames
+while asserting the things round 1 found wrong: the rows fit their box, the Touch
+ID sentence stays inside the panel with twelve accounts, a nameless list explains
+itself, a second request is named as waiting, a request raised **while the browser
+surface is not mounted** is still on screen and answerable, returning to the
+surface keeps it, an expiry replaces the rows with the sentence that explains it,
+the answer reaches Electron's callback, exactly one Session listener survives nine
+requests, and focus comes back to the app rather than landing on `<body>`. The
+frames and the numbers are in `docs/evidence/browser-webauthn/README.md`.
 
 ---
 
@@ -473,17 +558,25 @@ unentitled-behaviour probe in §3.1.
   identity: a local build is ad-hoc signed, so the gate says `unpackaged` and
   stays inert. Nothing here proves that a signed build's sheet appears, that the
   prompt string renders as intended, or that a created credential is retrievable.
-- **The entitlement on a signed build is unverified.** The render script and the
-  workflow wiring are asserted by tests over the YAML and the plist, and the gate's
-  comparison is unit-tested — but no build in this repository has yet produced a
-  signature carrying `keychain-access-groups`.
+  The chooser itself is exercised only through a synthetic emit (§4.3), because
+  the OS path that fires the real event needs that same signed bundle.
+- **The entitlement on a signed build has never been READ.** The render script and
+  the workflow wiring are asserted by tests over the YAML and the plist, the gate's
+  comparison is unit-tested, and the release gate now asserts the entitlement on
+  the built artifact (§3.4) — but no build in this repository has yet produced a
+  signature carrying `keychain-access-groups`, so that check has never run against
+  a real signature.
 - **The 1Password / Apple Passwords sheet cannot work at all** (§3.5), and no
   amount of testing here would change that; it needs a native addon.
 
-The next signed release owes: `codesign -d --entitlements :-` on the shipped
-`.app` showing the rendered group; one real `navigator.credentials.create()` on a
-test site with the sheet appearing and a credential being created; and a
-two-account `select-webauthn-account` exercise to see the chooser end to end.
+The next signed release owes, in this order: the release gate's new
+`app-webauthn-entitlement` check passing on the shipped `.app`
+(`codesign -d --entitlements :-` showing the rendered group); then a boot of that
+signed bundle whose log line names the group instead of `unpackaged`; then one real
+`navigator.credentials.create()` on a test site with the sheet appearing and a
+credential being created; and a real two-account `select-webauthn-account` — the
+one case a synthetic emit cannot stand in for, because it is the OS that selects
+the accounts.
 
 ---
 
@@ -511,3 +604,16 @@ two-account `select-webauthn-account` exercise to see the chooser end to end.
   passkeys, it needs the same two lines.
 - **The frozen-tab limit** (§1.4): not fixed, only documented. Nothing in this
   branch makes a captcha solvable in an invisible tab.
+- **A refused agent navigation still leaves no trace in the browser surface** (UX
+  round 1, U4). An agent's `goto` to an unapproved origin is refused with a typed
+  error naming the origin, the approved page is left alone rather than blanked —
+  and the user's own surface says nothing at all, so the refusal is legible only in
+  the agent's narration. That path is the RPC policy's refusal, not this diff's
+  gate: it is pre-existing, identical on the base tree, and making it visible needs
+  a notice channel the surface does not have (the consent band's attention path is
+  the nearest shape). Recorded rather than half-built here.
+- **The UA string change does not claim the stall.** §2.1's caveat stands: the
+  app's own shape fails the real-site arm on both trees, and the frozen build
+  component (`Chrome/152.0.0.0`, measured against Google Chrome 153.0.8010.53
+  presenting `…153.0.0.0`) removes an artifact rather than explaining the
+  operator's captcha.
