@@ -49,10 +49,15 @@ const bundle = await build({
 				isDocumentDirty,
 				subscribeDocumentDirty,
 				isAutosaveHeld,
-				publishExplicitSave,
-				explicitSaveAtFor,
+				releaseDocumentHold,
+				documentFact,
+				setDocumentFact,
+				subscribeDocumentFact,
+				saveDocument,
+				cancelPendingWrites,
+				currentWriteEpoch,
 			} from "./src/renderer/src/features/chat/components/canvas/file-freshness";
-			export { answerFor, factAfter, FACT_TEXT, ANSWER_LIFETIME_MS } from "./src/renderer/src/features/chat/components/canvas/use-file-freshness";
+			export { answerFor, factAfter, FACT_TEXT, FACT_DETAIL, ANSWER_LIFETIME_MS } from "./src/renderer/src/features/chat/components/canvas/use-file-freshness";
 			export { viewerFor, READ_ENCODING } from "./src/renderer/src/features/chat/utils/viewer-routing";
 			export { canvasDocumentForPath } from "./src/renderer/src/features/chat/utils/canvas-document";
 		`,
@@ -79,11 +84,17 @@ const {
 	isDocumentDirty,
 	subscribeDocumentDirty,
 	isAutosaveHeld,
-	publishExplicitSave,
-	explicitSaveAtFor,
+	releaseDocumentHold,
+	documentFact,
+	setDocumentFact,
+	subscribeDocumentFact,
+	saveDocument,
+	cancelPendingWrites,
+	currentWriteEpoch,
 	answerFor,
 	factAfter,
 	FACT_TEXT,
+	FACT_DETAIL,
 	ANSWER_LIFETIME_MS,
 	viewerFor,
 	READ_ENCODING,
@@ -433,7 +444,12 @@ test("a dirty document's tick probes, and reports that the file moved on", async
 	 * (UX round 1, U1; the round-1 UX walk measured the write vanishing with no
 	 * sentence anywhere).
 	 */
-	assert.deepEqual(outcome, { status: "skipped-dirty", diskChanged: true });
+	assert.deepEqual(outcome, {
+		status: "skipped-dirty",
+		diskChanged: true,
+		missing: false,
+		unreadable: false,
+	});
 	assert.equal(calls.probes.length, 1);
 	assert.equal(calls.reads.length, 0);
 });
@@ -444,7 +460,12 @@ test("a dirty tick that finds the file unmoved costs one stat and says nothing",
 	const { ports, calls } = bridge(files);
 	const runner = createFreshnessRunner(ports, (id) => id === path);
 	const outcome = await runner.check(doc(path, { readMtimeMs: 100 }));
-	assert.deepEqual(outcome, { status: "skipped-dirty", diskChanged: false });
+	assert.deepEqual(outcome, {
+		status: "skipped-dirty",
+		diskChanged: false,
+		missing: false,
+		unreadable: false,
+	});
 	assert.equal(calls.probes.length, 1);
 	assert.equal(calls.reads.length, 0);
 });
@@ -471,7 +492,12 @@ test("a document that becomes dirty while the read is in flight is not applied o
 	dirty = true;
 	for (const open of gates) open();
 	const outcome = await pending;
-	assert.deepEqual(outcome, { status: "skipped-dirty", diskChanged: true });
+	assert.deepEqual(outcome, {
+		status: "skipped-dirty",
+		diskChanged: true,
+		missing: false,
+		unreadable: false,
+	});
 });
 
 test("a dirty document survives an automatic apply, and the forced check only reports", async () => {
@@ -485,13 +511,23 @@ test("a dirty document survives an automatic apply, and the forced check only re
 	// neither applies anything: the difference between them is what the row says
 	// about a fix, not what the store does.
 	const automatic = await runner.check(document, false);
-	assert.deepEqual(automatic, { status: "skipped-dirty", diskChanged: true });
+	assert.deepEqual(automatic, {
+		status: "skipped-dirty",
+		diskChanged: true,
+		missing: false,
+		unreadable: false,
+	});
 
 	// The control still says something true: the file has moved on, and the
 	// unsaved edits are what wins. Nothing is applied either way - the whole
 	// point of the registry.
 	const forced = await runner.check(document, true);
-	assert.deepEqual(forced, { status: "skipped-dirty", diskChanged: true });
+	assert.deepEqual(forced, {
+		status: "skipped-dirty",
+		diskChanged: true,
+		missing: false,
+		unreadable: false,
+	});
 	assert.equal(calls.reads.length, 0);
 });
 
@@ -636,7 +672,12 @@ test("a dirty document whose file moved on holds its autosave, and releases it w
 	// The file comes back to the baseline: nothing was lost, so nothing is held.
 	files.set(path, { mtimeMs: 100, content: "one\n" });
 	const settled = await runner.check(held);
-	assert.deepEqual(settled, { status: "skipped-dirty", diskChanged: false });
+	assert.deepEqual(settled, {
+		status: "skipped-dirty",
+		diskChanged: false,
+		missing: false,
+		unreadable: false,
+	});
 	assert.equal(
 		isAutosaveHeld(path),
 		false,
@@ -676,21 +717,188 @@ test("load takes the file's version over the reader's buffer, and releases the h
 	assert.equal(calls.probes.length, 2, "and it probed again before it read");
 });
 
-test("an explicit save releases the hold and is timestamped for the row", () => {
-	const path = "/tmp/a.md";
-	setDocumentDirty(path, true);
-	assert.equal(explicitSaveAtFor(path), null);
-	publishExplicitSave(path);
-	assert.equal(typeof explicitSaveAtFor(path), "number");
+test("the write gate refuses an autosave whose file moved on, and says why", async () => {
+	/*
+	 * QA round 3, Q9 - the finding that sank the round-2 design. The poll is a 2s
+	 * timer and the editors' debounces are 1s and 3s, so a file rewritten on disk
+	 * shortly before a debounce fired was overwritten by the app's own save before
+	 * any probe could read it, and the save then recorded its own mtime as the
+	 * baseline so no fact was ever raised. The gate is inside the write, so the
+	 * ordering cannot matter: this test never runs a check at all.
+	 */
+	const path = "/tmp/gate.md";
+	const files = new Map([[path, { mtimeMs: 500, content: "external\n" }]]);
+	const writes = [];
+	const { ports } = bridge(files);
+	const gatePorts = {
+		probe: ports.probe,
+		write: async (target, content) => {
+			writes.push({ target, content });
+			files.set(target, { mtimeMs: 900, content });
+		},
+	};
+	const document = doc(path, { readMtimeMs: 100, content: "reader\n" });
+
+	const blocked = await saveDocument(document, "reader typed\n", {
+		ports: gatePorts,
+	});
+	assert.equal(blocked.status, "blocked");
+	assert.equal(blocked.fact, "disk-changed");
+	assert.equal(writes.length, 0, "nothing reached the file");
+	assert.equal(
+		files.get(path).content,
+		"external\n",
+		"the file's version is intact",
+	);
+	assert.equal(documentFact(path), "disk-changed");
+	assert.equal(isAutosaveHeld(path), true);
+	setDocumentFact(path, null);
+	releaseDocumentHold(path);
+});
+
+test("an explicit save is never refused, and converts the fact instead", async () => {
+	const path = "/tmp/gate.md";
+	const files = new Map([[path, { mtimeMs: 500, content: "external\n" }]]);
+	const { ports } = bridge(files);
+	const gatePorts = {
+		probe: ports.probe,
+		write: async (target, content) => {
+			files.set(target, { mtimeMs: 900, content });
+		},
+	};
+	const document = doc(path, { readMtimeMs: 100, content: "reader\n" });
+
+	const written = await saveDocument(document, "reader wins\n", {
+		explicit: true,
+		ports: gatePorts,
+	});
+	assert.equal(written.status, "written");
+	assert.equal(
+		written.overwrote,
+		true,
+		"the reader is told what their save replaced",
+	);
+	assert.equal(files.get(path).content, "reader wins\n");
+	assert.equal(
+		written.document.readMtimeMs,
+		900,
+		"the baseline is the write's own mtime",
+	);
+	assert.equal(documentFact(path), "save-replaced");
 	assert.equal(
 		isAutosaveHeld(path),
 		false,
 		"a save the reader asked for is never held",
 	);
-	clearDocumentDirty(path);
+	setDocumentFact(path, null);
 });
 
-// ------------------------------------- what an outcome does to the two registers
+test("a file that is gone refuses the autosave and allows the reader's save", async () => {
+	const path = "/tmp/gate-gone.md";
+	const files = new Map();
+	const { ports } = bridge(files);
+	const gatePorts = {
+		probe: ports.probe,
+		write: async (target, content) => {
+			files.set(target, { mtimeMs: 900, content });
+		},
+	};
+	const document = doc(path, { readMtimeMs: 100, content: "reader\n" });
+
+	const blocked = await saveDocument(document, "reader typed\n", {
+		ports: gatePorts,
+	});
+	assert.equal(blocked.status, "blocked");
+	assert.equal(blocked.fact, "missing");
+	assert.equal(
+		files.has(path),
+		false,
+		"an autosave does not resurrect a file the reader has not decided about",
+	);
+
+	const written = await saveDocument(document, "reader\n", {
+		explicit: true,
+		ports: gatePorts,
+	});
+	assert.equal(written.status, "written");
+	assert.equal(files.get(path).content, "reader\n");
+	setDocumentFact(path, null);
+});
+
+test("a resolution cancels a write already in flight, whatever the filesystem says", async () => {
+	const path = "/tmp/gate-cancel.md";
+	const files = new Map([[path, { mtimeMs: 100, content: "original\n" }]]);
+	const { ports } = bridge(files);
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const wrote = [];
+	const gatePorts = {
+		probe: async (target) => {
+			await gate;
+			return ports.probe(target);
+		},
+		write: async (target, content) => {
+			wrote.push(content);
+			files.set(target, { mtimeMs: 200, content });
+		},
+	};
+	const document = doc(path, { readMtimeMs: 100, content: "reader\n" });
+
+	/*
+	 * The reader's save is past its own start, and the reader presses the control
+	 * while it is waiting on the probe: that is the ordering UX round 3 (U9)
+	 * watched destroy the version the press was loading.
+	 */
+	const inFlight = saveDocument(document, "reader typed\n", {
+		ports: gatePorts,
+	});
+	cancelPendingWrites(path);
+	release();
+	const outcome = await inFlight;
+	assert.equal(outcome.status, "cancelled");
+	assert.deepEqual(wrote, [], "the cancelled save wrote nothing");
+	assert.equal(files.get(path).content, "original\n");
+	assert.equal(currentWriteEpoch(path), 1);
+	releaseDocumentHold(path);
+});
+
+test("a load that cannot read changes nothing about the buffer or its protection", async () => {
+	/*
+	 * Code review round 3's major B: round 2 cleared the dirty registry and the hold
+	 * BEFORE the read, so a failed read left the buffer protected by nothing.
+	 */
+	const path = "/tmp/gate-missing.md";
+	const files = new Map([[path, { mtimeMs: 500, content: "external\n" }]]);
+	const { ports } = bridge(files);
+	setDocumentDirty(path, true);
+	const runner = createFreshnessRunner(ports);
+	const document = doc(path, { readMtimeMs: 100, content: "reader\n" });
+
+	// A dirty tick that sees the file moved on is what establishes the hold.
+	const ticked = await runner.check(document);
+	assert.equal(ticked.status, "skipped-dirty");
+	assert.equal(isAutosaveHeld(path), true);
+
+	// The file then goes away, and the reader presses the control.
+	files.delete(path);
+	const outcome = await runner.load(document);
+	assert.equal(outcome.status, "missing");
+	assert.equal(isDocumentDirty(path), true, "the buffer is still unsaved");
+	assert.equal(
+		isAutosaveHeld(path),
+		true,
+		"and still not writing over anything",
+	);
+	assert.equal(
+		document.content,
+		"reader\n",
+		"and the reader's bytes are still the ones held",
+	);
+	clearDocumentDirty(path);
+	releaseDocumentHold(path);
+}); // ------------------------------------- what an outcome does to the two registers
 
 test("the answer to a forced check that found identical bytes says so", () => {
 	/*
@@ -738,21 +946,45 @@ test("the facts that a probe CAN answer are retired by it", () => {
 	assert.equal(factAfter({ status: "unchanged" }, "unreadable"), null);
 	// A dirty tick reports the fact, and stops reporting it when the mtime is back.
 	assert.equal(
-		factAfter({ status: "skipped-dirty", diskChanged: true }, null),
+		factAfter(
+			{
+				status: "skipped-dirty",
+				diskChanged: true,
+				missing: false,
+				unreadable: false,
+			},
+			null,
+		),
 		"disk-changed",
 	);
 	assert.equal(
-		factAfter({ status: "skipped-dirty", diskChanged: false }, "disk-changed"),
+		factAfter(
+			{
+				status: "skipped-dirty",
+				diskChanged: false,
+				missing: false,
+				unreadable: false,
+			},
+			"disk-changed",
+		),
 		null,
 	);
 	assert.equal(
-		factAfter({ status: "skipped-dirty", diskChanged: false }, null),
+		factAfter(
+			{
+				status: "skipped-dirty",
+				diskChanged: false,
+				missing: false,
+				unreadable: false,
+			},
+			null,
+		),
 		undefined,
 		"a quiet dirty tick leaves whatever stands standing",
 	);
 });
 
-test("every fact has a sentence, and answers are the ones with a lifetime", () => {
+test("every fact has a sentence that fits the row, and a full one for the tooltip", () => {
 	const facts = [
 		"missing",
 		"unreadable",
@@ -760,16 +992,29 @@ test("every fact has a sentence, and answers are the ones with a lifetime", () =
 		"disk-changed",
 		"save-replaced",
 	];
+	/*
+	 * Design round 3, D10's other half: the hold sentence measured 694px in a row
+	 * that offers about 320px at the default pane, so its actionable clause was
+	 * never on screen at any width. The visible string is budgeted now; the full
+	 * claim lives in `FACT_DETAIL`, which the tooltip and the control's accessible
+	 * description carry.
+	 */
 	for (const fact of facts) {
 		assert.equal(typeof FACT_TEXT[fact], "string");
 		assert.ok(FACT_TEXT[fact].length > 0);
+		assert.ok(
+			FACT_TEXT[fact].length <= 62,
+			`${fact} reads "${FACT_TEXT[fact]}" (${FACT_TEXT[fact].length} chars) - too long for the row`,
+		);
+		assert.ok(FACT_DETAIL[fact].length >= FACT_TEXT[fact].length);
 	}
-	// The dirty fact names only actions the canvas has: the control loads the
-	// file's version, and a save replaces it. "Discard" is not one of them.
 	const dirtySentence = FACT_TEXT["disk-changed"];
-	assert.match(dirtySentence, /Load its version/);
+	// Only actions that exist: the control loads the file's version, a save replaces
+	// it. "Discard", which round 1's copy named, is not one of them.
+	assert.match(dirtySentence, /load it/);
 	assert.match(dirtySentence, /save to replace it/);
 	assert.doesNotMatch(dirtySentence, /discard/i);
+	assert.match(FACT_DETAIL["disk-changed"], /unsaved edits are discarded/);
 	assert.ok(
 		ANSWER_LIFETIME_MS > 0,
 		"an answer retires rather than standing for ever",
