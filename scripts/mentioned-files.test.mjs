@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -45,6 +46,7 @@ const bundle = await build({
 				shouldRequestPage,
 			} from "./src/renderer/src/features/chat/canonical/mentioned-files-scan";
 			export { buildFileTiles, displayParent, parentDirectory } from "./src/renderer/src/features/chat/components/canvas/file-tiles";
+			export { viewerFor, READ_ENCODING } from "./src/renderer/src/features/chat/utils/viewer-routing";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -74,6 +76,8 @@ const {
 	buildFileTiles,
 	displayParent,
 	parentDirectory,
+	viewerFor,
+	READ_ENCODING,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -911,4 +915,375 @@ test("parentDirectory handles roots, dotfiles and data URIs", () => {
 	assert.equal(parentDirectory("~/notes/plan.md"), "~/notes");
 	assert.equal(parentDirectory("report.md"), null);
 	assert.equal(parentDirectory("data:image/png;base64,AAAA"), null);
+});
+
+// ---------------------------------------------------- the scratchpad protocol
+
+/*
+ * The backend gives every session a scratch folder addressed as a URL, and every
+ * tool result prints the RESOLVED ABSOLUTE PATH beside the URL it was given:
+ *
+ *   Created <scheme>run/perf.md -> /…/sessions/<id>/scratchpad/run/perf.md (207 chars).
+ *
+ * So the panel's contract here is two-sided, and the two sides fail in opposite
+ * directions. The URL is a SCHEME, not a path: nothing on disk is named
+ * `<scheme>run/perf.md`, so admitting one puts a tile in front of the user for a
+ * file that cannot open. The resolved path is an ordinary absolute path with a
+ * known extension - exactly what the prose tier admits - and dropping it is the
+ * missed mention the whole panel exists to prevent.
+ *
+ * The strings below are transcribed from a real transcript produced by the
+ * sibling backend worktree, not invented for the test; see
+ * `docs/evidence/scratchpad-files/README.md` for the session they came from.
+ */
+
+/**
+ * The scheme, spelled ONCE.
+ *
+ * It was renamed once already (`notes://` → `scratchpad://`, decided in the same
+ * round as this change), and this file asserts the scheme's behaviour in a dozen
+ * places - so every literal here is built from this constant. A rename is one
+ * edit in this file and the same one edit in the guide the backend ships.
+ */
+const SCRATCHPAD_SCHEME = "scratchpad://";
+
+/** A session directory, in the shape the harness creates (`sessions/<12 hex>`). */
+const SESSION_DIR = "/Users/damian/.local-operator/sessions/0f3a91c4b7d2";
+const NOTE_DIR = `${SESSION_DIR}/scratchpad/run`;
+
+test("a bare scheme URL is a scheme, not a path, in every argument form", () => {
+	// Every spelling the grammar accepts, including the two directory forms
+	// (`<scheme>` lists the root, `<scheme>run/` descends) and a query, which the
+	// grammar does not define but a URL-shaped string can still carry.
+	for (const url of [
+		`${SCRATCHPAD_SCHEME}run/perf.md`,
+		`${SCRATCHPAD_SCHEME}`,
+		`${SCRATCHPAD_SCHEME}.`,
+		`${SCRATCHPAD_SCHEME}run/`,
+		`${SCRATCHPAD_SCHEME}run/perf.md?x=1`,
+	]) {
+		assert.deepEqual(
+			paths([tool("a", { path: url })]),
+			[],
+			`${url} names no file on disk`,
+		);
+		assert.deepEqual(
+			paths([tool("a", { file_path: url })]),
+			[],
+			`${url} is not a file under any path key`,
+		);
+		// And under a NON-path key, where the prose rules apply: there the match
+		// begins at the URL's own `//`, which is a network location rather than an
+		// absolute path, and is rejected on that ground instead.
+		assert.deepEqual(
+			paths([tool("a", { command: `cat ${url}` })]),
+			[],
+			`${url} in a command string is still not a path`,
+		);
+	}
+});
+
+test("a scratchpad write result yields its resolved path and never the URL beside it", () => {
+	const records = [
+		tool(
+			"a",
+			{ path: `${SCRATCHPAD_SCHEME}run/perf.md` },
+			`Created ${SCRATCHPAD_SCHEME}run/perf.md -> ${NOTE_DIR}/perf.md (207 chars).`,
+		),
+	];
+	assert.deepEqual(paths(records), [`${NOTE_DIR}/perf.md`]);
+	assert.equal(sources(records)[`${NOTE_DIR}/perf.md`], "prose");
+});
+
+test("a scratchpad note read back names its resolved path too", () => {
+	// The read form is `<url> -> <path>` followed by the numbered body.
+	const records = [
+		tool(
+			"a",
+			{ path: `${SCRATCHPAD_SCHEME}run/metrics.csv` },
+			`${SCRATCHPAD_SCHEME}run/metrics.csv -> ${NOTE_DIR}/metrics.csv\n1| name,p50_ms,p95_ms\n2| canary,41,118`,
+		),
+	];
+	assert.deepEqual(paths(records), [`${NOTE_DIR}/metrics.csv`]);
+});
+
+test("every format the protocol promises becomes exactly one tile", () => {
+	/*
+	 * The shapes the backend's guide names, plus the script extensions the store
+	 * now also holds - a session that writes a helper script through the scheme
+	 * gets a tile for it exactly like a note, and the routing test below is what
+	 * says which surface opens it.
+	 */
+	const cases = [
+		["md", "perf"],
+		["json", "run-config"],
+		["csv", "metrics"],
+		["tsv", "metrics"],
+		["txt", "session-log"],
+		["text", "session-log"],
+		["yaml", "config"],
+		["yml", "config"],
+		["log", "rollout"],
+		["sh", "rollout"],
+		["bash", "rollout"],
+		["py", "collect"],
+	];
+	for (const [ext, name] of cases) {
+		const url = `${SCRATCHPAD_SCHEME}run/${name}.${ext}`;
+		assert.deepEqual(
+			paths([
+				tool(
+					"a",
+					{ path: url },
+					`Created ${url} -> ${NOTE_DIR}/${name}.${ext} (12 chars).`,
+				),
+			]),
+			[`${NOTE_DIR}/${name}.${ext}`],
+			`${ext} resolves to exactly one tile`,
+		);
+	}
+});
+
+test("a text path outvotes a type that disagrees with it", () => {
+	// The branch sits ABOVE the `type` fallback, so these rows move from answering
+	// the document's own type to answering by the path. They are a REPRESENTATIVE
+	// SUBSET rather than the whole movement: on a 160-row matrix (16 extensions x
+	// 10 types) 24 rows move, and every one of the 24 is a `.txt`/`.text`/`.log`
+	// row - no other family is reachable from this branch (QA round 2 counted that
+	// matrix; the three below are the shapes worth naming).
+	// Reachability through the panel is nil — a `.txt` document's type is derived
+	// from the same path — but a shared helper's precedence belongs in the test
+	// that pins it rather than only in a comment.
+	for (const [path, type] of [
+		["/x/weird.txt", "spreadsheet"],
+		["/x/weird.txt", "image"],
+		["/x/weird.log", "markdown"],
+	]) {
+		assert.equal(
+			viewerFor(path, type),
+			"code",
+			`${path} as ${type} routes by path`,
+		);
+	}
+});
+
+test("every promised format opens in the viewer a user expects", () => {
+	/*
+	 * A script is CODE and must never reach the markdown viewer: a `.sh` opened
+	 * as prose would render a shebang as a heading, which is the failure this
+	 * table exists to catch rather than a routing detail.
+	 */
+	const expected = {
+		md: "markdown",
+		json: "code",
+		csv: "spreadsheet",
+		tsv: "spreadsheet",
+		txt: "code",
+		text: "code",
+		yaml: "code",
+		yml: "code",
+		log: "code",
+		sh: "code",
+		bash: "code",
+		py: "code",
+	};
+	for (const [ext, kind] of Object.entries(expected)) {
+		const path = `${NOTE_DIR}/note.${ext}`;
+		assert.equal(viewerFor(path), kind, `${ext} opens as ${kind}`);
+		// The document's own `type` must not outvote the path it came with: a
+		// `.txt` note is text whatever a stale classification says.
+		assert.equal(
+			viewerFor(path, "other"),
+			kind,
+			`${ext} routes by its path when the type disagrees`,
+		);
+	}
+	// The encoding is half the answer: the grid reads base64, the text viewers
+	// decode as UTF-8.
+	assert.equal(READ_ENCODING.markdown, "utf-8");
+	assert.equal(READ_ENCODING.code, "utf-8");
+	assert.equal(READ_ENCODING.spreadsheet, "base64");
+});
+
+test("an extensionless note yields no tile, which is why the guide names one", () => {
+	// The naming rule the backend's guide teaches, with a test behind it: the
+	// prose tier demands a known extension, so `<scheme>run/perf` is listed but
+	// never tiled.
+	const records = [
+		tool(
+			"a",
+			{ path: `${SCRATCHPAD_SCHEME}run/perf` },
+			`Created ${SCRATCHPAD_SCHEME}run/perf -> ${NOTE_DIR}/perf (12 chars).`,
+		),
+	];
+	assert.deepEqual(paths(records), []);
+});
+
+test("a scratchpad listing names a directory, not a file", () => {
+	// The listing prints the scratchpad root's absolute path and its entries by
+	// name - the header's own wording is not what this turns on. Neither the root
+	// (a directory, no extension) nor a bare entry name is a mention, which is the
+	// deliberate trade recorded in the backend's design: the panel gets its tiles
+	// from the notes the agent actually writes.
+	const listing = `Scratchpad listing ${SCRATCHPAD_SCHEME} -> ${SESSION_DIR}/scratchpad (2 entries):\nperf.md\nrun`;
+	assert.deepEqual(
+		paths([tool("a", { path: SCRATCHPAD_SCHEME }, listing)]),
+		[],
+	);
+});
+
+test("a templated or abbreviated path yields no candidate at all", () => {
+	/*
+	 * Two forms, both MEASURED in a real run (QA round 1, PR #336) against the
+	 * guide the feature ships, whose own example lines put a path-shaped
+	 * placeholder in the transcript:
+	 *
+	 *   guide line 58  `scratchpad://logs/run.md -> /…/sessions/<id>/scratchpad/logs/run.md`
+	 *   guide line 23  the printed path (`bash /…/scratchpad/probe.sh`, `eval`, `grep`)
+	 *
+	 * The first is the TAIL of an angle-bracket placeholder - the scanner stops at
+	 * `<` and resumes after the `>` - and the second is an ABBREVIATED path whose
+	 * ellipsis segment was admitted whole. Both put a tile for a file that does not
+	 * exist in front of the user, which is this module's documented worst failure,
+	 * and the live panel read `6 files` for a session with four real ones.
+	 *
+	 * A template reaches a transcript through a tool RESULT as readily as through
+	 * a guide paragraph, so all three carriers are asserted: assistant prose, a
+	 * tool result, and a tool argument.
+	 */
+	const templateLine = `in the form\n\`${SCRATCHPAD_SCHEME}logs/run.md -> /…/sessions/<id>/scratchpad/logs/run.md\`. That path`;
+	assert.deepEqual(paths([assistant(1, templateLine)]), []);
+	const abbreviatedLine =
+		"the printed path (`bash /…/scratchpad/probe.sh`, `eval`, `grep`).";
+	assert.deepEqual(paths([assistant(1, abbreviatedLine)]), []);
+	assert.deepEqual(
+		paths([
+			tool(
+				"a",
+				{ path: `${SCRATCHPAD_SCHEME}run/perf.md` },
+				`Created ${SCRATCHPAD_SCHEME}run/perf.md -> /…/sessions/<id>/scratchpad/run/perf.md (42 chars).`,
+			),
+		]),
+		[],
+	);
+	// The same two shapes under a path key, where the structured tier sees them.
+	assert.deepEqual(paths([tool("a", { path: "/…/scratchpad/probe.sh" })]), []);
+	assert.deepEqual(
+		paths([tool("a", { path: "/…/sessions/<id>/scratchpad/logs/run.md" })]),
+		[],
+	);
+	// The ASCII spelling of the same abbreviation, WITH the ellipsis in the middle
+	// of the token - the reviewer's own example. The mid-segment spelling is the
+	// one that pins `ELLIPSIS_SEGMENT`: a LEADING `.../x.sh` is rejected by the
+	// prefix rule instead (the token starts after a `.`), so it passes with the
+	// segment rule deleted and would be a row that proves nothing.
+	assert.deepEqual(
+		paths([assistant(1, "open /Users/x/.../scratchpad/probe.sh now")]),
+		[],
+	);
+	assert.deepEqual(
+		paths([assistant(1, "run `bash .../scratchpad/probe.sh` and read back")]),
+		[],
+	);
+});
+
+test("a real path after a tag, a generic or a heredoc seam is still admitted", () => {
+	/*
+	 * The other direction of the guard above, and the reason it is narrow. "Ends
+	 * with `>` and contains a `<`" describes every HTML tag, every TypeScript
+	 * generic and every heredoc or closing tag glued to a path, so the placeholder
+	 * must also look like one: the text before its `<` has to be path-like. These
+	 * are the shapes review round 2 measured as real mentions that the wider rule
+	 * dropped, and they are asserted as mentions so the narrowing cannot be undone
+	 * silently - a guard that eats real files is the failure this whole module
+	 * exists to prevent.
+	 */
+	const kept = [
+		"use <code>/tmp/real/notes.md here",
+		"done </b>/tmp/real/notes.md here",
+		"Map<T>/tmp/notes/real.md",
+		"<br/>/tmp/notes/real.md",
+		"compare <image-a.png>/tmp/real/notes.md",
+		"cat <<EOF>/tmp/real/notes.md",
+	];
+	for (const line of kept) {
+		assert.equal(
+			paths([assistant(1, line)]).length,
+			1,
+			`${line} names one real file, and the guard must keep it`,
+		);
+	}
+	// And the template it exists for is still dropped, from the same shape.
+	assert.deepEqual(
+		paths([assistant(1, "see /…/sessions/<id>/scratchpad/run/perf.md there")]),
+		[],
+	);
+});
+
+test("the harness's own seeded text is asserted, not a copy of it", () => {
+	/*
+	 * The two placeholder lines the evidence frames replay live in
+	 * `docs/evidence/scratchpad-files/harness/seed-placeholder-lines.py`, and a
+	 * near-copy here would let the test and the frames drift apart while both
+	 * stayed green - the frames are captured with the harness's string, so that is
+	 * the string the extractor is asked about. Read from the file, not retyped.
+	 */
+	const source = readFileSync(
+		"docs/evidence/scratchpad-files/harness/seed-placeholder-lines.py",
+		"utf8",
+	);
+	const literal = /SEEDED_TEXT = \(\n([\s\S]*?)\n\)/.exec(source);
+	assert.ok(literal, "the harness still declares SEEDED_TEXT");
+	const seeded = [...literal[1].matchAll(/"([^"]*)"/g)]
+		.map((part) => part[1])
+		.join("");
+	// Both shapes are in it, so one assertion covers both rules.
+	assert.ok(seeded.includes("/…/sessions/<id>/scratchpad/logs/run.md"));
+	assert.ok(seeded.includes("/…/scratchpad/probe.sh"));
+	assert.deepEqual(paths([assistant(1, seeded)]), []);
+});
+
+test("the abbreviation trade, stated exactly: `…` anywhere, `...` as a whole segment", () => {
+	/*
+	 * The cost of the rule above, stated as a test rather than discovered later.
+	 * Two shapes are rejected in EVERY tier, because the marker class and the
+	 * segment rule are applied wherever a candidate is canonicalised:
+	 * `…` (U+2026) anywhere in the token, and an ASCII `...` that IS a whole path
+	 * segment. A file whose NAME legitimately contains either pays for it. That is
+	 * this module's standing trade (a missing tile, never a tile for a path no
+	 * file has), and the asymmetry is deliberate: a character that means "text was
+	 * removed" is the one thing a text-inferring scanner cannot tell from a name.
+	 *
+	 * The boundary is NOT "an ellipsis anywhere", and review round 3 was right to
+	 * say so: `ELLIPSIS_SEGMENT` reads segments, so a `...` inside a NAME —
+	 * `/tmp/notes/a...b.md` — is admitted, by all three tiers. That is asserted
+	 * below as a positive rather than left to be discovered, because a comment
+	 * that overstates a fail-safe rule is the kind of thing a later reader
+	 * deletes the rule on the strength of.
+	 */
+	assert.deepEqual(paths([assistant(1, "opened /tmp/notes/we…ird.md")]), []);
+	assert.deepEqual(
+		paths([assistant(1, "opened file:///tmp/notes/we…ird.md")]),
+		[],
+	);
+	assert.deepEqual(paths([tool("a", { path: "/tmp/notes/we…ird.md" })]), []);
+	// The same three tiers, the ASCII spelling as a whole segment.
+	assert.deepEqual(paths([assistant(1, "opened /tmp/notes/.../a.md")]), []);
+	assert.deepEqual(
+		paths([assistant(1, "opened file:///tmp/notes/.../a.md")]),
+		[],
+	);
+	assert.deepEqual(paths([tool("a", { path: "/tmp/notes/.../a.md" })]), []);
+	// And the shape the rule does NOT cover, admitted by all three tiers.
+	for (const [label, records] of [
+		["prose", [assistant(1, "opened /tmp/notes/a...b.md")]],
+		["file-url", [assistant(1, "opened file:///tmp/notes/a...b.md")]],
+		["tool-arg", [tool("a", { path: "/tmp/notes/a...b.md" })]],
+	]) {
+		assert.equal(
+			paths(records).length,
+			1,
+			`a mid-name \`...\` is admitted on the ${label} tier - the rule reads segments`,
+		);
+	}
 });
