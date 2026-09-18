@@ -7119,6 +7119,17 @@
           "scriptsTree": "fe8d5bc3cd9cd32f632623d8f953d59763cb6bbb",
           "capturedAt": "2026-09-17T21:19:18.000Z"
         }
+      },
+      {
+        "at": "2026-09-18, on `fix/transcription-errors-and-stale-backend`, at the round-2 remediation head (`2b6b6f00e`)",
+        "by": "PR #321",
+        "why": "The remediation commit that answers review round 2's T1-T4 moves both real trees: `src/main/update-service.ts` and `src/renderer/src/shared/components/common/update-notification.tsx` carry the serving process's own reading on the update events (plus the direction rule that keeps a daemon AHEAD of the install from being headed \"the server is on an older build than the install\"), `src/main/backend/backend-service.ts` stops an adopted record outliving the adoption, and the three node suites gain the cases that pin each half. Both stamps are therefore re-derived from that commit's trees. NO FRAME WAS RE-TAKEN AND NONE MOVED: this round changed no user-visible copy, so the twelve committed frames of `settings-app-updates-section/serving-server-behind-install/` remain pictures of the state they were taken from - what changed is that the PRODUCER can deliver that state at all (the rig's before/after is recorded in the commit message, not in any frame). The one picture this round looked at is uncommitted and local: a production Storybook build of that same story, opened with the browser tool to read the sentence the reader now receives. `pnpm check-evidence`'s sweep still needs the machine-wide lease another session holds, so the aggregate counts, `surfaces` and `themes` stay main's and this branch's earlier passes' and nothing here claims the 6009 aggregate describes this tree.",
+        "replaced": {
+          "head": "11a9f66cf117223b2bf709172145576a78299772",
+          "srcTree": "81352452f95dab55a0375b70947833b559621799",
+          "scriptsTree": "fe8d5bc3cd9cd32f632623d8f953d59763cb6bbb",
+          "capturedAt": "2026-09-17T21:19:18.000Z"
+        }
       }
     ],
     "browserToolPass": {
