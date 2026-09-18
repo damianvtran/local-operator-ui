@@ -26,7 +26,7 @@ ancestry rule requires its `head` to be an ancestor of `HEAD`, and a capture can
 only be stamped from a tree that is already committed, so a set always lands in a
 commit after the tree it photographed.
 
-**And this set was folded onto a moved `main` after that pass — four times — so
+**And this set was folded onto a moved `main` after that pass — five times — so
 read the head above as the spelling the folds gave it.** The manifest's
 `srcTree`/`scriptsTree` describe the tree the frames SHIP in, so a fold invalidates
 them whatever the branch's own delta is, and both are re-derived on the merged tree
@@ -92,6 +92,18 @@ BOTH heads — `09acb156a` and `33373f748` — so the fold before this one's res
 of the textarea's aria fold is untouched rather than re-made, and the mention
 layer's own files are byte-identical again. **No frame was re-taken for this
 fold.**
+
+**The twelfth fold (`main` at `3a5b66c54`) is the third in the same session, and it
+does not touch this band either.** `main` moved 15 commits and 38 files under this
+branch (the canonical transcript's momentum paging, `scroll-paging.ts` and
+`use-scroll-paging.ts`, its scroll-paging evidence set and the rigs that drive it),
+2 under `src/` and the rest evidence and scripts. `message-input.tsx`'s blob is
+`4af66278` on all three heads now — `09acb156a`, `33373f748` and `3a5b66c54` — so
+the aria fold's resolution is untouched for a second fold running. **No frame was
+re-taken for this fold**, and the window is the one case where the counts below do
+NOT move: its 24 new frames all land inside the already-declared
+`transcript-scroll-paging` set, which main re-captured in the same window, and a
+declared set's frames are out of the swept count by construction.
 
 The counts in the manifest next to this file are the merged tree's own (`frames`
 6,009 outside the 77 declared sets, `surfaces` 638), re-derived by the same walker
