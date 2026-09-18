@@ -1651,6 +1651,129 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 ]);
 
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
+/**
+ * The machine register for a desktop-control REFUSAL, and the one translator that
+ * turns it into a sentence a user reads.
+ *
+ * WHY these are codes on the error rather than the string a refusal came with.
+ * `desktopResult` used to throw the response envelope's `detail` as the error's
+ * MESSAGE, so the daemon's own prose became the app's diagnosis: the operator's
+ * sidebar read "Desktop controls require a backend started by the desktop app."
+ * (`local_operator/server/desktop.py`), a sentence about the daemon's own
+ * ownership written by the daemon, on a machine where the app was
+ * simply not paired (design § 0(c), § 5.1). A server string is not this app's
+ * sentence, and a transport that adopts it as one cannot be reviewed for what the
+ * user will read.
+ *
+ * The shape is `desktop-stream-notice.ts`'s, one layer over: the details are a
+ * machine vocabulary that is NEVER rendered, and one translator composes the
+ * product sentence. What differs is who needs to read the machine value - the
+ * surfaces here are nine call sites of `userFacingMessage`, so the translator is
+ * that function rather than a per-surface switch.
+ */
+export const DESKTOP_REFUSAL_CODE = {
+	/**
+	 * This app holds no token for the daemon it can see, so main refused to send
+	 * the request at all. A PAIRING condition: the daemon never answered.
+	 */
+	noCredential: "pairing.no-credential",
+	/**
+	 * A 401/403 from a `/v1/desktop/` route: the daemon answered and refused this
+	 * app's bearer. Re-claiming is the repair that exists, so it is a pairing
+	 * condition and not a version one.
+	 */
+	refused: "pairing.refused",
+	/**
+	 * A 503 from a `/v1/desktop/` route that the app did NOT author: the daemon is
+	 * running with its desktop plane shut (no claim accepted, no environment
+	 * token), which is what a successor answers with until the app claims it.
+	 */
+	planeClosed: "pairing.plane-closed",
+	/**
+	 * A 409 from a `/v1/desktop/` route: the plane governs under a record or key
+	 * that is not this app's, so the credential it holds is stale.
+	 */
+	stale: "pairing.stale",
+	/**
+	 * Main could not complete the request at all (a refused socket, a reset). NOT a
+	 * pairing condition - nothing was established about the daemon's plane - and it
+	 * carries its own authored sentence.
+	 */
+	transportFailed: "transport.failed",
+} as const;
+
+/** One code from {@link DESKTOP_REFUSAL_CODE}. */
+export type DesktopRefusalCode =
+	(typeof DESKTOP_REFUSAL_CODE)[keyof typeof DESKTOP_REFUSAL_CODE];
+
+/**
+ * The sentences a refusal composes into, one per code.
+ *
+ * NO sentence here names an update, and none tells the user to change what the
+ * app manages: every one of these codes is a PAIRING condition, and pairing is
+ * the app's own business to re-establish (design § 3.1, § 4's falsifiable
+ * prediction). The two that can only be repaired by re-claiming say so; the two
+ * that cannot be repaired from here state the fact and stop.
+ */
+export const DESKTOP_REFUSAL_SENTENCE: Record<DesktopRefusalCode, string> = {
+	[DESKTOP_REFUSAL_CODE.noCredential]:
+		"This app is not paired with the running Local Operator server, so this control is unavailable.",
+	[DESKTOP_REFUSAL_CODE.refused]:
+		"This app's credential for the running Local Operator server was refused, so this control is unavailable.",
+	[DESKTOP_REFUSAL_CODE.planeClosed]:
+		"The running Local Operator server does not accept this app's desktop controls.",
+	[DESKTOP_REFUSAL_CODE.stale]:
+		"The running Local Operator server is not the one this app paired with.",
+	[DESKTOP_REFUSAL_CODE.transportFailed]:
+		"The Local Operator server did not answer this request.",
+};
+
+/**
+ * The two sentences MAIN writes into a refusal it synthesised itself.
+ *
+ * Declared here - the shared half of the desktop contract - because they are a
+ * machine vocabulary rather than copy: main emits them, and the renderer has to
+ * tell them apart from the DAEMON's own 503 so that "the app holds no credential"
+ * is never reported as "the server's plane is shut". They are carried in
+ * `detail.message` and rendered only by {@link DESKTOP_REFUSAL_SENTENCE}.
+ */
+export const DESKTOP_MACHINE_DETAIL = {
+	noCredential:
+		"Restart with a desktop-managed backend to use these controls.",
+	transportFailed:
+		"The backend could not complete this request. Check its connection and try again.",
+} as const;
+
+/** Whether a caught error's `code` is one of the refusal codes. */
+export function isDesktopRefusalCode(
+	code: string | undefined,
+): code is DesktopRefusalCode {
+	return (
+		code !== undefined &&
+		(Object.values(DESKTOP_REFUSAL_CODE) as string[]).includes(code)
+	);
+}
+
+/**
+ * The refusal code a status names on a route the desktop plane has to admit, or
+ * undefined for a status that names none.
+ *
+ * The PATH is half the test, and it is what keeps a 401 from an ordinary route
+ * out of this vocabulary: only `/v1/desktop/` is behind the plane's admission, so
+ * a refusal there is about the PAIRING while the same status elsewhere is about
+ * that route's own authorization.
+ */
+export function desktopRefusalCodeForStatus(
+	path: string,
+	status: number,
+): DesktopRefusalCode | undefined {
+	if (!path.startsWith("/v1/desktop/")) return undefined;
+	if (status === 401 || status === 403) return DESKTOP_REFUSAL_CODE.refused;
+	if (status === 409) return DESKTOP_REFUSAL_CODE.stale;
+	if (status === 503) return DESKTOP_REFUSAL_CODE.planeClosed;
+	return undefined;
+}
+
 export type DesktopResponse = { status: number; body: unknown };
 
 /**
@@ -2335,7 +2458,21 @@ export type DesktopMediaRequest =
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
 	| { status: number; kind: "json"; body: unknown }
-	| { status: number; kind: "error"; detail: string };
+	| {
+			status: number;
+			kind: "error";
+			detail: string;
+			/**
+			 * The pairing-family refusal this was, when it was one.
+			 *
+			 * Optional because a transport need not declare one: main does (see
+			 * `src/main/desktop-media.ts`), and the development proxy forwards a refusal
+			 * body without one. Carried at all so a media refusal the plane wrote is
+			 * composed into this app's own sentence rather than echoed as its diagnosis,
+			 * exactly as the JSON transport's refusals are (design § 3.5, § 5.1).
+			 */
+			code?: DesktopRefusalCode;
+	  };
 
 export type DesktopAPI = {
 	request: (request: DesktopRequest) => Promise<DesktopResponse>;
