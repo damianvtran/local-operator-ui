@@ -3,13 +3,13 @@
  * highlight, floating above the highlighted frame.
  *
  * WHAT IT IS, AND WHAT IT DELIBERATELY IS NOT. One control, the same visual
- * object as `message-controls.tsx`'s strip on the legacy transcript, because
- * two floating toolbars that look different is a defect rather than a style
- * choice. Copy and Speak deliberately do NOT ride along: both already exist on
- * `MessageControls`, and that component couples them to its own timestamp in
- * one strip. Reusing it here would drag the timestamp (out of scope for this
- * change) onto the canonical rows, and writing a second copy button would be
- * the second implementation § 9 of `docs/branding.md` refuses.
+ * object as `message-controls.tsx`'s strip on the legacy transcript, because two
+ * floating toolbars that look different is a defect rather than a style choice.
+ * Copy and Speak deliberately do NOT ride along: both already exist on
+ * `MessageControls`, and that component couples them to its own timestamp in one
+ * strip. Reusing it here would drag the timestamp (out of scope for this change)
+ * onto the canonical rows, and writing a second copy button would be the second
+ * implementation § 9 of `docs/branding.md` refuses.
  *
  * THE TRIGGER IS THE HIGHLIGHT, AND NOTHING ELSE (the operator's first ask:
  * "The quote button should only show up when highlighting a section, not just
@@ -29,38 +29,38 @@
  * control - not by coordinating the rows, but by one of them being able to
  * answer the question and the other not.
  *
+ * A HIGHLIGHT THAT LIES WHOLLY INSIDE A LINK IS THE LINK TOOLBAR'S, and that is
+ * the one addition the link affordance made here. The rule is unchanged - one
+ * control per highlight, and the row that owns it decides which - but the ROW
+ * now declines to mount this control when the link toolbar is the one offering
+ * the press, so the reader gets one strip with Quote on it rather than two strips
+ * on top of each other. The decision lives in the row (`canonical-transcript.tsx`
+ * mounts this only when `useLinkSubject` says no link owns the highlight), which
+ * is what keeps this component's own gate about its own turn alone.
+ *
  * `pointer-events` and focus. The shell cancels `mousedown` so a press cannot
  * collapse the very highlight it is about to quote, and so the press does not
  * move focus off the reader's highlight before the click lands; a `mousedown`
  * that defaulted would clear the selection in some engines before `click` runs,
  * which is a press that stages nothing.
  *
- * WHAT IT IS PLACED AGAINST. `quoteSelectionIn` hands back the reader's own
- * highlight's lines - the whole highlight, and with no mounted control's box
- * among them - and `placeQuoteControl` is a pure function of those and the two
- * boxes they have to fit inside. That purity is the fix for the round-1 defect
- * (code review M1, UX U9, QA Q27): the placement used to be measured from a
- * range that had been clipped to the turn and therefore contained this
- * control's own box, so it read its own output and walked 40px down the pane per
- * re-measuring event.
+ * WHAT IT IS PLACED AGAINST, AND WHERE THAT LIVES NOW. The geometry - the
+ * reader's own highlight's lines, the coalesced re-measure, the ignores-a-reflow
+ * observer, the row-relative position - is `use-floating-control.ts`, shared with
+ * the link toolbar so that the round-1 placement defects (code review M1, UX U9,
+ * QA Q27) cannot be re-derived in a second copy. The PRESS is
+ * `use-quote-press.ts`, for the same reason: it carries the recorded history of
+ * what a press that leaves focus behind costs.
  */
 
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { Quote } from "lucide-react";
 import type { FC } from "react";
-import {
-	useCallback,
-	useEffect,
-	useLayoutEffect,
-	useRef,
-	useState,
-} from "react";
-import { v4 as uuidv4 } from "uuid";
-import { focusComposer } from "../composer-field";
-import { type QuotePlacement, placeQuoteControl } from "./quote-anchor";
+import { useEffect, useState } from "react";
 import { QUOTE_TOOLKIT_ATTR, quoteSelectionIn } from "./quote-model";
+import { useFloatingControl } from "./use-floating-control";
+import { useQuotePress } from "./use-quote-press";
 
 type QuoteToolkitProps = {
 	/**
@@ -90,47 +90,10 @@ type QuoteToolkitProps = {
 	turnRef: { readonly current: HTMLElement | null };
 };
 
-/**
- * The scroller the control is clamped inside: the transcript's own scroll box,
- * which already carries this marker for the harnesses and for the paging
- * policy. Read with `closest()` rather than threaded down through the rows,
- * because it is the element's own answer and a second prop would be a second
- * place to keep it correct.
- */
-const SCROLLER_SELECTOR = "[data-lo-canonical-transcript]";
-
-/**
- * The transcript's content wrapper: the node that GROWS when a row above the
- * highlight gains height, which is the reflow no event reports. Same marker
- * `use-scroll-paging.ts` watches for the same reason.
- */
-const CONTENT_SELECTOR = "[data-lo-transcript-content]";
-
-/** A viewport box, from any element or range rect. No scroll offset is applied. */
-const boxOf = (rect: {
-	top: number;
-	left: number;
-	right: number;
-	bottom: number;
-}) => ({
-	top: rect.top,
-	left: rect.left,
-	right: rect.right,
-	bottom: rect.bottom,
-});
-
-const viewportBox = () => ({
-	top: 0,
-	left: 0,
-	right: window.innerWidth,
-	bottom: window.innerHeight,
-});
-
 export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	conversationId,
 	turnRef,
 }) => {
-	const addReply = useConversationInputStore((state) => state.addReply);
 	/*
 	 * The gate, and deliberately a boolean rather than the highlight itself: it
 	 * changes only when the highlight moves to another turn, so a scroll - which
@@ -140,66 +103,15 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	 * pressing.
 	 */
 	const [owns, setOwns] = useState(false);
-	/*
-	 * Where the control goes, in the ROW's own coordinates. Those two boxes move
-	 * together when the scroller scrolls, so a scroll that changes neither the
-	 * flip nor a clamp changes no number here and re-renders nothing - which is
-	 * why this is worth stating as row-relative rather than viewport-relative.
-	 */
-	const [placement, setPlacement] = useState<QuotePlacement | null>(null);
-	const controlRef = useRef<HTMLDivElement>(null);
-
-	const measure = useCallback(() => {
-		const turn = turnRef.current;
-		const control = controlRef.current;
-		if (!turn || !control) {
-			setPlacement(null);
-			return;
-		}
-		const selection = quoteSelectionIn(turn);
-		if (!selection) {
-			setPlacement(null);
-			return;
-		}
-		/*
-		 * `getClientRects()` and not `getBoundingClientRect()`, and on the
-		 * HIGHLIGHT rather than on the clipped range: the flip is asked about the
-		 * line the highlight begins on and its `left` is the reader's own start
-		 * point, and the union box answers neither question - see
-		 * `quote-anchor.ts`. `quoteSelectionIn` returns the boxes already, with
-		 * every mounted control's own box removed (round 1: M1, U9, Q27).
-		 */
-		const placed = placeQuoteControl({
-			lines: selection.lines,
-			container: boxOf(
-				(turn.closest(SCROLLER_SELECTOR) ?? turn).getBoundingClientRect(),
-			),
-			viewport: viewportBox(),
-			// Measured from the control itself rather than assumed from its
-			// classes: the shell's height is pinned by the contrast gate but its
-			// width comes from the button inside it, and a hard-coded pair here is
-			// a second definition of the control's own size.
-			size: { width: control.offsetWidth, height: control.offsetHeight },
-		});
-		const row = turn.getBoundingClientRect();
-		const next = placed
-			? {
-					top: placed.top - row.top,
-					left: placed.left - row.left,
-					placement: placed.placement,
-				}
-			: null;
-		setPlacement((previous) =>
-			previous === next ||
-			(previous &&
-				next &&
-				previous.top === next.top &&
-				previous.left === next.left &&
-				previous.placement === next.placement)
-				? previous
-				: next,
-		);
-	}, [turnRef]);
+	const handleQuote = useQuotePress(conversationId, turnRef);
+	const { controlRef, placement } = useFloatingControl({
+		turnRef,
+		visible: owns,
+		// The WHOLE highlight's boxes, with no mounted control's own box among
+		// them - `quoteSelectionIn` promises both, and `quote-anchor.ts` says why
+		// the first line anchors the control and the last one decides the flip.
+		lines: () => quoteSelectionIn(turnRef.current)?.lines ?? null,
+	});
 
 	/*
 	 * THE GATE, and the only event that fires for every way a highlight is made
@@ -218,133 +130,36 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	}, [turnRef]);
 
 	/*
-	 * THE POSITION, and the dismissals that are not a selection change.
+	 * ESCAPE DISMISSES, and it CLEARS the highlight rather than hiding the control
+	 * over one: a hidden control above a lit selection is a state the reader cannot
+	 * get out of, since the next scroll or selection event would raise it again -
+	 * and the operator's third ask is exactly that it goes away "instead of
+	 * sticking around". It does not `preventDefault()` and it does not stop
+	 * propagating: this app has its own Escape (it stops a running turn), and one
+	 * key answering the gesture the product documents it for is the key working,
+	 * not a conflict to arbitrate here.
 	 *
-	 * `useLayoutEffect` because the position is measured from the control's own
-	 * box: it runs after the DOM mutation and before paint, so the reader never
-	 * sees a frame of the control standing at the row's origin before it is
-	 * placed.
-	 *
-	 * Scroll and resize recompute rather than merely re-render, which is the
-	 * technique `TextSelectionControls` already uses on this transcript: the
-	 * position is derived from the highlight's own range rect, so it has to be
-	 * re-read whenever the page moves under it. `selectionchange` is here too,
-	 * because a second drag inside this turn changes the highlight's geometry
-	 * without changing the gate.
-	 *
-	 * THE EVENTS ARE COALESCED INTO ONE MEASURE PER FRAME (code review round 1,
-	 * m4): every handler here reads layout (`getClientRects`, three
-	 * `getBoundingClientRect` calls and the control's own offset size) on the one
-	 * surface whose own header calls it out as the one that "repaints per token",
-	 * and a trackpad delivers scroll events faster than a frame. Coalescing costs
-	 * nothing visually because `placement` is ROW-relative - a plain scroll moves
-	 * the row and the control together, so the only frames that need a new number
-	 * are the flip and the clamps, where a frame of latency is what React's state
-	 * update already costs.
-	 *
-	 * A REFLOW INSIDE THE VIEWPORT FIRES NO EVENT (code review round 1, m1). A
-	 * row above the highlight that gains height - an attached image finishing its
-	 * load, a streaming answer's markdown settling - moves the highlight with no
-	 * scroll event at all, and the control would keep an offset that no longer
-	 * describes anything. `ResizeObserver` on the content wrapper and on the
-	 * scroller is the general answer, and it is the one `use-scroll-paging.ts`
-	 * already uses for the same class of growth.
-	 *
-	 * ESCAPE DISMISSES, and it CLEARS the highlight rather than hiding the
-	 * control over one: a hidden control above a lit selection is a state the
-	 * reader cannot get out of, since the next scroll or selection event would
-	 * raise it again - and the operator's third ask is exactly that it goes away
-	 * "instead of sticking around". It does not `preventDefault()` and it does
-	 * not stop propagating: this app has its own Escape (it stops a running
-	 * turn), and one key answering the gesture the product documents it for is
-	 * the key working, not a conflict to arbitrate here.
+	 * An Escape something else has already answered - a popup closing, the
+	 * composer's own - is not this control's to answer as well, so the guard is
+	 * `defaultPrevented` rather than relying on listener order.
 	 */
-	useLayoutEffect(() => {
-		if (!owns) {
-			setPlacement(null);
-			return;
-		}
-		measure();
-		let frame = 0;
-		const schedule = () => {
-			if (frame) return;
-			frame = requestAnimationFrame(() => {
-				frame = 0;
-				measure();
-			});
-		};
+	useEffect(() => {
+		if (!owns) return;
 		const onKeyDown = (event: KeyboardEvent) => {
-			/*
-			 * An Escape something else has already answered - a popup closing, the
-			 * composer's own - is not this control's to answer as well, so the guard
-			 * is `defaultPrevented` rather than relying on listener order.
-			 */
 			if (event.key !== "Escape" || event.defaultPrevented) return;
 			window.getSelection()?.removeAllRanges();
 			/*
 			 * Belt and braces beside `removeAllRanges()`, which fires
-			 * `selectionchange` and would take the gate down on its own: clearing the
-			 * gate here means Escape cannot leave a control in the DOM over a
-			 * highlight it has just dropped, whatever the engine does with the event.
+			 * `selectionchange` and would take the gate down on its own: clearing
+			 * the gate here means Escape cannot leave a control in the DOM over a
+			 * highlight it has just dropped, whatever the engine does with the
+			 * event.
 			 */
 			setOwns(false);
-			setPlacement(null);
 		};
-		document.addEventListener("scroll", schedule, true);
-		document.addEventListener("selectionchange", schedule);
-		window.addEventListener("resize", schedule);
 		document.addEventListener("keydown", onKeyDown);
-		const scroller = turnRef.current?.closest(SCROLLER_SELECTOR);
-		const content = scroller?.querySelector(CONTENT_SELECTOR);
-		const observer = new ResizeObserver(schedule);
-		if (scroller) observer.observe(scroller);
-		if (content) observer.observe(content);
-		return () => {
-			if (frame) cancelAnimationFrame(frame);
-			document.removeEventListener("scroll", schedule, true);
-			document.removeEventListener("selectionchange", schedule);
-			window.removeEventListener("resize", schedule);
-			document.removeEventListener("keydown", onKeyDown);
-			observer.disconnect();
-		};
-	}, [owns, measure, turnRef]);
-
-	const handleQuote = useCallback(() => {
-		/*
-		 * The highlight is read HERE, at the press, and it is the highlight this
-		 * turn OWNS: the control is only up because a highlight begins in this
-		 * turn, so re-reading cannot answer with a different turn's words, and it
-		 * is what makes a press after a second drag quote what is lit rather than
-		 * what was lit when the control was placed. Nothing to quote is a no-op
-		 * rather than a fallback, which is the boundary that used to widen a
-		 * quote to the whole turn (code review round 2, MINOR 2; UX U8; QA Q8).
-		 */
-		const selection = quoteSelectionIn(turnRef.current);
-		if (!selection) return;
-		addReply(conversationId, { id: uuidv4(), text: selection.text });
-		// The highlight has been answered; leaving it lit over text that is now
-		// also above the composer reads as two live selections.
-		window.getSelection()?.removeAllRanges();
-		/*
-		 * THE PRESS HANDS THE CARET BACK (design round 1, D2; UX round 1, U1; QA
-		 * round 1, Q1).
-		 *
-		 * Staging a quote is the moment the reader has committed to writing the
-		 * message it belongs to, and focus left on this button is not neutral: it
-		 * silently discarded the next keystrokes (measured: typing after a press left
-		 * the textarea empty and the characters nowhere in the document) and turned
-		 * Enter - which everywhere else in this composer means "send" - into a second
-		 * press of this button, staging a duplicate quote (measured: replies 1 -> 2).
-		 * A control that eats the reader's next words and then repeats itself on the
-		 * key that sends is the defect, not the styling.
-		 *
-		 * Slack and Linear return focus to the composer for this same reason. The
-		 * hand-off is the composer's own `focusInput` (through `composer-field`)
-		 * rather than a `.focus()` here, so the "the user took the box" flag the ask
-		 * gate reads is cleared by the one function that owns it.
-		 */
-		focusComposer();
-	}, [addReply, conversationId, turnRef]);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [owns]);
 
 	// Absent, not hidden: with no highlight of this turn's there is nothing to
 	// operate, so the control leaves the DOM and with it the tab order.
