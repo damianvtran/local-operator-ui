@@ -95,16 +95,32 @@ export const markAllReadCopy = (
 		(row) =>
 			unreadMarkKind(row) !== null && unreadAckableRows([row]).length === 0,
 	).length;
+	/*
+	 * Each clause is a SENTENCE that carries its own full stop, and the two are joined
+	 * by a space. The previous shape put the terminator in the `elsewhere` arm and
+	 * began the tokenless arm with a space, so with BOTH clauses present two sentences
+	 * ran together — "…in Previous chats 1 unread mark with no completion token cannot
+	 * be cleared." — and neither clause's own test could see it, because each was
+	 * asserted on a roster where only it fired (design D5 / QA Q-1; measured, and the
+	 * base renders the same run-on). The comma keeps the first clause inside the
+	 * sentence it extends, so the four cases are: neither clause, `elsewhere` alone,
+	 * `tokenless` alone, and both.
+	 */
+	const sentences = [
+		`Mark ${count} unread ${chat} as read${
+			elsewhere > 0 ? `, including ${elsewhere} in Previous chats` : ""
+		}.`,
+	];
+	if (tokenless > 0)
+		sentences.push(
+			`${tokenless} unread ${
+				tokenless === 1 ? "mark" : "marks"
+			} with no completion token cannot be cleared.`,
+		);
 	return {
 		count,
 		label: `Mark all ${count} read`,
-		scope: [
-			`Mark ${count} unread ${chat} as read`,
-			elsewhere > 0 ? `, including ${elsewhere} in Previous chats` : ".",
-			tokenless > 0
-				? ` ${tokenless} unread ${tokenless === 1 ? "mark" : "marks"} with no completion token cannot be cleared.`
-				: "",
-		].join(""),
+		scope: sentences.join(" "),
 		nameSuffix:
 			elsewhere > 0 ? `, including ${elsewhere} in Previous chats` : "",
 	};

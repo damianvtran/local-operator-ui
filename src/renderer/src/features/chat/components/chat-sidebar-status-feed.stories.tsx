@@ -122,6 +122,16 @@ const APPROVAL = { code: "approval", label: "Approval needed" };
 const WEDGED = { code: "wedged", label: "Not answering · process alive" };
 const IDLE = { code: "idle", label: "Recent" };
 const COMPLETE = { code: "complete", label: "Complete" };
+/*
+ * The two FAILURE pairs, and they are the reason this file needs its own rows for
+ * them: `status_code` publishes `error`/`interrupted` where the runtime's own mark
+ * wins, and the label it publishes then reads "Unseen error" / "Unseen
+ * interruption" (the runtime's `CatalogEntry.status`, the same sentence the row's
+ * tooltip and its accessible name carry). No other story in this file stages one,
+ * which left the only class the bulk count KEEPS without a frame (design D3).
+ */
+const FAILED = { code: "error", label: "Unseen error" };
+const STOPPED = { code: "interrupted", label: "Unseen interruption" };
 
 /**
  * A conversation's completion token, shaped like the backend's own `RequestID`.
@@ -1911,6 +1921,116 @@ export const MarkAllReadUnseenWithoutMark: Story = {
 			);
 		// The readout measures the DOM in an effect, so the frame is only honest
 		// once that effect has run and the rows have painted their spinners.
+		await sleep(300);
+	},
+};
+
+/*
+ * THE MARKS THE COUNT KEEPS, and the one class no other frame in this set shows.
+ *
+ * `unreadMarkKind` counts `complete`, `error` and `interrupted` — the three codes
+ * the runtime publishes while an unread completion stands — and the failure pair
+ * is the half a reader is least able to check afterwards: an `error` row draws the
+ * alert glyph and its danger ink whether it is unread or acknowledged, so clearing
+ * it moves no pixel OF THE ROW; what moves is the section it sits in (the wire's
+ * `active` is `pending || unseen || live_state`) and the label behind the tooltip
+ * ("Unseen error" -> "Error"). This frame is where that trade is visible, and it
+ * is why the story exists rather than the sentence alone (design D3): three rows
+ * drawing marks the control counts, and a busy row carrying the SAME unread state
+ * that it must not count.
+ */
+export const MarkAllReadMixedMarks: Story = {
+	render: () => {
+		fixtures({
+			/*
+			 * A READ-FOR-ALL answer, so the frame a reviewer is most likely to click
+			 * behaves like the state it depicts: the three marks the label names are the
+			 * three the receipt clears, and the busy row is neither counted nor sent.
+			 */
+			receipt: {
+				read: [readAt(RECONCILE), readAt(QUARTERLY), readAt(MIGRATE)],
+				superseded: [],
+				unknown: [],
+			},
+		});
+		roster = [
+			wireRow(
+				RECONCILE,
+				"Reconcile the supplier ledger",
+				1_760_001_400,
+				COMPLETE,
+				3,
+				undefined,
+				unseenAt(RECONCILE),
+			),
+			wireRow(
+				QUARTERLY,
+				"Quarterly revenue model",
+				1_760_001_300,
+				FAILED,
+				3,
+				undefined,
+				{ ...unseenAt(QUARTERLY), kind: "error" },
+			),
+			wireRow(
+				MIGRATE,
+				"Migrate the deploy script",
+				1_760_001_200,
+				STOPPED,
+				3,
+				undefined,
+				{ ...unseenAt(MIGRATE), kind: "interrupted" },
+			),
+			wireRow(
+				AUDIT,
+				"Audit the deploy script",
+				1_760_001_100,
+				BUSY,
+				3,
+				undefined,
+				unseenAt(AUDIT),
+				{ live_state: "busy" },
+			),
+		];
+		return <Page />;
+	},
+	play: async () => {
+		await catalogueSettled(4);
+		/*
+		 * The three claims the frame makes, asserted against the store rather than
+		 * described in a caption: the control counts exactly the three rows that draw a
+		 * mark, the busy row carries the unread state the state is ABOUT, and it is not
+		 * drawing a mark. A fixture that dropped the attention state would photograph
+		 * something much easier than this state.
+		 */
+		const sessions = useCanonicalSessionsStore.getState().sessions;
+		const counted = unreadAckableCount(sessions);
+		if (counted !== 3)
+			throw new Error(
+				`the control counts ${counted} rows, not the three that draw a mark`,
+			);
+		const busy = sessions.find((row) => row.session_id === AUDIT);
+		if (busy?.attention?.unseen !== true)
+			throw new Error(
+				"the busy row does not carry the unread state this frame is about",
+			);
+		if (unreadMarkKind(busy) !== null)
+			throw new Error(
+				"the busy row is drawing a mark, so the frame is not the exclusion it claims",
+			);
+		const stated = await waitFor(() =>
+			Boolean(
+				document
+					.querySelector("[data-readout-control]")
+					?.textContent?.includes('present ("Mark all 3 read")'),
+			),
+		);
+		if (!stated)
+			throw new Error(
+				"the readout never reported the control and the three rows it would name",
+			);
+		// The readout measures the DOM in an effect, so the frame is only honest once
+		// that effect has run and the rows have painted their marks.
 		await sleep(300);
 	},
 };

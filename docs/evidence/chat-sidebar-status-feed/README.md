@@ -44,6 +44,27 @@ completion.
   The readout's own line is the same one every frame in this set carries, so the
   absence is stated in words rather than left to be inferred from a missing
   button.
+
+  **Its BEFORE half is photographed, and lives outside this set**:
+  `chat-sidebar-status-feed-baseline/mark-all-read-unseen-without-mark/` is the
+  SAME roster under `main`'s predicate (`unseen` plus a token, no code filter), and
+  it is the operator's own screenshot — `Active chats 3 · ✓ Mark all 3 read` over a
+  spinner, a gate and a "not answering" row, with the readout saying `3 unread
+  row(s) it would name`. The pair is the state's whole claim: the control is
+  offered over rows that draw no mark, and then is not. Its `source` in the
+  manifest names what that capture staged and the two lines main's tree cannot
+  compile (see below).
+- **`mark-all-read-mixed-marks/`** — the marks the count KEEPS, and the one class
+  no other frame in this set shows: an unseen `complete` (green check), an unseen
+  `error` (danger alert, "Unseen error") and an unseen `interrupted` (warning
+  pause, "Unseen interruption") — the three codes the runtime publishes while an
+  unread completion stands — beside a busy row carrying the same unread state,
+  which the control must not count. The header reads `Active chats 4 · ✓ Mark all 3
+  read`, and the readout prints `unseen, no mark drawn` for the busy row. It is the
+  frame that decides whether a failure row needs a read/unread step of its own
+  (design D3): the alert glyph and its ink do not move when such a row is
+  acknowledged, so what a bulk clear changes there is the section the row sits in
+  and the label behind the tooltip — not a pixel of the row.
 - **`mark-all-read-partly-read/`** — the state the whole per-item verdict exists
   for. Two marks cleared, one REFUSED (`superseded`: the conversation completed
   again between the render and the click, so the token this client held is no
@@ -110,6 +131,27 @@ lines are the command that actually produced them; a README that records a
 different command from the run is a claim a reproducer cannot trust (agent review
 round 1, R6).
 
+Both states this round added came from the same two lines, narrowed:
+`--only=chat-sidebar-status-feed--mark-all-read-unseen-without-mark` and
+`--only=chat-sidebar-status-feed--mark-all-read-mixed-marks`. **The first capture
+after a story file changes FAILS, on a cold Storybook**: the theme wait gives the
+page 10 s and a cold vite transform of this component graph outlasts it
+(`document carries theme "" after 10s`). Re-running the same command succeeds —
+the second run compiles nothing new — so a first-attempt failure here is the rig
+warming up rather than a story that does not render. Every capture in this round,
+including the before half below, succeeded on its second attempt.
+
+The BEFORE half of `mark-all-read-unseen-without-mark` is deliberately not in this
+directory: it is the same-named state under
+`chat-sidebar-status-feed-baseline/`, captured in a detached worktree of
+unmodified `origin/main` at `896b19134` with this branch's story file staged in
+and exactly two things patched — the per-row readout marker back to main's own
+`row.attention?.unseen` spelling (main has no `unreadMarkKind` to ask), and the
+story's `play` inverted to assert the control IS present and reads `Mark all 3
+read`, which is the defect it photographs. The mixed-marks story was dropped from
+that staged file: the state it shows cannot exist on main's predicate. The
+manifest's `source` for that set records the same two edits.
+
 **Run this set as a WHOLE, never one story at a time** — the states in it share
 module state (`entities`, the agents and teams a story stages) that no story
 resets, so a story captured alone is a picture of a fixture the sweep does not
@@ -118,19 +160,37 @@ run and the same frame from a full sweep agree byte for byte, and both differ
 from the committed one by the line below — so a narrowed run is not a cheaper
 re-take of a state.
 
-**One line in this set's older frames is NOT a picture of the current tree, and it
-is not this change's.** The rest of the surface was last re-taken at `7d41e63e3`;
-`c1dfcc27f` (the built-ins summary fix, later the same morning) gave the agents
-section an empty state of its own, so a re-capture now draws `No agents yet`
-where those frames carry nothing. Measured, on the two frames this change is
-about and on the whole surface: a re-take differs from the committed frame by
-12,656 pixels (`gate-answered`) and 11,830 (`mark-all-read-pile`), with the agents
-line the whole of the difference, and it is DETERMINISTIC rather than a settle
-race — the same bytes with this change in the tree, with it stashed back out, and
-across repeated runs. So this PR ships the new state's frames and leaves every
-other frame in the set at its committed bytes: folding a 23-story re-take of
-somebody else's line into a one-predicate fix would bury the change the frames
-exist to show.
+**EIGHT STATES IN THIS SET PICTURE AN EARLIER TREE, and neither delta is this
+change's.** They were last re-taken at `7d41e63e3` (05:48), and two commits on
+`main` have since changed what the same stories render:
+
+- `c1dfcc27f` (10:04) gave the agents section an empty state of its own, so a
+  re-capture draws `No agents yet` where those frames carry nothing.
+- `ab76b06f3` (11:11) moved a busy row's ink from `info` to `accent`, so their
+  spinners are the retired blue where a frame taken now is green. Census over the
+  glyph column (x 8-38, every theme's frame at 780x600), counting pixels with hue
+  200-255, S>0.18, 0.15<L<0.92 in `localOperatorDark`: `completion-reordered` 95,
+  `completion-acknowledged` 93, `completion-in-place` 93, `gate-answered` 86,
+  `completion-unseen` 85, `truncating-title` 85, `completion-second-in-band` 47,
+  `gate-parked` 42 — and **0 in all fifteen `mark-all-read-*` states**, which this
+  branch took after the move (arc stroke sampled in `gate-answered`: `rgb(156,
+  176,206)`, hue 216°, the `info` role; the same theme's ground is byte-identical
+  between the two epochs, so the difference is the ink and not the palette).
+
+This paragraph replaces one that said the agents line was "the whole of the
+difference": the 12,656-pixel figure it quoted for `gate-answered` (11,830 for
+`mark-all-read-pile`) is a `7d41e63e3`-epoch reading in which a re-take ALSO
+repaints those busy glyphs, so it measures both deltas together and could not be
+carried onto this tree as written (design round 1, **D1**, measured there and
+reproduced here). The re-take is DETERMINISTIC rather than a settle race — the
+same bytes with this change in the tree, with it stashed back out, and across
+repeated runs.
+
+So this branch ships the new state's frames and leaves those eight states at the
+bytes `main` holds. Re-taking them is a pass for `ab76b06f3` and `c1dfcc27f`
+rather than for this fix, and per the note above it is a whole-set pass when it
+comes; the frames that carry the earlier ink are named here so that a reader
+meeting one role in two hues in one theme is not left to reconcile it unaided.
 
 The stories (`chat-sidebar-status-feed.stories.tsx`) drive the REAL
 `ChatSidebar` — including `ChatSessionStatus`'s glyph, ink and accessible name —
