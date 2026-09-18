@@ -2056,13 +2056,37 @@ export const STORIES = [
 	 * the app is current and the server trails, so one press of Check for updates
 	 * offers the server release. The story scripts the whole answer - both
 	 * channels' own events and the verdict the check returns - because the defect
-	 * is the panel and the snackbar disagreeing, and it is captured on two trees
-	 * (this one and a worktree at the pre-fix commit) so the pair shows the
-	 * contradiction rather than arguing it. Captured from a PRODUCTION Storybook
-	 * build, because the button does not check at all when import.meta.env.DEV is
-	 * true; see the story's own note.
+	 * is the panel and the snackbar disagreeing.
+	 *
+	 * ONE TREE, NOT TWO (design round 2, D3). This comment used to say the pair was
+	 * captured on two trees, "this one and a worktree at the pre-fix commit". It is
+	 * not, and the set contains no pre-fix-tree capture: every frame here is a frame
+	 * of THIS build, and the `before-the-fix` half is the same build rendering the
+	 * verdict `origin/main` produced for this machine's readings - the producer's
+	 * answer quoted, which is what `before-the-fix/`'s own section in this set's
+	 * README says and why a panel-copy change moves that half too. The stale sentence
+	 * was left by the round that rewrote that README for the same finding.
+	 *
+	 * Captured from a PRODUCTION Storybook build, because the button does not check
+	 * at all when import.meta.env.DEV is true; see the story's own note.
 	 */
-	["settings-app-updates-section--server-update-offered", 900, 460],
+	[
+		"settings-app-updates-section--server-update-offered",
+		900,
+		/*
+		 * 572, WITH EVERY OTHER STATE OF THIS SURFACE, and it is the app's own
+		 * MINIMUM window rather than a convenient frame: `WINDOW_MIN_HEIGHT = 600`
+		 * minus the 28px of chrome the renderer does not own. This set used to be
+		 * captured at two heights - 460 here and 900x620 for the states the
+		 * serving-install change added - so the baseline could not be laid beside the
+		 * states it has to be told apart from: the pane's geometry differs, and in the
+		 * 460 frames all four version columns and the whole button label are visible
+		 * where the new ones have the card over them (design round 1, D2). One height
+		 * for the whole surface makes the comparison the states exist for possible,
+		 * and 572 is the one that also carries the supported worst case (D1).
+		 */
+		572,
+	],
 
 	/*
 	 * The other half of the same story: both channels proved current, so the
@@ -2073,7 +2097,46 @@ export const STORIES = [
 	 * sentence the fix introduces. Not captured on a pre-fix tree: the
 	 * affirmation exists only on this one.
 	 */
-	["settings-app-updates-section--all-current", 900, 460],
+	["settings-app-updates-section--all-current", 900, 572],
+
+	/*
+	 * THE OPERATOR'S OWN MACHINE, and the pair no existing frame covers: an
+	 * app-managed server three releases behind its published release, reported as
+	 * up to date.
+	 *
+	 * `before-the-fix` is the verdict origin/main reached for this machine's state
+	 * (the whole check affirmed, while the same pane's Server version row printed
+	 * the older daemon it was talking to), and `server-behind-serving-install` is
+	 * what the check answers for the same state now: an offer naming the SERVING
+	 * install, no affirmation, and no package-manager command for an install no
+	 * package manager owns.
+	 *
+	 * Both are captured from the SAME production build, because the difference
+	 * between them is the verdict the main process produces rather than anything
+	 * the renderer decides - the story scripts the producer's own answer, and the
+	 * two answers are quoted with their log lines on the pull request. There is
+	 * therefore no pre-fix tree to capture the first one on: the payload is a
+	 * value here, not a function of the tree.
+	 */
+	[
+		"settings-app-updates-section--before-the-fix",
+		900,
+		/*
+		 * THE APP'S MINIMUM WINDOW, like every other state here (design round 1, D1
+		 * and D2). Measured rather than guessed: this entry was 620 because at 460 the
+		 * pane's own fixed panel clipped the Details block - the line that names the
+		 * install the check judged - and a frame whose subject is the copy has to
+		 * include the copy. 620 was the one height at which the CARD happened to fit,
+		 * which turned the knob on the capture instead of on the card: at 572 the
+		 * unbounded card ran 53px past the window with no scroll container to reach the
+		 * tail, and the committed frame could not show that because it was never taken
+		 * there. The card is bounded to the viewport now (see `UpdateContainer`), so
+		 * the worst case fits the frame as a closed card.
+		 */
+		572,
+	],
+	["settings-app-updates-section--server-behind-serving-install", 900, 572],
+	["settings-app-updates-section--serving-server-behind-install", 900, 572],
 
 	/* Canvas: the second-largest surface, and the one with the data grids. */
 	["canvas-workspace--markdown-document", 1280, 900],

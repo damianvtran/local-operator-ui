@@ -1631,11 +1631,21 @@ test("an unattended completion speaks only when the readings actually differ", (
 	assert.match(skewCopy, /older build than the install/, skewCopy);
 	assert.match(skewCopy, /finished while Local Operator was closed/, skewCopy);
 	assert.match(skewCopy, /still reports 0\.56\.0/, skewCopy);
+	/*
+	 * THE FACT AND THE ROUTE, because the finding was that the panel carried only
+	 * the first (review round 1, UX U2). The sentence used to read "It moves onto the
+	 * new build when it restarts - Local Operator does not restart a server it did
+	 * not start": a trigger named and then taken away by its own second clause, on a
+	 * state the reader's two available actions both reproduced. What it says now
+	 * names the process and who can move it, so both halves are asserted - a copy
+	 * change could silently drop the route and leave the fact alone again.
+	 */
 	assert.match(
 		skewCopy,
-		/It moves onto the new build when it restarts/,
+		/does not restart a server it did not start/,
 		skewCopy,
 	);
+	assert.match(skewCopy, /stop it and start Local Operator again/, skewCopy);
 });
 
 test("a phase from an attempt answered elsewhere cannot leak into the next", async () => {
