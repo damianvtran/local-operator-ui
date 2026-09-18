@@ -51,8 +51,8 @@ import { loadPalettes } from "./palette-source.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
 const ARGS = process.argv.slice(2);
-const flag = (name) => {
-	const hit = ARGS.find((a) => a.startsWith(`--${name}=`));
+const flag = (name, args = ARGS) => {
+	const hit = args.find((a) => a.startsWith(`--${name}=`));
 	return hit ? hit.slice(name.length + 3) : null;
 };
 const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
@@ -160,8 +160,20 @@ const ALLOW_BACKEND = ARGS.includes("--allow-backend") && PARTIAL;
  * environment (the flag wins). A MALFORMED VALUE IS REFUSED rather than
  * silently replaced by the default: a run that quietly reverted to 10 s would
  * reproduce exactly the failure this knob exists to avoid, on a machine where
- * it is already known not to fit. The flag is not restricted to narrow runs,
- * but a full sweep should keep the shipped budget.
+ * it is already known not to fit. The space-separated spelling
+ * (`--theme-settle-ms 300000`) is refused BY NAME rather than falling through to
+ * the default, because the file's own `flag()` shape matches only the `=` form
+ * (round 5, R5-8). The flag is not restricted to narrow runs, but a full sweep
+ * should keep the shipped budget.
+ *
+ * THIS KNOB IS THE THEME GUARD'S ALONE, and the guard next door keeps its own
+ * fixed ~10 s (`evaluateUntil`'s 50 x 200 ms) deliberately rather than by
+ * oversight: that wait is for a selector or a text aim inside a story that has
+ * already settled its theme, it is bounded by the same 10 s the theme window
+ * always had, and the round-3 and round-4 passes both fitted inside it. A
+ * reader raising this number does not thereby raise that one - if a future pass
+ * finds a box where the aim times out, the honest fix is a budget for that
+ * wait, measured the way this one was.
  */
 /*
  * A whole number of milliseconds, for `resolveThemeSettleMs`'s validation.
@@ -192,11 +204,21 @@ export const THEME_SETTLE_ENV = "LOCAL_OPERATOR_UI_THEME_SETTLE_MS";
  * see the constant's note above for what a silent default costs here.
  */
 export const resolveThemeSettleMs = (args = ARGS, env = process.env) => {
-	const flagPrefix = "--theme-settle-ms=";
-	const fromFlag = args.find((a) => a.startsWith(flagPrefix));
-	const raw = fromFlag
-		? fromFlag.slice(flagPrefix.length)
-		: env[THEME_SETTLE_ENV];
+	/*
+	 * The value is read through this file's own `flag()`, so the knob cannot
+	 * drift from the shape every other flag here has - and that shape's one trap
+	 * is refused BY NAME rather than left to fall through: a space-separated
+	 * `--theme-settle-ms 300000` matches no `--theme-settle-ms=`, so the run
+	 * would quietly take the 10 s default on the machine that has already shown
+	 * 10 s does not fit, which is the one outcome the constant's note says must
+	 * not happen silently (round 5, R5-8).
+	 */
+	if (args.includes("--theme-settle-ms")) {
+		throw new Error(
+			`--theme-settle-ms takes its value joined with '=': write --theme-settle-ms=<ms>, not "--theme-settle-ms <ms>"`,
+		);
+	}
+	const raw = flag("theme-settle-ms", args) ?? env[THEME_SETTLE_ENV];
 	if (raw === undefined) return THEME_SETTLE_DEFAULT_MS;
 	const text = String(raw).trim();
 	const value = Number(text);
@@ -3908,7 +3930,7 @@ export const STORIES = [
 	 * toolbar is otherwise indistinguishable from one of the resting state.
 	 *
 	 * SELF-ASSERTING ACROSS THE TWO HEADS, which is why it is not filed as a resting
-	 * frame under a hover name: on the BEFORE head (`b4d12e7a8`, rebased as `b4d12e7a8`; the story-fixture-
+	 * frame under a hover name: on the BEFORE head (`3b625b4a2`, the story-fixture-
 	 * only commit whose frames are the `chat-canonical-links-before` set) EVERY
 	 * `/new` run in this paragraph is inside an anchor, so the aim throws with
 	 * `no text run matching "/new" outside a link or a button` - measured by design
