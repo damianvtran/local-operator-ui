@@ -680,21 +680,20 @@ const Draft = ({
  * The composer with a draft TYPED into it, for the states whose tint depends on
  * where the caret is.
  *
- * WHY THIS EXISTS BESIDE `Draft`. `planSlashSubmission` reads the token AT the
- * caret, so a draft merely SEEDED into the store leaves the composer's caret at
- * offset 0 — a position no token claims — and Enter would send it as a message.
- * Measured on this harness: `/team frontend-guild review the queue` at caret 0 is
- * `send` (and paints nothing), while at caret 1 and at the end it is `whole` (and
- * paints the command and the name run). A seeded frame therefore photographs the
- * state "nobody has typed here yet", which is not the state either of these two
- * stories is about.
+ * WHY THIS STILL EXISTS BESIDE `Draft`, AND WHAT CHANGED. `planForDraft` reads the
+ * token AT the caret, so a draft merely SEEDED into the store used to leave the
+ * composer's caret at offset 0 — a position no token claims — and Enter would send
+ * it as a message. That was true when this block was written and is NOT true at
+ * this head: the composer now seeds a restored draft's caret through its own
+ * caret machinery (the `pendingCaret` + `setCaret` pair), so a seeded draft reads
+ * as its own leading line again, exactly as the typed copy does.
  *
- * The typing is the app's own pipeline — real key events through the composer's
- * `onChange`/`onSelect` — so the caret the plan reads is the caret the user's
- * gesture produced, not a value written behind the component's back. The
- * vocabulary is seeded for the same reason the geometry probe seeds it (design
- * round 3 D9): a run must not be measured — or photographed — against a registry
- * that has not arrived yet.
+ * Measured rather than argued (design round 5): the RESTORED frame
+ * (`seeded-name-instruction`) is pixel-identical to the typed one — whole-frame AE
+ * 0 against it — and the falsifier arm, the same story with the seed disabled,
+ * paints nothing (AE 2543). So this harness is kept for the states whose tint
+ * depends on a caret the test drives itself, and the restored path has its own
+ * story beside it rather than being inferred from this one.
  */
 const TypedDraft = ({ label }: { label: string }) => {
 	const conversationId = conversationIdFor(label);
@@ -718,6 +717,31 @@ const TypedDraft = ({ label }: { label: string }) => {
 			onSlashCommand={harnessDispatch}
 		/>
 	);
+};
+
+/**
+ * PROBE HARNESS (design round 5, not for commit): the restored draft with the
+ * roster query seeded, so the seeded path and the typed path can be compared on
+ * one build.
+ *
+ * `TypedDraft` types the draft and deliberately does NOT seed the store; `Draft`
+ * seeds the store and does NOT seed the roster query. The state design round 1's
+ * D1 was about needs BOTH, which is why it needs this third harness rather than
+ * either of the two.
+ */
+const SeededDraft = ({ label, draft }: { label: string; draft: string }) => {
+	const conversationId = conversationIdFor(label);
+	const queryClient = useQueryClient();
+	useLayoutEffect(() => {
+		queryClient.setQueryData(desktopKeys.commands, COMMANDS);
+		for (const command of ["team", "agent"]) {
+			queryClient.setQueryData(
+				["desktop", "entities", conversationId, command, ""],
+				{ entities: TEAM_ENTITIES, current: "" },
+			);
+		}
+	}, [queryClient, conversationId]);
+	return <Draft label={label} draft={draft} />;
 };
 
 const Frame = ({
@@ -795,6 +819,23 @@ export const StartNameInstruction: Story = {
 	render: () => (
 		<Frame label="start-name-instruction — /team <name> <instruction>">
 			<TypedDraft label="start-name-instruction" />
+		</Frame>
+	),
+};
+
+/**
+ * PROBE HARNESS (design round 5, not for commit): the SAME draft as
+ * `start-name-instruction`, restored from the store instead of typed — no
+ * keystroke, no caret write, no gesture of any kind.
+ */
+export const SeededNameInstruction: Story = {
+	name: "seeded-name-instruction",
+	render: () => (
+		<Frame label="seeded-name-instruction — the same draft, restored rather than typed">
+			<SeededDraft
+				label="seeded-name-instruction"
+				draft="/team frontend-guild review the queue"
+			/>
 		</Frame>
 	),
 };
