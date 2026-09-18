@@ -614,7 +614,35 @@ export const STORIES = [
 	// which is how both of round 6's majors stayed invisible.
 	["browser-tab-strip--worst-case", 1280, 140],
 	["browser-tab-strip--worst-case-widest", 1280, 140],
-	["browser-tab-strip--actions-expanded", 1280, 180],
+	["browser-tab-strip--actions-expanded", 1280, 260],
+	/* The pin's band list and a row's band with the four bulk closes (design R4 fix 2,
+	   R5). `pinned-list` is declared taller by the list's own bounded height
+	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the same row
+	   height the other expanded band uses. */
+	["browser-tab-strip--actions-expanded-batch", 1280, 360],
+	/*
+	 * THE TWO EXPANDED BANDS ARE TALLER SINCE THE ROUND-2 RULING (D7): the band is a
+	 * column now, one item per row, so the batch's seven rows are 196px of buttons
+	 * plus the hairline and the heading row - 241px of band where the wrapping row
+	 * took 28. The declared heights are sized to the band the story actually draws, so
+	 * `Copy URL` (the last item) is inside the frame rather than below it, which is the
+	 * item D7 is about.
+	 */
+	/* THE GROUPING AND THE CHIP CAP (design R3, R4 - the conversation-browser
+	   change). `grouped` is three conversations plus the unattributed run at the
+	   route's own 1280; `grouped-overflow` is 20 tabs over 6 conversations at
+	   1160px, which is the scale R3's arithmetic is about and the state open
+	   question 3 says to revisit if the labels start crowding the tabs;
+	   `chips-collapsed` is the five-state row at the PANE's 640, where the cap is
+	   what stands between a legible title and a clipped one - the pane's width
+	   rather than the route's, because that is the tier the cap was argued for. */
+	["browser-tab-strip--grouped", 1280, 140],
+	["browser-tab-strip--grouped-overflow", 1280, 140],
+	["browser-tab-strip--chips-collapsed", 640, 140],
+	/* The pinned control's list, open, in the band: the frame §12.1 asked for, where the
+	   question is whether a page behind it can occlude it. Captured at the pane's 640
+	   for the same reason `chips-collapsed` is - that is where the control appears. */
+	["browser-tab-strip--overflow-list", 640, 280],
 	/* The dock, which replaced the Sites sheet. It is a full-height in-flow panel,
 	   so the declared height is the panel's; `narrow` is captured in a 560px
 	   viewport because the dock's own width classes are the product's (`w-80` below
@@ -625,6 +653,35 @@ export const STORIES = [
 	["browser-approvals-dock--denied", 1280, 720],
 	["browser-approvals-dock--empty", 1280, 720],
 	["browser-approvals-dock--narrow", 560, 720],
+	/*
+	 * THE CONVERSATION MARK (design R2), in the states the sidebar can put it in. Nine
+	 * of them because the mark is small and its states differ by one glyph, one count or
+	 * one badge: a frame that showed two of them would leave a reviewer guessing at the
+	 * other seven. EVERY ONE OF THEM RENDERS THE MARK IN A ROW, and `on-both-grounds` is
+	 * the pair that matters most: the mark is never seen alone, the badge's ring paints
+	 * `canvas` on whatever ground the row owns, and the two grounds sit on opposite sides
+	 * of the panel's own step. (The harness's element floor is the mechanical half of the
+	 * same decision - a lone 24px control is not a drawn surface.)
+	 */
+	["browser-conversation-mark--nothing-open", 320, 64],
+	["browser-conversation-mark--has-tabs", 320, 64],
+	["browser-conversation-mark--loading", 320, 64],
+	["browser-conversation-mark--one-approval", 320, 64],
+	["browser-conversation-mark--three-approvals", 320, 64],
+	["browser-conversation-mark--many-approvals", 320, 64],
+	["browser-conversation-mark--everything", 320, 64],
+	["browser-conversation-mark--focused", 320, 64],
+	["browser-conversation-mark--on-both-grounds", 320, 128],
+	/*
+	 * THE TWO ADDED BY REVIEW ROUND 1. `trailing-statement` is D8's coverage gap: the
+	 * design justifies the reserved slot with a 28px cost per title, and no frame put the
+	 * mark in a row that already spends width on `· Not sent yet`. `slot-cost` is D2/A4's
+	 * before/after pair: the same row in the base tree's shape (no slot at all) and on
+	 * this branch's, with the two measured title widths printed in the frame so the cost
+	 * is read rather than argued.
+	 */
+	["browser-conversation-mark--trailing-statement", 320, 64],
+	["browser-conversation-mark--slot-cost", 320, 128],
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
@@ -1551,6 +1608,9 @@ export const STORIES = [
 	 * because there is no panel to fit - a caption and two blocks.
 	 */
 	["chat-sidebar-current-row--wash-swatches", 780, 260],
+	/* The marks on the rows, at the panel's own width: two conversations with a browser
+	   doing something and a third with none, which is the control case. */
+	["chat-sidebar-status-feed--browser-marks", 780, 560],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is

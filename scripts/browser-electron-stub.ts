@@ -14,11 +14,43 @@
  * has to substitute the module.
  *
  * WHAT IT IS NOT: it is not a fake of Electron. It models the two members the
- * notifier reads (`isSupported`, and a constructed notification's `show`/`on`),
- * records what was raised, and does nothing else. `scripts/*-fixture` files of
- * the same shape are used by the other suites that need one part of an external
- * package.
+ * notifier reads (`isSupported`, and a constructed notification's `show`/`on`)
+ * plus the one member the browser IPC module needs to be registrable
+ * (`ipcMain.handle`), records what was raised, and does nothing else.
+ * `scripts/*-fixture` files of the same shape are used by the other suites that
+ * need one part of an external package.
+ *
+ * WHY `ipcMain` IS HERE (added with the conversation-attribution change): the
+ * `browser-new-tab` argument is validated AT THE BOUNDARY, and a boundary that
+ * is only tested through the function behind it is not tested at all. Registering
+ * the real handlers against this registry lets a test invoke a channel the way the
+ * renderer's `ipcRenderer.invoke` does — through the same `authorize` gate, the
+ * same sender checks and the same validators the app runs.
  */
+
+/**
+ * `ipcMain`, as far as this repo's main process uses it: `handle`, with the
+ * handlers reachable so a test can invoke one.
+ *
+ * The stored handler is what the channel's REAL registration passed, so a test
+ * that invokes `browser-new-tab` exercises the shipped authorize gate and the
+ * shipped validator rather than a copy of them.
+ */
+export const ipcMain = {
+	handlers: new Map<string, (event: unknown, ...args: unknown[]) => unknown>(),
+
+	handle(
+		channel: string,
+		handler: (event: unknown, ...args: unknown[]) => unknown,
+	): void {
+		ipcMain.handlers.set(channel, handler);
+	},
+
+	/** Between registrations, so one test's handlers do not answer another's. */
+	reset(): void {
+		ipcMain.handlers.clear();
+	},
+};
 export class Notification {
 	/** What was raised, most recent last, so a test can assert the copy and the
 	 * COUNT rather than only that something happened. */
