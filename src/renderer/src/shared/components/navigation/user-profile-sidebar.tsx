@@ -94,7 +94,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				   email in the row are the name. */
 				aria-label={expanded ? undefined : "Account settings"}
 				className={cn(
-					"flex w-full items-center gap-2 rounded-sm transition-colors duration-fast ease-out-quart hover:bg-elevated",
+					"flex w-full items-center gap-2 rounded-sm transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 					/*
 					 * `px-3` matches a nav row exactly, so the avatar sits on the same
 					 * 20px line as every nav mark above it. Collapsed, the rail is 48px

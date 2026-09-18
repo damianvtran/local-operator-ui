@@ -525,18 +525,21 @@ export const FocusedRowCurrent: Story = {
 /**
  * A COLOUR-ONLY frame, and it says so in the picture.
  *
- * The pair this shows is `highlight` — the current row's ground — beside
- * `accentWash`, the tint the app already paints on an active or selected row
- * elsewhere (`bg-accent-wash`). On four palettes the two measured under the
- * contract's 2.0 field floor after the theme port landed, and three of them were
- * re-authored to clear it while `rosePineDawn` could not (its ink caps the route;
- * the contract pins the pair at its measured 1.75 ceiling).
+ * The pair this shows is `rowSelected` — the ground of the row the reader is ON —
+ * beside `accentWash`, which is now the TRANSIENT idiom only: pointer hover, and a
+ * keyboard-focused option in a list that is open. The two roles have to be told
+ * apart by a reader, and the row-state pass changed what the second one is for:
+ * four nav surfaces used the wash for a PERSISTENT selection until this pass moved
+ * them onto `rowSelected`, and on 6 of the 41 dark themes the wash was a weaker
+ * mark than the hover beside it (`obsidian` 2.02 against 3.42). The ΔE00 between
+ * the two is still the whole of the claim this frame settles, and the field floor
+ * it is held to is the contract's own.
  *
- * WHY A SWATCH AND NOT A SCREEN. Every call site that paints `accentWash` is in a
- * different panel from this one — the agents sidebar, the category rail, the
- * spreadsheet's selected row — and this rig's seven states photograph the chat
- * sidebar and the settings rail, so no state in it can hold a current row and a
- * wash element in one view. Rather than imply a screen was found, the frame draws
+ * WHY A SWATCH AND NOT A SCREEN. The surfaces that paint `accentWash` are in a
+ * different panel from this one — the `@` picker and the slash list, the browser
+ * tab strip, the mention chip, the spreadsheet's selected row — and this rig's
+ * seven states photograph the chat sidebar and the settings rail, so no state in
+ * it can hold a current row and a wash element in one view. Rather than imply a screen was found, the frame draws
  * the two grounds at the size they are painted and labels itself: what it settles
  * is the ΔE00 between the two colours, which is the whole of the claim, and the
  * README says the same thing where a reader meets the frames.
@@ -546,20 +549,20 @@ export const WashSwatches: Story = {
 		<div className={cn("flex h-screen flex-col gap-6 bg-canvas p-8 text-ink")}>
 			<p className="text-body">
 				COLOUR-ONLY FRAME — this is not a screen. It shows the current row's
-				ground beside the app's active-row wash, at the size a row is painted,
+				ground beside the app's transient wash, at the size a row is painted,
 				because no state in this set can hold both in one view.
 			</p>
 			<div className="flex gap-6">
 				<div className="flex flex-col gap-2">
-					<div className="h-24 w-[320px] rounded-md bg-highlight" />
+					<div className="h-24 w-[320px] rounded-md bg-row-selected" />
 					<p className="font-mono text-meta text-ink-muted">
-						bg-highlight — the current row's ground
+						bg-row-selected — the current row's ground
 					</p>
 				</div>
 				<div className="flex flex-col gap-2">
 					<div className="h-24 w-[320px] rounded-md bg-accent-wash" />
 					<p className="font-mono text-meta text-ink-muted">
-						bg-accent-wash — the app's active-row tint
+						bg-accent-wash — the transient hover/option tint
 					</p>
 				</div>
 			</div>
