@@ -7,9 +7,8 @@ this change adds and of the behaviour behind it.
 Provenance: the six frames were captured from a built app on this branch's
 `78e46042b` - the commit that gives the note its floor and lets the stamp ellipsise -
 so that is the tree their pixels came from, and the manifest entry's `capturedAtHead`
-names it. The
-manifest's `srcTree`/`scriptsTree` are a different pair by design: the manifest test
-binds them to the trees of the commit the manifest ships in, and the fold that
+names it. The manifest's
+`srcTree`/`scriptsTree` are a different pair by design: the manifest test binds them to the trees of the commit the manifest ships in, and the fold that
 followed re-serialised this entry without touching a pixel.
 
 They exist because the claims under review are claims about a running
