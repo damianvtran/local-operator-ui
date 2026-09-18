@@ -3,6 +3,7 @@ import {
 	audioExtensions,
 	imageExtensions,
 	pdfExtensions,
+	textExtensions,
 	videoExtensions,
 } from "@features/chat/utils/file-kind";
 import { isCanvasSupported } from "@features/chat/utils/is-canvas-supported";
@@ -91,10 +92,7 @@ const TYPE_KINDS: Partial<Record<CanvasDocumentType, ViewerKind>> = {
  * Which surface opens `path`, or `null` for "hand it to the OS".
  *
  * Order is by specificity: the formats with a bespoke viewer first, then the
- * code editor, which is the "any other UTF-8-decodable file" branch. `.txt` and
- * `.log` are admitted here even though `isCanvasSupported` omits them, which is
- * the gap that made `notes.txt` open in TextEdit instead of the app's own
- * editor.
+ * code editor, which is the "any other UTF-8-decodable file" branch.
  */
 export function viewerFor(path: string, type?: CanvasDocumentType): ViewerKind {
 	if (isMarkdownFile(path)) return "markdown";
@@ -104,6 +102,21 @@ export function viewerFor(path: string, type?: CanvasDocumentType): ViewerKind {
 	if (endsWithAny(path, imageExtensions)) return "image";
 	if (endsWithAny(path, audioExtensions)) return "audio";
 	if (endsWithAny(path, videoExtensions)) return "video";
+	/*
+	 * Plain text is the app's own editor's business, and this branch is what
+	 * makes that true.
+	 *
+	 * It used to fall through: `isCanvasSupported` answers from CodeMirror's
+	 * language map (`config/canvas-supported-extensions.ts`), which carries no
+	 * `.txt`, `.log` or `.text`, so a text file reached the final `null` and was
+	 * handed to the OS (TextEdit) -- a session's scratch `.txt` note opened as a
+	 * stranger's document instead of in the app's own editor. `textExtensions` is
+	 * `file-kind.ts`'s own set, which is already what `fileKind` reports as
+	 * `"text"` and what the prose scanner admits, so the extension list stays
+	 * in one place. Placed above the `type` fallback because the PATH is the
+	 * stronger evidence of format when the two disagree.
+	 */
+	if (endsWithAny(path, textExtensions)) return "code";
 	if (type && TYPE_KINDS[type]) return TYPE_KINDS[type] ?? null;
 	// The CodeMirror language set is the widest "we can show this as text"
 	// statement the app owns (162 extensions, including `.sql` and `.toml` that
