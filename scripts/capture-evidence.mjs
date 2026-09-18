@@ -2457,6 +2457,86 @@ export const STORIES = [
 	   entry is a 330px composer, which is what the `@container/slash` query
 	   answers. A frame taken at 1280 would photograph a layout no composer has
 	   and hide the one rule this set exists to show. */
+	/*
+	 * THE COMPOSER'S `@` MENTION LAYER: the chip drawn behind the sentence, and the
+	 * picker over it.
+	 *
+	 * A narrowed surface of its own rather than entries appended to a neighbouring
+	 * set, because the claim is new rather than a re-take of an old one. The band's
+	 * own measure is the app's default window (1380x872), so every chip frame is
+	 * read at the width the app ships; `wrapped-mention` narrows the COLUMN to
+	 * 420px inside that viewport, which is the frame the fill's per-line-fragment
+	 * behaviour is read from, and `picker-rows` is captured TWICE because the row
+	 * budget is a claim about two frames: 1380x768 for the ceiling and 768x520 for
+	 * the floor, where the region must show fewer rows rather than push the shell
+	 * off the bottom.
+	 *
+	 * `quoted-mention` is design round 1's D2 and review round 2's own note: the
+	 * quoted form `@"my file.txt"` paints ONE fill over a space, which is the shape a
+	 * merged pair used to have, so it is the pair to `adjacent-mentions` and the last
+	 * state on this surface that was argued rather than photographed.
+	 *
+	 * `before-no-mentions` is the pair's other half on purpose: it is the same
+	 * sentence with the same file named as prose, which is what `origin/main` paints
+	 * for it, so a reader can compare the feature rather than two of its states.
+	 */
+	["chat-mention-chips--before-no-mentions", 1380, 872],
+	["chat-mention-chips--mention-at-rest", 1380, 872],
+	["chat-mention-chips--mentions-at-the-edges", 1380, 872],
+	["chat-mention-chips--adjacent-mentions", 1380, 872],
+	["chat-mention-chips--quoted-mention", 1380, 872],
+	["chat-mention-chips--unresolved-stays-prose", 1380, 872],
+	["chat-mention-chips--chip-needs-approval", 1380, 872],
+	["chat-mention-chips--caret-inside-token", 1380, 872],
+	["chat-mention-chips--wrapped-mention", 1380, 872],
+	/*
+	 * The four surfaces this remediation added, each a state a finding named:
+	 * `harness-cannot-expand` is the state every release carries today (no
+	 * `references` capability, so no list and no chip), `small-view-520` is the
+	 * field's 6px inset that decided the overhang, `scrolled-draft` is the fill
+	 * layer travelling with the field's own scroll, and `atomic-delete` is the one
+	 * chip promise that is not a drawing.
+	 */
+	["chat-mention-chips--harness-cannot-expand", 1380, 872],
+	["chat-mention-chips--small-view-mention", 1380, 872],
+	["chat-mention-chips--scrolled-draft", 1380, 872],
+	["chat-mention-chips--atomic-delete", 1380, 872],
+	["chat-mention-chips--no-rows-enter", 1380, 768],
+	["chat-mention-chips--picker-open", 1380, 768],
+	["chat-mention-chips--picker-drilled", 1380, 768],
+	["chat-mention-chips--picker-descend", 1380, 768],
+	["chat-mention-chips--picker-no-match", 1380, 768],
+	["chat-mention-chips--picker-empty-folder", 1380, 768],
+	["chat-mention-chips--picker-unreadable", 1380, 768],
+	["chat-mention-chips--picker-many-rows", 1380, 768],
+	/*
+	 * The design's own narrow case, 800x600, as its open item 3 asks: the picker's
+	 * top edge must be inside the column and the row count must have FALLEN rather
+	 * than the shell being pushed off the bottom. The same story twice is the
+	 * comparison — the budget is a claim about two frames, not about the formula.
+	 */
+	["chat-mention-chips--picker-many-rows", 800, 600, { dir: "budget-800x600" }],
+	/*
+	 * And the ceiling, at the band's own window: the budget's other end. The
+	 * formula clamps at eight rows whatever the room, so a frame at 1380x872 is
+	 * what shows the ceiling rather than the room — three frames of one story, for
+	 * the three answers 4, 7 and 8.
+	 */
+	[
+		"chat-mention-chips--picker-many-rows",
+		1380,
+		872,
+		{ dir: "ceiling-1380x872" },
+	],
+	/*
+	 * And the FLOOR the design's open item 3 names, which no frame had shown
+	 * (design round 1, D7): at this window the room above the anchor buys exactly the
+	 * three rows `atRowBudget` clamps at — a taller window is four or more and a
+	 * shorter one overflows the window's own top edge, because the floor holds the
+	 * region at three rows whatever the room — so a reader can see the clamp bind,
+	 * rather than read it as a branch in a pure function.
+	 */
+	["chat-mention-chips--picker-many-rows", 768, 520, { dir: "floor-768x520" }],
 	["chat-slash-completion--command-phase", 768, 460],
 	/* Two rows: `/tea` matches the primary and its alias, in registry order. */
 	["chat-slash-completion--command-phase-narrowed", 768, 220],

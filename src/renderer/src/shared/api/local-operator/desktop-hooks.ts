@@ -254,7 +254,33 @@ export type DesktopFeature =
 	 * require `session_move >= 2` AND `frontend_replace >= 1` - see
 	 * `sessionMoveEnabled`, which is the ONE place that pair is written down.
 	 */
-	| "frontend_replace";
+	| "frontend_replace"
+	/**
+	 * `references`: the harness expands a draft's `@path` tokens into file content
+	 * before the message reaches the model.
+	 *
+	 * THE COMPOSER'S `@` AFFORDANCE IS GATED ON THIS, and it is the one gate in
+	 * this file whose key no backend advertises yet. That is the point of it rather
+	 * than an oversight: the expansion is a HARNESS behaviour, it is not released
+	 * (no tag through `v0.56.8` carries `local_operator/references.py`, and the half
+	 * that adds it is PR #1220, in review), and the harness publishes no route for
+	 * it — the whole feature is two Python modules, with no server surface at all.
+	 * So a composer that offered a picker and painted chips on today's install would
+	 * be promising an expansion nothing on the machine performs: the user picks a
+	 * file, gets a chip that says "this is a reference", and the model receives the
+	 * literal characters. `desktopFeatureEnabled` fails closed, so absent (or
+	 * absent `desktop_available`) means the picker never opens and no chip is ever
+	 * painted — the honest state, and the reason this key is here before its writer.
+	 *
+	 * WHAT HAS TO HAPPEN FOR THE AFFORDANCE TO APPEAR: the harness half adds
+	 * `"references": 1` to `features` in
+	 * `local_operator/server/routes/capabilities.py`. That is a one-line change on
+	 * the other side of this contract and it is NOT part of this repository. Named
+	 * where a reader will meet it (the PR body, the review finding) because it is
+	 * load-bearing for the release: until it lands, this feature ships dark by
+	 * design.
+	 */
+	| "references";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.

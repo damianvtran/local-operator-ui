@@ -119,13 +119,14 @@ import {
 	mkdirSync,
 	readFileSync,
 	readdirSync,
+	realpathSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = process.cwd();
@@ -974,7 +975,7 @@ async function browserRpc(method, params) {
  * not what this asserts: the caller reports what it got and skips the step when
  * there is no id in it.
  */
-async function createBackendSession() {
+async function createBackendSession(cwd = SCRATCH) {
 	const response = await fetch(`${BACKEND}/v1/desktop/sessions`, {
 		method: "POST",
 		headers: {
@@ -985,7 +986,7 @@ async function createBackendSession() {
 		// desktop UI sends; a hand-made string is a 422 with no session in it.
 		body: JSON.stringify({
 			request_id: randomUUID(),
-			cwd: SCRATCH,
+			cwd,
 		}),
 	});
 	const body = await response.json();
@@ -3438,6 +3439,573 @@ async function scenePalette(cdp) {
 	return frames;
 }
 
+// ---- the composer's @ mentions -------------------------------------------------
+
+/*
+ * THE `@` PICKER AND ITS INLINE CHIPS, DRIVEN BY REAL KEYSTROKES ON THE BUILT APP.
+ *
+ * WHAT THIS SCENE IS FOR, and what Storybook cannot answer. The chip layer draws
+ * rectangles measured from the field's own text, and the picker offers rows read
+ * over the app's own IPC — two claims whose truth depends on a real `readdir`, a
+ * real `stat`, a real textarea's layout and real keystrokes reaching the field.
+ * A story hands all four in as fixtures; this run has none of them faked.
+ *
+ * THE FIXTURE IS A REAL DIRECTORY, and it is a directory THIS RUN OWNS: the pane is
+ * a session created on this run's own backend with an explicit `cwd` inside the
+ * scratch tree, the fixture files are written into that directory, and
+ * `list-directory` resolves `.` against the session's cwd exactly as `probe-files`
+ * resolves every other local path. So the rows a frame shows are entries that exist
+ * on this machine, listed by the shipped IPC handler, and they are this run's
+ * entries rather than the operator's — the first pass of this scene listed the
+ * operator's own home and that is not a frame this set may publish.
+ *
+ * THE CLAIM THIS RUN EXISTS FOR is the one the harness's own picker got wrong:
+ * a query that stops matching must NOT move the composer. PR #1220 measures that
+ * defect at +17px across one keystroke, because its no-match branch closes the
+ * list; here the notice row holds the picker open and every anchor in the band
+ * has to read the same as it did while the list matched. The numbers are read
+ * back from the page — the field's rect, the send button's rect and the
+ * suggestion stack's rect — because a still cannot show "nothing moved" and a
+ * note beside a frame is not a check.
+ *
+ * WHAT IT CANNOT REACH, and says so rather than pretending: the needs-approval
+ * fill needs a reference that resolves OUTSIDE the session's directory, and every
+ * token this scene types names a fixture inside `src/` — so every chip here is the
+ * ordinary one. That state is photographed by the `chat-mention-chips` story set,
+ * where the fact comes from a fixture rather than from a real containment verdict.
+ *
+ * AND THE CAPABILITY, WHICH IS THE OTHER HALF OF REACHING THIS FLOW AT ALL (UX
+ * round 2, U14b). The scene used to throw at its own composer precondition — with
+ * a live backend attached — because `/chat` mounts no composer without a session,
+ * and staging one is exactly what it did not do. So it stages a session now, and
+ * then asserts the capability as a precondition before it types anything: NO
+ * harness advertises `references`, so on an ordinary backend the `@` affordance is
+ * dark by design and there is no list to drive. The refusal names the rig in full —
+ * a backend whose `/v1/capabilities` carries `features.references = 1`, i.e. a
+ * loopback proxy in front of a live daemon that injects that one field (the shape
+ * QA round 2 ran). That is a statement about the harness, not a defect in this
+ * scene, and it is the honest answer while the key does not exist.
+ *
+ * AND THE ORIGIN IT HAS TO BE SERVED FROM, which is a requirement of its own and
+ * cost a QA round its whole diagnosis (QA round 3, Q-6). `src/renderer/index.html`
+ * pins the page's `connect-src` to `1111` and `8080` plus three vendor origins and
+ * nothing computes it at runtime (`grep -rn "connect-src" src/main src/preload` is
+ * empty), so a `--backend` rig on any OTHER loopback port is refused by the page
+ * itself: the app's log says
+ * `Connecting to 'http://127.0.0.1:<port>/v1/credentials' violates the following
+ * Content Security Policy`, the chat route never gets a pane, and this scene throws
+ * its composer refusal while the daemon behind the proxy is up and answering —
+ * which reads as the wrong cause. ONLY THE SCENE needs this: the picker and the
+ * chip are served over main-process IPC, which no CSP touches (measured — QA's
+ * round-3 rows were green at 8080 and the port was the only difference). So run the
+ * proxy on an allowed port (8080 is what QA used for the green run) and build the
+ * renderer with `VITE_LOCAL_OPERATOR_API_URL` set to that same URL.
+ */
+async function sceneMentions(cdp) {
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	const FIELD = 'textarea[aria-label="Message"]';
+	const anchors = `(() => {
+		const field = document.querySelector(${JSON.stringify(FIELD)});
+		const box = (el) => (el ? { top: el.getBoundingClientRect().top, height: el.getBoundingClientRect().height, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right } : null);
+		return {
+			field: box(field),
+			box: box(field?.parentElement),
+			send: box(document.querySelector('[aria-label="Send message"]')),
+			focus: document.activeElement?.tagName ?? null,
+			focusedIsField: document.activeElement === field,
+			value: field?.value ?? null,
+		};
+	})()`;
+
+	const closed = await cdp.evaluate(anchors);
+	note("the band with an empty draft", JSON.stringify(closed));
+	/*
+	 * STAGE A PANE FIRST, ON THIS RUN'S OWN BACKEND AND IN THIS RUN'S OWN DIRECTORY
+	 * (UX round 2, U14b).
+	 *
+	 * WHY THE COMPOSER IS NOT ALREADY THERE: `/chat` with a live backend and no
+	 * session or staged draft mounts NO composer — the route opens on the empty-chat
+	 * surface — and the scene used to look for the field and throw its "this scene
+	 * needs a live backend" refusal while the app was in fact attached to one. That
+	 * is why the live half of this evidence set was unrunnable by anyone.
+	 *
+	 * WHY A SESSION AND NOT THE ⌘N CHORD, which the first version of this fix used:
+	 * a NEW DRAFT's working directory is the BACKEND'S ACCOUNT HOME, and the chip's
+	 * `~` does NOT mean this run's scratch `HOME` — measured on the first pass that
+	 * got this far, the picker listed the OPERATOR'S OWN home (129 rows: `Music`,
+	 * `Documents`, `Library`, and every scratch directory on the machine), which is
+	 * the one thing this rig exists to keep out of a frame. So the pane is a session
+	 * created with an explicit `cwd` — the same `POST /v1/desktop/sessions` the
+	 * desktop UI makes, and the same call `sceneBrowserPane` already uses — and the
+	 * directory is a workspace inside this run's scratch tree. The fixtures below are
+	 * then written into the directory the picker is actually reading.
+	 */
+	const workspace = join(SCRATCH, "mentions-workspace");
+	mkdirSync(workspace, { recursive: true });
+	if (BACKEND) {
+		const staged = await createBackendSession(workspace);
+		note(
+			"the session this scene lists from",
+			JSON.stringify({ id: staged.id, status: staged.status }),
+		);
+		if (staged.id) await verb(cdp, "navigate", `/chat/${staged.id}`);
+	}
+	const fieldMounted = () =>
+		cdp.evaluate(`document.querySelector(${JSON.stringify(FIELD)}) !== null`);
+	for (let attempt = 0; attempt < 60 && !(await fieldMounted()); attempt++) {
+		await wait(100);
+	}
+	const stagedBand = await cdp.evaluate(anchors);
+	note("the band with the staged pane", JSON.stringify(stagedBand));
+	if (stagedBand.field === null) {
+		throw new Error(
+			"no composer on screen and `POST /v1/desktop/sessions` did not produce a pane " +
+				"with one: this scene needs a live, ISOLATED backend this run owns " +
+				"(`--backend <url>` plus `--seed-onboarding-complete`, per docs/agent-driver.md), " +
+				"because a session (and with it the composer) is the backend's to create. " +
+				"Without one the chat route paints its offline card and there is nothing to drive. " +
+				"IF THE BACKEND IS IN FACT UP, check the port against the page's own origin " +
+				"allowlist before anything else (QA round 3, Q-6): `src/renderer/index.html` pins " +
+				"`connect-src` to `1111` and `8080` plus three vendor origins and nothing computes " +
+				"it at runtime, so a rig on any other loopback port is refused BY THE PAGE and looks " +
+				"exactly like this (`/v1/credentials ... violates the following Content Security " +
+				"Policy` in the app's own log). Serve the proxy on an allowed port - 8080 is the one " +
+				"QA round 3's green run used - and build the renderer with " +
+				"`VITE_LOCAL_OPERATOR_API_URL` set to that same URL.",
+		);
+	}
+	check(
+		"the composer's field is on screen and holds the caret",
+		stagedBand.focusedIsField === true,
+		JSON.stringify(stagedBand),
+	);
+
+	/*
+	 * THE CAPABILITY FIRST, before a single fixture file is written (UX round 2,
+	 * U14b).
+	 *
+	 * The composer withholds the whole `@` affordance unless the backend advertises
+	 * `features.references`, and NO harness does yet — the key is what the harness
+	 * half must add. So on an ordinary backend this scene has nothing to drive, and
+	 * saying that here is the difference between "the scene is broken" and "the
+	 * harness cannot do this yet": the run has to be handed a backend that presents
+	 * the capability. The answer is read from the backend rather than inferred from
+	 * the app, because it is the same answer the app's gate reads.
+	 */
+	const capabilities = await fetch(`${BACKEND}/v1/capabilities`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	})
+		.then((response) => response.json())
+		.catch(() => null);
+	const references = capabilities?.result?.features?.references ?? null;
+	const expandable =
+		capabilities?.result?.desktop_available === true &&
+		typeof references === "number" &&
+		references >= 1;
+	note(
+		"whether the backend advertises file references",
+		JSON.stringify({ references, expandable }),
+	);
+	if (!expandable) {
+		throw new Error(
+			`the backend does not advertise \`features.references\` in /v1/capabilities (read: ${JSON.stringify(
+				references,
+			)}), so the composer withholds the whole \`@\` affordance by design and there is no list to drive. This is a statement about the harness, not a defect in this scene: NO released harness carries the key. TO RUN IT, present the capability - a loopback proxy in front of a live daemon this run owns that injects \`result.features.references = 1\` into /v1/capabilities and forwards every other byte (SSE included) unchanged, then pass the PROXY's URL to --backend and build the renderer with VITE_LOCAL_OPERATOR_API_URL set to the same URL. That is the rig QA round 2 ran, and the proxy has to be on a port the PAGE allows (1111 or 8080, per src/renderer/index.html's connect-src) or the composer never mounts and the refusal above is the one you get instead (QA round 3, Q-6).`,
+		);
+	}
+
+	/*
+	 * The fixture the picker will list, written into the working directory the
+	 * composer is ACTUALLY in — read off the control row's own cwd chip rather than
+	 * assumed, because with a backend that directory is the session's and not this
+	 * process's. Names chosen so the frames answer the states the design names: a
+	 * directory to drill into, a nested one to read a parent column from, a common
+	 * file the pool boosts, and a name with a space (the quoted form's only reason
+	 * to exist).
+	 *
+	 * THE PATH COMES FROM THE CHIP'S OWN DATA ATTRIBUTE (`data-lo-cwd-path`, on all
+	 * three of its branches), which is the value the composer resolves against; the
+	 * accessible names are kept in the note because that is what a reader of the run
+	 * sees on screen.
+	 *
+	 * AND IT HAS TO BE INSIDE THIS RUN'S OWN SCRATCH TREE, because the four lines
+	 * under this comment WRITE files: a brand-new draft's cwd is the account home
+	 * (which this run redirects with its own scratch `HOME`), a `~`-spelled path is
+	 * resolved against that same scratch home here, and anything outside the scratch
+	 * root is refused BEFORE a byte is written — otherwise the first successful run
+	 * of this scene against a session in the operator's workspace would scribble
+	 * fixture files into it.
+	 */
+	const readCwdChip = () =>
+		cdp.evaluate(`(() => {
+		const paths = [...document.querySelectorAll("[data-lo-cwd-path]")]
+			.map((el) => el.getAttribute("data-lo-cwd-path"));
+		const labels = [...document.querySelectorAll("[aria-label]")]
+			.map((el) => el.getAttribute("aria-label"))
+			.filter((label) => typeof label === "string" && label.startsWith("Working directory"));
+		return { paths, labels };
+	})()`);
+	/*
+	 * AND THE CHIP IS WAITED FOR, because it is a property of the SESSION and not of
+	 * the pane: the control row renders it only once the composer knows which
+	 * directory it is in, which arrives with the session's own status read. Reading it
+	 * in the same tick as the field's mount measures that read, not the surface —
+	 * measured, this is exactly what the first session-based pass did (`paths: []`).
+	 */
+	let cwdChip = await readCwdChip();
+	for (let attempt = 0; attempt < 60 && cwdChip.paths.length === 0; attempt++) {
+		await wait(100);
+		cwdChip = await readCwdChip();
+	}
+	note(
+		"the composer's working directory, as the control row names it",
+		JSON.stringify(cwdChip),
+	);
+	const spelled =
+		cwdChip.paths.find(
+			(value) => typeof value === "string" && value.length > 0,
+		) ?? null;
+	const cwd = spelled;
+	if (!cwd) {
+		throw new Error(
+			`the composer's chip names no working directory (${JSON.stringify(cwdChip.paths)}), so this scene cannot place its fixture files where the picker will list them`,
+		);
+	}
+	/*
+	 * AND IT IS AN ABSOLUTE PATH INSIDE THIS RUN'S SCRATCH TREE, with no `~`
+	 * translation: a `~` here is the BACKEND'S home and this script cannot know what
+	 * that is, which is exactly how the first pass listed the operator's own home.
+	 * Anything outside the scratch root is refused before a byte is written.
+	 *
+	 * BOTH SIDES RESOLVED, and that is not tidiness: `tmpdir()` answers
+	 * `/var/folders/...` on macOS while the app's own path for the same directory is
+	 * `/private/var/folders/...`, so an unresolved comparison refuses the very
+	 * directory this run just created (measured: `the composer's working directory
+	 * /private/var/folders/…/mentions-workspace is outside this run's scratch tree
+	 * /var/folders/…`). The same rule the containment check itself applies to both
+	 * sides of a path.
+	 */
+	if (!realpathSync(cwd).startsWith(realpathSync(SCRATCH) + sep)) {
+		throw new Error(
+			`the composer's working directory ${cwd} is outside this run's scratch tree ${SCRATCH}: this scene WRITES its fixture files there, so it refuses a directory it does not own. Start the run against an isolated backend whose session cwd is this run's own scratch (see docs/agent-driver.md), or point it at a directory you are willing to have four fixture files written into.`,
+		);
+	}
+	note("where the fixtures will be written", cwd);
+	mkdirSync(join(cwd, "src", "components"), { recursive: true });
+	writeFileSync(join(cwd, "README.md"), "# listing fixture\n");
+	writeFileSync(join(cwd, "my file.txt"), "a name with a space\n");
+	writeFileSync(join(cwd, "src", "app.py"), "print('hi')\n");
+	writeFileSync(join(cwd, "src", "components", "button.tsx"), "export {}\n");
+
+	/*
+	 * `@` alone: the whole-directory listing. Typed through the browser's own input
+	 * pipeline into whatever the page has focused, the same domain the palette
+	 * scene types through.
+	 *
+	 * AND THE ROWS ARE WAITED FOR, because the listing is an ASYNC IPC round trip on
+	 * a debounce: reading the list in the same tick as the keystroke measures the
+	 * debounce, not the surface. The first runnable pass is what showed it — the
+	 * check read `rows: 0` here and the same listing answered 129 rows a moment
+	 * later.
+	 */
+	await cdp.send("Input.insertText", { text: "@" });
+	const readOpened = () =>
+		cdp.evaluate(`(() => {
+		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
+		const rows = list ? [...list.querySelectorAll('[role="option"]')] : [];
+		return {
+			list: Boolean(list),
+			rows: rows.length,
+			names: rows.slice(0, 8).map((row) => row.textContent),
+			header: list?.firstElementChild?.textContent ?? null,
+			footer: list?.lastElementChild?.textContent ?? null,
+			controls: document.querySelector(${JSON.stringify(FIELD)})?.getAttribute("aria-controls") ?? null,
+			expanded: document.querySelector(${JSON.stringify(FIELD)})?.getAttribute("aria-expanded") ?? null,
+		};
+	})()`);
+	let opened = await readOpened();
+	for (let attempt = 0; attempt < 40 && opened.rows === 0; attempt++) {
+		await wait(100);
+		opened = await readOpened();
+	}
+	note("after typing @", JSON.stringify(opened));
+	check(
+		"typing @ opens the file list over the composer",
+		opened.list === true,
+		JSON.stringify(opened),
+	);
+	check(
+		"the list is populated from the working directory over the real IPC",
+		opened.rows > 0 &&
+			opened.names.some((name) => name.includes("README.md")) &&
+			opened.names.some((name) => name.includes("src")),
+		JSON.stringify(opened.names),
+	);
+	check(
+		"the listbox is named by the field it belongs to, with aria-controls and aria-expanded",
+		typeof opened.controls === "string" && opened.expanded === "true",
+		JSON.stringify(opened),
+	);
+	const openFrame = await captureSettled(cdp, "mentions-list-dark");
+
+	// The drill: a trailing slash is the grammar's own deepening gesture.
+	await cdp.send("Input.insertText", { text: "src/" });
+	const readDrilled = () =>
+		cdp.evaluate(`(() => {
+		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
+		const rows = list ? [...list.querySelectorAll('[role="option"]')] : [];
+		return {
+			header: list?.firstElementChild?.textContent ?? null,
+			names: rows.map((row) => row.textContent),
+			count: list?.lastElementChild?.lastElementChild?.textContent ?? null,
+		};
+	})()`);
+	let drilled = await readDrilled();
+	for (
+		let attempt = 0;
+		attempt < 40 && !drilled.names.some((name) => name.includes("app.py"));
+		attempt++
+	) {
+		await wait(100);
+		drilled = await readDrilled();
+	}
+	note("after drilling into src/", JSON.stringify(drilled));
+	check(
+		"a trailing slash lists that directory, and the header says which",
+		drilled.header === "src/",
+		JSON.stringify(drilled),
+	);
+	check(
+		"the drilled listing is that directory's entries",
+		drilled.names.some((name) => name.includes("app.py")) &&
+			drilled.names.some((name) => name.includes("components")),
+		JSON.stringify(drilled.names),
+	);
+
+	/*
+	 * THE NO-MATCH STATE, and the assertion this whole scene is for. The query
+	 * below matches nothing in `src/`, so the picker paints its notice row — and
+	 * every anchor in the band has to be where it was while the list matched.
+	 */
+	const beforeNoMatch = await cdp.evaluate(anchors);
+	await cdp.send("Input.insertText", { text: "zzzz" });
+	const readNoMatch = () =>
+		cdp.evaluate(`(() => {
+		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
+		return {
+			list: Boolean(list),
+			options: list ? list.querySelectorAll('[role="option"]').length : -1,
+			notice: document.querySelector("[data-mention-notice]")?.textContent ?? null,
+		};
+	})()`);
+	let noMatch = await readNoMatch();
+	for (
+		let attempt = 0;
+		attempt < 40 && typeof noMatch.notice !== "string";
+		attempt++
+	) {
+		await wait(100);
+		noMatch = await readNoMatch();
+	}
+	const afterNoMatch = await cdp.evaluate(anchors);
+	note("no-match state", JSON.stringify(noMatch));
+	note("the band while nothing matched", JSON.stringify(afterNoMatch));
+	check(
+		"the picker HOLDS with a notice row instead of closing",
+		noMatch.list === true && noMatch.options === 0,
+		JSON.stringify(noMatch),
+	);
+	check(
+		'the notice distinguishes "nothing here matches" from "this folder is empty"',
+		typeof noMatch.notice === "string" &&
+			noMatch.notice.includes('No files match "zzzz" in src/.'),
+		JSON.stringify(noMatch.notice),
+	);
+	check(
+		"the field does not move a single pixel between the matching and no-match states",
+		beforeNoMatch.field.top === afterNoMatch.field.top &&
+			beforeNoMatch.field.height === afterNoMatch.field.height,
+		`matched ${JSON.stringify(beforeNoMatch.field)} vs no-match ${JSON.stringify(afterNoMatch.field)}`,
+	);
+	check(
+		"nothing else in the band moves either",
+		JSON.stringify(beforeNoMatch.box) === JSON.stringify(afterNoMatch.box) &&
+			JSON.stringify(beforeNoMatch.send) === JSON.stringify(afterNoMatch.send),
+		`box ${JSON.stringify(afterNoMatch.box)} send ${JSON.stringify(afterNoMatch.send)}`,
+	);
+	const noMatchFrame = await captureSettled(cdp, "mentions-no-match-dark");
+
+	/*
+	 * Escape closes the list and leaves the draft alone: the picker is a list over
+	 * the text, and dismissing it must not edit what the user wrote.
+	 */
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+	}
+	const afterEscape = await cdp.evaluate(`(() => {
+		const field = document.querySelector(${JSON.stringify(FIELD)});
+		return {
+			list: Boolean(document.querySelector('[role="listbox"][aria-label="Files"]')),
+			value: field?.value ?? null,
+		};
+	})()`);
+	note("after Escape", JSON.stringify(afterEscape));
+	check(
+		"Escape closes the list and the token it was opened on is still there",
+		afterEscape.list === false && afterEscape.value === "@src/zzzz",
+		JSON.stringify(afterEscape),
+	);
+
+	/*
+	 * A hand-typed, resolvable mention: the chip is derived from the field's own
+	 * value, so a newline and the path below are all it takes — the picker is an
+	 * accelerator, never a requirement.
+	 *
+	 * The line starts at the buffer's only newline, and the caret is at the end,
+	 * which is exactly the "mention at the very end of the text" state.
+	 */
+	await cdp.send("Input.insertText", { text: "\nlook at @README.md" });
+	const readChip = () =>
+		cdp.evaluate(`(() => {
+		const chips = [...document.querySelectorAll("[data-mention-chip]")];
+		const tokens = [...document.querySelectorAll("[data-mention-token]")];
+		const rect = (el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top * 100) / 100, left: Math.round(r.left * 100) / 100, right: Math.round(r.right * 100) / 100, width: Math.round(r.width * 100) / 100, height: Math.round(r.height * 100) / 100 }; };
+		return {
+			chips: chips.map((el) => ({ kind: el.dataset.mentionChip, span: el.dataset.mentionSpan, ...rect(el) })),
+			tokens: tokens.map((el) => ({ span: el.dataset.mentionToken, ...rect(el) })),
+		};
+	})()`);
+	let chip = await readChip();
+	for (let attempt = 0; attempt < 40 && chip.chips.length === 0; attempt++) {
+		await wait(100);
+		chip = await readChip();
+	}
+	note(
+		"the chip and the run it was measured from",
+		JSON.stringify(chip, null, 2),
+	);
+	check(
+		"a hand-typed path that resolves paints exactly one chip",
+		chip.chips.length === 1 && chip.chips[0].kind === "plain",
+		JSON.stringify(chip.chips),
+	);
+	const chipToken = chip.tokens.find(
+		(token) => token.span === chip.chips[0]?.span,
+	);
+	check(
+		"the chip is drawn on its own glyph run, inside the tolerance",
+		chip.chips.length === 1 &&
+			chipToken !== undefined &&
+			Math.abs(
+				chip.chips[0].top -
+					(chipToken.top + (chipToken.height - chip.chips[0].height) / 2),
+			) <= 1 &&
+			Math.abs(chip.chips[0].left - (chipToken.left - 6)) <= 1 &&
+			Math.abs(chip.chips[0].right - (chipToken.right + 6)) <= 1,
+		JSON.stringify({
+			fill: chip.chips[0],
+			run: chipToken,
+			allTokens: chip.tokens,
+		}),
+	);
+	check(
+		"the fill is the design's height and overhang, to within half a pixel",
+		chip.chips.length === 1 &&
+			chipToken !== undefined &&
+			Math.abs(chip.chips[0].height - 17.7) <= 0.5 &&
+			Math.abs(chip.chips[0].width - (chipToken.width + 12)) <= 0.5,
+		JSON.stringify(chip.chips[0]),
+	);
+	check(
+		"the chip's fill is wider than the glyphs it sits behind",
+		chip.chips.length === 1 &&
+			chipToken !== undefined &&
+			chip.chips[0].width > chipToken.width,
+		JSON.stringify({ fill: chip.chips[0]?.width, run: chipToken?.width }),
+	);
+	const chipFrame = await captureSettled(cdp, "mentions-chip-dark");
+
+	/*
+	 * TWO MENTIONS, which is the adjacency case the grammar makes reachable: a
+	 * token opens only at a boundary, so true adjacency is impossible and the pair
+	 * is separated by the space's own advance. The fills must never touch.
+	 */
+	await cdp.send("Input.insertText", { text: " and @src/app.py" });
+	const readPair = () =>
+		cdp.evaluate(`(() => {
+		const rect = (el) => { const r = el.getBoundingClientRect(); return { top: r.top, left: r.left, right: r.right, height: r.height }; };
+		return [...document.querySelectorAll("[data-mention-chip]")].map(rect);
+	})()`);
+	/*
+	 * AND THE SECOND FILL IS WAITED FOR: the chip is derived from a PROBE, which is
+	 * debounced, so reading in the same tick as the keystroke sees the previous
+	 * draft's one chip (measured — the first pass reported a single fill here).
+	 */
+	let pair = await readPair();
+	for (let attempt = 0; attempt < 40 && pair.length < 2; attempt++) {
+		await wait(100);
+		pair = await readPair();
+	}
+	note("two mentions on one line", JSON.stringify(pair));
+	check(
+		"two mentions paint two fills that do not touch",
+		pair.length === 2 && pair[1].left > pair[0].right,
+		JSON.stringify(pair),
+	);
+	const pairFrame = await captureSettled(cdp, "mentions-pair-dark");
+
+	/*
+	 * A LIGHT THEME, because the fill step's two thinnest palettes are the light
+	 * ones (`iceberg` 2.15, `localOperatorLight` 2.25 for the `elevated` candidate;
+	 * `sunken` carries 3.75 at its worst) and the whole set's contrast question is
+	 * asked where it is worst.
+	 */
+	await verb(cdp, "setTheme", "localOperatorLight");
+	const pairLight = await captureSettled(cdp, "mentions-pair-light");
+
+	const frames = [openFrame, noMatchFrame, chipFrame, pairFrame, pairLight];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: stable ${frame.stable}, toast-free ${frame.toastFree}`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
 // ---- gate-check --------------------------------------------------------------
 
 /**
@@ -3999,6 +4567,7 @@ async function main() {
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
+			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

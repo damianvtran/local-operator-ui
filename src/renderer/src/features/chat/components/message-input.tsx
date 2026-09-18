@@ -142,10 +142,36 @@ import {
  * elements of THIS component and nothing outside it should need to know.
  */
 const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
+
+/**
+ * The id the mention layer's description carries, so the field can name it.
+ *
+ * The chip's own states are carried by a FILL, and a fill is `aria-hidden`
+ * decoration: the field's value is the literal text, which is the right
+ * announcement for the reference itself but says nothing about a reference the
+ * agent will ask before reading. This sentence is the one channel that reaches
+ * every user without adding visual noise, which is the shape UX round 1's U7
+ * asked for.
+ */
+const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
 import { sampleSuggestions } from "./composer-suggestions";
 import { ComposerTipRow } from "./composer-tip";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
+import { useAtResolution } from "../hooks/use-at-resolution";
+/*
+ * The `@` mention layer: the tokenizer, the list over the field, and the chip
+ * layer that draws behind the field's own glyphs. Three modules rather than one
+ * because each has a different owner — the grammar is a port of the harness's,
+ * the list is a popup, and the chip is a drawing — and because the grammar and
+ * the ranking are bundled and executed by `scripts/at-mentions.test.mjs`, which a
+ * component module cannot be.
+ */
+import { atDeleteSpan } from "./at-contract";
+import { AtMentionOverlay } from "./at-mention-overlay";
+import { AtSuggestionsPopup, handleAtKeyDown, useAtPicker } from "./at-picker";
+import type { AtRow } from "./at-rank";
+import { atPickerToken, atReference } from "./at-token";
 import {
 	DirectoryIndicator,
 	type DirectoryIndicatorHandle,
@@ -187,6 +213,14 @@ import type {
 	SlashCommandInvocation,
 	SlashSubmissionPlan,
 } from "./slash-submit";
+/*
+ * `replaceSpan` is the ONE splice this app performs on a token, and the atomic
+ * mention delete uses it rather than writing a second one: its separator rule is
+ * already worked out for both directions (`slash-token.ts:262-308`), and reusing
+ * it is what keeps the inline slash gesture and the mention delete from
+ * disagreeing about what "remove a token" means.
+ */
+import { replaceSpan } from "./slash-token";
 import { WaveformAnimation } from "./waveform-animation";
 
 /**
@@ -520,6 +554,30 @@ type MessageInputProps = {
 	 */
 	isHydrating?: boolean;
 	/**
+	 * Whether the `@` affordance may be offered at all — see
+	 * `UseAtPickerArgs.enabled` for the two states this folds and why it fails
+	 * closed.
+	 *
+	 * ONE PROP FOR BOTH SURFACES it gates, because they are one mechanism: the list
+	 * that writes the token and the fill that asserts it. `undefined` is the same as
+	 * false, which is what a caller that has not thought about it gets — the composer
+	 * offering a chip the harness will not expand is the defect this exists for, so
+	 * a broken wire has to fail in the quiet direction.
+	 */
+	mentionsEnabled?: boolean;
+	/**
+	 * Whether the HARNESS is why the affordance above is absent, which the composer
+	 * has to be told separately.
+	 *
+	 * The flag above is false for two different facts — a turn in flight, and a
+	 * harness that does not carry references — and only the page owns the answer to
+	 * the second, because the capability read is its. The composer's sentence for it
+	 * ("this backend cannot carry file references", UX round 2's U12) must not be
+	 * said over a turn: that would be a claim about the backend made from a fact
+	 * about the turn.
+	 */
+	mentionsUnsupported?: boolean;
+	/**
 	 * The conversation is not on this machine (M6), so nothing typed here could
 	 * be sent anywhere.
 	 *
@@ -851,6 +909,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isSmallView = false,
 			isHydrating = false,
 			unavailable = false,
+			mentionsEnabled = false,
+			mentionsUnsupported = false,
 			sessionStatus,
 			onSlashCommand,
 			onSlashNote,
@@ -1544,6 +1604,50 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				agent: sessionStatus?.frontend?.active_agent,
 			},
 		});
+
+		/*
+		 * THE `@` MENTION LAYER, beside the slash hook because the two are one popup
+		 * mechanism over one field: both anchor to the same 4px strip, both route
+		 * their keys in the handler below, and a reader looking at one without the
+		 * other would not know which list a key is going to.
+		 *
+		 * TWO hooks and not one, because the two answers have different lifetimes. The
+		 * PICKER's is about where the caret is and which directory that names; the
+		 * RESOLUTION's is about every token in the whole draft, because the chip layer
+		 * draws all of them and the atomic delete is asked about the one the caret is
+		 * beside. They share the working directory and the value, which is all they
+		 * have in common.
+		 */
+		const at = useAtPicker({
+			text: newMessage,
+			caret,
+			cwd,
+			enabled: mentionsEnabled,
+			unsupported: mentionsUnsupported,
+		});
+		const atMentions = useAtResolution({
+			text: newMessage,
+			cwd,
+			enabled: mentionsEnabled,
+		});
+
+		/*
+		 * How many of the draft's references the agent will ask about before reading,
+		 * which is the fact the outside-workspace fill states and a fill cannot
+		 * announce.
+		 *
+		 * ONLY THE OUTSIDE HALF IS DESCRIBED, and the unresolved half deliberately is
+		 * not: an unresolved token is the normal state of a half-typed path, so a
+		 * sentence counting them would be re-announced on every keystroke of the one
+		 * state that has to stay quiet, and it would be describing what the user is in
+		 * the middle of writing. The sighted signal for that state is the ABSENCE of a
+		 * fill, and the field's own text is the same evidence a screen reader reads.
+		 */
+		const outsideMentions = useMemo(
+			() =>
+				[...atMentions.resolved.values()].filter((fact) => fact.outside).length,
+			[atMentions.resolved],
+		);
 
 		/*
 		 * A caret a programmatic edit asked for, written to the DOM once the new
@@ -2792,6 +2896,88 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			},
 			[newMessage, caret, slash.commandNames, setNewMessage],
 		);
+		/*
+		 * ACCEPTING A ROW, and the ONE divergence from what the harness's own picker
+		 * writes. The token's text is `atReference`: the directory part survives (the
+		 * row's path already carries it), a name containing a space is quoted around
+		 * the whole path, a directory keeps its trailing `/` so the token stays open
+		 * and the list drills in — and a FILE takes a trailing space, which the
+		 * harness's own picker does not add.
+		 *
+		 * The space is what closes the list, and `at_token` is why: a token ends at
+		 * whitespace, so with the caret still at the token's last cell the token is
+		 * ACTIVE and the list would stay up over the sentence the user is now writing.
+		 * It is OUTSIDE the token, so the block the harness builds carries exactly the
+		 * `typed="@src/app.py"` it would carry without it — the same expansion, not a
+		 * second rule.
+		 *
+		 * THE SPAN THIS REPLACES INCLUDES ONE FOLLOWING SEPARATOR WHEN THERE IS ONE,
+		 * because the replacement brings its own space and keeping both would leave the
+		 * user's sentence with a doubled gap. That is `replaceSpan`'s own absorbing
+		 * rule, applied where this write needs it: the helper absorbs only when the
+		 * token opened the buffer, which is the case it was written for — SO THIS ONE
+		 * DEFERS TO IT THERE (review round 1, N4). Claiming the separator here as well
+		 * meant the start-of-draft case absorbed two, and `@a.py  fix` came back with
+		 * one of the user's own spaces gone.
+		 *
+		 * AND THE CARET GOES INSIDE THE CLOSING QUOTE for a spaced directory. The
+		 * unspaced form `@src/` carries the caret after its own slash, which is inside
+		 * the token, so the list stays open and the next segment drills in. The quoted
+		 * form ends at the closing quote (`tokenEnd`), so the identical caret position
+		 * left the token CLOSED: the directory resolved, the picker shut, and the rest
+		 * of the name went out as prose beside a reference to the folder — accepted a
+		 * row, typed the next segment, silently referenced the wrong thing (review
+		 * round 1, M5). Placing the caret before the quote makes the two forms agree on
+		 * the only thing that matters here: the caret is inside the token.
+		 */
+		const handleAtPick = useCallback(
+			(row: AtRow) => {
+				/*
+				 * THE REFUSAL COVERS THIS POPUP'S CLICK TOO, which is `handleSlashPick`'s
+				 * rule (review round 1, MAJOR 2) applied to the second sibling popup
+				 * rather than a second rule invented here. A pick does not type into the
+				 * box - it WRITES a reference into it - and this list is a child of the
+				 * anchoring wrapper beside the textarea rather than a keystroke in it, so
+				 * `readOnly` cannot close the path: the row's own `onClick` is the way in.
+				 * The KEYBOARD half is already closed one level up, where
+				 * `handleComposerKeyDown` returns before `handleAtKeyDown` while the
+				 * composer refuses; the mouse half is this guard.
+				 *
+				 * A refusal can arrive while a list is open (`isBusy` turns true when a
+				 * send settles into a job), so this is a state the composer reaches with
+				 * the picker up rather than a hypothetical one.
+				 */
+				if (isInputDisabled) return;
+				const token = atPickerToken(newMessage, caret);
+				if (!token) return;
+				const write = atReference(row);
+				const following = newMessage.slice(token.end, token.end + 1);
+				// `replaceSpan` absorbs one separator of its own when the token opened the
+				// buffer, so this side must not claim that one a second time.
+				const absorb =
+					token.start > 0 && (following === " " || following === "\n") ? 1 : 0;
+				const spliced = replaceSpan(
+					newMessage,
+					token.start,
+					token.end + absorb,
+					write,
+				);
+				// `atReference` writes the quoted, CLOSED form for a name with a space;
+				// the caret belongs in front of that quote for the reason above.
+				const caretAfter = write.endsWith('"')
+					? spliced.caret - 1
+					: spliced.caret;
+				pendingCaret.current = caretAfter;
+				setNewMessage(spliced.text);
+				setCaret(caretAfter);
+				// The ring the next `@` ranks against is written from HERE, where a pick
+				// actually happened, rather than from the row's render: ranking reads the
+				// ring, and a write during render would re-enter its own derivation.
+				at.remember(row.path);
+				at.close();
+			},
+			[newMessage, caret, at, setNewMessage, isInputDisabled],
+		);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
 			(event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -2840,11 +3026,56 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					event.preventDefault();
 					return;
 				}
+				/*
+				 * THE FILE LIST COMES BEFORE THE SLASH LIST, and it is a render-order fact
+				 * rather than a rule about grammars.
+				 *
+				 * The two grammars CAN both claim one caret: `/team @foo` puts the caret in
+				 * the command's argument (`caretPhase` says so, because the word opened the
+				 * draft) and opens an `@` token at the same time, because the space before
+				 * the `@` is exactly the boundary `isBoundary` asks for. Both popups then
+				 * anchor to the same 4px strip. The design direction forbids inventing a
+				 * tiebreak — a hand-written rule is a rule that can disagree with the
+				 * grammar — so this does not add one: the same ordering is applied in RENDER
+				 * (the `@` popup is mounted after the slash popup, so it is the one on top)
+				 * and here, which is the only property that matters. Whichever list a user
+				 * can SEE is the one whose keys they get.
+				 */
+				if (handleAtKeyDown(event, at, handleAtPick)) {
+					event.preventDefault();
+					return;
+				}
 				if (
 					handleSlashKeyDown(event, slash, handleSlashPick, handleSlashExtend)
 				) {
 					event.preventDefault();
 					return;
+				}
+				/*
+				 * THE ATOMIC DELETE, after the two lists and before the submit: a Backspace at
+				 * a chip's right edge (or a Delete at its left) takes the whole token in one
+				 * keystroke and one undo step, through the same `replaceSpan` the inline slash
+				 * gesture uses. It is the ONE promise the chip makes that is not a drawing,
+				 * and it stops where the chip stops: only a RESOLVED token is a chip, so a
+				 * hand-typed path that names nothing deletes one character at a time like any
+				 * other prose, and a caret on the separator after a token deletes the
+				 * separator — neither gesture removes anything the user cannot see.
+				 */
+				if (event.key === "Backspace" || event.key === "Delete") {
+					const span = atDeleteSpan(
+						caret,
+						event.key === "Backspace" ? "back" : "forward",
+						atMentions.spans,
+						atMentions.resolved,
+					);
+					if (span && !event.nativeEvent.isComposing) {
+						const spliced = replaceSpan(newMessage, span.start, span.end, "");
+						pendingCaret.current = spliced.caret;
+						setCaret(spliced.caret);
+						setNewMessage(spliced.text);
+						event.preventDefault();
+						return;
+					}
 				}
 				// Forward Tab leaves the conversation for the sidebar; while a
 				// question is waiting and the user is DONE with the box, the option
@@ -4312,6 +4543,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */}
 					<SlashSuggestionsPopup state={slash} onPick={handleSlashPick} />
 					{/*
+					 * MOUNTED AFTER THE SLASH POPUP, and that order is the whole of the
+					 * "which list owns this caret" answer: the two grammars can both be live
+					 * (`/team @foo`), they anchor to the same 4px strip, and the later sibling
+					 * is the one on top. The key handler routes `@` first to match. See
+					 * `handleComposerKeyDown` for why no tiebreak was added to the grammars
+					 * instead.
+					 */}
+					<AtSuggestionsPopup state={at} onPick={handleAtPick} />
+					{/*
 					 * The capture's own sentence, in the `<output>` register the interrupt notice
 					 * above the composer already uses: the result of a user action, said politely.
 					 *
@@ -4363,6 +4603,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					>
 						{credentialNotice}
 					</output>
+					{/*
+					 * The outside-workspace mentions, described rather than drawn: `sr-only`,
+					 * because the fill already says it to a sighted reader and a second visible
+					 * line under the box is the geometry every round of this composer has had to
+					 * argue for. It renders only while there is something to say, so an ordinary
+					 * draft is not described by an empty element.
+					 */}
+					{outsideMentions > 0 && (
+						<span id={MENTION_OUTSIDE_NOTICE_ID} className="sr-only">
+							{outsideMentions === 1
+								? "1 reference points outside this session's working directory; the agent will ask you to approve it before reading."
+								: `${outsideMentions} references point outside this session's working directory; the agent will ask you to approve them before reading.`}
+						</span>
+					)}
 					<div
 						className={cn(
 							COMPOSER_BOX,
@@ -4437,6 +4691,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									text={newMessage}
 									payloads={payloadsRef.current}
 									capture={capture}
+									fieldRef={textareaRef}
+									isSmallView={isSmallView}
+								/>
+								{/*
+								 * The mention chips, in the same `isolate` wrapper and at the same depth as
+								 * the credential pill: both draw behind the glyphs the textarea paints, and
+								 * neither takes the pointer. The two never overlap in practice — a chip is a
+								 * path token and a pill is a credential marker — but if they ever did, the
+								 * chip's fill would sit under the pill's, which is the right way round: the
+								 * pill marks a value the app holds and the chip marks a file the text names.
+								 */}
+								<AtMentionOverlay
+									text={newMessage}
+									spans={atMentions.spans}
+									resolved={atMentions.resolved}
 									fieldRef={textareaRef}
 									isSmallView={isSmallView}
 								/>
@@ -4665,6 +4934,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									aria-disabled={isInputDisabled || undefined}
 									aria-label="Message"
 									role="combobox"
+									/*
+									 * All THREE descriptions, space-separated as the attribute demands: the
+									 * credential capture's notice while one is owed, the mention sentence while
+									 * a reference points outside the workspace, and the pane's own sentence
+									 * while the conversation this machine would answer is gone. `undefined`
+									 * rather than an empty string when none applies, because an empty
+									 * `aria-describedby` is a reference to nothing. The three are independent
+									 * reasons to describe this box and any two of them can coincide, which is
+									 * why they are JOINED rather than chosen between.
+									 */
 									aria-describedby={
 										/*
 										 * THE REFUSAL IS DESCRIBED RATHER THAN ANNOUNCED (UX round 1, U3).
@@ -4673,8 +4952,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * in the transcript with no programmatic tie to the control, and the
 										 * placeholder that carries the short form is painted and announced
 										 * only while the box is EMPTY - which is not the state this PR exists
-										 * for. Joining the credential notice's id rather than choosing between
-										 * them keeps both true at once; the two can coincide.
+										 * for. Joining the other notices' ids rather than choosing between
+										 * them keeps each true at once; any two of the three can coincide.
 										 *
 										 * Named only for the `unavailable` arm, which is the one with a sentence
 										 * in the pane to point at. The busy arm's band carries the state's own
@@ -4692,14 +4971,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 */
 										[
 											credentialNotice ? CREDENTIAL_NOTICE_ID : null,
+											outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
 											unavailable ? MISSING_SESSION_NOTICE_ID : null,
 										]
 											.filter(Boolean)
 											.join(" ") || undefined
 									}
-									aria-expanded={slash.open}
-									aria-controls={slash.open ? slash.listId : undefined}
-									aria-activedescendant={slash.activeDescendantId ?? undefined}
+									aria-expanded={slash.open || at.open}
+									aria-controls={
+										slash.open ? slash.listId : at.open ? at.listId : undefined
+									}
+									/*
+									 * The active option comes from whichever list is OPEN, and the popups rule
+									 * above guarantees only one is on top: handing both ids to one
+									 * `aria-activedescendant` would name an element in a list the user is not
+									 * looking at, which a screen reader announces as a row that does not exist.
+									 */
+									aria-activedescendant={
+										(slash.open
+											? slash.activeDescendantId
+											: at.activeDescendantId) ?? undefined
+									}
 								/>
 							</div>
 						)}
@@ -5224,7 +5516,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * change in the peripheral field cannot pull the eye off what
 						 * the user is typing; the row itself keeps painting.
 						 */}
-						<ComposerTipRow suspended={newMessage.trim().length > 0} />
+						<ComposerTipRow
+							suspended={newMessage.trim().length > 0}
+							mentionsEnabled={mentionsEnabled}
+						/>
 					</div>
 				)}
 				{showEmptyChatPrompt && (
