@@ -277,6 +277,15 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 										onLikeToggle={() => {}}
 										onFavouriteToggle={() => {}}
 										showActions={false}
+										/*
+										 * The reactions here are hard-coded to "no", so the card does not KNOW this
+										 * viewer's state and must not say it does. Without this the default
+										 * (`true`) left an ENABLED heart and star labelled "Like agent" /
+										 * "Favourite agent" wired to the no-ops above, reachable exactly when the
+										 * viewer is signed in - the unread-state-as-stated inversion this branch
+										 * removed from the hub, on a caller it edits (review round 2, R2).
+										 */
+										viewerStateKnown={false}
 									/>
 									{isDownloading && (
 										<div className="absolute inset-0 flex items-center justify-center">

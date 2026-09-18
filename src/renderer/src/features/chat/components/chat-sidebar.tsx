@@ -381,6 +381,14 @@ export function ChatSidebar({
 	const availableBuiltins = (profiles.data ?? []).filter(
 		(profile) => profile.source === "builtin",
 	);
+	/*
+	 * Which of the agents section's two states is on screen. Named once because
+	 * the section below reads it three times and they have to agree: the empty
+	 * state is also what makes the batch's control a primary button rather than
+	 * the quiet row. See the section itself for why one reading matters (QA round
+	 * 1, Q1).
+	 */
+	const agentsEmpty = !profiles.isLoading && ownAgents.length === 0;
 	const teams = useTeams(
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
@@ -1567,49 +1575,82 @@ export function ChatSidebar({
 									    list, and nothing to install either, so only the create row
 									    remains.
 									*/}
-									{!profiles.isLoading && ownAgents.length === 0 ? (
-										<div
-											className="flex flex-col gap-2 px-3 py-2"
-											data-testid="agents-sidebar-empty"
-										>
-											<p className="text-body-sm text-ink">No agents yet</p>
-											{/*
-											 * The offer is CONDITIONAL on there being something to offer, and it
-											 * names what that is.
-											 *
-											 * It used to render unconditionally: on a backend with no packaged
-											 * profiles the section still said "Built-in agents are ready to
-											 * install" while offering nothing that installs one — the same
-											 * paragraph, pixel-identical, in a state whose whole point is that
-											 * there is nothing to install (design round 1, D3). And what it
-											 * promised was a list of activities rather than the roles on offer,
-											 * including a "research" role that is not among the packaged
-											 * profiles, with no count at all until the batch had started (UX
-											 * round 1, U6). Derived from the rows the backend sent, because
-											 * the catalogue is the authority on what can be installed and a
-											 * hand-written list can disagree with it.
-											 */}
-											{availableBuiltins.length > 0 && (
+									{/*
+									 * ONE element across both states, and the batch's own control is the
+									 * same child at the same index in each, because the two states differ
+									 * in a way the batch itself causes.
+									 *
+									 * The completion summary is owned by `InstallBuiltinAgents`, and the
+									 * batch's last act is to invalidate `profiles`: the six installs land
+									 * as the user's own agents, `ownAgents` stops being empty, and this
+									 * block used to swap a `div` for a fragment in place. React unmounts
+									 * a subtree whose element type changes, so the summary was destroyed
+									 * ~89ms after it was painted: on the built app against the real
+									 * backend the section went straight from the shortcut to the six-row
+									 * list, and `"6 installed. Done"` was caught in the DOM once by a
+									 * MutationObserver and never seen again. The collision arm's "5
+									 * installed, 1 skipped. Skipped 1: you already have an agent called
+									 * `coder`." is the sentence a user actually needs, and it was
+									 * unreadable by construction (QA round 1, Q1).
+									 *
+									 * So the state lives somewhere that does not move: the outer element
+									 * is the empty state's padded box in one case and `display: contents`
+									 * in the other, which contributes no box at all, so the rows and the
+									 * batch's control lay out exactly as they did as bare children; the
+									 * variable content sits in its own `contents` child so the batch is
+									 * at index 1 either way. Same treatment as the live region in
+									 * `install-builtin-agents.tsx`, for the same reason (U11): what the
+									 * user has to be able to read cannot be the thing that gets
+									 * replaced. DO NOT split this back into one call site per branch.
+									 */}
+									<div
+										className={cn(
+											agentsEmpty
+												? "flex flex-col gap-2 px-3 py-2"
+												: "contents",
+										)}
+										data-testid={
+											agentsEmpty ? "agents-sidebar-empty" : undefined
+										}
+									>
+										<div className="contents">
+											{agentsEmpty ? (
 												<>
-													<p className="text-meta text-ink-muted">
-														{builtinOfferSentence(availableBuiltins)}
-													</p>
-													<InstallBuiltinAgents
-														builtins={availableBuiltins}
-														presentation="primary"
-													/>
+													<p className="text-body-sm text-ink">No agents yet</p>
+													{/*
+													 * The offer is CONDITIONAL on there being something to offer, and it
+													 * names what that is.
+													 *
+													 * It used to render unconditionally: on a backend with no packaged
+													 * profiles the section still said "Built-in agents are ready to
+													 * install" while offering nothing that installs one — the same
+													 * paragraph, pixel-identical, in a state whose whole point is that
+													 * there is nothing to install (design round 1, D3). And what it
+													 * promised was a list of activities rather than the roles on offer,
+													 * including a "research" role that is not among the packaged
+													 * profiles, with no count at all until the batch had started (UX
+													 * round 1, U6). Derived from the rows the backend sent, because
+													 * the catalogue is the authority on what can be installed and a
+													 * hand-written list can disagree with it.
+													 */}
+													{availableBuiltins.length > 0 && (
+														<p className="text-meta text-ink-muted">
+															{builtinOfferSentence(availableBuiltins)}
+														</p>
+													)}
 												</>
+											) : (
+												ownAgents.map((profile) =>
+													entity("agent", profile.name),
+												)
 											)}
 										</div>
-									) : (
-										<>
-											{ownAgents.map((profile) =>
-												entity("agent", profile.name),
-											)}
-											{/* Renders nothing once every built-in is installed. */}
-											<InstallBuiltinAgents builtins={availableBuiltins} />
-										</>
-									)}
+										{/* Renders nothing once every built-in is installed. */}
+										<InstallBuiltinAgents
+											builtins={availableBuiltins}
+											presentation={agentsEmpty ? "primary" : "row"}
+										/>
+									</div>
 									<button
 										type="button"
 										className={cn(rowStyle, "w-full text-ink-muted")}

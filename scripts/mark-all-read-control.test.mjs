@@ -211,7 +211,21 @@ const bundle = await build({
 			 * whole chain rather than the half of it this harness stubs.
 			 */
 			' export { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";' +
-			' export { realDesktopResult, DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE } from "@shared/api/local-operator/desktop-api";',
+			' export { realDesktopResult, DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE } from "@shared/api/local-operator/desktop-api";' +
+			/*
+			 * The query client, EXPORTED FROM THIS BUNDLE rather than imported by the
+			 * harness on the side: the provider the harness renders has to be the same
+			 * module instance as the one the sidebar's own tree reads, or React sees a
+			 * different context and the provider may as well not be there.
+			 *
+			 * The harness needs one because the sidebar's agents section now mounts
+			 * `InstallBuiltinAgents` in EVERY state, including the empty one this fixture
+			 * is (no profiles, no built-ins to offer): the summary that component owns has
+			 * to outlive the refresh that swaps which state is on screen, so it cannot be
+			 * rendered conditionally. The app supplies the provider app-wide; a harness
+			 * that mounts the shipped sidebar bare has to supply it itself.
+			 */
+			' export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -263,6 +277,8 @@ const {
 	realDesktopResult,
 	DESKTOP_FOREGROUND_REQUIRED_CODE,
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
+	QueryClient,
+	QueryClientProvider,
 } = await import(bundlePath.href);
 const { createRoot } = await import("react-dom/client");
 
@@ -272,13 +288,21 @@ const mount = async (rows) => {
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
+	/** One client per mount, and no retries: nothing here presses a query's control. */
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	await act(async () => {
 		root.render(
-			React.createElement(ChatSidebar, {
-				selectedConversation: undefined,
-				onSelectConversation: () => undefined,
-				onStageDraft: () => undefined,
-			}),
+			React.createElement(
+				QueryClientProvider,
+				{ client: queryClient },
+				React.createElement(ChatSidebar, {
+					selectedConversation: undefined,
+					onSelectConversation: () => undefined,
+					onStageDraft: () => undefined,
+				}),
+			),
 		);
 	});
 	const walkTo = (element) =>

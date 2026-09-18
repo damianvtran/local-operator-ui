@@ -621,12 +621,33 @@ export const AgentHubPage: React.FC = () => {
 								aria-busy={isFetching}
 								data-testid="agent-hub-error"
 							>
-								<AlertTitle>The hub could not be loaded</AlertTitle>
+								<AlertTitle>
+									{isAuthenticated
+										? "The hub could not be loaded"
+										: "Sign in to use the hub"}
+								</AlertTitle>
 								<AlertDescription>
-									{backendLoadErrorMessage(
-										"The agent list could not be loaded.",
-										error,
-									)}
+									{/*
+									 * A signed-out viewer's failure is NOT an outage, and this surface used
+									 * to paint it as one: `agents.list` answers 409 with no credential, so
+									 * the page said "The hub could not be loaded / The agent list could not
+									 * be loaded" over a retry that re-issues the same unauthenticated read
+									 * and cannot help. Main painted nothing there, so the report was an
+									 * improvement that could not be told apart from a real outage (QA round
+									 * 1, Q2). The diagnosis helper is right for every failure the credential
+									 * is not the story of, which is why it keeps this arm alone.
+									 *
+									 * The retry stays, because here it is not empty: signing in happens on
+									 * another surface, and the read does not necessarily re-run when the user
+									 * comes back to a page whose query is still cached, so this is the control
+									 * that gets them out of the state they signed in to fix.
+									 */}
+									{isAuthenticated
+										? backendLoadErrorMessage(
+												"The agent list could not be loaded.",
+												error,
+											)
+										: "You are not signed in to Radient, so the hub has no credential to read the agent list with. Sign in on the settings page, then try again."}
 								</AlertDescription>
 								{/*
 								 * The retry is a SIBLING of the description, not a child of it:
