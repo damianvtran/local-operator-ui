@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, closeSync, existsSync, linkSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, statfsSync, symlinkSync, utimesSync, writeFileSync, writeSync } from "node:fs";
+import { chmodSync, closeSync, existsSync, linkSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, statfsSync, symlinkSync, utimesSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
-import { artifactArch, privatePythonSeedCheck, finalContainerChecks, finalMetadataChecks } from "./python-artifact-layout.mjs";
+import { artifactArch, mountedDevice, privatePythonSeedCheck, finalContainerChecks, finalMetadataChecks } from "./python-artifact-layout.mjs";
 import { bundledPythonCheck, spawnRunner } from "./verify-macos-artifacts.mjs";
 
 const result = await build({ stdin: { contents: 'export * from "./src/main/backend/managed-python";', resolveDir: process.cwd() }, bundle: true, platform: "node", format: "esm", write: false });
@@ -289,7 +289,18 @@ test("the container gate names an archive with no application rather than passin
 
 test("the disk image path is exercised by mounting the real image, not by assertion", (t) => {
 	if (skipUnlessDarwin(t, "the image is built and mounted with hdiutil, which this platform does not have")) return;
-	const scratch = fixture(t);
+	// Its own root rather than `fixture`'s, because the teardown has to DETACH
+	// before it removes the tree and two owners' `t.after` hooks would race for
+	// that order. The order is load-bearing: the .dmg in this tree is the backing
+	// file of the volume `finalContainerChecks` mounts, and deleting it under a
+	// volume that is still attached is what makes macOS show the operator "Disk
+	// Not Ejected Properly". `mountedVolume` below pins the same order.
+	const scratch = mkdtempSync(join(tmpdir(), "lo-managed-python-image-"));
+	let imageMount = null;
+	t.after(() => {
+		if (imageMount !== null) spawnRunner("/usr/bin/hdiutil", ["detach", "-force", "-quiet", imageMount]);
+		rmSync(scratch, { recursive: true, force: true });
+	});
 	const app = appBundle(scratch);
 	const image = join(scratch, `local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.dmg`);
 	const created = spawnRunner("/usr/bin/hdiutil", ["create", "-quiet", "-volname", "Local Operator", "-srcfolder", app, "-format", "UDZO", image]);
@@ -304,7 +315,13 @@ test("the disk image path is exercised by mounting the real image, not by assert
 	 * exactly why it is asserted here rather than inferred from a passing mount.
 	 */
 	const calls = [];
-	const run = (command, args, input) => { calls.push({ command, args, input }); return spawnRunner(command, args, input); };
+	const run = (command, args, input) => {
+		calls.push({ command, args, input });
+		// Remembered for the teardown: the mount point lives in `finalContainerChecks`'
+		// own scratch, which this test never sees from the outside.
+		if (command === "/usr/bin/hdiutil" && args[0] === "attach") imageMount = args.includes("-mountpoint") ? args[args.indexOf("-mountpoint") + 1] : null;
+		return spawnRunner(command, args, input);
+	};
 	const results = finalContainerChecks(image, { run, checkApp: containerAppChecks });
 	assert.deepEqual(failures(results), [], "the mounted image's app must pass the same checks the archive's app does");
 	assert.ok(results.some((result) => result.target.includes(":: Local Operator.app")), "the checks must name the app copied out of the image");
@@ -312,6 +329,112 @@ test("the disk image path is exercised by mounting the real image, not by assert
 	assert.ok(attach, "the image must be mounted, not read in place");
 	assert.ok(attach.args.includes("-readonly") && attach.args.includes("-nobrowse"), "the mount is read-only and must not appear in anyone's Finder");
 	assert.equal(attach.input, "Y\n", "the attach must answer the shipped image's license agreement, or the app inside it is never verified");
+	// A real mount is the only place the device-name handshake can be exercised:
+	// the detach has to name the loopback device attach reported, not the mount
+	// path, or it is a second, independent name for the volume that can resolve
+	// to a different one.
+	const detach = calls.find((call) => call.command === "/usr/bin/hdiutil" && call.args[0] === "detach");
+	assert.ok(detach, "the volume this test mounted must be detached by this test");
+	assert.match(detach.args[1], /^\/dev\/disk\d+(s\d+)?$/, `the detach must name the device attach reported: ${detach.args.join(" ")}`);
+});
+
+// ---------------------------------------------------------------------------
+// The mount the container gate owns may not outlive it
+
+/**
+ * A `.dmg` run built entirely from fakes, so the detach contract can be driven
+ * to states a real `hdiutil` reaches too rarely to wait for, on every platform.
+ *
+ * `attach` reports the device the way `hdiutil` does and plants the app in the
+ * mount, `ditto` plants it in the extracted tree, and `detach` is the caller's
+ * script - the two failures this file exists to pin are a mount something holds
+ * open and a mount that will not come away. Nothing here is really attached, so
+ * a test may remove any tree it leaves behind.
+ */
+function fakeImageRun(t, detach) {
+	const root = mkdtempSync(join(tmpdir(), "lo-container-fake-"));
+	const image = join(root, "local-operator-ui-0.0.0-arm64.dmg");
+	writeFileSync(image, "fixture image bytes\n");
+	let mount = null;
+	t.after(() => {
+		// `finalContainerChecks` keeps its scratch when it cannot detach, and that
+		// tree holds the (fake) mount point: remove it here so a failing contract
+		// does not leak a temp tree into the run.
+		if (mount !== null) rmSync(dirname(mount), { recursive: true, force: true });
+		rmSync(root, { recursive: true, force: true });
+	});
+	const calls = [];
+	const run = (command, args, input) => {
+		calls.push({ command, args, input });
+		if (command === "/usr/bin/hdiutil" && args[0] === "attach") {
+			mount = args[args.indexOf("-mountpoint") + 1];
+			mkdirSync(join(mount, "Local Operator.app"), { recursive: true });
+			// As hdiutil prints it: one line per entity, the volume last, the mount
+			// path RESOLVED rather than the path the caller passed.
+			return { status: 0, stdout: `/dev/disk9          \tApple_partition_scheme         \t\n/dev/disk9s2        \tApple_HFS                      \t${realpathSync(mount)}\n`, stderr: "" };
+		}
+		if (command === "/usr/bin/hdiutil" && args[0] === "detach") return detach(args);
+		if (command === "/usr/bin/ditto" && args[0] !== "-x") {
+			const [from, to] = args;
+			if (existsSync(from)) mkdirSync(to, { recursive: true });
+			return { status: 0, stdout: "", stderr: "" };
+		}
+		return { status: 0, stdout: "", stderr: "" };
+	};
+	return { image, calls, run, get mount() { return mount; } };
+}
+
+test("a busy mount is detached by device, then repaired with one forced retry", (t) => {
+	const attempted = [];
+	const fixtureRun = fakeImageRun(t, (args) => {
+		attempted.push(args);
+		// The graceful detach of a volume something still holds open fails the way
+		// a real one does; `-force` is what wins.
+		return args.includes("-force") ? { status: 0, stdout: "", stderr: "" } : { status: 1, stdout: "", stderr: "Resource busy" };
+	});
+	const results = finalContainerChecks(fixtureRun.image, { run: fixtureRun.run, checkApp: () => [] });
+	assert.deepEqual(failures(results), [], "a detach that succeeds on the forced retry is not a failure");
+	assert.deepEqual(attempted, [["detach", "/dev/disk9s2"], ["detach", "-force", "/dev/disk9s2"]], "the device attach reported must be detached, gracefully and then once with -force");
+	const mount = fixtureRun.mount;
+	assert.ok(mount !== null, "the fake attach must have been driven");
+	assert.equal(existsSync(mount), false, "a mount that came away takes its scratch tree with it");
+});
+
+test("a mount that will not detach is reported and its tree is left standing", (t) => {
+	const fixtureRun = fakeImageRun(t, () => ({ status: 1, stdout: "", stderr: "Resource busy" }));
+	const results = finalContainerChecks(fixtureRun.image, { run: fixtureRun.run, checkApp: () => [] });
+	const refused = failures(results);
+	assert.equal(refused.length, 1, `a volume left attached is the only row a caller may see, so it cannot pass for a clean run: ${refused.join("\n")}`);
+	assert.match(refused[0], /^artifact-unmount: /);
+	const mount = fixtureRun.mount;
+	assert.ok(refused[0].includes(mount), `the failure must name the mount still attached: ${refused[0]}`);
+	assert.ok(refused[0].includes("/dev/disk9s2"), `and the device it could not detach: ${refused[0]}`);
+	assert.equal(existsSync(mount), true, "the scratch tree holds the live mount point and must NOT be deleted");
+	assert.equal(existsSync(fixtureRun.image), true, "nor may anything delete the backing image of a volume that is still attached");
+});
+
+/*
+ * The attachment's device, read from the tool's own output rather than guessed.
+ * Pure string work plus one symlink, so it runs wherever the tests do.
+ */
+test("the device is read from hdiutil's own output rather than assumed", (t) => {
+	const root = mkdtempSync(join(tmpdir(), "lo-mounted-device-"));
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	const real = join(root, "mount-real");
+	mkdirSync(real);
+	const linked = join(root, "mount-link");
+	symlinkSync(real, linked);
+	// As `hdiutil attach -mountpoint` prints it: one line per entity, the mounted
+	// volume last, and the mount path RESOLVED - which is the case that matters,
+	// because the scratch mount lives under a symlinked `tmpdir` and the path the
+	// caller passed is not the path hdiutil echoes back.
+	const printed = `/dev/disk11         \tApple_partition_scheme         \t\n/dev/disk11s1        \tApple_partition_map            \t\n/dev/disk11s2        \tApple_HFS                      \t${real}\n`;
+	assert.equal(mountedDevice(printed, linked), "/dev/disk11s2", "the resolved mount must be matched against the path that was passed");
+	assert.equal(mountedDevice(printed, real), "/dev/disk11s2", "and the same path matched literally");
+	// No line names this mount: the volume is still the last entity hdiutil
+	// reported, which is the fallback the caller then detaches.
+	assert.equal(mountedDevice("/dev/disk2\tApple_HFS\t/Volumes/Other\n", "/Volumes/Mine"), "/dev/disk2");
+	assert.equal(mountedDevice("", "/Volumes/Mine"), null, "no attachment means no device, and the caller must fall back rather than invent one");
 });
 
 // ---------------------------------------------------------------------------
