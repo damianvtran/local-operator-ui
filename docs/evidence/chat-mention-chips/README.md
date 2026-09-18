@@ -26,7 +26,7 @@ ancestry rule requires its `head` to be an ancestor of `HEAD`, and a capture can
 only be stamped from a tree that is already committed, so a set always lands in a
 commit after the tree it photographed.
 
-**And this set was folded onto a moved `main` after that pass — three times — so
+**And this set was folded onto a moved `main` after that pass — four times — so
 read the head above as the spelling the folds gave it.** The manifest's
 `srcTree`/`scriptsTree` describe the tree the frames SHIP in, so a fold invalidates
 them whatever the branch's own delta is, and both are re-derived on the merged tree
@@ -80,8 +80,21 @@ mention layer's own rendering did not move at all: `at-picker.tsx`,
 after the fold. **No frame was re-taken for this fold**, and the head above reads
 in the spelling the fold gave it.
 
+**The eleventh fold (`main` at `33373f748`) landed minutes after the tenth, and it
+does not touch this band either.** `main` moved 8 commits and 77 files under this
+branch (the change-scope CI classifier and its `ci-scope.test.mjs`, #318's
+update-check fix, and their stories and evidence), 6 under `src/` and 6 under
+`scripts/`, and none of them renders here: the `src/` half is the preload surface,
+the update-notification component, the app-updates section and its stories, the
+dev-driver and the update service. The window's 56 new frames are main's own
+`settings-app-updates-section` set. `message-input.tsx`'s blob is `4af66278` on
+BOTH heads — `09acb156a` and `33373f748` — so the fold before this one's resolution
+of the textarea's aria fold is untouched rather than re-made, and the mention
+layer's own files are byte-identical again. **No frame was re-taken for this
+fold.**
+
 The counts in the manifest next to this file are the merged tree's own (`frames`
-5,953 outside the 77 declared sets, `surfaces` 635), re-derived by the same walker
+6,009 outside the 77 declared sets, `surfaces` 638), re-derived by the same walker
 `check-evidence.mjs` uses.
 
 **What moved in this pass, measured.** 170 of the 288 frames differ from the
