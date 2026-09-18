@@ -3152,7 +3152,44 @@ export const STORIES = [
 	 */
 	["common-updatenotification--backend-update-installing", 1280, 900],
 	["common-updatenotification--backend-update-restarting", 1280, 900],
+	/*
+	 * THE WAIT BEFORE ANYTHING MOVES, and the one in-flight state this branch adds
+	 * (design round 1, D3). It was undeclared until now, so the repo's own rig could
+	 * not photograph it - a `--only=common-updatenotification--` run matched nothing
+	 * for it and threw - which is why the design round had to drive Storybook with a
+	 * rig of its own. Declared here, so the state the PR adds is in the committed set
+	 * and the next design round re-captures it the ordinary way.
+	 */
+	[
+		"common-updatenotification--backend-update-draining",
+		1280,
+		900,
+		{
+			expectSentence: "Waiting for the turns running on this machine to finish",
+		},
+	],
 	["common-updatenotification--backend-update-failed", 1280, 900],
+	/*
+	 * THE REFUSAL, which is not the failure above it (design round 1, D1/D5). The
+	 * fleet did not drain, so the app waited its bounded time and left the server
+	 * alone - a deliberate, bounded decision that used to be painted in the failure
+	 * panel's clothes, with `Try again` as the emphasized control on a frame whose
+	 * own sentence said the app would offer the update again. Both arms are declared
+	 * because they say different things about what happened: a measured busy fleet,
+	 * and a fleet nothing could read.
+	 */
+	[
+		"common-updatenotification--backend-update-refused-busy-fleet",
+		1280,
+		900,
+		{ expectSentence: "The app waited 10 minutes for them to finish" },
+	],
+	[
+		"common-updatenotification--backend-update-refused-unreadable-fleet",
+		1280,
+		900,
+		{ expectSentence: "The server refused this app's credentials" },
+	],
 	/*
 	 * THE APP-OWNED ARM OF THE SKEW, and the pair this change is about: the install
 	 * is the published release, the daemon SERVING this app is the previous build,

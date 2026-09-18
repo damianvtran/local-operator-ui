@@ -90,8 +90,21 @@ const RESTART_OUTAGE_BOUND = "usually a few seconds, up to half a minute";
  * turns take to finish - stated, because a panel that promises a prompt restart
  * and then holds the button for minutes is the silence this component keeps
  * removing - and nothing in flight is cut off.
+ *
+ * AND IT NOW STATES THE BOUND THE PRESS IMPOSES (design D3). The offer used to
+ * price the wait without saying how long it could be, so the ten-minute wait -
+ * and the refusal that can follow it - appeared only AFTER the press, one batch
+ * later, when neither could be withdrawn. `RESTART_DRAIN_BOUND` is the same
+ * sentence fragment the draining phase carries, so the promise before the press
+ * and the promise during it cannot drift into two numbers.
+ *
+ * AND THE SUBJECT IS NAMED (design D4). "It waits for the turns..." followed
+ * three clauses about the server and read as the SERVER waiting; "The restart
+ * waits" is the actor the press actually starts.
  */
-const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND}. It waits for the turns running on this machine to finish first, so nothing in flight is cut off.`;
+const RESTART_DRAIN_BOUND =
+	"The app waits up to ten minutes for the turns running on this machine to finish, then stops rather than cutting a turn short, so nothing in flight is cut off";
+const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND}. ${RESTART_DRAIN_BOUND}.`;
 
 /**
  * The cost of the SAME press on a server that is not running (design D13): the
@@ -140,6 +153,26 @@ const serverUpdateFailedMessage = (targetVersion: string | null | undefined) =>
 	targetVersion
 		? `The server update to ${targetVersion} did not complete.`
 		: "The server update did not complete.";
+
+/**
+ * How long the press has been waiting for the fleet, in the shortest honest form.
+ *
+ * THE READING IS THE POINT, not its typography (design D3): the draining phase can
+ * run to ten minutes with no other pixel on the frame moving, and the number the
+ * main process already logs (`waitedMs` on the progress event) is what tells a
+ * reader the app is working rather than wedged. Seconds below a minute, then
+ * minutes and seconds - the same reading the update log carries, so a reader
+ * comparing the two is not converting between two spellings of one wait.
+ */
+const waitElapsedLabel = (waitedMs: number): string => {
+	const seconds = Math.max(1, Math.round(waitedMs / 1000));
+	if (seconds < 60) return `Waiting ${seconds}s so far`;
+	const rest = seconds % 60;
+	const minutes = Math.floor(seconds / 60);
+	return rest === 0
+		? `Waiting ${minutes}m so far`
+		: `Waiting ${minutes}m ${rest}s so far`;
+};
 
 type BackendUpdateInfo = {
 	currentVersion: string;
@@ -853,6 +886,18 @@ export const UpdateNotification = ({
 		 * (review U5).
 		 */
 		logPath?: string;
+		/**
+		 * Set when this is a REFUSAL rather than a failure (design D1): the fleet did
+		 * not drain and the app chose not to touch the server. The two land on the
+		 * same panel and are different events, so the producer says which it sent
+		 * rather than a renderer guessing it from the wording.
+		 */
+		refusal?: {
+			because: "busy" | "unknown";
+			waitedMs: number;
+			command: string | null;
+			credentialsRefused: boolean;
+		};
 	} | null>(null);
 	const [backendUpdateAvailable, setBackendUpdateAvailable] = useState(false);
 	const [backendUpdateInfo, setBackendUpdateInfo] =
@@ -929,6 +974,19 @@ export const UpdateNotification = ({
 	/** Which phase the running update is in, announced as it changes (UX U4). */
 	const [backendUpdatePhase, setBackendUpdatePhase] = useState<
 		"draining" | "installing" | "restarting" | null
+	>(null);
+	/**
+	 * How long the press has been waiting for the fleet, in milliseconds.
+	 *
+	 * THE ONE THING THAT MOVES ON A DRAINING FRAME (design D3). The wait can run to
+	 * ten minutes while the panel is otherwise byte-identical from the first second
+	 * to the last - same heading, same rule, same ink - so a reader cannot tell a
+	 * working wait from a hung app. The main process logs this number already; the
+	 * panel had none of it. Null when no wait has been reported (every other phase,
+	 * and an older producer).
+	 */
+	const [backendUpdateWaitedMs, setBackendUpdateWaitedMs] = useState<
+		number | null
 	>(null);
 	const [manualUpdateRequired, setManualUpdateRequired] = useState(false);
 	const [manualUpdateInfo, setManualUpdateInfo] =
@@ -1840,17 +1898,30 @@ export const UpdateNotification = ({
 		 * a cold cache, distinguishable only by the bar's motion (UX U4).
 		 */
 		const removeBackendUpdateProgressListener =
-			window.api.updater.onBackendUpdateProgress(({ phase, sourceRebuild }) => {
-				setBackendUpdatePhase(phase);
-				/*
-				 * WHICH ROUTE IS RUNNING, not only which phase (review round 3, D2 = U3). The
-				 * release path's reassurance is false for a checkout rebuild: that run rewrites the
-				 * install in place, which is exactly what can interrupt a session here. The event
-				 * carries it because the offer that named the cost unmounted the moment the press
-				 * landed - this is the only place left that can say it.
-				 */
-				setRebuildInFlight(sourceRebuild === true);
-			});
+			window.api.updater.onBackendUpdateProgress(
+				({ phase, sourceRebuild, waitedMs }) => {
+					setBackendUpdatePhase(phase);
+					/*
+					 * The elapsed reading travels with the phase (design D3), and it is
+					 * cleared on every phase that does not carry one: a `restarting` frame
+					 * still showing "waiting 6m 12s" would be the previous phase's number
+					 * left standing, which is the drift this panel keeps removing.
+					 */
+					setBackendUpdateWaitedMs(
+						phase === "draining" && typeof waitedMs === "number"
+							? waitedMs
+							: null,
+					);
+					/*
+					 * WHICH ROUTE IS RUNNING, not only which phase (review round 3, D2 = U3). The
+					 * release path's reassurance is false for a checkout rebuild: that run rewrites the
+					 * install in place, which is exactly what can interrupt a session here. The event
+					 * carries it because the offer that named the cost unmounted the moment the press
+					 * landed - this is the only place left that can say it.
+					 */
+					setRebuildInFlight(sourceRebuild === true);
+				},
+			);
 
 		/**
 		 * A server update that failed, with the main process's own reason.
@@ -1899,6 +1970,12 @@ export const UpdateNotification = ({
 						// rather than being re-derived from the sentence here (review round 5, M1).
 						installerOutput: report.installerOutput,
 						logPath: report.logPath,
+						/*
+						 * AND WHETHER THIS WAS A REFUSAL RATHER THAN A FAILURE (design round 1,
+						 * D1). The producer says which it sent, so the panel does not have to
+						 * guess it from the wording of a sentence it does not own.
+						 */
+						refusal: report.refusal,
 					});
 					setBackendUpdatePhase(null);
 					setChecking(false);
@@ -2183,14 +2260,34 @@ export const UpdateNotification = ({
 											: ""
 									}. This can take a minute or two on a normal connection, and longer on a slow one, and the update can't be interrupted once it has started.`
 							: backendUpdatePhase === "restarting"
-								? "The new build has landed. The server is restarting onto it now, so it is offline while it comes back - usually a few seconds, up to half a minute. The app waited for the turns running on this machine to finish first, so nothing in flight was cut off."
+								? "The new build has landed. Nothing in flight was cut off - the app waited for the turns running on this machine to finish first - and the server is restarting onto the new build now, so it is offline while it comes back: usually a few seconds, up to half a minute."
 								: backendUpdatePhase === "draining"
-									? "Waiting for the turns running on this machine to finish before updating, so nothing in flight is cut off. The update waits up to ten minutes, and it is refused rather than cutting a turn short."
+									? /*
+										 * WHO DECIDES AND WHAT THEY CHOSE (design D4). The sentence used to read
+										 * "it is refused rather than cutting a turn short" - passive, no actor, and a
+										 * double negative in one clause. It also dropped the interruption clause its
+										 * two siblings carry (design D3), so the one phase whose length the reader
+										 * cannot see was the only one that did not say whether it could be stopped.
+										 */
+										"Waiting for the turns running on this machine to finish. The app waits up to ten minutes for them, then stops rather than cutting a turn short, so nothing in flight is cut off - and the update can't be interrupted while it waits."
 									: serverRestartsWithInstall(backendUpdateInfo)
 										? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
 										: "Please wait while the server is being updated. The update can't be interrupted once it has started."
 						: "Please wait while we check for available updates..."}
 				</p>
+				{/*
+				 * THE ELAPSED READING (design D3). The wait can run to ten minutes and the
+				 * rest of this frame does not move: without this line a working wait and a
+				 * hung app are the same pixels, and the main process has the number already
+				 * (it logs it). Rendered only for the phase that carries one - a `restarting`
+				 * frame showing a stale count is the drift this panel keeps removing.
+				 */}
+				{backendUpdatePhase === "draining" &&
+					backendUpdateWaitedMs !== null && (
+						<p className="mt-1 text-body-sm text-ink-dim tabular-nums">
+							{waitElapsedLabel(backendUpdateWaitedMs)}
+						</p>
+					)}
 				<ProgressContainer>
 					<Progress />
 				</ProgressContainer>
@@ -2549,6 +2646,91 @@ export const UpdateNotification = ({
 					output: backendUpdateFailure.installerOutput,
 				}
 			: splitInstallerOutput(backendUpdateFailure.message);
+		/*
+		 * A REFUSAL IS NOT A FAILURE (design round 1, D1).
+		 *
+		 * The fleet did not drain, so the app declined to touch the server - a
+		 * deliberate, bounded choice whose copy already said so ("the app waited ten
+		 * minutes rather than cut off work in flight") - and the frame it landed on
+		 * said the opposite: a red triangle, the failure heading, and `Try again` as
+		 * the emphasized control, which re-enters the same ten-minute wait. Nothing on
+		 * it said the server was untouched or that the wait was the price of that.
+		 *
+		 * WHAT THIS ARM CHANGES, and why it is a branch rather than a reworded
+		 * sentence: an update that FAILED and an update that was HELD BACK are two
+		 * different events on one surface, so the heading, the announcement (this is
+		 * `status`, not `alert`), the ink and the control order all differ. The one
+		 * thing that must NOT differ is the repetition it makes easy: `Update later`
+		 * is the emphasized action, because the app will offer this update again by
+		 * itself - and the repeating action is the one that must not be the primary.
+		 */
+		const refusal = backendUpdateFailure.refusal;
+		if (refusal) {
+			return withErrorToast(
+				<UpdateContainer>
+					<UpdateHeading>The update did not start</UpdateHeading>
+					{/*
+					 * THE LEAD LINE IS THE ACTIONABLE FACT (design D5): how many sessions are
+					 * still working, and which. It used to sit in parentheses halfway down a
+					 * muted five-line paragraph while the waiting panel spoke in full ink, so the
+					 * panel asking for a decision was the quieter of the two. It is rendered at
+					 * `text-ink`; the explanation below it stays muted, because it is context
+					 * rather than something a reader can act on.
+					 */}
+					<p className="mb-2 text-body text-ink">{failure.sentence}</p>
+					{failure.output && (
+						<p className="text-body-sm text-ink-muted">{failure.output}</p>
+					)}
+					{/*
+					 * THE REMEDY IS A COMMAND, SO IT RENDERS AS ONE (design D2). It used to
+					 * be a clause inside the sentence, printed with literal backticks and no
+					 * way to copy it, one panel away from `backend-update-non-managed` doing
+					 * exactly this with the app's own `CommandBlock`. The label is copy the
+					 * renderer owns; the COMMAND is the plan's and arrives as a field, so an
+					 * install the app could not classify still names none.
+					 */}
+					{refusal.command && (
+						<div className="mt-2">
+							<p className="text-body-sm text-ink-muted">
+								To update now, run this yourself in a terminal:
+							</p>
+							<CommandBlock command={refusal.command} />
+						</div>
+					)}
+					{backendUpdateFailure.logPath && (
+						<div className="mt-2">
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									void window.api.showItemInFolder(
+										backendUpdateFailure.logPath as string,
+									);
+								}}
+							>
+								Reveal update log
+							</Button>
+						</div>
+					)}
+					<UpdateActions>
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={handleDismissBackendUpdateFailure}
+						>
+							Update later
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => void updateBackend()}
+						>
+							Try again
+						</Button>
+					</UpdateActions>
+				</UpdateContainer>,
+			);
+		}
 		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">

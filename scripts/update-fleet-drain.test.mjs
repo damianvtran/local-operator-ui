@@ -48,6 +48,7 @@ const {
 	fleetRosterFromSessions,
 	reengageDisplacedSessions,
 	servingWorkStateFromSessions,
+	unionFleetSnapshots,
 	waitForFleetIdle,
 } = gate;
 
@@ -242,7 +243,7 @@ test("a read that could not be taken is waited on and then refused as such", asy
 	assert.deepEqual(outcome.busy, []);
 });
 
-test("the refusal names the sessions and offers the by-hand route only when there is one", () => {
+test("the refusal's two arms are a lead line and an explanation, and name no command", () => {
 	const busy = fleetRosterFromSessions(
 		body([
 			row("aaaaaaaaaaa1", "busy", { name: "Nightly enrichment" }),
@@ -250,39 +251,148 @@ test("the refusal names the sessions and offers the by-hand route only when ther
 		]),
 	);
 	assert.ok(busy);
-	const sentence = fleetDrainRefusalSentence(
-		{ kind: "refused", because: "busy", waitedMs: 600_000, busy },
-		"lop update",
-	);
-	assert.match(sentence, /2 sessions on this machine are still running a turn/);
-	assert.match(sentence, /Nightly enrichment, Second turn/);
-	assert.match(sentence, /waited 10 minutes/);
-	assert.match(sentence, /run `lop update` yourself/);
+	const sentence = fleetDrainRefusalSentence({
+		kind: "refused",
+		because: "busy",
+		waitedMs: 600_000,
+		busy,
+	});
 	/*
-	 * An install the app could not classify has NO command (`resolveGlobalInstallPlan`
-	 * may not invent one), and the clause is omitted rather than guessed.
+	 * THE LEAD IS THE COUNT AND THE NAMES (design D5): the actionable fact, rendered
+	 * at full ink above the explanation rather than mid-paragraph in muted ink.
 	 */
-	const unnamed = fleetDrainRefusalSentence(
-		{
-			kind: "refused",
-			because: "busy",
-			waitedMs: 60_000,
-			busy: busy.slice(0, 1),
+	const [lead, explanation] = sentence.split("\n\n");
+	assert.match(lead, /2 sessions are still running a turn on this machine/);
+	assert.match(lead, /Nightly enrichment, Second turn/);
+	assert.doesNotMatch(
+		lead,
+		/\(/,
+		"the names are the lead line, not a parenthesis",
+	);
+	assert.ok(
+		explanation,
+		"the explanation is its own part, on the producer's one blank line",
+	);
+	assert.match(explanation, /waited 10 minutes/);
+	assert.match(
+		explanation,
+		/Nothing was installed and the server keeps running/,
+	);
+	assert.match(explanation, /will offer this update again/);
+	/*
+	 * THE COMMAND IS NOT IN THE SENTENCE (design D2). It travels as its own field so
+	 * the panel can render the app's `CommandBlock`; printed here it would be
+	 * backticks in body ink with no way to copy them.
+	 */
+	assert.doesNotMatch(sentence, /`/);
+	assert.doesNotMatch(sentence, /uv tool upgrade/);
+	/*
+	 * The unreadable arm says what actually happened, and which unreadable it was:
+	 * a server that answered 401 and a socket that never answered are the same
+	 * verdict and different next steps (QA round 1, observation b).
+	 */
+	const unreachable = fleetDrainRefusalSentence({
+		kind: "refused",
+		because: "unknown",
+		waitedMs: 600_000,
+		busy: [],
+	});
+	assert.match(unreachable, /could not read which sessions are running/);
+	assert.doesNotMatch(unreachable, /still running a turn/);
+	assert.doesNotMatch(unreachable, /credentials/);
+	const refusedCredentials = fleetDrainRefusalSentence({
+		kind: "refused",
+		because: "unknown",
+		waitedMs: 600_000,
+		busy: [],
+		credentialsRefused: true,
+	});
+	assert.match(refusedCredentials, /refused this app's credentials/);
+	/*
+	 * THE ZERO-BUSY FALLBACK DOES NOT CLAIM A MEASUREMENT (review round 1, NIT n3):
+	 * an empty `busy` at the end of the budget means the roster read failed, so the
+	 * sentence may not assert a turn it never saw.
+	 */
+	const unnamed = fleetDrainRefusalSentence({
+		kind: "refused",
+		because: "busy",
+		waitedMs: 60_000,
+		busy: [],
+	});
+	assert.match(unnamed, /could not name the sessions/);
+	assert.doesNotMatch(unnamed, /is still running a turn/);
+});
+
+test("a listing whose own liveness read failed is not a quiet fleet", () => {
+	/*
+	 * THE BLOCKER (review round 1, B1 = QA Q-1). `registry.scan()` raised, so every
+	 * row carries the catalogue's DEFAULT `live_state: ""` - a string, which is why
+	 * the old-daemon guard (which looks for the field's ABSENCE) never saw it - while
+	 * the listing itself says which read failed. Those rows are evidence of nothing,
+	 * so the verdict may not be `idle`: the press would otherwise restart the daemon
+	 * under turns this app cannot see, and the invariant the whole gate exists for is
+	 * that an unreadable probe means STAY.
+	 */
+	const degraded = {
+		result: {
+			sessions: [row("aaaaaaaaaaa1", ""), row("bbbbbbbbbbb2", "")],
+			degraded: ["liveness"],
 		},
+	};
+	assert.equal(servingWorkStateFromSessions(degraded), "unknown");
+	assert.equal(
+		fleetRosterFromSessions(degraded),
 		null,
+		"a degraded roster is no roster: the re-engage may not diff against it either",
 	);
-	assert.doesNotMatch(unnamed, /run `/);
-	assert.match(unnamed, /will offer this update again/);
 	/*
-	 * The unreadable arm says what actually happened: it never saw a turn, so it may
-	 * not claim one.
+	 * AND THE OTHER DECORATIONS ARE NOT THIS. `wakes`/`attention` failing says
+	 * nothing about work, and a gate that refused on them would be inert on any
+	 * machine whose wake index is unreadable - which is the fail-closed direction
+	 * taken one step too far.
 	 */
-	const unreadable = fleetDrainRefusalSentence(
-		{ kind: "refused", because: "unknown", waitedMs: 600_000, busy: [] },
-		null,
+	const wakesOnly = {
+		result: {
+			sessions: [row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "")],
+			degraded: ["wakes", "attention"],
+		},
+	};
+	assert.equal(servingWorkStateFromSessions(wakesOnly), "idle");
+});
+
+test("a row whose live_state cannot be read is not a quiet row", () => {
+	/*
+	 * IDLE IS A CLAIM ABOUT EVERY ROW. A row with no `live_state` is a daemon
+	 * predating the field, and a row with a spelling this build does not know is a
+	 * fact it cannot interpret - neither is a row it may count as quiet, and one of
+	 * them makes the whole roster unreadable rather than just itself.
+	 */
+	assert.equal(
+		servingWorkStateFromSessions(
+			body([row("aaaaaaaaaaa1", "idle"), { id: "bbbbbbbbbbb2", name: "b" }]),
+		),
+		"unknown",
+		"a row with no live_state at all",
 	);
-	assert.match(unreadable, /could not read which sessions are running/);
-	assert.doesNotMatch(unreadable, /still running a turn/);
+	assert.equal(
+		servingWorkStateFromSessions(
+			body([row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "starting")]),
+		),
+		"unknown",
+		"a spelling this build has never heard of",
+	);
+	/*
+	 * BLANK IS THE CATALOGUE'S OWN SPELLING for a row with no record at all - the
+	 * shape most rows of a real store have - so it stays readable, and the degraded
+	 * MARKER above is what separates a genuinely cold row from a defaulted one. A
+	 * gate that refused on blank would never restart anything on this machine.
+	 */
+	assert.equal(
+		servingWorkStateFromSessions(
+			body([row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "")]),
+		),
+		"idle",
+	);
 });
 
 test("only the sessions that were live and are not now are displaced", () => {
@@ -311,28 +421,80 @@ test("only the sessions that were live and are not now are displaced", () => {
 	assert.deepEqual(displacedSessions(before, null), []);
 });
 
-test("the re-engage waits for the displace set to settle, then engages one at a time", async () => {
+test("the re-engage does not end the wait while the wave is inside its settle window", async () => {
+	/*
+	 * THE RULE THIS REPLACES, AND WHY IT WAS WRONG (review round 1, M1 = QA Q-2).
+	 * The old case handed the loop two identical rosters and asserted the engage
+	 * happened after the SECOND read - which pinned "a repeated set means the wave is
+	 * over". A repeated set is the opposite: a pre-swap runtime retires ITSELF, and
+	 * only after the harness's build check, its settle window and its staggered
+	 * slice (5 + 10 + 20 s, `local_operator/buildwatch.py`), so the set that repeats
+	 * early is the set that still has retirements coming. The reference tool waits
+	 * for the pre-update runtimes to LEAVE (`~/tools/lop-fleet-update`), bounded by a
+	 * grace, and this now does the same.
+	 */
+	const time = clock();
+	const before = fleetRosterFromSessions(
+		body([row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]),
+	);
+	assert.ok(before);
+	let engagedAt = null;
+	const engaged = [];
+	const result = await reengageDisplacedSessions({
+		before,
+		// b2 is already gone on the first read, and the set never changes again.
+		readRoster: async () =>
+			fleetRosterFromSessions(body([row("aaaaaaaaaaa1", "idle")])),
+		engage: async (entry) => {
+			engaged.push(entry.sessionId);
+			engagedAt = time.now();
+			return true;
+		},
+		sleep: time.sleep,
+		now: time.now,
+		graceMs: 60_000,
+		settleMs: 30_000,
+		retirePollMs: 5_000,
+		log: () => {},
+	});
+	assert.deepEqual(
+		result.displaced.map((entry) => entry.sessionId),
+		["bbbbbbbbbbb2"],
+	);
+	assert.deepEqual(engaged, ["bbbbbbbbbbb2"], "engaged once, sequentially");
+	assert.ok(
+		engagedAt !== null && engagedAt >= 30_000,
+		`the engage must wait the harness's own stride for the wave, not one poll: engaged at ${engagedAt}ms`,
+	);
+});
+
+test("a retirement that lands after the first look is still re-engaged", async () => {
 	const time = clock();
 	const before = fleetRosterFromSessions(
 		body([row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]),
 	);
 	assert.ok(before);
 	/*
-	 * The first read after the move still shows the second session: a runtime that
-	 * was about to retire has not retired yet, and engaging it then would race the
-	 * writer lease. The second read is stable, so that is when the engages happen.
+	 * THE SKIP THE OLD RULE MADE (review round 1, M1, first half). Nothing looks
+	 * displaced on the first read - the ordinary shape immediately after a restart,
+	 * because session runtimes are separate processes that survived the daemon bounce
+	 * and retire on the BUILD change afterwards - and the old loop returned without
+	 * waiting at all, so a runtime that went cold a moment later was never seen and
+	 * the unwatched `daemon`-kind session was left with no runtime.
 	 */
-	const rosters = [
-		[body([row("aaaaaaaaaaa1", "idle")]), body([row("aaaaaaaaaaa1", "idle")])],
-	];
+	let reads = 0;
 	const engaged = [];
 	const result = await reengageDisplacedSessions({
 		before,
 		readRoster: async () => {
-			const next = rosters.shift();
-			if (!next)
-				return fleetRosterFromSessions(body([row("aaaaaaaaaaa1", "idle")]));
-			return fleetRosterFromSessions(next[0] ?? []);
+			reads += 1;
+			return fleetRosterFromSessions(
+				body(
+					reads < 3
+						? [row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]
+						: [row("aaaaaaaaaaa1", "idle")],
+				),
+			);
 		},
 		engage: async (entry) => {
 			engaged.push(entry.sessionId);
@@ -340,21 +502,127 @@ test("the re-engage waits for the displace set to settle, then engages one at a 
 		},
 		sleep: time.sleep,
 		now: time.now,
+		graceMs: 60_000,
+		settleMs: 30_000,
+		retirePollMs: 5_000,
+		log: () => {},
+	});
+	assert.deepEqual(engaged, ["bbbbbbbbbbb2"]);
+	assert.deepEqual(result.failed, []);
+});
+
+test("a wave that never settles ends at the grace, and what is gone is still engaged", async () => {
+	const time = clock();
+	const before = fleetRosterFromSessions(
+		body([row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]),
+	);
+	assert.ok(before);
+	const engaged = [];
+	const result = await reengageDisplacedSessions({
+		before,
+		readRoster: async () =>
+			fleetRosterFromSessions(body([row("aaaaaaaaaaa1", "idle")])),
+		engage: async (entry) => {
+			engaged.push(entry.sessionId);
+			return true;
+		},
+		sleep: time.sleep,
+		now: time.now,
+		/*
+		 * The grace is the OUTER bound for the shape only the clock can end: a
+		 * pre-swap runtime that never retires at all (a session that went busy again
+		 * after the drain). The wait stops there, and the repair still happens.
+		 */
 		graceMs: 10_000,
+		settleMs: 30_000,
+		retirePollMs: 5_000,
+		log: () => {},
+	});
+	assert.ok(
+		time.now() >= 10_000 && time.now() < 15_000,
+		`the wait is bounded by the grace, not by the poll: ${time.now()}ms`,
+	);
+	assert.deepEqual(engaged, ["bbbbbbbbbbb2"]);
+});
+
+test("a roster read that fails during the wait is no information, not a wave", async () => {
+	const time = clock();
+	const before = fleetRosterFromSessions(
+		body([row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]),
+	);
+	assert.ok(before);
+	const engaged = [];
+	const result = await reengageDisplacedSessions({
+		before,
+		readRoster: async () => null,
+		engage: async (entry) => {
+			engaged.push(entry.sessionId);
+			return true;
+		},
+		sleep: time.sleep,
+		now: time.now,
+		graceMs: 30_000,
+		settleMs: 10_000,
+		retirePollMs: 5_000,
+		log: () => {},
+	});
+	/*
+	 * An unreadable read is not "everything retired": treating it as an empty live
+	 * set would call every session displaced and spawn a runtime for each. No
+	 * information means no engage, and the wait still ends on a bound.
+	 */
+	assert.deepEqual(engaged, []);
+	assert.deepEqual(result.displaced, []);
+	assert.ok(time.now() >= 10_000);
+});
+
+test("a swap with nothing live before it has nothing to put back, and reads nothing", async () => {
+	let reads = 0;
+	let engagements = 0;
+	const cold = fleetRosterFromSessions(body([row("ddddddddddd4", "")]));
+	assert.ok(cold);
+	const result = await reengageDisplacedSessions({
+		before: cold,
+		readRoster: async () => {
+			reads += 1;
+			return fleetRosterFromSessions(body([]));
+		},
+		engage: async () => {
+			engagements += 1;
+			return true;
+		},
+		sleep: async () => {},
+		now: () => 0,
+		log: () => {},
+	});
+	/*
+	 * A machine whose sessions were all cold has no runtime to displace, so this is
+	 * the one arm that may answer without a read. It is NOT the "first read shows
+	 * nothing displaced" arm - that one waits (see the case above).
+	 */
+	assert.equal(reads, 0);
+	assert.equal(engagements, 0);
+	assert.deepEqual(result.displaced, []);
+});
+
+test("an engage the server answers false to is reported, never swallowed", async () => {
+	const time = clock();
+	const before = fleetRosterFromSessions(body([row("aaaaaaaaaaa1", "idle")]));
+	assert.ok(before);
+	const result = await reengageDisplacedSessions({
+		before,
+		readRoster: async () => fleetRosterFromSessions(body([])),
+		engage: async () => false,
+		sleep: time.sleep,
+		now: time.now,
+		graceMs: 1000,
+		settleMs: 1000,
 		retirePollMs: 1000,
 		log: () => {},
 	});
-	assert.deepEqual(
-		result.displaced.map((entry) => entry.sessionId),
-		["bbbbbbbbbbb2"],
-	);
-	assert.deepEqual(
-		engaged,
-		["bbbbbbbbbbb2"],
-		"sequentially, and only what is gone",
-	);
-	assert.deepEqual(result.engaged, ["bbbbbbbbbbb2"]);
-	assert.deepEqual(result.failed, []);
+	assert.deepEqual(result.engaged, []);
+	assert.equal(result.failed.length, 1);
+	assert.match(result.failed[0].reason, /did not take the engage/);
 });
 
 test("a displace list that comes back on its own is not re-engaged at all", async () => {
@@ -414,11 +682,12 @@ test("an engage the server does not take is reported, never swallowed", async ()
 
 test("the panel's own number for the wait is this gate's", () => {
 	/*
-	 * A BOUND STATED TWICE IS A BOUND THAT CAN DRIFT. The draining phase's sentence
-	 * tells the reader how long the app may hold their press; the gate is what
-	 * decides it. Asserted as a match rather than left to review, because the failure
-	 * mode is a panel promising ten minutes while the code waits two - or the reverse
-	 * - and neither number is wrong on its own.
+	 * A BOUND STATED TWICE IS A BOUND THAT CAN DRIFT. Both places the panel states it
+	 * - the offer's cost line before the press, and the draining phase's sentence
+	 * during the wait - tell the reader how long the app may hold their press, and the
+	 * gate is what decides it. Asserted as a match rather than left to review, because
+	 * the failure mode is a panel promising ten minutes while the code waits two - or
+	 * the reverse - and neither number is wrong on its own.
 	 */
 	const panel = readFileSync(
 		join(
@@ -427,18 +696,55 @@ test("the panel's own number for the wait is this gate's", () => {
 		),
 		"utf8",
 	);
-	const stated = /The update waits up to (\w+) minutes/.exec(panel);
-	assert.ok(stated, "the draining phase must state the bound it waits");
 	const words = { five: 5, ten: 10, fifteen: 15, thirty: 30, sixty: 60 };
+	const stated = [...panel.matchAll(/waits up to (\w+) minutes/g)].map(
+		(match) => match[1],
+	);
 	assert.ok(
-		Number.isFinite(words[stated[1]]),
-		`the sentence names "${stated[1]} minutes", which this test cannot read as a number`,
+		stated.length >= 2,
+		"both the offer and the draining phase must state the bound they wait",
 	);
-	assert.equal(
-		words[stated[1]] * 60_000,
-		FLEET_DRAIN_BUDGET_MS,
-		`the panel says ${stated[1]} minutes and the gate waits ${FLEET_DRAIN_BUDGET_MS}ms`,
+	for (const word of stated) {
+		assert.ok(
+			Number.isFinite(words[word]),
+			`a sentence names "${word} minutes", which this test cannot read as a number`,
+		);
+		assert.equal(
+			words[word] * 60_000,
+			FLEET_DRAIN_BUDGET_MS,
+			`the panel says ${word} minutes and the gate waits ${FLEET_DRAIN_BUDGET_MS}ms`,
+		);
+	}
+});
+
+test("the before-side of a diff is the union of the snapshots that can hold the loss", () => {
+	const first = fleetRosterFromSessions(
+		body([row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "busy")]),
 	);
+	const second = fleetRosterFromSessions(
+		body([row("bbbbbbbbbbb2", "idle"), row("ccccccccccc3", "idle")]),
+	);
+	assert.ok(first && second);
+	/*
+	 * WHY A UNION (review round 1, M2). The install leg and the restart leg are
+	 * separated by up to half an hour on the rebuild route, and a runtime the INSTALL
+	 * killed is already gone by the time the pre-restart snapshot is read - so a diff
+	 * taken only across the restart cannot see it, and one taken only across the
+	 * install misses everything created in between. Every member of the union was live
+	 * when ONE of the reads was taken, which is what keeps the diff about what vanished.
+	 */
+	assert.deepEqual(
+		unionFleetSnapshots(first, second)?.map((entry) => entry.sessionId),
+		["aaaaaaaaaaa1", "bbbbbbbbbbb2", "ccccccccccc3"],
+		"the same session in both readings appears once, in the first snapshot's order",
+	);
+	/*
+	 * An unreadable side contributes nothing rather than poisoning the pair: the
+	 * readable half is still a true statement about what was live.
+	 */
+	assert.deepEqual(unionFleetSnapshots(null, second), second);
+	assert.deepEqual(unionFleetSnapshots(first, null), first);
+	assert.equal(unionFleetSnapshots(null, null), null);
 });
 
 test("the shipped bounds are the host tool's own, not invented here", () => {

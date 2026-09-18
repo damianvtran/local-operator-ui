@@ -102,6 +102,30 @@ const SOURCE_BUILD_REFUSAL_OUTPUT = [
 const ORPHANED_UPDATER_SENTENCE =
 	"The server update did not finish: the installer could not be run to a verdict. The updater was stopped; something it started may still be replacing the install. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.";
 
+/**
+ * THE REFUSAL, in the producer's own two-part shape (design round 1, D1/D5).
+ *
+ * Lead line then blank line then body: the lead is the fact a reader can act on
+ * and the body is the explanation - see `fleetDrainRefusalSentence`, whose
+ * sentences these are, transcribed rather than composed so the frame shows what
+ * the app sends. It is the state `update-service.ts` calls "A REFUSAL, NOT A
+ * FAILURE": the wait was deliberate and the server was never touched.
+ */
+const DRAIN_REFUSAL_BUSY_MESSAGE = [
+	"4 sessions are still running a turn on this machine: canonical-chat, refactor-tui, support-replies and 1 more.",
+	"The app waited 10 minutes for them to finish and then stopped rather than cut a turn short. Nothing was installed and the server keeps running the build it loaded; the app will offer this update again.",
+].join("\n\n");
+
+/** The other unreadable: the server answered and refused this app's credentials. */
+const DRAIN_REFUSAL_UNREADABLE_MESSAGE = [
+	"The server refused this app's credentials, so the app could not read which sessions are running on this machine.",
+	"Reading an unreadable fleet as idle could cut off a turn that is in flight, so the app waited 10 minutes and then stopped. Nothing was installed and the server is untouched, and the app will offer this update again.",
+].join("\n\n");
+
+const DRAIN_REFUSAL_COMMAND = "uv tool upgrade local-operator";
+const DRAIN_REFUSAL_LOG_PATH =
+	"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log";
+
 const ORPHANED_UPDATER_OUTPUT = [
 	"lop-update: mobile web bundle: built",
 	"Resolved 55 packages in 1.25s",
@@ -232,6 +256,35 @@ const mockUpdaterApi = () => {
 						phase: "update",
 						logPath:
 							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
+					});
+				}
+				return false;
+			}
+			/*
+			 * THE FLEET REFUSAL (design round 1, D1). The report carries the `refusal`
+			 * field as well as the sentence, because that is what makes it a refusal
+			 * rather than a failure on the panel - and because the command and the wait
+			 * it names are the parts a reader acts on.
+			 */
+			if (
+				window.triggerBackendUpdateRefusedBusy ||
+				window.triggerBackendUpdateRefusedUnreadable
+			) {
+				const unreadable =
+					window.triggerBackendUpdateRefusedUnreadable === true;
+				for (const listener of [...backendUpdateErrorListeners]) {
+					listener({
+						message: unreadable
+							? DRAIN_REFUSAL_UNREADABLE_MESSAGE
+							: DRAIN_REFUSAL_BUSY_MESSAGE,
+						phase: "update",
+						logPath: DRAIN_REFUSAL_LOG_PATH,
+						refusal: {
+							because: unreadable ? "unknown" : "busy",
+							waitedMs: 600_000,
+							command: DRAIN_REFUSAL_COMMAND,
+							credentialsRefused: unreadable,
+						},
 					});
 				}
 				return false;
@@ -839,6 +892,8 @@ declare global {
 		triggerUpdateNpxAvailable?: boolean;
 		triggerBackendUpdateSourceBuildFailed?: boolean;
 		triggerBackendUpdateFailedOrphan?: boolean;
+		triggerBackendUpdateRefusedBusy?: boolean;
+		triggerBackendUpdateRefusedUnreadable?: boolean;
 		triggerBackendUpdateSourceBuild?: boolean;
 		triggerBackendUpdateSourceBuildAdopted?: boolean;
 		triggerBackendUpdateSourceBuildInFlight?: boolean;
@@ -1693,15 +1748,17 @@ const PressUpdateServer = ({
 	phase = null,
 	variant = "default",
 }: {
-	outcome: "inflight" | "failed";
+	outcome: "inflight" | "failed" | "refused";
 	/**
 	 * WHICH OFFER the press is made on. `default` is the release-install payload (the entry-point
 	 * route); `source-build` is the checkout rebuild, whose offer carries a different consequence
 	 * sentence and provenance line while the state - a press, and the panel that answers it - is
 	 * the same one; `orphan` is the default offer whose failure is the timeout that left something
-	 * running, so the state differs only in the sentence the main process sends.
+	 * running, so the state differs only in the sentence the main process sends;
+	 * `refused-unreadable` is the refusal arm where nothing could be read at all (the default
+	 * refusal is the measured busy fleet).
 	 */
-	variant?: "default" | "source-build" | "orphan";
+	variant?: "default" | "source-build" | "orphan" | "refused-unreadable";
 	/**
 	 * The phase the in-flight panel is opened on, when the story is about WHICH
 	 * sentence the reader reads while the update runs (UX U6). Null is the
@@ -1724,6 +1781,17 @@ const PressUpdateServer = ({
 		} else if (variant === "orphan") {
 			window.triggerBackendUpdateAvailable = true;
 			window.triggerBackendUpdateFailedOrphan = outcome === "failed";
+		} else if (outcome === "refused") {
+			/*
+			 * A REFUSAL IS REACHED BY PRESSING, not by a flag that paints the panel:
+			 * the report arrives from `updateBackend` after the gate has waited and
+			 * declined, and this is the only path that produces the state the design has
+			 * to judge (design round 1, D1/D5).
+			 */
+			window.triggerBackendUpdateAvailable = true;
+			window.triggerBackendUpdateRefusedUnreadable =
+				variant === "refused-unreadable";
+			window.triggerBackendUpdateRefusedBusy = variant !== "refused-unreadable";
 		} else {
 			window.triggerBackendUpdateAvailable = true;
 			window.triggerBackendUpdateInFlight = outcome === "inflight";
@@ -1739,7 +1807,9 @@ const PressUpdateServer = ({
 		const expected =
 			outcome === "inflight"
 				? "Updating server"
-				: "The server update didn't finish";
+				: outcome === "refused"
+					? "The update did not start"
+					: "The server update didn't finish";
 		const settle = async () => {
 			/* The offer is raised by the mount effect, so the control exists only
 			   after a pass - poll for it rather than assume the timing. */
@@ -1927,6 +1997,34 @@ export const BackendUpdateOfferSourceBuildAdopted: Story = {
 export const BackendUpdateFailedOrphan: Story = {
 	args: { autoCheck: false },
 	render: () => <PressUpdateServer outcome="failed" variant="orphan" />,
+};
+
+/**
+ * THE REFUSAL, which is not a failure (design round 1, D1). The fleet did not
+ * drain, so the app waited its bounded time and then left the server alone; the
+ * frame has to read as that choice rather than as a broken update.
+ *
+ * This state had NO story before this round, which is why the design review had
+ * to build a rig of its own to photograph it - and a state that cannot be
+ * re-captured is a state whose fix cannot be re-reviewed. It is driven through
+ * the press, as the app reaches it: the panel is mounted, `Update server` is
+ * pressed, and the producer's own report arrives with the `refusal` field on it.
+ */
+export const BackendUpdateRefusedBusyFleet: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="refused" />,
+};
+
+/**
+ * The same refusal with nothing readable at all - the arm whose next step is NOT
+ * "wait for the server", and the one that says so when the server answered and
+ * refused the app's credentials (QA round 1, observation b).
+ */
+export const BackendUpdateRefusedUnreadableFleet: Story = {
+	args: { autoCheck: false },
+	render: () => (
+		<PressUpdateServer outcome="refused" variant="refused-unreadable" />
+	),
 };
 
 /**

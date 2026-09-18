@@ -6539,6 +6539,15 @@ const backendManagerStub = (
 	} = {},
 ) => {
 	let servedBoot = bootVersion;
+	/*
+	 * THE UPDATE-IN-FLIGHT FLAG IS MODELLED, not stubbed away (review round 1, m1).
+	 * It is what the periodic drift check reads as its `update-in-flight` hold, and
+	 * `updateBackend` now raises it for the WHOLE press rather than around the
+	 * restart alone - so the manager's own answer has to be the one the service set,
+	 * or a case about a drift repair racing a press cannot be told from one about a
+	 * machine with no press at all.
+	 */
+	let autoUpdating = false;
 	return {
 		getStartupMode: () => startupMode,
 		getBackendUrl: () => service().backendUrl,
@@ -6558,7 +6567,10 @@ const backendManagerStub = (
 			typeof sessionStreamOpen === "function"
 				? sessionStreamOpen()
 				: sessionStreamOpen,
-		checkIsAutoUpdating: () => false,
+		checkIsAutoUpdating: () => autoUpdating,
+		setAutoUpdating: (value) => {
+			autoUpdating = value;
+		},
 		/*
 		 * The real manager's own stop-then-start. Recorded rather than performed, and
 		 * the ONE thing it also does is move the reading the successor would report -
@@ -12781,6 +12793,13 @@ const driveAppOwnedUpdate = async ({
 	 */
 	drainBudgetMs = 5,
 	drainPollMs = 1,
+	/*
+	 * HOW LONG THE PRE-SWAP FLEET MUST HOLD STILL before the re-engage puts back
+	 * what left (`fleetRetireSettleMs`). The shipped value is the harness's own
+	 * convergence stride - 30 s - and no case here should pay it; the rule itself is
+	 * pinned on a virtual clock in `scripts/update-fleet-drain.test.mjs`.
+	 */
+	retireSettleMs = 5,
 } = {}) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-app-owned-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-app-owned-userdata-"));
@@ -12802,12 +12821,30 @@ const driveAppOwnedUpdate = async ({
 	const order = [];
 	const sent = [];
 	let fleetReads = 0;
+	/**
+	 * Whether the manager's update-in-flight flag is up right now.
+	 *
+	 * Held by the fixture rather than assumed, for the reason `calls.autoUpdating`
+	 * gives below: the service both raises and reads it, so a constant would hide
+	 * exactly the window this records.
+	 */
+	let autoUpdating = false;
 	const calls = {
 		installers: [],
 		installCallbacks: 0,
 		stops: 0,
 		restarts: 0,
 		desktop: [],
+		/*
+		 * THE PRESS'S HOLD, recorded rather than dropped (review round 1, m1).
+		 * `updateBackend` raises `isAutoUpdating` for the WHOLE press now - it is what
+		 * the periodic drift check reads as its `update-in-flight` hold - and it used
+		 * to be raised around `backend.restart()` alone, which left a ten-minute drain
+		 * with no hold at all. `holdAtFleetRead` is that flag as it stood at each read
+		 * the gate takes, which is the fact the case is about.
+		 */
+		autoUpdating: [],
+		holdAtFleetRead: [],
 	};
 	// The synthetic interpreter, when this case drives the real installer: it is the
 	// fixture's `python` argument, so the shipped `installEnvironmentInto` runs the
@@ -12903,7 +12940,11 @@ const driveAppOwnedUpdate = async ({
 					startedByEarlierAppRun: externalBackend,
 				},
 			}),
-			setAutoUpdating: () => {},
+			setAutoUpdating: (value) => {
+				autoUpdating = value;
+				calls.autoUpdating.push(value);
+			},
+			checkIsAutoUpdating: () => autoUpdating,
 			/*
 			 * The app's existing busy reading, and the ROSTER beside it - the two the fleet
 			 * gate waits on (`drainFleetForUpdate`). A `workState` list is the machine that
@@ -12911,21 +12952,28 @@ const driveAppOwnedUpdate = async ({
 			 * every older case in this file exactly where it was, because an idle first read
 			 * is the drain that costs one round trip and changes nothing.
 			 */
-			servingWorkState: async () =>
-				Array.isArray(workState) ? (workState.shift() ?? "idle") : workState,
+			servingWorkState: async () => {
+				calls.holdAtFleetRead.push(autoUpdating);
+				return Array.isArray(workState)
+					? (workState.shift() ?? "idle")
+					: workState;
+			},
 			/*
-			 * The roster is CONSUMED in the order the attempt reads it: the fleet gate
-			 * snapshots it before the move, and the re-engage then reads it again to
-			 * work out what did not come back. `fleetAfter === null` is the default - a
-			 * machine where nothing moved - so every read answers the same roster. The
-			 * rows are the WIRE's own (`id`/`name`/`kind`/`live_state`) and the shipped
-			 * parse is what converts them, so a case cannot assert against a shape the
-			 * route does not send.
+			 * The roster is read TWICE before the move now, and the switch is on the move
+			 * itself rather than on a read count: the fleet gate reads it once for its own
+			 * drain and once for the SNAPSHOT, which is taken at the moment of the restart
+			 * (review round 1, M2) rather than before the install. Everything before
+			 * `restart()` is therefore the machine as it was, and everything after it is
+			 * what the move left behind. `fleetAfter === null` is the default - a machine
+			 * where nothing moved - so every read answers the same roster. The rows are the
+			 * WIRE's own (`id`/`name`/`kind`/`live_state`) and the shipped parse is what
+			 * converts them, so a case cannot assert against a shape the route does not
+			 * send.
 			 */
 			servingSessionFleet: async () => {
 				fleetReads += 1;
 				const wire =
-					fleetAfter === null || fleetReads === 1 ? fleet : fleetAfter;
+					fleetAfter === null || calls.restarts === 0 ? fleet : fleetAfter;
 				return wire === null
 					? null
 					: service.fleetRosterFromSessions({ result: { sessions: wire } });
@@ -12975,6 +13023,13 @@ const driveAppOwnedUpdate = async ({
 		updateService.backendUrl = "http://127.0.0.1:9";
 		updateService.fleetDrainBudgetMs = drainBudgetMs;
 		updateService.fleetDrainPollMs = drainPollMs;
+		/*
+		 * The retire wait's own window, on the cases that reach the re-engage: the
+		 * shipped 30 s stride is the harness's real convergence and no case should pay
+		 * it (the rule itself is pinned in `scripts/update-fleet-drain.test.mjs`, on a
+		 * virtual clock). Small rather than zero, so a case still exercises a WAIT.
+		 */
+		updateService.fleetRetireSettleMs = retireSettleMs;
 		updateService.getLatestPypiVersion = async () => target;
 		updateService.freeBytesAt = () => freeBytes;
 		updateService.checkBackendHealth = async () => {
@@ -14645,6 +14700,48 @@ test("the move re-engages the sessions it displaced, and only those", async () =
 		assert.match(watch.subscriptionId, /^[a-f0-9]{32}$/);
 		assert.equal(watch.visible, true);
 		assert.equal(watch.canNotify, false);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("the press holds the update-in-flight flag for the whole drain, not only the restart", async () => {
+	const driven = await driveAppOwnedUpdate({
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+		/*
+		 * A fleet that is busy when the press arrives and idle a poll later, so the
+		 * press really WAITS inside the gate - which is the window this case is about.
+		 */
+		workState: ["busy", "idle"],
+		fleet: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "busy" },
+		],
+		fleetAfter: [],
+	});
+	try {
+		assert.equal(driven.result, true);
+		/*
+		 * THE HOLD COVERS EVERY FLEET READ OF THE PRESS (review round 1, m1). The flag
+		 * is what the periodic drift check reads as its `update-in-flight` hold, and it
+		 * used to be raised around `backend.restart()` alone - so a drain of up to ten
+		 * minutes ran with no hold, and the moment it cleared the drift check could find
+		 * the pair stale and the fleet idle and bounce the daemon ITSELF: under the
+		 * press, with no snapshot of its own and no re-engage.
+		 */
+		assert.ok(
+			driven.calls.holdAtFleetRead.length >= 2,
+			`the press reads the fleet more than once: ${JSON.stringify(driven.calls.holdAtFleetRead)}`,
+		);
+		assert.ok(
+			driven.calls.holdAtFleetRead.every((held) => held === true),
+			`every fleet read happens under the hold: ${JSON.stringify(driven.calls.holdAtFleetRead)}`,
+		);
+		assert.deepEqual(
+			driven.calls.autoUpdating,
+			[true, false],
+			"raised once at the top of the press and cleared once, at the end",
+		);
 	} finally {
 		driven.dispose();
 	}
