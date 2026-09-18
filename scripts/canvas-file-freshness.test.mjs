@@ -87,7 +87,7 @@ const {
 const probe = (
 	path,
 	mtimeMs,
-	{ exists = true, isFile = true, sizeBytes = 10 } = {},
+	{ exists = true, isFile = true, sizeBytes = 10, error } = {},
 ) => ({
 	input: path,
 	resolved: path,
@@ -95,6 +95,10 @@ const probe = (
 	isFile,
 	sizeBytes: exists && isFile ? sizeBytes : null,
 	mtimeMs: exists && isFile ? mtimeMs : null,
+	/* Present only when `stat` itself failed - a permission bit, a broken mount.
+	 * A genuinely absent file answers `exists: false` with no error at all, which
+	 * is the distinction the row now speaks in (QA round 1, Q1). */
+	...(error ? { error } : {}),
 });
 
 /**
@@ -302,6 +306,51 @@ test("a touched file with identical bytes advances the baseline and applies noth
 	assert.equal(calls.reads.length, 1);
 });
 
+test("a failed stat is its own decision, not a deleted file", async () => {
+	/*
+	 * QA round 1, Q1: a permission error answers `exists: false` exactly as a
+	 * deletion does, and the row said `This file is no longer on disk.` about a
+	 * file that was sitting right there. The contract already distinguishes them
+	 * (`ProbedFile.error`: "present only when `stat` itself failed ... rather than
+	 * answering 'no such file'"); this is the decision honouring that.
+	 */
+	const path = "/tmp/a.md";
+	const held = doc(path, { readMtimeMs: 100, content: "one\n" });
+	assert.deepEqual(
+		freshnessDecision(held, probe(path, 0, { exists: false })),
+		{ kind: "missing" },
+	);
+	assert.deepEqual(
+		freshnessDecision(
+			held,
+			probe(path, 0, {
+				exists: false,
+				error: "EACCES: permission denied, stat '/tmp/a.md'",
+			}),
+		),
+		{ kind: "unreadable" },
+	);
+
+	const { ports, calls } = bridge(
+		new Map([[path, { mtimeMs: 100, content: "one\n" }]]),
+	);
+	const unlucky = {
+		...ports,
+		probe: async () =>
+			probe(path, 0, { exists: false, error: "EACCES: permission denied" }),
+	};
+	const runner = createFreshnessRunner(unlucky, () => false);
+	const outcome = await runner.check(held);
+	assert.equal(outcome.status, "unreadable");
+	// The held bytes and the baseline are untouched, and `availability` is NOT
+	// pushed to "missing" for a file that has not gone anywhere - that field
+	// drives the tile's receipt and the tab.
+	assert.equal(outcome.document.content, "one\n");
+	assert.equal(outcome.document.readMtimeMs, 100);
+	assert.notEqual(outcome.document.availability, "missing");
+	assert.equal(calls.probes.length, 0);
+});
+
 test("a vanished file is reported, not thrown, and keeps its baseline", async () => {
 	const path = "/tmp/a.md";
 	const { ports } = bridge(new Map());
@@ -361,17 +410,58 @@ test("two documents are two reads, in parallel", async () => {
 
 // ------------------------------------------------- a mounted editor is dirty
 
-test("a dirty document is not even probed in the background", async () => {
+test("a dirty document's tick probes, and reports that the file moved on", async () => {
 	const path = "/tmp/a.md";
 	const files = new Map([[path, { mtimeMs: 200, content: "two\n" }]]);
 	const { ports, calls } = bridge(files);
 	const runner = createFreshnessRunner(ports, (id) => id === path);
 	const outcome = await runner.check(doc(path, { readMtimeMs: 100 }));
-	assert.deepEqual(outcome, { status: "skipped-dirty", diskChanged: false });
-	// A buffer that cannot be replaced makes the file's state unusable whatever
-	// it is, so the tick does not spend a stat to learn it.
-	assert.equal(calls.probes.length, 0);
+	/*
+	 * The file HAS moved on, and this is the answer the row needs in order to say
+	 * so. The reader's buffer still wins - nothing is read, nothing is applied -
+	 * but it must not win silently while an agent's write disappears with it
+	 * (UX round 1, U1; the round-1 UX walk measured the write vanishing with no
+	 * sentence anywhere).
+	 */
+	assert.deepEqual(outcome, { status: "skipped-dirty", diskChanged: true });
+	assert.equal(calls.probes.length, 1);
 	assert.equal(calls.reads.length, 0);
+});
+
+test("a dirty tick that finds the file unmoved costs one stat and says nothing", async () => {
+	const path = "/tmp/a.md";
+	const files = new Map([[path, { mtimeMs: 100, content: "one\n" }]]);
+	const { ports, calls } = bridge(files);
+	const runner = createFreshnessRunner(ports, (id) => id === path);
+	const outcome = await runner.check(doc(path, { readMtimeMs: 100 }));
+	assert.deepEqual(outcome, { status: "skipped-dirty", diskChanged: false });
+	assert.equal(calls.probes.length, 1);
+	assert.equal(calls.reads.length, 0);
+});
+
+test("a document that becomes dirty while the read is in flight is not applied over", async () => {
+	/*
+	 * THE TRANSITION, NOT THE GATE (code review round 1, M3). Both dirty tests
+	 * around this one hand `check` a document that is ALREADY dirty, so they
+	 * exercise the registry being read; this one makes the registry change during
+	 * the await, which is the ordering the shipped code got wrong: the gate was
+	 * read once at the top of the run, and a keystroke landing inside the read
+	 * still had the file's bytes applied over it - characters that had not reached
+	 * disk, gone from the screen.
+	 */
+	const path = "/tmp/a.md";
+	const { ports, gates, calls } = slowBridge();
+	let dirty = false;
+	const runner = createFreshnessRunner(ports, () => dirty);
+	const pending = runner.check(
+		doc(path, { readMtimeMs: 100, content: "user is typing\n" }),
+	);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assert.equal(calls.reads.length, 1, "the check reached its read");
+	dirty = true;
+	for (const open of gates) open();
+	const outcome = await pending;
+	assert.deepEqual(outcome, { status: "skipped-dirty", diskChanged: true });
 });
 
 test("a dirty document survives an automatic apply, and the forced check only reports", async () => {
@@ -381,8 +471,11 @@ test("a dirty document survives an automatic apply, and the forced check only re
 	const runner = createFreshnessRunner(ports, (id) => id === path);
 	const document = doc(path, { readMtimeMs: 100, content: "user is typing\n" });
 
+	// Both ticks now report the truth about the file - it has moved on - and
+	// neither applies anything: the difference between them is what the row says
+	// about a fix, not what the store does.
 	const automatic = await runner.check(document, false);
-	assert.deepEqual(automatic, { status: "skipped-dirty", diskChanged: false });
+	assert.deepEqual(automatic, { status: "skipped-dirty", diskChanged: true });
 
 	// The control still says something true: the file has moved on, and the
 	// unsaved edits are what wins. Nothing is applied either way - the whole

@@ -33,6 +33,7 @@ import { diffHighlight } from "./code-editor-diff";
 import {
 	clearDocumentDirty,
 	documentAfterSelfWrite,
+	isDocumentDirty,
 	probeLocalFile,
 	setDocumentDirty,
 } from "./file-freshness";
@@ -162,12 +163,23 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 
 	useEffect(() => {
 		if (document.content !== originalContentRef.current) {
+			/*
+			 * NOT WHILE THE READER'S OWN WORDS ARE IN THE BUFFER (code review round 1,
+			 * M3). This effect is the other half of the freshness check's dirty gate:
+			 * a check that started before the first keystroke can still land here with
+			 * the file's bytes, and without this guard it replaced the typing on screen
+			 * (and cleared the dirty flag that would have protected it) - losing
+			 * characters that had not reached disk. The registry is asked, not the
+			 * `hasUserChanges` state, because the check's own outcome may already have
+			 * moved that state in the same commit.
+			 */
+			if (isDocumentDirty(document.id)) return;
 			setContent(document.content);
 			setHasUserChanges(false);
 			originalContentRef.current = document.content;
 			isInitialLoadRef.current = true;
 		}
-	}, [document.content]);
+	}, [document.id, document.content]);
 
 	useEffect(() => {
 		const newLangExtension = loadLanguageExtensions(document.title);
