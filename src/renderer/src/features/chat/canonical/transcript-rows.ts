@@ -68,12 +68,15 @@ export type Row = {
  * So the caption belongs to the row the reader is being HANDED, and there are
  * two conditions for it, both about the turn rather than the record:
  *
- * 1. the row is the turn's LAST row that paints anything — a turn that ends on
- *    a ledger row has not handed the reader its answer yet, and a turn ending
- *    on prose that is still streaming has not either, so neither is captioned;
+ * 1. the row is the turn's LAST row that paints anything the turn itself did — a
+ *    turn that ends on a ledger row has not handed the reader its answer yet, and
+ *    a turn ending on prose that is still streaming has not either, so neither is
+ *    captioned. A STATEMENT row at the end is not the turn's work at all, so the
+ *    answer before it still closes the turn and keeps its caption
+ *    (`isStatementRow`, design round 2's D2-1);
  * 2. that row is a settled assistant record with text in it, which is
- *    `paintsSomething` plus the liveness bit — a notice, a compaction, a
- *    receipt or an unfinished answer closes a turn without being an answer.
+ *    `paintsSomething` plus the liveness bit — an unfinished answer closes a turn
+ *    without being an answer.
  *
  * A turn is the records between two user records. The user turn itself is never
  * a candidate: its bubble carries the caption on the other rail.
@@ -86,7 +89,7 @@ export function closingAnswerIds(
 	records: TranscriptRecord[],
 ): ReadonlySet<string> {
 	const closing = new Set<string>();
-	/** The last record in the still-open turn that paints. */
+	/** The last record in the still-open turn that paints and is not a statement. */
 	let last: TranscriptRecord | null = null;
 	for (const record of records) {
 		if (record.kind === "user") {
@@ -96,12 +99,44 @@ export function closingAnswerIds(
 			last = null;
 			continue;
 		}
-		if (paintsSomething(record)) last = record;
+		if (paintsSomething(record) && !isStatementRow(record)) last = record;
 	}
 	if (last !== null && last.kind === "assistant" && !last.streaming) {
 		closing.add(last.id);
 	}
 	return closing;
+}
+
+/**
+ * Is this row a STATEMENT rather than a row of the turn's own work?
+ *
+ * These are the rows that report something ABOUT the conversation — a session
+ * incident, a model switch, a peer message's receipt, a wake delivery — and the
+ * closing answer is found past them rather than through them (design round 2,
+ * D2-1). The distinction matters because of the three ways a turn can end:
+ *
+ * - on a LEDGER row the agent is still working, and stripping the caption is
+ *   right: the answer it will end on has not been written yet;
+ * - on a STREAMING answer the answer has not settled, and stripping it is right
+ *   for the same reason;
+ * - on a STATEMENT the answer HAS been handed over, and the statement is not a
+ *   reason to take its time away — worse, the time becomes unrecoverable, because
+ *   a notice and a receipt paint no `<time>` of their own and have no disclosure
+ *   to open. Measured on the frames: `[user][answer][notice]` painted nothing at
+ *   all on screen.
+ *
+ * `tool` is deliberately NOT in this set, for the first reason above, and
+ * `compaction` is not either: it is a conversation-boundary receipt rather than
+ * something that arrives inside a turn, and widening this predicate is a change
+ * with its own evidence to produce.
+ */
+export function isStatementRow(record: TranscriptRecord): boolean {
+	return (
+		record.kind === "notice" ||
+		record.kind === "custom" ||
+		record.kind === "peer" ||
+		record.kind === "wake"
+	);
 }
 
 /**
