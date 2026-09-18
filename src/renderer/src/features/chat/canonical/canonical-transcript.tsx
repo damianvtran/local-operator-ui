@@ -458,11 +458,13 @@ const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
 	showAvatar,
+	closesTurn,
 	conversationId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
+	closesTurn: boolean;
 	conversationId?: string;
 }) {
 	const turnRef = useRef<HTMLDivElement>(null);
@@ -556,18 +558,15 @@ const AssistantRow = memo(function AssistantRow({
 				)}
 			</div>
 			{/*
-			 * One stamp per SETTLED answer, under it on the agent rail, and none while
-			 * the answer is still arriving.
-			 */}
-			{/*
-			 * `streaming` is the discriminator, deliberately: the operator's "just the
-			 * final responses, not the in-progress tool intent/response" contrasts with
-			 * an answer that is still being written, not with prose the agent wrote in
-			 * the middle of a turn. An in-progress answer is the working line's job -
-			 * section 7's "one liveness element per turn" - so a stamp on it would
-			 * state a time for a message that has not finished being one. `stopReason`
-			 * is NOT the test either way: a durable entry can carry a null stop reason,
-			 * and a settled answer mid-turn is still an answer the agent gave.
+			 * One caption per TURN, on the answer it was working towards - not one per
+			 * settled answer. `closesTurn` is computed over the whole record list by
+			 * `closingAnswerIds` and passed in, because "is this a settled answer" is a fact
+			 * about a record while "is this the turn's answer" is a fact about the turn:
+			 * the operator's "just the final responses, not the in-progress tool
+			 * intent/response" contrasts with the prose an agent writes BETWEEN calls, and
+			 * gating on `!record.streaming` alone painted one clock per paragraph (round
+			 * 1's D1/Q-2). `stopReason` is not the test either
+			 * way: a durable entry can carry a null stop reason.
 			 */}
 			{/*
 			 * OUTSIDE the content box above, so a selection drag over the answer cannot
@@ -584,7 +583,7 @@ const AssistantRow = memo(function AssistantRow({
 			 * one left edge structurally rather than by a second measurement (the frame
 			 * is where that is checked; see `docs/evidence/chat-tool-rows/README.md`).
 			 */}
-			{!record.streaming && (
+			{closesTurn && (
 				<div className={cn("mt-1")}>
 					<TurnTimestamp timestamp={record.ts} scope="answer" />
 				</div>
@@ -1183,6 +1182,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					showAvatar={row.showAvatar}
+					closesTurn={row.closesTurn}
 					conversationId={conversationId}
 				/>
 			);

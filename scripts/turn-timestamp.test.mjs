@@ -699,6 +699,17 @@ test("a collapsed tool row has no stamp at all, and one appears when it is opene
 		1,
 		"the opened row's own stamp is the only time on the page",
 	);
+	/*
+	 * AND THE THIRD VERB IS PINNED HERE (review round 1, R4): `Ran` was the one
+	 * carrier no assertion named, which is awkward given that truthfulness per
+	 * carrier is the reason the prop is a three-value union rather than a boolean.
+	 * `Answered` and `Sent` are asserted in their own tests; this is the call.
+	 */
+	assert.match(
+		stamp.getAttribute("aria-label"),
+		/^Ran /,
+		"a call that ran is named as one rather than as a turn that was sent",
+	);
 	unmount();
 });
 
@@ -858,10 +869,12 @@ test("a settled answer carries one stamp, under it on the agent rail", async () 
 test("an answer that is still arriving carries none", async () => {
 	/*
 	 * The other half of the same sentence: "not the in-progress tool
-	 * intent/response". The discriminator is the record's own `streaming` flag -
-	 * never "is this the last record" and never its stop reason, which a durable
-	 * entry may not carry at all. A settled answer in the MIDDLE of a turn is still
-	 * an answer the agent gave, which the test below pins from the other side.
+	 * intent/response". A turn whose answer is still arriving is not captioned
+	 * either - see the test below - and that is asserted here on both sides: the
+	 * unfinished record carries none, and the settled prose the turn OPENED with
+	 * does not inherit the caption just because the streaming one cannot take it.
+	 * A durable entry may also carry no stop reason at all, which is why neither
+	 * `stopReason` nor "is this the last record" is the discriminator.
 	 */
 	const { container, unmount } = mount([
 		userRecord("user:1"),
@@ -886,13 +899,20 @@ test("an answer that is still arriving carries none", async () => {
 	unmount();
 });
 
-test("a turn paints one stamp per settled prose row, and none on the tool rows", async () => {
+test("a turn paints exactly one stamp, on the answer it closes with", async () => {
 	/*
-	 * The shape the operator's addendum asks about directly: prose, the calls it
-	 * narrates, and a closing answer. Each SETTLED prose row carries its own
-	 * caption and the collapsed ledger rows carry none, so the count tracks the
-	 * carrier rather than the row's position - and the ORDER is asserted, because a
-	 * caption that drifted one row up or down would still produce the right total.
+	 * THE SHAPE ROUND 1 FOUND THE PREVIOUS GATE PAINTING WRONG (design D1, QA Q-2).
+	 * Prose, the calls it narrates, more prose: gating on `!record.streaming` put a
+	 * caption under EACH settled prose row, so this fixture carried two identical
+	 * clocks interleaved with the ledger in one turn - and the frames showed the
+	 * worst version of it, two clocks 56px apart with one sentence between them.
+	 *
+	 * The count that matters is therefore per TURN here, while the assertion that
+	 * says WHICH row carries it is positional: the turn's last settled answer, and
+	 * nothing under the narration the turn opened with. The ORDER is asserted for
+	 * the same reason the old test asserted it - a caption that drifted one row up
+	 * or down would still produce the right total, so the total alone is not the
+	 * claim.
 	 */
 	const { container, unmount } = mount([
 		userRecord("user:1"),
@@ -901,20 +921,104 @@ test("a turn paints one stamp per settled prose row, and none on the tool rows",
 		toolRecord("tool:2"),
 		answerRecord("answer:2", { text: "Four invoices were late." }),
 	]);
+	const captions = stamps(container, "answer");
 	assert.equal(
-		stamps(container, "answer").length,
-		2,
-		"one per settled prose row",
+		captions.length,
+		1,
+		"one caption per turn, not one per settled prose row",
+	);
+	assert.equal(
+		captions[0].closest("[data-record-id]")?.getAttribute("data-record-id"),
+		"answer:2",
+		"and it is the row the turn closes on rather than the narration it opened with",
 	);
 	assert.equal(
 		stamps(container, "tool").length,
 		0,
-		"and a closed ledger row carries none",
+		"and a closed ledger row still carries none",
 	);
 	assert.deepEqual(
 		allStamps(container).map((time) => time.getAttribute("data-stamp")),
-		["turn", "answer", "answer"],
+		["turn", "answer"],
 		"in the order of the rows they caption",
+	);
+	unmount();
+});
+
+test("a turn still working carries no caption, on any of its settled rows", async () => {
+	/*
+	 * Two shapes of "the answer has not been handed over yet", which the old gate
+	 * captioned anyway because it asked a record its own question.
+	 *
+	 * A turn whose LAST row is a ledger row: the prose above it is a preface to work
+	 * that is still going on, and a clock under it would state a time for the turn's
+	 * answer while the answer is still to come. This is the ordinary mid-turn state
+	 * of the app's own sessions - it is what `prose-between-calls` photographs.
+	 *
+	 * And a turn whose settled prose is followed by an answer still arriving: the
+	 * settled row is no longer what the reader is being handed, and the streaming
+	 * row cannot carry a caption, so the turn carries none. That is also why the
+	 * caption is not simply "the last settled assistant row": the turn's last row
+	 * is the test, and it has to have settled.
+	 */
+	for (const [name, records] of [
+		[
+			"a turn ending on a closed ledger row",
+			[
+				userRecord("user:1"),
+				answerRecord("answer:1", { text: "Checking the ledger first." }),
+				toolRecord("tool:1"),
+			],
+		],
+		[
+			"a turn whose answer is still arriving",
+			[
+				userRecord("user:1"),
+				answerRecord("answer:1", { text: "Checking the ledger first." }),
+				toolRecord("tool:1"),
+				answerRecord("answer:2", { text: "Four were late", streaming: true }),
+			],
+		],
+	]) {
+		const { container, unmount } = mount(records);
+		assert.equal(
+			stamps(container, "answer").length,
+			0,
+			`${name} paints no caption: the turn has not handed the reader its answer`,
+		);
+		assert.deepEqual(
+			allStamps(container).map((time) => time.getAttribute("data-stamp")),
+			["turn"],
+			"the user turn's own stamp is untouched by any of this",
+		);
+		unmount();
+	}
+});
+
+test("a multi-paragraph answer in one record still carries exactly one stamp", async () => {
+	/*
+	 * The other side of the same rule, and the reason it is not "one caption per
+	 * paragraph": three paragraphs in ONE record are one answer, so they carry one
+	 * caption - the case that made the whole-notice/whole-answer distinction worth
+	 * stating. `chat-canonical-quote/sent-turn-quote` is the frame for it.
+	 */
+	const { container, unmount } = mount([
+		userRecord("user:1"),
+		answerRecord("answer:1", {
+			text: "Four invoices were late.\n\nThe oldest is 41 days.\n\nI sent reminders.",
+		}),
+	]);
+	const captions = stamps(container, "answer");
+	assert.equal(
+		captions.length,
+		1,
+		"one caption for the record, not one per paragraph",
+	);
+	assert.ok(
+		captions[0].parentElement.previousElementSibling?.querySelector(
+			".lo-markdown",
+		),
+		"and it sits under the whole content box rather than under a paragraph in it",
 	);
 	unmount();
 });
