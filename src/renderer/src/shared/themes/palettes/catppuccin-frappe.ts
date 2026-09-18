@@ -32,33 +32,37 @@ export const catppuccinFrappe: ThemeDefinition = {
 		elevated: "#3D4255",
 		sunken: "#2A2D3E",
 		/*
-		 * The current row's own ground: `surface` stepped 2.70 `L*` up at the panel's own
-		 * hue (0.0 degrees off, inside the 12-degree bound) and carried
-		 * 14.37 `C*` against the panel's 12.60 — the panel's own colour, one step lighter, which
-		 * is what the operator asked for. ΔE00 from `surface` 2.29, from
-		 * `elevated` 1.30, from `sunken` 6.71. Ink on this ground: `ink` 7.21:1,
-		 * `ink-muted` 6.61:1, `ink-dim` 4.65:1 — `ink-dim` is the binder, and
+		 * The current row's own ground: `surface` stepped 2.66 `L*` up at the panel's own
+		 * hue (0.9 degrees off, inside the 12-degree bound) and carried
+		 * 15.05 `C*` against the panel's 12.60 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 2.51, from
+		 * `elevated` 1.71, from `sunken` 6.85. Ink on this ground: `ink` 7.22:1,
+		 * `ink-muted` 6.62:1, `ink-dim` 4.66:1 — `ink-dim` is the binder, and
 		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
 		 *
-		 * WHAT THIS REPLACES: the value before this round — `1.24x` the panel's
-		 * chroma (15.61 `C*` against 12.60), 11 degrees off its hue, ΔE00 4.34 from
+		 * WHAT THIS REPLACES: the value before this round — `1.14x` the panel's
+		 * chroma (14.37 `C*` against 12.60), 0 degrees off its hue, ΔE00 2.29 from
 		 * `surface` — is the cast that bought its band, and it is what the operator reported as
 		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
 		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 *
-		 * AND IT IS BELOW THE FLOOR: ΔE00 2.29 is under the 2.5 every palette must hold.
-		 * Hue-faithfully there is no value that reaches it — the row cannot rise further
-		 * without putting this palette's own body ink under its floor, and buying it back
-		 * on chroma or hue is the defect this round removes. It is on the NAMED LIST in
-		 * `HIGHLIGHT_CAP_PINS` (`subFloor`), with its numbers, and the structural fix is the
-		 * row-hover split rather than a louder mark here.
+		 * THIS PALETTE IS THE EXCEPTION, AND THE FLOOR IS WHY. Its own `ink-dim` caps
+		 * the step at 2.60 `L*`, and with the band's whole ceiling spent that reaches only
+		 * ΔE00 2.29 — under the 2.5 floor every palette must hold, which is the
+		 * operator's EARLIER report ("way too subtle... make it brighter/more contrasted")
+		 * returning on a theme he has not looked at yet. The band is the default, not the
+		 * ceiling on the floor: this value adds 0.56 `C*` past the band's ceiling — 2.45 over
+		 * the panel, at the panel's own hue, with the step unchanged at 2.66 `L*` — and that is
+		 * what reaches ΔE00 2.51. It is the SMALLEST chroma that does, pinned by name in
+		 * `HIGHLIGHT_OVER_BAND_PINS` and re-derived by `pnpm check-themes`, so the exception
+		 * cannot drift into a licence to be loud.
 		 *
-		 * THE HOVER STEP IS THE COLLISION: 1.30 to `elevated` is under the field floor,
+		 * THE HOVER STEP IS THE COLLISION: 1.71 to `elevated` is under the field floor,
 		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
-		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
-		 * on the row-hover work list.
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_ADJACENT_PINS` and is
+		 * on the adjacent-role work list.
 		 */
-		highlight: "#3B4157",
+		highlight: "#3A4158",
 
 		// Canonical text C6D0F5 is 6.52:1 on `elevated` — under the 7:1 body floor. Lifted
 		// along the same lavender-white.

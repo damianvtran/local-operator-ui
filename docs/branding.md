@@ -113,19 +113,39 @@ panel's, `everforest` 36, `rosePine` 25, `neonNoir` 24, `rosePineDawn` 22,
 `solarizedDark` 14). All three lists are now asserted against, in
 `scripts/contrast-contract.mjs`.
 
-**Where the band cannot be reached, this document and the gate say so with the
-numbers.** ΔE00 4.0 at the panel's own hue and chroma is a function of the `L*`
-step alone, and a step that carries it needs **5.3–6.9 `L*`** while the palettes'
-own `ink-dim` reaches its floor with headroom at **2.4–7.5 `L*`**. Thirty-six
-palettes are capped under the band by their own inks: their value IS the step
-their ink allows, and `HIGHLIGHT_CAP_PINS` records the cap, the binder and both
-ratios, re-derived by the gate so that a record which has stopped being true
-fails rather than excuses. Seven of those cannot reach even the **ΔE00 2.5 floor
-every palette must hold** — `catppuccinFrappe`, `catppuccinMacchiato`,
-`cyberpunk`, `nord`, `palenight`, `rosePine`, `rosePineDawn` — and carry
-`subFloor: true`: a **named list, with its measurements**, because buying the
-difference back on chroma or hue is the defect above and a lower constant would
-stop asserting anything about the other fifty-two.
+**Where the band cannot be reached, the file says so with the numbers — and where
+it collides with the floor, the PRECEDENCE is stated rather than implied.** ΔE00
+4.0 at the panel's own hue and chroma is a function of the `L*` step alone, and a
+step that carries it needs **5.3–6.9 `L*`** while the palettes' own `ink-dim`
+reaches its floor with headroom at **2.4–7.5 `L*`**. The order the constraints are
+read in, and which of them gives way:
+
+1. the **hue is never broken** — the panel's own, within 12°, everywhere;
+2. the **chroma never falls below the panel's** — the operator's own report, the
+   one thing that cannot give way;
+3. the **band is the default** — chroma within the panel's, up to +15% or 1.6 C\*;
+4. **ΔE00 4.0** off `surface` is the target, met as far as that palette's own
+   inks and the band allow: **twenty-eight** palettes are capped under it and
+   pinned in `HIGHLIGHT_CAP_PINS` at the cap their own ink allows, with the
+   binder and both ratios;
+5. **ΔE00 2.5 is a hard floor**, and where the band caps a palette below it **the
+   band gives way — over-band, and only over-band**: the hue stays the panel's,
+   the step stays at the ink cap, and the smallest chroma past the ceiling that
+   reaches the floor is added. **Seven** palettes take that exception
+   (`HIGHLIGHT_OVER_BAND_PINS`), each pinned by name with the ratio it was given
+   and the ΔE00 it buys — `catppuccinFrappe` +2.45 C\* over its panel for ΔE00
+   2.51 where the band alone reached 2.29, `catppuccinMacchiato` +3.13 for 2.53,
+   `cyberpunk` +2.69 for 2.65, `nord` +2.61 for 2.60, `palenight` +3.12 for 2.64,
+   `rosePine` +2.53 for 2.71, `rosePineDawn` +2.13 for 2.62. `synthwave` reaches
+   the floor at the band's own ceiling, so it stays inside the band
+   (`HIGHLIGHT_CAP_PINS`, ΔE00 2.57) rather than joining them.
+
+The floor outranks the band because a mark under it is the operator's *earlier*
+report returning — *"way too subtle... make it brighter/more contrasted"* — and it
+would return on eight themes he has not looked at yet: third-party palettes whose
+own ink reaches its floor 2.4–3.3 `L*` off the panel. The gate re-derives the
+**smallest** chroma past the ceiling that reaches the floor and refuses a value
+that took more, so the exception is a floor rescue and not a licence to be loud.
 
 **Two of the mark's neighbours collide with it as a consequence of the same
 bound, and both are work lists rather than fixes.** `elevated` is the hover step
@@ -227,9 +247,11 @@ in the direction the mode runs — as far as the ink floors allow, and at least
   `linen` — panel 1.59 `C*` — and a deliberately neutral `highContrastLight` out
   of the hue test while failing `oneLight`'s blue on a neutral panel);
 - targets **ΔE00 ≥ 4.0 from `surface`**, and **must reach ΔE00 2.5** — the floor
-  no palette ships under; a palette whose own inks cap it below the band belongs
-  in `HIGHLIGHT_CAP_PINS` with its numbers, and one capped below 2.5 belongs
-  there with `subFloor: true`;
+  no palette ships under. A palette whose own inks cap it below the band belongs
+  in `HIGHLIGHT_CAP_PINS` with its numbers; one the band caps below 2.5 gives way
+  over-band instead — the smallest chroma past the ceiling that reaches the floor,
+  pinned by name in `HIGHLIGHT_OVER_BAND_PINS` — and neither may ship under the
+  floor, in any palette, for any reason;
 - keeps every ink floor with at least **0.15 of headroom above it** — `ink` ≥
   7:1, `ink-muted` and `ink-dim` ≥ 4.5:1 on the row's own ground, and `ink-dim`
   is the one that usually binds, because the caps and the `· lopdev` binding

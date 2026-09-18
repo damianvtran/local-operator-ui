@@ -46,28 +46,32 @@ export const rosePineDawn: ThemeDefinition = {
 		sunken: "#F8EDE0",
 
 		/*
-		 * The current row's own ground: `surface` stepped 2.93 `L*` down at the panel's own
-		 * hue (7.3 degrees off, inside the 12-degree bound) and carried
-		 * 3.83 `C*` against the panel's 2.69 — the panel's own colour, one step darker, which
-		 * is what the operator asked for. ΔE00 from `surface` 2.20, from
-		 * `elevated` 4.41, from `sunken` 3.56. Ink on this ground: `ink` 7.30:1,
-		 * `ink-muted` 6.13:1, `ink-dim` 4.65:1 — `ink-dim` is the binder, and
+		 * The current row's own ground: `surface` stepped 2.90 `L*` down at the panel's own
+		 * hue (1.1 degrees off, inside the 12-degree bound) and carried
+		 * 4.82 `C*` against the panel's 2.69 — the panel's own colour, one step darker, which
+		 * is what the operator asked for. ΔE00 from `surface` 2.62, from
+		 * `elevated` 4.79, from `sunken` 2.63. Ink on this ground: `ink` 7.30:1,
+		 * `ink-muted` 6.13:1, `ink-dim` 4.66:1 — `ink-dim` is the binder, and
 		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
 		 *
-		 * WHAT THIS REPLACES: the value before this round — `2.10x` the panel's
-		 * chroma (5.64 `C*` against 2.69), 22 degrees off its hue, ΔE00 4.09 from
+		 * WHAT THIS REPLACES: the value before this round — `1.43x` the panel's
+		 * chroma (3.83 `C*` against 2.69), 7 degrees off its hue, ΔE00 2.20 from
 		 * `surface` — is the cast that bought its band, and it is what the operator reported as
 		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
 		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 *
-		 * AND IT IS BELOW THE FLOOR: ΔE00 2.20 is under the 2.5 every palette must hold.
-		 * Hue-faithfully there is no value that reaches it — the row cannot rise further
-		 * without putting this palette's own body ink under its floor, and buying it back
-		 * on chroma or hue is the defect this round removes. It is on the NAMED LIST in
-		 * `HIGHLIGHT_CAP_PINS` (`subFloor`), with its numbers, and the structural fix is the
-		 * row-hover split rather than a louder mark here.
+		 * THIS PALETTE IS THE EXCEPTION, AND THE FLOOR IS WHY. Its own `ink-dim` caps
+		 * the step at 2.85 `L*`, and with the band's whole ceiling spent that reaches only
+		 * ΔE00 2.20 — under the 2.5 floor every palette must hold, which is the
+		 * operator's EARLIER report ("way too subtle... make it brighter/more contrasted")
+		 * returning on a theme he has not looked at yet. The band is the default, not the
+		 * ceiling on the floor: this value adds 0.53 `C*` past the band's ceiling — 2.13 over
+		 * the panel, at the panel's own hue, with the step unchanged at 2.90 `L*` — and that is
+		 * what reaches ΔE00 2.62. It is the SMALLEST chroma that does, pinned by name in
+		 * `HIGHLIGHT_OVER_BAND_PINS` and re-derived by `pnpm check-themes`, so the exception
+		 * cannot drift into a licence to be loud.
 		 */
-		highlight: "#F6EEE9",
+		highlight: "#F7EEE7",
 
 		ink: "#4e4970",
 		inkMuted: "#5B5573",

@@ -46,33 +46,31 @@ export const synthwave: ThemeDefinition = {
 		elevated: "#35314C",
 		sunken: "#1E1B2A",
 		/*
-		 * The current row's own ground: `surface` stepped 3.01 `L*` up at the panel's own
-		 * hue (0.8 degrees off, inside the 12-degree bound) and carried
-		 * 17.67 `C*` against the panel's 15.94 — the panel's own colour, one step lighter, which
-		 * is what the operator asked for. ΔE00 from `surface` 2.35, from
-		 * `elevated` 0.50, from `sunken` 8.20. Ink on this ground: `ink` 11.08:1,
-		 * `ink-muted` 6.32:1, `ink-dim` 4.69:1 — `ink-dim` is the binder, and
+		 * The current row's own ground: `surface` stepped 3.06 `L*` up at the panel's own
+		 * hue (0.7 degrees off, inside the 12-degree bound) and carried
+		 * 18.34 `C*` against the panel's 15.94 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 2.57, from
+		 * `elevated` 0.32, from `sunken` 8.43. Ink on this ground: `ink` 11.06:1,
+		 * `ink-muted` 6.31:1, `ink-dim` 4.69:1 — `ink-dim` is the binder, and
 		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
 		 *
-		 * WHAT THIS REPLACES: the value before this round — `1.21x` the panel's
-		 * chroma (19.35 `C*` against 15.94), 8 degrees off its hue, ΔE00 4.02 from
+		 * WHAT THIS REPLACES: the value before this round — `1.15x` the panel's
+		 * chroma (18.34 `C*` against 15.94), 1 degrees off its hue, ΔE00 2.57 from
 		 * `surface` — is the cast that bought its band, and it is what the operator reported as
 		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
 		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 *
-		 * AND IT IS BELOW THE FLOOR: ΔE00 2.35 is under the 2.5 every palette must hold.
-		 * Hue-faithfully there is no value that reaches it — the row cannot rise further
-		 * without putting this palette's own body ink under its floor, and buying it back
-		 * on chroma or hue is the defect this round removes. It is on the NAMED LIST in
-		 * `HIGHLIGHT_CAP_PINS` (`subFloor`), with its numbers, and the structural fix is the
-		 * row-hover split rather than a louder mark here.
+		 * THE STEP STOPS AT THE INK CAP: this palette's own `ink-dim` reaches its floor
+		 * with the margin at 3.20 `L*` off the panel, so ΔE00 2.57 IS the whole reach its inks
+		 * allow — recorded in `HIGHLIGHT_CAP_PINS` and re-derived by `pnpm check-themes`, which
+		 * fails if the cap or the binder ratio moves.
 		 *
-		 * THE HOVER STEP IS THE COLLISION: 0.50 to `elevated` is under the field floor,
+		 * THE HOVER STEP IS THE COLLISION: 0.32 to `elevated` is under the field floor,
 		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
-		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
-		 * on the row-hover work list.
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_ADJACENT_PINS` and is
+		 * on the adjacent-role work list.
 		 */
-		highlight: "#34304A",
+		highlight: "#34304B",
 
 		ink: "#F2EFF8",
 		inkMuted: "#BCB3D4",

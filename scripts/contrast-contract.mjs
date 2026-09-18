@@ -1953,23 +1953,42 @@ const HIGHLIGHT_CHROMA_ABS_BAND = 1.6;
 const HIGHLIGHT_CHROMA_SLACK = 0.5;
 
 /*
- * The floor EVERY palette must hold, named separately from the band because it
- * is a different claim: 4.0 is "the mark is findable", and 2.5 is "the mark is
- * not nothing". 2.5 is not invented here either - the role was authored at ΔE00
- * 2.18-2.28 when the operator asked for subtle, and he has since SEEN that
- * rendered and reported it as invisible beside a hovered neighbour; 2.5 sits
- * just above the value he saw rather than at it.
+ * The HARD FLOOR, and the precedence that makes it one.
  *
- * It is a second floor because the first one is not reachable on most of the
- * fleet once the mark keeps its own hue and chroma. ΔE00 at a fixed hue is a
- * function of the L* step alone, and this file's own ink floors cap that step:
- * a band-carrying step needs 5.3-6.9 L* at the panel's chroma, while the
- * palettes' own `ink-dim` reaches its floor with the 0.15 of headroom at
- * 2.4-7.5 L*. Thirty of fifty-nine are capped under the band, and SEVEN of
- * those are capped under this floor as well - they are the NAMED LIST in
- * `HIGHLIGHT_CAP_PINS` (`subFloor: true`), with their numbers, because the
- * alternative was to buy the missing difference back on chroma or hue, which is
- * the defect above.
+ * The order these are read in, because two of them can collide and only one of
+ * them may give way:
+ *
+ *   1. the HUE is never broken: the panel's own, within `HIGHLIGHT_HUE_DEVIATION_MAX`,
+ *      asserted wherever the panel carries `HIGHLIGHT_HUE_MIN_CHROMA` or more;
+ *   2. the CHROMA never falls below the panel's - this is the operator's own
+ *      complaint, the one thing that cannot give way;
+ *   3. the BAND is the default: chroma within the panel's own, up to 15% or
+ *      1.6 C* above it (`HIGHLIGHT_CHROMA_REL_BAND` / `_ABS_BAND`);
+ *   4. ΔE00 4.0 off `surface` (`HIGHLIGHT_SEPARATION_FLOOR`) is the TARGET, met
+ *      as far as that palette's own inks and the band allow, pinned per palette
+ *      in `HIGHLIGHT_CAP_PINS` with its measurement;
+ *   5. ΔE00 2.5 off `surface` - this constant - is a HARD FLOOR. Where the band
+ *      caps a palette below it, the BAND gives way, over-band and only
+ *      over-band: the hue stays the panel's, the step stays at the ink cap, and
+ *      the SMALLEST chroma past the ceiling that reaches the floor is added.
+ *      `HIGHLIGHT_OVER_BAND_PINS` names those palettes with the ratio and the
+ *      ΔE00 they were given, and the gate re-derives the minimum rather than
+ *      trusting it.
+ *
+ * WHY THE FLOOR OUTRANKS THE BAND: a mark under it is the operator's EARLIER
+ * report returning - the role was authored at ΔE00 2.18-2.28 when he asked for
+ * subtle, and he has since SEEN that rendered and reported it as invisible beside
+ * a hovered neighbour. 2.5 sits just above the value he saw rather than at it.
+ * The band is a preference about how the mark is built; the floor is whether it
+ * can be seen at all, and only the preference yields.
+ *
+ * WHY IT NEEDS TO EXIST AT ALL: ΔE00 at a fixed hue is a function of the L* step
+ * alone, and this file's ink floors cap that step - a band-carrying step needs
+ * 5.3-6.9 L* at the panel's chroma, while thirty-six palettes' own `ink-dim`
+ * reaches its floor with the 0.15 of headroom at 2.4-7.5 L*. Twenty-eight of
+ * those are capped under the band but above this floor and are pinned at the cap
+ * (`HIGHLIGHT_CAP_PINS`); seven are capped under this floor too and take the
+ * over-band rescue (`HIGHLIGHT_OVER_BAND_PINS`).
  */
 const HIGHLIGHT_REACH_FLOOR = 2.5;
 
@@ -1989,17 +2008,12 @@ const HIGHLIGHT_REACH_FLOOR = 2.5;
  * one `EXCEPTIONS` states: on the other twenty-two the band IS reachable, and a
  * floor low enough to fit these would stop asserting anything about them.
  *
- * SEVEN of these cannot reach `HIGHLIGHT_REACH_FLOOR` either, and they carry
- * `subFloor: true` - the NAMED LIST. Each one's whole reach is smaller than the
- * floor every palette must hold, because its own body ink leaves the row only
- * 2.4-3.3 L* before its floor while the floor needs more. Nothing hue-faithful
- * reaches it there, and this file says so with the numbers rather than buying
- * the difference on chroma or hue. The structural fix is the row-hover split
- * `docs/branding.md` § 2 names - a row-hover ground that steps less than the
- * mark, so `elevated` can stay the menu/popover ground it also is - and not a
- * louder selection on those palettes.
+ * The palettes the floor forces past the band are NOT here: they are the separate
+ * and much smaller `HIGHLIGHT_OVER_BAND_PINS` below, because crossing the band to
+ * reach the floor is a different claim from stopping at the inks' cap inside it,
+ * and collapsing the two would hide which of them a palette is.
  *
- * @type {{theme: string, dE: number, step: number, cap: number, inkRole: string, onGround: number, capInk: number, subFloor?: boolean, why: string}[]}
+ * @type {{theme: string, dE: number, step: number, cap: number, inkRole: string, onGround: number, capInk: number, why: string}[]}
  */
 const HIGHLIGHT_CAP_PINS = [
 	{
@@ -2073,17 +2087,6 @@ const HIGHLIGHT_CAP_PINS = [
 		why: "its own inkDim reaches the floor's margin at 4.50 L*, so the reach is 3.33",
 	},
 	{
-		theme: "catppuccinFrappe",
-		dE: 2.29,
-		step: 2.7,
-		cap: 2.75,
-		inkRole: "inkDim",
-		onGround: 4.65,
-		capInk: 4.65,
-		subFloor: true,
-		why: "its own inkDim reaches the floor's margin at 2.75 L*, so the reach is 2.29 - under the 2.5 floor (NAMED LIST)",
-	},
-	{
 		theme: "catppuccinLatte",
 		dE: 3.38,
 		step: 5.28,
@@ -2094,17 +2097,6 @@ const HIGHLIGHT_CAP_PINS = [
 		why: "its own inkDim reaches the floor's margin at 5.25 L*, so the reach is 3.38",
 	},
 	{
-		theme: "catppuccinMacchiato",
-		dE: 2.03,
-		step: 2.44,
-		cap: 2.5,
-		inkRole: "inkDim",
-		onGround: 4.67,
-		capInk: 4.67,
-		subFloor: true,
-		why: "its own inkDim reaches the floor's margin at 2.50 L*, so the reach is 2.03 - under the 2.5 floor (NAMED LIST)",
-	},
-	{
 		theme: "catppuccinMocha",
 		dE: 3.57,
 		step: 4.91,
@@ -2113,17 +2105,6 @@ const HIGHLIGHT_CAP_PINS = [
 		onGround: 4.68,
 		capInk: 4.7,
 		why: "its own inkDim reaches the floor's margin at 5.00 L*, so the reach is 3.57",
-	},
-	{
-		theme: "cyberpunk",
-		dE: 2.05,
-		step: 2.88,
-		cap: 3.0,
-		inkRole: "inkDim",
-		onGround: 4.68,
-		capInk: 4.67,
-		subFloor: true,
-		why: "its own inkDim reaches the floor's margin at 3.00 L*, so the reach is 2.05 - under the 2.5 floor (NAMED LIST)",
 	},
 	{
 		theme: "desert",
@@ -2226,17 +2207,6 @@ const HIGHLIGHT_CAP_PINS = [
 		why: "its own inkDim reaches the floor's margin at 4.25 L*, so the reach is 3.11",
 	},
 	{
-		theme: "nord",
-		dE: 2.14,
-		step: 2.58,
-		cap: 2.5,
-		inkRole: "inkDim",
-		onGround: 4.66,
-		capInk: 4.66,
-		subFloor: true,
-		why: "its own inkDim reaches the floor's margin at 2.50 L*, so the reach is 2.14 - under the 2.5 floor (NAMED LIST)",
-	},
-	{
 		theme: "ocean",
 		dE: 3.21,
 		step: 4.64,
@@ -2265,39 +2235,6 @@ const HIGHLIGHT_CAP_PINS = [
 		onGround: 4.69,
 		capInk: 4.69,
 		why: "its own inkDim reaches the floor's margin at 6.25 L*, so the reach is 3.84",
-	},
-	{
-		theme: "palenight",
-		dE: 2.12,
-		step: 2.39,
-		cap: 2.5,
-		inkRole: "inkDim",
-		onGround: 4.68,
-		capInk: 4.7,
-		subFloor: true,
-		why: "its own inkDim reaches the floor's margin at 2.50 L*, so the reach is 2.12 - under the 2.5 floor (NAMED LIST)",
-	},
-	{
-		theme: "rosePine",
-		dE: 2.43,
-		step: 3.16,
-		cap: 3.25,
-		inkRole: "inkDim",
-		onGround: 4.67,
-		capInk: 4.67,
-		subFloor: true,
-		why: "its own inkDim reaches the floor's margin at 3.25 L*, so the reach is 2.43 - under the 2.5 floor (NAMED LIST)",
-	},
-	{
-		theme: "rosePineDawn",
-		dE: 2.2,
-		step: 2.93,
-		cap: 2.75,
-		inkRole: "inkDim",
-		onGround: 4.65,
-		capInk: 4.68,
-		subFloor: true,
-		why: "its own inkDim reaches the floor's margin at 2.75 L*, so the reach is 2.20 - under the 2.5 floor (NAMED LIST)",
 	},
 	{
 		theme: "rosewood",
@@ -2331,14 +2268,13 @@ const HIGHLIGHT_CAP_PINS = [
 	},
 	{
 		theme: "synthwave",
-		dE: 2.35,
-		step: 3.01,
+		dE: 2.57,
+		step: 3.06,
 		cap: 3.0,
 		inkRole: "inkDim",
 		onGround: 4.69,
-		capInk: 4.71,
-		subFloor: true,
-		why: "its own inkDim reaches the floor's margin at 3.00 L*, so the reach is 2.35 - under the 2.5 floor (NAMED LIST)",
+		capInk: 4.7,
+		why: "its own inkDim reaches the floor's margin at 3.00 L*, so the reach is 2.57",
 	},
 	{
 		theme: "tokyoNight",
@@ -2371,6 +2307,129 @@ const HIGHLIGHT_CAP_PINS = [
 		why: "its own inkDim reaches the floor's margin at 3.75 L*, so the reach is 3.00",
 	},
 ];
+
+/*
+ * The palettes the BAND cannot carry over the floor - the exception, pinned by
+ * name with its ratio and its ΔE00.
+ *
+ * The precedence these eight exist for, stated once here because it is the rule:
+ *
+ *   1. the HUE is never broken: the panel's own, within 12 degrees, everywhere;
+ *   2. the CHROMA never falls below the panel's, everywhere - this is the
+ *      operator's actual report and the one thing that cannot give way;
+ *   3. the BAND is the default: chroma within the panel's, up to +15% or 1.6 C*;
+ *   4. `ΔE00 4.0` off `surface` is the TARGET, met as far as that palette's own
+ *      inks and the band allow, pinned per palette (HIGHLIGHT_CAP_PINS);
+ *   5. `ΔE00 2.5` off `surface` is a HARD FLOOR. Where the band caps a palette
+ *      below it, the BAND gives way - over-band, and only over-band: the hue
+ *      stays the panel's, the step stays at the ink cap, and the smallest chroma
+ *      past the ceiling that reaches the floor is added. Nothing else moves.
+ *
+ * Why the floor outranks the band: a mark under it is the operator's EARLIER
+ * report returning ("way too subtle... make it brighter/more contrasted"), and
+ * it would return on the eight themes he has not looked at yet - third-party
+ * palettes whose own ink reaches its floor 2.4-3.3 L* off the panel. Nothing in
+ * this file may ship a selection a reader cannot see, so the band yields rather
+ * than the floor, and the yielding is recorded here with the arithmetic that
+ * justifies it: what the band alone reached, what the exception adds, and what
+ * the addition buys.
+ *
+ * IT IS A FLOOR RESCUE AND NOT A LICENCE TO BE LOUD, and the assertion below
+ * makes that falsifiable rather than aspirational: the gate re-derives the
+ * SMALLEST chroma past the ceiling that reaches the floor at this palette's own
+ * cap, and fails the value if it took more than that by more than a rounding
+ * step. A palette leaves this table by re-authoring it, not by widening the
+ * exception.
+ *
+ * @type {{theme: string, dE: number, step: number, cap: number, chroma: number, over: number, inkRole: string, onGround: number, capInk: number, why: string}[]}
+ */
+const HIGHLIGHT_OVER_BAND_PINS = [
+	{
+		theme: "catppuccinFrappe",
+		dE: 2.51,
+		step: 2.66,
+		cap: 2.5,
+		chroma: 2.45,
+		over: 0.56,
+		inkRole: "inkDim",
+		onGround: 4.66,
+		capInk: 4.66,
+		why: "the band spent its whole ceiling on this palette and reached only ΔE00 2.29 at the 2.50 L* its inks allow, under the 2.5 floor. The exception adds 0.56 C* past the 1.89 ceiling (2.45 over the panel) at the same hue, which reaches 2.51. Hue held, step unchanged, and the gate re-derives the minimum chroma that reaches the floor",
+	},
+	{
+		theme: "catppuccinMacchiato",
+		dE: 2.53,
+		step: 2.45,
+		cap: 2.5,
+		chroma: 3.13,
+		over: 0.97,
+		inkRole: "inkDim",
+		onGround: 4.67,
+		capInk: 4.67,
+		why: "the band spent its whole ceiling on this palette and reached only ΔE00 2.23 at the 2.50 L* its inks allow, under the 2.5 floor. The exception adds 0.97 C* past the 2.16 ceiling (3.13 over the panel) at the same hue, which reaches 2.53. Hue held, step unchanged, and the gate re-derives the minimum chroma that reaches the floor",
+	},
+	{
+		theme: "cyberpunk",
+		dE: 2.65,
+		step: 2.99,
+		cap: 3.0,
+		chroma: 2.69,
+		over: 1.03,
+		inkRole: "inkDim",
+		onGround: 4.67,
+		capInk: 4.67,
+		why: "the band spent its whole ceiling on this palette and reached only ΔE00 2.32 at the 3.00 L* its inks allow, under the 2.5 floor. The exception adds 1.03 C* past the 1.66 ceiling (2.69 over the panel) at the same hue, which reaches 2.65. Hue held, step unchanged, and the gate re-derives the minimum chroma that reaches the floor",
+	},
+	{
+		theme: "nord",
+		dE: 2.6,
+		step: 2.58,
+		cap: 2.5,
+		chroma: 2.61,
+		over: 1.01,
+		inkRole: "inkDim",
+		onGround: 4.66,
+		capInk: 4.66,
+		why: "the band spent its whole ceiling on this palette and reached only ΔE00 2.14 at the 2.50 L* its inks allow, under the 2.5 floor. The exception adds 1.01 C* past the 1.60 ceiling (2.61 over the panel) at the same hue, which reaches 2.60. Hue held, step unchanged, and the gate re-derives the minimum chroma that reaches the floor",
+	},
+	{
+		theme: "palenight",
+		dE: 2.64,
+		step: 2.4,
+		cap: 2.5,
+		chroma: 3.12,
+		over: 1.29,
+		inkRole: "inkDim",
+		onGround: 4.68,
+		capInk: 4.69,
+		why: "the band spent its whole ceiling on this palette and reached only ΔE00 2.02 at the 2.50 L* its inks allow, under the 2.5 floor. The exception adds 1.29 C* past the 1.83 ceiling (3.12 over the panel) at the same hue, which reaches 2.64. Hue held, step unchanged, and the gate re-derives the minimum chroma that reaches the floor",
+	},
+	{
+		theme: "rosePine",
+		dE: 2.71,
+		step: 3.21,
+		cap: 3.25,
+		chroma: 2.53,
+		over: 0.66,
+		inkRole: "inkDim",
+		onGround: 4.66,
+		capInk: 4.66,
+		why: "the band spent its whole ceiling on this palette and reached only ΔE00 2.43 at the 3.25 L* its inks allow, under the 2.5 floor. The exception adds 0.66 C* past the 1.86 ceiling (2.53 over the panel) at the same hue, which reaches 2.71. Hue held, step unchanged, and the gate re-derives the minimum chroma that reaches the floor",
+	},
+	{
+		theme: "rosePineDawn",
+		dE: 2.62,
+		step: 2.9,
+		cap: 3.0,
+		chroma: 2.13,
+		over: 0.53,
+		inkRole: "inkDim",
+		onGround: 4.66,
+		capInk: 4.66,
+		why: "the band spent its whole ceiling on this palette and reached only ΔE00 2.19 at the 3.00 L* its inks allow, under the 2.5 floor. The exception adds 0.53 C* past the 1.60 ceiling (2.13 over the panel) at the same hue, which reaches 2.62. Hue held, step unchanged, and the gate re-derives the minimum chroma that reaches the floor",
+	},
+];
+
 /*
  * The pairs a bounded mark cannot separate from `elevated` OR `sunken`, pinned
  * to what they measure (the adjacent-role work list).
@@ -2440,7 +2499,7 @@ const HIGHLIGHT_ADJACENT_PINS = [
 	{
 		theme: "catppuccinFrappe",
 		role: "elevated",
-		got: 1.3,
+		got: 1.71,
 		why: "`elevated` sits 3.09 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
 	},
 	{
@@ -2452,7 +2511,7 @@ const HIGHLIGHT_ADJACENT_PINS = [
 	{
 		theme: "catppuccinMacchiato",
 		role: "elevated",
-		got: 0.53,
+		got: 1.25,
 		why: "`elevated` sits 2.84 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
 	},
 	{
@@ -2464,7 +2523,7 @@ const HIGHLIGHT_ADJACENT_PINS = [
 	{
 		theme: "cyberpunk",
 		role: "elevated",
-		got: 1.56,
+		got: 0.75,
 		why: "`elevated` sits 3.67 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
 	},
 	{
@@ -2548,7 +2607,7 @@ const HIGHLIGHT_ADJACENT_PINS = [
 	{
 		theme: "nord",
 		role: "elevated",
-		got: 1.09,
+		got: 1.39,
 		why: "`elevated` sits 3.18 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
 	},
 	{
@@ -2578,13 +2637,13 @@ const HIGHLIGHT_ADJACENT_PINS = [
 	{
 		theme: "palenight",
 		role: "elevated",
-		got: 1.36,
+		got: 1.94,
 		why: "`elevated` sits 3.11 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
 	},
 	{
 		theme: "rosePine",
 		role: "elevated",
-		got: 1.31,
+		got: 0.86,
 		why: "`elevated` sits 3.32 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
 	},
 	{
@@ -2614,7 +2673,7 @@ const HIGHLIGHT_ADJACENT_PINS = [
 	{
 		theme: "synthwave",
 		role: "elevated",
-		got: 0.5,
+		got: 0.32,
 		why: "`elevated` sits 3.51 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
 	},
 	{
@@ -2882,9 +2941,18 @@ for (const { id, palette: p } of palettes) {
 			HIGHLIGHT_CHROMA_ABS_BAND,
 		);
 		const dC = markC - panelC;
-		if (dC > ceiling + HIGHLIGHT_CHROMA_SLACK) {
+		/*
+		 * Over the ceiling is allowed for EXACTLY the palettes in
+		 * `HIGHLIGHT_OVER_BAND_PINS`, and only as a floor rescue: the assertion
+		 * below re-derives the smallest chroma past the ceiling that reaches
+		 * `HIGHLIGHT_REACH_FLOOR` at this palette's own cap, so a listed palette
+		 * cannot take more chroma than the floor needs. See the precedence order
+		 * in that table's comment.
+		 */
+		const overBand = HIGHLIGHT_OVER_BAND_PINS.find((x) => x.theme === id);
+		if (dC > ceiling + HIGHLIGHT_CHROMA_SLACK && !overBand) {
 			fail(
-				`${id}: \`highlight\` ${p.highlight} carries ${r2(markC)} C* against \`surface\` ${p.surface}'s ${r2(panelC)} — ${r2(dC)} past the panel, over the ${r2(ceiling)} this role may move on the chroma axis. A mark whose chroma is a different colour from its panel's is the "looks nothing like the sidebar" half of the operator's report: re-author at the panel's own hue and chroma and let the L* step carry the band`,
+				`${id}: \`highlight\` ${p.highlight} carries ${r2(markC)} C* against \`surface\` ${p.surface}'s ${r2(panelC)} — ${r2(dC)} past the panel, over the ${r2(ceiling)} this role may move on the chroma axis, and this palette is not on the over-band list. A mark whose chroma is a different colour from its panel's is the "looks nothing like the sidebar" half of the operator's report: re-author at the panel's own hue and chroma; if the band then caps the palettes under ΔE00 ${HIGHLIGHT_REACH_FLOOR}, that is an over-band rescue to pin in \`HIGHLIGHT_OVER_BAND_PINS\` with its measurement, not a licence to spend chroma here`,
 			);
 		}
 		if (dC < -HIGHLIGHT_CHROMA_SLACK) {
@@ -2944,9 +3012,29 @@ for (const { id, palette: p } of palettes) {
 	 *     binder and the ratios that prove both, and this assertion RE-DERIVES
 	 *     the cap from the palette rather than trusting the number beside it: a
 	 *     palette cannot be excused by a record that has stopped being true.
-	 *     The seven under the floor carry `subFloor: true` - the NAMED LIST -
-	 *     because a mark that is not findable is a cost this file states with
-	 *     its measurement, not one it hides behind a lowered constant.
+	 *     The eight the band cannot carry over the floor are the separate
+	 *     `HIGHLIGHT_OVER_BAND_PINS`: there the band yields rather than the floor,
+	 *     because a mark that cannot be seen is not a cost this file may ship.
+	 */
+	/*
+	 * THE MARK OFF `surface`: two floors, and the two ways a palette can be
+	 * pinned against them.
+	 *
+	 *  1. `HIGHLIGHT_SEPARATION_FLOOR` (4.0) is the band: the mark is findable
+	 *     beside a hovered neighbour. It is what this role is for, and a palette
+	 *     that reaches it is asserted on the value alone.
+	 *  2. `HIGHLIGHT_REACH_FLOOR` (2.5) is the floor EVERY palette must hold,
+	 *     whatever else gives. ΔE00 at the panel's own hue is a function of the
+	 *     `L*` step alone, and this file's own ink floors cap that step, so the
+	 *     two floors can collide - and when they do the BAND yields, never the
+	 *     floor: `HIGHLIGHT_OVER_BAND_PINS` names the palettes, and the math
+	 *     below re-derives the smallest chroma past the ceiling that reaches the
+	 *     floor, so the exception cannot be spent as a licence to be loud.
+	 *  3. `HIGHLIGHT_CAP_PINS` records the palettes whose inks cap them under the
+	 *     band but above the floor. Both tables are RE-DERIVED here - the cap at
+	 *     the value's own chroma, the binder's ratio on the ground and at the
+	 *     cap, the ΔE00 - so a palette cannot be excused by a record that has
+	 *     stopped being true.
 	 */
 	{
 		assertions++;
@@ -2954,46 +3042,114 @@ for (const { id, palette: p } of palettes) {
 		const step = toLab(p.highlight)[0] - toLab(p.surface)[0];
 		const wanted = p.mode === "dark" ? step : -step;
 		const pin = HIGHLIGHT_CAP_PINS.find((x) => x.theme === id);
-		if (pin) {
-			/*
-			 * The cap is re-derived at the value's OWN chroma. It is a function
-			 * of the pair rather than of the panel: a more saturated ground of
-			 * the same lightness carries less luminance, so raising chroma moves
-			 * the ink floors with it - which is why the authoring walks both
-			 * axes together and why this re-derivation does too.
-			 */
-			const [capL, capA, capB] = toLab(p.surface);
-			const panelC = Math.hypot(capA, capB);
-			const [, markA, markB] = toLab(p.highlight);
-			const scale = panelC < 0.5 ? 1 : Math.hypot(markA, markB) / panelC;
-			let cap = 0;
-			let capInk = null;
-			for (let s = 0.25; s <= 8; s += 0.25) {
-				const at = labToHex([
+		const rescue = HIGHLIGHT_OVER_BAND_PINS.find((x) => x.theme === id);
+		const [capL, capA, capB] = toLab(p.surface);
+		const panelC = Math.hypot(capA, capB);
+		const [, markA, markB] = toLab(p.highlight);
+		const markC = Math.hypot(markA, markB);
+		const scale = panelC < 0.5 ? 1 : markC / panelC;
+		/*
+		 * The largest legal step at a given chroma, and the ink that binds there.
+		 * Bisected rather than swept: WCAG contrast falls monotonically as the
+		 * ground moves away from the ink, and an out-of-gamut candidate is a
+		 * ceiling of its own - there is no colour there at all.
+		 */
+		const capAt = (atScale) => {
+			const candidate = (s) =>
+				labToHex([
 					capL + (p.mode === "dark" ? s : -s),
-					capA * scale,
-					capB * scale,
+					capA * atScale,
+					capB * atScale,
 				]);
-				if (!at) break;
-				if (
+			const ok = (s) => {
+				const hex = candidate(s);
+				return (
+					hex !== null &&
 					INKS.every(
 						([role, floor]) =>
-							ratio(p[role], at) >= floor + HIGHLIGHT_INK_MARGIN,
+							ratio(p[role], hex) >= floor + HIGHLIGHT_INK_MARGIN,
 					)
-				) {
-					cap = s;
-					capInk = ratio(p[pin.inkRole], at);
+				);
+			};
+			if (!ok(0.25)) return { cap: 0, ink: null };
+			let lo = 0.25;
+			let hi = 8;
+			if (ok(8))
+				return {
+					cap: 8,
+					ink: ratio(p[pin?.inkRole ?? "inkDim"], candidate(8)),
+				};
+			while (hi - lo > 0.25) {
+				const mid = (lo + hi) / 2;
+				if (ok(mid)) lo = mid;
+				else hi = mid;
+			}
+			const at = candidate(lo);
+			return {
+				cap: Math.round(lo * 4) / 4,
+				ink: at === null ? null : ratio(p[pin?.inkRole ?? "inkDim"], at),
+			};
+		};
+		const reDerived = capAt(scale);
+		if (rescue) {
+			/*
+			 * THE FLOOR, RESCUED OVER-BAND. The pin records where the band got to
+			 * on its own, how much chroma past the ceiling the rescue took and what
+			 * that bought; the gate re-derives the SMALLEST chroma past the ceiling
+			 * that reaches the floor and refuses anything larger.
+			 */
+			if (
+				Math.abs(got - rescue.dE) > 0.05 ||
+				Math.abs(wanted - rescue.step) > 0.3 ||
+				Math.abs(reDerived.cap - rescue.cap) > 0.5 ||
+				Math.abs(markC - panelC - rescue.chroma) > 0.2
+			) {
+				fail(
+					`${id}: the over-band exception no longer matches its record — recorded ΔE00 ${rescue.dE} at ${rescue.step} L* and ${rescue.chroma} C* over the panel with a ${rescue.cap} L* cap, measured ${r2(got)} at ${r2(wanted)} L* and ${r2(markC - panelC)} C* with a ${r2(reDerived.cap)} L* cap. Re-measure and update the pin, or re-author the value if the palette moved under it`,
+				);
+			}
+			const ceilingScale =
+				panelC < 0.5
+					? 1
+					: (panelC +
+							Math.max(
+								HIGHLIGHT_CHROMA_REL_BAND * panelC,
+								HIGHLIGHT_CHROMA_ABS_BAND,
+							)) /
+						panelC;
+			let smallest = null;
+			for (let s = ceilingScale; s <= ceilingScale * 2; s += 0.02) {
+				const at = labToHex([
+					capL + (p.mode === "dark" ? capAt(s).cap : -capAt(s).cap),
+					capA * s,
+					capB * s,
+				]);
+				if (!at) continue;
+				if (deltaE(at, p.surface) >= HIGHLIGHT_REACH_FLOOR) {
+					smallest = Math.hypot(...toLab(at).slice(1)) - panelC;
+					break;
 				}
 			}
+			if (smallest !== null && markC - panelC > smallest + 0.35) {
+				fail(
+					`${id}: the over-band exception took more chroma than the floor needs — ${r2(markC - panelC)} C* over the panel where the smallest chroma that reaches ΔE00 ${HIGHLIGHT_REACH_FLOOR} at this palette's cap is ${r2(smallest)}. The exception exists to rescue the floor, not to make this palette loud: re-author to the smallest value that reaches it`,
+				);
+			}
+			if (got < HIGHLIGHT_REACH_FLOOR) {
+				fail(
+					`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`surface\` ${p.surface}, under the ${HIGHLIGHT_REACH_FLOOR} floor every palette must hold — the one floor the over-band exception exists to reach`,
+				);
+			}
+		} else if (pin) {
 			const onGround = ratio(p[pin.inkRole], p.highlight);
 			if (
 				Math.abs(got - pin.dE) > 0.05 ||
 				Math.abs(onGround - pin.onGround) > 0.05 ||
-				Math.abs(cap - pin.cap) > 0.5 ||
-				(capInk !== null && Math.abs(capInk - pin.capInk) > 0.15)
+				Math.abs(reDerived.cap - pin.cap) > 0.5 ||
+				(reDerived.ink !== null && Math.abs(reDerived.ink - pin.capInk) > 0.15)
 			) {
 				fail(
-					`${id}: the pinned highlight reach no longer matches — recorded ΔE00 ${pin.dE} at ${pin.step} L* with ${pin.inkRole} at ${pin.onGround}:1 on the row's ground and a ${pin.cap} L* cap at ${pin.capInk}:1, measured ${r2(got)} at ${r2(wanted)} L* with ${r2(onGround)}:1 on the ground and a ${r2(cap)} L* cap at ${capInk === null ? "no measurable" : r2(capInk)}:1. Re-measure the cap, re-author the value if the inks moved, and update the pin`,
+					`${id}: the pinned highlight reach no longer matches — recorded ΔE00 ${pin.dE} at ${pin.step} L* with ${pin.inkRole} at ${pin.onGround}:1 on the row's ground and a ${pin.cap} L* cap at ${pin.capInk}:1, measured ${r2(got)} at ${r2(wanted)} L* with ${r2(onGround)}:1 on the ground and a ${r2(reDerived.cap)} L* cap at ${reDerived.ink === null ? "no measurable" : r2(reDerived.ink)}:1. Re-measure the cap, re-author the value if the inks moved, and update the pin`,
 				);
 			}
 			if (wanted < pin.cap - 0.3) {
@@ -3001,14 +3157,9 @@ for (const { id, palette: p } of palettes) {
 					`${id}: \`highlight\` ${p.highlight} sits ${r2(wanted)} L* off \`surface\`, under the ${pin.cap} L* cap this palette's own \`${pin.inkRole}\` allows — a pinned palette is pinned because it has already spent its whole step, so a value short of the cap is a mark that could be findable and is not`,
 				);
 			}
-			if (Boolean(pin.subFloor) !== pin.dE < HIGHLIGHT_REACH_FLOOR) {
+			if (got < HIGHLIGHT_REACH_FLOOR) {
 				fail(
-					`${id}: the named list is stale — the pin says ${pin.subFloor ? "this palette cannot reach" : "this palette reaches"} ΔE00 ${HIGHLIGHT_REACH_FLOOR} and the record's own ${pin.dE} says otherwise. A palette leaves the list by re-authoring it, not by editing the flag`,
-				);
-			}
-			if (got < HIGHLIGHT_REACH_FLOOR && !pin.subFloor) {
-				fail(
-					`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`surface\` ${p.surface}, under the ${HIGHLIGHT_REACH_FLOOR} floor every palette must hold, and this palette is not on the named list. Either its inks can carry more — take the cap — or they cannot, and then the measurement belongs in \`HIGHLIGHT_CAP_PINS\` with \`subFloor: true\``,
+					`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`surface\` ${p.surface}, under the ${HIGHLIGHT_REACH_FLOOR} floor every palette must hold. Take the over-band rescue - the smallest chroma past the band's ceiling that reaches it, at the panel's hue - and pin it in \`HIGHLIGHT_OVER_BAND_PINS\` with its measurement rather than shipping the shortfall`,
 				);
 			}
 		} else {
@@ -3021,7 +3172,7 @@ for (const { id, palette: p } of palettes) {
 					ratio(p[role], p.highlight),
 				]).sort((a, b) => a[1] - b[1])[0];
 				fail(
-					`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`surface\` ${p.surface} (need ${HIGHLIGHT_SEPARATION_FLOOR}) — the current row's mark is invisible beside a hovered neighbour below this band. Take the largest L* step this palette's inks allow at the panel's own hue and chroma, and if the step that reaches ${HIGHLIGHT_SEPARATION_FLOOR} is beyond that cap, record the reach in \`HIGHLIGHT_CAP_PINS\` (the binder here is \`${bound[0]}\` at ${r2(bound[1])}:1, and every palette must still hold ΔE00 ${HIGHLIGHT_REACH_FLOOR})`,
+					`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`surface\` ${p.surface} (need ${HIGHLIGHT_SEPARATION_FLOOR}) — the current row's mark is invisible beside a hovered neighbour below this band. Take the largest L* step this palette's inks allow at the panel's own hue and chroma, and record the reach in \`HIGHLIGHT_CAP_PINS\` if the step that reaches ${HIGHLIGHT_SEPARATION_FLOOR} is beyond that cap (the binder here is \`${bound[0]}\` at ${r2(bound[1])}:1). Every palette must still hold ΔE00 ${HIGHLIGHT_REACH_FLOOR}, over-band if that is what it takes`,
 				);
 			}
 			if (wanted < HIGHLIGHT_LIGHTNESS_STEP_FLOOR) {
@@ -3035,7 +3186,6 @@ for (const { id, palette: p } of palettes) {
 			}
 		}
 	}
-
 	/*
 	 * The row's ground against the app's OTHER selected-row mark.
 	 *
@@ -3546,5 +3696,5 @@ if (stale.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_CAP_PINS.length} pinned highlight reach(es), ${HIGHLIGHT_ADJACENT_PINS.length} pinned adjacent collision(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_CAP_PINS.length} pinned highlight reach(es), ${HIGHLIGHT_OVER_BAND_PINS.length} over-band exception(s), ${HIGHLIGHT_ADJACENT_PINS.length} pinned adjacent collision(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
 );

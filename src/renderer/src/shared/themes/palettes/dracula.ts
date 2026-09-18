@@ -45,7 +45,7 @@ export const dracula: ThemeDefinition = {
 		 *
 		 * THE HOVER STEP IS THE COLLISION: 1.69 to `elevated` is under the field floor,
 		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
-		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_ADJACENT_PINS` and is
 		 * on the row-hover work list.
 		 */
 		highlight: "#3C3D54",
