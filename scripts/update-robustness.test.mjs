@@ -9,6 +9,7 @@ import {
 	readFileSync,
 	readdirSync,
 	realpathSync,
+	renameSync,
 	rmSync,
 	rmdirSync,
 	statSync,
@@ -2859,7 +2860,7 @@ test("a global install is never pip'd into, and names its own updater", () => {
 	assert.equal(sourceBuilt.canManageUpdate, false);
 	assert.equal(sourceBuilt.updateCommand, "lop update");
 	assert.equal(sourceBuilt.sourceBuild, true);
-	assert.match(sourceBuilt.detail, /installs the published release over it/);
+	assert.match(sourceBuilt.detail, /install the published release over it/);
 
 	// The remedy is the install's own front end in BOTH layouts. `lop-update` is
 	// the release owner's out-of-tree script and `uv tool upgrade local-operator`
@@ -7575,6 +7576,38 @@ test("the server channel's rule names its four states from the readings", async 
  * `runGate` lets a case hold the installer open, which is how the in-flight guard
  * and the mid-attempt marker are driven.
  */
+/*
+ * A synthetic install as `readInstallIdentity` sees one: a console script under `bin`,
+ * a `pyvenv.cfg` so the prefix is recognised as a venv, and a dist-info whose DIRECTORY
+ * NAME carries the version - the same thing `importlib.metadata` reads on the Python
+ * side, which is why no interpreter is involved.
+ */
+const makeInstall = (root, version) => {
+	mkdirSync(join(root, "bin"), { recursive: true });
+	writeFileSync(
+		join(root, "bin", "local-operator"),
+		`#!/bin/sh\nexec ${join(root, "bin", "python")} -m local_operator \"$@\"\n`,
+		{ mode: 0o755 },
+	);
+	writeFileSync(join(root, "pyvenv.cfg"), "home = /usr/bin\n");
+	const site = join(root, "lib", "python3.13", "site-packages");
+	mkdirSync(site, { recursive: true });
+	const distInfo = join(site, `local_operator-${version}.dist-info`);
+	mkdirSync(distInfo, { recursive: true });
+	writeFileSync(
+		join(distInfo, "METADATA"),
+		`Name: local-operator\nVersion: ${version}\n`,
+	);
+	return distInfo;
+};
+const moveInstall = (root, from, to) => {
+	const site = join(root, "lib", "python3.13", "site-packages");
+	renameSync(
+		join(site, `local_operator-${from}.dist-info`),
+		join(site, `local_operator-${to}.dist-info`),
+	);
+};
+
 const driveGlobalUpdate = async ({
 	before = "0.55.10",
 	after = "0.56.0",
@@ -7583,6 +7616,25 @@ const driveGlobalUpdate = async ({
 	target = "0.56.0",
 	external = false,
 	daemonReports = null,
+	/*
+	 * The serving install's root, when the case needs `/health` to name a DIFFERENT
+	 * install than the shim. `null` is every other case in this file: the server does
+	 * not name its root, so the plan's own subject stands (review round 5, Q-1).
+	 */
+	servingPrefix = null,
+	/*
+	 * The shim the app resolved, when the case needs it to be a real file on disk
+	 * rather than the fixture's synthetic path: a case that drives the SHIPPED evidence
+	 * reads has to point them at a tree that exists (review round 6, M1).
+	 */
+	shimPath = "/synthetic/bin/local-operator",
+	/*
+	 * Leave `readGlobalInstallVersion` as the shipped one, so the verdict is computed from
+	 * real files under real prefixes instead of from the scripted readings. This is the
+	 * difference that makes the round-6 defect visible at all: the stub answers whatever the
+	 * case says, so a press that verified the wrong install could not be caught.
+	 */
+	realEvidenceReads = false,
 	restartOk = true,
 	runGate = null,
 	/*
@@ -7606,7 +7658,13 @@ const driveGlobalUpdate = async ({
 	// which this fixture pins to its own temp directory.
 	const markerPath = join(userData, "pending-server-update.json");
 	const sent = [];
-	const calls = { installers: [], restarts: 0, starts: 0 };
+	const calls = {
+		installers: [],
+		/** The budget each reach for an installer was given, in the order taken. */
+		budgets: [],
+		restarts: 0,
+		starts: 0,
+	};
 	const backend = {
 		getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
 		getBackendUrl: () => "http://127.0.0.1:9",
@@ -7674,15 +7732,31 @@ const driveGlobalUpdate = async ({
 			sourceBuild: false,
 			installedInstallVersion: before,
 		});
-		updateService.resolveLocalOperatorPath = () =>
-			"/synthetic/bin/local-operator";
+		updateService.resolveLocalOperatorPath = () => shimPath;
 		// The pre-run read and the post-run read, in the order the attempt takes
 		// them; anything after those repeats the last one.
 		const readings = [before, after];
-		updateService.readGlobalInstallVersion = () =>
-			readings.length > 1 ? readings.shift() : after;
-		updateService.runGlobalUpdate = async (consolePath) => {
-			calls.installers.push(consolePath);
+		if (!realEvidenceReads) {
+			/*
+			 * The scripted reading, for the cases that are about what the service does with a
+			 * version rather than about which install it came from: it ignores the install the
+			 * caller names, deliberately - the read is now a REQUIRED argument (`installPath`),
+			 * and the cases that need the shipped read use `realEvidenceReads` instead.
+			 */
+			updateService.readInstallVersionAt = () =>
+				readings.length > 1 ? readings.shift() : after;
+		}
+		/*
+		 * The command the attempt reaches for, recorded by its PATH rather than by the
+		 * whole descriptor: the service hands `runGlobalUpdate` a `{ path, args }`
+		 * pair, because a managed update is not always the entry point (`<console
+		 * path> update`) any more - the source-build route runs `lop-update`, which
+		 * takes no `update` argument. What this harness is asserting is unchanged:
+		 * which install's own tool was reached for.
+		 */
+		updateService.runGlobalUpdate = async (command, budgetMs) => {
+			calls.installers.push(command.path);
+			calls.budgets.push(budgetMs);
 			if (runGate) await runGate({ markerPath });
 			return {
 				exitCode,
@@ -7692,7 +7766,7 @@ const driveGlobalUpdate = async ({
 						? ""
 						: "error: Failed to install: the index is unreachable\n\n  Caused by: network unreachable",
 				ran,
-				command: consolePath,
+				command: command.path,
 			};
 		};
 		/*
@@ -7708,7 +7782,7 @@ const driveGlobalUpdate = async ({
 		 */
 		updateService.readRunningBackend = async () => ({
 			version: daemonReports,
-			prefix: null,
+			prefix: servingPrefix,
 			installKind: null,
 		});
 		if (stubWait) {
@@ -8038,6 +8112,7 @@ test("an attempt that landed while no app was watching is reported once, on the 
 				before: "0.55.10",
 				target: "0.56.0",
 				startedAt: new Date().toISOString(),
+				installPath: run.updateService.resolveLocalOperatorPath(),
 			})}\n`,
 			"utf8",
 		);
@@ -8047,7 +8122,7 @@ test("an attempt that landed while no app was watching is reported once, on the 
 		 * and the published release is the one that landed - so the check has nothing
 		 * to offer and only this report can say anything about what happened.
 		 */
-		run.updateService.readGlobalInstallVersion = () => "0.56.0";
+		run.updateService.readInstallVersionAt = () => "0.56.0";
 		run.updateService.getInstalledBackendVersion = async () => "0.55.10";
 		run.updateService.getLatestPypiVersion = async () => "0.56.0";
 		await run.updateService.checkForBackendUpdates(false);
@@ -11575,4 +11650,543 @@ test("the app-owned offer states the restart and its cost, not the filler twice"
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
 	}
+});
+
+/**
+ * THE SERVER-UPDATE FAILURE SENTENCE IS THE APP'S OWN COPY, AND IT ARRIVES VERBATIM.
+ *
+ * WHY THIS CASE EXISTS. The panel used to run the composed sentence through the copy
+ * classifier, whose only lever is a length: `AUTHORED_SENTENCE_MAX_LENGTH = 400` reads
+ * anything longer as a machine dump and substitutes the check stage's sentence. The
+ * composed payload measured 401, 467 and 481-483 characters on the three routes, so two
+ * of them showed "The update check could not finish" under a heading saying the update
+ * did not finish, and a cost clause that a whole review round was spent adding never
+ * reached a reader. Nothing in the suite failed, because the classifier's rule was
+ * working exactly as written - the defect was the rule's reach, and the guard has to be
+ * about the promise instead: every route's sentence reaches the panel unchanged, it is
+ * inside a budget a person would read, and the fixtures the frames are shot from are
+ * strings this producer can actually emit (reviewer M1 = UX U1 = QA Q-1/Q-2, round 4).
+ */
+test("every server-update failure sentence reaches the panel verbatim, and the fixtures are producible", async () => {
+	const bundleOf = async (entry) => {
+		const built = await build({
+			stdin: {
+				contents: `export * from "${entry}";`,
+				resolveDir: process.cwd(),
+			},
+			bundle: true,
+			format: "esm",
+			platform: "node",
+			write: false,
+		});
+		return import(
+			`data:text/javascript;base64,${Buffer.from(
+				built.outputFiles[0].text,
+			).toString("base64")}`
+		);
+	};
+	const producer = await bundleOf("./src/main/server-update-copy");
+	const panel = await bundleOf(
+		"./src/renderer/src/shared/utils/update-error-copy",
+	);
+	const stories = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/shared/components/common/update-notification.stories.tsx",
+		),
+		"utf8",
+	);
+	const routes = [
+		{
+			name: "release",
+			input: {
+				rebuildRoute: false,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: false,
+				diagnosis: "error: no matching distribution found for local-operator\n",
+				target: "0.56.11",
+				after: "0.56.10",
+				before: "0.56.10",
+				updateCommand: "lop update",
+			},
+		},
+		{
+			name: "rebuild-refusal",
+			fixture: "SOURCE_BUILD_REFUSAL_SENTENCE",
+			input: {
+				rebuildRoute: true,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: false,
+				diagnosis:
+					"lop-update: REFUSING to release a stale ref.\nlocal  main = 2a0b473\n",
+				target: "0.56.11",
+				after: "0.56.10",
+				before: "0.56.10",
+				updateCommand: "lop-update",
+			},
+		},
+		{
+			name: "orphan",
+			fixture: "ORPHANED_UPDATER_SENTENCE",
+			input: {
+				rebuildRoute: false,
+				ran: false,
+				exitCode: null,
+				groupSurvived: true,
+				diagnosis: "installer exited 127\n",
+				target: "0.56.11",
+				after: "0.56.10",
+				before: "0.56.10",
+				updateCommand: "lop update",
+			},
+		},
+		{
+			/*
+			 * THE WORST ROUTE THE PRODUCER CAN REACH, and the one the previous version of
+			 * this case never composed: a stopped rebuild, which carries every clause at
+			 * once - the headline, the stopped-updater sentence, the stale-ref remedy, the
+			 * output pointer and the escape hatch. It measured 386 characters against the
+			 * classifier's 400, fourteen of luck rather than a design (review round 5, M1).
+			 */
+			name: "rebuild-stopped-worst-case",
+			input: {
+				rebuildRoute: true,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: true,
+				diagnosis:
+					"lop-update: REFUSING to release a stale ref.\nlocal  main = 2a0b473\n",
+				target: "0.56.11-rc.1+build.20260918",
+				after: "0.56.10-rc.1+build.20260917",
+				before: "0.56.10-rc.1+build.20260917",
+				updateCommand: "lop-update",
+			},
+		},
+	];
+	for (const route of routes) {
+		const sentence = producer.serverUpdateFailureSentence(route.input);
+		/*
+		 * THE REAL PATH, not a pass-through. An earlier version of this case asserted
+		 * `serverUpdateFailureCopy(sentence) === sentence` against a function that returns
+		 * its input, so it could not fail - and it did not: the sentence was still being
+		 * deleted on two other surfaces by the classifier it was supposed to be protected
+		 * from (review round 5, M1). This asserts the phase-aware function the surfaces now
+		 * call, and the second half proves the assertion CAN fail.
+		 */
+		assert.equal(
+			panel.serverUpdateFailureReason({ message: sentence, phase: "update" }),
+			sentence,
+			`${route.name}: an attempt's report must reach the surface verbatim`,
+		);
+		assert.ok(
+			sentence.length < 400,
+			`${route.name}: the composed sentence is ${sentence.length} characters, over the copy budget`,
+		);
+		if (route.fixture) {
+			assert.ok(
+				stories.includes(sentence),
+				`${route.fixture} is not the string the producer composes - re-shoot from a producible value`,
+			);
+		}
+	}
+	/*
+	 * AND THE GUARD IS NOT VACUOUS. The same function classifies a CHECK's report, whose
+	 * text is written around a caught value: a long machine string must come back changed,
+	 * or this whole case would pass on a function that does nothing.
+	 */
+	const machine =
+		"Error: getaddrinfo ENOTFOUND pypi.org while reading the version during a check, and the retry did not help either, so the check could not finish this time";
+	assert.notEqual(
+		panel.serverUpdateFailureReason({ message: machine, phase: "check" }),
+		machine,
+		"the classifier must still classify a check's report - a guard that cannot fail guards nothing",
+	);
+	// And a pass-through that ignored the phase would trip this instead.
+	assert.equal(
+		panel.serverUpdateFailureReason({ message: machine, phase: "update" }),
+		machine,
+	);
+});
+
+/**
+ * ONE IDENTITY FOR ONE PRESS, asserted in both directions.
+ *
+ * WHY THIS CASE EXISTS. The fold that moved the CHECK onto the serving install's identity
+ * (`/health` names the root) left the PRESS re-deciding from the shim, so on a machine where
+ * the two differ the panel described one install and the press moved another: an offer
+ * promising the checkout rebuild and its half-hour allowance while the press ran the entry
+ * point with its 900 s budget, and the inverse - "a minute or two" plus a restart offered
+ * while the press started a 1800 s in-place rebuild (review round 5, Q-1 = reviewer M2).
+ *
+ * WHAT MAKES IT ASSERTABLE. The tool the press reaches for is the observable: `command.path`
+ * to `runGlobalUpdate`. A serving install with its own console script must be the path taken
+ * when `/health` names that root; the shim's resolution is the path taken when it names none.
+ * The route and its budget follow the same identity, so they are asserted too whenever the
+ * machine has `lop-update` to classify the serving root as a source build against - the
+ * conditional half is stated rather than hidden, because CI has no `lop-update` and a case
+ * that silently skipped a direction would be the vacuity this round is about.
+ */
+test("the press acts on the install the panel described, in both directions", async () => {
+	/*
+	 * A synthetic serving install: a real directory, a real console script and a real
+	 * `.lop-source`. Nothing here is installed or executed - the fixture stubs the runner -
+	 * but every path the service reads exists, which is what makes the identity resolution
+	 * take its real branch.
+	 */
+	const servingRoot = mkdtempSync(join(tmpdir(), "lo-serving-install-"));
+	mkdirSync(join(servingRoot, "bin"), { recursive: true });
+	const servingScript = join(servingRoot, "bin", "local-operator");
+	writeFileSync(
+		servingScript,
+		'#!/bin/sh\nexec python -m local_operator "$@"\n',
+		{
+			mode: 0o755,
+		},
+	);
+	/*
+	 * The marker's real shape, one line of whitespace-separated tokens: the sha first, the
+	 * ref second - what `lop-update` writes and what the plan parses. Getting it wrong here
+	 * is how a synthetic world stops classifying as a source build, which is the state this
+	 * fixture has to reach to pose the question at all.
+	 */
+	writeFileSync(
+		join(servingRoot, ".lop-source"),
+		"2a0b4730f1e2d3c4b5a69788796a5b4c3d2e1f00 main\n",
+	);
+
+	const seam = await driveGlobalUpdate({ servingPrefix: servingRoot });
+	try {
+		await seam.updateService.updateBackend("0.56.0");
+		// The serving install's own front end, not the shim's: the press moved the tree the
+		// panel described.
+		assert.equal(seam.calls.installers[0], servingScript);
+		assert.equal(seam.calls.installers.length, 1);
+	} finally {
+		seam.dispose();
+	}
+
+	const control = await driveGlobalUpdate({ servingPrefix: null });
+	try {
+		await control.updateService.updateBackend("0.56.0");
+		// The server names no root, so the shim's resolution stands - which is what every
+		// other case in this file declares, and what the seam is measured against.
+		assert.equal(control.calls.installers[0], "/synthetic/bin/local-operator");
+	} finally {
+		control.dispose();
+	}
+
+	/*
+	 * AND THE ROUTE FOLLOWS THE SAME SUBJECT BY CONSTRUCTION. `resolveGlobalInstallPlan` is
+	 * given the identity asserted above, so the route and its budget are the plan's own
+	 * contract for that install - covered over synthetic installs in
+	 * `update-global-install.test.mjs`, which is where a `.lop-source`, a dist-info and a
+	 * venv can be built exactly. An earlier draft of this case tried to assert the rebuild
+	 * route here by pointing at a synthetic root with only a console script, which cannot
+	 * classify as a source build; a conditional assertion on the machine's `lop-update`
+	 * would have looked like a second direction while testing nothing, which is the vacuity
+	 * this round is about. The two directions this case CAN pose - serving root vs shim -
+	 * are both asserted above.
+	 */
+	rmSync(servingRoot, { recursive: true, force: true });
+});
+
+/**
+ * THE VERDICT FOLLOWS THE INSTALL THE PRESS RAN, asserted in both directions.
+ *
+ * WHY THE STUB HAD TO GO. Every other case here scripts `readGlobalInstallVersion`, so the
+ * press's evidence answers whatever the case declares and the question "which install did the
+ * verdict read?" cannot be posed at all. Round 5 moved the COMMAND onto the serving install
+ * and left the EVIDENCE on the shim; the suite could not see it, and two streams found it by
+ * driving a synthetic host by hand (review round 6, M1 = QA Q-1). This case builds two real
+ * installs on disk and lets the SHIPPED reads run.
+ *
+ * THREE DIRECTIONS, because two of them are the interesting ones:
+ *   - the installer moves the install it ran  -> completed, no error;
+ *   - nothing moves                            -> an error, never a success;
+ *   - the SHIM moves and the install that ran does not -> an error, which is the shape a
+ *     verdict read from the wrong tree turns into a false success.
+ */
+test("the verdict follows the install the press ran, in both directions", async () => {
+	const run = async ({ shimRoot, servingRoot, moveShim, moveServing }) => {
+		makeInstall(shimRoot, "0.55.10");
+		makeInstall(servingRoot, "0.55.10");
+		try {
+			const drive = await driveGlobalUpdate({
+				servingPrefix: servingRoot,
+				shimPath: join(shimRoot, "bin", "local-operator"),
+				realEvidenceReads: true,
+				/*
+				 * The daemon the app restarts reports the version the install now holds, which
+				 * is what the post-restart poll waits for: this case is about which install the
+				 * VERDICT read, and a daemon stuck on the old build would fail for an unrelated
+				 * reason and hide the answer.
+				 */
+				daemonReports: moveServing ? "0.56.0" : "0.55.10",
+				runGate: () => {
+					if (moveServing) moveInstall(servingRoot, "0.55.10", "0.56.0");
+					if (moveShim) moveInstall(shimRoot, "0.55.10", "0.56.0");
+				},
+			});
+			try {
+				const returned = await drive.updateService.updateBackend("0.56.0");
+				return {
+					returned,
+					completed: backendCompletion(drive.sent),
+					errors: backendErrors(drive.sent).length,
+					channels: drive.sent.map(
+						({ channel, payload }) => `${channel}:${payload?.phase ?? ""}`,
+					),
+					errorMessages: backendErrors(drive.sent).map(({ payload }) =>
+						payload.message?.slice(0, 160),
+					),
+					dispose: drive.dispose,
+				};
+			} catch (error) {
+				drive.dispose();
+				throw error;
+			}
+		} finally {
+			rmSync(shimRoot, { recursive: true, force: true });
+			rmSync(servingRoot, { recursive: true, force: true });
+		}
+	};
+
+	// The installer reached the serving install and moved it: that is a landed update.
+	const landed = await run({
+		shimRoot: mkdtempSync(join(tmpdir(), "lo-two-install-shim-")),
+		servingRoot: mkdtempSync(join(tmpdir(), "lo-two-install-serving-")),
+		moveServing: true,
+	});
+	try {
+		assert.ok(
+			landed.completed,
+			`a landed update must be reported as completed (returned ${landed.returned}; channels ${JSON.stringify(landed.channels)}; errors ${JSON.stringify(landed.errorMessages)})`,
+		);
+		assert.equal(landed.errors, 0);
+	} finally {
+		landed.dispose();
+	}
+
+	// Nothing moved: the honest reading is a failure, and it must not be a success.
+	const noop = await run({
+		shimRoot: mkdtempSync(join(tmpdir(), "lo-two-install-shim-")),
+		servingRoot: mkdtempSync(join(tmpdir(), "lo-two-install-serving-")),
+	});
+	try {
+		assert.equal(
+			noop.completed,
+			undefined,
+			"a no-op must never be reported as a success",
+		);
+		assert.ok(noop.errors > 0);
+	} finally {
+		noop.dispose();
+	}
+
+	/*
+	 * THE FALSE-SUCCESS DIRECTION: the shim moves, the install that actually ran does not.
+	 * A verdict read from the shim sees a version change and reports a success for an
+	 * install nothing touched - which is the half of the defect the completed-event
+	 * assertion above cannot catch.
+	 */
+	const wrongTree = await run({
+		shimRoot: mkdtempSync(join(tmpdir(), "lo-two-install-shim-")),
+		servingRoot: mkdtempSync(join(tmpdir(), "lo-two-install-serving-")),
+		moveShim: true,
+	});
+	try {
+		assert.equal(
+			wrongTree.completed,
+			undefined,
+			"the shim moving while the install that ran did not is not a landed update",
+		);
+		assert.ok(wrongTree.errors > 0);
+	} finally {
+		wrongTree.dispose();
+	}
+});
+
+/**
+ * EVERY SURFACE THAT SHOWS AN ATTEMPT'S FAILURE USES THE ONE PHASE-AWARE RULE.
+ *
+ * Round 4 fixed the notification panel by handing the attempt's sentence to
+ * `serverUpdateFailureCopy`, and two other surfaces kept running the same payload through
+ * `updateErrorMessage`, whose 400-character reading of a long string as a machine dump
+ * deleted it: the sentence was safe on one screen and deletable on two (review round 5,
+ * M1). The behaviour test above proves the helper is right; this one proves the surfaces
+ * still CALL it, which is the half a green behaviour test cannot see - and it is the half
+ * that failed last round, because nothing pinned the call sites (review round 6, m1).
+ *
+ * It reads the sources rather than rendering them on purpose: the defect was a call site,
+ * and a component that renders correctly in the story it is photographed in can still be
+ * the one that drops the sentence in the arm the story does not cover.
+ */
+test("each surface that renders an attempt's failure calls the shared reason helper", async () => {
+	const surfaces = [
+		"src/renderer/src/shared/components/common/update-notification.tsx",
+		"src/renderer/src/features/chat/components/run-details/run-panel.tsx",
+		"src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
+	];
+	for (const relative of surfaces) {
+		const source = readFileSync(join(process.cwd(), relative), "utf8");
+		assert.ok(
+			source.includes("serverUpdateFailureReason("),
+			`${relative} must route an attempt's report through the shared helper`,
+		);
+		/*
+		 * The exact shape the fix removed: the classifier applied to a report's message.
+		 * A future edit that reintroduces it passes every behaviour test and still deletes
+		 * the sentence on this surface.
+		 */
+		assert.ok(
+			!source.includes("updateErrorMessage(report.message)"),
+			`${relative} must not classify an attempt's report - that is what deleted the sentence`,
+		);
+	}
+});
+
+/**
+ * THE UNATTENDED RECONCILIATION READS THE INSTALL THE RECORD NAMES.
+ *
+ * The launch-time path is the last place this seam was found (review round 7, M1), and it is the
+ * one with no press in scope: the app comes back after dying mid-attempt and reads the record.
+ * Pre-fix both sides of its comparison resolved the shim, so they agreed; once the press began
+ * running the serving install, the reading had to come from the record, or the reconciliation
+ * judged a tree the attempt never touched - a landed update reported as "did not move the
+ * install", and a no-op reported as a success when only the shim had moved.
+ */
+test("the unattended reconciliation judges the install the record names", async () => {
+	const markerFor = (installPath, before) => ({
+		before,
+		target: "0.56.0",
+		startedAt: new Date().toISOString(),
+		deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+		groupPid: null,
+		groupStartedAt: null,
+		installPath,
+	});
+
+	const scenario = async ({ moveServing = false, moveShim = false } = {}) => {
+		const shimRoot = mkdtempSync(join(tmpdir(), "lo-unattended-shim-"));
+		const servingRoot = mkdtempSync(join(tmpdir(), "lo-unattended-serving-"));
+		const cleanup = () => {
+			rmSync(shimRoot, { recursive: true, force: true });
+			rmSync(servingRoot, { recursive: true, force: true });
+		};
+		makeInstall(shimRoot, "0.55.10");
+		makeInstall(servingRoot, "0.55.10");
+		if (moveServing) moveInstall(servingRoot, "0.55.10", "0.56.0");
+		if (moveShim) moveInstall(shimRoot, "0.55.10", "0.56.0");
+		const drive = await driveGlobalUpdate({
+			servingPrefix: servingRoot,
+			shimPath: join(shimRoot, "bin", "local-operator"),
+			realEvidenceReads: true,
+		});
+		try {
+			writeFileSync(
+				drive.markerPath,
+				JSON.stringify(
+					markerFor(join(servingRoot, "bin", "local-operator"), "0.55.10"),
+				),
+			);
+			await drive.updateService.reportUnattendedServerUpdate();
+			return {
+				completed: backendCompletion(drive.sent),
+				markerStillThere: existsSync(drive.markerPath),
+				dispose: () => {
+					drive.dispose();
+					cleanup();
+				},
+			};
+		} catch (error) {
+			drive.dispose();
+			cleanup();
+			throw error;
+		}
+	};
+
+	// (a) The install the record names moved while nothing was watching: that is the report.
+	const landed = await scenario({ moveServing: true });
+	try {
+		assert.ok(landed.completed, "a landed unattended update must be reported");
+		assert.equal(landed.completed.payload.installVersion, "0.56.0");
+		assert.equal(
+			landed.markerStillThere,
+			false,
+			"the record is spent once it is reported",
+		);
+	} finally {
+		landed.dispose();
+	}
+
+	/*
+	 * (b) THE FALSE SUCCESS, and the reason this case exists: the shim moved, the install the
+	 * record names did not. A reading taken from the shim sees the change and publishes a
+	 * success for an attempt that changed nothing.
+	 */
+	const wrongTree = await scenario({ moveShim: true });
+	try {
+		assert.equal(
+			wrongTree.completed,
+			undefined,
+			"a shim-only change is not the attempt landing",
+		);
+		assert.equal(wrongTree.markerStillThere, false);
+	} finally {
+		wrongTree.dispose();
+	}
+});
+
+/**
+ * THE INVARIANT THE FOUR INSTANCES SHARED, guarded the way the consumers are.
+ *
+ * Rounds 5, 6 and 7 each found one call site reading an install of its own - the press against
+ * the check, the two evidence reads, then the unattended reconciliation - because every site was
+ * free to resolve the shim. The behaviour cases cover the sites that exist; this covers the one
+ * a future edit adds, by refusing a read that names no attempt. It reads the source on purpose:
+ * the defect was a call site, and a call site is what a behaviour test cannot see.
+ */
+test("no attempt-scoped evidence read resolves an install of its own", async () => {
+	const source = readFileSync(
+		join(process.cwd(), "src/main/update-service.ts"),
+		"utf8",
+	);
+	const callPattern = /read(?:InstallVersionAt|RebuildMarkerState)\(/g;
+	let match = callPattern.exec(source);
+	let calls = 0;
+	let legacyFallbacks = 0;
+	while (match !== null) {
+		calls += 1;
+		let depth = 1;
+		let i = match.index + match[0].length;
+		while (i < source.length && depth > 0) {
+			if (source[i] === "(") depth += 1;
+			if (source[i] === ")") depth -= 1;
+			i += 1;
+		}
+		const argument = source.slice(match.index + match[0].length, i - 1);
+		assert.ok(
+			argument.includes("installPath") || argument.includes("recordPath"),
+			`an attempt-scoped read must name the attempt's install, not resolve one: ${argument.trim()}`,
+		);
+		if (argument.includes("resolveLocalOperatorPath()")) {
+			legacyFallbacks += 1;
+			assert.ok(
+				argument.includes("recordPath ?? this.resolveLocalOperatorPath()"),
+				"the only permitted shim fallback is the reconciliation's legacy-record branch",
+			);
+		}
+		match = callPattern.exec(source);
+	}
+	assert.ok(
+		calls >= 5,
+		`expected the attempt-scoped reads to be called, found ${calls}`,
+	);
+	assert.equal(
+		legacyFallbacks,
+		1,
+		"exactly one caller may fall back to the shim: a record an older build wrote",
+	);
 });
