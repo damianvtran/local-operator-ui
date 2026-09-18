@@ -40,14 +40,17 @@ else. The same measurement on the previous pair, a different session, read
 phantom tiles, not the run. The two panel frames are byte-comparable because both
 are the panel-only canvas layout: same names, same order, same grid.
 
-**The panel frame has now survived two folds of `main`.** It was first re-captured
+**The panel frame has now survived three folds of `main`.** It was first re-captured
 on the `2de7ae977` fold, from a session with a different id, and came back with the
-SAME sha256 - 0 differing pixels. It was re-captured again after the `0.27.0`
-release fold, and came back **4 pixels** different: `x 1155-1215, y 39-44`, channel
-deltas of one unit (`1D1A16` vs `1D1B16`), which is the anti-aliasing of one header
-icon and not a layout. Both readings say main's movement did not disturb this
-surface (see *Why the frames still describe this tree*), and the committed frame is
-the one from the final tree.
+SAME sha256 - 0 differing pixels. After the `0.27.0` release fold it came back
+**4 pixels** different: `x 1155-1215, y 39-44`, channel deltas of one unit
+(`1D1A16` vs `1D1B16`), which is the anti-aliasing of one header icon and not a
+layout. And after the `feat/chat-link-affordances` fold - the one that refactored
+the extractor's rules into `utils/link-grammar.ts`, so the only fold here that DID
+touch this PR's own files - it reproduced **byte-for-byte** again (same sha256).
+All three readings say main's movement did not disturb this surface (see *Why the
+frames still describe this tree*), and the committed frame is the one from the
+final tree.
 
 **The mention list is PERSISTED, and that bit this rig once.** The panel's tiles
 live in the app's `localStorage` (`canvas-store` -> `conversations[<id>].mentionedFiles`),
@@ -73,10 +76,15 @@ so "nothing visual changed" has to be shown rather than assumed:
 - Nothing else in the render path moved: `git diff --stat` over
   `features/chat/components/canvas/`, `features/chat/canonical/`,
   `shared/themes/` and `styles/` is empty for both windows.
+- The third fold is the interesting one, because it DID move this pull request's
+  own files: main refactored the extractor's rules into `utils/link-grammar.ts`
+  and the scanner into one policy-driven `targetsIn`. The rules were ported there
+  (see the re-stamp commit), the contract suite is unchanged and green, and the
+  panel frame came back byte-for-byte.
 - And the measurement agrees with the reading: the panel frame re-captured on the
   folded tree is within **4 pixels** of the committed one (anti-aliasing on a single
-  header icon), and an earlier fold reproduced it byte-for-byte. A layout shift
-  inside the canvas container would move thousands.
+  header icon), and two of the three folds reproduced it byte-for-byte. A layout
+  shift inside the canvas container would move thousands.
 
 The canvas frames are re-taken from the run the rebased harness performs, so the
 whole set is one session on the current tree - the panel pair happens to hash the
