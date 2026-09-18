@@ -4032,9 +4032,9 @@ export const profileOwnerPid = (name) => {
  * The candidate test is `profileOwnerPid`, and that is a correction rather
  * than a flourish: this loop used to take any name starting with
  * `lo-evidence-`. That prefix is not specific enough to be a profile.
- * `evidence-manifest.test.mjs` builds its synthetic evidence tree in the same
- * shared temp directory as `mkdtempSync(join(tmpdir(), "lo-evidence-manifest-"))`
- * - named deliberately, so that a leaked one is identifiable - and it starts
+ * `evidence-manifest.test.mjs` USED TO build its synthetic evidence tree in the
+ * same shared temp directory as `mkdtempSync(join(tmpdir(), "lo-evidence-manifest-"))`
+ * - named deliberately, so that a leaked one is identifiable - which starts
  * with exactly that prefix.
  * `Number("manifest-XXXXXX")` is `NaN`, `process.kill(NaN, 0)` throws a
  * `TypeError`, and the bare `catch` below read a throw that was never about a
@@ -4045,6 +4045,15 @@ export const profileOwnerPid = (name) => {
  * with an `ENOENT` on it while the sixth returns early without touching the
  * tree (review round 1, F1) - which is the worst shape a bug in here can take
  * on a machine running several lanes at once.
+ *
+ * THE OTHER HALF OF THAT REPAIR IS ON THE FIXTURE'S SIDE, and it is why this
+ * rule is no longer the only thing standing between that sweep and a live tree.
+ * The fixture now lives under `lop-evidence-manifest-`, outside this prefix
+ * entirely, and each of its cells builds and removes its own rather than
+ * sharing one module-scope root. The reason it had to move rather than rely on
+ * the rule below: a name rule protects a tree only from a deleter that CARRIES
+ * it, and a machine running several checkouts has lanes whose `scripts/`
+ * predates it - which is the shape the flake was measured in.
  *
  * What this does NOT close, in the same breath (review round 1): the `catch`
  * below still reads ANY throw from `kill` as "abandoned", so this narrows the
