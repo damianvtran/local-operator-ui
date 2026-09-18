@@ -40,6 +40,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -165,10 +166,17 @@ async function main() {
 	);
 }
 
-// Only when run as a program: the module is imported by its test.
-if (
-	process.argv[1] &&
-	resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+/*
+ * Only when run as a program: the module is imported by its test.
+ *
+ * Through the SHARED helper rather than a hand-written entry-point comparison,
+ * because the failure one of those produces is silent: through a symlinked
+ * directory (`/tmp` on macOS, the ordinary case) the two spellings disagree, this
+ * file loads, `main()` never runs, nothing is printed and the process exits 0 - a
+ * CI log that says the entitlements were rendered when nothing rendered them. See
+ * `scripts/entry-point.mjs`, and `scripts/entry-point.test.mjs`, which drives this
+ * script's CLI in both spellings.
+ */
+if (isEntryPoint(import.meta.url)) {
 	await main();
 }
