@@ -3514,6 +3514,18 @@ export const STORIES = [
 	   the link's own text, on the same `conversationId` the chip reads. Also a
 	   scripted `Selection`, and also not reachable with a pointer. */
 	["chat-canonical-links--selection-in-link-staged", 1024, 820],
+	["chat-slash-highlight--command-alone", 900, 240],
+	["chat-slash-highlight--start-name-instruction", 900, 240],
+	["chat-slash-highlight--seeded-name-instruction", 900, 330],
+	["chat-slash-highlight--name-instruction-multiline", 900, 330],
+	["chat-slash-highlight--unknown-word", 900, 240],
+	["chat-slash-highlight--unknown-word-picking", 900, 390],
+	["chat-slash-highlight--prose-leading-command-word", 900, 240],
+	["chat-slash-highlight--mid-sentence-token", 900, 240],
+	["chat-slash-highlight--disabled-and-placeholder", 900, 460],
+	["chat-slash-highlight--clipped-boundary", 900, 240],
+	["chat-slash-highlight--geometry", 1000, 2600],
+	["chat-slash-highlight--scrolled-parity", 1000, 1000],
 ];
 
 /**
