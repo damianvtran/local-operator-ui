@@ -85,17 +85,31 @@ backend was answering, not that one was used.
 the same twelve themes and the same rig entries on the head that adds the ninth
 shape and NOTHING of the fix (`9c58e7bb7`, the story-fixture-only commit; the
 manifest declares it as a supplementary set with that `capturedAtHead`). In it the
-operator's own sentence still underlines `/new` and the hover still answers
-`No file at /new`, and every state sits at the same paragraph position, so a
-reader can put the two halves side by side without hunting for the row.
+operator's own sentence still underlines `/new`, and every state sits at the same
+paragraph position, so a reader can put the two halves side by side without
+hunting for the row.
 
-It has TWENTY-ONE states and not twenty-two, and that asymmetry is the D2
-assertion rather than a gap. `hover-command-prose` aims at a `/new` text run
-OUTSIDE an anchor; on the before head every `/new` run in that paragraph IS an
-anchor, so the aim throws (`no text run matching "/new" outside a link or a
-button`) and there is no frame to take. That throw is what makes "a slash command
-raises no strip" falsifiable across the two heads instead of a claim about one
-still.
+It has FIVE states and not twenty-two, for two measured reasons rather than a
+gap. SIXTEEN of the twenty-one directories the design round handed over are
+byte-identical to the AFTER frames as committed at `74f6ea96c`, the head this
+pass then replaced (`magick compare -metric AE` = 0, 12 of 12 themes each): a
+"before" frame that is its after frame photographs the fix, so those sixteen are
+not landed, and `chat-canonical-links-before/`'s own README carries the same count
+and the same measurement. The twenty-first state, `hover-command-prose`, cannot
+exist on that head at all: it aims at a `/new` text run OUTSIDE an anchor, and on
+the before head every `/new` run in that paragraph IS an anchor, so the aim throws
+(`no text run matching "/new" outside a link or a button`) and there is no frame
+to take. That throw is what makes "a slash command raises no strip" falsifiable
+across the two heads instead of a claim about one still.
+
+The strip the defect itself raised, `No file at /new`, is therefore in NEITHER
+landed half: a hover is a gesture no resting frame carries, and the state that
+would show it is the one that cannot be taken here. It is photographed in the
+design round's own instrument PNG `hover-command-before-9c58e7bb7.png` (the prose
+token green and underlined with the strip reading `No file at /new` at
+`[532,638,688,670]`), which is not in the repository, and QA round 1's anchor
+inventory in the PR thread names the same two `/new` anchors independently -
+`{"text":"/new","url":"/new"}` for the prose token and for the backticked one.
 
 ## Claims the rig asserts
 
@@ -122,8 +136,13 @@ between evidence and a picture:
 ## Honest limits of this set
 
 - **THE FRAMES COME FROM ONE HEAD, AND THE BEFORE HALF FROM ANOTHER.** Every frame
-  of the twenty-two states above was taken in one pass at this branch's
-  review-remediation head, so the set no longer carries the multi-head caveat an
+  of the twenty-two states above was taken in this pass at this branch's
+  review-remediation head - `570c07d60` for the batches by state, with
+  `detected-targets` re-taken at `ba60e310b`, where all 12 of its frames came back
+  byte-identical to the first take - and the tree those frames depict is THIS
+  head's: `git diff ba60e310b..f477d0741` moves nothing under `src/` or `scripts/`,
+  which is why the manifest's `head` is `ba60e310b` while its `srcTree`/`scriptsTree`
+  are `f477d0741`'s. So the set no longer carries the multi-head caveat an
   earlier round's fold left here (a narrowed fold once re-took two states and kept
   nineteen from the head before it). The `before/` half is a DIFFERENT head by
   construction — it is the tree before the fix — and the manifest's
