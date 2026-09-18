@@ -150,6 +150,23 @@ export const dune: ThemeDefinition = {
 		// primary button nobody could read. Ink on the accent fill is the page
 		// ground instead, at 8.4:1.
 		onAccent: "#0F0D0B",
+		/*
+		 * No second hue to carry: this palette is desktop-only, so it has no TUI
+		 * `label` token and the hue is a ROTATION of `accent` rather than a value
+		 * that already existed — Δh 150° at `accent`'s own L*, its chroma walked
+		 * down from 71.97 to the first that clears every floor (C* 36.97).
+		 * Measured: ΔE00 49.13 from `accent`, 33.16 from its nearest semantic
+		 * (`success`), 6.33:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#21BCC9",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 11.98 and C* 12.53, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 23.60 from `accentWash` (the field floor is
+		 * 2.0), 7.10:1 for `accentAlt` on it, and 13.34 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#002427",
 
 		// Dune has no semantic hues at all. These three are derived inside the
 		// theme's own desert range — olive for success, amber for warning, burnt

@@ -147,6 +147,25 @@ export const everforest: ThemeDefinition = {
 		 */
 		accentWash: "#434E52",
 		onAccent: "#2D353B",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#D699B6`,
+		 * canonical purple), moved onto the floors: as received it sat ΔE00 12.02
+		 * from `danger`. That is paid on HUE — the hue walked 14.8° off the source
+		 * and L* 69.79 → 70.30 — because a value that bought the separation by
+		 * darkening would be the same hue at another weight. Measured: ΔE00 47.47
+		 * from `accent`, 15.56 from its nearest semantic (`danger`), 4.76:1 on the
+		 * tightest ground (`surface`).
+		 */
+		accentAlt: "#CE9DC3",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 32.37 and C* 5.11, with the hue moved to
+		 * `accentAlt`'s, with the L* walked -5.00 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 12.29 from
+		 * `accentWash` (the field floor is 2.0), 4.54:1 for `accentAlt` on it, and
+		 * 10.44 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#463E44",
 
 		/*
 		 * Legibility pass: `success` is drawn as text on all six grounds, so it keeps

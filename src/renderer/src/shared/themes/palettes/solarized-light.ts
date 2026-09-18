@@ -168,6 +168,26 @@ export const solarizedLight: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#EAEFD2",
 		onAccent: "#FFFEFA",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#5f64bb`,
+		 * violet, darkened from canonical #6c71c4 (3.57:1 surf)), moved onto the
+		 * floors: as received it read 3.91:1 as text on `sunken` and one more
+		 * ground; sat ΔE00 14.10 from `accent`. That is paid on HUE — the hue
+		 * walked 14.7° off the source and L* 45.82 → 41.87 — because a value that
+		 * bought the separation by darkening would be the same hue at another
+		 * weight. Measured: ΔE00 23.50 from `accent`, 36.69 from its nearest
+		 * semantic (`danger`), 4.52:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#7651A4",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 93.40 and C* 15.00, with the hue moved to
+		 * `accentAlt`'s, and the chroma capped at C* 12.62 where sRGB runs out at
+		 * that L*. Measured: ΔE00 26.92 from `accentWash` (the field floor is 2.0),
+		 * 5.12:1 for `accentAlt` on it, and 14.16 from the nearest ground it is
+		 * painted on.
+		 */
+		accentAltWash: "#F4E8FF",
 
 		// Upstream green 859900 is 2.62:1 on `sunken`. Darkened along the same olive, and kept
 		// distinct from the yellow below.

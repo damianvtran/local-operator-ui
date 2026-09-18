@@ -154,6 +154,24 @@ export const sage: ThemeDefinition = {
 		// on it. This is where Sage's signature colour still shows.
 		accentWash: "#E6E9D8",
 		onAccent: "#F4F6F4",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#c39ede`),
+		 * moved onto the floors: as received it read 1.74:1 as text on all three
+		 * text grounds (`sunken` is the tightest). The shortfall is paid on
+		 * LIGHTNESS at the source hue — L* 70.41 → 42.54 — which is what this port
+		 * does to every one of its own tokens. Measured: ΔE00 36.53 from `accent`,
+		 * 31.18 from its nearest semantic (`danger`), 4.51:1 on the tightest ground
+		 * (`sunken`).
+		 */
+		accentAlt: "#785791",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 91.71 and C* 8.84, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 18.88 from `accentWash` (the field floor is
+		 * 2.0), 4.77:1 for `accentAlt` on it, and 12.59 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#EEE4F4",
 
 		success: "#446F26",
 		successWash: "#E9EBD3",

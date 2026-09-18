@@ -101,6 +101,21 @@ export const rosePineMoon: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#382b38",
 		onAccent: "#232136",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#c4a7e7`, iris), received unchanged because it already
+		 * clears every floor — ΔE00 22.67 from `accent`, 22.21 from its nearest
+		 * semantic (`danger`), 6.87:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#c4a7e7",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 19.45 and C* 10.67, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 2.96 from `accentWash` (the field floor is
+		 * 2.0), 6.41:1 for `accentAlt` on it, and 4.62 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#332C3B",
 
 		// pine, lifted for `elevated`.
 		success: "#4eadd9",

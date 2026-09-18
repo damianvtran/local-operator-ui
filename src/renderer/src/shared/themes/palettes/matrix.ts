@@ -31,9 +31,19 @@ import type { ThemeDefinition } from "../palette-contract";
  * `edge-hi` lifted to 3:1 on `elevated`; the shadow and scrim `canvas` at 40%,
  * so they carry this palette's cast rather than neutral black.
  *
- * The TUI's `overlay`, `label`, `string` and five `tint-*` tokens have no role
- * here: this contract has no popover ground, no second label hue and no
- * selection tint, so the tints above are derived from the accent instead.
+ * `accentAlt`, from the same change, is this family's own `label` token — the one
+ * non-neutral hue the port dropped — taken unchanged where it already clears the
+ * floors and otherwise walked off its own hue, which each palette's note below
+ * says by how much; `accentAltWash` is that hue carrying `accentWash`'s own `L*`
+ * and `C*`, which is what "the same treatment" means once the two hues have
+ * different chroma available at that lightness. Both roles are decorative: no
+ * interaction, no selection ground and no semantic may take them — the divider
+ * is in `palette-contract.ts` and `docs/branding.md` § 2.
+ *
+ * The TUI's `overlay`, `string` and five `tint-*` tokens have no role here: this
+ * contract has no popover ground and no selection tint, so the tints above are
+ * derived from the accent instead. Its `label` token is the one that does land,
+ * as `accentAlt` above.
  *
  * ## The legibility pass, and what this file's numbers mean
  *
@@ -155,6 +165,21 @@ export const matrix: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#092814",
 		onAccent: "#000701",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#a08fe0`), received unchanged because it already clears
+		 * every floor — ΔE00 51.57 from `accent`, 36.06 from its nearest semantic
+		 * (`danger`), 5.42:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#a08fe0",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 13.39 and C* 19.83, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 29.19 from `accentWash` (the field floor is
+		 * 2.0), 5.67:1 for `accentAlt` on it, and 17.44 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#241E3A",
 
 		// 3ECF74, the TUI's own green — deliberately a second green rather than a copy
 		// of the accent, which the semantic separation floor forces apart.

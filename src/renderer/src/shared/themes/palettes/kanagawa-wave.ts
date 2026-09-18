@@ -117,6 +117,24 @@ export const kanagawaWave: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2A2D3A",
 		onAccent: "#1F1F28",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#957FB8`,
+		 * canonical oniViolet), moved onto the floors: as received it read 4.10:1
+		 * as text on `surface`. The shortfall is paid on LIGHTNESS at the source
+		 * hue — L* 57.10 → 60.16 — which is what this port does to every one of its
+		 * own tokens. Measured: ΔE00 15.59 from `accent`, 29.18 from its nearest
+		 * semantic (`danger`), 4.55:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#9D87C0",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 18.69 and C* 8.99, with the hue moved to
+		 * `accentAlt`'s, with the L* walked -1.50 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 4.61 from
+		 * `accentWash` (the field floor is 2.0), 4.54:1 for `accentAlt` on it, and
+		 * 2.73 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#2D2835",
 
 		// springGreen.
 		success: "#98BB6C",

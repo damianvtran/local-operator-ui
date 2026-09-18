@@ -149,6 +149,21 @@ export const ocean: ThemeDefinition = {
 
 		// The theme's own deepest ground, at 10.59:1 on all three accent fills.
 		onAccent: "#081218",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#ab9ce0`), received unchanged because it already clears
+		 * every floor — ΔE00 35.30 from `accent`, 29.42 from its nearest semantic
+		 * (`danger`), 5.87:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#ab9ce0",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 17.57 and C* 12.44, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 21.46 from `accentWash` (the field floor is
+		 * 2.0), 5.75:1 for `accentAlt` on it, and 11.65 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#2D293A",
 
 		// Upstream success, clearing 7.77:1 at its tightest ground.
 		success: "#6CC99B",

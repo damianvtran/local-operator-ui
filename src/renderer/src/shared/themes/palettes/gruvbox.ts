@@ -110,6 +110,22 @@ export const gruvbox: ThemeDefinition = {
 		// cost of ΔE00 1.79 from the signal itself; 5.23:1 on `surface`.
 		accentWash: "#32321C",
 		onAccent: "#1D2021",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#d3869b`, canonical bright purple), received unchanged
+		 * because it already clears every floor — ΔE00 44.00 from `accent`, 17.21
+		 * from its nearest semantic (`danger`), 4.78:1 as text on the tightest
+		 * ground (`surface`).
+		 */
+		accentAlt: "#d3869b",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 20.22 and C* 14.63, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 24.95 from `accentWash` (the field floor is
+		 * 2.0), 4.74:1 for `accentAlt` on it, and 13.11 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#452930",
 
 		success: "#B8BB26",
 		successWash: "#464730",

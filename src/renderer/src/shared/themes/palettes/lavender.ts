@@ -157,6 +157,24 @@ export const lavender: ThemeDefinition = {
 
 		// The theme's own deepest ground, at 7.33:1 on all three accent fills.
 		onAccent: "#110F19",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#cf94d8`,
+		 * pinker violet than accent), moved onto the floors: as received it sat
+		 * ΔE00 8.58 from `accent`. That is paid on HUE — the hue walked 14.9° off
+		 * the source and L* 69.04 → 78.58 — because a value that bought the
+		 * separation by darkening would be the same hue at another weight.
+		 * Measured: ΔE00 15.10 from `accent`, 16.12 from its nearest semantic
+		 * (`danger`), 8.30:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#FCA8E2",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 14.01 and C* 11.46, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 10.52 from `accentWash` (the field floor is
+		 * 2.0), 8.83:1 for `accentAlt` on it, and 6.90 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#2F1E2A",
 
 		// Upstream success, clearing 8.26:1 at its tightest ground.
 		success: "#7FC98F",

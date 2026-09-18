@@ -38,6 +38,18 @@
  */
 
 /*
+ * The role set, and the one place it has two of something.
+ *
+ * 33 roles today, and exactly one of them is a second hue: `accentAlt` /
+ * `accentAltWash` sit beside `accent` / `accentWash` as the theme's decorative
+ * pair, while every STATE role — hover, selection, checked, focus, in-flight —
+ * stays on the primary accent. The split is deliberate and is what `docs/
+ * branding.md` § 2's may/may-not list exists to hold: an app with two accents has
+ * two vocabularies unless one of them is barred from saying anything. Read the
+ * `accentAlt` doc below before spending either.
+ */
+
+/*
  * Type-only, so `themes/palette-contract.ts` and `types/theme.ts` still share
  * no runtime code: the registry is built from the palette directory, and the
  * union this file is checked against is erased at compile time.
@@ -309,7 +321,14 @@ export type ThemePalette = {
 	 */
 	borderControl: string;
 
-	/* ---- accent: one hue, spent about three times per screen ------------ */
+	/* ---- accent: two hues, and only one of them is spent by a control ----
+	 *
+	 * `accent` is the app's INTERACTION hue — the primary button, the focus ring,
+	 * each checked control, the selection and hover ground, links, the agent's
+	 * question. `accentAlt` is the theme's IDENTITY AND CATEGORY hue, spent at two
+	 * decorative sites and barred from every state role; the split is the whole
+	 * point of the pair, and `docs/branding.md` § 2 owns the may/may-not list.
+	 */
 
 	/**
 	 * Primary action, active state, focus ring. Floor: **4.5:1 as text on all six
@@ -321,6 +340,10 @@ export type ThemePalette = {
 	 * brand one: it is a link colour, a dialog's affordance and a chart mark's
 	 * sibling, so it is measured on `elevated`, `accentWash` and `highlight` too,
 	 * not just the three grounds that happen to carry the page's own text.
+	 *
+	 * It is also the ONLY hue any interaction may spend. Everything below that
+	 * reads as a state — hover, selection, checked, focus, in-flight — stays on
+	 * this role and its ramp, and `accentAlt` is barred from all of it.
 	 */
 	accent: string;
 	accentHover: string;
@@ -351,6 +374,152 @@ export type ThemePalette = {
 	accentWash: string;
 	/** Ink that sits on the accent fill. Floor: 4.5:1 on `accent`. */
 	onAccent: string;
+	/**
+	 * The theme's SECOND decorative hue: identity and category, never interaction.
+	 *
+	 * ## Why the role exists
+	 *
+	 * A theme with two signature colours could not show the second one anywhere.
+	 * The picker's miniature drew one accent, and the app's one categorical ramp
+	 * (mermaid's `fillType0..7`) started on the SEMANTIC washes, so a diagram's
+	 * second category was painted the colour that everywhere else means "here is a
+	 * fact" (`mermaid-diagram.tsx` says so in its own comment). This is the hue
+	 * that was missing. It is spent at exactly two sites — the picker's miniature
+	 * and mermaid's categorical fills — and the may-not list below is what keeps
+	 * it from growing into a second control accent.
+	 *
+	 * ## Where the value comes from: the token the port dropped
+	 *
+	 * These palettes are ports of the TUI's `ThemeSpec`, whose token set names
+	 * three non-neutral hues per theme: `accent`, `signal` (which the port mapped
+	 * to `info`) and `label` — the "violet meta" hue — which the port had **no
+	 * role for and dropped**. `accentAlt` is that `label` hue. For 52 of the 59
+	 * palettes it is therefore the scheme's own second colour, already authored and
+	 * canonical upstream (kanagawa's oniViolet, everforest's purple, ayuDark's
+	 * keyword orange); 24 of those clear every floor as received, and the other 28
+	 * are moved ONTO them, with the measurement in the palette file. The remaining
+	 * seven (`dune`, `iceberg`, `localOperatorDark`, `localOperatorLight`, `neon`,
+	 * `obsidian`, `synth`) are the desktop-only membership with no TUI `label` at
+	 * all, so theirs is a ROTATION of `accent`: the accent's own `L*`, the hue
+	 * moved to the first Δh in the fixed order 150°, 160°, 170° … 500° whose
+	 * chroma, walked down from `max(C*(accent), 40)` to 15 in steps of 5, clears
+	 * every floor. `obsidian` is the one palette that gains a hue it never had —
+	 * its accent is a greyscale `#FAFAFA` at C* 0 — and it resolves at Δh 310°.
+	 *
+	 * ## How a value that fails is moved, and on which axis
+	 *
+	 * The shortfall is paid on the axis that carries it: a TEXT floor is paid on
+	 * **lightness** at the source hue — the idiom this port already applies to its
+	 * own tokens ("canonical mauve `8839EF` is 4.09:1 on `sunken`, deepened along
+	 * the same violet") — and a collision with `accent`, a semantic or `info` is
+	 * paid on **hue**, because a value that bought ΔE00 by darkening would be the
+	 * same hue at another weight rather than a second hue. 14 palettes are moved
+	 * on lightness and 14 on hue. Both values are AUTHORED, never computed at
+	 * runtime, exactly as the semantics are: `pnpm check-themes` has to be able to
+	 * measure them.
+	 *
+	 * ## What it must clear — `scripts/contrast-contract.mjs` asserts all of it
+	 *
+	 * - **4.5:1 as text on `canvas`, `surface` and `sunken`** (`FLOOR.text`).
+	 *   Only the three grounds: this hue is not painted inside a dialog or on a
+	 *   state ground by either of its two sites.
+	 * - **ΔE00 >= 15 from `accent`** (`SEPARATION_FLOOR`). The two are compared at
+	 *   the sizes this one is drawn at — a 1px bar in a 40px miniature, a 6px mark
+	 *   in a diagram — so the number that applies is the contract's own "difference
+	 *   of category, not of shade", which is argued for recall rather than for
+	 *   side-by-side comparison.
+	 * - **ΔE00 >= 15 from `success`, `warning` and `danger`.** This is the
+	 *   change's riskiest part, and the one a frame catches better than a number:
+	 *   a decorative hue a reader can mistake for "something broke" costs them
+	 *   something real. Four of the 52 source hues fail it as received —
+	 *   `everforest`'s label is ΔE00 12.0 from its `danger`, `ayuMirage` 13.8 and
+	 *   `ayuDark` 12.3 from their `warning`, `kanagawaLotus` 14.1 — and those are
+	 *   moved rather than accepted, because the faithful port of a theme's own
+	 *   token is not an argument against the reader's ability to tell a
+	 *   decoration from a failure.
+	 * - **ΔE00 >= 8 from `info`**, deliberately the lighter floor. `info` is the
+	 *   cool counterweight the port mapped `signal` onto, so on the palettes whose
+	 *   second hue is in that family (`catppuccinLatte` 6.5, `radient` 5.9,
+	 *   `catppuccinMocha` 9.1, `catppuccinFrappe` 9.6, `catppuccinMacchiato` 9.7)
+	 *   15 would fail BY CONSTRUCTION rather than by defect. 8 is the file's
+	 *   "reliably take different names rather than scraping the side-by-side
+	 *   threshold" floor (`SYNTAX_COMMENT_FLOOR`).
+	 * - **C* >= 15.** The second accent has to be a hue and not a second grey.
+	 *   Chroma is the axis a value can be drained along while every ΔE00 floor
+	 *   above stays green — the same lesson `highlight` learned on the lightness
+	 *   axis: assert the axis, not just the distance. (Measured today: the lowest
+	 *   is `radient` at C* 16.78.)
+	 *
+	 * There is a sixth property, asserted as a relation rather than as a floor:
+	 * **the two accents must be two HUES**. Every value here sits at least 18.6° of
+	 * hue from its own `accent` (tightest: `catppuccinLatte`, whose source hue sat
+	 * 1.7° from its accent and had to leave that neighbourhood entirely), so no
+	 * palette satisfies the 15 by darkening alone. A greyscale accent has no hue to
+	 * be near, which is why `obsidian`'s rotation is judged on the floors alone.
+	 *
+	 * ## What may spend it — and the may-not list, which is the longer one
+	 *
+	 * MAY: the theme picker's miniature (`theme-selector.tsx`'s `ThemeSwatch`, a
+	 * `bg-accent-alt` bar beside the `bg-accent` one) and mermaid's categorical
+	 * fills (`accentAltWash` at index 1 of the wash cycle). The sibling legibility
+	 * spec's identity sites — an agent/entity glyph, a provider label, a
+	 * tab-strip mark — are the same kind of use and each brings its own `CONTROLS`
+	 * row when it lands.
+	 *
+	 * MAY NOT, and the reason fits in a sentence: **interaction, selection and
+	 * semantics stay on `accent`.** Every selection and hover ground, the focus
+	 * ring and the caret, primary/ghost/outline buttons and chips, links, the
+	 * agent's question callout, checked and indeterminate controls, progress and
+	 * proportion bars, the liveness marks, charts, syntax tokens, the semantic
+	 * triples and the brand mark keep the roles they have. A selection is a STATE
+	 * and this app has exactly one state vocabulary: a reader looking at a
+	 * highlighted row must never have to work out which accent means "current" —
+	 * and the selection ground is the most fragile role in the tree (ΔE00 0.77
+	 * against `elevated` in `obsidian`), so it must not become a function of two
+	 * hues' relationship. `docs/branding.md` § 2 carries the list in full.
+	 *
+	 * ## The hard rule until `onAccentAlt` exists
+	 *
+	 * **`bg-accent-alt` may not become a text-bearing fill anywhere.** Ink on a
+	 * solid `accentAlt` fill is an unmeasured pair: there is no `onAccentAlt`
+	 * companion, no palette has authored a value for it and no `CONTROLS` row
+	 * asserts it. Both sites above carry no text — the miniature's marks are
+	 * 1px-2.5px bars, and mermaid's categorical fills keep the `ink` labels they
+	 * already had — and a site that paints ink on the fill adds the role and an
+	 * `ink on fill >= 4.5:1` row to `CONTROLS` in the same change.
+	 */
+	accentAlt: string;
+	/**
+	 * `accentAlt`'s faintest tint: the same relationship `accentWash` has to
+	 * `accent`, carried onto the second hue.
+	 *
+	 * Authored per palette as the palette's own wash — its `L*` and `C*` — at
+	 * `accentAlt`'s hue, with the `L*` moved only where the chip row's ink floor
+	 * binds. Stating it as the wash's own lightness rather than as a mix is what
+	 * keeps the two washes siblings in a ramp: the palettes that took their
+	 * `accentWash` from the TUI's own selection tint (rather than from a
+	 * percentage of the accent) have no mix to mirror, and a value derived from a
+	 * fitted percentage would be a different tint from the one beside it.
+	 *
+	 * Floors, and the second is why the first is not merely aesthetic:
+	 *
+	 * - **ΔE00 >= 2.0 against `accentWash`** (`FIELD_SEPARATION_FLOOR`): the two
+	 *   washes sit adjacent in one categorical ramp, so a step the eye cannot see
+	 *   is not a step. Measured today the tightest is `rosePine` at 2.05; a palette
+	 *   that cannot reach the floor on the wash axis — where near-neutral palettes
+	 *   run out of chroma — is pinned in the contract's `EXCEPTIONS` with its
+	 *   measured ΔE00 and a reason rather than the assertion being dropped.
+	 * - **the `accent wash chip` row mirrored for this fill**: `accentAlt` as ink
+	 *   on it at 4.5:1, and `accentAlt` also its border, at 3:1 against `canvas`
+	 *   and `surface`. That row exists for `accentWash` because a chip is a real
+	 *   component triple; the alt chip is asserted for the same reason.
+	 *
+	 * It is NOT a selection or hover ground, and it is not `accentAlt`'s only
+	 * consumer: mermaid's ramp is the one that ships today. Like its solid
+	 * sibling, it is decorative — a state role that took it would be the defect
+	 * the pair exists to avoid.
+	 */
+	accentAltWash: string;
 	/**
 	 * The chart mark under the pointer.
 	 *

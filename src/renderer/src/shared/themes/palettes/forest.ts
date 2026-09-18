@@ -156,6 +156,21 @@ export const forest: ThemeDefinition = {
 
 		// The theme's own deepest ground, at 7.59:1 on all three accent fills.
 		onAccent: "#0A120D",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#b195d6`), received unchanged because it already clears
+		 * every floor — ΔE00 45.60 from `accent`, 28.66 from its nearest semantic
+		 * (`danger`), 5.64:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#b195d6",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 15.22 and C* 13.71, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 23.89 from `accentWash` (the field floor is
+		 * 2.0), 5.84:1 for `accentAlt` on it, and 16.41 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#2B2335",
 
 		// Upstream success, clearing 7.82:1 at its tightest ground.
 		success: "#7CC487",

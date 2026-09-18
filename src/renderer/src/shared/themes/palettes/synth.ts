@@ -157,6 +157,24 @@ export const synth: ThemeDefinition = {
 		// The old theme paired white with this pink, which measures 3.2:1. Ink on
 		// the accent fill is the page ground instead, at 4.8:1.
 		onAccent: "#120720",
+		/*
+		 * No second hue to carry: this palette is desktop-only, so it has no TUI
+		 * `label` token and the hue is a ROTATION of `accent` rather than a value
+		 * that already existed — Δh 150° at `accent`'s own L*, its chroma walked
+		 * down from 64.00 to the first that clears every floor (C* 49.00).
+		 * Measured: ΔE00 72.50 from `accent`, 15.21 from its nearest semantic
+		 * (`success`), 5.35:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#3AAC75",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 9.62 and C* 24.80, with the hue moved to
+		 * `accentAlt`'s, and the chroma capped at C* 17.68 where sRGB runs out at
+		 * that L*. Measured: ΔE00 32.00 from `accentWash` (the field floor is 2.0),
+		 * 6.04:1 for `accentAlt` on it, and 20.40 from the nearest ground it is
+		 * painted on.
+		 */
+		accentAltWash: "#002010",
 
 		// Synth has no green. A mint, placed between the theme's pink and its neon
 		// blue so it belongs to the same neon family.

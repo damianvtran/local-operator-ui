@@ -141,6 +141,23 @@ export const oneDark: ThemeDefinition = {
 		// cost of ΔE00 1.12 from the signal itself; 5.52:1 on `surface`.
 		accentWash: "#28333C",
 		onAccent: "#21252B",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#c678dd`,
+		 * canonical purple), moved onto the floors: as received it read 4.25:1 as
+		 * text on `surface`. The shortfall is paid on LIGHTNESS at the source hue —
+		 * L* 62.22 → 64.20 — which is what this port does to every one of its own
+		 * tokens. Measured: ΔE00 33.97 from `accent`, 25.83 from its nearest
+		 * semantic (`danger`), 4.53:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#CC7DE3",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 20.62 and C* 7.46, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 11.32 from `accentWash` (the field floor is
+		 * 2.0), 4.67:1 for `accentAlt` on it, and 7.53 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#372F39",
 
 		success: "#98C379",
 		successWash: "#3E4943",

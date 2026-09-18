@@ -136,6 +136,25 @@ export const radient: ThemeDefinition = {
 		// The old theme paired white with this blue, which measures 2.2:1. Ink on
 		// the accent fill is the page ground instead.
 		onAccent: "#10151C",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#a8bfdb`,
+		 * fg-muted, cooled toward the kit blue), moved onto the floors: as received
+		 * it sat ΔE00 5.93 from `accent`; sat under the reduced ΔE00 8 floor from
+		 * `info`. That is paid on HUE — the hue walked 25.2° off the source and L*
+		 * 76.50 → 86.38 — because a value that bought the separation by darkening
+		 * would be the same hue at another weight. Measured: ΔE00 15.09 from
+		 * `accent`, 31.01 from its nearest semantic (`danger`), 10.12:1 on the
+		 * tightest ground (`surface`).
+		 */
+		accentAlt: "#D4D6F6",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 15.83 and C* 9.68, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 3.81 from `accentWash` (the field floor is
+		 * 2.0), 10.40:1 for `accentAlt` on it, and 2.03 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#252734",
 
 		// Derived. Radient names no semantic colours, so these three are built to
 		// the theme's own cool cast rather than borrowed from another palette.

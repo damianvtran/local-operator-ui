@@ -147,6 +147,21 @@ export const desert: ThemeDefinition = {
 
 		// The theme's own deepest ground, at 6.83:1 on all three accent fills.
 		onAccent: "#1D160C",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#cb9edc`), received unchanged because it already clears
+		 * every floor — ΔE00 36.78 from `accent`, 24.47 from its nearest semantic
+		 * (`danger`), 6.59:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#cb9edc",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 18.47 and C* 14.79, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 26.72 from `accentWash` (the field floor is
+		 * 2.0), 6.21:1 for `accentAlt` on it, and 18.02 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#36283B",
 
 		// Upstream success, clearing 7.21:1 at its tightest ground.
 		success: "#9AC275",

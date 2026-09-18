@@ -129,6 +129,21 @@ export const arctic: ThemeDefinition = {
 
 		// The theme's own deepest ground, at 9.24:1 on all three accent fills.
 		onAccent: "#121A25",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#b0a3e6`), received unchanged because it already clears
+		 * every floor — ΔE00 42.11 from `accent`, 27.54 from its nearest semantic
+		 * (`danger`), 6.03:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#b0a3e6",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 19.31 and C* 10.22, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 18.77 from `accentWash` (the field floor is
+		 * 2.0), 5.89:1 for `accentAlt` on it, and 7.48 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#302D3C",
 
 		// Upstream success, clearing 6.84:1 at its tightest ground.
 		success: "#6CC99B",

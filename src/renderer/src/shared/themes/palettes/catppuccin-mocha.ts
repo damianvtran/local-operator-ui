@@ -130,6 +130,24 @@ export const catppuccinMocha: ThemeDefinition = {
 		 */
 		accentWash: "#25253B",
 		onAccent: "#11111B",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#b4befe`,
+		 * canonical lavender), moved onto the floors: as received it sat ΔE00 11.15
+		 * from `accent`. That is paid on HUE — the hue walked 15.3° off the source
+		 * and L* 78.28 → 62.82 — because a value that bought the separation by
+		 * darkening would be the same hue at another weight. Measured: ΔE00 20.16
+		 * from `accent`, 35.69 from its nearest semantic (`danger`), 5.15:1 on the
+		 * tightest ground (`surface`).
+		 */
+		accentAlt: "#719AD4",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 15.66 and C* 15.48, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 7.24 from `accentWash` (the field floor is
+		 * 2.0), 5.16:1 for `accentAlt` on it, and 6.65 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#18283D",
 
 		success: "#A6E3A1",
 		// The scheme has no green tint, so the wash is the green tinted over `canvas` at

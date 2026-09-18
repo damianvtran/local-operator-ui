@@ -140,6 +140,22 @@ export const alucard: ThemeDefinition = {
 		 */
 		accentWash: "#F1ECE2",
 		onAccent: "#FFFBEB",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#a3144d`, canonical pink; purple is spent on accent),
+		 * received unchanged because it already clears every floor — ΔE00 29.24
+		 * from `accent`, 20.03 from its nearest semantic (`danger`), 6.02:1 as text
+		 * on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#a3144d",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 93.53 and C* 5.44, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 9.04 from `accentWash` (the field floor is
+		 * 2.0), 6.46:1 for `accentAlt` on it, and 9.09 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#F8E9EC",
 
 		success: "#14710A",
 		successWash: "#F8F7E4",

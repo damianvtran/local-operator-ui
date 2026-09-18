@@ -131,6 +131,24 @@ export const linen: ThemeDefinition = {
 		// The theme's own paper at the top of the ramp, at 6.45:1 on all three accent
 		// fills.
 		onAccent: "#F4F4F1",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#7a648f`,
+		 * dusty violet), moved onto the floors: as received it read 3.51:1 as text
+		 * on all three text grounds (`sunken` is the tightest). The shortfall is
+		 * paid on LIGHTNESS at the source hue — L* 45.95 → 38.92 — which is what
+		 * this port does to every one of its own tokens. Measured: ΔE00 31.87 from
+		 * `accent`, 23.85 from its nearest semantic (`danger`), 4.55:1 on the
+		 * tightest ground (`sunken`).
+		 */
+		accentAlt: "#68537D",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 91.80 and C* 4.05, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 8.99 from `accentWash` (the field floor is
+		 * 2.0), 5.46:1 for `accentAlt` on it, and 6.37 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#EAE6ED",
 
 		// Upstream success, re-seated 10.8 L* to hold 4.99:1 on the deepest ground;
 		// upstream warning, danger and info re-seat the same way, only as far as their

@@ -118,6 +118,25 @@ export const ayuMirage: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2A3949",
 		onAccent: "#1F2430",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#FFAD66`,
+		 * canonical keyword), moved onto the floors: as received it sat ΔE00 13.81
+		 * from `warning`. That is paid on HUE — the hue walked 14.7° off the source
+		 * and L* 77.35 → 65.78 — because a value that bought the separation by
+		 * darkening would be the same hue at another weight. Measured: ΔE00 48.59
+		 * from `accent`, 15.02 from its nearest semantic (`warning`), 4.76:1 on the
+		 * tightest ground (`surface`).
+		 */
+		accentAlt: "#CA973E",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 23.34 and C* 11.85, with the hue moved to
+		 * `accentAlt`'s, with the L* walked -0.50 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 19.20 from
+		 * `accentWash` (the field floor is 2.0), 4.57:1 for `accentAlt` on it, and
+		 * 17.67 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#403525",
 
 		success: "#D5FF80",
 		successWash: "#2F363A",

@@ -129,6 +129,22 @@ export const tokyoNightStorm: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#283349",
 		onAccent: "#1D2032",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#bb9af7`, canonical magenta), received unchanged because
+		 * it already clears every floor — ΔE00 15.86 from `accent`, 26.91 from its
+		 * nearest semantic (`danger`), 5.61:1 as text on the tightest ground
+		 * (`surface`).
+		 */
+		accentAlt: "#bb9af7",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 21.21 and C* 15.22, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 8.81 from `accentWash` (the field floor is
+		 * 2.0), 5.49:1 for `accentAlt` on it, and 5.76 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#372F45",
 
 		success: "#9ECE6A",
 		successWash: "#40504B",

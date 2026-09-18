@@ -102,6 +102,22 @@ export const highContrastLight: ThemeDefinition = {
 		// The theme's own paper at the top of the ramp, at 7.91:1 on all three accent
 		// fills.
 		onAccent: "#FFFFFF",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#6a1f9e`, deep violet, 8.9:1), received unchanged because
+		 * it already clears every floor — ΔE00 16.20 from `accent`, 39.60 from its
+		 * nearest semantic (`danger`), 6.28:1 as text on the tightest ground
+		 * (`sunken`).
+		 */
+		accentAlt: "#6a1f9e",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 90.71 and C* 12.02, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 13.23 from `accentWash` (the field floor is
+		 * 2.0), 7.22:1 for `accentAlt` on it, and 11.37 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#EEE0F5",
 
 		// Upstream success, re-seated 7.6 L* to hold 6.09:1 on the deepest ground;
 		// upstream warning, danger and info re-seat the same way, only as far as their
