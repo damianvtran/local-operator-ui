@@ -143,15 +143,35 @@ the before frame, `esc` at x863-891 — so the row above now names both shapes.)
 After the change every cap is 20 × 20 with the same ink and no ground at all, and a
 word grows out of that floor rather than changing size class.
 
-**The mark is the ground plus the WEIGHT, and the ordering the ground cannot fix is
-recorded rather than papered over.** The ink floors cap how far the ground can climb
-— `ink-dim` is drawn inside a current row (the caps and the `· lopdev` binding) —
-while the hover step the rows around it carry is `elevated`, which is also every
-menu, popover and tooltip ground in the app, so it cannot come down to meet the
-selection. Measured over all **59** themes, `elevated` is still the LARGER step off `surface` on
-**11 of them**, so the mark leads the pointer on the other **48 of 59** — and it leads on
-none of those eleven, which is the ordering this change records rather than fixes: the
-ground it authors is quieter than the hover wherever a pointer rests on a neighbour. The
+**The mark is the ground plus the WEIGHT, and the ordering is now ASSERTED — the windows
+where it cannot hold are the ones recorded.** The ink floors cap how far the ground can
+climb — `ink-dim` is drawn inside a current row (the caps and the `· lopdev` binding) —
+and the hover step the rows around it carry is `elevated`, which is also every menu,
+popover and tooltip ground in the app. What this change does with those two levers is
+bring that rung DOWN to its floor off `surface` (ΔE00 2.0, now asserted as
+`ELEVATED_PANEL_DELTA_E`) across the dark family, and raise two palettes' rows
+(`nightfox`, `tokyoNight`) to their own ink caps to meet it, rather than leaving the
+ordering to prose. The ordering itself is asserted at `HIGHLIGHT_HOVER_ORDER_STEP` =
+**0.5 `L*`** — the current row lighter than the hovered neighbour on a dark palette,
+darker on a light one — and the twelve dark palettes the two levers starve are
+recorded palette by palette in `HIGHLIGHT_HOVER_ORDER_EXCEPTIONS`, each with the margin
+it actually measures: eleven whose window between the ink cap and that floor is
+narrower than the step, or closed outright, and one — `neonNoir` — whose window is wide
+enough but whose pair the ΔE00 floors (the 2.0 field floor and the 4.0 band) refuse at
+the row that would clear the step. Measured over all **59** themes by the narrower ΔE00
+metric — which of the two grounds is the **LARGER** step off `surface` — `elevated` is
+still the larger on **3 of
+them** (`gruvboxLight`, `neon`, `radient`; this paragraph said 11 when it was written,
+and the count was 10 at this branch's pre-pass head), so the mark leads the pointer on
+the other **56 of 59** — and it leads on none of those three. Five of the twelve recorded
+windows measure a negative order and are recorded as negative; three of those five carry
+a committed frame in this set that renders the inversion — `catppuccinMacchiato`
+(−1.06 `L*` in the frame, −0.85 in the palette), `palenight` (−0.80) and `nord` (−0.19) —
+shot before round 2's list markup, so their PAIR is this head's and their panel ground is
+not. What would fix those five is a hover ground of its own rather than the rung above
+the mark, which is a role decision rather than a value and is not one this change takes,
+so they stay exactly as they are: recorded above, with their windows and their margins,
+rather than left undocumented. The
 `4.63 > 4.48` this set quoted in round 1 was a q88 reading of the frame set against a
 `magick`-sampled value, so the two numbers were never the same measurement — the lossless
 pair is `4.58 > 4.09` on `tokyoNight`. The

@@ -1015,6 +1015,13 @@ export const TraceGapBoundaries: Story = {
  * Tightening adjacent tool rows is only correct if the reader can still see
  * where one turn ended and the next began — otherwise the ledger becomes one
  * undifferentiated column. This frame is where that trade is judged.
+ *
+ * AND IT IS THE FRAME FOR THE OPERATOR'S OTHER REPORT (2026-09-17): the
+ * transcript's footer line used to be keyed to the newest record, so during a
+ * live turn its stamp landed directly under this working line. That line is
+ * removed rather than re-gated (`turn-timestamp.tsx` carries the reasoning), and
+ * this frame is the evidence that the foot now ends at the working line — the
+ * last row a transcript can end on that is not a record at all.
  */
 export const TurnBoundaryAndWorkingLine: Story = {
 	render: () => (
@@ -1066,6 +1073,255 @@ export const TurnBoundaryAndWorkingLine: Story = {
 };
 
 /**
+ * A turn that is still working: the answer has not been handed over yet, so the
+ * turn carries no caption at all.
+ *
+ * This is the state the operator's sentence is really about. He asked for a caption
+ * on the agent's FINAL responses, having just asked for the footer gone from
+ * under the working line - so the frame has to show the turn that is still in
+ * flight, where every row is either narration before the answer, a call, or an
+ * answer still arriving. `closingAnswerIds` gates the caption on the turn's last
+ * painted row AND on that row having settled, so there is nothing to caption
+ * here: the settled narration above the call is not what the reader is being
+ * handed, and the streaming answer cannot carry a time for itself. The pair is
+ * `AnswerInProgress` against `prose-between-calls`, which ends on a settled
+ * answer and therefore carries exactly one caption - the difference between the
+ * two frames is the rule.
+ */
+export const AnswerInProgress: Story = {
+	render: () => (
+		<Frame
+			waiting
+			height={340}
+			records={[
+				{
+					kind: "user",
+					id: "p1",
+					ts: TS,
+					text: "Which invoices were paid late?",
+					images: [],
+				},
+				// Settled prose, and still no caption: the turn's last painted row is
+				// the streaming answer below, so this turn has not handed the reader its
+				// answer yet. That is the whole point of the story - a live turn carries
+				// no caption anywhere, in any of its rows, and the working line is the
+				// only liveness element on screen (§ 7).
+				{
+					kind: "assistant",
+					id: "p2",
+					ts: TS + 4_000,
+					text: "Reading the ledger first.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "p3",
+					toolName: "read",
+					args: { path: "invoices/2026-08.csv" },
+					durationS: 0.06,
+				}),
+				// The answer that is still arriving. It carries prose and no caption:
+				// this record is the operator's "in-progress tool intent/response",
+				// and the working line below is the only liveness element on screen
+				// (§ 7).
+				{
+					kind: "assistant",
+					id: "p4",
+					ts: TS + 9_000,
+					text: "Four were late, and the oldest is 41 days",
+					streaming: true,
+					stopReason: null,
+					error: false,
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * A turn whose prose arrives in pieces, which is the shape the caption's count
+ * has to survive: three intermediate paragraphs interleaved with the calls they
+ * narrate, and a closing answer.
+ *
+ * The operator asked for a caption on the agent's final responses and then asked,
+ * in the same breath, what a turn like this looks like - because a stamp per
+ * settled prose row is four captions in one turn, while the ledger below it stays
+ * four lines. The frame exists so that question is judged on pixels rather than
+ * on the rule, and round 1 judged it: four identical clocks interleaved with the
+ * ledger, the worst shape being two of them 56px apart with one sentence between
+ * them (design round 1, D1). The caption is now gated on the turn's CLOSING
+ * answer - `closingAnswerIds` in `canonical/transcript-rows.ts` - so what this
+ * frame shows is ONE caption, under the answer the turn ends on, and the narrative
+ * paragraphs above it unlabelled.
+ *
+ * Both readings of the operator's sentence are legible here, which is why the
+ * story is kept in the set rather than reduced to its after half: `paintsSomething`
+ * still keeps the count down for a turn that goes quiet between calls, and the
+ * closing-answer rule is what keeps it down for one that talks four times.
+ */
+export const ProseBetweenCalls: Story = {
+	render: () => (
+		<Frame
+			height={520}
+			records={[
+				{
+					kind: "user",
+					id: "q1",
+					ts: TS,
+					text: "Reconcile August against the bank feed.",
+					images: [],
+				},
+				{
+					kind: "assistant",
+					id: "q2",
+					ts: TS + 2_000,
+					text: "Pulling both sides of the month first.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "q3",
+					toolName: "read",
+					args: { path: "invoices/2026-08.csv" },
+					durationS: 0.08,
+				}),
+				tool({
+					id: "q4",
+					toolName: "read",
+					args: { path: "bank/2026-08.csv" },
+					durationS: 0.05,
+				}),
+				{
+					kind: "assistant",
+					id: "q5",
+					ts: TS + 5_000,
+					text: "Both ledgers agree on 214 of the 220 rows.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "q6",
+					toolName: "bash",
+					args: { command: "node scripts/diff-ledgers.mjs" },
+					durationS: 1.2,
+				}),
+				{
+					kind: "assistant",
+					id: "q7",
+					ts: TS + 8_000,
+					text: "The six that disagree are all dated on a weekend.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				tool({
+					id: "q8",
+					toolName: "bash",
+					args: { command: "node scripts/check-weekends.mjs" },
+					durationS: 0.7,
+				}),
+				{
+					kind: "assistant",
+					id: "q9",
+					ts: TS + 11_000,
+					text: "Four invoices were paid late, and the oldest is 41 days behind.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * A statement row between the answer and the next turn, which is the shape that
+ * lost the time entirely (design round 2, D2-1).
+ *
+ * The gate keyed on the turn's last PAINTING row, so anything after the answer
+ * stripped its caption — and for a statement that is not a rendering preference
+ * but a lost fact. A notice, a peer receipt and a wake receipt paint no `<time>`
+ * of their own and have no disclosure to open, so the turn's only time went off
+ * the screen with nothing left to click: measured on this shape, the first gate
+ * painted NOTHING at all for the turn.
+ *
+ * The fix is one predicate, `isStatementRow` in `canonical/transcript-rows.ts`:
+ * the closing answer is found PAST a statement rather than through it, so the
+ * answer that ended the turn keeps its caption and the statement row below it
+ * stays a statement. Both rows of this frame are here for that reason — a notice
+ * and a peer receipt, the two statement kinds whose text a reader meets between
+ * turns — and the two controls the fix must not widen (a turn ending on a ledger
+ * row, and one whose answer is still streaming) are asserted in
+ * `scripts/turn-timestamp.test.mjs` instead of pictured, because they are the
+ * shapes `answer-in-progress` and `prose-between-calls` already show.
+ */
+export const AnswerThenStatement: Story = {
+	render: () => (
+		<Frame
+			height={470}
+			records={[
+				{
+					kind: "user",
+					id: "s1",
+					ts: TS,
+					text: "Reconcile August against the bank feed.",
+					images: [],
+				},
+				{
+					kind: "assistant",
+					id: "s2",
+					ts: TS + 4_000,
+					text: "Four invoices were paid late, and the oldest is 41 days behind.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				// The statement: a notice the harness wrote after the answer.
+				{
+					kind: "notice",
+					id: "s3",
+					ts: TS + 6_000,
+					text: "The reader stopped the run after the answer was written.",
+					level: "info",
+				},
+				{
+					kind: "user",
+					id: "s4",
+					ts: TS + 40_000,
+					text: "And the run that resumed afterwards?",
+					images: [],
+				},
+				{
+					kind: "assistant",
+					id: "s5",
+					ts: TS + 44_000,
+					text: "It finished with the same four invoices outstanding.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+				// And the other statement kind a reader meets between turns: a peer
+				// message's receipt, which is a ledger row with no stamp of its own.
+				peer({
+					id: "s6",
+					body: "The nightly reconciliation finished clean.",
+				}),
+			]}
+		/>
+	),
+};
+
+/**
  * The operator's alignment report, as one frame: prose between tool rows, and
  * a final answer, against the ledger they are supposed to line up with.
  *
@@ -1080,11 +1336,18 @@ export const TurnBoundaryAndWorkingLine: Story = {
  *
  * The user bubble is in the frame on purpose, as the control: it keeps its own
  * narrower measure, and a change that widened it too would be visible here.
+ *
+ * The height is 420 rather than the 396 this story carried: the closing answer's
+ * caption is part of the claim ("a final answer" above), and at 396 the pane cut
+ * through its glyphs - the last text band measured 7px against 11-12px for a whole
+ * caption, so a reader saw a clipped string rather than a caption, and the air the
+ * frame exists to show under the closing answer was not shown at all (design round
+ * 1, D3).
  */
 export const ProseToolAlignment: Story = {
 	render: () => (
 		<Frame
-			height={396}
+			height={420}
 			records={[
 				{
 					kind: "user",

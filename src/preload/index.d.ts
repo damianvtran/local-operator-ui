@@ -236,6 +236,16 @@ declare global {
 						 * build until it restarts on its own, and nothing in flight is dropped.
 						 */
 						restartable?: boolean;
+						/**
+						 * Whether the environment `update-backend` would move is the app's own.
+						 *
+						 * The second ownership reading (design D5): `restartable` answers who
+						 * started the DAEMON, which is also true in GLOBAL_INSTALL mode, while
+						 * this answers whose INSTALL the press would move - so it is what lets
+						 * the skew panel offer its restart control only where that press is the
+						 * restart the label promises.
+						 */
+						appOwnedEnvironment?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateDevMode: (
@@ -266,6 +276,14 @@ declare global {
 						 * sentence may not call it current. Absent means it was read.
 						 */
 						releaseRead?: boolean;
+						/**
+						 * Whether the INSTALL this check read is the app's own environment.
+						 *
+						 * Carried on this state too because it is where the skew panel actually
+						 * appears (install current, daemon behind) - the panel's control takes
+						 * both ownership readings (design D5).
+						 */
+						appOwnedEnvironment?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateCompleted: (
@@ -278,7 +296,11 @@ declare global {
 				 * cold cache they are ~47 s and ~15 s of it (UX U4).
 				 */
 				onBackendUpdateProgress: (
-					callback: (progress: { phase: "installing" | "restarting" }) => void,
+					callback: (progress: {
+						phase: "installing" | "restarting";
+						/** True when the run is the checkout REBUILD rather than the release path. */
+						sourceRebuild?: boolean;
+					}) => void,
 				) => () => void;
 				/**
 				 * A server update that failed: the reason from the main process, and the

@@ -7,7 +7,7 @@ import {
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
 import {
-	updateErrorMessage,
+	serverUpdateFailureReason,
 	updateMessageFate,
 	updateMessageOf,
 } from "@shared/utils/update-error-copy";
@@ -49,6 +49,43 @@ const skewKey = (notice: {
  * same fact about the same two readings. Keying on the phrasing instead would re-open
  * a panel they have already answered with the other wording.
  */
+
+/**
+ * WHAT THE RESTART PRESS COSTS, stated BEFORE the press (design D3).
+ *
+ * The panel that offers the restart is the one commit control in this component
+ * without a cost line above it, and the rule it was breaking is this file's own:
+ * `managedCostSentence` is rendered as a paragraph above `Update server` under the
+ * comment "WHAT THE CLICK COSTS, before the click" (review U3). The cost is not
+ * speculative here - the press runs `backend.restart()`, which is a stop and a
+ * start, and the in-flight copy already says so once the press has landed and can
+ * no longer be withdrawn: "the server is offline while it comes back ... and
+ * anything in flight is dropped".
+ *
+ * ONE LEAF, TWO STATES, AND THE DIFFERENCE IS THE CLAUSE RATHER THAN A SECOND
+ * SENTENCE (design D13). Two sentences would drift, so what the two arms SHARE is
+ * the bound - `RESTART_OUTAGE_BOUND` - and each arm states its own half around it.
+ * That split exists because the shared sentence billed a cost already paid on one
+ * of the arms: the panel whose own heading is "The server did not come back after
+ * the restart" was telling the reader the restart "puts the server offline ... and
+ * drops anything that is in flight" about a server that is already offline and
+ * work that was already dropped. Spelled once is still achieved - twice, not twice
+ * stated.
+ */
+const RESTART_OUTAGE_BOUND = "usually a few seconds, up to half a minute";
+
+/**
+ * The cost of the restart for a server that is UP and behind the install: this
+ * press is what takes it offline, and in-flight work is what it drops.
+ */
+const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND} - and drops anything that is in flight.`;
+
+/**
+ * The cost of the SAME press on a server that is not running (design D13): the
+ * outage and the dropped work are already facts, so the only thing left to price is
+ * the wait for it to come back - which is the half the two arms share.
+ */
+const RESTART_COST_SENTENCE_SERVER_DOWN = `The server is already offline and anything in flight has already been dropped, so the only cost left is the wait for it to come back - ${RESTART_OUTAGE_BOUND}.`;
 
 /**
  * What the panel says when the server update failed and named no reason.
@@ -132,6 +169,16 @@ type BackendUpdateInfo = {
 	 * takes the app-owned answer - see `serverRestartsWithInstall`.
 	 */
 	restartable?: boolean;
+	/**
+	 * Whether the environment `update-backend` would move is the app's OWN one.
+	 *
+	 * The second ownership reading (design D5), and the one the skew panel's control
+	 * needs: `restartable` says the daemon serving this app is the app's to bounce,
+	 * which is also true in GLOBAL_INSTALL mode, while this says the press behind the
+	 * action runs the app's own publish-and-restart rather than an install's updater.
+	 * Absent is NOT a yes - see the skew panel's notice.
+	 */
+	appOwnedEnvironment?: boolean;
 	/**
 	 * True when this event answers a check the user asked for.
 	 *
@@ -753,9 +800,12 @@ export const UpdateNotification = ({
 	 * above the offer panel, it also took **Update server** off the screen for the
 	 * rest of the session (design D1, UX U1).
 	 */
+	const [rebuildInFlight, setRebuildInFlight] = useState(false);
 	const [backendUpdateFailure, setBackendUpdateFailure] = useState<{
 		/** The main process's own sentence. */
 		message: string;
+		/** The installer's own lines, when the failing branch had any to send. */
+		installerOutput?: string;
 		/**
 		 * The update service log the failing branch wrote, when it named one.
 		 *
@@ -809,8 +859,25 @@ export const UpdateNotification = ({
 		 * - a producer that does not say is the app's own daemon.
 		 */
 		restartable: boolean;
-		/** Whether the notice is a goodbye to an offer whose version is already had. */
-		kind: "landed" | "up-to-date";
+		/**
+		 * Whether the environment this app's update path moves is its OWN managed one.
+		 *
+		 * The SECOND ownership reading, and it is not the same question as
+		 * `restartable`: that one asks who started the DAEMON (true on a global install
+		 * the app spawned a daemon from), while this one asks whose INSTALL the press
+		 * would move. The panel's control is a publish-and-restart that only the
+		 * app-owned arm performs, so the control takes both (design D5). Absent is NOT
+		 * a yes here, unlike `restartable`: an action needs a stated reason to exist.
+		 */
+		appOwnedEnvironment: boolean;
+		/**
+		 * Which fact the panel is stating, which decides its heading and its first
+		 * paragraph: a landed update onto a daemon that did not move (`landed`), an
+		 * install already current whose daemon trails it (`up-to-date`), or the app's
+		 * own restart that left the server with no reading at all (`restart-failed`,
+		 * UX U1).
+		 */
+		kind: "landed" | "up-to-date" | "restart-failed";
 	} | null>(null);
 	/**
 	 * The skew the user has already waved away, by reading.
@@ -1120,6 +1187,10 @@ export const UpdateNotification = ({
 	 * All three are the same fact - the install on disk is not the build serving this
 	 * conversation - and the same consequence: only a restart of that process closes
 	 * the gap, and the app deliberately does not restart a daemon it did not start.
+	 * A FOURTH arrival rides it and is a different fact on the same surface: the
+	 * app's own restart finished and the server did not come back, which has a
+	 * consequence of its own (no reading is obtainable until it is running) and its
+	 * own heading, and which must not degrade into the success toast (UX U1).
 	 *
 	 * DEDUPED BY READING: a daemon nobody restarts keeps trailing the install, so
 	 * every non-silent check re-reports the identical pair. Re-opening a panel the
@@ -1134,7 +1205,8 @@ export const UpdateNotification = ({
 			unattended: boolean;
 			restartable: boolean;
 			releaseRead: boolean;
-			kind: "landed" | "up-to-date";
+			appOwnedEnvironment: boolean;
+			kind: "landed" | "up-to-date" | "restart-failed";
 		}): boolean => {
 			const install = readableVersion(notice.installVersion);
 			const running = readableVersion(notice.runningVersion);
@@ -1161,6 +1233,19 @@ export const UpdateNotification = ({
 			 * version one second later. A reading that cannot be taken is silence for
 			 * the same reason: this panel may not claim a skew it cannot see.
 			 *
+			 * ONE KIND IS THE EXCEPTION, and it is not really one (UX U1). "The app's own
+			 * restart finished and the server did not answer" is a fact the app
+			 * established by performing the restart ITSELF - `start()` failed, or the
+			 * health probe after it never came back - so the reading is missing BECAUSE of
+			 * the news rather than for want of one: the truth of this arm is that nothing
+			 * is serving the conversation. Declining here sent the completion to its
+			 * fall-through success toast ("Server update completed successfully") about a
+			 * server that is not running, which is the one sentence the whole line of work
+			 * exists to remove. So the arm states its own fact and needs no comparison;
+			 * a readable reading that also DIFFERS is still the ordinary skew, and one
+			 * that AGREES with the install is still silence, because then the server did
+			 * answer onto the new build and nothing is wrong.
+			 *
 			 * AND ONLY WHEN THE SERVER IS THE OLDER SIDE (review round 2, T1's back half).
 			 * The producer now sends the PROCESS's own reading rather than `/health`'s, so
 			 * this funnel can be handed a pair where the daemon is AHEAD of the install -
@@ -1170,11 +1255,23 @@ export const UpdateNotification = ({
 			 * serving process with an older install"). Inequality alone is not a skew:
 			 * every sentence below this heading is about a server BEHIND the install, so
 			 * the same falsity the equal-pair guard removes would come back one-sided.
+			 *
+			 * The two rules meet in the ONE arm that has no reading to compare, and this
+			 * is where they are reconciled: the restart-failed arm is exempt from the
+			 * missing-reading guard above because its missing reading IS its news (UX U1),
+			 * so the order test cannot be asked of it - there is no version to order. It is
+			 * therefore asked only of a reading that exists, and a daemon that answered
+			 * AHEAD of the install is still refused exactly as the paragraph above states.
 			 */
-			if (!install || !running || install === running) {
+			const restartFailed = notice.kind === "restart-failed";
+			if (
+				!install ||
+				(!running && !restartFailed) ||
+				(running !== null && install === running)
+			) {
 				return false;
 			}
-			if (atLeastVersion(running, install)) return false;
+			if (running !== null && atLeastVersion(running, install)) return false;
 			const key = skewKey(notice);
 			if (dismissedSkewRef.current === key) return false;
 			setBackendSkewNotice(notice);
@@ -1192,8 +1289,16 @@ export const UpdateNotification = ({
 		[],
 	);
 
-	// Update the backend
-	const updateBackend = useCallback(async () => {
+	/**
+	 * Run a server update attempt, optionally at a release the caller names.
+	 *
+	 * The override exists for the one press that has no OFFER behind it: the skew
+	 * notice renders on the state where the install is already the published release
+	 * and only the daemon serving this app is behind, so there is no
+	 * `backendUpdateInfo` to read a target from - and the target is the install's own
+	 * version, which is what the restart has to land on (UX U2).
+	 */
+	const updateBackend = useCallback(async (targetOverride?: string | null) => {
 		backendUpdateAttemptRef.current = { terminal: false, inFlight: true };
 		try {
 			setChecking(true);
@@ -1207,7 +1312,10 @@ export const UpdateNotification = ({
 			setBackendUpdateFailure(null);
 			// The target version travels with the request so the main process can
 			// confirm the restarted server actually reports it.
-			const targetVersion = backendUpdateInfoRef.current?.latestVersion;
+			const targetVersion =
+				targetOverride ??
+				backendUpdateInfoRef.current?.latestVersion ??
+				undefined;
 			const result = await window.api.updater.updateBackend(targetVersion);
 			/*
 			 * `false` is a failure, not a quiet no-op: this invoke resolves false on
@@ -1564,8 +1672,13 @@ export const UpdateNotification = ({
 						 * The offline check sends this event with the pair it measured locally and
 						 * nothing to compare the install against, so it says so (QA round 3, Q3-1).
 						 * Absent means read, which is every other producer of this event.
+						 *
+						 * Stated, not assumed (design D5): the press this panel may offer runs
+						 * `update-backend`, which on a global install is the install's own updater
+						 * rather than a restart, so the control needs this arm's own yes.
 						 */
 						releaseRead: info.releaseRead !== false,
+						appOwnedEnvironment: info.appOwnedEnvironment === true,
 						kind: "up-to-date",
 					});
 				}
@@ -1600,7 +1713,19 @@ export const UpdateNotification = ({
 				 * unanswered (review R2-3). Falling through to the toast keeps "the
 				 * update was not a restart" out of the copy while still telling the user
 				 * their press worked.
+				 *
+				 * ONE MISSING READING IS NOT THAT CASE (UX U1). When the app performed the
+				 * restart onto its own environment and the server did not answer afterwards,
+				 * the missing reading IS the news - and the toast this branch fell through to
+				 * said "Server update completed successfully" about a server that is not
+				 * running, which is the class of claim this panel exists to remove. The
+				 * producer states it (`serverDidNotComeBack`), the notice gets its own kind,
+				 * and the arm keeps the reading out of the claim the way every other one
+				 * does.
 				 */
+				const serverDidNotComeBack =
+					completion?.serverDidNotComeBack === true &&
+					!readableVersion(completion.runningVersion);
 				if (
 					completion &&
 					(!completion.restarted || completion.unattended === true) &&
@@ -1616,7 +1741,12 @@ export const UpdateNotification = ({
 						 * just landed.
 						 */
 						releaseRead: true,
-						kind: "landed",
+						/*
+						 * And what that attempt acted on is the app's own environment, which is the
+						 * reading the panel's control takes (design D5).
+						 */
+						appOwnedEnvironment: completion.appOwnedEnvironment === true,
+						kind: serverDidNotComeBack ? "restart-failed" : "landed",
 					})
 				) {
 					return;
@@ -1637,8 +1767,16 @@ export const UpdateNotification = ({
 		 * a cold cache, distinguishable only by the bar's motion (UX U4).
 		 */
 		const removeBackendUpdateProgressListener =
-			window.api.updater.onBackendUpdateProgress(({ phase }) => {
+			window.api.updater.onBackendUpdateProgress(({ phase, sourceRebuild }) => {
 				setBackendUpdatePhase(phase);
+				/*
+				 * WHICH ROUTE IS RUNNING, not only which phase (review round 3, D2 = U3). The
+				 * release path's reassurance is false for a checkout rebuild: that run rewrites the
+				 * install in place, which is exactly what can interrupt a session here. The event
+				 * carries it because the offer that named the cost unmounted the moment the press
+				 * landed - this is the only place left that can say it.
+				 */
+				setRebuildInFlight(sourceRebuild === true);
 			});
 
 		/**
@@ -1676,7 +1814,17 @@ export const UpdateNotification = ({
 					 * channel rather than being painted as the machine wrote it.
 					 */
 					setBackendUpdateFailure({
-						message: updateErrorMessage(report.message),
+						/*
+						 * VERBATIM, not classified: an attempt's report is the app's own composed
+						 * sentence, and the classifier's length rule reads a long one as a machine dump
+						 * and deletes it - which is how the installer's diagnosis was lost on this
+						 * surface (review round 5, M1). `serverUpdateFailureReason` is the one place
+						 * that phase rule lives, shared with the run panel and the banner.
+						 */
+						message: serverUpdateFailureReason(report),
+						// The installer's own lines travel with the report (the producer's own field),
+						// rather than being re-derived from the sentence here (review round 5, M1).
+						installerOutput: report.installerOutput,
 						logPath: report.logPath,
 					});
 					setBackendUpdatePhase(null);
@@ -1902,31 +2050,42 @@ export const UpdateNotification = ({
 				{/* No cancel control, and the panel has to say so: the copy half of
 				    UX U2, whose other half - a real cancel - is deferred, because
 				    stopping a live pip install and guaranteeing the server comes back
-				    up is its own change. Without this a mis-press reads as a dead end. */}
+				    up is its own change. Without this a mis-press reads as a dead end.
+				    UX U4 RE-PRICED THE DEFERRAL rather than re-opening it: the trade was
+				    made against the global arm's measured ~47 s install, and the
+				    app-owned arm's install measured ~85 s on the same box plus the
+				    smoke boot, so the dead end this trade buys is about twice as long
+				    as the arm it was priced against. The trade still stands - a cancel
+				    has to guarantee the server comes back while killing a live pip -
+				    and the price is recorded here so the next round re-prices it
+				    instead of rediscovering it. */}
 				<p className="mb-2 text-body text-ink-muted">
 					{updatingBackend
 						? backendUpdatePhase === "installing"
-							? /*
-								 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
-								 * ~47 s cold, against ~15 s for the restart - and the old single
-								 * sentence described only the restart, so a user watching the panel
-								 * for a minute could not tell this phase from a hang, nor from the
-								 * phase that had not started. The server really is still serving here:
-								 * under generations nothing running is rewritten.
-								 */
-								`Installing the new server build. The server you are using keeps serving while this runs${
-									/*
-									 * THE CLAUSE IS THE PROMISE (UX U13). It is true when the app will
-									 * bounce the daemon the reader is talking to, and false on a machine
-									 * where discovery adopted one - where the offer two seconds earlier
-									 * already said so, and where the app's own completion notice says it
-									 * again ("Local Operator does not restart a server it did not
-									 * start"). The sentence keeps every other fact either way.
+							? rebuildInFlight
+								? /* THE REBUILD'S OWN SENTENCE - the release path's reassurance is false here. */
+									`Rebuilding the server from this machine's checkout. This reinstalls the install in place, so sessions running on this machine can be interrupted while it runs, and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
+								: /*
+									 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
+									 * ~47 s cold, against ~15 s for the restart - and the old single
+									 * sentence described only the restart, so a user watching the panel
+									 * for a minute could not tell this phase from a hang, nor from the
+									 * phase that had not started. The server really is still serving here:
+									 * under generations nothing running is rewritten.
 									 */
-									serverRestartsWithInstall(backendUpdateInfo)
-										? ", and it restarts once the install lands"
-										: ""
-								}. This can take a minute or two, and the update can't be interrupted once it has started.`
+									`Installing the new server build. The server you are using keeps serving while this runs${
+										/*
+										 * THE CLAUSE IS THE PROMISE (UX U13). It is true when the app will
+										 * bounce the daemon the reader is talking to, and false on a machine
+										 * where discovery adopted one - where the offer two seconds earlier
+										 * already said so, and where the app's own completion notice says it
+										 * again ("Local Operator does not restart a server it did not
+										 * start"). The sentence keeps every other fact either way.
+										 */
+										serverRestartsWithInstall(backendUpdateInfo)
+											? ", and it restarts once the install lands"
+											: ""
+									}. This can take a minute or two on a normal connection, and longer on a slow one, and the update can't be interrupted once it has started.`
 							: backendUpdatePhase === "restarting"
 								? "The new build has landed. The server is restarting onto it now, so it is offline while it comes back - usually a few seconds, up to half a minute - and anything in flight is dropped."
 								: serverRestartsWithInstall(backendUpdateInfo)
@@ -1997,7 +2156,17 @@ export const UpdateNotification = ({
 	if (manualUpdateRequired && manualUpdateInfo) {
 		return withErrorToast(
 			<UpdateContainer>
-				<UpdateHeading>The server needs updating by hand</UpdateHeading>
+				{/*
+				 * THE HEADING FOLLOWS THE ARM. On the app-owned arm the body names a restart the
+				 * user performs by relaunching - there is no hand action and no command - so
+				 * "needs updating by hand" described an action that is not on this screen
+				 * (review round 5, UX U5).
+				 */}
+				<UpdateHeading>
+					{manualUpdateInfo.appOwned
+						? "The app cannot update this server"
+						: "The server needs updating by hand"}
+				</UpdateHeading>
 				{/* Same emphasis as the other producer of this state
 				    (`backend-update-non-managed`, which used a warning hue): one sentence,
 				    the same weight, and the words carry which one needs the user
@@ -2252,7 +2421,19 @@ export const UpdateNotification = ({
 	 * point at, and that is its own change.
 	 */
 	if (backendUpdateFailure) {
-		const failure = splitInstallerOutput(backendUpdateFailure.message);
+		/*
+		 * THE FIELD FIRST, the split only as a fallback (review round 5, M1). The producer sends
+		 * the installer's output as `installerOutput`, and a surface that re-derives it from the
+		 * sentence is a second way to get the same fact - which drifts the moment the sentence
+		 * changes. Reports written before that field existed still arrive as one string, so the
+		 * split stays for them and nothing else.
+		 */
+		const failure = backendUpdateFailure.installerOutput
+			? {
+					sentence: backendUpdateFailure.message,
+					output: backendUpdateFailure.installerOutput,
+				}
+			: splitInstallerOutput(backendUpdateFailure.message);
 		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
@@ -2375,7 +2556,7 @@ export const UpdateNotification = ({
 							<Button
 								variant="primary"
 								size="sm"
-								onClick={updateBackend}
+								onClick={() => void updateBackend()}
 								disabled={checking}
 							>
 								{checking ? "Updating..." : "Update server"}
@@ -2498,12 +2679,21 @@ export const UpdateNotification = ({
 	 *
 	 * A panel rather than the completion toast, because the toast is a claim about
 	 * the server and the server has not moved: the app is attached to a daemon it did
-	 * not start, or an attempt landed while no app was watching, and in both cases
-	 * the app deliberately does not bounce that process - nor can it. The truth is
+	 * not start, or an attempt landed while no app was watching. On those two arms
+	 * the app deliberately does not bounce that process - nor may it - and the panel's
+	 * sentence names the reader's own step. On the arm where the app STARTED the
+	 * daemon (`restartable`, carried by the producer) the panel offers the restart as
+	 * an action instead of only describing it (UX U2), because a stated fact with
+	 * nothing to press is the same defect one panel further along. The truth is
 	 * also self-concealing: the install is now latest, so no later check re-offers
 	 * anything and nothing else on any surface says the two readings differ
 	 * (reviews R1-3, D3, UX U1/U6, QA Q-1/Q-2). It renders only when no offer or
 	 * status panel is up, because those already name both readings themselves.
+	 *
+	 * A THIRD STATE rides it, and its first paragraph is the whole fix for UX U1: the
+	 * app's own restart onto its own environment finished and the server did not
+	 * answer afterwards (`kind: "restart-failed"`). Its readings cannot be compared,
+	 * because one of them does not exist any more - and the missing one is the news.
 	 */
 	if (backendSkewNotice) {
 		const {
@@ -2511,22 +2701,70 @@ export const UpdateNotification = ({
 			runningVersion,
 			unattended,
 			restartable,
-			kind,
 			releaseRead,
+			appOwnedEnvironment,
+			kind,
 		} = backendSkewNotice;
+		/*
+		 * WHETHER THE PRESS THIS PANEL OFFERS IS THE ACTION ITS LABEL NAMES, and it
+		 * takes BOTH ownership readings (design D5). `restartable` answers who started
+		 * the DAEMON, which is true in GLOBAL_INSTALL mode too; `appOwnedEnvironment`
+		 * answers whose INSTALL `update-backend` would move. Only on the app-owned arm
+		 * does the press run the publish-and-restart this label promises; on a global
+		 * install the same press runs the install's own updater (an install) or lands on
+		 * the by-hand panel, which is the "action that cannot act" class this whole line
+		 * of work exists to remove. So the control needs both, while the SENTENCE may
+		 * still describe what the daemon's owner can do.
+		 */
+		const actionRestartsTheServer = restartable && appOwnedEnvironment;
+		const serverDidNotComeBack = kind === "restart-failed";
 		return withErrorToast(
 			<UpdateContainer>
 				<UpdateHeading>
-					The server is on an older build than the install
+					{serverDidNotComeBack
+						? "The server did not come back after the restart"
+						: "The server is on an older build than the install"}
 				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">
 					{kind === "up-to-date"
 						? releaseRead
 							? `This machine's install is up to date${installVersion ? ` (${installVersion})` : ""}, and the server serving this app is still running ${runningVersion ?? "an older build"}.`
 							: `This machine's install is ${installVersion ?? "a newer build"}, and the server serving this app is still running ${runningVersion ?? "an older build"}.`
-						: unattended
-							? `An update you started before quitting finished while Local Operator was closed, so the install is now at ${installVersion ?? "a newer version"}. Nothing restarted the server that was serving you${runningVersion ? `, which still reports ${runningVersion}` : ""}.`
-							: `The install is now at ${installVersion ?? "the new version"}, but the server serving this app was started outside Local Operator, so it was left running${runningVersion ? ` on ${runningVersion}` : ""}.`}
+						: kind === "restart-failed"
+							? `The install is now at ${installVersion ?? "the new version"}, and the server serving this app did not answer after it was restarted.`
+							: unattended
+								? `An update you started before quitting finished while Local Operator was closed, so the install is now at ${installVersion ?? "a newer version"}. Nothing restarted the server that was serving you${runningVersion ? `, which still reports ${runningVersion}` : ""}.`
+								: /*
+									 * THE RESTART THAT DID NOT TAKE IS NOT A DAEMON STARTED ELSEWHERE
+									 * (design D1). This clause used to be the `!unattended` fall-through, so on
+									 * a machine where the app had just tried and failed to restart its OWN
+									 * daemon the panel said that daemon "was started outside Local Operator" -
+									 * beside the next paragraph's "This app started that server". Two
+									 * sentences, one panel, opposite claims, and the first one false. When the
+									 * app owns the daemon the only honest statement is the two readings it
+									 * has: the install is at X and the server is still on Y.
+									 */
+									restartable
+									? /*
+										 * THE RESTART THAT DID NOT TAKE (design D12). `kind: "landed"` is
+										 * reachable only from a COMPLETION - the app published nothing, moved
+										 * its own daemon onto the install and read the daemon afterwards
+										 * (`update-notification.tsx`'s completion listener; the sibling
+										 * `up-to-date` kind is the check's arm and its paragraph is above) - so
+										 * inside this branch the missing restart IS the fact, and naming it is
+										 * the difference between an outcome and a paragraph the reader can only
+										 * tell apart from the one they pressed by memory. The arm exists
+										 * because the app's own restart did not take, the only control offered
+										 * is the one just pressed, and pressing it again costs a second outage
+										 * with in-flight work dropped. Its sibling arm - the restart that left
+										 * NOTHING answering - got a heading of its own for the same reason; this
+										 * is the clause that closes the asymmetry, and it needs no new guard:
+										 * `landed` plus this branch's non-unattended, `restartable` reading is
+										 * exactly the press that failed (a guard on `notRestarted` here would be
+										 * always-true, the unreachable shape this file removes).
+										 */
+										`The install is now at ${installVersion ?? "the new version"}, but the server serving this app is still running ${runningVersion ?? "the build it loaded"}. That restart did not take.`
+									: `The install is now at ${installVersion ?? "the new version"}, but the server serving this app was started outside Local Operator, so it was left running${runningVersion ? ` on ${runningVersion}` : ""}.`}
 				</p>
 				<p className="mb-2 text-body text-ink-muted">
 					{/*
@@ -2541,14 +2779,70 @@ export const UpdateNotification = ({
 					 * - the outside process is the thing to restart, and the app starting
 					 * its OWN server is the other half of the same move. Both are real: the
 					 * daemon that comes back reads the environment an update already moved.
+					 *
+					 * AND WHAT THE PRESS COSTS, BEFORE THE PRESS (design D3). This panel used
+					 * to be the one commit control in this component with no cost line above it:
+					 * the price - the server going down and in-flight work being dropped - was
+					 * stated only in the in-flight panel, one batch later, when it could no
+					 * longer be withdrawn. The same press is offered in two states - the server
+					 * behind the install, and the server that did not come back - and each has
+					 * its own sentence over the bound they share (`RESTART_COST_SENTENCE`,
+					 * `RESTART_COST_SENTENCE_SERVER_DOWN` and `RESTART_OUTAGE_BOUND` above,
+					 * which design D13 split when it found the single leaf billing the
+					 * server-down arm for an outage it had already paid). It applies to the
+					 * arm this change gives the control to (`actionRestartsTheServer`), which
+					 * is why the two sentences below it are still main's own.
 					 */}
-					{restartable
-						? "Restart Local Operator and the server comes back on the new build."
-						: "The server serving this app was started outside Local Operator, which does not restart a server it did not start: stop it and start Local Operator again, or restart whatever started it, and it comes back on the new build."}
+					{serverDidNotComeBack
+						? actionRestartsTheServer
+							? `This app started that server, so it can restart it. ${RESTART_COST_SENTENCE_SERVER_DOWN}`
+							: /*
+								 * Reachable, and review round 2's ordering is why it is worth saying:
+								 * design D14 filed this string as copy no producer could paint, because the
+								 * only producer of `serverDidNotComeBack` sent `restartable: true` by
+								 * construction. That reading was the R8 defect one level down - the arm
+								 * now carries `backendIsAppOwned()`, so on an ADOPTED daemon whose restart
+								 * did not take the app is honest about not being able to bounce it, and
+								 * this is the sentence such a launch reads. Do not remove it as unused.
+								 */
+								"Nothing is serving this conversation until that server is running again."
+						: actionRestartsTheServer
+							? `This app started that server, so it can restart it onto the new build now. ${RESTART_COST_SENTENCE}`
+							: restartable
+								? "Restart Local Operator and the server comes back on the new build."
+								: "The server serving this app was started outside Local Operator, which does not restart a server it did not start: stop it and start Local Operator again, or restart whatever started it, and it comes back on the new build."}
 				</p>
+				{/*
+				 * DISMISS FIRST, COMMIT LAST (design D4), which is this component's own rule -
+				 * "the order every other footer in the release uses, and the one a user's hand
+				 * learns". The row used to put the committing control first and `Understood`
+				 * last, and the cost of the inversion was not cosmetic: dismissing records the
+				 * reading in `dismissedSkewRef`, so a habit-trained press on the rightmost
+				 * button buried the only surface that states the skew for that pair.
+				 *
+				 * THE ACTION THE SENTENCE USED TO ONLY DESCRIBE (UX U2). "Restart Local
+				 * Operator and the server comes back on the new build" was a true fact with
+				 * nothing to press: this panel's only control was "Understood", so a reader
+				 * who wanted the new build had to work out for themselves that quitting and
+				 * relaunching was the step. It is reachable now, and the app performs it:
+				 * `update-backend` on this install publishes nothing - the install is already
+				 * the published release - and restarts the daemon onto it, which is exactly
+				 * what the sentence promises.
+				 *
+				 * NO IN-FLIGHT LABEL, because there is no in-flight state to label (design
+				 * D6): the press clears this notice and raises `checking` in the same batch,
+				 * and the `checking` branch returns earlier in the component, so the whole
+				 * panel is replaced - the in-flight panel IS the affordance, and a
+				 * `checking ? "Restarting..." : ...` here was dead code that read, in the diff,
+				 * as coverage it never had.
+				 *
+				 * The panel is cleared on the press WITHOUT recording it as dismissed, so a
+				 * restart that does not close the gap lets the same reading speak again
+				 * rather than burying a skew the user just tried to fix.
+				 */}
 				<UpdateActions>
 					<Button
-						variant="primary"
+						variant={actionRestartsTheServer ? "outline" : "primary"}
 						size="sm"
 						onClick={() => {
 							dismissedSkewRef.current = skewKey(backendSkewNotice);
@@ -2557,6 +2851,18 @@ export const UpdateNotification = ({
 					>
 						Understood
 					</Button>
+					{actionRestartsTheServer && (
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={() => {
+								setBackendSkewNotice(null);
+								void updateBackend(installVersion);
+							}}
+						>
+							Restart the server
+						</Button>
+					)}
 				</UpdateActions>
 			</UpdateContainer>,
 		);

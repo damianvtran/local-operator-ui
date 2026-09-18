@@ -25,6 +25,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over the page at the strongest alpha that keeps its own ink at 4.5:1 (the scheme's own
  * tints stand in where they clear it); a semantic border walks its hue toward the ground to
  * just above the 3:1 edge floor; the shadow and the scrim are the ink tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const githubLight: ThemeDefinition = {
 	id: "githubLight",
@@ -45,25 +61,47 @@ export const githubLight: ThemeDefinition = {
 		sunken: "#DDE2E8",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.06 from `surface`, 6.81 from `elevated` and 2.13 from `sunken`;
-		 * the step is -4.4 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.89:1 the ink that binds it.
+		 * The current row's own ground: the panel's cast at the panel's own hue,
+		 * stepped 4.95 `L*` darker (branch L of this port's selection rule), and
+		 * carrying 2.58x the panel's own chroma — the shortfall the ΔE00 4.0 band
+		 * needed, and nothing more. What binds this one is `sunken` at ΔE00 2.02
+		 * against its 2.0 field floor. ΔE00 4.06 from `surface`, 6.81 from
+		 * `elevated`, 2.02 from `sunken`, 5.2 from `accentWash`; the inks on the
+		 * ground are 12.73:1, 7.59:1, 5.28:1. Continuity with the panel: hue 6.56
+		 * degrees off the panel's (the assertion allows 12) and chroma 4.74 where
+		 * the panel carries 1.84.
 		 */
-		highlight: "#E1E9F2",
+		highlight: "#DFE8EF",
 
 		ink: "#1F2328",
 		// fg.subtle 6E7781 is 3.49:1 on `sunken`, so the readout rung darkens to clear the 4.5
 		// floor — which lands it ΔE00 1.3 from fg.muted, and the two are then one colour. The
 		// control rung is seated deeper along the same cool grey so they take different names
 		// (ΔE00 8.2 apart).
-		inkMuted: "#444D57",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `sunken` binds it at 7.22:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#3F4751",
 		// fg.subtle 6E7781 is 3.49:1 on `sunken` (< 4.5). Darkened along its own cool grey to
 		// the floor corner.
-		inkDim: "#5C646E",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `sunken` binds it at 5.03:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#575E68",
 		inkDisabled: "#A8B1BB",
 
 		// Primer's border.default D0D7DE is 1.12:1 against the recessed ground, under the
@@ -90,6 +128,24 @@ export const githubLight: ThemeDefinition = {
 		// signal, 7.79:1 on `surface` and 8.53:1 on `elevated`.
 		accentWash: "#DDF4FF",
 		onAccent: "#FFFFFF",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#8250df`,
+		 * done.fg (the merged-PR purple)), moved onto the floors: as received it
+		 * read 3.87:1 as text on `sunken` and one more ground. The shortfall is
+		 * paid on LIGHTNESS at the source hue — L* 46.72 → 42.29 — which is what
+		 * this port does to every one of its own tokens. Measured: ΔE00 16.72 from
+		 * `accent`, 39.06 from its nearest semantic (`danger`), 4.56:1 on the
+		 * tightest ground (`sunken`).
+		 */
+		accentAlt: "#7545D2",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 94.86 and C* 9.48, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 14.93 from `accentWash` (the field floor is
+		 * 2.0), 5.21:1 for `accentAlt` on it, and 9.14 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#F5EDFF",
 
 		// Primer green 1A7F37 is 3.90:1 on `sunken` (< 4.5). Deepened along the same green.
 		success: "#01732C",

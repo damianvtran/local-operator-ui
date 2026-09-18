@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|settings-model|settings-fields|palette|browser-pane|browser-mark|mentions|canvas-freshness|none>
+ *   --scene <states|new-chat|settings-model|settings-fields|palette|browser-pane|mentions|canvas-freshness|none>
  *                          which built-in scene to run (default: states)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
@@ -1432,235 +1432,19 @@ function connectionsTo(pid, url) {
  * element a user presses), not by writing the store, and the frames either side
  * of it are the same screen — which is the shape a visual-change review needs.
  */
-/**
- * The conversation's browser, from its own sidebar row (design R2, R1).
+/*
+ * THE `browser-mark` SCENE IS GONE WITH THE CONTROL IT DROVE (operator ask, 2026-09-18).
  *
- * WHAT ONLY THIS SCENE CAN SHOW. Three claims meet on one row, and none of them is
- * visible in a Storybook frame: that a tab opened in a conversation is ATTRIBUTED to it
- * (R1, the fix that made "New tab" put a tab where the user can find it again), that the
- * row then carries a MARK saying so (R2), and that pressing that mark opens the pane
- * scoped to that conversation (open question 7 — the lens is set, not inherited). The
- * three are one flow: each step's preconditions are the previous step's result, so a
- * frame of any one of them alone would leave the other two to trust.
- *
- * IT NEEDS A BACKEND, like the pane scene beside it: the chat route's sidebar list is
- * behind `session_catalogue`, so without one there is no row to press and the scene says
- * so rather than pretending.
+ * It walked the sidebar: a conversation's row, the mark that row carried once a tab was
+ * open in it, and the press that opened the pane scoped to that conversation. Two of
+ * those three claims live on elsewhere - `browser-pane` beside it still drives the pane
+ * and its scope, and the tab-to-conversation attribution is a model fact
+ * (`tab-index-model.ts`'s `tabsBySession`, asserted in `browser-chrome.test.mjs`). What
+ * is no longer reachable is the sidebar's own half: there is no per-row control to press,
+ * so the scene and its `markReading` helper were deleted with the mark rather than left
+ * driving a selector nothing renders. Its three committed frames
+ * (`docs/evidence/browser-conversation-mark/live/`) went with them.
  */
-async function sceneBrowserMark(cdp) {
-	note(
-		"scene",
-		"the conversation mark: absent, then drawn from a real tab, then the press that opens the pane scoped to it",
-	);
-	await verb(cdp, "press", { selector: '[data-tour-tag="nav-item-chat"]' });
-	await wait(400);
-	await verb(cdp, "press", { selector: '[data-tour-tag="chat-all-chats"]' });
-	await wait(400);
-	await verb(cdp, "press", { selector: '[data-tour-tag="chat-session-row"]' });
-	await wait(700);
-	const conversation = await cdp.evaluate(
-		`(() => document.querySelector('[data-chat-row][aria-current="page"]')?.getAttribute('title') ?? location.hash)()`,
-	);
-	note("the conversation the walk opened", String(conversation));
-	/** The conversation's session id, which is the key every mark and every projection
-	 * field is written under: `#/chat/<id>` is the route's own spelling of it. */
-	const sessionId = await cdp.evaluate(
-		"(() => location.hash.split('/')[2] ?? '')()",
-	);
-
-	const absent = await markReading(cdp);
-	/** The walked conversation's own mark, read BEFORE anything is open in it: the pair of
-	 * readings below (this one and the one after a tab exists) is what pins the label's
-	 * grammar without this scene having to know how the app spells the row's name. */
-	const quietLabel =
-		absent.marks.find((mark) => mark.sessionId === sessionId)?.label ?? "";
-	check(
-		"EVERY conversation row draws the mark, and a conversation with nothing open draws it in its quiet state (R2's first row; review round 1, D2/A4)",
-		absent.marks.length > 0 &&
-			absent.rows > 0 &&
-			absent.marks.length === absent.rows &&
-			absent.marks.every(
-				(mark) =>
-					mark.label.startsWith('Open the browser for "') &&
-					mark.label.endsWith('"'),
-			) &&
-			quietLabel !== "" &&
-			!quietLabel.includes(" — "),
-		`${absent.marks.length} mark(s) on ${absent.rows} row(s): ${JSON.stringify(absent.marks)}`,
-	);
-	const absentFrame = await captureSettled(cdp, "browser-mark-absent");
-	note("frame", JSON.stringify(absentFrame));
-
-	// The pane, from the header, then a tab opened inside it — the user's own path.
-	await verb(cdp, "press", {
-		selector: '[data-tour-tag="browser-pane-trigger"]',
-	});
-	await wait(700);
-	/** The pool before the press, so the attribution below is about ONE new tab rather
-	 * than about the whole pool. Needed because the host opens a blank tab of its own on
-	 * a fresh profile (`host.ts:803`: a first run gets one unattributed tab), which is
-	 * why this check used to require a pool of exactly one and could never pass (review
-	 * round 1, Q1a). */
-	const poolBefore = JSON.parse(
-		await cdp.evaluate(
-			"window.api.browser.state().then((s) => JSON.stringify(s.tabs.map((tab) => tab.tabId)))",
-		),
-	);
-	await verb(cdp, "press", {
-		selector: '[data-tour-tag="browser-surface-new-tab"]',
-	});
-	await wait(1500);
-	const opened = await cdp.evaluate(
-		`window.api.browser.state().then((s) => JSON.stringify({ tabs: s.tabs.map((tab) => ({ id: tab.tabId, sessionId: tab.sessionId })), scope: document.querySelector('[data-tour-tag="browser-pane-scope-conversation"]')?.getAttribute('data-state') }))`,
-	);
-	const openedTabs = JSON.parse(opened);
-	/** The tab this press created: the one in the pool that was not there before. */
-	const createdTab = openedTabs.tabs.find(
-		(tab) => !poolBefore.includes(tab.id),
-	);
-	check(
-		"a tab opened from the pane belongs to the conversation the pane is for (R1 — the whole point of the attribution fix)",
-		createdTab !== undefined &&
-			openedTabs.tabs.length === poolBefore.length + 1 &&
-			typeof createdTab.sessionId === "string" &&
-			createdTab.sessionId === sessionId &&
-			openedTabs.scope === "active",
-		`created ${JSON.stringify(createdTab)}; pool ${JSON.stringify(openedTabs.tabs)} (was ${JSON.stringify(poolBefore)}), scope=conversation is ${openedTabs.scope}`,
-	);
-
-	// Close the pane, so the mark is read on a resting list rather than beside the
-	// surface that explains it.
-	await verb(cdp, "press", {
-		selector: '[data-tour-tag="browser-pane-close"]',
-	});
-	await wait(700);
-	const drawn = await markReading(cdp);
-	const walked = drawn.marks.find((mark) => mark.sessionId === sessionId);
-	check(
-		"with a tab open in it, that row's mark counts it — and the other rows stay quiet (R2)",
-		walked !== undefined &&
-			walked.label === `${quietLabel} — 1 tab` &&
-			drawn.marks.filter((mark) => mark.label.includes("tab")).length === 1,
-		`quiet ${JSON.stringify(quietLabel)} then ${JSON.stringify(walked)}; all ${JSON.stringify(drawn.marks)}`,
-	);
-	const drawnFrame = await captureSettled(cdp, "browser-mark-drawn");
-	note("frame", JSON.stringify(drawnFrame));
-
-	// The press: select + set the lens + open, all three from one control.
-	await verb(cdp, "press", { selector: "[data-browser-mark]" });
-	await wait(900);
-	const after = await cdp.evaluate(`(() => ({
-		pane: Boolean(document.querySelector('[data-tour-tag="browser-pane"]')),
-		scope: document.querySelector('[data-tour-tag="browser-pane-scope-conversation"]')?.getAttribute('data-state'),
-		allScope: document.querySelector('[data-tour-tag="browser-pane-scope-all"]')?.getAttribute('data-state'),
-		scopeKey: document.querySelector('[data-tour-tag="browser-pane-scope-track"]')?.getAttribute('data-scope'),
-		tabs: [...document.querySelectorAll('[data-tour-tag="browser-tab"]')].length,
-	}))()`);
-	check(
-		"the press opens the pane with the lens ON that conversation, not on whatever it was left showing (open question 7)",
-		after.pane === true &&
-			after.scope === "active" &&
-			after.allScope === "inactive" &&
-			after.tabs === 1,
-		`pane=${after.pane}, conversation lens=${after.scope}, all lens=${after.allScope}, ${after.tabs} row(s) in the scoped strip`,
-	);
-	const pressedFrame = await captureSettled(cdp, "browser-mark-pressed");
-	note("frame", JSON.stringify(pressedFrame));
-
-	/*
-	 * THE DISCLOSURE STATE, READ IN THE STATE THAT MAKES IT INTERESTING (design review
-	 * round 2, U8). The mark toggles (U6, ruled), so its accessible state has to name
-	 * which of the two things the next press does. The control that read
-	 * `aria-expanded="false"` over "Open the browser for …" one press ago must read
-	 * `"true"` over the close's own words now, and the two labels must differ in the verb
-	 * and nothing else — the counts are a fact about the conversation, not about the pane.
-	 * Read at the same selector the press used, so the words, the attribute and the press
-	 * cannot describe different states.
-	 */
-	const openMark = await markReading(cdp);
-	const markedOpen = openMark.marks.find(
-		(mark) => mark.sessionId === sessionId,
-	);
-	const closeLabel = walked.label.replace(
-		"Open the browser",
-		"Close the browser",
-	);
-	check(
-		'while the pane is open on that conversation its mark says so in both channels: aria-expanded="true" and the close\u2019s own words (U8)',
-		markedOpen !== undefined &&
-			markedOpen.expanded === "true" &&
-			markedOpen.label === closeLabel,
-		`expanded ${JSON.stringify(markedOpen?.expanded ?? null)}, label ${JSON.stringify(markedOpen?.label ?? null)} (expected ${JSON.stringify(closeLabel)}); the closed reading it replaces was ${JSON.stringify(walked)}`,
-	);
-
-	/*
-	 * THE SECOND PRESS IS THE TOGGLE (design review round 2, U6, ruled). A press on the
-	 * mark while the pane is already open ON THAT CONVERSATION closes it — the state a
-	 * second press used to leave untouched, which is indistinguishable from a press that
-	 * never registered. Read from the DOM rather than inferred, and read at the same
-	 * selector the check above used, so the two readings are one surface.
-	 */
-	await verb(cdp, "press", { selector: "[data-browser-mark]" });
-	await wait(900);
-	const toggled = await cdp.evaluate(
-		`(() => ({
-			pane: Boolean(document.querySelector('[data-tour-tag="browser-pane"]')),
-			mark: Boolean(document.querySelector('[data-browser-mark]')),
-			strip: document.querySelectorAll('[data-tour-tag="browser-tab"]').length,
-		}))()`,
-	);
-	check(
-		"and a second press on the same mark CLOSES the pane it opened (U6)",
-		toggled.pane === false && toggled.mark === true,
-		`after the toggle: ${JSON.stringify(toggled)}`,
-	);
-	const closedMark = await markReading(cdp);
-	const markedClosed = closedMark.marks.find(
-		(mark) => mark.sessionId === sessionId,
-	);
-	check(
-		'and the mark goes back with it: aria-expanded="false" and the open\u2019s own words again (U8)',
-		markedClosed !== undefined &&
-			markedClosed.expanded === "false" &&
-			markedClosed.label === walked.label,
-		`expanded ${JSON.stringify(markedClosed?.expanded ?? null)}, label ${JSON.stringify(markedClosed?.label ?? null)} (expected ${JSON.stringify(walked.label)})`,
-	);
-
-	note(
-		"not shown",
-		"the mark's loading and approvals states: both need a live agent leg and a live request, which the browser-chrome proof drives against the real host rather than through the chat route",
-	);
-}
-
-/** Every mark on the sidebar, with the words each one would announce, the conversation
- * it belongs to, and how many CONVERSATION rows the list holds — so a check can say "a
- * mark per conversation" rather than "one mark".
- *
- * `[data-chat-row]` ALONE IS NOT "the conversations": the agent, team, draft and palette
- * rows carry it too, so the count is taken over `chat-session-row` — the tour tag the two
- * things this check compares share, the row `sessionRow` renders and the mark inside it.
- * That distinction is what this scene got wrong on its first driven runs: 2 marks against
- * 12 `data-chat-row` elements, ten of them the agent catalogue, and then 2 against 6 once
- * entity rows were excluded (the rest were draft and palette rows).
- */
-async function markReading(cdp) {
-	return await cdp.evaluate(`(() => {
-		const marks = [...document.querySelectorAll('[data-browser-mark]')];
-		const rows = [...document.querySelectorAll('[data-tour-tag="chat-session-row"]')];
-		return {
-			rows: rows.length,
-			marks: marks.map((mark) => ({
-				sessionId: mark.getAttribute('data-browser-mark') ?? '',
-				label: mark.getAttribute('aria-label') ?? '',
-				/** The disclosure state (design review round 2, U8): which of the two things the
-				 * next press does. Read as the ATTRIBUTE rather than as a boolean so an absent
-				 * one is distinguishable from the string "false" — the defect U8 filed was
-				 * that the control carried none at all. */
-				expanded: mark.getAttribute('aria-expanded'),
-			})),
-		};
-	})()`);
-}
 
 async function sceneStates(cdp) {
 	const hello = await verb(cdp, "hello");
@@ -7292,7 +7076,6 @@ async function main() {
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "mentions") await sceneMentions(cdp);
-			else if (SCENE === "browser-mark") await sceneBrowserMark(cdp);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);

@@ -26,6 +26,22 @@ import type { ThemeDefinition } from "../palette-contract";
  *   ramp. The rose is a pastel already at the top of its ramp, so the step is
  *   the palest rose rather than a brighter hex.
  * - `onAccent`: the page ground.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const rosePine: ThemeDefinition = {
 	id: "rosePine",
@@ -34,31 +50,38 @@ export const rosePine: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#191724",
-		surface: "#1f1d2e",
-		elevated: "#26233a",
-		sunken: "#12101b",
+		canvas: "#201e2b",
+		surface: "#262436",
+		elevated: "#2B283F",
+		sunken: "#191822",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast toward `accent` and stepped 3.29 on the `L*` axis — branch H of
-		 * this port's selection rule, with the cast sized by the same rule as `oneLight`'s:
-		 * the row has to clear the palette's own `accentWash` by the contract's field floor,
-		 * and the value that carried only the band measured ΔE00 **0.98** against it. Here
-		 * the wash separation is 2.75, at the cost of the louder total (ΔE00 5.97 from
-		 * `surface`, 5.73 from `elevated`, 9.41 from `sunken`, `inkDim` 4.65:1) — a
-		 * deliberate trade of loudness for two distinguishable selected-row idioms, and the
-		 * frame in the window's pixel list is where it is judged.
+		 * The current row's own ground, and the one palette class this pass pins:
+		 * `surface` stepped 2.45 `L*` lighter at the panel's own hue, under the 3
+		 * `L*` the direction floor asks for, because this palette's own inks cap the
+		 * lightness route at 2.6 `L*`. The band is paid on the cast at 1.42x the
+		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
+		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 5.88
+		 * from `surface`, 4.25 from `elevated`, 10.52 from `sunken`, 5.93 from
+		 * `accentWash`; the inks on the ground are 10.69:1, 8.15:1, 5.15:1.
+		 * Continuity with the panel: hue 14.13 degrees off the panel's (the
+		 * assertion allows 12, this palette being one of the measured exceptions `HIGHLIGHT_CONTINUITY_EXCEPTIONS` carries past it, under the 15-degree outer bound) and chroma 18.18 where the panel carries 12.77.
 		 */
-		highlight: "#2F2131",
+		highlight: "#33263F",
 
 		ink: "#e0def4",
 		// subtle, lifted; see the header. Canonical muted 6e6a86 is the inert
 		// rung further down.
 		inkMuted: "#c5c2dd",
-		inkDim: "#8F8BA9",
+		inkDim: "#9d99b7",
 		inkDisabled: "#6e6a86",
 
-		hairline: "#30303E",
+		/*
+		 * Legibility pass: a hairline is the one role that has to move when its grounds
+		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
+		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
+		 * `surface` is the tightest ground at ΔE00 6.19.
+		 */
+		hairline: "#363644",
 		// highlight-med 403d52 lifted to clear 3:1 on `elevated`.
 		borderControl: "#8b87a3",
 
@@ -74,23 +97,38 @@ export const rosePine: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2e2430",
 		onAccent: "#191724",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#c4a7e7`, iris), received unchanged because it already
+		 * clears every floor — ΔE00 21.62 from `accent`, 23.24 from its nearest
+		 * semantic (`danger`), 7.23:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#c4a7e7",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 15.78 and C* 9.63, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 2.05 from `accentWash` (the field floor is
+		 * 2.0), 7.10:1 for `accentAlt` on it, and 3.02 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#2B2532",
 
 		// pine #31748f measures 3.38:1 on base and 3.16:1 on surface — the only
 		// canonical accent under the floor on this ground. Lifted on-hue.
-		success: "#5995b2",
+		success: "#5f9bb8",
 		successWash: "#1a2730",
 		successBorder: "#417d99",
 
 		// gold, upstream's warnings colour.
 		warning: "#f6c177",
 		warningWash: "#2b2419",
-		warningBorder: "#8a7040",
+		warningBorder: "#8c7241",
 
 		// love, upstream's terminal red. The border is the danger button's only
 		// edge until hover, so it clears 3:1 on the dialog ground too.
 		danger: "#eb6f92",
 		dangerWash: "#2e1c26",
-		dangerBorder: "#A45A6E",
+		dangerBorder: "#aa5f73",
 
 		// foam, upstream's "object keys, info, git add" hue.
 		info: "#9ccfd8",
