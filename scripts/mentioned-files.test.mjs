@@ -18,7 +18,7 @@ import { build } from "esbuild";
  * transcripts on this machine, and each one is asserted by name so a future
  * loosening of the rules fails here rather than in the operator's panel.
  *
- * REAL: the shipped `mentioned-files.ts`, `file-tiles.ts` and their dependency
+ * REAL: the shipped `mentioned-files.ts`, `file-rows.ts` and their dependency
  * chain, bundled from source by esbuild. The rules under test are the ones the
  * app runs.
  *
@@ -45,7 +45,15 @@ const bundle = await build({
 				scanLane,
 				shouldRequestPage,
 			} from "./src/renderer/src/features/chat/canonical/mentioned-files-scan";
-			export { buildFileTiles, displayParent, parentDirectory } from "./src/renderer/src/features/chat/components/canvas/file-tiles";
+			export {
+				buildFileRows,
+				countLabel,
+				displayParent,
+				filterAndSearchRows,
+				kindGroupOf,
+				parentDirectory,
+				sizeLabel,
+			} from "./src/renderer/src/features/chat/components/canvas/file-rows";
 			export { viewerFor, READ_ENCODING } from "./src/renderer/src/features/chat/utils/viewer-routing";
 		`,
 		resolveDir: process.cwd(),
@@ -73,9 +81,13 @@ const {
 	restartScan,
 	scanLane,
 	shouldRequestPage,
-	buildFileTiles,
+	buildFileRows,
+	countLabel,
 	displayParent,
+	filterAndSearchRows,
+	kindGroupOf,
 	parentDirectory,
+	sizeLabel,
 	viewerFor,
 	READ_ENCODING,
 } = await import(
@@ -831,33 +843,42 @@ const doc = (path, extra = {}) => ({
 	...extra,
 });
 
-test("two files with one basename survive as two tiles with a parent line", () => {
-	const tiles = buildFileTiles([
+test("two files with one basename survive as two rows with a parent line", () => {
+	const rows = buildFileRows([
 		doc("/Users/dana/work/reports/summary.md"),
 		doc("/Users/dana/work/archive/summary.md"),
 		doc("/Users/dana/work/notes.md"),
 	]);
-	assert.equal(tiles.length, 3, "nothing is merged away");
+	assert.equal(rows.length, 3, "nothing is merged away");
 	assert.deepEqual(
-		tiles.map((tile) => tile.name),
+		rows.map((row) => row.name),
 		["summary.md", "summary.md", "notes.md"],
 	);
 	assert.deepEqual(
-		tiles.map((tile) => tile.showParent),
+		rows.map((row) => row.showParent),
 		[true, true, false],
-		"only the clashing basenames carry a second line",
+		"only the clashing basenames carry the directory line",
 	);
 	// The line as it is PAINTED, which is the part design round 1 (D1) was about:
 	// `/Users/dana/work/reports` and `/Users/dana/work/archive` used to render
 	// `/Users/dana/work/rep…` and `/Users/dana/work/arch…` — 17 shared characters
 	// kept, the three that differ cut off — so the line could not do the one thing
 	// it exists for. Abbreviating the home prefix is what makes both fit.
-	assert.equal(tiles[0].parent, "~/work/reports");
-	assert.equal(tiles[1].parent, "~/work/archive");
-	assert.notEqual(
-		tiles[0].parent,
-		tiles[1].parent,
-		"the collision is resolved",
+	assert.equal(rows[0].parent, "~/work/reports");
+	assert.equal(rows[1].parent, "~/work/archive");
+	assert.notEqual(rows[0].parent, rows[1].parent, "the collision is resolved");
+	/*
+	 * The line is drawn from a clash, at ANY width and regardless of the filter:
+	 * identity is the resolved path, and `displayParent` above is what makes the
+	 * line resolve one. Nothing about the list's width enters this rule - the
+	 * alternative (a directory on every row) is what the design frames rejected,
+	 * because at the dock's 400px end it truncated two of seven names to make room
+	 * for a line most rows did not need.
+	 */
+	assert.equal(
+		filterAndSearchRows(rows, { query: "", kinds: ["documents"] })[0].parent,
+		"~/work/reports",
+		"a filter narrows the list without changing what a row's identity needs",
 	);
 });
 
@@ -883,31 +904,233 @@ test("displayParent keeps the tail when the path cannot fit", () => {
 });
 
 test("a missing document keeps its position and is marked", () => {
-	const tiles = buildFileTiles([
+	const rows = buildFileRows([
 		doc("/tmp/a.md"),
 		doc("/tmp/gone.md", { availability: "missing" }),
 		doc("/tmp/c.md"),
 	]);
 	assert.deepEqual(
-		tiles.map((tile) => tile.missing),
+		rows.map((row) => row.missing),
 		[false, true, false],
 	);
 	assert.deepEqual(
-		tiles.map((tile) => tile.name),
+		rows.map((row) => row.name),
 		["a.md", "gone.md", "c.md"],
+	);
+	/*
+	 * A missing file is a RECEIPT, not a filter: it is present by default, in the
+	 * list's own order, and it is still there under a kind filter that admits it.
+	 * The row that says it is gone is the row that must not be hidden by a default
+	 * nobody chose.
+	 */
+	assert.deepEqual(
+		filterAndSearchRows(rows, { query: "gone", kinds: [] }).map(
+			(row) => row.name,
+		),
+		["gone.md"],
 	);
 });
 
 test("order is append order, never re-sorted", () => {
-	const tiles = buildFileTiles([
+	const rows = buildFileRows([
 		doc("/tmp/z.md"),
 		doc("/tmp/a.md"),
 		doc("/tmp/m.md"),
 	]);
 	assert.deepEqual(
-		tiles.map((tile) => tile.name),
+		rows.map((row) => row.name),
 		["z.md", "a.md", "m.md"],
 	);
+	/*
+	 * A filter is a filter, not a sort: the admitted rows keep the order they were
+	 * given, so narrowing a long list cannot move a row the reader had already
+	 * found. `a.md` stays last here even though it is first alphabetically.
+	 */
+	assert.deepEqual(
+		filterAndSearchRows(rows, { query: ".md", kinds: [] }).map(
+			(row) => row.name,
+		),
+		["z.md", "a.md", "m.md"],
+	);
+});
+
+// ------------------------------------------- the list's search and kind filter
+
+/*
+ * The search matches the row's NAME and its PATH, and `fold` on both sides is
+ * what makes it usable: the row paints only the name, so a query of `reports`
+ * has to reach the directory to be worth having at all, and the app's own
+ * normaliser is accent- and case-insensitive for the same reason the model and
+ * provider pickers use it.
+ */
+
+test("a query must match every token, in the name or in the path", () => {
+	const rows = buildFileRows([
+		doc("/Users/dana/work/reports/march-invoice-review.md"),
+		doc("/Users/dana/work/reports/q1-summary.md"),
+		doc("/Users/dana/work/invoices/march.csv"),
+	]);
+	// One token, found in the PATH of two rows that share only a directory.
+	assert.deepEqual(
+		filterAndSearchRows(rows, { query: "reports", kinds: [] }).map(
+			(row) => row.name,
+		),
+		["march-invoice-review.md", "q1-summary.md"],
+	);
+	// Two tokens: EVERY one must match somewhere in the row, which is what stops a
+	// longer query from being a broader search than a shorter one. `march.csv` has
+	// `invoice` (in `invoices`) but not `review`; `q1-summary.md` has `reports` but
+	// neither word.
+	assert.deepEqual(
+		filterAndSearchRows(rows, { query: "invoice review", kinds: [] }).map(
+			(row) => row.name,
+		),
+		["march-invoice-review.md"],
+	);
+	assert.deepEqual(
+		filterAndSearchRows(rows, { query: "reports invoice", kinds: [] }).map(
+			(row) => row.name,
+		),
+		["march-invoice-review.md"],
+	);
+	// A whitespace-only query is no query, and there is no minimum length: nothing
+	// is hidden by default.
+	assert.equal(
+		filterAndSearchRows(rows, { query: "   ", kinds: [] }).length,
+		3,
+	);
+	assert.equal(
+		filterAndSearchRows(rows, { query: "zzz", kinds: [] }).length,
+		0,
+	);
+});
+
+test("the query folds case and accents, on both sides", () => {
+	const rows = buildFileRows([
+		doc("/Users/dana/work/café-notes.md"),
+		doc("/Users/dana/work/resume.md"),
+	]);
+	// The FILE carries the accent and the query does not.
+	assert.deepEqual(
+		filterAndSearchRows(rows, { query: "CAFE", kinds: [] }).map(
+			(row) => row.name,
+		),
+		["café-notes.md"],
+	);
+	// The QUERY carries it and the file does not.
+	assert.deepEqual(
+		filterAndSearchRows(rows, { query: "résumé", kinds: [] }).map(
+			(row) => row.name,
+		),
+		["resume.md"],
+	);
+	// The names are the app's own bytes either way: only the comparison folds.
+	assert.equal(rows[0].name, "café-notes.md");
+});
+
+test("a query matches the abbreviated path the row paints", () => {
+	const rows = buildFileRows([doc("/Users/dana/work/reports/march.md")]);
+	// The directory line reads `~/work/reports`, so `~/work` has to find it: the
+	// user types the spelling the row shows.
+	assert.equal(
+		filterAndSearchRows(rows, { query: "~/work", kinds: [] }).length,
+		1,
+	);
+	// And the real path still matches, because that is what the query is matched
+	// against before any shortening happens.
+	assert.equal(
+		filterAndSearchRows(rows, { query: "/users/dana/work", kinds: [] }).length,
+		1,
+	);
+	// The `…/` the row paints is NOT in the haystack: it is a shortening the user
+	// never typed, and a query of `…/reports` must find nothing.
+	assert.equal(
+		filterAndSearchRows(rows, { query: "…/reports", kinds: [] }).length,
+		0,
+	);
+});
+
+test("the filter's groups come from the document type, never from extensions", () => {
+	assert.equal(kindGroupOf("image"), "images");
+	assert.equal(kindGroupOf("video"), "video");
+	assert.equal(kindGroupOf("audio"), "audio");
+	assert.equal(kindGroupOf("pdf"), "documents");
+	assert.equal(kindGroupOf("markdown"), "documents");
+	assert.equal(kindGroupOf("text"), "documents");
+	assert.equal(kindGroupOf("document"), "documents");
+	assert.equal(kindGroupOf("spreadsheet"), "spreadsheets");
+	assert.equal(kindGroupOf("presentation"), "presentations");
+	assert.equal(kindGroupOf("code"), "code");
+	assert.equal(kindGroupOf("html"), "code");
+	assert.equal(kindGroupOf("archive"), "archives");
+	assert.equal(kindGroupOf("other"), "other");
+	// An unclassified document is `other`, which is the group a user can reach:
+	// leaving it out of every group would make it unreachable by the filter.
+	assert.equal(kindGroupOf(undefined), "other");
+
+	const rows = buildFileRows([
+		doc("/tmp/a.md"),
+		doc("/tmp/b.png", { type: "image" }),
+		doc("/tmp/c.py", { type: "code" }),
+	]);
+	assert.deepEqual(
+		filterAndSearchRows(rows, { query: "", kinds: ["code"] }).map(
+			(row) => row.name,
+		),
+		["c.py"],
+	);
+	// Two groups are a union, in append order rather than in the menu's order.
+	assert.deepEqual(
+		filterAndSearchRows(rows, { query: "", kinds: ["code", "images"] }).map(
+			(row) => row.name,
+		),
+		["b.png", "c.py"],
+	);
+	// No group selected is no filter, not "nothing matches".
+	assert.equal(filterAndSearchRows(rows, { query: "", kinds: [] }).length, 3);
+});
+
+test("the media slot is the row's own type, and the size is a fact or nothing", () => {
+	const rows = buildFileRows([
+		doc("/tmp/shot.png", { type: "image", sizeBytes: 348_512 }),
+		doc("/tmp/clip.mp4", { type: "video" }),
+		doc("/tmp/note.md"),
+	]);
+	assert.deepEqual(
+		rows.map((row) => row.media),
+		["image", "video", null],
+		"only the media kinds keep a real thumbnail",
+	);
+	// The probe answered for the first row and not for the others: `null` is not
+	// `0 B`, and the row shows nothing rather than a claim.
+	assert.equal(rows[0].size, "349 KB");
+	assert.equal(rows[1].size, null);
+	assert.equal(rows[2].size, null);
+	assert.equal(sizeLabel(0), "0 KB", "a zero-byte file is a file, and says so");
+	assert.equal(sizeLabel(undefined), null);
+});
+
+test("a data URI is searched by its name, never by its bytes", () => {
+	const payload = `data:image/png;base64,${"QUJD".repeat(400)}`;
+	const rows = buildFileRows([doc(payload, { title: "Pasted image" })]);
+	// Folding a megabyte of base64 into a haystack would cost more than the panel
+	// is worth, and no user searches for their own image's bytes.
+	assert.equal(rows[0].search.includes("qujd"), false);
+	assert.equal(
+		filterAndSearchRows(rows, { query: "pasted", kinds: [] }).length,
+		1,
+	);
+});
+
+test("the count states both numbers the moment anything narrows the list", () => {
+	assert.equal(countLabel(12, 12, false), "12 files");
+	assert.equal(countLabel(1, 1, false), "1 file");
+	// Both numbers, always, while a query or a filter is ACTIVE - even when the
+	// control is not currently hiding anything, because the statement is about the
+	// control being on.
+	assert.equal(countLabel(3, 12, true), "3 of 12 files");
+	assert.equal(countLabel(12, 12, true), "12 of 12 files");
+	assert.equal(countLabel(0, 1, true), "0 of 1 file");
 });
 
 test("parentDirectory handles roots, dotfiles and data URIs", () => {
