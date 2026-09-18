@@ -69,26 +69,33 @@
  *
  * Rule order:
  *
- *   0. The capability is off → send. Nothing is spliced on a host that could not
- *      run the command it was deleted for.
- *   1. The token at the CARET (`slashTokenSpan`, which is what
+ *   0. A COMMAND-LOCKED word (`commandLockedWords`, today `/credential` and its
+ *      alias) whose token carries a tail → the command: `splice` where something
+ *      survives the token, `whole` where the token was the draft. Asked of the
+ *      DRAFT ALONE and AHEAD of the caret and of the capability flag, because the
+ *      fact the rule turns on is about the WORD rather than the position or the
+ *      host: the tail is a SECRET, and the readings that must never be reachable
+ *      are the ones that hand it to the model. See `lockedWordPlan`.
+ *   1. The capability is off → send. Nothing else is spliced on a host that could
+ *      not run the command it was deleted for.
+ *   2. The token at the CARET (`slashTokenSpan`, which is what
  *      `_run_command_from_buffer` itself calls first) defines the span the run
  *      owns. No token at the caret → prose; send it. The whole-draft shape is
  *      NOT tested first, it is a CONSEQUENCE of this: a `/usage` on line 1 of a
  *      two-line draft is a token on its own LINE, so the caret on line 2 finds
  *      no token and the draft is prose (round 1 R2 = Q1 = U1).
- *   2. A slash-shaped token that names no command: the token IS the whole draft
+ *   3. A slash-shaped token that names no command: the token IS the whole draft
  *      → `unrecognised`, so the dispatcher's "did you mean" note still answers a
  *      misspelling and the draft is kept to fix (round 1 U8). Anything else →
  *      prose, because a `/` inside a sentence is punctuation until its word is
  *      picked as a command.
- *   3. The token is the ENTIRE draft (nothing outside its span):
+ *   4. The token is the ENTIRE draft (nothing outside its span):
  *      - the word is followed by nothing, or the command takes an argument →
  *        `whole`: `/compact`, `/model gpt-5`, `/goal ship it`;
  *      - a command that takes NO argument has text after its word
  *        (`/compact hello`) → send. This is the operator's own report: `/compact
  *        hello` used to run and eat `hello`.
- *   4. The token OPENS the draft (its span begins at the first non-space
+ *   5. The token OPENS the draft (its span begins at the first non-space
  *      character) AND the command takes an argument → a command, with the
  *      sub-rules kept from the old rule:
  *      - a free-text command reassembles to the front, STAGED, never submitted.
@@ -97,14 +104,14 @@
  *        argument list first, and leaving that list open IS the interaction;
  *      - everything else splices the token out and runs it; the surrounding
  *        draft survives.
- *   5. Anything else — mid-sentence, on a later line, or a leading token with
+ *   6. Anything else — mid-sentence, on a later line, or a leading token with
  *      text after a command that takes no argument (`please /compact this`, or
  *      a `/usage` line above prose) → send. The draft reaches the model as
  *      written.
  *
- * TWO DELIBERATE DEVIATIONS FROM THE TUI, and the only two in this file, each
- * landed by a different round and both stated here rather than in the parser. The
- * first is rule 4's positional premise: the reference treats a command typed
+ * THREE DELIBERATE DEVIATIONS FROM THE TUI, and the only three in this file, each
+ * landed by a different round and all stated here rather than in the parser. The
+ * first is rule 5's positional premise: the reference treats a command typed
  * mid-draft as a command, owning the rest of its own line, where a word sitting
  * in a sentence names no gesture — so only a token that OPENS the draft, or is
  * the whole of it, is one. The second is main's own and this branch keeps it
@@ -112,8 +119,12 @@
  * hoisted by this key at all, because its arming is an explicit PICK of its own
  * row in the popup (`planSlashArming`) — the report behind it was a request
  * rearranged with a note and a second Enter needed. WHICH words each holds for is
- * the registry's business, never a name written into this function.
+ * the registry's business, never a name written into this function. The third is
+ * rule 0, and it is the reference's own rule that a mid-draft token owns the rest
+ * of its line, given the ONE case where acting on it late is unrecoverable: a
+ * word whose argument is a secret. Its asymmetry is stated at `lockedWordPlan`.
  *
+ * "WHICH LINE THE COMMAND OWNS", the rule this file exists to state: a command
  * owns its word plus the rest of ITS OWN LINE, never the lines around it. That
  * is why the span ends at the line end (`slash-token.ts` `slashTokenSpan`) and
  * why a message meant to survive a run sits BEFORE the slash or on another
@@ -205,6 +216,19 @@ export type SlashCommandInvocation = {
 	args: string;
 };
 
+/**
+ * The mark a plan carries when the word it runs is one of `commandLockedWords`.
+ *
+ * It exists because TWO plan kinds can be a locked run — `whole` when the token
+ * was the draft, `splice` when the word sat in a sentence — and the composer owes
+ * that run two things it owes no other: a sentence saying what happened to the
+ * words after the word, and an undo that puts them back (the tail was a SECRET,
+ * so a silent removal and a silent refusal are both worse here than anywhere
+ * else in this file). The alternative — the composer asking its own "is this
+ * draft locked" question — is the second decision this file exists to prevent.
+ */
+export type LockedRunMark = { locked?: true };
+
 export type SlashSubmissionPlan =
 	/**
 	 * Not a command in this draft. Send the draft to the model — which is also the
@@ -212,16 +236,16 @@ export type SlashSubmissionPlan =
 	 */
 	| { kind: "send" }
 	/** The whole draft is the command: nothing survives removing its token. */
-	| { kind: "whole"; command: SlashCommandInvocation }
+	| ({ kind: "whole"; command: SlashCommandInvocation } & LockedRunMark)
 	/** Splice the token out of the draft, keep the rest, and run `command`. */
-	| {
+	| ({
 			kind: "splice";
 			start: number;
 			end: number;
 			command: SlashCommandInvocation;
 			text: string;
 			caret: number;
-	  }
+	  } & LockedRunMark)
 	/** Move the command to the front, keep the rest as its argument, stage it. */
 	| { kind: "reassemble"; text: string; caret: number }
 	/** A name-list command with no name typed yet: the roster list owns the key. */
@@ -278,6 +302,39 @@ export type SlashSubmissionArgs = {
 	 * names no command, and the pick path cannot be affected by it.
 	 */
 	armedOnlyCommands?: ReadonlySet<string>;
+	/**
+	 * Words whose token plans as the COMMAND wherever it sits in the draft,
+	 * whatever the caret says and whatever surrounds it.
+	 *
+	 * The CALLER's answer rather than names written into this file, because the
+	 * fact that makes these words special belongs to the module that owns them:
+	 * `/credential` and its alias take a SECRET as their argument, and the
+	 * dispatcher strips that argument before command text is built for exactly
+	 * that reason (`slash-dispatch.ts`). A MESSAGE is not something the dispatcher
+	 * can strip, so the reading this file's prose rule gives every other word —
+	 * send it — would post the secret to the model, silently and unrecoverably,
+	 * while the reading the locked words get fails in front of the user instead
+	 * (a refused command). `credential-capture.ts` owns the spellings.
+	 *
+	 * EMPTY BY DEFAULT, and it must stay empty for a caller that has not thought
+	 * about it: a host that knows nothing about credentials cannot acquire the
+	 * behaviour by omission. See `lockedWordPlan` for the rule itself.
+	 */
+	commandLockedWords?: ReadonlySet<string>;
+	/**
+	 * The word whose UN-MASKED RUN this draft carries, when the composer's own cancel
+	 * record says it put characters back (`CancelledToken.restored > 0`) — or absent
+	 * for every other draft, which is the default and the whole of "no other caller
+	 * can acquire this by accident".
+	 *
+	 * It is the one input that lets a slash which does not OPEN a word count as a
+	 * token, and the one that lets the run be taken when an edit has broken the word
+	 * entirely (QA round 5, Q-1; UX round 5, U19/U20). Both are the same fact: this
+	 * app un-masked characters into THIS draft, so the words in it are credential
+	 * material rather than the model's, and the record is the only thing that can tell
+	 * it apart from prose that merely mentions the word. See `lockedWordPlan`.
+	 */
+	unmaskedRunWord?: string;
 	/** Whether a boundary slash token is a command at all (the feature is on). */
 	enabled: boolean;
 	/**
@@ -391,6 +448,321 @@ function oneLine(text: string): string {
 	return text.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * One locked word as a literal alternative in a `RegExp`.
+ *
+ * The only part of the locked-word rule that is not a fact about drafts: the
+ * words arrive as a SET from the caller rather than as a pattern this file
+ * wrote, and an unescaped metacharacter in one of them would either change what
+ * is matched (`c.ed`) or throw at construction. Escaping is the whole of the
+ * defence, and it is cheaper than refusing a set that carries one — refusing
+ * would turn a caller's typo into a rule that silently does nothing.
+ */
+function literalWord(word: string): string {
+	return word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * The end of the line the offset sits on: where a token's own span ends.
+ *
+ * `indexOf` rather than `lineOfCursor`, because a `/` alone is all this scan has:
+ * the helper takes a CARET and this rule has none. The CRLF strip is the one
+ * behaviour that has to be reproduced faithfully rather than approximated, since
+ * `lineOfCursor` does it for every other reader of a token's word and a `\r` left
+ * on the end of an argument would be a second way to spell a token the stream
+ * pastes (review round 1, minor-1).
+ */
+function tokenLineEnd(draft: string, index: number): number {
+	const newline = draft.indexOf("\n", index);
+	const end = newline === -1 ? draft.length : newline;
+	return draft[end - 1] === "\r" ? end - 1 : end;
+}
+
+/**
+ * The splice a COMMAND-LOCKED word's token takes, or `null`.
+ *
+ * ASKED OF THE DRAFT ALONE, and the placement of its one call is the whole of
+ * this rule rather than a detail of it: `slashTokenSpan` claims the token at the
+ * CARET, so a locked word typed mid-sentence with the caret anywhere but on it —
+ * at column 0 above all — has no span at all, answers `send` at the early return
+ * three lines into `planSlashSubmission`, and posts the secret to the model as
+ * message text. Asking here, AHEAD of that return, is what makes the answer the
+ * same at every caret.
+ *
+ * WHY THIS WORD AND NOT EVERY WORD is the asymmetry the caller's set encodes, and
+ * it decides the DIRECTION of the whole rule: a `/credential` argument is a
+ * SECRET, the dispatcher strips it before command text is built for exactly that
+ * reason, and a message is not something the dispatcher can strip. So one
+ * direction is silent and unrecoverable (the secret is in the transcript, and no
+ * keystroke undoes it) while the other fails in front of the user, in the
+ * command's own refusal — and the visible failure is the one to prefer. That is
+ * also why a draft merely MENTIONING the command with words after it now plans as
+ * the command: the cost of reading prose as a gesture is a refusal the user can
+ * see and undo, and the cost of the reverse is a leaked secret.
+ *
+ * FOUR CONJUNCTS, each narrowing rather than decorating:
+ *
+ *   - the word is one the CALLER locked, and it is spelled as a token (a
+ *     boundary `/`, the word, then whitespace or the end: `/credentials` is not
+ *     one — the matcher's `(?!\S)` draws the same line as `CREDENTIAL_TOKEN`);
+ *   - a NON-EMPTY TAIL, because the invocation being planned is `/credential
+ *     <secret>`: a bare mid-draft token is the composer's own arming gesture, and
+ *     the capture owns it rather than this planner;
+ *   - a surviving REST, because the whole-draft form is ALREADY the command — the
+ *     shape `credential-capture`'s own suite pins for `/credential <args>` — and
+ *     this branch may not move it;
+ *   - a word the host KNOWS (`commandNames`), so the rule cannot invent a command
+ *     for a word the catalogue does not advertise.
+ *
+ * THE SPAN IS THE TOKEN'S OWN LINE, derived here rather than asked of
+ * `slashTokenSpan` — THE ONE PLACE IN THIS FILE THAT DERIVES ONE, and the reason
+ * is a difference between two questions. That helper answers "which token does the
+ * CARET own", and its answer runs through the tokenizer's CLAIMING rule: once a
+ * recognised command word is space-terminated the rest of its line is that
+ * command's ARGUMENT, so a `/credential` behind a `/team ops` is text the
+ * tokenizer hands back as `/team`'s. This rule asks a different question — does
+ * this draft CONTAIN a locked word with an argument — and it may not answer it the
+ * caret's way, because the draft is what the model is handed: a locked word inside
+ * another command's argument leaks exactly the same secret as one standing alone
+ * (`please /team ops /credential <secret>` is sent whole today), and the claim is
+ * a rule about EDITING a line rather than about what that line holds. So the
+ * slash, the locked word, and the end of ITS OWN line is the whole of the span:
+ * the tokenizer's own end, and its own start for every shape but that nested one.
+ *
+ * AND THE SLASH DOES NOT HAVE TO OPEN A WORD (QA round 4, Q-1). The tokenizer's
+ * left boundary exists so a `/` inside a word is punctuation rather than a
+ * command — a path, a ratio, `n/2` — and for an ORDINARY word that reading is
+ * untouched. For a LOCKED word the question is not which word the user meant but
+ * whether a secret is about to travel as message text, and the measurement is
+ * blunt about what the boundary cost here: type `/credential <secret>`, press the
+ * app's own Escape (whose sentence says Enter will take those characters as the
+ * command's argument), press Home and type one character in front of the slash —
+ * the draft is now `x/credential <plaintext>`, the boundary is gone, this rule
+ * found nothing, the draft no longer started with `/` so the leading-slash
+ * refusal had no part of it, and the press put the value into a message record and
+ * a provider request body. The value was the one the APP had just un-masked.
+ *
+ * AND IT IS SCOPED TO THE DRAFT THE APP ITSELF UN-MASKED (QA and UX round 5).
+ * The first form of the widening above dropped the boundary for EVERY draft, and
+ * the price was measured on both sides of the seam: UX watched a sentence —
+ * `the docs/credential rotation policy is stale` — be truncated to `the docs` and
+ * answered with a Credential dialog that no press could ever dismiss into a send,
+ * and QA watched that same in-word prose stop being sendable at all. So the
+ * boundary is required again for every draft BUT one: the draft the composer's
+ * cancel record says it put characters back into. Those drafts carry the reason
+ * this rule exists, and an ordinary path or URL is prose again.
+ *
+ * WHAT IS LEFT, STATED RATHER THAN IMPLIED: a FRESH draft that misspells the word
+ * and was never cancelled (`please /credxential <secret>`, no Escape) stays prose,
+ * because nothing but the user knows the word was meant as a command — the same on
+ * `main`. The record is the only thing that can tell those two apart, and it only
+ * exists where the app un-masked something.
+ *
+ * ONE PASS, AND NOTHING IS EVER ASKED PER `/`. The scan is a single `exec` walk
+ * over the draft plus arithmetic on each match, so a draft full of `/`s costs the
+ * same as a draft with none, and the tokenizer — whose `activeSlash` rebuilds its
+ * line's boundary-slash list at every call — is not entered at all. That is the
+ * cost this rule has to keep, because it runs on every keystroke of every draft,
+ * through `planSlashSubmission`.
+ */
+function lockedWordPlan(
+	draft: string,
+	caret: number,
+	commandNames: ReadonlySet<string>,
+	lockedWords: ReadonlySet<string>,
+	unmaskedRunWord: string | undefined,
+): SlashSubmissionPlan | null {
+	/*
+	 * THE WORDS ARE FOLDED HERE, once, and both questions below ask the folded set.
+	 * The caller hands over a vocabulary and this rule asks it twice — the
+	 * alternation that finds a token, and the membership test that confirms the
+	 * token's word — so a caller who spelled one with a capital used to get a rule
+	 * that silently did nothing: the pattern matched and the test refused it
+	 * (review F6). A word that folds to nothing is dropped rather than escaped into
+	 * an alternation that would match a bare `/`.
+	 */
+	const words = new Set(
+		[...lockedWords].map((word) => word.toLowerCase()).filter(Boolean),
+	);
+	/*
+	 * THE WORD WHOSE UN-MASKED RUN THIS DRAFT CARRIES, when the composer's own cancel
+	 * record says it put characters back — and the ONE thing that lets a slash which
+	 * does not open a word count as a token. The caller hands over the word the record
+	 * was built for (its own spelling, `/` and separator included when it arrives that
+	 * way), and `undefined` for every other draft.
+	 */
+	const runWord = (unmaskedRunWord ?? "")
+		.toLowerCase()
+		.replace(/^\//, "")
+		.trim();
+	// An unwired or empty vocabulary, on a draft the app never un-masked, is the whole
+	// of "no other caller can acquire this by accident": the walk below never runs. A
+	// draft that DOES carry a run is the one exception, because the spelling of the
+	// word in it may no longer be the spelling this vocabulary holds.
+	if (words.size === 0 && runWord === "") return null;
+	/*
+	 * THE LEFT BOUNDARY IS REQUIRED, AND ONLY THE RECORD LIFTS IT. It exists so a `/`
+	 * inside a word is punctuation rather than a command — a path, a ratio, `n/2` —
+	 * and dropping it for every draft turned that prose into a credential dialog and
+	 * an unsendable sentence (UX round 5, U19/U20). A draft carrying a run is the one
+	 * place where an in-word slash cannot be punctuation: the app itself un-masked
+	 * characters for a word, and the user is editing them.
+	 */
+	const boundary = runWord === "" ? "(?:^|(?<=\\s))" : "";
+	const token = new RegExp(
+		`${boundary}\\/(?:${[...words].map(literalWord).join("|")})(?!\\S)`,
+		"gi",
+	);
+	for (
+		let match = token.exec(draft);
+		match !== null;
+		match = token.exec(draft)
+	) {
+		const index = match.index;
+		const end = tokenLineEnd(draft, index);
+		const typed = invocationOf(draft.slice(index, end).trim());
+		const word = typed.name.toLowerCase();
+		if (!words.has(word)) continue;
+		// A bare token is NOT this rule's: `/credential ` is the composer's own
+		// arming gesture, and the capture owns it rather than the planner.
+		if (typed.args === "") continue;
+		/*
+		 * THE NAME THE CATALOGUE KNOWS THE WORD BY, whenever it knows one. This rule
+		 * case-folds and the dispatcher does NOT (`slash-dispatch.ts` resolves
+		 * `command.name === word` then `aliases.includes(word)`), so handing the
+		 * typed spelling over made `/Cred <secret>` answer "Unknown command /Cred"
+		 * over a draft whose tail it had already taken — safe, and untrue about the
+		 * user's own sentence (review F3). The catalogue's own spellings are
+		 * lower-cased (`slash-commands.tsx` builds every vocabulary that way), so the
+		 * folded word IS the catalogue's spelling; a word the catalogue does not
+		 * advertise keeps the spelling the user typed, which is what the dispatcher's
+		 * own "Unknown command /…" note quotes back.
+		 */
+		const known = commandNames.has(word);
+		const command = known ? { name: word, args: typed.args } : typed;
+		return runPlan(draft, caret, index, end, command, known);
+	}
+	/*
+	 * THE RUN THE APP PUT BACK, whose word an edit has broken (QA round 5, Q-1).
+	 *
+	 * An edit INSIDE the word (`/credxential`), one immediately AFTER it
+	 * (`/credentiaxl`) or a Backspace inside it leaves the draft holding the characters
+	 * the Escape had just un-masked, with no token this vocabulary can find and, for
+	 * the inside cases, no token the composer's `recordWord` can find either — so the
+	 * gesture degraded to prose, the prose rule handed the draft to the model, and the
+	 * draft no longer started with `/` so the leading-slash policy had no part of it.
+	 * Measured on the real app: a message record and a provider request body carrying
+	 * the canary, byte-identical on the pre-fold head and on `main`.
+	 *
+	 * The record is what the word's own spelling cannot be: it says WHICH WORD was
+	 * holding characters here (`unmaskedRunWord`) and that they came back. So the
+	 * draft's first slash token is taken as that word's run — the same span the scan
+	 * above would have taken, the same `locked: true`, the same receipt and undo — and
+	 * the dispatcher is handed the recorded word with the tail as its argument, which
+	 * is refused as command-line text and never sent. The user's own prose before the
+	 * token stays in the box; the undo returns everything the run took.
+	 *
+	 * ITS COST, stated: inside such a draft any slash token is read this way, including
+	 * one the user wrote as a path, and the words after it go as the command's argument
+	 * until this edit is undone. That window is the app's own — the record exists only
+	 * between an Escape and the next send, dispatch or conversation change — and the
+	 * alternative was measured too: the secret in a provider body.
+	 */
+	if (runWord === "") return null;
+	const broken = /\/[^\s/]+/.exec(draft);
+	if (broken === null) return null;
+	const brokenIndex = broken.index;
+	const brokenEnd = tokenLineEnd(draft, brokenIndex);
+	const brokenTyped = invocationOf(draft.slice(brokenIndex, brokenEnd).trim());
+	return runPlan(
+		draft,
+		caret,
+		brokenIndex,
+		brokenEnd,
+		{ name: runWord, args: brokenTyped.args },
+		commandNames.has(runWord),
+	);
+}
+
+/*
+ * WHAT ONE RUN'S PLAN IS, given the span it owns and the command it hands the
+ * dispatcher — asked by the scan above for a word the draft still spells, and by the
+ * broken-word path for the word the record remembers. It is ONE function because the
+ * two must answer identically: the receipt, the undo, the caret and the dispatcher's
+ * own reading are all consequences of this object, and a second construction would be
+ * a second answer to "what did this press do".
+ */
+function runPlan(
+	draft: string,
+	caret: number,
+	index: number,
+	end: number,
+	command: SlashCommandInvocation,
+	known: boolean,
+): SlashSubmissionPlan {
+	const rest = replaceSpan(draft, index, end, "");
+	/*
+	 * NOTHING SURVIVES THE TOKEN: the whole-draft form, and the one shape this
+	 * rule takes that the caret-led path also reaches. It is answered here rather
+	 * than left to the arm below for a measured reason (UX round 1, U1): that arm
+	 * reads the word's trailing text as its argument only when the CATALOGUE says
+	 * the command takes one, and a stale or still-loading catalogue read it as a
+	 * sentence and SENT the secret — the same fail-open review F1 found on the
+	 * other side of this rule. A locked word's tail is its argument by definition,
+	 * so the answer does not depend on what the catalogue says about arguments:
+	 * `whole` where the word is one the host can run, and `unrecognised` — which
+	 * runs the dispatcher's own "unknown command" note and KEEPS the draft — where
+	 * it is not, because a catalogue that cannot resolve the word must not be able
+	 * to destroy the user's whole draft either.
+	 */
+	if (rest.text.trim() === "")
+		return known
+			? { kind: "whole", command, locked: true }
+			: { kind: "unrecognised", command };
+	/*
+	 * A surviving REST still splices, whether or not the catalogue knows the word:
+	 * an unadvertised word reaches the dispatcher's `!spec` branch, which notes
+	 * "Unknown command /…" and returns `consumed`, so the tail is deleted and
+	 * never sent — the visible failure rather than the silent leak (review F1).
+	 *
+	 * THE CARET IS CLAMPED, not moved to the splice point: `rest.caret` is where
+	 * the removal ended, and a draft that arrived whole with the caret at column 0
+	 * used to jump 28 columns for no reason the user could see (design D5). A caret
+	 * the removal swallowed collapses to the splice point, which is what an editor
+	 * does.
+	 */
+	/*
+	 * THE CARET MOVES BY WHAT THE REMOVAL TOOK, AND NO FURTHER (design D5, code review
+	 * round 2 MINOR 2). The survivor is `draft.slice(0, rest.caret)` +
+	 * `draft.slice(rest.caret + removed)`, so the three cases are the three positions a
+	 * caret can be in: BEFORE the splice point it is untouched, at or after the END of
+	 * the removed run it shifts back by exactly that run, and inside the run it
+	 * collapses onto the splice point — what an editor does with a deleted selection.
+	 *
+	 * The first version clamped to `rest.caret` for everything past the token, which
+	 * moved a caret the removal never swallowed: on a multi-line draft with the caret
+	 * on a SURVIVING line it jumped back to line 1's splice point (measured on the real
+	 * planner: `please /credential C\r\nand then ship it` at the caret at the end gave
+	 * 6, where line 2 had survived the run entire).
+	 */
+	const removed = draft.length - rest.text.length;
+	const after = rest.caret + removed;
+	return {
+		kind: "splice",
+		start: index,
+		end,
+		command,
+		text: rest.text,
+		caret:
+			caret <= rest.caret
+				? Math.max(caret, 0)
+				: caret >= after
+					? caret - removed
+					: rest.caret,
+		locked: true,
+	};
+}
+
 export function planSlashSubmission({
 	draft,
 	caret,
@@ -400,13 +772,42 @@ export function planSlashSubmission({
 	valueArgumentCommands,
 	nameListCommands,
 	argumentCommands,
+	commandLockedWords,
+	unmaskedRunWord,
 	enabled,
 	gesture = "typed",
 }: SlashSubmissionArgs): SlashSubmissionPlan {
-	// The capability flag, first and unconditionally: when `commands` is off,
-	// nothing is spliced and nothing is lost — the same fallback the model path
-	// already has. A splice that ran here would delete text on a backend that
-	// cannot run the command it was deleted for.
+	/*
+	 * The command-locked word, asked of the DRAFT alone and ahead of the caret —
+	 * see `lockedWordPlan` for why the position of this call IS the rule. A locked
+	 * word with a tail is a command at every caret, and the caret can therefore
+	 * never be the thing that decides which way a secret goes.
+	 *
+	 * AND AHEAD OF THE CAPABILITY FLAG, which is the fail-CLOSED direction review F2
+	 * asked for. The flag lives on the capability query (`commands`), not on the
+	 * command catalogue, and it is off for the first moments of every boot and for
+	 * every host whose backend does not publish the feature — so asking it first left
+	 * the secret travelling to the model on exactly the drafts this rule exists for.
+	 * Closed is the right direction here because the two failures are not the same
+	 * size: a plan that cannot run leaves the words in the box, where the user still
+	 * owns them (the dispatcher restores the draft it could not address, and an
+	 * absent dispatcher leaves the box untouched), while a `send` they cause is
+	 * unrecoverable. Every OTHER word keeps the old order: the capability flag still
+	 * turns the planner off for them, which is the behaviour the suite pins.
+	 */
+	const locked = lockedWordPlan(
+		draft,
+		caret,
+		commandNames,
+		commandLockedWords ?? EMPTY_COMMANDS,
+		unmaskedRunWord,
+	);
+	if (locked !== null) return locked;
+
+	// The capability flag: when `commands` is off, nothing else is spliced and
+	// nothing is lost — the same fallback the model path already has. A splice that
+	// ran here would delete text on a backend that cannot run the command it was
+	// deleted for.
 	if (!enabled) return { kind: "send" };
 
 	/*

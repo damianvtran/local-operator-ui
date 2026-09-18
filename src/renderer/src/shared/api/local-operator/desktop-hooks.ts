@@ -21,6 +21,20 @@ export const desktopKeys = {
 	providers: ["desktop", "auth", "providers"] as const,
 	commands: ["desktop", "commands"] as const,
 	accounts: ["desktop", "auth", "accounts"] as const,
+	/**
+	 * One session's stored credential NAMES, as the picker's list reads them.
+	 *
+	 * A factory rather than a constant because the key carries the session, and it
+	 * is here rather than at its readers because TWO of them exist now: the picker
+	 * that lists the names (`destination-pickers.tsx`) and the composer's store seam,
+	 * which has to invalidate this key after a store. QA round 1's Q-5 is what a
+	 * second copy of the string costs — the picker mounted over a list it had cached
+	 * five minutes earlier and rendered "No credentials stored yet." while the same
+	 * route answered with the name that had just been stored, so the row the user
+	 * came for was not on screen to click.
+	 */
+	credentials: (sessionId: string) =>
+		["desktop", "credentials", sessionId] as const,
 };
 
 /**
