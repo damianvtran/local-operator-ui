@@ -1322,7 +1322,13 @@ derivation to guard. What remains:
 - **at window level**, the owner's
   `git diff <last-tag>..origin/main -- package.json` check above, which is now the
   only thing standing between a stray bump and a skipped release — run it every
-  window, and treat a non-empty diff as a stop rather than a detail.
+  window, and read it against the right field. The stop is on the **version**
+  entry: compare `git show <last-tag>:package.json` with `git show
+  origin/main:package.json` and stop only if those two disagree. A non-empty diff
+  that touches only other fields is expected rather than alarming — a feature PR
+  adding a `scripts` entry makes the diff non-empty most windows, and an owner who
+  reads the diff's emptiness as the signal stalls a window that is perfectly
+  legitimate.
 
 ### Invariants a future agent must not break
 
