@@ -1,6 +1,13 @@
 /**
- * The toolbar a link raises on the canonical transcript: Copy, Open, Open folder,
- * and Quote.
+ * The toolbar a link raises on the canonical transcript: Copy, Open in canvas,
+ * Open in default app, Open folder, and Quote.
+ *
+ * WHICH OPEN A TARGET GETS IS `link-actions.ts`'s MATRIX, not this file's
+ * business, and the canvas half of it is why there are two opens at all: a path
+ * this app has a viewer for opens in the pane's own canvas by default, and the OS
+ * gets a press of its own (`Open in default app`) so the reader who wanted
+ * Preview or Numbers can still say so. A directory, a `.zip` and every surface
+ * with no pane keep the single `Open` they had.
  *
  * QUOTE IS ON IT IN BOTH STATES, and that is round 2's decision rather than a
  * widening for its own sake (UX round 2, U4). The state it used to wait for - a
@@ -55,30 +62,46 @@
  * remove. It does not mount at all when the subject is not a target this app
  * opens, and it does not mount for a target the classifier called `other`, so a
  * `mailto:` link keeps exactly the behaviour it had.
+ *
+ * THE PANE COMES FROM THE CONTEXT, NOT FROM A PROP (`canvas-pane.tsx`), and so
+ * does the anchor's own press: one mechanism, so the button and the click on the
+ * link under it cannot disagree about where a document goes. `conversationId`
+ * stays a prop because it is a different question - the key a staged quote is
+ * filed under - and publishing it here as well would be two sources of one value.
  */
 
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
+	AppWindow,
 	Check,
 	ClipboardCopy,
 	ExternalLink,
 	File as FileIcon,
 	FolderOpen,
+	PanelRightOpen,
 	Quote,
 } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useState } from "react";
+import { useCanvasPane } from "../utils/canvas-pane";
 import {
 	LINK_TARGET_PATH_ATTR,
 	type LinkActionId,
 	type LinkKind,
 	type ProbedTarget,
+	canvasActionFor,
 	linkToolbarModel,
 	probeStateFor,
 	probeTarget,
 } from "../utils/link-actions";
-import { copyTarget, openTarget, revealLocalTarget } from "../utils/link-open";
+import {
+	copyTarget,
+	openLocalTarget,
+	openTarget,
+	revealLocalTarget,
+} from "../utils/link-open";
+import { opensInCanvas } from "../utils/open-in-canvas";
 import { QUOTE_TOOLKIT_ATTR } from "./quote-model";
 import { useFloatingControl } from "./use-floating-control";
 import { LINK_TOOLBAR_ATTR } from "./use-link-subject";
@@ -106,6 +129,14 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 }) => {
 	const target = subject.getAttribute(LINK_TARGET_PATH_ATTR) ?? "";
 	const kind = (subject.getAttribute("data-lo-kind") ?? "file") as LinkKind;
+	/*
+	 * The pane this transcript is in, or `null` on every surface that has none
+	 * (a story, the run panel's child reader, the legacy message rows). The whole
+	 * canvas half of this toolbar hangs off that one answer, and it is the SAME
+	 * answer the anchor's own press reads (`canvas-pane.tsx`), so the button and
+	 * the click under it cannot disagree about where a document goes.
+	 */
+	const pane = useCanvasPane();
 	/*
 	 * What a Quote press stages when the reader has NOT highlighted this link:
 	 * the link's own visible text, which is the agent's own words for a bare path
@@ -186,11 +217,24 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 		};
 	}, [target]);
 
+	/*
+	 * Two facts, asked once and read twice: the matrix chooses between the canvas
+	 * and the OS with them, and the icon map below chooses the canvas mark with the
+	 * same answer (`canvasActionFor` applies the matrix's own rules about
+	 * directories and known-missing paths, so the two cannot drift).
+	 */
+	const canOpenInCanvas = opensInCanvas(pane, target);
+	const canvasAction = canvasActionFor({
+		isDirectory: probe?.exists === true && !probe.isFile,
+		probe,
+		canOpenInCanvas,
+	});
 	const model = linkToolbarModel({
 		kind,
 		target,
 		probe,
 		quotable: quoteAvailable,
+		canOpenInCanvas,
 	});
 	/*
 	 * Nothing to offer means nothing on screen. `linkToolbarModel` answers `null`
@@ -205,14 +249,40 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	};
 
 	const handleOpen = async () => {
-		const opened = await openTarget(kind, target);
+		/*
+		 * The canvas first when the app can show this path, and the OS after it: the
+		 * pane's own refusal is the fallback's whole reason to exist (a version with
+		 * no viewer for these bytes, a read that failed, a file deleted between the
+		 * probe and this press), and answering that refusal with nothing would be the
+		 * silent no-op this matrix exists to remove.
+		 *
+		 * `canvasAction` rather than `canOpenInCanvas` is the test, so the press
+		 * follows the LABEL the reader read: a directory named `notes.md` has a viewer
+		 * by extension and is never offered the canvas (`canvasActionFor`'s veto), and
+		 * its lone `Open` must be the OS's rather than a canvas that would refuse it.
+		 */
+		if (kind === "url") {
+			await openTarget(kind, target);
+			return;
+		}
+		if (pane && canvasAction && (await pane.openInCanvas(target))) return;
 		/*
 		 * A press that failed is the one thing that can make the cached answer
 		 * wrong - the file was deleted between the probe and the press, or it
 		 * appeared after a probe said it was missing - so the cache is dropped and
 		 * the matrix is re-derived on the next reveal rather than repeating it.
 		 */
-		if (!opened && kind === "file") setProbe(null);
+		if (!(await openTarget(kind, target))) setProbe(null);
+	};
+
+	/*
+	 * The OS hand-off as its own action, for the reader who wants Preview or
+	 * Numbers rather than the app's viewer. It reports its failure the same way
+	 * `Open` does, cache drop included, because it is the same press stopped one
+	 * step earlier.
+	 */
+	const handleOpenDefaultApp = async () => {
+		if (!(await openLocalTarget(target))) setProbe(null);
 	};
 
 	const handleOpenFolder = async () => {
@@ -230,7 +300,22 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	const icons: Record<LinkActionId, React.ReactNode> = {
 		quote: <Quote />,
 		copy: copied ? <Check /> : <ClipboardCopy />,
-		open: kind === "url" ? <ExternalLink /> : <FileIcon />,
+		/*
+		 * The canvas mark is the PANEL the document opens into - the right-hand dock
+		 * is this app's canvas, and `PanelRightOpen` is that panel with its content
+		 * still arriving. The OS's own mark is a window, which is what `Open in
+		 * default app` produces. Both are on screen together for a canvas-openable
+		 * file, so they have to read as two different places rather than two
+		 * versions of one.
+		 */
+		open: canvasAction ? (
+			<PanelRightOpen />
+		) : kind === "url" ? (
+			<ExternalLink />
+		) : (
+			<FileIcon />
+		),
+		"open-default": <AppWindow />,
 		"open-folder": <FolderOpen />,
 	};
 	const presses: Record<LinkActionId, () => void> = {
@@ -240,6 +325,9 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 		},
 		open: () => {
 			void handleOpen();
+		},
+		"open-default": () => {
+			void handleOpenDefaultApp();
 		},
 		"open-folder": () => {
 			void handleOpenFolder();
