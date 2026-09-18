@@ -51,6 +51,7 @@ const {
 	noteInput,
 	noteSettled,
 	prefetchZonePx,
+	spendWindows,
 } = paging;
 
 /*
@@ -1257,5 +1258,81 @@ test("a slow approach inside the zone is spent at its input cadence, not at the 
 		decide(still, inside, 1080).action,
 		"none",
 		"a stationary reader inside the zone still waits for the debounce",
+	);
+});
+
+/*
+ * THE PAINT IS NOT THE DEMAND. `use-scroll-paging.ts` paints the slot's
+ * "Loading earlier messages" from `spendWindows`, so a demand `decide` has
+ * REFUSED must not satisfy it: a reader following the tail arms a demand on
+ * their first upward notch, the `followingTail` guard returns before the armed
+ * branch, and the demand stays armed — retained for when they come back — while
+ * nothing is requested and nothing is in flight. Before the gate, that state
+ * painted a spinner and announced "Loading earlier messages" through the slot's
+ * `aria-live` region (review round 2, R2-3a).
+ *
+ * The case asserts both halves, because either alone is not the claim: the
+ * refusal (`action: "none"`, `armed: true`) and the window answer the paint is
+ * computed from (neither window at 6000px, the zone at 300px). It also asserts
+ * the composite expression the DOM half uses, so a later edit to that expression
+ * has to face this case rather than a comment — which is what round 3 asked for
+ * (R3-5), the gate having shipped with no case of its own.
+ */
+test("a demand the tail refuses stays armed and outside every spend window", () => {
+	const at = GESTURE_GAP_MS;
+	const state = wheelUp(initialPagingState(), at, {
+		travelVelocityPxPerMs: 0.3,
+		travelledPx: 30,
+	});
+	// Inside SETTLE_MS, so only the windows can authorise a spend: this is the
+	// frame the pump sees between one notch and the next.
+	const now = at + 40;
+	const tail = geo({
+		distanceFromTopPx: 6000,
+		followingTail: true,
+		hiddenRows: 0,
+		hasMore: true,
+	});
+
+	const decided = decide(state, tail, now);
+	assert.equal(decided.action, "none", "the tail guard refuses to spend");
+	assert.equal(
+		decided.state.armed,
+		true,
+		"and retains the demand rather than dropping it",
+	);
+
+	const windows = spendWindows(tail, decided.state, now);
+	assert.equal(
+		windows.inZone,
+		false,
+		"6000px from the top is outside the zone",
+	);
+	assert.equal(
+		windows.inLead,
+		false,
+		"and outside the lead the speed projects",
+	);
+	assert.equal(
+		decided.action !== "none" ||
+			decided.state.busy ||
+			decided.state.pageWidenOwed ||
+			(decided.state.armed && (windows.inZone || windows.inLead)),
+		false,
+		"so the paint expression use-scroll-paging.ts computes stays off",
+	);
+
+	// Not simply always-off: the same armed demand, the same instant, inside the
+	// zone, is in a window — which is why the paint has to be gated on the window
+	// rather than on `armed` or on the window alone.
+	const inside = spendWindows(
+		geo({ distanceFromTopPx: 300 }),
+		decided.state,
+		now,
+	);
+	assert.equal(
+		inside.inZone,
+		true,
+		"inside the zone the same demand is spendable",
 	);
 });
