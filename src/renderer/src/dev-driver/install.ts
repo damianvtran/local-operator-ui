@@ -28,8 +28,15 @@
  * answer a gate would make every "it works" captured through it worthless.
  */
 
+import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
+import { getFileTypeFromPath } from "@features/chat/utils/file-types";
+import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
 import { apiConfig } from "@shared/config";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	panelIdentityFor,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
 /** One animation frame, so a capture sees the paint the action caused. */
@@ -188,6 +195,8 @@ function describeElement(element: Element | null): string | null {
 function pressAt(element: Element): {
 	hitTest: boolean;
 	hit: string | null;
+	stack: (string | null)[];
+	disabled: boolean | null;
 	rect: { x: number; y: number; width: number; height: number };
 } {
 	const rect = element.getBoundingClientRect();
@@ -195,6 +204,22 @@ function pressAt(element: Element): {
 	const y = rect.top + rect.height / 2;
 	const hit = document.elementFromPoint(x, y);
 	const hitTest = hit !== null && (hit === element || element.contains(hit));
+	/*
+	 * WHAT THE REPORT MUST CARRY WHEN A HIT TEST FAILS, learned from a scene that
+	 * failed only on someone else's machine. `elementFromPoint` alone cannot
+	 * distinguish "nothing is there" from "the element is there and is not taking
+	 * the pointer right now", and the second is a real state this app has: a
+	 * `disabled` control is `pointer-events: none` in this design system, so the
+	 * topmost element at its centre is its PARENT, while a synthetic
+	 * `dispatchEvent` still reaches it and the press works. The scene reported
+	 * only `hit: div ""`, which is why two rounds of readers could not tell a
+	 * broken control from a broken instrument. So the stack and the disabled flag
+	 * come back with the verdict.
+	 */
+	const stack = document
+		.elementsFromPoint(x, y)
+		.slice(0, 4)
+		.map((node) => describeElement(node));
 	const eventInit: MouseEventInit = {
 		bubbles: true,
 		cancelable: true,
@@ -228,6 +253,16 @@ function pressAt(element: Element): {
 	return {
 		hitTest,
 		hit: describeElement(hit),
+		stack,
+		/*
+		 * Read AFTER the dispatch, deliberately: the point of the field is what the
+		 * control looks like to the NEXT press, and a control whose disabled window is
+		 * ~11ms (this row's, for the length of a forced check) is reported in the state
+		 * that made the hit test fail rather than the one it has by the time a human
+		 * would look. Safe on React 18.3.1, where the synthetic dispatch is not
+		 * synchronously re-entering the state machine from inside this function.
+		 */
+		disabled: element instanceof HTMLButtonElement ? element.disabled : null,
 		rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
 	};
 }
@@ -387,6 +422,76 @@ export function installDevDriver(): string[] {
 			const result = pressAt(element);
 			await nextFrame();
 			return { selector, target: describeElement(element), ...result };
+		},
+
+		/**
+		 * Put a local file in the canvas, on the pane this app is showing.
+		 *
+		 * WHY THIS VERB HAS TO EXIST. Every other verb drives something the app puts
+		 * on screen by itself, and the canvas's documents view has no such path in a
+		 * driver run: its tiles come from a conversation's TRANSCRIPT (which needs a
+		 * reachable backend and a session whose messages mention a path), one of the
+		 * two controls that open a file directly is an OS dialog (`⌘O`), and the
+		 * other - the create-file dialog - renders only under an agent id the pane
+		 * takes from a session. So the gesture this stands in for is the one a
+		 * reviewer actually makes: a click on a Files-grid tile. It is built out of
+		 * the same pieces that handler uses - `probeFiles` for the mtime and the
+		 * size, the `READ_ENCODING`/`viewerFor` table for whether this viewer reads
+		 * its own bytes, `readFile` for the text kinds, `canvasDocumentForPath` for
+		 * the document - and it is deliberately NOT a second copy of the click
+		 * handler's branching: what a scene needs from it is a document with the
+		 * right facts on it, not the toasts and the OS fallbacks that belong to a
+		 * human's click.
+		 *
+		 * The draft is staged through the store action the New chat row calls, and
+		 * that IS a substitution rather than a press: the row's own gesture takes the
+		 * `session_catalogue` capability gate, which cannot open in a run with no
+		 * backend - and without a pane identity there is no conversation for the
+		 * document to belong to, so a canvas with nothing open is all a scene could
+		 * photograph.
+		 *
+		 * It answers with what it opened, so a scene asserts the document the panel
+		 * was handed rather than assuming it.
+		 */
+		openCanvasDocument: async (payload) => {
+			const request = payload as { path?: unknown; title?: unknown } | null;
+			const path = requireString(request?.path, "canvas document path");
+			const title =
+				typeof request?.title === "string" ? request.title : undefined;
+			const [probe] = await window.api.probeFiles([path]);
+			if (!probe || !probe.exists || !probe.isFile) {
+				throw new Error(`no file at ${probe?.resolved ?? path}`);
+			}
+			const document = canvasDocumentForPath(path, {
+				title,
+				type: getFileTypeFromPath(path),
+				availability: "present",
+				sizeBytes: probe.sizeBytes ?? undefined,
+				lastAgentModified: probe.mtimeMs ?? undefined,
+				readMtimeMs: probe.mtimeMs ?? undefined,
+			});
+			const encoding = READ_ENCODING[viewerFor(path, document.type) ?? "code"];
+			if (encoding === "utf-8" || encoding === "base64") {
+				const result = await window.api.readFile(document.path, encoding);
+				if (!result.success) {
+					throw new Error(`could not read ${document.path}`);
+				}
+				document.content = result.data;
+			}
+			const sessions = useCanonicalSessionsStore.getState();
+			const conversationId =
+				panelIdentityFor(sessions.activeDraftKey, sessions.activeSessionId) ??
+				sessions.stageDraft();
+			useUiPreferencesStore.getState().setCanvasOpen(true);
+			useCanvasStore.getState().addFileAndSelect(conversationId, document);
+			await nextFrame();
+			return {
+				conversationId,
+				documentId: document.id,
+				readMtimeMs: document.readMtimeMs ?? null,
+				contentLength: document.content.length,
+				encoding,
+			};
 		},
 	});
 }
