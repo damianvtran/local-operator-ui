@@ -574,44 +574,6 @@ const CONTROLS = [
 	},
 	{
 		/*
-		 * THE SAME BADGE, ON A CONVERSATION ROW (design R2; review round 1, D3).
-		 *
-		 * The row above says the quiet part out loud: when a badge lands on another
-		 * ground, "its ground is a row this file would have to grow rather than quietly
-		 * inherit". PR 2 put an identical `Badge variant="attention"` on the sidebar's
-		 * conversation rows — the mark's approvals badge, which is the one state that
-		 * means "an agent here is blocked on you" — and no row covered it, so the twelve
-		 * palettes were asserting the badge against `canvas` alone.
-		 *
-		 * FOUR GROUNDS, because this control is drawn on all four:
-		 *   - `surface`, the sidebar panel: the mark at rest;
-		 *   - `elevated`, the row's hover step, which a ROW that is not current paints
-		 *     under the pointer;
-		 *   - `highlight`, the CURRENT row's ground (`chat-sidebar.tsx`'s `rowCurrent`,
-		 *     this app's role for it) - and the ground the `browser-conversation-mark`
-		 *     row specimen paints since design round 3's D17 moved it off the retired
-		 *     `sunken`, so the frames reviewers judge cover the state that ships;
-		 *   - `sunken`, kept in this list rather than dropped with the specimen that
-		 *     used to paint it: a palette step can put this control back on a recessed
-		 *     ground, and a ground dropped in the same commit that moves a specimen is a
-		 *     silent shrink of this row's asserted set - the coverage gap this entry
-		 *     exists to close, one turn of the same screw. Dropping it is a deliberate
-		 *     decision for whoever takes the next palette pass, not a side effect of a
-		 *     story edit.
-		 * Measured across the twelve palettes when this row was added: `ink` on
-		 * `warningWash` 8.39:1 at worst (tokyoNight) and `borderControl` on the ground
-		 * 3.13:1 at worst (iceberg on `sunken`) — a coverage gap rather than a violation
-		 * (the badge's own `ring-canvas`, added the same round for D4, is a `canvas` ring
-		 * on these grounds and is not part of this triple).
-		 */
-		name: "conversation browser mark badge",
-		on: ["surface", "elevated", "highlight", "sunken"],
-		fill: "warningWash",
-		border: "borderControl",
-		ink: "ink",
-	},
-	{
-		/*
 		 * THE PANE'S SCOPE SWITCH (spec §7.2), which is the one control PR 2 adds, and
 		 * the reason it needs a row of its own: it is the segmented primitive ON A
 		 * `sunken` GROUND, where the primitive's own track role (`sunken`) is the ground
@@ -2016,47 +1978,25 @@ const INK_STEP_PINNED = [
 const inkStepSeen = new Set();
 
 /*
- * A CONTROL's edge on the SELECTION ground, three palettes that cannot reach 3:1
- * there.
+ * NO CONTROL EDGE IS PINNED TODAY, and what the list held is kept here because the
+ * machinery is not specific to the control that needed it.
  *
- * The attention badge this branch's conversation mark draws is a SHARED control
- * (`Badge variant="attention"`), and its sole boundary is `borderControl` against
- * whatever ground it is painted on. On `highlight` - the row a reader is currently
- * on, which is a real state for the mark, since the mark is drawn on every
- * conversation's row including the current one - `borderControl` measures 2.81 to
- * 2.91:1 in these three palettes and the badge's `warningWash` fill measures 1.09
- * to 1.59:1, so neither edge reaches the floor. WHAT THAT IS AND IS NOT, at the
- * precision it was measured at: the edge is PAINTED and faint rather than absent - it is
- * 0.09 to 0.19 under the floor, which is the SMALLEST of the three falls this badge's
- * surfaces take there (the fill and `ring-canvas` fall 1.4 to 1.9 under it: `ring-canvas`
- * measures 1.27 cat, 1.38 duskfox, 1.39 gruvbox) - so the edge is the TALLEST of the
- * three surfaces the badge paints there and is still under the floor, and no surface of
- * the badge clears the contract's number.
+ * It held three entries: the attention badge's `borderControl` edge on the `highlight`
+ * ground, in catppuccinMocha (2.85), duskfox (2.91) and gruvbox (2.81), all under the
+ * 3:1 floor. `highlight` was reached by that badge through one surface only — the
+ * sidebar's per-row browser mark, which drew `Badge variant="attention"` on a
+ * conversation row including the current one. The mark is DELETED (operator ask,
+ * 2026-09-18), and with it the last surface where this badge sits on `highlight`: the
+ * defect those three pins recorded has no surface left to occur on, so they would be
+ * dead weight in exactly the sense the stale check below exists to refuse. The
+ * header's Globe badge keeps its own `CONTROLS` row on `canvas`, which is where it is
+ * drawn.
  *
- * THIS PIN IS THE MINIMUM THE PALETTE SET ALLOWS, and that is a measurement rather
- * than a preference (design round 3, D18). The obvious local fix - the badge's own
- * semantic border, `warningBorder`, in place of `borderControl` - MISSES 3:1 on
- * `highlight` in 12 of 59 palettes against 3 of 59 for `borderControl` (miss counts both,
- * so the swap clears in 47 of 59 where the pin clears in 56; worst `warningBorder` 2.69 in
- * `dracula` and `monokai`), so the swap would pin MORE palettes rather than fewer. Re-derived on the tree this comment ships in, with
- * the palettes read through `scripts/palette-source.mjs`, so the pair is a
- * measurement of the registry rather than a remembered number.
- *
- * PINNED RATHER THAN FIXED, deliberately, and for the reason the `danger` pairs
- * above are pinned: both available fixes are app-wide visual changes owned by the
- * palettes' own design review rather than by a rebase. Lifting `borderControl`
- * moves every control's edge in the palette, and re-authoring `highlight` moves
- * the whole selection band that `main` re-authored in #281 - and either one would
- * invalidate the `HIGHLIGHT_STEP_PINS` and `HIGHLIGHT_WASH_PINS` above, which are
- * measurements of those same two roles. What this list records meanwhile is the
- * defect, at the precision it was measured at: a pin must still measure what it
- * says, and a palette re-authored out of the floor FAILS until its pin is deleted,
- * so the list cannot outlive the defect it records.
- *
- * KEYED BY THE CONTROL AND THE GROUND IT WAS MEASURED ON, not by the theme alone
- * (review round 3, A-2). A `(theme, got)` key could excuse a DIFFERENT control's
- * sub-floor edge that happened to land within 0.01 of the pinned ratio - the gate
- * would stay green, the stale check would be satisfied, and the summary would still
+ * WHAT A PIN HERE NEEDS, because that part is the value of the list rather than of its
+ * entries: it is keyed BY THE CONTROL AND THE GROUND IT WAS MEASURED ON, not by the
+ * theme alone (review round 3, A-2). A `(theme, got)` key could excuse a DIFFERENT
+ * control's sub-floor edge that happened to land within 0.01 of the pinned ratio - the
+ * gate would stay green, the stale check would be satisfied, and the summary would still
  * report the pin as used with no way to tell which row it excused. `EXCEPTIONS` is
  * keyed `(theme, fg, bg)` for the same reason. `control` is the control's own
  * `name`, which is the identity `CONTROLS` carries; a pin that names a control or
@@ -2064,26 +2004,7 @@ const inkStepSeen = new Set();
  *
  * @type {{control: string, ground: string, theme: string, got: number}[]}
  */
-const CONTROL_EDGE_PINNED = [
-	{
-		control: "conversation browser mark badge",
-		ground: "highlight",
-		theme: "catppuccinMocha",
-		got: 2.85,
-	},
-	{
-		control: "conversation browser mark badge",
-		ground: "highlight",
-		theme: "duskfox",
-		got: 2.91,
-	},
-	{
-		control: "conversation browser mark badge",
-		ground: "highlight",
-		theme: "gruvbox",
-		got: 2.81,
-	},
-];
+const CONTROL_EDGE_PINNED = [];
 const controlEdgeSeen = new Set();
 
 /**
