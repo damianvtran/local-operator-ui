@@ -1564,9 +1564,12 @@ export const STORIES = [
 	 * superseded token per item, and the receipt names the row that stays unread),
 	 * and the fully cleared pile with the control gone.
 	 *
-	 * The four negatives are the states the control must NOT appear in: an older
+	 * The five negatives are the states the control must NOT appear in: an older
 	 * backend that does not advertise `completion_ack_bulk`, a catalogue read
-	 * that never answers, one that failed, and an empty list. Each is an absence
+	 * that never answers, one that failed, an empty list, and the operator's own
+	 * report — rows still carrying `unseen` whose live state (busy, a parked gate,
+	 * not answering) has taken the row over, so nothing on screen is drawing a
+	 * mark and there is nothing for the control to clear. Each is an absence
 	 * claim, which is why each frame carries the readout line that states it in
 	 * words beside the panel.
 	 *
@@ -1575,6 +1578,7 @@ export const STORIES = [
 	 * clipped caption is a claim a reviewer cannot read.
 	 */
 	["chat-sidebar-status-feed--mark-all-read-pile", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-unseen-without-mark", 780, 600],
 	["chat-sidebar-status-feed--mark-all-read-partly-read", 780, 600],
 	["chat-sidebar-status-feed--mark-all-read-cleared", 780, 600],
 	["chat-sidebar-status-feed--mark-all-read-unsupported", 780, 600],

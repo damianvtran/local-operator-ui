@@ -2,6 +2,7 @@ import {
 	type CanonicalSessionRow,
 	unreadAckableCount,
 	unreadAckableRows,
+	unreadMarkKind,
 } from "@shared/store/canonical-sessions-store";
 
 /*
@@ -20,12 +21,15 @@ import {
  */
 
 /*
- * The predicate is RE-EXPORTED, not re-spelled: the store's `markAllRead`
+ * The predicates are RE-EXPORTED, not re-spelled: the store's `markAllRead`
  * enumerates through the same function the control counts with, so the label's
  * number is the set the request will carry by construction rather than by
- * convention (agent review round 1, R1).
+ * convention (agent review round 1, R1). `unreadMarkKind` is re-exported beside
+ * them for the same reason in the other direction: it is the one decision about
+ * what a row is DRAWING, so the glyph, the accessible name, the tooltip and the
+ * count cannot disagree about it either.
  */
-export { unreadAckableCount, unreadAckableRows };
+export { unreadAckableCount, unreadAckableRows, unreadMarkKind };
 
 /**
  * Everything the control says, derived from the rows it would clear.
@@ -69,20 +73,27 @@ export const markAllReadCopy = (
 	const elsewhere = ackable.filter((row) => !row.active).length;
 	const chat = count === 1 ? "chat" : "chats";
 	/*
-	 * A mark the batch cannot name: `unseen` with no token, which is what the batch
-	 * request has nothing to send for. Named only when one exists, because the
-	 * clause is noise in the ordinary case and the invariant it protects is that the
-	 * label's number is the whole set the click sends.
+	 * A mark the batch cannot name: a DRAWN mark with no token, which is what the
+	 * batch request has nothing to send for. Named only when one exists, because
+	 * the clause is noise in the ordinary case and the invariant it protects is
+	 * that the label's number is the whole set the click sends.
 	 *
-	 * DERIVED from the shared predicate rather than re-spelling its complement
-	 * (review R2-5): `unseen && !completion_token` is that complement today, but the
-	 * two would drift the moment `unreadAckableRows` tightens — a `kind ===
+	 * DERIVED from the shared predicates rather than re-spelling their complements
+	 * (review R2-5): `unseen && !completion_token` was that complement, but the two
+	 * would drift the moment `unreadAckableRows` tightens — a `kind ===
 	 * "complete"` filter, say — and the row would then be counted in both buckets,
 	 * which is the same two-literals class round 1 removed from the count above.
+	 *
+	 * The mark half is `unreadMarkKind` and not bare `unseen`, so this clause names
+	 * exactly the rows a reader can SEE a mark on that no click can clear. Under
+	 * bare `unseen` it also named rows drawing a spinner or a gate — the same
+	 * over-count the control's own label was fixed for — and a sentence promising
+	 * an uncleared mark on a row with no mark is the opposite of the honesty this
+	 * sentence exists for.
 	 */
 	const tokenless = rows.filter(
 		(row) =>
-			row.attention?.unseen === true && unreadAckableRows([row]).length === 0,
+			unreadMarkKind(row) !== null && unreadAckableRows([row]).length === 0,
 	).length;
 	return {
 		count,
