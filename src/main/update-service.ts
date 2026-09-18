@@ -1360,11 +1360,12 @@ async function showInstallHoldNotice(
  * The three facts this must not break, each of them a rule from an earlier
  * incident: the MARKER is left exactly as it is (its start time is what tells the
  * install's own recovery this is still the same install); a marker whose install
- * is not RUNNING is not this path at all, and opens normally so recovery can
- * explain what happened (`evaluateLaunchDuringInstall`) - that covers the stale
- * marker, the failed install whose job launchd still holds, and the successful one
- * whose marker recovery has not read yet, which is the state review U1 found the
- * app unreachable in; and the relaunch promise is kept by the same
+ * job is neither RUNNING nor registered inside `PENDING_INSTALL_HANDOFF_SECONDS`
+ * is not this path at all, and opens normally so recovery can explain what
+ * happened (`evaluateLaunchDuringInstall`) - that covers the stale marker, the
+ * failed install whose job launchd still holds past the hand-off, and the
+ * successful one whose marker recovery has not read yet, which is the state review
+ * U1 found the app unreachable in; and the relaunch promise is kept by the same
  * `ensureRelaunchWatchdog` every other quit path uses, so standing down can never
  * be the reason the user has no app.
  *
@@ -1970,8 +1971,9 @@ export class UpdateService {
 			// but not running is the state a finished install leaves behind, and
 			// reading it as live is what held a launch - and so swallowed this very
 			// report - for ~29 minutes after every successful update (review U1, U2);
-			// the one exception is the submission-to-exec gap, which
-			// `PENDING_INSTALL_EXEC_GRACE_SECONDS` bounds (review R6).
+			// the one exception is the hand-off, the window in which launchd has the
+			// job but ShipIt has no pid yet, which `PENDING_INSTALL_HANDOFF_SECONDS`
+			// bounds (review R6, R11).
 			installInFlight: isInstallInFlight({
 				marker,
 				jobState,

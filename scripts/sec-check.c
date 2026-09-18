@@ -407,13 +407,27 @@ static int measure_via_launchd(const char *self, const char *path, int repeat,
 	return 0;
 }
 
-/** The path this program was run as, for the child that re-enters the class. */
+/**
+ * The path this program was run as, for the child that re-enters the class.
+ *
+ * `realpath` rather than the string as given, because a submitted job runs with
+ * `cwd=/` (launchd's own working directory): a relative `argv[0]` that happens to
+ * contain a slash - `./sec-check` - names a program that job cannot exec, so the
+ * submission fails with exit 78 and leaves its registration behind. Measured
+ * (review Q10): `./sec-check --via-launchd "<bundle>"` printed its submission line,
+ * produced no measurement at all, and left `- 78 com.local-operator.sec-check.NNN`
+ * in `launchctl list`; the same command by absolute path measured normally and left
+ * no job. Resolving costs nothing and turns every invocation that named a real file
+ * into an absolute path.
+ */
 static void self_path(const char *argv0, char *buffer, size_t size) {
-	if (argv0 != NULL && strchr(argv0, '/') != NULL) {
-		snprintf(buffer, size, "%s", argv0);
+	buffer[0] = '\0';
+	if (argv0 == NULL || strchr(argv0, '/') == NULL) {
 		return;
 	}
-	buffer[0] = '\0';
+	if (realpath(argv0, buffer) == NULL || buffer[0] != '/') {
+		buffer[0] = '\0';
+	}
 }
 
 int main(int argc, char **argv) {
@@ -529,9 +543,10 @@ int main(int argc, char **argv) {
 	self_path(argv0, self, sizeof(self));
 	if (self[0] == '\0') {
 		fprintf(stderr,
-		        "sec-check: --background and --via-launchd need to know the path "
-		        "this program was run as, and argv[0] is not one (%s); run it by "
-		        "path\n",
+		        "sec-check: --background and --via-launchd need an absolute path "
+		        "to this program, and argv[0] is not one (%s); run it by path, "
+		        "absolute or resolvable - a submitted job runs with cwd=/ and "
+		        "cannot exec a relative one\n",
 		        argv0 != NULL ? argv0 : "(absent)");
 		return 2;
 	}
