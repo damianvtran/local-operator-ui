@@ -3,18 +3,19 @@
  *
  * Two things used to want a rule across the conversation and only one of them
  * had it: `info` records ("Conversation started in the invoices workspace")
- * drew a flanked rule inline in `messages-view`, while the passage of time was
+ * drew a flanked rule inline in the legacy message list, while the passage of
+ * time was
  * carried by printing a date under every single turn. Both are the same
  * gesture — "the thread pauses here" — so they are the same component, and the
  * per-ROW timestamps that used to repeat stay gone.
  *
  * THE CANONICAL TRANSCRIPT DOES NOT PAINT A DIVIDER AT ALL, and time on the
- * live surface is now stated per turn instead: this component is reached only
- * from `messages-view`, the legacy path with no canonical session, which the
- * shipped app cannot take (see the note in `message-item/index.tsx`). What the
- * live surface gained is `TurnTimestamp` — one stamp per user turn and one
- * inside a tool call the reader has opened — which is the operator's request
- * and not a return of the date-under-every-row this comment removed.
+ * live surface is now stated per turn instead: the legacy list this component
+ * was built for has been deleted with the socket transport, so its only
+ * remaining readers are the swept `chat-trace--*` stories. What the live
+ * surface gained is `TurnTimestamp` — one stamp per user turn and one inside a
+ * tool call the reader has opened — which is the operator's request and not a
+ * return of the date-under-every-row this comment removed.
  *
  * The idiom is iMessage's and Slack's: a hairline through the column with a
  * short label sitting in it, at the smallest type step and the dimmest ink the
