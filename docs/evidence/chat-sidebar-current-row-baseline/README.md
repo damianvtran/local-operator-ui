@@ -55,3 +55,46 @@ eight of them; on this branch the same row sits at **4.01–4.15** in the same b
 stepped **3.81–6.62 `L*`** in the direction the mode runs, and marked by its ground
 plus `font-medium` rather than by a boundary. The per-palette readings, and the
 harness that takes them, are in the sibling set's README.
+
+## The two entity-row states (18 September 2026)
+
+`team-row-current/` and `agent-row-current/` are the before half of the operator's
+"two highlight bars instead of one" report: the same story file, the same fixtures
+and the same viewports as the after half in `../chat-sidebar-current-row/`.
+
+Provenance, stated precisely because the split is what makes these frames a
+baseline: this branch's story states and their `STORIES` rows (`6463cb15c`) over
+the components at `origin/main`'s `896b19134`. The static build was made from that
+tree BEFORE the fix's two call-site edits were written, and the capture ran against
+that build, so the pixels are the pre-fix component and nothing else:
+
+```sh
+VITE_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com pnpm build-storybook
+python3 -m http.server 6031 --bind 127.0.0.1 --directory storybook-static
+node scripts/capture-evidence.mjs --only=chat-sidebar-current-row \
+  --dirs=team-row-current,agent-row-current,selected-row \
+  --allow-backend http://127.0.0.1:6031
+```
+
+`--allow-backend` because the operator's own backend answers on the configured port
+and neither state talks to it — both stories stub the desktop transport, so nothing
+in these frames is a reply from it. `--dirs` rather than a bare `--only` because the
+set's other states are not re-shot by this pass; `selected-row` was in the run for a
+pixel-neutrality comparison of the conversation row's own half of the fix, and those
+frames are NOT committed here because they could not settle it: the encoder and the
+text rasteriser vary more between two runs than the change does (the same
+`localOperatorDark` frame differs from its before half by 430 pixels and from the
+frame committed at `origin/main` by 12,670). The conversation row's half is argued
+from geometry in the sibling set's README instead.
+
+Twelve themes, the sweep's own list, which is also what `manifest.themes` names: the
+claim these frames carry is GEOMETRIC — a `before:` pseudo-element landing on one
+element or on two — and no palette can move it, so the twelve that span both modes
+are the comparable set rather than a narrowed one.
+
+What the pair shows, on `localOperatorDark` and read column by column with the
+sibling set's tool: on `origin/main` the selected entity row carries TWO 2px
+`accent` marks, at `x=12-13` and at `x=40-41` of the 280px panel, both 32px tall on
+the row's own band; after the fix it carries one, at `x=12-13`. The same two numbers
+hold on the agent list. `contact-sheet/entity-row-bars.png` in the sibling set is
+the pair side by side.

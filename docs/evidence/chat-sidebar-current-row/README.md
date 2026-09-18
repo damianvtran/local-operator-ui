@@ -588,3 +588,70 @@ outranks the transient one.
   (`bound-row-current/`, `nested-row-current/`, `new-chat-row-current/`,
   `focused-row-current/`) are NOT re-shot at this head, so their frames picture
   the retired role.
+
+## The two-bars pass (18 September 2026), at head `fd7f4e7e8`
+
+TWO STATES ARE NEW IN THIS SET and nothing else was re-shot: `team-row-current/`
+and `agent-row-current/`. They are the panel's only rows a staged draft marks,
+and they are the states the operator's report is about: "when selecting a team to
+chat to it shows two highlight bars instead of one (there should only be the far
+left one), presumably the same issue would be there when selecting an agent". Both
+halves of that guess are measured rather than assumed — the agent list carries the
+same doubling in the before half — and both before halves are in
+`../chat-sidebar-current-row-baseline/` at the same twelve themes and the same
+viewports as the after ones.
+
+- **Why no frame had ever shown this, though the mark itself was photographed many
+  times.** The panel marks every current row across TWO elements: the wrapper
+  paints the ground over the row's own box — the gaps and the rounded corners the
+  24px controls do not cover — and the button inside it paints the ground again,
+  because `rowStyle`'s own `hover:` step is what would otherwise replace the mark
+  under the pointer. On a CONVERSATION row those two boxes share a left edge, so
+  the role's 2px `accent` bar landed on the same two pixels twice and the row read
+  as one mark. The entity row is that same pair with a control in front of the
+  button, which is what separates the two bars: 24px of disclosure control plus
+  the row's own 4px gap.
+- **The measurement, per column rather than by eye.** The tool walks every column
+  of the frame, groups the pixels whose colour holds within a tolerance (WebP q88
+  is lossy, so a bar is not one constant triple), and keeps the runs that are both
+  bar-shaped — 26-40px tall, the row's 32px plus the encoder's edge — and
+  saturated. On `localOperatorDark`, in the row's own band:
+
+  | frame | marks | where |
+  |---|---|---|
+  | before (`…baseline/team-row-current/`) | **2** | `x=12-13` and `x=40-41`, each 2px wide × 32px tall, on `y=228-259` |
+  | after (`team-row-current/`) | **1** | `x=12-13`, 2px × 32px, on `y=228-259` |
+  | before (`…baseline/agent-row-current/`) | **2** | `x=12-13` and `x=40-41`, 2px × 32px, on `y=120-151` |
+  | after (`agent-row-current/`) | **1** | `x=12-13`, 2px × 32px, on `y=120-151` |
+
+  The row and the mark's extent are the SAME rows and the same 32px in all four:
+  the fix removes the duplicate and moves nothing. `x=12` is the row's own leading
+  edge; `x=40` is the name button's box, which is where the second bar was.
+- **The pair to judge it on**: `contact-sheet/entity-row-bars.png`, composed with
+  `magick` from these frames and their before halves. Columns are [before, after]
+  at `localOperatorDark` and [before, after] at `localOperatorLight`; the first row
+  is the team list and the second the agent list. Every cell is the same crop of the
+  same story at the same viewport, so a column pair is a like-for-like.
+- **The same change is applied to the conversation row, and no frame can see it**,
+  which is stated rather than claimed: that row's two elements share a left edge, so
+  its bar was drawn twice on the same 2px and the only observable difference is
+  none. The pair `selected-row/` frames beside `../chat-sidebar-current-row-baseline/`
+  show one bar on the selected conversation row before and after, and the geometry
+  that makes that the correct outcome — a wrapper with no inline padding whose only
+  child is the button — is what `scripts/chat-sidebar-selection.test.mjs` resolves.
+- **Every other surface that draws the bar was checked, and none of them moved.**
+  They are single-element rows, each carrying the role once, so the fix has nothing
+  to remove on them; the frames already committed at this head were read to confirm
+  it rather than argued from the source: the settings rail's current section
+  (`settings-rail/localOperatorDark.webp`, one 2px × 32px bar at `x=8-9`), the
+  slash popup's active row (`../chat-slash-completion/argument-phase-teams/`, one
+  bar at `x=25-26`), the app rail's active destination
+  (`../shell-app-shell/agents@1280/`, one bar at `x=8-9`), and the agent-hub
+  categories sidebar's selected category (`../agent-hub-page/empty-category/`, one
+  bar on the selected row's leading edge). Two states carry NO bar and are correct
+  that way because nothing is selected in them: the agents page's roster in
+  `../shell-app-shell/agents@1280/` (its list is empty) and this panel's own agent
+  list at rest in `../chat-sidebar-agents/all-installed/`. The `@` reference picker
+  (`at-picker.tsx`) has no committed frame in this repository at all — no `STORIES`
+  entry reaches its active row — so its half of the check is the source: the option
+  element itself carries the bar, once, when it is the row Enter applies.
