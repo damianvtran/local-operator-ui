@@ -2520,6 +2520,33 @@ export const STORIES = [
 	["canvas-workspace--files-scanning", 1280, 900],
 	["canvas-workspace--files-scan-stopped", 1280, 900],
 	["canvas-workspace--files-scan-stopped-empty", 1280, 900],
+	/*
+	 * The states the LIST introduced, one frame each, because each is a claim a
+	 * picture carries better than a sentence:
+	 *
+	 * - `files-narrow` is the dock's 400px end, which is the width the directory
+	 *   line's decision was taken at: the two clashing rows keep their directory
+	 *   there and every other row spends the line on its name.
+	 * - `files-filtered` and `files-no-matches` are the query's two outcomes. Both
+	 *   are driven through the panel's own field by their story's play function -
+	 *   the count line under a query (`3 of 12 files`) and the escape hatch in the
+	 *   body of an empty one are the two things a prop cannot photograph.
+	 * - `files-scrolled` is the END of a forty-eight-row list at maximum scroll,
+	 *   which is the operator's own report: before the fix the last rows sat in a
+	 *   band the dock clipped and the scroller's padding was inside it. The story
+	 *   throws if the list did not scroll and if the last row's bottom is past the
+	 *   window, so a frame that arrives is a frame that measured its own claim; the
+	 *   app-level number is asserted by `mentioned-files-app-proof.mjs --geometry`.
+	 */
+	["canvas-workspace--files-narrow", 1280, 900],
+	["canvas-workspace--files-filtered", 1280, 900],
+	["canvas-workspace--files-no-matches", 1280, 900],
+	["canvas-workspace--files-scrolled", 1280, 900],
+	/*
+	 * The blank canvas, with the conversation's own file count on its Files action.
+	 * The third way out of the dead end this state used to be.
+	 */
+	["canvas-workspace--nothing-open", 1280, 900],
 	["canvas-workspace--pdf-viewer", 1280, 900],
 	["canvas-workspace--image-viewer", 1280, 900],
 	["canvas-workspace--audio-viewer", 1280, 900],
