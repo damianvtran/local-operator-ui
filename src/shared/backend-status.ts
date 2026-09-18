@@ -38,6 +38,77 @@ export type DaemonConnectionState =
 /** IPC channel carrying an `invoke` of the current snapshot. */
 export const BACKEND_STATUS_CHANNEL = "backend-status";
 
+/**
+ * WHY this app is not paired with a daemon it can see.
+ *
+ * A boolean cannot be worded, so main used to hand the renderer one bit
+ * (`desktopAvailable`) and every surface invented its own explanation for it. The
+ * two explanations the operator saw side by side were both wrong and differently
+ * wrong: the compatibility banner told them to make the app manage the server,
+ * and the chat pane told them their server was out of date (design § 0).
+ *
+ * These are the CAUSES main can actually prove - each one is a different fact
+ * with a different remedy, or with no remedy at all - and the renderer selects
+ * the sentence from this value rather than from the status of a request.
+ *
+ * - `successor`: the process answering this address is not the one this app
+ *   attached to (a `lop` build swap is the ordinary cause). Nothing is wrong
+ *   with the daemon; the app has to pair with the new one.
+ * - `governed-elsewhere`: the daemon's own serve record says its plane is
+ *   governed (`desktop: true`) and publishes no claim key, and this app holds no
+ *   pairing token of its own - so SOME other program claimed it. There is no
+ *   remedy this app may offer (design § 2, S2).
+ * - `pre-handshake`: the daemon predates the pairing handshake - no serve record
+ *   at all, or a record whose claim route answered `404` - so it can never
+ *   accept a claim from this app.
+ * - `credential-refused`: the daemon answered and refused this app's bearer for a
+ *   `/v1/desktop/` route. Re-claiming is the repair.
+ * - `unpaired`: the app holds no credential for the daemon it can see and has not
+ *   yet established which of the causes above applies. This is the honest
+ *   fallback, and it is what a surface must use rather than guessing.
+ */
+export type DaemonPairingCause =
+	| "successor"
+	| "governed-elsewhere"
+	| "pre-handshake"
+	| "credential-refused"
+	| "unpaired";
+
+/**
+ * Main's answer about this app's PAIRING with the daemon it can see.
+ *
+ * Structurally separate from the connection state because it is a different
+ * question: an app can be `attached` and unpaired at the same time (the process
+ * was replaced under it), and a daemon can be gone with the pairing question not
+ * arising at all.
+ *
+ * `cause: null` MEANS PAIRED, and `available` is its boolean projection - the
+ * two are one fact and must be set together, on every outcome including failure.
+ * That is the whole repair of the defect this type replaces: `desktopAvailable`
+ * was written with `true` at three sites and `false` at none, so after a
+ * successor replaced the daemon the app went on reporting a pairing that no
+ * longer existed, and the renderer's own capability answer disagreed with it
+ * (design § 1.4).
+ *
+ * Produced where the facts are in hand - `attachIfUsable`'s claim and probe
+ * branches, and `probeAttachedDaemon`'s identity verdicts - and RESET by
+ * `DaemonStateMachine.attach()`, so a `cause` can never outlive the pairing it
+ * described.
+ */
+export interface DaemonPairing {
+	available: boolean;
+	cause: DaemonPairingCause | null;
+}
+
+/** The one paired value, so no producer spells it two ways. */
+export const DAEMON_PAIRED: DaemonPairing = { available: true, cause: null };
+
+/** Unpaired with the cause not yet established (design § 2, S5). */
+export const DAEMON_UNPAIRED: DaemonPairing = {
+	available: false,
+	cause: "unpaired",
+};
+
 /** IPC push channel carrying a snapshot whenever it changes. */
 export const BACKEND_STATUS_EVENT = "backend-status-changed";
 
@@ -72,8 +143,23 @@ export interface DaemonStatusSnapshot {
 	version: string | null;
 	prefix: string | null;
 	installKind: string | null;
-	/** Whether the daemon accepts this app's bearer for the desktop plane. */
+	/**
+	 * Whether the daemon accepts this app's bearer for the desktop plane.
+	 *
+	 * KEPT as a derived read of `pairing.available` for the callers that only need
+	 * the bit, so nothing that already reads it changes meaning. It is never set
+	 * independently: the two are one fact from one assignment (`snapshot()`),
+	 * which is what stops the sticky-bit defect returning in a new shape.
+	 */
 	desktopAvailable: boolean;
+	/**
+	 * Whether this app is paired, and why not when it is not.
+	 *
+	 * The pairing truth, and the value every surface that WORDES this condition
+	 * reads - a boolean cannot name a cause, and the two surfaces that guessed
+	 * from one disagreed with each other and with the daemon (design § 0).
+	 */
+	pairing: DaemonPairing;
 	/** Consecutive identity-failing probes. */
 	failures: number;
 	/** Status of the last CAPABILITY refusal, if any (never a liveness signal). */
