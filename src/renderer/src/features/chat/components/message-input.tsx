@@ -1777,6 +1777,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const pendingCaret = useRef<number | null>(null);
 		/*
+		 * The last buffer React committed, so `applyCapture` can tell a write that
+		 * MOVED the box from one that only re-affirmed it. Read by the caret rule
+		 * below, which is the whole of the empty-span Escape fix.
+		 */
+		/*
 		 * THE RESTORED DRAFT'S CARET IS SEEDED THROUGH THE MACHINERY ABOVE, not
 		 * beside it: one write of the pair every other caret move in this file uses
 		 * (`pendingCaret` plus `setCaret`), so the DOM selection and the state agree
@@ -1813,11 +1818,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			pendingCaret.current = newMessage.length;
 			setCaret(newMessage.length);
 		}, [newMessage, conversationId]);
-		/*
-		 * The last buffer React committed, so `applyCapture` can tell a write that
-		 * MOVED the box from one that only re-affirmed it. Read by the caret rule
-		 * below, which is the whole of the empty-span Escape fix.
-		 */
+
 		const bufferNow = useRef(newMessage);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: the value is the trigger, the ref is what is written
 		useLayoutEffect(() => {
@@ -5292,184 +5293,70 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									fieldClassName={composerTextBox(isSmallView)}
 									refused={isInputDisabled}
 								>
-								<textarea
-									ref={textareaRef}
-									className={cn(
-										// The box model comes from ONE place, shared with the mirror:
-										// any drift between these two moves the pill off the characters
-										// it sits under.
-										composerTextBox(isSmallView),
-										// `block`, and it is a fix rather than a style choice (design round 3,
-										// D1; code review round 3, MAJOR 1's sibling; QA round 3, Q2). The
-										// wrapper above is a block container, and a textarea left at its
-										// default `inline-block` sits in a LINE BOX there — so the wrapper
-										// measured 39.7px around a 34px field (the strut's descender space)
-										// and the composer box came out 5.7px taller than `origin/main`'
-										// in EVERY state, idle included (61.4..179.1 against 61.4..173.4),
-										// moving the control row, the ring and the box's bottom edge.
-										// On main the field is a direct child of the box's flex column and
-										// is blockified by it, which is why there was nothing to see there;
-										// the overlay's wrapper is what introduced the line box, so the
-										// field states its own display rather than depending on a parent's
-										// formatting context to do it.
-										"block",
-										isSmallView ? "max-h-24" : "max-h-28",
-										"resize-none overflow-y-auto bg-transparent",
-										/*
-										 * THE HIGHLIGHT'S OWN SWITCH. `caret-ink` is explicit because
-										 * `caret-color: auto` follows `color`, which is transparent here —
-										 * an invisible caret in the app's primary input. The ink comes
-										 * back the moment no run is painted, so an ordinary draft keeps its
-										 * native rendering (and its spellcheck squiggle).
-										 */
-										highlighting ? "text-transparent caret-ink" : "text-ink",
-										"outline-none placeholder:text-ink-dim",
-										// A composer that REFUSES input STEPS COLOUR rather than fading
-										// (branding: disabled changes colour, never opacity), and without
-										// this the only signal was `cursor: not-allowed` after the user
-										// had already typed into a field that will not accept anything.
-										//
-										// `read-only:` is the pair that fires now, because the refusal
-										// is expressed as `readOnly` on the element below. The
-										// `disabled:` pair stays BESIDE it: nothing sets `disabled` on
-										// this element any more, and deleting the pair would let a
-										// future `disabled` state ship with no ink step at all - the
-										// exact defect the pair was added for.
-										"read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
-									)}
-									placeholder={
-										/*
-										 * The gone-state sentence is checked FIRST, ahead of the busy one, and
-										 * that order is the whole point: `isInputDisabled` is true for a missing
-										 * conversation too, so a reader of a conversation this machine does not have
-										 * would be told "Agent is busy" about a turn nobody is running (design
-										 * round 2, D3). The remaining terms are the U8 pair, unchanged.
-										 */
-										unavailable
-											? "This conversation is gone"
-											: isInputDisabled
-												? "Agent is busy"
-												: awaitingAnswer
-													? // Names the thing the box is now for, without restating
-														// the question card or the waiting line (§ 7 keeps one
-														// liveness statement per turn, and the card owns it).
-														"Answer the question above"
-													: awaitingReply
-														? "Waiting for the agent"
-														: "Ask me for help"
-									}
-									value={newMessage}
-									onChange={(e) => {
-										/*
-										 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
-										 * intercepted keystroke arrives here — Backspace, Delete, a
-										 * selection, a drop, an IME commit, and any paste that fell through
-										 * — and `applyDomEdit` maps the edit onto the held value at the
-										 * index the operator sees. The first door is the printable-key
-										 * branch of `handleCredentialKeyDown`, which never lets the
-										 * character reach the DOM at all; this one is the belt for the
-										 * routes a keyboard gate cannot see.
-										 *
-										 * `origin` is "typing" because a change IS a keystroke-shaped
-										 * event on this control — an arrival (a restored draft, a seed) is
-										 * written through `setNewMessage` by its own caller, never through
-										 * the DOM's change event for a textarea the user is in.
-										 */
-										const next = e.target.value;
-										const at = e.target.selectionStart ?? next.length;
-										/*
-										 * ANY EDIT OF THE BOX RETIRES THE LOCKED RUN'S RECORD (code review round 2,
-										 * MINOR 1). The rule is "one edit ends it", and this is the edit: the
-										 * first keystroke, backspace, paste or drop that changes the draft. Content
-										 * equality could not say that — an edit that returned the box to the same
-										 * text left the record armed, and a `⌘Z` hours later put the consumed line
-										 * back. The programmatic writes the composer makes (a splice, a stage, the
-										 * undo itself) do not pass through here, so they do not clear it.
-										 */
-										lockedRun.current = null;
-										const applied = applyDomEdit(
-											captureRef.current,
-											newMessage,
-											next,
-											at,
-											"typing",
-										);
-										if (applied.buffer !== next) {
-											// A real character reached the span through a route the
-											// keyboard gate could not see, and it is already replaced by
-											// its mask cell here.
-											pendingCaret.current = applied.caret;
-											setCaret(applied.caret);
-										} else {
-											setCaret(at);
-										}
-										if (applied.capture !== captureRef.current)
-											setCapture(applied.capture);
-										// Only the empty -> non-empty edge: the whole point is one
-										// statement of intent per composed message, and the
-										// consumer's latch should not be asked to absorb a
-										// per-character call it can only discard.
-										if (!newMessage && applied.buffer) onComposerInput?.();
-										/*
-										 * The capture's own write, stamped so the whole-buffer teardown can
-										 * tell it from a replacement some other writer made. A DOM change
-										 * reaches here without passing `applyCapture`, which is exactly why
-										 * the stamp is not optional: without it, the operator's own
-										 * keystroke would read as an external write and end the gesture it
-										 * is in the middle of.
-										 */
-										captureOwnedBuffer.current = applied.buffer;
-										// An abandoned capture (the drop and IME routes) settles the box
-										// here rather than through `applyCapture`, so the §6 write has to
-										// be asked for here too.
-										persistDraft(applied.capture, applied.buffer);
-										setNewMessage(applied.buffer);
-										// Editing the text answers the alert. Leaving it up over a
-										// draft the user has since changed is the defect this whole
-										// change replaces, and moving the banner to the composer
-										// would only have moved that defect closer to the eye.
-										//
-										// After a dwell, though: the message is two sentences plus up
-										// to three controls, and a user who reaches straight for the
-										// keyboard lost all of it before finishing the first word -
-										// including the remedy buttons. The alert still goes on the
-										// edit, just not before it can be read.
-										if (
-											Date.now() - alertShownAt.current >=
-											ALERT_READ_DWELL_MS
-										)
-											sendError?.onDismiss?.();
-									}}
-									onSelect={(e) => {
-										const field = e.target as HTMLTextAreaElement;
-										/*
-										 * A CARET REPORT THAT ARRIVES BEFORE THE COMPOSER'S OWN
-										 * CARET WRITE LANDS IS A REPORT ABOUT THE CARET IT REPLACED.
-										 *
-										 * `applyCapture` parks the caret it is about to set in
-										 * `pendingCaret` and the layout effect applies it with the
-										 * buffer. A `select`/`selectionchange` still in flight from the
-										 * PREVIOUS edit therefore reaches this handler between the state
-										 * write and its commit, carrying the older buffer (the render
-										 * closure has not moved yet) and the older offset — a pair that
-										 * is internally consistent and describes a state the composer
-										 * has already left. Re-syncing on it is how accepting the
-										 * `/credential` row closed the span that completion had just
-										 * opened: the report said "the caret is at 5, inside the token"
-										 * while the capture was already open at 6, so `syncCapture` read
-										 * a caret move out of the span.
-										 *
-										 * Skipping it is not a caret move being ignored: the offset that
-										 * arrives is the one this write is replacing, and the pending
-										 * value is applied by the layout effect either way. If the DOM
-										 * already agrees — a report about the caret we just set — the
-										 * marker is retired here so the guard cannot outlive its write.
-										 */
-										const pending = pendingCaret.current;
-										if (pending !== null) {
-											if (field.selectionStart === pending)
-												pendingCaret.current = null;
-											return;
+									<textarea
+										ref={textareaRef}
+										className={cn(
+											// The box model comes from ONE place, shared with the mirror:
+											// any drift between these two moves the pill off the characters
+											// it sits under.
+											composerTextBox(isSmallView),
+											// `block`, and it is a fix rather than a style choice (design round 3,
+											// D1; code review round 3, MAJOR 1's sibling; QA round 3, Q2). The
+											// wrapper above is a block container, and a textarea left at its
+											// default `inline-block` sits in a LINE BOX there — so the wrapper
+											// measured 39.7px around a 34px field (the strut's descender space)
+											// and the composer box came out 5.7px taller than `origin/main`'
+											// in EVERY state, idle included (61.4..179.1 against 61.4..173.4),
+											// moving the control row, the ring and the box's bottom edge.
+											// On main the field is a direct child of the box's flex column and
+											// is blockified by it, which is why there was nothing to see there;
+											// the overlay's wrapper is what introduced the line box, so the
+											// field states its own display rather than depending on a parent's
+											// formatting context to do it.
+											"block",
+											isSmallView ? "max-h-24" : "max-h-28",
+											"resize-none overflow-y-auto bg-transparent",
+											/*
+											 * THE HIGHLIGHT'S OWN SWITCH. `caret-ink` is explicit because `caret-color: auto`
+											 * follows `color`, which is transparent here - an invisible caret in the app's primary input.
+											 * The ink comes back the moment no run is painted, so an ordinary draft keeps its native
+											 * rendering (and its spellcheck squiggle).
+											 */
+											highlighting ? "text-transparent caret-ink" : "text-ink",
+											"outline-none placeholder:text-ink-dim",
+											// A composer that REFUSES input STEPS COLOUR rather than fading
+											// (branding: disabled changes colour, never opacity), and without
+											// this the only signal was `cursor: not-allowed` after the user
+											// had already typed into a field that will not accept anything.
+											//
+											// `read-only:` is the pair that fires now, because the refusal
+											// is expressed as `readOnly` on the element below. The
+											// `disabled:` pair stays BESIDE it: nothing sets `disabled` on
+											// this element any more, and deleting the pair would let a
+											// future `disabled` state ship with no ink step at all - the
+											// exact defect the pair was added for.
+											"read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+										)}
+										placeholder={
+											/*
+											 * The gone-state sentence is checked FIRST, ahead of the busy one, and
+											 * that order is the whole point: `isInputDisabled` is true for a missing
+											 * conversation too, so a reader of a conversation this machine does not have
+											 * would be told "Agent is busy" about a turn nobody is running (design
+											 * round 2, D3). The remaining terms are the U8 pair, unchanged.
+											 */
+											unavailable
+												? "This conversation is gone"
+												: isInputDisabled
+													? "Agent is busy"
+													: awaitingAnswer
+														? // Names the thing the box is now for, without restating
+															// the question card or the waiting line (§ 7 keeps one
+															// liveness statement per turn, and the card owns it).
+															"Answer the question above"
+														: awaitingReply
+															? "Waiting for the agent"
+															: "Ask me for help"
 										}
 										value={newMessage}
 										/*
@@ -5497,6 +5384,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 */
 											const next = e.target.value;
 											const at = e.target.selectionStart ?? next.length;
+											/*
+											 * ANY EDIT OF THE BOX RETIRES THE LOCKED RUN'S RECORD (code review round 2,
+											 * MINOR 1). The rule is "one edit ends it", and this is the edit: the
+											 * first keystroke, backspace, paste or drop that changes the draft. Content
+											 * equality could not say that — an edit that returned the box to the same
+											 * text left the record armed, and a `⌘Z` hours later put the consumed line
+											 * back. The programmatic writes the composer makes (a splice, a stage, the
+											 * undo itself) do not pass through here, so they do not clear it.
+											 */
+											lockedRun.current = null;
 											const applied = applyDomEdit(
 												captureRef.current,
 												newMessage,
