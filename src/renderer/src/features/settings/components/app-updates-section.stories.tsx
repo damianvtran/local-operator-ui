@@ -51,6 +51,32 @@ const RUNNING_APP = "0.22.1";
 const INSTALLED_SERVER = "0.54.43";
 const PUBLISHED_SERVER = "0.54.44";
 
+/**
+ * The three numbers one story's world is made of.
+ *
+ * Per story rather than module constants because the stories now frame TWO
+ * machines: the one in the first report (0.22.1 / 0.54.43 / 0.54.44) and the
+ * operator's own, where an app-managed server three releases behind its published
+ * release was reported as up to date. A frame's numbers are part of what it
+ * asserts - the Server version row and the offer's sentence have to be read
+ * against each other - so a story that reused another machine's numbers would be
+ * a picture of neither.
+ */
+type MachineNumbers = {
+	/** What `window.api.systemInfo.getAppVersion` answers. */
+	app: string;
+	/** What the daemon's `/health` reports, and what the Server version row prints. */
+	server: string;
+	/** What the registry publishes, i.e. what an offer names. */
+	published: string;
+};
+
+const REPORTED_MACHINE: MachineNumbers = {
+	app: RUNNING_APP,
+	server: INSTALLED_SERVER,
+	published: PUBLISHED_SERVER,
+};
+
 const BACKEND_ORIGIN = new URL(apiConfig.baseUrl).origin;
 
 /**
@@ -116,9 +142,29 @@ type ServerOfferListener = Parameters<
  * mount effect, and Storybook draws its own error page over the frame, so the
  * capture would fail as "never prepared" rather than as the missing method.
  */
-const scriptedUpdater = (verdict: UpdateCheckVerdict) => {
+/**
+ * What one story's world is, beyond the verdict: the three versions, the offer
+ * the server channel sends, and the skew notice the check raises on the state
+ * that has nothing to offer.
+ *
+ * The verdict is the RULE's output and these are the PRODUCER's payloads, so a
+ * story that frames a state the rule can reach states both - which is what the
+ * pairs below are: one machine, the verdict before the change and the verdict
+ * after it.
+ */
+type StoryWorld = {
+	verdict: UpdateCheckVerdict;
+	numbers: MachineNumbers;
+	/** Fired on `backend-update-available` when present, instead of the default. */
+	offer?: Record<string, unknown>;
+	/** Fired on `backend-update-not-available` when present. */
+	skew?: Record<string, unknown>;
+};
+
+const scriptedUpdater = ({ verdict, numbers, offer, skew }: StoryWorld) => {
 	const appCurrent: Array<(info: UpdateInfo) => void> = [];
 	const serverOffered: Array<ServerOfferListener> = [];
+	const serverNotAvailable: Array<(info: Record<string, unknown>) => void> = [];
 	const hold = <T,>(sink: T[], listener: T) => {
 		sink.push(listener);
 		return () => {
@@ -140,22 +186,32 @@ const scriptedUpdater = (verdict: UpdateCheckVerdict) => {
 			 */
 			if (verdict.app === "current") {
 				for (const listener of [...appCurrent]) {
-					listener({ version: RUNNING_APP } as UpdateInfo);
+					listener({ version: numbers.app } as UpdateInfo);
 				}
+			}
+			/*
+			 * The skew notice is a producer event of its own (main sends it on the state
+			 * with nothing to offer), so a story whose world has one fires it here rather
+			 * than leaving the frame to imply it.
+			 */
+			if (skew) {
+				for (const listener of [...serverNotAvailable]) listener(skew);
 			}
 			if (verdict.server !== "available") return verdict;
 			for (const listener of [...serverOffered]) {
-				listener({
-					currentVersion: INSTALLED_SERVER,
-					latestVersion: PUBLISHED_SERVER,
-					// The command the plan resolves for a uv-tool server, and the flag
-					// that says the app can run it - the panel's buttons come from the
-					// flag, and `manual` is the producer saying this check is the
-					// user's own, which is what ends a by-hand panel.
-					updateCommand: "uv tool upgrade local-operator",
-					canManageUpdate: true,
-					manual: true,
-				});
+				listener(
+					(offer ?? {
+						currentVersion: numbers.server,
+						latestVersion: numbers.published,
+						// The command the plan resolves for a uv-tool server, and the flag
+						// that says the app can run it - the panel's buttons come from the
+						// flag, and `manual` is the producer saying this check is the
+						// user's own, which is what ends a by-hand panel.
+						updateCommand: "uv tool upgrade local-operator",
+						canManageUpdate: true,
+						manual: true,
+					}) as Parameters<ServerOfferListener>[0],
+				);
 			}
 			return verdict;
 		},
@@ -172,7 +228,9 @@ const scriptedUpdater = (verdict: UpdateCheckVerdict) => {
 		onBackendUpdateAvailable: (callback: ServerOfferListener) =>
 			hold(serverOffered, callback),
 		onBackendUpdateDevMode: noop,
-		onBackendUpdateNotAvailable: noop,
+		onBackendUpdateNotAvailable: (
+			callback: (info: Record<string, unknown>) => void,
+		) => hold(serverNotAvailable, callback),
 		onBackendUpdateCompleted: noop,
 		onBackendUpdateProgress: noop,
 		/*
@@ -199,6 +257,7 @@ const scriptedUpdater = (verdict: UpdateCheckVerdict) => {
 		listenerCounts: () => ({
 			appCurrent: appCurrent.length,
 			serverOffered: serverOffered.length,
+			serverNotAvailable: serverNotAvailable.length,
 		}),
 	};
 };
@@ -224,7 +283,7 @@ const updaterRef = () =>
  * reads it answers. A decorator's body runs before its children render, which
  * is early enough for both.
  */
-const installFixtures = (verdict: UpdateCheckVerdict) => {
+const installFixtures = (world: StoryWorld) => {
 	const window_ = window as unknown as {
 		api: { updater: unknown; systemInfo: unknown };
 		__loSectionFixtures?: boolean;
@@ -232,11 +291,11 @@ const installFixtures = (verdict: UpdateCheckVerdict) => {
 	};
 	if (window_.__loSectionFixtures) return;
 	window_.__loSectionFixtures = true;
-	const scripted = scriptedUpdater(verdict);
+	const scripted = scriptedUpdater(world);
 	window_.__loUpdater = scripted;
 	window_.api.updater = scripted;
 	window_.api.systemInfo = {
-		getAppVersion: async () => RUNNING_APP,
+		getAppVersion: async () => world.numbers.app,
 		getPlatformInfo: async () => ({
 			platform: "darwin",
 			arch: "arm64",
@@ -254,8 +313,14 @@ const installFixtures = (verdict: UpdateCheckVerdict) => {
 					? input.toString()
 					: input.url;
 		if (url.startsWith(BACKEND_ORIGIN)) {
+			/*
+			 * The SERVING server's own reading, which is what the Server version row
+			 * prints: a frame whose offer names one version while this answers another
+			 * is the contradiction the panel exists to avoid, so both come from the
+			 * story's one world.
+			 */
 			return new Response(
-				JSON.stringify({ result: { version: INSTALLED_SERVER } }),
+				JSON.stringify({ result: { version: world.numbers.server } }),
 				{ status: 200, headers: { "Content-Type": "application/json" } },
 			);
 		}
@@ -361,7 +426,11 @@ const meta = {
 	 * answers the press with it, so the ServerUpdateOffered and AllCurrent
 	 * frames differ in the answer the check gave and in nothing else.
 	 */
-	parameters: { layout: "fullscreen", verdict: REPORTED_VERDICT },
+	parameters: {
+		layout: "fullscreen",
+		verdict: REPORTED_VERDICT,
+		numbers: REPORTED_MACHINE,
+	},
 	/*
 	 * Every story here drives the updater through a scripted bridge and reads
 	 * the server version from a fixture, so a story added later cannot pick up
@@ -369,7 +438,13 @@ const meta = {
 	 */
 	decorators: [
 		(Story, context) => {
-			installFixtures(context.parameters.verdict as UpdateCheckVerdict);
+			installFixtures({
+				verdict: context.parameters.verdict as UpdateCheckVerdict,
+				numbers: (context.parameters.numbers ??
+					REPORTED_MACHINE) as MachineNumbers,
+				offer: context.parameters.offer as Record<string, unknown> | undefined,
+				skew: context.parameters.skew as Record<string, unknown> | undefined,
+			});
 			return <Story />;
 		},
 	],
@@ -405,4 +480,149 @@ export const ServerUpdateOffered: Story = {
 export const AllCurrent: Story = {
 	parameters: { verdict: ALL_CURRENT_VERDICT },
 	render: () => <ReportFrame expect={ALL_CURRENT_VERDICT.affirmation} />,
+};
+
+/**
+ * THE OPERATOR'S OWN MACHINE, before and after: the pair this change exists for.
+ *
+ * What the two frames are, exactly. The machine state is real and was read off
+ * this host: the desktop application 0.26.5, `/health` answered by an app-managed
+ * environment at 0.56.8 (prefix
+ * `.../managed-python/packaged/environments/183bbfdc…-7ad511f5…`), the global uv
+ * tool install at 0.56.11 - which is also what PyPI published. The two VERDICTS
+ * and the two EVENT PAYLOADS below are the ones the main process really produced
+ * for that state: `BeforeTheFix` is what origin/main answered (run against this
+ * machine's live backend, log lines in the pull request), and `ServerBehindServingInstall`
+ * is what this branch answers for the same state.
+ *
+ * So each frame is the mapping the renderer performs on a producer answer that
+ * was actually produced - not a hand-written picture of a state nobody reached.
+ * The pair is the point: the same press, the same Server version row (0.56.8 ·
+ * 127.0.0.1:1111), and the sentence that changed.
+ */
+const OPERATOR_MACHINE: MachineNumbers = {
+	app: "0.26.5",
+	server: "0.56.8",
+	published: "0.56.11",
+};
+
+/**
+ * What origin/main concluded: the check classified the install `local-operator`
+ * resolves to (the uv tool install at 0.56.11, the published release), so the
+ * whole check affirmed the installation current - while the same pane's Server
+ * version row read the daemon it is actually talking to.
+ */
+const OPERATOR_VERDICT_BEFORE: UpdateCheckVerdict = {
+	app: "current",
+	server: "current",
+	affirmation: "The application and server are up to date",
+};
+
+/**
+ * The offer this branch produces: the SERVING install's version (0.56.8) against
+ * the published release (0.56.11), with the remedy for the install that is behind.
+ *
+ * The fields are the real payload's, including the two that matter for honesty -
+ * `canManageUpdate: false` and an EMPTY `updateCommand`, because this install is
+ * the app's own managed environment and no package manager owns it - and the
+ * `detail` line naming the install the check judged, VERBATIM: the full 64-character
+ * environment hash and its uuid as `/health` answers them on this host, because
+ * the value is what the Details block wraps and an elided one wraps differently
+ * from the shipped rendering (review round 1, R4). `remedy` and `appOwned` are
+ * the main process's own words and reading for this arm - the same strings
+ * `resolveBackendUpdatePlan` returns, which is what the panel quotes.
+ */
+const OPERATOR_OFFER = {
+	currentVersion: "0.56.8",
+	latestVersion: "0.56.11",
+	runningVersion: "0.56.8",
+	updateCommand: "",
+	canManageUpdate: false,
+	appOwned: true,
+	startupMode: "EXISTING_SERVER",
+	remedy:
+		"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own.",
+	detail:
+		'The server serving this app runs from Local Operator\'s own managed environment at /Users/damian/Library/Application Support/Local Operator/managed-python/packaged/environments/183bbfdc87acd8159e60228c9f91ba254095b0a9d878f4649c67688c82047552-7ad511f5-92ce-41e1-91d7-8dd810d67565, which the app owns rather than a package manager (the backend reports it as install kind "pip"), at version 0.56.8.',
+	sourceBuild: false,
+	restartable: false,
+	manual: true,
+};
+
+/**
+ * BEFORE - the defect. One press, the app channel's own "nothing newer" event,
+ * and the affirmation about the WHOLE installation, on a pane whose own row says
+ * the server is 0.56.8 while 0.56.11 is published.
+ */
+export const BeforeTheFix: Story = {
+	parameters: {
+		verdict: OPERATOR_VERDICT_BEFORE,
+		numbers: OPERATOR_MACHINE,
+		skew: {
+			version: "0.56.11",
+			runningVersion: "0.56.8",
+			restartable: false,
+		},
+	},
+	render: () => (
+		<ReportFrame expect={OPERATOR_VERDICT_BEFORE.affirmation as string} />
+	),
+};
+
+/**
+ * AFTER - the same press on this branch: the offer names the SERVING install
+ * (0.56.8) against the published release, no affirmation is earned, and no
+ * package-manager command is offered for an install that has none.
+ */
+export const ServerBehindServingInstall: Story = {
+	parameters: {
+		verdict: {
+			app: "current",
+			server: "available",
+			affirmation: null,
+		} satisfies UpdateCheckVerdict,
+		numbers: OPERATOR_MACHINE,
+		offer: OPERATOR_OFFER,
+	},
+	render: () => (
+		<ReportFrame
+			expect={`Server version ${OPERATOR_MACHINE.published} is available`}
+		/>
+	),
+};
+
+/**
+ * THE STATE THE NEW STATUS EXISTS FOR, and the one this pair is about: the
+ * install on disk is at the published release and the process serving this app
+ * is not.
+ *
+ * It is the state the machine walks into one step after the offer above is
+ * acted on - the environment is moved, the daemon keeps serving the old build
+ * until it restarts - and it is the state the reported defect turned into a
+ * contradiction: the check called it `current`, so the whole check earned "The
+ * application and server are up to date" and rendered it beside this very
+ * notice, which says the opposite.
+ *
+ * The verdict is `restart-required` now: the same notice (the only surface that
+ * can carry a skew when there is nothing to offer), and no affirmation at all.
+ * Read against `BeforeTheFix`, which is that notice with the green sentence
+ * above it, the two frames are the rule's whole point.
+ */
+export const ServingServerBehindInstall: Story = {
+	parameters: {
+		verdict: {
+			app: "current",
+			server: "restart-required",
+			affirmation: null,
+		} satisfies UpdateCheckVerdict,
+		numbers: OPERATOR_MACHINE,
+		skew: {
+			version: OPERATOR_MACHINE.published,
+			runningVersion: OPERATOR_MACHINE.server,
+			restartable: false,
+		},
+	},
+	render: () => (
+		<ReportFrame expect="The server is on an older build than the install" />
+	),
 };

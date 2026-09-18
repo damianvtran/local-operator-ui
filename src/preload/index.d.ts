@@ -267,6 +267,8 @@ declare global {
 						installVersion?: string | null;
 						runningVersion?: string | null;
 						sourceBuild?: boolean;
+						/** Whether the install is one of the app's own - see the panel's copy. */
+						appOwned?: boolean;
 					}) => void,
 				) => () => void;
 				onUpdateDownloaded: (
