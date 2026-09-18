@@ -56,7 +56,12 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react";
+import type {
+	ClipboardEvent,
+	FormEvent,
+	KeyboardEvent,
+	PointerEvent,
+} from "react";
 import { v4 as uuidv4 } from "uuid";
 import type {
 	CanonicalFrontendState,
@@ -78,6 +83,7 @@ import type {
 	DraftResolution,
 } from "../draft-selection";
 import { useInterruptSlotHold } from "../hooks/use-interrupt-slot-hold";
+import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { MOVE_UNAVAILABLE_REASON } from "../move-session";
 import {
 	DESTINATIONS,
@@ -2622,8 +2628,50 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			],
 		);
 
+		/*
+		 * Two reasons a composer refuses input, kept apart (design review round
+		 * 1, D3). `unavailable` is a conversation this machine does not have, and
+		 * the two used to share one placeholder, so the composer's only text read
+		 * "Agent is busy" over a session that does not exist - a false statement
+		 * about the state, in the one place the user is looking to find out what
+		 * to do about it. They still share the REFUSAL (typing into a conversation
+		 * that is gone is not a thing that can work); only the sentence differs.
+		 *
+		 * WHAT THEY NO LONGER SHARE IS THE CARET, and that is why the refusal is
+		 * expressed as `readOnly` rather than `disabled` on the textarea below. A
+		 * disabled control cannot refuse a keystroke without also dropping it:
+		 * Chromium blurs the field, the caret goes to `document.body`, and on the
+		 * `unavailable` arm it never comes back - `missing` is reset only when the
+		 * session id changes, so the same node's predicate never flips back and
+		 * the self-focus effect below never runs for that panel again. Worse, a
+		 * disabled textarea cannot be focused, selected or copied, so the words
+		 * the reader was in the middle of are unreachable in the one state that
+		 * also tells them the conversation is gone. `readOnly` refuses the same
+		 * edits (no `input` event fires) while the box keeps the caret and its
+		 * text.
+		 *
+		 * DECLARED HERE, ABOVE EVERY CONSUMER, rather than beside the render that
+		 * paints it. Every reference below sits in a callback's dependency array as
+		 * well as in its body, and a dependency array is evaluated during the render
+		 * that builds the callback, so a `const` declared under one is in the
+		 * temporal dead zone and the component throws. The FIRST consumer is
+		 * `handleSlashPick` (review round 1, MAJOR 2: the popup's click has to
+		 * refuse with the same predicate the key guard uses), so that is where the
+		 * declaration sits.
+		 */
+		const isBusy = Boolean(isLoading && currentJobId);
+		const isInputDisabled = unavailable || isBusy;
+
 		const handleSlashPick = useCallback(
 			async (row: CompletionRow, disposition: { run: boolean }) => {
+				/*
+				 * THE REFUSAL COVERS THE POPUP'S CLICK TOO (review round 1, MAJOR 2).
+				 * A pick does not type into the box - it writes the completion into it
+				 * and can RUN it (`applyPlan`), which is a mutation of a composer the app
+				 * has just told the user takes nothing. `readOnly` cannot close this path:
+				 * the popup is a sibling of the textarea, not a keystroke in it.
+				 */
+				if (isInputDisabled) return;
 				const completion = completionFor(
 					newMessage,
 					caret,
@@ -2811,6 +2859,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// anything yet (UX U5), so the callback reads the dispatcher's own answer
 				// with the rest.
 				paneHasSession,
+				// The refusal (review round 1, MAJOR 2): the guard at the top of this
+				// callback closes the popup's click on a box that takes nothing, and a
+				// dependency array is what keeps that guard reading the CURRENT state
+				// rather than the state of the render that first built the callback.
+				isInputDisabled,
 			],
 		);
 		/*
@@ -2879,6 +2932,22 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const handleAtPick = useCallback(
 			(row: AtRow) => {
+				/*
+				 * THE REFUSAL COVERS THIS POPUP'S CLICK TOO, which is `handleSlashPick`'s
+				 * rule (review round 1, MAJOR 2) applied to the second sibling popup
+				 * rather than a second rule invented here. A pick does not type into the
+				 * box - it WRITES a reference into it - and this list is a child of the
+				 * anchoring wrapper beside the textarea rather than a keystroke in it, so
+				 * `readOnly` cannot close the path: the row's own `onClick` is the way in.
+				 * The KEYBOARD half is already closed one level up, where
+				 * `handleComposerKeyDown` returns before `handleAtKeyDown` while the
+				 * composer refuses; the mouse half is this guard.
+				 *
+				 * A refusal can arrive while a list is open (`isBusy` turns true when a
+				 * send settles into a job), so this is a state the composer reaches with
+				 * the picker up rather than a hypothetical one.
+				 */
+				if (isInputDisabled) return;
 				const token = atPickerToken(newMessage, caret);
 				if (!token) return;
 				const write = atReference(row);
@@ -2907,11 +2976,47 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				at.remember(row.path);
 				at.close();
 			},
-			[newMessage, caret, at, setNewMessage],
+			[newMessage, caret, at, setNewMessage, isInputDisabled],
 		);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
 			(event: KeyboardEvent<HTMLTextAreaElement>) => {
+				/*
+				 * THE REFUSAL COMES FIRST, because `readOnly` is not `disabled`: this
+				 * handler still RUNS while the composer refuses input (the attribute
+				 * suppresses the edit, not the keydown), so without this guard the
+				 * Enter branch below would submit from a box the app has just told the
+				 * user refuses input - and on the `unavailable` arm it would submit a
+				 * message for a conversation this machine does not have.
+				 *
+				 * THE OTHER PATHS ARE GUARDED, EACH WHERE IT CAN BE (review round 1,
+				 * MAJOR 2; design round 1, D3; UX round 1, U2). This comment used to claim
+				 * the Send control carried the same predicate; it did not - its predicate
+				 * was `isLoading || (!trim && !attachments)`, `handleSubmit` had no guard,
+				 * and a press therefore submitted for a conversation this machine does not
+				 * have and cleared the reader's sentence (measured, all twelve head pick
+				 * runs). So the refusal is carried by every path that TYPES INTO or SUBMITS
+				 * this composer, and the band says one story: the Send control's own
+				 * predicate (it is `disabled` while the box refuses), `handleSubmit` (the
+				 * form's submit, whatever focused it), the slash popup's pick, the
+				 * dictation button and its manager gate, and `handlePaste` - which
+				 * `readOnly` newly made reachable, because a read-only textarea is still a
+				 * paste target. The chips and the attach button carried it already.
+				 *
+				 * THREE WRITERS LIE OUTSIDE THAT CLAIM ON PURPOSE (review round 2, MINOR 3),
+				 * because a sentence wider than the code is the one thing this comment has
+				 * already cost a round: the composer alert's Restore (`setNewMessage(
+				 * composerAlert.restore ?? "")`) and Discard (`setNewMessage("")`), and the
+				 * store-to-box adoption effect. The claim above is about the paths a user
+				 * TYPE or SUBMIT gesture reaches while the box refuses: none of these three
+				 * is such a gesture and none of them submits. Two are the reader's own
+				 * explicit intent over the words this state is deliberately HOLDING -
+				 * refusals that swallow them would destroy the very text the refusal exists
+				 * to keep - and the third is the draft-identity family this change excludes
+				 * by design (the deferred C5). Guarding them would need that design decided,
+				 * not a term added here, so they are named rather than covered.
+				 */
+				if (isInputDisabled) return;
 				/*
 				 * A LIVE CAPTURE OWNS THE KEYS FIRST (§3), ahead of the slash handler and
 				 * ahead of the submit: while the mask is up the safe default is that no
@@ -3037,6 +3142,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				applyPlan,
 				newMessage,
 				caret,
+				isInputDisabled,
 			],
 		);
 
@@ -3080,20 +3186,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * `focusInput` stays the single place focus is given, flag reset included;
 		 * see `composer-field.ts`.
 		 */
-		useEffect(() => registerComposerFocus(focusInput), [focusInput]);
-
 		/*
-		 * Two reasons a composer refuses input, kept apart (design review round
-		 * 1, D3). `unavailable` is a conversation this machine does not have, and
-		 * the two used to share one placeholder, so the composer's only text read
-		 * "Agent is busy" over a session that does not exist - a false statement
-		 * about the state, in the one place the user is looking to find out what
-		 * to do about it. They still share the disabled BEHAVIOUR (typing into a
-		 * conversation that is gone is not a thing that can work); only the
-		 * sentence differs.
+		 * The node that hand-off focuses, as the registry has to be able to name it
+		 * (review round 1, NIT 1): a caller that reports WHERE the caret landed has
+		 * to be able to compare against the same element, and a document query can
+		 * name a second composer. A callback rather than the element, so the effect
+		 * below is not re-run every time the textarea is replaced by a pane switch.
 		 */
-		const isBusy = Boolean(isLoading && currentJobId);
-		const isInputDisabled = unavailable || isBusy;
+		const composerNode = useCallback(() => textareaRef.current, [textareaRef]);
+		useEffect(
+			() => registerComposerFocus(focusInput, composerNode),
+			[focusInput, composerNode],
+		);
 
 		/*
 		 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER A TURN ENDS.
@@ -3175,7 +3279,31 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, []);
 
 		const handleStartRecording = useCallback(async () => {
-			if (!canEnableRecordingFeature) return;
+			/*
+			 * The dictation button's own gate, beside the button's `disabled` and the
+			 * manager's `busy` term: a transcript is written into the composer with
+			 * `setNewMessage`, so it is a mutation of the box and it answers to the
+			 * same refusal (review round 1, MAJOR 2).
+			 *
+			 * THE REFUSAL TERM IS LOAD-BEARING, AND IT IS THE ONLY THING CLOSING THIS
+			 * PATH (review round 2, MINOR 2). This comment used to say the two were
+			 * "already closed by `canEnableRecordingFeature` and by `isLoading`", i.e.
+			 * that the term changed no reachable state. Driven, that was FALSE, and a
+			 * reader who trusted it would have deleted the guard as dead code:
+			 * `canEnableRecordingFeature` is `hasRadientApiKey && !isUnavailable`,
+			 * where `isUnavailable` is the CREDENTIAL PROBE's own flag - offline or no
+			 * key (`useRadientCredentialProbe`, above) - which is a different fact from
+			 * the composer's refusal. On the `view.missing` arm this term exists for,
+			 * `isLoading` is `canonical.admitting || canonical.starting`
+			 * (`chat-content.tsx:1001`), false for a notification click onto a deleted
+			 * conversation, and `hasRadientApiKey` is true for a configured user - so
+			 * the button was live in a refused band and this handler reached its own
+			 * `setNewMessage(newMessage + newText)` write, into a box the app has just
+			 * told the user takes nothing. `isInputDisabled` is what
+			 * closes it, in the button's `disabled` and here; neither of the other two
+			 * predicates covers the refusal.
+			 */
+			if (isInputDisabled || !canEnableRecordingFeature) return;
 			if (navigator?.mediaDevices?.getUserMedia) {
 				try {
 					const stream = await navigator.mediaDevices.getUserMedia({
@@ -3214,7 +3342,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				   this did not choose a browser and cannot change it. */
 				showErrorToast("Dictation is not available on this device.");
 			}
-		}, [canEnableRecordingFeature]);
+		}, [canEnableRecordingFeature, isInputDisabled]);
 
 		const handleConfirmRecording = useCallback(() => {
 			if (mediaRecorderRef.current && isRecording) {
@@ -3311,7 +3439,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			handleStartRecording,
 			() =>
 				Boolean(
-					!isLoading &&
+					!isInputDisabled &&
+						!isLoading &&
 						!isRecording &&
 						!isTranscribing &&
 						canEnableRecordingFeature,
@@ -3320,6 +3449,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const handleSubmit = (e: FormEvent) => {
 			e.preventDefault();
+			/*
+			 * THE REFUSAL COMES FIRST HERE TOO (review round 1, MAJOR 2), and this is
+			 * the guard the `readOnly` attribute cannot supply: `handleSubmit` is the
+			 * FORM's submit, so it is reachable by a press on a `type="submit"`
+			 * control as well as by Enter, and a press has no keydown to refuse. The
+			 * button beside the box carries the same predicate now, so today this is
+			 * the second of two - and it is the one that holds if a future control
+			 * submits this form.
+			 */
+			if (isInputDisabled) return;
 			if (!newMessage.trim() && attachments.length === 0) return;
 			/*
 			 * THE CAPTURE IS ASKED FIRST, exactly as the key handler asks it, so the
@@ -3344,6 +3483,51 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 			submitMessage();
 		};
+
+		/*
+		 * KEEP THE CARET ON A PRESS THAT LANDS ON A CONTROL THE BOX IS REFUSING WITH
+		 * (QA round 2, Q-3).
+		 *
+		 * The Send, dictation and attach controls are `disabled` while this composer
+		 * refuses, and the browser's default action for a `mousedown` is to move the
+		 * caret to what was pressed. A disabled control cannot take focus, so that
+		 * default does not fail harmlessly - it CLEARS focus to `document.body`
+		 * instead. Measured, with the caret in a refused box still holding the
+		 * reader's sentence: a real mouse press on the Send control ends
+		 * `active=body, focused=false` where the keyboard path ends
+		 * `active=textarea[Message]`, and QA round 3 measured the same row for the
+		 * attach control (`attachPress active=body isComposer=false`) - which is why
+		 * the suppression is on every control the refusal's own `isInputDisabled`
+		 * term disables, rather than on the two the first measurement happened to
+		 * land on. That is the mouse half of the defect this refusal exists to fix -
+		 * the operator's "I type and nothing happens", one door over - and the words
+		 * survive the press only because the box was kept `readOnly` rather than
+		 * `disabled`.
+		 *
+		 * `preventDefault` suppresses ONLY the focus-changing default: the press still
+		 * reaches the control, and a refused control fires no `click` in any case, so
+		 * nothing that worked stops working.
+		 *
+		 * POINTERDOWN RATHER THAN THE SLASH ROWS' MOUSEDOWN, and the difference is
+		 * measured rather than stylistic: a DISABLED control dispatches no mouse
+		 * events at all in this browser (driven, document-level capture listeners: a
+		 * `pointerdown` arrives on the disabled Send control and no `mousedown`
+		 * follows, which is why the slash rows' technique fixes nothing here).
+		 *
+		 * Scoped to the refusal deliberately: outside it these controls keep the
+		 * browser's normal press behaviour, and a control that is disabled for its OWN
+		 * reason - an empty box's Send, the mic with no Radient credential - is not
+		 * this composer refusing with anyone. The gate below is the whole of that
+		 * scoping, and it is load-bearing in both directions: without it a blanket
+		 * suppression would also swallow the press on inert background, which has to
+		 * go on clearing the caret, and a live control has to be exactly what it was.
+		 */
+		const holdCaretOnRefusedPress = useCallback(
+			(event: PointerEvent<HTMLButtonElement>) => {
+				if (isInputDisabled) event.preventDefault();
+			},
+			[isInputDisabled],
+		);
 
 		const handleRemoveAttachment = (id: string) => {
 			if (conversationId) {
@@ -3372,6 +3556,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		};
 
 		const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+			/*
+			 * A REFUSED BOX TAKES NO PASTE (review round 1, MINOR 1). This path is NEW
+			 * in this PR only in the sense that it became REACHABLE: `disabled` meant
+			 * the textarea could not be a paste target at all, and `readOnly` does not -
+			 * a read-only field is still focusable, so paste fires. Both branches below
+			 * WRITE: a live capture takes the payload (`applyCapture`) and a
+			 * file/image calls `addAttachment`, while the preview and the attach
+			 * button beside them are already gated. Neither is an edit `readOnly` can
+			 * suppress, because neither is an edit to the textarea's value.
+			 */
+			if (isInputDisabled) return;
 			/*
 			 * THE CREDENTIAL GATE IS THE FIRST BRANCH, ahead of every size and
 			 * whitespace rule (`Editor._on_paste`). It is a MODE question — did the
@@ -4538,12 +4733,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										isSmallView ? "max-h-24" : "max-h-28",
 										"resize-none overflow-y-auto bg-transparent",
 										"text-ink outline-none placeholder:text-ink-dim",
-										// The disabled state STEPS COLOUR rather than fading
-										// (branding: disabled changes colour, never opacity), and
-										// without this the only signal was `cursor: not-allowed`
-										// after the user had already typed into a field that will
-										// not accept anything.
-										"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+										// A composer that REFUSES input STEPS COLOUR rather than fading
+										// (branding: disabled changes colour, never opacity), and without
+										// this the only signal was `cursor: not-allowed` after the user
+										// had already typed into a field that will not accept anything.
+										//
+										// `read-only:` is the pair that fires now, because the refusal
+										// is expressed as `readOnly` on the element below. The
+										// `disabled:` pair stays BESIDE it: nothing sets `disabled` on
+										// this element any more, and deleting the pair would let a
+										// future `disabled` state ship with no ink step at all - the
+										// exact defect the pair was added for.
+										"read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
 									)}
 									placeholder={
 										/*
@@ -4704,20 +4905,74 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									}}
 									onPaste={handlePaste}
 									rows={1}
-									disabled={isInputDisabled}
+									/*
+									 * READ-ONLY, NOT DISABLED, and the difference is the caret — see the
+									 * `isInputDisabled` declaration above. `disabled` blurs the field when
+									 * it lands, which parks the caret on `document.body` and, on the
+									 * `unavailable` arm, never gives it back on that panel; and a
+									 * disabled textarea cannot be focused, selected or copied, so the
+									 * reader cannot even retrieve the sentence they were writing from
+									 * the state that just told them the conversation is gone.
+									 *
+									 * `aria-disabled` is what says the same thing to a screen reader now
+									 * that the native attribute is gone: the field is still focusable
+									 * and still readable, so the accessible name has to carry the
+									 * refusal the ink step carries visually. It is undefined (absent)
+									 * while the composer works, because `aria-disabled="false"` on a
+									 * textarea that takes input is a statement about a state the user
+									 * is not in.
+									 *
+									 * The refusal itself is enforced by the guard at the top of
+									 * `handleComposerKeyDown`: `readOnly` suppresses the EDIT (no `input`
+									 * event fires, so `onChange` never runs), but the keydown still
+									 * arrives — so Enter would submit without that guard. Every other
+									 * path that writes into this box or submits it carries the same
+									 * predicate, and `aria-describedby` ties the pane's own sentence
+									 * for the state to the control for as long as it refuses.
+									 */
+									readOnly={isInputDisabled}
+									aria-disabled={isInputDisabled || undefined}
 									aria-label="Message"
 									role="combobox"
 									/*
-									 * Both descriptions, space-separated as the attribute demands: the capture's
-									 * notice while one is owed, and the mention sentence while a reference
-									 * points outside the workspace. `undefined` rather than an empty string when
-									 * neither applies, because an empty `aria-describedby` is a reference to
-									 nothing.
+									 * All THREE descriptions, space-separated as the attribute demands: the
+									 * credential capture's notice while one is owed, the mention sentence while
+									 * a reference points outside the workspace, and the pane's own sentence
+									 * while the conversation this machine would answer is gone. `undefined`
+									 * rather than an empty string when none applies, because an empty
+									 * `aria-describedby` is a reference to nothing. The three are independent
+									 * reasons to describe this box and any two of them can coincide, which is
+									 * why they are JOINED rather than chosen between.
 									 */
 									aria-describedby={
+										/*
+										 * THE REFUSAL IS DESCRIBED RATHER THAN ANNOUNCED (UX round 1, U3).
+										 * A screen reader in a refused box heard the value and "read-only,
+										 * disabled" and never WHY: the pane's statement of the state is a `<p>`
+										 * in the transcript with no programmatic tie to the control, and the
+										 * placeholder that carries the short form is painted and announced
+										 * only while the box is EMPTY - which is not the state this PR exists
+										 * for. Joining the other notices' ids rather than choosing between
+										 * them keeps each true at once; any two of the three can coincide.
+										 *
+										 * Named only for the `unavailable` arm, which is the one with a sentence
+										 * in the pane to point at. The busy arm's band carries the state's own
+										 * action (Stop agent) and has no pane sentence; it is also unreachable
+										 * on a canonical pane (`currentJobId` is pinned to `null` there), so it
+										 * gets no invented one. An id that resolves to nothing is ignored by
+										 * assistive tech, which is what a composer mounted without a transcript
+										 * (a story, a rig) gets.
+										 *
+										 * NOT A LIVE REGION. An announcement was the alternative, and it was
+										 * rejected: the state is already spoken by the transcript the reader is
+										 * in, this box is focusable precisely so the reader can go there, and a
+										 * polite region on every refusal is a second voice for one fact that
+										 * cannot be verified without an AT in this environment.
+										 */
 										[
 											credentialNotice ? CREDENTIAL_NOTICE_ID : null,
 											outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
+											unavailable ? MISSING_SESSION_NOTICE_ID : null,
 										]
 											.filter(Boolean)
 											.join(" ") || undefined
@@ -4874,6 +5129,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												variant="ghost"
 												size={isSmallView ? "icon-sm" : "icon"}
 												className="text-ink-dim hover:bg-elevated hover:text-ink"
+												onPointerDown={holdCaretOnRefusedPress}
 												onClick={handleAttachFile}
 												aria-label="Attach file"
 												data-tour-tag="chat-input-attach-file-button"
@@ -4980,9 +5236,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														variant="ghost"
 														size={isSmallView ? "icon-sm" : "icon"}
 														className="text-ink-dim hover:bg-elevated hover:text-ink"
+														onPointerDown={holdCaretOnRefusedPress}
 														onClick={handleStartRecording}
 														aria-label="Start recording"
-														disabled={isLoading || !canEnableRecordingFeature}
+														disabled={
+															isInputDisabled ||
+															isLoading ||
+															!canEnableRecordingFeature
+														}
 													>
 														<Mic aria-hidden="true" />
 													</Button>
@@ -5209,7 +5470,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														variant="primary"
 														size={isSmallView ? "icon-sm" : "icon"}
 														type="submit"
+														onPointerDown={holdCaretOnRefusedPress}
 														disabled={
+															isInputDisabled ||
 															isLoading ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
@@ -5274,6 +5537,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							splash={splash}
 							suggestions={suggestions}
 							disabled={suggestionsDisabled}
+							onRefusedPress={holdCaretOnRefusedPress}
 							onSelect={handleSuggestionClick}
 							focusComposer={() => textareaRef.current?.focus()}
 						/>
