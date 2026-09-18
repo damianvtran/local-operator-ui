@@ -645,7 +645,8 @@ the 40px bar and leave the title — the breadcrumb IS the pane's title (`§ 5.2
 
 ### 5.2b The child's own subagents
 
-When the open child has children of its own, a `Subagents` section is drawn
+When the open child has children of its own, a `Subagents of <owner>` section is
+drawn
 between the chrome bar and the conversation: one row per DIRECT child of the
 page's own child, each opening that child's page through the pane's own
 `openChild`. Downwards is therefore this section; upwards is what `§ 5.2`
@@ -657,6 +658,39 @@ ground, focus ring and accessible name cannot drift between the three lists that
 draw a row. The one mark they add is `SubagentRow.childCount` (`2 children`,
 `1 child`): the row opens a PAGE rather than a subtree, so without the count the
 only way to learn there is a level below it is to open every row.
+
+The heading names its OWNER — `Subagents of <owner>` — and not the bare word: the
+pane's roster uses `Subagents` for the pane's own list (`§ 4`), so one word would
+cover two different sets, and at depth no legible text on the page names the owner
+because the breadcrumb's ancestors shorten (`§ 5.2`). The owner is model-authored,
+so it is the part that gives way: the `Subagents of` prefix is `shrink-0` and the
+name is `min-w-0 truncate` with its whole string in a `title`. The section's
+accessible name is the same string, which is what keeps the FULL owner readable
+when the visible one has shortened.
+
+The mark is a POINTER to that level rather than a fourth figure (design round 1,
+D2). It leads with the app's own chevron — `ChevronRight`, 14px, `text-ink-dim`,
+§ 9's disclosure chevron and the same glyph the pane's other directional marks use
+— and its gutter is 12px, the line's own 8px plus 4px, which is wider than the
+~11px the numbers run spends on its internal `·` seam. A different KIND of fact
+arriving at the tightest joint on the line is what made `40s · 3% · $0.01  1 child`
+read as a value that does nothing when pressed. The word itself stays (`§ 9`), in
+the row's own `text-meta`/`ink-muted`, so nothing here is theme-dependent and the
+ink is the pair the round measured at 7.90:1 dark / 8.02:1 light.
+
+The mark has a FLOOR rather than a permanent charge (same round, D1):
+`childCountFitsInline(paneWidth)` in `run-detail-model.ts` is the roster heading's
+`tallyFitsInline` rule applied to a row — so the question is the PANE's width and
+one row cannot shed the mark while its neighbour keeps it — and the mark is
+DROPPED WHOLE below 378px. The numbers it is drawn from: the line has
+`paneWidth - 48` for label, numbers and mark; the mark and its gutter cost 66px;
+the widest numbers run measured behind them is 172px; and the label keeps a 92px
+floor, which is the width the same rows hold at the pane's floor with no mark
+(15-19 characters). At the 420px default that leaves the label 134px, so the mark
+stays; at the 320px floor the label would be down to 34px, so the mark sheds whole
+and the label takes the 66px back (92-118px). The pane has three sizes —
+320/420/640 (`§ 8`) — so the shed is the floor's state and no other width's, and a
+mark that is not drawn cannot be the thing clipped at the pane's edge.
 
 The section is ABSENT, not empty, for a leaf — no heading, no `0 children`, no
 stray spacing — and a row that cannot be opened (no `session_id`, or a backend
@@ -677,7 +711,10 @@ began letting a subagent whose role allows the `task` tool delegate at any depth
 (`harness/subagent.py`'s allowance rule), that is the difference between walking
 the tree and guessing at it. The three frames that picture it are declared in
 `docs/evidence/chat-run-panel/README.md`: `reader-descendants`,
-`reader-deep-children` and `reader-childless`.
+`reader-deep-children` and `reader-childless`, each with a floor twin —
+`reader-descendants-floor`, `reader-deep-children-floor` and
+`reader-childless-floor` — which is the same three states with the pane pinned to
+its 320px floor, the width the mark's shed rule is about (`§ 8`).
 
 ### 5.3 Live updates
 
@@ -1787,6 +1824,8 @@ per `branding.md` § 9's checklist.
 | `reader-pending` / `reader-gone` | § 10.1's two absences, with their separate copy |
 | `reader-nested` | breadcrumb path + back affordance with two levels |
 | `reader-child-controls` | a member's page whose child count is ONE: the descend control's singular label and its accessible name, in the only state that can show either, beside the peer stepper for the same child |
+| `reader-descendants` / `reader-deep-children` / `reader-childless` | `§ 5.2b`'s three states: a page that LISTS its own children (the second row carrying `1 child`), a grandchild's page whose own row carries its count, and the leaf whose page has no section at all. The first two are also the frames of the row mark — the chevron, the 12px gutter and the count — and the third is their control, because absence is the state a reader has to be able to tell from "not loaded yet". |
+| `reader-descendants-floor` / `reader-deep-children-floor` / `reader-childless-floor` | the same three at the pane's **320px floor** (design round 1, D1): the mark is DROPPED WHOLE there, so the labels keep the characters it would have spent, and the section's heading, rows and absence all hold at the narrowest width the pane can be dragged to. Read as a pair with the 420px frames above — same tree, same labels, and the mark present in one and absent in the other. |
 | `reader-deep-floor` | the same breadcrumb at DEPTH 3 with the pane at its 320px floor: the ancestors shrink so the current node — the reader's title (`§ 5.2`) — keeps a legible share. Round 2 left this open; the frame is the proof, not the flex reasoning. |
 | `reader-image` | a child's OWN image: the row carries a digest and the reader resolves it through the child-scoped attachment op, so a child screenshot is a picture. The story stubs the relay for the renderer's half; the route's mapping is pinned by a desktop test. |
 | `reader-brief` | the folded brief and its expander, in the one state that renders it: a child whose transcript does NOT already carry the instruction (`reader-resumed` is the state where the brief stands down) |

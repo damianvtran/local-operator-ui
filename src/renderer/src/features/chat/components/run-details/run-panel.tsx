@@ -925,6 +925,13 @@ export const RunPanel = ({
 					childRows={children}
 					childrenOpenable={childrenOpenable}
 					onOpenChild={openChild}
+					/*
+					 * The pane's own width, so the reader's subagents section sheds its rows'
+					 * count mark on the same measurement every other section's budget uses
+					 * (`§ 8`, `childCountFitsInline`) — the reader is a page inside this pane,
+					 * not a surface with a width of its own.
+					 */
+					paneWidth={paneWidth}
 					onUnopenable={() => {
 						onReaderChildChange(null);
 						setUnopenable(true);
