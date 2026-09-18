@@ -810,6 +810,42 @@ test("with no probe bridge the ambiguous tokens stay prose and nothing throws", 
 	);
 });
 
+test("a streaming row scans and asks nothing at all", async () => {
+	/*
+	 * `linkify` false is the streaming path, and its contract is the strongest of
+	 * the three: NO pre-scan, NO ask, NO anchor. A row re-renders per delta, so a
+	 * probe per render would be a stat storm on main's own event loop - the shape
+	 * `use-mentioned-files` documents for the same reason - and this is the one
+	 * assertion that fails loudly if the evidence effect stops reading its own
+	 * first line.
+	 */
+	const asked = [];
+	frame.window.api = {
+		...frame.window.api,
+		probeFiles: async (paths) => {
+			asked.push(...paths);
+			return paths.map((input) => ({
+				input,
+				resolved: input,
+				exists: true,
+				isFile: true,
+			}));
+		},
+	};
+	await frame.render(
+		React.createElement(MarkdownRenderer, {
+			content: EVIDENCE_DOCUMENT,
+			linkify: false,
+		}),
+	);
+	assert.deepEqual(asked, []);
+	assert.equal(
+		frame.document.querySelectorAll("a[data-lo-kind]").length,
+		0,
+		"a streaming row has no linkifier at all",
+	);
+});
+
 /* --------------------------------------------------------------- the toolbar */
 
 /** Mount the transcript with the fixture, and stub every box it measures. */
