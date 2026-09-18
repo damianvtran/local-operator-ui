@@ -690,6 +690,75 @@ test("a flip clears the highlight's LAST line, so it never lands on the text", (
 	assert.equal(placed.top, 140 + QUOTE_CONTROL_GAP);
 });
 
+test("a link below its row's first line is placed BELOW it, not over the line above", () => {
+	/*
+	 * The link toolbar's rule (round 1, design D2, UX U6): an 8px-above placement
+	 * covers the line before a link that is not on its row's first line, and round 1
+	 * measured it hiding 128px of the very path this change exists to make usable.
+	 * The unit is the anchor's own line height, so this case is one line down from
+	 * the row's top: below, cleared of its own LAST line.
+	 */
+	const row = box(300, 40, 984, 700);
+	const secondLine = box(322, 200, 500, 344);
+	assert.deepEqual(place([secondLine], { row, belowWhenOffFirstLine: true }), {
+		top: 344 + QUOTE_CONTROL_GAP,
+		left: 200,
+		placement: "below",
+	});
+});
+
+test("a link ON the row's first line keeps the clearance above it", () => {
+	/*
+	 * The other half of the same rule, and the case that must not regress: the first
+	 * line of a row is where the 8px is the row's own leading, so nothing is covered
+	 * and "above" is still the right side.
+	 */
+	const row = box(300, 40, 984, 700);
+	const firstLine = box(300, 200, 900, 322);
+	assert.deepEqual(place([firstLine], { row, belowWhenOffFirstLine: true }), {
+		top: 300 - QUOTE_CONTROL_GAP - CONTROL.height,
+		left: 200,
+		placement: "above",
+	});
+});
+
+test("the mid-row rule is the toolbar's choice, and off by default", () => {
+	/* The quote control shows no `row` and no flag, and its placement is unchanged. */
+	const offFirstLine = box(322, 200, 500, 344);
+	assert.equal(place([offFirstLine]).placement, "above");
+	assert.equal(
+		place([offFirstLine], { row: box(300, 40, 984, 700) }).placement,
+		"above",
+	);
+});
+
+test("with no room below, the mid-row rule falls back above rather than to the clamp", () => {
+	/*
+	 * A link just above the pane's floor: taking the rule literally would push the
+	 * flip past the pane and hand the position to the vertical clamp, which is how a
+	 * control ends up over its own anchor's line. `above` has room there, so it wins.
+	 */
+	const nearFloor = box(640, 200, 500, 662);
+	const placed = place([nearFloor], {
+		row: box(300, 40, 984, 700),
+		belowWhenOffFirstLine: true,
+	});
+	assert.deepEqual(placed, {
+		top: 640 - QUOTE_CONTROL_GAP - CONTROL.height,
+		left: 200,
+		placement: "above",
+	});
+});
+
+test("the mid-row flip is measured from a wrapped link's LAST line", () => {
+	const row = box(300, 40, 984, 700);
+	const wrapped = [box(322, 200, 900, 344), box(344, 40, 300, 366)];
+	const placed = place(wrapped, { row, belowWhenOffFirstLine: true });
+	assert.equal(placed.placement, "below");
+	assert.equal(placed.top, 366 + QUOTE_CONTROL_GAP);
+	assert.equal(placed.left, 200);
+});
+
 test("a highlight scrolled above the pane hides", () => {
 	// Anchored to a line the reader can no longer see: there is nothing left for
 	// the control to be about, so it reports null rather than pinning itself to
@@ -931,4 +1000,65 @@ test("a turn with no quote renders its own text untouched", () => {
 	const payload = buildSendPayload("a plain turn", []);
 	assert.equal(payload, "a plain turn");
 	assert.deepEqual(parseReplies(payload).replies, []);
+});
+
+/*
+ * ---------------------------------------------------------------- the link toolbar
+ *
+ * The transcript gained a SECOND floating control when a link became pressable
+ * (Copy / Open / Open folder, plus Quote - leading when the reader's highlight lies
+ * inside the link, trailing on the hover state when it does not). It wears the same
+ * shell - and therefore the same
+ * `QUOTE_TOOLKIT_ATTR` - as the turn's Quote control, so the exclusion above is
+ * inherited rather than re-derived. That inheritance is asserted here instead of
+ * trusted, because it is the difference between one attribute with one meaning
+ * and two controls that happen to agree.
+ *
+ * The link toolbar is also the case the attribute's own comment predicted would
+ * be reachable "the moment it carries a label": unlike the Quote control's lone
+ * glyph, this strip renders text (a `No file at /tmp/x` note, and a `Copied`
+ * state), so a drag that reaches it has real words to leak into a quote.
+ */
+
+test("a drag that ends on the LINK toolbar is not a quote of the turn", () => {
+	const turn = node("div");
+	const prose = node("p", turn);
+	const link = node("a", turn);
+	const toolbar = node("div", turn);
+	// Both toolbars are found by the same attribute, which is the point.
+	toolbar.attr = true;
+	const button = node("button", toolbar);
+	const label = node("span", button);
+	label.text = "No file at /tmp/x";
+
+	select(
+		clippableRange({
+			turn,
+			startContainer: prose,
+			endContainer: label,
+			inside: "the second clause ",
+			after: "No file at /tmp/x",
+		}),
+	);
+	assert.equal(quoteSelectionIn(turn), null);
+	select(
+		clippableRange({
+			turn,
+			startContainer: label,
+			endContainer: prose,
+			inside: "No file at /tmp/x the second clause",
+		}),
+	);
+	assert.equal(quoteSelectionIn(turn), null);
+	// And the link itself is ordinary prose to this model: an anchor is not a
+	// control, so a highlight over it is a quote of the turn's words.
+	select(
+		clippableRange({
+			turn,
+			startContainer: link,
+			endContainer: link,
+			inside: "~/x/report.xlsx",
+		}),
+	);
+	assert.equal(quoteSelectionIn(turn).text, "~/x/report.xlsx");
 });

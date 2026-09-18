@@ -2825,6 +2825,28 @@ export type ProbedFile = {
 };
 
 /**
+ * What `open-file` and `show-item-in-folder` answer with.
+ *
+ * Both used to answer `void`, and both dropped the half of the answer that
+ * matters. `shell.openPath` RETURNS its failure as a string (it does not throw),
+ * so the old `open-file` reported success for a path that opened nothing; and
+ * `shell.showItemInFolder` returns nothing at all, so a path that does not exist
+ * revealed whichever folder happened to be in front of it. A press that fails
+ * silently is the failure this carries the answer out for - the transcript's
+ * link toolbar says `No file at …` instead of looking broken.
+ *
+ * `resolved` is the path the main process actually acted on, after `~`
+ * expansion: the renderer spells a path the way the agent wrote it, and the
+ * resolved form is the only one that names the same file for both of them.
+ */
+export type FileActionOutcome = {
+	ok: boolean;
+	resolved: string;
+	/** Why it failed, for the toast; absent when `ok`. */
+	error?: string;
+};
+
+/**
  * Why a byte read was refused.
  *
  * A string code, not an `Error` subclass: Electron serialises an Error across
