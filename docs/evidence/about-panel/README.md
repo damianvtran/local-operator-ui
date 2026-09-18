@@ -19,17 +19,27 @@ this machine: `frames/before-identity.png` is a tree built at `origin/main`
 `f19827852` - the base this branch was rebased onto when round 1 shot it, and the
 last base whose About path is still Electron's `about` role, which is the fact
 the frame is evidence about - and `frames/after-identity.png` is this change's own
-code. The tree that frame was captured from is not the tree this branch's head
-carries, because `main` moved twice underneath it; what is evidence about is
-unchanged by that: `configureAboutPanel` and `createApplicationMenu` (the
-registration and the Darwin App menu item) are byte-identical between the capture
-tree and this head, `resolveAboutPanelAction` in `src/main/window-mode.ts` with
-them, and the only difference in those two files between the two trees is that
-comment below plus `main`'s own work from the folds - none of it in the path the
-frame photographs. Neither is a
-mock and neither is the app photographing itself: the About panel is AppKit's
-window, so it is photographed from outside, window-only, with `screencapture -l`
-(never the screen) while the app raised it in `inactive` mode. Both runs are
+code as it stood at `2d6665924`, the remediation round's own head (`fix(menu):
+install the app's own menu before the ready handler awaits anything`). That commit
+is a pre-fold spelling that only the clone which shot the frames resolves - the
+reflog kept it and no ref does - so what it is named FOR is stated as the blobs it
+carries: this tree's two frame blobs, and a `src/main/window-mode.ts` blob-identical
+to the one the two review rounds read (`141bfbc8d`). Both are durable, because the
+reachable spelling of that commit, `f341feef2` in the lineage `main` carries, is
+where those frame blobs and that `window-mode.ts` land. The tree that
+frame was captured from is not the tree this branch's head carries, because `main`
+moved twice underneath it; what is evidence about is unchanged by that:
+`configureAboutPanel` and `createApplicationMenu` (the registration and the Darwin
+App menu item) extract byte-identical from `src/main/index.ts` on both trees,
+`resolveAboutPanelAction` in `src/main/window-mode.ts` with them, and the only
+difference in those two files between the capture tree and this head is `main`'s
+own folded-in work in `src/main/index.ts` - 87 lines of it, none of them in the
+path the frame photographs - plus this follow-up's correction to one comment on
+`resolveAboutPanelAction`, which moves no code. The manifest's `about-panel` entry
+names that same commit. Neither is a mock and neither is the app photographing
+itself: the About panel is AppKit's window, so it is photographed from outside,
+window-only, with `screencapture -l` (never the screen) while the app raised it in
+`inactive` mode. Both runs are
 UNPACKAGED, which is the case that used to read Electron's identity; what a
 packaged build's panel reads is under *Residual*.
 
@@ -41,7 +51,16 @@ packaged build's panel reads is under *Residual*.
   and whether the bundle is the shipped one, and `copyright` is read from
   `package.json`'s `build.copyright` - the one place the project states it, and
   the string electron-builder stamps into a packaged bundle. Without this
-  registration an unpackaged run says `44.3.0` twice and names Electron.
+  registration an unpackaged run says `44.3.0` twice and names Electron. That
+  build string is the one variable-length line in a panel whose width is not
+  content-driven: both panels are exactly `284pt` wide (568px in these frames,
+  which are 2x) although their widest line grew from 220px to 431px, and the
+  widest line now IS this one - its ink runs 431 of the panel's 568px, with 67px
+  clear on the left and 70px on the right (≈33.5pt / 35pt of slack). That slack is
+  the whole budget a longer host string spends, so a three-digit Electron major, or
+  a word longer than `unpackaged`, clips before anything else on the panel does.
+  Measured on the committed frame rather than assumed, because the string least
+  able to afford clipping should not be the first to discover the panel's edge.
 - **The action is gated by the launch's resolved window mode**
   (`resolveAboutPanelAction` in `src/main/window-mode.ts`): `headless` logs
   `[about-panel] suppressed by window mode headless: a headless run raises no
@@ -214,13 +233,19 @@ built on.
   measured: whether the Dock TILE would move, which needs a visible run and is
   not what the finding was about.
 - **A packaged build's panel is unevidenced.** Both frames are unpackaged runs. A
-  packaged build carries the app's own name, version, icon and copyright in its
-  bundle, so its panel reads them from there and this registration is deliberately
-  untouched for it (`app.isPackaged` is not consulted: the same strings are set
-  either way, and for a packaged run they agree with the bundle). It is not
-  photographed because a packaged build is not possible on this machine tonight -
-  the disk is at 99% and `electron-builder` needs several GB - so the claim that
-  the packaged panel agrees is an argument from where its values come from, not a
+  packaged build carries the app's own name, version and copyright in its bundle,
+  and the three strings this registration sets from them - `applicationName`,
+  `applicationVersion` and `copyright` - are the same strings, so those agree with
+  the bundle. The BUILD string is the one that does not: `app.isPackaged` IS
+  consulted, at the `version:` line of `configureAboutPanel`, and its only job is
+  to drop the `, unpackaged` marker, so a shipped panel renders `Version 0.27.0
+  (Electron 44.3.0)` - this app's own runtime version and the desktop host, on the
+  user-facing surface, rather than a value read out of the bundle. That is
+  intended and it is the answer to the review's question about the packaged
+  string, recorded here because the code and this paragraph used to disagree about
+  it. It is not photographed because a packaged build is not possible on this
+  machine tonight - the disk is at 99% and `electron-builder` needs several GB - so
+  what a packaged panel reads is an argument from where its values come from, not a
   picture.
 - **The copyright line's year is `© 2025`**, straight from
   `package.json`'s `build.copyright`, and it will read that in 2026 until the
