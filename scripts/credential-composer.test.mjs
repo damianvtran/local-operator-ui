@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { unlink, writeFile } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -274,6 +274,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { MessageInput } from "./src/renderer/src/features/chat/components/message-input.tsx";
+			export { CredentialChipLayer } from "./src/renderer/src/features/chat/components/credential-chip-layer.tsx";
 			export { CHAT_MEASURE } from "./src/renderer/src/features/chat/chat-measure";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
@@ -315,6 +316,7 @@ const bundlePath = new URL(`./_composer-${process.pid}.mjs`, import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	CHAT_MEASURE,
+	CredentialChipLayer,
 	MessageInput,
 	QueryClient,
 	QueryClientProvider,
@@ -3956,5 +3958,147 @@ test("a restored run is the command only as a token, not as a substring (UX roun
 	assert.ok(
 		JSON.stringify(frame.sent).includes(sentence),
 		"in full, byte for byte",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The layer, mounted on its own                                        */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE DROP IS REPORTED AT THE COMMIT THAT REMOVES THE CONTROL (code review round 6, R6-1,
+ * which names this row as the instrument that can actually see R5-1).
+ *
+ * WHY IT TAKES STUBBED RECTS, and why every other row in this file is blind to the state:
+ * jsdom has no layout engine, so `getClientRects()` is empty and the layer measures nothing
+ * - which is exactly why the round-4 guard could not be caught here either. With the rects
+ * stubbed, the ORDERING becomes visible: the pre-fix guard asked `document.activeElement`
+ * and `!held.isConnected` INSIDE the measure that produced the boxes, when the button React
+ * is about to remove is still connected, so it never fired and focus went to `<body>`; the
+ * head records the held control and reports from a layout effect keyed on the boxes, i.e.
+ * after the commit that removes it. Reverting the layer to the round-4 guard fails this row.
+ */
+function stubRect(element, box) {
+	const rect = {
+		...box,
+		right: box.left + box.width,
+		bottom: box.top + box.height,
+		x: box.left,
+		y: box.top,
+		toJSON: () => box,
+	};
+	element.getBoundingClientRect = () => rect;
+	element.getClientRects = () => [rect];
+	return element;
+}
+
+test("the layer reports the drop at the commit that removes the control it was standing on", async () => {
+	const host = window.document.createElement("div");
+	window.document.body.appendChild(host);
+	const mirror = window.document.createElement("div");
+	const field = window.document.createElement("textarea");
+	const run = window.document.createElement("span");
+	/*
+	 * The span carries the PLAN INDEX of its own segment, which is the mirror's contract with
+	 * this layer - `paintPlan` splits "deploy with [Credential #1, 19 chars]" into the prose and
+	 * the marker, so the marker's run is index 1 and a chip is drawn for it alone.
+	 */
+	run.setAttribute("data-credential-run", "1");
+	run.textContent = "[Credential #1, 19 chars]";
+	mirror.appendChild(run);
+	host.append(mirror, field);
+	stubRect(mirror, { left: 0, top: 0, width: 400, height: 200 });
+	stubRect(field, { left: 0, top: 0, width: 400, height: 100 });
+	// The run starts INSIDE the frame, on a strip a chip is drawn for.
+	stubRect(run, { left: 10, top: 80, width: 120, height: 17 });
+
+	let dropped = 0;
+	const layerRoot = createRoot(host);
+	await act(async () => {
+		layerRoot.render(
+			h(CredentialChipLayer, {
+				text: "deploy with [Credential #1, 19 chars]",
+				payloads: new Map([
+					[
+						1,
+						{
+							index: 1,
+							key: "LOP_SECRET_4CE3Y48G",
+							value: "v",
+							marker: "[Credential #1, 19 chars]",
+						},
+					],
+				]),
+				mirrorRef: { current: mirror },
+				fieldRef: { current: field },
+				// The control only exists while the composer is taking edits, which is
+				// `onClear !== null` - the same predicate the `x` is offered under.
+				onClear: () => {},
+				onControlUnmounted: () => {
+					dropped += 1;
+				},
+			}),
+		);
+	});
+	const layer = host.querySelector("[data-credential-chips]");
+	assert.ok(layer, "the layer draws a chip for a run inside the frame");
+	const control = layer.querySelector("button");
+	assert.ok(control, "and the chip carries its control");
+
+	await act(async () => {
+		control.focus();
+	});
+	assert.equal(
+		window.document.activeElement,
+		control,
+		"the control holds focus",
+	);
+
+	/*
+	 * THE RUN LEAVES THE FRAME, which is what the clip rule answers: the field's own scroll is
+	 * the route in the app, and it is what this dispatch stands for.
+	 */
+	stubRect(run, { left: 10, top: 400, width: 120, height: 17 });
+	await act(async () => {
+		field.dispatchEvent(new window.Event("scroll"));
+	});
+
+	assert.equal(
+		dropped,
+		1,
+		"the layer reported the drop at the commit that removed the focused control (R5-1)",
+	);
+	assert.equal(
+		host.querySelector("[data-credential-chips]"),
+		null,
+		"and the chip is gone, so the state it reports is the state it left",
+	);
+	layerRoot.unmount();
+	host.remove();
+});
+
+/* Hoisted like this file's other regexes (code review round 4, R4-8): the floor's own literal. */
+const STRIP_FLOOR = /const CHIP_MIN_VISIBLE_STRIP_PX = (\d+);/;
+
+/*
+ * THE RIG'S COPY OF THE FLOOR IS PINNED TO THE LAYER'S (code review round 6, R6-6). The rig
+ * re-declares `CHIP_MIN_VISIBLE_STRIP_PX` rather than importing it, so its failure message can
+ * name the number it measured against - which means nothing ties the two literals together, and
+ * raising the layer's floor would leave the rig asserting the weaker one silently, with the same
+ * class of drift every round since 3 has been about. Read as text rather than imported: the rig
+ * is a script main-process Node runs, and the layer is a renderer module this suite already
+ * bundles.
+ */
+test("the geometry rig's strip floor is the layer's own number", async () => {
+	const layer = await readFile(
+		"src/renderer/src/features/chat/components/credential-chip-layer.tsx",
+		"utf8",
+	);
+	const rig = await readFile("scripts/credential-chip-geometry.mjs", "utf8");
+	const literal = (source) => STRIP_FLOOR.exec(source)?.[1] ?? null;
+	assert.equal(
+		literal(rig),
+		literal(layer),
+		"the rig asserts the layer's own strip floor: change one and the other has to move with it",
 	);
 });
