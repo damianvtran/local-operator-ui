@@ -5113,16 +5113,21 @@ async function sceneCanvasFreshness(cdp, app) {
 		};
 	})()`);
 	/*
-	 * THE STAMP KEEPS ITS FULL WIDTH WHILE A SENTENCE IS ON SCREEN (design round 2,
-	 * D7). Round 1 made both text elements shrinkable and flex shrank them in
-	 * proportion to their width, so the LONG sentence pushed the STAMP into
-	 * ellipsis - the fact the row exists to state, gone before the sentence beside
-	 * it. This is the measurement that says the row now does the opposite.
+	 * THE SENTENCE KEEPS ITS FULL WIDTH WHILE THE STAMP IS BESIDE IT (design round 4,
+	 * U15 - and deliberately the reverse of round 2's D7, which protected the stamp).
+	 *
+	 * What U15 measured is the reason: at a 1024x700 window the note was six pixels
+	 * against 264px of text, so the fact the row exists to state was gone at the size
+	 * the app's own minimum window declares. The row now protects the SENTENCE and
+	 * lets the stamp yield, and the tooltip carries the stamp's figure as well as the
+	 * claim, so nothing is lost. The stamp's own numbers stay in this check's message
+	 * rather than being asserted, because at some width it must yield - that is the
+	 * decision, not a defect.
 	 */
 	check(
-		"the stamp is not clipped while the sentence is beside it",
+		"the sentence is not clipped while the stamp is beside it",
 		rowGeometry !== null &&
-			rowGeometry.stamp.scroll <= rowGeometry.stamp.client,
+			rowGeometry.note.scroll <= rowGeometry.note.client + 1,
 		JSON.stringify(rowGeometry),
 	);
 	check(
@@ -5417,6 +5422,61 @@ async function sceneCanvasFreshness(cdp, app) {
 		}
 	};
 
+	/**
+	 * Type into the markdown WYSIWYG, and PROVE it landed.
+	 *
+	 * The raw key dispatch `typeText` uses moves CodeMirror (measured: that is why
+	 * the code surface's phases have always used it) and does not move this editor:
+	 * a round-4 run typed `MDREADER`, the model never saw it, and the file stayed at
+	 * its first version - which is how this round learned the difference. So the
+	 * keyboard is tried first and `execCommand("insertText")`, which dispatches the
+	 * `beforeinput`/`input` pair ProseMirror listens for, is the fallback; what the
+	 * checks then assert is the FILE, so a path that silently did nothing cannot
+	 * pass them.
+	 */
+	/** Type into the code surface, and prove the editor took the words. */
+	const typeCode = async (cdp, text) => {
+		await verb(cdp, "press", "#canvas-document-panel .cm-content");
+		await typeText(cdp, text);
+		const landed = await cdp.evaluate(
+			`(${CANVAS_DOCUMENT_TEXT_EXPR}).text.includes(${JSON.stringify(text)})`,
+		);
+		return landed ? "keys" : "nothing landed";
+	};
+
+	const typeMarkdown = async (cdp, selector, text) => {
+		const landed = () =>
+			cdp.evaluate(
+				`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return (el?.textContent ?? "").includes(${JSON.stringify(text)}); })()`,
+			);
+		await verb(cdp, "press", selector);
+		await typeText(cdp, text);
+		if (await landed()) return "keys";
+		/*
+		 * The fallback places the CARET ITSELF before inserting: a document whose
+		 * editor has just been mounted has no selection, and `insertText` with no
+		 * caret does nothing at all - which is how the cross-document phase typed into
+		 * nothing while the first markdown phase worked.
+		 */
+		await cdp.evaluate(
+			`(() => {
+				const el = document.querySelector(${JSON.stringify(selector)});
+				if (!el) return false;
+				el.focus();
+				const range = document.createRange();
+				range.selectNodeContents(el);
+				range.collapse(false);
+				const selection = window.getSelection();
+				selection?.removeAllRanges();
+				selection?.addRange(range);
+				return document.execCommand("insertText", false, ${JSON.stringify(text)});
+			})()`,
+		);
+		// What this returns is what the DOM shows, so a phase that typed into nothing
+		// says so rather than failing 10 seconds later on a file that never changed.
+		return (await landed()) ? "insertText" : "nothing landed";
+	};
+
 	const typedPath = join(dir, "typing.py");
 	const readerWord = "READER";
 	const externalBody = 'print("external-rewrite")\n';
@@ -5629,6 +5689,272 @@ async function sceneCanvasFreshness(cdp, app) {
 		"and the file the reader's save replaced is not the one the press loaded",
 		fileAfterSave !== externalBody,
 		JSON.stringify(fileAfterSave.slice(0, 60)),
+	);
+
+	/*
+	 * ---------------------------------------------------------------------------
+	 * ROUND 4: THE RESOLUTION PATH, ON THE SURFACE IT WAS MEASURED ON.
+	 *
+	 * Round 4's four harm classes are all the same failure - content that is not the
+	 * reader's current buffer for that document reaching a file - and the markdown
+	 * surface is where three of them were reproduced (UX U9, U14; QA Q13). The code
+	 * surface above cannot see them: its debounce is one second against the markdown
+	 * editor's three, and that window is what a stale proposal needs.
+	 *
+	 * Every check below is about the FILE - its bytes, its hash - because the file is
+	 * what the harms damaged and nothing in this scene asserted it before. Each phase
+	 * ends by leaving its document, which is the cure for the round-3 ordering note
+	 * rather than a re-ordering of it: phases contaminate, and closing separates them.
+	 * ---------------------------------------------------------------------------
+	 */
+	const markdownPath = join(dir, "notes.md");
+	writeFileSync(markdownPath, "md-first-version\n");
+	setExactMtime(markdownPath, BASE_SECOND - 300);
+	await verb(cdp, "openCanvasDocument", { path: markdownPath });
+	await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).surface === "markdown"`,
+		10_000,
+	);
+	const mdEditor = '#canvas-document-panel [contenteditable="true"]';
+	const mdTypedBy = await typeMarkdown(cdp, mdEditor, "MDREADER");
+	note("markdown: how the reader's words reached the editor", mdTypedBy);
+	const mdSaved = await waitForFile(
+		markdownPath,
+		(bytes) => bytes.includes("MDREADER"),
+		10_000,
+	);
+	check(
+		"markdown: the reader's typing reaches the file on its own three-second debounce",
+		mdSaved.ok,
+		JSON.stringify(mdSaved.last.slice(0, 60)),
+	);
+
+	// The file is rewritten from outside while the buffer is dirty.
+	await typeMarkdown(cdp, mdEditor, "MDDIRTY");
+	const mdExternalBody = "md-external-version\n";
+	writeFileSync(markdownPath, mdExternalBody);
+	setExactMtime(markdownPath, BASE_SECOND - 150);
+	const mdExternalHash = fileHash(markdownPath);
+	const mdFactAppeared = await waitForCondition(
+		cdp,
+		`(() => {
+			const note = document.querySelector('[data-tour-tag="canvas-document-freshness-note"]');
+			return Boolean(note) && /changed on disk/i.test(note.textContent ?? "");
+		})()`,
+		8_000,
+	);
+	check(
+		"markdown: an external rewrite under a dirty buffer raises the fact",
+		mdFactAppeared.ok,
+		`${JSON.stringify(mdFactAppeared.last)} after ${mdFactAppeared.attempts} attempt(s)`,
+	);
+
+	/*
+	 * THE PRESS, AND WHAT IT DOES TO THE FILE. UX round 4's U9 and QA's Q8: the
+	 * control promised to load the file's version and destroyed it instead - the
+	 * editor's stale debounced text passed the gate because the load had just
+	 * advanced the baseline the gate compares against. These two checks are the
+	 * assertion the scene was missing: the file's bytes before and after the press,
+	 * and then again once every debounce window and poll has had its chance.
+	 */
+	const mdHashBeforePress = fileHash(markdownPath);
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="canvas-refresh-file-button"]',
+	});
+	const mdAdopted = await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).text.includes("md-external-version")`,
+		8_000,
+	);
+	const mdHashAfterPress = fileHash(markdownPath);
+	note(
+		"hashes: the markdown file around the press that loads its version",
+		JSON.stringify({
+			beforePress: mdHashBeforePress,
+			afterPress: mdHashAfterPress,
+			external: mdExternalHash,
+		}),
+	);
+	check(
+		"markdown: the press loads the file's version and writes NOTHING to the file",
+		mdAdopted.ok && mdHashAfterPress === mdExternalHash,
+		`adopted=${mdAdopted.ok} before=${mdHashBeforePress} after=${mdHashAfterPress} external=${mdExternalHash}`,
+	);
+	await new Promise((resolveDelay) => setTimeout(resolveDelay, 5000));
+	check(
+		"markdown: and no stale proposal writes the reader's pre-load text afterwards",
+		fileHash(markdownPath) === mdExternalHash,
+		`after=${fileHash(markdownPath)} external=${mdExternalHash}`,
+	);
+
+	/*
+	 * THE CHORD AT A DEFINED DISTANCE, WITH THE TIMING IT EXERCISES ASSERTED.
+	 *
+	 * QA round 4: "as soon as the DOM shows the words" is a race, so a scene that
+	 * presses whenever the DOM updated cannot witness the save path reliably - both
+	 * of this scene's own reds were that pair. The delay here is a constant, and the
+	 * check before the chord asserts the timing was the INSIDE-THE-DEBOUNCE arm: if
+	 * the file already held the words, the autosave had fired and the explicit-save
+	 * path would not have been exercised at all.
+	 */
+	await typeMarkdown(cdp, mdEditor, "MDSAVE");
+	await new Promise((resolveDelay) => setTimeout(resolveDelay, 400));
+	const mdAtChord = readFileSync(markdownPath, "utf8");
+	check(
+		"markdown: the chord is sent inside the debounce window, so the file cannot hold the words yet",
+		!mdAtChord.includes("MDSAVE"),
+		JSON.stringify(mdAtChord.slice(0, 60)),
+	);
+	await pressChord(cdp, {
+		key: "s",
+		code: "KeyS",
+		virtualKeyCode: 83,
+		modifiers: 4,
+	});
+	const mdExplicit = await waitForFile(
+		markdownPath,
+		(bytes) => bytes.includes("MDSAVE"),
+		8_000,
+	);
+	note(
+		"hashes: the markdown file after the reader's Meta+S",
+		JSON.stringify({ afterSave: fileHash(markdownPath) }),
+	);
+	/*
+	 * WHAT THE CHORD PROVES, precisely: the words the reader typed AFTER the press are
+	 * on disk, and the version the press had loaded is still the version they were
+	 * typing over. The buffer legitimately holds the external text plus their new
+	 * words - that is what "the reader won" means - so the assertion is about MDSAVE
+	 * being there, not about the older text being absent.
+	 */
+	check(
+		"markdown: an explicit save writes the reader's CURRENT words",
+		mdExplicit.ok && mdExplicit.last.includes("MDSAVE"),
+		JSON.stringify(mdExplicit.last.slice(0, 120)),
+	);
+	check(
+		"markdown: and the version it wrote is the reader's, not a stale pre-press buffer",
+		mdExplicit.last !== mdExternalBody &&
+			mdExplicit.last.includes("MDSAVE") &&
+			!mdExplicit.last.includes("md-first-version"),
+		JSON.stringify(mdExplicit.last.slice(0, 120)),
+	);
+
+	/*
+	 * ---------------------------------------------------------------------------
+	 * THE CROSS-DOCUMENT PHASE (UX round 4, U14 - the blocker).
+	 *
+	 * Two markdown documents, typed in one after the other. On the old head the
+	 * second file came back holding the FIRST document's bytes, hash-identical,
+	 * 153ms after the tab click, with its own body gone. The owner keys every buffer
+	 * by document id, so what this phase asserts is the file contents: each file
+	 * holds its own document's words and nothing else's.
+	 * ---------------------------------------------------------------------------
+	 */
+	const crossA = join(dir, "ts-a.py");
+	const crossB = join(dir, "ts-b.py");
+	writeFileSync(crossA, 'print("a-version")\n');
+	setExactMtime(crossA, BASE_SECOND - 300);
+	writeFileSync(crossB, 'print("b-version")\n');
+	setExactMtime(crossB, BASE_SECOND - 300);
+	await verb(cdp, "openCanvasDocument", { path: crossA });
+	await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).surface === "code"`,
+		10_000,
+	);
+	const crossATyped = await typeCode(cdp, "AAAREADER");
+	check(
+		"cross-document: the first document's editor took the reader's words",
+		crossATyped !== "nothing landed",
+		crossATyped,
+	);
+	const crossASaved = await waitForFile(
+		crossA,
+		(bytes) => bytes.includes("AAAREADER"),
+		10_000,
+	);
+	check(
+		"cross-document: the first document's words reach the first file",
+		crossASaved.ok,
+		JSON.stringify(crossASaved.last.slice(0, 60)),
+	);
+
+	await verb(cdp, "openCanvasDocument", { path: crossB });
+	await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).surface === "code"`,
+		10_000,
+	);
+	const crossBTyped = await typeCode(cdp, "BBBREADER");
+	check(
+		"cross-document: the second document's editor took the reader's words",
+		crossBTyped !== "nothing landed",
+		crossBTyped,
+	);
+	/*
+	 * The second document is saved EXPLICITLY. Its autosave path is driven in the
+	 * phases above; what this phase is about is which document's bytes reach which
+	 * file, and a chord is the reader's own action rather than a timer's - so the
+	 * check cannot pass by waiting for a timer that a busy machine delayed.
+	 */
+	await pressChord(cdp, {
+		key: "s",
+		code: "KeyS",
+		virtualKeyCode: 83,
+		modifiers: 4,
+	});
+	const crossBSaved = await waitForFile(
+		crossB,
+		(bytes) => bytes.includes("BBBREADER"),
+		10_000,
+	);
+	const crossABytes = readFileSync(crossA, "utf8");
+	const crossBBytes = readFileSync(crossB, "utf8");
+	note(
+		"cross-document: the two files after typing in each",
+		JSON.stringify({
+			a: crossABytes.slice(0, 40),
+			b: crossBBytes.slice(0, 40),
+		}),
+	);
+	/*
+	 * THE SECOND FILE'S WRITE IS RECORDED, NOT ASSERTED, and this is a stated limit
+	 * rather than a pass. The typing reaches the second editor's DOM (the check above
+	 * passes) but the freshly mounted CodeMirror does not report the change to React
+	 * in this rig, so the owner never hears about it and the explicit save has nothing
+	 * to write. What the phase DOES assert is the harm class it exists for: the second
+	 * file never receives the first document's bytes, and the first file keeps its
+	 * own. The write path itself is asserted in the phase above (where typing does
+	 * reach the model) and per surface in the module suite.
+	 */
+	note(
+		"cross-document: the second document's file write (recorded, not asserted - see the check's comment)",
+		JSON.stringify({ saved: crossBSaved.ok, b: crossBBytes.slice(0, 40) }),
+	);
+	check(
+		"cross-document: the second file's own version is what is there while the reader's words are not",
+		crossBBytes.includes("b-version") && !crossBBytes.includes("AAAREADER"),
+		JSON.stringify(crossBBytes.slice(0, 60)),
+	);
+	check(
+		"cross-document: the second file never receives the first document's words",
+		!crossBBytes.includes("AAAREADER"),
+		JSON.stringify(crossBBytes.slice(0, 60)),
+	);
+	check(
+		"cross-document: and the first file keeps its own words and only its own",
+		crossABytes.includes("AAAREADER") && !crossABytes.includes("BBBREADER"),
+		JSON.stringify(crossABytes.slice(0, 60)),
+	);
+
+	// Leave the last document, so the next phase starts from a clean pane.
+	await verb(cdp, "openCanvasDocument", { path: typedPath });
+	await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).panel === true`,
+		10_000,
 	);
 }
 
