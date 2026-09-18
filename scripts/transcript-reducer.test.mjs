@@ -27,6 +27,7 @@ const {
 	applyEvent,
 	applyHistoryPage,
 	applyLiveSeed,
+	streamDiagnostics,
 	clearTranscript,
 	dropLiveRecords,
 	labelGapCandidates,
@@ -3440,4 +3441,218 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 	const alone = settle(EMPTY_TRANSCRIPT, 41_000, 9_000, T0 + 250);
 	assert.equal(rows(alone).length, 1);
 	assert.match(rows(alone)[0], /^compaction:/);
+});
+
+/* ------------------------------------------------ the mid-stream join and gap */
+
+/*
+ * A1 AND THE SEED, ON THE PRODUCER THAT SHIPS.
+ *
+ * The desktop plane's one streamed token is one `message_update` whose `delta`
+ * is the increment and whose `message.content` is EMPTY: the harness assembles
+ * the text once, at the END of the call, for a measured memory reason
+ * (`harness/loop.py`). Every UI that paints a turn therefore has to APPEND the
+ * delta, and a viewer that joins a turn in flight has no prefix in hand at all —
+ * neither from the frame nor from a start it never saw. The old join branch
+ * built the row as `messageText(message) + delta`, which against this producer
+ * is the last chunk presented as the whole answer: the reported "the message
+ * starts mid-sentence". These cases pin the frame's own text, the honest mark
+ * that goes with a prefix we do not have, and what clears it.
+ */
+
+test("a join paints the frame's own text, and marks the prefix it does not have", () => {
+	// The producer's real shape, verbatim: `content: []`, one delta.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_update",
+			delta: "final-chunk",
+			message: assistant("a1", ""),
+		},
+		1,
+	);
+	const joined = state.records.find((record) => record.id === "a1");
+	assert.equal(joined.text, "final-chunk", "the frame's delta is the text");
+	assert.equal(joined.streaming, true);
+	assert.equal(
+		joined.truncated,
+		true,
+		"one chunk is not presented as the whole answer: the prefix is unknown",
+	);
+
+	// Deltas that follow still append, one per arrival, with no throttling.
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: " more", message: assistant("a1", "") },
+		2,
+	);
+	assert.equal(
+		state.records.find((record) => record.id === "a1").text,
+		"final-chunk more",
+	);
+	assert.equal(
+		state.records.find((record) => record.id === "a1").truncated,
+		true,
+		"and it stays marked until the whole text arrives",
+	);
+
+	// `message_end` carries the assembled text and is the one thing that ends the
+	// claim: the row is now the whole message and says nothing about missing text.
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("a1", "the whole answer") },
+		3,
+	);
+	const settled = state.records.find((record) => record.id === "a1");
+	assert.equal(settled.text, "the whole answer");
+	assert.equal(settled.streaming, false);
+	assert.ok(
+		!settled.truncated,
+		"the authoritative end clears the mark rather than keeping a stale claim",
+	);
+});
+
+test("a join against a producer that accumulates keeps the body, and marks nothing missing", () => {
+	// The shape the old branch was written against: a producer that sends the
+	// running text in the message. `body + delta` is the authoritative text and
+	// the row is whole — the fix must not turn this into a truncation.
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_update",
+			delta: " tail",
+			message: assistant("a1", "accumulated answer"),
+		},
+		1,
+	);
+	const row = state.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "accumulated answer tail");
+	assert.ok(!row.truncated);
+});
+
+test("a settled row drops a later delta, and the drop is COUNTED", () => {
+	// The freeze gate: deltas for a painted, settled id change nothing. The
+	// counter is the measurement the audit asked for — whether the gate ever
+	// fires on this machine is a question for data, not for argument.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_update",
+			delta: "part",
+			message: assistant("a1", ""),
+		},
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("a1", "durable answer") },
+		2,
+	);
+	// Read through the optional chain so the ASSERTION below is where the absence
+	// of the instrument shows, not an early throw: the behaviour it counts is the
+	// finding, and the counter is the measurement.
+	const before = streamDiagnostics?.settledAssistantUpdate ?? 0;
+	const after = applyEvent(
+		state,
+		{ type: "message_update", delta: " late", message: assistant("a1", "") },
+		3,
+	);
+	assert.equal(after, state, "no paint, and no re-arm: the row is settled");
+	assert.equal(
+		streamDiagnostics?.settledAssistantUpdate,
+		before + 1,
+		"the condition is counted where it happens",
+	);
+});
+
+test("a message_start for an already painted id is not a re-arm", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("a1", "answered") },
+		2,
+	);
+	const restarted = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("a1", "") },
+		3,
+	);
+	assert.equal(
+		restarted,
+		state,
+		"a replayed start cannot resurrect a settled row",
+	);
+});
+
+test("a seeded delta extends only a row with no text, and marks the row incomplete", () => {
+	// (i) A row that already held text — one that survived a receipt gap — KEEPS
+	// it. Appending the seed's delta would duplicate the tail whenever that frame
+	// was one this viewer had already applied, and nothing in the frame says which
+	// of the two it is, so the unplaceable delta is withheld and the row says its
+	// continuity is broken instead.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_update",
+			delta: "the answer so far",
+			message: assistant("a1", ""),
+		},
+		10,
+	);
+	const withheld = streamDiagnostics?.seededDeltaWithheld ?? 0;
+	state = applyLiveSeed(
+		state,
+		{
+			streaming: true,
+			generation: "2",
+			live_events: [
+				{
+					type: "message_update",
+					delta: " so far",
+					message: assistant("a1", ""),
+				},
+			],
+		},
+		20,
+	);
+	let row = state.records.find((record) => record.id === "a1");
+	assert.equal(
+		row.text,
+		"the answer so far",
+		"the seed's delta is not applied a second time",
+	);
+	assert.equal(row.truncated, true, "the row says its continuity broke");
+	assert.equal(streamDiagnostics?.seededDeltaWithheld, withheld + 1);
+
+	// (ii) The row this seed's own `message_start` mints: the delta is its first
+	// text, so it cannot duplicate anything, and the row is a tail by definition —
+	// the seed is the owner's projection of a turn already in flight.
+	state = applyLiveSeed(
+		EMPTY_TRANSCRIPT,
+		{
+			streaming: true,
+			generation: "2",
+			live_events: [
+				{ type: "message_start", message: assistant("a2", "") },
+				{
+					type: "message_update",
+					delta: "last chunk",
+					message: assistant("a2", ""),
+				},
+			],
+		},
+		20,
+	);
+	row = state.records.find((record) => record.id === "a2");
+	assert.equal(
+		row.text,
+		"last chunk",
+		"a minted row's first text is the seed's chunk",
+	);
+	assert.equal(row.streaming, true);
+	assert.equal(row.truncated, true, "and a seeded tail says it is a tail");
 });
