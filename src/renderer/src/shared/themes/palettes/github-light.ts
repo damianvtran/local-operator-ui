@@ -45,15 +45,21 @@ export const githubLight: ThemeDefinition = {
 		sunken: "#DDE2E8",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.05 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.06 from `surface`, 6.81 from `elevated` and 2.13 from `sunken`;
-		 * the step is -4.4 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.89:1 the ink that binds it.
+		 * The current row's own ground: `surface` stepped 6.32 `L*` down at the panel's own
+		 * hue (6.0 degrees off, inside the 12-degree bound) and carried
+		 * 2.93 `C*` against the panel's 1.84 — the panel's own colour, one step darker, which
+		 * is what the operator asked for. ΔE00 from `surface` 3.98, from
+		 * `elevated` 6.56, from `sunken` 0.61. Ink on this ground: `ink` 12.25:1,
+		 * `ink-muted` 6.66:1, `ink-dim` 4.65:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `2.91x` the panel's
+		 * chroma (5.37 `C*` against 1.84), 4 degrees off its hue, ΔE00 4.06 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#E1E9F2",
+		highlight: "#DFE3E8",
 
 		ink: "#1F2328",
 		// fg.subtle 6E7781 is 3.49:1 on `sunken`, so the readout rung darkens to clear the 4.5

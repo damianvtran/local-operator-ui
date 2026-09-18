@@ -43,15 +43,21 @@ export const catppuccinLatte: ThemeDefinition = {
 		sunken: "#DCE0E8",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.1 from `surface`, 6.16 from `elevated` and 2.03 from `sunken`;
-		 * the step is -5.36 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.66:1 the ink that binds it.
+		 * The current row's own ground: `surface` stepped 5.28 `L*` down at the panel's own
+		 * hue (0.2 degrees off, inside the 12-degree bound) and carried
+		 * 3.27 `C*` against the panel's 2.16 — the panel's own colour, one step darker, which
+		 * is what the operator asked for. ΔE00 from `surface` 3.38, from
+		 * `elevated` 5.47, from `sunken` 1.04. Ink on this ground: `ink` 7.21:1,
+		 * `ink-muted` 6.70:1, `ink-dim` 4.67:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `1.93x` the panel's
+		 * chroma (4.16 `C*` against 2.16), 19 degrees off its hue, ΔE00 4.10 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#E1E1E9",
+		highlight: "#DFE2E8",
 
 		// Canonical text 4C4F69 is 6.04:1 on `sunken` — under the 7:1 body floor. Deepened
 		// along the same indigo-blue.

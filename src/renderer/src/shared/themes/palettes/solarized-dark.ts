@@ -41,17 +41,26 @@ export const solarizedDark: ThemeDefinition = {
 		sunken: "#00252E",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.1 toward `accent`, then stepped 2.5 on the `L*`
-		 * axis — branch H of this port's selection rule — and this palette's OWN ink is
-		 * what put it there: the ink floor on the row's ground caps the lightness route
-		 * at 3.25 `L*` here (inkDim reaches its floor with the 0.15 of
-		 * headroom at 4.71:1 on this ground), so the band is paid on the cast.
-		 * ΔE00 4.04 from `surface`, 3.58 from `elevated` and 7.12 from
-		 * `sunken`; the step of 2.65 `L*` is short of the 3 `L*` floor and is pinned in
-		 * `scripts/contrast-contract.mjs` with that ink number rather than dropped.
+		 * The current row's own ground: `surface` stepped 3.49 `L*` up at the panel's own
+		 * hue (1.8 degrees off, inside the 12-degree bound) and carried
+		 * 15.77 `C*` against the panel's 15.32 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 2.51, from
+		 * `elevated` 0.57, from `sunken` 6.85. Ink on this ground: `ink` 7.20:1,
+		 * `ink-muted` 6.44:1, `ink-dim` 4.65:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `1.08x` the panel's
+		 * chroma (16.55 `C*` against 15.32), 14 degrees off its hue, ΔE00 4.04 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
+		 *
+		 * THE HOVER STEP IS THE COLLISION: 0.57 to `elevated` is under the field floor,
+		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * on the row-hover work list.
 		 */
-		highlight: "#023A42",
+		highlight: "#0D3B47",
 
 		// Upstream base1 93A1A1 — the tone the scheme paints body text with — is 6.13:1 on
 		// `elevated`, under the 7:1 floor. Lifted along the same grey-teal.

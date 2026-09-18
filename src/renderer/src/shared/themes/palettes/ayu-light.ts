@@ -33,15 +33,21 @@ export const ayuLight: ThemeDefinition = {
 		sunken: "#DBE4EB",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.1 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.12 from `surface`, 7.43 from `elevated` and 2.21 from `sunken`;
-		 * the step is -4.55 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.85:1 the ink that binds it.
+		 * The current row's own ground: `surface` stepped 6.10 `L*` down at the panel's own
+		 * hue (0.3 degrees off, inside the 12-degree bound) and carried
+		 * 4.37 `C*` against the panel's 2.89 — the panel's own colour, one step darker, which
+		 * is what the operator asked for. ΔE00 from `surface` 3.93, from
+		 * `elevated` 6.85, from `sunken` 0.81. Ink on this ground: `ink` 7.24:1,
+		 * `ink-muted` 6.17:1, `ink-dim` 4.65:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `2.21x` the panel's
+		 * chroma (6.38 `C*` against 2.89), 2 degrees off its hue, ΔE00 4.12 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#DFECF5",
+		highlight: "#DEE7ED",
 
 		ink: "#45494D",
 		inkMuted: "#505357",

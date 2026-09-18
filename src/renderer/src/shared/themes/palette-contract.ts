@@ -72,8 +72,9 @@ export type ThemePalette = {
 	/** One step recessed: wells, tracks, code grounds, footers. */
 	sunken: string;
 	/**
-	 * The current row's own ground: a step off `surface`, in the direction the
-	 * mode runs (darker on light themes, lighter on dark ones).
+	 * The current row's own ground: **the panel's own colour**, one step along
+	 * the `L*` axis in the direction the mode runs (darker on light themes,
+	 * lighter on dark ones).
 	 *
 	 * A selection is not a well. Before this role existed the current row was
 	 * painted `sunken`, which is always RECESSED — a hole in the panel — and
@@ -86,80 +87,99 @@ export type ThemePalette = {
 	 * row could not be quietened by moving that value: the row needed a ground of
 	 * its own.
 	 *
-	 * ## The step is lightness, and its DIRECTION is the half that is asserted
+	 * ## THE MARK IS THE PANEL'S COLOUR, AND ALL THREE OF ITS AXES ARE BOUNDED
 	 *
-	 * The role was first authored to land at **ΔE00 2.0-2.5 from `surface`**, for
-	 * a selection the operator had asked to be SUBTLE. He has since seen it
-	 * rendered and reported the current row as lost beside a hovered neighbour,
-	 * so the intent is reversed and the step now lands at **ΔE00 4.0 or better on
-	 * every palette in the tree** — the twelve this change was authored against at
-	 * 4.01-4.15, and the forty-seven the theme port added at 4.00-5.97 (`rosePine` sets the top),
-	 * re-authored
-	 * to this rule in the same round. It is a LIGHTNESS step first — the row sits
-	 * **3.81 to 6.62 `L*`** from its panel on those twelve, and **3.0 or better**
-	 * across the rest except six palettes whose OWN ink caps the lightness route
-	 * below 3 `L*`: those take the cap, pay the band on the accent cast, and are
-	 * pinned in `scripts/contrast-contract.mjs` with the ink number — and chroma pays
-	 * only what is left over. The cast's OWN cause is narrower than it reads: of the
-	 * forty-one palettes that take it, the hover step is the binding wall for only
-	 * TWO (`kanagawaWave`, `rosePineMoon`); on the other thirty-nine what binds is
-	 * the ink cap and the band, and the cast is how those two are paid together. Three palettes had reached the band on chroma alone
-	 * (tokyoNight, `localOperatorDark`, `localOperatorLight`), at a `L*` step
-	 * *smaller* than the ΔE00 2.2 value they had already reported as invisible;
-	 * they were re-authored to +5.09, +3.81 and −4.75 `L*` respectively, and
-	 * `scripts/contrast-contract.mjs` now asserts **both the direction and a floor
-	 * on the step**, so no palette can satisfy the band while landing darker on a
-	 * dark theme. That is the trap this doc exists to close: ΔE00 is a budget, and
-	 * a chroma-bought step can spend all of it while moving the wrong way.
+	 * The operator, after seeing the first two attempts rendered: *"the highlight
+	 * still needs to be improved, it doesn't look great on all themes... use a
+	 * lighter color relative to the sidebar background that looks visually
+	 * appealing. On tokyo night for example the selected style doesn't look
+	 * great, it looks almost grey when it should be a lighter slate."*
+	 *
+	 * On that palette the report is exact: `surface` #24283B carries 13.31 `C*`
+	 * and its `highlight` #313342 carried 10.12 — 0.76x the panel's chroma, i.e.
+	 * LESS tinted than the ground it sits on. The cause was the rule this one
+	 * replaces: it bought the mark's **ΔE00 4.0 off `surface` from whatever axis
+	 * was free**, and chroma is the free one, because WCAG contrast is a function
+	 * of luminance alone — moving chroma costs the row's own ink floors nothing,
+	 * while moving lightness spends the headroom that keeps the caps and the
+	 * `· lopdev` binding inside the row legible. So the axis was spent in
+	 * whichever direction reached the band first, and both are in the fleet:
+	 * eight palettes read grey (cyberpunk 0.62x, alucard 0.66, solarizedLight
+	 * 0.66, arcade 0.75, tokyoNight 0.76, gruvboxLight 0.86, arctic 0.91,
+	 * everforest 0.91), thirteen read as a colour the panel never had (oneLight
+	 * paints a BLUE highlight on a neutral #F4F4F4 panel, tokyoNightDay 3.60x,
+	 * iceberg 3.31x, githubLight 2.91x, ayuLight 2.21x, rosePineDawn 2.10x,
+	 * catppuccinLatte 1.93x, linen 1.90x, obsidian 1.90x, localOperatorDark
+	 * 1.87x, localOperatorLight 1.85x, monokai 1.66x, oneDark 1.48x), and eleven
+	 * broke the hue outright (arcade 160 degrees off its panel's, everforest 36,
+	 * rosePine 25, neonNoir 24, rosePineDawn 22, catppuccinLatte 19,
+	 * solarizedLight 18, nord 18, cyberpunk 17, ocean 14, solarizedDark 14).
 	 *
 	 * ## The rule a porting author follows
 	 *
-	 * Take the `L*` step first, at the panel's own hue, as far as the ink floors
-	 * allow; buy only the shortfall to the band's floor of ΔE00 4.0 on the chroma
-	 * axis at that same hue. Chroma may pay a remainder; it may not pay the step.
-	 * Some of the twelve still carry a partly chroma-bought step (dracula 1.20x
-	 * the panel's chroma, monokai 1.66x, obsidian 1.90x, iceberg 3.31x, each
-	 * recorded at its own value) and those are the palettes a re-authoring should
-	 * take next. The port's forty-seven were re-authored to this rule when the
-	 * raised band landed, at the branch the port itself used: a neutral step (its
-	 * branch L) where the palette's ramp affords one, a cast toward `accent` (its
-	 * branch H) where the hover step above the row blocks the lightness route.
+	 * The mark is the panel's own colour, moved along `L*` and nothing else:
 	 *
-	 * ## What bounds it
+	 * - **`L*` at least 3** off `surface`, in the direction the mode runs, and as
+	 *   far as the ink floors allow — that is the whole of the mark's strength;
+	 * - **hue within 12 degrees** of the panel's (asserted where the panel itself
+	 *   carries at least 2 `C*`; below that an angle is 8-bit quantisation, which
+	 *   is what keeps `linen` — panel 1.59 `C*` — out of the hue test);
+	 * - **chroma never below the panel's**, and no more than **+15% or +1.6 `C*`**
+	 *   above it. The absolute term is what makes the same rule mean the same
+	 *   thing on a near-neutral panel, where a ratio says "3.31x" and means
+	 *   nothing: it is why `oneLight`'s blue on a neutral panel fails while
+	 *   `highContrastLight`, authored chroma-free on both sides, stays neutral.
+	 *   The rule asks for continuity with the panel, not for a cast.
+	 *
+	 * ## What bounds it, and what happens where the bound cannot be held
 	 *
 	 * Below: every ink on the ground keeps § 3's floor with headroom — `ink` at
 	 * 7:1, `ink-muted` and `ink-dim` at 4.5:1 — and `ink-dim` is the binder,
 	 * because the caps and the `· lopdev` binding INSIDE a current row are drawn
-	 * in it. That floor is what caps the step on the palettes where it stops
-	 * short of the band's top, and it is the reason the row's ground cannot simply
-	 * be made louder on those palettes.
+	 * in it. That floor is what caps the step, and it caps it below the ΔE00 4.0
+	 * band on thirty-six palettes: ΔE00 at a fixed hue is a function of the `L*`
+	 * step alone, the band needs 5.3-6.9 `L*`, and those palettes' own `ink-dim`
+	 * reaches its floor with headroom at 2.4-7.5. Each of them takes the largest
+	 * step its inks allow and is recorded in `HIGHLIGHT_CAP_PINS` with the cap,
+	 * the binder and both ratios, re-derived by the gate. Seven of those cannot
+	 * reach even the **ΔE00 2.5 floor every palette must hold** and carry
+	 * `subFloor: true` — a named list with its measurements, because buying the
+	 * difference back on chroma or hue is the defect above.
 	 *
 	 * Against the app's other selected-row mark: `accentWash` is what an active or
-	 * selected row wears elsewhere (`bg-accent-wash`), and this role is a step toward
-	 * the same family, so the two converge on a palette whose wash sits close to
-	 * `surface` — four of the port's palettes landed under the field floor that way and
-	 * were re-authored, and `rosePineDawn` cannot reach it at all (its ink caps the
-	 * route and the best cast it can afford measures 1.75), recorded as a pinned
-	 * exception. That pair is asserted beside the separations below.
+	 * selected row wears elsewhere (`bg-accent-wash`), and a mark that keeps the
+	 * panel's own colour lands on that mark's family rather than away from it —
+	 * four of the port's palettes converged that way and were re-authored, and the
+	 * pairs that still cannot be separated are pinned in `HIGHLIGHT_WASH_PINS`
+	 * with the ceiling the gate re-derives.
 	 *
-	 * Beside it: a row's `hover:` step is `elevated`, so a hovered row must STILL
-	 * be a different ground from the current one — worst pair ΔE00 2.25
-	 * (localOperatorDark), asserted at the field floor. `elevated` is ALSO every
-	 * menu, popover and tooltip ground in the app, so it is not a value that can
-	 * come down to meet the selection: on eight of the twelve palettes it was measured
-	 * against (design round 1, D2), the hover
-	 * step remains the larger step off `surface` (up to 6.25 on radient), and the
-	 * current row is therefore marked by its ground plus `font-medium`. An earlier
-	 * round drew that second step as a 1px `outline-control` boundary; it is
-	 * retired, because that role is § 2's *sole boundary of a control* and the
-	 * ring rendered as the search field above the list (design round 1, D3). There
-	 * is no role in this contract for a selection boundary — adding one would be
-	 * role inflation for a mark the ground already carries.
+	 * Beside it: a row's `hover:` step is `elevated`, and that is the collision
+	 * this bound exposes rather than creates. `elevated` is the SAME `surface` +
+	 * `L*` ramp for the same rows (a conversation's neighbours carry
+	 * `hover:bg-elevated`) and also every menu, popover and tooltip ground in the
+	 * app, sitting 1.7-8.6 `L*` off its panel (median 3.8); a bounded mark has
+	 * exactly one place to sit, which is further along that ramp, so it can land
+	 * on the hover step's shoulder — arcade measures ΔE00 0.31, tokyoNightStorm
+	 * 0.32, ayuDark 0.54, oneDark 0.54, obsidian 0.63. Before this round the
+	 * separation was bought by hue-breaking the mark, i.e. with the defect this
+	 * round removes. Those pairs are pinned at what they measure
+	 * (`HIGHLIGHT_ADJACENT_PINS`, `sunken` included, where the light palettes
+	 * collide at the other end) and the fix is a **row-hover ground that steps
+	 * less than the mark**, leaving `elevated` to the menu, popover and tooltip
+	 * job it also holds: a role this contract does not have yet, and its own
+	 * change rather than a remediation round of this one.
+	 *
+	 * An earlier round drew the mark's second signal as a 1px `outline-control`
+	 * boundary; it is retired, because that role is § 2's *sole boundary of a
+	 * control* and the ring rendered as the search field above the list (design
+	 * round 1, D3). There is no role in this contract for a selection boundary —
+	 * adding one would be role inflation for a mark the ground already carries.
 	 *
 	 * `highlight` is the ground the row is painted with; every ink on it is
 	 * asserted at its own floor, so it is a ground for text rather than a tint
 	 * behind it.
 	 */
+
 	highlight: string;
 
 	/* ---- ink: four weights, each with a floor --------------------------- */

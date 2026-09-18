@@ -58,7 +58,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { deltaE, labToHex, r2, toLab } from "./color.mjs";
+import { deltaE, hueDeviation, labToHex, r2, toLab } from "./color.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1864,106 +1864,792 @@ const HIGHLIGHT_SEPARATION_FLOOR = 4.0;
 const HIGHLIGHT_LIGHTNESS_STEP_FLOOR = 3.0;
 const HIGHLIGHT_INK_MARGIN = 0.15;
 
+/*---------------------------------------------------------------------------*/
+/* THE MARK IS THE PANEL'S OWN COLOUR, AND BOTH OF ITS OTHER AXES ARE BOUNDED  */
+/*---------------------------------------------------------------------------*/
+
 /*
- * The palettes whose OWN ink caps the lightness route below this file's step
- * floor, pinned to their measured step and the ink that binds it.
+ * The operator, on this role: "the highlight still needs to be improved, it
+ * doesn't look great on all themes... Use a lighter color relative to the
+ * sidebar background that looks visually appealing. On tokyo night for example
+ * the selected style doesn't look great, it looks almost grey when it should be
+ * a lighter slate." Measured on that palette: `surface` #24283B carries 13.31
+ * C*, its `highlight` #313342 carries 10.12 - 0.76x the panel's, i.e. less
+ * tinted than the ground it sits on, which is the grey he is looking at.
  *
- * The rule asks for the largest `L*` step the ink floors allow, and for six of
- * the fifty-nine the ink on the row's ground reaches its floor with the 0.15 of
- * headroom within 2.25-3.25 `L*` of the panel - their `ink-dim` is only just
- * clear of the floor on the panel itself, so the row cannot rise the 3 `L*` the
- * direction floor asks for without putting text under its floor. Those six pay
- * the band on the accent cast instead (measured 4.00-4.87 ΔE00) and are recorded
- * here in the same pin-not-mute shape as `EXCEPTIONS`.
+ * WHY IT WAS GREY, stated as the defect this file had: the previous rule bought
+ * the ΔE00 4.0 band off `surface` from WHATEVER AXIS WAS FREE. It had a floor
+ * and a direction on lightness, and NOTHING AT ALL on chroma - and chroma is
+ * the cheap axis, because WCAG contrast is a function of luminance alone:
+ * moving it costs the inks nothing, while moving lightness spends the headroom
+ * that stops the row's own dim ink falling under its floor. So the axis was
+ * spent, in whichever direction reached the band first, and BOTH directions are
+ * in the fleet: eight palettes read grey (cyberpunk 0.62x, alucard 0.66,
+ * solarizedLight 0.66, arcade 0.75, tokyoNight 0.76, gruvboxLight 0.86, arctic
+ * 0.91, everforest 0.91) and thirteen read as a colour the panel never had
+ * (oneLight paints a BLUE highlight on a neutral #F4F4F4 panel, tokyoNightDay
+ * 3.60x, iceberg 3.31x, githubLight 2.91x, ayuLight 2.21x, rosePineDawn 2.10x,
+ * catppuccinLatte 1.93x, linen 1.90x, obsidian 1.90x, localOperatorDark 1.87x,
+ * localOperatorLight 1.85x, monokai 1.66x, oneDark 1.48x). Eleven broke the hue
+ * outright (arcade 160 degrees off its panel's, everforest 36, rosePine 25,
+ * neonNoir 24, rosePineDawn 22, catppuccinLatte 19, solarizedLight 18, nord 18,
+ * cyberpunk 17, ocean 14, solarizedDark 14).
  *
- * WHAT THE GATE RE-DERIVES, because a pin whose reason is only prose is a number
- * that can rot (design round 3, D2): the assertion below recomputes the panel's
- * own ink cap - the largest `L*` step from `surface`'s own hue and chroma that
- * keeps every ink floor with this file's margin - and the binding ink's ratio
- * there, and fails if either has moved away from the pin's record. So a palette
- * whose inks change, or whose value drifts off the cap, re-opens its own pin.
+ * The mark is now the panel's own colour in BOTH of the axes the rule used to
+ * leave open, and a palette that cannot reach the band that way is recorded
+ * rather than excused. The three constants below are the bound; the floor they
+ * must be read beside is `HIGHLIGHT_REACH_FLOOR`.
  *
- * Why this is a pin rather than a smaller floor for everybody: on the other
- * fifty-three the step IS what carries the mark and 3 `L*` is reachable, so a
- * floor lowered to fit six palettes would stop asserting anything about them.
- * The designer re-derived the sub-floor set independently (design round 3, A1)
- * and got exactly these six, no seventh.
+ * WHERE 12 DEGREES COMES FROM, since it is not inherited: the hue term of ΔE00
+ * is 2*sqrt(C1*C2)*sin(dh/2), so at the fleet's own magnitudes (13 C* on
+ * tokyoNight, the median palette's 9.6) a 12-degree rotation is worth 2.7 and
+ * 2.0 ΔE00 - between a half and two thirds of the whole 4.0 band. A palette
+ * therefore cannot pay for its mark by rotating the hue: the bound is set just
+ * inside the point where the rotation alone would be a visible share of the
+ * separation. The re-authored values measure 0.0-6.0 degrees, so the shipped
+ * tree sits a whole order of magnitude inside it and the bound is a ceiling on
+ * a future author rather than a description of today.
  *
- * @type {{theme: string, step: number, cap: number, inkRole: string, onGround: number, capInk: number, why: string}[]}
+ * AND IT IS ASSERTED ONLY WHERE AN ANGLE MEANS SOMETHING. Below
+ * `HIGHLIGHT_HUE_MIN_CHROMA` the hue of an 8-bit colour is quantisation noise -
+ * at 2 C* the same 12-degree rotation is 0.4 ΔE00, under the perceptual
+ * threshold - so the assertion speaks where the panel has a hue to be
+ * continuous WITH. Two palettes depend on that and neither is an oversight:
+ * `linen`'s panel carries 1.59 C* (its highlight sits 33 degrees "off" it, and
+ * moves nothing) and `highContrastLight`'s carries 0.00 with a neutral
+ * highlight, both recorded below.
  */
-const HIGHLIGHT_STEP_PINS = [
+const HIGHLIGHT_HUE_DEVIATION_MAX = 12;
+const HIGHLIGHT_HUE_MIN_CHROMA = 2.0;
+
+/*
+ * The chroma band: the mark may not lose chroma, and may not gain much.
+ *
+ * Losing it is the operator's own report, so the floor is the panel's own value
+ * with `HIGHLIGHT_CHROMA_SLACK` of room for the arithmetic: a palette is a
+ * literal 8-bit hex, and holding chroma exactly through an LCh round trip moves
+ * the last place (obsidian lands 0.13 low, kanagawaWave 0.36). Above, the
+ * ceiling is 0.15 of the panel's own chroma OR 1.6 C*, whichever is larger.
+ *
+ * THE ABSOLUTE TERM IS THE HONEST TREATMENT OF A NEAR-NEUTRAL PANEL, and it is
+ * not a convenience: `iceberg`'s panel carries 1.57 C* and `oneLight`'s carries
+ * 0.00, where a RATIO says "3.31x" and "202606x" and means nothing at all. An
+ * allowance in C* says the same thing on a grey panel as on a saturated one:
+ * the mark may move about as far from its panel as a reader can read as the
+ * same colour, and no further. It is also what makes `oneLight` FAIL - a blue
+ * highlight on a neutral panel is 3.52 C* from a panel that has none - while
+ * leaving `highContrastLight` alone, whose panel and highlight are BOTH
+ * authored chroma-free (0.00 C*): the rule asks for continuity with the panel,
+ * not for a cast, so a deliberately neutral theme stays neutral.
+ *
+ * WHAT IT RULES OUT, measured against the fleet it replaces: the values this
+ * round retires move +2 to +5 C* on twenty-two palettes - the port's "cast
+ * toward `accent`" branch, which is a fixed FRACTION of the way to the accent
+ * and therefore a different absolute movement on every palette. The band bounds
+ * the axis the cast was invented to spend.
+ */
+const HIGHLIGHT_CHROMA_REL_BAND = 0.15;
+const HIGHLIGHT_CHROMA_ABS_BAND = 1.6;
+const HIGHLIGHT_CHROMA_SLACK = 0.5;
+
+/*
+ * The floor EVERY palette must hold, named separately from the band because it
+ * is a different claim: 4.0 is "the mark is findable", and 2.5 is "the mark is
+ * not nothing". 2.5 is not invented here either - the role was authored at ΔE00
+ * 2.18-2.28 when the operator asked for subtle, and he has since SEEN that
+ * rendered and reported it as invisible beside a hovered neighbour; 2.5 sits
+ * just above the value he saw rather than at it.
+ *
+ * It is a second floor because the first one is not reachable on most of the
+ * fleet once the mark keeps its own hue and chroma. ΔE00 at a fixed hue is a
+ * function of the L* step alone, and this file's own ink floors cap that step:
+ * a band-carrying step needs 5.3-6.9 L* at the panel's chroma, while the
+ * palettes' own `ink-dim` reaches its floor with the 0.15 of headroom at
+ * 2.4-7.5 L*. Thirty of fifty-nine are capped under the band, and SEVEN of
+ * those are capped under this floor as well - they are the NAMED LIST in
+ * `HIGHLIGHT_CAP_PINS` (`subFloor: true`), with their numbers, because the
+ * alternative was to buy the missing difference back on chroma or hue, which is
+ * the defect above.
+ */
+const HIGHLIGHT_REACH_FLOOR = 2.5;
+
+/*
+ * The palettes whose OWN ink caps the mark below the band, pinned to the reach
+ * they can do and the measurements that prove it.
+ *
+ * The rule asks for the band at the panel's own hue and chroma; ΔE00 there is a
+ * function of the L* step; and this file's ink floors cap the step. On these
+ * palettes the cap lands under the 4.0 band, so their value IS the largest step
+ * their inks allow and the ΔE00 it reaches is the whole of what this palette
+ * can say. Recording it here - rather than quietly allowing a smaller ΔE00 -
+ * keeps the claim falsifiable: the assertion below re-derives, for each pin,
+ * the cap at the value's own chroma, the binding ink's ratio on the row's
+ * ground and its ratio at the cap, and fails if any of the three has moved away
+ * from the record. The reason this is a pin and not a lower floor is the same
+ * one `EXCEPTIONS` states: on the other twenty-two the band IS reachable, and a
+ * floor low enough to fit these would stop asserting anything about them.
+ *
+ * SEVEN of these cannot reach `HIGHLIGHT_REACH_FLOOR` either, and they carry
+ * `subFloor: true` - the NAMED LIST. Each one's whole reach is smaller than the
+ * floor every palette must hold, because its own body ink leaves the row only
+ * 2.4-3.3 L* before its floor while the floor needs more. Nothing hue-faithful
+ * reaches it there, and this file says so with the numbers rather than buying
+ * the difference on chroma or hue. The structural fix is the row-hover split
+ * `docs/branding.md` § 2 names - a row-hover ground that steps less than the
+ * mark, so `elevated` can stay the menu/popover ground it also is - and not a
+ * louder selection on those palettes.
+ *
+ * @type {{theme: string, dE: number, step: number, cap: number, inkRole: string, onGround: number, capInk: number, subFloor?: boolean, why: string}[]}
+ */
+const HIGHLIGHT_CAP_PINS = [
 	{
-		theme: "catppuccinFrappe",
-		step: 2.52,
-		cap: 2.75,
+		theme: "alucard",
+		dE: 3.91,
+		step: 6.33,
+		cap: 6.25,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.66,
+		why: "its own inkDim reaches the floor's margin at 6.25 L*, so the reach is 3.91",
+	},
+	{
+		theme: "arcade",
+		dE: 2.61,
+		step: 4.0,
+		cap: 4.0,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.65,
+		why: "its own inkDim reaches the floor's margin at 4.00 L*, so the reach is 2.61",
+	},
+	{
+		theme: "arctic",
+		dE: 3.97,
+		step: 5.55,
+		cap: 5.5,
 		inkRole: "inkDim",
 		onGround: 4.68,
+		capInk: 4.7,
+		why: "its own inkDim reaches the floor's margin at 5.50 L*, so the reach is 3.97",
+	},
+	{
+		theme: "autumn",
+		dE: 3.33,
+		step: 4.86,
+		cap: 4.75,
+		inkRole: "inkDim",
+		onGround: 4.66,
 		capInk: 4.66,
-		why: "inkDim reaches its floor with the 0.15 of headroom at 2.75 L* on this panel, so the band is paid on the cast; the value now runs the step to that cap (2.52 L*) rather than stopping at 0.31 as the first cut did (design round 3, D2)",
+		why: "its own inkDim reaches the floor's margin at 4.75 L*, so the reach is 3.33",
+	},
+	{
+		theme: "ayuDark",
+		dE: 3.33,
+		step: 4.94,
+		cap: 5.0,
+		inkRole: "inkDim",
+		onGround: 4.68,
+		capInk: 4.69,
+		why: "its own inkDim reaches the floor's margin at 5.00 L*, so the reach is 3.33",
+	},
+	{
+		theme: "ayuLight",
+		dE: 3.93,
+		step: 6.1,
+		cap: 6.25,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.65,
+		why: "its own inkDim reaches the floor's margin at 6.25 L*, so the reach is 3.93",
+	},
+	{
+		theme: "ayuMirage",
+		dE: 3.33,
+		step: 4.48,
+		cap: 4.5,
+		inkRole: "inkDim",
+		onGround: 4.66,
+		capInk: 4.66,
+		why: "its own inkDim reaches the floor's margin at 4.50 L*, so the reach is 3.33",
+	},
+	{
+		theme: "catppuccinFrappe",
+		dE: 2.29,
+		step: 2.7,
+		cap: 2.75,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.65,
+		subFloor: true,
+		why: "its own inkDim reaches the floor's margin at 2.75 L*, so the reach is 2.29 - under the 2.5 floor (NAMED LIST)",
+	},
+	{
+		theme: "catppuccinLatte",
+		dE: 3.38,
+		step: 5.28,
+		cap: 5.25,
+		inkRole: "inkDim",
+		onGround: 4.67,
+		capInk: 4.67,
+		why: "its own inkDim reaches the floor's margin at 5.25 L*, so the reach is 3.38",
 	},
 	{
 		theme: "catppuccinMacchiato",
-		step: 1.74,
+		dE: 2.03,
+		step: 2.44,
 		cap: 2.5,
 		inkRole: "inkDim",
-		onGround: 4.78,
+		onGround: 4.67,
 		capInk: 4.67,
-		why: "inkDim reaches its floor with the 0.15 of headroom at 2.5 L* here, so the band is paid on the accent cast",
+		subFloor: true,
+		why: "its own inkDim reaches the floor's margin at 2.50 L*, so the reach is 2.03 - under the 2.5 floor (NAMED LIST)",
+	},
+	{
+		theme: "catppuccinMocha",
+		dE: 3.57,
+		step: 4.91,
+		cap: 5.0,
+		inkRole: "inkDim",
+		onGround: 4.68,
+		capInk: 4.7,
+		why: "its own inkDim reaches the floor's margin at 5.00 L*, so the reach is 3.57",
+	},
+	{
+		theme: "cyberpunk",
+		dE: 2.05,
+		step: 2.88,
+		cap: 3.0,
+		inkRole: "inkDim",
+		onGround: 4.68,
+		capInk: 4.67,
+		subFloor: true,
+		why: "its own inkDim reaches the floor's margin at 3.00 L*, so the reach is 2.05 - under the 2.5 floor (NAMED LIST)",
+	},
+	{
+		theme: "desert",
+		dE: 3.29,
+		step: 4.59,
+		cap: 4.5,
+		inkRole: "inkDim",
+		onGround: 4.66,
+		capInk: 4.69,
+		why: "its own inkDim reaches the floor's margin at 4.50 L*, so the reach is 3.29",
+	},
+	{
+		theme: "everforest",
+		dE: 2.74,
+		step: 3.32,
+		cap: 3.25,
+		inkRole: "inkDim",
+		onGround: 4.66,
+		capInk: 4.66,
+		why: "its own inkDim reaches the floor's margin at 3.25 L*, so the reach is 2.74",
+	},
+	{
+		theme: "forest",
+		dE: 3.42,
+		step: 5.06,
+		cap: 5.0,
+		inkRole: "inkDim",
+		onGround: 4.66,
+		capInk: 4.66,
+		why: "its own inkDim reaches the floor's margin at 5.00 L*, so the reach is 3.42",
+	},
+	{
+		theme: "githubLight",
+		dE: 3.98,
+		step: 6.32,
+		cap: 6.25,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.65,
+		why: "its own inkDim reaches the floor's margin at 6.25 L*, so the reach is 3.98",
+	},
+	{
+		theme: "gruvboxLight",
+		dE: 3.27,
+		step: 4.97,
+		cap: 5.0,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.65,
+		why: "its own inkDim reaches the floor's margin at 5.00 L*, so the reach is 3.27",
+	},
+	{
+		theme: "lavender",
+		dE: 3.51,
+		step: 5.03,
+		cap: 5.0,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.65,
+		why: "its own inkDim reaches the floor's margin at 5.00 L*, so the reach is 3.51",
+	},
+	{
+		theme: "localOperatorDark",
+		dE: 2.66,
+		step: 4.03,
+		cap: 4.0,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.65,
+		why: "its own inkDim reaches the floor's margin at 4.00 L*, so the reach is 2.66",
+	},
+	{
+		theme: "localOperatorLight",
+		dE: 3.28,
+		step: 4.95,
+		cap: 5.0,
+		inkRole: "inkDim",
+		onGround: 4.67,
+		capInk: 4.67,
+		why: "its own inkDim reaches the floor's margin at 5.00 L*, so the reach is 3.28",
+	},
+	{
+		theme: "neonNoir",
+		dE: 2.8,
+		step: 3.96,
+		cap: 4.0,
+		inkRole: "inkDim",
+		onGround: 4.69,
+		capInk: 4.7,
+		why: "its own inkDim reaches the floor's margin at 4.00 L*, so the reach is 2.80",
+	},
+	{
+		theme: "nightfox",
+		dE: 3.11,
+		step: 4.17,
+		cap: 4.25,
+		inkRole: "inkDim",
+		onGround: 4.69,
+		capInk: 4.7,
+		why: "its own inkDim reaches the floor's margin at 4.25 L*, so the reach is 3.11",
 	},
 	{
 		theme: "nord",
-		step: 1.53,
-		cap: 2.25,
+		dE: 2.14,
+		step: 2.58,
+		cap: 2.5,
 		inkRole: "inkDim",
-		onGround: 4.83,
-		capInk: 4.72,
-		why: "inkDim reaches its floor with the 0.15 of headroom at 2.25 L* on this panel, so the band is paid on the accent cast",
+		onGround: 4.66,
+		capInk: 4.66,
+		subFloor: true,
+		why: "its own inkDim reaches the floor's margin at 2.50 L*, so the reach is 2.14 - under the 2.5 floor (NAMED LIST)",
+	},
+	{
+		theme: "ocean",
+		dE: 3.21,
+		step: 4.64,
+		cap: 4.75,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.65,
+		why: "its own inkDim reaches the floor's margin at 4.75 L*, so the reach is 3.21",
+	},
+	{
+		theme: "oneDark",
+		dE: 3.77,
+		step: 5.02,
+		cap: 5.0,
+		inkRole: "ink",
+		onGround: 7.15,
+		capInk: 7.17,
+		why: "its own ink reaches the floor's margin at 5.00 L*, so the reach is 3.77",
+	},
+	{
+		theme: "oneLight",
+		dE: 3.84,
+		step: 6.31,
+		cap: 6.25,
+		inkRole: "inkDim",
+		onGround: 4.69,
+		capInk: 4.69,
+		why: "its own inkDim reaches the floor's margin at 6.25 L*, so the reach is 3.84",
 	},
 	{
 		theme: "palenight",
-		step: 2.22,
-		cap: 2.25,
+		dE: 2.12,
+		step: 2.39,
+		cap: 2.5,
 		inkRole: "inkDim",
-		onGround: 4.71,
+		onGround: 4.68,
 		capInk: 4.7,
-		why: "inkDim reaches its floor with the 0.15 of headroom at 2.25 L* here; the value now runs the step to that cap rather than stopping at 0.73 with the cap to spare (design round 3, D2)",
+		subFloor: true,
+		why: "its own inkDim reaches the floor's margin at 2.50 L*, so the reach is 2.12 - under the 2.5 floor (NAMED LIST)",
+	},
+	{
+		theme: "rosePine",
+		dE: 2.43,
+		step: 3.16,
+		cap: 3.25,
+		inkRole: "inkDim",
+		onGround: 4.67,
+		capInk: 4.67,
+		subFloor: true,
+		why: "its own inkDim reaches the floor's margin at 3.25 L*, so the reach is 2.43 - under the 2.5 floor (NAMED LIST)",
 	},
 	{
 		theme: "rosePineDawn",
-		step: 2.11,
+		dE: 2.2,
+		step: 2.93,
 		cap: 2.75,
 		inkRole: "inkDim",
-		onGround: 4.75,
-		capInk: 4.67,
-		why: "inkDim reaches its floor with the 0.15 of headroom at 2.75 L* here, so the band is paid on the accent cast; this palette also carries a wash pin below",
+		onGround: 4.65,
+		capInk: 4.68,
+		subFloor: true,
+		why: "its own inkDim reaches the floor's margin at 2.75 L*, so the reach is 2.20 - under the 2.5 floor (NAMED LIST)",
+	},
+	{
+		theme: "rosewood",
+		dE: 3.37,
+		step: 4.73,
+		cap: 4.75,
+		inkRole: "inkDim",
+		onGround: 4.68,
+		capInk: 4.69,
+		why: "its own inkDim reaches the floor's margin at 4.75 L*, so the reach is 3.37",
 	},
 	{
 		theme: "solarizedDark",
-		step: 2.65,
+		dE: 2.51,
+		step: 3.49,
 		cap: 3.25,
 		inkRole: "inkDim",
-		onGround: 4.78,
+		onGround: 4.65,
 		capInk: 4.71,
-		why: "inkDim reaches its floor with the 0.15 of headroom at 3.25 L* on this panel, so the band is paid on the accent cast",
+		why: "its own inkDim reaches the floor's margin at 3.25 L*, so the reach is 2.51",
+	},
+	{
+		theme: "solarizedLight",
+		dE: 3.47,
+		step: 5.62,
+		cap: 5.5,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.66,
+		why: "its own inkDim reaches the floor's margin at 5.50 L*, so the reach is 3.47",
+	},
+	{
+		theme: "synthwave",
+		dE: 2.35,
+		step: 3.01,
+		cap: 3.0,
+		inkRole: "inkDim",
+		onGround: 4.69,
+		capInk: 4.71,
+		subFloor: true,
+		why: "its own inkDim reaches the floor's margin at 3.00 L*, so the reach is 2.35 - under the 2.5 floor (NAMED LIST)",
+	},
+	{
+		theme: "tokyoNight",
+		dE: 3.87,
+		step: 5.55,
+		cap: 5.25,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.71,
+		why: "its own inkDim reaches the floor's margin at 5.25 L*, so the reach is 3.87",
+	},
+	{
+		theme: "tokyoNightDay",
+		dE: 3.47,
+		step: 5.31,
+		cap: 5.25,
+		inkRole: "inkDim",
+		onGround: 4.65,
+		capInk: 4.65,
+		why: "its own inkDim reaches the floor's margin at 5.25 L*, so the reach is 3.47",
+	},
+	{
+		theme: "tokyoNightStorm",
+		dE: 3.0,
+		step: 3.81,
+		cap: 3.75,
+		inkRole: "inkDim",
+		onGround: 4.66,
+		capInk: 4.67,
+		why: "its own inkDim reaches the floor's margin at 3.75 L*, so the reach is 3.00",
 	},
 ];
-
 /*
- * The one palette whose current row cannot be separated from its own accent
- * wash, pinned to the measured pair (design round 3, D3).
+ * The pairs a bounded mark cannot separate from `elevated` OR `sunken`, pinned
+ * to what they measure (the adjacent-role work list).
  *
- * `accentWash` is the app's active-row tint (`bg-accent-wash` in the agents
- * sidebar, the category rail, the spreadsheet's selected row), and `highlight`
- * is by construction a step toward the same family - so on a palette whose wash
- * already sits close to `surface` the two marks converge. The row ground is
- * held to the field floor (2.0) against that wash like any other pair this file
- * measures, and on `rosePineDawn` it cannot be reached: the palette's own ink
- * caps the darker route at 2.75 `L*`, and along the delivered cast family the
- * BEST separation available inside the band is 1.75 (measured by sweeping the
- * cast at every step the ink floor allows), with the shipped value at 0.93. The
- * other three palettes this finding named - oneLight 0.70, rosePine 0.98,
- * tokyoNightDay 1.54 - were re-authored out of the collision and clear the floor
- * at 2.92, 2.75 and 2.13.
+ * `elevated` is the hover step for the SAME rows the mark is drawn on - a
+ * current conversation's neighbours carry `hover:bg-elevated` - and it is also
+ * every menu, popover and tooltip ground in the app. `sunken` is the well below
+ * the panel. Both are "surface + L*" steps of the panel's own family, and the
+ * fleet's `elevated` sits 1.7-8.6 L* off it (median 3.8) while `sunken` sits
+ * 3.75-14.94 the other way. A mark that keeps the panel's own hue and chroma
+ * has exactly one place to sit - further along that same ramp - so on these
+ * pairs it lands on the neighbour's shoulder: arcade measures ΔE00 0.31 between
+ * its current row and a hovered neighbour, tokyoNightStorm 0.32, ayuDark 0.54,
+ * oneDark 0.54, obsidian 0.63; and on the light palettes the same collision
+ * appears at the other end, where the mark steps DOWN into `sunken` (oneLight
+ * 0.65, tokyoNightDay 1.08, iceberg 1.13, solarizedLight 1.98).
+ *
+ * THAT IS NOT A REGRESSION THIS ROUND MAY FIX, and it is not a constant that
+ * was set wrong: it is the same collision from the other side. The fleet
+ * avoided it before by hue-breaking the mark (nord 18 degrees, everforest 36,
+ * arcade 160), i.e. the separation was bought with the defect, and bounding the
+ * chroma and hue removes the purchase. The pair is asserted at its measured
+ * value here so the collision cannot be silently made worse, and the work list
+ * is a row-hover ground that steps less than the mark, leaving `elevated` to
+ * the menu, popover and tooltip job it also holds - a role this contract does
+ * not have yet, and its own change rather than a remediation round of this one.
+ *
+ * @type {{theme: string, role: string, got: number, why: string}[]}
+ */
+const HIGHLIGHT_ADJACENT_PINS = [
+	{
+		theme: "arcade",
+		role: "elevated",
+		got: 0.31,
+		why: "`elevated` sits 4.50 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "arctic",
+		role: "elevated",
+		got: 1.35,
+		why: "`elevated` sits 4.91 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "autumn",
+		role: "elevated",
+		got: 0.85,
+		why: "`elevated` sits 3.94 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "ayuDark",
+		role: "elevated",
+		got: 0.62,
+		why: "`elevated` sits 5.33 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "ayuLight",
+		role: "sunken",
+		got: 0.81,
+		why: "`sunken` sits 7.13 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "ayuMirage",
+		role: "elevated",
+		got: 0.98,
+		why: "`elevated` sits 4.92 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "catppuccinFrappe",
+		role: "elevated",
+		got: 1.3,
+		why: "`elevated` sits 3.09 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "catppuccinLatte",
+		role: "sunken",
+		got: 1.04,
+		why: "`sunken` sits 6.01 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "catppuccinMacchiato",
+		role: "elevated",
+		got: 0.53,
+		why: "`elevated` sits 2.84 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "catppuccinMocha",
+		role: "elevated",
+		got: 1.71,
+		why: "`elevated` sits 2.50 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "cyberpunk",
+		role: "elevated",
+		got: 1.56,
+		why: "`elevated` sits 3.67 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "desert",
+		role: "elevated",
+		got: 1.12,
+		why: "`elevated` sits 3.81 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "dracula",
+		role: "elevated",
+		got: 1.69,
+		why: "`elevated` sits 6.62 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "everforest",
+		role: "elevated",
+		got: 1.3,
+		why: "`elevated` sits 3.95 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "everforestLight",
+		role: "sunken",
+		got: 1.36,
+		why: "`sunken` sits 7.96 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "forest",
+		role: "elevated",
+		got: 0.7,
+		why: "`elevated` sits 4.20 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "githubLight",
+		role: "sunken",
+		got: 0.61,
+		why: "`sunken` sits 6.72 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "iceberg",
+		role: "sunken",
+		got: 1.13,
+		why: "`sunken` sits 5.91 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "kanagawaLotus",
+		role: "sunken",
+		got: 1.63,
+		why: "`sunken` sits 8.17 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "kanagawaWave",
+		role: "elevated",
+		got: 1.53,
+		why: "`elevated` sits 5.65 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "lavender",
+		role: "elevated",
+		got: 0.77,
+		why: "`elevated` sits 4.04 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "monokai",
+		role: "elevated",
+		got: 1.87,
+		why: "`elevated` sits 6.45 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "neonNoir",
+		role: "elevated",
+		got: 1.08,
+		why: "`elevated` sits 4.30 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "nightfox",
+		role: "elevated",
+		got: 1.02,
+		why: "`elevated` sits 5.02 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "nord",
+		role: "elevated",
+		got: 1.09,
+		why: "`elevated` sits 3.18 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "obsidian",
+		role: "elevated",
+		got: 0.63,
+		why: "`elevated` sits 7.38 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "ocean",
+		role: "elevated",
+		got: 0.82,
+		why: "`elevated` sits 3.79 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "oneDark",
+		role: "elevated",
+		got: 0.61,
+		why: "`elevated` sits 5.38 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "oneLight",
+		role: "sunken",
+		got: 0.65,
+		why: "`sunken` sits 6.94 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "palenight",
+		role: "elevated",
+		got: 1.36,
+		why: "`elevated` sits 3.11 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "rosePine",
+		role: "elevated",
+		got: 1.31,
+		why: "`elevated` sits 3.32 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "rosePineMoon",
+		role: "elevated",
+		got: 1.64,
+		why: "`elevated` sits 6.76 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "rosewood",
+		role: "elevated",
+		got: 1.23,
+		why: "`elevated` sits 3.97 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "solarizedDark",
+		role: "elevated",
+		got: 0.57,
+		why: "`elevated` sits 3.94 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "solarizedLight",
+		role: "sunken",
+		got: 1.98,
+		why: "`sunken` sits 6.28 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "synthwave",
+		role: "elevated",
+		got: 0.5,
+		why: "`elevated` sits 3.51 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "tokyoNightDay",
+		role: "sunken",
+		got: 1.08,
+		why: "`sunken` sits 5.97 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+	{
+		theme: "tokyoNightStorm",
+		role: "elevated",
+		got: 0.5,
+		why: "`elevated` sits 4.17 L* off this panel on the same ramp; asserted at its measured value for the row-hover split",
+	},
+];
+/*
+ * The pairs a bounded mark cannot separate from the app's OTHER selected-row
+ * mark, pinned to what they measure and to the best separation reachable.
+ *
+ * `accentWash` is what the app paints for an active or selected row elsewhere
+ * (`bg-accent-wash` in the agents sidebar, the category rail, the spreadsheet's
+ * selected row). This role used to step toward the same family by construction,
+ * and the assertion was written for that: on a palette whose wash sits close to
+ * `surface` the two marks converge (design round 3, D3).
+ *
+ * The bounded mark runs INTO that instead of away from it, for the same reason
+ * it collides with `elevated`: it is the panel's own colour one step along the
+ * panel's own ramp, and on a palette whose wash is that same colour one step
+ * along the same ramp the two grounds are one ground (obsidian 0.77,
+ * rosePineDawn 3.23 after its re-authoring, everforest 1.86, tokyoNightDay
+ * 1.86). Each entry carries the ceiling the gate re-derives - the best
+ * separation ANY ground inside the band, the field floors and the ink floors
+ * can reach, walking the cast from `surface` toward `accent` - so the claim
+ * "this palette cannot do better" is checked rather than asserted. The pairs
+ * are on the same work list as the `elevated` collision.
  *
  * @type {{theme: string, got: number, ceiling: number, why: string}[]}
  */
@@ -1987,10 +2673,22 @@ const mixHex = (from, to, alpha) => {
 
 const HIGHLIGHT_WASH_PINS = [
 	{
-		theme: "rosePineDawn",
-		got: 0.93,
-		ceiling: 1.75,
-		why: "the ink floor caps the darker route at 2.75 L*, and the accent-cast family's best separation from this palette's own accentWash inside the band measured 1.75 against the 2.0 field floor - the pair is recorded with its ceiling rather than dropped, and the window's pixel list shoots the two grounds in one frame",
+		theme: "everforest",
+		got: 1.86,
+		ceiling: 17.87,
+		why: "the current row's ground and `accentWash` are two states of the same row family, and a mark that keeps the panel's own colour lands on the wash's family rather than away from it; the ceiling is the best separation any ground inside the band, the field floors and the ink floors can reach, re-derived by the gate",
+	},
+	{
+		theme: "obsidian",
+		got: 0.77,
+		ceiling: 0.0,
+		why: "the current row's ground and `accentWash` are two states of the same row family, and a mark that keeps the panel's own colour lands on the wash's family rather than away from it; the ceiling is the best separation any ground inside the band, the field floors and the ink floors can reach, re-derived by the gate",
+	},
+	{
+		theme: "tokyoNightDay",
+		got: 1.86,
+		ceiling: 8.38,
+		why: "the current row's ground and `accentWash` are two states of the same row family, and a mark that keeps the panel's own colour lands on the wash's family rather than away from it; the ceiling is the best separation any ground inside the band, the field floors and the ink floors can reach, re-derived by the gate",
 	},
 ];
 
@@ -2155,71 +2853,126 @@ for (const { id, palette: p } of palettes) {
 	 * `highlight` doc states the rule in full for a porting author, including
 	 * which palettes still carry a partly chroma-bought step.
 	 */
+	/*
+	 * THE MARK'S HUE AND CHROMA ARE THE PANEL'S. This is the bound this round
+	 * exists to add, and it is the half of the rule the role was missing: the
+	 * step off `surface` was always asserted, and the two axes it was bought
+	 * WITH were not, which is how the fleet came to hold eight marks less tinted
+	 * than their own panel (tokyoNight 0.76x, cyberpunk 0.62x, alucard 0.66x),
+	 * thirteen in a colour no panel has (oneLight's blue on a neutral panel,
+	 * tokyoNightDay 3.60x, iceberg 3.31x) and eleven with a hue broken by 14-160
+	 * degrees. See the constants above for where 12 degrees, 0.15 / 1.6 and the
+	 * near-neutral allowance come from.
+	 *
+	 * WHAT A FAILURE HERE MEANS: the value has been authored by moving an axis
+	 * this role may not spend. Re-author it at the panel's own hue and chroma -
+	 * `palette-contract.ts`'s `highlight` doc and `docs/branding.md` § 2 state
+	 * the rule in full - and if that palette's own inks cannot then carry the
+	 * band, record the reach it CAN carry in `HIGHLIGHT_CAP_PINS` with its
+	 * numbers rather than buying the difference back here.
+	 */
+	{
+		assertions++;
+		const [panelL, panelA, panelB] = toLab(p.surface);
+		const [, markA, markB] = toLab(p.highlight);
+		const panelC = Math.hypot(panelA, panelB);
+		const markC = Math.hypot(markA, markB);
+		const ceiling = Math.max(
+			HIGHLIGHT_CHROMA_REL_BAND * panelC,
+			HIGHLIGHT_CHROMA_ABS_BAND,
+		);
+		const dC = markC - panelC;
+		if (dC > ceiling + HIGHLIGHT_CHROMA_SLACK) {
+			fail(
+				`${id}: \`highlight\` ${p.highlight} carries ${r2(markC)} C* against \`surface\` ${p.surface}'s ${r2(panelC)} — ${r2(dC)} past the panel, over the ${r2(ceiling)} this role may move on the chroma axis. A mark whose chroma is a different colour from its panel's is the "looks nothing like the sidebar" half of the operator's report: re-author at the panel's own hue and chroma and let the L* step carry the band`,
+			);
+		}
+		if (dC < -HIGHLIGHT_CHROMA_SLACK) {
+			fail(
+				`${id}: \`highlight\` ${p.highlight} carries ${r2(markC)} C* against \`surface\` ${p.surface}'s ${r2(panelC)} — ${r2(-dC)} LESS tinted than the panel it marks, which is the grey the operator reported on this role ("it looks almost grey when it should be a lighter slate", measured on tokyoNight at 0.76x its panel). The mark is the panel's colour one step along the L* axis, so its chroma may not fall below the panel's`,
+			);
+		}
+		if (panelC >= HIGHLIGHT_HUE_MIN_CHROMA && markC >= 0.5) {
+			const dev = hueDeviation(panelA, panelB, markA, markB);
+			if (dev > HIGHLIGHT_HUE_DEVIATION_MAX) {
+				fail(
+					`${id}: \`highlight\` ${p.highlight} sits ${r2(dev)} degrees off \`surface\` ${p.surface}'s hue (the bound is ${HIGHLIGHT_HUE_DEVIATION_MAX}, and this panel's own ${r2(panelC)} C* is above the ${HIGHLIGHT_HUE_MIN_CHROMA} where an angle stops being quantisation). Rotating the hue is how the port's accent cast separated this mark from \`elevated\`, and it is what the operator sees as a colour the theme does not have (arcade 160 degrees, everforest 36, nord 18): re-author at the panel's own hue`,
+				);
+			}
+		}
+	}
+
 	for (const other of ["elevated", "sunken"]) {
 		if (!isHex(p.highlight) || !isHex(p[other])) continue;
 		assertions++;
 		const got = deltaE(p.highlight, p[other]);
-		if (got < FIELD_SEPARATION_FLOOR) {
+		/*
+		 * `elevated` is the one pair a bounded mark can be forced onto, and the
+		 * pins record those pairs rather than letting the floor be lowered for
+		 * the whole fleet: see `HIGHLIGHT_ADJACENT_PINS`. `sunken` has no pins,
+		 * because no palette is forced onto its well.
+		 */
+		const hoverPin = HIGHLIGHT_ADJACENT_PINS.find(
+			(x) => x.theme === id && x.role === other,
+		);
+		if (hoverPin) {
+			if (Math.abs(got - hoverPin.got) > 0.05) {
+				fail(
+					`${id}: the pinned \`highlight\`/\`elevated\` pair moved — recorded ΔE00 ${hoverPin.got}, measured ${r2(got)}. This pair is on the adjacent-role work list, so it is asserted at what it can hold; re-measure and update the pin rather than letting the collision drift`,
+				);
+			}
+		} else if (got < FIELD_SEPARATION_FLOOR) {
 			fail(
-				`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`${other}\` ${p[other]} (need ${FIELD_SEPARATION_FLOOR}) — the current row's ground must never be the same plane as the hover step above it or the well below it, because those are the two states it is read against`,
-			);
-		}
-	}
-	{
-		assertions++;
-		const got = deltaE(p.highlight, p.surface);
-		if (got < HIGHLIGHT_SEPARATION_FLOOR) {
-			/* The ink that binds the step, measured on this palette's own authored
-			   ground, so the message carries the reason the value cannot simply be
-			   raised. */
-			const bound = INKS.map(([role]) => [
-				role,
-				ratio(p[role], p.highlight),
-			]).sort((a, b) => a[1] - b[1])[0];
-			fail(
-				`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`surface\` ${p.surface} (need ${HIGHLIGHT_SEPARATION_FLOOR}) — the current row's mark is invisible beside a hovered neighbour below this band. Author the LARGEST \`L*\` step the ink floors allow at the surface's own hue, and buy only the shortfall to ${HIGHLIGHT_SEPARATION_FLOOR} on the chroma axis at that hue. It must also stay ΔE00 ${FIELD_SEPARATION_FLOOR} clear of \`elevated\` and \`sunken\` (that bound, not ${HIGHLIGHT_SEPARATION_FLOOR}, is what the field loop above enforces); the binder here is \`${bound[0]}\` at ${r2(bound[1])}:1 on this ground, and the direction is asserted in the block below, because ΔE00 is a budget a chroma-only step can spend while moving the wrong way in lightness`,
+				`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`${other}\` ${p[other]} (need ${FIELD_SEPARATION_FLOOR}) — the current row's ground must never be the same plane as the hover step above it or the well below it, because those are the two states it is read against. If this pair is one a bounded mark cannot separate, pin it in \`HIGHLIGHT_ADJACENT_PINS\` with its measurement`,
 			);
 		}
 	}
 	/*
-	 * The step's AXIS and its DIRECTION, which ΔE00 cannot state.
+	 * THE MARK OFF `surface`: two floors, and a pin for the palettes whose own
+	 * inks hold neither.
 	 *
-	 * The operator's sentence is "on dark mode it should be a bit lighter and on
-	 * light mode it should be dark enough to contrast" - a lightness fact. ΔE00 is
-	 * a budget with a chroma term in it, so at a fixed `L*` a step can be made as
-	 * large as you like by warming it, and the three palettes this floor was drawn
-	 * for proved it is not a hypothetical: tokyoNight, `localOperatorDark` and
-	 * `localOperatorLight` all cleared the band with the whole of the gain bought
-	 * on chroma at `L*` steps of 2.61, 2.82 and 2.52 - less light on the two dark
-	 * themes than the 3.26 and 3.47 steps he had already reported as invisible, so
-	 * the report was answered twice and the mark read as a deeper blue row rather
-	 * than a lighter one.
-	 *
-	 * The sign is the half that matters and the magnitude is the other: a token
-	 * step in the right direction is still a step a reader cannot find. See
-	 * `HIGHLIGHT_LIGHTNESS_STEP_FLOOR` for where 3.0 comes from.
+	 *  1. `HIGHLIGHT_SEPARATION_FLOOR` (4.0) is the band: the mark is findable
+	 *     beside a hovered neighbour. It is what this role is for and it is met
+	 *     with no pin on twenty-two of the fifty-nine palettes.
+	 *  2. `HIGHLIGHT_REACH_FLOOR` (2.5) is the floor every palette must hold. It
+	 *     exists because the band is now bought at the panel's own hue and
+	 *     chroma, where ΔE00 is a function of the L* step alone - and this
+	 *     file's own ink floors cap that step at 2.4-7.5 L* across the fleet
+	 *     while the band needs 5.3-6.9. Thirty palettes are capped under the
+	 *     band; seven of those are capped under this floor too.
+	 *  3. `HIGHLIGHT_CAP_PINS` records each of those thirty with its cap, its
+	 *     binder and the ratios that prove both, and this assertion RE-DERIVES
+	 *     the cap from the palette rather than trusting the number beside it: a
+	 *     palette cannot be excused by a record that has stopped being true.
+	 *     The seven under the floor carry `subFloor: true` - the NAMED LIST -
+	 *     because a mark that is not findable is a cost this file states with
+	 *     its measurement, not one it hides behind a lowered constant.
 	 */
 	{
 		assertions++;
+		const got = deltaE(p.highlight, p.surface);
 		const step = toLab(p.highlight)[0] - toLab(p.surface)[0];
 		const wanted = p.mode === "dark" ? step : -step;
-		const pin = HIGHLIGHT_STEP_PINS.find((x) => x.theme === id);
+		const pin = HIGHLIGHT_CAP_PINS.find((x) => x.theme === id);
 		if (pin) {
 			/*
-			 * A pinned palette, and the pin is a claim about three things rather
-			 * than a note beside the value: the step it ships, the ink ratio on
-			 * that ground, and - re-derived here, because prose cannot go stale
-			 * but a number the gate never recomputes can - the panel's own ink
-			 * cap and the binding ink's ratio at that cap.
+			 * The cap is re-derived at the value's OWN chroma. It is a function
+			 * of the pair rather than of the panel: a more saturated ground of
+			 * the same lightness carries less luminance, so raising chroma moves
+			 * the ink floors with it - which is why the authoring walks both
+			 * axes together and why this re-derivation does too.
 			 */
 			const [capL, capA, capB] = toLab(p.surface);
+			const panelC = Math.hypot(capA, capB);
+			const [, markA, markB] = toLab(p.highlight);
+			const scale = panelC < 0.5 ? 1 : Math.hypot(markA, markB) / panelC;
 			let cap = 0;
 			let capInk = null;
-			for (let step = 0.25; step <= 8; step += 0.25) {
+			for (let s = 0.25; s <= 8; s += 0.25) {
 				const at = labToHex([
-					capL + (p.mode === "dark" ? step : -step),
-					capA,
-					capB,
+					capL + (p.mode === "dark" ? s : -s),
+					capA * scale,
+					capB * scale,
 				]);
 				if (!at) break;
 				if (
@@ -2228,30 +2981,61 @@ for (const { id, palette: p } of palettes) {
 							ratio(p[role], at) >= floor + HIGHLIGHT_INK_MARGIN,
 					)
 				) {
-					cap = step;
+					cap = s;
 					capInk = ratio(p[pin.inkRole], at);
 				}
 			}
+			const onGround = ratio(p[pin.inkRole], p.highlight);
 			if (
-				Math.abs(wanted - pin.step) > 0.05 ||
-				ratio(p[pin.inkRole], p.highlight) < pin.onGround - 0.05 ||
+				Math.abs(got - pin.dE) > 0.05 ||
+				Math.abs(onGround - pin.onGround) > 0.05 ||
 				Math.abs(cap - pin.cap) > 0.5 ||
 				(capInk !== null && Math.abs(capInk - pin.capInk) > 0.15)
 			) {
 				fail(
-					`${id}: the pinned highlight step no longer matches — recorded ${pin.step} L* with ${pin.inkRole} at ${pin.onGround}:1 on the row's ground and a ${pin.cap} L* cap at ${pin.capInk}:1, measured ${r2(wanted)} L* at ${r2(ratio(p[pin.inkRole], p.highlight))}:1 with a ${r2(cap)} L* cap at ${capInk === null ? "no measurable" : r2(capInk)}:1. Re-measure the cap, re-author the value if the inks moved, and update the pin`,
+					`${id}: the pinned highlight reach no longer matches — recorded ΔE00 ${pin.dE} at ${pin.step} L* with ${pin.inkRole} at ${pin.onGround}:1 on the row's ground and a ${pin.cap} L* cap at ${pin.capInk}:1, measured ${r2(got)} at ${r2(wanted)} L* with ${r2(onGround)}:1 on the ground and a ${r2(cap)} L* cap at ${capInk === null ? "no measurable" : r2(capInk)}:1. Re-measure the cap, re-author the value if the inks moved, and update the pin`,
 				);
 			}
-		} else if (wanted < HIGHLIGHT_LIGHTNESS_STEP_FLOOR) {
-			const wrongSide =
-				wanted <= 0
-					? ` — and it is on the WRONG SIDE of \`surface\` for this mode, which is the half of the operator's sentence ΔE00 cannot state`
-					: "";
-			fail(
-				`${id}: \`highlight\` ${p.highlight} sits ${r2(step)} \`L*\` from \`surface\` ${p.surface}, so the current row is ${p.mode === "dark" ? "LIGHTER" : "DARKER"} than its panel by ${r2(wanted)} — the floor is ${HIGHLIGHT_LIGHTNESS_STEP_FLOOR} \`L*\` in that direction${wrongSide}. Author the step as a LIGHTNESS step at the surface's own hue - the largest one the ink floors allow - and buy only the shortfall to ΔE00 ${HIGHLIGHT_SEPARATION_FLOOR} on the chroma axis at that hue: \`palette-contract.ts\`'s \`highlight\` doc states the rule in full`,
-			);
+			if (wanted < pin.cap - 0.3) {
+				fail(
+					`${id}: \`highlight\` ${p.highlight} sits ${r2(wanted)} L* off \`surface\`, under the ${pin.cap} L* cap this palette's own \`${pin.inkRole}\` allows — a pinned palette is pinned because it has already spent its whole step, so a value short of the cap is a mark that could be findable and is not`,
+				);
+			}
+			if (Boolean(pin.subFloor) !== pin.dE < HIGHLIGHT_REACH_FLOOR) {
+				fail(
+					`${id}: the named list is stale — the pin says ${pin.subFloor ? "this palette cannot reach" : "this palette reaches"} ΔE00 ${HIGHLIGHT_REACH_FLOOR} and the record's own ${pin.dE} says otherwise. A palette leaves the list by re-authoring it, not by editing the flag`,
+				);
+			}
+			if (got < HIGHLIGHT_REACH_FLOOR && !pin.subFloor) {
+				fail(
+					`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`surface\` ${p.surface}, under the ${HIGHLIGHT_REACH_FLOOR} floor every palette must hold, and this palette is not on the named list. Either its inks can carry more — take the cap — or they cannot, and then the measurement belongs in \`HIGHLIGHT_CAP_PINS\` with \`subFloor: true\``,
+				);
+			}
+		} else {
+			if (got < HIGHLIGHT_SEPARATION_FLOOR) {
+				/* The ink that binds the step, measured on this palette's own
+				   ground, so the message carries the reason the value cannot
+				   simply be raised. */
+				const bound = INKS.map(([role]) => [
+					role,
+					ratio(p[role], p.highlight),
+				]).sort((a, b) => a[1] - b[1])[0];
+				fail(
+					`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`surface\` ${p.surface} (need ${HIGHLIGHT_SEPARATION_FLOOR}) — the current row's mark is invisible beside a hovered neighbour below this band. Take the largest L* step this palette's inks allow at the panel's own hue and chroma, and if the step that reaches ${HIGHLIGHT_SEPARATION_FLOOR} is beyond that cap, record the reach in \`HIGHLIGHT_CAP_PINS\` (the binder here is \`${bound[0]}\` at ${r2(bound[1])}:1, and every palette must still hold ΔE00 ${HIGHLIGHT_REACH_FLOOR})`,
+				);
+			}
+			if (wanted < HIGHLIGHT_LIGHTNESS_STEP_FLOOR) {
+				const wrongSide =
+					wanted <= 0
+						? ` — and it is on the WRONG SIDE of \`surface\` for this mode, which is the half of the operator's sentence ΔE00 cannot state`
+						: "";
+				fail(
+					`${id}: \`highlight\` ${p.highlight} sits ${r2(step)} \`L*\` from \`surface\` ${p.surface}, so the current row is ${p.mode === "dark" ? "LIGHTER" : "DARKER"} than its panel by ${r2(wanted)} — the floor is ${HIGHLIGHT_LIGHTNESS_STEP_FLOOR} \`L*\` in that direction${wrongSide}. Author the step as a LIGHTNESS step at the surface's own hue and chroma, and if this palette's inks cap it below the floor, record the cap in \`HIGHLIGHT_CAP_PINS\`: \`palette-contract.ts\`'s \`highlight\` doc states the rule in full`,
+				);
+			}
 		}
 	}
+
 	/*
 	 * The row's ground against the app's OTHER selected-row mark.
 	 *
@@ -2762,5 +3546,5 @@ if (stale.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${HIGHLIGHT_CAP_PINS.length} pinned highlight reach(es), ${HIGHLIGHT_ADJACENT_PINS.length} pinned adjacent collision(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
 );

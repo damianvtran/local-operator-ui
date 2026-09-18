@@ -25,29 +25,26 @@ export const monokai: ThemeDefinition = {
 		sunken: "#1E1F1A",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own olive
-		 * ramp 4.35 `L*`, carrying 1.66x the panel's chroma. ΔE00 4.07 from `surface`,
-		 * 2.51 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 8.85 from `sunken`. The row is 1.149x the panel's relative
-		 * luminance.
+		 * The current row's own ground: `surface` stepped 5.90 `L*` up at the panel's own
+		 * hue (0.7 degrees off, inside the 12-degree bound) and carried
+		 * 5.27 `C*` against the panel's 4.80 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 4.19, from
+		 * `elevated` 1.87, from `sunken` 9.28. Ink on this ground: `ink` 10.47:1,
+		 * `ink-muted` 6.07:1, `ink-dim` 4.72:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
 		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#35362f)
-		 * stepped 3.22 `L*` off the panel, and this one steps 4.35. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
+		 * WHAT THIS REPLACES: the value before this round — `1.66x` the panel's
+		 * chroma (7.98 `C*` against 4.80), 1 degrees off its hue, ΔE00 4.07 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 *
-		 * Ink on this ground: `ink` 11.03:1, `ink-muted` 6.40:1, `ink-dim` 4.97:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.97:1. The step here is still partly chroma-bought (1.66x the panel's); the ordering
-		 * above is what a re-authoring of this palette should follow.
+		 * THE HOVER STEP IS THE COLLISION: 1.87 to `elevated` is under the field floor,
+		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * on the row-hover work list.
 		 */
-		highlight: "#37392d",
+		highlight: "#3B3C34",
 
 		ink: "#F8F8F2",
 		inkMuted: "#BFBFBF",

@@ -24,31 +24,21 @@ export const tokyoNight: ThemeDefinition = {
 		sunken: "#14141B",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own blue
-		 * ramp 5.09 `L*`, at 0.76x the panel's chroma, i.e. less tinted than the ground it sits on. ΔE00 4.09 from `surface`,
-		 * 4.74 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 10.53 from `sunken`. The row is 1.167x the panel's relative
-		 * luminance.
+		 * The current row's own ground: `surface` stepped 5.55 `L*` up at the panel's own
+		 * hue (1.3 degrees off, inside the 12-degree bound) and carried
+		 * 14.16 `C*` against the panel's 13.31 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 3.87, from
+		 * `elevated` 2.33, from `sunken` 12.02. Ink on this ground: `ink` 7.61:1,
+		 * `ink-muted` 5.82:1, `ink-dim` 4.65:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
 		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#2b2f42)
-		 * stepped 3.26 `L*` off the panel, and this one steps 5.09. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 7.73:1, `ink-muted` 5.91:1, `ink-dim` 4.72:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.72:1. The theme in the operator's own screenshot, where the row measured ΔE00 2.23 and read as no mark at all beside a hovered neighbour at 4.58.
-		 * The chroma-only step this one also replaces (#262d4a, ΔE00 4.24) bought the band
-		 * with 1.50x the panel's chroma at a 2.61 `L*` step — less light than the value
-		 * before it, which is the state he had already seen.
+		 * WHAT THIS REPLACES: the value before this round — `0.76x` the panel's
+		 * chroma (10.12 `C*` against 13.31), 1 degrees off its hue, ΔE00 4.09 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#313342",
+		highlight: "#2F3449",
 
 		ink: "#C0CAF5",
 		inkMuted: "#A9B1D6",

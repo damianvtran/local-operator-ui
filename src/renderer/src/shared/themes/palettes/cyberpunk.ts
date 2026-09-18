@@ -45,23 +45,33 @@ export const cyberpunk: ThemeDefinition = {
 		elevated: "#1E172A",
 		sunken: "#080510",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast toward `accent` and stepped 3.1 on the `L*` axis — branch H of this
-		 * port's selection rule, and here the cast is MANDATORY rather than preferred: the
-		 * ink floor caps this palette's lightness route at 3.1 `L*` (`inkDim` 4.65:1 there
-		 * and under the bound at 3.5), and a 3.1 `L*` step at the panel's own hue is only
-		 * ΔE00 1.94 — under the band. So the pair that binds is the ink cap plus the band,
-		 * and NOT `elevated`: at the cap the row is already ΔE00 5.74 clear of it.
-		 * The first cut of this value let the displacement run to the full ΔE00 10.35 the
-		 * rule's fixed fraction produced, which made it 2.3x the loudest row in the tree
-		 * against `gruvbox` 4.54; design round 3 (D1) measured the band as reachable at 40%
-		 * of that displacement, and this is that point: ΔE00 4.14 from `surface`, 5.74 from
-		 * `elevated`, 5.58 from `sunken`, with `inkDim` at 4.65:1 the ink that binds it —
-		 * that is the contract's own ratio for this ground, and the raw value is 4.654, so
-		 * the margin it keeps is nothing rather than 0.01: this is the palette whose step
-		 * is at the ink cap by construction, not by slack.
+		 * The current row's own ground: `surface` stepped 2.88 `L*` up at the panel's own
+		 * hue (1.5 degrees off, inside the 12-degree bound) and carried
+		 * 12.32 `C*` against the panel's 11.07 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 2.05, from
+		 * `elevated` 1.56, from `sunken` 7.54. Ink on this ground: `ink` 14.25:1,
+		 * `ink-muted` 7.83:1, `ink-dim` 4.68:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `0.62x` the panel's
+		 * chroma (6.92 `C*` against 11.07), 17 degrees off its hue, ΔE00 4.14 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
+		 *
+		 * AND IT IS BELOW THE FLOOR: ΔE00 2.05 is under the 2.5 every palette must hold.
+		 * Hue-faithfully there is no value that reaches it — the row cannot rise further
+		 * without putting this palette's own body ink under its floor, and buying it back
+		 * on chroma or hue is the defect this round removes. It is on the NAMED LIST in
+		 * `HIGHLIGHT_CAP_PINS` (`subFloor`), with its numbers, and the structural fix is the
+		 * row-hover split rather than a louder mark here.
+		 *
+		 * THE HOVER STEP IS THE COLLISION: 1.56 to `elevated` is under the field floor,
+		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * on the row-hover work list.
 		 */
-		highlight: "#1E171F",
+		highlight: "#1C1626",
 
 		ink: "#EAE5F2",
 		inkMuted: "#B3A8C6",

@@ -121,3 +121,21 @@ export const labToHex = ([L, a, b]) => {
 };
 
 export const r2 = (n) => Math.round(n * 100) / 100;
+
+/**
+ * The angle between two Lab hues, in degrees, as the smaller of the two
+ * rotations (0-180).
+ *
+ * It lives here rather than in the contract for the reason this file exists:
+ * `contrast-contract.mjs` asserts the mark's hue against its panel's and the
+ * authoring walks the same axis, so a second copy of the arithmetic would be a
+ * second definition of "off the panel's hue". Hue is undefined at zero chroma,
+ * which is why every caller gates on both colours carrying some.
+ */
+export const hueDeviation = (a1, b1, a2, b2) => {
+	const h1 = Math.atan2(b1, a1);
+	const h2 = Math.atan2(b2, a2);
+	let d = Math.abs(h1 - h2) * (180 / Math.PI);
+	if (d > 180) d = 360 - d;
+	return d;
+};

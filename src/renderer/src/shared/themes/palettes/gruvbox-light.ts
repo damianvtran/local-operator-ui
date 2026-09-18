@@ -42,15 +42,21 @@ export const gruvboxLight: ThemeDefinition = {
 		sunken: "#F2E5BC",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.06 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.08 from `surface`, 4.81 from `elevated` and 6.3 from `sunken`;
-		 * the step is -4.64 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.69:1 the ink that binds it.
+		 * The current row's own ground: `surface` stepped 4.97 `L*` down at the panel's own
+		 * hue (0.8 degrees off, inside the 12-degree bound) and carried
+		 * 17.69 `C*` against the panel's 15.49 — the panel's own colour, one step darker, which
+		 * is what the operator asked for. ΔE00 from `surface` 3.27, from
+		 * `elevated` 6.24, from `sunken` 2.79. Ink on this ground: `ink` 9.40:1,
+		 * `ink-muted` 6.58:1, `ink-dim` 4.65:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `0.86x` the panel's
+		 * chroma (13.38 `C*` against 15.49), 10 degrees off its hue, ΔE00 4.08 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#EAEAD0",
+		highlight: "#EFE8C6",
 
 		ink: "#3C3836",
 		// Canonical dark3 665C54 is 5.18:1 on `sunken` and only ΔE00 5.6 from dark4, under

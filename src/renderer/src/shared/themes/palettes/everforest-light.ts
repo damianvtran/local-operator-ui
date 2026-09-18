@@ -38,15 +38,21 @@ export const everforestLight: ThemeDefinition = {
 		sunken: "#DCD7BC",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.08 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 5.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.03 from `surface`, 6.91 from `elevated` and 2.16 from `sunken`;
-		 * the step is -5.21 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.89:1 the ink that binds it.
+		 * The current row's own ground: `surface` stepped 6.42 `L*` down at the panel's own
+		 * hue (1.5 degrees off, inside the 12-degree bound) and carried
+		 * 13.21 `C*` against the panel's 13.08 — the panel's own colour, one step darker, which
+		 * is what the operator asked for. ΔE00 from `surface` 4.03, from
+		 * `elevated` 6.45, from `sunken` 1.36. Ink on this ground: `ink` 7.40:1,
+		 * `ink-muted` 6.93:1, `ink-dim` 4.74:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `1.24x` the panel's
+		 * chroma (16.18 `C*` against 13.08), 4 degrees off its hue, ΔE00 4.03 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#E4DFC0",
+		highlight: "#E1DBC2",
 
 		ink: "#394246",
 		inkMuted: "#3D4743",

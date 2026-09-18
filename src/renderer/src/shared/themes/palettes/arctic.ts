@@ -35,15 +35,26 @@ export const arctic: ThemeDefinition = {
 		sunken: "#121A25",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.02 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.5 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.12 from `surface`, 2.01 from `elevated` and 9.87 from `sunken`;
-		 * the step is 4.7 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 4.82:1 the ink that binds it.
+		 * The current row's own ground: `surface` stepped 5.55 `L*` up at the panel's own
+		 * hue (2.0 degrees off, inside the 12-degree bound) and carried
+		 * 11.87 `C*` against the panel's 11.00 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 3.97, from
+		 * `elevated` 1.35, from `sunken` 10.33. Ink on this ground: `ink` 9.61:1,
+		 * `ink-muted` 6.60:1, `ink-dim` 4.68:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `0.91x` the panel's
+		 * chroma (10.05 `C*` against 11.00), 11 degrees off its hue, ΔE00 4.12 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
+		 *
+		 * THE HOVER STEP IS THE COLLISION: 1.35 to `elevated` is under the field floor,
+		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * on the row-hover work list.
 		 */
-		highlight: "#2B3946",
+		highlight: "#2F3A4B",
 
 		ink: "#E3ECF4",
 

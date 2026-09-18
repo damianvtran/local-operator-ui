@@ -24,28 +24,21 @@ export const neon: ThemeDefinition = {
 		sunken: "#03040A",
 
 		/*
-		 * The current row's own ground: `surface` stepped up its own blue
-		 * ramp 6.39 `L*`, at 0.95x the panel's chroma. ΔE00 4.04 from `surface`,
-		 * 3.44 from `elevated` (the same row's hover step, so the pointer cannot erase
-		 * the selection) and 9.94 from `sunken`. The row is 1.147x the panel's relative
-		 * luminance.
+		 * The current row's own ground: `surface` stepped 6.45 `L*` up at the panel's own
+		 * hue (0.2 degrees off, inside the 12-degree bound) and carried
+		 * 11.62 `C*` against the panel's 11.44 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 4.05, from
+		 * `elevated` 2.91, from `sunken` 10.29. Ink on this ground: `ink` 12.01:1,
+		 * `ink-muted` 6.15:1, `ink-dim` 4.68:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
 		 *
-		 * THE `L*` STEP IS THE MARK, AND CHROMA PAYS ONLY THE REMAINDER. The role was
-		 * authored at ΔE00 2.18-2.28 for a selection the operator had asked to be
-		 * SUBTLE, and he has since seen that band rendered and reported the row as
-		 * invisible beside a hovered neighbour; the value this one replaces (#171c2b)
-		 * stepped 3.55 `L*` off the panel, and this one steps 6.39. That ordering —
-		 * lightness first, chroma only for what is left over, never the other way
-		 * round — is the rule `docs/branding.md` § 2 states in full, and its DIRECTION
-		 * is asserted in `scripts/contrast-contract.mjs`, so no palette can satisfy
-		 * the band while landing darker on a dark theme.
-		 *
-		 * Ink on this ground: `ink` 12.03:1, `ink-muted` 6.16:1, `ink-dim` 4.69:1 — every floor
-		 * in § 3 cleared with headroom, because the caps and the `· lopdev` binding
-		 * inside a current row are drawn on it and legibility is not what the mark may
-		 * spend. `ink-dim` is the binder at 4.69:1.
+		 * WHAT THIS REPLACES: the value before this round — `0.95x` the panel's
+		 * chroma (10.93 `C*` against 11.44), 1 degrees off its hue, ΔE00 4.04 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#1c2231",
+		highlight: "#1C2232",
 
 		ink: "#E0E0E0",
 		inkMuted: "#A0A0B0",

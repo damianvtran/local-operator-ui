@@ -28,15 +28,26 @@ export const kanagawaWave: ThemeDefinition = {
 		sunken: "#16161D",
 
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.14 toward `accent` — branch H of this port's selection rule
-		 * — and then stepped 4.25 on the `L*` axis in the mode's direction, so the mark
-		 * is a LIGHTNESS step and the cast pays only what the ramp could not. ΔE00
-		 * 4.04 from `surface`, 2.66 from `elevated` and 10.56 from `sunken`;
-		 * the step is 4.34 `L*`, in the band this branch raised to 4.0, with
-		 * inkDim at 5.08:1 the ink that binds it.
+		 * The current row's own ground: `surface` stepped 5.97 `L*` up at the panel's own
+		 * hue (0.4 degrees off, inside the 12-degree bound) and carried
+		 * 8.65 `C*` against the panel's 9.02 — the panel's own colour, one step lighter, which
+		 * is what the operator asked for. ΔE00 from `surface` 4.17, from
+		 * `elevated` 1.53, from `sunken` 10.94. Ink on this ground: `ink` 8.07:1,
+		 * `ink-muted` 6.37:1, `ink-dim` 4.81:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `1.28x` the panel's
+		 * chroma (11.53 `C*` against 9.02), 10 degrees off its hue, ΔE00 4.04 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
+		 *
+		 * THE HOVER STEP IS THE COLLISION: 1.53 to `elevated` is under the field floor,
+		 * because `elevated` is the same `surface` + `L*` ramp for the same rows — a bounded
+		 * mark has nowhere else to sit. The pair is pinned in `HIGHLIGHT_HOVER_PINS` and is
+		 * on the row-hover work list.
 		 */
-		highlight: "#2F3445",
+		highlight: "#373744",
 
 		// fujiWhite, 8.16:1 on the lightest ground.
 		ink: "#DCD7BA",

@@ -46,14 +46,21 @@ export const tokyoNightDay: ThemeDefinition = {
 		// recess. This is one just-visible step under canvas (ΔE00 2.06).
 		sunken: "#D8DAE1",
 		/*
-		 * The current row's own ground:
-		 * `surface` cast 0.09 toward `accent` and stepped 3.07 on the `L*` axis — branch H
-		 * of this port's selection rule, with the cast raised from the earlier 0.06 because
-		 * this palette's `accentWash` sat ΔE00 **1.54** from the ground it produced, under the
-		 * contract's field floor for two states; measured 2.13 now. ΔE00 4.12 from `surface`,
-		 * 5.83 from `elevated`, 2.94 from `sunken`, `inkDim` 4.94:1.
+		 * The current row's own ground: `surface` stepped 5.31 `L*` down at the panel's own
+		 * hue (2.3 degrees off, inside the 12-degree bound) and carried
+		 * 2.69 `C*` against the panel's 1.58 — the panel's own colour, one step darker, which
+		 * is what the operator asked for. ΔE00 from `surface` 3.47, from
+		 * `elevated` 5.55, from `sunken` 1.08. Ink on this ground: `ink` 7.46:1,
+		 * `ink-muted` 6.29:1, `ink-dim` 4.65:1 — `ink-dim` is the binder, and
+		 * the 0.15 of headroom it keeps is the floor this mark is authored against.
+		 *
+		 * WHAT THIS REPLACES: the value before this round — `3.60x` the panel's
+		 * chroma (5.69 `C*` against 1.58), 12 degrees off its hue, ΔE00 4.12 from
+		 * `surface` — is the cast that bought its band, and it is what the operator reported as
+		 * grey on the palettes that lost chroma and as a foreign colour on the ones that
+		 * gained it. The mark is the panel's own colour now, and the step is lightness:
 		 */
-		highlight: "#DCE3ED",
+		highlight: "#DADCE1",
 
 		// Generated foreground 3760BF is 4.19:1 on `sunken` — a syntax blue, not a body ink,
 		// which is what the 7:1 floor is for. Deepened along the same indigo to 7.33:1.
