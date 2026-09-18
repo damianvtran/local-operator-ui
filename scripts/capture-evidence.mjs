@@ -3691,11 +3691,17 @@ export const STORIES = [
 	 * change it is the "before" of is "the previous behaviour was no anchor at
 	 * all", which round 1 (review M5) corrected in this file and in the design doc.
 	 *
-	 * `hover-file` is the file case (Copy, Open, Open folder); `hover-url` is the
-	 * URL case, which is the already-captured-by-markdown case and offers no Open
-	 * folder; `hover-directory` is the matrix's one deliberate omission; and
-	 * `hover-missing` is the state that replaced a press which silently did
-	 * nothing, so what it shows is a SENTENCE rather than a disabled button.
+	 * `hover-file` is the file case (Copy, Open in canvas, Open in default app, Open
+	 * folder), which is the operator's ask in one frame: a canvas-openable file
+	 * reaches the app's own viewer from the strip, and the OS's application is the
+	 * press BESIDE it rather than the one it replaced. `hover-url` is the URL case,
+	 * which is the already-captured-by-markdown case and offers no Open folder;
+	 * `hover-directory` is the matrix's one deliberate omission; and `hover-missing`
+	 * is the state that replaced a press which silently did nothing, so what it shows
+	 * is a SENTENCE rather than a disabled button. `hover-no-viewer` is the other
+	 * side of the routing rule - a `.zip` and a `.dmg` keep the single `Open` that
+	 * hands them to the OS - and it is its own story because this fixture is what
+	 * every frame above photographs.
 	 *
 	 * The narrow pass is its own entry rather than a second width of the same one:
 	 * a long path in a 420px column wraps, and where the toolbar lands for a
@@ -3760,10 +3766,11 @@ export const STORIES = [
 	 *    the assertion that fails on the pre-remediation tree (the rect stayed on the
 	 *    first link's line while the contents followed the second).
 	 *  - `hover-toolbar-button` and `copy-pressed` are the strip's own states: its
-	 *    button under the pointer (one colour step, no transform) and its `Copy`
-	 *    after a real press (`Copied`). Both need a pointer that ARRIVES at a control
-	 *    which does not exist until a link has been hovered, which is what the chain
-	 *    is for.
+	 *    button under the pointer (one colour step, no transform; the button is
+	 *    `Open in canvas`, so the tooltip the frame carries is the operator's own
+	 *    label) and its `Copy` after a real press (`Copied`). Both need a pointer
+	 *    that ARRIVES at a control which does not exist until a link has been
+	 *    hovered, which is what the chain is for.
 	 *  - `escape-dismisses` is UX U2 in a real browser: a hover-raised strip, focus
 	 *    wherever the reader left it, one real Escape - and the strip must be GONE.
 	 *  - `selection-link-and-prose` and `selection-two-links` are the two spanning
@@ -3810,7 +3817,7 @@ export const STORIES = [
 		{
 			hoverChain: [
 				'[data-record-id="a1"] a[data-lo-kind="file"]',
-				'[data-lo-link-toolbar] button[aria-label="Open"]',
+				'[data-lo-link-toolbar] button[aria-label="Open in canvas"]',
 			],
 			hoverChainSettleMs: 900,
 			dir: "hover-toolbar-button",
@@ -3876,6 +3883,26 @@ export const STORIES = [
 			hover: '[data-record-id="a1"] a[data-lo-target$="with-annotations.xlsx"]',
 			hoverSettleMs: 500,
 			dir: "hover-narrow",
+		},
+	],
+	/*
+	 * The UNCHANGED half of the routing rule, and a story of its own so that adding
+	 * it moved no link in the fixture above: `bundle.zip` and `Local Operator.dmg`
+	 * are local existing files with no viewer, so their toolbar keeps the single
+	 * `Open` that hands them to the OS, and the `.xlsx` one paragraph down shows the
+	 * five-action strip beside them. Read as a pair, the two frames are the claim:
+	 * the new default is about files this app can SHOW, not about every path an
+	 * agent writes.
+	 */
+	["chat-canonical-links--no-viewer-targets", 1024, 360],
+	[
+		"chat-canonical-links--no-viewer-targets",
+		1024,
+		360,
+		{
+			hover: '[data-record-id="a1"] a[data-lo-target$="bundle.zip"]',
+			hoverSettleMs: 500,
+			dir: "hover-no-viewer",
 		},
 	],
 	/*
@@ -3949,7 +3976,7 @@ export const STORIES = [
 				stepSettleMs: 16,
 				legs: [
 					{
-						to: '[data-lo-link-toolbar] button[aria-label="Open"]',
+						to: '[data-lo-link-toolbar] button[aria-label="Open in canvas"]',
 						samples: 4,
 						expectKept: {
 							on: '[data-record-id="a1"] a[data-lo-kind="file"]',

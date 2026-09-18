@@ -26,6 +26,7 @@ const bundle = await build({
 			export {
 				classifyHref,
 				clickDecision,
+				canvasActionFor,
 				hasHighlight,
 				forgetProbe,
 				linkToolbarModel,
@@ -59,6 +60,7 @@ globalThis.Node = { ELEMENT_NODE: 1 };
 const {
 	classifyHref,
 	clickDecision,
+	canvasActionFor,
 	forgetProbe,
 	hasHighlight,
 	linkToolbarModel,
@@ -192,25 +194,233 @@ test("the click decision: a file opens, a drag refuses, everything else default"
 	 * can be read off a frame - a still of an opened file and a still of a suppressed
 	 * click look the same - and the anchor's own handler is the one place they live,
 	 * so the decision was lifted here to be assertable without a browser.
-	 *
 	 * `hold` is the drag-select refusal: `mousedown` and `mouseup` inside one anchor
 	 * fire `click`, so a drag over a file link without it would launch an
 	 * application mid-gesture. `browse` is everything this app has no answer for:
 	 * a URL keeps `target="_blank"`, and a highlight over one does NOT stop that
 	 * click, which is the behaviour it had before this change.
+	 *
+	 * `canOpenInCanvas` is the THIRD input and the operator's ask: a local path this
+	 * app has a viewer for, in a pane that has a canvas, opens there on a plain press
+	 * rather than in the OS's own application. Both directions are asserted here and
+	 * both are needed - the canvas half because it is the new behaviour, and the
+	 * fallback half because a change that routed EVERY local path to the canvas would
+	 * take a `.zip`, a directory and a `.dmg` away from the OS with the tab as its
+	 * only evidence.
 	 */
-	assert.equal(clickDecision({ kind: "file", hasHighlight: false }), "open");
-	assert.equal(clickDecision({ kind: "file", hasHighlight: true }), "hold");
-	assert.equal(clickDecision({ kind: "url", hasHighlight: false }), "browse");
-	assert.equal(clickDecision({ kind: "url", hasHighlight: true }), "browse");
-	assert.equal(clickDecision({ kind: "other", hasHighlight: false }), "browse");
-	assert.equal(clickDecision({ kind: "other", hasHighlight: true }), "browse");
+	const clickFor = (input) =>
+		clickDecision({ canOpenInCanvas: false, ...input });
+
+	assert.equal(
+		clickFor({ kind: "file", hasHighlight: false }),
+		"open",
+		"no pane in reach: today's OS hand-off",
+	);
+	assert.equal(
+		clickFor({ kind: "file", hasHighlight: false, canOpenInCanvas: true }),
+		"canvas",
+		"a viewer and a pane: the canvas is what a plain press opens",
+	);
+	assert.equal(
+		clickFor({ kind: "file", hasHighlight: true, canOpenInCanvas: true }),
+		"hold",
+		"the drag refusal outranks the canvas, as it outranks the OS",
+	);
+	assert.equal(
+		clickFor({ kind: "url", hasHighlight: false, canOpenInCanvas: true }),
+		"browse",
+		"a URL is never the canvas's, whatever the caller says about viewers",
+	);
+
+	assert.equal(clickFor({ kind: "file", hasHighlight: true }), "hold");
+	assert.equal(clickFor({ kind: "url", hasHighlight: false }), "browse");
+	assert.equal(clickFor({ kind: "url", hasHighlight: true }), "browse");
+	assert.equal(clickFor({ kind: "other", hasHighlight: false }), "browse");
+	assert.equal(clickFor({ kind: "other", hasHighlight: true }), "browse");
 });
 
 /* ------------------------------------------------------------ the toolbar matrix */
 
+/*
+ * `canOpenInCanvas: false` is the DEFAULT of both helpers below, because that is
+ * the answer everywhere this app renders markdown without a chat pane: the legacy
+ * message rows, the trace rows, Storybook, the run panel's child reader. Every
+ * case written before this change keeps its old expectation through that default,
+ * which is the assertion that "no pane" is still exactly today's matrix.
+ */
 const modelFor = (input) =>
-	linkToolbarModel({ quotable: false, probe: null, ...input });
+	linkToolbarModel({
+		quotable: false,
+		probe: null,
+		canOpenInCanvas: false,
+		...input,
+	});
+const canvasModelFor = (input) =>
+	linkToolbarModel({
+		quotable: false,
+		probe: null,
+		canOpenInCanvas: true,
+		...input,
+	});
+
+test("a canvas-openable file offers both opens, and the canvas is the one called Open", () => {
+	/*
+	 * The operator's ask, as the matrix: "opening up files ... supported by canvas
+	 * view by default are opened in the canvas instead of opened by the OS unless
+	 * the user clicks to open with default application". So the two presses are both
+	 * THERE and they are different places: the id `open` is the canvas, and the OS
+	 * gets an id of its own rather than the ambiguity of two buttons whose labels
+	 * are the only difference.
+	 */
+	const model = canvasModelFor({
+		kind: "file",
+		target: "~/x/report.xlsx",
+		probe: { exists: true, isFile: true },
+	});
+	assert.deepEqual(
+		model.actions.map((entry) => entry.id),
+		["copy", "open", "open-default", "open-folder", "quote"],
+	);
+	assert.deepEqual(
+		model.actions.map((entry) => entry.label),
+		[
+			"Copy path",
+			"Open in canvas",
+			"Open in default app",
+			"Open folder",
+			"Quote",
+		],
+	);
+	/*
+	 * The OS label is the string the canvas's own viewer chrome already ships
+	 * (`OpenInOsButton`, `file-viewer-state.tsx`). Asserted literally because a
+	 * second spelling for one action is how a reader concludes the two presses
+	 * differ.
+	 */
+	assert.equal(model.label, "Actions for report.xlsx");
+});
+
+test("a canvas-openable file leads with Quote when the highlight is inside it", () => {
+	assert.deepEqual(
+		canvasModelFor({
+			kind: "file",
+			target: "/tmp/a.pdf",
+			probe: { exists: true, isFile: true },
+			quotable: true,
+		}).actions.map((entry) => entry.id),
+		["quote", "copy", "open", "open-default", "open-folder"],
+	);
+});
+
+test("a DIRECTORY keeps one Open even where a canvas is in reach", () => {
+	/*
+	 * The veto that a naive `viewerFor` check would miss: a directory named
+	 * `notes.md` HAS a viewer by extension and is still not a document, so the
+	 * canvas action is off for every directory - and the single `Open` it keeps is
+	 * the OS's, which is what opens a folder.
+	 */
+	const model = canvasModelFor({
+		kind: "file",
+		target: "~/workspace/opoint-renewal-2026-09-17",
+		probe: { exists: true, isFile: false },
+	});
+	assert.deepEqual(
+		model.actions.map((entry) => entry.id),
+		["copy", "open", "quote"],
+	);
+	assert.equal(model.actions[1].label, "Open");
+});
+
+test("a file type with no viewer keeps the OS's Open even where a canvas exists", () => {
+	/*
+	 * `canOpenInCanvas` is FALSE here for the reason it exists: `viewerFor` answers
+	 * `null` for a `.zip`, so the caller cannot offer a canvas for it. The matrix is
+	 * asserted in that shape as well as through `canvasModelFor`, because the flag is
+	 * the caller's answer rather than a re-derivation of the extension list here.
+	 */
+	const model = modelFor({
+		kind: "file",
+		target: "~/x/bundle.zip",
+		probe: { exists: true, isFile: true },
+	});
+	assert.deepEqual(
+		model.actions.map((entry) => entry.id),
+		["copy", "open", "open-folder", "quote"],
+	);
+	assert.equal(model.actions[1].label, "Open");
+});
+
+test("a missing path offers no canvas action, whatever the caller claims", () => {
+	const model = canvasModelFor({
+		kind: "file",
+		target: "~/x/gone.xlsx",
+		probe: { exists: false, isFile: false },
+	});
+	assert.deepEqual(
+		model.actions.map((entry) => entry.id),
+		["copy", "quote"],
+	);
+	assert.equal(model.note, "No file at …/x/gone.xlsx");
+});
+
+test("the canvas action is one predicate, asked by the matrix and the icon map alike", () => {
+	/*
+	 * `canvasActionFor` is what keeps the fifth button and the icon that marks it
+	 * from drifting: the two cases that are easy to get wrong are here rather than
+	 * only inside `linkToolbarModel`, because the toolbar's icon map reads this and
+	 * NOT the model's action list.
+	 */
+	assert.equal(
+		canvasActionFor({
+			isDirectory: false,
+			probe: { exists: true, isFile: true },
+			canOpenInCanvas: true,
+		}),
+		true,
+	);
+	assert.equal(
+		canvasActionFor({
+			isDirectory: true,
+			probe: { exists: true, isFile: false },
+			canOpenInCanvas: true,
+		}),
+		false,
+	);
+	assert.equal(
+		canvasActionFor({
+			isDirectory: false,
+			probe: { exists: false, isFile: false },
+			canOpenInCanvas: true,
+		}),
+		false,
+	);
+	/*
+	 * Nothing known is the OPTIMISTIC case, the same direction `probeTarget`
+	 * documents: with no answer to stat through, the app has no grounds to withhold
+	 * the canvas, and a wrong guess costs one press that reports itself.
+	 */
+	assert.equal(
+		canvasActionFor({ isDirectory: false, probe: null, canOpenInCanvas: true }),
+		true,
+	);
+	assert.equal(
+		canvasActionFor({
+			isDirectory: false,
+			probe: { exists: true, isFile: true },
+			canOpenInCanvas: false,
+		}),
+		false,
+	);
+});
+
+test("an unprobed canvas-openable file offers the whole canvas matrix", () => {
+	assert.deepEqual(
+		canvasModelFor({ kind: "file", target: "/tmp/x.xlsx" }).actions.map(
+			(entry) => entry.id,
+		),
+		["copy", "open", "open-default", "open-folder", "quote"],
+	);
+});
 
 test("a file offers Copy, Open, Open folder and Quote", () => {
 	const model = modelFor({

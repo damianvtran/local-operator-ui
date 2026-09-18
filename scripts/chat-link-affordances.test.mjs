@@ -82,7 +82,10 @@ const bundle = await build({
 		contents: `
 			export { MarkdownRenderer, LINK_URL_TRANSFORM } from "./src/renderer/src/features/chat/components/markdown-renderer";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
-			export { classifyHref } from "./src/renderer/src/features/chat/utils/link-actions";
+			export { CanvasPaneProvider } from "./src/renderer/src/features/chat/utils/canvas-pane";
+			export { classifyHref, probeTarget, resetProbeCache } from "./src/renderer/src/features/chat/utils/link-actions";
+			export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
+			export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 		`,
 		resolveDir: ROOT,
 	},
@@ -123,8 +126,13 @@ writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
 	MarkdownRenderer,
 	CanonicalTranscript,
+	CanvasPaneProvider,
 	LINK_URL_TRANSFORM,
 	classifyHref,
+	probeTarget,
+	resetProbeCache,
+	useCanvasStore,
+	useUiPreferencesStore,
 } = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ the mount */
@@ -966,6 +974,284 @@ test("the keyboard contract: Tab enters the FOCUSED link's toolbar, and Escape h
 	 * scored against the FILE rather than the test, so a green suite came back red.
 	 * The frame's own rAF work is tracked and dropped by `restore`; only these
 	 * delays need to be let through first, and they are bounded.
+	 */
+	await new Promise((resolve) => setTimeout(resolve, 450));
+});
+
+/* --------------------------------------------- where a press goes: canvas or OS */
+
+/*
+ * THE OPERATOR'S ASK, DRIVEN THROUGH THE SHIPPED ANCHOR AND THE SHIPPED TOOLBAR.
+ *
+ * "opening up files in local-operator-ui that are supported by canvas view (PDFs,
+ * XLSX/csvs, text, markdown, etc) by default are opened in the canvas instead of
+ * opened by the OS unless the user clicks to open with default application in the
+ * hover popup (add this). Change open to 'Open in canvas' on the tooltip and then
+ * another button for open in default application."
+ *
+ * Four things that sentence implies, and each is one of the tests below:
+ *
+ *   1. the press on the LINK goes to the canvas (not the OS);
+ *   2. the toolbar offers BOTH presses, and the OS one still reaches the OS;
+ *   3. a target the canvas cannot show - no viewer for the type, a path the probe
+ *      already knows is gone - keeps exactly the press it had. This is the half a
+ *      green frame cannot carry: a regression that routed every local path to the
+ *      canvas would look NEW rather than wrong in a still, and the reader's `.zip`
+ *      would open a tab saying nothing;
+ *   4. with no pane provider at all - Storybook, the legacy message rows, the
+ *      trace rows, the run panel's child reader - the press is the press of
+ *      before. That is one assertion rather than a promise: the anchor is rendered
+ *      by every markdown surface in this app and only one of them has a pane.
+ *
+ * The stores are real (bundled from source, not stubbed) because the claim is
+ * about what a press WRITES: a stub would only assert that the wiring matches the
+ * stub. Their keys are synthetic and cleared before each of these tests.
+ */
+
+const PANE = "links-test-pane";
+
+const canvasStateFor = (conversationId) =>
+	useCanvasStore.getState().conversations[conversationId];
+
+/**
+ * Empty the two stores a canvas press writes to.
+ *
+ * `canvas-store` persists to `localStorage` and `ui-preferences-store` owns the
+ * right-hand slot, so a tab left behind by one test would be read as the next
+ * test's own press - the failure that looks like a passing assertion about the
+ * wrong press.
+ */
+function resetCanvasStores() {
+	useCanvasStore.setState({ conversations: {} });
+	useUiPreferencesStore.setState({ isCanvasOpen: false });
+}
+
+/**
+ * Render one paragraph of markdown, inside a pane or not, with both bridges
+ * recorded.
+ *
+ * `probeFiles` answers "it is there and it is a file" for everything, which is
+ * the state a reader's own hover leaves behind; `readFile` echoes the path and the
+ * encoding it was asked for, so a document's content is evidence about WHICH read
+ * the press made rather than a constant.
+ */
+async function renderInPane(content, { pane = PANE } = {}) {
+	stubApi(frame.window);
+	const opened = [];
+	frame.window.api.openFile = async (target) => {
+		opened.push(target);
+		return { ok: true, resolved: target };
+	};
+	const read = [];
+	frame.window.api.readFile = async (target, encoding) => {
+		read.push({ target, encoding });
+		return { success: true, data: `${target}|${encoding}` };
+	};
+	resetCanvasStores();
+	const anchor = () => frame.document.querySelector('a[data-lo-kind="file"]');
+	const render = pane
+		? React.createElement(
+				CanvasPaneProvider,
+				{ conversationId: pane },
+				React.createElement(MarkdownRenderer, { content }),
+			)
+		: React.createElement(MarkdownRenderer, { content });
+	await frame.render(render);
+	return { opened, read, anchor: anchor() };
+}
+
+test("a press inside a pane opens the file in the CANVAS, and never asks the OS", async () => {
+	const { opened, anchor } = await renderInPane(`Saved it to ${REPORT}.`);
+	const press = await frame.dispatch(anchor, "click");
+	assert.equal(
+		press.defaultPrevented,
+		true,
+		"the default must still be cancelled",
+	);
+	/*
+	 * The document is built behind an `await` (the text kinds are read before the
+	 * tab is opened), so the promise chain has to drain before the store can be
+	 * read - the flush is the ONLY thing the async `act` is for here.
+	 */
+	await act(async () => {});
+	assert.deepEqual(
+		opened,
+		[],
+		"the OS must not be asked for a file the canvas took",
+	);
+	const state = canvasStateFor(PANE);
+	assert.ok(state, "the pane must have canvas state");
+	assert.equal(
+		state.selectedTabId,
+		REPORT,
+		"the file must be the selected tab",
+	);
+	assert.equal(
+		state.viewMode,
+		"documents",
+		"the pane must switch to the viewer",
+	);
+	assert.deepEqual(
+		state.openTabs.map((tab) => tab.id),
+		[REPORT],
+	);
+	const document = state.files.at(-1);
+	assert.equal(document.path, REPORT, "the resolved path is the document's id");
+	assert.equal(
+		document.title,
+		"opoint_adverse_media_query_failures_2026-09-17.xlsx",
+		"the title is the basename the tab and the viewer chrome show",
+	);
+	/*
+	 * The bytes are the ones THIS layer read, at the encoding the router chose for
+	 * the kind: an `.xlsx` is a spreadsheet, so base64 - and a document that
+	 * carried no content would be a viewer waiting on a read that never happens.
+	 */
+	assert.equal(document.content, `${REPORT}|base64`);
+	assert.equal(
+		useUiPreferencesStore.getState().isCanvasOpen,
+		true,
+		"the right-hand slot must be claimed, or the tab opens into a canvas nobody sees",
+	);
+});
+
+test("a press on a text file reads it as utf-8, and on a PDF does not read it at all", async () => {
+	/*
+	 * The router's own split, at the press rather than in the table: `utf-8` and
+	 * `base64` are read here, and the kinds that read their own bytes (`bytes`,
+	 * `range`) are handed over without them - a PDF's 40 MB must never become a
+	 * string in a store persisted to `localStorage`.
+	 */
+	const text = await renderInPane("The log is at /tmp/x/run.log.");
+	await frame.dispatch(text.anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(
+		text.read.map((entry) => entry.encoding),
+		["utf-8"],
+	);
+	assert.equal(
+		canvasStateFor(PANE).files.at(-1).content,
+		"/tmp/x/run.log|utf-8",
+	);
+
+	const pdf = await renderInPane("The report is at /tmp/x/summary.pdf.");
+	await frame.dispatch(pdf.anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(pdf.read, [], "the viewer reads a PDF's bytes itself");
+	assert.equal(canvasStateFor(PANE).files.at(-1).path, "/tmp/x/summary.pdf");
+});
+
+test("a press with NO pane is exactly the press of before: the OS", async () => {
+	/*
+	 * The degradation the context exists to give, asserted on the same path the
+	 * canvas case uses: no provider, no canvas, and the OS hand-off untouched. Every
+	 * surface that renders markdown without a chat pane depends on this, and so does
+	 * the canvas's own viewer chrome (which renders its own markdown).
+	 */
+	const { opened, anchor } = await renderInPane(`Saved it to ${REPORT}.`, {
+		pane: null,
+	});
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(opened, [REPORT], "the OS is what opens it there");
+	assert.equal(
+		canvasStateFor(PANE),
+		undefined,
+		"and nothing may be opened into a canvas this surface does not have",
+	);
+	assert.equal(useUiPreferencesStore.getState().isCanvasOpen, false);
+});
+
+test("a type with no canvas viewer keeps the OS hand-off even inside a pane", async () => {
+	/*
+	 * `viewerFor`'s `null` is the documented "hand it to the OS", and this is the
+	 * assertion that the new default did not swallow it: a `.zip` is a local path
+	 * with no viewer, so the press must be the press it always was.
+	 */
+	const { opened, anchor } = await renderInPane(
+		"The bundle is /tmp/x/bundle.zip.",
+	);
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(opened, ["/tmp/x/bundle.zip"]);
+	assert.equal(canvasStateFor(PANE), undefined);
+});
+
+test("a path the probe already knows is GONE gets no canvas tab", async () => {
+	/*
+	 * The one case where a canvas open would be a LIE rather than a downgrade: the
+	 * toolbar already asked, the answer was "not there", and a tab would open onto a
+	 * viewer saying nothing. The cached answer is read (no new round trip on the
+	 * press), the canvas is skipped, and the reader keeps the OS attempt and its own
+	 * sentence - which is what the missing-file matrix offers beside it.
+	 */
+	resetProbeCache();
+	await probeTarget(GONE, async () => [
+		{ input: GONE, resolved: GONE, exists: false, isFile: false },
+	]);
+	const { opened, anchor } = await renderInPane(`The report is at ${GONE}.`);
+	await frame.dispatch(anchor, "click");
+	await act(async () => {});
+	assert.deepEqual(opened, [GONE], "the OS attempt, as before this change");
+	assert.equal(canvasStateFor(PANE), undefined, "and no dead tab");
+	resetProbeCache();
+});
+
+test("the strip offers both opens, and each press does its own thing", async () => {
+	/*
+	 * The operator's second half: the toolbar's `Open` becomes `Open in canvas` and
+	 * a second button opens the OS's application. Driven through the SHIPPED toolbar
+	 * buttons - the labels are the accessible names the reader's tooltip shows, so
+	 * this asserts the copy as well as the wiring - and each press is read back off
+	 * the store and the bridge it reaches.
+	 */
+	const opened = [];
+	stubApi(frame.window);
+	frame.window.api.openFile = async (target) => {
+		opened.push(target);
+		return { ok: true, resolved: target };
+	};
+	frame.window.api.readFile = async (target, encoding) => ({
+		success: true,
+		data: `${target}|${encoding}`,
+	});
+	resetCanvasStores();
+	await mountTranscript();
+	const report = anchorFor(
+		frame.document,
+		"opoint_adverse_media_query_failures_2026-09-17.xlsx",
+	);
+	await frame.dispatch(report, "focusin");
+	const labels = [
+		...frame.document.querySelectorAll("[data-lo-link-toolbar] button"),
+	].map((button) => button.getAttribute("aria-label"));
+	assert.deepEqual(labels, [
+		"Copy path",
+		"Open in canvas",
+		"Open in default app",
+		"Open folder",
+		"Quote",
+	]);
+	const button = (label) =>
+		frame.document.querySelector(
+			`[data-lo-link-toolbar] button[aria-label="${label}"]`,
+		);
+	await frame.dispatch(button("Open in canvas"), "click");
+	await act(async () => {});
+	assert.deepEqual(
+		opened,
+		[],
+		"Open in canvas must not reach the OS's application",
+	);
+	assert.equal(canvasStateFor("links-test").selectedTabId, REPORT);
+	/* And the OS press still does, from the same strip, on the same path. */
+	await frame.dispatch(button("Open in default app"), "click");
+	await act(async () => {});
+	assert.deepEqual(opened, [REPORT]);
+	/*
+	 * The Radix tooltip delays this test arms, drained before teardown for the
+	 * reason the keyboard test above documents in full: a delay that fires after
+	 * `restore` reads a global that is gone, and node scores it against the FILE.
 	 */
 	await new Promise((resolve) => setTimeout(resolve, 450));
 });
