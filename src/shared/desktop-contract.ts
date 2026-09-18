@@ -1967,9 +1967,22 @@ export const DESKTOP_DEADLINE_EXCEEDED_CODE = "deadline_exceeded";
  *
  * ONE sentence rather than a machine register translated into copy, unlike the
  * stream details in `shared/desktop-stream-notice.ts`: this refusal is already
- * addressed to the reader ("View this completion in the foreground..."), and
+ * addressed to the reader ("View these completions in the foreground..."), and
  * user copy is the register that names the true condition in the reader's own
  * terms. A second sentence for the same fact would be a second authority.
+ *
+ * THE SENTENCE SPEAKS IN THE SET'S TERMS AND NAMES NO COUNT, and both halves are
+ * deliberate (UX round 4, U4-1). The control the reader just clicked says
+ * `Mark all 2 read` over its own count, so a refusal answering in the singular
+ * ("this completion ... it") disagreed with the gesture it was answering at
+ * every count above one — measured with one row and with two. Nothing here names
+ * a number, so nothing here can disagree at any count: the count is the
+ * control's, and on success the receipt's, which pluralises by count the way
+ * `markAllReadReceipt` does ("1 has a newer result and stays unread" against
+ * "2 have newer results and stay unread"). Pluralising THIS sentence by count
+ * would instead need main to build it per request, and that is incompatible with
+ * the property the next paragraph relies on: ONE constant, produced by main and
+ * matched by the renderer across a boundary that carries only text.
  *
  * Declared here, and as a STRING, for the deadline code's reason above — it has
  * to survive IPC and a re-throw — with one consequence specific to it:
@@ -1989,7 +2002,7 @@ export const DESKTOP_DEADLINE_EXCEEDED_CODE = "deadline_exceeded";
  */
 export const DESKTOP_FOREGROUND_REQUIRED_CODE = "foreground_required";
 export const DESKTOP_FOREGROUND_REQUIRED_MESSAGE =
-	"View this completion in the foreground before marking it read.";
+	"View these completions in the foreground before marking them read.";
 
 /**
  * Ops that change nothing on the server, and so may be told "nothing was read".
