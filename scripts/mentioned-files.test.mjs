@@ -45,6 +45,7 @@ const bundle = await build({
 				shouldRequestPage,
 			} from "./src/renderer/src/features/chat/canonical/mentioned-files-scan";
 			export { buildFileTiles, displayParent, parentDirectory } from "./src/renderer/src/features/chat/components/canvas/file-tiles";
+			export { viewerFor, READ_ENCODING } from "./src/renderer/src/features/chat/utils/viewer-routing";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -74,6 +75,8 @@ const {
 	buildFileTiles,
 	displayParent,
 	parentDirectory,
+	viewerFor,
+	READ_ENCODING,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -911,4 +914,220 @@ test("parentDirectory handles roots, dotfiles and data URIs", () => {
 	assert.equal(parentDirectory("~/notes/plan.md"), "~/notes");
 	assert.equal(parentDirectory("report.md"), null);
 	assert.equal(parentDirectory("data:image/png;base64,AAAA"), null);
+});
+
+// ---------------------------------------------------- the scratchpad protocol
+
+/*
+ * The backend gives every session a scratch folder addressed as a URL, and every
+ * tool result prints the RESOLVED ABSOLUTE PATH beside the URL it was given:
+ *
+ *   Created <scheme>run/perf.md -> /…/sessions/<id>/scratchpad/run/perf.md (207 chars).
+ *
+ * So the panel's contract here is two-sided, and the two sides fail in opposite
+ * directions. The URL is a SCHEME, not a path: nothing on disk is named
+ * `<scheme>run/perf.md`, so admitting one puts a tile in front of the user for a
+ * file that cannot open. The resolved path is an ordinary absolute path with a
+ * known extension - exactly what the prose tier admits - and dropping it is the
+ * missed mention the whole panel exists to prevent.
+ *
+ * The strings below are transcribed from a real transcript produced by the
+ * sibling backend worktree, not invented for the test; see
+ * `docs/evidence/scratchpad-files/README.md` for the session they came from.
+ */
+
+/**
+ * The scheme, spelled ONCE.
+ *
+ * It was renamed once already (`notes://` → `scratchpad://`, decided in the same
+ * round as this change), and this file asserts the scheme's behaviour in a dozen
+ * places - so every literal here is built from this constant. A rename is one
+ * edit in this file and the same one edit in the guide the backend ships.
+ */
+const SCRATCHPAD_SCHEME = "scratchpad://";
+
+/** A session directory, in the shape the harness creates (`sessions/<12 hex>`). */
+const SESSION_DIR = "/Users/damian/.local-operator/sessions/0f3a91c4b7d2";
+const NOTE_DIR = `${SESSION_DIR}/scratchpad/run`;
+
+test("a bare scheme URL is a scheme, not a path, in every argument form", () => {
+	// Every spelling the grammar accepts, including the two directory forms
+	// (`<scheme>` lists the root, `<scheme>run/` descends) and a query, which the
+	// grammar does not define but a URL-shaped string can still carry.
+	for (const url of [
+		`${SCRATCHPAD_SCHEME}run/perf.md`,
+		`${SCRATCHPAD_SCHEME}`,
+		`${SCRATCHPAD_SCHEME}.`,
+		`${SCRATCHPAD_SCHEME}run/`,
+		`${SCRATCHPAD_SCHEME}run/perf.md?x=1`,
+	]) {
+		assert.deepEqual(
+			paths([tool("a", { path: url })]),
+			[],
+			`${url} names no file on disk`,
+		);
+		assert.deepEqual(
+			paths([tool("a", { file_path: url })]),
+			[],
+			`${url} is not a file under any path key`,
+		);
+		// And under a NON-path key, where the prose rules apply: there the match
+		// begins at the URL's own `//`, which is a network location rather than an
+		// absolute path, and is rejected on that ground instead.
+		assert.deepEqual(
+			paths([tool("a", { command: `cat ${url}` })]),
+			[],
+			`${url} in a command string is still not a path`,
+		);
+	}
+});
+
+test("a scratchpad write result yields its resolved path and never the URL beside it", () => {
+	const records = [
+		tool(
+			"a",
+			{ path: `${SCRATCHPAD_SCHEME}run/perf.md` },
+			`Created ${SCRATCHPAD_SCHEME}run/perf.md -> ${NOTE_DIR}/perf.md (207 chars).`,
+		),
+	];
+	assert.deepEqual(paths(records), [`${NOTE_DIR}/perf.md`]);
+	assert.equal(sources(records)[`${NOTE_DIR}/perf.md`], "prose");
+});
+
+test("a scratchpad note read back names its resolved path too", () => {
+	// The read form is `<url> -> <path>` followed by the numbered body.
+	const records = [
+		tool(
+			"a",
+			{ path: `${SCRATCHPAD_SCHEME}run/metrics.csv` },
+			`${SCRATCHPAD_SCHEME}run/metrics.csv -> ${NOTE_DIR}/metrics.csv\n1| name,p50_ms,p95_ms\n2| canary,41,118`,
+		),
+	];
+	assert.deepEqual(paths(records), [`${NOTE_DIR}/metrics.csv`]);
+});
+
+test("every format the protocol promises becomes exactly one tile", () => {
+	/*
+	 * The shapes the backend's guide names, plus the script extensions the store
+	 * now also holds - a session that writes a helper script through the scheme
+	 * gets a tile for it exactly like a note, and the routing test below is what
+	 * says which surface opens it.
+	 */
+	const cases = [
+		["md", "perf"],
+		["json", "run-config"],
+		["csv", "metrics"],
+		["tsv", "metrics"],
+		["txt", "session-log"],
+		["yaml", "config"],
+		["yml", "config"],
+		["log", "rollout"],
+		["sh", "rollout"],
+		["bash", "rollout"],
+		["py", "collect"],
+	];
+	for (const [ext, name] of cases) {
+		const url = `${SCRATCHPAD_SCHEME}run/${name}.${ext}`;
+		assert.deepEqual(
+			paths([
+				tool(
+					"a",
+					{ path: url },
+					`Created ${url} -> ${NOTE_DIR}/${name}.${ext} (12 chars).`,
+				),
+			]),
+			[`${NOTE_DIR}/${name}.${ext}`],
+			`${ext} resolves to exactly one tile`,
+		);
+	}
+});
+
+test("every promised format opens in the viewer a user expects", () => {
+	/*
+	 * A script is CODE and must never reach the markdown viewer: a `.sh` opened
+	 * as prose would render a shebang as a heading, which is the failure this
+	 * table exists to catch rather than a routing detail.
+	 */
+	const expected = {
+		md: "markdown",
+		json: "code",
+		csv: "spreadsheet",
+		tsv: "spreadsheet",
+		txt: "code",
+		yaml: "code",
+		yml: "code",
+		log: "code",
+		sh: "code",
+		bash: "code",
+		py: "code",
+	};
+	for (const [ext, kind] of Object.entries(expected)) {
+		const path = `${NOTE_DIR}/note.${ext}`;
+		assert.equal(viewerFor(path), kind, `${ext} opens as ${kind}`);
+		// The document's own `type` must not outvote the path it came with: a
+		// `.txt` note is text whatever a stale classification says.
+		assert.equal(
+			viewerFor(path, "other"),
+			kind,
+			`${ext} routes by its path when the type disagrees`,
+		);
+	}
+	// The encoding is half the answer: the grid reads base64, the text viewers
+	// decode as UTF-8.
+	assert.equal(READ_ENCODING.markdown, "utf-8");
+	assert.equal(READ_ENCODING.code, "utf-8");
+	assert.equal(READ_ENCODING.spreadsheet, "base64");
+});
+
+test("an extensionless note yields no tile, which is why the guide names one", () => {
+	// The naming rule the backend's guide teaches, with a test behind it: the
+	// prose tier demands a known extension, so `<scheme>run/perf` is listed but
+	// never tiled.
+	const records = [
+		tool(
+			"a",
+			{ path: `${SCRATCHPAD_SCHEME}run/perf` },
+			`Created ${SCRATCHPAD_SCHEME}run/perf -> ${NOTE_DIR}/perf (12 chars).`,
+		),
+	];
+	assert.deepEqual(paths(records), []);
+});
+
+test("a scratchpad listing names a directory, not a file", () => {
+	// The listing prints the scratchpad root's absolute path and its entries by
+	// name - the header's own wording is not what this turns on. Neither the root
+	// (a directory, no extension) nor a bare entry name is a mention, which is the
+	// deliberate trade recorded in the backend's design: the panel gets its tiles
+	// from the notes the agent actually writes.
+	const listing = `Scratchpad listing ${SCRATCHPAD_SCHEME} -> ${SESSION_DIR}/scratchpad (2 entries):\nperf.md\nrun`;
+	assert.deepEqual(
+		paths([tool("a", { path: SCRATCHPAD_SCHEME }, listing)]),
+		[],
+	);
+});
+
+test("the guide's own example line leaves one tile behind: a recorded false positive", () => {
+	/*
+	 * The guide the backend ships documents the result shape with this line:
+	 *
+	 *   `<scheme>logs/run.md -> /…/sessions/<id>/scratchpad/logs/run.md`
+	 *
+	 * and an agent that reads the guide puts that line in the transcript. The
+	 * scanner then takes the tail of the placeholder as a path: the token before
+	 * it is cut at `<` (excluded from the character class), and the remainder
+	 * resumes at `/scratchpad/logs/run.md` after the `>`, which IS an allowed
+	 * prefix because a shell redirect (`convert in.png > /tmp/out.png`) is a real
+	 * mention. Measured in the real app: one `run.md` tile reading
+	 * `No longer on disk`.
+	 *
+	 * Recorded here rather than asserted as desirable. The fix belongs to the
+	 * prose tier's placeholder handling - the file-url tier already has that
+	 * guard (`URL_TRUNCATION`), and the prose tier's rules are audited against
+	 * real payloads, so it is a change of its own rather than a passenger on the
+	 * scratchpad work. Everything else about the scheme is pinned above.
+	 */
+	const guideLine = `in the form\n\`${SCRATCHPAD_SCHEME}logs/run.md -> /…/sessions/<id>/scratchpad/logs/run.md\`. That path`;
+	assert.deepEqual(paths([assistant(1, guideLine)]), [
+		"/scratchpad/logs/run.md",
+	]);
 });
