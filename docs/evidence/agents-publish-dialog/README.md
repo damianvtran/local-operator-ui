@@ -23,7 +23,7 @@ contract (§0.2 D-1, §6.2, §6.3):
 ## What produced these frames
 
 Storybook built from this tree, through the repo's own capturer, one narrowed
-(append-mode) pass per surface, all twelve themes, on port 6041:
+(append-mode) pass over the whole family, all twelve themes, on port 6041:
 
 ```
 node scripts/capture-evidence.mjs http://localhost:6041 --only=agents-publish-dialog
