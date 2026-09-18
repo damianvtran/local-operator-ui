@@ -1,11 +1,11 @@
 import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
 import { Info } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-	COMPOSER_TIPS,
 	TIP_ROTATE_INTERVAL_MS,
 	advanceTipIndex,
+	composerTips,
 	tipAt,
 	tipRotationOrder,
 } from "./composer-tips";
@@ -20,6 +20,20 @@ type Props = {
 	 * the draft. See the module comment for why the clock stops.
 	 */
 	suspended: boolean;
+	/**
+	 * Whether the composer offers the `@` affordance — see `composerTips`, which is
+	 * where the entry this gates lives and why it is gated at all.
+	 *
+	 * The pool is re-derived when this changes, which happens once per mount in
+	 * practice: capabilities answer within the first second, so the ring is drawn
+	 * before the answer and redrawn when it arrives. Re-drawing reshuffles the tail
+	 * — the opening entry is pinned, and the pin is what a committed capture shows —
+	 * so this is a re-ordering of an otherwise random ring rather than a visible
+	 * jump, and the alternative (freezing the pre-answer order) would leave a
+	 * capable backend showing the pool WITHOUT the mention entry until the next
+	 * mount.
+	 */
+	mentionsEnabled?: boolean;
 };
 
 /**
@@ -46,8 +60,12 @@ type Props = {
  * `aria-live` and no `role="status"` — ordinary static text, in the register
  * the caller's container gives it.
  */
-export const ComposerTipRow = ({ suspended }: Props) => {
-	const [order] = useState(() => tipRotationOrder(COMPOSER_TIPS));
+export const ComposerTipRow = ({
+	suspended,
+	mentionsEnabled = false,
+}: Props) => {
+	const pool = useMemo(() => composerTips(mentionsEnabled), [mentionsEnabled]);
+	const order = useMemo(() => tipRotationOrder(pool), [pool]);
 	const [index, setIndex] = useState(0);
 
 	/*

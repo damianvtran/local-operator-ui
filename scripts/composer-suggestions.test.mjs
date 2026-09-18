@@ -51,9 +51,11 @@ await unlink(bundlePath);
 
 const {
 	COMPOSER_TIPS,
+	MENTION_TIP,
 	DEFAULT_MESSAGE_SUGGESTIONS,
 	MAX_SUGGESTIONS,
 	advanceTipIndex,
+	composerTips,
 	pickSuggestions,
 	sampleSuggestions,
 	TIP_ROTATE_INTERVAL_MS,
@@ -222,9 +224,22 @@ test("two sessions do not share an opening sample", () => {
 
 test("the tip pool is distinct, non-empty and inside its character budget", () => {
 	assert.equal(COMPOSER_TIPS.length, 10);
+	/*
+	 * THE MENTION ENTRY IS ASSERTED WITH THE REST, because the rule it has to obey
+	 * is the same one and it is only ever shown to a composer that offers `@`:
+	 * `composerTips(true)` is the union the widest-capability harness rotates.
+	 */
+	const pool = composerTips(true);
+	assert.equal(pool.length, COMPOSER_TIPS.length + 1);
+	assert.ok(pool.includes(MENTION_TIP));
+	assert.deepEqual(
+		composerTips(false),
+		COMPOSER_TIPS,
+		"a composer that does not offer @ must not teach the key",
+	);
 	assert.equal(
-		new Set(COMPOSER_TIPS).size,
-		COMPOSER_TIPS.length,
+		new Set(pool).size,
+		pool.length,
 		"the rotation's no-immediate-repeat guarantee rests on the labels being distinct",
 	);
 	/*
@@ -243,7 +258,7 @@ test("the tip pool is distinct, non-empty and inside its character budget", () =
 	 * was `ask for the mobile relay to drive this session from your phone`, 62
 	 * characters, which is the number the headroom has to clear.)
 	 */
-	for (const tip of COMPOSER_TIPS) {
+	for (const tip of pool) {
 		assert.ok(tip.length > 0, "no empty tip");
 		assert.ok(
 			tip.length <= 62,
@@ -258,20 +273,30 @@ test("the tip pool is distinct, non-empty and inside its character budget", () =
 });
 
 test("the rotation opens on pool[0] and then turns through the whole pool", () => {
-	const order = tipRotationOrder(COMPOSER_TIPS, seeded(11));
+	const order = tipRotationOrder(composerTips(true), seeded(11));
 	assert.equal(
 		order[0],
-		COMPOSER_TIPS[0],
+		composerTips(true)[0],
 		"the opening frame is pinned, which is what makes a committed capture of this surface reproducible",
 	);
-	assert.equal(order.length, COMPOSER_TIPS.length);
+	assert.equal(order.length, composerTips(true).length);
 	assert.deepEqual(
 		[...order].sort(),
-		[...COMPOSER_TIPS].sort(),
+		[...composerTips(true)].sort(),
 		"the ring holds every entry exactly once",
 	);
+	// The gated pool opens on the same entry and is the same ring short one slot.
+	// The tail is a SHUFFLE, so the two orders agree only on the pin — which is
+	// the property a committed capture of this row depends on.
+	const gated = tipRotationOrder(composerTips(false), seeded(11));
+	assert.equal(gated[0], order[0]);
+	assert.equal(gated.length, order.length - 1);
 	assert.deepEqual(
-		tipRotationOrder(COMPOSER_TIPS, seeded(11)),
+		[...gated].sort(),
+		[...order].filter((entry) => entry !== MENTION_TIP).sort(),
+	);
+	assert.deepEqual(
+		tipRotationOrder(composerTips(true), seeded(11)),
 		order,
 		"the order is a function of the random source",
 	);
@@ -283,10 +308,10 @@ test("the rotation opens on pool[0] and then turns through the whole pool", () =
 });
 
 test("a tick never shows the same tip twice in a row, including across the wrap", () => {
-	const order = tipRotationOrder(COMPOSER_TIPS, seeded(13));
+	const order = tipRotationOrder(composerTips(true), seeded(13));
 	let index = 0;
 	const seen = [];
-	for (let i = 0; i < COMPOSER_TIPS.length * 3; i++) {
+	for (let i = 0; i < order.length * 3; i++) {
 		seen.push(tipAt(order, index));
 		index = advanceTipIndex(index, order.length);
 	}
@@ -298,8 +323,8 @@ test("a tick never shows the same tip twice in a row, including across the wrap"
 		);
 	}
 	assert.deepEqual(
-		seen.slice(0, COMPOSER_TIPS.length).sort(),
-		[...COMPOSER_TIPS].sort(),
+		seen.slice(0, composerTips(true).length).sort(),
+		[...composerTips(true)].sort(),
 		"one full turn covers the pool before it repeats",
 	);
 });

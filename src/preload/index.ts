@@ -191,6 +191,13 @@ const api = {
 	 */
 	probeFiles: (paths: string[], cwd?: string) =>
 		ipcRenderer.invoke("probe-files", paths, cwd),
+	/**
+	 * One directory's listable entries, for a picker that offers rows from the
+	 * filesystem. One level per call; deepening is the caller asking again for the
+	 * directory the user typed a `/` into.
+	 */
+	listDirectory: (dir: string, cwd?: string) =>
+		ipcRenderer.invoke("list-directory", dir, cwd),
 
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 	showItemInFolder: (filePath: string) =>
