@@ -729,12 +729,17 @@ export function resolveSecondLaunchShow(input: {
  * `inactive` KEEPS the panel, and that half is a measurement rather than a hope.
  * Measured on this host (macOS 25.6, Electron 44.3.0): `app.showAboutPanel()`
  * orders the panel front - the window server lists it, `284x191` at the sizes
- * these runs use, `onscreen: true` - WITHOUT making the app the active
- * application; `app.isActive()` stays false
- * and the frontmost pid never moves (0 of 30 samples in the run recorded in
- * `docs/evidence/about-panel`). That is exactly the promise `inactive` makes, so
- * the panel is allowed there. `normal` is the operator's own app and behaves as
- * it always did.
+ * these runs use, and `screencapture -l` renders it - WITHOUT making the app the
+ * active application; `app.isActive()` stays false and the frontmost pid never
+ * moves (0 of 30 samples in the run recorded in `docs/evidence/about-panel`).
+ * That census carries the panel `onscreen: false`, because it carries every window
+ * of that run false: the flag answers for the SCREEN, and the display was asleep,
+ * which is why the same run's on-screen set reads `(none)`. The distinction is the
+ * reason the rig differences over the FULL census rather than the on-screen set - a
+ * difference over the latter would read "the action created nothing" for the wrong
+ * reason - and not a claim that the panel was ever on a lit display. That is exactly
+ * the promise `inactive` makes, so the panel is allowed there. `normal` is the
+ * operator's own app and behaves as it always did.
  *
  * The identity the panel carries is registered separately, in `index.ts`: an
  * unpackaged launch's panel is filled from Electron.app's bundle, and this
