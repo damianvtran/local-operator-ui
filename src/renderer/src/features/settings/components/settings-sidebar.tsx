@@ -1,3 +1,4 @@
+import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { RadientMark } from "@shared/components/common/radient-mark";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
@@ -222,10 +223,14 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					 * D3). The mark is the ground plus the weight, which is what the app rail
 					 * already used for the same fact. See
 					 * `features/chat/components/chat-sidebar.tsx`'s `rowCurrent` block: one
-					 * decision, two call sites.
+					 * decision, two call sites — and since round 5 (design D22, agent A-7) the
+					 * terms are IMPORTED from that block rather than spelled a second time
+					 * here. This rail's copy was the one design round 4's D19 was raised
+					 * against, a term apart from the specimen's: a hand-written replica of a
+					 * role is a role that can drift, and two of the three replicas did.
 					 */
 					isActive
-						? "bg-highlight font-medium text-ink hover:bg-highlight"
+						? rowCurrent
 						: "text-ink-muted hover:bg-elevated hover:text-ink",
 				)}
 			>

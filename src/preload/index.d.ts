@@ -40,8 +40,13 @@ declare global {
 			 */
 			browser: {
 				state: () => Promise<unknown>;
-				newTab: () => Promise<unknown>;
+				/** `sessionId` attributes the new tab to the conversation it was opened
+				 * from; `null` (and absent) mean it belongs to no conversation. */
+				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;
+				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",
+				 * sessionId }` which main resolves against the live registry. */
+				closeTabs: (intent: unknown) => Promise<unknown>;
 				activateTab: (tabId: number) => Promise<unknown>;
 				navigate: (url: string) => Promise<unknown>;
 				reload: () => Promise<unknown>;

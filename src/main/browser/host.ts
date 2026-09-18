@@ -188,6 +188,20 @@ function sessionRequesterOf(requester: string): string | null {
 	return id || null;
 }
 
+/**
+ * A bulk close, as this host executes one (design R5).
+ *
+ * DECLARED ON BOTH SIDES OF THE PROCESS BOUNDARY, deliberately, following the repo's
+ * existing pattern for a cross-process shape (`ContentRect` is declared in
+ * `registry.ts` and again in `use-browser-chrome.ts`): main does not import renderer
+ * modules, and the IPC boundary VALIDATES the intent it is given rather than trusting
+ * a type from the other side — which is what makes the two declarations the same shape
+ * without one of them being authority over the other.
+ */
+export type CloseTabsIntent =
+	| { mode: "ids"; tabIds: number[] }
+	| { mode: "conversation"; sessionId: string };
+
 export interface BrowserHostOptions {
 	registry: BrowserActionContext["registry"];
 	cdp: BrowserActionContext["cdp"];
@@ -567,10 +581,15 @@ export class BrowserHost implements BrowserActionContext {
 				owner: entry.owner,
 				// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
 				// change adds to the wire. `null` is a real and common value — a restored
-				// tab is nobody's (`registry.ts:231`), a user tab that was never handed
-				// over is nobody's, and a tab handed back goes back to `null` (`:386`) —
-				// and it means "not any conversation's", which is why a conversation's
-				// scope shows it under no scope but `"all"` (spec 7.2).
+				// tab is nobody's (`registry.ts:231`), a user tab never handed over and
+				// opened from the route or a draft is nobody's — and it means "not any
+				// conversation's", which is why a conversation's scope shows it under no
+				// scope but `"all"` (spec 7.2).
+				//
+				// A TAB HANDED BACK KEEPS ITS CONVERSATION (review round 1, Q2):
+				// revocation restores `homeSessionId` rather than writing `null`, so the
+				// field is "which conversation this belongs to", not "which session is
+				// driving it" — the second question is `handedOver` and `owner`.
 				sessionId: entry.sessionId,
 				active: entry.active,
 				restored: entry.restored,
@@ -645,10 +664,32 @@ export class BrowserHost implements BrowserActionContext {
 		};
 	}
 
-	/** A user tab: created active, at about:blank, owned by the user and with no
-	 * capability until the user hands it over (design 6.1, 6.3). */
-	async newTab(): Promise<Record<string, unknown>> {
-		const record = this.registry.create({ owner: "user" });
+	/**
+	 * A user tab: created active, at about:blank, owned by the user and with no
+	 * capability until the user hands it over (design 6.1, 6.3).
+	 *
+	 * ATTRIBUTED TO THE CONVERSATION IT WAS OPENED FROM when it has one (design R1).
+	 * That is the whole of the main-process half and it takes no new mechanism:
+	 * `registry.create` already stores a non-restored tab's `sessionId`
+	 * (`registry.ts:231`) and already leaves every user tab's `nonce` null (`:232`).
+	 *
+	 * WHY THIS CHANGES NO CAPABILITY, and the test that pins it
+	 * (`scripts/browser-host.test.mjs`): `mayDrive` requires the session id AND a
+	 * nonce (`registry.ts:395-397`), and this tab has the first and not the second, so
+	 * an agent in that conversation still cannot drive a tab the user opened. The
+	 * `tabs` listing redacts its handle, `agentTabCount()` filters on `owner` and is
+	 * unmoved, the agent cap is unmoved, and hand-over stays the only authority
+	 * transfer.
+	 *
+	 * Before this, all three ways a user could open a tab produced one the pane's
+	 * "This conversation" scope would never show, because the scope filter reads this
+	 * one field.
+	 */
+	async newTab(sessionId?: string | null): Promise<Record<string, unknown>> {
+		const record = this.registry.create({
+			owner: "user",
+			sessionId: sessionId ?? null,
+		});
 		await record.view.webContents.loadURL("about:blank");
 		await this.cdp.attach(record.view.webContents);
 		this.onChanged();
@@ -660,6 +701,53 @@ export class BrowserHost implements BrowserActionContext {
 		this.loadFailures.delete(tabId);
 		this.registry.destroy(tabId);
 		this.onChanged();
+		return this.chromeState();
+	}
+
+	/**
+	 * Close several tabs as ONE intent (design R5): resolve it, close them, notify once.
+	 *
+	 * TWO MODES RATHER THAN ONE LIST, and the difference is the race the design names:
+	 *
+	 * - `ids` is positional — "these tabs, the ones I could see" — and main closes
+	 *   exactly those, skipping any that are already gone. A tab an agent opened after the
+	 *   press is not in the list and survives, which the strip then shows honestly.
+	 * - `conversation` is resolved HERE, at execution time, against the live registry. A
+	 *   list computed from a projection the renderer read seconds ago (the band stays open
+	 *   while the user reads it) would miss a tab an agent opened in that conversation in
+	 *   the meantime — and the user pressed something that said ALL.
+	 *
+	 * ONE `onChanged()` EITHER WAY, which is the whole point of `registry.destroyMany`: N
+	 * closes are N full `chromeState()` builds, N IPC broadcasts, N renderer re-reads and
+	 * N `session.json` writes.
+	 */
+	closeTabs(intent: CloseTabsIntent): Record<string, unknown> {
+		const tabIds =
+			intent.mode === "ids"
+				? intent.tabIds
+				: this.registry
+						.list()
+						.filter((record) => record.sessionId === intent.sessionId)
+						.map((record) => record.tabId);
+		for (const tabId of tabIds) {
+			// Per tab, before the batch drops them: a pending receipt and a last load
+			// failure are keyed by tab id, and both are stale the moment the tab is gone.
+			this.dropReceipt(tabId);
+			this.loadFailures.delete(tabId);
+		}
+		/*
+		 * NO SECOND NOTIFICATION HERE, and the removal of one is the whole claim: the
+		 * registry's own `onChanged` IS this host's (`index.ts:312` passes the same
+		 * function `BrowserHost` takes as `onChanged`), so `destroyMany` already sent the
+		 * ONE `browser-state-changed` this intent owes the renderer. Calling it again here
+		 * — which `closeTab` above does, and which is two broadcasts for one user action —
+		 * measured as two events for a four-tab batch in `browser-chrome-proof.mjs`, and
+		 * the count is the evidence the design's §6.4 asks for: N full `chromeState()`
+		 * builds, N broadcasts and N `session.json` writes are exactly what this intent
+		 * exists to replace. The state is still returned fresh, which is what the caller
+		 * reads; nothing was removed means nothing changed, and nothing is sent.
+		 */
+		this.registry.destroyMany(tabIds);
 		return this.chromeState();
 	}
 

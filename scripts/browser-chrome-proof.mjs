@@ -38,7 +38,7 @@
  * Usage: node scripts/browser-chrome-proof.mjs [--keep]
  */
 
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -100,6 +100,7 @@ let WINDOW_VIEWPORT = { width: 1380, height: 868 };
 
 const transcript = [];
 let failures = 0;
+let skips = 0;
 
 function record(label, body) {
 	transcript.push(`### ${label}\n\n\`\`\`\n${body}\n\`\`\`\n`);
@@ -115,6 +116,31 @@ function check(label, ok, detail) {
 	);
 	record(label, `[${status}] ${detail === undefined ? "" : detail}`);
 	return ok;
+}
+
+/**
+ * A check that could not be TAKEN, reported as one rather than as a failure
+ * (QA round 2, Q1).
+ *
+ * WHY THIS EXISTS AND WHEN IT IS THE HONEST ANSWER: probe P12 samples the
+ * frontmost application through `osascript`, and on this host System Events can
+ * stop answering altogether — QA measured `AppleEvent timed out (-1712)` after
+ * 120.33 s and `-609 Connection is invalid` on a second probe — in which case the
+ * sampler collects ZERO samples and there is no reading to assert against. That
+ * is not a property of the app, so failing the run over it says "the app raised
+ * its window" when nothing was observed at all; but silently passing it would be
+ * worse, because a vacuous pass is exactly the false-green this change exists to
+ * remove. Hence a third status that is neither: printed, counted, and named in a
+ * record, so the transcript says which check was not taken and why.
+ *
+ * IT IS NOT A GENERAL ESCAPE HATCH: only a check whose instrument is OUTSIDE the
+ * harness's control qualifies (the OS declining to answer), never one that
+ * measured the app and disagreed.
+ */
+function skip(label, detail) {
+	skips += 1;
+	say(`[SKIP] ${label}${detail === undefined ? "" : `\n        ${detail}`}`);
+	record(label, `[SKIP] ${detail === undefined ? "" : detail}`);
 }
 
 // ---- the local site the proof drives ---------------------------------------
@@ -896,13 +922,66 @@ async function waitFor(predicate, label, timeoutMs = 30_000) {
 	}
 }
 
+/**
+ * How long the OS may take to answer "who is frontmost" before the sample is
+ * abandoned.
+ *
+ * A BOUND RATHER THAN A WAIT, and it is deliberately a generous one: the measured
+ * answers on this host run 5.31 to 19.98 s with one `-609 Connection is invalid`
+ * after 42.86 s, and QA measured a single `osascript` returning after 120.33 s
+ * (round 2). The property P12 asserts is that THIS app's pid never appears among
+ * the frontmost ones, so an answer slower than this is not a reading the check
+ * needs - and the run has a SKIP path for the case where the OS will not answer
+ * at all, which is a truthful verdict where a tail nobody bounded is not. Thirty
+ * seconds sits above every answer measured here that was an answer and below the
+ * tail that held the process open past the end of the run (review round 3, A-3).
+ */
+const FRONTMOST_TIMEOUT_MS = 30_000;
+
+/**
+ * The `osascript` children currently asking the OS the frontmost question.
+ *
+ * Held at module scope because the sampler's `stop()` has to be able to END them:
+ * clearing the timer stops the NEXT sample, and without this an in-flight child
+ * keeps the event loop alive after `main()` has finished its work - the process
+ * then exits on the OS's own AppleEvent timeout rather than on its own schedule.
+ * A SET rather than one slot because the run's last reading is taken directly
+ * (`frontmostAfter`) while the sampler's timer may still be armed, so two calls
+ * can legitimately overlap in the tail this exists to bound.
+ */
+const frontmostChildren = new Set();
+
+/** Kill any in-flight `osascript`, so a stopped sampler stops costing wall time. */
+function cancelFrontmost() {
+	for (const child of frontmostChildren) child.kill();
+	frontmostChildren.clear();
+}
+
 /** The frontmost application's name and pid, for probe P12. Returns null when the
- * OS will not answer (no accessibility permission), which is reported rather than
- * guessed. */
-async function frontmost() {
-	try {
-		const { execFileSync } = await import("node:child_process");
-		return execFileSync(
+ * OS will not answer (no accessibility permission) or takes longer than
+ * `FRONTMOST_TIMEOUT_MS`, which is reported rather than guessed.
+ *
+ * ASYNC, AND THAT IS THE POINT. This was `execFileSync`, called once a second by
+ * the sampler below, and `osascript` reaching System Events is not fast: measured
+ * on this host at 5.31 / 7.01 / 10.91 / 19.98 s per call, with one
+ * `-609 Connection is invalid` after 42.86 s. A SYNCHRONOUS call of that length
+ * blocks the event loop for its whole duration, and the timer that scheduled it
+ * is overdue by the time the block ends, so it fires again the moment the loop is
+ * free: the process spends effectively all of its time inside `osascript` and no
+ * other timer in it gets to run.
+ *
+ * The consequence was measured, not theorised: with the synchronous sampler
+ * running, the 250 ms poll in `waitForState` was scheduled out past its own 60 s
+ * deadline and the run died with `no LIVE host answered /health` on 6 of 6
+ * attempts while the host's record sat on disk the entire time - and it still did
+ * so on a quiet machine (load1 ~14, pageouts flat), which is what rules load out
+ * as the cause. The probe was reading the state file outside its own deadline. A
+ * timer that cannot fire cannot time out. `execFile` keeps the wait off the loop;
+ * a reject (including the OS refusing to answer) is still reported as null.
+ */
+function frontmost() {
+	return new Promise((resolve) => {
+		const child = execFile(
 			"osascript",
 			[
 				"-e",
@@ -910,13 +989,14 @@ async function frontmost() {
 				"-e",
 				'tell application "System Events" to return (name of p) & "|" & (unix id of p)',
 			],
-			{ stdio: ["ignore", "pipe", "ignore"] },
-		)
-			.toString()
-			.trim();
-	} catch {
-		return null;
-	}
+			{ stdio: ["ignore", "pipe", "ignore"], timeout: FRONTMOST_TIMEOUT_MS },
+			(error, stdout) => {
+				frontmostChildren.delete(child);
+				resolve(error ? null : String(stdout).trim());
+			},
+		);
+		frontmostChildren.add(child);
+	});
 }
 
 /**
@@ -928,16 +1008,35 @@ async function frontmost() {
  * "the browser raised the window". What the property actually claims is that THIS
  * app's process never becomes frontmost, so the sampler records the frontmost pid
  * once a second and the check is against the app's own pid.
+ *
+ * WHY THE LOOP RE-ARMS ITSELF INSTEAD OF USING `setInterval`: one sample can take
+ * tens of seconds (see `frontmost`), so a fixed-rate timer would stack an
+ * `osascript` child per tick and a 40 s answer at 1 Hz would leave roughly forty
+ * of them alive at once. Re-arming one second AFTER each answer keeps exactly one
+ * sample in flight, and the price is only the cadence: on a host where the OS
+ * answers slowly the run collects a sample every few tens of seconds rather than
+ * every second. That is the honest rate, and it is still what the property needs
+ * - the claim is that THIS app's pid never appears among the frontmost ones, not
+ * how many times it was looked at.
  */
 function startFrontmostSampler(appPid) {
 	const samples = [];
-	const timer = setInterval(() => {
-		void frontmost().then((value) => {
-			if (value) samples.push(value);
-		});
-	}, 1000);
+	let stopped = false;
+	let timer = null;
+	const tick = async () => {
+		const value = await frontmost();
+		if (value) samples.push(value);
+		if (!stopped) timer = setTimeout(tick, 1000);
+	};
+	timer = setTimeout(tick, 1000);
 	return {
-		stop: () => clearInterval(timer),
+		stop: () => {
+			stopped = true;
+			if (timer) clearTimeout(timer);
+			// The timer only stops the NEXT sample; an in-flight `osascript` would keep
+			// the loop alive past the end of the run (see `cancelFrontmost`).
+			cancelFrontmost();
+		},
 		samples,
 		appWasFrontmost: () =>
 			samples.filter((sample) => sample.endsWith(`|${appPid}`)).length,
@@ -1065,9 +1164,21 @@ async function main() {
 		 * copy (this app's sentences since #205, and the pre-#205 "offline" ones, so the
 		 * read works on either tree). The numbers are printed rather than hidden: a
 		 * frame that is prettier than the app is not evidence.
+		 *
+		 * THE WHOLE BAND, NOT THE FIRST NOTICE (review round 2, D15). The shell can carry
+		 * TWO stacked notices at once - the connectivity band (68 CSS px with main's second
+		 * line) and the compatibility band (53) - and `app.tsx` sums exactly that pair
+		 * (68 + 53 = 121) for the case this run is in. The finder used to `find()` the FIRST
+		 * candidate whose copy matched the regex, and the regex did not carry the
+		 * compatibility banner's sentence at all, so the number it printed (68) under-
+		 * reported the band in the frame by 53 px and its `overlaps` compared 68 against a
+		 * strip at 121: ~53 px of headroom that did not exist, on a band that ends 1 px
+		 * above the strip's own top border. Now EVERY matching candidate is collected and
+		 * the reading is the UNION of their boxes, with each notice named beside it, so the
+		 * figure a reader quotes is the band the frame carries.
 		 */
 		const banner = await evaluate(`(() => {
-			const bannerText = /The server is offline|You are offline|A connectivity issue has been detected|Not connected to a Local Operator server|The Local Operator server stopped/i;
+			const bannerText = /The server is offline|You are offline|A connectivity issue has been detected|Not connected to a Local Operator server|The Local Operator server stopped|The Local Operator server is not answering|No Local Operator daemon was found/i;
 			/*
 			 * Shape-independent on purpose: a div.fixed finder read "no banner" over a
 			 * window carrying one the moment the bands moved into flow (D9), which is the
@@ -1088,18 +1199,23 @@ async function main() {
 					strips.push(child);
 				}
 			}
-			const el = strips.find((node) => bannerText.test(node.innerText || '')) ?? null;
+			const notices = strips.filter((node) => bannerText.test(node.innerText || ''));
 			const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
 			const box = (r) => r ? { top: Math.round(r.top), height: Math.round(r.height) } : null;
 			const s = strip ? strip.getBoundingClientRect() : null;
-			if (!el) return { present: false, tabStrip: box(s), overlapsTabStrip: null };
-			const b = el.getBoundingClientRect();
+			const headline = (node) => (node.innerText || '').split('\\n')[0].slice(0, 48);
+			if (!notices.length) return { present: false, tabStrip: box(s), overlapsTabStrip: null };
+			const boxes = notices.map((node) => node.getBoundingClientRect());
+			const top = Math.round(Math.min(...boxes.map((b) => b.top)));
+			const bottom = Math.round(Math.max(...boxes.map((b) => b.bottom)));
 			return {
 				present: true,
-				text: (el.innerText || '').split('\\n')[0].slice(0, 60),
-				banner: box(b),
+				notices: notices.length,
+				text: headline(notices[0]),
+				banner: { top, height: bottom - top },
+				each: notices.map((node) => ({ text: headline(node), ...box(node.getBoundingClientRect()) })),
 				tabStrip: box(s),
-				overlapsTabStrip: s ? b.bottom > s.top : null,
+				overlapsTabStrip: s ? bottom > s.top : null,
 			};
 		})()`);
 		record(
@@ -1109,7 +1225,7 @@ async function main() {
 		check(
 			"the tab strip is present in the layout, whether or not the connectivity banner is up over it",
 			banner.tabStrip !== null && banner.tabStrip.height > 30,
-			`banner ${JSON.stringify(banner.banner ?? null)} (${banner.text ?? "not up in this run"}), tab strip ${JSON.stringify(banner.tabStrip)}, overlaps ${banner.overlapsTabStrip}`,
+			`banner ${JSON.stringify(banner.banner ?? null)}${banner.present ? ` over ${banner.notices} notice(s) ${JSON.stringify(banner.each)}` : ""} (${banner.text ?? "not up in this run"}), tab strip ${JSON.stringify(banner.tabStrip)}, overlaps ${banner.overlapsTabStrip}`,
 		);
 		/*
 		 * The suppression is re-asserted before EVERY frame by `captureRenderer`, so
@@ -1794,14 +1910,26 @@ async function main() {
 		// (design 6.3 — that is the property, not an inconvenience), so the agent's
 		// tab is activated for the frame. Both tabs are in the strip either way, which
 		// is what this frame is about.
+		//
+		// THE RECT IS RE-MEASURED HERE, NOT THE ONE READING TAKEN ON THE EMPTY SURFACE
+		// (QA round 2, Q3). `rect` is this run's first geometry reading, taken before
+		// the band existed, and this frame is composed with the band OPEN: the page
+		// layer is pasted at that older `y`, so it painted over the band's own rows and
+		// the URL bar below the heading — the "heading with no rows under it" Q3 filed.
+		// The app's own rectangle is what `compose` has to paste the page into, which is
+		// what the band's own frame already does (`rectWithActions`). The other
+		// call sites that still pass the stale `rect` are NOT touched here: the frames
+		// they write are this harness's own scratch output, and the set this branch ships
+		// from the run is `09`, `16` and `17`.
 		await activateAgentTab();
 		await sleep(800);
 		const mixedFrame = await captureRenderer("09-strip-user-and-agent");
+		const mixedRect = await contentRect();
 		await compose(
 			"09-strip-user-and-agent",
 			mixedFrame,
 			await capturePage(state, agentToken, "agent-tab-page"),
-			rect,
+			mixedRect,
 		);
 		say(`frame: ${join(OUT_DIR, "09-strip-user-and-agent.png")}`);
 
@@ -2929,10 +3057,23 @@ async function main() {
 			url: "https://dropped.example/",
 			requester: "session:other",
 		});
+		/*
+		 * THE WAIT IS ON THE ROW THE CHECK ASSERTS, not on "some rows exist". It used to be
+		 * the latter, and that is ALWAYS TRUE here: the two `reask.example` rows are already
+		 * in the list when this scene starts, so the predicate returned the FIRST read and
+		 * the check compared the DOM against the state it had before the withdrawal. It read
+		 * as a flake rather than a tautology because the first read happens to land after
+		 * React's next commit on a fast enough run, and a slower one measures the harness
+		 * instead of the product: with the projection read through one shared store this
+		 * check failed 4 runs out of 4 while passing on the branch's base commit, and the
+		 * difference was the extra commit's latency, not the row.
+		 */
 		const afterWithdrawal = await waitFor(
 			async () => {
 				const read = await resolvedRead();
-				return read.rows.length > 0 ? read : null;
+				return read.rows.some((row) => row.includes("dropped.example"))
+					? read
+					: null;
 			},
 			"the withdrawn request to be explained in the band",
 			15_000,
@@ -2960,13 +3101,20 @@ async function main() {
 		);
 		// ---- 10. focus (probe P12) -------------------------------------------
 		const frontmostAfter = await frontmost();
-		check(
-			"the app's own process never became the frontmost application (probe P12, sampled once a second)",
-			sampler.samples.length > 0 && sampler.appWasFrontmost() === 0,
-			sampler.samples.length === 0
-				? `the OS would not answer (last reading ${frontmostAfter}); the deterministic evidence is the window-mode guard test`
-				: `app pid ${app.child.pid}; ${sampler.samples.length} samples; frontmost was ${sampler.distinct().join(", ")}; the app was frontmost in ${sampler.appWasFrontmost()} of them`,
-		);
+		if (sampler.samples.length === 0) {
+			// See `skip`: with no sample at all there is nothing to assert against, and
+			// the OS declining to answer is not the app's behaviour.
+			skip(
+				"the app's own process never became the frontmost application (probe P12, sampled through the run)",
+				`the OS would not answer at all (last reading ${frontmostAfter}); sampler collected 0 samples, so no reading exists to assert on - System Events is not answering for this session. The deterministic evidence for this property is the window-mode guard test; the two point readings are recorded below.`,
+			);
+		} else {
+			check(
+				"the app's own process never became the frontmost application (probe P12, sampled through the run)",
+				sampler.appWasFrontmost() === 0,
+				`app pid ${app.child.pid}; ${sampler.samples.length} samples; frontmost was ${sampler.distinct().join(", ")}; the app was frontmost in ${sampler.appWasFrontmost()} of them`,
+			);
+		}
 		record(
 			"frontmost application, sampled through the run",
 			`before: ${frontmostBefore}\nafter: ${frontmostAfter}\nsamples: ${sampler.distinct().join(", ")}\nthe app's pid (${app.child.pid}) was frontmost in ${sampler.appWasFrontmost()} of ${sampler.samples.length} samples`,
@@ -3214,6 +3362,540 @@ async function main() {
 			`${noTabsSeen.current.tabs.length} tab(s) left; page area "${noTabsSeen.copy.text}"; buttons ${JSON.stringify(noTabsSeen.copy.buttons)}`,
 		);
 		say(`frame: ${join(OUT_DIR, "18-surface-no-tabs-open.png")}`);
+
+		/*
+		 * ---- 19. the pooled strip at scale: 20 tabs across 6 conversations ----
+		 *
+		 * The design's §6.4 scene, and the one state where "can the user see what a
+		 * conversation opened" has an answer that is not obviously yes: at 1160px the
+		 * pool needs roughly four times the scroller it has, so the strip scrolls and
+		 * the group labels are the only thing that says which run is whose (design R3).
+		 *
+		 * THE TABS ARE OPENED THROUGH R1'S OWN PATH, from the renderer, as user tabs
+		 * (`window.api.browser.newTab(sessionId)`) rather than as agent tabs through
+		 * RPC: the agent cap is 8 (`registry.ts`), so twenty agent tabs is not a state
+		 * the product can reach, and a scene built out of them would be measuring a
+		 * world that cannot exist. It also means this step exercises the attribution
+		 * twenty times with real presses of the real control's own intent.
+		 *
+		 * NO BACKEND, SO NO CONVERSATION TITLES (this run's own isolation, not a
+		 * defect): `sessionDisplayName` resolves against the session list, which is
+		 * empty here, so every chip falls back to the session id — which is the rule's
+		 * other half, asserted below rather than glossed over. The named version of
+		 * this state is the `GroupedOverflow` story, which has a session list.
+		 */
+		const POOL_CONVERSATIONS = [
+			"conv-alpha",
+			"conv-beta",
+			"conv-gamma",
+			"conv-delta",
+			"conv-epsilon",
+			"conv-zeta",
+		];
+		const poolOpened = await evaluate(`(async () => {
+			const conversations = ${JSON.stringify(POOL_CONVERSATIONS)};
+			for (let index = 0; index < 18; index += 1) {
+				await window.api.browser.newTab(conversations[index % conversations.length]);
+			}
+			// TWO TABS OF NOBODY'S: the tail run the design puts last, under its own label.
+			await window.api.browser.newTab(null);
+			await window.api.browser.newTab(null);
+			const state = await window.api.browser.state();
+			return {
+				count: state.tabs.length,
+				sessions: state.tabs.map((tab) => tab.sessionId),
+			};
+		})()`);
+		check(
+			"twenty user tabs opened from six conversations are attributed to them, and two belong to none",
+			poolOpened.count === 20 &&
+				poolOpened.sessions.filter((id) => id !== null).length === 18,
+			JSON.stringify(poolOpened),
+		);
+		const reachableRoute = await openBrowserFromRail();
+		check(
+			"the route is the host this scene reads the pool in",
+			typeof reachableRoute === "string" && reachableRoute.includes("/browser"),
+			`location.hash ${reachableRoute}`,
+		);
+		const poolSeen = await waitFor(async () => {
+			const reading = await evaluate(`(() => {
+				const chips = [...document.querySelectorAll('[data-tour-tag="browser-tab-group"]')].map((chip) => chip.innerText.replace(/\\s+/g, ' ').trim());
+				const rows = [...document.querySelectorAll('[data-tour-tag="browser-tab"]')];
+				const titles = rows
+					.map((row) => {
+						const title = row.querySelector('[data-tour-tag="browser-tab-title"]');
+						return title ? Math.round(title.getBoundingClientRect().width) : null;
+					})
+					.filter((width) => width !== null);
+				/* A TITLE BOX IS ONLY A MEASUREMENT IF IT IS ON SCREEN: a row scrolled out
+				   of the scroller has a real box at a real width, off to the side, and
+				   counting those would let a strip that shows nobody's title pass. */
+				const scroller = document.querySelector('[data-tour-tag="browser-tab-strip"]')?.getBoundingClientRect();
+				const visible = titles.filter((_, index) => {
+					const row = rows[index];
+					if (!row || !scroller) return false;
+					const box = row.getBoundingClientRect();
+					return box.left >= scroller.left - 1 && box.right <= scroller.right + 1;
+				});
+				const pin = document.querySelector('[data-tour-tag="browser-tab-overflow"]');
+				return {
+					chips,
+					rows: rows.length,
+					titleWidths: titles,
+					visibleTitleWidths: visible,
+					pin: pin ? pin.innerText.replace(/\\s+/g, ' ').trim() : null,
+					groupIds: [...document.querySelectorAll('[data-tour-tag="browser-tab-group"]')].map((chip) => chip.getAttribute('data-group-id')),
+				};
+			})()`);
+			return reading.chips.length === 7 && reading.rows === 20 ? reading : null;
+			// NON-FATAL ON PURPOSE: this step is the §6.3 before/after pair, so the SAME
+			// command runs against a scratch worktree at the merge base, where the strip
+			// has no group labels and this reading can never arrive. A throw here ends the
+			// run on the base tree and takes the before frame with it, which is what
+			// happened the first time; the CHECK below is what fails instead.
+		}, "the pooled strip to settle with 20 rows and 7 group labels").catch(
+			() => null,
+		);
+		const poolFrame = await captureRenderer("19-strip-pooled-20-over-6");
+		await compose(
+			"19-strip-pooled-20-over-6",
+			poolFrame,
+			null,
+			await contentRect(),
+		);
+		record("the pooled strip", JSON.stringify(poolSeen, null, 2));
+		check(
+			"the pooled strip groups 20 tabs into their 6 conversations plus the unattributed run, LAST (R3)",
+			poolSeen !== null &&
+				poolSeen.chips.length === 7 &&
+				poolSeen.groupIds.slice(0, 6).join("|") ===
+					POOL_CONVERSATIONS.join("|") &&
+				poolSeen.groupIds[6] === "" &&
+				poolSeen.chips[6].startsWith("No conversation"),
+			poolSeen === null
+				? "the strip never settled with 20 rows and 7 labels, so this check FAILS by the guard above rather than by a TypeError the run cannot report (review round 1, A5)"
+				: `labels ${JSON.stringify(poolSeen.chips)}; group ids ${JSON.stringify(poolSeen.groupIds)}`,
+		);
+		check(
+			"each label carries its conversation's name and its tab count (the count is what lets a bulk close count the conversation it names)",
+			poolSeen?.chips.every((label) =>
+				/\d+$/.test(label.replace(/\s+/g, " ").trim()),
+			),
+			JSON.stringify(poolSeen?.chips ?? null),
+		);
+		/*
+		 * THE 85px TITLE FLOOR, measured on the rows that are actually on screen. The
+		 * labels take ~150px each of the scroller, so this is the check that says
+		 * whether they cost the tabs the room the design says they do not - and the
+		 * number the design round judges the labels' width against.
+		 */
+		check(
+			"every tab title that is on screen keeps the 85px floor the file promises, with the group labels in the strip",
+			poolSeen !== null &&
+				poolSeen.visibleTitleWidths.length > 0 &&
+				poolSeen.visibleTitleWidths.every((width) => width >= 85),
+			`visible ${JSON.stringify(poolSeen?.visibleTitleWidths ?? null)} of all ${JSON.stringify(poolSeen?.titleWidths ?? null)}`,
+		);
+		check(
+			"the pool overflows the strip, so the pinned control says how many tabs are off screen",
+			poolSeen !== null &&
+				typeof poolSeen.pin === "string" &&
+				/^\d+$/.test(poolSeen.pin),
+			`pinned control reads ${JSON.stringify(poolSeen?.pin ?? null)}`,
+		);
+		say(`frame: ${join(OUT_DIR, "19-strip-pooled-20-over-6.png")}`);
+
+		/*
+		 * ---- 19b. THE PINNED CONTROL, OPEN, WITH A REAL PAGE BEHIND IT ----------
+		 *
+		 * THE FRAME §12.1 ASKED FOR. The design's open question 1 is mechanical but
+		 * unmeasured: a Radix menu anchored in the band paints DOWNWARD into the content
+		 * rect, `browser-view-policy.ts:34-38` deliberately does not register menus in the
+		 * band, and no z-index beats a native sibling view — so the pinned control, which
+		 * is the token "the user can always reach any tab" is spent on, may have been
+		 * unreadable exactly at the scale it exists for.
+		 *
+		 * THIS STEP IS THEREFORE THE ACCEPTANCE TEST, NOT A PHOTOGRAPH: it opens the
+		 * control and composites the frame the way every other frame here is composited —
+		 * the renderer's own paint plus the PAGE layer at the content rectangle — so if
+		 * the page covers the control's rows, the composite says so in pixels, and the
+		 * rows' own hit-testability is read from the DOM as well. A step that asserted
+		 * only "the menu exists" would be green in both worlds.
+		 *
+		 * THE PAGE LAYER NEEDS AN AGENT TAB: `capturePage` addresses a tab by its handle,
+		 * and a user tab has no handle by design (§6.3). So one agent tab is opened in the
+		 * first conversation and activated, which is also the state the frame wants — the
+		 * active tab is the only one that occupies the content rectangle.
+		 */
+		const pinAgent = await rpc(state, "open", {
+			url: `${origin()}/second`,
+			requester: "session:conv-alpha",
+		});
+		const pinToken = pinAgent.json?.result?.tab ?? null;
+		check(
+			"an agent tab is available for the page layer, in one of the pool's conversations",
+			typeof pinToken === "string",
+			`${pinAgent.status} ${JSON.stringify(pinAgent.json?.result ?? pinAgent.json?.error)}`,
+		);
+		const activated = await evaluate(`(() => {
+			const rows = [...document.querySelectorAll('[role="tab"]')];
+			const agent = rows.find((row) => row.innerText.includes('Agent'));
+			if (!agent) return 'missing';
+			agent.click();
+			return 'clicked';
+		})()`);
+		await sleep(600);
+		const pinTrigger = await evaluate(
+			`document.querySelector('[data-tour-tag="browser-tab-overflow"]') ? 'present' : 'missing'`,
+		);
+		const pinLabel = await evaluate(
+			`document.querySelector('[data-tour-tag="browser-tab-overflow"]')?.getAttribute('aria-label') ?? null`,
+		);
+		await realClick('[data-tour-tag="browser-tab-overflow"]');
+		/*
+		 * EITHER SHAPE IS ACCEPTED HERE, deliberately. On the tree this step was written
+		 * against the control opens a Radix menu (`[role="menu"]`); the change it is the
+		 * acceptance test for replaces that with a band row
+		 * (`browser-tab-overflow-list`). Waiting for one of them is what lets the SAME
+		 * command produce the before frame and the after frame the design's §6.3 asks
+		 * for, rather than two harnesses that are not comparable.
+		 */
+		const pinReading = await waitFor(
+			async () => {
+				const reading = await evaluate(`(() => {
+				const list = document.querySelector('[data-tour-tag="browser-tab-overflow-list"]');
+				const menu = document.querySelector('[role="menu"]');
+				const open = list ?? menu;
+				if (!open) return null;
+				const box = (node) => {
+					if (!node) return null;
+					const rect = node.getBoundingClientRect();
+					return { top: Math.round(rect.top), bottom: Math.round(rect.bottom), left: Math.round(rect.left), right: Math.round(rect.right), height: Math.round(rect.height) };
+				};
+				const rows = [...open.querySelectorAll('[data-tour-tag="browser-tab-overflow-row"], [role="menuitem"]')];
+				const content = document.querySelector('[data-tour-tag="browser-content"]');
+				/*
+				 * THE BAND'S HEADING ROW, read as a fact about the DOM rather than judged
+				 * from a still (review round 1, D5): the frame committed with this step did
+				 * not contain the "All tabs, N not shown" heading the source renders, and a
+				 * still cannot say whether that is a stale bundle, a clip, or a missing row.
+				 * The text, the box and a painted-vs-not reading are recorded beside the
+				 * band's own box, so the next reader gets a measurement instead of an
+				 * argument. Recorded for either shape: the dropdown this replaced has no
+				 * such row.
+				 */
+				const heading = list ? list.firstElementChild : null;
+				const headingStyle = heading ? getComputedStyle(heading) : null;
+				return {
+					shape: list ? "in-band list" : "dropdown menu",
+					box: box(open),
+					content: box(content),
+					heading: heading
+						? {
+								text: heading.innerText.replace(/\\s+/g, ' ').trim(),
+								...box(heading),
+								display: headingStyle.display,
+								visibility: headingStyle.visibility,
+								overflow: headingStyle.overflow,
+							}
+						: null,
+					headingPainted: Boolean(
+						heading &&
+							headingStyle.visibility !== 'hidden' &&
+							headingStyle.display !== 'none' &&
+							heading.getBoundingClientRect().height > 0,
+					),
+					rows: rows.slice(0, 4).map((row) => row.innerText.replace(/\\s+/g, ' ').trim()),
+					rowCount: rows.length,
+					ticked: rows.filter((row) => row.getAttribute('aria-current') === 'true' || row.querySelector('[aria-hidden="false"]')).length,
+				};
+			})()`);
+				return reading;
+			},
+			"the pinned control to open, as a list or as a menu",
+			15_000,
+		);
+		const pinFrameChrome = await captureRenderer("19b-pinned-control-open");
+		const pinPage = await capturePage(
+			state,
+			pinToken,
+			"19b-pinned-control-open",
+		);
+		const pinRect = await contentRect();
+		const pinFrame = await compose(
+			"19b-pinned-control-open",
+			pinFrameChrome,
+			pinPage,
+			pinRect,
+		);
+		record(
+			"the pinned control, open",
+			JSON.stringify({ pinTrigger, pinLabel, pinReading, pinRect }, null, 2),
+		);
+		check(
+			"the pinned control opens with a row for every tab in the pool, in the band rather than over the page",
+			pinReading !== null &&
+				poolSeen !== null &&
+				pinReading.rows.length > 0 &&
+				pinReading.rowCount === poolSeen.rows + 1 &&
+				pinReading.box !== null &&
+				pinReading.content !== null &&
+				// OUTSIDE the native view's rectangle, which is the whole claim: a
+				// control whose box intersects the content rect is drawn where the page
+				// paints, and the composite is where a reader can see it.
+				pinReading.box.bottom <= pinReading.content.top &&
+				pinReading.box.top >= 0,
+			`${pinReading?.shape}: ${pinReading?.rowCount} row(s), box ${JSON.stringify(pinReading?.box)} against the content rect's bottom ${pinReading?.content?.bottom}`,
+		);
+		say(`frame: ${join(OUT_DIR, "19b-pinned-control-open.png")}`);
+		/*
+		 * THE SAME QUESTION AS A CHECK, and shape-aware on purpose: the base tree opens a
+		 * dropdown here (`[role="menu"]`), which has no heading row to have an opinion
+		 * about — so the check is vacuous there and real on the branch, which is what lets
+		 * the one command produce both the before and the after frame (review round 1, D5).
+		 */
+		check(
+			"the band paints the heading row the source renders, inside the band's own box (review round 1, D5)",
+			pinReading !== null &&
+				(pinReading.shape !== "in-band list" ||
+					(pinReading.heading !== null &&
+						pinReading.headingPainted &&
+						pinReading.heading.text.startsWith("All tabs,") &&
+						pinReading.heading.top >= pinReading.box.top &&
+						pinReading.heading.bottom <= pinReading.box.bottom)),
+			`heading ${JSON.stringify(pinReading?.heading ?? null)} inside the band box ${JSON.stringify(pinReading?.box ?? null)}`,
+		);
+
+		/*
+		 * ---- 19c. A BATCH CLOSE IS ONE INTENT AND ONE STATE CHANGE --------------
+		 *
+		 * The design's §6.4 batch step, and the number it is about is the EVENT COUNT: N
+		 * sequential closes are N `onChanged` calls, which are N full `chromeState()`
+		 * builds, N IPC broadcasts, N renderer re-reads and N `session.json` writes. The
+		 * count is therefore the evidence — a batch that closed the same tabs through N
+		 * intents would look identical in every frame.
+		 *
+		 * The event counter is installed from the renderer over the REAL subscription the
+		 * app itself uses, so what is counted is what the app would be woken by.
+		 */
+		await evaluate(`(() => {
+			window.__proofStateEvents = 0;
+			window.__proofOff = window.api.browser.onStateChanged(() => {
+				window.__proofStateEvents += 1;
+			});
+			return 'armed';
+		})()`);
+		const batchBefore = await chromeState();
+		// The row menu of the pool's FIRST tab, which is in the first conversation.
+		const batchMenu = await evaluate(`(() => {
+			const row = document.querySelector('[data-tab-id]');
+			const trigger = row?.querySelector('[data-tour-tag="browser-tab-menu"]');
+			if (!trigger) return 'missing';
+			trigger.click();
+			return 'clicked';
+		})()`);
+		const batchItem = await waitFor(
+			async () =>
+				(await evaluate(
+					`(() => {
+						const item = document.querySelector('[data-tour-tag="browser-tab-close-conversation"]');
+						return item ? item.innerText.replace(/\\s+/g, ' ').trim() : null;
+					})()`,
+				)) ?? null,
+			"the conversation close to be offered",
+			10_000,
+		);
+		const eventsBefore = await evaluate("window.__proofStateEvents");
+		const basket = {
+			conversation: batchBefore.tabs[0].sessionId,
+			before: batchBefore.tabs.length,
+			beforeIds: batchBefore.tabs.map((tab) => tab.tabId),
+		};
+		await evaluate(
+			`document.querySelector('[data-tour-tag="browser-tab-close-conversation"]')?.click()`,
+		);
+		const batchAfter = await waitFor(async () => {
+			const current = await chromeState();
+			return current.tabs.length < basket.before ? current : null;
+		}, "the batch close to land");
+		// One more delivery may be in flight for the event that carried the change, so the
+		// count is read after the DOM has settled rather than on the first reading.
+		await sleep(500);
+		const eventsAfter = await evaluate("window.__proofStateEvents");
+		const survived = batchAfter.tabs;
+		/** What this conversation held before the press, so the arithmetic below is about
+		 * that conversation rather than about the pool. */
+		const closedCount = batchBefore.tabs.filter(
+			(tab) => tab.sessionId === basket.conversation,
+		).length;
+		const batchFrame = await captureRenderer("19c-batch-close-one-event");
+		await compose(
+			"19c-batch-close-one-event",
+			batchFrame,
+			await capturePage(state, pinToken, "19c-batch-close-one-event"),
+			await contentRect(),
+		);
+		record(
+			"a conversation's tabs, closed as one intent",
+			JSON.stringify(
+				{
+					item: batchItem,
+					conversation: basket.conversation,
+					before: basket.before,
+					after: batchAfter.tabs.length,
+					stateEvents: eventsAfter - eventsBefore,
+					survived: survived.map((tab) => ({
+						tabId: tab.tabId,
+						sessionId: tab.sessionId,
+						owner: tab.owner,
+					})),
+				},
+				null,
+				2,
+			),
+		);
+		check(
+			"one press closes every tab of one conversation, and leaves every other conversation's alone (R5)",
+			batchItem !== null &&
+				closedCount >= 2 &&
+				batchAfter.tabs.length === basket.before - closedCount &&
+				survived.every((tab) => tab.sessionId !== basket.conversation),
+			`${batchItem}: ${basket.before} tab(s) -> ${batchAfter.tabs.length}; the closed conversation was ${basket.conversation}`,
+		);
+		check(
+			"and it was ONE state change, not one per tab: the number is the whole point of the intent (R5)",
+			eventsAfter - eventsBefore === 1,
+			`${eventsAfter - eventsBefore} browser-state-changed event(s) for ${basket.before - batchAfter.tabs.length} closed tab(s)`,
+		);
+		say(`frame: ${join(OUT_DIR, "19c-batch-close-one-event.png")}`);
+
+		/*
+		 * ---- 19d. WHERE THE CARET IS AFTER A BATCH CLOSE ------------------------
+		 *
+		 * Review round 1 found the same bug three times (A2, U1, Q4): after a batch close
+		 * the caret fell to `<body>`, which is the outcome the strip's own comment says
+		 * the pending-focus path exists to prevent — "so a batch close does not strand the
+		 * keyboard user out of the strip". The diagnosis was that the flag was consumed on
+		 * the render caused by `setActionsTabId(null)`, before `chrome.closeTabs`'s IPC
+		 * landed, so it resolved to the tab being closed; the tab then unmounted and took
+		 * the caret with it.
+		 *
+		 * SO THE READING IS TAKEN TWICE, and the second one is the contract: at the first
+		 * reading the projection may still be in flight, and what must hold there is only
+		 * that the caret is IN THE STRIP (the parked position) rather than on `<body>`.
+		 * The later reading is the promise — the surviving active tab's `[role="tab"]`,
+		 * or the strip's scroller when the batch took every tab.
+		 *
+		 * BOTH BATCH SHAPES, because they fail differently: the conversation close usually
+		 * takes the ACTIVE tab (so the fallback target is a different row), while `Close N
+		 * other tabs` keeps its anchor alive (so the fallback target is on screen and the
+		 * old code still focused the closing tab instead).
+		 */
+		const focusReading = async () => {
+			return await evaluate(`(() => {
+				const el = document.activeElement;
+				return {
+					tag: el ? el.tagName : null,
+					tour: el ? el.getAttribute('data-tour-tag') : null,
+					role: el ? el.getAttribute('role') : null,
+					inStrip: Boolean(el && el.closest('[data-tour-tag="browser-tab-strip-row"]')),
+				};
+			})()`);
+		};
+		/*
+		 * `caretInStripSoon` polls for up to a second rather than reading once, because
+		 * the parked placement happens in React's effect phase a few milliseconds after
+		 * the click and this process's own round trip is of the same order. The window is
+		 * still what distinguishes the fix from the defect by an order of magnitude: the
+		 * finding measured `<body>` at 300ms, 1.3s and 2.8s.
+		 */
+		const caretInStripSoon = async (ms = 1000) => {
+			const started = Date.now();
+			let reading = await focusReading();
+			while (!reading.inStrip && Date.now() - started < ms) {
+				await sleep(50);
+				reading = await focusReading();
+			}
+			return reading;
+		};
+		const caretAfterConversationClose = await caretInStripSoon();
+		await sleep(1300);
+		const caretSettledAfterConversationClose = await focusReading();
+		check(
+			"after closing a conversation's tabs the caret is in the STRIP, then on the surviving tab (review round 1, A2/U1/Q4)",
+			caretAfterConversationClose.inStrip === true &&
+				caretSettledAfterConversationClose.tag !== "BODY" &&
+				caretSettledAfterConversationClose.inStrip === true &&
+				(caretSettledAfterConversationClose.role === "tab" ||
+					caretSettledAfterConversationClose.tour === "browser-tab-strip-row"),
+			`immediately ${JSON.stringify(caretAfterConversationClose)}, settled ${JSON.stringify(caretSettledAfterConversationClose)}`,
+		);
+
+		// The other shape: a batch that keeps its anchor tab, so the tab the caret must
+		// land on is not a tab the batch removed.
+		const othersMenu = await evaluate(`(() => {
+			const row = document.querySelector('[data-tab-id]');
+			const trigger = row?.querySelector('[data-tour-tag="browser-tab-menu"]');
+			if (!trigger) return 'missing';
+			trigger.click();
+			return 'clicked';
+		})()`);
+		const othersItem = await waitFor(
+			async () =>
+				(await evaluate(
+					`(() => {
+						const item = document.querySelector('[data-tour-tag="browser-tab-close-others"]');
+						return item ? item.innerText.replace(/\\s+/g, ' ').trim() : null;
+					})()`,
+				)) ?? null,
+			"the `close other tabs` item to be offered",
+			10_000,
+		).catch(() => null);
+		const beforeOthers = await chromeState();
+		await evaluate(
+			`document.querySelector('[data-tour-tag="browser-tab-close-others"]')?.click()`,
+		);
+		const afterOthers = await waitFor(async () => {
+			const current = await chromeState();
+			return current.tabs.length < beforeOthers.tabs.length ? current : null;
+		}, "the others close to land").catch(() => null);
+		const caretAfterOthers = await caretInStripSoon();
+		await sleep(1300);
+		const caretSettledAfterOthers = await focusReading();
+		record(
+			"the caret after the two batch shapes",
+			JSON.stringify(
+				{
+					conversation: {
+						immediately: caretAfterConversationClose,
+						settled: caretSettledAfterConversationClose,
+					},
+					others: {
+						menu: othersMenu,
+						item: othersItem,
+						before: beforeOthers.tabs.length,
+						after: afterOthers?.tabs.length ?? null,
+						immediately: caretAfterOthers,
+						settled: caretSettledAfterOthers,
+					},
+				},
+				null,
+				2,
+			),
+		);
+		check(
+			"`Close N other tabs` leaves the caret on the surviving tab, not on the one it closed (review round 1, A2/U1)",
+			othersItem !== null &&
+				afterOthers !== null &&
+				afterOthers.tabs.length === 1 &&
+				caretAfterOthers.inStrip === true &&
+				caretSettledAfterOthers.tag !== "BODY" &&
+				caretSettledAfterOthers.inStrip === true &&
+				(caretSettledAfterOthers.role === "tab" ||
+					caretSettledAfterOthers.tour === "browser-tab-strip-row"),
+			`${othersItem}: ${beforeOthers.tabs.length} tab(s) -> ${afterOthers?.tabs.length ?? null}; immediately ${JSON.stringify(caretAfterOthers)}, settled ${JSON.stringify(caretSettledAfterOthers)}`,
+		);
 	} finally {
 		sampler?.stop();
 		for (const timer of held) clearTimeout(timer);
@@ -3224,7 +3906,7 @@ async function main() {
 	const reportPath = join(OUT_DIR, "proof.md");
 	writeFileSync(reportPath, transcript.join("\n"));
 	say(
-		`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`,
+		`\n${failures === 0 ? `ALL CHECKS PASSED${skips > 0 ? ` (${skips} SKIPPED)` : ""}` : `${failures} CHECK(S) FAILED`}`,
 	);
 	say(`transcript: ${reportPath}`);
 	say(`frames:     ${OUT_DIR}`);
