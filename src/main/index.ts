@@ -83,6 +83,7 @@ import {
 	WINDOW_MIN_WIDTH,
 	type WindowShow,
 	describeWindowLaunch,
+	resolveAboutPanelAction,
 	resolveLauncherWatchPlan,
 	resolveWindowLaunchPlan,
 	windowIntentPayload,
@@ -297,6 +298,77 @@ function pickerFallbackDirectory(): string {
 	return app.getPath("home");
 }
 
+/**
+ * The copyright line, read from the app's own manifest.
+ *
+ * Why read it rather than repeat it here: `build.copyright` in package.json is
+ * the one place the project states this, and it is what electron-builder stamps
+ * into the packaged bundle's `NSHumanReadableCopyright`. A second copy in this
+ * file would drift from that silently; this cannot. The read is a few KB once at
+ * startup, and a failure omits the line rather than failing the launch - an About
+ * panel without a copyright is a cosmetic loss and a launch that dies is not.
+ */
+function bundledCopyright(): string | undefined {
+	try {
+		const manifest = JSON.parse(
+			readFileSync(join(app.getAppPath(), "package.json"), "utf8"),
+		) as { build?: { copyright?: unknown } };
+		const copyright = manifest.build?.copyright;
+		return typeof copyright === "string" && copyright.length > 0
+			? copyright
+			: undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * The About panel's own identity, for the launches that have no bundle of ours.
+ *
+ * macOS fills this panel from the APP BUNDLE, and an unpackaged launch - which is
+ * how every rig, QA harness and `npx electron .` boots this app - has no bundle
+ * of its own: the panel is Electron.app's, so it renders "Electron / Version
+ * 44.3.0 (44.3.0)" under Electron's icon while the app's real identity is
+ * `productName` "Local Operator". Registering the options explicitly is what
+ * makes the panel describe the app rather than the runtime hosting it, and it is
+ * done for every mode that may raise the panel at all, because the label must not
+ * depend on which mode asked for it.
+ *
+ * `applicationVersion` is the app's own version (`package.json`, the version
+ * source of truth). The parenthesised `version` is a BUILD string: macOS puts it
+ * in the second half of the version line, and left to itself it fills that half
+ * with the same number again, so "Version 0.26.11 (0.26.11)" is a line that tells
+ * a reader nothing about the run in front of them. Naming the desktop host, and
+ * whether the bundle is the shipped one, is what makes a panel from an agent run
+ * legible as one.
+ */
+function configureAboutPanel(): void {
+	if (process.platform !== "darwin") return;
+
+	const copyright = bundledCopyright();
+	app.setAboutPanelOptions({
+		/*
+		 * The name the panel must read. It is the app's own name, not a copy of the
+		 * bundle's: `app.name` resolves from `productName` in the app's package.json
+		 * - the same string electron-builder writes into a packaged bundle - so the
+		 * panel and the menu beside it cannot name the app differently.
+		 */
+		applicationName: app.name,
+		applicationVersion: app.getVersion(),
+		version: `Electron ${process.versions.electron}${app.isPackaged ? "" : ", unpackaged"}`,
+		// Omitted entirely when there is no line to read, rather than passed as
+		// undefined: the panel keeps the bundle's own for a packaged build, which is
+		// the same string.
+		...(copyright === undefined ? {} : { copyright }),
+	});
+}
+
+/**
+ * Create the application menu.
+ *
+ * macOS-only items are prepended below, and the About item carries a handler of
+ * its own rather than Electron's `about` role: see the comment on it.
+ */
 function createApplicationMenu(): void {
 	// Check if we're in development mode
 	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
@@ -432,7 +504,30 @@ function createApplicationMenu(): void {
 		template.unshift({
 			label: app.name,
 			submenu: [
-				{ role: "about" },
+				/*
+				 * The About action is a handler of its own rather than Electron's `about`
+				 * role, because a role's click goes straight to AppKit's panel and there is
+				 * nothing in between to gate: `headless` must raise no window at all
+				 * (`resolveAboutPanelAction`), and the panel's OWN identity is registered
+				 * once at startup (`configureAboutPanel`). The label keeps the role's
+				 * phrasing and takes the name from `app.name` the way the role did.
+				 */
+				{
+					label: `About ${app.name}`,
+					click: () => {
+						if (resolveAboutPanelAction(windowLaunch.mode) === "suppress") {
+							// A line rather than silence: an action that nothing reached and a
+							// panel that failed to appear are otherwise the same absence, to the
+							// operator and to a rig.
+							logger.info(
+								`[about-panel] suppressed by window mode ${windowLaunch.mode}: a ${windowLaunch.mode} run raises no window`,
+								LogFileType.BACKEND,
+							);
+							return;
+						}
+						app.showAboutPanel();
+					},
+				},
 				{ type: "separator" as const },
 				{ role: "services" },
 				{ type: "separator" as const },
@@ -2372,6 +2467,7 @@ app
 		}
 
 		// Create custom application menu
+		configureAboutPanel();
 		createApplicationMenu();
 
 		// --- Helper to manage main window and update service lifecycle ---
