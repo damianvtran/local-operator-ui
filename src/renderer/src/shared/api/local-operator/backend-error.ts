@@ -19,6 +19,7 @@
  */
 
 import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
+import type { DaemonPairingCause } from "../../../../../shared/backend-status";
 import { DesktopControlError, isDeadlineExceeded } from "./desktop-api";
 
 /**
@@ -162,25 +163,98 @@ export function backendLoadErrorMessage(lead: string, error: unknown): string {
 }
 
 /**
- * Whether installing a newer backend is actually the remedy.
+ * The ONE sentence per pairing cause, shared by every surface that must explain
+ * it (design § 2's table is the contract; these are its strings).
  *
- * The banner gates its "Update backend" button on this. It is stated here
- * beside the classification instead of as a chain of negated booleans at the
- * call site, because "which states does update fix" is the same question the
- * copy answers, and the button must not contradict the sentence above it.
+ * WHY they live here rather than in the banner. The banner and the chat pane both
+ * reported this condition and each wrote its own explanation, which is how the
+ * same fact reached the operator as an ownership instruction in one place and a
+ * version problem in the other (design § 0). `backendCompatibilityMessage` below
+ * selects from this table for the app-wide notice, and every per-surface gate
+ * selects from it through {@link backendPairingSentence}, so a sixth copy of the
+ * pairing predicate is this change's own defect rather than a wording nit.
  *
- * Takes the same inputs as `backendCompatibilityMessage` so the two are read
- * off one state rather than two. `unpaired` is not status-derived -- it is a
- * backend that answered fine while this app holds no bearer for it -- and a
- * status only classifies anything when nothing answered, which is why
- * `answered` gates the classification rather than being folded into it.
+ * TWO RULES these sentences keep, both asserted by test rather than by review:
+ *
+ * 1. NONE of them tells the user to update the server, and none asks them to
+ *    change what the app manages. Every one of these causes is a PAIRING fact -
+ *    pairing is the app's own business, and the remedy that exists (re-claiming)
+ *    is the app's to perform (design § 3.1, § 4's falsifiable prediction).
+ * 2. The sentence names what the app OBSERVED and stops. S2 in particular must
+ *    not imply the user can clear it: the daemon refuses a second claim even when
+ *    it presents the correct key, so the honest answer is that this app cannot
+ *    use that plane and no control is offered at all (design § 2, § 3.2).
+ */
+export const BACKEND_PAIRING_SENTENCE: Record<DaemonPairingCause, string> = {
+	successor:
+		"The Local Operator server was replaced while this app was running. Pairing with the new one.",
+	"governed-elsewhere":
+		"The Local Operator server on this machine is already managed by another program, so this app cannot use its settings, provider sign-in, slash commands or MCP management.",
+	// The age is the fixable part, so it is named - and so is what the daemon's OWN
+	// users lose, which is nothing: an older daemon answers /health and its own
+	// routes fine, and saying so is a decision rather than an implication
+	// (design § 3.3).
+	"pre-handshake":
+		"The Local Operator server on this machine is older than the pairing handshake this app uses, so this app cannot drive its controls. The server itself, the CLI and the TUI are unaffected.",
+	"credential-refused":
+		"This app's credential for the running Local Operator server was refused, so provider sign-in, settings, slash commands and MCP management are unavailable.",
+	unpaired:
+		"This app is not paired with the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable.",
+};
+
+/**
+ * The pairing sentence for a per-surface gate, or null when the surface is
+ * paired and owes this condition nothing.
+ *
+ * THE seam both the pane and the list read, so "one condition, one statement" is
+ * structural: `state` comes from `desktopFeatureState` and `cause` from main's own
+ * `DaemonPairing`, and neither surface is free to author its own version of
+ * either (design § 4, § 11.1). A `below-version` state returns null here because
+ * the sentence for it is the surface's OWN (what that surface cannot do), which
+ * is the split S6 keeps.
+ */
+export function backendPairingSentence(
+	state: "enabled" | "unpaired" | "below-version" | "unknown",
+	cause: DaemonPairingCause | null,
+): string | null {
+	if (state !== "unpaired") return null;
+	return BACKEND_PAIRING_SENTENCE[cause ?? "unpaired"];
+}
+
+/**
+ * Whether the update control may be OFFERED, and the cause is half the answer.
+ *
+ * The old rule refused the update for every unpaired backend, which is right for
+ * S2/S5 - installing a newer server cannot repair a credential this app does not
+ * hold - and wrong for S3, where the daemon predates the handshake AND the
+ * install is one this app may move: there, update-then-restart is exactly the
+ * remedy.
+ *
+ * `servedByThisApp` is main's own ownership answer (`DaemonStatusSnapshot.owned`,
+ * "this app spawned the daemon, and is the only process that may stop it"). The
+ * renderer may NOT derive it from `installKind` or from any reading of the
+ * record: a user's `lop` is their tool, and a surface that offered to update one
+ * the app does not hold would be offering to move something that is not its to
+ * move (design § 3.4, § 10.1).
  */
 export function backendUpdateIsRemedy(input: {
 	kind: BackendErrorKind;
+	/** A backend answered, but this app did not start it and holds no bearer. */
 	unpaired: boolean;
+	/** True once a capabilities payload was received at all. */
 	answered: boolean;
+	/** Main's own pairing cause, null when this app is paired. */
+	cause?: DaemonPairingCause | null;
+	/** Main's answer that this app holds the serving install (`owned`). */
+	servedByThisApp?: boolean;
 }): boolean {
-	const { kind, unpaired, answered } = input;
+	const { kind, unpaired, answered, cause = null, servedByThisApp = false } =
+		input;
+	// S3 is the ONE pairing cause an install can repair, and only for an install
+	// this app holds.
+	if (cause === "pre-handshake") return servedByThisApp;
+	// Every other pairing cause: re-pairing is the remedy, and the app performs it.
+	if (cause !== null) return false;
 	// Re-pairing, not installing, is what an unpaired backend needs.
 	if (unpaired) return false;
 	// A backend that answered and named the features it lacks is genuinely out
@@ -213,8 +287,20 @@ export function backendCompatibilityMessage(input: {
 	missing: readonly string[];
 	/** True once a capabilities payload was received at all. */
 	answered: boolean;
+	/**
+	 * Main's own pairing cause, or null when this app is paired.
+	 *
+	 * The cause WINS over every status-based branch below, and that precedence is
+	 * the fix for the operator's screenshot: the status of a capabilities request
+	 * describes how that request went, while the pairing record says why this app
+	 * cannot use the server it can see. Reading the status first is how a pairing
+	 * condition came to be worded as an ownership instruction and, in the pane, as
+	 * a version problem (design § 0, § 2).
+	 */
+	cause?: DaemonPairingCause | null;
 }): string {
-	const { kind, unpaired, missing, answered } = input;
+	const { kind, unpaired, missing, answered, cause = null } = input;
+	if (cause !== null) return BACKEND_PAIRING_SENTENCE[cause];
 	if (!answered) {
 		if (kind === "unreachable")
 			return `${BACKEND_ERROR_DIAGNOSIS.unreachable} Provider sign-in, settings, slash commands and MCP management need it running. ${BACKEND_ERROR_REMEDY.unreachable}`;
@@ -239,8 +325,13 @@ export function backendCompatibilityMessage(input: {
 			// what lets a test assert the two surfaces agree by string.
 			return `The Local Operator server is older than this app expects, so provider sign-in, settings, slash commands and MCP management are off. ${BACKEND_ERROR_REMEDY.outdated}`;
 	}
-	if (unpaired)
-		return "This app is not paired with the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable. Restart the app so it can manage its own server.";
+	// S5: a backend this app holds no bearer for, with no cause established yet.
+	// The sentence is the pairing table's and it offers no ownership instruction:
+	// "Restart the app so it can manage its own server" asked the user to
+	// re-architect their machine for a client's failure, which is the model this
+	// change removes (design § 3.1). The banner's own control is `Retry`, which
+	// asks MAIN to re-claim - the one act that can change this condition.
+	if (unpaired) return BACKEND_PAIRING_SENTENCE.unpaired;
 	if (!answered)
 		// Nothing answered and the status matched no case we can advise on. The
 		// old fallback claimed the backend was "missing" every negotiated feature
@@ -287,7 +378,17 @@ export function compatibilityBannerShown(
 		| Pick<DesktopCapabilities, "desktop_available" | "features">
 		| null
 		| undefined,
+	/**
+	 * Main's pairing cause, when the renderer has one.
+	 *
+	 * A cause is a reason to speak even when the capabilities answer looks healthy:
+	 * the public capability route is answered by a daemon the app is NOT paired with
+	 * just as cheerfully as by one it is, so `desktop_available: true` is not
+	 * evidence that this app may drive anything (design § 2 S1).
+	 */
+	cause: DaemonPairingCause | null = null,
 ): boolean {
+	if (cause !== null) return true;
 	if (!capabilities) return true;
 	const missing = REQUIRED_BACKEND_FEATURES.filter(
 		(feature) => (capabilities.features?.[feature] ?? 0) < 1,

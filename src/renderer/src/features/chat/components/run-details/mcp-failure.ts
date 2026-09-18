@@ -55,6 +55,11 @@
 
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import {
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_SENTENCE,
+	isDesktopRefusalCode,
+} from "../../../../../../shared/desktop-contract";
+import {
 	DesktopControlError,
 	UserFacingError,
 } from "@shared/api/local-operator/desktop-api";
@@ -112,8 +117,16 @@ const MCP_FAILURE_LEAD: Record<McpFailurePhase, string> = {
  * cannot separate them.
  */
 const MCP_APP_AUTHORED_503: readonly string[] = [
-	"Restart with a desktop-managed backend to use these controls.",
-	"The backend could not complete this request. Check its connection and try again.",
+	/*
+	 * Built from the shared machine vocabulary rather than re-typed here. The CODES
+	 * below are the primary test - main now declares one on each of its own
+	 * synthesised refusals - and these strings are the fallback for a transport that
+	 * carries no code (the browser development proxy). One authority for the
+	 * sentence, so a reworded machine detail cannot leave a stale copy matching
+	 * nothing.
+	 */
+	DESKTOP_MACHINE_DETAIL.noCredential,
+	DESKTOP_MACHINE_DETAIL.transportFailed,
 ];
 
 /**
@@ -188,6 +201,27 @@ export function mcpFailure(
 		return { message: `${lead}.`, detail: null, cause: "unknown", phase };
 	const message = error.message.trim();
 
+	/*
+	 * A REFUSAL OF THE PAIRING FAMILY IS ABOUT THE SERVER, and it is checked before
+	 * every status-shaped branch below - including the 409 one, whose sentence would
+	 * otherwise describe a busy sign-in for a plane that is simply not this app's.
+	 *
+	 * This is the branch that removes the photographed line. The server answers a
+	 * `/v1/desktop/` route with "Desktop controls require a backend started by the
+	 * desktop app." and this dialog used to print it VERBATIM as the diagnosis (a
+	 * 503 the app did not author was read as "this conversation's session is not
+	 * running", and the daemon's own words were carried into `detail`). A server
+	 * string is not this app's sentence: the code says which pairing fact it was,
+	 * and the shared table says it in the product's voice (design § 5.1).
+	 */
+	if (isDesktopRefusalCode(error.code))
+		return {
+			message: `${lead}. ${DESKTOP_REFUSAL_SENTENCE[error.code]}`,
+			detail: null,
+			cause: "server",
+			phase,
+		};
+
 	if (error.status === 409)
 		return grantRunning
 			? {
@@ -214,7 +248,11 @@ export function mcpFailure(
 	// session back — reopening a conversation is not a control on this surface at
 	// all, and naming it left the sentence pointing away from the accented control
 	// underneath it.
-	if (error.status === 503 && !MCP_APP_AUTHORED_503.includes(message))
+	if (
+		error.status === 503 &&
+		!isDesktopRefusalCode(error.code) &&
+		!MCP_APP_AUTHORED_503.includes(message)
+	)
 		return {
 			message: `${lead} because this conversation's session is not running. Trying again restarts it and repeats this request.`,
 			cause: "session",
