@@ -160,7 +160,20 @@ export type FreshnessOutcome =
 	 * typing, which is the one thing this state exists to say (UX round 1, U1). A
 	 * tick that finds the file unmoved costs one `stat` and says nothing.
 	 */
-	| { status: "skipped-dirty"; diskChanged: boolean }
+	| {
+			status: "skipped-dirty";
+			diskChanged: boolean;
+			/**
+			 * The file is not there, or cannot be looked at, WHILE the buffer is dirty
+			 * (QA round 3, Q12). Both used to be clean-document-only facts, so a reader
+			 * typing into a file an agent had deleted was told "your edits are kept"
+			 * against an `ENOENT` for as long as they looked at it. They are raised from
+			 * this outcome now, and neither blocks the reader's route out: an explicit
+			 * save still writes.
+			 */
+			missing: boolean;
+			unreadable: boolean;
+	  }
 	| { status: "missing"; document: CanvasDocument }
 	/** The probe's `stat` itself failed: the file may well be there. */
 	| { status: "unreadable"; document: CanvasDocument }
@@ -316,33 +329,250 @@ function setAutosaveHeld(documentId: string, held: boolean): void {
 }
 
 /*
- * The explicit save: ⌘S, the editor's own save action, the inline-edit
- * finalizer. Deliberately SEPARATE from the debounced write, because the two
- * have different meanings here - one is the app finishing the reader's sentence
- * for them, the other is the reader deciding. The hook watches this to convert
- * the fact into "your save replaced the change on disk" instead of letting the
- * change vanish silently.
+ * ---------------------------------------------------------------------------
+ * THE FACTS, THE WRITE EPOCH, AND THE WRITE GATE
+ * ---------------------------------------------------------------------------
+ *
+ * WHY THE FACTS MOVED INTO A REGISTRY (QA round 3, Q11). They used to live in
+ * the hook's own state, which meant they died with the component: closing a tab
+ * or leaving the chat route dropped the sentence, the hold and the reason the
+ * reader's buffer was not on disk. The buffer itself now survives that (the
+ * editors commit it to the store on unmount), so the fact has to survive it too -
+ * otherwise a reader who comes back sees a document that disagrees with the file
+ * and no explanation, which is worse than the silent loss it replaced. Same
+ * registry shape as the dirty set: module-level, per document, subscribable, so
+ * the row and the editors read one source.
  */
-const explicitSaveAt = new Map<string, number>();
-const explicitSaveListeners = new Set<() => void>();
+export type FreshnessFact =
+	| "missing"
+	| "unreadable"
+	| "failed"
+	| "disk-changed"
+	| "save-replaced";
 
-/** Published by an editor when the READER saves, not when the debounce does. */
-export function publishExplicitSave(documentId: string): void {
-	explicitSaveAt.set(documentId, Date.now());
-	setAutosaveHeld(documentId, false);
-	for (const listener of explicitSaveListeners) listener();
+const documentFacts = new Map<string, FreshnessFact>();
+const factListeners = new Set<() => void>();
+
+export function documentFact(documentId: string): FreshnessFact | null {
+	return documentFacts.get(documentId) ?? null;
 }
 
-export function explicitSaveAtFor(documentId: string): number | null {
-	return explicitSaveAt.get(documentId) ?? null;
+export function setDocumentFact(
+	documentId: string,
+	fact: FreshnessFact | null,
+): void {
+	if (fact === null) documentFacts.delete(documentId);
+	else documentFacts.set(documentId, fact);
+	for (const listener of factListeners) listener();
 }
 
-export function subscribeExplicitSave(listener: () => void): () => void {
-	explicitSaveListeners.add(listener);
+export function subscribeDocumentFact(listener: () => void): () => void {
+	factListeners.add(listener);
 	return () => {
-		explicitSaveListeners.delete(listener);
+		factListeners.delete(listener);
 	};
 }
+
+/**
+ * The write epoch: how a resolution cancels the write a debounce already started.
+ *
+ * THE RACE THIS EXISTS FOR (UX round 3, U9). A press that means "load the file's
+ * version" can land in the same millisecond as the editor's own pending write,
+ * and the ordering decides whether the reader sees the file or their own stale
+ * bytes land on top of it. The gate below refuses any write whose file has moved
+ * on since the baseline - which is the protection - and this is the belt to that
+ * braces: `load` bumps the epoch before it reads, and any save that captured an
+ * older epoch abandons itself instead of writing, whatever the filesystem says.
+ */
+const writeEpochs = new Map<string, number>();
+
+export function currentWriteEpoch(documentId: string): number {
+	return writeEpochs.get(documentId) ?? 0;
+}
+
+/**
+ * Cancel every write already started for this document.
+ *
+ * The HOLD IS DELIBERATELY LEFT ALONE: cancelling a write says nothing about
+ * whether the document may write next time, and a resolution that fails still
+ * needs the hold standing (round 2 released it here, which would have let the
+ * next autosave run over a file the reader had just been told about).
+ */
+export function cancelPendingWrites(documentId: string): void {
+	writeEpochs.set(documentId, currentWriteEpoch(documentId) + 1);
+}
+
+/**
+ * The hold cleanup an editor's unmount owes the registry (code review round 3).
+ *
+ * Called AFTER the editor has committed its buffer to the store, so releasing the
+ * hold here cannot lose anything: the words are in the persisted store, and the
+ * fact (which also survives now) is what tells the reader on their return that
+ * the file on disk is not what they are looking at. The dirty flag is deliberately
+ * KEPT for a held document - that is the state the fact is about - and cleared
+ * for every other one, which is what the registry's own cleanup has always done.
+ */
+export function releaseDocumentHold(documentId: string): void {
+	setAutosaveHeld(documentId, false);
+	writeEpochs.delete(documentId);
+}
+
+/**
+ * ONE WRITE PATH, GATED ON THE FILE (QA round 3, Q9; code review round 3, A).
+ *
+ * Every editable surface writes through this: the code editor, the markdown
+ * WYSIWYG, the spreadsheet, the HTML viewer's edit mode (which IS the code
+ * editor), and the inline-edit finalizer. Before a single byte leaves the app it
+ * stats the document's path and compares the file's mtime with the mtime the
+ * held content was read at:
+ *
+ * - **the mtime matches the baseline** → the write proceeds, and the baseline
+ *   advances to the mtime the write produced, exactly as before;
+ * - **the mtime has moved** → **no write happens**. The sticky `disk-changed` fact
+ *   is raised and the document's further autosaves are held, so the reader's
+ *   route out is a decision (their bytes, or the file's) rather than a race.
+ *
+ * WHY THE GATE AND NOT THE POLL. The poll is a 2s timer; the editors' debounces
+ * are 1s (code) and 3s (markdown, spreadsheet). A file rewritten on disk shortly
+ * before the reader's own debounce fires was therefore overwritten by the app's
+ * own save BEFORE any probe could read it - QA measured 5 of 8 orderings
+ * destroyed silently, and no fact raised, because the save then recorded its own
+ * mtime as the baseline. A timer cannot fix a race it is slower than; a check
+ * inside the write can, and it costs one `stat` per write rather than per 2s.
+ *
+ * AN EXPLICIT SAVE IS NEVER REFUSED (Q10, and the sentence's own promise): the
+ * reader's bytes win, and because they have just replaced a version that had
+ * changed the fact converts to `save-replaced` instead of vanishing. That is the
+ * one case where the reader is told their write overwrote something.
+ *
+ * A FILE THAT IS GONE is its own refusal: an autosave does not resurrect a file
+ * the reader has not decided about - the `missing` fact is raised instead, and an
+ * explicit save still writes (which is how the reader gets their content back).
+ */
+export type DocumentWritePorts = {
+	probe: (path: string) => Promise<ProbedFile | null>;
+	write: (
+		path: string,
+		content: string,
+		encoding?: "utf-8" | "base64",
+	) => Promise<void>;
+};
+
+export type DocumentWriteOutcome =
+	/** Written. `document` carries the advanced baseline for the store. */
+	| { status: "written"; document: CanvasDocument; overwrote: boolean }
+	/** Not written: the file moved on, or is gone, or cannot be looked at. */
+	| { status: "blocked"; fact: FreshnessFact; document: CanvasDocument }
+	/** The write itself failed. */
+	| { status: "failed"; error: string }
+	/** Abandoned because a resolution bumped the epoch while this save was in
+	 * flight: the reader has already chosen the file's version. */
+	| { status: "cancelled" };
+
+export async function saveDocument(
+	document: CanvasDocument,
+	content: string,
+	{
+		explicit = false,
+		encoding,
+		ports,
+	}: {
+		explicit?: boolean;
+		encoding?: "utf-8" | "base64";
+		ports?: DocumentWritePorts;
+	} = {},
+): Promise<DocumentWriteOutcome> {
+	const resolved: DocumentWritePorts = ports ?? {
+		probe: (path) => probeLocalFile(path),
+		write: async (path, bytes, writeEncoding) => {
+			await window.api.saveFile(path, bytes, writeEncoding);
+		},
+	};
+	const epoch = currentWriteEpoch(document.id);
+	const stale = (against: number): boolean =>
+		currentWriteEpoch(document.id) !== against;
+	if (stale(epoch)) return { status: "cancelled" };
+
+	const baseline = baselineOf(document);
+	const before = await resolved.probe(document.path);
+	if (stale(epoch)) return { status: "cancelled" };
+	if (!before)
+		return { status: "failed", error: "the local-file bridge is unavailable" };
+
+	/*
+	 * The three refusals, in the order the reader would want them reported. A
+	 * `stat` that failed is its own state - the file may well be there - and a
+	 * missing file is not the same claim as "something changed in it".
+	 */
+	const absent = before.exists === false;
+	const unreadable = before.error !== null && before.error !== undefined;
+	const moved = !absent && !unreadable && before.mtimeMs !== baseline;
+	if (absent && !explicit) {
+		setDocumentFact(document.id, "missing");
+		setAutosaveHeld(document.id, true);
+		return { status: "blocked", fact: "missing", document };
+	}
+	if (unreadable && !explicit) {
+		setDocumentFact(document.id, "unreadable");
+		setAutosaveHeld(document.id, true);
+		return { status: "blocked", fact: "unreadable", document };
+	}
+	if (moved && !explicit) {
+		setDocumentFact(document.id, "disk-changed");
+		setAutosaveHeld(document.id, true);
+		return { status: "blocked", fact: "disk-changed", document };
+	}
+
+	/*
+	 * The write bumps the epoch BEFORE it writes: any check that started before this
+	 * save is reading a version the save is about to supersede, and must not apply
+	 * its bytes afterwards. `mine` is the epoch this save owns - a later `load` bumps
+	 * it again, and then this save abandons itself rather than clobbering the file
+	 * the reader asked to see.
+	 */
+	cancelPendingWrites(document.id);
+	const mine = currentWriteEpoch(document.id);
+	try {
+		await resolved.write(document.path, content, encoding);
+	} catch (error) {
+		return {
+			status: "failed",
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+	if (stale(mine)) return { status: "cancelled" };
+
+	/*
+	 * The write owes the baseline the mtime it produced, and the reader owes a
+	 * sentence when what they wrote replaced something: an explicit save over a
+	 * file that had changed, or over one that was gone. Both are the case the row
+	 * must not hide - the reader is being told their bytes are the ones on disk
+	 * now, at the cost of what was there.
+	 */
+	const after = await resolved.probe(document.path);
+	const overwrote = explicit && (moved || absent);
+	if (overwrote) setDocumentFact(document.id, "save-replaced");
+	else if (documentFact(document.id) === "disk-changed") {
+		/* An explicit save over an unmoved file answers nothing new, but it does
+		 * resolve a fact that was standing: the bytes on disk are its own again. */
+		setDocumentFact(document.id, null);
+	}
+	setAutosaveHeld(document.id, false);
+	return {
+		status: "written",
+		document: after
+			? documentAfterSelfWrite(document, after, content)
+			: { ...document, content },
+		overwrote,
+	};
+}
+
+/*
+ * The explicit save no longer needs its own registry: the gate above sets the
+ * fact (`save-replaced`) at the moment it knows the reader's write replaced
+ * something, which is strictly better information than "a save happened". The
+ * hook reads `documentFact` instead.
+ */
 
 /**
  * The answer for a check that found a mounted editor's unsaved buffer.
@@ -365,18 +595,21 @@ async function dirtyOutcome(
 ): Promise<FreshnessOutcome> {
 	const probe = known ?? (await ports.probe(document.path));
 	const baseline = baselineOf(document);
+	const unreadable = Boolean(probe?.error);
+	const missing = probe !== null && !probe.exists && !unreadable;
 	const diskChanged = Boolean(
 		probe?.exists && probe.mtimeMs !== null && probe.mtimeMs !== baseline,
 	);
 	/*
-	 * The hold follows the fact, in both directions and in one place: a dirty
-	 * document whose file moved on stops writing, and a dirty document whose file
-	 * came back to the baseline starts again (nothing was lost, so nothing needs
-	 * holding). Set here rather than by the callers so the runner's decision and
-	 * the editor's behaviour cannot disagree.
+	 * The hold follows the state, in both directions and in one place: a dirty
+	 * document whose file moved on, or vanished, or cannot be looked at stops
+	 * writing, and a dirty document whose file came back to the baseline starts
+	 * again (nothing was lost, so nothing needs holding). Set here rather than by
+	 * the callers so the runner's decision and the editor's behaviour cannot
+	 * disagree.
 	 */
-	setAutosaveHeld(document.id, diskChanged);
-	return { status: "skipped-dirty", diskChanged };
+	setAutosaveHeld(document.id, diskChanged || missing || unreadable);
+	return { status: "skipped-dirty", diskChanged, missing, unreadable };
 }
 
 /**
@@ -566,22 +799,39 @@ export function createFreshnessRunner(
 	};
 
 	/*
-	 * LOAD, the reader's own answer to "the file changed on disk" (UX round 2,
-	 * U1's second half). One of the two routes the row names: this one takes the
-	 * FILE's version and lets the buffer's unsaved edits go, which is the only way
-	 * to actually load the change - a save writes over it instead, and an undo does
-	 * not make the document clean.
+	 * LOAD, the reader's own answer to "the file changed on disk" (UX round 2, U1's
+	 * second half; hardened in round 3). One of the two routes the row names: this
+	 * one takes the FILE's version and lets the buffer's unsaved edits go, which is
+	 * the only way to actually load the change - a save writes over it instead, and
+	 * an undo does not make the document clean.
 	 *
-	 * The dirty registry is cleared BEFORE the read, and that ordering is the point
-	 * rather than an accident: the editors refuse to adopt a store write while
-	 * their document is dirty (M3), so the buffer has to stop being dirty for the
-	 * file's bytes to reach the screen. Clearing it here is what "the reader chose
-	 * the file" means in the one registry every editor consults.
+	 * THREE THINGS HAVE TO HAPPEN IN THIS ORDER (code review round 3, major B; UX
+	 * round 3, U9), and round 2's version got the first and third wrong:
+	 *
+	 * 1. **Cancel the writes already in flight**, before anything is read. A press
+	 *    can land in the same millisecond as the editor's own debounce, and the
+	 *    ordering decided which version won - QA watched the app's pending write
+	 *    destroy the very version the press was loading (and, in the unsettled
+	 *    case, land the STALE pre-conflict bytes). The epoch bump makes any save
+	 *    that is already past its check abandon itself.
+	 * 2. **Read**, and let the read fail honestly: a missing or unreadable file
+	 *    changes nothing about what the reader's buffer is worth.
+	 * 3. **Clear the dirty registry and the hold only on an outcome that carries
+	 *    bytes.** Clearing them up front - which is what round 2 did - meant a
+	 *    failed read left the buffer protected by nothing, with its dirty flag
+	 *    gone and the next tick free to apply whatever it found.
 	 */
 	const load = async (document: CanvasDocument): Promise<FreshnessOutcome> => {
-		clearDocumentDirty(document.id);
-		setAutosaveHeld(document.id, false);
-		return run(document, { force: true, applyOverDirty: true });
+		cancelPendingWrites(document.id);
+		const outcome = await run(document, {
+			force: true,
+			applyOverDirty: true,
+		});
+		if (outcome.status === "applied" || outcome.status === "identical") {
+			clearDocumentDirty(document.id);
+			setAutosaveHeld(document.id, false);
+		}
+		return outcome;
 	};
 
 	return { check, load };

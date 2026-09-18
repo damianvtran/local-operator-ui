@@ -3,13 +3,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import {
+	type FreshnessFact,
 	type FreshnessOutcome,
 	createFreshnessRunner,
-	explicitSaveAtFor,
+	currentWriteEpoch,
+	documentFact,
 	isDocumentDirty,
 	probeLocalFile,
+	setDocumentFact,
 	subscribeDocumentDirty,
-	subscribeExplicitSave,
+	subscribeDocumentFact,
 } from "./file-freshness";
 
 /**
@@ -90,8 +93,12 @@ export type DocumentFreshness = {
 	 * press land in a disabled window and do nothing at all.
 	 */
 	refreshing: boolean;
-	/** What a check found that could not be shown, in the panel's own words. */
+	/** What a check found that could not be shown, in the panel's own words: the
+	 * SHORT form, written to fit the row (design round 3, D10). */
 	note: string | null;
+	/** The same claim with its consequences spelled out, for the tooltip and the
+	 * control's accessible description. Never null while `note` is not. */
+	detail: string | null;
 	/** A mounted editor holds unsaved changes for this document. */
 	dirty: boolean;
 	/**
@@ -135,35 +142,43 @@ export type DocumentFreshness = {
  * registers: "found nothing new" and "say nothing new" are different
  * instructions, and the flicker lived in conflating them.
  */
-export type FreshnessFact =
-	| "missing"
-	| "unreadable"
-	| "failed"
-	| "disk-changed"
-	| "save-replaced";
 
+/*
+ * TWO FORMS OF EVERY FACT, and the split is design round 3's D10 measured on the
+ * real row: the 32px bar gives the sentence about 320px at the default pane
+ * (607px, minus the stamp, minus the control and its 8px inset), and the round-2
+ * sentence needed 694px - so the part that says what the reader can DO was
+ * permanently off screen, at every width, behind a scrollbar inside a chrome bar
+ * that is not supposed to scroll. The visible string is therefore the SHORT one,
+ * written to fit: the state first, then the way out, in as few words as the claim
+ * survives. The full claim is `FACT_DETAIL`, which is what the tooltip shows and
+ * what the control's accessible description carries, so nothing is lost - it is
+ * one Tab or one hover away instead of never.
+ */
 export const FACT_TEXT: Record<FreshnessFact, string> = {
+	missing: "No longer on disk - showing the version we last read.",
+	unreadable: "Could not be read - showing the version we last read.",
+	failed: "Could not be re-read - showing the version we last read.",
+	/*
+	 * THE HOLD'S OWN SENTENCE (UX round 2 U1, tightened in round 3). Two ways out,
+	 * both of which exist: the control loads the file's version (letting the
+	 * unsaved edits go), and a save replaces the file's. "Discard", which round 1
+	 * named, is not one of them - and the actionable clause leads here rather than
+	 * trailing, because it is the half a reader has to act on.
+	 */
+	"disk-changed": "Changed on disk - load it, or save to replace it.",
+	"save-replaced": "Your save replaced the change on disk.",
+};
+
+export const FACT_DETAIL: Record<FreshnessFact, string> = {
 	missing:
-		"This file is no longer on disk. The last version we read is still shown.",
+		"This file is no longer on disk. The last version we read is still shown, and your unsaved edits are kept - saving writes them back.",
 	unreadable:
-		"This file could not be read. The last version we read is still shown.",
+		"This file could not be read. The last version we read is still shown, and your unsaved edits are kept - saving writes them back.",
 	failed:
 		"This file could not be re-read, so the version we last read is still shown.",
-	/*
-	 * THE HOLD'S OWN SENTENCE (UX round 2, U1's second half). It has to say three
-	 * things and it has to lead with the one that survives a narrow row: the
-	 * reader's words are safe, saving is paused, and there are exactly two ways
-	 * out. Both of them exist: the control loads the file's version (and lets the
-	 * unsaved edits go), and a save replaces the file's. "Discard", which the
-	 * round-1 copy named, is not one of them.
-	 */
 	"disk-changed":
-		"Your unsaved edits are kept, and saving is paused while the file has changed on disk. Load its version, or save to replace it.",
-	/*
-	 * What an explicit save leaves behind. The reader chose their bytes, so the
-	 * change that was on disk is gone - the app owes them that sentence rather than
-	 * letting it disappear (UX round 2, U1).
-	 */
+		"Your unsaved edits are kept, and saving is paused while the file has changed on disk. Load its version to see the change (your unsaved edits are discarded), or save to replace the file with your version.",
 	"save-replaced":
 		"Your save replaced the version that had changed on disk. Re-read the file to see what is there now.",
 };
@@ -220,11 +235,25 @@ export function factAfter(
 		case "failed":
 			return "failed";
 		case "skipped-dirty":
+			/*
+			 * A dirty buffer whose file is GONE or unreadable is its own fact now (QA
+			 * round 3, Q12): the row used to say "your edits are kept" against an
+			 * `ENOENT` for as long as the reader looked at it, because both facts were
+			 * clean-document-only. Neither one is cleared by the other's arrival -
+			 * `missing` is not "changed on disk", and the reader's route out (an
+			 * explicit save) is the same in both.
+			 */
+			if (outcome.unreadable) return "unreadable";
+			if (outcome.missing) return "missing";
 			if (outcome.diskChanged) return "disk-changed";
-			/* The mtime is back at the baseline: the change this fact was about is
-			 * gone, so the fact goes with it - and the hold released in the runner
-			 * means the reader's typing is being written again. */
-			return current === "disk-changed" ? null : undefined;
+			/* The state this fact was about is gone - the file is back at the baseline,
+			 * or back at all - so the fact goes with it, and the hold released in the
+			 * runner means the reader's typing is being written again. */
+			return current === "disk-changed" ||
+				current === "missing" ||
+				current === "unreadable"
+				? null
+				: undefined;
 		case "applied":
 		case "identical":
 			/* The held bytes are the file's now, whatever was standing. */
@@ -252,31 +281,37 @@ export function useFileFreshness({
 		() => false,
 	);
 	const [refreshing, setRefreshing] = useState(false);
-	const [fact, setFactState] = useState<FreshnessFact | null>(null);
+	/*
+	 * THE FACT IS THE REGISTRY'S NOW, not this component's (QA round 3, Q11). As
+	 * hook state it died with the hook, so closing a tab or leaving the chat route
+	 * dropped the sentence and the hold while the buffer it was about survived in the
+	 * store - a reader returning to a document that disagrees with the file, with
+	 * nothing saying so. The registry outlives the mount, the row still reads it
+	 * through `useSyncExternalStore`, and the resolution path clears it.
+	 */
+	const fact = useSyncExternalStore(
+		subscribeDocumentFact,
+		() => documentFact(document.id),
+		() => null,
+	);
+	/* The callbacks below read the fact without depending on it: `check` is a
+	 * dependency of the activation, focus and poll effects, so a new identity per
+	 * fact change would re-run the activation check on every sentence the row
+	 * publishes - a probe per sentence, for ever. */
+	const factRef = useRef<FreshnessFact | null>(null);
+	factRef.current = fact;
 	const [answer, setAnswer] = useState<{ text: string; at: number } | null>(
 		null,
 	);
 	/*
-	 * The fact is ALSO held in a ref, so the three callbacks that read it stay
-	 * referentially stable: `check` is a dependency of the activation, focus and
-	 * poll effects, so a new identity per fact change would re-run the activation
-	 * check on every sentence the row publishes - a probe per sentence, for ever.
-	 */
-	const factRef = useRef<FreshnessFact | null>(null);
-	const setFact = useCallback((next: FreshnessFact | null) => {
-		factRef.current = next;
-		setFactState(next);
-	}, []);
-	/*
-	 * Both slots belong to the document that reported them, so a tab switch starts
-	 * the new document's row empty rather than inheriting the last one's sentence.
-	 * Declared before the activation effect below so the reset lands first.
+	 * An ANSWER belongs to the document that produced it, so a tab switch starts the
+	 * new document's row without the last one's reply. A FACT deliberately does not:
+	 * it is the registry's, and it is still true after the switch.
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the document's identity is the trigger, not a value the body reads.
 	useEffect(() => {
-		setFact(null);
 		setAnswer(null);
-	}, [document.id, setFact]);
+	}, [document.id]);
 	/*
 	 * An answer retires - see `ANSWER_LIFETIME_MS`. Driven from the answer's own
 	 * timestamp rather than from a tick that happens to arrive: a stale
@@ -294,26 +329,6 @@ export function useFileFreshness({
 		);
 		return () => window.clearTimeout(timer);
 	}, [answer]);
-	/*
-	 * The reader's explicit save, which is the one route that ends the hold on the
-	 * reader's own terms. Watched here rather than inferred from the store moving,
-	 * because the store also moves for an APPLY - and an apply is the file winning,
-	 * not the reader.
-	 */
-	const explicitSaveAt = useSyncExternalStore(
-		subscribeExplicitSave,
-		() => explicitSaveAtFor(document.id),
-		() => null,
-	);
-	useEffect(() => {
-		if (explicitSaveAt === null) return;
-		/*
-		 * The reader's bytes are on disk now, so the file's version is not "still
-		 * waiting to be loaded" - it is gone, and the row says so and stays saying so
-		 * until the reader acknowledges it (UX round 2, U1's second half).
-		 */
-		if (factRef.current === "disk-changed") setFact("save-replaced");
-	}, [explicitSaveAt, setFact]);
 	/*
 	 * The document as of the LATEST render, so a check started by a timer reads
 	 * the store's current content rather than whatever the closure captured. Read
@@ -398,11 +413,22 @@ export function useFileFreshness({
 	const check = useCallback(
 		async (force: boolean) => {
 			if (force) setRefreshing(true);
+			/*
+			 * THE EPOCH GUARD ON THE APPLY SIDE (round 3). A check's read is an await,
+			 * and a save that lands inside it is NEWER than what the check read: without
+			 * this, the check's stale bytes were written into the store after the save
+			 * had already put the reader's bytes on disk, and the editor then adopted
+			 * the stale version and autosaved it straight back over the file. The epoch
+			 * is bumped by `saveDocument`'s own writes and by `load`, so this is the
+			 * same signal that cancels a pending write.
+			 */
+			const epoch = currentWriteEpoch(document.id);
 			try {
 				const outcome = await runner.check(latest.current, force);
+				if (currentWriteEpoch(document.id) !== epoch) return;
 				if ("document" in outcome) apply(outcome.document);
 				const nextFact = factAfter(outcome, factRef.current);
-				if (nextFact !== undefined) setFact(nextFact);
+				if (nextFact !== undefined) setDocumentFact(document.id, nextFact);
 				const nextAnswer = answerFor(outcome, force);
 				if (nextAnswer !== undefined) {
 					setAnswer(nextAnswer ? { text: nextAnswer, at: Date.now() } : null);
@@ -411,24 +437,24 @@ export function useFileFreshness({
 				if (force) setRefreshing(false);
 			}
 		},
-		[apply, runner, setFact],
+		[apply, document.id, runner],
 	);
 
 	/*
 	 * LOAD THE FILE'S VERSION, the reader's answer to the hold (UX round 2, U1's
-	 * second half). The runner clears the dirty registry and the hold, so this is
-	 * the one press that makes the file's bytes win - and the row's control is the
-	 * only surface that offers it, because it is the surface that raised the
-	 * question.
+	 * second half). `runner.load` cancels the writes already in flight and clears
+	 * the dirty registry and the hold ONLY when the read carried bytes - so the
+	 * press cannot be overtaken by the app's own pending save, and a read that
+	 * fails leaves the buffer exactly as protected as it was (code review round 3,
+	 * major B; UX round 3, U9). Nothing is cleared here before the read.
 	 */
 	const loadFile = useCallback(async () => {
 		setRefreshing(true);
 		try {
-			setFact(null);
 			const outcome = await runner.load(latest.current);
 			if ("document" in outcome) apply(outcome.document);
-			const nextFact = factAfter(outcome, null);
-			if (nextFact !== undefined) setFact(nextFact);
+			const nextFact = factAfter(outcome, factRef.current);
+			if (nextFact !== undefined) setDocumentFact(document.id, nextFact);
 			const nextAnswer = answerFor(outcome, true);
 			if (nextAnswer !== undefined) {
 				setAnswer(nextAnswer ? { text: nextAnswer, at: Date.now() } : null);
@@ -436,7 +462,7 @@ export function useFileFreshness({
 		} finally {
 			setRefreshing(false);
 		}
-	}, [apply, runner, setFact]);
+	}, [apply, document.id, runner]);
 
 	// Activation: mount, tab change, conversation change.
 	//
@@ -491,15 +517,20 @@ export function useFileFreshness({
 			return;
 		}
 		// A press is also the acknowledgement `save-replaced` asks for.
-		if (factRef.current === "save-replaced") setFact(null);
+		if (factRef.current === "save-replaced") setDocumentFact(document.id, null);
 		void check(true);
-	}, [check, loadFile, setFact]);
+	}, [check, document.id, loadFile]);
 
 	return {
 		lastModifiedMs: document.readMtimeMs ?? null,
 		refreshing,
 		// A state of the file outranks a reply to a gesture, and only one line fits.
 		note: fact ? FACT_TEXT[fact] : (answer?.text ?? null),
+		/** The same claim with its consequence spelled out, for the tooltip and the
+		 * accessible description. The row's visible string has to fit a 32px chrome
+		 * bar at ordinary pane widths (design round 3, D10), so the short form is the
+		 * one on screen and the full one is the one a reader can ask for. */
+		detail: fact ? FACT_DETAIL[fact] : (answer?.text ?? null),
 		dirty,
 		// The control's meaning follows this: it LOADS the file's version in this
 		// state rather than merely re-reading it, and the row says so.

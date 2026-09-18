@@ -254,6 +254,14 @@ function pressAt(element: Element): {
 		hitTest,
 		hit: describeElement(hit),
 		stack,
+		/*
+		 * Read AFTER the dispatch, deliberately: the point of the field is what the
+		 * control looks like to the NEXT press, and a control whose disabled window is
+		 * ~11ms (this row's, for the length of a forced check) is reported in the state
+		 * that made the hit test fail rather than the one it has by the time a human
+		 * would look. Safe on React 18.3.1, where the synthetic dispatch is not
+		 * synchronously re-entering the state machine from inside this function.
+		 */
 		disabled: element instanceof HTMLButtonElement ? element.disabled : null,
 		rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
 	};

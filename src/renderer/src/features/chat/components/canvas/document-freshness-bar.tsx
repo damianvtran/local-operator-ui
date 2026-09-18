@@ -42,15 +42,21 @@ import { useFileFreshness } from "./use-file-freshness";
  * ring to the strip above and the dock's clip to the right, and its hover fill
  * covered the hairlines on both sides of it.
  *
- * THE FACTS SCROLL, THE CONTROL DOES NOT (design round 2, D7, over round 1's
- * D5). Round 1 made both text elements shrinkable, which fixed the control
- * leaving the pane at 79px - and introduced the opposite defect at ordinary
- * widths: flex shrinks in proportion to width, so with the long sticky sentence
- * on screen the STAMP gave way first and lost its meridiem, i.e. the fact the
- * row exists to state disappeared before the sentence beside it did. They are one
- * scrolling region now, each keeping its full width, with the control pinned
- * outside it - the behaviour the tab strip directly above already uses, and at
- * ordinary pane widths there is nothing to scroll.
+ * THE STAMP HOLDS, THE SENTENCE YIELDS WITH AN ELLIPSIS, AND ONLY THE STAMP CAN
+ * MAKE THE ROW SCROLL (design round 2 D7, corrected in round 3 by D10). Round 1
+ * made both text elements shrinkable, which flex shrank in proportion to width -
+ * so the STAMP lost its meridiem before the sentence beside it. Round 2's fix
+ * made both `shrink-0` inside a scrolling region, which traded the ellipsis for a
+ * scrollbar: the hold sentence needs 694px and the row offers about 320px at the
+ * default pane, so the actionable clause was never on screen at any width, the
+ * clip fell mid-glyph, and the app's 8px scrollbar grew the region and jumped the
+ * row's text 4px. The order is now: the stamp is `shrink-0` (the fact the row
+ * exists to state), the sentence truncates with an ellipsis, and the region
+ * scrolls only in the one case neither can help - a stamp wider than the pane.
+ *
+ * AND THE SENTENCE ITSELF IS SHORT (D10's other half): see `FACT_TEXT` in
+ * `use-file-freshness.ts` for the copy that fits, with the full claim in
+ * `FACT_DETAIL` for the tooltip and the accessible description.
  *
  * The timestamp is `formatCalendarDateTime`, the app's one formatter for a
  * moment in a metadata field: the platform locale, so it renders in the reader's
@@ -64,11 +70,18 @@ export const DocumentFreshnessBar: FC<{
 	document: CanvasDocument;
 	conversationId?: string;
 }> = ({ document, conversationId }) => {
-	const { lastModifiedMs, refreshing, note, dirty, diskChanged, refresh } =
-		useFileFreshness({
-			document,
-			conversationId,
-		});
+	const {
+		lastModifiedMs,
+		refreshing,
+		note,
+		detail,
+		dirty,
+		diskChanged,
+		refresh,
+	} = useFileFreshness({
+		document,
+		conversationId,
+	});
 	const announcementId = useId();
 
 	/*
@@ -104,55 +117,57 @@ export const DocumentFreshnessBar: FC<{
 			)}
 			data-tour-tag="canvas-document-freshness"
 		>
-			<div
-				className={cn("flex min-w-0 flex-1 items-center gap-2 overflow-x-auto")}
-			>
-				<span
+			{/*
+			 * THE TAB STOP AND THE TOOLTIP TRIGGER ARE THE REGION (design round 3,
+			 * D11). They were on the sentence, whose box is exactly the text's height,
+			 * so the focus ring was clipped to a single left-hand line by the region's
+			 * own `overflow-x: auto` - and the region, which is the thing that can
+			 * actually overflow, was not reachable by keyboard at all. On the region
+			 * the ring paints (an element does not clip its own outline) and the
+			 * keyboard reader gets the horizontal scroll too.
+			 */}
+			<Tooltip content={detail ?? ""} side="bottom" delayDuration={1200}>
+				<div
+					// biome-ignore lint/a11y/noNoninteractiveTabindex: this is a scroll container, which is the one non-interactive role a tab stop is for - D11's keyboard reader needs it to reach the sentence when it truncates, and it carries no action.
+					tabIndex={0}
 					className={cn(
-						"shrink-0 whitespace-nowrap text-meta text-ink-muted tabular-nums",
+						"flex min-w-0 flex-1 items-center gap-2 overflow-x-auto",
 					)}
-					data-tour-tag="canvas-document-modified"
+					data-tour-tag="canvas-document-freshness-region"
 				>
-					{stamp}
-				</span>
-				{/*
-				 * THE ANNOUNCEMENT IS A SEPARATE, ALWAYS-MOUNTED REGION (UX round 1,
-				 * U6): a live region has to exist BEFORE the text it announces arrives,
-				 * and this row's text appears and disappears with the file's state, so
-				 * it cannot be the region itself. `output` with `aria-live` is the shape
-				 * this app already uses for exactly this (`older-history-slot.tsx`).
-				 */}
-				<output
-					id={announcementId}
-					className="sr-only"
-					aria-live="polite"
-					data-tour-tag="canvas-document-freshness-announcement"
-				>
-					{note ?? ""}
-				</output>
-				{note ? (
-					/*
-					 * `Tooltip` rather than a native `title`, which is this repo's own
-					 * substitution for "the full string on hover" (`message-timestamp.tsx`
-					 * records it) - and `tabIndex`, so a KEYBOARD user gets the same full
-					 * sentence a pointer user does (design round 2, D4's keyboard half: the
-					 * trigger was not focusable, so the one thing this tooltip exists for
-					 * was unreachable without a mouse).
-					 */
-					<Tooltip content={note} side="bottom" delayDuration={1200}>
+					<span
+						className={cn(
+							"shrink-0 whitespace-nowrap text-meta text-ink-muted tabular-nums",
+						)}
+						data-tour-tag="canvas-document-modified"
+					>
+						{stamp}
+					</span>
+					{/*
+					 * THE ANNOUNCEMENT IS A SEPARATE, ALWAYS-MOUNTED REGION (UX round 1,
+					 * U6): a live region has to exist BEFORE the text it announces arrives,
+					 * and this row's text appears and disappears with the file's state, so
+					 * it cannot be the region itself. `output` with `aria-live` is the shape
+					 * this app already uses for exactly this (`older-history-slot.tsx`).
+					 */}
+					<output
+						id={announcementId}
+						className="sr-only"
+						aria-live="polite"
+						data-tour-tag="canvas-document-freshness-announcement"
+					>
+						{note ?? ""}
+					</output>
+					{note ? (
 						<span
-							// biome-ignore lint/a11y/noNoninteractiveTabindex: the sentence is a FACT about the file rather than a control, and design round 2 D4's keyboard half asks for it to be reachable by focus as well as by hover - the tab stop carries no action, and its only effect is that the tooltip can be opened without a mouse.
-							tabIndex={0}
-							className={cn(
-								"shrink-0 whitespace-nowrap text-meta text-ink-muted",
-							)}
+							className={cn("min-w-0 truncate text-meta text-ink-muted")}
 							data-tour-tag="canvas-document-freshness-note"
 						>
 							{note}
 						</span>
-					</Tooltip>
-				) : null}
-			</div>
+					) : null}
+				</div>
+			</Tooltip>
 			<div className={cn("shrink-0")}>
 				<Tooltip content={controlLabel}>
 					<Button

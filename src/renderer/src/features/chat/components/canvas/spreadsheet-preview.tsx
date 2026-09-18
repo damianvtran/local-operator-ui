@@ -22,10 +22,9 @@ import type { CanvasDocument } from "../../types/canvas";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import {
 	clearDocumentDirty,
-	documentAfterSelfWrite,
 	isAutosaveHeld,
-	probeLocalFile,
-	publishExplicitSave,
+	releaseDocumentHold,
+	saveDocument,
 	setDocumentDirty,
 } from "./file-freshness";
 
@@ -699,19 +698,50 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	useEffect(() => {
 		setDocumentDirty(document.id, hasUserChanges);
 	}, [document.id, hasUserChanges]);
-	useEffect(() => () => clearDocumentDirty(document.id), [document.id]);
+	/*
+	 * THE UNMOUNT OWES THE SAME THREE THINGS the other editors owe (QA round 3, Q11;
+	 * code review round 3's hold-cleanup finding): the buffer is committed to the
+	 * persisted store (so a close costs nothing), a write that should happen is
+	 * flushed through the gate, and the hold is released - which cannot lose anything
+	 * once the buffer is in the store.
+	 */
+	/*
+	 * THE UNMOUNT OWES THE SAME DUTIES THE OTHER EDITORS OWE (QA round 3, Q11; code
+	 * review round 3's hold-cleanup finding): a write that should happen is flushed
+	 * through the gate, and the hold and dirty flag are released for the document
+	 * that was being edited. It is the document's IDENTITY that registers this, not
+	 * the `document` object, which is new on every render and would re-run a cleanup
+	 * on each keystroke.
+	 *
+	 * WHAT IT CANNOT DO, stated rather than implied: the grid's buffer is not
+	 * committed to the store the way the text editors' buffers are - serialising a
+	 * workbook without parsing it back is a second implementation of `saveChanges`'
+	 * own output path, and this round's subject is the write. So a close while the
+	 * document is HELD still loses the grid edits; the flushed path writes them when
+	 * the file has not moved, and the fact (which outlives the mount) is what tells
+	 * the reader on their return that the file's version won.
+	 */
+	useEffect(
+		() => () => {
+			const id = idRef.current;
+			if (hasUserChangesRef.current && !isAutosaveHeld(id)) {
+				void saveChangesRef.current?.(false);
+			}
+			releaseDocumentHold(id);
+			clearDocumentDirty(id);
+		},
+		[],
+	);
+
+	const saveChangesRef = useRef<((explicit?: boolean) => Promise<void>) | null>(
+		null,
+	);
+	const hasUserChangesRef = useRef(false);
+	const idRef = useRef(document.id);
+	idRef.current = document.id;
 
 	const saveChanges = useCallback(
 		async (explicit = false) => {
-			/*
-			 * THE AUTOSAVE IS HELD while the row says the file changed on disk under this
-			 * buffer (UX round 2, U1's second half) - the same hold the code and markdown
-			 * editors honour, for the same reason: writing here destroys the external
-			 * version the reader was just told about. An EXPLICIT save is the reader's own
-			 * decision and is never held; it is what converts the row's sentence into
-			 * "your save replaced the change on disk".
-			 */
-			if (!explicit && isAutosaveHeld(document.id)) return;
 			if (
 				!document.path ||
 				Object.keys(debouncedSheetsData).length === 0 ||
@@ -783,25 +813,41 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 					});
 
 			try {
-				// Pass encoding to saveFile to ensure correct file writing.
-				await window.api.saveFile(
-					document.path,
-					newContent,
-					isCsv ? "utf8" : "base64",
-				);
-
-				// Update canvas store with new content only after successful save, and
-				// with the baseline that save produced: the write moved the file's mtime,
-				// so the canvas's freshness check must be told what it moved to or the
-				// next tick reads this save back.
+				/*
+				 * THE WRITE GOES THROUGH THE GATE (QA round 3, Q9; code review round 3, A),
+				 * encoding and all. The spreadsheet's debounce is three seconds against a
+				 * 2000ms poll, so a file rewritten on disk just before it fired was
+				 * overwritten by this save with no fact raised. The gate stats first; a
+				 * refusal raises the sticky sentence and holds the document, and an
+				 * EXPLICIT save is never refused - it replaces the file and the row says so.
+				 */
+				const current =
+					canvasState?.files.find((file) => file.id === document.id) ??
+					document;
+				const outcome = await saveDocument(current, newContent, {
+					explicit,
+					encoding: isCsv ? "utf-8" : "base64",
+				});
+				if (outcome.status !== "written") {
+					// Nothing is on disk: the buffer stays dirty, the toast says what happened,
+					// and the row carries the fact.
+					if (outcome.status === "blocked") {
+						showErrorToast(
+							"The file changed on disk, so this save was not written. Use the row above to load it or save over it.",
+						);
+					}
+					return;
+				}
+				// Update canvas store with the document the gate probed after writing: the
+				// write moved the file's mtime, so the store must be told what it moved to
+				// or the next tick reads this save back.
 				if (conversationId && canvasState) {
-					const probe = await probeLocalFile(document.path);
-					const updatedFiles = canvasState.files.map((file) =>
-						file.id === document.id
-							? documentAfterSelfWrite(file, probe, newContent)
-							: file,
+					setFiles(
+						conversationId,
+						canvasState.files.map((file) =>
+							file.id === document.id ? outcome.document : file,
+						),
 					);
-					setFiles(conversationId, updatedFiles);
 				}
 
 				/*
@@ -834,8 +880,14 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			}
 		},
 		[
-			document.path,
-			document.id,
+			/*
+			 * `document` as a whole, not its fields: the gate's lookup falls back to the
+			 * document object itself, so listing `path`/`id` was "more specific than its
+			 * captures" (biome's own words) and the callback is re-created when the store
+			 * hands it a new one either way. The autosave's guards make an extra call
+			 * cheap: it returns immediately unless the buffer is dirty and the data differs.
+			 */
+			document,
 			debouncedSheetsData,
 			conversationId,
 			canvasState,
@@ -845,6 +897,9 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			parseFile,
 		],
 	);
+
+	saveChangesRef.current = saveChanges;
+	hasUserChangesRef.current = hasUserChanges;
 
 	useEffect(() => {
 		// Only save if we have data, user has made changes, and it's not the initial load
@@ -861,15 +916,17 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if ((event.metaKey || event.ctrlKey) && event.key === "s") {
 				event.preventDefault();
+				// `saveChanges(true)` is the explicit path: the gate never refuses it, and
+				// it is what converts a standing "changed on disk" fact into the truthful
+				// sentence about what the reader's bytes replaced.
 				void saveChanges(true);
-				publishExplicitSave(document.id);
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [saveChanges, document.id]);
+	}, [saveChanges]);
 
 	const onCellValueChanged = useCallback(
 		(event: CellValueChangedEvent) => {

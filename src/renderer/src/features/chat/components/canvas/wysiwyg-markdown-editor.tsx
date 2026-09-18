@@ -42,11 +42,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import {
 	clearDocumentDirty,
-	documentAfterSelfWrite,
-	isAutosaveHeld,
 	isDocumentDirty,
-	probeLocalFile,
-	publishExplicitSave,
+	releaseDocumentHold,
+	saveDocument,
 	setDocumentDirty,
 } from "./file-freshness";
 import { InlineEdit } from "./inline-edit";
@@ -474,6 +472,31 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
 
+	/*
+	 * THE ONE WRITE PATH (QA round 3 Q9, code review round 3 A). The debounce here
+	 * is THREE seconds against a 2000ms poll, so a file rewritten on disk just
+	 * before it fired was overwritten by this save - and because the save then
+	 * recorded its own mtime as the baseline, no fact was ever raised. The gate
+	 * stats the file before writing and refuses when the mtime is not the one the
+	 * held bytes came from; an explicit save (the toolbar, ⌘S, an approved inline
+	 * edit) is never refused, and converts a standing fact instead.
+	 */
+	const write = useCallback(
+		async (bytes: string, explicit: boolean) => {
+			const current =
+				canvasState?.files.find((file) => file.id === document.id) ?? document;
+			const outcome = await saveDocument(current, bytes, { explicit });
+			if (outcome.status !== "written") return outcome;
+			originalContentRef.current = bytes;
+			setHasUserChanges(false);
+			if (conversationId && canvasState) {
+				updateOneFile(conversationId, outcome.document);
+			}
+			return outcome;
+		},
+		[canvasState, conversationId, document, updateOneFile],
+	);
+
 	// Manual save function that bypasses debounce
 	const handleManualSave = useCallback(() => {
 		if (
@@ -485,42 +508,25 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		}
 
 		/*
-		 * A manual save owes the same baseline every other write owes: the file's
-		 * mtime has just moved because of us, so the canvas's freshness check has to
-		 * be told what it moved to - otherwise the next tick reads back this save.
-		 * The dirty flag clears only after the probe answers, so a check landing
-		 * mid-write cannot replace a buffer that is not yet on disk.
+		 * A manual save is EXPLICIT: the gate never refuses it, and it owes the same
+		 * baseline every other write owes (the save moves the file's mtime, so the
+		 * store is told which document the gate probed after writing). The toast is
+		 * honest about which version won: an explicit save over a file that had
+		 * changed replaces it, and the row says so in the same breath.
 		 */
-		void (async () => {
-			try {
-				await window.api.saveFile(document.path, content);
-				const probe = await probeLocalFile(document.path);
-				showSuccessToast("File saved");
-				// The reader pressed save: the row's hold does not apply to a decision.
-				publishExplicitSave(document.id);
-				originalContentRef.current = content;
-				setHasUserChanges(false);
-
-				if (conversationId && canvasState) {
-					updateOneFile(
-						conversationId,
-						documentAfterSelfWrite(document, probe, content),
-					);
-				}
-			} catch (error) {
+		void write(content, true)
+			.then((outcome) => {
+				if (outcome.status !== "written") return;
+				showSuccessToast(
+					outcome.overwrote ? "File saved, replacing the change" : "File saved",
+				);
+			})
+			.catch((error) => {
 				// The bytes are not on disk, so the buffer stays dirty and the next
 				// save attempts it again.
 				console.error("Could not save the document:", error);
-			}
-		})();
-	}, [
-		hasUserChanges,
-		content,
-		document,
-		conversationId,
-		canvasState,
-		updateOneFile,
-	]);
+			});
+	}, [hasUserChanges, content, document.path, write]);
 
 	const updateCurrentTextType = useCallback(() => {
 		const selection = window.getSelection();
@@ -866,7 +872,43 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	useEffect(() => {
 		setDocumentDirty(document.id, hasUserChanges);
 	}, [document.id, hasUserChanges]);
-	useEffect(() => () => clearDocumentDirty(document.id), [document.id]);
+	/*
+	 * THE UNMOUNT OWES THREE THINGS (QA round 3, Q11; code review round 3's
+	 * hold-cleanup finding) - the same three the code editor owes, for the same
+	 * reasons: flush a write that should happen, keep a buffer that must not be
+	 * written by putting it in the persisted store, and release the hold (which
+	 * cannot lose anything once the buffer is in the store).
+	 */
+	const latestRef = useRef({
+		content,
+		conversationId,
+		canvasState,
+	});
+	latestRef.current = { content, conversationId, canvasState };
+	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document on purpose - the body reads the latest buffer and store through `latestRef`.
+	useEffect(
+		() => () => {
+			const latest = latestRef.current;
+			if (latest.content !== originalContentRef.current) {
+				if (latest.conversationId && latest.canvasState) {
+					updateOneFile(latest.conversationId, {
+						...document,
+						content: latest.content,
+					});
+				}
+				void saveDocument(
+					latest.canvasState?.files.find((file) => file.id === document.id) ??
+						document,
+					latest.content,
+				).catch(() => {
+					/* Refused or failed: the fact is raised and the buffer is in the store. */
+				});
+			}
+			releaseDocumentHold(document.id);
+			clearDocumentDirty(document.id);
+		},
+		[document.id, updateOneFile],
+	);
 
 	// Manage UndoManager lifecycle
 	useEffect(() => {
@@ -913,38 +955,18 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			debouncedContent !== originalContentRef.current &&
 			document.path
 		) {
-			/* Held while the row says the file changed on disk - see the registry's own
-			 * note: writing here is what destroyed the external version. */
-			if (isAutosaveHeld(document.id)) return;
-			/* Same one-step rule as the manual save above: the write, then the probe
-			 * that tells the canvas what the file's mtime became. */
-			void (async () => {
-				try {
-					await window.api.saveFile(document.path, debouncedContent);
-					const probe = await probeLocalFile(document.path);
-					showSuccessToast("File saved");
-					originalContentRef.current = debouncedContent;
-					setHasUserChanges(false);
-
-					if (conversationId && canvasState) {
-						updateOneFile(
-							conversationId,
-							documentAfterSelfWrite(document, probe, debouncedContent),
-						);
-					}
-				} catch (error) {
+			/* The GATE decides, not this effect: a refusal raises the sticky sentence
+			 * and holds the document, and the reader's routes out are the row's control
+			 * and an explicit save. */
+			void write(debouncedContent, false)
+				.then((outcome) => {
+					if (outcome.status === "written") showSuccessToast("File saved");
+				})
+				.catch((error) => {
 					console.error("Could not save the document:", error);
-				}
-			})();
+				});
 		}
-	}, [
-		debouncedContent,
-		hasUserChanges,
-		conversationId,
-		canvasState,
-		document,
-		updateOneFile,
-	]);
+	}, [debouncedContent, hasUserChanges, document.path, write]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect when content changes to restore the scroll position.
 	useEffect(() => {
@@ -1550,18 +1572,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		selectionRef.current = null;
 		undoManagerRef.current?.saveCurrentState();
 
-		// Force save the changes immediately since they came from inline edit
+		// Force save the changes immediately since they came from inline edit, and
+		// through the gate: an approved inline edit is a save the READER asked for, so
+		// it is explicit and is never refused.
 		if (document.path && finalContent !== originalContentRef.current) {
-			void window.api.saveFile(document.path, finalContent);
-			// An approved inline edit is a save the reader asked for.
-			publishExplicitSave(document.id);
-			showSuccessToast("File saved");
-			originalContentRef.current = finalContent;
-			setHasUserChanges(false);
-
-			if (conversationId && canvasState) {
-				updateOneFile(conversationId, { ...document, content: finalContent });
-			}
+			void write(finalContent, true).then((outcome) => {
+				if (outcome.status !== "written") return;
+				showSuccessToast(
+					outcome.overwrote ? "File saved, replacing the change" : "File saved",
+				);
+			});
 		}
 	};
 

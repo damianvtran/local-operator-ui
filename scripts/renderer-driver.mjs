@@ -5299,10 +5299,25 @@ async function sceneCanvasFreshness(cdp, app) {
 	);
 	const htmlRequests = () =>
 		cdp.requests.filter((entry) => entry.url.includes("panel.html")).length;
+	const htmlPanelState = await cdp.evaluate(`(() => {
+		const tabs = Array.from(document.querySelectorAll(${JSON.stringify(CANVAS_TAB_SELECTOR)}));
+		const active = tabs.find((tab) => tab.getAttribute("aria-selected") === "true");
+		const stamp = document.querySelector('[data-tour-tag="canvas-document-modified"]');
+		return {
+			tabs: tabs.map((tab) => tab.textContent),
+			active: active ? active.textContent : null,
+			iframe: Boolean(document.querySelector("#canvas-document-panel iframe")),
+			codeMirror: Boolean(document.querySelector("#canvas-document-panel .cm-content")),
+			freshnessRow: Boolean(
+				document.querySelector('[data-tour-tag="canvas-document-freshness"]'),
+			),
+			stamp: stamp ? stamp.textContent : null,
+		};
+	})()`);
 	check(
 		"the html document opened in its own viewer, at the mtime the file has",
 		htmlMounted.ok && htmlOpen.readMtimeMs === htmlMtime0,
-		`${htmlOpen.readMtimeMs} against ${htmlMtime0}; iframe mounted=${htmlMounted.ok}`,
+		`${htmlOpen.readMtimeMs} against ${htmlMtime0}; iframe mounted=${htmlMounted.ok}; panel=${JSON.stringify(htmlPanelState)}`,
 	);
 	const htmlRequestsBefore = await htmlRequests();
 	const htmlBefore = await captureSettled(cdp, "canvas-freshness-html-before");
@@ -5347,6 +5362,247 @@ async function sceneCanvasFreshness(cdp, app) {
 		"and the html document's line moved with the file",
 		htmlStamp === `Modified ${expectedHtmlStamp}`,
 		`${JSON.stringify(htmlStamp)} against ${JSON.stringify(`Modified ${expectedHtmlStamp}`)}`,
+	);
+	/*
+	 * ---- the dirty document: the hold, and what a press does to the FILE ----
+	 *
+	 * WHY THIS PHASE EXISTS (UX round 3, U9; QA round 3, Q9). The scene was 50/50
+	 * green while a press that promised to LOAD the file's version destroyed it
+	 * instead: every check above reads the editor and the store, and not one of them
+	 * read the FILE. A defect that overwrites the reader's file - or the external
+	 * version they were told about - is exactly the kind that leaves a green scene
+	 * looking healthy, so this half asserts bytes and hashes on disk after every
+	 * step, and a press that writes when it should only read now fails here.
+	 *
+	 * It also drives the gate (QA Q9): the editor's debounce is 1s and the poll is
+	 * 2s, so a file rewritten on disk just before a debounce fires is the ordering no
+	 * timer can cover. The gate is inside the write, and this is where that shows.
+	 */
+	const fileHash = (path) =>
+		createHash("sha256").update(readFileSync(path)).digest("hex").slice(0, 16);
+	/*
+	 * A node-side wait, because every claim in this phase is about the FILE and
+	 * `waitForCondition` evaluates in the page. Reads the bytes repeatedly rather
+	 * than sleeping a fixed time, so a slow write is waited for and a fast one is not
+	 * slept through.
+	 */
+	const waitForFile = async (path, predicate, timeoutMs) => {
+		const started = Date.now();
+		let last = "";
+		while (Date.now() - started < timeoutMs) {
+			try {
+				last = readFileSync(path, "utf8");
+			} catch {
+				last = "";
+			}
+			if (predicate(last)) return { ok: true, last };
+			await new Promise((resolveDelay) => setTimeout(resolveDelay, 200));
+		}
+		return { ok: false, last };
+	};
+	const typeText = async (cdp, text) => {
+		/*
+		 * Chromium's own input pipeline, one character at a time. `Input.insertText`
+		 * was measured not to move the WYSIWYG model (QA round 3), so the same shape
+		 * the app receives from a keyboard is what this uses.
+		 */
+		for (const char of text) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				text: char,
+				key: char,
+				unmodifiedText: char,
+			});
+			await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: char });
+		}
+	};
+
+	const typedPath = join(dir, "typing.py");
+	const readerWord = "READER";
+	const externalBody = 'print("external-rewrite")\n';
+	writeFileSync(typedPath, 'print("first-version")\n');
+	const typedMtime0 = setExactMtime(typedPath, BASE_SECOND - 240);
+	const typedOpen = await verb(cdp, "openCanvasDocument", { path: typedPath });
+	note("openCanvasDocument (typing)", JSON.stringify(typedOpen));
+	await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).surface === "code"`,
+		10_000,
+	);
+
+	// The reader's typing reaches the file through the ordinary autosave and the
+	// gate, which is the path every keystroke in this app takes.
+	await verb(cdp, "press", "#canvas-document-panel .cm-content");
+	await typeText(cdp, readerWord);
+	const typedSaved = await waitForFile(
+		typedPath,
+		(bytes) => bytes.includes(readerWord),
+		6_000,
+	);
+	check(
+		"the reader's typing reached the file through the gate, and the baseline followed it",
+		typedSaved.ok,
+		`file=${JSON.stringify(typedSaved.last.slice(0, 60))}`,
+	);
+	const hashBeforeExternal = fileHash(typedPath);
+
+	// Now the file is rewritten from OUTSIDE, while the document is dirty.
+	const dirtyWord = "DIRTY";
+	await verb(cdp, "press", "#canvas-document-panel .cm-content");
+	await typeText(cdp, dirtyWord);
+	writeFileSync(typedPath, externalBody);
+	setExactMtime(typedPath, BASE_SECOND - 120);
+	const externalHash = fileHash(typedPath);
+
+	const factAppeared = await waitForCondition(
+		cdp,
+		`(() => {
+			const note = document.querySelector('[data-tour-tag="canvas-document-freshness-note"]');
+			return Boolean(note) && /changed on disk/i.test(note.textContent ?? "");
+		})()`,
+		8_000,
+	);
+	check(
+		"a file rewritten under a dirty buffer raises the sticky fact",
+		factAppeared.ok,
+		`${JSON.stringify(factAppeared.last)} after ${factAppeared.attempts} attempt(s)`,
+	);
+
+	/*
+	 * THE HOLD, MEASURED ON THE FILE. Four seconds is two polls and four debounce
+	 * windows: if any of them wrote, the bytes below would be the reader's.
+	 */
+	await new Promise((resolveDelay) => setTimeout(resolveDelay, 4200));
+	const hashWhileHeld = fileHash(typedPath);
+	check(
+		"no in-app write reached the file while the fact stood",
+		hashWhileHeld === externalHash,
+		`held=${hashWhileHeld} external=${externalHash} (before the external rewrite: ${hashBeforeExternal})`,
+	);
+
+	/*
+	 * A FRAME OF THE HELD STATE, because the sentence is the thing this round
+	 * changed and no committed frame had ever shown a fact rather than an answer:
+	 * design round 3 measured its 694px against the pane from a rig of its own, and
+	 * the reader's half of the same finding (U10) was measured the same way.
+	 */
+	const heldFrame = await captureSettled(cdp, "canvas-freshness-held");
+	check(
+		"the held state is a frame the app held still for, with no toast on it",
+		heldFrame.stable === true && heldFrame.toastFree === true,
+		JSON.stringify(heldFrame),
+	);
+
+	// The sentence a reader has to act on has to be ON SCREEN (D10).
+	const noteGeometry = await cdp.evaluate(`(() => {
+		const note = document.querySelector('[data-tour-tag="canvas-document-freshness-note"]');
+		if (!note) return null;
+		return {
+			client: note.clientWidth,
+			scroll: note.scrollWidth,
+			text: note.textContent,
+			regionClient: note.parentElement ? note.parentElement.clientWidth : null,
+			regionScroll: note.parentElement ? note.parentElement.scrollWidth : null,
+		};
+	})()`);
+	check(
+		"the sentence fits the row: no ellipsis, and the way out is on screen",
+		noteGeometry !== null &&
+			noteGeometry.scroll <= noteGeometry.client &&
+			/save to replace it/.test(noteGeometry.text ?? ""),
+		JSON.stringify(noteGeometry),
+	);
+
+	/*
+	 * THE PRESS, AND ITS EFFECT ON THE FILE (UX U9). The control says it loads the
+	 * file's version and discards the unsaved edits; the assertion that matters is
+	 * that the file is UNTOUCHED by it, and that what the reader now sees is what the
+	 * file holds.
+	 */
+	const hashBeforePress = fileHash(typedPath);
+	const typedPress = await verb(cdp, "press", {
+		selector: '[data-tour-tag="canvas-refresh-file-button"]',
+	});
+	const adopted = await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).text.includes("external-rewrite")`,
+		8_000,
+	);
+	await new Promise((resolveDelay) => setTimeout(resolveDelay, 1500));
+	const hashAfterPress = fileHash(typedPath);
+	check(
+		"the press loaded the file's version and did not write to the file",
+		adopted.ok && hashAfterPress === hashBeforePress,
+		`adopted=${adopted.ok} before=${hashBeforePress} after=${hashAfterPress} external=${externalHash} press=${JSON.stringify(typedPress)}`,
+	);
+	check(
+		"and the file the press loaded is the EXTERNAL version, not the reader's",
+		hashAfterPress === externalHash,
+		`after=${hashAfterPress} external=${externalHash}`,
+	);
+
+	/*
+	 * THE EXPLICIT SAVE, the other route out, on the surface that had none (QA Q10,
+	 * code review A): a real Meta+S must put the reader's bytes on disk and the row
+	 * must say what they replaced.
+	 */
+	await verb(cdp, "press", "#canvas-document-panel .cm-content");
+	await typeText(cdp, "SAVED");
+	const typedLanded = await waitForCondition(
+		cdp,
+		`(${CANVAS_DOCUMENT_TEXT_EXPR}).text.includes("SAVED")`,
+		4_000,
+	);
+	/*
+	 * PROVE THE TYPING LANDED, or the checks below measure nothing. The first draft
+	 * of this phase pressed Meta+S on a buffer whose click had not focused the
+	 * editor, so the "reader's save" wrote the file's own bytes back: the row said
+	 * "replaced", the file was unchanged, and only the hash assertions caught it.
+	 */
+	check(
+		"the reader's second round of typing reached the editor this time",
+		typedLanded.ok,
+		JSON.stringify(typedLanded.last),
+	);
+	writeFileSync(typedPath, 'print("second-external")\n');
+	setExactMtime(typedPath, BASE_SECOND - 90);
+	await waitForCondition(
+		cdp,
+		`(() => {
+			const note = document.querySelector('[data-tour-tag="canvas-document-freshness-note"]');
+			return Boolean(note) && /changed on disk/i.test(note.textContent ?? "");
+		})()`,
+		8_000,
+	);
+	await pressChord(cdp, {
+		key: "s",
+		code: "KeyS",
+		virtualKeyCode: 83,
+		modifiers: 4,
+	});
+	const savedOver = await waitForCondition(
+		cdp,
+		`(() => {
+			const note = document.querySelector('[data-tour-tag="canvas-document-freshness-note"]');
+			return Boolean(note) && /replaced/i.test(note.textContent ?? "");
+		})()`,
+		8_000,
+	);
+	const savedBytes = await waitForFile(
+		typedPath,
+		(bytes) => bytes.includes("SAVED"),
+		6_000,
+	);
+	const fileAfterSave = savedBytes.last;
+	check(
+		"Meta+S on a held document writes the reader's bytes, and the row says what they replaced",
+		savedOver.ok && savedBytes.ok,
+		`note=${JSON.stringify(savedOver.last)} file=${JSON.stringify(fileAfterSave.slice(0, 60))}`,
+	);
+	check(
+		"and the file the reader's save replaced is not the one the press loaded",
+		fileAfterSave !== externalBody,
+		JSON.stringify(fileAfterSave.slice(0, 60)),
 	);
 }
 
