@@ -38,9 +38,28 @@
  * the operator touching the window.
  */
 
+import type { DaemonPairingCause } from "../../../../shared/backend-status";
+import { backendPairingSentence } from "@shared/api/local-operator/backend-error";
+import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
+
 export type CatalogueGateInput = {
-	/** `desktopFeatureEnabled(capabilities.data, "session_catalogue", 2)`. */
-	ready: boolean;
+	/**
+	 * WHICH condition closed the catalogue, not only whether it did.
+	 *
+	 * The tri-state, because `ready` alone could not select a sentence: the gate is
+	 * the conjunction of the desktop plane being available AND the backend
+	 * advertising `session_catalogue`, and the two halves need two different
+	 * sentences with two different remedies (design § 4).
+	 */
+	state: DesktopFeatureState;
+	/**
+	 * Main's own pairing cause, or null when this app is paired.
+	 *
+	 * The sentence for an `unpaired` state is selected from the cause, and it is the
+	 * SAME table the banner and the chat pane read, so the list and the pane cannot
+	 * describe one condition two ways (design § 11.1).
+	 */
+	cause?: DaemonPairingCause | null;
 	/** `capabilities.error` is non-null: the query itself failed. */
 	failed: boolean;
 	/** `capabilities.data` is present: an answer exists, success or stale. */
@@ -107,7 +126,8 @@ export type CatalogueGate = {
 };
 
 export function catalogueGate({
-	ready,
+	state,
+	cause = null,
 	failed,
 	answered,
 	wasReady,
@@ -115,6 +135,7 @@ export function catalogueGate({
 	storeFailed,
 	coveredByCompatibilityBanner,
 }: CatalogueGateInput): CatalogueGate {
+	const ready = state === "enabled";
 	const withdrawn = answered && !failed && !ready;
 	/*
 	 * The memory of a gate that was open, and why it is not the component's ref.
@@ -146,22 +167,27 @@ export function catalogueGate({
 		showList: ready || stale,
 		lastKnownRows,
 		/*
-		 * ONE sentence, not two arms. The withdrawn state used to pick between "update
-		 * the backend" and a second sentence for a backend whose `desktop_available` is
-		 * false - and that second arm was unreachable at the only call site, which read
-		 * `planeAvailable` from `capabilities.desktop_available === true` and
-		 * `coveredByCompatibilityBanner` from `compatibilityBannerShown(...)`, a
-		 * predicate that is true for exactly that same input (`desktop_available !==
-		 * true`). The band is always up in that state and this notice is suppressed
-		 * under it, so the arm could not paint and the two tests that pinned it were
-		 * asserting an input pairing the call site cannot produce (review round 3,
-		 * MINOR-2). Removed rather than kept as a fallback: a sentence no state can
-		 * reach is a claim about the app that is not true, and the state it described
-		 * is already spoken for by the banner, which carries the remedy that exists.
+		 * ONE sentence, selected from the SHARED table by the cause.
+		 *
+		 * Review round 3 removed a second arm here, and this is not that arm restored.
+		 * That one authored its own words for "the plane is unavailable" beside the
+		 * banner's, so the two offered differently-labelled versions of one condition;
+		 * this one selects from `backendPairingSentence`, the same table the banner and
+		 * the chat pane read, so there is nothing here to drift. It is suppressed under
+		 * the banner exactly as before because the banner is the stronger register for
+		 * the same condition.
+		 *
+		 * The state may be `unpaired` for a PAIRING cause or `below-version` for a
+		 * genuine gap, and the gate is the one surface that can be asked either: the
+		 * gate is the CONJUNCTION of the plane being available and the backend
+		 * advertising `session_catalogue`, so a boolean could not tell them apart and
+		 * the sentence here could only ever be the version one - the same collapse the
+		 * chat pane made, fixed in the same place (design § 1.3, § 4).
 		 */
 		notice:
 			withdrawn && !storeFailed && !coveredByCompatibilityBanner
-				? `Update the backend to use canonical chats. Existing histories are unchanged.${lastKnownRows ? " Showing the last chats and teams that loaded." : ""}`
+				? (backendPairingSentence(state, cause) ??
+						`Update the backend to use canonical chats. Existing histories are unchanged.${lastKnownRows ? " Showing the last chats and teams that loaded." : ""}`)
 				: null,
 	};
 }
