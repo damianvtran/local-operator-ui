@@ -6359,6 +6359,61 @@ test("a successor on a third build is not claimed as the installed one", async (
 });
 
 /**
+ * R3 AGAIN, AND THIS TIME IT IS PINNED (QA round 2, MAJOR).
+ *
+ * The repair is purely local - the plan classifies an install on disk and the boot
+ * reading comes from the daemon on this machine - so a machine that reports no
+ * network must still move a process serving code the disk has already replaced.
+ * The ordering is what makes that true: both reads and the settle sit ABOVE the
+ * `networkIsReachable()` gate, and only the published-release read sits below it.
+ * The #318 reconciliation onto `main` moved them below, which put an offline
+ * machine back to skipping the whole server check and leaving the stale daemon
+ * serving with nothing said. Nothing pinned it: the two cases in this file that
+ * declare `netIsOnline: false` are about the APP channel, so the suite stayed
+ * green while the drift repair was inert offline.
+ *
+ * The assertion is on the ORDER, not only on the restart: a run that restarts the
+ * daemon and then skips the release read is the repair happening before the gate,
+ * while a run that logs the skip first has skipped the repair with it.
+ */
+test("a machine that reports no network still repairs the drift", async () => {
+	const { restarts, logs } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		// `net.isOnline()` false, which is what the check's own gate reads.
+		netIsOnline: false,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		installVersion: "0.54.44",
+		bootVersion: "0.54.43",
+		servingInstall: { version: "0.54.44", appOwned: true, kind: "pip" },
+	});
+
+	assert.deepEqual(
+		restarts,
+		["0.54.43"],
+		"an offline machine left a process serving older code than the install",
+	);
+	const repaired = logs.findIndex((line) =>
+		line.includes("Restarted the server onto the installed build"),
+	);
+	const skipped = logs.findIndex((line) =>
+		line.includes("Skipping the server update check"),
+	);
+	assert.ok(
+		repaired !== -1,
+		`the repair was not reported: ${logs.join(" | ")}`,
+	);
+	assert.ok(
+		skipped !== -1,
+		`the release read was not skipped offline: ${logs.join(" | ")}`,
+	);
+	assert.ok(
+		repaired < skipped,
+		`the repair settled after the network gate: ${logs.join(" | ")}`,
+	);
+});
+
+/**
  * R1 and R7 of round 1: the paths that do NOT act, and what they say.
  *
  * The first cut returned before logging anything for every non-stale reading,

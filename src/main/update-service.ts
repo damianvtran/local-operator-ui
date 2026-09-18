@@ -4166,6 +4166,46 @@ export class UpdateService {
 			}
 
 			/*
+			 * THE SERVING INSTALL IS READ FIRST, because it is what this check is about, and
+			 * THE DRIFT REPAIR IS SETTLED FROM IT BEFORE THE NETWORK GATE BELOW (review
+			 * round 1, R3): that repair needs neither the network nor a published release.
+			 * Both readings it needs are local - the plan classifies an install on disk, and
+			 * `/health` is read from the daemon on this machine - and the skew it acts on is
+			 * purely local, so a machine that reports no network must still repair a process
+			 * serving code the disk has already replaced. Both reads and the settle therefore
+			 * sit above the gate, and only the published-release read sits below it.
+			 *
+			 * IT WAS NOT, AND THIS IS THE SECOND TIME (QA round 2, MAJOR): the #318
+			 * reconciliation onto `main` moved these reads below the network gate, so an
+			 * offline machine skipped the whole server check and left a stale daemon serving
+			 * with nothing said - the skip sentence was the only line it produced. The
+			 * comment here used to claim this ordering while the code did not have it; the
+			 * case in `scripts/update-robustness.test.mjs` that names `netIsOnline: false`
+			 * with a boot reading older than the install is what pins it now.
+			 *
+			 * `/health` names the process's version AND the install root it was started
+			 * from (`prefix`, with the backend's own `install_kind` beside it), so the
+			 * check can judge the install that is actually answering this app instead of
+			 * whichever install the app can name from the `local-operator` shim on
+			 * `PATH`. Those are different installs on exactly the machines this defect
+			 * was reported on: a global uv-tool install at the published version, and an
+			 * app-managed environment three releases behind serving the user - the check
+			 * compared the first against PyPI, affirmed "up to date", and Settings'
+			 * own row printed the second.
+			 *
+			 * Asked in this order rather than concurrently because both the plan and the
+			 * verdict are statements ABOUT this reading, and a machine can rotate its
+			 * daemon between two requests.
+			 */
+			const running = await this.readRunningBackend();
+			const runningVersion = running.version;
+			const serving = this.readServingInstall(running);
+			const plan = await this.resolveBackendUpdatePlan(startupMode, serving);
+			// The two readings are the check's own, so the drift and the offer that
+			// follows are decided from one snapshot rather than two.
+			await this.settleBackendVersionDrift(plan);
+
+			/*
 			 * A MACHINE THAT REPORTS NO NETWORK IS NOT ASKED FOR RELEASES. The read below
 			 * spends a request against the published release, and the operator's log has
 			 * this check's own failure beside the
@@ -4187,39 +4227,6 @@ export class UpdateService {
 				return { status: "unavailable", info: null };
 			}
 
-			/*
-			 * THE SERVING INSTALL IS READ FIRST, because it is what this check is about.
-			 *
-			 * `/health` names the process's version AND the install root it was started
-			 * from (`prefix`, with the backend's own `install_kind` beside it), so the
-			 * check can judge the install that is actually answering this app instead of
-			 * whichever install the app can name from the `local-operator` shim on
-			 * `PATH`. Those are different installs on exactly the machines this defect
-			 * was reported on: a global uv-tool install at the published version, and an
-			 * app-managed environment three releases behind serving the user - the check
-			 * compared the first against PyPI, affirmed "up to date", and Settings'
-			 * own row printed the second.
-			 *
-			 * Asked in this order rather than concurrently because both the plan and the
-			 * verdict are statements ABOUT this reading, and a machine can rotate its
-			 * daemon between two requests.
-			 *
-			 * THE DRIFT REPAIR IS SETTLED FROM IT, before the network gate below, because
-			 * it needs neither the network nor a published release (review round 1, R3).
-			 * Both readings it does need are local: the plan classifies an install on
-			 * disk, and `/health` is read from the daemon on this machine. Sitting behind
-			 * both gates - where it used to sit - meant an offline machine or one that
-			 * cannot reach PyPI never repaired a process serving code the disk had already
-			 * replaced, which is a purely local skew and the whole of what this repair is
-			 * for.
-			 */
-			const running = await this.readRunningBackend();
-			const runningVersion = running.version;
-			const serving = this.readServingInstall(running);
-			const plan = await this.resolveBackendUpdatePlan(startupMode, serving);
-			// The two readings are the check's own, so the drift and the offer that
-			// follows are decided from one snapshot rather than two.
-			await this.settleBackendVersionDrift(plan);
 			const latestVersion = await this.getLatestPypiVersion();
 			// Remembered for the by-hand prompt: that event is produced from a click
 			// rather than from a check, and it has to be able to name the published
