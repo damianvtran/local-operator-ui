@@ -61,7 +61,18 @@ const createEmptyUpdaterMethods = () => {
 			onBackendUpdateDevMode: () => () => {},
 			onBackendUpdateNotAvailable: () => () => {},
 			onBackendUpdateCompleted: () => () => {},
-			onBackendUpdateProgress: () => () => {},
+			onBackendUpdateProgress: (
+				callback: (progress: {
+					phase: "installing" | "restarting";
+					sourceRebuild?: boolean;
+				}) => void,
+			) => {
+				backendUpdateProgressListeners.push(callback);
+				return () => {
+					const index = backendUpdateProgressListeners.indexOf(callback);
+					if (index >= 0) backendUpdateProgressListeners.splice(index, 1);
+				};
+			},
 			/*
 			 * A failed server update, which the panel now leaves its in-flight state on.
 			 * The stub has to exist or the panel's own subscription throws before the
@@ -109,9 +120,24 @@ const SERVER_UPDATE_FAILURE_MESSAGE =
  * the remedy is the defect review round 2 filed (U7). The sentence before the blank
  * line is the producer's, and the block below it is the installer's own words.
  */
-const SOURCE_BUILD_REFUSAL_MESSAGE = [
-	"The server update did not install: `lop-update` exited 1. The running backend is still serving version 0.56.10; you can also run `lop-update` yourself in a terminal.",
-	"",
+const SOURCE_BUILD_REFUSAL_SENTENCE =
+	"The server update did not install: `lop-update` exited 1. The running backend is still serving version 0.56.10. This checkout is behind its remote, which is what `lop-update` refused to build from: bring the checkout up to date, and the next press here will build it. You can also run `lop-update` yourself in a terminal.";
+
+/**
+ * The installer's OWN words for that refusal, in the field the producer fills.
+ *
+ * Captured by driving the real `~/.local/bin/lop-update` in an isolated repository
+ * whose `main` is one commit behind its `origin/main`, so it refuses before it builds,
+ * with the producer's own selection applied: the diagnosis at the head, and never the
+ * line that advises going around the refusal. A tail selection would have handed over
+ * that last line instead, which is the defect review round 2 filed (U7).
+ *
+ * It is a FIELD rather than a paragraph of the sentence because the two are different
+ * voices: welded together they exceeded the copy module's authored-sentence limit and
+ * the panel replaced both, so the frame below could not show the diagnosis at all
+ * (review round 3, D1).
+ */
+const SOURCE_BUILD_REFUSAL_OUTPUT = [
 	"lop-update: warning: could not fetch origin (offline?); comparing against the last known state of origin/main",
 	"lop-update: REFUSING to release a stale ref.",
 	"local  main          = 2a0b473",
@@ -126,13 +152,27 @@ const SOURCE_BUILD_REFUSAL_MESSAGE = [
  * The app stops an updater's whole process group when its budget expires, and a
  * descendant that ignores the stop can still be writing into the install tree after
  * the verdict - so the panel says so, and says that nothing else will be started
- * until it exits. A frame belongs here because this is the only new copy this pass
- * put in front of a user.
+ * until it exits.
  */
-const ORPHANED_UPDATER_MESSAGE = [
-	"The server update did not finish: the installer could not be run to a verdict or timed out. The updater was stopped, and something it started may still be running - it may still be replacing the install, and another update will not be started until it exits. The running backend is still serving version 0.56.10; see the update service log for the installer's output.",
-	"",
-	"The updater did not finish within 900000ms; stopping the process group this run started. Its own children (uv, pipx, pip) run inside that group, so signalling only the front end would leave the installer running",
+const ORPHANED_UPDATER_SENTENCE =
+	"The server update did not finish: the installer could not be run to a verdict or timed out. The updater was stopped, and something it started may still be running - it may still be replacing the install, and another update will not be started until it exits. The running backend is still serving version 0.56.10; see the update service log for the installer's output.";
+
+/**
+ * The CHILD's output for that frame, not the app's log line.
+ *
+ * The fixture used to put the producer's own `logger.error` sentence here - "The
+ * updater did not finish within 900000ms; stopping the process group this run
+ * started..." - which no installer writes and which the app writes to its log rather
+ * than to this field, so the frame asserted copy the producer cannot emit (review
+ * round 3, MINOR-2). These lines are the tool's own, taken from the isolated rebuild
+ * transcript in docs/evidence/server-update-source-build/README.md, cut where the stop
+ * landed.
+ */
+const ORPHANED_UPDATER_OUTPUT = [
+	"lop-update: mobile web bundle: built",
+	"Resolved 55 packages in 1.25s",
+	"   Building local-operator @ file:///tmp/lop-update.jegEuB",
+	"Downloading cryptography (3.8MiB)",
 ].join("\n");
 
 /**
@@ -145,6 +185,24 @@ const ORPHANED_UPDATER_MESSAGE = [
  */
 const backendUpdateErrorListeners: Array<
 	(report: BackendUpdateErrorReport) => void
+> = [];
+
+/**
+ * The listeners `onBackendUpdateProgress` has registered for the current story.
+ *
+ * It exists because the RUNNING state has two sentences now and only one of them can
+ * be photographed from the offer: the phase event carries `sourceRebuild`, and the
+ * rebuild's copy is the only place a reader is told that the install is being
+ * rewritten in place - the fact the offer names before the press and the run has to
+ * keep naming while the press is being paid (review round 3, D2 = U3). A registry
+ * for the same reason the error listeners have one: the mock is re-installed on every
+ * decorator effect while the component's subscription survives it.
+ */
+const backendUpdateProgressListeners: Array<
+	(progress: {
+		phase: "installing" | "restarting";
+		sourceRebuild?: boolean;
+	}) => void
 > = [];
 
 /**
@@ -174,9 +232,23 @@ const mockUpdaterApi = () => {
 			 * is not a state the fixture can assemble without it.
 			 */
 			if (window.triggerBackendUpdateInFlight) {
+				// The phase the producer announces first, so the frame shows the release
+				// path's own sentence rather than the fallback both routes share.
+				for (const listener of [...backendUpdateProgressListeners]) {
+					listener({ phase: "installing" });
+				}
 				return new Promise<boolean>(() => {});
 			}
 			if (window.triggerBackendUpdateSourceBuildInFlight) {
+				/*
+				 * AND THE REBUILD ANNOUNCES ITSELF AS ONE. Without this the two running
+				 * frames are the same panel: the offer that carried the cost sentence has
+				 * already unmounted, so the only place left to say that the install is
+				 * being rewritten in place is this phase event.
+				 */
+				for (const listener of [...backendUpdateProgressListeners]) {
+					listener({ phase: "installing", sourceRebuild: true });
+				}
 				return new Promise<boolean>(() => {});
 			}
 			if (window.triggerBackendUpdateError) {
@@ -188,7 +260,7 @@ const mockUpdaterApi = () => {
 			/*
 			 * THE FAILURE THAT CARRIES A DIAGNOSIS, and the two shapes this pass added.
 			 *
-			 * `SOURCE_BUILD_REFUSAL_MESSAGE` is the operator's OWN `lop-update` output -
+			 * `SOURCE_BUILD_REFUSAL_OUTPUT` is the operator's OWN `lop-update` output -
 			 * captured by driving the real script in an isolated repository whose `main`
 			 * is one commit behind its `origin/main`, so it refuses before it builds -
 			 * with the producer's own selection applied: the diagnosis at the head, never
@@ -196,14 +268,15 @@ const mockUpdaterApi = () => {
 			 * tail of that message is what a tail selection would have handed over,
 			 * which is exactly the defect.
 			 *
-			 * `ORPHANED_UPDATER_MESSAGE` is the other new sentence: an updater stopped on
+			 * `ORPHANED_UPDATER_SENTENCE` is the other new sentence: an updater stopped on
 			 * its budget while a process it started is still alive. It belongs in a frame
 			 * because it is the one copy this pass added to a shipped panel.
 			 */
 			if (window.triggerBackendUpdateSourceBuildFailed) {
 				for (const listener of [...backendUpdateErrorListeners]) {
 					listener({
-						message: SOURCE_BUILD_REFUSAL_MESSAGE,
+						message: SOURCE_BUILD_REFUSAL_SENTENCE,
+						installerOutput: SOURCE_BUILD_REFUSAL_OUTPUT,
 						phase: "update",
 						logPath:
 							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
@@ -214,7 +287,8 @@ const mockUpdaterApi = () => {
 			if (window.triggerBackendUpdateFailedOrphan) {
 				for (const listener of [...backendUpdateErrorListeners]) {
 					listener({
-						message: ORPHANED_UPDATER_MESSAGE,
+						message: ORPHANED_UPDATER_SENTENCE,
+						installerOutput: ORPHANED_UPDATER_OUTPUT,
 						phase: "update",
 						logPath:
 							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
@@ -324,7 +398,7 @@ const mockUpdaterApi = () => {
 					remedy:
 						"The app rebuilds this source checkout with `lop-update` and then restarts the server it started. That rebuild reinstalls the install in place, so sessions running on this machine can be interrupted while it happens, and it can take a few minutes. The version this install reports afterwards is the checkout's, not the release the app offered.",
 					detail:
-						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. Built from source on this machine, so the app rebuilds the checkout rather than installing the published release over it.",
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; the app rebuilds it with the checkout's own script.",
 					sourceBuild: true,
 				});
 			}
@@ -455,7 +529,7 @@ const mockUpdaterApi = () => {
 						"This install predates the non-disruptive installer, so update it once from your terminal. This install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn; the app manages updates after that.",
 					command: "lop update",
 					detail:
-						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. Built from source on this machine, so `lop update` installs the published release over it - the harness prints the same notice.",
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; `lop update` would install the published release over it.",
 					latestVersion: "0.54.20",
 					currentVersion: "0.54.14",
 					sourceBuild: true,
@@ -1406,8 +1480,18 @@ export const BackendUpdateOfferSourceBuild: Story = {
 
 /**
  * The rebuild RUNNING, from the same offer: the button is pressed and the invoke
- * never settles, which is what keeps the panel in the state that carried the cost
- * sentence the reader agreed to.
+ * never settles.
+ *
+ * THIS FRAME USED TO CLAIM SOMETHING IT COULD NOT SHOW. The note here said the panel
+ * "keeps the state that carried the cost sentence the reader agreed to" - but that
+ * state IS the offer, which unmounts the moment the button is pressed, and the running
+ * panel it gave way to was the release path's, byte for byte: no rebuild, no
+ * interruption, and a sentence that promised the server kept serving (review round 3,
+ * D2 = U3). The phase event now carries `sourceRebuild`, so this frame shows the run's
+ * OWN copy - the install rewritten in place, sessions that can be interrupted, and the
+ * allowance this route really has - and that is what the capture asserts. The retired
+ * claim is worth keeping in the record because the frame it was attached to looked
+ * right: a still cannot tell two sentences apart.
  */
 export const BackendUpdateInFlightSourceBuild: Story = {
 	args: { autoCheck: false },

@@ -1121,7 +1121,12 @@ export type PendingServerUpdateOutcome =
 	| {
 			kind: "expired";
 			marker: PendingServerUpdateMarker;
-			reason: "gone" | "foreign-pid" | "expired";
+			/**
+			 * `unproven` is the reason for a record that never held a pid: it expires
+			 * like the others, but the log line must not claim a process is gone when
+			 * no process was ever named (review round 3, N1).
+			 */
+			reason: "gone" | "foreign-pid" | "expired" | "unproven";
 	  };
 
 /**
@@ -1173,7 +1178,24 @@ export function evaluatePendingServerUpdateMarker(input: {
 }): PendingServerUpdateOutcome {
 	const marker = input.marker;
 	if (!marker) return { kind: "none" };
-	if (marker.groupPid === null || !input.groupAlive) {
+	/*
+	 * A RECORD WITH NO GROUP IS UNPROVEN, AND EXPIRES AS ONE (review round 3, N1).
+	 *
+	 * It expires because the marker is REWRITTEN with the group's pid the moment the
+	 * spawn reports one, so a record still carrying `groupPid: null` means the app died
+	 * between writing the record and starting anything - nothing of ours is running, and
+	 * treating it as live would wedge every later update behind a run that never began
+	 * (Q-3's shape, from the other side).
+	 *
+	 * `unproven` rather than `gone` because that is what the record knows: no process
+	 * was ever NAMED in it, so "gone" is a claim about a pid this record never held.
+	 * The kind is what callers act on; the reason is what the log line tells the next
+	 * reader, and it must not invent evidence.
+	 */
+	if (marker.groupPid === null) {
+		return { kind: "expired", marker, reason: "unproven" };
+	}
+	if (!input.groupAlive) {
 		return { kind: "expired", marker, reason: "gone" };
 	}
 	const recorded = marker.groupStartedAt;
@@ -2699,7 +2721,8 @@ const TERMINAL_INSTRUCTION =
  * instructions and then how to bypass the guard. Selecting by tail hands the reader
  * the bypass as their remedy, which is what this function exists to prevent.
  *
- * The rules, in order: drop guard-bypass lines entirely; take the head up to the
+ * The rules, in order: drop guard-bypass lines entirely - and if that empties the
+ * output, return nothing rather than the lines just dropped; take the head up to the
  * first terminal instruction (so the verdict and its evidence survive and the
  * by-hand recipe does not); cap at `maxLines`; and fall back to the tail when the
  * head yields nothing usable, because a short unexplained one-liner (`installer
@@ -2713,14 +2736,25 @@ export function installDiagnosisLines(text: string, maxLines = 6): string {
 		.filter((line) => line.length > 0);
 	if (lines.length === 0) return "";
 	const allowed = lines.filter((line) => !GUARD_BYPASS_ADVICE.test(line));
-	const pool = allowed.length > 0 ? allowed : lines;
+	/*
+	 * NO FALLBACK TO THE UNFILTERED LINES. An earlier draft fell back to `lines`
+	 * when the filter emptied the pool, which re-admitted exactly the lines the
+	 * filter exists to drop: a one-line refusal whose only line is the bypass
+	 * advice came back as that advice, and the panel handed the reader the
+	 * disable-the-guard instruction as their remedy - the class this function was
+	 * written to keep out. There is no useful remainder in that case; the panel
+	 * then shows the app's own sentence and the log path instead (review round 3,
+	 * MINOR-1). The tail fallback still runs, but over the FILTERED lines, so a
+	 * crash's one-liner ("installer exited 127") is unaffected.
+	 */
+	if (allowed.length === 0) return "";
 	const head: string[] = [];
-	for (const line of pool) {
+	for (const line of allowed) {
 		if (head.length >= maxLines) break;
 		if (head.length > 0 && TERMINAL_INSTRUCTION.test(line)) break;
 		head.push(line);
 	}
-	return (head.length > 0 ? head : pool.slice(-maxLines))
+	return (head.length > 0 ? head : allowed.slice(-maxLines))
 		.join("\n")
 		.slice(0, 800);
 }
@@ -3419,7 +3453,7 @@ export function resolveGlobalInstallPlan(input: {
 		const sourceRebuildRoute =
 			!managed && sourceBuild && (input.sourceRebuild ?? null) !== null;
 		const provenance = sourceBuild
-			? " Built from source on this machine, so `lop update` installs the published release over it - the harness prints the same notice."
+			? " source build of this machine's checkout; `lop update` would install the published release over it."
 			: "";
 		return {
 			canManageUpdate: managed || sourceRebuildRoute,
@@ -3457,7 +3491,7 @@ export function resolveGlobalInstallPlan(input: {
 				managed
 					? provenance
 					: sourceRebuildRoute
-						? " Built from source on this machine, so the app rebuilds the checkout rather than installing the published release over it."
+						? " source build of this machine's checkout; the app rebuilds it with the checkout's own script."
 						: provenance
 			}`,
 			sourceBuild,
