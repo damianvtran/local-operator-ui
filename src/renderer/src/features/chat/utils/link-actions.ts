@@ -56,11 +56,19 @@
  * two keys for one file, and that is the right granularity here: the toolbar
  * acts on the string the reader is looking at.
  *
+ * THE CACHE HAS TWO READERS, and the second one is why `evidenceFor` lives here
+ * rather than in the grammar. The toolbar reads it to choose its buttons; the
+ * linkifier reads it - through the injected oracle `link-grammar.ts` accepts -
+ * to decide whether an extensionless token is a link AT ALL, because a slash
+ * command and a directory are the same shape to a scanner and only the disk
+ * tells them apart. One cache, one `resetProbeCache`, and no second "does it
+ * exist" knowledge in the renderer.
+ *
  * Nothing here reads `window` or the DOM; the caller injects the probe function,
  * which is what lets the whole matrix be asserted without an Electron process.
  */
 
-import { normalizeFileUrl } from "./link-grammar";
+import { type TargetEvidence, normalizeFileUrl } from "./link-grammar";
 import {
 	MAX_EAGER_READ_BYTES,
 	READ_ENCODING,
@@ -295,30 +303,164 @@ export const resetProbeCache = (): void => {
  * A throwing probe is left uncached and unanswered for the same reason
  * `use-mentioned-files` leaves its tiles unmarked: a stat that failed says
  * nothing about whether the file exists.
+ *
+ * This is now a one-target call into `probeTargets`, and that is the point: the
+ * toolbar's `ask once, cache forever` rule and the transcript's batched
+ * pre-scan are ONE implementation with one cache, so a spelling asked by a row
+ * and then hovered does not pay two stats, and the toolbar's call site does not
+ * change shape.
  */
 export async function probeTarget(
 	target: string,
 	ask: ProbeFunction | undefined,
 ): Promise<void> {
-	if (!ask || probeCache.has(target)) return;
-	try {
-		const [answer] = await ask([target]);
-		if (!answer) return;
-		probeCache.set(target, {
-			exists: answer.exists,
-			isFile: answer.isFile,
-			/*
-			 * `?? target`: the resolution is the ANSWER's when it has one, and this
-			 * spelling when it does not. A stub that answers only existence (the
-			 * story fixture's first shape) then still yields a usable identity
-			 * rather than an `undefined` document path.
-			 */
-			resolved: answer.resolved ?? target,
-			sizeBytes: answer.sizeBytes ?? null,
-			mtimeMs: answer.mtimeMs ?? null,
-		});
-	} catch (error) {
-		console.warn("probe-files failed:", error);
+	return probeTargets([target], ask, 1);
+}
+
+/**
+ * Everything the session has been told about one spelling, as `TargetEvidence`.
+ *
+ * WHAT THE GRAMMAR ASKS. `link-grammar.ts` holds no bridge to the disk - it is
+ * pure and runs under `node --test` - so it takes this function as an injected
+ * oracle (`TargetPolicy.evidence`) and asks it only about the tokens whose SHAPE
+ * cannot answer the question (`isAmbiguousCandidate`). This is the second reader
+ * of `probeCache`, and it is beside the cache rather than in the grammar because
+ * the toolbar already fills that cache: a spelling the reader hovered is
+ * answered from it, and a spelling nothing has asked about answers "unknown" -
+ * which the gate REFUSES, so an unprobed token renders as plain text.
+ *
+ * This module stays `window`-free: the caller unwraps `window.api.probeFiles`,
+ * exactly as `probeTarget` already required.
+ */
+export const evidenceFor = (target: string): TargetEvidence => {
+	const known = probeCache.get(target);
+	/*
+	 * `null` is `ProbedTarget`'s own spelling for "nothing is known yet", so it
+	 * answers `unknown` beside `undefined` rather than being read as a missing
+	 * file: an entry nobody wrote is not evidence about the disk.
+	 */
+	if (!known) return "unknown";
+	return known.exists ? "exists" : "missing";
+};
+
+/**
+ * Who wants to know when an answer LANDS, and which spellings it was about.
+ *
+ * The transcript's rows are `memo()`'d and take no prop for this - see
+ * `markdown-renderer.tsx`'s `useLinkEvidence` - so the component that asked
+ * subscribes here and re-renders on its own state bump when its own suspect
+ * list moved. Module-level, like `probeCache`, because there is one session's
+ * worth of answers and one set of askers.
+ *
+ * The payload is the spellings that LANDED in that step, not every suspect that
+ * was asked for: a row armed on three tokens and waiting for one has no reason
+ * to re-parse when the other two come back, and a chunk that threw landed
+ * nothing at all.
+ */
+const probeListeners = new Set<(landed: readonly string[]) => void>();
+
+/** Listen for landed answers. The returned function unsubscribes. */
+export const subscribeProbes = (
+	listener: (landed: readonly string[]) => void,
+): (() => void) => {
+	probeListeners.add(listener);
+	return () => {
+		probeListeners.delete(listener);
+	};
+};
+
+const notifyProbes = (landed: readonly string[]): void => {
+	for (const listener of probeListeners) listener(landed);
+};
+
+/**
+ * The spellings with an ask in flight, so two askers of one token cost one stat.
+ *
+ * `probeCache` alone cannot do this: it is written when the answer ARRIVES, so
+ * two rows painting in the same frame - both carrying `/tmp` - would both see a
+ * cold cache and both ask. That is the one shape the transcript can produce in
+ * bulk, and main stats SYNCHRONOUSLY on its own event loop (`src/main/index.ts`),
+ * so a duplicate batch is an app-wide stall rather than one row's delay.
+ *
+ * A failed chunk clears its entries here (`finally`), so the next asker retries
+ * rather than inheriting a permanently in-flight token.
+ */
+const inFlightProbes = new Set<string>();
+
+/**
+ * Ask about many targets in `maxBatch`-sized sequential chunks.
+ *
+ * Deduped three ways (input order, `probeCache`, the in-flight set), asked in
+ * order, and each chunk's answers cached as they land so a NOTIFY arrives per
+ * chunk rather than once at the end - a row holding one token does not wait for
+ * another row's hundred.
+ *
+ * `maxBatch` is a PARAMETER rather than an import of `MAX_PROBE_PATHS` on
+ * purpose: this module is bundled by a bare `node --test` file
+ * (`scripts/link-actions.test.mjs`), and importing `desktop-contract` would drag
+ * zod in behind it. The renderer passes `MAX_PROBE_PATHS` (64) - the bound main
+ * enforces - and the toolbar's one-target call passes 1.
+ *
+ * A chunk that throws warns ONCE per call and is left uncached: a stat that
+ * failed says nothing about whether the file exists, and a second warning for a
+ * second bad chunk is noise about one broken bridge.
+ */
+export async function probeTargets(
+	targets: readonly string[],
+	ask: ProbeFunction | undefined,
+	maxBatch: number,
+): Promise<void> {
+	/*
+	 * No bridge is not an error: Storybook and browser development have none, and
+	 * the callers depend on this returning rather than throwing so their own
+	 * effects stay quiet. Every spelling stays `unknown`, which the grammar's gate
+	 * refuses, so nothing is rendered as a claim about the disk.
+	 */
+	if (!ask) return;
+	const size = maxBatch > 0 ? Math.floor(maxBatch) : 1;
+	const seen = new Set<string>();
+	const wanted: string[] = [];
+	for (const target of targets) {
+		if (probeCache.has(target) || inFlightProbes.has(target)) continue;
+		if (seen.has(target)) continue;
+		seen.add(target);
+		wanted.push(target);
+	}
+	for (const target of wanted) inFlightProbes.add(target);
+	let warned = false;
+	for (let at = 0; at < wanted.length; at += size) {
+		const chunk = wanted.slice(at, at + size);
+		try {
+			const answers = await ask(chunk);
+			const landed: string[] = [];
+			chunk.forEach((target, index) => {
+				const answer = answers[index];
+				if (!answer) return;
+				probeCache.set(target, {
+					exists: answer.exists,
+					isFile: answer.isFile,
+					/*
+					 * These three are upstream's (its own inline body wrote them before this
+					 * branch made the toolbar's one-target probe call into this batched path), and
+					 * the fold that merged the two implementations keeps them: the canvas opens the
+					 * RESOLVED path, so dropping them here would read as a working probe and a
+					 * broken Open.
+					 */
+					resolved: answer.resolved ?? target,
+					sizeBytes: answer.sizeBytes ?? null,
+					mtimeMs: answer.mtimeMs ?? null,
+				});
+				landed.push(target);
+			});
+			if (landed.length > 0) notifyProbes(landed);
+		} catch (error) {
+			if (!warned) {
+				console.warn("probe-files failed:", error);
+				warned = true;
+			}
+		} finally {
+			for (const target of chunk) inFlightProbes.delete(target);
+		}
 	}
 }
 

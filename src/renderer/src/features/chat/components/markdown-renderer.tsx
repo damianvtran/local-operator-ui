@@ -16,7 +16,11 @@ import {
 	type LinkKind,
 	classifyHref,
 	clickDecision,
+	evidenceFor,
+	probeTargets,
+	subscribeProbes,
 } from "../utils/link-actions";
+import { ambiguousTargetsIn } from "../utils/link-grammar";
 import { openLocalTarget, selectionTouches } from "../utils/link-open";
 import {
 	type BlockScanner,
@@ -29,6 +33,7 @@ import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
 import "./markdown.css";
+import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
 import { containsRenderableMath } from "./markdown-math";
 import { MermaidDiagram } from "./mermaid-diagram";
 
@@ -472,6 +477,77 @@ const useMathPipeline = (
 };
 
 /**
+ * The evidence loop for one rendered document.
+ *
+ * WHAT IT IS FOR. A slash command and a directory are the same shape to a
+ * scanner - `/new`, `/tmp`, `/v2/things` - so the grammar admits such a token
+ * only when the disk vouches for it (`TargetPolicy.evidence`), and something has
+ * to ask. This hook is that something, and it lives HERE because this file holds
+ * the two components that own a `<ReactMarkdown>`: the transcript's row list is
+ * `memo()`'d and its identity contract is explicit
+ * (`use-mentioned-files.ts:8-14`), so a prop threaded down every row to carry
+ * this would be a new input to the hottest list in the app, and a store write
+ * would be a second source of truth for what a row renders.
+ *
+ * THE RE-PARSE TRIGGER IS THE STATE BUMP, and the measured reason it works is
+ * that react-markdown 10.1.0 does NOT memoise its pipeline: `Markdown(options)`
+ * calls `createProcessor` and `runSync` on every render (measured in jsdom for
+ * this change - the remark plugin ran once on mount and once per re-render, with
+ * the plugin array's identity held constant). So the re-render this hook
+ * provokes is the whole mechanism, and nothing has to be threaded through a prop
+ * or an array identity. The hoisted arrays above are kept because they cost
+ * nothing and are the shape that survives a future upgrade restoring an internal
+ * memo - not because they gate this today.
+ *
+ * ONE ASK PER DISTINCT SPELLING, EVER. The pre-scan is deduped, `probeTargets`
+ * dedupes again against the cache and against the asks already in flight (two
+ * rows carrying `/tmp` paint in the same frame and would otherwise both ask), and
+ * the answers land in the same cache the link toolbar reads. A streaming row
+ * (`linkify` false) does no scanning and asks nothing at all - a per-delta stat
+ * storm is the one shape this could go wrong in.
+ *
+ * A FRESH PATH CREATED AFTER THE MESSAGE PAINTED STAYS PLAIN. The Files panel
+ * owns a growth-triggered retry (`use-mentioned-files`); the linkifier owns none,
+ * so an extensionless file that appears later is not re-scanned. That is the
+ * accepted false negative of plain-until-known, recorded on the pull request
+ * rather than discovered by a reader.
+ */
+const useLinkEvidence = (content: string, linkify: boolean): void => {
+	const [, setTick] = useState(0); // the state is the re-render, not a value
+	useEffect(() => {
+		if (!linkify) return; // a streaming row is parsed but not linkified
+		const suspects = ambiguousTargetsIn(content);
+		if (suspects.length === 0) return;
+		let live = true;
+		const armed = new Set(suspects);
+		const stop = subscribeProbes((landed) => {
+			if (live && landed.some((target) => armed.has(target)))
+				setTick((count) => count + 1);
+		});
+		void probeTargets(suspects, window.api?.probeFiles, MAX_PROBE_PATHS).then(
+			() => {
+				/*
+				 * An answer that landed before this effect subscribed - another row, or
+				 * the toolbar, asked first - is caught here rather than by the
+				 * subscription: the ask above returns immediately when every spelling is
+				 * already cached, and nothing would notify a listener that arrived after
+				 * the fact.
+				 */
+				if (
+					live &&
+					suspects.some((target) => evidenceFor(target) !== "unknown")
+				)
+					setTick((count) => count + 1);
+			},
+		);
+		return () => {
+			live = false;
+			stop();
+		};
+	}, [content, linkify]);
+};
+
+/**
  * Renders a complete markdown document.
  *
  * Bare URLs are linked by remark-gfm's autolink literals. There used to be a
@@ -504,6 +580,11 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 			credentialCitations,
 		);
 		const style = useStyleVariables(styleProps);
+		/*
+		 * The pre-scan runs on the SAME string the parse does, so the suspects and the
+		 * tokens the plugin will meet cannot drift on a leading newline.
+		 */
+		useLinkEvidence(trimmed, linkify);
 
 		return (
 			<div className={cn("lo-markdown", className)} style={style}>
@@ -563,6 +644,14 @@ const StableBlock = memo(({ source }: { source: string }) => {
 	 * excludes.
 	 */
 	const { remarkPlugins, rehypePlugins } = useMathPipeline(source, true, false);
+	/*
+	 * The same evidence loop the completed render runs, and the block is a good
+	 * place for it: the source is frozen when the block closes, so this asks at
+	 * most once per spelling per block and never on a delta. Memoised on
+	 * `source`, so a parent re-render that changes nothing here re-parses as it
+	 * already did and asks nothing again.
+	 */
+	useLinkEvidence(source, true);
 	return (
 		<ReactMarkdown
 			remarkPlugins={remarkPlugins}

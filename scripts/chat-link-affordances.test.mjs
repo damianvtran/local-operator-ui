@@ -475,6 +475,13 @@ const anchorFor = (document, endsWith) => {
 let frame;
 beforeEach(() => {
 	frame = mountDom();
+	/*
+	 * The linkifier now READS the probe cache - an extensionless token is a link
+	 * only when the disk vouched for it - so an answer a previous test cached must
+	 * not decide this one's first frame. One cache, one reset, the same call the
+	 * stories make.
+	 */
+	resetProbeCache();
 });
 afterEach(() => {
 	frame?.restore();
@@ -645,6 +652,162 @@ test("a press opens the DECODED path; a press with a live highlight opens nothin
 	const dragging = await frame.dispatch(anchor, "click");
 	assert.deepEqual(opened, [], "a drag must never launch an application");
 	assert.equal(dragging.defaultPrevented, true, "and must still not navigate");
+});
+
+/* -------------------------------------------------- the evidence gate, mounted */
+
+/**
+ * The anchors whose target is EXACTLY this spelling, in the mounted document.
+ *
+ * Every assertion below reads `.length` rather than deep-comparing this array:
+ * a jsdom Element is a cyclic graph with a window behind it, so an `assert`
+ * difference on one does not print a message - it walks the graph, and the file
+ * dies minutes later with no diagnostic at all (measured: 190s and a bare
+ * `test failed` on the file, with no assertion text, which is the worst possible
+ * shape for a failing gate).
+ */
+const anchorsWithTarget = (document, target) =>
+	[...document.querySelectorAll("a[data-lo-target]")].filter(
+		(anchor) => anchor.getAttribute("data-lo-target") === target,
+	);
+
+/**
+ * The document these two tests render: every family the gate answers over.
+ *
+ * `/new` twice (the operator's own sentence, and the command in backticks), an
+ * extensionless directory, one written with a trailing slash, then the two
+ * shapes that must never reach the disk - a dotfile and an extensioned path - so
+ * "was it asked" has something to be false about.
+ */
+const EVIDENCE_DOCUMENT = [
+	"I noticed that sometimes when new conversations are started with /new and no message has been sent yet.",
+	"",
+	"`/new` at the prompt starts one; the folder is /Users/someone/workspace and the archive lists /Users/someone/downloads/ as its source.",
+	"",
+	"The shell config is /Users/someone/.zshrc and the notes are /Users/someone/notes.md.",
+].join("\n");
+
+test("a slash command is never an anchor, and a real directory becomes one when the disk answers", async () => {
+	/*
+	 * THE WIRING, which no other suite can see: `scripts/link-targets.test.mjs`
+	 * asserts the rule over the grammar, and `scripts/link-actions.test.mjs`
+	 * asserts the ask, but only a mount proves the component that owns the parse
+	 * asks once per distinct ambiguous spelling, re-parses when an answer lands, and
+	 * leaves `/new` as prose.
+	 *
+	 * The stub is a DEFERRED promise rather than an async one, because the first
+	 * frame is half the claim: an optimistic renderer that linked on the first paint
+	 * and corrected itself afterwards would pass a test that only looked at the end
+	 * state, and the reader would still see an anchor answering `No file at /new`
+	 * when they hovered in the interval.
+	 */
+	const asked = [];
+	let release = () => {};
+	frame.window.api = {
+		...frame.window.api,
+		probeFiles: (paths) => {
+			asked.push(...paths);
+			return new Promise((resolve) => {
+				release = () =>
+					resolve(
+						paths.map((input) => ({
+							input,
+							resolved: input,
+							exists: input !== "/new",
+							isFile:
+								!input.endsWith("/workspace") && !input.endsWith("/downloads/"),
+							sizeBytes: 37_000,
+							mtimeMs: 1_760_000_000_000,
+						})),
+					);
+			});
+		},
+	};
+
+	await frame.render(
+		React.createElement(MarkdownRenderer, { content: EVIDENCE_DOCUMENT }),
+	);
+	/*
+	 * THE FIRST FRAME. The two extensionless shapes are plain text, and the two
+	 * shapes the gate never reaches are already links - which is what makes this
+	 * "not yet" rather than "never".
+	 */
+	assert.equal(anchorsWithTarget(frame.document, "/new").length, 0);
+	assert.equal(
+		anchorsWithTarget(frame.document, "/Users/someone/workspace").length,
+		0,
+		"an unprobed directory is plain text, not an optimistic link",
+	);
+	assert.equal(
+		anchorsWithTarget(frame.document, "/Users/someone/notes.md").length,
+		1,
+	);
+	assert.equal(
+		anchorsWithTarget(frame.document, "/Users/someone/.zshrc").length,
+		1,
+	);
+	/*
+	 * ONE ASK PER DISTINCT SPELLING, and nothing else asked: `/new` appears twice in
+	 * the document and the trailing-slash spelling is the same directory question,
+	 * while the dotfile and the extensioned path are never doubted at all.
+	 */
+	assert.deepEqual(asked, [
+		"/new",
+		"/Users/someone/workspace",
+		"/Users/someone/downloads/",
+	]);
+
+	await act(async () => {
+		release();
+	});
+	/*
+	 * AND THE SETTLED FRAME: the directory links (a trailing slash is not part of
+	 * the predicate), `/new` still does not, and the answer produced no second ask -
+	 * a re-render that re-asked would be the storm the batching exists to prevent.
+	 */
+	assert.equal(
+		anchorsWithTarget(frame.document, "/Users/someone/workspace").length,
+		1,
+	);
+	assert.equal(anchorsWithTarget(frame.document, "/new").length, 0);
+	assert.equal(
+		anchorsWithTarget(frame.document, "/Users/someone/downloads/").length,
+		1,
+	);
+	assert.deepEqual(asked, [
+		"/new",
+		"/Users/someone/workspace",
+		"/Users/someone/downloads/",
+	]);
+});
+
+test("with no probe bridge the ambiguous tokens stay prose and nothing throws", async () => {
+	/*
+	 * Storybook and browser development have no preload, so `window.api` is absent
+	 * and `probeTargets` returns before asking: every ambiguous token is `unknown`,
+	 * which the gate REFUSES. The extensioned path still links - the gate is only
+	 * reached for a token the shape cannot answer for, which is the property that
+	 * keeps this change off the path of every ordinary path in a transcript - and
+	 * nothing here may throw, since a throw inside a renderer effect is a blank
+	 * frame rather than a missing link.
+	 */
+	Reflect.deleteProperty(frame.window, "api");
+	await frame.render(
+		React.createElement(MarkdownRenderer, { content: EVIDENCE_DOCUMENT }),
+	);
+	assert.equal(anchorsWithTarget(frame.document, "/new").length, 0);
+	assert.equal(
+		anchorsWithTarget(frame.document, "/Users/someone/workspace").length,
+		0,
+	);
+	assert.equal(
+		anchorsWithTarget(frame.document, "/Users/someone/notes.md").length,
+		1,
+	);
+	assert.equal(
+		anchorsWithTarget(frame.document, "/Users/someone/.zshrc").length,
+		1,
+	);
 });
 
 /* --------------------------------------------------------------- the toolbar */
