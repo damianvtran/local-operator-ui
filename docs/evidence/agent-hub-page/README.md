@@ -26,7 +26,7 @@ its narrowest supported column (design round 1, D8).
 | `viewer-state-unknown` | the same grid with the batched viewer read REFUSED (500): the line that says so above the count, and cards whose heart and star are unavailable rather than unfilled |
 | `loading` | the first paint, before the list answers |
 | `empty` | a hub with nothing published |
-| `load-failed` | the list read failed — the backend did not answer, so the read is not retried and the state is on screen from the first paint |
+| `load-failed` | the list read failed on a SIGNED-OUT viewer — the hub has no credential to read with, so the state names that rather than an outage, and it is on screen from the first paint |
 | `empty-category` | a category that holds nothing, reached by clicking the rail |
 | `search-miss` | a search that matches nothing, typed into the box |
 | `scope-switched` | the search scope switched to description |
@@ -56,6 +56,24 @@ pictures of a tree the app no longer renders that way. The pass before that one
 had itself re-shot all thirteen against D6's capped panel, U5's alert copy and
 U1's retry, U12's panel width and D1's skeleton and pager height; those frames
 are history now.
+
+**`load-failed` was re-taken in round 3's remediation, and it is the state that
+round moves.** Twelve frames, one narrowed run (`--dirs=load-failed
+--allow-backend`) at `c1dfcc27f`; the other 144 frames of this set are untouched
+by the pass and still carry the provenance above. The story is a SIGNED-OUT read
+failing — `installBridge({records: 12, failList: true})` leaves `signedIn` at its
+`false` default — and the page painted that as an outage: "The hub could not be
+loaded / The agent list could not be loaded. The Local Operator server is not
+answering. Restart the app so it can start its own server.", over a retry that
+re-issued the same unauthenticated read. Every clause of that was wrong about a
+credential the app was missing, and it could not be told apart from a real
+outage, where `main` painted nothing at all (QA round 1, Q2). It now reads "Sign
+in to use the hub / You are not signed in to Radient, so the hub has no
+credential to read the agent list with. Sign in on the settings page, then try
+again." The retry stays: signing in happens on another surface, and a cached
+query does not necessarily re-run on the way back. The visible change is the copy
+alone — same alert, same control, same box — which is why this state was re-taken
+rather than the whole set.
 
 **The loading placeholder holds the settled card's box, and that is measured
 rather than eyeballed.** Design round 2's D1 was the second round it was raised
