@@ -1,17 +1,39 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	lstatSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	readlinkSync,
+	realpathSync,
+	rmSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import {
+	basename,
+	dirname,
+	isAbsolute,
+	join,
+	relative,
+	resolve,
+} from "node:path";
 
 function check(id, target, description, work) {
-	try { return { id, target, description, passed: true, output: work() ?? "" }; }
-	catch (error) { return { id, target, description, passed: false, output: error.message }; }
+	try {
+		return { id, target, description, passed: true, output: work() ?? "" };
+	} catch (error) {
+		return { id, target, description, passed: false, output: error.message };
+	}
 }
 function contained(root, path) {
 	const rel = relative(root, path);
-	return rel === "" || (!rel.startsWith("../") && rel !== ".." && !isAbsolute(rel));
+	return (
+		rel === "" || (!rel.startsWith("../") && rel !== ".." && !isAbsolute(rel))
+	);
 }
 
 /** The architecture a release artifact's FILENAME claims.
@@ -41,34 +63,60 @@ export function artifactArch(path) {
  * failure this catches, and it passes every other check in the gate.
  */
 export function privatePythonSeedCheck(appPath, { expectArch = null } = {}) {
-	return check("app-private-python-seed", appPath, "complete private Python seed with no legacy aliases", () => {
-		const resources = join(appPath, "Contents", "Resources");
-		for (const legacy of ["python", "python_aarch64"]) {
-			try { lstatSync(join(resources, legacy)); }
-			catch (error) { if (error.code === "ENOENT") continue; throw error; }
-			throw new Error(`Legacy Python resource or alias exists: ${legacy}`);
-		}
-		const parent = join(resources, "python-runtime-seed");
-		const names = readdirSync(parent);
-		if (names.length !== 1 || !["arm64", "x64"].includes(names[0])) throw new Error("Expected one architecture-specific private seed");
-		if (expectArch != null && names[0] !== expectArch) throw new Error(`The artifact names ${expectArch} but ships the ${names[0]} seed`);
-		const root = join(parent, names[0]);
-		const rootReal = realpathSync(root);
-		if (!lstatSync(root).isDirectory()) throw new Error("Seed root must be a directory, not an alias");
-		function walk(directory) {
-			for (const name of readdirSync(directory)) {
-				const path = join(directory, name);
-				const stat = lstatSync(path);
-				if (stat.isSymbolicLink()) {
-					const target = readlinkSync(path);
-					if (isAbsolute(target) || !contained(root, resolve(dirname(path), target)) || !contained(rootReal, realpathSync(path))) throw new Error(`Escaping seed link: ${path}`);
-				} else if (stat.isDirectory()) walk(path);
-				else if (!stat.isFile() || stat.nlink !== 1) throw new Error(`Hardlink or special file in seed: ${path}`);
+	return check(
+		"app-private-python-seed",
+		appPath,
+		"complete private Python seed with no legacy aliases",
+		() => {
+			const resources = join(appPath, "Contents", "Resources");
+			for (const legacy of ["python", "python_aarch64"]) {
+				try {
+					lstatSync(join(resources, legacy));
+				} catch (error) {
+					if (error.code === "ENOENT") continue;
+					throw error;
+				}
+				throw new Error(`Legacy Python resource or alias exists: ${legacy}`);
 			}
-		}
-		walk(root);
-		if (!existsSync(join(root, "bin", "python3")) || !existsSync(join(root, "lib", "python3.12", "encodings", "__init__.py"))) throw new Error("The seed must carry the complete Python runtime, not just its executable");
-	});
+			const parent = join(resources, "python-runtime-seed");
+			const names = readdirSync(parent);
+			if (names.length !== 1 || !["arm64", "x64"].includes(names[0]))
+				throw new Error("Expected one architecture-specific private seed");
+			if (expectArch != null && names[0] !== expectArch)
+				throw new Error(
+					`The artifact names ${expectArch} but ships the ${names[0]} seed`,
+				);
+			const root = join(parent, names[0]);
+			const rootReal = realpathSync(root);
+			if (!lstatSync(root).isDirectory())
+				throw new Error("Seed root must be a directory, not an alias");
+			function walk(directory) {
+				for (const name of readdirSync(directory)) {
+					const path = join(directory, name);
+					const stat = lstatSync(path);
+					if (stat.isSymbolicLink()) {
+						const target = readlinkSync(path);
+						if (
+							isAbsolute(target) ||
+							!contained(root, resolve(dirname(path), target)) ||
+							!contained(rootReal, realpathSync(path))
+						)
+							throw new Error(`Escaping seed link: ${path}`);
+					} else if (stat.isDirectory()) walk(path);
+					else if (!stat.isFile() || stat.nlink !== 1)
+						throw new Error(`Hardlink or special file in seed: ${path}`);
+				}
+			}
+			walk(root);
+			if (
+				!existsSync(join(root, "bin", "python3")) ||
+				!existsSync(join(root, "lib", "python3.12", "encodings", "__init__.py"))
+			)
+				throw new Error(
+					"The seed must carry the complete Python runtime, not just its executable",
+				);
+		},
+	);
 }
 
 /**
@@ -111,7 +159,9 @@ function detachRecordedTarget() {
 	attachedTarget = null;
 	if (target == null) return;
 	try {
-		spawnSync("/usr/bin/hdiutil", ["detach", "-force", "-quiet", target], { stdio: "ignore" });
+		spawnSync("/usr/bin/hdiutil", ["detach", "-force", "-quiet", target], {
+			stdio: "ignore",
+		});
 	} catch {
 		// The backstop runs at process teardown: it may not throw, and there is
 		// nowhere left to report a failure to.
@@ -161,16 +211,25 @@ function recordAttachedTarget(target) {
 export function mountedDevice(stdout, mount) {
 	const rows = String(stdout)
 		.split("\n")
-		.map((line) => line.split("\t").map((cell) => cell.trim()).filter((cell) => cell !== ""));
+		.map((line) =>
+			line
+				.split("\t")
+				.map((cell) => cell.trim())
+				.filter((cell) => cell !== ""),
+		);
 	const paths = new Set([mount]);
 	try {
 		paths.add(realpathSync(mount));
 	} catch {
 		// The mount may already be gone; the literal comparison still applies.
 	}
-	const named = rows.find((row) => row.length >= 3 && paths.has(row[row.length - 1]));
+	const named = rows.find(
+		(row) => row.length >= 3 && paths.has(row[row.length - 1]),
+	);
 	if (named) return named[0];
-	const devices = rows.filter((row) => row.length >= 3 && row[0].startsWith("/dev/"));
+	const devices = rows.filter(
+		(row) => row.length >= 3 && row[0].startsWith("/dev/"),
+	);
 	return devices.length > 0 ? devices[devices.length - 1][0] : null;
 }
 
@@ -200,36 +259,61 @@ export function finalContainerChecks(path, { run, checkApp }) {
 	const results = [];
 	const mustRun = (command, args, input) => {
 		const result = run(command, args, input);
-		if (result.status !== 0) throw new Error(`${command}: ${result.stderr || result.stdout}`);
+		if (result.status !== 0)
+			throw new Error(`${command}: ${result.stderr || result.stdout}`);
 		return result;
 	};
 	try {
 		if (path.endsWith(".dmg")) {
 			mkdirSync(mount);
-			const attached = mustRun("/usr/bin/hdiutil", ["attach", "-readonly", "-nobrowse", "-mountpoint", mount, path], LICENSE_ACCEPTANCE);
+			const attached = mustRun(
+				"/usr/bin/hdiutil",
+				["attach", "-readonly", "-nobrowse", "-mountpoint", mount, path],
+				LICENSE_ACCEPTANCE,
+			);
 			// The device is what the finally block detaches; the path is only this
 			// invocation's name for the volume. It is recorded before the checks run,
 			// so a crash in them still has a target for the backstop.
 			device = mountedDevice(attached.stdout, mount);
 			mounted = true;
 			recordAttachedTarget(device ?? mount);
-			for (const name of readdirSync(mount).filter((name) => name.endsWith(".app"))) {
+			for (const name of readdirSync(mount).filter((name) =>
+				name.endsWith(".app"),
+			)) {
 				mustRun("/usr/bin/ditto", [join(mount, name), join(extracted, name)]);
 			}
 		} else {
 			const listing = mustRun("/usr/bin/unzip", ["-Z1", path]).stdout;
-			if (listing.split("\n").some((entry) => isAbsolute(entry) || entry.split("/").includes(".."))) throw new Error("Archive contains an escaping entry");
+			if (
+				listing
+					.split("\n")
+					.some((entry) => isAbsolute(entry) || entry.split("/").includes(".."))
+			)
+				throw new Error("Archive contains an escaping entry");
 			mustRun("/usr/bin/ditto", ["-x", "-k", path, extracted]);
 		}
 		const apps = readdirSync(extracted).filter((name) => name.endsWith(".app"));
-		if (apps.length !== 1) throw new Error(`Expected exactly one application in ${basename(path)}`);
+		if (apps.length !== 1)
+			throw new Error(`Expected exactly one application in ${basename(path)}`);
 		// The filename's architecture travels with the extracted app: the checks
 		// below read the app's own architecture, and only the container knows which
 		// one the user's download was supposed to be.
 		const arch = artifactArch(path);
-		for (const app of apps) results.push(...checkApp(join(extracted, app), arch).map((result) => ({ ...result, target: `${path} :: ${app}` })));
+		for (const app of apps)
+			results.push(
+				...checkApp(join(extracted, app), arch).map((result) => ({
+					...result,
+					target: `${path} :: ${app}`,
+				})),
+			);
 	} catch (error) {
-		results.push({ id: "final-container-app", target: path, description: "validate the delivered application", passed: false, output: error.message });
+		results.push({
+			id: "final-container-app",
+			target: path,
+			description: "validate the delivered application",
+			passed: false,
+			output: error.message,
+		});
 	} finally {
 		if (mounted) {
 			/*
@@ -246,7 +330,8 @@ export function finalContainerChecks(path, { run, checkApp }) {
 			 */
 			const target = device ?? mount;
 			let detached = run("/usr/bin/hdiutil", ["detach", target]);
-			if (detached.status !== 0) detached = run("/usr/bin/hdiutil", ["detach", "-force", target]);
+			if (detached.status !== 0)
+				detached = run("/usr/bin/hdiutil", ["detach", "-force", target]);
 			if (detached.status === 0) {
 				// Detached by this call: nothing is left for the backstop to do.
 				if (attachedTarget === target) attachedTarget = null;
@@ -283,21 +368,42 @@ export function finalMetadataChecks(dist, artifacts) {
 	const builder = createRequire(require.resolve("electron-builder"));
 	const library = createRequire(builder.resolve("app-builder-lib"));
 	const { load } = library("js-yaml");
-	const metadata = readdirSync(dist).filter((name) => /.*-mac.*\.yml$/.test(name));
+	const metadata = readdirSync(dist).filter((name) =>
+		/.*-mac.*\.yml$/.test(name),
+	);
 	const seen = new Set();
-	const results = metadata.map((name) => check("final-artifact-metadata", join(dist, name), "release metadata describes exact delivered bytes", () => {
-		const document = load(readFileSync(join(dist, name), "utf8"));
-		if (!Array.isArray(document.files) || document.files.length === 0) throw new Error("No release files in macOS metadata");
-		for (const file of document.files) {
-			if (typeof file.url !== "string" || basename(file.url) !== file.url) throw new Error("Metadata file must be a local artifact basename");
-			const path = join(dist, file.url);
-			const bytes = readFileSync(path);
-			const hash = createHash("sha512").update(bytes).digest("base64");
-			if (hash !== file.sha512 || bytes.length !== file.size) throw new Error(`Metadata bytes differ: ${file.url}`);
-			if (document.path === file.url && document.sha512 !== hash) throw new Error(`Legacy metadata hash differs: ${file.url}`);
-			seen.add(file.url);
-		}
-	}));
-	for (const path of artifacts) if (!seen.has(basename(path))) results.push({ id: "final-artifact-metadata", target: path, description: "every delivered container appears in verified metadata", passed: false, output: "No matching verified metadata entry" });
+	const results = metadata.map((name) =>
+		check(
+			"final-artifact-metadata",
+			join(dist, name),
+			"release metadata describes exact delivered bytes",
+			() => {
+				const document = load(readFileSync(join(dist, name), "utf8"));
+				if (!Array.isArray(document.files) || document.files.length === 0)
+					throw new Error("No release files in macOS metadata");
+				for (const file of document.files) {
+					if (typeof file.url !== "string" || basename(file.url) !== file.url)
+						throw new Error("Metadata file must be a local artifact basename");
+					const path = join(dist, file.url);
+					const bytes = readFileSync(path);
+					const hash = createHash("sha512").update(bytes).digest("base64");
+					if (hash !== file.sha512 || bytes.length !== file.size)
+						throw new Error(`Metadata bytes differ: ${file.url}`);
+					if (document.path === file.url && document.sha512 !== hash)
+						throw new Error(`Legacy metadata hash differs: ${file.url}`);
+					seen.add(file.url);
+				}
+			},
+		),
+	);
+	for (const path of artifacts)
+		if (!seen.has(basename(path)))
+			results.push({
+				id: "final-artifact-metadata",
+				target: path,
+				description: "every delivered container appears in verified metadata",
+				passed: false,
+				output: "No matching verified metadata entry",
+			});
 	return results;
 }
