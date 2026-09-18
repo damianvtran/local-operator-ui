@@ -3,7 +3,8 @@
 Five states × twelve themes = **60 frames**: the same story, the same fixtures, the
 same entries, the same 1024×720 and 420×900 viewports and the same twelve themes as
 `../chat-canonical-links/`, photographed on the head that adds the ninth shape and
-NOTHING of the fix — `9c58e7bb754a757555f79626a4d6dfe3002ad34c`, the
+NOTHING of the fix — `9c58e7bb754a757555f79626a4d6dfe3002ad34c`, rebased as
+`219c812762157768d86114e3d67a3331eacb1834`, the
 story-fixture-only commit. These are the operator's own report in the frames: in
 them the sentence he quoted still underlines `/new`. The other half of that
 report, the strip the hover raised reading `No file at /new`, is a gesture rather
@@ -45,8 +46,9 @@ than 4/255 and the peak is 14/255; the shape repeats on the other rows
 (`detected-targets-narrow` 2,655 in / 3,829 out, 192 above 4/255, peak 17/255;
 `hover-file`/`synth` 5,707 in / 40,081 out, 2,267 above 4/255, peak 14/255). The
 one row whose tail crosses 19/255 is `neon`, whose ink step is the widest: 22
-pixels peaking at 42/255, and they sit in the single row just past the box's own
-edge (`263x37+274+616` against a box of `482x35+272+617`) — the token's ink at the
+pixels peaking at 42/255, and they sit in rows 616 and 652 — one row past EACH
+edge of the box, which is why the difference box printed here is `263x37+274+616`
+against the token's own `482x35+272+617` — the ink at the
 boundary the 8% threshold drew, rather than a second change. So "nothing else" is
 what the 8% threshold measures, and a reader quoting the AE column should read it
 as the token plus capture jitter of at most that order.
@@ -61,7 +63,8 @@ The AFTER half is the whole set, because the ninth shape sits in the story every
 state renders. This half is the five the design round actually took at that head,
 and the reason is measured rather than asserted: the artifact it handed over
 carried twenty-one directories, and SIXTEEN of them are byte-identical — 12 of 12
-themes each — to the AFTER frames as committed at `74f6ea96c`, which this pass
+themes each — to the AFTER frames as committed at `74f6ea96c` (rebased as
+`2b3ac8a2b`), which this pass
 then replaced (`magick compare -metric AE` = 0 for every file, checked directory
 by directory). A "before" frame that is a copy of the after frame photographs the
 fix, not the defect, so those sixteen are not landed here. The five above are the
@@ -87,7 +90,8 @@ node scripts/capture-evidence.mjs http://localhost:6031 \
     --allow-backend
 ```
 
-in a worktree checked out at `9c58e7bb7`, with the frames copied here unchanged
+in a worktree checked out at `9c58e7bb7`, rebased as `b4d12e7a8`, with the frames
+copied here unchanged
 (`cp -Rc`, an APFS clone: ~0 bytes at creation). `--allow-backend` because this
 machine has a backend answering on the app's configured port and the rig refuses to
 sweep while one does; every story in this set renders fixtures and reaches it for
