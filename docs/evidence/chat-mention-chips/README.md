@@ -26,8 +26,8 @@ ancestry rule requires its `head` to be an ancestor of `HEAD`, and a capture can
 only be stamped from a tree that is already committed, so a set always lands in a
 commit after the tree it photographed.
 
-**And this set was folded onto a moved `main` after that pass — twice — so read the
-head above as the spelling the folds gave it.** The manifest's
+**And this set was folded onto a moved `main` after that pass — three times — so
+read the head above as the spelling the folds gave it.** The manifest's
 `srcTree`/`scriptsTree` describe the tree the frames SHIP in, so a fold invalidates
 them whatever the branch's own delta is, and both are re-derived on the merged tree
 each time. The eighth fold (`main` at `318cbb75e`) moved 35 commits and 738 files —
@@ -57,8 +57,31 @@ the mention stories render an idle composer with no session status and no alert,
 the two changed paths — the store-refusal alert, and the Stop slot's grace window —
 are on no frame of this set's render path. No frame was re-taken for this fold.
 
+**The tenth fold (`main` at `09acb156a`) moved this band again, and this time it
+moved the file the band is written in.** `main` moved 30 commits and 75 files under
+this branch (the 0.26.10 release window, #322's release-attach recovery, #323's
+composer story ids, #312's phantom compose rows, and #308's composer focus and
+refusal flow), 19 of them under `src/` and 15 under `scripts/`, and
+**`message-input.tsx` and `chat-page.tsx` are among them** — and
+`message-input.tsx` is where this layer lives. The case is made on the source this
+time rather than on a frame comparison, and the reason is that the change is
+narrower than the ninth fold's: #308 changes exactly one painted thing in this
+band, the textarea's ink while it REFUSES input, where the `disabled:` pair it used
+to fire on becomes a `read-only:` pair with `disabled:` kept BESIDE it (both
+stepping to `text-ink-disabled`, so the refusal still paints the same ink), and
+**every story in this set renders `isLoading={false}` with no `currentJobId` and no
+`unavailable`**, so `isInputDisabled` is false on all 24 of them and no frame here
+is a picture of a refused composer. The window's other composer change is a
+`pointerdown` suppression on the Send, attach and dictation controls and on the
+suggestion chips, which keeps the caret on a press and is not a painted state. The
+mention layer's own rendering did not move at all: `at-picker.tsx`,
+`at-mention-overlay.tsx`, `at-token.ts`, `at-contract.ts`, `at-rank.ts`,
+`use-at-resolution.ts` and `composer-tip.tsx` are byte-identical to this branch's
+after the fold. **No frame was re-taken for this fold**, and the head above reads
+in the spelling the fold gave it.
+
 The counts in the manifest next to this file are the merged tree's own (`frames`
-5,933 outside the 76 declared sets, `surfaces` 627), re-derived by the same walker
+5,953 outside the 77 declared sets, `surfaces` 635), re-derived by the same walker
 `check-evidence.mjs` uses.
 
 **What moved in this pass, measured.** 170 of the 288 frames differ from the
