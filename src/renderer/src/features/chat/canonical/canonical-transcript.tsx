@@ -1002,10 +1002,11 @@ const NoticeRow = memo(function NoticeRow({
  * was the model-facing envelope verbatim — `<peer-session-message from_pid=92064
  * …>` and all.
  *
- * `peer` has no entry in `tool-row-model.CATEGORIES`, which is deliberate: the
- * `plain` fallback gives the name column `text-ink-muted`, the same ink the
- * TUI's own peer row paints it in. Giving it `meta` would buy it the accent and
- * make a receipt louder than the calls around it.
+ * The peer row takes the shared name column and the outcome ink every receipt
+ * takes (`rowInk("receipt")` is `text-ink-muted`), which is deliberate: giving it
+ * an accent of its own would make a receipt louder than the calls around it. The
+ * trace has ONE ink expression and no per-tool table, so there is nothing for a
+ * new tool — or for this row — to be added to.
  *
  * The disclosure is offered only when the expansion carries a fact the collapsed
  * row cannot (`peerHasDetail`): a body, or the pid/model the identity line adds

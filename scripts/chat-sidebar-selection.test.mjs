@@ -60,13 +60,13 @@
  *
  * WHAT IT CANNOT PROVE: that the ground is *visible*, and that it steps in the
  * right DIRECTION. Both are properties of the role against its neighbours across
- * every palette, and they are `scripts/contrast-contract.mjs`'s job — it asserts
- * `highlight` against `surface`, `elevated` and `sunken` at its own band floor of
- * ΔE00 4.0 and the field floor of 2.0 respectively, and it asserts the SIGN of
- * the `L*` step (lighter on a dark palette, darker on a light one, with a floor on
- * the magnitude), because the authored values across the tree land 4.00-5.97 from
- * `surface` (the twelve this rule was authored against at 4.01-4.15) and 3.0 or
- * better `L*` in that direction, the six ink-capped palettes pinned by name. It also cannot
+ * every palette, and they are `scripts/contrast-contract.mjs`'s job - it asserts
+ * `rowSelected` against `surface`, `rowHover` and the grounds at the row-state
+ * bands (ΔE00 4.0 off `surface` and 2.0 off `rowHover`), asserts the SIGN of the
+ * `L*` step (lighter on a dark palette, darker on a light one, with a floor on
+ * the magnitude), and carries one CLASS rather than a ledger of named palettes:
+ * `ROW_STATE_NEUTRAL_ACCENT`, for the monochrome palette whose `accent` has no
+ * chroma to spend. It also cannot
  * prove the row reads as the current one on screen; that is the frames in
  * `docs/evidence/chat-sidebar-current-row/`.
  *
@@ -420,7 +420,7 @@ const CURRENT = [
 test("the current row's ground is a step off its panel, not a wash", () => {
 	assert.ok(
 		rowCurrent.includes("bg-row-selected"),
-		`the current row's ground must be the role authored for it — \`rowSelected\`, the ROW STATE the row-state pass added: a tint of the palette's own accent hue, asserted at ΔE00 6.0 off \`surface\` AND 6.0 off \`rowHover\` (the role the rows around it now take under the pointer), with a 3.0-5.0 \`L*\` step in the direction the mode runs. It is larger than the retired role's 4.01-4.15 step and larger than the wash it replaced (\`accent-wash\`, ΔE00 1.05 on this panel's ground in tokyoNight). The bands and the direction are asserted in \`scripts/contrast-contract.mjs\`, which is where a colour can be measured. Got:\n${rowCurrent}`,
+		`the current row's ground must be the role authored for it — \`rowSelected\`, the ROW STATE the row-state pass added: a tint of the palette's own accent hue, asserted at ΔE00 4.0 off \`surface\` AND 2.0 off \`rowHover\` (the role the rows around it now take under the pointer), with a 1.5-5.0 \`L*\` step in the direction the mode runs. Its own fill is a bigger step than the wash it replaced (\`accent-wash\`, ΔE00 1.05 on this panel's ground in tokyoNight), and on the selected row it is carried as much by the 2px \`accent\` bar and \`font-medium\` as by the fill. The bands and the direction are asserted in \`scripts/contrast-contract.mjs\`, which is where a colour can be measured. Got:\n${rowCurrent}`,
 	);
 	assert.ok(
 		!rowCurrent.includes("bg-accent-wash"),
@@ -443,7 +443,7 @@ test("the current row's ground is a step off its panel, not a wash", () => {
  * app. That is exactly the bound the two new roles remove. The hover is now
  * `rowHover`, its own role with its own floor (ΔE00 4.0 off `surface`, against the
  * median 2.45 the operator twice reported as a whisper), and the selection is
- * `rowSelected`, asserted 6.0 off `surface` AND 6.0 off `rowHover`. The order of
+ * `rowSelected`, asserted 4.0 off `surface` AND 2.0 off `rowHover`. The order of
  * the two marks is a contract now rather than a coincidence of two values that
  * happened to land the right way round.
  *

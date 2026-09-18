@@ -193,8 +193,8 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					 * the row the reader is ON, one of the two the row-state pass added, with
 					 * `rowHover` for the row under the pointer. Both are tints of the
 					 * palette's own `accent` hue at two strengths rather than of the panel's
-					 * own cast, and the selected one is asserted at ΔE00 **6.0** off `surface`
-					 * AND 6.0 off `rowHover`, with a 3.0-5.0 `L*` step in the direction the
+					 * own cast, and the selected one is asserted at ΔE00 **4.0** off `surface`
+					 * AND **2.0** off `rowHover`, with a 1.5-5.0 `L*` step in the direction the
 					 * mode runs, a chroma ceiling, and the 2px `accent` bar the role brings
 					 * with it. Its doc in `palette-contract.ts` states the rule;
 					 * `scripts/contrast-contract.mjs` asserts it per palette.

@@ -125,69 +125,78 @@ stood they fail 3:1 on it in eight palettes. So the ramp, the inks and the edges
 land in one change, and a change that lifts grounds without them makes the reading
 worse rather than better.
 
-**One more ground behaves like one, for text's sake.** `accent-wash` and
-`highlight` are already required roles, and both now carry the ink floors (§ 3):
+**One more ground behaves like one, for text's sake.** `accent-wash` and the two row-state roles are already required roles, and all three
+now carry the ink floors (§ 3):
 they are where a keycap on a selected row, a chip label and a reading button on its
 own hover are actually read, and neither was measured before the legibility pass —
 which is how `ink-dim` came to sit at 3.91:1 on a selected row in `cyberpunk` with
 every gate green.
 
-There is a fifth ground role that is **not** a rung on that ladder: `highlight`,
-the ground of a row the reader is currently ON. It is a **lightness** step off
-`surface` in the direction the mode runs — darker on light themes, lighter on
-dark ones — and it is authored to land at **ΔE00 4.0 or better from `surface`**
-(the twelve palettes this change was authored against measure 4.01–4.15, and the
-forty-seven the theme port added were brought to the same rule in that round:
-**4.00–5.97 across the tree**, where the loudest is now `rosePine` 5.97 and
-`cyberpunk` — the palette whose cast the rule's fixed fraction first blew out to
-ΔE00 10.35 — sits at 4.14. Six palettes' `L*` shortfall is pinned where their own
-ink caps the route, and one wash pair is pinned where the floor is unreachable).
-The role was first authored at
-**2.0–2.5** for a selection the operator had asked to be subtle; he has since
-seen it rendered and reported the current row as invisible beside a hovered
-neighbour, and the band was raised in the same change.
+There are **two state roles, and neither is a rung on that ladder**: `rowHover`,
+the ground of the row under the pointer, and `rowSelected`, the ground of the row
+the reader is currently ON. Both are **tints of the palette's own `accent` hue** at
+two strengths — the axis the ladder could not supply, since 32 of the 41 dark
+palettes share one 230–306° family — and both are authored to land at **ΔE00 4.0 or
+better from `surface`** (measured across the 59: hover 4.00–20.42, median 6.50;
+selection 4.22–27.51, median 10.95). The role they replaced, `highlight`, was a
+*lightness* step toward the panel's own cast, and it is retired with this change: it
+was first authored at 2.0–2.5 for a selection the operator had asked to be subtle,
+and re-seating it did not work — on `tokyoNight`, `localOperatorDark` and
+`localOperatorLight` the whole of the ΔE00 gain was chroma while the `L*` step off
+the panel **fell** to 2.61, 2.82 and 2.52, *less* light on the two dark themes than
+the steps he had already reported as invisible.
 
-**The axis is lightness, and that is asserted rather than described.** ΔE00 is a
-budget with a chroma term in it, so a step can be made as large as you like by
+**Neither role has to out-step the other, and that is the rule rather than a
+shortfall.** What is asserted is the order (`rowSelected` at least
+`ROW_STATE_HOVER_RANK` = 0.5 `L*` above `rowHover`), a pair separation of ΔE00 2.0
+(so the two fills are never the same mark), and a **non-colour second channel**: a
+2px `accent` bar on the row's leading edge, drawn with a `before:` pseudo-element so
+it costs no layout and cannot shift the label, beside the `font-medium` the settings
+rail's active row already carried. The pointer is a transient state on a neighbour
+and the mark is the persistent one, so each fill's job is to make its own state
+findable rather than to rank them — the bar ranks them. An earlier round's 1px
+`outline-control` ring is retired; the reason is three paragraphs below, and the
+frames are in `docs/evidence/chat-sidebar-current-row/`. Measured across the 59: the
+pair runs **2.69–11.52 ΔE00** (median 6.78), and the bar **4.23–11.48:1** against
+its own selected ground.
+
+**The axis is lightness AND hue, and both are asserted rather than described.** ΔE00
+is a budget with a chroma term in it, so a step can be made as large as you like by
 warming it at a fixed `L*` — which is how the first version of the raised band
-answered the same report twice: on `tokyoNight`, `localOperatorDark` and
-`localOperatorLight` the whole of the ΔE00 gain was chroma, and the `L*` step off
-the panel **fell** to 2.61, 2.82 and 2.52 — *less* light on the two dark themes
-than the 3.26 and 3.47 steps he had already reported as invisible. Those three
-were re-authored to **+5.09, +3.81 and −4.75 `L*`**, and
-`scripts/contrast-contract.mjs` now asserts both halves of the direction (a dark
-palette's row is lighter than its panel, a light one's darker) and a floor of
-**3 `L*`** on the magnitude, so no palette can satisfy the band while landing
-darker on a dark theme. The twelve carry 3.81–6.62 `L*` today.
+answered the same report twice. `scripts/contrast-contract.mjs` therefore asserts
+the SIGN of the `L*` step (a dark palette's row is lighter than its panel, a light
+one's darker) with a floor of **1.5 `L*`** on the magnitude and a **5.0 `L*`**
+ceiling (past it the fill reads as a raised panel rather than a row), the hue within
+**12°** of the palette's own `accent`, and both ends of the chroma — so no palette
+can satisfy the band while landing darker on a dark theme, and none can buy the band
+with chroma alone.
+
+**One palette is a CLASS rather than a ledger row.** `obsidian`'s `accent` is
+`#FAFAFA` at C* 0, so neither role can spend chroma and both are **neutral steps at
+the ink cap**. The contract routes it by **derivation** rather than by name
+(`ROW_STATE_NEUTRAL_ACCENT`), the way it must route any monochrome palette added
+later: inside the class the bands fall to the field floor, the pair to the collision
+floor, and the chroma ceilings, the step ceiling and the wash proximity are not
+asserted — a monochrome theme has no cast with which to separate its neutral row
+fill from its neutral wash, and its ink cap IS its step ceiling. The bar and
+`font-medium` are the whole of the mark there. That relaxations are a **choice** and
+not a derivation is stated with its measurement in `palette-contract.ts`'s
+`rowSelected` doc: a legal monochrome pair reaches ΔE00 2.566 on this palette, so the
+relaxed pair floor was never forced by the rules — and at the pair this tree ships
+the palette clears the fleet's own 2.0 floor, which is why no palette uses that
+relaxation today.
+
+**No palette may spend a floor to buy a band.** The above is the whole of the trade:
+`obsidian` is not a pinned exception but a class with its own floors, and its own
+values were re-derived in the round that recorded this — see
+`docs/evidence/chat-sidebar-current-row/README.md` for the frames and
+`scripts/contrast-contract.mjs` for the numbers behind each bound.
 
 A selection is a mark on a panel, not a hole in it: `sunken` is always recessed
 and measures 3.75–14.94 from `surface`, which is a dark box rather than a
 highlight, and it is the role 97 `*-sunken` utility occurrences across 66 files
 under `src/renderer` depend on being deep (85 live class usages and 12 inside
 prose, the palettes and the generated stylesheet excluded).
-
-A mark also needs to survive the pointer, and a ground cannot do that alone: the
-ink floors on `highlight` cap how far it can climb (the caps and the `· lopdev`
-binding inside a current row are drawn in `ink-dim`), while the hover step the
-rows around it carry is `elevated`, which is also every menu, popover and tooltip
-ground in the app — so on **eight of the twelve** palettes it is still the LARGER
-step off `surface` (up to 6.25 on radient, against a mark of 4.01–4.15).
-
-**That ordering is the rule, not a shortfall of this role.** A current row's mark
-is the ground plus **`font-medium`** — the weight the settings rail's active row
-already carried and the app rail's active item carries, so the app has one "you are
-here" idiom rather than two — and it is NOT required to out-step the hover of the
-row beside it: the pointer is a transient state on a neighbour and the mark is the
-persistent one, and that is the trade the two roles make deliberately. What the
-rule does not answer is the arrangement the operator's own screenshot is taken in —
-the pointer beside the selection, the two bands one above the other, with the louder
-of them the transient one. That needs a role this contract does not have: a
-**row-hover ground** that steps less than `highlight` on the dark palettes, with
-`elevated` left to the menu, popover and tooltip job it also holds. On a dark
-palette those two jobs want different magnitudes and today they are one role. Adding
-it is a twelve-palette change with its own assertions and belongs to its own change
-rather than to a remediation round of this one; until it exists, the ordering above
-is stated here rather than left to be discovered in a frame.
 
 **There is no boundary on a current row, and that is a decision with a
 measurement behind it.** An earlier round drew a 1px `outline-control` ring
@@ -202,16 +211,15 @@ read it produces. If a selection ever needs a third signal, that is a role this
 contract does not have — add it there rather than borrowing one, which is the
 rule § 1 states for every other missing value.
 
-`highlight` is not in `check-themes`' `GROUNDS` list, because that list is the set
-a control is drawn on one of at a time and every ink and structural border is
-measured against all of it; a current row still sits INSIDE a `surface` panel. The
-contract asserts what the row actually depends on instead: `highlight` against
-`surface` at its own band floor of ΔE00 4.0 (so the mark is visible, and so that
-its `L*` step runs the right way), against `elevated` and `sunken` at the field
-floor of ΔE00 2.0 (so it is not confused with the pointer's own hover step and is
-not the well below it), and `ink` / `ink-muted` / `ink-dim` on it at their usual
-floors plus 0.15 of headroom. It no longer asserts `border-control` on it: there
-is no boundary on the row (above).
+`rowSelected` and `rowHover` are not in `check-themes`' `GROUNDS` list, because that
+list is the set a control is drawn on one of at a time and every ink and structural
+border is measured against all of it; a row still sits INSIDE a `surface` panel. The
+contract asserts what the row actually depends on instead: each role against
+`surface` at its own band floor of ΔE00 4.0 (so the mark is visible, and so that its
+`L*` step runs the right way), against `canvas`, `surface` and `sunken` at the
+collision floor of ΔE00 1.0, and `ink` / `ink-muted` / `ink-dim` on both fills at
+their usual floors. It does not assert `border-control` on the row: there is no
+boundary on it (above).
 
 **The rule a porting author follows**, so a new palette can be derived rather
 than tuned: take the `L*` step **first**, at the panel's own hue, in the direction
@@ -236,19 +244,16 @@ may pay a remainder; it may not pay the step. The constraints:
   a rotation stops reading as the panel's own colour and starts reading as one the
   theme does not have).
 
-**The band is primary and has no exception.** The operator has now reported the
+**The band is primary and has no exception.** The operator has reported the
 current row twice — grey, then invisible beside a hovered neighbour — and ΔE00
 ≥ 4.0 from `surface` is what answers that, so no palette trades it away for a
-tighter cast. The tighter chroma ceiling above is a target with a ledger rather
-than an asserted bound, and that is a measurement: 49 of the 59 palettes sit
-above it today, and on **26 of those the band is unreachable inside it at the
-palette's own ink caps** — `HIGHLIGHT_CONTINUITY_EXCEPTIONS` in
-`scripts/contrast-contract.mjs` names every palette that sits over the tighter
-clause with its ratio, the amount it is over, and the best ΔE00 that clause
-reaches on it. On the other 25 the band is reachable inside the tighter clause
-only by re-authoring the row onto a rotated cast, which the same table records
-with its rotation and reach. Do not re-open either continuity axis without
-re-running that ledger's measurement.
+tighter cast. The chroma ceiling is an asserted bound rather than a ledger: the
+hover takes at most `ROW_HOVER_CHROMA_OUTER` (0.6) of the palette's `accent`
+chroma and the selection at most `ROW_SELECTED_CHROMA_OUTER` (0.75), both capped
+at C* 24, and no palette has needed an exemption from either since the roles were
+authored — the thirteen ledger rows this section used to carry dissolved into
+rules (see `palette-contract.ts`'s `rowSelected` doc for the reconciliation), and
+`HIGHLIGHT_CONTINUITY_EXCEPTIONS` is gone with the role it measured.
 
 Four of the twelve still carry a partly chroma-bought step — `dracula` 1.20x the
 panel's chroma, `monokai` 1.66x, `obsidian` 1.90x and `iceberg` 3.31x — each
@@ -258,6 +263,10 @@ because that panel is the least chromatic of the twelve (C* 1.57), so its step
 reads as a lavender band rather than a darker row (design round 1, D4). Its
 earlier justification — that its recessed ground capped the step — was wrong:
 `sunken` sits ΔE00 3.75 from that `surface` and the row still clears it by 2.53.
+Those multipliers are quoted against the RETIRED role's ledger and are historical:
+the two state roles spend the palette's own `accent` hue at a bounded fraction of
+its chroma, so what a reader should carry from this paragraph is the lesson — a
+band bought with chroma alone does not answer the report — and not the ratios.
 
 **Elevation is a lightness step, not a shadow.** There is exactly one shadow in
 the system and it belongs only to objects that leave the flow: menu, dialog,
@@ -279,7 +288,8 @@ placeholders) → `ink-disabled`.
 
 The **six grounds** are the four elevation steps plus the two that carry text as a
 *state*: `accent-wash` (selection/hover tint, callouts, chips, find-match) and
-`highlight` (the current row in the sidebar and the settings rail). SC 1.4.3 asks
+`rowSelected` (the current row in the sidebar and the settings rail; `rowHover`,
+the row under the pointer, is the seventh and carries the same floors). SC 1.4.3 asks
 4.5:1 of every ink and nothing more, and the reason this system asks more is that
 4.5:1 at 11px is not 4.5:1 at 14px: a contrast ratio is luminance-only and says
 nothing about stroke weight, size, or the thin-hairline register metadata is
@@ -450,10 +460,13 @@ the weakest pair anywhere in the system is sage at 8.4.
 | The palette/picker active row (`sunken`) against the dialog's `elevated` | ΔE00 3.0, and a ≥ 2 `L*` step |
 | `accent-wash` against every ground it is painted on | ΔE00 2.0 |
 | The keycap's ground (`sunken`) against every ground it can be painted on | ΔE00 2.0 |
-| `highlight` against `surface` | ΔE00 4.0 |
-| `highlight`'s `L*` step off `surface`: the direction, and at least 3 `L*` | 3 `L*` |
-| `highlight` against `elevated` and against `sunken` | ΔE00 2.0 |
-| `ink` / `ink-muted` / `ink-dim` on `highlight`, with 0.15 of headroom | 7:1 / 5.5:1 / 5.0:1 |
+| `rowSelected` and `rowHover` against `surface` | ΔE00 4.0 each |
+| `rowSelected`'s `L*` step off `surface`: the direction, at least `1.5 L*`, and at most `5 L*` | 1.5–5.0 `L*` |
+| `rowSelected` against `rowHover` (the pair separation) | ΔE00 2.0 |
+| `rowSelected` at least `0.5 L*` above `rowHover` (the rank) | +0.5 `L*` |
+| Each row fill against `canvas`, `surface` and `sunken` | ΔE00 1.0 |
+| The `accent` bar on `rowSelected`: ratio and ΔE00 | 3:1 and ΔE00 2.0 |
+| `ink` / `ink-muted` / `ink-dim` on `rowHover` and on `rowSelected` | 7:1 / 5.5:1 / 5.0:1 |
 | Component triples: ink on its own fill | 4.5:1 |
 | Component triples: edge (fill **or** border) against the ground behind | 3:1 |
 
@@ -463,15 +476,16 @@ and every one of them existed because those two roles were measured on `canvas`,
 `surface` and `sunken` only, so the pair that failed was the one drawn on a dialog's
 own ground. The legibility pass retired them by **re-authoring the value** (the edge
 is brightened until it clears 3:1 on the lifted `elevated`) and by adding
-`elevated`, `accent-wash` and `highlight` to the lists the tone roles are measured
+`elevated`, `accent-wash`, `rowHover` and `rowSelected` to the lists the tone roles
+are measured
 against. Re-recording a pin at its new, lower ratio would have been a decision to
 keep a defect whose fix is available. Five pinned ink steps went the same way: the
 step is paid on lightness, `ink-muted` rises with `ink-dim`, and all 59 palettes now
 clear it.
 
-**A selection is not a tint.** A row the reader is *on* takes a ground step —
-`sunken` inside a dialog, `highlight` on a panel — not the accent wash, and it
-carries a non-colour mark beside it (`outline-control` on the row, or the 2px
+**A selection is not a tint.** A row the reader is *on* takes a row-state ground —
+`sunken` inside a dialog, `rowSelected` on a panel — not the accent wash, and it
+carries a non-colour mark beside it (the 2px
 accent bar the slash popup uses). Two reasons, both measured. The wash collapses
 onto the ground it is painted on (`obsidian` ΔE00 0.77, i.e. no mark), and on the
 default palette the operator's own screenshot PASSED every separation threshold at

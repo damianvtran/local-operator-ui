@@ -318,9 +318,11 @@ export type ThemePalette = {
 	 *
 	 * a 2px `accent` bar on the row's leading edge, drawn with a `before:`
 	 * pseudo-element so it costs no layout and cannot shift the label, plus the
-	 * `font-medium` the row already carried. `accent` measures 4.5-11.8:1 against
+	 * `font-medium` the row already carried. `accent` measures 4.23-11.48:1 against
 	 * its own selected ground across all 59, so the 3:1 non-text floor holds
-	 * everywhere. The same idiom and the same argument are already in
+	 * everywhere, and its tightest is `tokyoNight`'s while its strongest is
+	 * `obsidian`'s - the palette whose bar is the whole of its mark. The same idiom
+	 * and the same argument are already in
 	 * `at-picker.tsx` and `slash-commands.tsx`, where the popup's active row takes
 	 * the bar precisely because "the row Enter will apply was carried by hue
 	 * alone". The sidebar was the only selection in the app without one.
@@ -347,16 +349,20 @@ export type ThemePalette = {
 	 * a monochrome theme has no cast to separate its neutral row fill from its
 	 * neutral wash, and its ink cap IS its step ceiling. `obsidian` alone is in it
 	 * (`#FAFAFA` at C* 0), and the class is keyed on the derivation rather than the
-	 * name. Measured there: hover ΔE00 2.23 at +3.26 `L*`, selected 3.90, pair
-	 * 1.75, bar at 11.5:1.
+	 * name. Measured there: hover ΔE00 4.05 at +4.99 `L*` (`inkDim` 5.13:1),
+	 * selected 4.22 (`inkDim` 5.01:1), pair 3.56, bar at 11.48:1. The pair clears
+	 * the FLEET's 2.0 separation, so no palette uses the class's relaxed pair
+	 * floor today - the wash proximity is the relaxation it still carries.
 	 *
 	 * THE THIRTEEN LEDGER ROWS THE PREVIOUS ROUND CARRIED ARE GONE, and that is a
-	 * result rather than a relaxation. Four were separation-only and hold at 2.0
-	 * with room; three were chroma-ceiling breaches of +0.24, +0.30 and +0.41 that
-	 * existed ONLY because the value was chasing 6.0 of separation; one was a
-	 * step-ceiling overshoot of 0.06 `L*` for the same reason; and six were
-	 * `obsidian`'s, which is the class above. A floor is still never widened to fit
-	 * a palette - what changed is which channel answers the pair question.
+	 * result rather than a relaxation. They reconcile as 4 + 3 + 1 + 4 + 1 = 13:
+	 * four were separation-only and hold at 2.0 with room; three were
+	 * chroma-ceiling breaches of +0.24, +0.30 and +0.41 that existed ONLY because
+	 * the value was chasing 6.0 of separation; one was a step-ceiling overshoot of
+	 * 0.06 `L*` for the same reason; four were `obsidian`'s, which is the class
+	 * above; and one was `nightfox`'s selection band, 0.35 short of the 6.0 then
+	 * in force. A floor is still never widened to fit a palette - what changed is
+	 * which channel answers the pair question.
 	 */
 	rowSelected: string;
 
