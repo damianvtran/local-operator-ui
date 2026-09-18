@@ -64,17 +64,20 @@ export const monokai: ThemeDefinition = {
 		sunken: "#1E1F1A",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.7 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.52x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.18:1 on
-		 * the row's ground. ΔE00 4.04 from `surface`, 2.30 from `elevated`, 8.97
-		 * from `sunken`, 7.42 from `accentWash`; the inks on the ground are 10.86:1,
-		 * 6.29:1, 5.18:1. Continuity with the panel: hue 1.28 degrees off the
-		 * panel's (the assertion allows 12) and chroma 7.31 where the panel carries
-		 * 4.8.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #2F3424  accent hue, C* 10.98, +1.69 L*, ΔE00 5.42 off `surface`,
+		 *                       `inkDim` 5.74:1 on the fill, hue 0.79° off `accent`.
+		 * rowSelected #333D1C  accent hue, C* 21.65, +4.99 L*, ΔE00 12.01 off
+		 *                       `surface` and 6.87 off `rowHover`, `inkDim` 5.15:1, and the
+		 *                       2px `accent` bar at 7.42:1 against it.
 		 */
-		highlight: "#383a2f",
+		rowHover: "#2F3424",
+		rowSelected: "#333D1C",
 
 		ink: "#F8F8F2",
 		inkMuted: "#BFBFBF",

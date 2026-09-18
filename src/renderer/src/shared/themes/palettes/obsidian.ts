@@ -77,16 +77,51 @@ export const obsidian: ThemeDefinition = {
 		sunken: "#1B1B1E",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 5 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 2.59x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.16:1 on
-		 * the row's ground. ΔE00 4.49 from `surface`, 2.35 from `elevated`, 8.54
-		 * from `sunken`, 4 from `accentWash`; the inks on the ground are 11.82:1,
-		 * 7.2:1, 5.16:1. Continuity with the panel: hue 0.67 degrees off the panel's
-		 * (the assertion allows 12) and chroma 5.38 where the panel carries 2.08.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are steps
+		 * of THIS palette's own neutral ladder at the panel's h290 lean; the retired
+		 * role was the same kind of step at a lower strength. The rule, and why a
+		 * monochrome palette is a CLASS with its own floors rather than a ledger of
+		 * exemptions, are in the two roles' doc in `palette-contract.ts`.
+		 *
+		 * RE-AUTHORED IN REMEDIATION ROUND 1, and the measurement is why. The pair
+		 * that shipped here - #313134 / #36363A - put the hover at ΔE00 2.23 off
+		 * `surface`, which is 1.19 BELOW the 3.42 the retired `elevated` step it
+		 * replaced measured: on the one palette whose accent (#FAFAFA, C* 0) gives
+		 * its hover neither a colour nor a bar to help, the pass made the operator's
+		 * first-named complaint worse, and it was the fleet's only hover under 3.0.
+		 *
+		 * THE CEILING IS THE INK CAP AND THE RANK, not a class. Holding the fills to
+		 * this palette's own cast, the legal window runs L* 18.67-22.84: the floor is
+		 * the 1.5 L* step above `surface` (L* 17.17), whose first representable value
+		 * is `#2E2E2E` at 18.94, and the top is the `inkDim` 5:1 cap on a neutral fill.
+		 * The SELECTION binds first, because it must reach that cap AND sit
+		 * `ROW_STATE_HOVER_RANK` above the hover: its own ceiling is L* 23.10 (at its
+		 * chroma, C* 3.38 at h298), so the hover can rise no higher than
+		 * min(22.84, 23.10 - 0.5) = L* 22.60. The endpoints are DERIVED from those two
+		 * rules rather than read off the shipped values, which is what this paragraph
+		 * exists for (review round 2: it quoted 18.94-22.88 and 22.16 - the shipped
+		 * selection's and hover's own L* - so the ceiling read as read-off and the
+		 * shipped hover's headroom appeared to be none rather than 0.44 L*).
+		 *
+		 * Measured at the shipped pair:
+		 *
+		 * rowHover    #353535  neutral step at the ink cap's shadow, C* 0.00, +4.99
+		 *                       L*, ΔE00 4.05 off `surface`, `inkDim` 5.13:1 on the
+		 *                       fill. The alternative that keeps the h290 lean
+		 *                       (C* 0.67) tops out at ΔE00 3.75 - stated because it
+		 *                       is the number the next pass will want, not because
+		 *                       it ships: the class asks for the NEUTRAL step, and a
+		 *                       castless value is at every hue at once.
+		 * rowSelected #37363B  C* 3.38 at h298, +5.72 L*, ΔE00 4.22 off `surface`
+		 *                       and 3.56 off `rowHover`, `inkDim` 5.01:1, and the 2px
+		 *                       `accent` bar at 11.48:1 against it.
+		 *
+		 * The pair's 3.56 clears the FLEET's ΔE00 2.0 separation, so this palette no
+		 * longer leans on the class's relaxed pair floor; the wash proximity is the
+		 * one relaxation the class still carries for it, and the class doc says so.
 		 */
-		highlight: "#34343c",
+		rowHover: "#353535",
+		rowSelected: "#37363B",
 
 		ink: "#FAFAFA",
 		/*

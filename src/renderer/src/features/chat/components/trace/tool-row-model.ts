@@ -373,43 +373,8 @@ export function diffCount(value: unknown): number {
 	return value;
 }
 
-/** The TUI's four name categories, for the settled name's ink. */
-export type ToolCategory = "read" | "mutate" | "exec" | "meta" | "plain";
-
 /**
- * `_TOOL_CATEGORY` (tool_card.py:178-198), looked up case-insensitively
- * because a tool name is MODEL-controlled: a provider echoing `Bash` must land
- * in the same category as `bash`. Anything unlisted — an MCP tool, a custom
- * tool — is `plain`.
- */
-const CATEGORIES: Record<string, ToolCategory> = {
-	read: "read",
-	glob: "read",
-	grep: "read",
-	web_fetch: "read",
-	web_search: "read",
-	browser: "read",
-	list_variables: "read",
-	read_variable: "read",
-	write: "mutate",
-	edit: "mutate",
-	bash: "exec",
-	eval: "exec",
-	task: "meta",
-	agent: "meta",
-	hub: "meta",
-	todo: "meta",
-	send: "meta",
-	wake: "meta",
-	ask: "meta",
-};
-
-export function toolCategory(toolName: string): ToolCategory {
-	return CATEGORIES[toolName.trim().toLowerCase()] ?? "plain";
-}
-
-/**
- * Floor and ceiling of the shared name column, in characters.
+ * The shared name column's floor and ceiling, in characters.
  *
  * `TOOL_NAME_COL = 8` and `TOOL_NAME_COL_MAX = 24` (transcript.py:242-243).
  * The column is shared across every visible row so names stack into one edge

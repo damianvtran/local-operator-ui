@@ -66,17 +66,20 @@ export const ayuMirage: ThemeDefinition = {
 		sunken: "#191D27",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.65 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.38x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.17:1 on
-		 * the row's ground. ΔE00 4.09 from `surface`, 2.27 from `elevated`, 11.22
-		 * from `sunken`, 4.19 from `accentWash`; the inks on the ground are 7.29:1,
-		 * 7.17:1, 5.17:1. Continuity with the panel: hue 1.04 degrees off the
-		 * panel's (the assertion allows 12) and chroma 13.48 where the panel carries
-		 * 9.75.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #2F393F  accent hue, C* 5.71, +1.70 L*, ΔE00 5.91 off `surface`,
+		 *                       `inkDim` 5.69:1 on the fill, hue 1.30° off `accent`.
+		 * rowSelected #274251  accent hue, C* 13.39, +4.90 L*, ΔE00 8.54 off
+		 *                       `surface` and 6.13 off `rowHover`, `inkDim` 5.10:1, and the
+		 *                       2px `accent` bar at 6.15:1 against it.
 		 */
-		highlight: "#343E52",
+		rowHover: "#2F393F",
+		rowSelected: "#274251",
 
 		ink: "#D6D5CE",
 		// upstream's blue-tinted muted rung.

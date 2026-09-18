@@ -54,18 +54,28 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		sunken: "#1E2132",
 
 		/*
-		 * The current row's own ground, and the one palette class this pass pins:
-		 * `surface` stepped 1.9 `L*` lighter at the panel's own hue, under the 3
-		 * `L*` the direction floor asks for, because this palette's own inks cap the
-		 * lightness route at 2.05 `L*`. The band is paid on the cast at 1.46x the
-		 * panel's chroma, which is the shape `HIGHLIGHT_STEP_PINS` records for it.
-		 * What binds this one is `ink-dim` at 5.15:1 on the row's ground. ΔE00 5.08
-		 * from `surface`, 4.35 from `elevated`, 8.17 from `sunken`, 5.82 from
-		 * `accentWash`; the inks on the ground are 8.56:1, 7.13:1, 5.15:1.
-		 * Continuity with the panel: hue 8.92 degrees off the panel's (the assertion
-		 * allows 12) and chroma 21.03 where the panel carries 14.41.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #333136  accent hue, C* 3.52, +1.63 L*, ΔE00 8.23 off `surface`,
+		 *                       `inkDim` 5.21:1 on the fill, hue 3.02° off `accent`.
+		 * rowSelected #38323E  accent hue, C* 8.53, +2.77 L*, ΔE00 5.96 off
+		 *                       `surface` and 4.80 off `rowHover`, `inkDim` 5.03:1, and the
+		 *                       2px `accent` bar at 5.76:1 against it.
+		 *
+		 * RE-SOLVED ON THE RELAXED ROW RULE. It shipped at C* 24.24 - past the
+		 * min(0.75 x C*(accent), 24) ceiling - because the old 6.0 separation made
+		 * the fill chase chroma to out-rank the hover. The separation rides the
+		 * `accent` bar and `font-medium` now, so the value is authored by the rule's
+		 * own order instead: the largest `L*` step the inks allow, then the smallest
+		 * chroma that reaches the 4.0 band. `inkDim` binds at 5.03:1 on the fill.
+		 * (The comment this replaces recorded the bar at 0.00:1; it measures 5.76:1.)
 		 */
-		highlight: "#322F4E",
+		rowHover: "#333136",
+		rowSelected: "#38323E",
 
 		ink: "#CAD3F5",
 		/*

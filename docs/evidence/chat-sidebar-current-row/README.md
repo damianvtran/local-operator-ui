@@ -144,34 +144,43 @@ After the change every cap is 20 × 20 with the same ink and no ground at all, a
 word grows out of that floor rather than changing size class.
 
 **The mark is the ground plus the WEIGHT, and the ordering is now ASSERTED — the windows
-where it cannot hold are the ones recorded.** The ink floors cap how far the ground can
+where it cannot hold are the ones recorded.** *(THIS PARAGRAPH RECORDS THE RETIRED
+ORDERING RULE: it was written when the current row was `highlight` and the rows around it
+hovered on the `elevated` GROUND. Both roles are gone — the row states are `rowHover` and
+`rowSelected` and the ordering is asserted in the row-state loop, not by the two
+`HIGHLIGHT_HOVER_ORDER_*` tables this paragraph used to name. The shipped rule, its
+measurements and this set's re-shot frames are in "The colour-application pass" at the
+end of this file; what follows is kept because the seven windows it records are the
+reason the roles were replaced.)* The ink floors cap how far the ground can
 climb — `ink-dim` is drawn inside a current row (the caps and the `· lopdev` binding) —
 and the hover step the rows around it carry is `elevated`, which is also every menu,
 popover and tooltip ground in the app. What this change does with those two levers is
 bring that rung DOWN to its floor off `surface` (ΔE00 2.0, now asserted as
 `ELEVATED_PANEL_DELTA_E`) across the dark family, and raise two palettes' rows
 (`nightfox`, `tokyoNight`) to their own ink caps to meet it, rather than leaving the
-ordering to prose. The ordering itself is asserted at `HIGHLIGHT_HOVER_ORDER_STEP` =
-**0.5 `L*`** — the current row lighter than the hovered neighbour on a dark palette,
-darker on a light one — and the twelve dark palettes the two levers starve are
-recorded palette by palette in `HIGHLIGHT_HOVER_ORDER_EXCEPTIONS`, each with the margin
+ordering to prose. The ordering itself was asserted at a **0.5 `L*`** step — the current
+row lighter than the hovered neighbour on a dark palette,
+darker on a light one — and the twelve dark palettes the two levers starve were
+recorded palette by palette, each with the margin
 it actually measures: eleven whose window between the ink cap and that floor is
 narrower than the step, or closed outright, and one — `neonNoir` — whose window is wide
-enough but whose pair the ΔE00 floors (the 2.0 field floor and the 4.0 band) refuse at
+enough but whose pair the ΔE00 floors (the 2.0 field floor and the 4.0 band) refused at
 the row that would clear the step. Measured over all **59** themes by the narrower ΔE00
 metric — which of the two grounds is the **LARGER** step off `surface` — `elevated` is
 still the larger on **3 of
 them** (`gruvboxLight`, `neon`, `radient`; this paragraph said 11 when it was written,
 and the count was 10 at this branch's pre-pass head), so the mark leads the pointer on
 the other **56 of 59** — and it leads on none of those three. Five of the twelve recorded
-windows measure a negative order and are recorded as negative; three of those five carry
-a committed frame in this set that renders the inversion — `catppuccinMacchiato`
+windows measure a negative order and were recorded as negative; three of those five carry
+a committed frame in this set that rendered the inversion — `catppuccinMacchiato`
 (−1.06 `L*` in the frame, −0.85 in the palette), `palenight` (−0.80) and `nord` (−0.19) —
-shot before round 2's list markup, so their PAIR is this head's and their panel ground is
-not. What would fix those five is a hover ground of its own rather than the rung above
-the mark, which is a role decision rather than a value and is not one this change takes,
-so they stay exactly as they are: recorded above, with their windows and their margins,
-rather than left undocumented. The
+shot before round 2's list markup, so their PAIR is that head's and their panel ground is
+not — and THE THREE NAMES ARE HISTORY: `nord`'s order is correct on the current frames and
+`palenight`'s is not, so the list that the next pass should read is the one in the
+colour-application section below, re-derived from the palette values. What would have fixed
+those five is a hover ground of its own rather than the rung above
+the mark, which is the role decision the two row states ARE; the windows above are why
+they exist. The
 `4.63 > 4.48` this set quoted in round 1 was a q88 reading of the frame set against a
 `magick`-sampled value, so the two numbers were never the same measurement — the lossless
 pair is `4.58 > 4.09` on `tokyoNight`. The
@@ -508,3 +517,74 @@ remove, so the spacing is the lever.
   `scripts/chat-sidebar-selection.test.mjs` pins that the row's box is the same
   in both states (`rowStyle` is untouched, which is what the retired `capEdge`
   outline was there for).
+
+## The colour-application pass (18 September 2026), at head `4755b126c`
+
+EVERY FRAME IN THIS SET WAS RE-SHOT by the colour pass, and the note above about
+`highlight` describes the frames that used to be here rather than these. The
+role was retired: a row's pointer state is now `rowHover` and the row the reader
+is ON is `rowSelected` — a quieter fill **plus a 2px `accent` bar and
+`font-medium`**, because the two fills are one hue at two strengths and the last
+increment of "which one am I on" is not a colour distance. The pair this is
+judged on is `selected-row-neighbour-hovered/` and
+`settings-rail-neighbour-hovered/`: a selected row and a hovered row in ONE
+frame is the only arrangement that answers whether the persistent mark still
+outranks the transient one.
+
+- **Thirty-eight themes, not the twenty-three the port carried.** The set now
+  also covers the eleven palettes `4755b126c` re-solved (autumn,
+  catppuccinMocha, desert, forest, lavender, neonNoir, ocean, rosePine,
+  rosewood, tokyoNight, vaporwave) plus `paper`, because a value move is only
+  visible where the values land.
+- **The before half is re-shot too**, from `origin/main` = `4b0ee7849`, at the
+  same thirty-eight themes and the same viewports; the frames are in
+  `../chat-sidebar-current-row-baseline/` and every pair is therefore a
+  difference in the rendering and not in the capture.
+- **Two contact sheets** in `contact-sheet/`, composed with `magick` from these
+  frames (the rig has no montage facility): `sidebar-row-states.png` is three
+  columns — `origin/main` current row, `4755b126c` current row, `4755b126c`
+  current row with its neighbour under the pointer — over all eighteen themes the
+  brief's spread and the re-solve share; `settings-rail-row-states.png` is the
+  same three columns for the rail. Each cell is the same crop of the same story
+  at the same viewport, so a column is a like-for-like.
+- **The stories' captions were re-worded and the four sidebar directories re-shot**, in
+  remediation round 1. The frames are the artifact a reader and the next reviewer
+  read, and the two captions named the retired role — `SelectedRow`'s panel read
+  "drawn on `highlight`" and `SettingsRail`'s "the same `highlight` ground" — which
+  made every frame in `selected-row/`, `selected-row-neighbour-hovered/`,
+  `settings-rail/` and `settings-rail-neighbour-hovered/` evidence arguing against
+  the component it pictured. The captions now name `rowSelected`, `rowHover` and the
+  bar, and those four directories were re-shot at the same themes and viewports.
+  `bound-row-current/`, `nested-row-current/` and `new-chat-row-current/` still carry
+  the old caption in their frames, and `obsidian`'s frames outside the four were shot
+  before its own fills were re-derived (see the palette's `rowHover` note); both are
+  recorded as owed rather than left to be discovered.
+- **The hover/selected INVERSION list, re-derived from the palette values** (design
+  round 1, D5 — the list this file carried named `catppuccinMacchiato`, `palenight`
+  and `nord`, and it no longer matched the frames: `nord`'s order is CORRECT). On 7 of
+  the 29 dark themes this set frames, the hovered fill is the LARGER ΔE00 step off
+  `surface`; by `L*` all 29 rank correctly, so this is a chroma effect and the 2px bar
+  plus `font-medium` carry the ranking in every one:
+
+  | theme | hover off `surface` (ΔE00 / `L*`) | selection off `surface` (ΔE00 / `L*`) |
+  |---|---|---|
+  | `synth` | 15.48 / +1.53 | 14.36 / +4.98 |
+  | `vaporwave` | 12.43 / +1.58 | 9.57 / +4.88 |
+  | `solarizedDark` | 9.72 / +1.70 | 8.67 / +4.07 |
+  | `catppuccinMacchiato` | 8.23 / +1.63 | 5.96 / +2.77 |
+  | `dracula` | 8.14 / +1.54 | 6.40 / +4.82 |
+  | `tokyoNight` | 7.05 / +1.72 | 5.98 / +4.76 |
+  | `catppuccinMocha` | 5.85 / +1.58 | 5.63 / +4.69 |
+
+  The `L*` column is why this is a constraint and not a defect: every one of the seven
+  ranks correctly on lightness, and the inversion is entirely the chroma term ΔE00
+  carries. These are PALETTE values (`scripts/color.mjs`) rather than frame readings —
+  the two lists disagreed because the earlier one was read off WebP q88 pixels, which
+  is the instrument the design round itself warned about. It is a constraint
+  rather than a defect — the ranking holds — and what it forbids is a later change
+  that softens the bar, drops the weight, or moves the selection back onto the fill,
+  which would reopen the original bug on these seven.
+- **Still owed**: the four remaining baseline directories
+  (`bound-row-current/`, `nested-row-current/`, `new-chat-row-current/`,
+  `focused-row-current/`) are NOT re-shot at this head, so their frames picture
+  the retired role.

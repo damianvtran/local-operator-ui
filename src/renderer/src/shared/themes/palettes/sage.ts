@@ -69,17 +69,20 @@ export const sage: ThemeDefinition = {
 		sunken: "#E8E1CF",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 6.45 `L*` darker (branch L of this port's selection rule), and
-		 * carrying 1.22x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.15:1 on
-		 * the row's ground. ΔE00 4.12 from `surface`, 6.71 from `elevated`, 2.02
-		 * from `sunken`, 4.96 from `accentWash`; the inks on the ground are 11.34:1,
-		 * 7.39:1, 5.15:1. Continuity with the panel: hue 3.88 degrees off the
-		 * panel's (the assertion allows 12) and chroma 7.07 where the panel carries
-		 * 5.78.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #ECF4EC  accent hue, C* 5.01, +1.51 L*, ΔE00 5.44 off `surface`,
+		 *                       `inkDim` 5.87:1 on the fill, hue 0.78° off `accent`.
+		 * rowSelected #DBEDDB  accent hue, C* 11.38, +4.90 L*, ΔE00 10.24 off
+		 *                       `surface` and 6.06 off `rowHover`, `inkDim` 5.38:1, and the
+		 *                       2px `accent` bar at 4.83:1 against it.
 		 */
-		highlight: "#e9e3d6",
+		rowHover: "#ECF4EC",
+		rowSelected: "#DBEDDB",
 
 		ink: "#222C1F",
 		/*

@@ -57,17 +57,20 @@ export const oneDark: ThemeDefinition = {
 		sunken: "#21252B",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.2 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.61x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is the ΔE00 4.08-to-4 band
-		 * on `surface`. ΔE00 4.08 from `surface`, 2.02 from `elevated`, 8.84 from
-		 * `sunken`, 5.59 from `accentWash`; the inks on the ground are 7.83:1,
-		 * 7.31:1, 5.26:1. Continuity with the panel: hue 2.06 degrees off the
-		 * panel's (the assertion allows 12) and chroma 10.24 where the panel carries
-		 * 6.36.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #293948  accent hue, C* 11.46, +1.65 L*, ΔE00 4.63 off `surface`,
+		 *                       `inkDim` 5.71:1 on the fill, hue 1.85° off `accent`.
+		 * rowSelected #1A425F  accent hue, C* 21.54, +5.00 L*, ΔE00 10.75 off
+		 *                       `surface` and 6.27 off `rowHover`, `inkDim` 5.09:1, and the
+		 *                       2px `accent` bar at 4.57:1 against it.
 		 */
-		highlight: "#353D4C",
+		rowHover: "#293948",
+		rowSelected: "#1A425F",
 
 		// Canonical mono-4 BEC4D0 is 5.95:1 on `elevated` — the 7:1 body floor is more than a
 		// reach for a syntax foreground. Lifted along the same cool neutral.

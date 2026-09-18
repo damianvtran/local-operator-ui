@@ -1,3 +1,4 @@
+import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { cn } from "@shared/lib/utils";
 import { CircleEllipsis, Layers } from "lucide-react";
 import type { FC } from "react";
@@ -24,9 +25,15 @@ type AgentCategoriesSidebarProps = {
 };
 
 /**
- * One category row. Selected rows read as `accent-wash` with accent ink —
- * the same highlight language as every other selected row in the app — and
- * hover is a colour step to `elevated`, never a lift.
+ * One category row.
+ *
+ * The selected row is the SAME role every other selected row in the app takes —
+ * `rowCurrent`, imported rather than restated, so this sidebar cannot drift from
+ * it. Its docstring used to claim that while painting `bg-accent-wash` with
+ * accent ink, which was neither: the chat panel and the settings rail had already
+ * moved off the wash, and on 6 of the 41 dark themes the wash is a weaker mark
+ * than the hover beside it. The hover takes the other row role, `rowHover`; it is
+ * a colour step, never a lift.
  */
 const CategoryItem: FC<{
 	selected: boolean;
@@ -41,9 +48,7 @@ const CategoryItem: FC<{
 		className={cn(
 			"flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-3 py-1.5 text-left",
 			"text-body-sm transition-colors duration-fast ease-out-quart",
-			selected
-				? "bg-accent-wash font-semibold text-accent"
-				: "text-ink hover:bg-elevated",
+			selected ? rowCurrent : "text-ink hover:bg-row-hover",
 		)}
 		{...rest}
 	>

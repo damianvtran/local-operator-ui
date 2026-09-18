@@ -49,13 +49,16 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * the ladder above it and the three ink weights stop fitting above each
 		 * other without one of them breaking its own floor.
 		 *
-		 * The three grounds around the canvas are authored as L* offsets from it
-		 * (surface +3.36, elevated +5.91, sunken -3.12 L*), so the hierarchy the
-		 * hover states and the borders depend on survives the move. Measured:
-		 * canvas #1E1E2E -> #1F1F2F (L* 11.97 -> 12.46)
-		 * surface #252535 -> #262636 (L* 15.35 -> 15.82)
-		 * elevated #2A2A3D -> #2B2B3F (L* 17.85 -> 18.37)
-		 * sunken #181825 -> #191926 (L* 8.83 -> 9.34)
+		 * The three grounds around the canvas ship as L* offsets from it (surface
+		 * +3.33, elevated +5.78, sunken -2.98 L*), which is what every ink, edge
+		 * and wash block below is measured against - and the offsets the LEGIBILITY PASS
+		 * recorded (surface +3.36, elevated +5.91, sunken -3.12 L*) ARE ITS AUTHORING INPUT, NOT THE SHIPPED
+		 * RUNG: the row/hover pass moved `elevated` down to the ladder's floor so the
+		 * current row can outrank a hovered neighbour. Measured, both moves:
+		 * canvas #1E1E2E -> #1F1F2F -> #2A2A3B  (L* 11.97 -> 12.46 -> 17.75)
+		 * surface #252535 -> #262636 -> #323142  (L* 15.35 -> 15.82 -> 21.09)
+		 * elevated #2A2A3D -> #2B2B3F -> #37364B  (L* 17.85 -> 18.37 -> 23.53)
+		 * sunken #181825 -> #191926 -> #242432  (L* 8.83 -> 9.34 -> 14.77)
 		 *
 		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
 		 * hue and chroma class are exactly what they were and chroma is scaled only
@@ -66,27 +69,46 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1F1F2F",
+		canvas: "#2A2A3B",
 		// Seated between base and upstream surface0, which is ΔE00 6.1 from base on its own:
 		// one step where this ramp needs two. ΔE00 2.2 and 2.2 up the ladder.
-		surface: "#262636",
-		elevated: "#2B2B3F",
-		sunken: "#191926",
+		surface: "#323142",
+		elevated: "#37364B",
+		sunken: "#242432",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 4.65 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 1.45x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.2:1 on the
-		 * row's ground. ΔE00 4.54 from `surface`, 2.12 from `elevated`, 8.51 from
-		 * `sunken`, 3.26 from `accentWash`; the inks on the ground are 8.97:1,
-		 * 7.33:1, 5.2:1. Continuity with the panel: hue 0.75 degrees off the panel's
-		 * (the assertion allows 12) and chroma 16.31 where the panel carries 11.25.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #38353B  accent hue, C* 4.25, +1.58 L*, ΔE00 5.85 off `surface`,
+		 *                       `inkDim` 5.62:1 on the fill, hue 0.18° off `accent`.
+		 * rowSelected #43394E  accent hue, C* 14.46, +4.68 L*, ΔE00 5.63 off
+		 *                       `surface` and 8.53 off `rowHover`, `inkDim` 5.06:1, and the
+		 *                       2px `accent` bar at 5.34:1 against it.
 		 */
-		highlight: "#2F2F47",
+		rowHover: "#38353B",
+		rowSelected: "#43394E",
 
-		ink: "#CDD6F4",
-		inkMuted: "#BAC2DE",
+		/*
+		 * Register re-solve: `ink`
+		 * The transcript's ink re-seats with the band, at its own hue. Its floor is
+		 * 8:1 on `canvas` and 7:1 on all SEVEN grounds; `rowSelected` binds it at
+		 * 7.73:1.
+		 */
+		ink: "#D0D9F7",
+		/*
+		 * Register re-solve: `inkMuted`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5.5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 7.08:1.
+		 * The contract's 8 ΔE00 step down to `inkDim` measures
+		 * 8.19, and it is what sets the value as much as the floor does.
+		 */
+		inkMuted: "#C8D0EC",
 		// Upstream overlay2, taking the readout rung so the ink step clears (subtext0 is only
 		// ΔE00 5.7 from subtext1 and may not).
 		/*
@@ -99,18 +121,40 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
 		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
 		 */
-		inkDim: "#9CA3C0",
+		/*
+		 * Register re-solve: `inkDim`
+		 * Re-seated a second time, with the band, and lightness is still the only
+		 * axis: the floor is 5:1 on all SEVEN grounds (the four elevation
+		 * steps, `accentWash` and the two row states), and `rowSelected` binds it at
+		 * 5.06:1.
+		 * The contract's 8 ΔE00 step up to `inkMuted` measures
+		 * 8.19, and it is what sets the value as much as the floor does.
+		 */
+		inkDim: "#A9B0CD",
 		inkDisabled: "#6C7086",
 
 		// Upstream surface1, seated at ΔE00 5.6 from `elevated`: a 1px line needs 4.0, and this
 		// one stays between 1.21:1 and 1.51:1 on the four grounds so it divides rather than
 		// bounds.
-		hairline: "#363653",
+		/*
+		 * Register re-solve: `hairline`
+		 * The one role whose rule binds at BOTH ends, so it is re-solved against all
+		 * four grounds at once: a rule has to be seen (ΔE00 4.0) without becoming a
+		 * border (2:1), and the window is walked at the role's own hue. Its ratio
+		 * lands at 1.16:1 against `elevated` at its tightest.
+		 */
+		hairline: "#3F3F5D",
 		// Upstream surface1 45475A is 1.54:1 against the lightest ground — a decorative value
 		// in a structural role, and the one role a palette is most likely to get wrong.
 		// Walked away from the grounds along the same slate to 3.1:1, which is where every
 		// shipped palette's structural edge sits.
-		borderControl: "#727589",
+		/*
+		 * Register re-solve: `borderControl`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.01:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		borderControl: "#7D8094",
 
 		accent: "#CBA6F7",
 		accentHover: "#DCC1FF",
@@ -118,7 +162,7 @@ export const catppuccinMocha: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.3
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#E2CCFF",
-		tokenCommand: "#89B4FA",
+		tokenCommand: "#8CB7FD",
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
@@ -129,7 +173,7 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * `elevated` is the tightest base at ΔE00 2.13. Lightness only, at the
 		 * wash's own hue.
 		 */
-		accentWash: "#25253B",
+		accentWash: "#303047",
 		onAccent: "#11111B",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#b4befe`,
@@ -140,36 +184,60 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * from `accent`, 35.69 from its nearest semantic (`danger`), 5.15:1 on the
 		 * tightest ground (`surface`).
 		 */
-		accentAlt: "#719AD4",
+		accentAlt: "#739CD6",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
-		 * receives: `accentWash`'s own L* 15.66 and C* 15.48, with the hue moved to
-		 * `accentAlt`'s. Measured: ΔE00 7.24 from `accentWash` (the field floor is
-		 * 2.0), 5.16:1 for `accentAlt` on it, and 6.65 from the nearest ground it
+		 * receives: `accentWash`'s own L* 20.82 and C* 15.59, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 6.52 from `accentWash` (the field floor is
+		 * 2.0), 4.52:1 for `accentAlt` on it, and 6.52 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#18283D",
+		accentAltWash: "#253349",
 
 		success: "#A6E3A1",
 		// The scheme has no green tint, so the wash is the green tinted over `canvas` at
 		// the strongest alpha (13%) that keeps the green itself at 4.5:1 on it.
 		successWash: "#4B5E57",
-		successBorder: "#498346",
+		/*
+		 * Register re-solve: `successBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.07:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		successBorder: "#569052",
 
 		warning: "#FAB387",
 		// The peach tinted over `canvas`, same rule as the green above.
 		warningWash: "#5D4B4C",
-		warningBorder: "#A6663B",
+		/*
+		 * Register re-solve: `warningBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.03:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		warningBorder: "#B47246",
 
 		danger: "#F38BA8",
 		dangerWash: "#332434",
 		// The danger hue walked toward the ground to just above the 3:1 the control's
 		// only edge is asked for.
-		dangerBorder: "#B75673",
+		/*
+		 * Register re-solve: `dangerBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.03:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		dangerBorder: "#C5627F",
 
-		info: "#89B4FA",
+		info: "#8CB7FD",
 		infoWash: "#213048",
-		infoBorder: "#4E76B7",
+		/*
+		 * Register re-solve: `infoBorder`
+		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
+		 * them: `elevated` binds it at 3.08:1. Lightness only, at the role's own
+		 * hue.
+		 */
+		infoBorder: "#5D83C5",
 
 		// The shadow and scrim are the crust tinted, as in every palette here.
 		overlayShadow: "0 12px 32px -12px rgb(9 9 14 / 0.65)",

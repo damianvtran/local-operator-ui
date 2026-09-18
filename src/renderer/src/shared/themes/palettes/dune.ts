@@ -72,17 +72,20 @@ export const dune: ThemeDefinition = {
 		sunken: "#1B1A1A",
 
 		/*
-		 * The current row's own ground: the panel's cast at the panel's own hue,
-		 * stepped 3.5 `L*` lighter (branch L of this port's selection rule), and
-		 * carrying 2.10x the panel's own chroma — the shortfall the ΔE00 4.0 band
-		 * needed, and nothing more. What binds this one is `ink-dim` at 5.15:1 on
-		 * the row's ground. ΔE00 4.2 from `surface`, 2.21 from `elevated`, 8.89 from
-		 * `sunken`, 7.14 from `accentWash`; the inks on the ground are 11.96:1,
-		 * 7.1:1, 5.15:1. Continuity with the panel: hue 11.95 degrees off the
-		 * panel's (the assertion allows 12) and chroma 6.08 where the panel carries
-		 * 2.89.
+		 * ROW STATES, and `highlight` retired in the same change. Both roles are tints of
+		 * THIS palette's own `accent` hue at two strengths; the retired role was a step
+		 * toward the panel's cast, which on the dark family is the axis the operator
+		 * reported as spent. The rule, and why neither role is a neutral step, are in the
+		 * two roles' doc in `palette-contract.ts`.
+		 *
+		 * rowHover    #342A23  accent hue, C* 7.11, +1.51 L*, ΔE00 4.00 off `surface`,
+		 *                       `inkDim` 5.46:1 on the fill, hue 4.18° off `accent`.
+		 * rowSelected #462C1C  accent hue, C* 18.19, +4.34 L*, ΔE00 12.08 off
+		 *                       `surface` and 8.26 off `rowHover`, `inkDim` 5.01:1, and the
+		 *                       2px `accent` bar at 5.53:1 against it.
 		 */
-		highlight: "#382e29",
+		rowHover: "#342A23",
+		rowSelected: "#462C1C",
 
 		// The old primary text was F9FAFB, a blue-white. Every other neutral here
 		// holds R greater than G greater than B, and one cool value in an otherwise
