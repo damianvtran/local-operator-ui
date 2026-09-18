@@ -20,6 +20,7 @@ import {
 	writeFileSync,
 	writeSync,
 } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
@@ -57,7 +58,10 @@ const {
 	readManagedSelection,
 	inspectManagedSelection,
 	managedSelectionReady,
+	publishedBackendVersion,
+	managedSelectionSatisfies,
 	prepareManagedPython,
+	updateManagedPython,
 	reapSupersededGenerations,
 	managedPythonRoot,
 	runtimesRoot,
@@ -1182,10 +1186,13 @@ function seedFixture(resources, arch, { cache = false, ballast = 0 } = {}) {
  * the two `-c` calls with a version, and a shim that serves `/health` on the port
  * it is handed. The real end-to-end path is `scripts/verify-managed-python.mjs`.
  */
-const STAND_IN_PYTHON = `#!/bin/sh\n# Stand-in for the venv interpreter; smokeEnvironment's only two calls are\n# \`-c\` ones, and the second one's stdout becomes the selection's version.\necho "0.0.0-fixture"\n`;
-function standInInstaller(venv, python) {
+const standInPython = (version) =>
+	`#!/bin/sh\n# Stand-in for the venv interpreter; smokeEnvironment's only two calls are\n# \`-c\` ones, and the second one's stdout becomes the selection's version.\necho "${version}"\n`;
+function standInInstaller(venv, python, version = "0.0.0-fixture") {
 	mkdirSync(join(venv, "bin"), { recursive: true });
-	writeFileSync(join(venv, "bin", "python"), STAND_IN_PYTHON, { mode: 0o755 });
+	writeFileSync(join(venv, "bin", "python"), standInPython(version), {
+		mode: 0o755,
+	});
 	writeFileSync(
 		join(venv, "bin", "local-operator"),
 		`#!/bin/sh\nport=""\nprev=""\nfor a in "$@"; do\n  if [ "$prev" = "--port" ]; then port="$a"; fi\n  prev="$a"\ndone\nPORT="$port" exec "${process.execPath}" -e 'require("node:http").createServer((q,s)=>s.end("ok")).listen(Number(process.env.PORT),"127.0.0.1");'\n`,
@@ -1256,6 +1263,362 @@ test("a selected environment that was removed is rebuilt, and the runtime is reu
 		"an intact runtime of the same identity is a candidate, so the 47 MB copy is not repeated",
 	);
 	assert.notEqual(rebuilt.venv, first.venv);
+});
+
+/*
+ * THE UPDATE HALF OF THIS MODULE, and the defect it exists for.
+ *
+ * What was wrong, in one line: readiness answered "a usable generation is
+ * published", the app read that as "this environment is up to date", and the only
+ * in-place upgrade it had ran `pip install --upgrade` inside the PUBLISHED venv -
+ * the tree a serving daemon and every session runtime import from. On the
+ * operator's own machine that has happened at least twice: the pointer's record
+ * says 0.55.7 while the tree it names holds 0.56.8, which is why a control that
+ * promised to move the environment produced a byte-identical screen on every press.
+ *
+ * So these pin what the publish path has to have - the new generation lands BESIDE
+ * the published one, the pointer moves only after a smoke passes, and what it
+ * supersedes is still there as the rollback - plus the readiness comparison that
+ * makes "behind" a thing the app can see at all.
+ */
+
+/** One generation's own ordering, as the app's comparator answers it. */
+const isNewer = (candidate, subject) => {
+	const parts = (value) =>
+		String(value)
+			.split(".")
+			.map((n) => Number(n) || 0);
+	const [a, b] = [parts(candidate), parts(subject)];
+	for (let i = 0; i < Math.max(a.length, b.length, 3); i++) {
+		if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0);
+	}
+	return false;
+};
+
+/**
+ * The install stand-in for one generation, reporting `version`.
+ *
+ * The RUNTIME interpreter is passed through rather than a path inside the venv,
+ * because `standInInstaller` writes the venv's `pyvenv.cfg` home from it and the
+ * selection is only well formed when that home is the runtime's own `bin`.
+ */
+function installReporting(state, version) {
+	return async (venv, python) => {
+		state.installs++;
+		standInInstaller(venv, python, version);
+		return true;
+	};
+}
+
+test("a ready environment that is behind the app's release is not up to date", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
+	const { opts, first } = await provisioned(t);
+	// The structural verdict is TRUE, and it is not the question an update asks.
+	assert.equal(await managedSelectionReady(opts), true);
+	assert.equal(publishedBackendVersion(opts), first.backendVersion);
+	assert.equal(
+		managedSelectionSatisfies(opts, "0.2.0", isNewer),
+		false,
+		"a generation prepared behind the release the app is offering is exactly what the old readiness answered 'nothing to do' for",
+	);
+	assert.equal(
+		managedSelectionSatisfies(opts, first.backendVersion, isNewer),
+		true,
+	);
+	assert.equal(
+		managedSelectionSatisfies(opts, null, isNewer),
+		true,
+		"a target nobody could read is not a version to move to",
+	);
+});
+
+test("an environment whose own version cannot be read is not treated as current", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
+	const { opts, first } = await provisioned(t);
+	// Both records, because `ready` is the pointer and the record agreeing byte for
+	// byte - the shape `publishGeneration` itself writes.
+	const blank = `${JSON.stringify({ ...first, backendVersion: "" })}\n`;
+	writeFileSync(join(first.venv, "environment-ready.json"), blank);
+	writeFileSync(
+		join(managedPythonRoot(opts), "selected-environment.json"),
+		blank,
+	);
+	assert.equal(publishedBackendVersion(opts), "");
+	assert.equal(
+		managedSelectionSatisfies(opts, "0.2.0", isNewer),
+		false,
+		"'its version could not be read' is not evidence that it is current",
+	);
+	const unknown = `${JSON.stringify({ ...first, backendVersion: "Unknown" })}\n`;
+	writeFileSync(join(first.venv, "environment-ready.json"), unknown);
+	writeFileSync(
+		join(managedPythonRoot(opts), "selected-environment.json"),
+		unknown,
+	);
+	assert.equal(
+		managedSelectionSatisfies(opts, "0.2.0", isNewer),
+		false,
+		"and the app's own sentinel for an unread version is not a version either",
+	);
+});
+
+test("an update publishes a new generation beside the published one, and keeps it as the rollback", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
+	const { opts, first } = await provisioned(t);
+	const stale = readFileSync(
+		join(first.venv, "environment-ready.json"),
+		"utf8",
+	);
+	const root = managedPythonRoot(opts);
+	const state = { installs: 0 };
+	const pointer = join(root, "selected-environment.json");
+	/*
+	 * THE FLIP, OBSERVED WHILE IT HAPPENS (review R1).
+	 *
+	 * The suite asserted only that no `.selection-*` temporary was left behind, and
+	 * that assertion holds just as well for a direct in-place write: the reviewer
+	 * mutated the flip to `writeFile(pointer, bytes)` and the whole file stayed green
+	 * (30/30), including the case whose comment claims "the pointer moved by rename,
+	 * so no half-written record is ever observed". A claim a mutation cannot break is
+	 * a restatement of the implementation, and a torn pointer is not a cosmetic
+	 * failure: it parses as `unprepared`, which the app answers by publishing a
+	 * generation from scratch.
+	 *
+	 * Two readers, because they fail differently:
+	 *
+	 *  - a concurrent loop that reads the pointer for the whole publish and asserts
+	 *    every observation parsed and named one of the two generations. It catches a
+	 *    torn write whenever the two syscalls of an in-place write are separated by a
+	 *    scheduling point - real, because Node's `writeFile` truncates and writes as
+	 *    separate asynchronous requests, but not guaranteed on any single run.
+	 *  - the pointer's INODE, which is the same file before and after an in-place
+	 *    write and a DIFFERENT file after a rename. That one is deterministic, and it
+	 *    is the part that fails every time against the mutation above.
+	 */
+	const inodeBefore = statSync(pointer).ino;
+	const observed = { reads: 0, failures: [], venvs: new Set() };
+	let flipping = true;
+	const reader = (async () => {
+		while (flipping) {
+			observed.reads += 1;
+			try {
+				const record = JSON.parse(await readFile(pointer, "utf8"));
+				observed.venvs.add(record.venv);
+			} catch (error) {
+				observed.failures.push(String(error));
+			}
+		}
+	})();
+
+	const outcome = await updateManagedPython(
+		opts,
+		installReporting(state, "0.2.0"),
+		{ target: "0.2.0", isNewer },
+	);
+	flipping = false;
+	await reader;
+
+	assert.equal(state.installs, 1);
+	assert.equal(outcome.replaced, true);
+	assert.equal(outcome.selection.backendVersion, "0.2.0");
+	assert.equal(
+		outcome.previous?.venv,
+		first.venv,
+		"what it supersedes is named, which is what the caller reports and what a restart onto a bad build falls back to",
+	);
+
+	// A SECOND generation exists, and the pointer names it.
+	assert.notEqual(outcome.selection.venv, first.venv);
+	assert.equal(
+		readdirSync(join(root, "environments")).length,
+		2,
+		"the new generation lands BESIDE the published one, never over it",
+	);
+	assert.deepEqual(readManagedSelection(opts), outcome.selection);
+	assert.equal(inspectManagedSelection(opts).kind, "ready");
+	assert.equal(publishedBackendVersion(opts), "0.2.0");
+
+	// The pointer moved by rename, so no half-written record is ever observed: the
+	// temporary file it is written through is gone by the time this returns.
+	assert.deepEqual(
+		readdirSync(root).filter((name) => name.startsWith(".selection-")),
+		[],
+		"the pointer is published atomically, so nothing may be left mid-write",
+	);
+	/*
+	 * ...AND THE SAME CLAIM, DISCRIMINATED. The inode is the deterministic half:
+	 * `rename` publishes the temporary file's inode, an in-place `writeFile` keeps
+	 * the published file's own - so this assertion is what a non-atomic flip breaks,
+	 * every time, and the mutation the reviewer ran is what it was checked against.
+	 */
+	assert.notEqual(
+		statSync(pointer).ino,
+		inodeBefore,
+		"the pointer must be REPLACED by rename, not rewritten in place: a reader either sees the old record or the new one, and an in-place write is the case where it can see neither",
+	);
+	/*
+	 * THE READER'S OWN RUN IS RECORDED RATHER THAN REQUIRED (review N1). The
+	 * assertions below are about what a concurrent reader SAW, and a loop that the
+	 * scheduler simply did not run between the two calls would fail them - red for a
+	 * scheduling accident rather than for the property under test, which is the same
+	 * class as an assertion that passes without the change. The deterministic half of
+	 * this pair is the inode assertion above (a rename publishes the temporary's
+	 * inode; an in-place write keeps the published file's), so the count is reported
+	 * where a reader can see it and the FAILURE LIST is what this case asserts.
+	 */
+	t.diagnostic(
+		`concurrent pointer observations during the publish: ${observed.reads} (0 means the loop was not scheduled; the inode assertion carries the deterministic half)`,
+	);
+	assert.deepEqual(
+		observed.failures,
+		[],
+		`a reader never sees a half-written pointer: ${JSON.stringify(observed.failures.slice(0, 2))}`,
+	);
+	assert.deepEqual(
+		[...observed.venvs].filter(
+			(venv) => venv !== first.venv && venv !== outcome.selection.venv,
+		),
+		[],
+		`every observation names one of the two published generations, never a tree this publish did not make: ${JSON.stringify([...observed.venvs])}`,
+	);
+
+	// The superseded generation survives, complete, with its own record untouched -
+	// that is the rollback, and a file a running process has open is never rewritten.
+	assert.ok(
+		existsSync(join(first.venv, "bin", "local-operator")),
+		"the generation it supersedes is still a usable environment",
+	);
+	assert.equal(
+		readFileSync(join(first.venv, "environment-ready.json"), "utf8"),
+		stale,
+		"and nothing wrote into it: it is the tree the serving daemon has open",
+	);
+});
+
+test("an update that finds the published environment already at the target installs nothing", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
+	const { opts, first } = await provisioned(t);
+	const state = { installs: 0 };
+
+	const outcome = await updateManagedPython(
+		opts,
+		installReporting(state, "0.2.0"),
+		{ target: first.backendVersion, isNewer },
+	);
+
+	assert.equal(
+		state.installs,
+		0,
+		"nothing is installed over a published generation that is already the release the app means to run",
+	);
+	assert.equal(outcome.replaced, false);
+	assert.deepEqual(readManagedSelection(opts), first);
+	assert.equal(
+		readdirSync(join(managedPythonRoot(opts), "environments")).length,
+		1,
+	);
+});
+
+test("an install that does not complete leaves the pointer and the published generation untouched", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
+	const { opts, first } = await provisioned(t);
+	const state = { installs: 0 };
+	const install = async () => {
+		state.installs++;
+		return false;
+	};
+
+	await assert.rejects(
+		() => updateManagedPython(opts, install, { target: "0.2.0", isNewer }),
+		/did not complete/,
+	);
+	assert.equal(state.installs, 1);
+	assert.deepEqual(readManagedSelection(opts), first);
+	assert.equal(publishedBackendVersion(opts), first.backendVersion);
+	assert.ok(existsSync(join(first.venv, "bin", "local-operator")));
+});
+
+test("a generation that does not smoke leaves the pointer untouched", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
+	const { opts, first } = await provisioned(t);
+	const state = { installs: 0 };
+	/*
+	 * An environment that installs and will not start. `smokeEnvironment`'s first
+	 * probe is an import check through the environment's own interpreter, so a shim
+	 * that exits non-zero fails it at once rather than at the health deadline - which
+	 * is why this case is a second rather than a minute.
+	 */
+	const install = async (venv, python) => {
+		state.installs++;
+		standInInstaller(venv, python, "0.2.0");
+		writeFileSync(join(venv, "bin", "python"), "#!/bin/sh\nexit 3\n", {
+			mode: 0o755,
+		});
+		return true;
+	};
+
+	await assert.rejects(() =>
+		updateManagedPython(opts, install, { target: "0.2.0", isNewer }),
+	);
+
+	// The pointer never moved, so every process that was reading the published tree
+	// is still on the generation it loaded - and it is still usable.
+	assert.deepEqual(readManagedSelection(opts), first);
+	assert.equal(publishedBackendVersion(opts), first.backendVersion);
+	assert.equal(inspectManagedSelection(opts).kind, "ready");
+	assert.ok(existsSync(join(first.venv, "bin", "local-operator")));
+});
+
+test("an update keeps the generation it supersedes even when a stray generation is newer", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
+	const { opts, first } = await provisioned(t);
+	/*
+	 * A newer, unselected, half-written generation - exactly what a failed attempt
+	 * leaves behind, because a failed publish does not delete the tree it created.
+	 *
+	 * The retention rule keeps "what the caller named, plus the newest generation
+	 * that is not named". A caller that named only the runtime would therefore let
+	 * this debris outrank the environment it had just superseded and delete the
+	 * ROLLBACK - the tree a bad build has to fall back to, and the one a still-running
+	 * daemon has open. So the update names both generations, and the assertions below
+	 * are the difference between the two behaviours.
+	 */
+	const root = managedPythonRoot(opts);
+	const stray = join(
+		root,
+		"environments",
+		`${first.runtimeId}-44444444-4444-4444-8444-444444444444`,
+	);
+	mkdirSync(stray, { recursive: true });
+	writeFileSync(
+		join(stray, "half-written"),
+		"a generation that never smoked\n",
+	);
+	const now = Date.now();
+	utimesSync(first.venv, new Date(now - 600_000), new Date(now - 600_000));
+	utimesSync(stray, new Date(now - 60_000), new Date(now - 60_000));
+	assert.ok(
+		statSync(stray).mtimeMs > statSync(first.venv).mtimeMs,
+		"the stray must be newer than the published generation or this test asserts nothing",
+	);
+
+	const state = { installs: 0 };
+	const outcome = await updateManagedPython(
+		opts,
+		installReporting(state, "0.2.0"),
+		{ target: "0.2.0", isNewer },
+	);
+
+	assert.equal(outcome.replaced, true);
+	assert.ok(
+		existsSync(join(first.venv, "bin", "local-operator")),
+		"the superseded generation survives as the rollback, even with newer debris beside it",
+	);
+	assert.equal(
+		readManagedSelection(opts).venv,
+		outcome.selection.venv,
+		"and the pointer names the new generation rather than the debris",
+	);
 });
 
 /*
@@ -1671,7 +2034,7 @@ test("the reaper removes abandoned staging and superseded generations, and nothi
 
 	const removed = reapSupersededGenerations(
 		opts,
-		{ runtime: selectedRuntime, venv: selectedVenv },
+		{ runtime: [selectedRuntime], venv: [selectedVenv] },
 		now,
 	);
 	assert.deepEqual(removed.sort(), [abandoned, olderRuntime].sort());
