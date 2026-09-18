@@ -5890,6 +5890,40 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										}
 									/>
 								</ComposerHighlight>
+								{/*
+								 * THE CHIPS, painted OVER the field's own glyphs.
+								 *
+								 * A sibling of `ComposerHighlight` inside the `relative isolate` wrapper, and
+								 * therefore AFTER the textarea in the DOM once `#303` moved the field behind
+								 * that wrapper's two layers. The order matters for two reasons and neither is
+								 * cosmetic: a positioned element paints above an in-flow one whatever the tree
+								 * order is (CSS 2.1 appendix E), so the chip is above the text either way -
+								 * but the DOM order is what decides where a keyboard user meets its `x`, and a
+								 * control that clears the reference the field holds belongs AFTER the field
+								 * rather than as a stop on the way in. It also keeps the chip above the
+								 * textarea's glyphs and below the popups that follow in this wrapper.
+								 *
+								 * It is a sibling rather than a child of `CredentialOverlay` so that the wash
+								 * (which must stay UNDER the glyphs) and the chip (which must sit OVER them)
+								 * can each take their own layer while measuring ONE mirror - this branch's
+								 * own, which is what the run's rects come from; `#303`'s `ComposerHighlight`
+								 * mirror carries the slash painting and is a different element.
+								 *
+								 * `onClear` is NULLED while the composer refuses input: the refusal on this
+								 * base is `readOnly` rather than `disabled`, so a control painted over the box
+								 * IS pressable in a state where every writer is refused, and the chip must not
+								 * offer a verb the composer will not run. The gate is passed in from the same
+								 * `isInputDisabled` the textarea and the other writers read, so there is one
+								 * predicate rather than two.
+								 */}
+								<CredentialChipLayer
+									text={newMessage}
+									payloads={payloadsRef.current}
+									capture={capture}
+									mirrorRef={mirrorRef}
+									fieldRef={textareaRef}
+									onClear={isInputDisabled ? null : clearCredential}
+								/>
 							</div>
 						)}
 
