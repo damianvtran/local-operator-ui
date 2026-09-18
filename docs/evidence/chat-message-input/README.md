@@ -370,3 +370,83 @@ record's §7.1; that the cleared payload is really GONE is
 chip's `x` is reachable by a pointer is the `credential-pill-cleared` story's own
 play function, which throws rather than releasing the shutter if the click did
 not land.
+
+---
+
+## Round 1's remediation: the chip follows the field, and the four states the round had no frame for
+
+PR #337's four review rounds (code, QA, design, UX) found one blocker, four
+majors and a batch of minors. They are fixed in one code commit (`a5227de6c`),
+and every frame this round touched was re-captured from that tree, one state per
+run, twelve themes each.
+
+**The blocker, and the frame that holds it.** In any message long enough to
+scroll, the chip sat exactly `fieldScrollTop` px from its marker — an opaque
+ground, and a live `x`, over unrelated prose — because the measurement added the
+mirror's own scroll to a rect that is already viewport-relative. The two terms
+are gone. `credential-pill-scrolled` is the state that could not be photographed
+before: a fifteen-line message with the reference minted at its end, the field
+scrolled, and the chip over its own glyphs. Its play function measures the pair,
+and `scripts/credential-chip-geometry.mjs` reports the same pair at a middle and
+an end position as well:
+
+```
+chat-message-input--credential-pill-scrolled  @ 1024x300
+  -- as painted                 delta {"left":0,"top":0,"width":0,"height":0}
+  -- scrolled to its middle (scrollTop 113)   delta {"left":0,"top":0,"width":0,"height":0}
+  -- scrolled to its end (scrollTop 225)      delta {"left":0,"top":0,"width":0,"height":0}
+```
+
+The same rig now narrows the composer's OWN box (a viewport resize proves nothing
+here — every story pins its column width, and the first version of that phase
+measured exactly that) and asserts the deltas stay zero: `866 -> 584px` at the
+1024 story, `374 -> 194px` at the compact one. That is code review R1-3's resize
+case, which no story can drive.
+
+**Three more states, each one finding's own frame.** `credential-pill-hover` is
+design D3's: the rig moves the REAL pointer onto the control (a synthetic event
+leaves no `:hover`), so the ink step and its `elevated` ground are in the
+picture. `credential-pill-focused` is D2's: real Tab presses walk to the control
+and the dense `outline-offset-1` ring is visible around a 16x16 target — 16x16
+being as far as a 17px run box allows, recorded as a WCAG 2.2 SC 2.5.8 deviation
+rather than left silent. `credential-pill-cleared-undone` is UX U2's: the toast's
+`Undo`, clicked for real, with the play function requiring the buffer to come
+back byte-identical and the chip to be painted again on its run.
+
+**What changed in the existing frames, measured rather than asserted**
+(committed frame against this round's, `magick compare -metric AE -fuzz 5%` over
+307,200 px):
+
+| set | frames | difference |
+| --- | --- | --- |
+| `credential-pill-cleared` | 12/12 | material, 21,992–58,404 px — the sentence is on the notice line now as well as the toast, and the toast carries `Undo` |
+| `credential-pill-mid-prose`, `-at-line-start`, `-small-view` | 36/36 | the chip's own face only, 460–532 px — the count beside the ordinal (D1), the 16x16 control with its ink step (D2/D3) |
+| `credential-masked`, `-masked-small-view`, `-masked-session-pane` | 5 frames | 0–5 px: caret and encoder noise, committed from this run |
+| `chat-canonical-credential-citation/citation-in-code-fence/localOperatorDark` | 1 frame | 0 px at a 5% fuzz: encoder noise. The transcript's rendering does not change — the two rules this round added there (link provenance, the math veto) alter no pixel of these three states |
+
+**The stranded space in the cleared frame is the fixture's own typing, not the
+`x`** (design D6). Arming mid-prose takes the space before `/credential`
+(`CREDENTIAL_ARM` is anchored to a whitespace boundary), so a sentence whose
+continuation starts with a comma leaves `key ,` — the same space a deleted word
+would leave, and the app does not rewrite the operator's sentence around a
+reference it removed. Recorded, not "fixed": the alternative is editing prose
+the operator typed.
+
+### The fold onto `3cb1eea3c`: re-captured, and what moved
+
+Every frame in this directory was re-taken from the rebased tree, because the
+composer's own files were rewritten under this branch by `#302` (the credential
+command-lock) and the renderer's by `#311` (link affordances). Compared frame by
+frame against the committed set: 141 of 162 byte-identical, twenty sub-threshold
+(`0–4 px` at a `-fuzz 5%` compare — caret and webp-encoder differences, thirteen
+of them `raw` differences with an empty bounding box), and the twelve
+`credential-pill-cleared` frames differing only inside the minted key name the
+sentence carries (`LOP_SECRET_QHJYN444` in this run; the name is random per
+session). Nothing in the treatment changed, and the cleared state still shows
+both channels — the sentence on the notice line and the toast with its `Undo`.
+
+`scripts/credential-chip-geometry.mjs` was re-run on this base: the chip's box
+matches the marker run's box exactly at both rungs (157.33 × 17 at 1024,
+147.67 × 16 at 440), four deltas `0` at every rung, `0,0,0,0` at `scrollTop` 113
+and 225 in the scrolled story, and `0` after the composer's own box is narrowed
+866 → 584 and 374 → 194.
