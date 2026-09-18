@@ -6,7 +6,7 @@
  * different questions and are seen at different moments. That one is the hover
  * meta row's stamp: it appears among copy and speak, only while the reader is
  * hovering the row, and it is formatted for someone already looking at the
- * message. This one is on screen for every user turn, under every settled agent
+ * message. This one is on screen for every user turn, under a turn's closing
  * answer and inside every expanded tool call, so it has to name the day itself
  * (`formatTurnTimestamp`) rather than a bare clock time.
  *
@@ -24,28 +24,33 @@
  * 2026-09-17: "the agent responses (just the final responses, not the in-progress
  * tool intent/response) don't have a time displayed on them"), which is why the
  * in-progress half of that sentence is a rule here rather than a detail.
- * *
- * IT SITS IN EXACTLY TWO PLACES, and the operator's report of 2026-09-17 is why
- * that is two rather than three. `scope="turn"` under a user turn's bubble: one
- * per turn, the anchor the hover model was missing. `scope="turn"` at the foot
- * of an OPEN tool disclosure: the collapsed ledger keeps the quiet it was given,
- * so a run of twenty calls stays twenty lines.
  *
- * THE FOOTER LINE IS GONE, and it was a THIRD PLACE only in the sense that it
- * was the third one this component owned. It stated when the last thing in the
- * conversation happened, gated so it stayed away when the last row painted a
- * stamp of its own (a user turn, or a ledger row the reader had opened). The
- * transcript is bottom-pinned and the aggregate working line sits at its foot, so
- * during a live turn that stamp landed directly under the thinking indicator — a
- * clock beneath a liveness row, which is the state the operator screenshotted.
- * The line was
- * removed rather than gated because every gate it had asked WHICH row came last,
- * and the row that comes last during a turn is the working line: not a record,
- * and not something the gate could name. The trade is deliberate and worth
- * stating: a transcript ending on assistant prose, or on a settled tool row
- * nobody opened, now shows no time at its foot. Both ends on a row whose own
- * affordance is a disclosure, and an always-present clock at the foot was the
- * thing the operator asked to remove.
+ * IT SITS IN EXACTLY THREE PLACES, and the container decides which: `scope="turn"`
+ * under a user turn's bubble (one per turn, the anchor the hover model was
+ * missing), `scope="answer"` under a turn's CLOSING answer on the agent rail, and
+ * `scope="tool"` at the foot of an OPEN tool disclosure (the collapsed ledger
+ * keeps the quiet it was given, so a run of twenty calls stays twenty lines). The
+ * turn's closing answer is the narrower reading of the operator's sentence above
+ * and the one this module implements: "just the final responses, not the
+ * in-progress tool intent/response" is about the prose an agent writes BETWEEN
+ * calls, so a turn that narrates between calls carries ONE caption on the answer
+ * it ends on rather than one clock per paragraph (design round 1, D1; QA round 1,
+ * Q-2). `closingAnswerIds` in `canonical/transcript-rows.ts` is the rule, and it
+ * is a rule about a TURN rather than about a record — `!record.streaming` alone
+ * is a fact about a record, which is what painted the four identical stamps.
+ *
+ * THE FOOTER LINE IS GONE. It was a carrier only in the sense that this
+ * component owned it: it stated when the last thing in the conversation
+ * happened, gated so it stayed away when the last row painted a stamp of its
+ * own (a user turn, or a ledger row the reader had opened). The transcript is
+ * bottom-pinned and the aggregate working line sits at its foot, so during a
+ * live turn that stamp landed directly under the thinking indicator — a clock
+ * beneath a liveness row, which is the state the operator screenshotted. The
+ * line was removed rather than gated because every gate it had asked WHICH row
+ * came last, and the row that comes last during a turn is the working line: not
+ * a record, and not something the gate could name. The trade is deliberate and
+ * worth stating: a transcript ending on a closed ledger row, on a notice, or on
+ * an answer the reader has not received yet, now shows no time at its foot.
  *
  * GEOMETRY, because the frame is the whole of what a stamp is: it is a sibling
  * of the bubble in a column (`UserRow`), so it sits under the bubble and shares
@@ -83,12 +88,11 @@
  * tooltip is POINTER-ONLY, though - the shared `Tooltip`'s trigger takes no
  * `tabIndex`, so it cannot be reached from the keyboard - which is why the
  * `aria-label` above is the accessible path rather than a second way to the same
- * panel (design round 2, D2-4). The
- * full date and time come from `formatCalendarDateTime` with `hour12` forced,
- * so the tooltip and the label agree with the 12-hour text the operator asked
- * for rather than taking the locale's own clock — on a 24-hour machine the two
- * halves of one element used to state the same instant in two conventions
- * (review round 1, R3).
+ * panel (design round 2, D2-4). The full date and time come from
+ * `formatCalendarDateTime` with `hour12` forced, so the tooltip and the label
+ * agree with the 12-hour text the operator asked for rather than taking the
+ * locale's own clock — on a 24-hour machine the two halves of one element used
+ * to state the same instant in two conventions (review round 1, R3).
  */
 
 import { Tooltip } from "@shared/components/ui";

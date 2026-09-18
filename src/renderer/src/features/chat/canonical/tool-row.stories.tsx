@@ -1128,10 +1128,17 @@ export const AnswerInProgress: Story = {
  * in the same breath, what a turn like this looks like - because a stamp per
  * settled prose row is four captions in one turn, while the ledger below it stays
  * four lines. The frame exists so that question is judged on pixels rather than
- * on the rule: what keeps the count down is that a record with no content paints
- * nothing (`paintsSomething`), so a turn that stops talking between calls adds no
- * caption - and what the frame shows is that a turn that DOES talk four times
- * carries four.
+ * on the rule, and round 1 judged it: four identical clocks interleaved with the
+ * ledger, the worst shape being two of them 56px apart with one sentence between
+ * them (design round 1, D1). The caption is now gated on the turn's CLOSING
+ * answer - `closingAnswerIds` in `canonical/transcript-rows.ts` - so what this
+ * frame shows is ONE caption, under the answer the turn ends on, and the narrative
+ * paragraphs above it unlabelled.
+ *
+ * Both readings of the operator's sentence are legible here, which is why the
+ * story is kept in the set rather than reduced to its after half: `paintsSomething`
+ * still keeps the count down for a turn that goes quiet between calls, and the
+ * closing-answer rule is what keeps it down for one that talks four times.
  */
 export const ProseBetweenCalls: Story = {
 	render: () => (
@@ -1229,11 +1236,18 @@ export const ProseBetweenCalls: Story = {
  *
  * The user bubble is in the frame on purpose, as the control: it keeps its own
  * narrower measure, and a change that widened it too would be visible here.
+ *
+ * The height is 420 rather than the 396 this story carried: the closing answer's
+ * caption is part of the claim ("a final answer" above), and at 396 the pane cut
+ * through its glyphs - the last text band measured 7px against 11-12px for a whole
+ * caption, so a reader saw a clipped string rather than a caption, and the air the
+ * frame exists to show under the closing answer was not shown at all (design round
+ * 1, D3).
  */
 export const ProseToolAlignment: Story = {
 	render: () => (
 		<Frame
-			height={396}
+			height={420}
 			records={[
 				{
 					kind: "user",

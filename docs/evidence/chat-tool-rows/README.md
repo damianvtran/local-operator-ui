@@ -198,20 +198,40 @@ controls and are **not re-encoded at all**.
 
 ### Which frames moved, and how they were found
 
-A DOM query over every story in the sweep's list — `document.querySelectorAll('time[data-stamp="footer"]')`,
-run against the BASE tree — names the frames this change can move: **34 stories across six
-surfaces** (this one, `chat-canonical-notices`, `chat-notification-feed-states`,
-`chat-reconnect-gap`, `chat-stale-seed-order`, and `chat-run-panel`'s reader states). A pixel diff
-cannot answer that question on its own, and the measurement is worth keeping: several stories carry
-a live clock or a `Date.now()` fixture, so a capture of the UNCHANGED tree already moves them — the
-base tree re-captured against its own committed frames differs by 36,166px in
+**64 stories across nine surfaces**, measured on this tree rather than carried forward: this one,
+`chat-canonical-notices`, `chat-canonical-quote`, `chat-notification-feed-states`,
+`chat-phantom-compose-rows`, `chat-reconnect-gap`, `chat-run-panel`, `chat-stale-seed-order` and
+`chat-trace-order-while-live`. Reproduce it with the diff itself, which is also what the review
+round checked it against:
+
+```
+git diff --name-status origin/main -- docs/evidence \
+  | awk '$2 ~ /\.webp$/ {print $2}' | sed 's#/[^/]*$##' \
+  | grep -vE 'turn-(stamp-footer|answer-stamp)-before' \
+  | grep -vE 'chat-tool-rows/(answer-in-progress|prose-between-calls@(420|1024))' \
+  | sed 's#@[0-9]*$##' | sort -u | wc -l   # 64 stories (65 directories before the width pair merges)
+```
+
+The stories to re-take were chosen with a DOM query over the sweep's list —
+`document.querySelectorAll('time[data-stamp]')` — run against the capture BASE tree, because a
+pixel diff cannot answer that question on its own: several stories carry a live clock or a
+`Date.now()` fixture, so a capture of the UNCHANGED tree already moves them — the base tree
+re-captured against its own committed frames differs by 36,166px in
 `turn-boundary-and-working-line`'s light frame and 3,114px across the prose block of
 `prose-tool-alignment@1024`'s dark one. Those two are inside the affected set anyway; the point is
 that a diff alone would also have named frames nothing moved in.
 
-Each affected story's directory was re-taken **in the themes it already carried** — twelve for this
-surface, three for `chat-notification-feed-states`, two for the rest — so this pass moves frames and
-adds none.
+The base-tree query is a DERIVATION, not the affected set, and the two are not the same number:
+the footer pass queried `time[data-stamp="footer"]`, the answer pass added a second carrier, and the
+query answers differently on a base that has moved again since. The set this diff actually moves is
+the 64 stories above, so that is the number to hold these frames to — which is why review round 1's
+R2 (two documents quoting 34/6 and 53/8 for "the same query") is settled by stating the tree-derived
+number in both places rather than by picking a winner between two stale runs.
+
+Each affected story's directory was re-taken **in the themes it already carried** (twelve for this
+surface, three for `chat-notification-feed-states`, two for the rest), so this pass moves frames and
+adds none: the tree's added frames are the two new stories' 36 and the two before-halves' 14, which
+are the 50 the manifest's `supplementary` list declares.
 
 THE PAIR is [`../turn-stamp-footer-before/`](../turn-stamp-footer-before/), declared as its own
 supplementary set for the reason the previous pair is: a sweep captures the current tree and can
