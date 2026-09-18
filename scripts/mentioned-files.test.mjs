@@ -1019,6 +1019,7 @@ test("every format the protocol promises becomes exactly one tile", () => {
 		["csv", "metrics"],
 		["tsv", "metrics"],
 		["txt", "session-log"],
+		["text", "session-log"],
 		["yaml", "config"],
 		["yml", "config"],
 		["log", "rollout"],
@@ -1042,6 +1043,26 @@ test("every format the protocol promises becomes exactly one tile", () => {
 	}
 });
 
+test("a text path outvotes a type that disagrees with it", () => {
+	// The branch sits ABOVE the `type` fallback, so these three rows move from
+	// answering the document's own type to answering by the path (measured as the
+	// only non-text-extension rows a 61-row base/head matrix moves; QA round 1).
+	// Reachability through the panel is nil — a `.txt` document's type is derived
+	// from the same path — but a shared helper's precedence belongs in the test
+	// that pins it rather than only in a comment.
+	for (const [path, type] of [
+		["/x/weird.txt", "spreadsheet"],
+		["/x/weird.txt", "image"],
+		["/x/weird.log", "markdown"],
+	]) {
+		assert.equal(
+			viewerFor(path, type),
+			"code",
+			`${path} as ${type} routes by path`,
+		);
+	}
+});
+
 test("every promised format opens in the viewer a user expects", () => {
 	/*
 	 * A script is CODE and must never reach the markdown viewer: a `.sh` opened
@@ -1054,6 +1075,7 @@ test("every promised format opens in the viewer a user expects", () => {
 		csv: "spreadsheet",
 		tsv: "spreadsheet",
 		txt: "code",
+		text: "code",
 		yaml: "code",
 		yml: "code",
 		log: "code",
@@ -1106,28 +1128,68 @@ test("a scratchpad listing names a directory, not a file", () => {
 	);
 });
 
-test("the guide's own example line leaves one tile behind: a recorded false positive", () => {
+test("a templated or abbreviated path yields no candidate at all", () => {
 	/*
-	 * The guide the backend ships documents the result shape with this line:
+	 * Two forms, both MEASURED in a real run (QA round 1, PR #336) against the
+	 * guide the feature ships, whose own example lines put a path-shaped
+	 * placeholder in the transcript:
 	 *
-	 *   `<scheme>logs/run.md -> /…/sessions/<id>/scratchpad/logs/run.md`
+	 *   guide line 58  `scratchpad://logs/run.md -> /…/sessions/<id>/scratchpad/logs/run.md`
+	 *   guide line 23  the printed path (`bash /…/scratchpad/probe.sh`, `eval`, `grep`)
 	 *
-	 * and an agent that reads the guide puts that line in the transcript. The
-	 * scanner then takes the tail of the placeholder as a path: the token before
-	 * it is cut at `<` (excluded from the character class), and the remainder
-	 * resumes at `/scratchpad/logs/run.md` after the `>`, which IS an allowed
-	 * prefix because a shell redirect (`convert in.png > /tmp/out.png`) is a real
-	 * mention. Measured in the real app: one `run.md` tile reading
-	 * `No longer on disk`.
+	 * The first is the TAIL of an angle-bracket placeholder - the scanner stops at
+	 * `<` and resumes after the `>` - and the second is an ABBREVIATED path whose
+	 * ellipsis segment was admitted whole. Both put a tile for a file that does not
+	 * exist in front of the user, which is this module's documented worst failure,
+	 * and the live panel read `6 files` for a session with four real ones.
 	 *
-	 * Recorded here rather than asserted as desirable. The fix belongs to the
-	 * prose tier's placeholder handling - the file-url tier already has that
-	 * guard (`URL_TRUNCATION`), and the prose tier's rules are audited against
-	 * real payloads, so it is a change of its own rather than a passenger on the
-	 * scratchpad work. Everything else about the scheme is pinned above.
+	 * A template reaches a transcript through a tool RESULT as readily as through
+	 * a guide paragraph, so all three carriers are asserted: assistant prose, a
+	 * tool result, and a tool argument.
 	 */
-	const guideLine = `in the form\n\`${SCRATCHPAD_SCHEME}logs/run.md -> /…/sessions/<id>/scratchpad/logs/run.md\`. That path`;
-	assert.deepEqual(paths([assistant(1, guideLine)]), [
-		"/scratchpad/logs/run.md",
-	]);
+	const templateLine = `in the form\n\`${SCRATCHPAD_SCHEME}logs/run.md -> /…/sessions/<id>/scratchpad/logs/run.md\`. That path`;
+	assert.deepEqual(paths([assistant(1, templateLine)]), []);
+	const abbreviatedLine =
+		"the printed path (`bash /…/scratchpad/probe.sh`, `eval`, `grep`).";
+	assert.deepEqual(paths([assistant(1, abbreviatedLine)]), []);
+	assert.deepEqual(
+		paths([
+			tool(
+				"a",
+				{ path: `${SCRATCHPAD_SCHEME}run/perf.md` },
+				`Created ${SCRATCHPAD_SCHEME}run/perf.md -> /…/sessions/<id>/scratchpad/run/perf.md (42 chars).`,
+			),
+		]),
+		[],
+	);
+	// The same two shapes under a path key, where the structured tier sees them.
+	assert.deepEqual(paths([tool("a", { path: "/…/scratchpad/probe.sh" })]), []);
+	assert.deepEqual(
+		paths([tool("a", { path: "/…/sessions/<id>/scratchpad/logs/run.md" })]),
+		[],
+	);
+	// The ASCII spelling of the same abbreviation.
+	assert.deepEqual(
+		paths([assistant(1, "run `bash .../scratchpad/probe.sh` and read back")]),
+		[],
+	);
+});
+
+test("the abbreviation trade: a name containing an ellipsis is admitted by no tier", () => {
+	/*
+	 * The cost of the rule above, stated as a test rather than discovered later.
+	 * Rejecting `…` anywhere in a candidate is what makes an abbreviation
+	 * impossible to admit whole, and a file whose NAME legitimately contains the
+	 * character pays for it — in EVERY tier, because the marker class is applied
+	 * wherever a candidate is canonicalised. That is this module's standing trade
+	 * (a missing tile, never a tile for a path no file has), and the asymmetry is
+	 * deliberate: a character that means "text was removed" is the one thing a
+	 * text-inferring scanner cannot tell from a name.
+	 */
+	assert.deepEqual(paths([assistant(1, "opened /tmp/notes/we…ird.md")]), []);
+	assert.deepEqual(
+		paths([assistant(1, "opened file:///tmp/notes/we…ird.md")]),
+		[],
+	);
+	assert.deepEqual(paths([tool("a", { path: "/tmp/notes/we…ird.md" })]), []);
 });

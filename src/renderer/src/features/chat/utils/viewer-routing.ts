@@ -103,18 +103,29 @@ export function viewerFor(path: string, type?: CanvasDocumentType): ViewerKind {
 	if (endsWithAny(path, audioExtensions)) return "audio";
 	if (endsWithAny(path, videoExtensions)) return "video";
 	/*
-	 * Plain text is the app's own editor's business, and this branch is what
-	 * makes that true.
+	 * Text this app already classifies as `"text"` gets a viewer, which is what
+	 * keeps the routing table self-consistent: `fileKind` answers `"text"` for
+	 * `.txt`, `.log` and `.text`, a tile shows that type, and this function
+	 * answered `null` — the documented "hand it to the OS" — for the same
+	 * extension whenever the call carried no type at all.
 	 *
-	 * It used to fall through: `isCanvasSupported` answers from CodeMirror's
-	 * language map (`config/canvas-supported-extensions.ts`), which carries no
-	 * `.txt`, `.log` or `.text`, so a text file reached the final `null` and was
-	 * handed to the OS (TextEdit) -- a session's scratch `.txt` note opened as a
-	 * stranger's document instead of in the app's own editor. `textExtensions` is
-	 * `file-kind.ts`'s own set, which is already what `fileKind` reports as
-	 * `"text"` and what the prose scanner admits, so the extension list stays
-	 * in one place. Placed above the `type` fallback because the PATH is the
-	 * stronger evidence of format when the two disagree.
+	 * It is a GUARD rather than a fix to what a user sees, and that is worth
+	 * stating because the shape invites the opposite reading. Both of this app's
+	 * call sites pass the document's type (`canvas-file-viewer.tsx`'s click and
+	 * `canvas-content.tsx`'s render), and a document's type is derived from its
+	 * own path (`canvas-document.ts` → `getFileTypeFromPath` → `fileKind`), so for
+	 * these extensions the type IS `"text"` and the `TYPE_KINDS` fallback below
+	 * already answered `"code"`. Measured on the base commit before this branch:
+	 * `viewerFor(path, "text")` was `code`, and the base app opened a `.txt` tile
+	 * in its own editor with no OS handoff at all (QA round 1, PR #336). What the
+	 * branch decides is the TYPE-LESS call, which is the shape this function's own
+	 * contract — and its tests — are written in.
+	 *
+	 * `textExtensions` is `file-kind.ts`'s own set rather than a fourth copy of
+	 * the extensions. It sits ABOVE the `type` fallback, so a document whose type
+	 * disagrees with its path now routes by the PATH — deliberate, and pinned by a
+	 * test: the path is the stronger evidence of the format, and in every
+	 * production construction the type is derived from that same path.
 	 */
 	if (endsWithAny(path, textExtensions)) return "code";
 	if (type && TYPE_KINDS[type]) return TYPE_KINDS[type] ?? null;
