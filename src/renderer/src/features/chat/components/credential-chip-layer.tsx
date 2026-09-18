@@ -147,6 +147,11 @@ export type CredentialChipLayerProps = {
 	 * takes nothing must not offer a verb the box will refuse (see the `x` below).
 	 */
 	onClear: ((index: number) => void) | null;
+	/**
+	 * DESIGN-ROUND-8 SCRATCH: the compact rung, whose field is one type step
+	 * smaller than the wide one - the chip's own text has to follow it.
+	 */
+	small?: boolean;
 };
 
 export const CredentialChipLayer = ({
@@ -157,6 +162,7 @@ export const CredentialChipLayer = ({
 	fieldRef,
 	onClear,
 	onControlUnmounted,
+	small = false,
 }: CredentialChipLayerProps) => {
 	const plan = paintPlan(text, payloads.values(), capture);
 	const [boxes, setBoxes] = useState<ChipBox[]>([]);
@@ -370,6 +376,7 @@ export const CredentialChipLayer = ({
 						// `credential-capture.ts`, and it is also what the chip puts in the
 						// accessibility tree.
 						title={markerChipTitle(chip.index, chip.chars)}
+						small={small}
 						className="absolute"
 						style={{
 							left: box.left,

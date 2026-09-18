@@ -6104,6 +6104,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * predicate rather than two.
 								 */}
 								<CredentialChipLayer
+									small={isSmallView}
 									text={newMessage}
 									payloads={payloadsRef.current}
 									capture={capture}

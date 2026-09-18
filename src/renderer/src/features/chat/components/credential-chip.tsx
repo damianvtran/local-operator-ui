@@ -128,6 +128,12 @@ export type CredentialChipProps = {
 	 * rect read from the mirror) and not a step on any scale.
 	 */
 	style?: CSSProperties;
+	/**
+	 * DESIGN-ROUND-8 SCRATCH: the field's own type step, so the chip's text is
+	 * the size of the marker run it covers rather than the app's body step at
+	 * both rungs.
+	 */
+	small?: boolean;
 };
 
 /**
@@ -152,6 +158,7 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 	clearLabel,
 	className,
 	style,
+	small = false,
 }) => (
 	<span
 		// Not `aria-hidden`, anywhere it is mounted: a chip carries the reference's
@@ -162,8 +169,9 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 		// two settings render two accessibility trees for one component, and the
 		// composer's half is the one that must not diverge from the transcript's.
 		className={cn(
-			"inline-flex items-center gap-1 px-1 text-ink",
+			"inline-flex items-center justify-between gap-1.5 px-3 text-ink",
 			tone === "warning" ? CREDENTIAL_NOT_STORED_ROLE : CREDENTIAL_CHIP_ROLE,
+			small ? "text-body-sm" : "text-body",
 			className,
 		)}
 		title={title}
@@ -249,7 +257,7 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 				// past its box - out over the chip's own edge and into the words beside
 				// it. `!` because the global rule and a utility carry the same
 				// specificity, exactly as `button.tsx` spells it.
-				className="pointer-events-auto -mr-0.5 ml-auto flex shrink-0 cursor-pointer items-center rounded-xs p-0.5 text-ink-muted hover:bg-elevated hover:text-ink focus-visible:outline-offset-1! active:bg-sunken"
+				className="pointer-events-auto -mr-1 flex shrink-0 cursor-pointer items-center rounded-xs p-0.5 text-ink-muted hover:bg-elevated hover:text-ink focus-visible:outline-offset-1! active:bg-sunken"
 			>
 				<X aria-hidden="true" className="size-3" />
 			</button>
