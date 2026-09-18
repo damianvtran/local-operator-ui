@@ -5,8 +5,9 @@ import { build } from "esbuild";
 
 /*
  * THE DELIVERY GATE: a named conversation may replace what an existing window is
- * showing only if the request is the operator's own, or the window is not the one
- * he is using.
+ * showing, EXCEPT for the one delivery that would leave no trace — a second launch
+ * under a plan that declared it must not be shown (`show === "never"`), arriving at
+ * a window the operator is using.
  *
  * What is being defended, in one line: this app is driven by agents on the
  * operator's own desktop, so a tool-spawned launch can name a conversation, reach
@@ -16,13 +17,27 @@ import { build } from "esbuild";
  * still RE-KEYS on the new session, so the composer subtree unmounts and the caret
  * dies with it. The only symptom is a keystroke landing nowhere.
  *
+ * WHAT THE GATE MUST NOT REFUSE, and why that is the fix rather than a hole in it
+ * (UX round 1, U1/U3). `viewer-resume` is the verb the operator's OWN notification
+ * click routes through, and the ladder that calls it decides from the ack ALONE
+ * (`deliver_click` sets `switched` on any ack), so a refusal that still answers
+ * `showing <id>` makes his own click report success while switching nothing — a
+ * conversation that can then die at quit, which is worse than the lost caret this
+ * gate was written for. So that delivery is APPLIED and LOGGED
+ * (`reportViewerDelivery`), and a `banner-click` is applied for the same kind of
+ * reason: one act must not mean two things depending on which process raised the
+ * toast. The gate's whole job is now the silent delivery nobody would otherwise be
+ * able to attribute.
+ *
  * WHERE EACH HALF OF THAT IS PROVEN, and why it is split.
  *
  *  - The DECISION and the PARK LINE are shipped code (`canRetargetWindow` and
  *    `reportParkedInUse` in `src/main/window-raise.ts`), bundled from source here,
- *    so this file asserts the app's rule rather than a copy of it.
+ *    so this file asserts the app's rule rather than a copy of it. The VIEWER
+ *    DELIVERY LINE (`reportViewerDelivery`) is asserted the same way.
  *  - The WIRING — that `openSessionInWindow` consults that predicate BEFORE it
- *    sends, and parks on the refusal — is a SOURCE SCAN over `index.ts`, in the
+ *    sends and parks on the refusal (TERMINALLY), logs the viewer delivery, and is
+ *    NOT re-asked for the parked drain — is a SOURCE SCAN over `index.ts`, in the
  *    shape `window-mode.test.mjs` already uses for the same file. `index.ts` imports
  *    Electron at module load and builds real windows on the ready path, so it cannot
  *    be bundled in process; a scan is what is available, and it is falsifying where
@@ -58,6 +73,7 @@ const {
 	raiseWindow,
 	readSecondLaunchRequest,
 	reportParkedInUse,
+	reportViewerDelivery,
 } = await loaded("./src/main/window-raise");
 
 const {
@@ -105,13 +121,15 @@ const fakeWindow = ({ focused = false } = {}) => {
 
 /**
  * `openSessionInWindow`'s existing-window branch, spelled from the SHIPPED
- * decision, the SHIPPED reporter and the SHIPPED raise and nothing else: it sends
- * and raises when `canRetargetWindow` allows it, and parks and reports when it does
- * not. The scan further down pins that `index.ts` answers the same question in the
- * same order — this model exists only to carry the pieces that cannot be built in
- * process (a `webContents.send` sink and a park queue), not to restate the rule.
+ * decision, the SHIPPED reporters and the SHIPPED raise and nothing else: it sends,
+ * logs a viewer delivery, and raises when `canRetargetWindow` allows it, and parks
+ * and reports when it does not. `fromPark` mirrors the ONE exemption `index.ts`
+ * passes for the parked drain, and the scan further down pins that `index.ts` asks
+ * the same question in the same order and passes that flag in exactly one place —
+ * this model exists only to carry the pieces that cannot be built in process (a
+ * `webContents.send` sink and a park queue), not to restate the rule.
  */
-const branch = (sessionId, request, { window, queue }) => {
+const branch = (sessionId, request, { window, queue, fromPark = false }) => {
 	const raise = () =>
 		raiseWindow(window, request.show, {
 			trigger: request.trigger,
@@ -120,7 +138,11 @@ const branch = (sessionId, request, { window, queue }) => {
 			// rather than collected: every raise assertion has a home already.
 			report: () => {},
 		});
-	if (sessionId !== null && !canRetargetWindow(request, window.isFocused())) {
+	if (
+		!fromPark &&
+		sessionId !== null &&
+		!canRetargetWindow(request, window.isFocused())
+	) {
 		queue.push(sessionId);
 		reportParkedInUse(sessionId, request.show, {
 			trigger: request.trigger,
@@ -130,6 +152,13 @@ const branch = (sessionId, request, { window, queue }) => {
 		return;
 	}
 	window.webContents.send("desktop-open-conversation", { sessionId });
+	if (sessionId !== null && request.trigger === "viewer-resume") {
+		reportViewerDelivery(sessionId, request.show, {
+			trigger: request.trigger,
+			requester: request.requester,
+			report: (line) => queue.lines.push(line),
+		});
+	}
 	raise();
 };
 
@@ -140,18 +169,47 @@ const parkQueue = () => {
 	return queue;
 };
 
+/**
+ * `index.ts` with its comments removed, so a scan reads code rather than prose.
+ *
+ * The gate's own comments quote `parkLaunch` and the send, which is why an order
+ * assertion over raw text is not enough on its own: prose that names a call reads
+ * exactly like the call.
+ */
+const withoutComments = (text) =>
+	text.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+
+/**
+ * Every verb a raise can carry (`RaiseTrigger`), spelled out because a type is not a
+ * value at runtime.
+ *
+ * The `Record` in `window-raise.ts` makes the COMPILER demand an answer for a new
+ * verb; this list makes the SWEEP below demand the same thing of a reader, and a verb
+ * added to the union without being added here leaves the sweep narrower than the rule
+ * it is checking (which the comment on the sweep says).
+ */
+const RAISE_TRIGGERS = [
+	"initial-present",
+	"second-instance",
+	"banner-click",
+	"viewer-focus",
+	"viewer-resume",
+];
+
 /* ------------------------------------------------------------------ */
 /* The exemption marker, pinned to the mode table                       */
 /* ------------------------------------------------------------------ */
 
-test("the operator's-own marker is the mode table's normal plan, read from the public API", () => {
+test("the silence the one refusal turns on is the mode table's headless plan, read from the public API", () => {
 	/*
-	 * The gate turns on `show === OPERATOR_SHOW` meaning "a person launched this".
-	 * That is a fact about `window-mode.ts`'s table living in another module, so it
-	 * is pinned HERE, beside the predicate, against the same public entry points
-	 * main uses: a rename or re-mapping in `WINDOW_BEHAVIOUR` that inverted the
-	 * marker fails this test rather than silently admitting the launches the rule
-	 * exists to refuse.
+	 * The gate refuses `show === "never"` for one trigger, and that is a fact about
+	 * `window-mode.ts`'s table living in another module — so it is pinned HERE, beside
+	 * the predicate, against the same public entry points main uses: a re-mapping in
+	 * `WINDOW_BEHAVIOUR` that made `headless` come forward (or `normal` stop doing so)
+	 * would silently change which delivery the app may refuse, and fails this test
+	 * instead. `never` is also why the refusal is cheap: a delivery under it reports
+	 * nothing at all, present or raise, so pulling it back costs the requester nothing
+	 * it can observe.
 	 *
 	 * Asserted as three DISTINCT plans rather than as truthiness, so a table that
 	 * collapsed two modes onto one value cannot pass by being consistently wrong.
@@ -192,13 +250,20 @@ test("the operator's-own marker is the mode table's normal plan, read from the p
 		}),
 		"never",
 	);
-	// ...and the marker is what the gate reads: a person's plan is admitted on a
-	// focused window, a run's is not.
+	// ...and THAT plan is what the gate reads: a second launch under it may be
+	// refused, and under the other two plans it may not. `inactive` is the row UX
+	// round 1's U4 was about — it is APPLIED, so the loser's own sentence ("the app
+	// may order its window forward without activating it") is true, not a promise a
+	// focused window denies.
 	assert.equal(
 		canRetargetWindow(
 			{ trigger: "second-instance", show: OPERATOR_SHOW },
 			true,
 		),
+		true,
+	);
+	assert.equal(
+		canRetargetWindow({ trigger: "second-instance", show: "inactive" }, true),
 		true,
 	);
 	assert.equal(
@@ -216,18 +281,26 @@ test("a delivery may not replace the conversation of the window the operator is 
 	 * The rule as a table over the two things a request declares: which VERB it is,
 	 * and how far it was allowed to come forward.
 	 *
-	 * `show` alone cannot carry this, and the two `normal` rows below are why. A
-	 * banner click is a person clicking a real notification; a `viewer-resume` is a
-	 * verb on a control endpoint any script can dial (`lop resume-click`, a rig, an
-	 * agent). Both reach `openSessionInWindow` carrying THIS process's launch plan
-	 * rather than a requester's, so on the operator's own app they arrive with the
-	 * SAME `show` — `focus` — and a predicate that read only `show` would admit the
-	 * script and lose the operator's caret to it. That is the defect, on the profile
-	 * it was reported from.
+	 * `show` alone cannot carry this, and the rows below are why. A banner click is a
+	 * person clicking a real notification; a `viewer-resume` is a verb on a control
+	 * endpoint any script can dial (`lop resume-click`, a rig, an agent) — AND the verb
+	 * the operator's own notification click routes through. Both reach
+	 * `openSessionInWindow` carrying THIS process's launch plan rather than a
+	 * requester's, so they arrive with the same `show` and cannot be told apart by it:
+	 * refusing the script's delivery is what round 1 did, and it cost the operator his
+	 * own click, because the ladder reads the ack and never sees the park (U1). The one
+	 * refusable cell is therefore the delivery whose silence nobody is waiting on — a
+	 * run's own launch, under the plan it declared for itself.
 	 */
 	const rows = [
 		// trigger, show, may it retarget a focused window, and why
 		["banner-click", OPERATOR_SHOW, true, "a person clicked a real banner"],
+		[
+			"banner-click",
+			"never",
+			true,
+			"the same click on a headless-plan process: one act, one outcome (U3)",
+		],
 		[
 			"second-instance",
 			OPERATOR_SHOW,
@@ -237,27 +310,27 @@ test("a delivery may not replace the conversation of the window the operator is 
 		[
 			"second-instance",
 			"inactive",
-			false,
-			"a run's launch, come forward inactively",
+			true,
+			"a run's launch, come forward inactively — applied, not parked (U4)",
 		],
 		["second-instance", "never", false, "the driven, tool-spawned shape"],
 		[
 			"viewer-resume",
 			OPERATOR_SHOW,
-			false,
-			"a scriptable verb on the control endpoint",
+			true,
+			"the operator's own notification click routes through this verb (U1)",
 		],
 		[
 			"viewer-resume",
-			"inactive",
-			false,
-			"the same verb under an inactive plan",
+			"never",
+			true,
+			"and under a headless plan too: applied, and LOGGED instead of parked",
 		],
 		[
 			"viewer-focus",
 			OPERATOR_SHOW,
-			false,
-			"raises only, but never anyone's own",
+			true,
+			"raises only; it never reaches the gate, so nothing may refuse it",
 		],
 	];
 	for (const [trigger, show, expected, why] of rows) {
@@ -281,8 +354,37 @@ test("a delivery may not replace the conversation of the window the operator is 
 			`${trigger} with requested=${show} must be applied when nothing is being used`,
 		);
 	}
-	// A catalogue request is not a conversation being installed over one: the call
-	// site gates on the id, which is why the park line can always name one.
+	/*
+	 * AND THE REFUSAL IS EXACTLY ONE CELL. Swept over every verb a raise can carry
+	 * against every plan the mode table can resolve, a window in use yields exactly one
+	 * refusal — so a rule that widened back out (round 1's shape, where a `viewer-resume`
+	 * was refused) fails here rather than in the operator's hands. The verb list is the
+	 * test's own; a verb added to `RaiseTrigger` without being added to `RAISE_TRIGGERS`
+	 * would narrow this sweep silently, which is the one way it can rot.
+	 */
+	const plans = [...WINDOW_MODES].map(
+		(mode) =>
+			resolveWindowLaunchPlan({
+				argv: ["electron", ".", `--window-mode=${mode}`],
+			}).show,
+	);
+	const refusals = [];
+	for (const trigger of RAISE_TRIGGERS) {
+		for (const show of plans) {
+			if (!canRetargetWindow({ trigger, show }, true)) {
+				refusals.push(`${trigger}+${show}`);
+			}
+		}
+	}
+	assert.deepEqual(
+		refusals,
+		["second-instance+never"],
+		"only a run's own launch, under the plan that leaves no trace, may be refused",
+	);
+	/*
+	 * A catalogue request is not a conversation being installed over one, and the gate
+	 * is written on the ID rather than on the verb (the wiring test asserts that guard).
+	 */
 	assert.equal(
 		canRetargetWindow({ trigger: "banner-click", show: "never" }, true),
 		true,
@@ -291,19 +393,24 @@ test("a delivery may not replace the conversation of the window the operator is 
 });
 
 /* ------------------------------------------------------------------ */
-/* Must NOT switch: the refusal, its park line, and its silence          */
+/* Must switch: the delivered-and-logged paths, and the one exemption    */
 /* ------------------------------------------------------------------ */
 
-test("a viewer-resume that names another conversation parks instead of replacing the one on screen", () => {
+test("a viewer-resume against a focused window is DELIVERED and LOGGED, not parked", () => {
 	/*
-	 * THE OPERATIVE CASE, driven as the control endpoint drives it: `resume_session`
-	 * over the viewer's endpoint while the operator is typing in conversation A.
+	 * THE ROUND-1 FIX (UX round 1, U1), and why refusing this verb was wrong. This is
+	 * the verb the operator's own notification click routes through: `resume_click`
+	 * rung 1 decides from the endpoint's ack ALONE and `deliver_click` sets `switched`
+	 * on ANY ack, so a refusal that still answers `showing <id>` makes his own click
+	 * report success while switching nothing — and the conversation it parked can then
+	 * die at quit. Round 1 measured exactly that against the real client:
+	 * `switched=True focused=True detail='showing <id>'` with zero bytes delivered.
 	 *
-	 * Asserted on four things, because the refusal is only correct if all four hold:
-	 * nothing is SENT to the renderer (so nothing re-keys and the caret survives),
-	 * the conversation is QUEUED rather than dropped, the park line is present and
-	 * says which line it is, and nothing was raised — the last one being what makes
-	 * this the quiet failure in the first place.
+	 * Asserted on four things: the conversation IS sent (his click does what it says),
+	 * nothing parks, the delivery is LOGGED with a line naming the trigger and the
+	 * session — which is what makes the next caret lost this way attributable — and a
+	 * `never`-plan request is logged too, because under that plan the delivery itself
+	 * writes nothing at all.
 	 */
 	const window = fakeWindow({ focused: true });
 	const queue = parkQueue();
@@ -313,44 +420,188 @@ test("a viewer-resume that names another conversation parks instead of replacing
 		{ window, queue },
 	);
 
-	assert.deepEqual(
-		window.sent,
-		[],
-		"no desktop-open-conversation send: the renderer is what re-keys the panel and unmounts the composer",
-	);
+	assert.deepEqual(window.sent, [
+		{ channel: "desktop-open-conversation", payload: { sessionId: NAMED } },
+	]);
 	assert.deepEqual(
 		[...queue],
-		[NAMED],
-		"the conversation waits for the operator's next window",
-	);
-	assert.deepEqual(
-		queue.lines,
-		[
-			// The exact line, because the whole defect was that this case was INVISIBLE:
-			// a `never`-mode raise reports nothing by design, so without this the
-			// operator has no account of where their caret went.
-			"trigger=viewer-resume mode=normal requested=focus parked=0f1e2d3c4b5a applied=parked+in-use",
-		],
-		"the park line is the only evidence this attempt happened",
-	);
-	assert.deepEqual(
-		window.calls,
 		[],
-		"and nothing was raised or focused either",
+		"his own click is never queued behind a window",
+	);
+	assert.deepEqual(queue.lines, [
+		"trigger=viewer-resume mode=normal requested=focus delivered=0f1e2d3c4b5a applied=conversation+replaced",
+	]);
+
+	// The same verb under the plan that is silent about everything else. The log line is
+	// then the ONLY account of the delivery, which is the whole reason it exists — and
+	// the raise still reports nothing, which is what made this invisible before.
+	const quiet = fakeWindow({ focused: true });
+	const quietQueue = parkQueue();
+	branch(
+		NAMED,
+		{ trigger: "viewer-resume", show: "never" },
+		{ window: quiet, queue: quietQueue },
+	);
+	assert.deepEqual(quiet.sent, [
+		{ channel: "desktop-open-conversation", payload: { sessionId: NAMED } },
+	]);
+	assert.deepEqual(quietQueue.lines, [
+		"trigger=viewer-resume mode=headless requested=never delivered=0f1e2d3c4b5a applied=conversation+replaced",
+	]);
+	assert.deepEqual(
+		quiet.calls,
+		[],
+		"and the raise under a never plan is silent",
 	);
 });
 
+test("only the viewer verb logs a delivery: the line means a viewer delivery, not any delivery", () => {
+	/*
+	 * A `delivered=` token that appeared for every applied delivery would stop answering
+	 * the question it was added for — "did a VIEWER delivery re-key my panel?" — and the
+	 * raise line already accounts for the plans that may move the window. So the other
+	 * verbs are asserted to log nothing: a banner click and a second launch have their
+	 * own evidence (the raise line, the loser's sentence), and the `never`-plan second
+	 * launch is the one that parks.
+	 */
+	const window = fakeWindow({ focused: true });
+	const queue = parkQueue();
+	for (const trigger of ["banner-click", "initial-present"]) {
+		branch(NAMED, { trigger, show: OPERATOR_SHOW }, { window, queue });
+	}
+	branch(
+		NAMED,
+		{ trigger: "second-instance", show: OPERATOR_SHOW },
+		{ window, queue },
+	);
+	assert.deepEqual(
+		queue.lines,
+		[],
+		"no delivery line outside the viewer's own verb",
+	);
+	assert.equal(window.sent.length, 3, "and every one of them was delivered");
+});
+
+test("an inactive second launch is APPLIED to a focused window and orders it without activating it", () => {
+	/*
+	 * UX round 1, U4 asked for the loser's sentence ("the app may order its window
+	 * forward without activating it") to stop promising a window order a focused window
+	 * now denies. Under the narrowed rule there is nothing to edit: the delivery is
+	 * applied and the raise is `showInactive`. This is the row that says so — applied,
+	 * nothing parked, and no `show`/`focus` among the calls — so if the rule ever widened
+	 * again, the sentence in `index.ts` would become a lie with a failing test under it.
+	 */
+	const window = fakeWindow({ focused: true });
+	const queue = parkQueue();
+	applySecondLaunch(
+		readSecondLaunchRequest({
+			commandLine: [
+				"electron",
+				".",
+				`--open-session=${NAMED}`,
+				"--window-mode=inactive",
+			],
+		}),
+		{
+			window,
+			openConversation: (sessionId, request) =>
+				branch(
+					sessionId,
+					{
+						trigger: "second-instance",
+						show: request.show,
+						requester: request.requester ?? undefined,
+					},
+					{ window, queue },
+				),
+			queue: () =>
+				assert.fail("a named conversation has something to deliver to"),
+			openWindow: () =>
+				assert.fail("a window exists, so nothing may open another"),
+		},
+	);
+	assert.deepEqual(window.sent, [
+		{ channel: "desktop-open-conversation", payload: { sessionId: NAMED } },
+	]);
+	assert.deepEqual(
+		[...queue],
+		[],
+		"an inactive request is applied, not parked",
+	);
+	assert.deepEqual(queue.lines, []);
+	assert.deepEqual(
+		window.calls,
+		["showInactive"],
+		"the window is ordered forward without the app being activated",
+	);
+});
+
+test("the parked drain is not re-gated: a promise this app made cannot be refused by it", () => {
+	/*
+	 * QA round 1, Q-1 / review round 1, MAJOR-2, MEASURED: the drain hands every entry
+	 * back to `openSessionInWindow`, which asked the gate again — so against a window
+	 * focused by the time it loaded, one entry produced `applied=delivered` and then
+	 * `applied=parked+in-use` for the same id, with zero sends and the entry back on the
+	 * queue's tail. Parking promises the operator's next window; that made it need more
+	 * than one.
+	 *
+	 * Two halves, because neither can prove it alone: the model below carries the
+	 * SHIPPED decision with the drain's exemption, and the scan pins that `index.ts`
+	 * passes that exemption at the drain call and nowhere else. A re-gating is one
+	 * deleted argument away, so the scan is the half that has to be exact.
+	 */
+	const window = fakeWindow({ focused: true });
+	const queue = parkQueue();
+	branch(
+		NAMED,
+		{ trigger: "second-instance", show: "never" },
+		{ window, queue, fromPark: true },
+	);
+	assert.deepEqual(
+		window.sent,
+		[{ channel: "desktop-open-conversation", payload: { sessionId: NAMED } }],
+		"the window created to open it delivers it, however focused it is",
+	);
+	assert.deepEqual([...queue], []);
+	assert.deepEqual(queue.lines, []);
+
+	const source = readFileSync("src/main/index.ts", "utf8");
+	assert.equal(
+		(source.match(/fromPark: true/g) ?? []).length,
+		1,
+		"exactly one delivery path is exempt from the gate: the drain's",
+	);
+	assert.match(
+		withoutComments(source),
+		/claimParkedFor\(\s*mainWindow,\s*\(session, request\) =>\s*openSessionInWindow\(session, request, \{ fromPark: true \}\),\s*parked,/,
+		"and it is the drain beneath the created window that passes it",
+	);
+	const gate = withoutComments(source).match(
+		/!fromPark &&\s*sessionId !== null &&\s*!canRetargetWindow\(/,
+	);
+	assert.ok(
+		gate,
+		"and the gate itself reads the exemption BEFORE it can refuse, or the argument would be decoration",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* Must NOT switch: the one refusal left                                 */
+/* ------------------------------------------------------------------ */
+
 test("a headless second launch that names a conversation parks, which is the defect's own shape", () => {
 	/*
-	 * THE REPORTED SHAPE: a tool-spawned launch on the operator's own profile —
-	 * no terminal, so the driven shape, so `headless` — naming a conversation while
-	 * the app is already open and in use. Driven through `applySecondLaunch`, which
-	 * is the real seam the `second-instance` handler calls, with the real argv and
-	 * the real payload a losing launch hands over.
+	 * THE REPORTED SHAPE, and now THE ONLY REFUSAL: a tool-spawned launch on the
+	 * operator's own profile — no terminal, so the driven shape, so `headless` — naming
+	 * a conversation while the app is already open and in use. Driven through
+	 * `applySecondLaunch`, which is the real seam the `second-instance` handler calls,
+	 * with the real argv and the real payload a losing launch hands over.
 	 *
 	 * A `headless` request raises nothing and reports nothing, so before the gate the
-	 * entire effect was the conversation swap: the caret died inside a window that
-	 * never moved, and the log said nothing at all.
+	 * entire effect was the conversation swap: the caret died inside a window that never
+	 * moved, and the log said nothing at all. THIS is the cell UX round 1 (U1) left
+	 * standing when it took `viewer-resume` out of the rule — a delivery whose silence
+	 * belongs to a requester, against a window the operator is typing in.
 	 */
 	const window = fakeWindow({ focused: true });
 	const queue = parkQueue();
@@ -417,7 +668,12 @@ test("the same request against a window nobody is using is still delivered", () 
 		{ channel: "desktop-open-conversation", payload: { sessionId: NAMED } },
 	]);
 	assert.deepEqual([...queue], [], "nothing parks when nothing is being used");
-	assert.deepEqual(queue.lines, []);
+	// The delivery line is the viewer verb's, blurred or focused: it answers "did a
+	// viewer delivery re-key this panel", which is a question about the delivery and
+	// not about who was looking at it.
+	assert.deepEqual(queue.lines, [
+		"trigger=viewer-resume mode=normal requested=focus delivered=0f1e2d3c4b5a applied=conversation+replaced",
+	]);
 });
 
 test("the operator's own request is still delivered to a window he is using", () => {
@@ -551,6 +807,48 @@ test("openSessionInWindow consults the gate before it delivers, and parks on a r
 		send > park,
 		"and the send is still BEHIND the gate: a delivery that reaches it has already been allowed",
 	);
+	/*
+	 * AND THE REFUSAL IS TERMINAL, not merely early — the assertion this cell was
+	 * missing (review round 1, MAJOR-1; QA round 1's section 6 corroborated it, and
+	 * section 6 measured what it costs). ORDER ALONE TOLERATED THE MUTATION THAT MAKES A
+	 * REFUSED DELIVERY SEND ANYWAY: with the `return;` after the park deleted, the suite
+	 * stayed green — `tests 9 pass 9 fail 0` — while the park ran AND the delivery fell
+	 * through to the send below, which is the caret loss this whole file exists to
+	 * prevent, restored, under a green suite. So the slice between the park and the send
+	 * — comments stripped, because the surrounding prose quotes both calls — must END
+	 * the refusal: the park, then the return, then the brace that closes the block.
+	 */
+	const refusal = withoutComments(body.slice(park, send)).replace(/\s+/g, " ");
+	assert.match(
+		refusal,
+		/^parkLaunch\(sessionId, request, "in-use"\); return; \}/,
+		"the park is TERMINAL: a refusal that could fall through to the send would re-key the panel it was written to protect",
+	);
+	/*
+	 * AND THE VIEWER DELIVERY IS LOGGED, AFTER the send (UX round 1, U1/U2). The
+	 * narrowing that stops refusing `viewer-resume` is only honest if such a delivery
+	 * can be attributed afterwards — under a `never` plan the delivery itself reports
+	 * nothing — and a line written before the send would be a claim about something
+	 * that had not happened yet.
+	 */
+	const viewerLog = body.indexOf('request.trigger === "viewer-resume"');
+	assert.ok(
+		viewerLog > send,
+		"the viewer delivery is logged after the send, not before",
+	);
+	assert.ok(
+		body
+			.slice(viewerLog, createBranch)
+			.includes("reportViewerDelivery(sessionId, request.show"),
+		"and it reports through the shipped viewer-delivery reporter",
+	);
+	// The exemption the drain needs, read by the gate above rather than trusted to a
+	// comment: without it the app can refuse the delivery it just promised
+	// (QA round 1, Q-1 / MAJOR-2 — the drain's own test drives this half).
+	assert.ok(
+		body.includes("!fromPark &&"),
+		"the gate has the one exemption the parked drain passes",
+	);
 	// The guard the catalogue case depends on, asserted rather than assumed: only a
 	// NAMED conversation is gated, so `null` still reaches the renderer.
 	assert.ok(
@@ -586,5 +884,24 @@ test("a refused park reports through the shipped in-use reporter, not a second l
 	assert.ok(
 		source.includes('why: "unreachable" | "in-use" = "unreachable"'),
 		"the reason defaults to the existing behaviour, so the create branch is unchanged",
+	);
+	/*
+	 * AND EVERY PARK LINE CARRIES THE PARKED ENTRY'S OWN PLAN (review round 1, MINOR-2)
+	 * — the line used to fall back to the `never` default, so a second launch that
+	 * declared `focus` and was parked before this process could answer it printed
+	 * `requested=never` in the log. The delivery and the `left+waiting` line carry the
+	 * same value, so one entry cannot be described under two plans in one log.
+	 */
+	assert.ok(
+		source.includes("else reportParked(session, parkLine, request.show);"),
+		"a park carries the plan its entry declared, not the `never` default",
+	);
+	assert.ok(
+		source.includes("evicted.request.show,"),
+		"and so does the eviction it causes",
+	);
+	assert.ok(
+		source.includes("queued.request.show,"),
+		"and the line that reports its delivery",
 	);
 });
