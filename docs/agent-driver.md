@@ -254,6 +254,7 @@ bridge; the verbs are registered by the renderer's install module.
 | `call("navigate", path)` | Navigates the hash router and waits for the route |
 | `call("setTheme", name)` | The settings picker's own action, waiting out the 120ms `transition-colors` it starts so a frame taken after it is the settled palette rather than a blend of the two |
 | `call("press", selector)` | Waits for the element, hit-tests its painted centre, dispatches a pointer sequence, returns what was hit |
+| `call("openCanvasDocument", { path })` | Puts a local file in the canvas, on the pane the app is showing: the read step the Files grid's tile click performs (`probeFiles` for the mtime and size, `READ_ENCODING`/`viewerFor` for whether the viewer reads its own bytes, `readFile` for the text kinds, `canvasDocumentForPath` for the document), then `addFileAndSelect`. It also stages a draft, because a run with no backend cannot open the New chat gate and without a pane identity there is no conversation for the document to belong to |
 | `facts()` | From main: window mode, window vs content size, visible/focused/minimized, app version |
 | `capture(label)` | `webContents.capturePage()` → `<out>/<label>.png`, reporting pixels and the CSS viewport |
 
@@ -268,7 +269,7 @@ release. Add a *verb* only when a scene needs to reach a path none of these can
 is refused on purpose: its blast radius grows with every PR, and the review
 question "what can this reach" would have no answer.
 
-There are three scenes, and the second and third are the worked examples of that
+There are several scenes, and the ones below are the worked examples of that
 rule:
 
 - **`states`** — the before/after pair of one screen plus a real control press;
@@ -296,6 +297,40 @@ rule:
   six-step wizard is a modal over the window. It asserts both halves of the
   claim: that the chord moves the app to `/chat` and stages a fresh draft, and
   that with no catalogue answering the press changes nothing at all.
+
+- **`canvas-freshness`** — the canvas document kept current with the file on
+  disk. The scene writes the file ITSELF, from outside the app, which is the only
+  way to produce the event the feature exists for, and it sets the mtime to a
+  FIXED epoch rather than to the clock, so every claim in it is exact rather than
+  phase-dependent and a re-take is byte-comparable: a write with a new mtime must
+  appear with no interaction, and a write with the SAME mtime must not — then the
+  refresh control must apply it anyway, and the preview of an HTML document must
+  be re-FETCHED rather than left showing the bytes it had.
+
+  Its two claims about TIME are counted, and the counter lives in MAIN. The
+  renderer cannot be counted from the page: `window.api` is a `contextBridge`
+  object, so a wrapper assigned over one of its properties is silently ignored
+  (measured — this scene's first version installed one and read zero for a run in
+  which probes demonstrably happened), and what replaced it at the time was the
+  app's own `canvas-store` entry, which proves non-APPLICATION rather than
+  non-probing. Main has no such problem, so the scene launches with
+  `--inspect=<port>` and installs a counter over the `fs` calls `probe-files`
+  itself makes, limited to this run's scratch root, and it PROVES the counter
+  before measuring anything: a probe issued from the renderer through the app's
+  own bridge must appear in the log, so a later zero is a measurement rather than
+  a broken wrapper. That is what makes "3 probes in 6 seconds on screen, 0 for the
+  tab that is off screen, 0 while the panel is closed" assertable, and what
+  replaced the latency lower bound the scene used to assert (a free-running poll
+  makes latency uniform in (0, interval], so the lower bound failed on roughly
+  half of runs — QA round 1, Q2).
+
+  This is also the scene that needed a new verb (`openCanvasDocument`), because a
+  driver run has no other way to put a file in the canvas: the tiles come from a
+  transcript, ⌘O is an OS dialog, and the create-file dialog needs an agent id
+  that only a session supplies. What it cannot show is a window that is genuinely
+  `hidden`, or a real user's typing — the run's renderer reports `visible`, and
+  the dirty-suppression half is covered against the shipped module by
+  `scripts/canvas-file-freshness.test.mjs`.
 
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script
