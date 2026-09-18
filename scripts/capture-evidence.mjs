@@ -6684,6 +6684,18 @@ const main = async () => {
 	 *      are the UNION of the two sides' entries or values, because the merged
 	 *      tree carries both and either side's list alone would claim a pass that
 	 *      did not run in it.
+	 *   2b. EVERY TOP-LEVEL FIELD THIS BRANCH CARRIES THAT MAIN DOES NOT IS
+	 *      KEPT, and main's own keys this branch lacks are dropped rather than
+	 *      carried (group 5). The union is taken at the TOP level as well as
+	 *      inside it: a resolver that starts from main's schema loses this
+	 *      branch's own records without a word, which is what the twelfth fold
+	 *      onto `c69f78b92` did to seven of them
+	 *      (`browserMarkRemovalPass`, `roundOneRemediationNote`,
+	 *      `roundTwoCaptureNote`, `roundThreeCaptureNote`, `roundFourRePortNote`,
+	 *      `chatSlashHighlightEvidence`, `themeLegibilityCapture`) while every
+	 *      other group was honoured. `scripts/evidence-manifest.test.mjs` binds
+	 *      this clause now, so the next resolver finds it by failing rather than
+	 *      by reading this far.
 	 *   3. INSIDE a `supplementary` entry that exists on both sides, this pass's
 	 *      AUTHORED keys - `why`, `capturedAt`, `capturedAtHead` and any note -
 	 *      are KEPT and only the listings are unioned. An entry is a record this

@@ -1253,19 +1253,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			/** The composer-local ordinal the chip's face carries: what correlates the two channels (UX round 3, U16). */
 			index: number;
 			over: string;
-			/**
-			 * WHICH SENTENCE THIS IS (UX round 2, U7). `false` is the report of a
-			 * removal; `true` is the refusal of a restore the buffer has moved past,
-			 * which is the same fact with different words — and the same authority
-			 * (`noticeLineFor`), so the two can never disagree about the key.
-			 */
-			stale: boolean;
 		} | null>(null);
 		const clearedReferenceRef = useRef<{
 			key: string;
 			index: number;
 			over: string;
-			stale: boolean;
 		} | null>(null);
 		const setClearedReference = useCallback(
 			(
@@ -1273,7 +1265,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					key: string;
 					index: number;
 					over: string;
-					stale: boolean;
 				} | null,
 			) => {
 				clearedReferenceRef.current = next;
@@ -3972,7 +3963,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * closed on the same click and every channel went quiet on the one flow whose
 		 * promise is that a credential's fate is never silent. The refusal raises the
 		 * sentence about what the operator actually lost — the same notice authority as
-		 * the report, in its `stale` register.
+		 * NO REFUSAL SENTENCE EXISTS ANY MORE (code review round 5, R5-2). `restoreClear`'s
+		 * `stale` register was the only reachable state of that copy, and R4-6's guard made
+		 * it unreachable: the withdrawal effect retires a slot on exactly the predicate the
+		 * splice refuses on (`slot.cleared.buffer !== newMessage` against
+		 * `buffer !== cleared.buffer`), both are layout effects on `[newMessage]`, so a
+		 * gesture either finds the slot current - and the buffer the clear produced, which
+		 * restores - or finds it already withdrawn. The string and its register are gone
+		 * from `credential-capture.ts` rather than left as a rule nothing can reach.
 		 */
 		const restoreClear = useCallback(
 			(slot: PendingClear): boolean => {
@@ -3988,15 +3986,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					buffer: bufferRef.current,
 					cleared: slot.cleared,
 				});
-				if (!restored) {
-					setClearedReference({
-						key: slot.payload.key,
-						index: slot.index,
-						over: bufferRef.current,
-						stale: true,
-					});
-					return false;
-				}
+				// Silent by design (see the note above the callback): a buffer the clear no
+				// longer describes is a slot the withdrawal has already retired, so there is
+				// no offer left to answer.
+				if (!restored) return false;
 				/*
 				 * THE PAYLOAD COMES BACK FROM THE SLOT, not from the map, and that is what
 				 * makes the undo independent of the toast's own dismissal order: sonner
@@ -4147,7 +4140,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					key: payload.key,
 					index,
 					over: cleared.buffer,
-					stale: false,
 				});
 				/*
 				 * THE TOAST'S WORDS ARE ITS OWN (UX round 2, U9). It used to print the
@@ -4772,7 +4764,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							: {
 									key: clearedReference.key,
 									index: clearedReference.index,
-									stale: clearedReference.stale,
 								},
 					/*
 					 * THE SHORTCUT'S OWN SPELLING, from the label the handler's copy uses

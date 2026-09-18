@@ -1145,6 +1145,27 @@ export const CredentialPillScrolled: Story = {
 		box.scrollTop = box.scrollHeight;
 		box.dispatchEvent(new Event("scroll"));
 		await settle();
+		/*
+		 * THE PARKED POSITION IS A LEGIBLE ONE (UX round 5, U2). Scrolling to the very end
+		 * left the run's strip inside the 2.4-5.4px band the UX round landed on, where the
+		 * chip is drawn before any of its control's glyph can be seen: a real Tab reached
+		 * `Remove credential #1` with no `times` on screen, and a real press in that band
+		 * cleared the credential. The chip's floor is now the strip at which the glyph appears,
+		 * so the fixture parks the run's top a readable distance inside the field's box rather
+		 * than on its edge - the sweep in `scripts/credential-chip-geometry.mjs` asserts the
+		 * same floor across the whole boundary, and this story is its resting state.
+		 */
+		const markerRun = canvasElement.querySelector<HTMLElement>(
+			"[data-credential-run]",
+		);
+		if (markerRun) {
+			box.scrollTop = Math.max(
+				0,
+				Math.round(markerRun.offsetTop - box.clientHeight + 14),
+			);
+			box.dispatchEvent(new Event("scroll"));
+			await settle();
+		}
 		if (box.scrollTop === 0) {
 			throw new Error(
 				"the field never scrolled, so this story is not the scrolled state",
@@ -1205,12 +1226,33 @@ export const CredentialPillScrolled: Story = {
 		 * nowhere - which is what makes the composer stop swallowing keystrokes and stop
 		 * clearing credentials off-screen.
 		 */
+		/*
+		 * THE CARET HAS TO LEAVE THE END FIRST, OR THIS STEP NEVER REACHES ITS OWN STATE
+		 * (code review round 5's class, found while landing R5-1's test). The field is
+		 * focused with the caret after the minted reference, and a focused textarea whose
+		 * caret is at the end re-scrolls itself back to that caret - so `scrollTop = 0` was
+		 * undone on the next layout, the run stayed inside the box, and the assertion below
+		 * had been reading a chip that was correctly drawn. Measured before this change:
+		 * `scrollTop 225, run 165..182, box 78.4..190.4, chips 1`, i.e. the step that names
+		 * "the field parked at its top, the marker's run below the box" never got there and
+		 * the round-3 claim was inert in this story as well as in the rig.
+		 */
+		box.setSelectionRange(0, 0);
 		box.scrollTop = 0;
 		box.dispatchEvent(new Event("scroll"));
 		await settle();
-		if (canvasElement.querySelector("[data-credential-chips]")) {
+		if (box.scrollTop !== 0) {
 			throw new Error(
-				"a run the layer clips away still drew a chip, so its control is reachable while painted nowhere (round 3, R3-1)",
+				`this story needs the field parked at its top to discriminate, and it is at ${box.scrollTop} instead`,
+			);
+		}
+		if (canvasElement.querySelector("[data-credential-chips]")) {
+			const runEl = canvasElement.querySelector<HTMLElement>(
+				"[data-credential-run]",
+			);
+			const rect = runEl?.getBoundingClientRect();
+			throw new Error(
+				`a run the layer clips away still drew a chip, so its control is reachable while painted nowhere (round 3, R3-1): run ${rect ? `${rect.top.toFixed(1)}..${rect.bottom.toFixed(1)}` : "none"} against a box of ${box.getBoundingClientRect().top.toFixed(1)}..${box.getBoundingClientRect().bottom.toFixed(1)}`,
 			);
 		}
 		await userEvent.tab();

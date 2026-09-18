@@ -1974,19 +1974,6 @@ export const CREDENTIAL_CLEAR_UNDO_LABEL = "Undo";
 export const clearedToastLine = (index: number): string =>
 	`Credential #${index} removed`;
 
-/**
- * The sentence for a restore the buffer has moved past (UX round 2, U7).
- *
- * `restoreClearedCredential` refuses once the operator has typed since the clear
- * — correctly, because the recorded offset no longer names their text — and that
- * refusal used to be silent: the toast closed on the same click and every
- * channel went quiet. A control that cannot act should not be offered (this
- * file's rule for the `x`); where the operator asks anyway, the app owes them
- * the reason and the one gesture that still works.
- */
-export const clearedStaleNotice = (key: string): string =>
-	`${key} cannot be put back — the message has changed since it was removed. Paste the value again after /credential to reuse it.`;
-
 /** Which sentence the composer's notice line carries, as one decision. */
 export type ComposerNoticeInput = {
 	/** The sentence for a draft holding characters a mask was escaped from, if any. */
@@ -1994,7 +1981,7 @@ export type ComposerNoticeInput = {
 	/** Whether an armed capture sits at the caret's own line end. */
 	armed: boolean;
 	/** The reference a clear removed, while its sentence has not been retired. */
-	cleared: { key: string; index: number; stale: boolean } | null;
+	cleared: { key: string; index: number } | null;
 	/**
 	 * The composer's own undo key for THIS platform (`lockedRunUndoCap`'s spelling),
 	 * passed in rather than derived here: this module is rendering-free by contract
@@ -2026,13 +2013,11 @@ export const noticeLineFor = (input: ComposerNoticeInput): string | null => {
 	if (input.unredacted !== null) return input.unredacted;
 	if (input.armed) return CREDENTIAL_ARMED_NOTICE;
 	if (input.cleared !== null) {
-		return input.cleared.stale
-			? clearedStaleNotice(input.cleared.key)
-			: clearedNoticeLine(
-					input.cleared.key,
-					input.cleared.index,
-					input.undoCap,
-				);
+		return clearedNoticeLine(
+			input.cleared.key,
+			input.cleared.index,
+			input.undoCap,
+		);
 	}
 	return null;
 };

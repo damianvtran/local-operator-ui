@@ -2,6 +2,7 @@ import {
 	type MutableRefObject,
 	type RefObject,
 	useLayoutEffect,
+	useRef,
 	useState,
 } from "react";
 import {
@@ -85,15 +86,25 @@ import { CredentialChip } from "./credential-chip";
 /**
  * The least visible strip of a run that earns a chip, in CSS pixels.
  *
- * TWO, AND THE NUMBER IS ARITHMETIC RATHER THAN TASTE (code review round 4, R4-1). The
- * chip's control is `16px` tall inside a `17px` run box, i.e. its top edge sits `0.5px`
- * below the chip's top; a strip thinner than that leaves the control outside the clip and
- * takes hit-testing with it (`elementFromPoint` answered `0/64` points for a `0.375px`
- * strip, against `8/64` at `3px`). One pixel of the control's own box on screen is what
- * this asks for, with half a pixel of slack for the inset: a chip is drawn exactly where
- * a real Tab can reach a control that is also really painted.
+ * SIX, AND IT IS TWO MEASUREMENTS RATHER THAN TASTE (code review round 4, R4-1; UX
+ * round 5, U2).
+ *
+ * The first is arithmetic: the chip's control is `16px` tall inside a `17px` run box, so
+ * its top edge sits `0.5px` below the chip's top, and a strip thinner than that leaves the
+ * control outside the clip with its hit-testing (`elementFromPoint` answered `0/64` points
+ * for a `0.375px` strip, against `8/64` at `3px`).
+ *
+ * The second is what the operator can SEE, and it is why the floor is six and not two: at
+ * a two-pixel strip the control is reachable and live while nothing identifies it - the UX
+ * round landed on exactly that band by hand (`scrollTop 202`, a `2.38px` strip, the
+ * control `1.88px` of `16` inside the clip), found no `times` glyph on screen, and measured a
+ * real `Tab` reaching it and a real press in the band clearing the credential. The control's
+ * glyph is centred in its 16px box, so the run has to be visible by about half the control
+ * plus the glyph's own top inset before any of it can be read: six pixels is the measured
+ * strip at which the `times` is on screen. A chip whose control cannot be identified is a
+ * chip whose marker should keep the wash instead.
  */
-const CHIP_MIN_VISIBLE_STRIP_PX = 2;
+const CHIP_MIN_VISIBLE_STRIP_PX = 6;
 
 type ChipBox = {
 	/** The position of the run in the plan `paintPlan` produced. */
@@ -149,6 +160,29 @@ export const CredentialChipLayer = ({
 }: CredentialChipLayerProps) => {
 	const plan = paintPlan(text, payloads.values(), capture);
 	const [boxes, setBoxes] = useState<ChipBox[]>([]);
+	/**
+	 * The chip control that held focus when the boxes were last measured.
+	 *
+	 * Held across the commit so the drop can be detected where it actually happens - see
+	 * the layout effect below, and R5-1 for why the measure cannot see it.
+	 */
+	const heldControlRef = useRef<HTMLElement | null>(null);
+	/*
+	 * AND THE DROP IS REPORTED HERE, AT THE COMMIT THAT REMOVES IT (code review round 5,
+	 * R5-1). `boxes` is the layer's own record of what it draws: when it changes, React has
+	 * committed the removal, the focused control is out of the document, and the composer
+	 * can be told to take the keyboard back. A control that is still connected (a re-measure
+	 * that kept it) reports nothing, and one that lost focus to something outside the layer
+	 * was never remembered.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `boxes` IS the dependency this effect exists for - it is the commit that removes a control, and the body reads it only through the ref the measure filled. Dropping it (as the rule suggests, since the body never mentions it) would leave the effect running on `onControlUnmounted` alone, which is R5-1 again in a new shape.
+	useLayoutEffect(() => {
+		const held = heldControlRef.current;
+		if (held === null) return;
+		if (held.isConnected) return;
+		heldControlRef.current = null;
+		onControlUnmounted?.();
+	}, [boxes, onControlUnmounted]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the measure must re-run after EVERY render that changes the text or the rung — the mirror's own wrapping is a function of the text and of the rung's padding and type step — and the body reads only refs, which is why the list is carried by hand (the same reason the mirror carries its own).
 	useLayoutEffect(() => {
@@ -169,9 +203,20 @@ export const CredentialChipLayer = ({
 			 * reports the drop rather than reaching for it.
 			 */
 			const held = document.activeElement;
-			const heldWasOurs =
+			/*
+			 * THE FOCUSED CONTROL IS REMEMBERED, NOT JUDGED HERE (code review round 5, R5-1).
+			 * Round 4 read `document.activeElement` and tested `!held.isConnected` inside this
+			 * same synchronous call - before React has committed the `setBoxes` that drops the
+			 * chip - so `isConnected` was still true and the guard never fired; by the next
+			 * commit focus was already `BODY` and the element was no longer recognisable as
+			 * ours, so the report had no route at all. What the measure can honestly do is
+			 * record which control held focus; the commit below is what knows it is gone.
+			 */
+			heldControlRef.current =
 				held instanceof HTMLElement &&
-				held.closest("[data-credential-chips]") !== null;
+				held.closest("[data-credential-chips]") !== null
+					? held
+					: null;
 			const next: ChipBox[] = [];
 			for (const run of mirror.querySelectorAll<HTMLElement>(
 				"[data-credential-run]",
@@ -235,9 +280,6 @@ export const CredentialChipLayer = ({
 					width: rect.width,
 					height: rect.height,
 				});
-			}
-			if (heldWasOurs && held instanceof HTMLElement && !held.isConnected) {
-				onControlUnmounted?.();
 			}
 			setBoxes(next);
 		};
