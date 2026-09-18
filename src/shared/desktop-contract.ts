@@ -404,14 +404,15 @@ const isPublicationWhiteSpace = (point: number): boolean =>
 	point === 0x3000;
 
 /**
- * The whitespace that is ALSO a control character: the hub's
- * `_CONTROL_WHITESPACE`.
+ * The whitespace that is ALSO a control character: the transport's
+ * `_CONTROL_WHITESPACE` (`local_operator/clients/radient.py`), which is one notch
+ * stricter than the hub's own validator.
  *
- * The one whitespace refusal the hub still has, and the reason the rule cannot
+ * The one whitespace refusal the mirror keeps, and the reason the rule cannot
  * simply drop its whitespace arm: no legitimate name contains a tab, a vertical
- * tab, a form feed, a line control or NEL, and the hub reports those as
+ * tab, a form feed, a line control or NEL, and the transport reports those as
  * whitespace rather than as control characters — so dropping the check would put
- * a different `details.rule` on the same input than the hub's.
+ * a different `details.rule` on the same input than the side that refuses it.
  *
  * Spelled out rather than written as an intersection with the set above, because
  * Python's `str.isspace()` additionally calls `U+001C`-`U+001F` whitespace while
@@ -516,16 +517,18 @@ const publicationCollapseWhiteSpace = (value: string): string => {
  * character that is not the problem.
  *
  * THE WHITESPACE BAN IS DELIBERATELY ABSENT, and this is the one place the
- * function is not a mirror. The hub is mid-relaxation on exactly that rule: the
- * live marketplace is already spelled with ordinary spaces, so agent-server's
- * rule is moving to "collapse every run of Unicode whitespace to one U+0020 and
- * trim the ends". A client cannot mirror a rule that is moving — refusing an
- * ordinary space here would refuse a name the hub accepts, and only after the
- * change would the same release behave differently against two hub versions. So
- * whitespace that is not a control character travels as the author wrote it and
- * the hub decides: today with a 422 `invalid_instruction_set` whose
- * `details.rule` this dialog renders, and after the relaxation by normalising
- * and storing the name. `name_key` still folds whitespace, so the local
+ * function is not a mirror. The transport is mid-relaxation on exactly that
+ * rule: the live marketplace is already spelled with ordinary spaces, so
+ * agent-server's rule is moving to "collapse every run of Unicode whitespace to
+ * one U+0020 and trim the ends". A client cannot mirror a rule that is moving —
+ * refusing an ordinary space here would refuse a name the other side accepts, and
+ * only after the change would the same release behave differently against two
+ * versions. So whitespace that is not a control character travels as the author
+ * wrote it and the far side decides. Until that relaxation lands, a space is
+ * refused by the LOCAL write path (`local_operator`'s `write_profile`), not by the
+ * hub's own `ValidateAgentName` — a distinction worth keeping straight, because a
+ * reader who assigns the refusal to the hub draws the wrong conclusion about
+ * which side has to change. `name_key` still folds whitespace, so the local
  * duplicate and reservation checks keep asking the hub's own question.
  *
  * The sentences and the order are `local_operator/clients/radient.py`'s

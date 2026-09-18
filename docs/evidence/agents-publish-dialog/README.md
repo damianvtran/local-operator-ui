@@ -34,7 +34,7 @@ The dialogs are driven by the SHIPPED component (`upload-agent-dialog.tsx`)
 against a stubbed desktop transport that speaks the app's own `/__desktop`
 envelope: `{status, body}` where `body` is either the CRUD payload or the
 refusal `{detail: {code, message, details}}` the local backend returns. The
-refusal frames are not rendered from a prop — six of the ten are reached by
+refusal frames are not rendered from a prop — six of the eleven are reached by
 PRESSING the consent box and Publish, and each `play` holds the shutter
 (`capturePending`) until the state's own text is on screen.
 
