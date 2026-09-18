@@ -39,8 +39,17 @@
  */
 
 import type { DaemonPairingCause } from "../../../../shared/backend-status";
-import { backendPairingSentence } from "@shared/api/local-operator/backend-error";
 import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
+/*
+ * The sentence table is imported by RELATIVE path, not by the `@shared` alias.
+ *
+ * This module is bundled on its own by `scripts/sidebar-catalogue-gate.test.mjs`
+ * with a hand-written alias list, and an alias it does not carry is an unresolved
+ * import rather than a second opinion - measured: the alias form failed that
+ * harness's build outright, while the relative path is the one the type import
+ * above already uses.
+ */
+import { backendPairingSentence } from "../../shared/api/local-operator/backend-error";
 
 export type CatalogueGateInput = {
 	/**
