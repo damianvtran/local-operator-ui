@@ -592,6 +592,34 @@ export const STORIES = [
 	   photograph a state no user can be in. */
 	["chat-message-input--conversation-gone", 1024, 300],
 
+	/* Mermaid's categorical fills, which are where the app spends a decorative hue
+	   on content rather than on chrome.
+
+	   WHY THIS STORY EXISTS NOW. `fillType0..7` (`mermaid-diagram.tsx`'s
+	   `WASH_CYCLE`) used to start on `infoWash`, so a diagram's second category
+	   was painted the colour that everywhere else means "here is a fact"; the
+	   second accent now sits at index 1. That change is two lines of source and
+	   has no other evidence anywhere: before this entry there was no frame under
+	   `docs/evidence` whose path contained `mermaid` at all, so the one site the
+	   accent change MOVES PIXELS ON was also the site with no picture.
+
+	   A JOURNEY DIAGRAM, because the ramp has to be legible in the frame to be
+	   evidence: the journey type spends `fillType0..7` per section, and its six
+	   sections therefore show all six entries of the cycle including the new one.
+	   It is also the type closest to what this app renders in practice.
+
+	   1280x900 is the transcript's own width, so the diagram is met at the size
+	   the chat column gives it. The story holds `capturePending` until the SVG is
+	   in the DOM — the module is a 3.6 MB dynamic import and the render is
+	   asynchronous, so a frame taken on the readiness poll alone would be the
+	   "Loading diagram..." placeholder in whichever themes lost the race, once per
+	   theme.
+
+	   Cost: +12 frames, one per sweep theme. A `--themes=` run covers the 47 the
+	   sweep does not, which is how a palette-specific concern (this ramp's
+	   index-2 adjacency) is checked where it matters rather than everywhere. */
+	["chat-mermaid-diagram--categorical-fills", 1280, 900],
+
 	/* The browser feature's own surfaces, added with the round that remediated its
 	   review. This is the ONE part of the visible browser a browser tool can
 	   reach: the chrome band is ordinary DOM, while the native page view under it
