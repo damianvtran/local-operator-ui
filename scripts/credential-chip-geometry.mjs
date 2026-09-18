@@ -332,6 +332,14 @@ const main = async () => {
 					if (!f) return { scrollable: false };
 					const max = f.scrollHeight - f.clientHeight;
 					if (max <= 1) return { scrollable: false };
+						/*
+						 * THE CARET LEAVES THE END BEFORE ANY PARK (code review round 6, R6-1's
+						 * sibling): a focused textarea whose caret sits at the end re-scrolls
+						 * itself back to the caret on the next layout, so a parked position is
+						 * silently undone and the phase measures the state it started in. Every
+						 * park in this file does this first now.
+						 */
+						f.setSelectionRange(0, 0);
 					f.scrollTop = Math.round(max * ${fraction});
 					f.dispatchEvent(new Event("scroll"));
 					await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -583,6 +591,14 @@ const main = async () => {
 				// Park the run's own top just inside the box's bottom edge: the chip exists,
 				// and the layer has content outside its box for a focus to scroll to.
 				const target = Math.max(0, Math.min(max, span.offsetTop - f.clientHeight + 8));
+						/*
+						 * THE CARET LEAVES THE END BEFORE ANY PARK (code review round 6, R6-1's
+						 * sibling): a focused textarea whose caret sits at the end re-scrolls
+						 * itself back to the caret on the next layout, so a parked position is
+						 * silently undone and the phase measures the state it started in. Every
+						 * park in this file does this first now.
+						 */
+						f.setSelectionRange(0, 0);
 				f.scrollTop = Math.round(target);
 				f.dispatchEvent(new Event("scroll"));
 				await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -691,6 +707,14 @@ const main = async () => {
 						 */
 						const runTopInContent =
 							run.getBoundingClientRect().top - f.getBoundingClientRect().top + f.scrollTop;
+						/*
+						 * THE CARET LEAVES THE END BEFORE ANY PARK (code review round 6, R6-1's
+						 * sibling): a focused textarea whose caret sits at the end re-scrolls
+						 * itself back to the caret on the next layout, so a parked position is
+						 * silently undone and the phase measures the state it started in. Every
+						 * park in this file does this first now.
+						 */
+						f.setSelectionRange(0, 0);
 						f.scrollTop = Math.max(0, Math.min(max, Math.round(runTopInContent - f.clientHeight + ${offset})));
 						f.dispatchEvent(new Event("scroll"));
 						await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -803,6 +827,14 @@ const main = async () => {
 					f.setSelectionRange(0, 0);
 					const runTopInContent =
 						run.getBoundingClientRect().top - f.getBoundingClientRect().top + f.scrollTop;
+						/*
+						 * THE CARET LEAVES THE END BEFORE ANY PARK (code review round 6, R6-1's
+						 * sibling): a focused textarea whose caret sits at the end re-scrolls
+						 * itself back to the caret on the next layout, so a parked position is
+						 * silently undone and the phase measures the state it started in. Every
+						 * park in this file does this first now.
+						 */
+						f.setSelectionRange(0, 0);
 					f.scrollTop = Math.max(0, Math.min(max, Math.round(runTopInContent - f.clientHeight + 10)));
 					f.dispatchEvent(new Event("scroll"));
 					f.focus();
