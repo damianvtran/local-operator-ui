@@ -23,6 +23,20 @@
  *   even `UNANSWERED_BEFORE_DETACHED` of them - may move the connection to
  *   `detached`, because the transport and the probe demonstrably disagree and
  *   the transport is the one carrying the user's data;
+ * - that rule is about SILENCE, and it is bounded on both sides. An answer that
+ *   was not ADMITTED (`recordTransportAnswer`: a `401`/`403`, a shut plane's
+ *   `503`, or the one op the plane serves without admitting anyone) is liveness
+ *   evidence and never attachment evidence, so it may not clear the
+ *   identity-failure count; and a probe that ANSWERED with a contradiction
+ *   (`contradicted`: a different instance id, a different pid, a non-daemon) is
+ *   evidence about THIS app's pairing rather than about the daemon's liveness,
+ *   so other answered traffic must not excuse it either. Measured 2026-09-18: a
+ *   `lop` build swap replaced the daemon under the app, the successor refused
+ *   every desktop call (`503`; its plane was shut) while answering `/health` and
+ *   the public capability op, those answers cleared the count on every pass, and
+ *   the app sat `attached` to a pid that was gone - never re-discovering, never
+ *   re-claiming - while it told the operator it was "not paired with the running
+ *   Local Operator server" until the app itself was restarted;
  * - a daemon whose pid is gone is `detached` immediately, because that IS
  *   evidence;
  * - a daemon whose pid is ALIVE but whose published heartbeat stopped is
@@ -122,6 +136,21 @@ export type ProbeObservation =
 	| { kind: "capability"; status: number; detail: string }
 	| { kind: "build-announced"; detail: string }
 	| { kind: "failed"; detail: string }
+	/**
+	 * The probe ANSWERED, and what it named is not the daemon this app attached
+	 * to: a different `instance_id`, a different pid, or an address now held by
+	 * something that is not a Local Operator daemon.
+	 *
+	 * Its own kind rather than another `failed`, because the two are evidence
+	 * about different things and only one of them may be overruled by this app's
+	 * own traffic. `failed` covers a socket that refused and a status this path
+	 * will not read: an absence of evidence, which an answered request
+	 * legitimately outranks. A contradiction IS evidence, and it is evidence
+	 * about the ATTACHMENT - the process this app holds a credential for is no
+	 * longer the process at this address - which is the one condition that needs
+	 * re-discovery and a fresh claim rather than patience.
+	 */
+	| { kind: "contradicted"; detail: string }
 	| {
 			/** The probe ran out of budget with no answer at all. */
 			kind: "unanswered";
@@ -240,6 +269,29 @@ export class DaemonStateMachine {
 				}
 				this.detail = observation.detail;
 				break;
+			case "contradicted":
+				/*
+				 * The same threshold as `failed`, deliberately: three consecutive
+				 * answered contradictions. One sample must stay free, because a proxy in
+				 * front of a daemon or a restart caught mid-flight can answer a single
+				 * probe as the wrong process without this app being unpaired for good.
+				 *
+				 * `corroborated` is what makes this kind different, and it is the whole
+				 * fix: a contradiction is direct evidence about the attachment, so the
+				 * transport-evidence gate - whose subject is a probe that had NO answer -
+				 * does not apply. Without it the refusals a successor returns (a `503`
+				 * from a shut plane, stamped as an answer) excuse the contradiction on
+				 * every pass, the count never survives to three, and the app never
+				 * reaches the re-discovery that would re-pair it.
+				 */
+				this.failures += 1;
+				if (this.failures >= DEGRADED_AFTER_FAILURES) {
+					this.enterDetached(observation.detail, true);
+				} else {
+					this.state = "degraded";
+					this.detail = `${observation.detail} (probe ${this.failures} of ${DEGRADED_AFTER_FAILURES}).`;
+				}
+				break;
 			case "failed":
 				this.failures += 1;
 				if (this.failures >= DEGRADED_AFTER_FAILURES) {
@@ -326,7 +378,43 @@ export class DaemonStateMachine {
 	}
 
 	/**
-	 * Record that a real request against the attached daemon was answered.
+	 * Record that a request of this app's was ANSWERED by the attached daemon.
+	 *
+	 * Liveness evidence and NOTHING ELSE. An answer says a process read the request
+	 * and wrote a status line - which is exactly what a probe that ran out of its
+	 * 2 s budget failed to establish - and a refusal is an answer. What a refusal
+	 * does not say is that this app is still PAIRED with the process that
+	 * answered: a `401`, a `403` and a shut plane's `503` are what an app holding
+	 * the wrong credential collects from a daemon that was replaced underneath it,
+	 * and one of them arrives every few seconds on a machine whose renderer is
+	 * re-asking capabilities and whose presence heartbeat is running. Counting
+	 * those as a successful attachment cleared the identity-failure count on every
+	 * pass, held the state at `attached` for a pid that was gone, and left the app
+	 * unable to reach the re-discovery that would have re-paired it (2026-09-18;
+	 * see the module docstring).
+	 *
+	 * So this stamps the two facts a refusal DOES establish - the transport is
+	 * alive, and no probe budget is outstanding - and leaves the state alone. A
+	 * caller holding proof that the plane admitted the request calls
+	 * {@link recordTransportSuccess} instead.
+	 */
+	recordTransportAnswer(): void {
+		this.lastTransportAt = this.now();
+		this.unanswered = 0;
+		this.updatedAt = this.now();
+	}
+
+	/**
+	 * Record that a real request against the attached daemon was ADMITTED.
+	 *
+	 * "Admitted" is the caller's judgement and the distinction this method exists
+	 * for: the daemon let the request through to a route that depends on this
+	 * app's desktop credential, so the pairing is proven to still hold. Every
+	 * answer below that bar - a refused socket, a `401`/`403`, a shut plane's
+	 * `503`, and the capability op the plane deliberately serves WITHOUT admitting
+	 * anyone - is {@link recordTransportAnswer} instead, liveness only, because
+	 * treating one of them as an admission is how a replaced daemon's refusals
+	 * kept an unpaired app looking attached.
 	 *
 	 * WHY this is the state machine's business and not a caller's: the probe and
 	 * the transport disagree regularly on a box running long turns - the probe

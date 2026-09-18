@@ -527,3 +527,94 @@ test("an unattachable daemon never displaces a live attachment", () => {
 		"a daemon answering a port this app is not using says nothing about the one it is",
 	);
 });
+
+/**
+ * An answered contradiction outranks the traffic that used to excuse it.
+ *
+ * The exit test for the 2026-09-18 report. A `lop` build swap replaced the
+ * daemon under the running app: the successor answered `/health` with a
+ * different `instance_id` (the identity contradiction below) and refused every
+ * desktop call with `503` because its plane was shut until the app claimed it.
+ * Each of those refusals - and the capability op the renderer re-asks every
+ * 15 s while the plane is shut, which the plane serves without admitting anyone -
+ * was stamped as a successful request, which cleared `failures` and put the state
+ * back to `attached` naming a pid that was gone. The count never survived to
+ * three, so the app never detached, never re-discovered and never re-claimed:
+ * the operator read "This app is not paired with the running Local Operator
+ * server" for 28 minutes, and restarting the app was what re-paired it.
+ */
+test("a refusal is liveness evidence, never a pairing: it may not clear the identity-failure count", () => {
+	const machine = attached();
+	for (let i = 1; i < DEGRADED_AFTER_FAILURES; i++) {
+		// the refused desktop call and the public capability poll, in the order the
+		// app makes them: answered, and about nothing this app's pairing can be read from
+		machine.recordTransportAnswer();
+		assert.equal(
+			machine.observe({
+				kind: "contradicted",
+				detail: "Another process is answering at http://127.0.0.1:1111",
+			}),
+			"degraded",
+			`an answered contradiction is still counted (${i} of ${DEGRADED_AFTER_FAILURES})`,
+		);
+	}
+	machine.recordTransportAnswer();
+	assert.equal(
+		machine.observe({
+			kind: "contradicted",
+			detail: "Another process is answering at http://127.0.0.1:1111",
+		}),
+		"detached",
+		"and the third one detaches through the app's own answered refusals, which is what reaches re-discovery and a fresh claim",
+	);
+});
+
+test("a contradiction is not excused by the transport gate the way a silent probe is", () => {
+	const machine = attached();
+	// the gate's own case, unchanged: a probe with NO answer is outranked by traffic
+	machine.recordTransportAnswer();
+	assert.equal(
+		machine.observe({
+			kind: "failed",
+			detail: "http://127.0.0.1:1111 refused the connection",
+		}),
+		"degraded",
+		"a socket that refused is not evidence about the attachment while the app is being answered",
+	);
+	// and the case the gate must not swallow: an ANSWERED contradiction
+	machine.recordTransportAnswer();
+	assert.equal(
+		machine.observe({
+			kind: "contradicted",
+			detail: "Another process is answering at http://127.0.0.1:1111",
+		}),
+		"degraded",
+	);
+	machine.recordTransportAnswer();
+	assert.equal(
+		machine.observe({
+			kind: "contradicted",
+			detail: "Another process is answering at http://127.0.0.1:1111",
+		}),
+		"detached",
+		"a contradiction is evidence about THIS app's pairing, so other answered traffic may not excuse it",
+	);
+});
+
+test("an ADMITTED request still clears the count, which is what a pairing is", () => {
+	const machine = attached();
+	machine.observe({ kind: "contradicted", detail: "another process" });
+	machine.observe({ kind: "contradicted", detail: "another process" });
+	assert.equal(machine.getState(), "degraded");
+	assert.equal(
+		machine.recordTransportSuccess(),
+		true,
+		"the plane admitted a request, so the attachment is proven and the state moves back",
+	);
+	assert.equal(machine.getState(), "attached");
+	assert.equal(
+		machine.observe({ kind: "contradicted", detail: "another process" }),
+		"degraded",
+		"and the count really was cleared: one contradiction is again the FIRST of three, not the third",
+	);
+});
