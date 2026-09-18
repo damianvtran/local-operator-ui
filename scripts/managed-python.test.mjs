@@ -23,13 +23,17 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import {
 	artifactArch,
 	finalContainerChecks,
 	finalMetadataChecks,
+	heldAttachTargets,
+	isVolumeAttached,
 	mountedDevice,
 	privatePythonSeedCheck,
+	releaseAttachTargets,
 } from "./python-artifact-layout.mjs";
 import { bundledPythonCheck, spawnRunner } from "./verify-macos-artifacts.mjs";
 
@@ -64,6 +68,33 @@ function fixture(t) {
 	const root = mkdtempSync(join(tmpdir(), "lo-managed-python-test-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));
 	return root;
+}
+
+/** Remove a fixture tree that holds the backing image of a volume the test
+ * mounted - and only once that volume is really gone.
+ *
+ * THE ORDER IS LOAD-BEARING, AND SO IS THE STATE. The `.dmg` lives in `root`
+ * while the mount point lives in the module's own scratch, so an unconditional
+ * `rmSync` here deletes the backing file of a live volume whenever the detach
+ * did not take, and a backing file removed under a still-attached volume is what
+ * makes macOS show the operator "Disk Not Ejected Properly" on their desktop,
+ * days later. `hdiutil`'s exit code cannot answer that question either way: it
+ * exits 1 for a volume somebody else already ejected as well as for one it could
+ * not remove. So the state decides, and a volume that is still up keeps its tree
+ * for a human to eject.
+ */
+function removeVolumeTree(t, root, target) {
+	if (target !== null) {
+		if (isVolumeAttached(target))
+			spawnRunner("/usr/bin/hdiutil", ["detach", "-force", "-quiet", target]);
+		if (isVolumeAttached(target)) {
+			t.diagnostic(
+				`left ${root} in place: ${target} is still attached, so its backing image stays`,
+			);
+			return;
+		}
+	}
+	rmSync(root, { recursive: true, force: true });
 }
 function options(support, packaged = true) {
 	return { support, resources: "", packaged, arch: "arm64" };
@@ -501,19 +532,11 @@ test("the disk image path is exercised by mounting the real image, not by assert
 	// that order. The order is load-bearing: the .dmg in this tree is the backing
 	// file of the volume `finalContainerChecks` mounts, and deleting it under a
 	// volume that is still attached is what makes macOS show the operator "Disk
-	// Not Ejected Properly". `mountedVolume` below pins the same order.
+	// Not Ejected Properly". `removeVolumeTree` pins that order and the state
+	// check, and `mountedVolume` below goes through the same helper.
 	const scratch = mkdtempSync(join(tmpdir(), "lo-managed-python-image-"));
-	let imageMount = null;
-	t.after(() => {
-		if (imageMount !== null)
-			spawnRunner("/usr/bin/hdiutil", [
-				"detach",
-				"-force",
-				"-quiet",
-				imageMount,
-			]);
-		rmSync(scratch, { recursive: true, force: true });
-	});
+	let imageDevice = null;
+	t.after(() => removeVolumeTree(t, scratch, imageDevice));
 	const app = appBundle(scratch);
 	const image = join(
 		scratch,
@@ -547,13 +570,16 @@ test("the disk image path is exercised by mounting the real image, not by assert
 	const calls = [];
 	const run = (command, args, input) => {
 		calls.push({ command, args, input });
-		// Remembered for the teardown: the mount point lives in `finalContainerChecks`'
-		// own scratch, which this test never sees from the outside.
+		const result = spawnRunner(command, args, input);
+		// The DEVICE is remembered for the teardown - the same parse the module makes,
+		// so the teardown detaches by device too, and a teardown that could not
+		// detach leaves this tree (and the backing image in it) alone.
 		if (command === "/usr/bin/hdiutil" && args[0] === "attach")
-			imageMount = args.includes("-mountpoint")
-				? args[args.indexOf("-mountpoint") + 1]
-				: null;
-		return spawnRunner(command, args, input);
+			imageDevice = mountedDevice(
+				result.stdout,
+				args[args.indexOf("-mountpoint") + 1],
+			);
+		return result;
 	};
 	const results = finalContainerChecks(image, {
 		run,
@@ -606,11 +632,13 @@ test("the disk image path is exercised by mounting the real image, not by assert
  * A `.dmg` run built entirely from fakes, so the detach contract can be driven
  * to states a real `hdiutil` reaches too rarely to wait for, on every platform.
  *
- * `attach` reports the device the way `hdiutil` does and plants the app in the
- * mount, `ditto` plants it in the extracted tree, and `detach` is the caller's
- * script - the two failures this file exists to pin are a mount something holds
- * open and a mount that will not come away. Nothing here is really attached, so
- * a test may remove any tree it leaves behind.
+ * `attach` claims the device the way `hdiutil` reports one and plants the app in
+ * the mount, `ditto` plants it in the extracted tree, and `detach` is the
+ * caller's script - the failures this file exists to pin are a mount something
+ * holds open, a mount that will not come away, and a mount that is already gone.
+ * NOTHING here is really attached, which is also what makes the fabricated
+ * device name a test of its own: a claim must never be able to arm the exit
+ * backstop, because the backstop detaches with the REAL `hdiutil`.
  */
 function fakeImageRun(t, detach) {
 	const root = mkdtempSync(join(tmpdir(), "lo-container-fake-"));
@@ -619,11 +647,12 @@ function fakeImageRun(t, detach) {
 	let mount = null;
 	t.after(() => {
 		// `finalContainerChecks` keeps its scratch when it cannot detach, and that
-		// tree holds the (fake) mount point: remove it here so a failing contract
-		// does not leak a temp tree into the run.
-		if (mount !== null)
-			rmSync(dirname(mount), { recursive: true, force: true });
-		rmSync(root, { recursive: true, force: true });
+		// tree holds the (never really mounted) mount point: remove it here so a
+		// failing contract does not leak a temp tree into the run. Through the same
+		// helper as the real fixtures, because "nothing here is attached" is exactly
+		// what the helper checks rather than assumes.
+		if (mount !== null) removeVolumeTree(t, dirname(mount), mount);
+		removeVolumeTree(t, root, mount);
 	});
 	const calls = [];
 	const run = (command, args, input) => {
@@ -695,15 +724,67 @@ test("a busy mount is detached by device, then repaired with one forced retry", 
 });
 
 test("a mount that will not detach is reported and its tree is left standing", (t) => {
-	const fixtureRun = fakeImageRun(t, () => ({
-		status: 1,
-		stdout: "",
-		stderr: "Resource busy",
-	}));
-	const results = finalContainerChecks(fixtureRun.image, {
-		run: fixtureRun.run,
-		checkApp: () => [],
-	});
+	if (
+		skipUnlessDarwin(
+			t,
+			"the check asks hdiutil what is attached, and hdiutil is this platform's tool",
+		)
+	)
+		return;
+	/*
+	 * A REAL volume, because the failure row is owed only when the volume really
+	 * is still attached: `hdiutil info` is asked, and a fabricated device name no
+	 * longer produces one (the "already gone" test below covers that side). The
+	 * runner forwards the attach to the real tool and refuses every detach, which
+	 * is the state a busy volume is in and the state a caller has to survive.
+	 */
+	const root = mkdtempSync(join(tmpdir(), "lo-managed-python-refused-"));
+	const app = join(root, "Local Operator.app");
+	mkdirSync(app, { recursive: true });
+	writeFileSync(join(app, "payload.txt"), "app\n");
+	const image = join(root, "local-operator-ui-0.0.0-arm64.dmg");
+	assert.equal(
+		spawnRunner("/usr/bin/hdiutil", [
+			"create",
+			"-quiet",
+			"-size",
+			"16m",
+			"-fs",
+			"HFS+",
+			"-volname",
+			"lo-refused",
+			"-srcfolder",
+			app,
+			"-format",
+			"UDZO",
+			image,
+		]).status,
+		0,
+		"hdiutil could not build the fixture image",
+	);
+	let mount = null;
+	let device = null;
+	// The teardown detaches FOR REAL: the runner below refuses every detach, so
+	// nothing else in this test will.
+	t.after(() => removeVolumeTree(t, root, device ?? mount));
+	const run = (command, args, input) => {
+		if (command === "/usr/bin/hdiutil" && args[0] === "attach") {
+			mount = args[args.indexOf("-mountpoint") + 1];
+			const attached = spawnRunner(command, args, input);
+			device = mountedDevice(attached.stdout, mount);
+			return attached;
+		}
+		// Every detach is refused, which is what a busy volume does - and a refusal
+		// that leaves the volume up is what the caller may not hide.
+		if (command === "/usr/bin/hdiutil" && args[0] === "detach")
+			return {
+				status: 16,
+				stdout: "",
+				stderr: "hdiutil: couldn't unmount - Resource busy\n",
+			};
+		return spawnRunner(command, args, input);
+	};
+	const results = finalContainerChecks(image, { run, checkApp: () => [] });
 	const refused = failures(results);
 	assert.equal(
 		refused.length,
@@ -711,14 +792,18 @@ test("a mount that will not detach is reported and its tree is left standing", (
 		`a volume left attached is the only row a caller may see, so it cannot pass for a clean run: ${refused.join("\n")}`,
 	);
 	assert.match(refused[0], /^artifact-unmount: /);
-	const mount = fixtureRun.mount;
 	assert.ok(
 		refused[0].includes(mount),
 		`the failure must name the mount still attached: ${refused[0]}`,
 	);
 	assert.ok(
-		refused[0].includes("/dev/disk9s2"),
+		device !== null && refused[0].includes(device),
 		`and the device it could not detach: ${refused[0]}`,
+	);
+	assert.equal(
+		isVolumeAttached(device),
+		true,
+		"the volume really is still attached, which is why the tree must stay",
 	);
 	assert.equal(
 		existsSync(mount),
@@ -726,9 +811,178 @@ test("a mount that will not detach is reported and its tree is left standing", (
 		"the scratch tree holds the live mount point and must NOT be deleted",
 	);
 	assert.equal(
-		existsSync(fixtureRun.image),
+		existsSync(image),
 		true,
 		"nor may anything delete the backing image of a volume that is still attached",
+	);
+});
+
+test("a mount that is already gone is not reported as a failure", (t) => {
+	/*
+	 * THE STATE, NOT THE EXIT CODE. Measured on this machine: detaching a device
+	 * that no longer exists exits 1 with `detach failed - No such file or
+	 * directory` - plain, `-force` and `-force -quiet` alike. Reporting that as a
+	 * failure would fail a run and leak a scratch tree over a volume nobody has
+	 * attached, so the target has to be re-checked against `hdiutil info` before a
+	 * failure is declared. The fabricated device below is not attached anywhere,
+	 * on any platform, which is the whole of the case.
+	 */
+	const fixtureRun = fakeImageRun(t, () => ({
+		status: 1,
+		stdout: "",
+		stderr: "hdiutil: detach failed - No such file or directory\n",
+	}));
+	const results = finalContainerChecks(fixtureRun.image, {
+		run: fixtureRun.run,
+		checkApp: () => [],
+	});
+	assert.deepEqual(
+		failures(results),
+		[],
+		`a device that is not attached is not a failure: ${failures(results).join("\n")}`,
+	);
+	const mount = fixtureRun.mount;
+	assert.ok(mount !== null, "the fake attach must have been driven");
+	assert.equal(
+		existsSync(mount),
+		false,
+		"and its scratch tree does not leak over a volume nobody has attached",
+	);
+});
+
+test("a runner that only claims a device cannot arm the attach backstop", (t) => {
+	/*
+	 * THE BACKSTOP DETACHES WITH THE REAL `hdiutil`, so what it holds must be an
+	 * attachment this process is shown to have made. `/dev/disk9s2` below is a
+	 * device name in the shape the module parses, claimed by a runner and never
+	 * attached by anything here; with the record armed from the runner's OUTPUT,
+	 * this test would leave that name behind for the exit handler, which would then
+	 * force-detach it - on this shared machine, whatever happens to hold it.
+	 */
+	releaseAttachTargets();
+	// Sampled from INSIDE the detach, which is the first moment after the attach
+	// has been recorded: asserting only at the end would be answered by the
+	// release of a target that is not attached, not by whether the claim armed it.
+	let armedAtDetach = null;
+	const fixtureRun = fakeImageRun(t, () => {
+		armedAtDetach = heldAttachTargets();
+		return { status: 1, stdout: "", stderr: "Resource busy" };
+	});
+	finalContainerChecks(fixtureRun.image, {
+		run: fixtureRun.run,
+		checkApp: () => [],
+	});
+	assert.deepEqual(
+		armedAtDetach,
+		[],
+		"a claim must not be recorded, or the exit handler force-detaches that name",
+	);
+	assert.deepEqual(
+		heldAttachTargets(),
+		[],
+		"and nothing may be left recorded once the mount is dealt with",
+	);
+});
+
+test("a claimed device cannot eject another process's live volume at exit", (t) => {
+	if (
+		skipUnlessDarwin(
+			t,
+			"the probe attaches a real image with hdiutil and hands its device to a child process",
+		)
+	)
+		return;
+	/*
+	 * The reviewer's repro, encoded: a volume THIS test owns is really attached,
+	 * and a child process is handed its device and driven through the fake path.
+	 * The child's runner CLAIMS that device, every detach it makes fails, and it
+	 * exits normally - so if a claim could arm the backstop, the child's exit would
+	 * eject this test's volume, and this test would see it happen.
+	 */
+	const root = mkdtempSync(join(tmpdir(), "lo-managed-python-claim-"));
+	const image = join(root, "claim.dmg");
+	const mount = join(root, "mnt");
+	mkdirSync(mount, { recursive: true });
+	assert.equal(
+		spawnRunner("/usr/bin/hdiutil", [
+			"create",
+			"-quiet",
+			"-size",
+			"16m",
+			"-fs",
+			"HFS+",
+			"-volname",
+			"lo-claim",
+			"-srcfolder",
+			mount,
+			"-format",
+			"UDZO",
+			image,
+		]).status,
+		0,
+		"hdiutil could not build the fixture image",
+	);
+	// No `-quiet`: the device table on stdout is the device this test hands over.
+	const attached = spawnRunner("/usr/bin/hdiutil", [
+		"attach",
+		"-readonly",
+		"-nobrowse",
+		"-mountpoint",
+		mount,
+		image,
+	]);
+	assert.equal(
+		attached.status,
+		0,
+		`hdiutil could not attach the volume: ${attached.stderr}`,
+	);
+	const device = mountedDevice(attached.stdout, mount);
+	assert.ok(
+		device !== null,
+		"the attach must name the device this probe hands over",
+	);
+	t.after(() => removeVolumeTree(t, root, device));
+	const probe = join(root, "claim-probe.mjs");
+	writeFileSync(
+		probe,
+		/*
+		 * The child is a separate process because the hazard is a PROCESS-EXIT one:
+		 * its exit handler runs the real `hdiutil`. Its fabricated rows are built
+		 * with String.fromCharCode rather than escape sequences, so this text can
+		 * sit inside a template literal here without a backslash-n turning into a
+		 * real newline inside the CHILD's own string literal, which does not parse.
+		 */
+		`import { mkdirSync } from "node:fs";
+import { finalContainerChecks } from ${JSON.stringify(new URL("./python-artifact-layout.mjs", import.meta.url).href)};
+const TAB = String.fromCharCode(9);
+const LF = String.fromCharCode(10);
+const [, , image, device] = process.argv;
+const run = (command, args) => {
+	if (command === "/usr/bin/hdiutil" && args[0] === "attach") {
+		const mount = args[args.indexOf("-mountpoint") + 1];
+		mkdirSync(mount + "/Local Operator.app", { recursive: true });
+		const scheme = ["/dev/disk3", "Apple_partition_scheme", ""].join(TAB);
+		return { status: 0, stdout: scheme + LF + [device, "Apple_HFS", mount].join(TAB) + LF, stderr: "" };
+	}
+	if (command === "/usr/bin/ditto") {
+		mkdirSync(args[2], { recursive: true });
+		return { status: 0, stdout: "", stderr: "" };
+	}
+	return { status: 1, stdout: "", stderr: "hdiutil: detach failed - No such file or directory" };
+};
+finalContainerChecks(image, { run, checkApp: () => [] });
+`,
+	);
+	const ran = spawnRunner(process.execPath, [probe, image, device]);
+	assert.equal(
+		ran.status,
+		0,
+		`the probe process must exit normally: ${ran.stderr}`,
+	);
+	assert.equal(
+		isVolumeAttached(device),
+		true,
+		"the child's exit must not eject a device it only claimed",
 	);
 });
 
@@ -745,24 +999,30 @@ test("the device is read from hdiutil's own output rather than assumed", (t) => 
 	symlinkSync(real, linked);
 	// As `hdiutil attach -mountpoint` prints it: one line per entity, the mounted
 	// volume last, and the mount path RESOLVED - which is the case that matters,
-	// because the scratch mount lives under a symlinked `tmpdir` and the path the
-	// caller passed is not the path hdiutil echoes back.
-	const printed = `/dev/disk11         \tApple_partition_scheme         \t\n/dev/disk11s1        \tApple_partition_map            \t\n/dev/disk11s2        \tApple_HFS                      \t${real}\n`;
+	// because the scratch mount lives under a symlinked `tmpdir` and what the
+	// caller passed is not what hdiutil echoes back. The resolved form is taken
+	// from realpathSync rather than written out, so on a platform whose tmpdir is
+	// not a symlink the two strings coincide and this asserts the literal match.
+	const resolved = realpathSync(linked);
+	const printed = `/dev/disk11         \tApple_partition_scheme         \t\n/dev/disk11s1        \tApple_partition_map            \t\n/dev/disk11s2        \tApple_HFS                      \t${resolved}\n`;
 	assert.equal(
 		mountedDevice(printed, linked),
 		"/dev/disk11s2",
-		"the resolved mount must be matched against the path that was passed",
+		"a mount that was passed must be matched through its resolved form",
 	);
 	assert.equal(
 		mountedDevice(printed, real),
 		"/dev/disk11s2",
 		"and the same path matched literally",
 	);
-	// No line names this mount: the volume is still the last entity hdiutil
-	// reported, which is the fallback the caller then detaches.
+	// NO FALLBACK to the last device line: a row that names some other mount can
+	// belong to another volume of the same image - a slice - and detaching one
+	// ejects the whole image. `null` says "this output did not name my volume", and
+	// the caller then detaches the mount path it created itself.
 	assert.equal(
 		mountedDevice("/dev/disk2\tApple_HFS\t/Volumes/Other\n", "/Volumes/Mine"),
-		"/dev/disk2",
+		null,
+		"a row that names another mount must not hand back that mount's device",
 	);
 	assert.equal(
 		mountedDevice("", "/Volumes/Mine"),
@@ -1106,10 +1366,11 @@ function mountedVolume(t, megabytes = 16) {
 		0,
 		`hdiutil could not attach the volume: ${attached.stdout}${attached.stderr}`,
 	);
-	t.after(() => {
-		spawnRunner("/usr/bin/hdiutil", ["detach", "-force", "-quiet", mount]);
-		rmSync(root, { recursive: true, force: true });
-	});
+	// Detached by DEVICE where `hdiutil` named one, and removed only once the
+	// volume is really gone: `-quiet` silences the device table, so the mount path
+	// is the fallback here - it is this call's own name for the volume.
+	const device = mountedDevice(attached.stdout, mount);
+	t.after(() => removeVolumeTree(t, root, device ?? mount));
 	return mount;
 }
 
