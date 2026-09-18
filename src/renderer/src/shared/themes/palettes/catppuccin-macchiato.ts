@@ -62,12 +62,20 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		 *
 		 * rowHover    #333136  accent hue, C* 3.52, +1.63 L*, ΔE00 8.23 off `surface`,
 		 *                       `inkDim` 5.21:1 on the fill, hue 3.02° off `accent`.
-		 * rowSelected #3D2E51  accent hue, C* 24.24, +3.02 L*, ΔE00 8.91 off
-		 *                       `surface` and 14.24 off `rowHover`, `inkDim` 4.98:1, and the
-		 *                       2px `accent` bar at 0.00:1 against it.
+		 * rowSelected #38323E  accent hue, C* 8.53, +2.77 L*, ΔE00 5.96 off
+		 *                       `surface` and 4.80 off `rowHover`, `inkDim` 5.03:1, and the
+		 *                       2px `accent` bar at 5.76:1 against it.
+		 *
+		 * RE-SOLVED ON THE RELAXED ROW RULE. It shipped at C* 24.24 - past the
+		 * min(0.75 x C*(accent), 24) ceiling - because the old 6.0 separation made
+		 * the fill chase chroma to out-rank the hover. The separation rides the
+		 * `accent` bar and `font-medium` now, so the value is authored by the rule's
+		 * own order instead: the largest `L*` step the inks allow, then the smallest
+		 * chroma that reaches the 4.0 band. `inkDim` binds at 5.03:1 on the fill.
+		 * (The comment this replaces recorded the bar at 0.00:1; it measures 5.76:1.)
 		 */
 		rowHover: "#333136",
-		rowSelected: "#3D2E51",
+		rowSelected: "#38323E",
 
 		ink: "#CAD3F5",
 		/*

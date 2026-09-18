@@ -82,16 +82,18 @@ export const nightfox: ThemeDefinition = {
 		 *
 		 * rowHover    #2C3035  accent hue, C* 3.80, +1.60 L*, ΔE00 6.50 off `surface`,
 		 *                       `inkDim` 5.67:1 on the fill, hue 5.94° off `accent`.
-		 * rowSelected #1E3855  accent hue, C* 20.54, +4.80 L*, ΔE00 5.65 off
-		 *                       `surface` and 11.02 off `rowHover`, `inkDim` 5.12:1, and the
+		 * rowSelected #303743  accent hue, C* 8.42, +4.82 L*, ΔE00 4.40 off
+		 *                       `surface` and 4.41 off `rowHover`, `inkDim` 5.11:1, and the
 		 *                       2px `accent` bar at 5.43:1 against it.
 		 *
-		 * NAMED EXCEPTION, recorded in `ROW_STATE_PINS` in `scripts/contrast-contract.mjs`
-		 * with its measured ceiling and the ink that binds it: this palette cannot hold
-		 * the rule's set inside the chroma ceiling, and the floor is NOT widened to fit it.
+		 * RE-SOLVED ON THE RELAXED ROW RULE. It shipped at C* 20.54, past the
+		 * min(0.75 x C*(accent), 24) ceiling, and carried two named exceptions (the
+		 * band and the ceiling) - both of which existed only because the old 6.0
+		 * separation made the fill chase chroma. The band is the hover's own 4.0 now
+		 * and the ceiling holds; both exceptions are gone.
 		 */
 		rowHover: "#2C3035",
-		rowSelected: "#1E3855",
+		rowSelected: "#303743",
 
 		ink: "#CDCECF",
 		/*

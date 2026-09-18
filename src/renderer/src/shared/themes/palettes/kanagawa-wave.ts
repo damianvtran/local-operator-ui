@@ -75,16 +75,18 @@ export const kanagawaWave: ThemeDefinition = {
 		 *
 		 * rowHover    #242E40  accent hue, C* 12.78, +1.69 L*, ΔE00 4.91 off `surface`,
 		 *                       `inkDim` 5.68:1 on the fill, hue 0.91° off `accent`.
-		 * rowSelected #213554  accent hue, C* 21.41, +4.88 L*, ΔE00 9.51 off
-		 *                       `surface` and 5.31 off `rowHover`, `inkDim` 5.14:1, and the
-		 *                       2px `accent` bar at 5.47:1 against it.
+		 * rowSelected #2F3540  accent hue, C* 7.72, +4.92 L*, ΔE00 5.37 off
+		 *                       `surface` and 4.18 off `rowHover`, `inkDim` 5.14:1, and the
+		 *                       2px `accent` bar at 5.46:1 against it.
 		 *
-		 * NAMED EXCEPTION, recorded in `ROW_STATE_PINS` in `scripts/contrast-contract.mjs`
-		 * with its measured ceiling and the ink that binds it: this palette cannot hold
-		 * the rule's set inside the chroma ceiling, and the floor is NOT widened to fit it.
+		 * RE-SOLVED ON THE RELAXED ROW RULE. It shipped at C* 21.41, just past the
+		 * min(0.75 x C*(accent), 24) ceiling, and was one of the named exceptions -
+		 * the value only reached that chroma because the old 6.0 separation made the
+		 * fill chase it. The separation rides the `accent` bar and `font-medium`
+		 * now, so the ceiling holds with room to spare and the exception is gone.
 		 */
 		rowHover: "#242E40",
-		rowSelected: "#213554",
+		rowSelected: "#2F3540",
 
 		// fujiWhite, 8.16:1 on the lightest ground.
 		ink: "#DCD7BA",

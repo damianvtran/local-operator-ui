@@ -79,16 +79,18 @@ export const iceberg: ThemeDefinition = {
 		 *
 		 * rowHover    #EDEEFA  accent hue, C* 6.17, +1.51 L*, ΔE00 4.33 off `surface`,
 		 *                       `inkDim` 6.08:1 on the fill, hue 1.37° off `accent`.
-		 * rowSelected #E0E3FF  accent hue, C* 14.54, +5.06 L*, ΔE00 10.45 off
-		 *                       `surface` and 6.29 off `rowHover`, `inkDim` 5.55:1, and the
-		 *                       2px `accent` bar at 5.84:1 against it.
+		 * rowSelected #E2E4F4  accent hue, C* 8.31, +4.98 L*, ΔE00 6.56 off
+		 *                       `surface` and 2.69 off `rowHover`, `inkDim` 5.56:1, and the
+		 *                       2px `accent` bar at 5.85:1 against it.
 		 *
-		 * NAMED EXCEPTION, recorded in `ROW_STATE_PINS` in `scripts/contrast-contract.mjs`
-		 * with its measured ceiling and the ink that binds it: this palette cannot hold
-		 * the rule's set inside the chroma ceiling, and the floor is NOT widened to fit it.
+		 * RE-SOLVED ON THE RELAXED ROW RULE. It shipped at a 5.06 `L*` step, 0.06 past
+		 * the 5.0 ceiling, and was one of the named exceptions: the step had been
+		 * pushed to the top of its band to buy the old 6.0 separation. The separation
+		 * rides the `accent` bar and `font-medium` now, so the step is taken to where
+		 * the inks stop it and the exception is gone.
 		 */
 		rowHover: "#EDEEFA",
-		rowSelected: "#E0E3FF",
+		rowSelected: "#E2E4F4",
 
 		// Iceberg's own text colour. The old file darkened it to 262A3F for
 		// contrast, which is no longer necessary — this measures 9:1 on the darkest
