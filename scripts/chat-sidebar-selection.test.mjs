@@ -41,7 +41,11 @@
  *      step (`expanded && "text-ink"`) is asserted as a TOKEN, because
  *      `text-ink-muted` and `hover:text-ink` both CONTAIN it as a substring — the
  *      distinction between "the state is visible" being a claim and being a
- *      checked one (review round 3, A-1).
+ *      checked one (review round 3, A-1);
+ *   5. the SPECIMEN the mark's committed frames are taken through copies that
+ *      role rather than importing it, so the copy is held to it verbatim — the
+ *      one place a second, hand-maintained copy of a role can be pinned, and the
+ *      copy that D17 and D19 were each raised against, a term apart.
  *
  * WHAT IT CANNOT PROVE: that the ground is *visible*, and that it steps in the
  * right DIRECTION. Both are properties of the role against its neighbours across
@@ -85,6 +89,19 @@ const SETTINGS_RAIL =
  * for this pair by name. */
 const MARK =
 	"src/renderer/src/features/browser/components/browser-conversation-mark.tsx";
+/*
+ * The SPECIMEN the mark's committed frames are taken through, and a different file again
+ * from the row it draws. It is in this table because it COPIES the current-row role rather
+ * than importing it (a specimen that imported the product's own row would be a second
+ * rendering of the sidebar rather than a controlled stand-in), and a copy is what drifted
+ * twice: design round 3's D17 found it still painting the retired `sunken` ground, and round
+ * 4's D19 found it painting `highlight` and dropping the `font-medium` that ground was moved
+ * for - so 30 committed frames drew a title at a weight the app does not use, through the
+ * only evidence set that shows the mark on the selection ground. A copied role is a role
+ * nothing pins unless a file like this reads it, and that is what this entry does.
+ */
+const SPECIMEN =
+	"src/renderer/src/features/browser/components/browser-conversation-mark.stories.tsx";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 /*
@@ -167,6 +184,7 @@ const code = new Map([
 	[SIDEBAR, stripComments(read(SIDEBAR))],
 	[SETTINGS_RAIL, stripComments(read(SETTINGS_RAIL))],
 	[MARK, stripComments(read(MARK))],
+	[SPECIMEN, stripComments(read(SPECIMEN))],
 ]);
 
 /** The argument list of the `cn(...)` a `className` is built from. */
@@ -438,6 +456,26 @@ test("a current row carries a non-colour step, and a row that is not current doe
 	assert.ok(
 		!inactive.includes("font-medium"),
 		`a row that is NOT current must not be heavier than the one that is:\n${inactive}`,
+	);
+});
+
+test("the specimen paints the app's whole current-row role, not a copy that drifted", () => {
+	/*
+	 * THE COPY, PINNED TO THE THING IT COPIES - and the reason this case exists at all is
+	 * that the same file was wrong twice in two rounds in two DIFFERENT terms: round 3's
+	 * D17 caught it on the ground (`bg-sunken`, a role the app had retired), round 4's D19
+	 * on the weight (`font-medium`, added by the same commit that moved the ground and
+	 * dropped by the specimen), with 30 frames re-taken each time. A term-by-term assertion
+	 * is what a whole-string equality buys here: a reviewer adding a fifth term to the
+	 * sidebar's role cannot leave the specimen behind, and the specimen cannot quietly
+	 * paint a row the app does not draw. The equality is over the LITERAL as written, so
+	 * the specimen may not compose the role from pieces either - a composed role is a role
+	 * this file would have to parse, and the parser is the drift.
+	 */
+	assert.equal(
+		literalOf(SPECIMEN, "rowCurrent"),
+		rowCurrent,
+		`the specimen no longer paints the app's current-row role verbatim. Every frame in \`docs/evidence/browser-conversation-mark/\` is taken through it, so a term that differs is a committed picture of a row the app does not draw — which is D17 and D19, one term each. Re-copy \`rowCurrent\` from ${SIDEBAR} and RE-TAKE the frames; a frame set that disagrees with the role is worse than a missing one, because it answers the question it was taken to answer.`,
 	);
 });
 

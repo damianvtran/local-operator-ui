@@ -54,6 +54,28 @@ const summary = (
  * The row strings are the sidebar's own (`h-8`, `gap-1`, `rounded-md`, `px-1` from
  * `chat-sidebar.tsx`), so the frames are about the product's geometry.
  */
+/*
+ * THE SELECTION ROLE, VERBATIM FROM THE SIDEBAR, and a copy rather than an import on
+ * purpose: this file is a SPECIMEN of the row the mark sits in, and importing the product's
+ * own row would turn it into a second rendering of the sidebar rather than a controlled
+ * stand-in whose ground and neighbour a reviewer can hold still.
+ *
+ * A copy drifts, and this one did - twice (design rounds 3 and 4, D17 and D19): first it kept
+ * painting the retired `sunken` ground, then it painted the new ground and dropped the weight
+ * that ground was moved for. `scripts/chat-sidebar-selection.test.mjs` therefore holds this
+ * literal to `chat-sidebar.tsx`'s `rowCurrent` verbatim, so the specimen cannot photograph a
+ * row the app does not draw in ANY of the role's terms.
+ *
+ * EVERY TERM IS VISIBLE, which is why the copy has to be whole: `bg-highlight` is the ground
+ * that makes the row read as the current one, `font-medium` is the non-colour step `main`
+ * added because a neighbouring row's hover step (`elevated`) is still the larger step off
+ * `surface` on most palettes, `text-ink` is the ink `highlight`'s floor is asserted on, and
+ * `hover:bg-highlight` is the pair the mark's own `!current` guard answers. Both elements
+ * below take it through `cn`, as the sidebar does - that is what keeps `text-ink` and the
+ * type step from colliding in one call (see `shared/lib/utils.ts`).
+ */
+const rowCurrent = "bg-highlight font-medium text-ink hover:bg-highlight";
+
 const Row: FC<
 	BrowserConversationMarkProps & {
 		current?: boolean;
@@ -85,24 +107,32 @@ const Row: FC<
 		<div
 			data-slot={withoutMark ? "without" : "with"}
 			/*
-			 * THE SELECTION GROUND IS `highlight`, WHICH IS WHAT THE PRODUCT PAINTS. This
-			 * specimen carried `bg-sunken` until design round 3's D17: `main` moved the current
-			 * row to `highlight` on 2026-09-16 (`d8833cd8e`, `8a8658345`, the role re-authored
-			 * in #281) and this branch folded that, so a specimen left on the retired ground
-			 * photographed a row the app no longer draws — and left the badge state the round
-			 * had to rule on unverifiable from committed evidence, because no band in the set
-			 * named `highlight`.
+			 * THE CURRENT ROW PAINTS `rowCurrent` - THE WHOLE ROLE, on the same two elements
+			 * `chat-sidebar.tsx` puts it on (its wrapper at `:614` and its row button at `:634`,
+			 * whose shared ground is what keeps the 4px the mark leaves from becoming a notch).
+			 *
+			 * WHY THE WHOLE ROLE AND NOT THE GROUND. This specimen carried `bg-sunken` until
+			 * design round 3's D17: `main` moved the current row to `highlight` on 2026-09-16
+			 * (`d8833cd8e`, `8a8658345`, the role re-authored in #281) and this branch folded
+			 * that, so a specimen left on the retired ground photographed a row the app no
+			 * longer draws - and left the badge state the round had to rule on unverifiable
+			 * from committed evidence, because no band in the set named `highlight`. Painting
+			 * the ground and not the weight was the same defect one term along (design round 4,
+			 * D19): the commit that moved the ground added `font-medium` because colour ALONE
+			 * does not outrank a hovered neighbour's `elevated` step on the dark palettes, so
+			 * the frames drew the current title at the resting weight it does not have in the
+			 * app. `rowCurrent` above is the role; this row is the app's row.
 			 */
 			className={cn(
 				"flex h-8 items-center gap-1 rounded-md",
-				current && "bg-highlight",
+				current && rowCurrent,
 			)}
 		>
 			<button
 				type="button"
 				className={cn(
 					"flex h-8 min-w-0 grow items-center gap-1 rounded-md px-1 text-left text-body-sm leading-5",
-					current ? "hover:bg-highlight" : "hover:bg-elevated",
+					current ? rowCurrent : "hover:bg-elevated",
 				)}
 			>
 				<span className="min-w-0 flex-1 truncate">
@@ -244,7 +274,9 @@ export const Focused: Story = {
 
 /**
  * THE ROW-CONTEXT SPECIMEN, on both grounds a row can paint: the resting `surface` and
- * the current row's `highlight`.
+ * the current row's `highlight` — and, on the current row, the whole of the role that
+ * ground belongs to (`rowCurrent`: the ground, `font-medium` and `text-ink`, all three
+ * asserted as one string against `chat-sidebar.tsx`).
  *
  * WHY BOTH. The mark is a 24px control inside a row that owns the current-state ground,
  * so "the badge is legible" is a claim about a `nav`-grounded panel and a selection-grounded
@@ -256,9 +288,11 @@ export const Focused: Story = {
 /**
  * THE TWO-GROUND PAIR, in one frame: the mark on a resting row and on the current one.
  *
- * The current row's ground is `highlight` — `chat-sidebar.tsx`'s `rowCurrent`, the role
- * `main` re-authored in #281 as a lightness step off `surface` in the direction the mode
- * runs. That is the pair a reader needs and the one thing a single-row frame cannot show:
+ * The current row paints `rowCurrent` — `chat-sidebar.tsx`'s own role, the one `main`
+ * re-authored in #281 as a lightness step off `surface` in the direction the mode runs,
+ * plus the `font-medium` and `text-ink` that step came with and that this specimen carried
+ * only half of until design round 4, D19. That is the pair a reader needs and the one thing
+ * a single-row frame cannot show:
  * the badge's `canvas` ring and the mark's own ink ramp drawn on the panel's resting
  * ground and on the selection ground in the same frame. THE ROW'S OWN HOVER PAIR IS THE
  * SAME ROLE (`hover:bg-highlight`), which is the other half of the mark's `!current`

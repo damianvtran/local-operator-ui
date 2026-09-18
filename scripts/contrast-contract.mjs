@@ -1934,17 +1934,19 @@ const inkStepSeen = new Set();
  * conversation's row including the current one - `borderControl` measures 2.81 to
  * 2.91:1 in these three palettes and the badge's `warningWash` fill measures 1.09
  * to 1.59:1, so neither edge reaches the floor. WHAT THAT IS AND IS NOT, at the
- * precision it was measured at: the edge is PAINTED and faint rather than absent -
- * it is 0.09 to 0.19 under the floor - and it is the shortest of the three
- * surfaces the badge paints there (`ring-canvas` 1.27 cat, 1.38 duskfox, 1.39
- * gruvbox), so no surface of it clears the contract's number.
+ * precision it was measured at: the edge is PAINTED and faint rather than absent - it is
+ * 0.09 to 0.19 under the floor, which is the SMALLEST of the three falls this badge's
+ * surfaces take there (the fill and `ring-canvas` fall 1.4 to 1.9 under it: `ring-canvas`
+ * measures 1.27 cat, 1.38 duskfox, 1.39 gruvbox) - so the edge is the TALLEST of the
+ * three surfaces the badge paints there and is still under the floor, and no surface of
+ * the badge clears the contract's number.
  *
  * THIS PIN IS THE MINIMUM THE PALETTE SET ALLOWS, and that is a measurement rather
  * than a preference (design round 3, D18). The obvious local fix - the badge's own
- * semantic border, `warningBorder`, in place of `borderControl` - clears 3:1 on
- * `highlight` in 12 of 59 palettes against 3 of 59 for `borderControl` (worst
- * `warningBorder` 2.69 in `dracula` and `monokai`), so the swap would pin MORE
- * palettes rather than fewer. Re-derived on the tree this comment ships in, with
+ * semantic border, `warningBorder`, in place of `borderControl` - MISSES 3:1 on
+ * `highlight` in 12 of 59 palettes against 3 of 59 for `borderControl` (miss counts both,
+ * so the swap clears in 47 of 59 where the pin clears in 56; worst `warningBorder` 2.69 in
+ * `dracula` and `monokai`), so the swap would pin MORE palettes rather than fewer. Re-derived on the tree this comment ships in, with
  * the palettes read through `scripts/palette-source.mjs`, so the pair is a
  * measurement of the registry rather than a remembered number.
  *
