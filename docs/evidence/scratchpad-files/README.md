@@ -75,9 +75,15 @@ so "nothing visual changed" has to be shown rather than assumed:
   conversation-scoped lens read once and handed down). Every line in both files is
   composer @-mention or sidebar-browser plumbing - no line touches the canvas
   host, the Files grid, the canvas container or any geometry the frames measure.
-- Nothing else in the render path moved: `git diff --stat` over
-  `features/chat/components/canvas/`, `features/chat/canonical/`,
-  `shared/themes/` and `styles/` is empty for both windows.
+- Nothing else in the render path moved - with ONE exception, and review round 4 was
+  right to falsify the earlier "empty for both windows":
+  `features/chat/components/canvas/inline-edit.tsx` moved **6+/1-** in a folded
+  window (`f09c3beec`, the failed-transcription toast's own cause). It is the
+  toast's copy inside the chat band, not the Files grid, the canvas container or a
+  viewer, and it is in the tree the committed frames were taken on - the re-take
+  followed that fold. The rest is empty across the folded windows:
+  `features/chat/canonical/`, `shared/themes/`, `styles/`, and every other file
+  under `features/chat/components/canvas/`.
 - The third fold is the interesting one, because it DID move this pull request's
   own files: main refactored the extractor's rules into `utils/link-grammar.ts`
   and the scanner into one policy-driven `targetsIn`. The rules were ported there
@@ -337,10 +343,12 @@ row that used to PIN the phantom tile is now the row that asserts it is gone. Th
 suite is 54 rows, and `scripts/link-targets.test.mjs` gained one - the shared
 scanner's rules apply to `LINK_POLICY` too, so that widening is pinned on the
 surface a reader actually sees it on (round 3, R3-1). Verified the other way too,
-one probe per rule: reverting the extractor hunk reddens the new assertions and
-leaves every old row green; so does deleting the ellipsis rule at either of the two
-canonicalisers it was unpinned at (53/1 each), and deleting the placeholder-tail
-guard from `targetsIn` reddens the link row (22/1).
+one probe per rule, and the numbers are the measured ones: reverting the extractor
+hunk reddens the new assertions and leaves every old row green; deleting the
+ellipsis rule gives **52/2 at `normalizeCandidate`** (the prose tier fails two rows -
+the templated/abbreviated row and the trade row) and **53/1 at each of the other two
+canonicalisers** (`normalizeFileUrl`, `normalizePathValue`); and deleting the
+placeholder-tail guard from `targetsIn` reddens the link row (22/1).
 
 ## The `.txt` branch: a guard, not a user-visible fix
 
@@ -387,3 +395,13 @@ committed as `.png` from the CDP screenshot of the app's own window - the same
 position `docs/evidence/renderer-driver/` occupies. Nothing here is capturable by
 the sweep at all: its fixtures have no scratchpad directory, no session to infer a
 tile from, and no transcript text to abbreviate.
+
+**RE-CHECKED on the fold that moved `scripts/capture-evidence.mjs`** (review round
+4): that window adds four SCENES to the sweep's list (the
+`chat-trace-order-while-live` set) and nothing else - the walker's currency is still
+`.webp` (`check-evidence.mjs` reads every `.webp` under the evidence root and no
+other extension), those four scenes write `.webp` under a declared set, and neither
+touches the backend, the fixtures or the extension this set is committed in. The
+argument rests on the FORMAT and on what a Storybook fixture can produce, so
+widening a scene list cannot reach it: it still holds, for the reason it held
+before rather than because nobody re-read it.
