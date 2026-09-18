@@ -56,11 +56,11 @@ packaged build's panel reads is under *Residual*.
   content-driven: both panels are exactly `284pt` wide (568px in these frames,
   which are 2x) although their widest line grew from 220px to 431px, and the
   widest line now IS this one - its ink runs 431 of the panel's 568px, with 67px
-  clear on the left and 70px on the right (≈33.5pt / 35pt of slack). That slack is the whole budget a
-  longer host string spends, so a three-digit Electron major, or a word longer than
-  `unpackaged`, clips before anything else on the panel does. Measured on the
-  committed frame rather than assumed, because the string least able to afford
-  clipping should not be the first to discover the panel's edge.
+  clear on the left and 70px on the right (≈33.5pt / 35pt of slack). That slack is
+  the whole budget a longer host string spends, so a three-digit Electron major, or
+  a word longer than `unpackaged`, clips before anything else on the panel does.
+  Measured on the committed frame rather than assumed, because the string least
+  able to afford clipping should not be the first to discover the panel's edge.
 - **The action is gated by the launch's resolved window mode**
   (`resolveAboutPanelAction` in `src/main/window-mode.ts`): `headless` logs
   `[about-panel] suppressed by window mode headless: a headless run raises no
