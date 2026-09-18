@@ -135,6 +135,17 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * same bar for the same reason — their popup's active row was carried by hue
  * alone. The sidebar was the only selection in the app without one.
  *
+ * THE BAR IS DRAWN ONCE PER ROW, and that is a rule about the MARK rather than a
+ * detail of these two rows (operator report, 2026-09-18: "two highlight bars
+ * instead of one" on a selected team). It belongs to the row's LEADING EDGE, so
+ * the element that owns that edge draws it: on a row written as a wrapper plus a
+ * button — the conversation row and the entity row — the wrapper takes
+ * `rowCurrent` and the button takes `rowCurrentGround`, which is the same ground
+ * with no bar. Two elements of one row taking the whole role is two pairs of
+ * `before:` styles, which is one bar where the two boxes share a left edge and TWO
+ * where the row has a control before the button. See the second constant's own
+ * note below for why the button cannot simply drop the role.
+ *
  * WHY NOT THE ACCENT WASH. `accentWash` is ΔE00 **1.05** from `surface` in
  * tokyoNight (#262B3F on #24283B) — the operator's own report, "you can't tell
  * from the sidebar which one is selected", measured. The wash is also the
@@ -272,6 +283,36 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  */
 export const rowCurrent =
 	"relative bg-row-selected font-medium text-ink hover:bg-row-selected before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent";
+
+/*
+ * The GROUND HALF of the role above, for the SECOND element of a row that already
+ * carries `rowCurrent` — and only for that.
+ *
+ * WHY IT EXISTS (operator report, 2026-09-18: "when selecting a team to chat to it
+ * shows two highlight bars instead of one — there should only be the far left
+ * one"). The role is one mark, and its bar belongs to the ROW'S LEADING EDGE. On
+ * a row that is one element that is the same sentence; on a row that is a WRAPPER
+ * PLUS A BUTTON it is not, because the bar is `before:left-0` on whichever element
+ * carries the role. The conversation row gets away with the whole role on both of
+ * its elements — they are coextensive at the row's left edge, so the two bars land
+ * on the same 2px and are one bar — but the entity row's name button sits 24px in,
+ * behind the disclosure control, so the role drawn twice there is two bars 26px
+ * apart on one marked row. The wrapper owns the leading edge, so the wrapper keeps
+ * the whole role and the button takes this half.
+ *
+ * WHY THE BUTTON CANNOT SIMPLY DROP THE ROLE. It carries `rowStyle`, whose
+ * `hover:bg-row-hover` outranks the wrapper's inherited ground in the cascade, so
+ * without a ground of its own on this element the pointer repaints the current row
+ * as a hovered one — round 1's MAJOR on this very row, and the reason the ground
+ * appears twice on it at all.
+ *
+ * WHAT IT MAY NOT BECOME: a mark for a row that has no `rowCurrent` element on it.
+ * The bar is the selection's non-colour signal (`rowSelected`,
+ * `shared/themes/palette-contract.ts`), so a row that reaches for this constant
+ * without a wrapper drawing the bar above it is a selected row carried by hue
+ * alone — the defect the row-state pass exists for. Every use is INSIDE such a row.
+ */
+export const rowCurrentGround = "bg-row-selected hover:bg-row-selected";
 
 import {
 	type FocusedSlot,
@@ -912,6 +953,14 @@ export function ChatSidebar({
 		 * WHAT THE BUTTON KEEPS: `data-chat-row` on exactly one element per row, and with it
 		 * `title` and `aria-current` — three committed harnesses select on those and the
 		 * arrow-key traversal walks the attribute.
+		 *
+		 * THE BAR IS THE WRAPPER'S, so this element takes `rowCurrentGround` rather than
+		 * the whole role (operator report, 2026-09-18: two bars on a marked entity row).
+		 * The two boxes are coextensive today, which is why the whole role on both drew
+		 * one bar here and looked correct — and why the split is not decoration: the
+		 * wrapper's own note above says the slot it reserves is where the hover-revealed
+		 * pin goes, and the moment anything is laid out before this button the second bar
+		 * separates from the first and the row is marked twice.
 		 */
 		return (
 			<div
@@ -941,7 +990,7 @@ export function ChatSidebar({
 						// button inside a flex wrapper with a sibling is a row that overflows.
 						"min-w-0 grow text-left",
 						nested && "pl-7",
-						current && rowCurrent,
+						current && rowCurrentGround,
 						// m4: the unread mark is NOT here. `font-semibold` on this
 						// `flex-1 truncate` title rewrote the visible string when the
 						// mark arrived, re-truncating text under the reader's cursor;
@@ -1050,7 +1099,14 @@ export function ChatSidebar({
 		 * the whole row. The ground therefore goes on the wrapper (it fills the gaps
 		 * and the rounded corners the 24px controls do not cover) AND on the name
 		 * button, where `rowCurrent`'s `hover:` half is what beats the inherited hover
-		 * step; and the two 24px controls drop the hover step while they sit on it.
+		 * AND ON THE NAME BUTTON, THE SAME GROUND WITHOUT THE BAR. The two elements take
+		 * different halves of one role, and the split is the operator's own report
+		 * (2026-09-18): the whole role on both draws the bar on both, and the name button
+		 * is 24px in from the row's leading edge, behind the disclosure control, so the
+		 * row showed two bars instead of one. The bar belongs to the row's leading edge,
+		 * which is the WRAPPER's box, so the wrapper keeps `rowCurrent` and this element
+		 * takes `rowCurrentGround` — the same ground and the same `hover:` restatement
+		 * that beats the step it inherits, and no second mark.
 		 */
 		const staged = draft?.target?.kind === kind && draft.target.name === name;
 		return (
@@ -1093,7 +1149,11 @@ export function ChatSidebar({
 						type="button"
 						data-chat-row
 						data-entity-name
-						className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}
+						className={cn(
+							rowStyle,
+							"flex-1 text-left",
+							staged && rowCurrentGround,
+						)}
 						onClick={() => onStageDraft({ kind, name })}
 						// The visible label is the bare name, which says who but not what
 						// pressing it does. The accessible name states the action and still

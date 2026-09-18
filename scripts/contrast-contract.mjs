@@ -1998,11 +1998,25 @@ const STRUCTURAL_CALL_SITES = [
 		 * `hover:` half is the only thing that beats the step it inherits — and a
 		 * reader who deletes either one leaves a row that still looks marked in the
 		 * source and is not. The pin is the button's own expression.
+		 *
+		 * THE ROLE'S TWO HALVES ARE SPLIT AT THIS CALL SITE (2026-09-18), and that is
+		 * the operator's "two highlight bars instead of one": the button is 24px in
+		 * from the row's leading edge, behind the disclosure control, so taking the
+		 * WHOLE role on both elements drew the 2px bar on both. The wrapper keeps
+		 * `rowCurrent` (it owns the leading edge, so it draws the bar) and the button
+		 * takes `rowCurrentGround` — the same ground and the same merged hover with no
+		 * second bar. No colour term moved, so the palette half of this pin is
+		 * unaffected: the pin is on the EXPRESSION because a reader can still un-mark
+		 * the row by dropping this element's ground, which is the defect it was written
+		 * for. The pinned text is the expression that carries the ground on this
+		 * element rather than the whole `className={cn(...)}` call, because the
+		 * formatter wraps that call across four lines — the same shape the settings
+		 * rail's pin uses, and for the same reason.
 		 */
 		what: "entity row current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}',
-		why: "the element the pointer lands on has to carry the ground as well as the wrapper: a child's background paints over its parent's, so without this the current entity row is repainted `elevated` by the pointer and is indistinguishable from a hovered one",
+		must: "staged && rowCurrentGround",
+		why: "the element the pointer lands on has to carry the ground as well as the wrapper: a child's background paints over its parent's, so without this the current entity row is repainted `elevated` by the pointer and is indistinguishable from a hovered one. It carries the ground HALF of the role rather than the whole one because the 2px `accent` bar belongs to the row's leading edge, which is the wrapper's box: the whole role on both elements is the two-bars defect the operator reported on this list",
 	},
 	{
 		/*
