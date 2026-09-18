@@ -478,7 +478,7 @@ export type DocumentWritePorts = {
  * implementation of the same gate whose signature was the round-4 harms' whole cause:
  * it wrote whatever text the caller passed, so a stale snapshot or another document's
  * buffer reached a file through it. `document-buffers.ts` is the one writer now, and
- * its gate reads the text from the buffer it owns. Nothing in `src/` called this; five
+ * its gate reads the text from the buffer it owns. Nothing in `src/` called this; four
  * tests did, and they are gone with it.
  */
 /**
