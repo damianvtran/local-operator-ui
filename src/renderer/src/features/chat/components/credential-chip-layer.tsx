@@ -148,8 +148,9 @@ export type CredentialChipLayerProps = {
 	 */
 	onClear: ((index: number) => void) | null;
 	/**
-	 * DESIGN-ROUND-8 SCRATCH: the compact rung, whose field is one type step
-	 * smaller than the wide one - the chip's own text has to follow it.
+	 * The compact rung, whose field is one type step smaller than the wide one - the
+	 * chip's own text has to follow it, because the box it covers is that field's line
+	 * box (design round 8, D20).
 	 */
 	small?: boolean;
 };

@@ -467,13 +467,18 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
      to `Credenti…`. `#1` with the count measures **126px**, which fits with 31px
      to spare, and the count keeps its unit because it is the half of the pair the
      operator cannot recover from anywhere else (`editor.py:523-540`).
-     **The box's own slack goes to the CONTROL, not between the facts** (design
-     round 1, D1): the box is 157.33px because the MARKER is 26 characters while
-     the chip's face is ~111px, and a count that took the slack parked 44px of
-     empty fill (28% of the box; 34px at the 440 rung) between `#1` and
-     `· 19 chars`, which read as two stranded clusters with an orphaned
-     leader-dot. The count now sits beside the ordinal and the void is a
-     deliberate gutter before the one element on the chip that is not a fact.
+     **The box's own slack is divided across the chip's gaps, not parked
+     anywhere** (design round 1, D1; round 8, D19): the box is 157.33px because the
+     MARKER is 26 characters while the chip's face is ~123px, and a count that took
+     the slack parked 44px of empty fill (28% of the box; 34px at the 440 rung)
+     between `#1` and `· 19 chars`, which read as two stranded clusters with an
+     orphaned leader-dot. The root is now `justify-between gap-1.5 px-3` — the app's
+     own chip step — so the slack lands in the gaps the chip actually has: three of
+     10.69 / 10.68 / 10.69 on the backed chip at the 1024 rung (9.05 / 9.04 / 9.04 at
+     440), and two of 22.03 / 22.01 on the unbacked one, which carries no control to
+     spread them towards. That wider pair is that register's own shape rather than a
+     residue of the old one, and re-grouping the items to tighten it would take the
+     backed chip's 10.7px band to about 20px.
      **The control is 16x16, and that number is a measured trade** (design round
      1, D2; UX round 1, U5). It was a bare 12x12 glyph — the smallest control in
      the composer and the only one whose click destroys a held secret, against the
