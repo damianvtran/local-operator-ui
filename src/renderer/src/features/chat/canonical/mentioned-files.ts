@@ -60,9 +60,10 @@
 import { KNOWN_EXTENSIONS } from "@features/chat/utils/file-kind";
 import {
 	API_PATH_PREFIXES,
+	ELLIPSIS_SEGMENT,
 	MAX_CANDIDATE_LENGTH,
 	MENTION_POLICY,
-	SHELL_METACHARACTERS,
+	PLACEHOLDER_MARKERS,
 	TRAILING_PUNCTUATION,
 	WHITESPACE,
 	normalizeCandidate,
@@ -194,8 +195,10 @@ function normalizePathValue(raw: string): string | null {
 	// command, a sentence), and treating a sentence as a path is how a panel
 	// fills with junk. The prose scanner handles those values instead.
 	if (WHITESPACE.test(candidate)) return null;
-	// A glob or a placeholder under a path key is still not a file.
-	if (SHELL_METACHARACTERS.test(candidate)) return null;
+	// A glob, a placeholder or an abbreviation under a path key is still not a
+	// file.
+	if (PLACEHOLDER_MARKERS.test(candidate)) return null;
+	if (ELLIPSIS_SEGMENT.test(candidate)) return null;
 	return candidate;
 }
 
