@@ -553,8 +553,12 @@ export const AgentsApi = {
 		_baseUrl: string,
 		agentId: string,
 	): Promise<CRUDResponse<{ agent_id: string }>> {
-		// Marketplace upload is a gated legacy control; a bare fetch 401s in the
-		// managed posture this app creates.
+		// Marketplace upload is a gated legacy control and NOTHING IN THIS TREE
+		// CALLS IT: the publish dialog moved onto the instruction-set ops, and the
+		// hook and the row-menu handler that used this are deleted. It is kept for
+		// the `legacy.agent.upload` contract op alone, so a build predating the
+		// standard still has its way in; a bare fetch 401s in the managed posture
+		// this app creates.
 		const response = await desktopControlResponse({
 			op: "legacy.agent.upload",
 			agentId,
