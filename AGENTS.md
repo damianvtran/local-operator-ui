@@ -270,6 +270,18 @@ treated the same way; a value the app cannot parse is a *typo*, keeps its
 `normal` fallback, and is reported, because a caller who reached for the mode is
 asking to be told rather than defaulted at.
 
+The `packaged` half cuts the other way for a RIG, and the shape rule is the part
+it blinds. A launch of a **staged `.app`** — an artifact smoke test, a signature
+or update rehearsal, anything that boots a built bundle out of `/tmp` — is
+`packaged === true`, which is the half that keeps a double-clicked app out of the
+assumption, so shape alone resolves it `normal` **however it is piped**. The
+switch signal is packaging-blind and still applies: a scratch `--user-data-dir`
+or a `--remote-debugging-port` resolves `headless` for a bundled launch exactly as
+it does for a checkout. So a staged-bundle rig passes one of those, or names the
+mode — `headless` for a run, `inactive` for the one capture that cannot render
+hidden (*Capturing the frame*) — and the bundle was staged to exercise the
+artifact, not to put it in front of the operator.
+
 The shape signal is read on **macOS and Linux only**. Windows is deliberately
 outside it: a Windows GUI-subsystem process takes its stdio through
 `AttachConsole` rather than an inherited handle, so `isTTY` there is not the
@@ -812,6 +824,54 @@ the reason it is not a substitute for the `browser` tool. Reach for it before
 writing a new rig — and read its limitations section before you present a frame
 from it as evidence for anything it cannot see (focus-dependent rendering, an
 embedded browser page, and backend-gated screens among them).
+
+When the thing being captured genuinely cannot render hidden — a native macOS
+panel or sheet, a compositor effect, a frame that exists only while a window is
+ordered front — `inactive` is the mode for it, as it is for a run somebody means
+to watch or click into and for focus-dependent rendering (*`headless` is a
+full-fidelity rendering path, not a degraded one* **above**). In every one of
+those cases it is **one self-contained command**: launch, capture, reap by exact
+pid before it returns. A visible window held across the steps of a run is
+indistinguishable, to the person whose screen it is on, from the leak this section
+exists to prevent — and the run's own `[window-mode]` line, which names the mode
+it resolved (`window mode inactive`), is not what they see.
+
+### Probes and carrier scripts are not the app
+
+A scratch script that boots Electron and constructs its own `BrowserWindow` — a
+mechanism probe, a carrier hosting a fragment of the app, a one-file reproduction
+— inherits **none** of the above. The mode is resolved by this app's main process,
+so a probe that never loads it has no guard to inherit, and a `show: true` in such
+a script is a window on the operator's screen with nothing in the app to stop it.
+This is not hypothetical. On 2026-09-18 a probe of this class swept five
+visibility configurations as **five processes** — each one launching Electron
+once, calling `showInactive()` once, and exiting — and left a window titled after
+the mechanism itself in front of the operator for the length of the sweep. Every
+launch was, in isolation, exactly the "one launch" this repository asks for; what
+made it noise was the MATRIX, and the app-side guard on `main` could not see any
+of it, because that is the one surface it does not reach.
+
+The rule for the class is therefore about the sweep as much as the launch:
+
+- **Measure hidden.** `win.isVisible()`, `BrowserWindow.getFocusedWindow()` and
+  `capturePage()` answer visibility questions without a window on screen — and for
+  a carrier that DOES load this app, so does its `[window-mode]` line, which a
+  bare probe has no equivalent of and must not be told to read. Do NOT reach for
+  `win.isFocused()` as the proof of anything — the measured warning under
+  *`headless` is a full-fidelity rendering path, not a degraded one* applies to
+  probes too.
+- **A sweep of N configurations is not N launches.** A matrix whose every cell
+  shows a window is the incident above. Bound the question to one launch where it
+  allows it; where a shown window is genuinely required per configuration, use
+  `showInactive()` rather than `show()`, reap by exact pid in the same command as
+  its capture, and **announce the count before you start** — a sweep that will put
+  up five windows is five windows on somebody's screen, not a detail discovered by
+  watching.
+- **Never sweep `show()`/`focus()` variants to find the one that reproduces.**
+  Visibility that is only announced and reaped is one thing; the focus-taking half
+  is another, and a matrix of THOSE is never acceptable whatever it measures,
+  because the interruption is the measurement's side effect rather than its
+  subject. If the question genuinely needs focus, measure it once.
 
 ### What already opens no window, so a rebase does not re-introduce one
 
