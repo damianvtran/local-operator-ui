@@ -1888,8 +1888,12 @@ export function substituteCredentials(
  * one-authority rule as the notices above: this string exists here, not inline
  * at the control, so the words that describe a credential's fate have one home.
  */
-export const clearedNotice = (key: string): string =>
-	`Removed ${key} from this message. Its value is gone — paste it again after /credential to reuse it.`;
+export const clearedNotice = (
+	key: string,
+	index: number,
+	undoCap: string,
+): string =>
+	`Removed ${key} (credential #${index}) from this message. Its value is gone — press ${undoCap} to put it back, or paste it again after /credential to reuse it.`;
 
 /**
  * The clear control's accessible name, per chip (design round 1, D4).
@@ -1926,13 +1930,25 @@ export const markerChipTitle = (index: number, chars: number): string =>
  *
  * The same words as {@link clearedNotice}, deliberately: the fix for U2 is that
  * the sentence must not be reachable ONLY through a toast that retires in a few
- * seconds, not that the two channels owe different copy. The composer's notice
+ * seconds, not that the two channels owe different copy.
+ *
+ * IT NAMES THE SHORTCUT AND THE ORDINAL NOW (UX round 3, U15/U16). The durable
+ * line used to say "paste it again" while the cheap path was the composer's own
+ * `Z`-key (U8) - so an operator who looked away for seven seconds never learned
+ * that the value could come straight back - and it named only the KEY, which
+ * appears on no chip on screen (the chip's face is `#N`; the name lives in its
+ * `title`), so the two channels could not be correlated. The key it names is
+ * `undoCap`, the same label the handler's own copy uses. The composer's notice
  * line is where every other credential-fate sentence already lives (armed,
  * masked, plaintext, not-stored), it sits at the operator's own focus, and it
  * stays up until the next edit — which is the lifetime a sentence about a
  * destroyed value should have.
  */
-export const clearedNoticeLine = (key: string): string => clearedNotice(key);
+export const clearedNoticeLine = (
+	key: string,
+	index: number,
+	undoCap: string,
+): string => clearedNotice(key, index, undoCap);
 
 /**
  * The undo's label, on the toast the clear raises (UX round 1, U2).
@@ -1978,7 +1994,14 @@ export type ComposerNoticeInput = {
 	/** Whether an armed capture sits at the caret's own line end. */
 	armed: boolean;
 	/** The reference a clear removed, while its sentence has not been retired. */
-	cleared: { key: string; stale: boolean } | null;
+	cleared: { key: string; index: number; stale: boolean } | null;
+	/**
+	 * The composer's own undo key for THIS platform (`lockedRunUndoCap`'s spelling),
+	 * passed in rather than derived here: this module is rendering-free by contract
+	 * (see its header), and the sentence has to name the key the handler actually
+	 * listens for.
+	 */
+	undoCap: string;
 };
 
 /**
@@ -2005,7 +2028,11 @@ export const noticeLineFor = (input: ComposerNoticeInput): string | null => {
 	if (input.cleared !== null) {
 		return input.cleared.stale
 			? clearedStaleNotice(input.cleared.key)
-			: clearedNoticeLine(input.cleared.key);
+			: clearedNoticeLine(
+					input.cleared.key,
+					input.cleared.index,
+					input.undoCap,
+				);
 	}
 	return null;
 };

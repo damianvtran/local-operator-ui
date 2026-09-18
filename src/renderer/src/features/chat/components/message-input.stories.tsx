@@ -268,6 +268,12 @@ const NONEMPTY: Message[] = [
 	{ id: "canonical", role: "system", timestamp: new Date(0) },
 ];
 
+/*
+ * `data-frame-label` is what lets a capture row correct this frame's caption when the
+ * row borrows a story for a state the story is not named for (design round 3, D11):
+ * the pixels of such a frame are right and the anchor was wrong, and only the caption
+ * tells a reader which state they are looking at.
+ */
 const Frame = ({
 	label,
 	children,
@@ -279,7 +285,12 @@ const Frame = ({
 		className={cn("flex flex-col gap-3 bg-canvas p-6")}
 		style={{ width: 1024 }}
 	>
-		<span className={cn("font-mono text-ink-dim text-mono-sm")}>{label}</span>
+		<span
+			data-frame-label=""
+			className={cn("font-mono text-ink-dim text-mono-sm")}
+		>
+			{label}
+		</span>
 		{children}
 	</div>
 );
@@ -752,7 +763,13 @@ const CREDENTIAL_CANARY = "sk-live-CANARY-4417";
 const ARMED_NOTICE = /armed — add a space/;
 const MASKED_NOTICE = /masked as you type/;
 const PLAINTEXT_NOTICE = /now PLAIN TEXT in the composer/;
-const CLEARED_NOTICE = /Removed LOP_SECRET_[A-Z0-9]+ from this message/;
+/*
+ * The cleared sentence as the copy authority writes it now: the key, the ordinal the
+ * chip's face carries, and the composer's own key as the way back (UX round 3, U15/U16).
+ * The ordinal is optional so this reads the same sentence whichever register raised it.
+ */
+const CLEARED_NOTICE =
+	/Removed LOP_SECRET_[A-Z0-9]+ \(credential #\d+\) from this message/;
 
 const holdShutter = () => {
 	document.documentElement.dataset.capturePending = "1";
@@ -1175,11 +1192,48 @@ export const CredentialPillScrolled: Story = {
 			);
 		}
 		/*
-		 * AND THE FOCUS GOES BACK IN THE BOX, so this story's committed frame stays the
-		 * state it is named for (the chip on its run while the field is scrolled) rather
-		 * than a focused control: the ring has its own two frames
-		 * (`credential-pill-focused` and its compact sibling).
+		 * AND THE SAME KEYSTROKE IN THE STATE THAT DISCRIMINATES (code review round 3,
+		 * R3-2). Everything above runs with the chip IN VIEW, which is the state in which
+		 * the round-2 defect cannot reproduce - with nothing for the browser to scroll INTO
+		 * view, the layer's own offset stays 0 even when it is the scroll container it used
+		 * to be, and the assertion is inert for the defect it was written for. The defect
+		 * lives in the state the round-2 reviewer measured: the field parked at its top,
+		 * the marker's run below the box.
+		 *
+		 * In that state: the layer draws NO chip for a run it clips away (round 3, R3-1),
+		 * and a real Tab from the field therefore cannot land on a control that is painted
+		 * nowhere - which is what makes the composer stop swallowing keystrokes and stop
+		 * clearing credentials off-screen.
 		 */
+		box.scrollTop = 0;
+		box.dispatchEvent(new Event("scroll"));
+		await settle();
+		if (canvasElement.querySelector("[data-credential-chips]")) {
+			throw new Error(
+				"a run the layer clips away still drew a chip, so its control is reachable while painted nowhere (round 3, R3-1)",
+			);
+		}
+		await userEvent.tab();
+		await settle();
+		const landedOn =
+			document.activeElement?.getAttribute?.("aria-label") ??
+			document.activeElement?.tagName ??
+			null;
+		if (
+			typeof landedOn === "string" &&
+			landedOn.startsWith("Remove credential")
+		) {
+			throw new Error(
+				`a Tab with the run out of view reached ${JSON.stringify(landedOn)}, a control painted nowhere (round 3, R3-2)`,
+			);
+		}
+		/*
+		 * AND BACK TO THE STATE THIS STORY IS NAMED FOR, focus in the box: the committed
+		 * frame shows the chip on its run while the field is scrolled, and the ring has its
+		 * own two frames (`credential-pill-focused` and its compact sibling).
+		 */
+		box.scrollTop = box.scrollHeight;
+		box.dispatchEvent(new Event("scroll"));
 		box.focus();
 		await settle();
 		releaseShutter();

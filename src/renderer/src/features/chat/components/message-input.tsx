@@ -235,6 +235,7 @@ import { completionFor } from "./slash-completion";
 import {
 	extensionFor,
 	lockedCommandNote,
+	lockedRunUndoCap,
 	pickArmsCommand,
 	pointerPickRuns,
 	reassembledNote,
@@ -1249,6 +1250,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const [clearedReference, setClearedReferenceState] = useState<{
 			key: string;
+			/** The composer-local ordinal the chip's face carries: what correlates the two channels (UX round 3, U16). */
+			index: number;
 			over: string;
 			/**
 			 * WHICH SENTENCE THIS IS (UX round 2, U7). `false` is the report of a
@@ -1260,11 +1263,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		} | null>(null);
 		const clearedReferenceRef = useRef<{
 			key: string;
+			index: number;
 			over: string;
 			stale: boolean;
 		} | null>(null);
 		const setClearedReference = useCallback(
-			(next: { key: string; over: string; stale: boolean } | null) => {
+			(
+				next: {
+					key: string;
+					index: number;
+					over: string;
+					stale: boolean;
+				} | null,
+			) => {
 				clearedReferenceRef.current = next;
 				setClearedReferenceState(next);
 			},
@@ -3616,6 +3627,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 				/*
+				 * THEN THE CLEAR'S UNDO (`handleClearedUndo`), which shares the key with the
+				 * locked run's below it and is asked first: see its own comment for why the
+				 * newer edit goes first and why the two are not an exclusion. It ignores the
+				 * keystroke when no clear is pending, which is what hands it on.
+				 */
+				if (handleClearedUndo(event)) {
+					event.preventDefault();
+					return;
+				}
+				/*
 				 * Then the locked run's undo, which is this composer's own key: the box the
 				 * user is looking at was written by a component, so the native undo has no
 				 * entry that restores it (UX round 1, U3 — measured: `Command+Z` left the box
@@ -3623,10 +3644,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * needs an order against the mentions list above; it sits here because it must
 				 * run before the Enter branch below.
 				 */
-				if (handleClearedUndo(event)) {
-					event.preventDefault();
-					return;
-				}
 				if (handleLockedRunUndo(event)) {
 					event.preventDefault();
 					return;
@@ -3966,6 +3983,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (!restored) {
 					setClearedReference({
 						key: slot.payload.key,
+						index: slot.index,
 						over: bufferRef.current,
 						stale: true,
 					});
@@ -3981,6 +3999,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				payloadsRef.current.set(slot.index, slot.payload);
 				if (pendingClearRef.current === slot) pendingClearRef.current = null;
+				/*
+				 * AND THE OFFER GOES WITH THE EDIT IT WAS HONOURED BY (UX round 3, U12). The
+				 * withdrawal effect only inspects the CURRENT slot and returns early on
+				 * `null`, so a restore that arrives on the composer's own `Cmd+Z` left the
+				 * toast standing - measured: the chip visibly back in the message while the
+				 * toast still offered `Undo` and, pressed, answered "cannot be put back".
+				 * The app's most trust-sensitive sentence was false in the state its own key
+				 * produces. Sonner only dismisses on its own action's click, so the success
+				 * path dismisses it here, by the id the raiser returned.
+				 */
+				if (slot.toastId !== null) dismissToast(slot.toastId);
 				applyCapture({
 					capture: syncCapture(
 						captureRef.current,
@@ -4025,10 +4054,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		/**
 		 * The clear on the composer's own undo key (UX round 2, U8), beside `#302`'s
-		 * locked-run undo and ahead of it in the chain: a clear is the more recent
-		 * destructive edit, and a locked run's record is retired by the edit that
-		 * followed it, so the two cannot both have something to put back. A `false`
-		 * here hands the keystroke on, exactly as `handleLockedRunUndo` does.
+		 * locked-run undo and ahead of it in the chain.
+		 *
+		 * WHY IT IS AHEAD, stated as what is true rather than as an exclusion (code
+		 * review round 3, R3-3): the two CAN both be live - a locked run's record is
+		 * retired on a textarea `onChange`, and a clear is a PROGRAMMATIC write, which
+		 * that rule explicitly does not fire on - so this sits first because the clear is
+		 * the more recent destructive edit and the key should undo the newer one first.
+		 * A second press then reaches `#302`'s handler and undoes the older edit, which
+		 * is the LIFO the composer's other undos use. A `false` here hands the keystroke
+		 * on, exactly as `handleLockedRunUndo` does.
 		 */
 		const handleClearedUndo = useCallback(
 			(event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
@@ -4072,6 +4107,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (previous) {
 					pendingClearRef.current = null;
 					payloadsRef.current.delete(previous.index);
+					/*
+					 * AND ITS TOAST (UX round 3, U13; code review round 3, R3-4). The
+					 * withdrawal effect only ever inspects the CURRENT slot, so retiring the
+					 * previous one here left a live-looking `Undo` on a removal the app can no
+					 * longer reverse - measured: two clears, one edit, and the older offer
+					 * still stood while pressing it refused. The offer must not outlive its
+					 * ability by either route, and this is the one site that knows the older
+					 * slot is going.
+					 */
+					if (previous.toastId !== null) dismissToast(previous.toastId);
 				}
 				const slot: PendingClear = {
 					index,
@@ -4092,6 +4137,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				});
 				setClearedReference({
 					key: payload.key,
+					index,
 					over: cleared.buffer,
 					stale: false,
 				});
@@ -4700,7 +4746,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					cleared:
 						clearedReference === null
 							? null
-							: { key: clearedReference.key, stale: clearedReference.stale },
+							: {
+									key: clearedReference.key,
+									index: clearedReference.index,
+									stale: clearedReference.stale,
+								},
+					/*
+					 * THE SHORTCUT'S OWN SPELLING, from the label the handler's copy uses
+					 * (UX round 3, U15): the durable sentence has to name the key this
+					 * platform actually listens for, and the platform is the composer's to
+					 * know, not the copy module's.
+					 */
+					undoCap: lockedRunUndoCap(platform === "darwin"),
 				});
 
 		const shortcutText = useMemo(() => {
