@@ -21,6 +21,13 @@
  * `features/browser/hooks/use-browser-chrome.ts`, for the same reason. That
  * copy imports this one now: a second spelling of one rule is how the two
  * surfaces start to disagree about what an IPC failure says.
+ *
+ * AND SO DOES THE PROJECTION STORE, which carried the third copy — a single
+ * `replace` rather than the loop below, so a NESTED envelope still reached the
+ * band wearing the wire's own `Error:` framing (review round 2, A-3). There is
+ * one spelling of this rule and it is this file's, which is why the store's own
+ * `IPC_ERROR_PREFIX` and `messageOf` were deleted rather than corrected in
+ * place.
  */
 export const IPC_ERROR_PREFIX = /^Error invoking remote method '[^']+':\s*/;
 

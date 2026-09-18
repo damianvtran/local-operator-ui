@@ -6,6 +6,7 @@ import { ShieldAlert } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 import type { ApprovalRequestInput } from "../model/approval-queue-model";
+import { sessionDisplayName } from "../model/tab-index-model";
 
 /**
  * One approval request, as the card that asks the question.
@@ -97,6 +98,11 @@ export interface BrowserConsentRequestProps {
  * A resolved conversation title when the session list knows the session, and the
  * bare id otherwise — the app's existing treatment for a session the user has not
  * named (`session.title || session.session_id`, the hand-over picker's own rule).
+ * THAT RULE IS NOW ONE FUNCTION — `sessionDisplayName` in `tab-index-model.ts` —
+ * because the grouped strip's conversation chips need the same answer (design R3),
+ * and a second copy of "a blank title is not a name" is how the two surfaces end up
+ * disagreeing about what a conversation is called. What is THIS function's own is
+ * the sentence around it.
  * A non-session requester gets a phrase rather than an internal id: `requester` is
  * an authority boundary, and a raw request id in front of a user is noise at best.
  */
@@ -117,12 +123,13 @@ export function requesterLabel(
 	options?: { short?: boolean },
 ): string {
 	if (!requesterSessionId) return "An agent";
-	const title = sessions.find(
-		(session) => session.session_id === requesterSessionId,
-	)?.title;
-	const name = title?.trim() || requesterSessionId;
+	const name = sessionDisplayName(requesterSessionId, sessions);
 	if (options?.short) return name;
-	if (title?.trim()) return `The agent in '${title.trim()}'`;
+	// The long form distinguishes a conversation the user NAMED from one they have
+	// not, which is the whole instruction the card is giving. `name` alone cannot:
+	// it is a title in one case and an id in the other, so the test is whether the
+	// rule fell back rather than whether a title exists.
+	if (name !== requesterSessionId) return `The agent in '${name}'`;
 	return `The agent in conversation ${requesterSessionId}`;
 }
 
