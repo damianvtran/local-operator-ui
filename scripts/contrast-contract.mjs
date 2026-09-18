@@ -499,6 +499,35 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * The second accent's chip — the `accent wash chip` row above, mirrored for
+		 * the `accentAlt` pair.
+		 *
+		 * It exists because the alt hue is spent on a WASH at its one shipping site
+		 * (`accentAltWash` in mermaid's categorical ramp), and a chip is the shape
+		 * in which a wash acquires a fill, an edge and a label — the same component
+		 * triple the accent's own chip asserts. `docs/branding.md` § 2's rule is
+		 * explicit: adding a component with its own fill and border means adding a
+		 * row, because green output about the rows above is not evidence about this
+		 * pair.
+		 *
+		 * The INK is `accentAlt`, which is the conservative choice and the useful
+		 * one: this is the pair that would render if the alt hue were ever given a
+		 * label, so asserting it here is what keeps a future label legal rather than
+		 * discovering it at 3:1. The alt role today paints NO text (the miniature's
+		 * marks are 1px-2.5px bars; mermaid's fills keep their `ink` labels), so this
+		 * row measures a pairing the system promises but does not yet paint — and it
+		 * is the reason `bg-accent-alt` may not become a text-bearing fill until an
+		 * `onAccentAlt` role exists, which `palette-contract.ts` states as the pair's
+		 * hard rule.
+		 */
+		name: "accent alt wash chip",
+		on: ["canvas", "surface"],
+		fill: "accentAltWash",
+		border: "accentAlt",
+		ink: "accentAlt",
+	},
+	{
+		/*
 		 * The composer's credential pill and mask span (`credential-overlay.tsx`).
 		 *
 		 * Its ink is `ink`, not a semantic: the pill paints NO VISIBLE TEXT — the
@@ -2346,6 +2375,13 @@ const REQUIRED_ROLES = [
 	"accentActive",
 	"accentWash",
 	"onAccent",
+	/* The second decorative hue and its wash. Required for the same reason every
+	   other role here is: a palette that omitted one would fall silently through
+	   to a Tailwind utility that resolves to nothing at all. Both are read by
+	   utilities now (`bg-accent-alt`, `bg-accent-alt-wash`), and `accentAltWash`
+	   is also the index-1 entry of mermaid's categorical ramp. */
+	"accentAlt",
+	"accentAltWash",
 	"chartBarHover",
 	"tokenCommand",
 	"success",
@@ -2501,6 +2537,14 @@ const COMMAND_TOKEN_PINNED = [
 	},
 ];
 const SEPARATION_FLOOR = 15;
+/*
+ * The second accent's own chroma floor, and the reason it is a floor rather than
+ * a preference: every separation assertion below can be satisfied by draining a
+ * hue toward the ink, which is how a second accent becomes a second grey. It is
+ * the same failure `highlight` recorded on the lightness axis - a step that buys
+ * its ΔE00 on the wrong axis - so the axis is asserted, not just the distance.
+ */
+const ALT_ACCENT_CHROMA_FLOOR = 15;
 /* The ink step's floor is the comment floor: see `INK_STEP_PINNED` for why it is
    the same number and for why five palettes are recorded below it instead of
    being moved. Declared here rather than beside the list because `const` does
@@ -3308,6 +3352,110 @@ for (const { id, palette: p } of palettes) {
 					`${id}: \`${a}\` ${p[a]} and \`${b}\` ${p[b]} are too close to tell apart (ΔE00 ${r2(got)}, need ${SEPARATION_FLOOR}) — a semantic a reader cannot distinguish from another semantic is not a semantic`,
 				);
 			}
+		}
+	}
+
+	/*
+	 * The second accent: the two accents must be two accents, and the decorative
+	 * hue must never be mistakable for a semantic or for a grey.
+	 *
+	 * One argument in four assertions, and the argument is why `accentAlt` was
+	 * worth adding rather than a muted copy of the first hue:
+	 *
+	 * - ΔE00 15 from `accent` is this file's own "difference of category, not of
+	 *   shade" number (`SEPARATION_FLOOR`), and here it is asked at SMALL sizes - a
+	 *   1px bar in a 40px miniature, a 6px mark in a diagram - so recall is the
+	 *   question rather than side-by-side comparison. It is not a wall: a hue
+	 *   rotation clears it on 58 of the 59 palettes, and the 59th (`obsidian`)
+	 *   resolves once the chroma is searched upward rather than downward.
+	 * - ΔE00 15 from `success`/`warning`/`danger` is the one that costs a reader
+	 *   something real: a decorative mark read as "something broke". It is
+	 *   deliberately the same constant rather than a harder one - the weakest
+	 *   legitimate pair in the tree is `dune`'s `danger`/`info` at 18.4, and a new
+	 *   role asked to clear more than the semantics clear against each other is a
+	 *   gate that fails by design.
+	 * - `info` is EXCLUDED from that family and given the reduced
+	 *   `SYNTAX_COMMENT_FLOOR` (8) instead, because `info` is the cool
+	 *   counterweight the port mapped the TUI's `signal` onto: on the palettes
+	 *   whose second hue is in that family the two are the same colour by
+	 *   construction (`catppuccinLatte` measures 6.5, `radient` 5.9), and 15 would
+	 *   fail them for being what they are rather than for a defect.
+	 * - `ALT_ACCENT_CHROMA_FLOOR` (15) asserts the AXIS: all three floors above
+	 *   can be satisfied by draining the hue toward the ink, which turns the second
+	 *   accent into a second grey. See the constant.
+	 *
+	 * The text floor is asserted below, on the three grounds its sites paint it on.
+	 * It is NOT the `AS_TEXT` loop's six: the alt hue is never drawn on a dialog's
+	 * `elevated`, on the selection wash or on the current row, and asserting it
+	 * there would demand 28 palette values this change does not need - measured,
+	 * `monokai`'s alt reads 3.95:1 on `accentWash` and `oneDark`'s 3.78:1 on
+	 * `elevated`. The rule that keeps it honest is the role's own: no text is
+	 * painted on `accentAlt`, and none of those pairs can arise.
+	 */
+	if (isHex(p.accentAlt)) {
+		if (isHex(p.accent)) {
+			assertions++;
+			const got = deltaE(p.accentAlt, p.accent);
+			if (got < SEPARATION_FLOOR) {
+				fail(
+					`${id}: the second accent \`accentAlt\` ${p.accentAlt} is ΔE00 ${r2(got)} from \`accent\` ${p.accent} (need ${SEPARATION_FLOOR}) — two accents have to be two accents at the sizes this one is drawn at, and a value that buys its separation by darkening is the same hue at another weight rather than a second hue`,
+				);
+			}
+		}
+		for (const semantic of ["success", "warning", "danger"]) {
+			if (!isHex(p[semantic])) continue;
+			assertions++;
+			const got = deltaE(p.accentAlt, p[semantic]);
+			if (got < SEPARATION_FLOOR) {
+				fail(
+					`${id}: \`accentAlt\` ${p.accentAlt} is ΔE00 ${r2(got)} from \`${semantic}\` ${p[semantic]} (need ${SEPARATION_FLOOR}) — a decorative mark a reader can mistake for "${semantic === "danger" ? "something broke" : semantic}" costs them something real, so the palette moves the hue rather than the assertion`,
+				);
+			}
+		}
+		if (isHex(p.info)) {
+			assertions++;
+			const got = deltaE(p.accentAlt, p.info);
+			if (got < SYNTAX_COMMENT_FLOOR) {
+				fail(
+					`${id}: \`accentAlt\` ${p.accentAlt} is ΔE00 ${r2(got)} from \`info\` ${p.info} (need ${SYNTAX_COMMENT_FLOOR}) — \`info\` is the family the port mapped the TUI's \`signal\` onto, so the floor here is the reduced one and not ${SEPARATION_FLOOR}; below it the two take the same name`,
+				);
+			}
+		}
+		const [, acA, acB] = toLab(p.accentAlt);
+		const chroma = Math.hypot(acA, acB);
+		assertions++;
+		if (chroma < ALT_ACCENT_CHROMA_FLOOR) {
+			fail(
+				`${id}: \`accentAlt\` ${p.accentAlt} is C* ${r2(chroma)} (need ${ALT_ACCENT_CHROMA_FLOOR}) — a second accent drained toward the ink passes every separation above and stops being a hue, which is the one way this role fails while the gate stays green`,
+			);
+		}
+		/* The three grounds its own sites paint it on. */
+		for (const g of ["canvas", "surface", "sunken"]) {
+			assertPair(id, p, "accentAlt", g, FLOOR.text, "second accent as text");
+		}
+	}
+
+	/*
+	 * And the two washes may sit adjacent in one ramp.
+	 *
+	 * `accentAltWash` is the index-1 entry of mermaid's categorical cycle, so it
+	 * is painted directly beside `accentWash`. The floor is the file's field floor
+	 * (2.0) and NOT the 4 or 8 a line and a token take: measured on the tree's own
+	 * wash pairs, cross-hue washes run as low as 1.18 (`catppuccinFrappe`'s
+	 * `accentWash`/`dangerWash`), so a floor of 8 would fail pairs that ship today.
+	 * Where a palette genuinely cannot reach it - the wash axis is where
+	 * near-neutral palettes run out of chroma - the pair is pinned in `EXCEPTIONS`
+	 * with its measured ΔE00 and a reason, which is the contract's own mechanism
+	 * for an accepted sub-floor pair and is not a mute: moving the token breaks the
+	 * pin. Tightest measured today: `rosePine` at 2.05.
+	 */
+	if (isHex(p.accentAltWash) && isHex(p.accentWash)) {
+		assertions++;
+		const got = deltaE(p.accentAltWash, p.accentWash);
+		if (got < FIELD_SEPARATION_FLOOR) {
+			fail(
+				`${id}: \`accentAltWash\` ${p.accentAltWash} is ΔE00 ${r2(got)} from \`accentWash\` ${p.accentWash} (need ${FIELD_SEPARATION_FLOOR}) — the two washes sit adjacent in mermaid's categorical ramp, so a step the reader cannot see is not a step`,
+			);
 		}
 	}
 
