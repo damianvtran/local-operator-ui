@@ -1394,9 +1394,14 @@ test("every python-running runCommand call site in the update service passes the
 	);
 
 	// Asserted rather than assumed, so a reorganisation cannot make this pass by
-	// finding nothing: the probe, the pip upgrade and the global install's update
-	// child are the three that exist, beside `codesign` and the installer list
-	// probe below.
+	// finding nothing: the probe, the pip install, the global install's update child
+	// and the update path's own `python -m venv` are the ones that run python, beside
+	// `codesign` and the installer list probe below.
+	/*
+	 * FIVE, not six: the global install's update child LEFT this inventory when this
+	 * branch moved it to `runInOwnProcessGroup` - the group stop is that module's
+	 * whole point - so it is asserted by name below, where this scan cannot see it.
+	 */
 	assert.equal(
 		calls.length,
 		5,
@@ -1422,10 +1427,54 @@ test("every python-running runCommand call site in the update service passes the
 		/env:\s*this\.pythonSpawnEnv\(\)/,
 		`the installer list probe must pass the guarded environment: ${probeCalls[0].text.replace(/\s+/g, " ")}`,
 	);
+	/*
+	 * THE SIXTH RUNS PYTHON WITH A COMMAND THE TEXT TEST CANNOT CLASSIFY, exactly
+	 * like the probe above and for the same structural reason: `python -m venv` is
+	 * handed the interpreter by `publishGeneration`, which is the only thing that
+	 * knows the managed runtime it has just resolved. It is the app-owned update
+	 * path creating the environment it will smoke - so it reaches the same runtime as
+	 * everything else here, and it carries the same guard for the same reason.
+	 */
+	const venvCalls = calls.filter(({ text }) => /"-m",\s*"venv"/.test(text));
+	assert.equal(
+		venvCalls.length,
+		1,
+		`expected the update path's one environment-creating runCommand call site, found ${venvCalls.length}`,
+	);
+	assert.match(
+		venvCalls[0].text,
+		/env:\s*this\.pythonSpawnEnv\(\)/,
+		`the update path's environment creation must pass the guarded environment: ${venvCalls[0].text.replace(/\s+/g, " ")}`,
+	);
+	/*
+	 * The global install's own update child, which is a Python process this app
+	 * still starts and still responsible for: it runs through `runInOwnProcessGroup`
+	 * so an expired budget can stop the uv/pipx/pip the front end starts, and it
+	 * carries the same guard plus the ONE addition it needs - the installer PATH its
+	 * own lookup reads. Asserted here because the `runCommand` inventory above can no
+	 * longer reach it.
+	 */
+	/*
+	 * THE INDEX IS ASSERTED, not sliced blind (review round 9, N1). `indexOf` returns -1 on a
+	 * miss, and `slice(-1)` then yields the file's LAST CHARACTER - so the old `length > 0`
+	 * check passed on exactly the case it was written for, and the regex below only failed by
+	 * the accident of that character not matching. A miss has to fail here, by name.
+	 */
+	const runnerAt = source.indexOf("runInOwnProcessGroup({");
+	assert.ok(
+		runnerAt >= 0,
+		"the update child is not spawned by name: no `runInOwnProcessGroup({` call site in the update service, so this guard has nothing to read",
+	);
+	const runnerCall = source.slice(runnerAt);
+	assert.match(
+		runnerCall,
+		/env:\s*\{\s*\.\.\.this\.pythonSpawnEnv\(\),\s*PATH:\s*updatePath\s*\}/,
+		"the global install's update child must pass the guarded environment plus the installer PATH",
+	);
 	assert.equal(
 		pythonCalls.length,
-		3,
-		`expected three python-running call sites, found ${pythonCalls.length}`,
+		2,
+		`expected two python-running call sites, found ${pythonCalls.length}`,
 	);
 	for (const { line, text } of pythonCalls) {
 		/*
@@ -2030,6 +2079,19 @@ function passThrough(file, name, index, why) {
  * interpreter here" after the command under it changed.
  */
 const SPAWN_SITES = [
+	runsCommand(
+		"src/main/install-group-run.ts",
+		"spawnSync",
+		1,
+		/"ps"/,
+		"reads the group leader's start stamp, so a recycled pid cannot be mistaken for the installer this app started; `ps` is a system tool, not an interpreter",
+	),
+	passThrough(
+		"src/main/install-group-run.ts",
+		"spawn",
+		1,
+		"the process-group runner's child - the install's own updater. Its environment is deliberately the CALLER's, so the guard is asserted where the environment is built: `update-service.ts`'s run site must pass `{ ...this.pythonSpawnEnv(), PATH: updatePath }`, which the update service's own case checks by name.",
+	),
 	runsPython(
 		"src/main/backend/managed-python.ts",
 		"spawn",

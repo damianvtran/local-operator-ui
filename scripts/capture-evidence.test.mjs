@@ -155,7 +155,7 @@ test("the predicate the page runs is the predicate this suite pins", () => {
  * `sweepStaleProfiles` reaps abandoned Chrome profiles out of the SHARED system
  * temp directory, so the only thing between it and another process's directory
  * is its own name test. That test used to be `startsWith("lo-evidence-")`, and
- * `evidence-manifest.test.mjs` builds its synthetic evidence tree in that same
+ * `evidence-manifest.test.mjs` built its synthetic evidence tree in that same
  * directory as `mkdtempSync(join(tmpdir(), "lo-evidence-manifest-"))` - so a
  * capture running at the same time deleted a LIVE tree out from under a test
  * that was walking it. The mechanism is worth stating, because no reading of
@@ -172,6 +172,17 @@ test("the predicate the page runs is the predicate this suite pins", () => {
  * a fix that holds only the first is a sweep that silently stopped sweeping: an
  * abandoned profile is still reaped, and a directory whose name is not a profile
  * is not deleted.
+ *
+ * BOTH SPELLINGS ARE PINNED, and that is the half of the repair that lives on
+ * the other side of the collision. That fixture has since moved OUT of this
+ * namespace - it is `lop-evidence-manifest-`, outside the profile prefix - and
+ * each of its cells now builds and removes its own tree, so no name test is the
+ * only thing between the sweep and a live tree any more. The RULE still has to
+ * answer for the old spelling, because a lane running the pre-fix sweep deleted
+ * the tree by it on a box where several checkouts run at once, and it is the
+ * fixture's name that keeps this rule from reaching the fixture again: if the
+ * prefix is ever widened back, both lines go red here rather than intermittently
+ * in Desktop Tests.
  */
 
 /** A pid that is certainly not running: a child that exited and was reaped. */
@@ -190,8 +201,12 @@ after(() => {
 test("the profile-name rule answers for the profile shape and nothing else", () => {
 	assert.equal(profileOwnerPid("lo-evidence-4242"), 4242);
 	assert.equal(profileOwnerPid("lo-evidence-1"), 1);
-	// The name that made this a defect: a sibling test's live scratch tree.
+	// The name that made this a defect: a sibling test's LIVE scratch tree, under
+	// the spelling it carried when a concurrent capture reaped it mid-walk.
 	assert.equal(profileOwnerPid("lo-evidence-manifest-uexKDI"), null);
+	// The same fixture's CURRENT name, which is the spelling that has to stay out
+	// of reach now that its tree is built per case.
+	assert.equal(profileOwnerPid("lop-evidence-manifest-uexKDI"), null);
 	/*
 	 * Suffix shapes that are not a pid. Every one of these reached `process.kill`
 	 * before this rule existed, and every throw it produced was read as
@@ -231,6 +246,21 @@ test("the sweep takes the abandoned profile and leaves the rest of the temp dire
 	writeFileSync(siblingFrame, "a live tree");
 
 	/*
+	 * The same fixture's CURRENT spelling, which is the one the sweep would have
+	 * to reach to delete a live tree today. Both are here because the coupling
+	 * this file guards is with a name, and a name that moves is exactly when a
+	 * rule stops being pinned to it.
+	 */
+	const currentSibling = join(root, "lop-evidence-manifest-uexKDI");
+	const currentSiblingFrame = join(
+		currentSibling,
+		"swept-story",
+		"localOperatorDark.webp",
+	);
+	mkdirSync(join(currentSibling, "swept-story"), { recursive: true });
+	writeFileSync(currentSiblingFrame, "a live tree");
+
+	/*
 	 * A third name that is not a profile, so the rule is pinned as a shape rather
 	 * than as "the manifest one is special".
 	 */
@@ -268,6 +298,10 @@ sweepStaleProfiles();`;
 	assert.ok(
 		existsSync(siblingFrame),
 		"a directory that is not a profile is not the sweep's to delete",
+	);
+	assert.ok(
+		existsSync(currentSiblingFrame),
+		"the fixture's current spelling is not the sweep's to delete either",
 	);
 	assert.ok(existsSync(other));
 	assert.ok(existsSync(root));

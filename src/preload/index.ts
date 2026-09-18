@@ -342,6 +342,14 @@ const api = {
 				 * false (QA round 3, Q3-1).
 				 */
 				releaseRead?: boolean;
+				/**
+				 * Whether the INSTALL this check read is the app's own environment.
+				 *
+				 * The second ownership reading, and the one the skew panel's control needs:
+				 * `restartable` is true on a global install too, where the press behind that
+				 * control runs the install's own updater rather than a restart (design D5).
+				 */
+				appOwnedEnvironment?: boolean;
 			}) => void,
 		) => {
 			const handler = (_event, info) => callback(info);
@@ -367,7 +375,20 @@ const api = {
 			};
 		},
 		onBackendUpdateProgress: (
-			callback: (progress: { phase: "installing" | "restarting" }) => void,
+			callback: (progress: {
+				phase: "installing" | "restarting";
+				/**
+				 * True when the running attempt is the checkout REBUILD rather than the
+				 * release path. The two promise different things while they run - the
+				 * release path installs under generations, a rebuild rewrites the install
+				 * in place - so the panel cannot write one sentence for both (review
+				 * round 3, U3). It rides the phase rather than a second channel because
+				 * it is a property of the run the phase describes, and it must not be
+				 * guessed from the offer, which has been dismissed by the time the run is
+				 * minutes old.
+				 */
+				sourceRebuild?: boolean;
+			}) => void,
 		) => {
 			const handler = (_event, progress) => callback(progress);
 			ipcRenderer.on("backend-update-progress", handler);

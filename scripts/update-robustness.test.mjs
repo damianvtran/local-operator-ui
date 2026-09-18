@@ -9,6 +9,7 @@ import {
 	readFileSync,
 	readdirSync,
 	realpathSync,
+	renameSync,
 	rmSync,
 	rmdirSync,
 	statSync,
@@ -2859,7 +2860,7 @@ test("a global install is never pip'd into, and names its own updater", () => {
 	assert.equal(sourceBuilt.canManageUpdate, false);
 	assert.equal(sourceBuilt.updateCommand, "lop update");
 	assert.equal(sourceBuilt.sourceBuild, true);
-	assert.match(sourceBuilt.detail, /installs the published release over it/);
+	assert.match(sourceBuilt.detail, /install the published release over it/);
 
 	// The remedy is the install's own front end in BOTH layouts. `lop-update` is
 	// the release owner's out-of-tree script and `uv tool upgrade local-operator`
@@ -4760,9 +4761,29 @@ test("a version read that never answers is killed, not left running", () => {
  * Returns the module and the directory it was written to. The import has to run
  * from a real path rather than a `data:` URL, because the Electron fixture needs
  * an `import.meta.url` that `createRequire` can resolve.
+ *
+ * `managedPython` replaces `src/main/backend/managed-python` in the graph, and it
+ * exists for the app-owned cases (R5): that arm's whole subject is what the service
+ * does AROUND `updateManagedPython` - the phase it announces, whether it stops
+ * anything first, the restart decision, and the payload it reports - and every one
+ * of those is unobservable from outside the process unless the publish can be
+ * scripted. The fixture re-exports the shipped module, so a case that overrides one
+ * function still runs the rest of the real one, and the override is what makes the
+ * ordering assertable without a real pip install.
  */
-const loadUpdateServiceModule = async () => {
-	const fixture = (contents) => ({ contents, loader: "js" });
+const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
+	/*
+	 * `resolveDir` is set on every fixture module rather than only on the one that
+	 * needs it: a virtual module has no directory of its own, so esbuild refuses to
+	 * resolve ANY specifier inside it, including the absolute path the
+	 * managed-python fixture re-exports the shipped module from. The other fixtures
+	 * import nothing, so the field is inert for them.
+	 */
+	const fixture = (contents) => ({
+		contents,
+		loader: "js",
+		resolveDir: process.cwd(),
+	});
 	const bundle = await build({
 		stdin: {
 			/*
@@ -4793,7 +4814,16 @@ const loadUpdateServiceModule = async () => {
 						{ filter: /^(electron|electron-updater|electron-log)$/ },
 						(args) => ({ path: args.path, namespace: "fixture" }),
 					);
+					if (managedPython) {
+						builder.onResolve({ filter: /backend\/managed-python$/ }, () => ({
+							path: "managed-python-fixture",
+							namespace: "fixture",
+						}));
+					}
 					builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => {
+						if (args.path === "managed-python-fixture") {
+							return fixture(managedPython);
+						}
 						if (args.path === "electron") {
 							return fixture(`
 								const paths = globalThis.__loTestPaths;
@@ -6985,6 +7015,17 @@ test("the check follows the install, and names the running backend beside it", a
 	 * numbers. The renderer picks between them from this flag.
 	 */
 	assert.equal(notAvailable.payload.restartable, true);
+	/*
+	 * AND WHOSE INSTALL A PRESS WOULD MOVE, which is a different question (design
+	 * D5). This fixture drives GLOBAL_INSTALL: the app supervises the daemon (so
+	 * `restartable` is true) while the install belongs to a uv tool or pipx, which
+	 * is exactly the machine where the skew panel's `Restart the server` press would
+	 * run the install's own updater - or land on the by-hand panel - rather than the
+	 * restart its label names. The renderer gates the control on this reading, so
+	 * the false arm is asserted here and the app-owned arm is asserted on the
+	 * attempt's own completion below.
+	 */
+	assert.equal(notAvailable.payload.appOwnedEnvironment, false);
 });
 
 /**
@@ -7535,6 +7576,38 @@ test("the server channel's rule names its four states from the readings", async 
  * `runGate` lets a case hold the installer open, which is how the in-flight guard
  * and the mid-attempt marker are driven.
  */
+/*
+ * A synthetic install as `readInstallIdentity` sees one: a console script under `bin`,
+ * a `pyvenv.cfg` so the prefix is recognised as a venv, and a dist-info whose DIRECTORY
+ * NAME carries the version - the same thing `importlib.metadata` reads on the Python
+ * side, which is why no interpreter is involved.
+ */
+const makeInstall = (root, version) => {
+	mkdirSync(join(root, "bin"), { recursive: true });
+	writeFileSync(
+		join(root, "bin", "local-operator"),
+		`#!/bin/sh\nexec ${join(root, "bin", "python")} -m local_operator \"$@\"\n`,
+		{ mode: 0o755 },
+	);
+	writeFileSync(join(root, "pyvenv.cfg"), "home = /usr/bin\n");
+	const site = join(root, "lib", "python3.13", "site-packages");
+	mkdirSync(site, { recursive: true });
+	const distInfo = join(site, `local_operator-${version}.dist-info`);
+	mkdirSync(distInfo, { recursive: true });
+	writeFileSync(
+		join(distInfo, "METADATA"),
+		`Name: local-operator\nVersion: ${version}\n`,
+	);
+	return distInfo;
+};
+const moveInstall = (root, from, to) => {
+	const site = join(root, "lib", "python3.13", "site-packages");
+	renameSync(
+		join(site, `local_operator-${from}.dist-info`),
+		join(site, `local_operator-${to}.dist-info`),
+	);
+};
+
 const driveGlobalUpdate = async ({
 	before = "0.55.10",
 	after = "0.56.0",
@@ -7543,6 +7616,25 @@ const driveGlobalUpdate = async ({
 	target = "0.56.0",
 	external = false,
 	daemonReports = null,
+	/*
+	 * The serving install's root, when the case needs `/health` to name a DIFFERENT
+	 * install than the shim. `null` is every other case in this file: the server does
+	 * not name its root, so the plan's own subject stands (review round 5, Q-1).
+	 */
+	servingPrefix = null,
+	/*
+	 * The shim the app resolved, when the case needs it to be a real file on disk
+	 * rather than the fixture's synthetic path: a case that drives the SHIPPED evidence
+	 * reads has to point them at a tree that exists (review round 6, M1).
+	 */
+	shimPath = "/synthetic/bin/local-operator",
+	/*
+	 * Leave `readGlobalInstallVersion` as the shipped one, so the verdict is computed from
+	 * real files under real prefixes instead of from the scripted readings. This is the
+	 * difference that makes the round-6 defect visible at all: the stub answers whatever the
+	 * case says, so a press that verified the wrong install could not be caught.
+	 */
+	realEvidenceReads = false,
 	restartOk = true,
 	runGate = null,
 	/*
@@ -7566,7 +7658,13 @@ const driveGlobalUpdate = async ({
 	// which this fixture pins to its own temp directory.
 	const markerPath = join(userData, "pending-server-update.json");
 	const sent = [];
-	const calls = { installers: [], restarts: 0, starts: 0 };
+	const calls = {
+		installers: [],
+		/** The budget each reach for an installer was given, in the order taken. */
+		budgets: [],
+		restarts: 0,
+		starts: 0,
+	};
 	const backend = {
 		getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
 		getBackendUrl: () => "http://127.0.0.1:9",
@@ -7634,15 +7732,31 @@ const driveGlobalUpdate = async ({
 			sourceBuild: false,
 			installedInstallVersion: before,
 		});
-		updateService.resolveLocalOperatorPath = () =>
-			"/synthetic/bin/local-operator";
+		updateService.resolveLocalOperatorPath = () => shimPath;
 		// The pre-run read and the post-run read, in the order the attempt takes
 		// them; anything after those repeats the last one.
 		const readings = [before, after];
-		updateService.readGlobalInstallVersion = () =>
-			readings.length > 1 ? readings.shift() : after;
-		updateService.runGlobalUpdate = async (consolePath) => {
-			calls.installers.push(consolePath);
+		if (!realEvidenceReads) {
+			/*
+			 * The scripted reading, for the cases that are about what the service does with a
+			 * version rather than about which install it came from: it ignores the install the
+			 * caller names, deliberately - the read is now a REQUIRED argument (`installPath`),
+			 * and the cases that need the shipped read use `realEvidenceReads` instead.
+			 */
+			updateService.readInstallVersionAt = () =>
+				readings.length > 1 ? readings.shift() : after;
+		}
+		/*
+		 * The command the attempt reaches for, recorded by its PATH rather than by the
+		 * whole descriptor: the service hands `runGlobalUpdate` a `{ path, args }`
+		 * pair, because a managed update is not always the entry point (`<console
+		 * path> update`) any more - the source-build route runs `lop-update`, which
+		 * takes no `update` argument. What this harness is asserting is unchanged:
+		 * which install's own tool was reached for.
+		 */
+		updateService.runGlobalUpdate = async (command, budgetMs) => {
+			calls.installers.push(command.path);
+			calls.budgets.push(budgetMs);
 			if (runGate) await runGate({ markerPath });
 			return {
 				exitCode,
@@ -7652,7 +7766,7 @@ const driveGlobalUpdate = async ({
 						? ""
 						: "error: Failed to install: the index is unreachable\n\n  Caused by: network unreachable",
 				ran,
-				command: consolePath,
+				command: command.path,
 			};
 		};
 		/*
@@ -7668,7 +7782,7 @@ const driveGlobalUpdate = async ({
 		 */
 		updateService.readRunningBackend = async () => ({
 			version: daemonReports,
-			prefix: null,
+			prefix: servingPrefix,
 			installKind: null,
 		});
 		if (stubWait) {
@@ -7708,6 +7822,14 @@ test("the offer carries the reading that decides the sentence it renders", async
 		);
 		assert.ok(offer, JSON.stringify(owned.sent.map((c) => c.channel)));
 		assert.equal(offer.payload.restartable, true);
+		/*
+		 * `restartable` true and `appOwnedEnvironment` false is the pair this
+		 * fixture's own mode produces, and it is the whole of design D5: the app
+		 * supervises a daemon whose INSTALL is a uv tool or pipx one, so the panel may
+		 * describe what happens to the daemon but must not offer the press that only
+		 * the app-owned arm performs as a restart.
+		 */
+		assert.equal(offer.payload.appOwnedEnvironment, false);
 	} finally {
 		owned.dispose();
 	}
@@ -7990,6 +8112,7 @@ test("an attempt that landed while no app was watching is reported once, on the 
 				before: "0.55.10",
 				target: "0.56.0",
 				startedAt: new Date().toISOString(),
+				installPath: run.updateService.resolveLocalOperatorPath(),
 			})}\n`,
 			"utf8",
 		);
@@ -7999,7 +8122,7 @@ test("an attempt that landed while no app was watching is reported once, on the 
 		 * and the published release is the one that landed - so the check has nothing
 		 * to offer and only this report can say anything about what happened.
 		 */
-		run.updateService.readGlobalInstallVersion = () => "0.56.0";
+		run.updateService.readInstallVersionAt = () => "0.56.0";
 		run.updateService.getInstalledBackendVersion = async () => "0.55.10";
 		run.updateService.getLatestPypiVersion = async () => "0.56.0";
 		await run.updateService.checkForBackendUpdates(false);
@@ -10702,4 +10825,1368 @@ test("an unpackaged instance leaves the packaged app's install state alone", asy
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
 	}
+});
+
+/*
+ * ---- the APP-OWNED arm's own orchestration (review R5) ---------------------
+ *
+ * What had no case at all: `runAppOwnedUpdateAttempt` (the publish-then-restart
+ * sequence this change adds) and `installEnvironmentInto` beneath it. The module
+ * under them (`managed-python.test.mjs`) covers publish/pointer retention, and the
+ * renderer's suites cover what the panel does with a payload - but nothing drove
+ * the service's own decisions, so the ordering this arm leans on (publish, then
+ * restart; nothing stopped before the write), the phase it announces, the space it
+ * requires and the payload it reports on a restart that did not take were all
+ * unasserted. That is review R5, and it is also why the CI gap it names matters:
+ * `managed-python.test.mjs` is macOS-gated while Desktop Tests runs ubuntu, so the
+ * cases below are deliberately free of the seed, pip and the filesystem - the
+ * publish is scripted at the module boundary, which is the boundary the service
+ * actually talks to.
+ */
+
+/**
+ * A scripted `src/main/backend/managed-python`, re-exporting the shipped module.
+ *
+ * The three functions the app-owned arm uses are overridden and every other export
+ * is the real one (an explicit local export shadows `export *`), so a case still
+ * exercises the shipped code everywhere it does not name a stub.
+ */
+const managedPythonFixture = (realModulePath) => `
+export * from ${JSON.stringify(realModulePath)};
+export const publishedBackendVersion = () => globalThis.__loManagedPublished();
+export const managedPythonRoot = () => globalThis.__loManagedRoot;
+export const updateManagedPython = async (options, install, decision) =>
+	globalThis.__loManagedUpdate({ options, install, decision });
+`;
+
+/**
+ * A SYNTHETIC INTERPRETER for the app-owned publish, written into a scratch
+ * directory of this case's own.
+ *
+ * Review R6 asked for the failing case to be driven through
+ * `installEnvironmentInto`'s own pip branch rather than a hand-written error
+ * string, and this is the smallest thing that does it: a shell script that answers
+ * the `-m venv` step the way a working interpreter would (creating the new
+ * environment's `bin/python` as a copy of itself) and then fails every later
+ * invocation - the pip install, and the `pip show` read-back - with the machine's
+ * own words. The shipped code starts it, captures its output and reports it, so the
+ * text the assertions match on is the child's rather than the fixture's.
+ *
+ * WHY A PILOT RATHER THAN A REAL PIP: this case is about what the app does with a
+ * failure, not about pip, and the real path needs ~450 MB of free space and a wheel
+ * closure. The interpreter here is not a stub of the app - the app runs it for real.
+ */
+const writeInstallerPilot = ({ pipFailure = null, venvFailure = null }) => {
+	const dir = mkdtempSync(join(tmpdir(), "lo-installer-pilot-"));
+	const interpreter = join(dir, "python");
+	/*
+	 * TWO ARMS, because review R6 found the same gap on both failing steps of the
+	 * publish: `venvFailure` makes the FIRST step fail (nothing is created), while
+	 * `pipFailure` is the step that follows a successful creation - the ~100 MB
+	 * environment and the wheel closure, which is where a disk that fills mid-update
+	 * is most often met. Both write the machine's words to stderr and exit non-zero,
+	 * which is what a real interpreter does.
+	 */
+	const script = venvFailure
+		? `#!/bin/sh
+cat >&2 <<'LO_PILOT_VENV_FAILURE'
+${venvFailure}
+LO_PILOT_VENV_FAILURE
+exit 1
+`
+		: `#!/bin/sh
+# A synthetic interpreter: venv creation succeeds (the environment's interpreter is
+# a copy of this script, so the NEXT step is what fails), everything else is the pip
+# step and fails with the machine's own output.
+if [ "$1" = "-m" ] && [ "$2" = "venv" ]; then
+	mkdir -p "$3/bin"
+	cp "$0" "$3/bin/python"
+	chmod +x "$3/bin/python"
+	exit 0
+fi
+cat >&2 <<'LO_PILOT_PIP_FAILURE'
+${pipFailure}
+LO_PILOT_PIP_FAILURE
+exit 1
+`;
+	writeFileSync(interpreter, script, { mode: 0o755 });
+	return { dir, interpreter };
+};
+
+/**
+ * One app-owned update attempt, driven end to end through `updateBackend`.
+ *
+ * WHAT IS REAL HERE: the dispatch (`updateBackend`'s APP_BUNDLED_VENV branch), the
+ * attempt's own guard, the target resolution, the phase decision, the restart
+ * decision, the completion payloads and the failure copy. What is scripted: the
+ * publish (`updateManagedPython`), the install callback's own work, the daemon's
+ * `/health` readings and the free-space answer - each at the seam the service
+ * itself calls, so an ordering assertion is about the service's code.
+ *
+ * `order` is the fixture's spine: every step the attempt takes that a bug could
+ * reorder appends to it, which is how "nothing was stopped before the write" and
+ * "the restart came after the publish" are asserted as sequences rather than as
+ * two separate facts.
+ */
+const driveAppOwnedUpdate = async ({
+	published = "0.56.8",
+	target = "0.56.12",
+	installVersion = target,
+	replaced = true,
+	/*
+	 * THE REAL INSTALLER, DRIVEN (review R6). Null means the callback is stubbed
+	 * (`calls.installCallbacks`), which is what every ordering case wants. A value
+	 * means `installEnvironmentInto` itself runs, driven by a SYNTHETIC INTERPRETER
+	 * written into this case's own scratch directory: it answers the `-m venv` step
+	 * the way a working interpreter would (creating the environment's interpreter as
+	 * a copy of itself) and then fails the pip step with the text below - which is
+	 * {"pipFailure": "..."}. That is the only way to drive the branch a full disk is
+	 * actually met on without a real pip and a real disk, and it is why the case no
+	 * longer hands the service a hand-written error string: the string this asserts
+	 * against is captured by the shipped code from a child it started.
+	 */
+	installerPilot = null,
+	servingBeforeRestart = null,
+	servingAfterRestart = installVersion,
+	restartOk = true,
+	healthy = true,
+	freeBytes = Number.MAX_SAFE_INTEGER,
+	installRuns = 1,
+	/*
+	 * The launch mode, and whether the install SERVING this app is the app's own.
+	 *
+	 * They are separate on purpose, and the pair is the operator's own machine: a
+	 * GLOBAL_INSTALL launch whose daemon runs from the app's managed environment
+	 * (#318's `serving.appOwned`). The routing case below asserts the two together.
+	 */
+	startupMode = "APP_BUNDLED_VENV",
+	servingAppOwned = false,
+	/*
+	 * Whether this launch ADOPTED the daemon rather than starting it - the other half
+	 * of `backendIsAppOwned()`, and the reading review R8 is about: an adopted daemon
+	 * serving the app's own environment is an install the app may MOVE but not one it
+	 * may RESTART.
+	 */
+	externalBackend = false,
+} = {}) => {
+	const home = mkdtempSync(join(tmpdir(), "lo-app-owned-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-app-owned-userdata-"));
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	/*
+	 * The unpackaged side of the packaged/dev split, which `managedPythonOptions`
+	 * reads for the interpreter seed's location: packaged, it resolves
+	 * `process.resourcesPath`, and that global does not exist outside Electron - so
+	 * the attempt would fail on a path read before it reached any assertion. The
+	 * fixture's own lever states which side of that decision the case is on.
+	 */
+	const originalPackaged = globalThis.__loTestAppIsPackaged;
+	globalThis.__loTestAppIsPackaged = false;
+	const order = [];
+	const sent = [];
+	const calls = { installers: [], installCallbacks: 0, stops: 0, restarts: 0 };
+	// The synthetic interpreter, when this case drives the real installer: it is the
+	// fixture's `python` argument, so the shipped `installEnvironmentInto` runs the
+	// `venv` and pip steps itself (review R6).
+	const pilot = installerPilot ? writeInstallerPilot(installerPilot) : null;
+	if (pilot) globalThis.__loManagedPilot = pilot.interpreter;
+	const extraScratch = pilot ? [pilot.dir] : [];
+	globalThis.__loManagedRoot = join(userData, "managed-python");
+	globalThis.__loManagedPublished = () => published;
+	globalThis.__loManagedUpdate = async ({ install, decision }) => {
+		order.push("publish");
+		for (let index = 0; index < installRuns; index++) {
+			calls.installers.push(decision.target);
+			const landed = await install(
+				`${globalThis.__loManagedRoot}/environments/g${index}`,
+				globalThis.__loManagedPilot ?? "/synthetic/python",
+			);
+			/*
+			 * THE MODULE'S OWN CONVERSION, reproduced because this fixture stands AT
+			 * that boundary: the real `publishGeneration` turns the installer's `false`
+			 * into this fixed sentence and throws it. A fixture that ignored the
+			 * boolean - as this one did until review round 3 - let the attempt complete
+			 * as a success over an installer that had failed, which is precisely the
+			 * R6 defect: what the reader is told about a failure has to be asserted
+			 * through the shape the module actually produces, or the case proves the
+			 * wiring and not the behaviour.
+			 */
+			if (landed === false)
+				throw new Error(
+					"Backend preparation did not complete. Your previous environment and data were preserved.",
+				);
+		}
+		return {
+			selection: {
+				format: "local-operator-managed-python",
+				runtimeId: "a".repeat(64),
+				runtime: `${globalThis.__loManagedRoot}/runtimes/a`,
+				venv: `${globalThis.__loManagedRoot}/environments/g${installRuns - 1}`,
+				backendVersion: installVersion,
+			},
+			replaced,
+			previous: null,
+		};
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule({
+		managedPython: managedPythonFixture(
+			join(process.cwd(), "src/main/backend/managed-python.ts"),
+		),
+	});
+	const updateService = new service.UpdateService(
+		{
+			isDestroyed: () => false,
+			webContents: {
+				send: (channel, payload) => sent.push({ channel, payload }),
+				isDestroyed: () => false,
+			},
+		},
+		{
+			getStartupMode: () => service.LocalOperatorStartupMode[startupMode],
+			getBackendUrl: () => "http://127.0.0.1:9",
+			/*
+			 * The launch's own answer about ADOPTION, which is still read on this path:
+			 * `update-service.ts` declines to bounce a daemon the launch attached to
+			 * instead of spawning, and it is the reading review R8 found the completions
+			 * contradicting.
+			 */
+			isUsingExternalBackend: () => externalBackend,
+			/*
+			 * THE OWNERSHIP READING `backendIsAppOwned()` NOW ASKS FOR, and it is a
+			 * second stub rather than a rename because the two answers are not the same
+			 * question. #321 (review round 1, R1) replaced that method's
+			 * `!isUsingExternalBackend()` body with the drift repair's own rule -
+			 * `backend-service.ts`'s `servingInstall().owned`, "can THIS app run stop the
+			 * process now" - so that the notice and the repair answer one way about one
+			 * daemon. The fixture's two shapes cover both arms of it exactly: the press
+			 * on a daemon this launch spawned is the app's to restart (`owned: true`),
+			 * and the press on one it ADOPTED is not (`owned: false`), which is
+			 * `servingInstallIsAppOwned`'s answer for a process this run does not hold
+			 * and the reason `externalBackend` stays the lever these cases drive.
+			 */
+			servingInstall: () => ({
+				readings: {
+					bootVersion: servingBeforeRestart,
+					prefix: `${globalThis.__loManagedRoot}/environments/g0`,
+					installKind: "pip",
+					startedByApp: externalBackend,
+				},
+				owned: {
+					owned: !externalBackend,
+					because: externalBackend
+						? "the process is not one this app run started and this app can only stop the generation it holds"
+						: "this app process started it and still holds the process",
+					startedByEarlierAppRun: externalBackend,
+				},
+			}),
+			setAutoUpdating: () => {},
+			stop: async () => {
+				calls.stops += 1;
+				order.push("stop");
+				return true;
+			},
+			restart: async () => {
+				calls.restarts += 1;
+				order.push("restart");
+				return restartOk;
+			},
+			start: async () => true,
+		},
+	);
+	const timer = updateService.updateCheckInterval;
+	const dispose = () => {
+		if (timer) clearInterval(timer);
+		for (const name of [
+			"__loTestPaths",
+			"__loManagedRoot",
+			"__loManagedPublished",
+			"__loManagedUpdate",
+			"__loManagedPilot",
+		]) {
+			// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+			delete globalThis[name];
+		}
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		if (originalPackaged === undefined) delete globalThis.__loTestAppIsPackaged;
+		else globalThis.__loTestAppIsPackaged = originalPackaged;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+		// By literal path, and only for a directory this run made: every teardown here
+		// removes a `mkdtemp` root of its own and nothing else.
+		for (const dir of extraScratch)
+			rmSync(dir, { recursive: true, force: true });
+	};
+	try {
+		updateService.backendUrl = "http://127.0.0.1:9";
+		updateService.getLatestPypiVersion = async () => target;
+		updateService.freeBytesAt = () => freeBytes;
+		updateService.checkBackendHealth = async () => {
+			order.push("health");
+			return healthy;
+		};
+		// The reading the restart decision takes BEFORE the restart, and the one the
+		// report takes after it - in the order the attempt takes them.
+		const serving = [servingBeforeRestart, servingAfterRestart];
+		updateService.getInstalledBackendVersion = async () => {
+			order.push("read-serving");
+			return serving.length > 1 ? serving.shift() : servingAfterRestart;
+		};
+		updateService.waitForBackendVersion = async () => {
+			order.push("wait-version");
+			return healthy && restartOk ? servingAfterRestart : null;
+		};
+		/*
+		 * The installer is stubbed for every ordering case - the real one creates an
+		 * environment and runs pip - and LEFT ALONE when the case supplied a pilot, so
+		 * the shipped branch runs and its own captured output is what the case reads
+		 * (review R6).
+		 */
+		if (!pilot)
+			updateService.installEnvironmentInto = async () => {
+				calls.installCallbacks += 1;
+				order.push("install");
+				return true;
+			};
+		/*
+		 * The serving install's own identity, for the arms that resolve it: the
+		 * routing case drives a global launch whose daemon runs from the app's
+		 * managed environment, so the reading has to say so for the branch to be
+		 * reachable at all.
+		 */
+		updateService.readRunningBackend = async () => ({
+			version: servingBeforeRestart,
+			prefix: `${globalThis.__loManagedRoot}/environments/g0`,
+			installKind: "pip",
+		});
+		updateService.readServingInstall = () => ({
+			prefix: `${globalThis.__loManagedRoot}/environments/g0`,
+			version: servingBeforeRestart,
+			installKind: "pip",
+			appOwned: servingAppOwned,
+		});
+		const result = await updateService.updateBackend(target);
+		return { result, sent, calls, order, updateService, dispose };
+	} catch (error) {
+		dispose();
+		throw error;
+	}
+};
+
+/** The completion events the renderer would receive, in order. */
+const completions = (sent) =>
+	sent.filter(({ channel }) => channel === "backend-update-completed");
+const phases = (sent) =>
+	sent
+		.filter(({ channel }) => channel === "backend-update-progress")
+		.map(({ payload }) => payload.phase);
+const updateErrors = (sent) =>
+	sent.filter(({ channel }) => channel === "backend-update-error");
+
+test("an app-owned press publishes first and only then moves the daemon", async () => {
+	const driven = await driveAppOwnedUpdate({
+		published: "0.56.8",
+		target: "0.56.12",
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+	});
+	try {
+		assert.equal(driven.result, true);
+		/*
+		 * THE ORDER IS THE SAFETY PROPERTY, and it is asserted as an order rather
+		 * than as two facts: the publish (with the install inside it) comes before the
+		 * restart, and nothing stopped the daemon on the way - which is what lets the
+		 * running server keep serving while a new generation lands beside it.
+		 */
+		assert.deepEqual(
+			driven.order.filter((step) => step !== "read-serving"),
+			["publish", "install", "restart", "health", "wait-version"],
+			JSON.stringify(driven.order),
+		);
+		assert.equal(
+			driven.calls.stops,
+			0,
+			"nothing may stop the serving daemon before the write",
+		);
+		assert.deepEqual(
+			phases(driven.sent),
+			["installing", "restarting"],
+			"a press that publishes announces the install it is doing, then the restart",
+		);
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1);
+		assert.deepEqual(
+			{
+				...completed[0].payload,
+			},
+			{
+				installVersion: "0.56.12",
+				runningVersion: "0.56.12",
+				restarted: true,
+			},
+			"a restart that came back on the new build is the success payload, unchanged",
+		);
+		assert.deepEqual(updateErrors(driven.sent), []);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a press with nothing to publish announces the restart, not an install", async () => {
+	/*
+	 * DESIGN D2, on the one press this panel's own control produces: the install IS
+	 * the published release, so `updateManagedPython` returns `replaced: false`. The
+	 * phase used to be announced unconditionally, so the panel told the reader
+	 * "Installing the new server build ... This can take a minute or two" about work
+	 * that cannot happen - and the only work that press does is the restart.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		published: "0.56.12",
+		target: "0.56.12",
+		installVersion: "0.56.12",
+		replaced: false,
+		installRuns: 0,
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+	});
+	try {
+		assert.deepEqual(
+			phases(driven.sent),
+			["restarting"],
+			"nothing is installed, so the panel may not say it is",
+		);
+		assert.equal(driven.calls.installCallbacks, 0);
+		assert.equal(driven.calls.restarts, 1, "the restart is the whole press");
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a press that moved nothing and a daemon already on the build does not restart it", async () => {
+	/*
+	 * REVIEW R3: the restart used to be unconditional, so a press over an
+	 * already-current environment terminated a live daemon for no gain - and the
+	 * retire contract hands that process's in-process work to a shutdown that
+	 * cancels it. The press is still ANSWERED (silence on a press is its own
+	 * defect, review R2-3) with the two readings that made the restart pointless,
+	 * which the renderer's funnel declines because they agree.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		published: "0.56.12",
+		target: "0.56.12",
+		installVersion: "0.56.12",
+		replaced: false,
+		installRuns: 0,
+		servingBeforeRestart: "0.56.12",
+	});
+	try {
+		assert.equal(driven.result, true);
+		assert.equal(
+			driven.calls.restarts,
+			0,
+			"nothing to move is nothing to restart",
+		);
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1, "the press is still answered");
+		assert.equal(completed[0].payload.restarted, false);
+		assert.equal(completed[0].payload.runningVersion, "0.56.12");
+		assert.equal(
+			completed[0].payload.serverDidNotComeBack,
+			undefined,
+			"a server that IS answering is not a server that did not come back",
+		);
+		assert.deepEqual(phases(driven.sent), ["restarting"]);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a restart that leaves the server down is reported as that, not as a success", async () => {
+	/*
+	 * UX U1, from the producer's side: the app performed the restart onto its own
+	 * published environment, the health probe after it never answered, and the
+	 * payload has to CARRY that - because the renderer's own guard cannot distinguish
+	 * "no reading" (silence) from "the server did not come back" (the news), and
+	 * reading it as the first is what produced a success toast about a stopped
+	 * server.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		published: "0.56.12",
+		target: "0.56.12",
+		installVersion: "0.56.12",
+		replaced: false,
+		installRuns: 0,
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: null,
+		restartOk: false,
+	});
+	try {
+		assert.equal(driven.result, true);
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1);
+		assert.deepEqual(completed[0].payload, {
+			installVersion: "0.56.12",
+			runningVersion: null,
+			restarted: false,
+			restartable: true,
+			appOwnedEnvironment: true,
+			serverDidNotComeBack: true,
+		});
+		assert.deepEqual(
+			updateErrors(driven.sent),
+			[],
+			"the attempt completed; what it has to say is on the completion",
+		);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a publish whose pip step runs out of disk reaches the reader with the remedy", async () => {
+	/*
+	 * REVIEW R6, and what this case used to be is the finding. It handed the service a
+	 * HAND-WRITTEN error string (`publishThrows`) - an assertion about the wiring one
+	 * level above the behaviour, which is how the gap stayed green through round 1:
+	 * the string the module actually threw for a mid-install failure was the fixed
+	 * "Backend preparation did not complete..." sentence, which no entry in
+	 * `SETUP_FAILURE_CAUSES` matches, so the disk-space remedy this product already
+	 * owns was UNREACHABLE for the failure it was written for.
+	 *
+	 * Now the publish fails where a full disk actually stops it: the real
+	 * `installEnvironmentInto` runs, its `python -m venv` step succeeds against the
+	 * synthetic interpreter below, and its pip step (the ~100 MB environment plus the
+	 * wheel closure) fails with the machine's own words. The assertions are on the
+	 * message the READER receives, so they fail the moment that output stops travelling
+	 * (shown red by returning `false` from the installer again, which is exactly the
+	 * shipped shape this round removes).
+	 */
+	const driven = await driveAppOwnedUpdate({
+		published: "0.56.8",
+		target: "0.56.12",
+		installerPilot: {
+			pipFailure:
+				"ERROR: Could not install packages due to an OSError: [Errno 28] No space left on device",
+		},
+	});
+	try {
+		assert.equal(driven.result, false);
+		const errors = updateErrors(driven.sent);
+		assert.equal(errors.length, 1);
+		const [sentence, ...rest] = errors[0].payload.message.split("\n\n");
+		assert.match(
+			sentence,
+			/did not install, so the environment serving this app was left as it was/,
+		);
+		assert.match(
+			sentence,
+			/ran out of disk space while setting up the backend\. Free some space and retry\./,
+			sentence,
+		);
+		// The machine's own words, in their OWN block: `splitInstallerOutput` renders the
+		// first blank line as the boundary between the app's sentence and the monospace
+		// output a support conversation needs.
+		assert.match(rest.join("\n\n"), /No space left on device/);
+		assert.equal(
+			driven.calls.restarts,
+			0,
+			"a failure to publish may not move the daemon",
+		);
+		assert.deepEqual(completions(driven.sent), []);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a publish whose venv step fails carries the child's output too", async () => {
+	/*
+	 * The other half of R6's chain, and the reason it is a pair rather than one case:
+	 * BOTH failing steps used to `return false` and were converted, one level down,
+	 * into a sentence no cause table can read. A reader whose disk filled while the
+	 * environment was being created got the same remedy-less message as one whose pip
+	 * step failed, so each arm is driven rather than one standing in for both.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		published: "0.56.8",
+		target: "0.56.12",
+		installerPilot: {
+			venvFailure:
+				"python3: could not create /tmp/venv: [Errno 28] No space left on device",
+		},
+	});
+	try {
+		assert.equal(driven.result, false);
+		const errors = updateErrors(driven.sent);
+		assert.equal(errors.length, 1);
+		assert.match(
+			errors[0].payload.message,
+			/ran out of disk space while setting up the backend\. Free some space and retry\./,
+			errors[0].payload.message,
+		);
+		assert.match(
+			errors[0].payload.message,
+			/No space left on device/,
+			"and the child's own words travel with it",
+		);
+		assert.equal(driven.calls.restarts, 0);
+		assert.deepEqual(completions(driven.sent), []);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a completion on an adopted daemon reads the ownership of the daemon it did not start", async () => {
+	/*
+	 * REVIEW R8, on the arm where the two readings inside one launch disagreed. An
+	 * adopted daemon (`EXISTING_SERVER`, so `backendIsAppOwned()` is FALSE) that serves
+	 * from the app's own environment IS an install this app may move - `appOwnsInstall`
+	 * says so, and the press is routed to the publish path for exactly that reason. The
+	 * three app-owned completions nonetheless asserted `restartable: true`, so the
+	 * renderer offered "Restart the server" on a launch whose own answer about who owns
+	 * the daemon is no: the "action that cannot act" class design D5 named, re-created
+	 * from a hardcoded payload field rather than from the ownership predicate.
+	 *
+	 * This is the simplest of those three arms to reach - the press that published
+	 * nothing because the published release is already the install - and the assertion
+	 * is on the payload the renderer's control is gated by, so it fails while the field
+	 * is hardcoded.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		startupMode: "EXISTING_SERVER",
+		servingAppOwned: true,
+		externalBackend: true,
+		published: "0.56.12",
+		target: "0.56.12",
+		replaced: false,
+		servingBeforeRestart: "0.56.12",
+	});
+	try {
+		assert.equal(driven.result, true);
+		const completed = completions(driven.sent);
+		assert.equal(completed.length, 1);
+		assert.equal(
+			completed[0].payload.restartable,
+			false,
+			`an adopted daemon is not the app's to restart: ${JSON.stringify(completed[0].payload)}`,
+		);
+		assert.equal(
+			completed[0].payload.appOwnedEnvironment,
+			true,
+			"while the ENVIRONMENT it serves from is still the app's own - the two readings differ on purpose",
+		);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a publish without room to write is refused before it spends anything", async () => {
+	/*
+	 * REVIEW R2's precondition: measured, a publish holds a second environment plus
+	 * the runtime copy and re-downloads the wheel closure into TMPDIR on the same
+	 * volume (`--no-cache-dir`), so the app can name the remedy before it starts
+	 * rather than after a half-written tree. Nothing is attempted, so nothing is
+	 * reported as attempted either.
+	 */
+	const driven = await driveAppOwnedUpdate({
+		published: "0.56.8",
+		target: "0.56.12",
+		freeBytes: 40 * 1024 * 1024,
+	});
+	try {
+		assert.equal(driven.result, false);
+		const errors = updateErrors(driven.sent);
+		assert.equal(errors.length, 1);
+		assert.match(
+			errors[0].payload.message,
+			/needs about 450 MB of free space on this disk, and 40 MB is free/,
+			errors[0].payload.message,
+		);
+		assert.deepEqual(driven.order, [], "nothing may be attempted");
+		assert.deepEqual(
+			phases(driven.sent),
+			[],
+			"a refusal is not a phase of an attempt that never started",
+		);
+	} finally {
+		driven.dispose();
+	}
+});
+
+test("a global launch serving from the app's own environment is routed to the publish path", async () => {
+	/*
+	 * THE CONVERGENCE THIS FOLD FORCED. #318 landed on `main` while this branch was
+	 * in review, and it is the change that answers WHO OWNS the install serving this
+	 * app: for a daemon running out of the app's managed environment the plan says
+	 * `canManageUpdate: false`, correctly - no package manager owns that tree - which
+	 * would leave the app-owned publish path UNREACHABLE on the exact machine this
+	 * change was written for (the operator's global launch, whose daemon serves from
+	 * the app's own environment). The startup mode there is `GLOBAL_INSTALL`, so only
+	 * the SERVING reading can route it.
+	 *
+	 * Both sides are asserted, because the routing is a gate and a gate that opens
+	 * for everything is not one: the same fixture with `appOwned: false` must NOT
+	 * reach the publish path.
+	 */
+	const routed = await driveAppOwnedUpdate({
+		startupMode: "GLOBAL_INSTALL",
+		servingAppOwned: true,
+		published: "0.56.8",
+		target: "0.56.12",
+		servingBeforeRestart: "0.56.8",
+		servingAfterRestart: "0.56.12",
+	});
+	try {
+		assert.equal(routed.result, true);
+		assert.ok(
+			routed.order.includes("publish"),
+			`an app-owned serving install must be published, not told to use pip: ${JSON.stringify(routed.order)}`,
+		);
+		assert.equal(routed.calls.restarts, 1);
+		const completed = completions(routed.sent);
+		assert.equal(completed.length, 1);
+		assert.deepEqual(
+			{
+				installVersion: completed[0].payload.installVersion,
+				runningVersion: completed[0].payload.runningVersion,
+				restarted: completed[0].payload.restarted,
+			},
+			{ installVersion: "0.56.12", runningVersion: "0.56.12", restarted: true },
+			"and the daemon it restarted serves the published build",
+		);
+		assert.deepEqual(
+			routed.sent.filter(
+				({ channel }) => channel === "backend-update-manual-required",
+			),
+			[],
+			"and it must not land on the by-hand panel, which is the state that can only describe",
+		);
+	} finally {
+		routed.dispose();
+	}
+
+	const foreign = await driveAppOwnedUpdate({
+		startupMode: "GLOBAL_INSTALL",
+		servingAppOwned: false,
+		published: "0.56.8",
+		target: "0.56.12",
+		servingBeforeRestart: "0.56.8",
+	});
+	try {
+		assert.equal(
+			foreign.order.includes("publish"),
+			false,
+			"a global install that is NOT the app's own must not be published by this path",
+		);
+	} finally {
+		foreign.dispose();
+	}
+});
+
+test("the app-owned offer states the restart and its cost, not the filler twice", async () => {
+	/*
+	 * UX U2's producer half. The app-owned plan's remedy used to be "Updating the
+	 * server will improve AI functionality." - the same thing the panel's static line
+	 * already says, in a shorter length, which is what made the offer read as a
+	 * rendering fault and left the one sentence the reader needs (what the press does
+	 * to their server) unsaid.
+	 */
+	const home = mkdtempSync(join(tmpdir(), "lo-plan-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-plan-userdata-"));
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	/*
+	 * The constructor arms its own check interval, and a fixture that leaves it
+	 * armed never lets the process exit - the same teardown every other case in this
+	 * file does, and the one this case lacked until it was caught.
+	 */
+	let interval = null;
+	try {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: { send: () => {}, isDestroyed: () => false },
+			},
+			{
+				getStartupMode: () => service.LocalOperatorStartupMode.APP_BUNDLED_VENV,
+				getBackendUrl: () => "http://127.0.0.1:9",
+				isUsingExternalBackend: () => false,
+				setAutoUpdating: () => {},
+			},
+		);
+		interval = updateService.updateCheckInterval;
+		const plan = await updateService.resolveBackendUpdatePlan(
+			service.LocalOperatorStartupMode.APP_BUNDLED_VENV,
+			{
+				prefix: `${userData}/managed-python/packaged/environments/synthetic`,
+				version: null,
+				installKind: "pip",
+				appOwned: false,
+			},
+		);
+		assert.doesNotMatch(
+			plan.remedy,
+			/improve AI functionality/i,
+			"the benefit sentence is already on the panel above it",
+		);
+		assert.match(
+			plan.remedy,
+			/restarts the server it started, so a turn that is in flight is dropped/,
+			plan.remedy,
+		);
+		assert.equal(plan.canManageUpdate, true);
+	} finally {
+		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+/**
+ * THE SERVER-UPDATE FAILURE SENTENCE IS THE APP'S OWN COPY, AND IT ARRIVES VERBATIM.
+ *
+ * WHY THIS CASE EXISTS. The panel used to run the composed sentence through the copy
+ * classifier, whose only lever is a length: `AUTHORED_SENTENCE_MAX_LENGTH = 400` reads
+ * anything longer as a machine dump and substitutes the check stage's sentence. The
+ * composed payload measured 401, 467 and 481-483 characters on the three routes, so two
+ * of them showed "The update check could not finish" under a heading saying the update
+ * did not finish, and a cost clause that a whole review round was spent adding never
+ * reached a reader. Nothing in the suite failed, because the classifier's rule was
+ * working exactly as written - the defect was the rule's reach, and the guard has to be
+ * about the promise instead: every route's sentence reaches the panel unchanged, it is
+ * inside a budget a person would read, and the fixtures the frames are shot from are
+ * strings this producer can actually emit (reviewer M1 = UX U1 = QA Q-1/Q-2, round 4).
+ */
+test("every server-update failure sentence reaches the panel verbatim, and the fixtures are producible", async () => {
+	const bundleOf = async (entry) => {
+		const built = await build({
+			stdin: {
+				contents: `export * from "${entry}";`,
+				resolveDir: process.cwd(),
+			},
+			bundle: true,
+			format: "esm",
+			platform: "node",
+			write: false,
+		});
+		return import(
+			`data:text/javascript;base64,${Buffer.from(
+				built.outputFiles[0].text,
+			).toString("base64")}`
+		);
+	};
+	const producer = await bundleOf("./src/main/server-update-copy");
+	const panel = await bundleOf(
+		"./src/renderer/src/shared/utils/update-error-copy",
+	);
+	const stories = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/shared/components/common/update-notification.stories.tsx",
+		),
+		"utf8",
+	);
+	const routes = [
+		{
+			name: "release",
+			input: {
+				rebuildRoute: false,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: false,
+				diagnosis: "error: no matching distribution found for local-operator\n",
+				target: "0.56.11",
+				after: "0.56.10",
+				before: "0.56.10",
+				updateCommand: "lop update",
+			},
+		},
+		{
+			name: "rebuild-refusal",
+			fixture: "SOURCE_BUILD_REFUSAL_SENTENCE",
+			input: {
+				rebuildRoute: true,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: false,
+				diagnosis:
+					"lop-update: REFUSING to release a stale ref.\nlocal  main = 2a0b473\n",
+				target: "0.56.11",
+				after: "0.56.10",
+				before: "0.56.10",
+				updateCommand: "lop-update",
+			},
+		},
+		{
+			name: "orphan",
+			fixture: "ORPHANED_UPDATER_SENTENCE",
+			input: {
+				rebuildRoute: false,
+				ran: false,
+				exitCode: null,
+				groupSurvived: true,
+				diagnosis: "installer exited 127\n",
+				target: "0.56.11",
+				after: "0.56.10",
+				before: "0.56.10",
+				updateCommand: "lop update",
+			},
+		},
+		{
+			/*
+			 * THE WORST ROUTE THE PRODUCER CAN REACH, and the one the previous version of
+			 * this case never composed: a stopped rebuild, which carries every clause at
+			 * once - the headline, the stopped-updater sentence, the stale-ref remedy, the
+			 * output pointer and the escape hatch. It measured 386 characters against the
+			 * classifier's 400, fourteen of luck rather than a design (review round 5, M1).
+			 */
+			name: "rebuild-stopped-worst-case",
+			input: {
+				rebuildRoute: true,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: true,
+				diagnosis:
+					"lop-update: REFUSING to release a stale ref.\nlocal  main = 2a0b473\n",
+				target: "0.56.11-rc.1+build.20260918",
+				after: "0.56.10-rc.1+build.20260917",
+				before: "0.56.10-rc.1+build.20260917",
+				updateCommand: "lop-update",
+			},
+		},
+	];
+	for (const route of routes) {
+		const sentence = producer.serverUpdateFailureSentence(route.input);
+		/*
+		 * THE REAL PATH, not a pass-through. An earlier version of this case asserted
+		 * `serverUpdateFailureCopy(sentence) === sentence` against a function that returns
+		 * its input, so it could not fail - and it did not: the sentence was still being
+		 * deleted on two other surfaces by the classifier it was supposed to be protected
+		 * from (review round 5, M1). This asserts the phase-aware function the surfaces now
+		 * call, and the second half proves the assertion CAN fail.
+		 */
+		assert.equal(
+			panel.serverUpdateFailureReason({ message: sentence, phase: "update" }),
+			sentence,
+			`${route.name}: an attempt's report must reach the surface verbatim`,
+		);
+		assert.ok(
+			sentence.length < 400,
+			`${route.name}: the composed sentence is ${sentence.length} characters, over the copy budget`,
+		);
+		if (route.fixture) {
+			assert.ok(
+				stories.includes(sentence),
+				`${route.fixture} is not the string the producer composes - re-shoot from a producible value`,
+			);
+		}
+	}
+	/*
+	 * AND THE GUARD IS NOT VACUOUS. The same function classifies a CHECK's report, whose
+	 * text is written around a caught value: a long machine string must come back changed,
+	 * or this whole case would pass on a function that does nothing.
+	 */
+	const machine =
+		"Error: getaddrinfo ENOTFOUND pypi.org while reading the version during a check, and the retry did not help either, so the check could not finish this time";
+	assert.notEqual(
+		panel.serverUpdateFailureReason({ message: machine, phase: "check" }),
+		machine,
+		"the classifier must still classify a check's report - a guard that cannot fail guards nothing",
+	);
+	// And a pass-through that ignored the phase would trip this instead.
+	assert.equal(
+		panel.serverUpdateFailureReason({ message: machine, phase: "update" }),
+		machine,
+	);
+});
+
+/**
+ * ONE IDENTITY FOR ONE PRESS, asserted in both directions.
+ *
+ * WHY THIS CASE EXISTS. The fold that moved the CHECK onto the serving install's identity
+ * (`/health` names the root) left the PRESS re-deciding from the shim, so on a machine where
+ * the two differ the panel described one install and the press moved another: an offer
+ * promising the checkout rebuild and its half-hour allowance while the press ran the entry
+ * point with its 900 s budget, and the inverse - "a minute or two" plus a restart offered
+ * while the press started a 1800 s in-place rebuild (review round 5, Q-1 = reviewer M2).
+ *
+ * WHAT MAKES IT ASSERTABLE. The tool the press reaches for is the observable: `command.path`
+ * to `runGlobalUpdate`. A serving install with its own console script must be the path taken
+ * when `/health` names that root; the shim's resolution is the path taken when it names none.
+ * The route and its budget follow the same identity, so they are asserted too whenever the
+ * machine has `lop-update` to classify the serving root as a source build against - the
+ * conditional half is stated rather than hidden, because CI has no `lop-update` and a case
+ * that silently skipped a direction would be the vacuity this round is about.
+ */
+test("the press acts on the install the panel described, in both directions", async () => {
+	/*
+	 * A synthetic serving install: a real directory, a real console script and a real
+	 * `.lop-source`. Nothing here is installed or executed - the fixture stubs the runner -
+	 * but every path the service reads exists, which is what makes the identity resolution
+	 * take its real branch.
+	 */
+	const servingRoot = mkdtempSync(join(tmpdir(), "lo-serving-install-"));
+	mkdirSync(join(servingRoot, "bin"), { recursive: true });
+	const servingScript = join(servingRoot, "bin", "local-operator");
+	writeFileSync(
+		servingScript,
+		'#!/bin/sh\nexec python -m local_operator "$@"\n',
+		{
+			mode: 0o755,
+		},
+	);
+	/*
+	 * The marker's real shape, one line of whitespace-separated tokens: the sha first, the
+	 * ref second - what `lop-update` writes and what the plan parses. Getting it wrong here
+	 * is how a synthetic world stops classifying as a source build, which is the state this
+	 * fixture has to reach to pose the question at all.
+	 */
+	writeFileSync(
+		join(servingRoot, ".lop-source"),
+		"2a0b4730f1e2d3c4b5a69788796a5b4c3d2e1f00 main\n",
+	);
+
+	const seam = await driveGlobalUpdate({ servingPrefix: servingRoot });
+	try {
+		await seam.updateService.updateBackend("0.56.0");
+		// The serving install's own front end, not the shim's: the press moved the tree the
+		// panel described.
+		assert.equal(seam.calls.installers[0], servingScript);
+		assert.equal(seam.calls.installers.length, 1);
+	} finally {
+		seam.dispose();
+	}
+
+	const control = await driveGlobalUpdate({ servingPrefix: null });
+	try {
+		await control.updateService.updateBackend("0.56.0");
+		// The server names no root, so the shim's resolution stands - which is what every
+		// other case in this file declares, and what the seam is measured against.
+		assert.equal(control.calls.installers[0], "/synthetic/bin/local-operator");
+	} finally {
+		control.dispose();
+	}
+
+	/*
+	 * AND THE ROUTE FOLLOWS THE SAME SUBJECT BY CONSTRUCTION. `resolveGlobalInstallPlan` is
+	 * given the identity asserted above, so the route and its budget are the plan's own
+	 * contract for that install - covered over synthetic installs in
+	 * `update-global-install.test.mjs`, which is where a `.lop-source`, a dist-info and a
+	 * venv can be built exactly. An earlier draft of this case tried to assert the rebuild
+	 * route here by pointing at a synthetic root with only a console script, which cannot
+	 * classify as a source build; a conditional assertion on the machine's `lop-update`
+	 * would have looked like a second direction while testing nothing, which is the vacuity
+	 * this round is about. The two directions this case CAN pose - serving root vs shim -
+	 * are both asserted above.
+	 */
+	rmSync(servingRoot, { recursive: true, force: true });
+});
+
+/**
+ * THE VERDICT FOLLOWS THE INSTALL THE PRESS RAN, asserted in both directions.
+ *
+ * WHY THE STUB HAD TO GO. Every other case here scripts `readGlobalInstallVersion`, so the
+ * press's evidence answers whatever the case declares and the question "which install did the
+ * verdict read?" cannot be posed at all. Round 5 moved the COMMAND onto the serving install
+ * and left the EVIDENCE on the shim; the suite could not see it, and two streams found it by
+ * driving a synthetic host by hand (review round 6, M1 = QA Q-1). This case builds two real
+ * installs on disk and lets the SHIPPED reads run.
+ *
+ * THREE DIRECTIONS, because two of them are the interesting ones:
+ *   - the installer moves the install it ran  -> completed, no error;
+ *   - nothing moves                            -> an error, never a success;
+ *   - the SHIM moves and the install that ran does not -> an error, which is the shape a
+ *     verdict read from the wrong tree turns into a false success.
+ */
+test("the verdict follows the install the press ran, in both directions", async () => {
+	const run = async ({ shimRoot, servingRoot, moveShim, moveServing }) => {
+		makeInstall(shimRoot, "0.55.10");
+		makeInstall(servingRoot, "0.55.10");
+		try {
+			const drive = await driveGlobalUpdate({
+				servingPrefix: servingRoot,
+				shimPath: join(shimRoot, "bin", "local-operator"),
+				realEvidenceReads: true,
+				/*
+				 * The daemon the app restarts reports the version the install now holds, which
+				 * is what the post-restart poll waits for: this case is about which install the
+				 * VERDICT read, and a daemon stuck on the old build would fail for an unrelated
+				 * reason and hide the answer.
+				 */
+				daemonReports: moveServing ? "0.56.0" : "0.55.10",
+				runGate: () => {
+					if (moveServing) moveInstall(servingRoot, "0.55.10", "0.56.0");
+					if (moveShim) moveInstall(shimRoot, "0.55.10", "0.56.0");
+				},
+			});
+			try {
+				const returned = await drive.updateService.updateBackend("0.56.0");
+				return {
+					returned,
+					completed: backendCompletion(drive.sent),
+					errors: backendErrors(drive.sent).length,
+					channels: drive.sent.map(
+						({ channel, payload }) => `${channel}:${payload?.phase ?? ""}`,
+					),
+					errorMessages: backendErrors(drive.sent).map(({ payload }) =>
+						payload.message?.slice(0, 160),
+					),
+					dispose: drive.dispose,
+				};
+			} catch (error) {
+				drive.dispose();
+				throw error;
+			}
+		} finally {
+			rmSync(shimRoot, { recursive: true, force: true });
+			rmSync(servingRoot, { recursive: true, force: true });
+		}
+	};
+
+	// The installer reached the serving install and moved it: that is a landed update.
+	const landed = await run({
+		shimRoot: mkdtempSync(join(tmpdir(), "lo-two-install-shim-")),
+		servingRoot: mkdtempSync(join(tmpdir(), "lo-two-install-serving-")),
+		moveServing: true,
+	});
+	try {
+		assert.ok(
+			landed.completed,
+			`a landed update must be reported as completed (returned ${landed.returned}; channels ${JSON.stringify(landed.channels)}; errors ${JSON.stringify(landed.errorMessages)})`,
+		);
+		assert.equal(landed.errors, 0);
+	} finally {
+		landed.dispose();
+	}
+
+	// Nothing moved: the honest reading is a failure, and it must not be a success.
+	const noop = await run({
+		shimRoot: mkdtempSync(join(tmpdir(), "lo-two-install-shim-")),
+		servingRoot: mkdtempSync(join(tmpdir(), "lo-two-install-serving-")),
+	});
+	try {
+		assert.equal(
+			noop.completed,
+			undefined,
+			"a no-op must never be reported as a success",
+		);
+		assert.ok(noop.errors > 0);
+	} finally {
+		noop.dispose();
+	}
+
+	/*
+	 * THE FALSE-SUCCESS DIRECTION: the shim moves, the install that actually ran does not.
+	 * A verdict read from the shim sees a version change and reports a success for an
+	 * install nothing touched - which is the half of the defect the completed-event
+	 * assertion above cannot catch.
+	 */
+	const wrongTree = await run({
+		shimRoot: mkdtempSync(join(tmpdir(), "lo-two-install-shim-")),
+		servingRoot: mkdtempSync(join(tmpdir(), "lo-two-install-serving-")),
+		moveShim: true,
+	});
+	try {
+		assert.equal(
+			wrongTree.completed,
+			undefined,
+			"the shim moving while the install that ran did not is not a landed update",
+		);
+		assert.ok(wrongTree.errors > 0);
+	} finally {
+		wrongTree.dispose();
+	}
+});
+
+/**
+ * EVERY SURFACE THAT SHOWS AN ATTEMPT'S FAILURE USES THE ONE PHASE-AWARE RULE.
+ *
+ * Round 4 fixed the notification panel by handing the attempt's sentence to
+ * `serverUpdateFailureCopy`, and two other surfaces kept running the same payload through
+ * `updateErrorMessage`, whose 400-character reading of a long string as a machine dump
+ * deleted it: the sentence was safe on one screen and deletable on two (review round 5,
+ * M1). The behaviour test above proves the helper is right; this one proves the surfaces
+ * still CALL it, which is the half a green behaviour test cannot see - and it is the half
+ * that failed last round, because nothing pinned the call sites (review round 6, m1).
+ *
+ * It reads the sources rather than rendering them on purpose: the defect was a call site,
+ * and a component that renders correctly in the story it is photographed in can still be
+ * the one that drops the sentence in the arm the story does not cover.
+ */
+test("each surface that renders an attempt's failure calls the shared reason helper", async () => {
+	const surfaces = [
+		"src/renderer/src/shared/components/common/update-notification.tsx",
+		"src/renderer/src/features/chat/components/run-details/run-panel.tsx",
+		"src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
+	];
+	for (const relative of surfaces) {
+		const source = readFileSync(join(process.cwd(), relative), "utf8");
+		assert.ok(
+			source.includes("serverUpdateFailureReason("),
+			`${relative} must route an attempt's report through the shared helper`,
+		);
+		/*
+		 * The exact shape the fix removed: the classifier applied to a report's message.
+		 * A future edit that reintroduces it passes every behaviour test and still deletes
+		 * the sentence on this surface.
+		 */
+		assert.ok(
+			!source.includes("updateErrorMessage(report.message)"),
+			`${relative} must not classify an attempt's report - that is what deleted the sentence`,
+		);
+	}
+});
+
+/**
+ * THE UNATTENDED RECONCILIATION READS THE INSTALL THE RECORD NAMES.
+ *
+ * The launch-time path is the last place this seam was found (review round 7, M1), and it is the
+ * one with no press in scope: the app comes back after dying mid-attempt and reads the record.
+ * Pre-fix both sides of its comparison resolved the shim, so they agreed; once the press began
+ * running the serving install, the reading had to come from the record, or the reconciliation
+ * judged a tree the attempt never touched - a landed update reported as "did not move the
+ * install", and a no-op reported as a success when only the shim had moved.
+ */
+test("the unattended reconciliation judges the install the record names", async () => {
+	const markerFor = (installPath, before) => ({
+		before,
+		target: "0.56.0",
+		startedAt: new Date().toISOString(),
+		deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+		groupPid: null,
+		groupStartedAt: null,
+		installPath,
+	});
+
+	const scenario = async ({ moveServing = false, moveShim = false } = {}) => {
+		const shimRoot = mkdtempSync(join(tmpdir(), "lo-unattended-shim-"));
+		const servingRoot = mkdtempSync(join(tmpdir(), "lo-unattended-serving-"));
+		const cleanup = () => {
+			rmSync(shimRoot, { recursive: true, force: true });
+			rmSync(servingRoot, { recursive: true, force: true });
+		};
+		makeInstall(shimRoot, "0.55.10");
+		makeInstall(servingRoot, "0.55.10");
+		if (moveServing) moveInstall(servingRoot, "0.55.10", "0.56.0");
+		if (moveShim) moveInstall(shimRoot, "0.55.10", "0.56.0");
+		const drive = await driveGlobalUpdate({
+			servingPrefix: servingRoot,
+			shimPath: join(shimRoot, "bin", "local-operator"),
+			realEvidenceReads: true,
+		});
+		try {
+			writeFileSync(
+				drive.markerPath,
+				JSON.stringify(
+					markerFor(join(servingRoot, "bin", "local-operator"), "0.55.10"),
+				),
+			);
+			await drive.updateService.reportUnattendedServerUpdate();
+			return {
+				completed: backendCompletion(drive.sent),
+				markerStillThere: existsSync(drive.markerPath),
+				dispose: () => {
+					drive.dispose();
+					cleanup();
+				},
+			};
+		} catch (error) {
+			drive.dispose();
+			cleanup();
+			throw error;
+		}
+	};
+
+	// (a) The install the record names moved while nothing was watching: that is the report.
+	const landed = await scenario({ moveServing: true });
+	try {
+		assert.ok(landed.completed, "a landed unattended update must be reported");
+		assert.equal(landed.completed.payload.installVersion, "0.56.0");
+		assert.equal(
+			landed.markerStillThere,
+			false,
+			"the record is spent once it is reported",
+		);
+	} finally {
+		landed.dispose();
+	}
+
+	/*
+	 * (b) THE FALSE SUCCESS, and the reason this case exists: the shim moved, the install the
+	 * record names did not. A reading taken from the shim sees the change and publishes a
+	 * success for an attempt that changed nothing.
+	 */
+	const wrongTree = await scenario({ moveShim: true });
+	try {
+		assert.equal(
+			wrongTree.completed,
+			undefined,
+			"a shim-only change is not the attempt landing",
+		);
+		assert.equal(wrongTree.markerStillThere, false);
+	} finally {
+		wrongTree.dispose();
+	}
+});
+
+/**
+ * THE INVARIANT THE FOUR INSTANCES SHARED, guarded the way the consumers are.
+ *
+ * Rounds 5, 6 and 7 each found one call site reading an install of its own - the press against
+ * the check, the two evidence reads, then the unattended reconciliation - because every site was
+ * free to resolve the shim. The behaviour cases cover the sites that exist; this covers the one
+ * a future edit adds, by refusing a read that names no attempt. It reads the source on purpose:
+ * the defect was a call site, and a call site is what a behaviour test cannot see.
+ */
+test("no attempt-scoped evidence read resolves an install of its own", async () => {
+	const source = readFileSync(
+		join(process.cwd(), "src/main/update-service.ts"),
+		"utf8",
+	);
+	const callPattern = /read(?:InstallVersionAt|RebuildMarkerState)\(/g;
+	let match = callPattern.exec(source);
+	let calls = 0;
+	let legacyFallbacks = 0;
+	while (match !== null) {
+		calls += 1;
+		let depth = 1;
+		let i = match.index + match[0].length;
+		while (i < source.length && depth > 0) {
+			if (source[i] === "(") depth += 1;
+			if (source[i] === ")") depth -= 1;
+			i += 1;
+		}
+		const argument = source.slice(match.index + match[0].length, i - 1);
+		assert.ok(
+			argument.includes("installPath") || argument.includes("recordPath"),
+			`an attempt-scoped read must name the attempt's install, not resolve one: ${argument.trim()}`,
+		);
+		if (argument.includes("resolveLocalOperatorPath()")) {
+			legacyFallbacks += 1;
+			assert.ok(
+				argument.includes("recordPath ?? this.resolveLocalOperatorPath()"),
+				"the only permitted shim fallback is the reconciliation's legacy-record branch",
+			);
+		}
+		match = callPattern.exec(source);
+	}
+	assert.ok(
+		calls >= 5,
+		`expected the attempt-scoped reads to be called, found ${calls}`,
+	);
+	assert.equal(
+		legacyFallbacks,
+		1,
+		"exactly one caller may fall back to the shim: a record an older build wrote",
+	);
 });

@@ -46,7 +46,7 @@ import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
 import type { RunPanelSection } from "@shared/store/ui-preferences-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { updateErrorMessage } from "@shared/utils/update-error-copy";
+import { serverUpdateFailureReason } from "@shared/utils/update-error-copy";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, PanelRightClose } from "lucide-react";
 import type { RefObject } from "react";
@@ -213,7 +213,14 @@ export const RunPanel = ({
 				 * transport.
 				 */
 				if (report.phase === "update") {
-					reason = updateErrorMessage(report.message);
+					/*
+					 * VERBATIM, not classified: an attempt's report is the app's own composed
+					 * sentence, and the classifier's 400-character reading of a long string as
+					 * a machine dump deleted it on this surface while the notification panel
+					 * had been fixed (review round 5, M1). `serverUpdateFailureReason` is the
+					 * one place that rule lives now.
+					 */
+					reason = serverUpdateFailureReason(report);
 				}
 			});
 		try {

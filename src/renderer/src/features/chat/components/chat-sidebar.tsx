@@ -1,6 +1,5 @@
-import { BrowserConversationMark } from "@features/browser/components/browser-conversation-mark";
-import type { ConversationBrowserSummary } from "@features/browser/model/tab-index-model";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
+import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -20,10 +19,16 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import {
+	showSuccessToast,
+	showWarningToast,
+} from "@shared/utils/toast-manager";
+import {
 	Bot,
+	CheckCheck,
 	ChevronDown,
 	ChevronRight,
 	List,
+	LoaderCircle,
 	MessageSquarePlus,
 	MoreHorizontal,
 	Plus,
@@ -32,6 +37,8 @@ import {
 } from "lucide-react";
 import {
 	type KeyboardEvent,
+	type ReactNode,
+	type Ref,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -49,6 +56,7 @@ import {
 	searchChats,
 } from "../chat-search";
 import { clearSearch } from "../clear-search";
+import { markAllReadCopy, markAllReadReceipt } from "../mark-all-read";
 import { newChatShortcutCap } from "../new-chat-shortcut";
 import { catalogueGate } from "../sidebar-catalogue-gate";
 
@@ -56,29 +64,44 @@ type Props = {
 	selectedConversation?: string;
 	onSelectConversation: (id: string) => void;
 	onStageDraft: (target?: ChatTarget, fresh?: boolean) => void;
-	/**
-	 * What the browser is doing in each conversation, keyed by session id.
-	 *
-	 * A PROP RATHER THAN A SUBSCRIPTION IN THIS FILE, and the reason is the mark's own
-	 * contract: the counts come from the ONE shared projection (`useBrowserProjection`),
-	 * and a list of forty rows each subscribing is the cost the store exists to remove
-	 * (see `use-conversation-browser-summaries.ts`). The host passes the map; a story
-	 * passes a fixture, which is also how the mark's states get frames.
-	 */
-	browserSummaries?: ReadonlyMap<string, ConversationBrowserSummary>;
-	/** The conversation the browser pane is OPEN ON right now, or absent when the pane is
-	 * shut (or left on `All tabs`). It is what makes a mark's press a toggle rather than a
-	 * one-way door (design review round 2, U8): the row whose browser is already up has to
-	 * say so, because the same press there CLOSES it. One id rather than a set, because the
-	 * pane has one lens — see `openConversationBrowser`, which branches on the same
-	 * expression. */
-	browserPaneOpenOn?: string;
-	/** Open a conversation's browser: select it, scope the pane to the conversation and
-	 * bring the pane up. One press, three effects, batched into one render (design R2). */
-	onOpenConversationBrowser?: (sessionId: string) => void;
 };
 const rowStyle =
 	"flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
+
+/*
+ * Where the bulk read receipt's label stops fitting, in the width of the header
+ * row itself — the row is the container queried rather than the panel, because
+ * the row is what has to fit.
+ *
+ * 253px is the TWO-DIGIT break, and the two-digit case is the binding one: with a
+ * one-digit section badge the group's own name needs a 235px row, with a
+ * two-digit one — the operator's own "Active chats 38" — it needs 253px, and the
+ * action is unshrinkable so the name absorbs whatever is left. Design round 2
+ * swept 240 through 360 on the shipped component and found the band the round-1
+ * break left open: at 267/268/269px panels (250/251/252px rows) the name was
+ * ellipsised while the action's label was still fully spelled, which is the
+ * trade design D1 rejected. Shedding at the width the name actually needs closes
+ * it, so the shed and the truncation can never both be reachable.
+ *
+ * The header row is 17px narrower than the panel, so 253px of row is a 270px
+ * panel: the shed fires below the DEFAULT (280) but not at it, and the 240px
+ * clamp minimum gets the glyph. Above the break the full label fits and nothing
+ * truncates.
+ *
+ * `sr-only`, NEVER `hidden`. `hidden` is `display: none`, which takes the span out
+ * of the accessibility tree, and the label's words are the only half of the
+ * control's name that identifies it: what would be left is the `sr-only` scope
+ * suffix, so an AT user at the clamp width would hear ", including 4 in Previous
+ * chats" and nothing about the action (review R2-1 / UX U2-1 — the same defect,
+ * one word wide). The `sr-only` yield is this codebase's idiom for exactly this
+ * give (`directory-indicator.tsx:280-289` sheds its chip text the same way and
+ * says why), and the pixels are identical.
+ *
+ * The shape is `older-history-slot.tsx`'s, which switches two spellings on its
+ * own container for the same reason: the row's height is fixed, so a wrapped
+ * line is not an option and the sentence is what has to change length.
+ */
+const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
 
 /**
  * The ground of the row this panel is currently ON — the selected conversation,
@@ -192,22 +215,25 @@ const rowStyle =
  * see a class.
  *
  * WHY THIS IS EXPORTED, AND WHY THE SINGLE SPELLING LIVES HERE (round 5: design
- * D22, agent A-7). The role has three consumers — this panel, the settings rail
- * and the story specimen the mark's 30 committed frames are taken through — and
- * each of them used to spell the four terms by hand. Two of those copies then
- * drifted a term each (design rounds 3 and 4, D17 and D19), and the frames they
- * produced are the ONLY committed pictures of the mark on the selection ground,
- * so a copy is a picture of a row the app does not draw. A text guard over the
- * replicas could only ever watch the copies it knew about: both drifts happened
- * at an ELEMENT (the wrapper painting the retired ground, the button painting
- * half the role) while the copied string above it stayed verbatim. So the copy
- * is gone rather than pinned: the role is declared once, here, and imported by
- * `features/settings/components/settings-sidebar.tsx` and
- * `features/browser/components/browser-conversation-mark.stories.tsx`, and
- * `scripts/chat-sidebar-selection.test.mjs` both asserts that no class literal
- * in the shipped tree spells these terms a second time and resolves the
- * specimen's two call sites through the shipped `cn`, the way it already
- * resolves this panel's and the rail's.
+ * D22, agent A-7). The role has two consumers — this panel and the settings rail
+ * — and each of them used to spell the four terms by hand. Two of those copies
+ * then drifted a term each (design rounds 3 and 4, D17 and D19), and the frames
+ * they produced are the only committed pictures of a row the app does not draw.
+ * A text guard over the replicas could only ever watch the copies it knew about:
+ * both drifts happened at an ELEMENT (the wrapper painting the retired ground,
+ * the button painting half the role) while the copied string above it stayed
+ * verbatim. So the copy is gone rather than pinned: the role is declared once,
+ * here, and imported by `features/settings/components/settings-sidebar.tsx`, and
+ * `scripts/chat-sidebar-selection.test.mjs` asserts that no class literal in the
+ * shipped tree spells these terms a second time and resolves the rail's call
+ * site through the shipped `cn`, the way it already resolves this panel's.
+ *
+ * THE THIRD CONSUMER IS GONE (this change, 2026-09-18): the browser mark's story
+ * specimen imported this string and was the only surface photographing the role
+ * on a row that carries a sibling control. Its evidence set was deleted with the
+ * mark, so the two drifts this paragraph exists for can no longer be produced
+ * there — a file that is no longer in the tree cannot drift — and the guard the
+ * sentence above names now covers the two consumers that remain.
  */
 export const rowCurrent =
 	"bg-highlight font-medium text-ink hover:bg-highlight";
@@ -217,17 +243,6 @@ import {
 	holdFocusedRow,
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
-
-/** A conversation with nothing open, as a stable value: the mark is drawn on every row
- * now (design R2's first state, review round 1 D2/A4), and a fresh object per row would
- * re-render every mark on every projection tick — the exact cost the entry-wise identity
- * reuse in `summariseConversations` exists to avoid. */
-const NO_BROWSER_ACTIVITY: ConversationBrowserSummary = {
-	tabCount: 0,
-	loadingCount: 0,
-	failedCount: 0,
-	pendingApprovals: 0,
-};
 
 import { ChatSessionStatus } from "./chat-session-status";
 
@@ -255,9 +270,6 @@ export function ChatSidebar({
 	selectedConversation,
 	onSelectConversation,
 	onStageDraft,
-	browserSummaries,
-	browserPaneOpenOn,
-	onOpenConversationBrowser,
 }: Props) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -327,6 +339,7 @@ export function ChatSidebar({
 	const livenessUnread = statusUnavailable.includes("liveness");
 	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
 	const drafts = useCanonicalSessionsStore((s) => s.drafts);
+	const markAllRead = useCanonicalSessionsStore((s) => s.markAllRead);
 	const [query, setQuery] = useState("");
 	const [all, setAll] = useState(false);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
@@ -344,6 +357,183 @@ export function ChatSidebar({
 			...current,
 			[key]: !(current[key] ?? initial),
 		}));
+	/*
+	 * The bulk read receipt: one control, one gesture, no shortcut.
+	 *
+	 * An acknowledgement is IRREVERSIBLE — nothing in the store withdraws a
+	 * receipt, so a mark this clears cannot be put back — which is why this is an
+	 * explicit click and nothing else: no key binding, no blur hook, no "clear on
+	 * close" path. The backend's own design records the same rule from the other
+	 * end (only the explicit route, the TUI command and this control may call the
+	 * batch write).
+	 *
+	 * Gated on the CAPABILITY, not on a 404: a backend without
+	 * `completion_ack_bulk` gets no control at all, because a control that is
+	 * clicked and answers "this backend does not support it" has already promised
+	 * a mark was cleared. Hidden at zero, on this file's own precedent that a zero
+	 * badge beside a group which already says it is empty is one fact told twice —
+	 * here the marks themselves are the fact, so with none on screen the action has
+	 * no subject.
+	 *
+	 * And hidden while a SEARCH is active. The set is the store's, deliberately (a
+	 * filter must not be able to make the number on screen disagree with what the
+	 * click clears), so under a query the reader can see one mark while the action
+	 * would move forty — an irreversible write whose extent the reader cannot see
+	 * is not offered at all (agent review round 1, R4).
+	 *
+	 * WHAT IT SAYS IS THE POINT (UX round 1, U1). The scope is catalogue-wide, so
+	 * the number the request will carry is in the control's own visible words — not
+	 * only in a tooltip — and the rows it reaches OUTSIDE this section are named in
+	 * the tooltip and the accessible name. `markAllReadCopy` owns that copy, and it
+	 * derives the number from the same predicate `markAllRead` enumerates with.
+	 */
+	const unreadCopy = markAllReadCopy(sessions);
+	const [clearingUnread, setClearingUnread] = useState(false);
+	const markAllReadShown =
+		unreadCopy.count > 0 &&
+		!query.trim() &&
+		desktopFeatureEnabled(capabilities.data, "completion_ack_bulk");
+	const clearUnread = async () => {
+		setClearingUnread(true);
+		try {
+			const { tone, message } = markAllReadReceipt(await markAllRead());
+			if (tone === "success") showSuccessToast(message);
+			else showWarningToast(message);
+		} catch (failure) {
+			/*
+			 * BOTH facts, because the question an irreversible action raises is "did it
+			 * happen?" and the transport's own translation answers a different one: a
+			 * reader told only "the backend is unreachable" has to infer the marks'
+			 * state from the rows (UX round 1, U5). Nothing moved — `markAllRead` writes
+			 * local state only from the answer's `read` bucket, so a refused request (a
+			 * background window refused by main's foreground gate, a busy store
+			 * answering 503) leaves every mark exactly where it was — and the sentence
+			 * says so rather than only reporting the transport failure.
+			 */
+			showWarningToast(
+				`${userFacingMessage(failure, "The backend did not answer.")} The unread marks were not cleared.`,
+			);
+		} finally {
+			setClearingUnread(false);
+		}
+	};
+	/**
+	 * Where focus goes when the control leaves the screen by succeeding.
+	 *
+	 * The control unmounts when the last mark is cleared, and a focused element
+	 * that unmounts drops focus to `<body>` — so the next Tab restarted from the
+	 * top of the panel, outside the list, which is the opposite of what a reader
+	 * who just cleared the pile wants (UX round 1, U2). Focus is handed to the
+	 * section's own disclosure instead, which is in the ring and adjacent to where
+	 * the control was.
+	 *
+	 * Guarded on `document.activeElement` rather than taken unconditionally: the
+	 * count can also reach zero while focus is somewhere else entirely (the reader
+	 * clicked a row, the feed cleared the last mark in another window), and moving
+	 * focus then would steal the cursor from wherever they actually are. `<body>`
+	 * is the signature of the unmount-drop and of nothing else here.
+	 */
+	const activeHeadingRef = useRef<HTMLButtonElement | null>(null);
+	const controlWasShown = useRef(markAllReadShown);
+	useEffect(() => {
+		if (controlWasShown.current && !markAllReadShown) {
+			const active = document.activeElement;
+			if (active === null || active === document.body) {
+				activeHeadingRef.current?.focus();
+			}
+		}
+		controlWasShown.current = markAllReadShown;
+	}, [markAllReadShown]);
+	/**
+	 * The control, as the sibling of a section's toggle rather than inside it: a
+	 * button nested in the toggle's own button would share its hit area, so the
+	 * inner click and the outer one could not be told apart, and the arrow walk
+	 * over `[data-chat-row]` would land on a control whose activation also
+	 * collapsed the group.
+	 *
+	 * IT IS A STOP IN THAT WALK, and for the WHOLE exchange. `keyDown` moves by
+	 * calling `.focus()` on the next `[data-chat-row]`, so the stamp is what makes
+	 * this a row-scoped action a keyboard reader can reach — ArrowDown from the
+	 * Active chats disclosure stops here before the first conversation — and it
+	 * MUST NOT drop out while the request is open, because dropping it shortens the
+	 * ring to less than the DOM being walked. The stop is kept by not using
+	 * `disabled` at all (see below); the ring's order is pinned in
+	 * `scripts/mark-all-read-control.test.mjs`.
+	 */
+	const markAllReadControl: ReactNode = markAllReadShown ? (
+		<Button
+			size="sm"
+			variant="ghost"
+			data-chat-row
+			data-tour-tag="mark-all-read"
+			/*
+			 * `aria-disabled` and NOT `disabled`, which is the Older history slot's rule
+			 * and the reason it states: Chrome blurs a button the moment `disabled`
+			 * lands, so a keyboard reader who pressed Enter loses focus to `<body>` for
+			 * the length of the request and the next Tab restarts from the top of the
+			 * panel. The click is ignored while the promise is open instead, and focus —
+			 * and this ring stop — stay exactly where the reader put them.
+			 */
+			aria-disabled={clearingUnread || undefined}
+			title={unreadCopy.scope}
+			onClick={() => {
+				if (clearingUnread) return;
+				void clearUnread();
+			}}
+			/*
+			 * The primitive, with exactly two overrides (design D5). Its authored hover
+			 * ground is `accent-wash`; this row's own step is `elevated`, the ground the
+			 * disclosure beside it takes, and two hover grounds in one row is the
+			 * inconsistency branding § 5 asks us not to ship. The rest ink steps down to
+			 * `ink-dim` so the action and the section's count are two REGISTERS rather
+			 * than one phrase (design D3): the count is a fact at `ink-muted`/medium, the
+			 * action is a control below it and takes `ink` on hover. `ink-dim` clears
+			 * 4.5:1 on every ground in all 59 palettes.
+			 *
+			 * `shrink-0` because the action must not be squashed, and the label's
+			 * `min-w-0 truncate` below is what keeps the group's own name from being the
+			 * thing that gives way — the pair is safe only because the label ALSO sheds
+			 * with `sr-only` below the two-digit row width where it stops fitting (design
+			 * D1, D2-1).
+			 */
+			className="shrink-0 text-ink-dim hover:bg-elevated"
+		>
+			{clearingUnread ? (
+				/*
+				 * Only the GLYPH steps down while the request is open: this control is
+				 * WORKING, not unavailable, so the label holds its readable ink and the
+				 * spinner is the thing that dims (design D4). `ink-disabled` is a colour
+				 * step rather than an opacity, per § 6.
+				 */
+				<LoaderCircle
+					className="text-ink-disabled motion-safe:animate-spin"
+					aria-hidden="true"
+				/>
+			) : (
+				<CheckCheck aria-hidden="true" />
+			)}
+			{/*
+			 * The label NAMES THE NUMBER the request will carry (UX U1), and it sheds to
+			 * `sr-only` below the two-digit row width so the group's own name never breaks
+			 * to make room for it (design D1/D2-1) WITHOUT leaving the accessibility
+			 * tree: below that width the glyph, the `sr-only` label and the `sr-only`
+			 * scope suffix are the whole name, and the tooltip is the description rather
+			 * than the name (review R2-1 / UX U2-1).
+			 */}
+			<span className={cn("truncate", MARK_ALL_READ_LABEL_SHED)}>
+				{unreadCopy.label}
+			</span>
+			{/*
+			 * The rows this control reaches outside its own section, in the accessible
+			 * name as well as the tooltip. APPENDED rather than replacing the label, so
+			 * the visible text stays a prefix of the name (WCAG 2.5.3 Label in Name) —
+			 * the shape `ChatSessionStatus` uses for its own ", unread" suffix.
+			 */}
+			{unreadCopy.nameSuffix ? (
+				<span className="sr-only">{unreadCopy.nameSuffix}</span>
+			) : null}
+		</Button>
+	) : null;
 	useEffect(() => {
 		localStorage.setItem("chat-sidebar-disclosures", JSON.stringify(expanded));
 	}, [expanded]);
@@ -549,45 +739,47 @@ export function ChatSidebar({
 		[drafts],
 	);
 	/*
-	 * WHICH CONVERSATIONS HAVE A BROWSER, AND HOW LOUD (design R2).
+	 * THERE IS NO PER-ROW BROWSER CONTROL ANY MORE (operator ask, 2026-09-18).
 	 *
-	 * EVERY ROW DRAWS ONE, including a conversation with nothing open (review round 1,
-	 * D2/A4). The rule used to be "only where there is something to say — no tabs and no
-	 * waiting request gets no control", which left the sidebar without an entry point
-	 * until something was already open: the operator's ask is a corner control on EACH
-	 * conversation so a browser can be OPENED from the sidebar, and a conversation with
-	 * nothing open is exactly the case where that press is useful (it opens the pane
-	 * scoped to the conversation, which then offers `New tab in this conversation`). The
-	 * quiet state is the dim `Globe`, not an absent slot.
+	 * The mark that used to sit here is deleted rather than hidden, and the reason is the
+	 * operator's own: it was a corner affordance on EVERY conversation row (design R2,
+	 * and review round 1's D2/A4 that made it unconditional), which cost every title its
+	 * 28px for a control used rarely, and the slot is wanted for the hover-revealed pin
+	 * he asked for in the same breath. The current conversation's browser is opened from
+	 * the header's Globe trigger, which stays.
 	 *
-	 * THAT IS ALSO WHY THE SLOT IS RESERVED LIST-WIDE: the mark is a sibling of the row
-	 * button on every row rather than something inserted on hover or on the first tab, so
-	 * a conversation gaining a tab re-truncates nothing (the m4 defect this file records)
-	 * and the row does not reflow under the pointer. The cost is the mark's own 28px on
-	 * every title, which is the trade the design's R2 measures and accepts at 280px.
+	 * WHAT THAT COSTS, STATED SO THE DELETION IS NOT READ AS FREE - the full inventory, not
+	 * its first line, because four review streams found the shorter version under-listed it
+	 * (code review R3, design D3, UX U1, QA Q17/Q18 on PR #345):
 	 *
-	 * `browserSummaries` ABSENT IS A DIFFERENT RULE (ruling 5(a)): no bridge means no
-	 * projection means no summary, and a mark that could not open anything would be an
-	 * affordance that lies. So the caller passes the map only where the browser exists,
-	 * and a missing ENTRY inside it is the quiet state — not a reason to draw nothing.
-	 * The zero summary is a module constant so every quiet row shares one object and the
-	 * `memo` on the mark still buys something.
+	 *  - a conversation that is NOT the current one can no longer have its browser opened
+	 *    from this list without being selected first (the header's Globe follows the
+	 *    selection, so `select, then press the Globe` is the path that survives);
+	 *  - this list was the only place OUTSIDE the browser showing a conversation's tab
+	 *    COUNT and its LOADING state, for any conversation, the current one included -
+	 *    the header's badge carries approvals only;
+	 *  - it was the only surface reporting ANOTHER conversation's pending browser approvals
+	 *    without opening the browser: the header's badge counts this conversation only, so
+	 *    it is null for a foreign request and nothing in the sidebar reports one now (QA
+	 *    round 1 rendered exactly that against a foreign `request_access`);
+	 *  - it was the only thing that NORMALISED the pane's lens on the way in. The pane's
+	 *    scope is one sticky preference (`ui-preferences-store.ts:452`, read at
+	 *    `browser-pane.tsx:89`) which the deleted handler reset to the conversation, and
+	 *    the header's Globe is unmounted while the pane is open (`chat-header.tsx:161`) so
+	 *    it cannot be pressed to re-scope: with the pane last left on `All tabs`, that is
+	 *    where the header's Globe reopens it and the in-pane switch is the only way back.
+	 *    The toggle and its `aria-expanded` cue went the same way.
+	 *
+	 * One surface outside this component still reports another conversation's approvals:
+	 * `src/main/browser/consent-notifier.ts` raises a native "Site approval needed" banner
+	 * naming the count and the oldest origin, focus-gated and naming no conversation. It is
+	 * unobservable in this repo's headless rigs (native banners are suppressed there), so
+	 * that is a record of what the code does rather than a measurement. A one-line fix
+	 * exists if the lens is wanted back - keep the header's Globe mounted so it toggles and
+	 * normalises the scope - and it is deliberately NOT taken here: the control's
+	 * focus-return and spacing rules are pinned by tests and are not this change's to
+	 * alter.
 	 */
-	const browserMarkFor = (row: CanonicalSessionRow, isCurrent: boolean) => {
-		if (!browserSummaries) return null;
-		const summary = browserSummaries.get(row.session_id) ?? NO_BROWSER_ACTIVITY;
-		return (
-			<BrowserConversationMark
-				key={`browser:${row.session_id}`}
-				sessionId={row.session_id}
-				name={row.title || "Untitled chat"}
-				summary={summary}
-				current={isCurrent}
-				expanded={browserPaneOpenOn === row.session_id}
-				onOpen={onOpenConversationBrowser ?? (() => {})}
-			/>
-		);
-	};
 	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
@@ -595,42 +787,42 @@ export function ChatSidebar({
 			nested,
 			binding: bindingName(row),
 		});
-		/** The row is the CURRENT one, read ONCE and shared by the wrapper, the button and
-		 * the mark: three elements paint one state, so three copies of this expression
-		 * would be three chances for them to disagree (review round 1, A7 — the mark's own
-		 * copy is what told it whether it may paint its hover fill). */
+		/** The row is the CURRENT one, read ONCE and shared by the wrapper and the button:
+		 * two elements paint one state, so two copies of this expression would be two chances
+		 * for them to disagree (review round 1, A7 — a predicate spelled more than once is
+		 * what let the deleted browser mark paint its hover fill over the selected row). */
 		const current = selectedConversation === row.session_id && !activeDraftKey;
 		/*
-		 * THE ROW IS A WRAPPER PLUS A BUTTON NOW (design R2), and the shape is the entity
-		 * row's, which is the only other row here that carries a sibling control: the
-		 * wrapper paints the CURRENT-STATE ground (it fills the gap the 24px mark leaves
-		 * and the rounded corners), the button paints it again because `rowStyle`'s own
-		 * `hover:bg-elevated` is the only thing that beats the step it inherits, and the
-		 * mark drops its hover fill while the row is current. That is ONE state spread
-		 * over three elements by the DOM, exactly as `rowStyle`'s docstring describes for
-		 * the entity row, and `scripts/chat-sidebar-selection.test.mjs` resolves each
-		 * expression through the shipped `cn` rather than looking for a class name.
+		 * THE ROW IS A WRAPPER PLUS A BUTTON, and it keeps that shape now that the per-row
+		 * browser mark is gone (operator ask, 2026-09-18; the reasoning is at
+		 * `sessionRow`'s own note above). The wrapper paints the CURRENT-STATE ground and the
+		 * button paints it again because `rowStyle`'s own `hover:bg-elevated` is the only
+		 * thing that beats the step it inherits — ONE state spread over two elements by the
+		 * DOM, the shape `rowStyle`'s docstring already describes for the entity row, and
+		 * `scripts/chat-sidebar-selection.test.mjs` resolves both expressions through the
+		 * shipped `cn` rather than looking for a class name.
 		 *
-		 * THE MARK IS A SIBLING, NOT A CHILD OF THE BUTTON. A button cannot contain a
-		 * button, and a row whose whole box is one target has nowhere to put a second
-		 * action. Its 24px slot is RESERVED list-wide by the mark being rendered on every
-		 * row — including the quiet state (see `browserMarkFor`), which is what stops a row
-		 * from reflowing under the pointer or a title from re-truncating when the
-		 * conversation's first tab opens. (The earlier note here described a
-		 * `group-hover` reveal that was never implemented beside the "no mark at all for a
-		 * quiet row" rule; both halves were the D2/A4 finding.)
+		 * THE WRAPPER IS DELIBERATELY NOT COLLAPSED INTO THE BUTTON. With the mark gone the two
+		 * boxes are the same box, so this is dead structure today rather than a load-bearing
+		 * split: the shape is kept because the row's geometry is not this change's to alter —
+		 * the slot the wrapper reserves is where the operator's hover-revealed pin goes, and
+		 * that reshape belongs to the change that adds it. The `group` class the wrapper used
+		 * to carry is GONE rather than kept: nothing left inside the row reads a `group-*`
+		 * variant (the reveal it was added for was never implemented — see the removed mark's
+		 * history in the pull request), and a hook no element reads is a hook nobody can trust.
 		 *
-		 * WHAT THE BUTTON KEEPS: `data-chat-row` on exactly one element per row, and with
-		 * it `title` and `aria-current` — three committed harnesses select on those and the
-		 * arrow-key traversal walks the attribute (see the mark's own note).
+		 * WHAT THE BUTTON KEEPS: `data-chat-row` on exactly one element per row, and with it
+		 * `title` and `aria-current` — three committed harnesses select on those and the
+		 * arrow-key traversal walks the attribute.
 		 */
 		return (
 			<div
 				key={row.session_id}
 				className={cn(
-					"group flex h-8 items-center gap-1 rounded-md",
-					// The wrapper's ground, under the same condition as the button's, so the
-					// 4px the mark leaves is not a notch in the selected row's fill.
+					"flex h-8 items-center gap-1 rounded-md",
+					// The wrapper's ground, under the same condition as the button's: the two
+					// boxes are coextensive now, and painting it in one place only would make
+					// the state a property of whichever element the pointer is on.
 					current && rowCurrent,
 				)}
 			>
@@ -646,8 +838,9 @@ export function ChatSidebar({
 					data-child={nested || undefined}
 					className={cn(
 						rowStyle,
-						// `w-full` became `min-w-0 grow`: the wrapper is the row now, and the
-						// button shares it with the mark.
+						// `w-full` became `min-w-0 grow` when the wrapper arrived: the button shares
+						// the row's box with whatever the wrapper carries beside it, and a full-width
+						// button inside a flex wrapper with a sibling is a row that overflows.
 						"min-w-0 grow text-left",
 						nested && "pl-7",
 						current && rowCurrent,
@@ -735,7 +928,6 @@ export function ChatSidebar({
 						</>
 					)}
 				</button>
-				{browserMarkFor(row, current)}
 			</div>
 		);
 	};
@@ -919,29 +1111,76 @@ export function ChatSidebar({
 			</span>
 		</span>
 	);
+	/*
+	 * A section's header, as a ROW of controls rather than one button.
+	 *
+	 * The toggle is the whole header — clicking anywhere on it collapses the group
+	 * — so a second control nested inside it would be a button within a button:
+	 * one hit area for two actions, where an inner click also toggles the group
+	 * and neither control can be activated independently. They are SIBLINGS here,
+	 * which is what lets the action sit in the header at all; the toggle keeps
+	 * every property it had (the row's `data-chat-row` stamp, so the arrow walk
+	 * still visits it, and its `aria-expanded`).
+	 *
+	 * `action` is undefined for every group but the one that can carry one, so the
+	 * row renders as it always did for the rest — including the two properties
+	 * that follow from carrying one:
+	 *
+	 * - the row is a NAMED CONTAINER (`@container/chatheading`), which is the width
+	 *   the action's own label sheds against;
+	 * - and it STICKS to the top of the list's scroll box, so the control travels
+	 *   with the pile it clears instead of sitting 632px above it once the operator
+	 *   has scrolled into his own 38 rows (design D2). Sticky only here: the other
+	 *   three headings would be a layout change nothing asked for, and this row is
+	 *   bounded by its own section, so it un-sticks on its own when the group ends.
+	 *   The ground is `bg-surface` (the panel's own) because rows scroll under it.
+	 *
+	 * The label carries `min-w-0 flex-1 truncate` — this file's own idiom for the
+	 * one flexed label that renders a string it can run out of, since a fixed
+	 * literal cannot truncate anything and a 28px row cannot hold a wrapped line.
+	 */
 	const heading = (
 		key: string,
 		label: string,
 		initial: boolean,
 		count?: number,
+		action?: ReactNode,
+		toggleRef?: Ref<HTMLButtonElement>,
 	) => (
-		<button
-			type="button"
-			data-chat-row
-			className="flex h-7 w-full items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-elevated"
-			aria-expanded={query ? true : isOpen(key, initial)}
-			onClick={() => toggle(key, initial)}
-		>
-			{query || isOpen(key, initial) ? (
-				<ChevronDown className="size-3.5" />
-			) : (
-				<ChevronRight className="size-3.5" />
+		<div
+			className={cn(
+				"@container/chatheading flex h-7 items-center gap-1",
+				/*
+				 * `-top-2` because the scroll box carries `pt-2`: pinning at `top: 0` pins to
+				 * the CONTENT edge, 9px below the box's own edge (8px of padding plus the
+				 * 1px `border-t`), and padding is not a clip — the row sliding up keeps its
+				 * tail visible in that band, cut mid-glyph at the hairline. The negative
+				 * offset starts the pinned row's own box at the box's edge, so rows go UNDER
+				 * it rather than past it (design D2-2), and the resting layout is unchanged.
+				 */
+				action && "sticky -top-2 z-10 bg-surface",
 			)}
-			<span className="flex-1 text-left">{label}</span>
-			{/* A zero badge next to a group that already says it is empty is the
-			    same fact twice; only a non-zero count carries information. */}
-			{count !== undefined && count !== 0 && countBadge(count)}
-		</button>
+		>
+			<button
+				ref={toggleRef}
+				type="button"
+				data-chat-row
+				className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-elevated"
+				aria-expanded={query ? true : isOpen(key, initial)}
+				onClick={() => toggle(key, initial)}
+			>
+				{query || isOpen(key, initial) ? (
+					<ChevronDown className="size-3.5" />
+				) : (
+					<ChevronRight className="size-3.5" />
+				)}
+				<span className="min-w-0 flex-1 truncate text-left">{label}</span>
+				{/* A zero badge next to a group that already says it is empty is the
+				    same fact twice; only a non-zero count carries information. */}
+				{count !== undefined && count !== 0 && countBadge(count)}
+			</button>
+			{action}
+		</div>
 	);
 	const keyDown = (event: KeyboardEvent<HTMLElement>) => {
 		const target = event.target as HTMLElement;
@@ -1499,6 +1738,23 @@ export function ChatSidebar({
 									"Active chats",
 									true,
 									matching.filter((row) => row.active).length,
+									/*
+									 * The bulk read receipt sits with the group the operator
+									 * pointed at — the one whose rows carry the completion
+									 * checkmarks — while the set it clears is the STORE's, so
+									 * the visible column of marks and the count its label names
+									 * are the same fact. It is deliberately not duplicated
+									 * beside "Previous chats": one gesture, one control. The
+									 * flat "All chats" view has none — recorded on the pull
+									 * request as deferred rather than papered over, because a
+									 * second control site is a second design decision.
+									 */
+									markAllReadControl,
+									/*
+									 * The disclosure the reader is handed when clearing the last
+									 * mark unmounts the control under their cursor.
+									 */
+									activeHeadingRef,
 								)}
 								{(query || isOpen("active", true)) &&
 									(matching.some((row) => row.active) ? (

@@ -41,6 +41,11 @@
 	--color-accent-active: var(--lo-accent-active);
 	--color-accent-wash: var(--lo-accent-wash);
 	--color-on-accent: var(--lo-on-accent);
+	/* The theme's second decorative hue and its tint — identity and category, never
+	   interaction or selection. See `accentAlt` in the palette contract for what may
+	   spend them, and only ever as these two pairs. */
+	--color-accent-alt: var(--lo-accent-alt);
+	--color-accent-alt-wash: var(--lo-accent-alt-wash);
 	/* The chart mark under the pointer: its own role rather than `accent-hover`,
 	   which is a step on the button's ramp and promises nothing about the ground
 	   a chart mark is drawn on. See `chartBarHover` in the palette contract. */

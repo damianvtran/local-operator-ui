@@ -176,26 +176,34 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  * what makes a frame comparable with the ones committed before it, and they
  * span both modes and the two brand ramps. The registry now carries
  * fifty-nine, so a full sweep is a 59/12 multiple of the swept set: from the
- * **4,925** frames committed today — `find docs/evidence -name '*.webp' | wc -l`
- * and `git ls-files docs/evidence | grep -c '\.webp$'`, both 4,925 at this head —
- * holding **196 MB** on disk — `du -sh docs/evidence`, the filesystem figure
- * rather than the 133.9 MiB the files' own bytes sum to — of which **4,184**
- * stand outside the 64 declared supplementary sets, to roughly **24,000 frames
- * and ~950 MB**. A run goes from about half an hour to several — on a box that
- * several other worktrees are working in at the same time.
+ * **6,832** frames committed today — `find docs/evidence -name '*.webp' | wc -l`
+ * and `git ls-files --cached --others --exclude-standard docs/evidence | grep -c
+ * '\.webp$'`, both 6,832 at this head —
+ * holding **262 MB** on disk — `du -sh docs/evidence`, the filesystem figure
+ * rather than the 189.8 MiB the files' own bytes sum to — of which **5,697**
+ * stand outside the 78 declared supplementary sets, to roughly **33,000 frames
+ * and ~1.3 GB**. A run goes from about half an hour to several — on a box that
+ * several other worktrees are working in at the same time, and this note's own
+ * arithmetic was measured wrong by that margin on 2026-09-18: a full set projected
+ * at half an hour took 7-33 s per frame under load averages above 400 with seven
+ * to eleven sibling capture rigs running, i.e. 11-52 hours. Treat the projection
+ * as a function of the box, not of the rig.
  *
  * Re-derive those three numbers from the tree this note ships in rather than
- * carrying them forward, and name the commands. Two earlier revisions of this
+ * carrying them forward, and name the commands. Three earlier revisions of this
  * note got that wrong in the same way, one fold apart: 4,379 / 167 MB / 3,762 and
  * a projection of ~21,000 (review round 1, M-2; QA round 1, Q-1 — the same
  * defect, found twice), then 4,851 / 195 MB / 4,110, which was the second fold's
  * triple and, worse, attributed 4,110 to `manifest.json`'s own `frames` while the
- * manifest carried 4,184 (round 2, M-1). The rule that keeps it right is not
- * "update the number" but "update the number AND the record it points at, from
- * the tree you are committing": 4,184 is the manifest's `frames` at this head,
- * 4,925 is what both count commands return, and the 741 difference is the frames
- * inside the declared sets. The conclusion survives all three corrections: a full
- * sweep is roughly five times this set and close to a gigabyte of WebP. The
+ * manifest carried 4,184 (round 2, M-1), and then 4,925 / 196 MB / 4,184 against a
+ * tree carrying 6,832 / 262 MB / 5,697 (re-derived 2026-09-18, the theme-legibility
+ * pass, by the commands above — main's own evidence work had grown the set by a
+ * third and nobody re-ran the step the note asks for). The rule that keeps it right
+ * is not "update the number" but "update the number AND the record it points at,
+ * from the tree you are committing": 5,697 is the manifest's `frames` at this
+ * head, 6,832 is what both count commands return, and the 1,135 difference is the
+ * frames inside the declared sets. The conclusion survives all four corrections: a
+ * full sweep is five to six times this set and over a gigabyte of WebP. The
  * twelve stay the spine because the
  * forty-seven they do not cover are covered where it matters rather than
  * silently dropped:
@@ -592,6 +600,34 @@ export const STORIES = [
 	   photograph a state no user can be in. */
 	["chat-message-input--conversation-gone", 1024, 300],
 
+	/* Mermaid's categorical fills, which are where the app spends a decorative hue
+	   on content rather than on chrome.
+
+	   WHY THIS STORY EXISTS NOW. `fillType0..7` (`mermaid-diagram.tsx`'s
+	   `WASH_CYCLE`) used to start on `infoWash`, so a diagram's second category
+	   was painted the colour that everywhere else means "here is a fact"; the
+	   second accent now sits at index 1. That change is two lines of source and
+	   has no other evidence anywhere: before this entry there was no frame under
+	   `docs/evidence` whose path contained `mermaid` at all, so the one site the
+	   accent change MOVES PIXELS ON was also the site with no picture.
+
+	   A JOURNEY DIAGRAM, because the ramp has to be legible in the frame to be
+	   evidence: the journey type spends `fillType0..7` per section, and its six
+	   sections therefore show all six entries of the cycle including the new one.
+	   It is also the type closest to what this app renders in practice.
+
+	   1280x900 is the transcript's own width, so the diagram is met at the size
+	   the chat column gives it. The story holds `capturePending` until the SVG is
+	   in the DOM — the module is a 3.6 MB dynamic import and the render is
+	   asynchronous, so a frame taken on the readiness poll alone would be the
+	   "Loading diagram..." placeholder in whichever themes lost the race, once per
+	   theme.
+
+	   Cost: +12 frames, one per sweep theme. A `--themes=` run covers the 47 the
+	   sweep does not, which is how a palette-specific concern (this ramp's
+	   index-2 adjacency) is checked where it matters rather than everywhere. */
+	["chat-mermaid-diagram--categorical-fills", 1280, 900],
+
 	/* The browser feature's own surfaces, added with the round that remediated its
 	   review. This is the ONE part of the visible browser a browser tool can
 	   reach: the chrome band is ordinary DOM, while the native page view under it
@@ -683,34 +719,19 @@ export const STORIES = [
 	["browser-approvals-dock--empty", 1280, 720],
 	["browser-approvals-dock--narrow", 560, 720],
 	/*
-	 * THE CONVERSATION MARK (design R2), in the states the sidebar can put it in. Nine
-	 * of them because the mark is small and its states differ by one glyph, one count or
-	 * one badge: a frame that showed two of them would leave a reviewer guessing at the
-	 * other seven. EVERY ONE OF THEM RENDERS THE MARK IN A ROW, and `on-both-grounds` is
-	 * the pair that matters most: the mark is never seen alone, the badge's ring paints
-	 * `canvas` on whatever ground the row owns, and the two grounds sit on opposite sides
-	 * of the panel's own step. (The harness's element floor is the mechanical half of the
-	 * same decision - a lone 24px control is not a drawn surface.)
+	 * THE SIDEBAR'S PER-ROW BROWSER MARK WAS CAPTURED HERE, through TWELVE rows, and they
+	 * are gone with the control (operator ask, 2026-09-18): ELEVEN
+	 * `browser-conversation-mark--*` rows, which are the eleven stories the deleted
+	 * `browser-conversation-mark.stories.tsx` exported and which wrote
+	 * `docs/evidence/browser-conversation-mark/`, plus the `chat-sidebar-status-feed--browser-marks`
+	 * row whose fixture fed the mark's count-and-badge cascade into a real sidebar row.
+	 * That set is deleted, and a STORIES row naming a story that no longer exists is the
+	 * drift this table's own count is checked against (review round 1, R4: this comment
+	 * said "nine states", the PR body said thirteen and the manifest said twelve rows - the
+	 * counts are now 11 + 1 above). The rows that reach the sidebar's conversation rows -
+	 * the `chat-sidebar-status-feed--*` states - are what remains, and they are where a
+	 * row's own layout is photographed now.
 	 */
-	["browser-conversation-mark--nothing-open", 320, 64],
-	["browser-conversation-mark--has-tabs", 320, 64],
-	["browser-conversation-mark--loading", 320, 64],
-	["browser-conversation-mark--one-approval", 320, 64],
-	["browser-conversation-mark--three-approvals", 320, 64],
-	["browser-conversation-mark--many-approvals", 320, 64],
-	["browser-conversation-mark--everything", 320, 64],
-	["browser-conversation-mark--focused", 320, 64],
-	["browser-conversation-mark--on-both-grounds", 320, 128],
-	/*
-	 * THE TWO ADDED BY REVIEW ROUND 1. `trailing-statement` is D8's coverage gap: the
-	 * design justifies the reserved slot with a 28px cost per title, and no frame put the
-	 * mark in a row that already spends width on `· Not sent yet`. `slot-cost` is D2/A4's
-	 * before/after pair: the same row in the base tree's shape (no slot at all) and on
-	 * this branch's, with the two measured title widths printed in the frame so the cost
-	 * is read rather than argued.
-	 */
-	["browser-conversation-mark--trailing-statement", 320, 64],
-	["browser-conversation-mark--slot-cost", 320, 128],
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
@@ -1515,6 +1536,71 @@ export const STORIES = [
 	["chat-sidebar-status-feed--completion-acknowledged", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered-offscreen", 780, 660],
 	/*
+	 * A ROW'S TITLE BOX, ON A TITLE THAT REACHES IT (design round 1, D1 of the
+	 * per-row mark's removal). The other states in this set have titles short
+	 * enough that the 28px the deleted mark reserved is invisible in them: the
+	 * width claim had no frame, and the only artifact that ever stated it - the
+	 * deleted `browser-conversation-mark--slot-cost` specimen - went with the
+	 * control. This state is one row whose title truncates at this panel's own
+	 * width, so the box's own edge is what the frame is about; its before half is
+	 * `chat-sidebar-browser-mark-baseline/truncating-title/`, the same story on
+	 * unmodified `origin/main` at `10926b782`, where the same title truncates 28px
+	 * earlier because the mark's slot sat between the title and the row's end.
+	 */
+	["chat-sidebar-status-feed--truncating-title", 780, 560],
+	/*
+	 * The bulk read receipt, on the same real tree: the pile of unacknowledged
+	 * completions the operator reported, the PARTIAL clear (the backend refuses a
+	 * superseded token per item, and the receipt names the row that stays unread),
+	 * and the fully cleared pile with the control gone.
+	 *
+	 * The four negatives are the states the control must NOT appear in: an older
+	 * backend that does not advertise `completion_ack_bulk`, a catalogue read
+	 * that never answers, one that failed, and an empty list. Each is an absence
+	 * claim, which is why each frame carries the readout line that states it in
+	 * words beside the panel.
+	 *
+	 * Sized at 600 rather than the siblings' 560: the readout below the panel
+	 * carries two more lines (the frame tally and the control's own state), and a
+	 * clipped caption is a claim a reviewer cannot read.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-pile", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-partly-read", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-cleared", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-unsupported", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-loading", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-failed", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-empty", 780, 600],
+	/*
+	 * The states a single 360px width cannot photograph, all three asked for by
+	 * design round 1: the header row at the app's own clamps (`chat-layout.tsx`
+	 * allows 240-360, 280 is the default preference), where the action's label
+	 * sheds so the group's own name never breaks (D1, the round's blocker); and
+	 * the interval between the click and the receipt, which is the only progress
+	 * cue an irreversible write has (D4).
+	 *
+	 * 280 and 240 are the panel widths, so the frame is the panel plus the 420px
+	 * readout beside it — 720 and 680 — and the header row inside them measures
+	 * 271px and 223px.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-narrow-default", 720, 600],
+	["chat-sidebar-status-feed--mark-all-read-narrow-minimum", 680, 600],
+	/*
+	 * The pile scrolled to the bottom of its own box: the frame that proves the
+	 * header row is STICKY, since at rest a sticky row and a static one are the
+	 * same pixels and the defect design D2 found (the control 632px above the
+	 * marks it clears) exists only past the first screenful.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-scrolled", 780, 600],
+	/*
+	 * The filter case (agent review R4): one unread mark on screen, the store's
+	 * forty behind it, and no control — the frame that shows the scope being
+	 * withheld rather than silently narrowed.
+	 */
+	["chat-sidebar-status-feed--mark-all-read-filtered", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-in-flight", 780, 600],
+	["chat-sidebar-status-feed--mark-all-read-refused", 780, 600],
+	/*
 	 * The sidebar's CURRENT ROW, and the caps beside it on that row.
 	 *
 	 * Two surfaces, and both are the row the reader is on: a conversation row
@@ -1554,14 +1640,21 @@ export const STORIES = [
 	 * pipeline (`hover`, the option the trigger-hover frames already use) and
 	 * shuts the shutter with the pointer still there.
 	 *
-	 * `data-chat-row:has(+ [data-chat-row][aria-current="page"])` is the row
-	 * immediately BEFORE the current one — the story's roster is newest-first and
-	 * its third row is the selected conversation, so this lands on "Migrate the
-	 * deploy script" while "Quarterly revenue model" is current. That is the pair
-	 * design round 1's D1 is measured on and the one a reader needs to judge the
-	 * hierarchy: the current row paints `highlight` and the row under the pointer
-	 * paints `elevated`, and whether the persistent mark still outranks the
-	 * transient one is a fact about two grounds side by side in one frame.
+	 * `data-chat-row` marks the ROW'S BUTTON, and since design R2 (folded in from
+	 * `main`) that button sits inside the row's own wrapper beside the browser mark,
+	 * so the wrapper is the element with a sibling row and the button is taken
+	 * inside it. The previous spelling —
+	 * `[data-chat-row]:has(+ [data-chat-row][aria-current="page"])` — described the
+	 * pre-R2 flat list and matched NOTHING at this head, which the rig reports
+	 * rather than photographing the resting state; it is written down here because a
+	 * hover frame's provenance is the selector that found it. The row above the
+	 * current one is still "Migrate the deploy script" while "Quarterly revenue
+	 * model" is current: the story's roster is newest-first and its third row is the
+	 * selected conversation. That is the pair design round 1's D1 is measured on and
+	 * the one a reader needs to judge the hierarchy: the current row paints
+	 * `highlight` and the row under the pointer paints `elevated`, and whether the
+	 * persistent mark still outranks the transient one is a fact about two grounds
+	 * side by side in one frame.
 	 *
 	 * An entry of its own with a `dir` rather than a second plain tuple: a plain
 	 * tuple for this story would write into `selected-row/` and overwrite the
@@ -1575,7 +1668,8 @@ export const STORIES = [
 		560,
 		{
 			dir: "selected-row-neighbour-hovered",
-			hover: '[data-chat-row]:has(+ [data-chat-row][aria-current="page"])',
+			hover:
+				'div:has(+ div > [data-chat-row][aria-current="page"]) > [data-chat-row]',
 		},
 	],
 	/*
@@ -1637,9 +1731,6 @@ export const STORIES = [
 	 * because there is no panel to fit - a caption and two blocks.
 	 */
 	["chat-sidebar-current-row--wash-swatches", 780, 260],
-	/* The marks on the rows, at the panel's own width: two conversations with a browser
-	   doing something and a third with none, which is the control case. */
-	["chat-sidebar-status-feed--browser-marks", 780, 560],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
@@ -1899,6 +1990,24 @@ export const STORIES = [
 	["chat-tool-rows--turn-timestamps", 1024, 760],
 	["chat-tool-rows--turn-timestamps-narrow", 420, 500],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
+	/* The agent-side caption, added the same day as the report that "the agent
+	   responses (just the final responses, not the in-progress tool
+	   intent/response) don't have a time displayed on them". `answer-in-progress`
+	   is the frame that separates the two halves of that sentence: a settled
+	   answer with its caption, and the answer still arriving with none, under one
+	   working line. `prose-between-calls` is the shape the caption's COUNT has to
+	   survive - three intermediate paragraphs interleaved with the calls they
+	   narrate, plus a closing answer - which was four captions in one turn under
+	   the first gate (design round 1's D1) and is one under the rule that replaced
+	   it, on the answer the turn ends on. `answer-then-statement` is the shape that
+	   lost the time entirely: a notice and a peer receipt painting after the
+	   answer, neither of which carries a `<time>` of its own nor a disclosure to
+	   open, which is design round 2's D2-1. Sized to their content, for the reason
+	   the turn-stamp pair is. */
+	["chat-tool-rows--answer-in-progress", 1024, 340],
+	["chat-tool-rows--prose-between-calls", 1024, 520],
+	["chat-tool-rows--prose-between-calls", 420, 700],
+	["chat-tool-rows--answer-then-statement", 1024, 470],
 	/* The cold engage: a send the app has admitted and the owner has not answered
 	   yet - the operator's "I hit send and nothing happens for three seconds".
 	   Captured as a PAIR with its baseline, because the claim is a difference:
@@ -2290,6 +2399,43 @@ export const STORIES = [
 	["canvas-workspace--edit-prompt", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
+
+	/*
+	 * The publish dialog, in every state its rewrite introduced (agent-hub
+	 * contract §6.2/§6.3): the consent copy that now says what is published, the
+	 * blocked-field list that disables submit, and each refusal with its own
+	 * headline, action and register. Six of the ten are reached by PRESSING the
+	 * consent box and Publish — a treatment rendered from a prop would not be
+	 * evidence that the flow reaches it.
+	 *
+	 * 980x860: the dialog at its own `sm` step (max-w-xl) plus the page it is
+	 * centred in. Declared rather than measured for the reason every entry here
+	 * is — a frame whose height depends on which refusal is showing is a frame a
+	 * reviewer cannot diff against the next round's.
+	 */
+	["agents-publish-dialog--default", 980, 860],
+	["agents-publish-dialog--pre-validation-blocked", 980, 860],
+	["agents-publish-dialog--name-taken", 980, 860],
+	["agents-publish-dialog--name-taken-by-you", 980, 860],
+	["agents-publish-dialog--name-claim-in-flight", 980, 860],
+	["agents-publish-dialog--reserved-builtin", 980, 860],
+	["agents-publish-dialog--reserved-builtin-refusal", 980, 860],
+	["agents-publish-dialog--moderation-rejected", 980, 860],
+	["agents-publish-dialog--moderation-unavailable", 980, 860],
+	["agents-publish-dialog--published", 980, 860],
+	["agents-publish-dialog--update-listing", 980, 860],
+	/*
+	 * The pull's four outcomes, each one real toast from the real hook against a
+	 * stubbed transport, held open with `toastDuration: Infinity` because an
+	 * auto-closed toast is a frame that cannot be reproduced. Sized tight to the
+	 * caption plus the toast: a taller viewport is mostly ground, which
+	 * `check-evidence` rejects as a story that painted nothing.
+	 */
+	["agents-pull-outcomes--downloaded", 980, 420],
+	["agents-pull-outcomes--adjusted-name", 980, 420],
+	["agents-pull-outcomes--already-held", 980, 420],
+	["agents-pull-outcomes--refused", 980, 420],
+	["agents-pull-outcomes--refused-prose", 980, 420],
 	/*
 	 * The Schedules page, re-shot whole when the page was harmonized onto the
 	 * wake primitive: its rows are conversations-with-wakes now, so every
@@ -2410,7 +2556,82 @@ export const STORIES = [
 	 * is their before-half.
 	 */
 	["common-updatenotification--backend-update-in-flight", 1280, 900],
+	/*
+	 * THE TWO PHASE PANELS, which the frame above is NOT (UX U6). `-in-flight` opens
+	 * on a press whose phase has not arrived, so it renders the phase-null fallback;
+	 * these two carry `installing` and `restarting`, which is what a reader watches
+	 * for the ~85 s of a publish and the seconds of the restart. They are declared so
+	 * a SWEEP produces them too: an undeclared story would leave its frames as an
+	 * unexplained directory on disk, which is the failure the sweep's own count
+	 * exists to prevent.
+	 */
+	["common-updatenotification--backend-update-installing", 1280, 900],
+	["common-updatenotification--backend-update-restarting", 1280, 900],
 	["common-updatenotification--backend-update-failed", 1280, 900],
+	/*
+	 * THE APP-OWNED ARM OF THE SKEW, and the pair this change is about: the install
+	 * is the published release, the daemon SERVING this app is the previous build,
+	 * and the app may restart it because it started it itself. `restartable` is the
+	 * reading that decides the panel's ending, so the story carries both numbers and
+	 * the flag - a frame whose subject is the control has to be the state that has
+	 * the control.
+	 *
+	 * Captured twice on purpose, and this entry is the second half: the same story on
+	 * the tree BEFORE the change states the fact and offers only "Understood", and
+	 * `docs/evidence/server-behind-app-owned-before/README.md` carries that arm's frame
+	 * and how it was taken. The difference between the two frames is renderer copy
+	 * and one control, so unlike a payload-only pair there is a real pre-change tree
+	 * to photograph - which is what makes this pair evidence rather than an
+	 * illustration.
+	 */
+	["common-updatenotification--server-behind-app-owned", 1280, 900],
+	/*
+	 * THE FAILED RESTART, in both of its outcomes (design D1, UX U1). Neither had a
+	 * frame on any branch, and neither is reachable from a trigger flag: both exist
+	 * only as a COMPLETION the producer sends after a restart that did not take, so
+	 * the stories drive that payload. They are the two states this round's blocker
+	 * findings are about - the panel that contradicted itself, and the toast that
+	 * called a stopped server a success - and a finding about what a reader SEES
+	 * cannot be closed without the frame it is seen in.
+	 */
+	[
+		"common-updatenotification--server-behind-app-owned-restart-failed",
+		1280,
+		900,
+	],
+	["common-updatenotification--server-behind-app-owned-server-down", 1280, 900],
+	/*
+	 * THE UPDATE PANEL'S OWN STATES, each carrying the sentence it is evidence for. The flags
+	 * and payloads behind them are this branch's; the harness they render through is this
+	 * file's.
+	 */
+	[
+		"common-updatenotification--backend-update-offer-source-build",
+		1280,
+		900,
+		{ expectSentence: "Rebuilds this checkout with `lop-update`" },
+	],
+	[
+		"common-updatenotification--backend-update-offer-source-build-adopted",
+		1280,
+		900,
+		{ expectSentence: "The app updates this install itself" },
+	],
+	[
+		"common-updatenotification--backend-update-failed-orphan",
+		1280,
+		900,
+		{
+			expectSentence: "Resolved 55 packages in 1.25s",
+		},
+	],
+	[
+		"common-updatenotification--backend-manual-required-app-owned",
+		1280,
+		900,
+		{ expectSentence: "cannot update this server" },
+	],
+
 	["command-palette-commandpalette--default", 1280, 800],
 	/*
 	 * Two more than the set had, and both for a reason: `--filtered` is the only
@@ -3811,9 +4032,9 @@ export const profileOwnerPid = (name) => {
  * The candidate test is `profileOwnerPid`, and that is a correction rather
  * than a flourish: this loop used to take any name starting with
  * `lo-evidence-`. That prefix is not specific enough to be a profile.
- * `evidence-manifest.test.mjs` builds its synthetic evidence tree in the same
- * shared temp directory as `mkdtempSync(join(tmpdir(), "lo-evidence-manifest-"))`
- * - named deliberately, so that a leaked one is identifiable - and it starts
+ * `evidence-manifest.test.mjs` USED TO build its synthetic evidence tree in the
+ * same shared temp directory as `mkdtempSync(join(tmpdir(), "lo-evidence-manifest-"))`
+ * - named deliberately, so that a leaked one is identifiable - which starts
  * with exactly that prefix.
  * `Number("manifest-XXXXXX")` is `NaN`, `process.kill(NaN, 0)` throws a
  * `TypeError`, and the bare `catch` below read a throw that was never about a
@@ -3824,6 +4045,15 @@ export const profileOwnerPid = (name) => {
  * with an `ENOENT` on it while the sixth returns early without touching the
  * tree (review round 1, F1) - which is the worst shape a bug in here can take
  * on a machine running several lanes at once.
+ *
+ * THE OTHER HALF OF THAT REPAIR IS ON THE FIXTURE'S SIDE, and it is why this
+ * rule is no longer the only thing standing between that sweep and a live tree.
+ * The fixture now lives under `lop-evidence-manifest-`, outside this prefix
+ * entirely, and each of its cells builds and removes its own rather than
+ * sharing one module-scope root. The reason it had to move rather than rely on
+ * the rule below: a name rule protects a tree only from a deleter that CARRIES
+ * it, and a machine running several checkouts has lanes whose `scripts/`
+ * predates it - which is the shape the flake was measured in.
  *
  * What this does NOT close, in the same breath (review round 1): the `catch`
  * below still reads ANY throw from `kill` as "abandoned", so this narrows the
@@ -4103,6 +4333,32 @@ const main = async () => {
 				`Check ${ORIGIN}/index.json for the real ids.`,
 		);
 	}
+	/*
+	 * A FULL SWEEP WIPES BEFORE IT CAPTURES, and the run that dies mid-flight takes
+	 * the committed set with it. Measured on 2026-09-18 in this worktree, not
+	 * inferred, because the trap is invisible from the flags:
+	 *
+	 *   - this call is in the NON-partial branch and runs BEFORE the story loop, and
+	 *     it spares only paths under a declared supplementary set;
+	 *   - there is exactly one try/catch, the top-level one at the foot of this
+	 *     file, and no per-story catch - so a throw anywhere ends the run with the
+	 *     wiped tree left on disk;
+	 *   - `shell-app-shell--settings-appearance` (STORIES row 366 of 612) sets
+	 *     `documentElement.dataset.capturePending` and clears it only when the
+	 *     settings page renders the Appearance switch, which the offline page never
+	 *     does, so the readiness probe throws at its 60s bound and the sweep ENDS
+	 *     there. The repository's own measurement of that state is in
+	 *     `docs/evidence/manifest.json` under `keycapsCapture.blocked`:
+	 *     `{"drawn":false,"counted":88,"pending":true}`.
+	 *
+	 * So a bare `node scripts/capture-evidence.mjs` at this head deletes the frames
+	 * of the 245 rows after that one and exits with NO manifest written - which
+	 * leaves `frames` on disk disagreeing with the manifest and takes
+	 * `pnpm check-evidence` down for every session on the machine, not only for the
+	 * branch that ran it. Narrow the run instead: `--only=<surface>--` once per
+	 * surface is append mode, nothing is deleted, and it reaches every row except
+	 * that one and the row behind it (whose every substring it shares).
+	 */
 	// A narrowed run refreshes named frames in place and must not wipe the
 	// rest of the tree. A full sweep still must not take the supplementary
 	// sets with it — those are live-app captures this script cannot re-derive
@@ -6039,6 +6295,32 @@ const main = async () => {
 				if (!ok) {
 					throw new Error(
 						`${story} @ ${theme}: \`${claim.selector}\` carries ${claim.name}=${JSON.stringify(value)}, which does not satisfy ${JSON.stringify(claim.equals ?? `includes ${claim.includes}`)} - the press did not produce the state this frame is named for`,
+					);
+				}
+			}
+
+			/*
+			 * THE SENTENCE CLAIM, at the last moment before the shutter: a state whose whole point
+			 * is a sentence has to be photographed WITH that sentence on screen. The control that
+			 * makes this worth having is `backend-update-in-flight-source-build`, which was once
+			 * committed as evidence for copy no reader could see - the stories' mock registered no
+			 * listener, the panel painted the fallback, and the frame was byte-identical to the
+			 * release route's in all twelve themes. `storyDrew` counts elements and the attribute
+			 * checks ask about controls; neither can tell two sentences apart.
+			 *
+			 * A DISTINCT OPTION from the `select.expectText` above, which asserts a text SELECTION
+			 * and not a sentence the reader is meant to read: one name for two meanings is how a
+			 * guard stops guarding.
+			 */
+			if (options?.expectSentence) {
+				const { result: claimRead } = await cdp.send("Runtime.evaluate", {
+					expression: "document.body.innerText || ''",
+					returnByValue: true,
+				});
+				const painted = String(claimRead?.value ?? "");
+				if (!painted.includes(options.expectSentence)) {
+					throw new Error(
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(options.expectSentence)}, and a frame without it is evidence for something else.`,
 					);
 				}
 			}
