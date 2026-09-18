@@ -316,10 +316,9 @@ test("a failed stat is its own decision, not a deleted file", async () => {
 	 */
 	const path = "/tmp/a.md";
 	const held = doc(path, { readMtimeMs: 100, content: "one\n" });
-	assert.deepEqual(
-		freshnessDecision(held, probe(path, 0, { exists: false })),
-		{ kind: "missing" },
-	);
+	assert.deepEqual(freshnessDecision(held, probe(path, 0, { exists: false })), {
+		kind: "missing",
+	});
 	assert.deepEqual(
 		freshnessDecision(
 			held,
