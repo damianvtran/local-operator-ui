@@ -1079,6 +1079,13 @@ export const STORIES = [
 	["chat-run-panel--reader-settled", 1280, 900],
 	["chat-run-panel--reader-failed", 1280, 900],
 	["chat-run-panel--reader-nested", 1280, 900],
+	/* The nesting change's own three states (`§ 5`): a mid-level page that LISTS
+	   its child's subagents, a grandchild's page whose row carries its own count,
+	   and the leaf whose page has no section at all — the absence is the state a
+	   reader has to be able to tell from "not loaded yet". */
+	["chat-run-panel--reader-descendants", 1280, 900],
+	["chat-run-panel--reader-deep-children", 1280, 900],
+	["chat-run-panel--reader-childless", 1280, 900],
 	/* A member's page whose child count is ONE: the descend control's singular
 	   label and its accessible name, in the only state that can show either
 	   (round 1, Q8/U1-6), beside the peer stepper for the same child. */
