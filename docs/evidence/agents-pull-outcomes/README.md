@@ -75,3 +75,26 @@ cannot be reproduced. That mechanism and the reason it exists are
   hook reads the cache and reports nothing when it is empty, by design.
 - **Nothing about ordering, stacking or lifetime** of the toasts, which
   `scripts/toast-lifetime.test.mjs` owns.
+
+## `refused/` and `refused-prose/` are pictures of a surface this tree no longer has
+
+Recorded rather than re-taken, and measured rather than inferred (design round 3,
+D4). The pull's failure stopped being a toast on this branch: it is the CALLER's
+to render, inline beside the control that produced it (`agentActionFailureMessage`
+in `features/agents/utils/publication-failure.ts`), so the hook raises no toast
+for a refusal at all. These two stories mount the hook and nothing else, and their
+harness holds `capturePending` until the sentence it expects appears on screen —
+so the sentence it waits for is one this tree never writes, and the run never
+completes. Measured on this tree and on `292a5b305`: `capturePending="1"` after
+7 s in both, before and after round 3's sentence fix.
+
+**What that means for a reader looking at `refused/` and `refused-prose/`:** their
+24 frames were taken from the tree that still raised the refusal as a toast, so
+they show `pullRefusalMessage`'s sentence in a toast, not the inline line the app
+now draws. The sentence itself is still the shipped one — round 3's D1 was that
+the CALLERS were asking the local server's classifier instead, and that is fixed
+in `scripts/agents-publication.test.mjs`'s "a failed action is answered by the
+process that refused it". What these directories cannot do until these stories
+mount a surface is be re-photographed; `downloaded/`, `adjusted-name/` and
+`already-held/` still settle and are unaffected.
+

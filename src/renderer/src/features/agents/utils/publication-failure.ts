@@ -16,6 +16,7 @@
  * output. Only the reviewer's own summary sentence and its category are shown.
  */
 
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import type {
 	ModerationCategory,
@@ -614,3 +615,48 @@ export const pullRefusalMessage = (
 	// what the two arms above exist to avoid doing with machinery.
 	return `${subject} was not downloaded: ${reason}`;
 };
+
+/**
+ * The lead both non-pull actions are classified under, kept here so the two
+ * surfaces that show it cannot drift into two spellings of one sentence.
+ *
+ * It asserts no cause on its own: `backendLoadErrorMessage` appends the diagnosis
+ * and the remedy for whatever the LOCAL server did.
+ */
+const OTHER_ACTION_LEAD = "The action did not complete.";
+
+/**
+ * The sentence for a failed action on an agent, by which action failed.
+ *
+ * THE PULL IS NOT A LOCAL-SERVER CALL, and it is the one action on these
+ * surfaces whose refusal is authored by the hub. It has its own vocabulary
+ * (`pullRefusalMessage` above, from the same refusals a publication meets), and
+ * the other three have `backendLoadErrorMessage`, which classifies the failure
+ * against the process that serves this app.
+ *
+ * Asking the local classifier about a hub refusal is what this function exists to
+ * make impossible: a 404 `agent_not_found` arrived as "the Local Operator server
+ * is older than this app expects" and a 503 `hub_unavailable` as "restart the app
+ * so it can start its own server" - two sentences that are true about the wrong
+ * process, each sending the user to a remedy that cannot work, and three more
+ * refusals arrived as "The action did not complete." with no reason at all
+ * (design round 3, D1).
+ *
+ * ONE FUNCTION RATHER THAN THE SAME LADDER TWICE. The card container and the
+ * details page each render "whichever action failed", and two hand-written
+ * `action === "download"` branches are how one fact becomes two - silently, and
+ * in the direction that costs the user, because only one of the two surfaces
+ * would keep naming the right culprit.
+ *
+ * @param action - Which control produced the failure
+ * @param error - The failure the mutation caught
+ * @param agentName - The agent the action was about, for the pull's subject
+ */
+export const agentActionFailureMessage = (
+	action: "like" | "favourite" | "download" | "delist",
+	error: unknown,
+	agentName: string,
+): string =>
+	action === "download"
+		? pullRefusalMessage(error, agentName)
+		: backendLoadErrorMessage(OTHER_ACTION_LEAD, error);

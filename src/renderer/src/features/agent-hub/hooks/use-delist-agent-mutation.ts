@@ -1,10 +1,10 @@
 import { deleteAgent } from "@shared/api/radient/agents-api";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { agentDetailsKeys } from "./use-agent-details-query";
-import { publicAgentKeys } from "./use-public-agents-query"; // Corrected import name
+import { invalidatePublicAgentLists } from "./use-public-agents-query";
 
 type DelistAgentVariables = {
 	agentId: string;
@@ -43,14 +43,30 @@ export const useDelistAgentMutation = () => {
 			queryClient.invalidateQueries({
 				queryKey: agentDetailsKeys.detail(variables.agentId),
 			});
-			queryClient.invalidateQueries({ queryKey: publicAgentKeys.list(1, 20) }); // Invalidate a specific list query or use a broader invalidation if needed
+			/*
+			 * The whole list prefix, not one page's key. This call used to name
+			 * `publicAgentKeys.list(1, 20)` while the list query keyed itself from its
+			 * own inline array carrying page, perPage, categories, sort and order —
+			 * so the invalidation matched no registered query, and a delisted agent
+			 * stayed on the grid until its five-minute `staleTime` ran out. The
+			 * visible page is the one that has to change and the pages after it shift
+			 * by one record, so the prefix is the correct scope, and one shape is the
+			 * fix: `publicAgentKeys.list` is now what the query itself uses.
+			 */
+			invalidatePublicAgentLists(queryClient);
 
 			// Navigate back to the agent hub page after successful deletion
 			navigate("/agent-hub");
 		},
 		onError: (error) => {
-			// @ts-ignore TODO: Improve error typing
-			showErrorToast(`Failed to delist agent: ${error.message}`); // Use toast.error
+			/*
+			 * No toast. The details page renders this failure in the surface,
+			 * under the control that produced it (`FAILURE_TITLES.delist`), and
+			 * raising a toast as well reported one failure twice in two
+			 * languages — which is the thing this change set is named for. The
+			 * hook's only caller is that page, so nothing is left without a
+			 * surface.
+			 */
 			console.error("Delist agent error:", error);
 		},
 	});
