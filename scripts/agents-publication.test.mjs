@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
+
+/** Source-anchoring reads files rather than bundling them; see the call-site test. */
+const read = (path) => readFileSync(path, "utf8");
 
 /*
  * The publication flow's two pure halves, driven rather than eyeballed.
@@ -809,9 +813,16 @@ test("a pull refusal names what was not downloaded, from the code when there is 
  * in the same round).
  *
  * The `notEqual` against the local classifier is the load-bearing half rather
- * than a tautology: it is the assertion that would have failed before this fix and
- * fails again the moment a surface reaches for the wrong vocabulary, and it fails
- * on the WORDING rather than on the wiring.
+ * than a tautology: it is the assertion that would have failed before this fix
+ * and it fails on the WORDING rather than on the wiring.
+ *
+ * It does NOT pin the wiring, and an earlier version of this paragraph claimed
+ * it did. Everything here bundles modules, so reverting a CALLER to
+ * `backendLoadErrorMessage` leaves this test green - measured, 15/15, for the
+ * card and for the onboarding step; only reverting the rule itself turns it red
+ * (review round 2, R1). The call sites are pinned by the test below, which is
+ * the instrument this PR actually has for them: the card's inline line is the one
+ * place these sentences render and its frame set cannot settle (D4 below).
  */
 test("a failed action is answered by the process that refused it, never the other one", () => {
 	const localSentence = (error) =>
@@ -883,6 +894,51 @@ test("a failed action is answered by the process that refused it, never the othe
 			`${action} is answered by the local server`,
 		);
 	}
+});
+
+/*
+ * AND THE THREE SURFACES ACTUALLY ASK IT (review round 2, R1).
+ *
+ * A rule with no caller restores the D1 defect exactly: the card, the details
+ * page and the onboarding batch are what render the refusal under the control
+ * that failed, and reverting any one of their three lines left the test above
+ * green. There is no frame that can catch it either, because the local
+ * classifier's answer is itself a plausible sentence - it is the WRONG one, not
+ * a broken one. So the wiring is pinned where it lives, the shape
+ * `agent-hub-queries.test.mjs` uses for the card's viewer state.
+ */
+test("every surface that can refuse an action asks the rule, not the local classifier", () => {
+	const card =
+		"src/renderer/src/features/agent-hub/components/agent-card-container.tsx";
+	for (const [what, path, anchor] of [
+		["the hub card", card, /agentActionFailureMessage\(/],
+		[
+			"the agent details page",
+			"src/renderer/src/features/agent-hub/agent-details-page.tsx",
+			/agentActionFailureMessage\(/,
+		],
+		[
+			"the onboarding batch",
+			"src/renderer/src/features/onboarding/components/steps/create-agent-step.tsx",
+			/pullRefusalMessage\(/,
+		],
+	]) {
+		assert.match(
+			read(path),
+			anchor,
+			`${what} renders the refusal it was given`,
+		);
+	}
+	/*
+	 * The card has no load arm of its own, so the local classifier has no business
+	 * in that file at all - the sharpest form this anchor can take, and the
+	 * assertion that fails if the D1 defect is reintroduced here.
+	 */
+	assert.doesNotMatch(
+		read(card),
+		/backendLoadErrorMessage\(/,
+		"the card never classifies a refusal against the local server",
+	);
 });
 
 test("the local collision check folds, so Coder beside coder is found", () => {
