@@ -27,9 +27,26 @@ remain backend-owned.
 
 Legacy configuration, instructions, and credential calls now use this same
 transport because a managed backend protects those older paths too. New feature
-controls must negotiate `GET /v1/capabilities` before enabling themselves. A
-missing/unsupported capability requires a visible backend update/setup action;
-there is no unauthenticated fallback for privileged new operations.
+controls must negotiate `GET /v1/capabilities` before enabling themselves.
+
+A missing capability is a statement about ONE SURFACE, not a verdict about the
+backend, and it no longer "requires a visible backend update/setup action":
+that rule made an install the answer to every absence, including ones an install
+cannot fix. A new route gets its own capability key, and a surface whose key is
+absent is left unrendered while every surface that does not need it keeps
+working - a client renders the catalogue perfectly well against a backend whose
+search route does not exist. The update is offered only where it is the remedy
+that exists: the answer proves the build is old AND this app owns the serving
+install.
+
+Pairing is a SEPARATE question from version, and conflating them is what made
+the app tell a user their server was out of date when the fact was that the app
+held no credential for it. `/v1/capabilities` admits nobody by design, so a
+daemon this app is not paired with answers it normally; a refusal on a
+`/v1/desktop/` route is a pairing condition, whose remedy is the app re-claiming
+the plane, and the pairing cause main publishes (`DaemonPairingCause`) is what
+selects the sentence. There is no unauthenticated fallback for privileged new
+operations.
 
 ## Browser development
 
