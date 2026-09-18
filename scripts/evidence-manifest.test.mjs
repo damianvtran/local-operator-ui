@@ -47,9 +47,24 @@ after(() => {
 	for (const dir of scratch) rmSync(dir, { recursive: true, force: true });
 });
 
-/** A throwaway evidence tree; the bytes never matter, only the paths. */
+/**
+ * A throwaway evidence tree; the bytes never matter, only the paths.
+ *
+ * Deliberately NOT named under `lo-evidence-`, which is
+ * `capture-evidence.mjs`'s Chrome-profile namespace: that script reaps
+ * abandoned profiles by NAME out of this same shared temp directory (see
+ * `sweepStaleProfiles`), so a fixture that borrows the prefix is a deletion
+ * target for every capture running on the box. It was called
+ * `lo-evidence-manifest-` until a capture deleted a live tree under one of
+ * these cells, which is the defect this name closes rather than papers over
+ * (review round 1, F1). `lop-` is what the rigs here name their own scratch
+ * roots (`lop-submit-latency-`), so a leaked tree is still
+ * identifiable without being sweepable - and the sweep's rule is pinned
+ * against both spellings in `capture-evidence.test.mjs`, so a later edit
+ * cannot quietly widen the prefix back over this name.
+ */
 function tree(layout) {
-	const root = mkdtempSync(join(tmpdir(), "lo-evidence-manifest-"));
+	const root = mkdtempSync(join(tmpdir(), "lop-evidence-manifest-"));
 	scratch.push(root);
 	for (const [dir, count] of Object.entries(layout)) {
 		const full = join(root, dir);
@@ -814,10 +829,36 @@ const capture = (stories) =>
 		.map((_, i) => `\t["story-${i}"],`)
 		.join("\n")}\n];\nconst THEMES = [\n\t"localOperatorDark",\n];\n`;
 
-const COUNTS_TREE = tree({ "outside-a": 3, "declared-b": 2 });
+/** The layout every `countsMean` cell walks: 3 outside a set, 2 inside one. */
+const COUNTS_LAYOUT = { "outside-a": 3, "declared-b": 2 };
 const countsGit = fakeGit({ show: capture(2) });
 
-/** A manifest whose `countsMean` reads the numbers of `COUNTS_TREE`. */
+/*
+ * A scratch tree whose life is bounded to the case that asks for it.
+ *
+ * WHY PER CASE, AND NOT ONE TREE FOR THE FILE. These cells used to share a
+ * `COUNTS_TREE` built at MODULE scope, so the tree sat in the shared system
+ * temp directory from the moment this file loaded until the last cell ran -
+ * seconds of an idle directory that any process on the box may delete, with
+ * the cells that walk it at the END of the file. Measured on this machine, the
+ * gap from module scope to the first `countsMean` walk is 1.6s of a 1.9s run,
+ * and a deleter in that window takes the file to `29 pass / 5 fail` with
+ * `ENOENT` raised on the fixture at `check-evidence.mjs:129`.
+ *
+ * Bound to the case, the same delete has to land inside one synchronous
+ * assertion instead - and it is the second half of the repair, not a substitute
+ * for the name above: a deleter that reaches this namespace by name has
+ * milliseconds where it used to have seconds. `tree()`'s own `scratch` list
+ * still covers the cells that do not bound their tree, and `rmSync` with
+ * `force` is idempotent, so the second removal is not one too many.
+ */
+function caseTree(t, layout) {
+	const root = tree(layout);
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	return root;
+}
+
+/** A manifest whose `countsMean` reads the numbers of the case's tree. */
 const countsManifest = ({ framesProse = "", surfacesProse = "" } = {}) => ({
 	frames: 3,
 	surfaces: 2,
@@ -834,23 +875,25 @@ const countsManifest = ({ framesProse = "", surfacesProse = "" } = {}) => ({
 const FRAMES_LEADING =
 	"RE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `<base>`): 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
 
-test("a countsMean paragraph leading with the walk's numbers passes", () => {
+test("a countsMean paragraph leading with the walk's numbers passes", (t) => {
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
 	const manifest = countsManifest({
 		framesProse: FRAMES_LEADING,
 		surfacesProse:
 			"RE-DERIVED FOR THIS FOLD: 2 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
 	});
-	assert.deepEqual(countsMeanFailures(manifest, countsGit, COUNTS_TREE), []);
+	assert.deepEqual(countsMeanFailures(manifest, countsGit, countsTree), []);
 });
 
-test("a paragraph left behind by a fold fails, and carries the sentence to paste", () => {
+test("a paragraph left behind by a fold fails, and carries the sentence to paste", (t) => {
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
 	const manifest = countsManifest({
 		framesProse: FRAMES_LEADING.replace("3 committed", "2 committed").replace(
 			"of 5 on disk (2 of them",
 			"of 4 on disk (2 of them",
 		),
 	});
-	const [failure] = countsMeanFailures(manifest, countsGit, COUNTS_TREE);
+	const [failure] = countsMeanFailures(manifest, countsGit, countsTree);
 	assert.match(failure, /countsMean\.frames/);
 	assert.match(failure, /the walk finds 3/);
 	assert.match(
@@ -860,19 +903,21 @@ test("a paragraph left behind by a fold fails, and carries the sentence to paste
 	);
 });
 
-test("a paragraph with no reading in it fails rather than passing by omission", () => {
+test("a paragraph with no reading in it fails rather than passing by omission", (t) => {
 	// The state a fold leaves behind when it re-writes the field and forgets the
 	// sentence around it: nothing to compare, and silence would be a pass.
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
 	const manifest = countsManifest({
 		framesProse:
 			"RE-DERIVED FOR THIS FOLD: the counts beside this note describe the tree that ships.",
 	});
-	const [failure] = countsMeanFailures(manifest, countsGit, COUNTS_TREE);
+	const [failure] = countsMeanFailures(manifest, countsGit, countsTree);
 	assert.match(failure, /countsMean\.frames/);
 	assert.match(failure, /nothing this check can read/);
 });
 
-test("the older paragraphs under the leading one are not this tree's to answer for", () => {
+test("the older paragraphs under the leading one are not this tree's to answer for", (t) => {
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
 	/*
 	 * Every paragraph below the first says in its own words that it describes an
 	 * older tree. Demanding this tree's numbers of them would force the history to
@@ -884,29 +929,30 @@ test("the older paragraphs under the leading one are not this tree's to answer f
 		surfacesProse:
 			"RE-DERIVED FOR THIS FOLD: 2 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
 	});
-	assert.deepEqual(countsMeanFailures(manifest, countsGit, COUNTS_TREE), []);
+	assert.deepEqual(countsMeanFailures(manifest, countsGit, countsTree), []);
 });
 
-test("a stale surfaces paragraph fails on the literal the field names", () => {
+test("a stale surfaces paragraph fails on the literal the field names", (t) => {
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
 	const manifest = countsManifest({
 		framesProse: FRAMES_LEADING,
 		surfacesProse:
 			"RE-DERIVED FOR THE FIFTH FOLD: 1 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
 	});
-	const [failure] = countsMeanFailures(manifest, countsGit, COUNTS_TREE);
+	const [failure] = countsMeanFailures(manifest, countsGit, countsTree);
 	assert.match(failure, /countsMean\.surfaces/);
 	assert.match(failure, /the walk finds 2/);
 });
 
-test("a manifest with no countsMean is not this guard's failure", () => {
+test("a manifest with no countsMean is not this guard's failure", (t) => {
 	// The fixture manifests other cells build carry no prose at all; a missing
-	// field is `stampFailures`' business, not a stale paragraph.
+	// field is `stampFailures`' business, not a stale paragraph. This case builds
+	// the same tree as the five above it and never walks it - the guard returns
+	// before the walk when there is no prose - so the cells differ only in the
+	// paragraph they assert about.
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
 	assert.deepEqual(
-		countsMeanFailures(
-			{ frames: 3, supplementary: [] },
-			countsGit,
-			COUNTS_TREE,
-		),
+		countsMeanFailures({ frames: 3, supplementary: [] }, countsGit, countsTree),
 		[],
 	);
 });
