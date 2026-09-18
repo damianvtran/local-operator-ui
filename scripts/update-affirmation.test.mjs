@@ -1399,6 +1399,91 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 });
 
 /**
+ * AND THE OFFLINE CHECK MAY NOT CALL THE INSTALL CURRENT (QA round 3, Q3-1).
+ *
+ * The pair this notice is built from is measured locally, so an offline machine can
+ * still be told its daemon trails the install - that is the half the main process now
+ * sends from the network-unavailable path. This is the other half, and it is the reason
+ * the payload carries `releaseRead`: nothing on that pass compared the install against
+ * a published release, so "This machine's install is up to date" would be a claim the
+ * check never made, shown beside an app channel that has just said it could not reach
+ * the release at all. The notice states the two readings it did take, and the reader's
+ * next step.
+ */
+test("an offline check states the readings without calling the install current", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.11",
+		runningVersion: "0.56.2",
+		restartable: false,
+		releaseRead: false,
+	});
+	handle.render();
+	const copy = allCopy(handle);
+	assert.ok(
+		copy.some((text) => /older build than the install/.test(text)),
+		JSON.stringify(copy),
+	);
+	assert.ok(
+		copy.some((text) => /is still running 0\.56\.2/.test(text)),
+		JSON.stringify(copy),
+	);
+	/*
+	 * The reading it DID take is still named - the sentence is about the same two
+	 * versions, minus the clause the check cannot support.
+	 */
+	assert.ok(
+		copy.some((text) => /This machine's install is 0\.56\.11,/.test(text)),
+		JSON.stringify(copy),
+	);
+	assert.equal(
+		copy.some((text) => /up to date/.test(text)),
+		false,
+		`an unread release was called current: ${JSON.stringify(copy)}`,
+	);
+	// And the arm that names the reader's own step for a daemon this app cannot move.
+	assert.ok(
+		copy.some((text) => /stop it and start Local Operator again/.test(text)),
+		JSON.stringify(copy),
+	);
+});
+
+/**
+ * AND ONLY WHEN THE SERVER IS THE OLDER SIDE (review round 2, T1's back half).
+ *
+ * The producer sends the serving PROCESS's own reading now rather than
+ * `/health`'s, so this funnel can be handed a pair whose daemon is AHEAD of the
+ * install - a build newer than what is on disk (a downgrade, or a leftover record
+ * from a newer build). The producer's own decision leaves that state alone
+ * (`backend-version-drift.ts`: `running-ahead` - "restarting there would replace a
+ * newer serving process with an older install"), and every sentence under this
+ * heading is about a server BEHIND the install. Inequality alone is not a skew, so
+ * the falsity the equal-pair guard removes would otherwise come back one-sided:
+ * the panel would head a machine running 0.56.3 with "The server is on an older
+ * build than the install (0.56.2)".
+ */
+test("a daemon ahead of the install raises no skew notice", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.3",
+		restartable: true,
+	});
+	handle.render();
+	const copy = allCopy(handle);
+	assert.equal(
+		copy.some((text) => /older build than the install/.test(text)),
+		false,
+		JSON.stringify(copy),
+	);
+	assert.equal(
+		copy.some((text) => /is still running 0\.56\.3/.test(text)),
+		false,
+		JSON.stringify(copy),
+	);
+});
+
+/**
  * U9: the offer states the cost THIS machine pays, not the one the layout implies.
  *
  * The managed arm's sentence comes from the plan, and the plan is an install

@@ -256,6 +256,16 @@ declare global {
 						runningVersion?: string | null;
 						/** Whether the app may restart the daemon that is behind. */
 						restartable?: boolean;
+						/**
+						 * Whether the check that sent this pair READ the published release.
+						 *
+						 * False is the network-unavailable pass (QA round 3, Q3-1): the
+						 * install/running pair is measured locally, so an offline machine can
+						 * still be told its daemon trails the install - but nothing on that
+						 * pass compared the install against a release, so the renderer's
+						 * sentence may not call it current. Absent means it was read.
+						 */
+						releaseRead?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateCompleted: (
