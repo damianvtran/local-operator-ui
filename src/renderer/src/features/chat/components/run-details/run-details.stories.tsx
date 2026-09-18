@@ -25,6 +25,8 @@
  *   rendering of the implicit-phase defect cannot be re-photographed — the fold
  *   that produced it is deleted — so the pair that exists is (fold) against
  *   (every phase named), and `docs/evidence/chat-run-panel/README.md` says so.
+ * - `reader-descendants` / `reader-childless` — a child's own subagents as a list,
+ *   and the same tree one level down where the list is absent rather than empty.
  *
  * Several states are interactive rather than pre-opened, and each one clicks the
  * real control and holds the shutter with `data-capture-pending` — the convention
@@ -1530,6 +1532,68 @@ export const ReaderChildControls: Story = {
 			details={deriveRunDetails(fixtures.rosterMembers())}
 			openPanel={true}
 			readerChildId="job-audit"
+			previewPage={fixtures.childPage({ includeTool: true })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A child's page that LISTS its own subagents (`§ 5`): two rows under the facts
+ * row, and the second of them carries `1 child` because there is a level below
+ * IT as well.
+ *
+ * This is the frame the operator's ask is about. Before it, a page said `2 child
+ * subagents` in the chrome bar and the only route to the second child was the
+ * peer stepper — and nothing on screen said either child had children of its
+ * own, which is what the count on the row now says.
+ */
+export const ReaderDescendants: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.readerDescendants())}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ includeTool: true })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A GRANDCHILD's page that itself has children (`§ 5`): the breadcrumb is two
+ * levels deep and the section lists one row carrying `1 child`, so the frame
+ * carries both halves of the nesting at once — where the reader is in the tree,
+ * and that there is another level below the row they are looking at.
+ */
+export const ReaderDeepChildren: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.readerDescendants())}
+			openPanel={true}
+			readerChildId="job-verify"
+			previewPage={fixtures.childPage({ includeTool: true })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The CONTROL for the two frames above: the same tree, one level further down,
+ * on the page of a child that delegated to nobody.
+ *
+ * The section is ABSENT rather than empty — no heading, no rule, no `0
+ * subagents` row — which is the state most children's pages are in, and the
+ * reason it is framed at depth rather than with a fresh single-child fixture is
+ * that only a SAME-TREE pair shows the absence is about the node and not about
+ * how deep the reader has walked.
+ */
+export const ReaderChildless: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.readerDescendants())}
+			openPanel={true}
+			readerChildId="job-check"
 			previewPage={fixtures.childPage({ includeTool: true })}
 		/>
 	),

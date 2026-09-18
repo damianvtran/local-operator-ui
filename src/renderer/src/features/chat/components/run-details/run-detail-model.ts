@@ -3500,6 +3500,31 @@ export function childStateLabel(row: SubagentRow): string {
 }
 
 /**
+ * A row's own `childCount` as the row says it — `2 children` — or `null`.
+ *
+ * Heir to `SubagentRow.childCount`, which was derived and rendered nowhere until
+ * the reader's own subagents section existed: on the page that lists a child's
+ * own subagents, the count is what tells a reader there is ANOTHER level below
+ * the row they are looking at (the row opens that child's page, where the level
+ * below is listed in turn).
+ *
+ * The word is the chrome bar's, deliberately: `N children` is what the pane says
+ * about the page's own child two rows above this list, so the same relation one
+ * level down reads as the same relation rather than as a second vocabulary.
+ * Hand-pluralised rather than through `plural`, which appends an `s` and would
+ * print `2 childs`.
+ *
+ * `null` at zero rather than `0 children`: absence is the model's own answer for
+ * a fact a row does not have (every figure in `NumberRun` is omitted rather than
+ * zeroed), and a mark on every leaf row would be the opposite of the signal the
+ * mark exists to be.
+ */
+export const childCountLabel = (row: SubagentRow): string | null =>
+	row.childCount > 0
+		? `${row.childCount} child${row.childCount === 1 ? "" : "ren"}`
+		: null;
+
+/**
  * Whether a row has a conversation the reader could actually open.
  *
  * `childSessionId` is the READER's key — the transcript route is addressed by
@@ -3515,3 +3540,28 @@ export function childStateLabel(row: SubagentRow): string {
  */
 export const childOpenable = (row: SubagentRow): boolean =>
 	row.childSessionId !== null;
+
+/**
+ * The rows `row` launched, in the WIRE's own order.
+ *
+ * This is the LIST half of what `SubagentRow.childCount` is the count half of:
+ * one predicate — a candidate's `parentJobId` IS this row's id — which is why it
+ * lives here rather than beside either caller. Two callers need it and they need
+ * different halves of the same answer: the reader's chrome bar renders a count
+ * and descends into `children[0]`, and the reader's own subagents section renders
+ * the rows themselves. A second spelling of "which rows are my children" is how a
+ * count and the list printed under it come to disagree.
+ *
+ * DIRECT children only, and deliberately in the wire's order rather than the
+ * roster's priority slice: a grandchild is reached a level down (the row's own
+ * count says one exists) or by the peer stepper, and the stepper walks THIS
+ * order — a list sorted here would step through a different sequence than it
+ * draws, which is the oscillation `run-panel.tsx`'s `siblingsOf` rejects for the
+ * same reason (`app.py:24187-24215`).
+ */
+export function childrenOf(
+	lineage: readonly SubagentRow[],
+	row: SubagentRow,
+): SubagentRow[] {
+	return lineage.filter((candidate) => candidate.parentJobId === row.id);
+}

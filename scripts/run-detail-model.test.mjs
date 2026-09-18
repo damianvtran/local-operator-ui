@@ -65,7 +65,9 @@ const {
 	mcpTally,
 	onScreenFailures,
 	briefIsInTranscript,
+	childCountLabel,
 	childOpenable,
+	childrenOf,
 	deriveWakes,
 	formatWakeCadence,
 	formatWakeDue,
@@ -1773,6 +1775,64 @@ test("a child's child count comes from the lineage's own edges", () => {
 		details.lineage.map((row) => row.id),
 		["parent", "kid-1", "kid-2", "grandchild"],
 	);
+});
+
+test("a row's children are the lineage rows the wire says it launched", () => {
+	/*
+	 * The LIST half of `childCount`, and the half the reader renders: the child's
+	 * own page lists a row per child, and the chrome bar's descend control opens
+	 * `children[0]`, so the count above the list and the list itself have to be one
+	 * rule. The agreement is asserted over EVERY row below rather than in the two
+	 * places that ask, which is the whole reason the predicate lives in the model.
+	 *
+	 * The wire order is asserted rather than "whatever comes back": the parent
+	 * launched `kid-done` first, and the roster's own priority slice would put the
+	 * running child above the settled one. A list that re-sorted would step through
+	 * a different sequence than the peer stepper draws.
+	 */
+	const details = derive([
+		job({ id: "parent", status: "running" }),
+		job({ id: "kid-done", status: "done", parent_job_id: "parent" }),
+		job({ id: "kid-running", status: "running", parent_job_id: "parent" }),
+		job({ id: "grandchild", status: "running", parent_job_id: "kid-running" }),
+	]);
+	const byId = new Map(details.lineage.map((row) => [row.id, row]));
+	const ids = (row) =>
+		childrenOf(details.lineage, row).map((child) => child.id);
+
+	assert.deepEqual(ids(byId.get("parent")), ["kid-done", "kid-running"]);
+	// A grandchild belongs to its own parent's page, not to its grandparent's: a
+	// list that walked the whole subtree would double-report the work the roster
+	// already partitions out (`§ 4`).
+	assert.deepEqual(ids(byId.get("kid-running")), ["grandchild"]);
+	assert.deepEqual(ids(byId.get("kid-done")), []);
+	// The count and the list are the same predicate, on every row.
+	for (const row of details.lineage) {
+		assert.equal(
+			childrenOf(details.lineage, row).length,
+			row.childCount,
+			`childCount and childrenOf disagree about ${row.id}`,
+		);
+	}
+});
+
+test("a row says how many children it has, and a leaf says nothing", () => {
+	/*
+	 * The row's own mark for the level below it, and the two ways it can be wrong:
+	 * `childCount` is derived for every row, so a label that rendered at zero would
+	 * put a mark on every leaf (which is most of a list), and `plural` would print
+	 * `2 childs` here — it appends an `s`, and `child` is the one noun in this
+	 * vocabulary that does not take one.
+	 */
+	const details = derive([
+		job({ id: "parent", status: "running" }),
+		job({ id: "only", status: "running", parent_job_id: "parent" }),
+		job({ id: "kid-2", status: "done", parent_job_id: "parent" }),
+	]);
+	const byId = new Map(details.lineage.map((row) => [row.id, row]));
+	assert.equal(childCountLabel(byId.get("parent")), "2 children");
+	assert.equal(childCountLabel(byId.get("only")), null);
+	assert.equal(childCountLabel(byId.get("kid-2")), null);
 });
 
 test("the launch turn is reconciled, and only the ids the map vouches for", () => {
