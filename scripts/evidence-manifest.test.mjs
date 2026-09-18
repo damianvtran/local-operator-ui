@@ -956,3 +956,40 @@ test("a manifest with no countsMean is not this guard's failure", (t) => {
 		[],
 	);
 });
+
+/*
+ * AND A FOLD MUST NOT DROP THIS BRANCH'S OWN TOP-LEVEL RECORDS (design review round 5,
+ * D14). The rule that says so lives in two homes - the rig's fold block in
+ * `scripts/capture-evidence.mjs` and `citationConvention` in the manifest itself - and
+ * both are read by a RESOLVER, i.e. at the one moment nobody has time to read a rule
+ * carefully. This is the same clause as a failure: the twelfth fold onto `c69f78b92`
+ * kept main's schema, honoured every other group in the rule, and lost seven of this
+ * branch's records without a word, because nothing said they had to survive.
+ *
+ * The list is this branch's records, not a schema: it grows when a pass writes a new
+ * top-level field, and a field that is being retired deliberately belongs here only with
+ * a sentence saying which pass retired it (none has). A fold that starts from main's
+ * manifest fails on the first name it dropped, which is far earlier than the round that
+ * next reads the note.
+ */
+const BRANCH_RECORDS = [
+	"browserMarkRemovalPass",
+	"roundOneRemediationNote",
+	"roundTwoCaptureNote",
+	"roundThreeCaptureNote",
+	"roundFourRePortNote",
+	"chatSlashHighlightEvidence",
+	"themeLegibilityCapture",
+];
+
+test("the manifest carries every top-level record this branch wrote", () => {
+	const manifest = JSON.parse(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	const missing = BRANCH_RECORDS.filter((key) => !(key in manifest));
+	assert.deepEqual(
+		missing,
+		[],
+		"a fold dropped this branch's own top-level records - union the manifest at the TOP level as well as inside it (the rig's fold block, group 2b, and the manifest's `citationConvention`)",
+	);
+});

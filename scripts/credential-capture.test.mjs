@@ -64,7 +64,6 @@ const {
 	clearCitedCredential,
 	clearedNotice,
 	clearedNoticeLine,
-	clearedStaleNotice,
 	clearedToastLine,
 	noticeLineFor,
 	clearControlLabel,
@@ -2390,32 +2389,33 @@ test("the notice line's precedence puts the actionable sentence first (UX round 
 		}),
 		"Enter will expose them",
 	);
-	// And the stale register is the same key with different words (U7's refusal).
+	/*
+	 * AND THE CLEARED REGISTER HAS ONE SENTENCE, NOT TWO (code review round 5, R5-2).
+	 * The refusal copy left the module with the state that could reach it: `restoreClear`
+	 * refuses on the same predicate the withdrawal effect retires a slot on, so a buffer
+	 * the clear no longer describes is a slot that is already gone. Pinned here rather
+	 * than described, because the row that used to sit in this place asserted a sentence
+	 * the app could no longer show.
+	 */
 	assert.equal(
 		noticeLineFor({
 			unredacted: null,
 			armed: false,
-			cleared: { key: cleared.key, index: cleared.index, stale: true },
+			cleared: { key: cleared.key, index: cleared.index },
 			undoCap,
 		}),
-		clearedStaleNotice(cleared.key),
+		clearedNoticeLine(cleared.key, cleared.index, undoCap),
 	);
 });
 
-test("the toast says only what the toast can do, and the refusal has words (UX round 2, U7, U9)", () => {
+test("the toast says only what the toast can do (UX round 2, U9)", () => {
 	/*
 	 * U9: the two channels printed the same 110 characters, and the toast's `Undo`
 	 * sat beside "its value is gone" - a claim the button contradicts for as long as
 	 * the button exists. The durable channel keeps the fact; the transient one names
-	 * the reference and offers the undo. U7: the refusal a moved buffer produces is a
-	 * sentence, not a silence.
+	 * the reference and offers the undo.
 	 */
 	assert.equal(clearedToastLine(2), "Credential #2 removed");
-	assert.match(clearedStaleNotice("LOP_SECRET_4CE3Y48G"), /cannot be put back/);
-	assert.match(
-		clearedStaleNotice("LOP_SECRET_4CE3Y48G"),
-		/LOP_SECRET_4CE3Y48G/,
-	);
 	assert.notEqual(
 		clearedToastLine(2),
 		clearedNoticeLine("LOP_SECRET_4CE3Y48G", 3, "⌘Z"),

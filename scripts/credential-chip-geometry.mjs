@@ -79,6 +79,14 @@ const STORIES = [
 	["chat-message-input--credential-pill-scrolled", 1024, 300],
 ];
 
+/*
+ * The floor a drawn chip has to clear to count as IDENTIFIABLE, mirroring
+ * `CHIP_MIN_VISIBLE_STRIP_PX` in `credential-chip-layer.tsx` (the boundary sweep carries the
+ * measurements behind it). Repeated rather than imported on purpose: the rig has to be able
+ * to name, in the failure it prints, the number it measured against.
+ */
+const CHIP_MIN_VISIBLE_STRIP_PX = 6;
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class Cdp {
@@ -655,12 +663,49 @@ const main = async () => {
 						if (max <= 1) return { ok: false, why: "the field does not scroll" };
 						const run = document.querySelector("[data-credential-run]");
 						if (!run) return { ok: false, why: "no run" };
-						// Land the run's top on the box's bottom edge, plus the offset under test.
-						f.scrollTop = Math.max(0, Math.min(max, Math.round(run.offsetTop - f.clientHeight + ${offset})));
+						/*
+						 * THE CARET LEAVES THE END FIRST, OR NOTHING BELOW MEASURES WHAT IT NAMES
+						 * (found while landing R5-1's test, and it had made this sweep inert): a
+						 * focused textarea whose caret sits at the end re-scrolls itself back to
+						 * the caret, so every parked position collapsed onto the field's maximum
+						 * and the nine positions under test were one position measured nine
+						 * times. Setting the selection keeps the field focused (which the Tab below
+						 * needs) and puts the caret where it cannot fight the scroll.
+						 */
+						f.setSelectionRange(0, 0);
+						/*
+						 * The run's offset is derived from VIEWPORT rects rather than from
+						 * offsetTop, because the mirror's offsetParent is not the field: the
+						 * span's own offset is its offset inside the mirror, which is already
+						 * scrolled, so parking on it put the field at its top and every position
+						 * in this sweep measured the same state (found in round 5, where the
+						 * sweep read "chips drawn at 0" at all nine offsets).
+						 */
+						const runTopInContent =
+							run.getBoundingClientRect().top - f.getBoundingClientRect().top + f.scrollTop;
+						f.scrollTop = Math.max(0, Math.min(max, Math.round(runTopInContent - f.clientHeight + ${offset})));
 						f.dispatchEvent(new Event("scroll"));
 						await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 						const layer = document.querySelector("[data-credential-chips]");
 						const control = layer?.querySelector("button") ?? null;
+						/*
+						 * THE STRIP THE OPERATOR CAN SEE (UX round 5, U2): the chip's own box
+						 * intersected with the layer's clip box. The round-4 floor guaranteed a
+						 * hit-testable control; at two pixels it did not guarantee an
+						 * IDENTIFIABLE one - the UX round landed on a 2.38px strip with the
+						 * control 1.88px of its 16 inside the clip, no times glyph on screen, and a
+						 * real press in that band clearing the credential. The floor is now the strip
+						 * at which the glyph appears, and this is the measurement that holds it.
+						 */
+						let strip = 0;
+						if (layer && layer.firstElementChild) {
+							const chip = layer.firstElementChild.getBoundingClientRect();
+							const clip = layer.getBoundingClientRect();
+							strip = Math.max(
+								0,
+								Math.min(chip.bottom, clip.bottom) - Math.max(chip.top, clip.top),
+							);
+						}
 						let hits = 0;
 						let samples = 0;
 						if (control) {
@@ -673,7 +718,7 @@ const main = async () => {
 								}
 							}
 						}
-						return { ok: true, scrollTop: f.scrollTop, chips: layer ? layer.children.length : 0, hasControl: control !== null, hits, samples };
+						return { ok: true, scrollTop: f.scrollTop, chips: layer ? layer.children.length : 0, hasControl: control !== null, hits, samples, strip: Number(strip.toFixed(2)) };
 					})()`,
 				});
 				const at = parkedAt.result.value;
@@ -687,6 +732,16 @@ const main = async () => {
 						`${story} @ ${width}x${height}: a chip whose control cannot be hit is drawn (round 4, R4-1) - ${JSON.stringify(at)}`,
 					);
 				}
+				/*
+				 * AND A CHIP THE OPERATOR CANNOT READ IS NOT A CHIP THEY CAN USE (UX round 5,
+				 * U2): a drawn chip whose visible strip is under the floor is reachable, live and
+				 * identifiable by nothing on screen - the band the UX round pressed into.
+				 */
+				if (at.chips > 0 && at.strip < CHIP_MIN_VISIBLE_STRIP_PX) {
+					throw new Error(
+						`${story} @ ${width}x${height}: a chip is drawn on a strip too thin to identify it (UX round 5, U2) - ${JSON.stringify(at)} (floor ${CHIP_MIN_VISIBLE_STRIP_PX}px)`,
+					);
+				}
 			}
 			if (skipped) {
 				phases.push({ phase: "boundary sweep", skipped });
@@ -695,6 +750,117 @@ const main = async () => {
 					phase: `boundary sweep (${seen.length} positions, chips drawn at ${seen.filter((s) => s.chips > 0).length})`,
 					...boundary,
 					boundary: seen,
+				});
+			}
+		}
+
+		/*
+		 * THE KEYBOARD'S HOME WHEN THE CLIP DROPS THE CHIP IT STANDS ON (code review round 5,
+		 * R5-1). Round 4's guard was dead code: it read `document.activeElement` and tested
+		 * `!held.isConnected` inside the same synchronous measure that produces the boxes, so
+		 * the element was still connected when the test ran, and by the commit that removed it
+		 * the active element was already BODY - the composer's `focusInput` was never reached
+		 * and the next characters went nowhere. The fix reports the drop at the COMMIT (a
+		 * layout effect keyed on the layer's boxes), and this phase is the state that
+		 * discriminates the two: a real Tab to the control, then one notch of real scrolling
+		 * past the boundary, then the two facts that matter - the chip is gone, and the
+		 * keyboard is back in the field rather than on the document.
+		 *
+		 * It fails on the pre-fix code with `active: "BODY"` and the chip dropped, which is the
+		 * measurement the reviewer made; a phase that only asserted "the chip is gone" would
+		 * pass either way, since a dropped chip is the premise rather than the result.
+		 */
+		{
+			const parked = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				awaitPromise: true,
+				expression: `(async () => {
+					const f = document.querySelector("textarea");
+					if (!f) return { ok: false, why: "no field" };
+					const max = f.scrollHeight - f.clientHeight;
+					if (max <= 1) return { ok: false, why: "the field does not scroll" };
+					const run = document.querySelector("[data-credential-run]");
+					if (!run) return { ok: false, why: "no run" };
+					// A chip is drawn on this strip - the sweep above barely leaves it. The caret
+					// goes to the start first, for the reason the sweep's own comment gives.
+					f.setSelectionRange(0, 0);
+					const runTopInContent =
+						run.getBoundingClientRect().top - f.getBoundingClientRect().top + f.scrollTop;
+					f.scrollTop = Math.max(0, Math.min(max, Math.round(runTopInContent - f.clientHeight + 1)));
+					f.dispatchEvent(new Event("scroll"));
+					f.focus();
+					await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+					const layer = document.querySelector("[data-credential-chips]");
+					return { ok: true, chips: layer ? layer.children.length : 0, scrollTop: f.scrollTop, max };
+				})()`,
+			});
+			const at = parked.result.value;
+			if (at?.ok && at.chips > 0) {
+				await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: "document.querySelector('textarea')?.focus()",
+				});
+				for (const type of ["rawKeyDown", "keyUp"]) {
+					await cdp.send("Input.dispatchKeyEvent", {
+						type,
+						key: "Tab",
+						code: "Tab",
+						windowsVirtualKeyCode: 9,
+						nativeVirtualKeyCode: 9,
+					});
+				}
+				await settle();
+				const held = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression:
+						"(() => { const a = document.activeElement; return { label: a?.getAttribute?.('aria-label') ?? null, tag: a?.tagName ?? null, inLayer: !!a?.closest?.('[data-credential-chips]') }; })()",
+				});
+				const onControl = held.result.value;
+				if (onControl?.inLayer) {
+					/*
+					 * One real notch past the boundary: the run leaves the field's box, the
+					 * layer stops drawing the chip, and the control that held focus is removed
+					 * from the document under the keyboard.
+					 */
+					await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						awaitPromise: true,
+						expression: `(async () => {
+							const f = document.querySelector("textarea");
+							f.setSelectionRange(0, 0);
+							f.scrollTop = Math.min(f.scrollHeight - f.clientHeight, f.scrollTop + 12);
+							f.dispatchEvent(new Event("scroll"));
+							await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+							return { ok: true };
+						})()`,
+					});
+					await settle();
+					const dropped = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression:
+							"(() => { const f = document.querySelector('textarea'); const a = document.activeElement; const layer = document.querySelector('[data-credential-chips]'); return { chips: layer ? layer.children.length : 0, activeIsField: a === f, active: a === f ? 'field' : (a?.tagName ?? 'none'), scrollTop: f.scrollTop }; })()",
+					});
+					const after = dropped.result.value;
+					if (after.chips === 0 && !after.activeIsField) {
+						throw new Error(
+							`${story} @ ${width}x${height}: the clip dropped the focused chip and the keyboard was left on ${after.active} (code review round 5, R5-1) - ${JSON.stringify(after)}`,
+						);
+					}
+					phases.push({
+						phase: "focus drop",
+						held: onControl,
+						after,
+					});
+				} else {
+					phases.push({
+						phase: "focus drop",
+						skipped: `a real Tab from the field reached ${onControl?.tag ?? "nothing"} (${onControl?.label ?? "no label"}) rather than a chip control`,
+					});
+				}
+			} else {
+				phases.push({
+					phase: "focus drop",
+					skipped: at?.why ?? "no chip was drawn to drop",
 				});
 			}
 		}
