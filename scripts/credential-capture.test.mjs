@@ -57,8 +57,11 @@ const {
 	cancelTypedCredential,
 	capturePasted,
 	charsOf,
+	citationSegments,
 	citationSpan,
 	citedPayloads,
+	clearCitedCredential,
+	clearedNotice,
 	credentialCitation,
 	credentialMarker,
 	credentialNamesFrom,
@@ -68,6 +71,7 @@ const {
 	isArmed,
 	isStorableCredentialKey,
 	isTyping,
+	markerChip,
 	maskEdit,
 	maskSpan,
 	mintTypedCredential,
@@ -84,6 +88,28 @@ const {
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
+
+/*
+ * The render-only transform, bundled and imported the same way and for the same
+ * reason: the plugin is DRIVEN over real mdast trees rather than described. It is
+ * a second bundle because it is a second module — `credential-citation-remark.ts`
+ * reads no React and no DOM, which is exactly what makes it testable here.
+ */
+const remarkBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/features/chat/components/credential-citation-remark";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const { citationFromHref, citationHref, remarkCredentialCitations } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(remarkBundle.outputFiles[0].text).toString("base64")}`
+	);
 
 /*
  * ---------------------------------------------------------------------------
@@ -1913,4 +1939,238 @@ test("the token regex is read with a fresh lastIndex, so two reads agree", () =>
 		null,
 		"an unreset second read is the trap the discipline exists for",
 	);
+});
+
+/* Hoisted for the reason the story file hoists its matchers: a regex built inside a
+   test body is rebuilt on every call, and `lint/performance/useTopLevelRegex` is
+   the rule that says so. */
+const CLEARED_KEY_NOTICE = /Removed LOP_SECRET_4CE3Y48G from this message/;
+const CLEARED_REPASTE = /paste it again after \/credential/;
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE CHIP'S OWN TWO QUESTIONS: what the transcript treats as a citation, and
+ * what the composer's x does to one
+ * ---------------------------------------------------------------------------
+ *
+ * Operator report, 2026-09-17: a message sent with a pasted secret reads in the
+ * transcript as a wall of technical text, and the composer's "pill" is a wash
+ * behind the marker's own square brackets rather than a chip. Part A of that
+ * change is RENDER-ONLY - the citation the model receives and the transcript
+ * stores does not change by one byte - so the only thing to pin on that side is
+ * what the renderer RECOGNISES, and the negatives are the load-bearing half: a
+ * hand-typed lookalike must stay prose, and the citation's own text inside a
+ * fenced block must stay exactly as the operator quoted it.
+ *
+ * Part B's clear control has a second half that cannot be photographed into
+ * proof: the VALUE and the PAYLOAD are gone, not just the marker text. The
+ * frames show the sentence with the reference removed; these cases show that no
+ * citation, no marker and no secret survives the click.
+ */
+
+/** A payload as the mint builds one, with its marker built the same way. */
+const chipPayload = (index, value) => ({
+	index,
+	key: `LOP_SECRET_4CE3Y48${index}`,
+	value,
+	marker: credentialMarker(index, value),
+});
+
+test("every citation the app writes comes back as ONE citation segment", () => {
+	const payload = chipPayload(1, "s".repeat(73));
+	const sentence = credentialCitation(payload);
+	assert.deepEqual(citationSegments(sentence), [
+		{ kind: "stored", text: sentence, key: payload.key, chars: 73 },
+	]);
+	for (const reason of ["unreachable", "rejected-key", "lost"]) {
+		const unstored = describeUnstored(reason);
+		assert.deepEqual(
+			citationSegments(unstored),
+			[{ kind: "unstored", text: unstored }],
+			reason,
+		);
+	}
+});
+
+test("a citation mid-sentence stays inside its paragraph, and two of them are two chips", () => {
+	const sentence = credentialCitation(chipPayload(1, "s".repeat(73)));
+	const text = `here is the key ${sentence} — and the same one again ${sentence}`;
+	const segments = citationSegments(text);
+	assert.deepEqual(
+		segments.map((segment) => segment.kind),
+		["text", "stored", "text", "stored"],
+	);
+	assert.equal(segments[0].text, "here is the key ");
+	assert.equal(segments[2].text, " — and the same one again ");
+	// The split is a PROJECTION: joining the pieces gives the document back, so a
+	// chip can only ever be a re-drawing of text the transcript already held.
+	assert.equal(segments.map((segment) => segment.text).join(""), text);
+});
+
+test("a lookalike is prose: only the whole sentence, with its two names agreeing", () => {
+	const sentence = credentialCitation(chipPayload(1, "s".repeat(73)));
+	const cases = [
+		// the second name edited by hand: the case a permissive scan would chip
+		sentence.replace("$LOP_SECRET_4CE3Y481", "$LOP_SECRET_OTHER000"),
+		// the sentence's own tail missing
+		"[credential LOP_SECRET_4CE3Y481 (73 chars) — available to bash and eval as $LOP_SECRET_4CE3Y481]",
+		// the MARKER grammar, which never reaches the transcript and is not a citation
+		"[Credential #1, 73 chars]",
+		// a bracket that is not a citation at all
+		"[credential]",
+	];
+	for (const text of cases) {
+		assert.deepEqual(
+			citationSegments(text).map((segment) => segment.kind),
+			["text"],
+			text,
+		);
+	}
+});
+
+test("the fenced and inline-code cases are left byte-identical, and prose beside them is not", () => {
+	const sentence = credentialCitation(chipPayload(1, "s".repeat(73)));
+	const tree = {
+		type: "root",
+		children: [
+			{
+				type: "paragraph",
+				children: [{ type: "text", value: "what you sent:" }],
+			},
+			{ type: "code", lang: "text", value: sentence },
+			{
+				type: "paragraph",
+				children: [
+					{ type: "text", value: "and again " },
+					{ type: "text", value: sentence },
+				],
+			},
+			{
+				type: "paragraph",
+				children: [{ type: "inlineCode", value: sentence }],
+			},
+		],
+	};
+	remarkCredentialCitations()(tree);
+	const fenced = tree.children[1];
+	assert.equal(fenced.value, sentence, "a fenced block is untouched");
+	assert.equal(fenced.children, undefined, "and nothing was hung on it");
+	const inline = tree.children[3].children[0];
+	assert.equal(inline.type, "inlineCode");
+	assert.equal(inline.value, sentence);
+	// Prose beside the fence is chipped, and the text around it survives unchanged.
+	const prose = tree.children[2].children;
+	assert.deepEqual(
+		prose.map((node) => node.type),
+		["text", "link"],
+	);
+	assert.equal(prose[0].value, "and again ");
+	assert.equal(
+		prose[1].children[0].value,
+		sentence,
+		"the node still carries the sentence",
+	);
+	assert.equal(prose[1].title, sentence);
+});
+
+test("the chip's URL round-trips, and a URL this app did not write is not a citation", () => {
+	const href = citationHref({
+		kind: "stored",
+		key: "LOP_SECRET_4CE3Y48G",
+		chars: 73,
+	});
+	assert.equal(href, "#lo-credential/LOP_SECRET_4CE3Y48G/73");
+	assert.deepEqual(citationFromHref(href), {
+		kind: "stored",
+		key: "LOP_SECRET_4CE3Y48G",
+		chars: 73,
+	});
+	assert.deepEqual(citationFromHref(citationHref({ kind: "unstored" })), {
+		kind: "unstored",
+	});
+	for (const other of [
+		"https://example.com/x",
+		"#lo-credential",
+		"#lo-credential/not a key/73",
+		"#lo-credential/LOP_SECRET_4CE3Y48G/seven",
+		undefined,
+	]) {
+		assert.equal(citationFromHref(other), null, String(other));
+	}
+});
+
+test("the marker's chip label is the index, and the count is the marker's own", () => {
+	assert.deepEqual(markerChip(credentialMarker(1, "x".repeat(19))), {
+		index: 1,
+		label: "#1",
+		chars: 19,
+	});
+	assert.deepEqual(markerChip(credentialMarker(12, "x")), {
+		index: 12,
+		label: "#12",
+		chars: 1,
+	});
+	assert.equal(markerChip("deploy with"), null);
+	assert.equal(
+		markerChip(`${credentialMarker(1, "x")} and more`),
+		null,
+		"a span that merely contains the grammar is not a run of its own",
+	);
+});
+
+test("the x takes the marker and its trailing space in ONE edit, and stops citing the value", () => {
+	const payload = chipPayload(1, "s".repeat(19));
+	const buffer = `deploy with ${payload.marker} to the staging box`;
+	const cleared = clearCitedCredential({ buffer, payload });
+	assert.equal(cleared.cleared, true);
+	assert.equal(cleared.buffer, "deploy with to the staging box");
+	assert.equal(cleared.caret, "deploy with ".length);
+	// THE VALUE/PAYLOAD OUTCOME, which is the half a frame cannot show: nothing
+	// cites the payload any more, so the submit seam has nothing to stamp, and the
+	// splice leaves neither the marker's text nor the secret in the buffer.
+	assert.equal(citedPayloads(cleared.buffer, [payload]).length, 0);
+	assert.equal(
+		substituteCredentials(cleared.buffer, [payload]),
+		cleared.buffer,
+	);
+	assert.ok(!cleared.buffer.includes("[Credential"));
+	assert.ok(!cleared.buffer.includes(payload.value));
+});
+
+test("a marker at the end of the buffer goes without eating a character", () => {
+	const payload = chipPayload(1, "abc");
+	const cleared = clearCitedCredential({
+		buffer: `use ${payload.marker}`,
+		payload,
+	});
+	assert.equal(cleared.cleared, true);
+	// The blank BEFORE the marker is the operator's and stays; there is no trailing
+	// blank to take with it, which is the half this case exists for.
+	assert.equal(cleared.buffer, "use ");
+	assert.equal(cleared.caret, 4);
+});
+
+test("the x is refused, not guessed, when the marker it would remove has moved on", () => {
+	const payload = chipPayload(1, "abc");
+	const gone = "no reference here";
+	assert.deepEqual(clearCitedCredential({ buffer: gone, payload }), {
+		cleared: false,
+		buffer: gone,
+		caret: gone.length,
+	});
+	// The index half: a payload whose marker names a DIFFERENT index is not this
+	// payload's citation, which is what a hand-edited marker tail produces.
+	const edited = { ...payload, marker: credentialMarker(2, payload.value) };
+	const kept = clearCitedCredential({
+		buffer: `x ${payload.marker} y`,
+		payload: edited,
+	});
+	assert.equal(kept.cleared, false);
+	assert.equal(kept.buffer, `x ${payload.marker} y`);
+});
+
+test("the cleared notice names the key and says who can supply the value again", () => {
+	const notice = clearedNotice("LOP_SECRET_4CE3Y48G");
+	assert.match(notice, CLEARED_KEY_NOTICE);
+	assert.match(notice, CLEARED_REPASTE);
 });

@@ -1552,6 +1552,43 @@ export function markerIndex(marker: string): number | null {
 }
 
 /**
+ * What one painted marker run's chip says: the index it names, the label it
+ * shows, and the count it reports.
+ *
+ * THE LABEL IS THE INDEX ALONE, and the measurement is why (operator report,
+ * 2026-09-17: "the pill must look like a real pill component"). The composer's
+ * chip is painted OVER the marker's own box, which the mint writes as
+ * `[Credential #<index>, <chars> chars]` — so the chip's box is 157.33px wide at
+ * the composer's 1024 rung (measured, `scripts/credential-chip-geometry.mjs`),
+ * while the words `Credential #1` plus `· 19 chars` plus a key glyph, a clear
+ * control, its paddings and three gaps measure **191.3px** in the same frame.
+ * A chip that wide cannot be drawn: its own ground is opaque, so the 34px it
+ * overhangs would cover the first word of the sentence that follows the
+ * reference (or the chip would truncate its own name to `Credenti…`). `#1`
+ * with the count measures **126px**, which fits the run with 31px to spare, and
+ * the count keeps its unit — the part of the pair the operator cannot recover
+ * from anywhere else (`editor.py:523-540`: the length is their integrity check).
+ * Reported in the pull request with those numbers.
+ */
+export type MarkerChip = { index: number; label: string; chars: number };
+
+/** The chip for one marker run of the buffer's text, or `null` for prose. */
+export function markerChip(marker: string): MarkerChip | null {
+	CREDENTIAL_MARKER.lastIndex = 0;
+	const match = CREDENTIAL_MARKER.exec(marker);
+	CREDENTIAL_MARKER.lastIndex = 0;
+	// The whole run has to BE a marker: a span that merely contains the grammar is
+	// a marker embedded in prose, which `paintPlan` never produces.
+	if (match === null || match[0] !== marker) return null;
+	const index = Number.parseInt(match[1], 10);
+	return {
+		index,
+		label: `#${index}`,
+		chars: Number.parseInt(match[2], 10),
+	};
+}
+
+/**
  * The span of the APP's citation of `payload` in `text`, or `null`.
  *
  * A citation counts as the app's own only when the marker text matches the
@@ -1588,6 +1625,103 @@ export function citationSpan(
 	const at = text.indexOf(payload.marker);
 	if (at === -1) return null;
 	return { start: at, end: at + payload.marker.length };
+}
+
+/**
+ * A STORED credential's citation, as {@link credentialCitation} writes it.
+ *
+ * Sticky (`y`) rather than global (`g`): {@link citationAt} asks it at ONE
+ * offset, which is what makes the walk below linear in the length of the
+ * document rather than quadratic in the number of brackets in it.
+ *
+ * The trailing `$<name>` has to name the SAME credential as the leading one
+ * (`citationAt` compares the two captures), which is the whole of what separates
+ * the app's own citation from a hand-typed lookalike.
+ */
+const CREDENTIAL_CITATION_STORED =
+	/\[credential ([A-Za-z_][A-Za-z0-9_]*) \((\d+) chars\) \u2014 available to bash and eval as \$([A-Za-z_][A-Za-z0-9_]*); its value cannot be read\]/y;
+
+/** One of {@link describeUnstored}'s three sentences, likewise whole. */
+const CREDENTIAL_CITATION_UNSTORED =
+	/\[credential NOT stored \u2014 [^\]\n]*\]/y;
+
+/**
+ * One citation as the transcript holds it, or one run of ordinary prose.
+ *
+ * Shaped like {@link PaintSegment} — a `kind` and the text it covers — because
+ * the two are the same idea on the two surfaces: what the app painted, and what
+ * the app's own words are.
+ */
+export type CitationSegment =
+	| { kind: "text"; text: string }
+	| { kind: "stored"; text: string; key: string; chars: number }
+	| { kind: "unstored"; text: string };
+
+/**
+ * The citation starting at exactly `at`, or `null`.
+ *
+ * WHY BOTH FORMS ARE MATCHED WHOLE rather than by a permissive bracket scan.
+ * A transcript is text the model wrote around, and the words `[credential`
+ * appear in it whenever somebody DISCUSSES this feature — including in these
+ * documents, and including in a message where the operator pastes a citation by
+ * hand. A chip is a claim that the app wrote the reference and the model was
+ * given the sentence, so the predicate is exact: the whole sentence, with the
+ * two names agreeing. Everything else is prose and is left alone.
+ */
+function citationAt(text: string, at: number): CitationSegment | null {
+	// Cheap rejection first: both forms start with `[`, so a walk over a document
+	// pays one comparison per character and a regex only where a bracket is.
+	if (text.charCodeAt(at) !== 0x5b) return null;
+	CREDENTIAL_CITATION_STORED.lastIndex = at;
+	const stored = CREDENTIAL_CITATION_STORED.exec(text);
+	CREDENTIAL_CITATION_STORED.lastIndex = 0;
+	if (stored !== null && stored[1] === stored[3]) {
+		return {
+			kind: "stored",
+			text: stored[0],
+			key: stored[1],
+			chars: Number.parseInt(stored[2], 10),
+		};
+	}
+	CREDENTIAL_CITATION_UNSTORED.lastIndex = at;
+	const unstored = CREDENTIAL_CITATION_UNSTORED.exec(text);
+	CREDENTIAL_CITATION_UNSTORED.lastIndex = 0;
+	if (unstored !== null) return { kind: "unstored", text: unstored[0] };
+	return null;
+}
+
+/**
+ * `text`, split into the prose and the citations in it, in document order.
+ *
+ * The one authority for what counts as a citation on the way to the screen, in
+ * the form the renderer needs it: nothing here reads React, the DOM or the
+ * markdown tree, so `scripts/credential-capture.test.mjs` can pin the grammar —
+ * including the two negatives that matter, a fenced block's contents and a
+ * lookalike whose two names disagree — against the same functions the renderer
+ * calls. `credentialCitation` and `describeUnstored` are what it is pinned
+ * AGAINST: every sentence those two build must come back as one citation
+ * segment, so a wording change cannot leave the split behind.
+ *
+ * A `text` node with no citation comes back as a single `"text"` segment, which
+ * is what lets the renderer's plugin hand the original node back untouched.
+ */
+export function citationSegments(text: string): CitationSegment[] {
+	const out: CitationSegment[] = [];
+	let plain = 0;
+	let at = 0;
+	while (at < text.length) {
+		const citation = citationAt(text, at);
+		if (citation === null) {
+			at++;
+			continue;
+		}
+		if (at > plain) out.push({ kind: "text", text: text.slice(plain, at) });
+		out.push(citation);
+		at += citation.text.length;
+		plain = at;
+	}
+	if (plain < text.length) out.push({ kind: "text", text: text.slice(plain) });
+	return out;
 }
 
 /**
@@ -1740,6 +1874,62 @@ export function substituteCredentials(
 		out = out.slice(0, span.start) + named + out.slice(span.end);
 	}
 	return out;
+}
+
+/**
+ * The one notice the operator hears when the chip's `x` throws a credential
+ * away.
+ *
+ * IT IS NOT AN ERROR, AND IT IS NOT SILENT EITHER: the value is destroyed by
+ * that click — the payload is dropped from the map, and the marker that cited it
+ * is spliced out of the buffer in one edit — and the store on the runtime never
+ * held it, because the submit is what stores. So the sentence names what is
+ * gone, who can supply it again, and the gesture that does it. Same voice, same
+ * one-authority rule as the notices above: this string exists here, not inline
+ * at the control, so the words that describe a credential's fate have one home.
+ */
+export const clearedNotice = (key: string): string =>
+	`Removed ${key} from this message. Its value is gone — paste it again after /credential to reuse it.`;
+
+/**
+ * The `x` control's edit: one payload's marker — and its trailing space — out
+ * of `buffer`, in one step.
+ *
+ * ONE EDIT, like the mint (§4): the marker and the blank after it go together,
+ * so `deploy with [Credential #1, 19 chars] to the stage` reads
+ * `deploy with to the stage` rather than leaving a double space where the
+ * reference was. The caret lands where the marker started, which is where the
+ * operator's eye already is.
+ *
+ * `cleared: false` means nothing was spliced — a payload whose citation is not
+ * in the buffer any more (the operator backspaced it away, or the marker's tail
+ * was edited so {@link citationSpan} refuses it) — and the caller must then
+ * leave the buffer and the map alone rather than reporting a removal that did
+ * not happen.
+ *
+ * WHAT IT DOES NOT DO: touch the store. The value lives in this composer's ref
+ * until a submit stores it, so a reference dropped here was never anywhere else
+ * and the operator is the only one who can supply it again. That is the whole
+ * reason the control is honest, and why the notice above says so.
+ */
+export function clearCitedCredential(args: {
+	buffer: string;
+	payload: CredentialPayload;
+}): { cleared: boolean; buffer: string; caret: number } {
+	const { buffer, payload } = args;
+	const span = citationSpan(buffer, payload);
+	// Nothing spliced: the caller must leave the buffer, the map and the notice
+	// alone rather than reporting a removal that did not happen. The caret answer is
+	// meaningless here and is the buffer's end, so a caller that ignored `cleared`
+	// could not move the caret somewhere it looks deliberate.
+	if (span === null) return { cleared: false, buffer, caret: buffer.length };
+	const end =
+		buffer[span.end] === CREDENTIAL_OPEN_SPACE ? span.end + 1 : span.end;
+	return {
+		cleared: true,
+		buffer: buffer.slice(0, span.start) + buffer.slice(end),
+		caret: span.start,
+	};
 }
 
 /**
