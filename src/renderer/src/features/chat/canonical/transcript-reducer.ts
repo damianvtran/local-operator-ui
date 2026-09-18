@@ -83,6 +83,24 @@ export type TranscriptRecord =
 			text: string;
 			/** Still receiving deltas; the view shows the text without a cursor. */
 			streaming: boolean;
+			/**
+			 * The text here is NOT the whole message: a span of it never reached this
+			 * viewer, so the row must not present what it holds as the complete answer.
+			 *
+			 * SET by the two paths that can only hand a row part of a message — a join that
+			 * created the row from a delta with no prefix in hand, and a snapshot seed whose
+			 * delta cannot be placed after the text a surviving row already holds (see
+			 * `applyEvent`'s `seed` option and the receipt-gap path in
+			 * `use-canonical-session`) — and CLEARED by the two sources that state the whole
+			 * text: `message_end`, whose message is the assembled final text, and a durable
+			 * history row, which is whole by construction (`durableRecord` builds every
+			 * record from the journal and never sets this).
+			 *
+			 * A fact about the TEXT rather than about the transport: the receipt gap that
+			 * provokes it is transient, and the row says so itself rather than the pane
+			 * saying it about every row.
+			 */
+			truncated?: boolean;
 			/** Provider stop reason when settled: refusal/error/aborted change ink. */
 			stopReason: string | null;
 			error: boolean;
@@ -1913,6 +1931,40 @@ export function applyHistoryPage(
 type LiveEvent = { type: string; [key: string]: unknown };
 
 /**
+ * The counts that turn an argument about a stream defect into a measurement.
+ *
+ * WHY THESE EXIST. Two conditions in this file are reachable only from the
+ * producer's behaviour, and reading the code cannot settle whether they happen
+ * on a given machine: a delta arriving for a row that is already SETTLED, and a
+ * snapshot seed carrying a delta for a row this viewer already painted. Both are
+ * defensive paths with no colour of their own on screen.
+ *
+ * A counter rather than a log line, because the reader of this number is a
+ * person (or an agent) looking at one long turn: the numbers are cheap to bump
+ * and free to read from the dev readout the transcript pane already exposes on
+ * the DOM (`canonical-transcript.tsx`, `import.meta.env.DEV`), rather than
+ * shipped as behaviour under a flag nobody runs. Nothing here is read by the
+ * reducer's own decisions: the counts are evidence, never input.
+ */
+export const streamDiagnostics = {
+	/**
+	 * A `message_update` met a painted, already-settled assistant row.
+	 *
+	 * THE MEASUREMENT the streaming audit asked for: if this stays at 0 across
+	 * real turns, the reducer's settled-row gate is never the reason a message
+	 * stopped updating, and the drop it performs is doing no work at all.
+	 */
+	settledAssistantUpdate: 0,
+	/**
+	 * A snapshot seed's delta was withheld because the row it named already had
+	 * text from before the gap (see `message_update`'s seed branch). Each count is
+	 * one row that is now marked `truncated` because a receipt gap sat in the
+	 * middle of it.
+	 */
+	seededDeltaWithheld: 0,
+};
+
+/**
  * Apply one canonical AgentEvent. Idempotent: replaying an event whose
  * effect is already painted returns the same state.
  */
@@ -1920,6 +1972,17 @@ export function applyEvent(
 	state: TranscriptState,
 	event: LiveEvent,
 	now = Date.now(),
+	/**
+	 * Where this event came from, when it is not this viewer's own live stream.
+	 *
+	 * `seed` marks the events a snapshot's `live_events` carries — the owner's
+	 * projection of the turn in flight at the instant the snapshot was cut. They
+	 * are a REPLAY of a window this viewer may have partly painted already, which
+	 * changes what a delta may do to a row that is on screen (see
+	 * `message_update`). Omitted on the live path and by every other caller, so the
+	 * default is the live reading.
+	 */
+	options: { seed?: boolean } = {},
 ): TranscriptState {
 	const message = event.message as Record<string, unknown> | undefined;
 	switch (event.type) {
@@ -2037,21 +2100,103 @@ export function applyEvent(
 			if (!message || typeof message.id !== "string") return state;
 			const position = state.index.get(message.id);
 			const delta = String(event.delta ?? "");
+			// The event's OWN text is the whole text this case may use. The
+			// producer assembles `message.content` once, at the END of the call, for
+			// a measured memory reason (`harness/loop.py`), so mid-stream the body is
+			// empty and reading it would contribute nothing while making the code
+			// look like it could rebuild the message from a frame that does not
+			// carry one.
+			const body = messageText(message);
 			if (position === undefined) {
-				// Joined mid-stream (the snapshot seed carries the latest update,
-				// not the start): the accumulated message text plus this delta.
+				/*
+				 * A row this viewer never saw start, built from the frame's own text.
+				 *
+				 * WHY THE PREFIX IS UNKNOWN HERE, and why the row says so: the only way
+				 * into this branch is an update for an id with nothing painted for it —
+				 * a turn joined mid-stream, or a delta that arrived while the row was
+				 * not on screen. Either way the message may well have text before this
+				 * delta (the producer sends deltas ONLY, so an empty body says nothing
+				 * about what came before), and a row that presented the chunk as the
+				 * whole answer is what the operator reported as "the message starts
+				 * mid-sentence". `truncated` is the honest form of the same paint: the
+				 * chunk is shown, and the row states that earlier text is missing.
+				 *
+				 * A producer that DOES accumulate is still handled exactly as before:
+				 * a non-empty body is the running snapshot, `body + delta` is the
+				 * authoritative text so far, and the row is not truncated. That is the
+				 * shape the old branch was written against, and it stays correct for
+				 * any producer that sends one.
+				 */
+				if (!body && !delta) return state;
 				return upsert(state, {
 					kind: "assistant",
 					id: message.id,
 					ts: now,
-					text: messageText(message) + delta,
+					text: body ? body + delta : delta,
 					streaming: true,
+					truncated: body === "",
 					stopReason: null,
 					error: false,
 				});
 			}
 			const current = state.records[position];
-			if (current.kind !== "assistant" || !current.streaming) return state;
+			if (current.kind !== "assistant") return state;
+			if (!current.streaming) {
+				/*
+				 * A delta for a row that is already SETTLED. This is the freeze the
+				 * operator reported, and the drop is kept deliberately rather than
+				 * re-armed — see the counter below for why the question is answered by
+				 * data instead.
+				 *
+				 * A settled row's text is authoritative for its id: a durable row from
+				 * the journal, or `message_end`'s assembled text. Appending a later
+				 * delta to it duplicates the tail in every case this condition is
+				 * actually reachable in, and the message id space is per-message
+				 * (`Message.id` is a fresh uuid4 per provider call) so a re-stream of a
+				 * settled id is not a shape the producer emits. The alternative —
+				 * re-arming to `streaming: true` — would be right only if such a
+				 * re-stream existed, and would be a visible corruption (a repeated
+				 * chunk) when a snapshot's page and its seed both name one message
+				 * mid-turn, which IS reachable.
+				 */
+				streamDiagnostics.settledAssistantUpdate += 1;
+				return state;
+			}
+			if (options.seed === true && !body) {
+				/*
+				 * A SEEDED DELTA-ONLY frame, against a row already on screen.
+				 *
+				 * The seed's update is the owner's LATEST delta at the snapshot instant,
+				 * and a row that survived (a reconnect that kept its rows, see the
+				 * receipt-gap path in `use-canonical-session`) already holds text from
+				 * before the gap. Nothing in the frame says WHERE its delta belongs
+				 * relative to that text: appending it duplicates the tail when the frame
+				 * was one this viewer had already applied (the gap can swallow
+				 * heartbeats and tool events while the assistant is between deltas),
+				 * and skipping it leaves a hole when it was genuinely lost. Inventing
+				 * text is the worse of the two, so the delta is withheld and the row is
+				 * marked `truncated`: what it holds is real, contiguous up to the gap,
+				 * and not the whole message. `message_end` carries the assembled truth
+				 * and clears the mark; the live deltas that follow the snapshot append
+				 * normally.
+				 *
+				 * A row with NO text yet cannot duplicate anything, so the seeded delta
+				 * is placed: the row was minted by this same seed's `message_start`
+				 * (a mint from a delta-only frame is the branch above), and the first
+				 * text to reach it is still the seed's own chunk.
+				 *
+				 * Only the delta-only shape is special-cased. A frame that carries a body
+				 * is a running snapshot of the whole message, so the append path below is
+				 * exactly right for it and is left to handle it — seeded or live alike.
+				 */
+				if (!current.text && !delta) return state;
+				streamDiagnostics.seededDeltaWithheld += current.text ? 1 : 0;
+				return upsert(state, {
+					...current,
+					text: current.text || delta,
+					truncated: true,
+				});
+			}
 			// Append-only contract: each update carries its own delta and the
 			// loop only assembles `message.content` at the END of the stream, so
 			// mid-stream the body is empty and the delta is all there is. When a
@@ -2064,7 +2209,6 @@ export function applyEvent(
 			// folds into scratch state the durable page overrides, and the live
 			// seed is applied once, at the snapshot, before any post-snapshot
 			// event, so the same delta cannot reach a painted record twice.
-			const body = messageText(message);
 			let next: string;
 			if (body) {
 				next = body + delta;
@@ -2863,7 +3007,10 @@ export function applyLiveSeed(
 				continue;
 			}
 		}
-		next = applyEvent(next, event, clock);
+		// `seed: true` is what tells `message_update` that this delta is a REPLAY of a
+		// window this viewer may have painted already, so a row with text of its own
+		// keeps it rather than having an unplaceable chunk appended (see that case).
+		next = applyEvent(next, event, clock, { seed: true });
 	}
 	if (!placed) return next;
 	const records = withTimeOrder(next.records);
@@ -2997,6 +3144,46 @@ export function reconcileLimit(missingCalls: number): number {
 }
 
 /** View-only clear: the painted rows go, the backend history is untouched. */
+/**
+ * The rows a receipt gap leaves UNCERTAIN, kept and said to be uncertain.
+ *
+ * WHY THIS REPLACES THE DROP on the gap path. `dropLiveRecords` removes every
+ * in-flight row, and on a mid-turn reconnect that is the operator-visible part of
+ * the defect: the answer being written vanishes from the screen and comes back as
+ * the tail the snapshot's seed carries, which is both a flicker and a silent
+ * truncation. The rows are not wrong — they are all this viewer RECEIVED, and the
+ * reducer's id-keyed merge already gives the snapshot's durable page authority
+ * over every id it names — so the honest move is to keep them and mark the rows
+ * whose continuity the gap broke.
+ *
+ * WHAT IS MARKED, and why exactly these: a STREAMING assistant row. Its text was
+ * being written when the receipt broke, so the frames in the gap may have carried
+ * deltas for it and nothing in a later frame can prove they did not. A settled
+ * row is whole (a durable row, or the assembled `message_end` text) and the gap
+ * cannot have taken anything from it. Tool rows are deliberately left unmarked:
+ * their own last beat is re-stated by the snapshot's seed (`tool_execution_end`
+ * replaces its start), so the call card is settled by the same frame that settles
+ * its identity, while an assistant row has no such restatement until
+ * `message_end`.
+ *
+ * The in-flight compaction claim is still withheld, for the reason
+ * `dropLiveRecords` gives: the pass is a live-only fact and a reconnect must not
+ * inherit a claim from before the gap.
+ */
+export function markLiveRecordsTruncated(
+	state: TranscriptState,
+): TranscriptState {
+	let next = state.compacting
+		? { ...state, compacting: false, compactingSince: 0 }
+		: state;
+	for (const record of state.records) {
+		if (record.kind !== "assistant" || !record.streaming) continue;
+		if (record.truncated === true) continue;
+		next = upsert(next, { ...record, truncated: true });
+	}
+	return next;
+}
+
 export function clearTranscript(
 	state: TranscriptState,
 	at: number = Date.now(),

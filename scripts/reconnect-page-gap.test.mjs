@@ -882,3 +882,258 @@ test("a snapshot's EMPTY page does not stand in for a history nobody read", asyn
 		"a read that resolved is proof, applied-or-empty alike",
 	);
 });
+
+/* ------------------------------------------------- the gap, and the live rows */
+
+/*
+ * The three behaviours of a receipt gap that the audit measured, each asserted
+ * on the frames the producer actually sends.
+ *
+ * A "gap" is the backend saying its replay window no longer covers this viewer:
+ * it follows an overflowing subscriber queue, ends the response, and the client
+ * reconnects into `open{gap: true}` -> replay -> snapshot. What the client does
+ * with the rows it had painted is the whole of the first two cases below.
+ */
+
+/** One canonical event, on the receipt cursor. */
+const eventFrame = (seq, payload) => ({
+	session_id: SESSION_A,
+	epoch: "bridge-epoch",
+	seq,
+	type: "event",
+	payload,
+});
+
+/** The producer's own wire shape: `content: []` and a bare delta. */
+const liveFrame = (type, id, extra = {}) => ({
+	type,
+	message: { id, role: "assistant", content: [] },
+	...extra,
+});
+
+const historyReads = () =>
+	requests.filter((request) => request.op === "sessions.history").length;
+
+async function mount() {
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+	return {
+		row: (id) => handle.transcript.records.find((record) => record.id === id),
+		ids: () => ids(handle.transcript),
+		status: () => handle.status,
+	};
+}
+
+test("a receipt gap keeps the answer being written, and a mid-turn join agrees with the end", async () => {
+	const plan = conversation({ withSteer: false, awayRows: 0 });
+	const transcript = makeTranscript(plan.rows);
+	reset({ transcript });
+	const panel = await mount();
+
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: plan.cursor,
+			entries: transcript.page(plan.cursor, SNAPSHOT_PAGE).entries,
+			liveEvents: [],
+		}),
+	);
+	await pump();
+
+	// The answer, streaming: one delta per arrival, the producer's own shape.
+	const id = "a-inflight";
+	deliver(eventFrame(3, liveFrame("message_start", id)));
+	deliver(
+		eventFrame(4, liveFrame("message_update", id, { delta: "The answer " })),
+	);
+	deliver(eventFrame(5, liveFrame("message_update", id, { delta: "so far" })));
+	await pump();
+	assert.equal(panel.row(id).text, "The answer so far");
+	assert.ok(
+		!panel.row(id).truncated,
+		"a row painted from its own start holds everything that exists so far",
+	);
+
+	// The receipt breaks. The row is KEPT — dropping it is what made the answer
+	// vanish and come back as its last chunk — and marked, because the frames the
+	// gap swallowed may have carried deltas for it.
+	deliver({ session_id: SESSION_A, type: "gap" });
+	await pump();
+	assert.ok(panel.row(id), "a gap must not erase the answer being written");
+	assert.equal(panel.row(id).text, "The answer so far", "nor shorten it");
+	assert.equal(panel.row(id).truncated, true, "it says its continuity broke");
+	assert.equal(
+		panel.status(),
+		"reconnecting",
+		"and the view is told to reconnect",
+	);
+
+	// The reconnect: `open{gap}` then the snapshot, whose seed is the owner's
+	// projection of the turn in flight — the message's start plus its LATEST
+	// delta. That delta cannot be placed after the text this row already holds, so
+	// appending it would write a chunk the model never wrote twice.
+	deliver(openFrame(9, true));
+	deliver(
+		snapshotFrame(10, {
+			cursor: plan.cursor,
+			entries: transcript.page(plan.cursor, SNAPSHOT_PAGE).entries,
+			liveEvents: [
+				liveFrame("message_start", id),
+				liveFrame("message_update", id, { delta: "so far" }),
+			],
+		}),
+	);
+	await pump();
+	assert.equal(
+		panel.row(id).text,
+		"The answer so far",
+		"the seed's delta is not applied a second time",
+	);
+	assert.equal(panel.row(id).truncated, true);
+
+	// The authoritative end: the row must agree with the producer's own assembled
+	// text once it lands, and stop claiming anything is missing.
+	deliver(
+		eventFrame(
+			11,
+			liveFrame("message_end", id, {
+				message: {
+					id,
+					role: "assistant",
+					content: [{ type: "text", text: "The answer so far and the rest" }],
+				},
+			}),
+		),
+	);
+	await pump();
+	assert.equal(panel.row(id).text, "The answer so far and the rest");
+	assert.equal(panel.row(id).streaming, false);
+	assert.ok(
+		!panel.row(id).truncated,
+		"the authoritative text clears the claim",
+	);
+});
+
+test("a snapshot whose page already reaches the painted tail costs no history read", async () => {
+	/*
+	 * The page's newest entry is an ASSISTANT row on purpose: a durable tool row
+	 * is keyed by its call id (`tool:<call_id>`), so its entry id is not a record
+	 * id and this guard cannot prove it is on screen — such a page reads, which is
+	 * conservative and is the shape the next case covers.
+	 */
+	const rows = [
+		userRow("r1", 100, "Start the turn."),
+		toolRow("r2", 101, "call-1", "read", "file contents"),
+		assistantRow("r3", 102, "Working on it."),
+	];
+	const transcript = makeTranscript(rows);
+	reset({ transcript });
+	const panel = await mount();
+
+	// The journal's tail read from the journal, with the owner's published
+	// watermark still behind it: `r3` is durable, and it is a row this viewer has
+	// painted. The first snapshot reconciles because nothing was painted before it.
+	deliver(openFrame(1, true));
+	deliver(snapshotFrame(2, { cursor: "r2", entries: rows, liveEvents: [] }));
+	await pump();
+	assert.deepEqual(panel.ids(), rows.map(recordIdOf));
+	assert.equal(historyReads(), 1, "the cold snapshot reads");
+
+	// A reconnect in which nothing durable was missed. The page is the tail again,
+	// its newest row is already on screen, and it EXTENDS PAST the published
+	// cursor — which is the one thing a page read `through_id=<cursor>` can never
+	// do. There is nothing between the two to fetch.
+	deliver(openFrame(9, true));
+	deliver(snapshotFrame(10, { cursor: "r2", entries: rows, liveEvents: [] }));
+	await pump();
+	assert.equal(
+		historyReads(),
+		1,
+		"a page that reaches the painted tail is not re-read on the owner",
+	);
+	assert.deepEqual(panel.ids(), rows.map(recordIdOf));
+});
+
+test("a page that stops at the cursor still reads, and the read still closes the gap", async () => {
+	const rows = [
+		userRow("r1", 100, "Start the turn."),
+		assistantRow("r2", 101, "Working on it."),
+		assistantRow("r3", 102, "One more paragraph."),
+	];
+	const transcript = makeTranscript(rows);
+	reset({ transcript });
+	const panel = await mount();
+
+	// The cursor-bounded shape: the page ends AT the owner's watermark, which is
+	// the shape this read was written for and the one the skip must refuse (the
+	// reader cannot tell a stale cursor from a current one when the two agree).
+	deliver(openFrame(1, true));
+	deliver(snapshotFrame(2, { cursor: "r3", entries: rows, liveEvents: [] }));
+	await pump();
+	assert.deepEqual(panel.ids(), rows.map(recordIdOf));
+
+	// Rows written while this reader was on another conversation: they are durable
+	// now, and nothing delivered to this viewer carried them.
+	transcript.rows.push(
+		assistantRow("r4", 103, "Row written while away."),
+		toolRow("r5", 104, "call-2", "read", "more output"),
+	);
+
+	deliver(openFrame(9, true));
+	deliver(snapshotFrame(10, { cursor: "r3", entries: rows, liveEvents: [] }));
+	await pump();
+	assert.equal(historyReads(), 2, "a page ending at the cursor is read");
+	assert.deepEqual(
+		panel.ids(),
+		transcript.rows.map(recordIdOf),
+		"and the read is what puts the rows written while away on screen",
+	);
+});
+
+test("replayed events paint even when the snapshot lands in a later batch", async () => {
+	const plan = conversation({ withSteer: false, awayRows: 0 });
+	const transcript = makeTranscript(plan.rows);
+	reset({ transcript });
+	const panel = await mount();
+
+	// The replay of one reconnect, in a batch of its own: the frames of a
+	// reconnect are not obliged to arrive inside a single animation frame, and the
+	// scratch state they fold into is applied at the end of the batch that carried
+	// them rather than thrown away because the snapshot is in the next one.
+	const id = "a-replay";
+	deliver(eventFrame(1, liveFrame("message_start", id)));
+	deliver(
+		eventFrame(2, liveFrame("message_update", id, { delta: "replayed " })),
+	);
+	deliver(eventFrame(3, liveFrame("message_update", id, { delta: "text" })));
+	await pump();
+	assert.ok(panel.row(id), "the replayed turn is painted in its own batch");
+	assert.equal(
+		panel.row(id).text,
+		"replayed text",
+		"in arrival order, with nothing dropped at the batch boundary",
+	);
+
+	// The snapshot follows in the next batch and is still the authority: the
+	// durable page wins by id, and the seed's delta is not applied twice.
+	deliver(openFrame(4, false));
+	deliver(
+		snapshotFrame(5, {
+			cursor: plan.cursor,
+			entries: transcript.page(plan.cursor, SNAPSHOT_PAGE).entries,
+			liveEvents: [liveFrame("message_update", id, { delta: "text" })],
+		}),
+	);
+	await pump();
+	assert.ok(panel.row(id), "the row survives the snapshot that follows it");
+	assert.equal(
+		panel.row(id).text,
+		"replayed text",
+		"and is not doubled by the seed",
+	);
+});
