@@ -600,6 +600,77 @@ const api = {
 			ipcRenderer.invoke("browser-forget-site", origin),
 		clearData: (what: "cookies" | "cache" | "everything"): Promise<unknown> =>
 			ipcRenderer.invoke("browser-clear-data", what),
+		/**
+		 * Answer a surfaced passkey chooser.
+		 *
+		 * `credentialId` is one of the ids MAIN offered, echoed back, or `null` for a
+		 * dismissal. Main validates membership and rejects the echo of an unknown
+		 * request id, so this carries no authority of its own — it is the user's
+		 * choice travelling one way.
+		 */
+		respondToWebauthn: (
+			requestId: string,
+			credentialId: string | null,
+		): Promise<unknown> =>
+			ipcRenderer.invoke("browser-webauthn-respond", requestId, credentialId),
+		/** A `navigator.credentials.get()` matched more than one passkey, and the
+		 * user has to be asked which one to use. Shapes are validated here the way
+		 * every other inbound payload is: main is trusted, but a malformed payload
+		 * must not reach the renderer as a dialog with no accounts to show. */
+		onWebauthnRequest: (
+			callback: (payload: {
+				requestId: string;
+				relyingPartyId: string;
+				accounts: Array<{
+					credentialId: string;
+					name: string | null;
+					displayName: string | null;
+				}>;
+			}) => void,
+		): (() => void) => {
+			const handler = (
+				_event: unknown,
+				payload: {
+					requestId?: unknown;
+					relyingPartyId?: unknown;
+					accounts?: unknown;
+				},
+			) => {
+				if (typeof payload?.requestId !== "string" || !payload.requestId)
+					return;
+				if (!Array.isArray(payload.accounts)) return;
+				const accounts = payload.accounts
+					.filter(
+						(account): account is Record<string, unknown> =>
+							typeof account === "object" && account !== null,
+					)
+					.map((account) => ({
+						credentialId:
+							typeof account.credentialId === "string"
+								? account.credentialId
+								: "",
+						name: typeof account.name === "string" ? account.name : null,
+						displayName:
+							typeof account.displayName === "string"
+								? account.displayName
+								: null,
+					}))
+					.filter((account) => account.credentialId !== "");
+				if (accounts.length === 0) return;
+				callback({
+					requestId: payload.requestId,
+					relyingPartyId:
+						typeof payload.relyingPartyId === "string"
+							? payload.relyingPartyId
+							: "",
+					accounts,
+				});
+			};
+			ipcRenderer.on("browser-webauthn-request", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-webauthn-request", handler);
+			};
+		},
 		onStateChanged: (callback: () => void): (() => void) => {
 			const handler = () => callback();
 			ipcRenderer.on("browser-state-changed", handler);

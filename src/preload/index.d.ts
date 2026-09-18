@@ -69,6 +69,30 @@ declare global {
 				clearData: (
 					what: "cookies" | "cache" | "everything",
 				) => Promise<unknown>;
+				/**
+				 * Answer a surfaced passkey chooser: an offered credential id, or `null` for a
+				 * dismissal. Main validates the id against the accounts it offered.
+				 */
+				respondToWebauthn: (
+					requestId: string,
+					credentialId: string | null,
+				) => Promise<unknown>;
+				/**
+				 * A `navigator.credentials.get()` matched more than one passkey. The renderer
+				 * has to ask which one; an unanswered request is cancelled with
+				 * `NotAllowedError` once the chooser's own timeout expires.
+				 */
+				onWebauthnRequest: (
+					callback: (payload: {
+						requestId: string;
+						relyingPartyId: string;
+						accounts: Array<{
+							credentialId: string;
+							name: string | null;
+							displayName: string | null;
+						}>;
+					}) => void,
+				) => () => void;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (
