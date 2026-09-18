@@ -321,7 +321,7 @@ test("the `unknown` run is narrowed to the bare word", () => {
 	);
 });
 
-test("every run steps colour when the composer is disabled", () => {
+test("every run steps colour when the composer refuses input", () => {
 	// Branding: disabled changes colour, never opacity — and the mirror's container
 	// cannot do it, because a descendant span wins (design round 1 D2).
 	for (const kind of ["command", "name", "unknown"]) {
