@@ -23,7 +23,9 @@ import { getFileTypeFromPath } from "../../utils/file-types";
 import {
 	clearDocumentDirty,
 	documentAfterSelfWrite,
+	isAutosaveHeld,
 	probeLocalFile,
+	publishExplicitSave,
 	setDocumentDirty,
 } from "./file-freshness";
 
@@ -699,135 +701,150 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	}, [document.id, hasUserChanges]);
 	useEffect(() => () => clearDocumentDirty(document.id), [document.id]);
 
-	const saveChanges = useCallback(async () => {
-		if (
-			!document.path ||
-			Object.keys(debouncedSheetsData).length === 0 ||
-			isSaving ||
-			!hasUserChanges
-		) {
-			return;
-		}
-
-		// Final check - compare data to prevent unnecessary saves
-		if (
-			JSON.stringify(debouncedSheetsData) ===
-			JSON.stringify(originalDataRef.current)
-		) {
-			// Data is the same, reset the hasUserChanges flag
-			setHasUserChanges(false);
-			return;
-		}
-
-		setIsSaving(true);
-
-		const workbook = XLSX.utils.book_new();
-		for (const [sheetName, sheetData] of Object.entries(debouncedSheetsData)) {
+	const saveChanges = useCallback(
+		async (explicit = false) => {
 			/*
-			 * Rebuild each row from the TYPED copy, overlaying only what changed.
-			 *
-			 * `sheetData` holds display strings (see the two-read comment above),
-			 * and `json_to_sheet` types whatever it is given - so handing it these
-			 * directly stored every number and date in the file as text. A cell
-			 * the user never touched is therefore written from `originalRawRef`,
-			 * byte-for-byte what was read; only a cell they actually edited is
-			 * re-derived, and then a value that is wholly numeric becomes a
-			 * number so it stays arithmetic rather than becoming text on its
-			 * first edit.
+			 * THE AUTOSAVE IS HELD while the row says the file changed on disk under this
+			 * buffer (UX round 2, U1's second half) - the same hold the code and markdown
+			 * editors honour, for the same reason: writing here destroys the external
+			 * version the reader was just told about. An EXPLICIT save is the reader's own
+			 * decision and is never held; it is what converts the row's sentence into
+			 * "your save replaced the change on disk".
 			 */
-			const originalDisplay = originalDataRef.current[sheetName] ?? [];
-			const originalTyped = originalRawRef.current[sheetName] ?? [];
-			const rows = sheetData.map((row, i) => {
-				const wasDisplay = originalDisplay[i];
-				const wasTyped = originalTyped[i];
-				const out: Record<string, unknown> = {};
-				for (const [key, value] of Object.entries(row)) {
-					const untouched =
-						wasDisplay !== undefined && wasDisplay[key] === value;
-					if (untouched && wasTyped !== undefined && key in wasTyped) {
-						out[key] = wasTyped[key];
-						continue;
-					}
-					out[key] = coerceEditedCell(value);
-				}
-				return out;
-			});
-			const worksheet = XLSX.utils.json_to_sheet(rows);
-			applyColumnFormats(worksheet, originalFormatsRef.current[sheetName]);
-			XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-		}
-
-		const fileType = getFileTypeFromPath(document.path);
-		const isCsv = fileType === "spreadsheet" && document.path.endsWith(".csv");
-
-		const newContent = isCsv
-			? XLSX.write(workbook, { bookType: "csv", type: "string" })
-			: XLSX.write(workbook, {
-					type: "base64",
-					bookType: "xlsx",
-				});
-
-		try {
-			// Pass encoding to saveFile to ensure correct file writing.
-			await window.api.saveFile(
-				document.path,
-				newContent,
-				isCsv ? "utf8" : "base64",
-			);
-
-			// Update canvas store with new content only after successful save, and
-			// with the baseline that save produced: the write moved the file's mtime,
-			// so the canvas's freshness check must be told what it moved to or the
-			// next tick reads this save back.
-			if (conversationId && canvasState) {
-				const probe = await probeLocalFile(document.path);
-				const updatedFiles = canvasState.files.map((file) =>
-					file.id === document.id
-						? documentAfterSelfWrite(file, probe, newContent)
-						: file,
-				);
-				setFiles(conversationId, updatedFiles);
+			if (!explicit && isAutosaveHeld(document.id)) return;
+			if (
+				!document.path ||
+				Object.keys(debouncedSheetsData).length === 0 ||
+				isSaving ||
+				!hasUserChanges
+			) {
+				return;
 			}
 
-			/*
-			 * Re-parse the saved content rather than hand-refreshing the refs.
-			 *
-			 * Refreshing `originalDataRef` alone left `originalRawRef` and the
-			 * format map holding the PREVIOUS parse. A second save with no
-			 * re-parse in between then compared every cell the first save
-			 * edited against its old display value, found them "untouched", and
-			 * wrote the stale typed value back - edit one silently reverted.
-			 * In the shipped chat surface the store round-trip re-triggers
-			 * `parseFile` and masked it; on any surface where the store does not
-			 * bounce, it was live.
-			 *
-			 * Parsing our own output is also the honest definition of "saved":
-			 * whatever the file now contains is the truth the next edit works
-			 * from, including anything the write normalised.
-			 */
-			parseFile(newContent, document.path);
-			setHasUserChanges(false);
+			// Final check - compare data to prevent unnecessary saves
+			if (
+				JSON.stringify(debouncedSheetsData) ===
+				JSON.stringify(originalDataRef.current)
+			) {
+				// Data is the same, reset the hasUserChanges flag
+				setHasUserChanges(false);
+				return;
+			}
 
-			showSuccessToast("Spreadsheet saved");
-		} catch (error) {
-			console.error("Failed to save file:", error);
-			showErrorToast(
-				`Failed to save spreadsheet: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
-		} finally {
-			setIsSaving(false);
-		}
-	}, [
-		document.path,
-		document.id,
-		debouncedSheetsData,
-		conversationId,
-		canvasState,
-		setFiles,
-		hasUserChanges,
-		isSaving,
-		parseFile,
-	]);
+			setIsSaving(true);
+
+			const workbook = XLSX.utils.book_new();
+			for (const [sheetName, sheetData] of Object.entries(
+				debouncedSheetsData,
+			)) {
+				/*
+				 * Rebuild each row from the TYPED copy, overlaying only what changed.
+				 *
+				 * `sheetData` holds display strings (see the two-read comment above),
+				 * and `json_to_sheet` types whatever it is given - so handing it these
+				 * directly stored every number and date in the file as text. A cell
+				 * the user never touched is therefore written from `originalRawRef`,
+				 * byte-for-byte what was read; only a cell they actually edited is
+				 * re-derived, and then a value that is wholly numeric becomes a
+				 * number so it stays arithmetic rather than becoming text on its
+				 * first edit.
+				 */
+				const originalDisplay = originalDataRef.current[sheetName] ?? [];
+				const originalTyped = originalRawRef.current[sheetName] ?? [];
+				const rows = sheetData.map((row, i) => {
+					const wasDisplay = originalDisplay[i];
+					const wasTyped = originalTyped[i];
+					const out: Record<string, unknown> = {};
+					for (const [key, value] of Object.entries(row)) {
+						const untouched =
+							wasDisplay !== undefined && wasDisplay[key] === value;
+						if (untouched && wasTyped !== undefined && key in wasTyped) {
+							out[key] = wasTyped[key];
+							continue;
+						}
+						out[key] = coerceEditedCell(value);
+					}
+					return out;
+				});
+				const worksheet = XLSX.utils.json_to_sheet(rows);
+				applyColumnFormats(worksheet, originalFormatsRef.current[sheetName]);
+				XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+			}
+
+			const fileType = getFileTypeFromPath(document.path);
+			const isCsv =
+				fileType === "spreadsheet" && document.path.endsWith(".csv");
+
+			const newContent = isCsv
+				? XLSX.write(workbook, { bookType: "csv", type: "string" })
+				: XLSX.write(workbook, {
+						type: "base64",
+						bookType: "xlsx",
+					});
+
+			try {
+				// Pass encoding to saveFile to ensure correct file writing.
+				await window.api.saveFile(
+					document.path,
+					newContent,
+					isCsv ? "utf8" : "base64",
+				);
+
+				// Update canvas store with new content only after successful save, and
+				// with the baseline that save produced: the write moved the file's mtime,
+				// so the canvas's freshness check must be told what it moved to or the
+				// next tick reads this save back.
+				if (conversationId && canvasState) {
+					const probe = await probeLocalFile(document.path);
+					const updatedFiles = canvasState.files.map((file) =>
+						file.id === document.id
+							? documentAfterSelfWrite(file, probe, newContent)
+							: file,
+					);
+					setFiles(conversationId, updatedFiles);
+				}
+
+				/*
+				 * Re-parse the saved content rather than hand-refreshing the refs.
+				 *
+				 * Refreshing `originalDataRef` alone left `originalRawRef` and the
+				 * format map holding the PREVIOUS parse. A second save with no
+				 * re-parse in between then compared every cell the first save
+				 * edited against its old display value, found them "untouched", and
+				 * wrote the stale typed value back - edit one silently reverted.
+				 * In the shipped chat surface the store round-trip re-triggers
+				 * `parseFile` and masked it; on any surface where the store does not
+				 * bounce, it was live.
+				 *
+				 * Parsing our own output is also the honest definition of "saved":
+				 * whatever the file now contains is the truth the next edit works
+				 * from, including anything the write normalised.
+				 */
+				parseFile(newContent, document.path);
+				setHasUserChanges(false);
+
+				showSuccessToast("Spreadsheet saved");
+			} catch (error) {
+				console.error("Failed to save file:", error);
+				showErrorToast(
+					`Failed to save spreadsheet: ${error instanceof Error ? error.message : "Unknown error"}`,
+				);
+			} finally {
+				setIsSaving(false);
+			}
+		},
+		[
+			document.path,
+			document.id,
+			debouncedSheetsData,
+			conversationId,
+			canvasState,
+			setFiles,
+			hasUserChanges,
+			isSaving,
+			parseFile,
+		],
+	);
 
 	useEffect(() => {
 		// Only save if we have data, user has made changes, and it's not the initial load
@@ -844,14 +861,15 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if ((event.metaKey || event.ctrlKey) && event.key === "s") {
 				event.preventDefault();
-				saveChanges();
+				void saveChanges(true);
+				publishExplicitSave(document.id);
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [saveChanges]);
+	}, [saveChanges, document.id]);
 
 	const onCellValueChanged = useCallback(
 		(event: CellValueChangedEvent) => {

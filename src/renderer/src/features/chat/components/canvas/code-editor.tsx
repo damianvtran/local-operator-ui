@@ -33,8 +33,10 @@ import { diffHighlight } from "./code-editor-diff";
 import {
 	clearDocumentDirty,
 	documentAfterSelfWrite,
+	isAutosaveHeld,
 	isDocumentDirty,
 	probeLocalFile,
+	publishExplicitSave,
 	setDocumentDirty,
 } from "./file-freshness";
 import { InlineEdit } from "./inline-edit";
@@ -214,6 +216,16 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 			window.api.saveFile
 		) {
 			/*
+			 * THE AUTOSAVE IS HELD while the row is telling the reader that the file
+			 * changed on disk underneath their unsaved edits (UX round 2, U1's second
+			 * half). Writing here is what destroyed that version: the external bytes were
+			 * gone a second after the sentence appeared, and the row was then describing a
+			 * change that existed nowhere. Held, the buffer stays in memory and the
+			 * reader's two real choices are the row's control (load the file's version)
+			 * or an explicit save.
+			 */
+			if (isAutosaveHeld(document.id)) return;
+			/*
 			 * The write and the baseline it produces are ONE step.
 			 *
 			 * The file's mtime changes because of our own save, and the canvas's
@@ -392,7 +404,10 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		setInlineEdit(null);
 
 		if (document.path && finalContent !== originalContentRef.current) {
-			window.api.saveFile(document.path, finalContent);
+			void window.api.saveFile(document.path, finalContent);
+			// An inline edit's own finalize is a save the READER asked for by approving
+			// the diff, so it counts as explicit: the row may not hold it.
+			publishExplicitSave(document.id);
 			originalContentRef.current = finalContent;
 			setHasUserChanges(false);
 

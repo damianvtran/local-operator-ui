@@ -57,7 +57,12 @@ const CanvasContentComponent: FC<CanvasContentProps> = ({
 				/>
 			);
 		case "html":
-			return <HtmlPreview document={document} />;
+			/* `conversationId` goes through now, because edit mode is a real editor: its
+			 * saves and its dirty state are the same ones the code viewer publishes, and the
+			 * store update after a save needs the conversation it belongs to. */
+			return (
+				<HtmlPreview document={document} conversationId={conversationId} />
+			);
 		case "spreadsheet":
 			return (
 				<SpreadsheetPreview
