@@ -529,6 +529,16 @@ export const STORIES = [
 	["chat-canonical-user-card-measure--reported-shape", 1024, 620],
 	["chat-canonical-user-card-measure--wide-attachment", 1024, 620],
 	["chat-canonical-user-card-measure--long-text-only", 1024, 620],
+	/* THE CITATION A SENT MESSAGE CARRIES, as the chip the composer showed before
+	   the send (operator report, 2026-09-17). Three stories at the user-card
+	   measure's own 1024x620 pane, so they read beside the rows above: the reported
+	   shape (a citation mid-sentence), the same shape in the warning register for a
+	   value that did not survive, and the citation quoted inside a fenced block -
+	   the state the transform is required to leave ALONE, which is why it is a
+	   frame rather than a unit test alone. */
+	["chat-canonical-credential-citation--citation-mid-sentence", 1024, 620],
+	["chat-canonical-credential-citation--citation-not-stored", 1024, 620],
+	["chat-canonical-credential-citation--citation-in-code-fence", 1024, 620],
 	/*
 	 * The three states a notification click can paint before the owner answers:
 	 * a cached paint with its caption, the skeleton for a first-ever open, and
@@ -2083,6 +2093,100 @@ export const STORIES = [
 	   read beside the states above. */
 	["chat-message-input--credential-masked-session-pane", 1024, 300],
 	["chat-message-input--credential-masked-small-view", 440, 300],
+	/* THE CHIP'S TWO NEW STATES (operator report, 2026-09-17: "the pill must look
+	   like a real pill component ... with an x button to clear"). `pill-small-view`
+	   is the SAME minted reference at the shipped compact rung, because the chip is
+	   painted at a box MEASURED from the mirror: a rung that drops a type step and a
+	   padding step moves that box, and no frame before this one paired the mint with
+	   `isSmallView`. `pill-cleared` is the control's own state, driven by a real
+	   `userEvent.click` on the chip's `x`; the frame shows the sentence with the
+	   reference gone and the composer's sentence about what that cost. The numbers
+	   behind both are printed by `scripts/credential-chip-geometry.mjs` rather than
+	   read off these pictures. */
+	["chat-message-input--credential-pill-small-view", 440, 300],
+	["chat-message-input--credential-pill-cleared", 1024, 300],
+	/*
+	 * THE FOUR STATES ROUND 1 HAD NO FRAME FOR (each finding's own frame, as the
+	 * review asked for).
+	 *
+	 * `scrolled` is UX round 1's blocker: the chip's measurement added the mirror's
+	 * own scroll to a viewport-relative rect, so in any message long enough to
+	 * scroll the chip sat exactly `fieldScrollTop` px off its run - an opaque ground
+	 * and a live `x` over unrelated prose. The row scrolls the field itself
+	 * (`scrollToEnd` sets the textarea's own `scrollTop` and FAILS if nothing
+	 * scrolled), and the story's play measures the pair in a real browser at that
+	 * offset as well, so the frame and the number agree.
+	 *
+	 * `hover` and `focused` are the control's own states (design round 1, D2/D3):
+	 * `:hover` and `:focus-visible` are browser state no story can set, so the rig
+	 * puts the real pointer on the control and walks to it with real Tab presses -
+	 * and a selector that matches nothing throws rather than photographing the
+	 * resting state under a name that claims otherwise.
+	 *
+	 * `cleared-undone` is UX round 1, U2's second channel: the toast's own `Undo`
+	 * pressed, through a real click on the toast, with the play function asserting
+	 * the marker and the payload are back.
+	 */
+	[
+		"chat-message-input--credential-pill-scrolled",
+		1024,
+		300,
+		{ scrollToEnd: "textarea" },
+	],
+	[
+		"chat-message-input--credential-pill-hover",
+		1024,
+		300,
+		{ hover: 'button[aria-label^="Remove credential"]' },
+	],
+	[
+		"chat-message-input--credential-pill-focused",
+		1024,
+		300,
+		{ tabTo: 'button[aria-label^="Remove credential"]' },
+	],
+	[
+		/* The pressed control (design round 2, D7). Same story as the hover row, a HELD
+		   press rather than a click, so the frame carries `:active`'s `bg-sunken` beside
+		   the hover's ink step - the one state this component gained that no frame
+		   showed. */
+		"chat-message-input--credential-pill-hover",
+		1024,
+		300,
+		{
+			dir: "credential-pill-pressed",
+			press: 'button[aria-label^="Remove credential"]',
+			hold: true,
+			label:
+				"pressed: the clear control held down - the ink step plus the primitive's sunken ground, no ring",
+		},
+	],
+	[
+		/* And the same two control states at the COMPACT rung, where the control fills the
+		   run box exactly (16x16 in a 16px box): the hover ground lands inside the chip
+		   and only the ring leaves it, which is arithmetic until it is a frame (D7). */
+		"chat-message-input--credential-pill-small-view",
+		440,
+		300,
+		{
+			dir: "credential-pill-hover-small-view",
+			hover: 'button[aria-label^="Remove credential"]',
+			label:
+				"hover at the compact rung: the control under the pointer, its ground inside the chip and only the ring leaving it",
+		},
+	],
+	[
+		"chat-message-input--credential-pill-small-view",
+		440,
+		300,
+		{
+			dir: "credential-pill-focused-small-view",
+			tabTo: 'button[aria-label^="Remove credential"]',
+			label:
+				"focus at the compact rung: the dense-size ring, offset inside the chip's own edge",
+		},
+	],
+	["chat-message-input--credential-pill-cleared-undone", 1024, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
 	/* The SETTLED idle row (UX round 1's U1 / QA's Q1, and the operator's report
 	   that the first fix left a standing gap) at both rungs, the two shorter notice
@@ -5092,17 +5196,56 @@ const main = async () => {
 					modifiers: 0,
 					pointerType: "mouse",
 				});
-				await cdp.send("Input.dispatchMouseEvent", {
-					type: "mouseReleased",
-					x: target.value.x,
-					y: target.value.y,
-					button: "left",
-					buttons: 0,
-					clickCount: 1,
-					modifiers: 0,
-					pointerType: "mouse",
-				});
+				/*
+				 * `hold` LEAVES THE BUTTON DOWN, which is the only way a committed frame can
+				 * carry `:active` (design round 2, D7): the compound state is the browser's,
+				 * no play function can set it, and a full click photographs the state AFTER
+				 * the press, which is the resting one again. A held button cannot leak past
+				 * this story: every capture navigates for its theme and each navigation is
+				 * preceded by `about:blank`, so no page inherits Chromium's input state.
+				 */
+				if (!options?.hold) {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseReleased",
+						x: target.value.x,
+						y: target.value.y,
+						button: "left",
+						buttons: 0,
+						clickCount: 1,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+				}
 				if (options?.pressSettleMs) await sleep(options.pressSettleMs);
+			}
+
+			/*
+			 * A ROW MAY CORRECT THE CAPTION IT BORROWED (design round 3, D11). Some states
+			 * are reached by a row that reuses another story's surface - the `:active`
+			 * frame is the hover story, the compact hover and focus frames are the compact
+			 * story - and each then carries that story's own `Frame label`, so the frame is
+			 * anchored to a state it does not hold and a reader can only tell the three
+			 * apart by measuring. The override rewrites the story's own label handle
+			 * (`data-frame-label`); it FAILS when the handle is absent rather than shooting
+			 * the old caption under a new name, which is the defect class this exists for.
+			 */
+			if (options?.label) {
+				const written = (
+					await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector("[data-frame-label]");
+							if (!el) return null;
+							el.textContent = ${JSON.stringify(options.label)};
+							return el.textContent;
+						})()`,
+					})
+				).result.value;
+				if (written !== options.label) {
+					throw new Error(
+						`${story} @ ${theme}: the caption override could not be written (\`[data-frame-label]\` is missing) - a frame captioned with a state it does not hold is worse than no frame`,
+					);
+				}
 			}
 			// `let`, and biome must not be allowed to talk you out of it: line
 			// 620 reassigns this. A formatter once rewrote it to `const` while
@@ -6541,6 +6684,18 @@ const main = async () => {
 	 *      are the UNION of the two sides' entries or values, because the merged
 	 *      tree carries both and either side's list alone would claim a pass that
 	 *      did not run in it.
+	 *   2b. EVERY TOP-LEVEL FIELD THIS BRANCH CARRIES THAT MAIN DOES NOT IS
+	 *      KEPT, and main's own keys this branch lacks are dropped rather than
+	 *      carried (group 5). The union is taken at the TOP level as well as
+	 *      inside it: a resolver that starts from main's schema loses this
+	 *      branch's own records without a word, which is what the twelfth fold
+	 *      onto `c69f78b92` did to seven of them
+	 *      (`browserMarkRemovalPass`, `roundOneRemediationNote`,
+	 *      `roundTwoCaptureNote`, `roundThreeCaptureNote`, `roundFourRePortNote`,
+	 *      `chatSlashHighlightEvidence`, `themeLegibilityCapture`) while every
+	 *      other group was honoured. `scripts/evidence-manifest.test.mjs` binds
+	 *      this clause now, so the next resolver finds it by failing rather than
+	 *      by reading this far.
 	 *   3. INSIDE a `supplementary` entry that exists on both sides, this pass's
 	 *      AUTHORED keys - `why`, `capturedAt`, `capturedAtHead` and any note -
 	 *      are KEPT and only the listings are unioned. An entry is a record this

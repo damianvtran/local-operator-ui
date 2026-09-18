@@ -547,6 +547,13 @@ const CONTROLS = [
 		/*
 		 * The composer's credential pill and mask span (`credential-overlay.tsx`).
 		 *
+		 * THIS ROW'S ELEMENT IS NOW THE WASH UNDER THE CHIP, not the whole treatment:
+		 * the operator reported the pill as square-bracketed marker text and asked for
+		 * a real chip (2026-09-17), so `credential-chip-layer.tsx` paints an opaque
+		 * chip over the marker run and what is measured here is the ground it sits on
+		 * — plus the wrapped run's documented fallback, which keeps this wash and no
+		 * chip at all. The chip's own row is below.
+		 *
 		 * Its ink is `ink`, not a semantic: the pill paints NO VISIBLE TEXT — the
 		 * marker's characters are the textarea's, and this element is a
 		 * background-only mirror behind them — so what `ink` measures here is the
@@ -621,6 +628,73 @@ const CONTROLS = [
 		fill: "warningWash",
 		border: "warningBorder",
 		ink: "ink",
+	},
+	/*
+	 * THE CHIP ITSELF (`credential-chip.tsx`, operator report 2026-09-17).
+	 *
+	 * Listed separately from the two rows above even though the roles are
+	 * identical, because the CONTAINER changed: the pill used to be a wash with no
+	 * text of its own, and the chip is a real element with the glyph, the name, the
+	 * count and a clear control inside it — ink on that fill is now a pair the
+	 * component actually paints rather than one inherited from the textarea behind
+	 * it. `branding.md`'s rule is a row per component triple, and "a green run about
+	 * a component nobody listed is not evidence about that component" is exactly
+	 * what would otherwise apply here: this row is what would fail if someone gave
+	 * the chip its own fill later.
+	 *
+	 * The control's own RESTING ink is a row of its own, below, and that is design round
+	 * 1, D3's fix rather than bookkeeping: the `x` used to rest at `text-ink`, so the
+	 * only step it could take on hover was a GROUND one (`bg-elevated`), which measures
+	 * 1.00-1.33:1 against the chip's own fill - 16 of the 59 palettes at or under
+	 * 1.05:1, `obsidian` at ΔE00 0.77, and the default theme greyscale-identical. A
+	 * state that rests on hue is the same class of separation the round-4 dash rule
+	 * rejected for the two registers. The perceivable step is the INK now
+	 * (`inkMuted` -> `ink`), which is also the working-directory chip's own
+	 * prune-control idiom, and `hover:bg-elevated active:bg-sunken` stays as the
+	 * primitive's ghost pair and as the pressed state the control had none of. Both
+	 * registers are listed because both are chipped — a live reference and one nothing
+	 * backs — and the transcript draws the same two chips inside the user bubble's
+	 * `surface`.
+	 */
+	{
+		name: "credential chip",
+		on: ["canvas", "surface"],
+		fill: "infoWash",
+		border: "infoBorder",
+		ink: "ink",
+	},
+	{
+		name: "credential chip (unbacked)",
+		on: ["canvas", "surface"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "ink",
+	},
+	{
+		/*
+		 * THE CLEAR CONTROL'S RESTING INK (design round 1, D3).
+		 *
+		 * A pair the component actually paints and no other row asserts: `inkMuted` on
+		 * the chip's own wash. `inkDim` is the next step down and it is NOT available
+		 * here — 4.07:1 in the weakest palette, under this app's 4.5 text floor — so the
+		 * control rests at the lightest role that is legal on this fill and steps TO
+		 * `ink` on hover, and the two rows below are what hold that claim across all
+		 * fifty-nine palettes. The hover and pressed grounds (`elevated`, `sunken`) need
+		 * no row beyond the INKS loop's, which already asserts `ink` on both at the
+		 * strong-text floor.
+		 */
+		name: "credential chip clear",
+		on: ["canvas", "surface"],
+		fill: "infoWash",
+		border: "infoBorder",
+		ink: "inkMuted",
+	},
+	{
+		name: "credential chip clear (unbacked)",
+		on: ["canvas", "surface"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "inkMuted",
 	},
 	/*
 	 * The `ask` gate's option buttons (`trace/ask-options.tsx`).
