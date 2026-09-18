@@ -35,6 +35,10 @@ MODEL="${MODEL:-deepseek/deepseek-v4.1-flash}"
 # backend resolves every scratchpad path with a realpath - so a scratch tree named by
 # one spelling and resolved by the other yields TWO tiles for one note (measured:
 # a panel of nine tiles for four notes before this line was added).
+# `mkdir -p` before the realpath, because `ISO=` may name a directory that does
+# not exist yet: the default is `mktemp -d`, but a caller reproducing this by hand
+# should be able to name any writable path without creating it first.
+mkdir -p "$ISO"
 ISO="$(cd "$ISO" && pwd -P)"
 
 echo "scratch: $ISO"

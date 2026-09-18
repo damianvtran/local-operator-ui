@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -1044,9 +1045,12 @@ test("every format the protocol promises becomes exactly one tile", () => {
 });
 
 test("a text path outvotes a type that disagrees with it", () => {
-	// The branch sits ABOVE the `type` fallback, so these three rows move from
-	// answering the document's own type to answering by the path (measured as the
-	// only non-text-extension rows a 61-row base/head matrix moves; QA round 1).
+	// The branch sits ABOVE the `type` fallback, so these rows move from answering
+	// the document's own type to answering by the path. They are a REPRESENTATIVE
+	// SUBSET rather than the whole movement: on a 160-row matrix (16 extensions x
+	// 10 types) 24 rows move, and every one of the 24 is a `.txt`/`.text`/`.log`
+	// row - no other family is reachable from this branch (QA round 2 counted that
+	// matrix; the three below are the shapes worth naming).
 	// Reachability through the panel is nil — a `.txt` document's type is derived
 	// from the same path — but a shared helper's precedence belongs in the test
 	// that pins it rather than only in a comment.
@@ -1168,11 +1172,75 @@ test("a templated or abbreviated path yields no candidate at all", () => {
 		paths([tool("a", { path: "/…/sessions/<id>/scratchpad/logs/run.md" })]),
 		[],
 	);
-	// The ASCII spelling of the same abbreviation.
+	// The ASCII spelling of the same abbreviation, WITH the ellipsis in the middle
+	// of the token - the reviewer's own example. The mid-segment spelling is the
+	// one that pins `ELLIPSIS_SEGMENT`: a LEADING `.../x.sh` is rejected by the
+	// prefix rule instead (the token starts after a `.`), so it passes with the
+	// segment rule deleted and would be a row that proves nothing.
+	assert.deepEqual(
+		paths([assistant(1, "open /Users/x/.../scratchpad/probe.sh now")]),
+		[],
+	);
 	assert.deepEqual(
 		paths([assistant(1, "run `bash .../scratchpad/probe.sh` and read back")]),
 		[],
 	);
+});
+
+test("a real path after a tag, a generic or a heredoc seam is still admitted", () => {
+	/*
+	 * The other direction of the guard above, and the reason it is narrow. "Ends
+	 * with `>` and contains a `<`" describes every HTML tag, every TypeScript
+	 * generic and every heredoc or closing tag glued to a path, so the placeholder
+	 * must also look like one: the text before its `<` has to be path-like. These
+	 * are the shapes review round 2 measured as real mentions that the wider rule
+	 * dropped, and they are asserted as mentions so the narrowing cannot be undone
+	 * silently - a guard that eats real files is the failure this whole module
+	 * exists to prevent.
+	 */
+	const kept = [
+		"use <code>/tmp/real/notes.md here",
+		"done </b>/tmp/real/notes.md here",
+		"Map<T>/tmp/notes/real.md",
+		"<br/>/tmp/notes/real.md",
+		"compare <image-a.png>/tmp/real/notes.md",
+		"cat <<EOF>/tmp/real/notes.md",
+	];
+	for (const line of kept) {
+		assert.equal(
+			paths([assistant(1, line)]).length,
+			1,
+			`${line} names one real file, and the guard must keep it`,
+		);
+	}
+	// And the template it exists for is still dropped, from the same shape.
+	assert.deepEqual(
+		paths([assistant(1, "see /…/sessions/<id>/scratchpad/run/perf.md there")]),
+		[],
+	);
+});
+
+test("the harness's own seeded text is asserted, not a copy of it", () => {
+	/*
+	 * The two placeholder lines the evidence frames replay live in
+	 * `docs/evidence/scratchpad-files/harness/seed-placeholder-lines.py`, and a
+	 * near-copy here would let the test and the frames drift apart while both
+	 * stayed green - the frames are captured with the harness's string, so that is
+	 * the string the extractor is asked about. Read from the file, not retyped.
+	 */
+	const source = readFileSync(
+		"docs/evidence/scratchpad-files/harness/seed-placeholder-lines.py",
+		"utf8",
+	);
+	const literal = /SEEDED_TEXT = \(\n([\s\S]*?)\n\)/.exec(source);
+	assert.ok(literal, "the harness still declares SEEDED_TEXT");
+	const seeded = [...literal[1].matchAll(/"([^"]*)"/g)]
+		.map((part) => part[1])
+		.join("");
+	// Both shapes are in it, so one assertion covers both rules.
+	assert.ok(seeded.includes("/…/sessions/<id>/scratchpad/logs/run.md"));
+	assert.ok(seeded.includes("/…/scratchpad/probe.sh"));
+	assert.deepEqual(paths([assistant(1, seeded)]), []);
 });
 
 test("the abbreviation trade: a name containing an ellipsis is admitted by no tier", () => {
