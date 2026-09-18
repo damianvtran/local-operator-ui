@@ -217,12 +217,14 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		});
 	}, [conversationId, document]);
 	/*
-	 * The unmount is one call. The owner flushes a write that should happen, commits
-	 * the buffer through the port above so a close is a pause rather than a loss, and
+	 * The unmount is one call. The owner flushes a write that should happen, hands the
+	 * buffer's words to the store's copy of this document through the port above, and
 	 * KEEPS the dirty flag while the document is held (code review round 4, R4-1) -
 	 * which is why this editor no longer clears the registry itself, and why a held
 	 * document's next activation cannot apply the file's version over the reader's
-	 * words.
+	 * words. When the document is CLOSED the store no longer holds a copy to update,
+	 * and the words stay in the owner for the screen to ask for again
+	 * (`documentsForCanvas`).
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: an unmount cleanup, registered once per document; the owner holds the text and the store handoff.
 	useEffect(() => () => closeBuffer(document.id), [document.id]);

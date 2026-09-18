@@ -38,6 +38,7 @@ import type {
 } from "../draft-selection";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
+import { documentsForCanvas } from "./canvas/document-buffers";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import {
@@ -1209,7 +1210,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						>
 							<Canvas
 								activeDocumentId={selectedTabId}
-								initialDocuments={files}
+								/*
+								 * THE BUFFER OWNER'S WORDS, WHERE IT STILL HAS SOME (this change's fix for
+								 * the close). `files` is the list of OPEN documents and stays that list -
+								 * this is a projection over it, not a second one: a document whose buffer
+								 * holds words the write gate refused (the file moved on disk under the
+								 * reader) is handed to the canvas as those words, at the mtime they were
+								 * read, instead of as the file's bytes. Without it a close would drop them:
+								 * closing a tab takes the document out of `files`, opening it again goes
+								 * through the files grid and re-reads the FILE, and the editor mounts from
+								 * whatever document it is handed. See `documentsForCanvas` for the promise
+								 * (in-session, and why).
+								 */
+								initialDocuments={documentsForCanvas(files)}
 								conversationId={conversationId}
 								agentId={agentId}
 								sessionId={sessionId}
