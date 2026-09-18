@@ -23,12 +23,11 @@ contract (§0.2 D-1, §6.2, §6.3):
 ## What produced these frames
 
 Storybook built from this tree, through the repo's own capturer, one narrowed
-(append-mode) pass per surface, all twelve themes:
+(append-mode) pass per surface, all twelve themes, on port 6041:
 
 ```
-pnpm storybook --ci -p 6017
-node scripts/capture-evidence.mjs --only=agents-publish-dialog --allow-backend
-node scripts/capture-evidence.mjs --only=agents-pull-outcomes --allow-backend
+node scripts/capture-evidence.mjs http://localhost:6041 --only=agents-publish-dialog
+node scripts/capture-evidence.mjs http://localhost:6041 --only=agents-pull-outcomes
 ```
 
 The dialogs are driven by the SHIPPED component (`upload-agent-dialog.tsx`)
@@ -39,23 +38,29 @@ refusal frames are not rendered from a prop — six of the ten are reached by
 PRESSING the consent box and Publish, and each `play` holds the shutter
 (`capturePending`) until the state's own text is on screen.
 
-`--allow-backend` rather than a stopped backend: this machine has a live backend
-on the app's own port, and the run is declared partial, so the flag is the
-honest form (the stories never call out — they stub `fetch`).
+NO BACKEND IS INVOLVED, and that is the stronger form the older note here
+described the weaker one. This worktree's `.env` points
+`VITE_LOCAL_OPERATOR_API_URL` at a dead port on purpose, so the run needs no
+`--allow-backend` — that flag states that a live backend is running and no
+captured surface talks to it, and here there is nothing to talk to. Every frame
+is a function of this tree: the stub answers `/__desktop` (including the
+connectivity probe's `/health`, which is what lets the dialog read the
+instruction body at all), and nothing else is reachable.
 
 ## The frames
 
 | Frame | What it is |
 |---|---|
 | `default/` | The consent copy as corrected: the instruction set, its parts, and the sentence that says nothing else leaves the machine. Name free, submit enabled once the box is ticked. |
-| `pre-validation-blocked/` | Every locally-checkable rule broken at once — a name with a space, an empty description, an empty instruction body. Submit is disabled and the list says why, above it. |
+| `pre-validation-blocked/` | Every locally-checkable rule broken at once — a name ending in a period, an empty description, an empty instruction body. Submit is disabled and the list says why, above it, with the route to the fields this dialog has no control for. |
 | `name-taken/` | A name another account holds, after submitting: "That name is taken", with the single next step (choose another name). |
 | `name-taken-by-you/` | The SAME code with `owned_by_caller`: a different headline and a different next step ("update the existing listing"). The pair is the case one prose toast could not carry. |
+| `name-claim-in-flight/` | The same family's third case: a name another publication holds for a few seconds. Warning register, "Try again", and deliberately **not** worded as taken — abandoning a name that is free a moment later is the wrong move. |
 | `reserved-builtin/` | A built-in's name, caught BEFORE submitting, from the built-in rows `profiles.list` already returns — no round trip, and it works with no credential. |
-| `reserved-builtin-refusal/` | The same refusal from the hub instead, for a machine whose built-in list is older than the hub's manifest: the built-in's own name is what the author is told to stop using. |
+| `reserved-builtin-refusal/` | The same refusal from the hub instead, for a machine whose built-in list is older than the hub's manifest: the sentence names the name being published and the built-in that reserves it. |
 | `moderation-rejected/` | A content decision: the reviewer's sentence, the category line, and "Edit the instructions" — and deliberately no retry. |
 | `moderation-unavailable/` | A dependency failure: warning register, "Try again", and the sentence that says NOTHING was published. |
-| `published/` | The receipt, repeating what left the machine. |
+| `published/` | The receipt, repeating what left the machine, titled by the outcome it reports. |
 | `update-listing/` | The republish affordance, which needs the hub listing id the app now remembers (`published-listings-store`). |
 
 ## What these frames do NOT prove
@@ -73,10 +78,14 @@ honest form (the stories never call out — they stub `fetch`).
   Those have frames only in the unit suite (`scripts/agents-publication.test.mjs`),
   because a document that passes the local caps cannot exceed the hub's byte
   bound, and the local validator refuses the rest first.
-- **Nothing about focus, keyboard order or the live region.** The a11y of the
-  refusal (field focus on "choose another name", the polite live region on the
-  success panel) is asserted by the code and by the tests, not measurable in a
-  still.
+- **Nothing about keyboard ORDER or the live region.** A result state moves focus to
+  its own result region — a container, not a control — which is visible in these
+  frames as the absence of any ring beside the action row (`styles/index.css`
+  sanctions `outline-none` for exactly that case, and the alternative, focusing
+  the action, was measured not to be reproducible). Which control a Tab press
+  then reaches, Escape, the `role="alert"` announcement and the polite live
+  region on the success panel are asserted by the code and by the tests, not
+  measurable in a still.
 - **Not a base/head pair.** These are one tree's frames of states that did not
   have frames before; the "before" is the string this dialog used to show, quoted
   above, not a photograph of it. `docs/evidence/manifest.json`'s
