@@ -98,6 +98,7 @@ import {
 	type TargetPolicy,
 	type TargetSpan,
 	allowsProsePathAfter,
+	isAmbiguousCandidate,
 	targetsIn,
 } from "@features/chat/utils/link-grammar";
 
@@ -124,12 +125,20 @@ import {
  * THE SECOND GATE, and why it is not part of this policy: an ambiguous target the
  * pre-scan could not have named is refused before the oracle is consulted at all
  * (`allowsProsePathAfter`, applied by `atomsFor` to the source character before a
- * node's first character). The disk is the only authority on whether an
+ * node's first character - the NODE BOUNDARY, the one position a node value
+ * cannot answer for itself). The disk is the only authority on whether an
  * extensionless token exists, but the ASK is the renderer's - `useLinkEvidence`
  * asks about `ambiguousTargetsIn`'s suspects and nothing else - so a spelling
- * outside that set has no answer of its own to inherit and must not be linked.
+ * outside that set has no answer of its own to inherit and is refused there.
  * Round 1's review R1-4 measured what it inherited instead: the anchor's presence
  * depended on whether another row had primed the cache.
+ *
+ * SCOPED TO THE AMBIGUOUS TARGET (round 2, review R2-3), because the ask is the
+ * only thing the gate can be about: an extensioned or dotfile target is admitted
+ * on its shape, so its anchor exists on every row whatever the cache holds and
+ * there is nothing for the asker and the walker to disagree about. The gate is
+ * still not part of the policy object - it refuses a target the policy would
+ * admit - but it names the class it refuses.
  */
 const LINK_POLICY_EVIDENCED: TargetPolicy = {
 	...LINK_POLICY,
@@ -283,8 +292,21 @@ function atomsFor(
 			 * another row had already asked about that spelling - a link whose existence
 			 * depended on unrelated cache state. `allowsProsePathAfter` reads the SOURCE's
 			 * own character, so such a token is refused here in every case.
+			 *
+			 * ONLY AN AMBIGUOUS TOKEN IS REFUSED, which is the whole class the rule can
+			 * be about (round 2, review R2-3): the disagreement it closes is between the
+			 * asker and the walker, and the evidence gate is the only thing an ask feeds
+			 * - so an extensioned target, which is admitted on its shape and never asks,
+			 * cannot inherit a neighbour's answer and has nothing to be refused FOR.
+			 * Applying the test to it anyway took real links away with no property
+			 * behind the cost: `_/tmp/a.pdf_`, `__/tmp/a.pdf__`, `_~/notes/todo.md_`,
+			 * `~~/tmp/a.pdf~~` and an extensioned path right after an inline node all
+			 * linked before round 1's remediation and rendered plain after it. Both
+			 * halves are pinned in `scripts/link-targets.test.mjs`.
 			 */
-			(target.start !== 0 || allowsProsePathAfter(predecessor)),
+			(target.start !== 0 ||
+				!isAmbiguousCandidate(target.target) ||
+				allowsProsePathAfter(predecessor)),
 	);
 	if (targets.length === 0) return [];
 	const atoms: MdastNode[] = [];

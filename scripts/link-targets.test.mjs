@@ -676,8 +676,10 @@ test("the pre-scan and the walker agree: a token the raw scan cannot name is not
 	 * the module's own - refuse, and miss the link.
 	 *
 	 * `allowsProsePathAfter` is what closes it: the walker answers the same question
-	 * from the SOURCE's own character, so there is no index at which the two scanners
-	 * can disagree.
+	 * from the SOURCE's own character, so the two scanners cannot disagree AT A NODE
+	 * BOUNDARY - which is the scope of this case rather than of every index (round 2,
+	 * review R2-4: a character markdown consumes INSIDE a node value is invisible to
+	 * the raw scan and to this test, and the last block below pins that limit).
 	 */
 	const emphasised = "the folder _/Users/x/workspace_ is large";
 	assert.deepEqual(
@@ -717,6 +719,60 @@ test("the pre-scan and the walker agree: a token the raw scan cannot name is not
 	assert.deepEqual(linksIn("/Users/x/workspace at the start"), [
 		{ url: "/Users/x/workspace", text: "/Users/x/workspace" },
 	]);
+	/*
+	 * AND THE REFUSAL IS THE AMBIGUOUS CLASS'S ALONE (round 2, review R2-3). The gate
+	 * is about the ASK, and an extensioned target is never asked about -
+	 * `isAmbiguousCandidate` is false for it, so the evidence rule is never reached -
+	 * which is why the same consumed boundary cannot cost it anything. Scoping the
+	 * test to that class is what restores these five, and they link here with NO
+	 * answer in the cache at all, which is the point: their anchor never depended on
+	 * one. That the cache is cold is measured rather than assumed, one line below.
+	 * The ambiguous half is the case above - the same consumed boundary, a primed
+	 * answer for the spelling, and still plain text - so the scoping moved the
+	 * extensioned class only. Measured before the scoping, with every one of these
+	 * five spellings primed: `linksIn` returned plain text for all five, against
+	 * links for all five at `74f6ea96c`.
+	 */
+	for (const spelling of ["/tmp/a.pdf", "~/notes/todo.md", "/tmp/b.pdf"]) {
+		assert.equal(evidenceFor(spelling), "unknown", spelling);
+	}
+	for (const [document, url] of [
+		["the folder _/tmp/a.pdf_ is large", "/tmp/a.pdf"],
+		["the folder __/tmp/a.pdf__ is large", "/tmp/a.pdf"],
+		["see _~/notes/todo.md_ here", "~/notes/todo.md"],
+		["the folder ~~/tmp/a.pdf~~ is large", "/tmp/a.pdf"],
+		["see [x](/tmp/a.pdf)/tmp/b.pdf here", "/tmp/b.pdf"],
+	]) {
+		assert.deepEqual(
+			linksIn(document)
+				.map((link) => link.url)
+				.filter((href) => href === url),
+			[url],
+			document,
+		);
+	}
+	/*
+	 * WHERE THE RULE DOES NOT REACH, pinned instead of left to the prose (round 2,
+	 * review R2-4). Markdown can consume a character INSIDE a node value as well, and
+	 * no boundary test can see that one: in `see \/Users/x/workspace here` micromark
+	 * decodes the escape, so the node value holds the token at index 4 while the raw
+	 * text the pre-scan reads holds the backslash - so nothing asks, and the walker
+	 * links the spelling once the cache has it (primed by the row above). It measures
+	 * the same on `74f6ea96c`, so this is a gap the rule neither introduced nor
+	 * closes; if a later change reaches inside node values, these two assertions are
+	 * the ones to change deliberately.
+	 */
+	const escaped = "see \\/Users/x/workspace here";
+	assert.deepEqual(
+		ambiguousTargetsIn(escaped),
+		[],
+		"the raw scan cannot name it",
+	);
+	assert.deepEqual(
+		linksIn(escaped).map((link) => link.url),
+		["/Users/x/workspace"],
+		"the walker links it on a primed cache - the documented limit",
+	);
 });
 
 test("the slash-command battery: 38 named cases, cold and with the disk answering", async () => {
