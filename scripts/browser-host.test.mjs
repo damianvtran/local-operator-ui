@@ -53,6 +53,12 @@ const bundle = await build({
 			// The banner class itself, reached through the alias below, so the tests can
 			// see what the DEFAULT factory raised without constructing one of their own.
 			'export { Notification as ElectronNotification } from "electron";',
+			// The IPC module is registered by the app (and in the app it is Electron's
+			// real `ipcMain`): the bundle carries it so the tests can drive a channel
+			// through the shipped authorize gate and the shipped validators, which is
+			// where a new tab's conversation id is validated.
+			'export * from "./src/main/browser/ipc";',
+			'export { ipcMain } from "electron";',
 			'export * from "./src/main/browser/ownership";',
 			'export * from "./src/main/browser/host";',
 			'export * from "./src/main/browser/settle";',
@@ -108,6 +114,9 @@ const {
 	ConsentNotifier,
 	consentBody,
 	ElectronNotification,
+	ipcMain,
+	registerBrowserIpc,
+	BROWSER_IPC_CHANNELS,
 	OwnershipLedger,
 	BrowserHost,
 	CdpPool,
@@ -253,6 +262,10 @@ class FakeView {
 function makeRegistry() {
 	const views = new Map();
 	const removed = [];
+	/** Every `onChanged` the registry fired, so a test can count NOTIFICATIONS rather than
+	 * infer them from the state they left behind — the only way to tell a batch that
+	 * notified once from one that notified per tab. */
+	const notified = [];
 	let nextWebContentsId = 100;
 	const registry = new TabRegistry(
 		(_options, tabId) => {
@@ -261,9 +274,9 @@ function makeRegistry() {
 			return view;
 		},
 		(tabId, webContentsId) => removed.push({ tabId, webContentsId }),
-		() => {},
+		() => notified.push(Date.now()),
 	);
-	return { registry, views, removed };
+	return { registry, views, removed, notified };
 }
 
 let root = "";
@@ -1716,6 +1729,366 @@ test("the projection names each tab's conversation — and never its capability"
 	);
 });
 
+test("a tab the user opens in a conversation belongs to it, and still gives no agent a capability (R1)", async () => {
+	const { host, registry } = makeHost();
+	const owner = { requester: "session:alice", url: "https://scope.example/" };
+	// An agent tab in the SAME conversation, so the listing below has both tabs and
+	// the difference between them is what the test reads.
+	await host.dispatch("request_access", owner, "req-1");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	await host.dispatch("open", owner, "req-2");
+
+	// The pane's own `New tab`, called exactly the way `browser-new-tab` calls it.
+	await host.newTab("alice");
+	const opened = host.chromeState().tabs.at(-1);
+	assert.equal(
+		opened.sessionId,
+		"alice",
+		"the tab is attributed to the conversation it was opened from, which is the one field the pane's scope filter reads",
+	);
+	assert.equal(
+		opened.owner,
+		"user",
+		"and it is the user's tab: the user pressed the button, so it becomes active",
+	);
+
+	// THE CAPABILITY CLAIM, which is what makes this additive rather than a new
+	// authority. `mayDrive` requires the session id AND a nonce; this tab has the
+	// first and not the second, so the agent in that conversation cannot drive it.
+	const record = registry.get(opened.tabId);
+	assert.ok(record);
+	assert.equal(
+		registry.mayDrive(record, "alice"),
+		false,
+		"having the session is not having the capability",
+	);
+	assert.equal(surfaceToken(record), null, "there is no token to present");
+	// The projection carries no handle field at all — a handle is the capability, and
+	// `chromeState` never sends one — so the capability claim is read where the
+	// handles are: the agent's own listing, below.
+	assert.equal(
+		registry.agentTabCount(),
+		1,
+		"the cap counts owners, and the user's tab did not become an agent tab",
+	);
+
+	const listed = await host.dispatch(
+		"tabs",
+		{ requester: "session:alice" },
+		"req-3",
+	);
+	const theirs = listed.tabs.find((entry) => entry.owner === "user");
+	assert.equal(
+		theirs?.tab,
+		"",
+		"the agent's listing shows the user's tab with no handle at all: awareness without a capability",
+	);
+	const mine = listed.tabs.find((entry) => entry.owner === "agent");
+	assert.ok(
+		mine?.tab && !mine.tab.endsWith("…"),
+		`while its own tab is still listed in full, so the listing is unchanged where it matters: ${mine?.tab}`,
+	);
+	assert.ok(parseSurface(mine.tab), "and the full handle is a real token");
+
+	// AND THE OTHER DIRECTION, so the attribution is not a one-way door: handing
+	// this tab over is still the only way the agent gains authority over it.
+	await host.handOver(opened.tabId, "alice");
+	assert.equal(
+		registry.mayDrive(registry.get(opened.tabId), "alice"),
+		true,
+		"hand-over is still the one authority transfer",
+	);
+});
+
+test("revoking a hand-over gives the tab back to its conversation, not to nobody (design §5.1 row 6; review round 1, Q2)", async () => {
+	const { host, registry } = makeHost();
+	const owner = { requester: "session:alice", url: "https://home.example/" };
+	await host.dispatch("request_access", owner, "req-1");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	await host.dispatch("open", owner, "req-2");
+
+	// The user's own tab, opened in the conversation — the path R1 added, and the one
+	// whose conversation the revocation used to lose.
+	await host.newTab("alice");
+	const opened = host.chromeState().tabs.at(-1);
+	assert.equal(opened.sessionId, "alice");
+	await host.handOver(opened.tabId, "alice");
+	assert.equal(
+		host.chromeState().tabs.at(-1).sessionId,
+		"alice",
+		"a hand-over moves who may drive the tab, and the tab's conversation is the same one",
+	);
+
+	const revoked = host.revokeHandOver(opened.tabId);
+	const after = revoked.tabs.find((tab) => tab.tabId === opened.tabId);
+	assert.ok(after);
+	assert.equal(after.owner, "user", "the tab is the user's again");
+	assert.equal(after.handedOver, false);
+	/*
+	 * THE FINDING ITSELF. `sessionId` is what the panes read to decide which
+	 * conversation's tabs they are showing (`tabsInScope`), what the conversation's own
+	 * tab count is computed from, and what the sidebar's mark counts — so a revocation
+	 * that nulled it took the tab out of the conversation the user opened it in and left
+	 * it under "No conversation", with no way back. `homeSessionId`, set once at
+	 * `create` and restored here, is what makes the revoke a true inverse.
+	 */
+	assert.equal(
+		after.sessionId,
+		"alice",
+		"the tab is back in the conversation it was opened in, which is what puts it under `This conversation` again",
+	);
+	const record = registry.get(opened.tabId);
+	assert.ok(record);
+	assert.equal(
+		registry.mayDrive(record, "alice"),
+		false,
+		"while the capability is still gone: the conversation is back, the authority is not",
+	);
+	assert.equal(surfaceToken(record), null);
+
+	/*
+	 * AND THE TAB WITH NO HOME STILL LANDS ON NOTHING, which is the behaviour every
+	 * tab had before this field: the route's tab has no conversation to return to.
+	 */
+	await host.newTab(null);
+	const routed = host.chromeState().tabs.at(-1);
+	assert.equal(routed.sessionId, null);
+	await host.handOver(routed.tabId, "alice");
+	const routedBack = host
+		.revokeHandOver(routed.tabId)
+		.tabs.find((tab) => tab.tabId === routed.tabId);
+	assert.equal(
+		routedBack?.sessionId,
+		null,
+		"a tab opened with no conversation is still nobody's after a revoke",
+	);
+
+	/*
+	 * AND A RESTORED TAB IS STILL NOBODY'S — the field does not resurrect the
+	 * attribution a `session.json` never carried (design 7.3).
+	 */
+	const restored = registry.create({
+		owner: "agent",
+		sessionId: "session:bob",
+		restored: true,
+	});
+	assert.equal(restored.homeSessionId, null);
+});
+
+test("a batch close is ONE change, and releases every webContents exactly once (R5)", () => {
+	const { host, registry, views, removed, notified } = makeHost();
+	const tabIds = ["a", "b", "c"].map(
+		() => registry.create({ owner: "user" }).tabId,
+	);
+	const webContentsIds = tabIds.map(
+		(tabId) => views.get(tabId)?.webContents.id,
+	);
+	const before = notified.length;
+	host.closeTabs({ mode: "ids", tabIds });
+	/*
+	 * THE NOTIFICATION IS COUNTED AT THE REGISTRY, not at the host's own `onChanged`
+	 * option: in the app those are the SAME function (`index.ts:312` hands the registry the
+	 * `notifyChanged` the host also takes), which is exactly why the host must not send a
+	 * second one — and counting at the host's option alone would have made that second send
+	 * look like the first. `browser-chrome-proof.mjs` counts the renderer's own events for
+	 * the same reason, one level up.
+	 */
+	assert.equal(
+		notified.length - before,
+		1,
+		"N closes are ONE notification: one state build, one broadcast, one session write",
+	);
+	assert.equal(registry.count(), 0);
+	assert.deepEqual(
+		removed.map((entry) => entry.tabId).sort(),
+		[...tabIds].sort(),
+		"every tab went through the one removal path",
+	);
+	assert.deepEqual(
+		removed.map((entry) => entry.webContentsId).sort(),
+		webContentsIds.sort(),
+		"and each webContents was released exactly once",
+	);
+	// A second press on a list that is already gone is not an error and changes nothing.
+	const after = notified.length;
+	const refused = host.closeTabs({ mode: "ids", tabIds: [tabIds[0]] });
+	assert.equal(
+		refused.tabs.length,
+		0,
+		"a list of tabs that are all gone closes nothing and is not an error",
+	);
+	assert.equal(
+		notified.length - after,
+		0,
+		"and it notifies nobody: a batch that removed nothing changed nothing",
+	);
+});
+
+test("a conversation close is resolved at EXECUTION time; an ids close is not (R5)", () => {
+	const { host, registry } = makeHost();
+	// The tab that appears BETWEEN the intent and its execution is the race the design
+	// names: the band stays open while the user reads it, so no list the renderer built
+	// can be trusted to be the whole conversation.
+	const inConversation = registry.create({
+		owner: "agent",
+		sessionId: "alice",
+	}).tabId;
+	const intent = { mode: "conversation", sessionId: "alice" };
+	const arrivedLater = registry.create({
+		owner: "agent",
+		sessionId: "alice",
+	}).tabId;
+	const other = registry.create({ owner: "agent", sessionId: "bob" }).tabId;
+	host.closeTabs(intent);
+	assert.equal(
+		registry.get(inConversation),
+		undefined,
+		"the intent names a conversation, so main resolves it when it runs",
+	);
+	assert.equal(
+		registry.get(arrivedLater),
+		undefined,
+		"and a tab that arrived after the intent was built is closed by it",
+	);
+	assert.ok(
+		registry.get(other),
+		"while another conversation's tab is untouched, which is the whole point of the mode",
+	);
+
+	// The positional mode is the opposite bargain, and this is the half that says so.
+	const keep = registry.create({ owner: "user" }).tabId;
+	const positional = { mode: "ids", tabIds: [other] };
+	const alsoLater = registry.create({ owner: "user" }).tabId;
+	host.closeTabs(positional);
+	assert.equal(registry.get(other), undefined);
+	assert.ok(
+		registry.get(alsoLater),
+		"an ids intent closes what it names and nothing else — a tab created after the press survives",
+	);
+	assert.ok(registry.get(keep));
+});
+
+test("an ids intent naming a tab that is already gone closes the rest and does not throw (R5)", () => {
+	const { host, registry } = makeHost();
+	const first = registry.create({ owner: "user" }).tabId;
+	const second = registry.create({ owner: "user" }).tabId;
+	const third = registry.create({ owner: "user" }).tabId;
+	// Closed twice — a second press, or an agent's own close. The user's intent was that
+	// these be closed, and they are; refusing the batch would leave the others open, which
+	// is the one outcome nobody asked for.
+	registry.destroy(first);
+	assert.doesNotThrow(() =>
+		host.closeTabs({ mode: "ids", tabIds: [first, second, third] }),
+	);
+	assert.equal(registry.count(), 0);
+});
+
+test("a conversation id is validated at the IPC boundary rather than trusted (R1)", async () => {
+	const { host } = makeHost();
+	// The window the handlers authorize, with the shape `authorize` compares.
+	const frame = { url: "http://localhost:5173/index.html" };
+	const webContents = { id: 1, mainFrame: frame };
+	const window = { isDestroyed: () => false, webContents };
+	ipcMain.reset();
+	registerBrowserIpc({
+		window: () => window,
+		expectedUrl: "http://localhost:5173",
+		host: () => host,
+		clearData: async () => {},
+		log: () => {},
+	});
+	/**
+	 * One `ipcRenderer.invoke`, through the shipped handler.
+	 *
+	 * The `Promise.resolve().then(...)` is not decoration: a SYNCHRONOUS throw inside an
+	 * `ipcMain.handle` handler rejects the renderer's `invoke` promise, and Electron is
+	 * what supplies that promise — so a test that called the handler directly would see a
+	 * throw where the renderer sees a rejection, and every `assert.rejects` below would be
+	 * testing a shape the app never sees.
+	 */
+	const invoke = (channel, ...args) =>
+		Promise.resolve().then(() => {
+			const handler = ipcMain.handlers.get(channel);
+			assert.ok(handler, `${channel} is registered`);
+			return handler({ sender: webContents, senderFrame: frame }, ...args);
+		});
+
+	// ABSENT and null are real, common values rather than mistakes: the route and a
+	// draft pane open tabs that belong to no conversation.
+	await invoke("browser-new-tab");
+	assert.equal(host.chromeState().tabs.at(-1).sessionId, null);
+	await invoke("browser-new-tab", null);
+	assert.equal(host.chromeState().tabs.at(-1).sessionId, null);
+
+	// A NAMED conversation is stored as the name, trimmed.
+	await invoke("browser-new-tab", "  alice  ");
+	assert.equal(
+		host.chromeState().tabs.at(-1).sessionId,
+		"alice",
+		"the boundary normalises rather than storing a spelling no scope will match",
+	);
+
+	// And the mistakes are refused at the boundary, which is the contract: an empty
+	// or blank id would be stored as an attribution that compares equal to no scope
+	// and reads to a human as a conversation with no name.
+	await assert.rejects(
+		() => invoke("browser-new-tab", ""),
+		/cannot be empty/,
+		"an empty conversation id is refused",
+	);
+	await assert.rejects(
+		() => invoke("browser-new-tab", "   "),
+		/cannot be empty/,
+	);
+	await assert.rejects(
+		() => invoke("browser-new-tab", 42),
+		/must be a string/,
+		"a non-string is refused rather than coerced",
+	);
+	assert.equal(
+		host.chromeState().tabs.filter((tab) => tab.sessionId === null).length,
+		2,
+		"and a refused call creates no tab at all",
+	);
+
+	// THE CLOSE-TABS INTENT IS VALIDATED FOR ITS OWN SHAPE, one mode at a time, because
+	// they are two different authorities: `ids` names tabs the user could see, while
+	// `conversation` names a conversation and lets MAIN resolve it against the live
+	// registry. An intent that is neither is refused rather than coerced into the
+	// closer-looking one.
+	const emptyIds = await host.chromeState();
+	await assert.rejects(
+		() => invoke("browser-close-tabs", { mode: "ids", tabIds: [] }),
+		/at least one tab id/,
+		"an empty id list is refused",
+	);
+	await assert.rejects(
+		() => invoke("browser-close-tabs", { mode: "ids", tabIds: ["1"] }),
+		/must be an integer/,
+		"a string id is refused rather than coerced",
+	);
+	await assert.rejects(
+		() => invoke("browser-close-tabs", { mode: "conversation", sessionId: "" }),
+		/cannot be empty/,
+		"an empty conversation id is refused",
+	);
+	await assert.rejects(
+		() => invoke("browser-close-tabs", { mode: "everything" }),
+		/Unsupported close request/,
+		"an unknown mode is refused",
+	);
+	await assert.rejects(
+		() => invoke("browser-close-tabs"),
+		/A close request is required/,
+		"and no intent at all is refused",
+	);
+	assert.equal(
+		(await host.chromeState()).tabs.length,
+		emptyIds.tabs.length,
+		"none of the refusals closed anything",
+	);
+});
+
 test("the broad-domain scope is unavailable — not silently wrong — without the suffix list", () => {
 	configurePslRules(null);
 	assert.equal(domainScopeAvailable(), false);
@@ -1894,7 +2267,11 @@ test("retain outlives a finish, and a terminal scope refuses everything but clos
 // ---- the dispatcher, with a fake browser -----------------------------------
 
 function makeHost(overrides = {}) {
-	const { registry, views } = makeRegistry();
+	// `removed` and `notified` travel too: the batch-close tests count the webContents
+	// RELEASES and the registry's own NOTIFICATIONS, which are the two things the design's
+	// §6.1 asks for by name, and reaching for either separately would test a different path
+	// from the one `destroyMany` goes through.
+	const { registry, views, removed, notified } = makeRegistry();
 	const cdp = {
 		attach: async () => {},
 		send: async (_contents, method, params) => {
@@ -1963,7 +2340,7 @@ function makeHost(overrides = {}) {
 		}),
 		...overrides,
 	});
-	return { host, registry, views, approvals, cdp };
+	return { host, registry, views, removed, notified, approvals, cdp };
 }
 
 test("real dispatcher records allocation, fences peers, recovers and finishes exactly its tab", async () => {
