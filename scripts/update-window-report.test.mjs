@@ -5,7 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { buildReport, parseArguments } from "./update-window-report.mjs";
+import {
+	buildReport,
+	parseArguments,
+	parseShipItProcesses,
+} from "./update-window-report.mjs";
 
 /**
  * The install window, read back from the two logs that record it.
@@ -328,6 +332,10 @@ test("the CLI prints JSON carrying the machine state the window is read against"
 		assert.equal(parsed.installs.length, 1);
 		assert.equal(parsed.installs[0].targetVersion, "0.28.4");
 		assert.equal(typeof parsed.machine.loadAverage.one, "number");
+		assert.ok(
+			Array.isArray(parsed.machine.shipit),
+			JSON.stringify(parsed.machine),
+		);
 		// The swap is macOS's (`sysctl vm.swapusage`); elsewhere the report says
 		// nothing about it rather than printing zero.
 		if (process.platform === "darwin") {
@@ -336,6 +344,45 @@ test("the CLI prints JSON carrying the machine state the window is read against"
 			assert.equal(parsed.machine.swap, null);
 		}
 	});
+});
+
+/**
+ * A running install's scheduling facts, read from `ps`.
+ *
+ * WHY THIS CASE EXISTS. The last unexplained thing about a slow update was why a
+ * third-of-a-second validation call takes minutes inside an install, and the
+ * answer is the class the installer runs in (Squirrel submits it as a launchd job;
+ * launchd runs that in the background class). So a report read DURING an install
+ * has to name the process and its priority - and it has to not name the wrong
+ * thing: this machine has a rig whose script is called `shipit-capture.sh`, and a
+ * matcher keyed on the word would report it as somebody's install.
+ */
+test("a running installer is named with its scheduling facts, and a rig is not", () => {
+	const ps = [
+		"    1     0    37   2.0 /sbin/launchd",
+		"  944     0    31   0.0 bash /tmp/shipit-capture.sh",
+		"73823     0    31   4.3 /Applications/Local Operator.app/Contents/Frameworks/Squirrel.framework/Resources/ShipIt /Applications/Local Operator.app",
+		"73823     0    31   4.3 /Applications/Local Operator.app/Contents/Frameworks/Squirrel.framework/Resources/ShipIt --launch-only /Applications/Local Operator.app",
+		"",
+	].join("\n");
+	const processes = parseShipItProcesses(ps);
+	assert.equal(processes.length, 2, JSON.stringify(processes));
+	assert.deepEqual(processes[0], {
+		pid: 73823,
+		nice: 0,
+		priority: 31,
+		cpuPercent: 4.3,
+		command:
+			"/Applications/Local Operator.app/Contents/Frameworks/Squirrel.framework/Resources/ShipIt /Applications/Local Operator.app",
+	});
+	// The rig's script, and launchd itself, are not installs.
+	assert.deepEqual(
+		parseShipItProcesses(
+			"  944     0    31   0.0 bash /tmp/shipit-capture.sh\n",
+		),
+		[],
+	);
+	assert.deepEqual(parseShipItProcesses(""), []);
 });
 
 test("the argument reader refuses what it cannot honour", () => {

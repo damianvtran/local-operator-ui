@@ -1051,8 +1051,12 @@ is load-bearing:
   quit, which is the rule every other quit path follows.
 
 `scripts/update-window-report.mjs` measures the closed window this is about (read-only,
-with the baselines in its header), and `scripts/sec-check.c` times the code-signature call
-the install blocks in.
+with the baselines in its header, and it names a running installer's own scheduling
+facts), and `scripts/sec-check.c` times the call the install blocks in:
+`pnpm sec-check --background <path>` prints it at normal priority and under the
+background class launchd runs Squirrel's job in - seconds against minutes, with almost
+no CPU - which is why the closed window is the scheduling class and not this app's
+bundle.
 
 ## Which pnpm may install and package
 
