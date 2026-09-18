@@ -8,7 +8,9 @@ import {
 	type Capture,
 	type CredentialPayload,
 	IDLE_CAPTURE,
+	clearControlLabel,
 	markerChip,
+	markerChipTitle,
 	paintPlan,
 } from "./credential-capture";
 import { CredentialChip } from "./credential-chip";
@@ -54,13 +56,31 @@ import { CredentialChip } from "./credential-chip";
  *    browser runs its listener first — and this layer therefore reads a mirror
  *    that has already caught up with the field.
  *
+ * WHY THE RECTS NEED NO SCROLL ADDED TO THEM (UX round 1, U1, the round's
+ * BLOCKER). `getClientRects()` is VIEWPORT-relative, and this layer is
+ * `absolute inset-0` inside the same wrapper the field sits in, so subtracting
+ * the layer's own frame turns a rect into this layer's coordinates directly: the
+ * subtree around a scrolling box is not scrolled, and a rect read out of it is
+ * already in that box's own space. This measured contribution used to add the
+ * mirror's own `scrollLeft`/`scrollTop` on top, which re-applied the scroll the
+ * rect had already accounted for — so in any message long enough to scroll, the
+ * chip sat exactly `fieldScrollTop` px from its marker (measured `deltaTop` 0 /
+ * 60 / 117 for `scrollTop` 0 / 60 / 117, which is the whole of the bug), an
+ * opaque ground over unrelated prose with a live `x` on it. The subscription
+ * above is what makes the rects track the scroll; the offset was cancelling it.
+ *
  * WHAT THIS INHERITS FROM THE MIRROR, named rather than discovered: the mirror
  * re-syncs on a text or rung change and on the field's own scroll events, which
  * is every event except a resize of the composer's box (a window resize, a pane
- * resize). On those, the mirror's own wrapping width goes stale and the wash
- * drifts off the glyphs — a pre-existing property of the overlay that this
- * change does not touch. The chips drift WITH the wash, because they are
- * measured from the same element; they cannot come apart from each other.
+ * resize). CODE REVIEW round 1, R1-3 filed that same gap against the CHIP rather
+ * than the wash, and it matters more here: the mirror sizes its box with an
+ * inline `width = field.clientWidth` px (`credential-overlay.tsx`), the textarea
+ * is `w-full` and re-wraps on a resize with no React render at all, so an
+ * opaque chip would cover glyphs it does not stand for until the next keystroke.
+ * A `ResizeObserver` on the field closes it for both layers — the overlay
+ * registers its own, beside its scroll listener, and this one re-measures — and
+ * `scripts/credential-chip-geometry.mjs` proves it by re-measuring after a
+ * viewport change.
  */
 type ChipBox = {
 	/** The position of the run in the plan `paintPlan` produced. */
@@ -128,10 +148,13 @@ export const CredentialChipLayer = ({
 				const rect = rects[0];
 				next.push({
 					planIndex: Number(run.dataset.credentialRun),
-					// The mirror's own offset is added in, so this stays correct if the
-					// layer's frame and the mirror's box ever stop coinciding.
-					left: mirror.offsetLeft + rect.left - frame.left + mirror.scrollLeft,
-					top: mirror.offsetTop + rect.top - frame.top + mirror.scrollTop,
+					// VIEWPORT-RELATIVE IN, LAYER-LOCAL OUT, and nothing else added: see this
+					// file's header for the blocker that the mirror's own scroll offset used
+					// to cause here. The mirror's own `offsetLeft`/`offsetTop` stay, so this
+					// remains correct if the layer's frame and the mirror's box stop
+					// coinciding.
+					left: mirror.offsetLeft + rect.left - frame.left,
+					top: mirror.offsetTop + rect.top - frame.top,
 					width: rect.width,
 					height: rect.height,
 				});
@@ -140,7 +163,22 @@ export const CredentialChipLayer = ({
 		};
 		measure();
 		field.addEventListener("scroll", measure);
-		return () => field.removeEventListener("scroll", measure);
+		/*
+		 * AND ON A RESIZE (code review round 1, R1-3), which the scroll listener
+		 * cannot see: a window or pane resize re-wraps the `w-full` textarea with no
+		 * React render, so the mirror's inline width and every rect this layer cached
+		 * go stale while the chip stays put - an opaque box over the wrong glyphs.
+		 * The observer is on the FIELD because that is what is actually resized (the
+		 * wrapper's box follows it), and the overlay registers its own for the same
+		 * reason; both halves of the treatment are then re-derived from the new
+		 * wrapping rather than from the old one.
+		 */
+		const observer = new ResizeObserver(measure);
+		observer.observe(field);
+		return () => {
+			field.removeEventListener("scroll", measure);
+			observer.disconnect();
+		};
 	}, [fieldRef, mirrorRef, text, capture, payloads]);
 
 	if (boxes.length === 0) return null;
@@ -185,8 +223,17 @@ export const CredentialChipLayer = ({
 							unbacked || onClear === null ? null : () => onClear(chip.index)
 						}
 						clearLabel={
-							unbacked || onClear === null ? undefined : "Remove credential"
+							unbacked || onClear === null
+								? undefined
+								: clearControlLabel(chip.index)
 						}
+						// The composer's chip explains itself on hover (UX round 1, U3): `#1`
+						// is composer-local and means nothing to a reader who has looked away,
+						// where the transcript's chip is self-describing (`LOP_SECRET_…`). The
+						// sentence is the marker's own, from the copy authority in
+						// `credential-capture.ts`, and it is also what the chip puts in the
+						// accessibility tree.
+						title={markerChipTitle(chip.index, chip.chars)}
 						className="absolute"
 						style={{
 							left: box.left,

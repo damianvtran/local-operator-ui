@@ -154,8 +154,18 @@ export const CredentialOverlay = ({
 	 * column. And the SCROLL OFFSET moves the text up inside that box while the
 	 * overlay stays put, which is the same drift in the vertical direction.
 	 * Reading both from the real element is what keeps them in step; the
-	 * `scroll` listener is the only subscription, and it is removed with the
-	 * element because the textarea unmounts with this component.
+	 * `scroll` listener is the only subscription for the SCROLL, and it is removed
+	 * with the element because the textarea unmounts with this component.
+	 *
+	 * AND A `ResizeObserver` FOR THE RESIZE (code review round 1, R1-3). A window or
+	 * pane resize re-wraps the `w-full` textarea with no React render at all, so
+	 * neither of the numbers above changes as far as this component knows: the
+	 * inline width this effect wrote stays at the old `clientWidth` and the mirror
+	 * (and with it the wash, and the chip measured off the same spans) goes on
+	 * wrapping at a column the field no longer uses. The chip is what makes the
+	 * consequence visible — it is opaque and defined to cover the run exactly — so
+	 * the same subscription is registered here, beside the scroll listener, rather
+	 * than left as a property the chip layer inherits.
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the sync must re-run after EVERY render that changes the text or the rung, because the textarea's own height (and therefore its clientWidth once its scrollbar appears) is a function of the text; the body reads only refs, which is why the list has to be carried by hand.
 	useLayoutEffect(() => {
@@ -170,7 +180,12 @@ export const CredentialOverlay = ({
 		};
 		sync();
 		field.addEventListener("scroll", sync);
-		return () => field.removeEventListener("scroll", sync);
+		const observer = new ResizeObserver(sync);
+		observer.observe(field);
+		return () => {
+			field.removeEventListener("scroll", sync);
+			observer.disconnect();
+		};
 	}, [fieldRef, text, isSmallView]);
 
 	/*

@@ -97,6 +97,39 @@ export function citationFromHref(href: string | undefined): CitationRef | null {
 }
 
 /**
+ * The citation a LINK names, or `null` for every other link - including a link
+ * that merely carries this scheme.
+ *
+ * WHY THE URL IS NOT ENOUGH (QA round 1, Q1). `citationFromHref` validates the
+ * shape of `#lo-credential/<key>/<chars>` and nothing else, so a message the
+ * operator typed by hand - `[sneaky](#lo-credential/LOP_SECRET_ZZZZZZZZ/19)` -
+ * satisfied it, and the transcript drew a chip: the app's own receipt, for a
+ * reference the app did not write. Nothing leaked and nothing was mis-stored
+ * (the model received the markdown link, and the store was never involved); what
+ * was wrong is the claim a chip makes.
+ *
+ * So the criterion is PROVENANCE, expressed as something the plugin's own output
+ * cannot fake: the link's VISIBLE TEXT has to be exactly one citation segment
+ * whose own URL is the href. The plugin builds both halves of that pair from the
+ * same segment (`citationHref(segment)` and its text), so the app's links pass by
+ * construction, while a hand-written link has to spell the entire machine
+ * sentence - brackets, count, key and the runtime's own words - to be chipped. At
+ * that point it is the citation, not a lookalike.
+ */
+export function citationFromLink(
+	href: string | undefined,
+	text: string,
+): CitationRef | null {
+	const citation = citationFromHref(href);
+	if (citation === null) return null;
+	const segments = citationSegments(text);
+	if (segments.length !== 1 || segments[0].kind === "text") return null;
+	const segment = segments[0];
+	if (citationHref(segment) !== href) return null;
+	return citation;
+}
+
+/**
  * The tree shapes this plugin touches, spelled structurally.
  *
  * Declared here rather than imported: `@types/mdast` and `unified` are

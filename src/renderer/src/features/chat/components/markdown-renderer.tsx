@@ -27,6 +27,7 @@ import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
 import "./markdown.css";
+import { containsRenderableMath } from "./markdown-math";
 import { MermaidDiagram } from "./mermaid-diagram";
 
 // katex.min.css is unconditional dead weight for the vast majority of messages,
@@ -96,10 +97,6 @@ credentialCitations?: boolean;
 
 const LANGUAGE_REGEX = /language-(\w+)/;
 const NEWLINE_REGEX = /\n$/;
-const INLINE_MATH_REGEX = /\$(?!\d)(.+?)\$/;
-const DISPLAY_MATH_REGEX = /\$\$([\s\S]+?)\$\$/;
-const MATH_ENVIRONMENT_REGEX = /\\begin\{([^}]+)\}([\s\S]+?)\\end\{\1\}/;
-const MATH_COMMAND_REGEX = /\\[a-zA-Z]+(\{[^}]*\})?/;
 
 /**
  * The anchor every markdown link renders as, wherever markdown is rendered.
@@ -361,23 +358,14 @@ const KATEX_ONLY = [rehypeKatex];
 /**
  * Whether the content is worth paying for the math pipeline.
  *
- * Cheap rejections first: bare `$` is far more often a price than an inline
- * formula, so a lone dollar sign only counts when it is not followed by a
- * digit, and a backslash command only counts alongside one of the four
- * constructs that are unambiguously mathematical.
+ * THE DECISION LIVES IN `markdown-math.ts` NOW (code review round 1, R1-1), and
+ * it is no longer only about cost: the citation transform is a remark plugin and
+ * `remark-math` is a micromark SYNTAX extension, so enabling math can split a
+ * citation at parse time - before any plugin sees a tree. The citation pass
+ * therefore has to be able to veto the math pass, and that rule is a pure
+ * function of the content, asserted in `scripts/credential-capture.test.mjs` over
+ * the real plugin list. Read that module's header for the defect and the rule.
  */
-const containsLatex = (content: string): boolean => {
-	if (INLINE_MATH_REGEX.test(content)) return true;
-	if (DISPLAY_MATH_REGEX.test(content)) return true;
-	if (MATH_ENVIRONMENT_REGEX.test(content)) return true;
-	return (
-		MATH_COMMAND_REGEX.test(content) &&
-		(content.includes("\\frac") ||
-			content.includes("\\sum") ||
-			content.includes("\\int") ||
-			content.includes("\\sqrt"))
-	);
-};
 
 const useStyleVariables = (
 	styleProps: MarkdownStyleProps | undefined,
@@ -413,7 +401,7 @@ const useMathPipeline = (
 	linkify: boolean,
 	citations: boolean,
 ) => {
-	const hasLatex = useMemo(() => containsLatex(content), [content]);
+	const hasLatex = useMemo(() => containsRenderableMath(content), [content]);
 	const [mathEnabled, setMathEnabled] = useState(
 		() => hasLatex && katexStylesLoaded,
 	);

@@ -1892,6 +1892,59 @@ export const clearedNotice = (key: string): string =>
 	`Removed ${key} from this message. Its value is gone — paste it again after /credential to reuse it.`;
 
 /**
+ * The clear control's accessible name, per chip (design round 1, D4).
+ *
+ * The INDEX is in the name because a draft can hold several references: `#1` and
+ * `#2` are two chips with two controls, and two buttons both called "Remove
+ * credential" say nothing about which one they throw away. The chip's own face
+ * already shows the index, so the name costs nothing and is the only thing that
+ * distinguishes the two in a screen reader's control list.
+ */
+export const clearControlLabel = (index: number): string =>
+	`Remove credential #${index}`;
+
+/**
+ * The composer chip's `title` (UX round 1, U3).
+ *
+ * The composer's chip names an index, not a key — the citation is built FROM
+ * the index — so `#1` alone explains nothing to a reader who has looked away,
+ * and the hover they would try for an explanation did nothing at all (the
+ * composer passed no `title`, where the transcript passes the whole sentence).
+ *
+ * WHAT IT SAYS IS WHAT IS TRUE HERE, and the difference from the transcript's
+ * sentence is the point rather than a shortcut: the transcript cites a value the
+ * runtime's store already holds, while this reference is held by THIS composer
+ * until a submit stores it — so the honest sentence names the count, says where
+ * the value is, and says the one thing the reader cannot discover by looking:
+ * that they cannot read it back.
+ */
+export const markerChipTitle = (index: number, chars: number): string =>
+	`Credential #${index}, ${chars} chars — held in this message; its value cannot be read`;
+
+/**
+ * The notice-line half of the clear (UX round 1, U2).
+ *
+ * The same words as {@link clearedNotice}, deliberately: the fix for U2 is that
+ * the sentence must not be reachable ONLY through a toast that retires in a few
+ * seconds, not that the two channels owe different copy. The composer's notice
+ * line is where every other credential-fate sentence already lives (armed,
+ * masked, plaintext, not-stored), it sits at the operator's own focus, and it
+ * stays up until the next edit — which is the lifetime a sentence about a
+ * destroyed value should have.
+ */
+export const clearedNoticeLine = (key: string): string => clearedNotice(key);
+
+/**
+ * The undo's label, on the toast the clear raises (UX round 1, U2).
+ *
+ * `Undo` and not a sentence: the toast has already said what was removed, and
+ * the action is the one word the app's own goal-reset toast uses for the same
+ * offer. It lives here rather than inline at the call site for the reason the
+ * notices above do — one home for the words that describe a credential's fate.
+ */
+export const CREDENTIAL_CLEAR_UNDO_LABEL = "Undo";
+
+/**
  * The `x` control's edit: one payload's marker — and its trailing space — out
  * of `buffer`, in one step.
  *
@@ -1915,20 +1968,59 @@ export const clearedNotice = (key: string): string =>
 export function clearCitedCredential(args: {
 	buffer: string;
 	payload: CredentialPayload;
-}): { cleared: boolean; buffer: string; caret: number } {
+}): { cleared: boolean; buffer: string; caret: number; removed: string } {
 	const { buffer, payload } = args;
 	const span = citationSpan(buffer, payload);
 	// Nothing spliced: the caller must leave the buffer, the map and the notice
 	// alone rather than reporting a removal that did not happen. The caret answer is
 	// meaningless here and is the buffer's end, so a caller that ignored `cleared`
 	// could not move the caret somewhere it looks deliberate.
-	if (span === null) return { cleared: false, buffer, caret: buffer.length };
+	if (span === null)
+		return { cleared: false, buffer, caret: buffer.length, removed: "" };
 	const end =
 		buffer[span.end] === CREDENTIAL_OPEN_SPACE ? span.end + 1 : span.end;
 	return {
 		cleared: true,
 		buffer: buffer.slice(0, span.start) + buffer.slice(end),
 		caret: span.start,
+		// THE EXACT TEXT THAT LEFT, for the undo (UX round 1, U2): the marker plus
+		// whatever trailing space it had, which is what has to come back. Returned
+		// rather than re-derived by the caller, so the two halves of one edit cannot
+		// disagree about what an edit is.
+		removed: buffer.slice(span.start, end),
+	};
+}
+
+/**
+ * The `x`'s OWN edit, run backwards: the cleared reference put back where it was.
+ *
+ * WHY THE UNDO IS A SPLICE RATHER THAN A SNAPSHOT (UX round 1, U2). The buffer is
+ * the operator's own prose and the app does not keep copies of it; the one thing
+ * the clear actually destroyed is the PAYLOAD, and that lives in the composer's
+ * map until this undo is closed off or the toast retires. Restoring the text is
+ * therefore an insert at the offset the clear recorded, and nothing else moves.
+ *
+ * `null` means the undo would not be honest: the buffer is no longer the one the
+ * clear produced, so the recorded offset no longer names the place the reference
+ * sat and inserting there would corrupt text the operator has written since. The
+ * caller treats that as "the toast can no longer offer Undo" rather than as an
+ * error - the value was destroyed either way and the sentence still says so.
+ */
+export function restoreClearedCredential(args: {
+	buffer: string;
+	cleared: { buffer: string; caret: number; removed: string };
+}): { buffer: string; caret: number } | null {
+	const { buffer, cleared } = args;
+	if (cleared.removed === "") return null;
+	if (buffer !== cleared.buffer) return null;
+	return {
+		buffer:
+			buffer.slice(0, cleared.caret) +
+			cleared.removed +
+			buffer.slice(cleared.caret),
+		// After the restored run, so the next keystroke continues the prose rather
+		// than landing inside the marker.
+		caret: cleared.caret + cleared.removed.length,
 	};
 }
 

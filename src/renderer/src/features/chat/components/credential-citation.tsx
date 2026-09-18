@@ -3,7 +3,7 @@ import type { Components } from "react-markdown";
 import { CredentialChip } from "./credential-chip";
 import {
 	type CitationRef,
-	citationFromHref,
+	citationFromLink,
 } from "./credential-citation-remark";
 
 /*
@@ -72,6 +72,25 @@ type CitationFallbackProps = {
 };
 
 /**
+ * The citation a link carries, or `null` for every other link.
+ *
+ * The rule and its reason live in `citationFromLink` (QA round 1, Q1): the URL
+ * alone is a shape a hand-written link can satisfy, so the link's own VISIBLE
+ * TEXT has to be the citation the URL names. Only a plain string can be that -
+ * `[**bold**](#lo-credential/…)` has no sentence to compare - so anything else
+ * falls through to the ordinary anchor.
+ */
+const citationOfLink = (
+	href: string | undefined,
+	children: ReactNode,
+): CitationRef | null => {
+	if (typeof children === "string") return citationFromLink(href, children);
+	if (children === null || children === undefined)
+		return citationFromLink(href, "");
+	return null;
+};
+
+/**
  * The `a` override that renders a citation and passes every other link through.
  *
  * A FACTORY RATHER THAN A COMPONENT, and the reason is `main`'s change, not this
@@ -90,7 +109,7 @@ type CitationFallbackProps = {
 export const citationAwareAnchor =
 	(fallback: FC<CitationFallbackProps>): Components["a"] =>
 	({ href, title, children }) => {
-		const citation = citationFromHref(href);
+		const citation = citationOfLink(href, children);
 		if (citation === null) {
 			// Capitalised so JSX treats it as the component it is rather than as an
 			// intrinsic tag: the caller's anchor IS the anchor, and this file does not
