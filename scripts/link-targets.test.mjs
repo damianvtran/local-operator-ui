@@ -79,7 +79,15 @@ const bundle = await build({
 			export const parseWith = (document, linkify) => {
 				let processor = unified().use(remarkParse).use(remarkGfm);
 				if (linkify) processor = processor.use(remarkLinkifyTargets);
-				return processor.runSync(processor.parse(document));
+				/*
+				 * The source is passed as the file, which is how react-markdown runs this
+				 * pipeline (it calls runSync with its own VFile whose value is the markdown).
+				 * The plugin reads the character the source holds before a node's first
+				 * character - the predecessor test round 1's review R1-4 asked for - and
+				 * runSync(tree) alone hands it a file with no value, so a harness that
+				 * omitted this would exercise a branch production never takes.
+				 */
+				return processor.runSync(processor.parse(document), document);
 			};
 		`,
 		resolveDir: process.cwd(),
@@ -622,30 +630,279 @@ test("an extensioned path, a dotfile and a file:// URL never ask the disk", asyn
 	 */
 	const text =
 		"wrote /tmp/agent-out/out.json, read /Users/damian/.zshrc, opened file:///tmp/agent-out";
-	const asked = [];
 	const suspects = ambiguousTargetsIn(text);
 	assert.deepEqual(suspects, [], "none of these three is in doubt");
-	for (const suspect of suspects) {
-		await probeTarget(suspect, async (paths) => {
-			asked.push(...paths);
-			return paths.map(() => ({ exists: true, isFile: true }));
-		});
-	}
-	assert.deepEqual(asked, []);
+	/*
+	 * THE INSTRUMENT NEEDS A CORPUS WITH SOMETHING IN IT, and the earlier version of
+	 * this test did not have one: it looped over the array it had just asserted
+	 * empty, so the counting stub could never run and `assert.deepEqual(asked, [])`
+	 * was vacuous (round 1, review R1-8). One ambiguous token added to the SAME
+	 * document is what makes the count mean something - the ask happens, it is about
+	 * the one shape in doubt, and the three undoubted shapes beside it cost nothing.
+	 */
+	const mixed = `${text}, then look at /Users/damian/workspace`;
+	assert.deepEqual(ambiguousTargetsIn(mixed), ["/Users/damian/workspace"]);
+	const asked = [];
+	await probeTarget("/Users/damian/workspace", async (paths) => {
+		asked.push(...paths);
+		return paths.map(() => ({ exists: true, isFile: false }));
+	});
+	assert.deepEqual(asked, ["/Users/damian/workspace"], "one ask, one shape");
 	/*
 	 * And they are links on the FIRST frame, with no answer in the cache at all -
 	 * which is the difference between "not in doubt" and "doubted and lucky":
 	 * the gate is never reached for them.
 	 */
+	resetProbeCache();
 	assert.deepEqual(
 		linksIn(text).map((link) => link.url),
 		["/tmp/agent-out/out.json", "/Users/damian/.zshrc", "/tmp/agent-out"],
 	);
 });
 
+test("the pre-scan and the walker agree: a token the raw scan cannot name is not linked", async () => {
+	/*
+	 * ROUND 1'S REVIEW R1-4, which is the property this test fails before the fix.
+	 *
+	 * The pre-scan reads the RAW document, where the character before a token has to
+	 * be in `ALLOWED_PREFIX`, and `_` is not - while the walker reads node values,
+	 * from which markdown has already DELETED that character. So `_/Users/x/…_` is a
+	 * token the pre-scan never names, which means nothing asks the disk about it,
+	 * which means its evidence is `unknown` - unless ANOTHER row happened to ask about
+	 * the same spelling, and then the anchor appeared. Measured before this fix: with
+	 * `/Users/x/workspace` primed, `linksIn` returned a link for the emphasised
+	 * document while `ambiguousTargetsIn` returned `[]` for it. An anchor whose
+	 * existence depends on unrelated cache state is the defect; the direction kept is
+	 * the module's own - refuse, and miss the link.
+	 *
+	 * `allowsProsePathAfter` is what closes it: the walker answers the same question
+	 * from the SOURCE's own character, so there is no index at which the two scanners
+	 * can disagree.
+	 */
+	const emphasised = "the folder _/Users/x/workspace_ is large";
+	assert.deepEqual(
+		ambiguousTargetsIn(emphasised),
+		[],
+		"the raw scan cannot name that spelling",
+	);
+	/* A neighbour row answers the very spelling, which used to be enough. */
+	await probeTarget("/Users/x/workspace", async (paths) =>
+		paths.map(() => ({ exists: true, isFile: false })),
+	);
+	assert.equal(evidenceFor("/Users/x/workspace"), "exists");
+	assert.deepEqual(
+		linksIn(emphasised),
+		[],
+		"the asker could not have asked, so the walker does not link",
+	);
+	/*
+	 * THE CONTROLS, so the case is about the predecessor and not about emphasis:
+	 * `*` IS an allowed predecessor, so strong emphasis links the same spelling on
+	 * the same primed answer - and the plain paragraph is the shape the pre-scan
+	 * names.
+	 */
+	assert.deepEqual(linksIn("the folder **/Users/x/workspace** is large"), [
+		{ url: "/Users/x/workspace", text: "/Users/x/workspace" },
+	]);
+	const plain = "the folder /Users/x/workspace is large";
+	assert.deepEqual(ambiguousTargetsIn(plain), ["/Users/x/workspace"]);
+	assert.deepEqual(linksIn(plain), [
+		{ url: "/Users/x/workspace", text: "/Users/x/workspace" },
+	]);
+	/*
+	 * And a token at the START of a document - offset 0, where there is no
+	 * predecessor character at all - keeps its link, because that is the case
+	 * `targetsIn` has always treated as a legal start.
+	 */
+	assert.deepEqual(linksIn("/Users/x/workspace at the start"), [
+		{ url: "/Users/x/workspace", text: "/Users/x/workspace" },
+	]);
+});
+
+test("the slash-command battery: 38 named cases, cold and with the disk answering", async () => {
+	/*
+	 * WHY THIS TABLE IS IN THE TREE. The implementation round reported its numbers
+	 * from `/tmp/linkify-repro.mjs` - 38 cases, 22 linkified before this change and
+	 * 7 after, 11 slash-shaped to 0 - and a scratch file outside the tree is a
+	 * number nobody can re-run, reviewer or CI (round 1, review R1-9). The cases and
+	 * both readings are here now, and the aggregate counts are asserted rather than
+	 * described.
+	 *
+	 * THE COLD COLUMN is the reported reading, taken with the same instrument: the
+	 * shipped pipeline, one document per case, the probe cache emptied first, so an
+	 * extensionless token has no answer yet and stays plain. The DISK column is the
+	 * same 38 with an oracle that answers - `exists` for everything except the
+	 * command-shaped spellings, which is the operator's own machine - and it is here
+	 * because the SHAPES cannot separate `/new` from `/tmp`: only the disk does, and
+	 * that is the fix.
+	 *
+	 * Two of the seven cold links are not this plugin's: the `https://` fixtures are
+	 * remark-gfm's own autolinks, which must not be doubled. They are in the table
+	 * because they are in the battery, and they are named where they are asserted.
+	 */
+	const CASES = [
+		// The operator's report, and the family of slash-shaped commands it named.
+		[
+			"screenshot sentence",
+			"I noticed that sometimes when new conversations are started with /new and no message has been sent yet, peer messages can end up arriving at the session",
+			[],
+			[],
+		],
+		["bare command", "/new", [], []],
+		["command mid-sentence", "then run /new to start over.", [], []],
+		["command in list", "- /new\n- /resume\n- /model", [], []],
+		["command with arg", "use /model gpt-5 for that", [], []],
+		["command, comma", "start with /new, then send the message", [], []],
+		["command in backticks", "`/new` starts a session", [], []],
+		["command-ish word", "/notification", [], []],
+		["command with dash", "/new-chat", [], []],
+		[
+			"known commands",
+			"/help /clear /compact /status /move /credential",
+			[],
+			[],
+		],
+		// Real files, which must keep their links.
+		[
+			"real absolute file",
+			"read /Users/damian/workspace/report-2026-09-18.csv",
+			["/Users/damian/workspace/report-2026-09-18.csv"],
+			["/Users/damian/workspace/report-2026-09-18.csv"],
+		],
+		[
+			"real tilde file",
+			"wrote ~/workspace/notes.md",
+			["~/workspace/notes.md"],
+			["~/workspace/notes.md"],
+		],
+		[
+			"real dir with slash",
+			"the dir /Users/damian/Downloads/ is large",
+			[],
+			["/Users/damian/Downloads/"],
+		],
+		[
+			"extensionless dir that exists",
+			"/Users/damian/workspace",
+			[],
+			["/Users/damian/workspace"],
+		],
+		[
+			"tmp file",
+			"/tmp/agent-out/out.json",
+			["/tmp/agent-out/out.json"],
+			["/tmp/agent-out/out.json"],
+		],
+		[
+			"dotfile",
+			"/Users/damian/.zshrc",
+			["/Users/damian/.zshrc"],
+			["/Users/damian/.zshrc"],
+		],
+		["single-segment existing dir", "/tmp", [], ["/tmp"]],
+		// Other slash motifs that are not files. None may link, either way.
+		["and/or", "tabs and/or spaces", [], []],
+		["either/or choice", "pick either/or", [], []],
+		["ratio", "24/7 support", [], []],
+		["unit", "60 km/h", [], []],
+		["without", "w/o the flag", [], []],
+		["date", "due 3/4/2026", [], []],
+		["fraction", "1/2 of the batch", [], []],
+		["TCP/IP", "the TCP/IP stack", [], []],
+		["I/O", "blocking I/O", [], []],
+		["n/a", "answer: n/a", [], []],
+		["OS/2", "an OS/2 build", [], []],
+		// remark-gfm's own autolink, present in both columns and not this plugin's.
+		[
+			"path in url",
+			"see https://example.com/v1/static/images?path=x",
+			["https://example.com/v1/static/images?path=x"],
+			["https://example.com/v1/static/images?path=x"],
+		],
+		["ipv6 cidr", "the range 2001:db8::1/64 is fine", [], []],
+		["comment style", "// this is a comment", [], []],
+		["markdown heading", "#/ heading weirdness", [], []],
+		[
+			"shell redirect",
+			"echo hi > /dev/null",
+			[],
+			["/dev/null"],
+		],
+		["glob", "/tmp/agent-out/*.log", [], []],
+		["placeholder", "write to /tmp/<name>.json", [], []],
+		[
+			"line reference",
+			"/Users/damian/proj/run.mjs:59",
+			["/Users/damian/proj/run.mjs"],
+			["/Users/damian/proj/run.mjs"],
+		],
+		["relative", "src/renderer/src/app.tsx", [], []],
+		// The second GFM autolink.
+		[
+			"url",
+			"https://github.com/damianvtran/local-operator-ui/pull/355",
+			["https://github.com/damianvtran/local-operator-ui/pull/355"],
+			["https://github.com/damianvtran/local-operator-ui/pull/355"],
+		],
+	];
+	/*
+	 * The model the disk column uses: the slash-shaped spellings the battery writes
+	 * are not on the operator's disk, and everything else it mentions is. A machine
+	 * WITH a directory called `/new` is the case `a slash command stays plain text`
+	 * already pins from the other side - there the disk vouches and the link is
+	 * correct.
+	 */
+	const ABSENT = new Set([
+		"/new",
+		"/resume",
+		"/model",
+		"/notification",
+		"/new-chat",
+		"/help",
+		"/clear",
+		"/compact",
+		"/status",
+		"/move",
+		"/credential",
+	]);
+
+	let cold = 0;
+	let singleSegment = 0;
+	for (const [label, text, coldUrls] of CASES) {
+		resetProbeCache();
+		const urls = linksIn(text).map((link) => link.url);
+		assert.deepEqual(urls, coldUrls, `${label}: cold cache`);
+		if (urls.length > 0) cold += 1;
+		if (urls.some((url) => !url.slice(1).includes("/"))) singleSegment += 1;
+	}
+	assert.equal(CASES.length, 38);
+	assert.equal(cold, 7, "the reported cold reading: seven of the thirty-eight");
+	assert.equal(
+		singleSegment,
+		0,
+		"no case links a single-segment slash-shaped token with an empty cache",
+	);
+
+	let disk = 0;
+	for (const [label, text, , diskUrls] of CASES) {
+		resetProbeCache();
+		for (const suspect of ambiguousTargetsIn(text)) {
+			await probeTarget(suspect, async (paths) =>
+				paths.map((path) => ({
+					exists: !ABSENT.has(path),
+					isFile: false,
+				})),
+			);
+		}
+		const urls = linksIn(text).map((link) => link.url);
+		assert.deepEqual(urls, diskUrls, `${label}: with the disk answering`);
+		if (urls.length > 0) disk += 1;
+	}
+	assert.equal(disk, 11, "eleven of the thirty-eight, once the disk answers");
+});
+
 test("a token the markdown SPLIT is not linked as if it were whole", async () => {
 	/*
-	 * The second reported false positive, and the one no per-node scanner can see:
 	 * `write to /tmp/<name>.json` is ONE string to the grammar and correctly refused
 	 * as a placeholder, but mdast hands the walker three nodes - `text("write to
 	 * /tmp/")`, `html("<name>")`, `text(".json")` - and the per-node call saw a
@@ -731,6 +988,36 @@ test("an editor line reference is trimmed on the prose tier too, and the span st
 	assert.deepEqual(
 		found("see file:///Users/x/proj/run.mjs:59 here", LINK_POLICY),
 		["file-url:/Users/x/proj/run.mjs"],
+	);
+	/*
+	 * AND THE `file://` SPAN, which round 1's review R1-3 measured: the TARGET was
+	 * right while the span kept the reference, so the anchor's own visible TEXT read
+	 * `file:///…/run.mjs:59` and opened `run.mjs`. Both halves are asserted, because
+	 * the target alone is what hid it.
+	 */
+	const urlText = "see file:///Users/x/proj/run.mjs:59 here";
+	const [urlSpan] = targetsIn(urlText, LINK_POLICY);
+	assert.equal(urlSpan.kind, "file-url");
+	assert.equal(urlSpan.target, "/Users/x/proj/run.mjs");
+	assert.equal(
+		urlText.slice(urlSpan.start, urlSpan.end),
+		"file:///Users/x/proj/run.mjs",
+	);
+	assert.deepEqual(linksIn(urlText), [
+		{ url: "/Users/x/proj/run.mjs", text: "file:///Users/x/proj/run.mjs" },
+	]);
+	/* A range, and a sentence full stop, trim the same way on this tier. */
+	const urlRanged = "see file:///Users/x/proj/run.mjs:59:12 here";
+	const [urlRangedSpan] = targetsIn(urlRanged, LINK_POLICY);
+	assert.equal(
+		urlRanged.slice(urlRangedSpan.start, urlRangedSpan.end),
+		"file:///Users/x/proj/run.mjs",
+	);
+	const urlStopped = "see file:///Users/x/proj/run.mjs. here";
+	const [urlStoppedSpan] = targetsIn(urlStopped, LINK_POLICY);
+	assert.equal(
+		urlStopped.slice(urlStoppedSpan.start, urlStoppedSpan.end),
+		"file:///Users/x/proj/run.mjs",
 	);
 	/*
 	 * A sentence colon is not a line reference: nothing to trim, nothing lost.

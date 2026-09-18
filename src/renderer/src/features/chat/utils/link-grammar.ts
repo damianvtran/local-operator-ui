@@ -177,9 +177,24 @@ const URL_QUERY = /^[^&#]+=[^&#]*(?:&[^&#]+=[^&#]*)*$/;
 /**
  * An editor line reference: `/a/run.mjs:59` and `/a/run.mjs:59:12`.
  *
- * BOTH TIERS TRIM IT, and the panel's tiles and the transcript's spans both stop
- * short of it (`targetsIn`), so `/a/run.mjs:59` names the `.mjs` in either
- * surface rather than a file whose name ends in `:59`.
+ * EXPORTED because the panel's two tiers and this module's span arithmetic all
+ * apply it - `normalizeCandidate`, `normalizePathValue` and `trimmedTailLength` -
+ * and a rule that lives in three places is three rules (`docs/branding.md` § 9).
+ *
+ * EVERY TIER TRIMS IT - in the VALUE and in the SPAN - so `/a/run.mjs:59` names
+ * the `.mjs` wherever it is read: the panel's prose tiles and its path-keyed
+ * arguments (`normalizeCandidate`, `normalizePathValue`) and both of the
+ * transcript's spans (`targetsIn`), the prose one and the `file://` one, which
+ * subtracts the reference from its end as well as the sentence punctuation.
+ *
+ * That last clause is round 1's finding R1-3, and it was measured rather than
+ * assumed: the `file://` branch subtracted the punctuation alone, so
+ * `file:///Users/x/proj/run.mjs:59` rendered an anchor whose TARGET was
+ * `…/run.mjs` while its visible TEXT was `file:///…/run.mjs:59`. A span that does
+ * not name the file it opens is wrong on any tier, and worst on this one, whose
+ * whole claim is that the app wrote the URL itself. The arithmetic is the same
+ * punctuation-then-reference order `normalizeFileUrl` trims in
+ * (`trimmedTailLength`), and `scripts/link-targets.test.mjs` pins the span.
  *
  * The `file://` tier needed it first and for the plainer reason: it admits on the
  * URL alone, so it would carry the suffix into the panel as a path that does not
@@ -197,7 +212,7 @@ const URL_QUERY = /^[^&#]+=[^&#]*(?:&[^&#]+=[^&#]*)*$/;
  * surface could keep the old behaviour - would be a flag whose only purpose is to
  * preserve an accident.
  */
-const LINE_REFERENCE = /:[0-9]+(?::[0-9]+)?$/;
+export const LINE_REFERENCE = /:[0-9]+(?::[0-9]+)?$/;
 
 /** Where a prose path token ends: whitespace, a quote, or sentence punctuation. */
 const PROSE_TOKEN_END = /[\s"'`()\[\]{}<>,;*|]/;
@@ -329,6 +344,28 @@ const ALLOWED_PREFIX = new Set([
 	"\u2014",
 ]);
 
+/**
+ * Whether a prose token may FOLLOW this character.
+ *
+ * The predecessor rule lives here because TWO callers need the same answer:
+ * `targetsIn` applies it to the character before a token in the text it scans,
+ * and `remark-linkify-targets.ts` applies it to the character the SOURCE holds
+ * before a node's first character - the one position where a node value has no
+ * predecessor of its own to test, because markdown consumed whatever stood
+ * there (`_` for underscore emphasis, `~` for a strikethrough run).
+ *
+ * `_` is deliberately NOT in `ALLOWED_PREFIX` and must not be added for that
+ * caller's sake: it is a legal path character, so admitting it would link the
+ * TAIL of a longer relative name (`x_/tmp/a.pdf`) - the class `rejectFragments`
+ * exists for, one character over. The direction this keeps is the module's own
+ * (`:86`): a token the asker could not have asked about is REFUSED, so the cost
+ * is a missed link rather than an anchor whose existence depends on some other
+ * row's cache.
+ */
+export function allowsProsePathAfter(character: string | undefined): boolean {
+	return character === undefined || ALLOWED_PREFIX.has(character);
+}
+
 /** Anything longer is not a path; it is a paste that happens to contain a slash. */
 export const MAX_CANDIDATE_LENGTH = 4096;
 
@@ -384,6 +421,17 @@ export function normalizeCandidate(raw: string): string | null {
 }
 
 /**
+ * Trailing path separators, which a token may carry and a NAME may not.
+ *
+ * `/Users/x/Downloads/` is how a transcript writes "this is a directory", and the
+ * basename of that spelling is `Downloads` rather than the empty string a
+ * `split("/")` finds without this. Module scope rather than inline for the same
+ * reason `TRAILING_PUNCTUATION` is: a regex literal built inside a function is
+ * rebuilt per call.
+ */
+const TRAILING_SLASHES = /[/\\]+$/;
+
+/**
  * Whether the SHAPE alone cannot answer "is this a path".
  *
  * TRUE for a token with no extension, which is the only positive evidence of
@@ -414,17 +462,6 @@ export function normalizeCandidate(raw: string): string | null {
  * `TargetPolicy.evidence`: an existing extensionless path is one stat away from
  * its link, and an absent one renders plain.
  */
-/**
- * Trailing path separators, which a token may carry and a NAME may not.
- *
- * `/Users/x/Downloads/` is how a transcript writes "this is a directory", and the
- * basename of that spelling is `Downloads` rather than the empty string a
- * `split("/")` finds without this. Module scope rather than inline for the same
- * reason `TRAILING_PUNCTUATION` is: a regex literal built inside a function is
- * rebuilt per call.
- */
-const TRAILING_SLASHES = /[/\\]+$/;
-
 export function isAmbiguousCandidate(target: string): boolean {
 	const name = target.replace(TRAILING_SLASHES, "").split("/").pop() ?? "";
 	if (name.startsWith(".")) return false;
@@ -553,13 +590,23 @@ export type TargetSpan = {
 };
 
 /**
- * Which of the two admissions a caller wants.
+ * Which of the two SURFACES' admissions a caller wants.
  *
  * A named object rather than a boolean argument at the call site, because the
  * difference between the two surfaces is the interesting thing about this
  * module and `targetsIn(text, true)` says nothing about which one you asked
- * for. `MENTION_POLICY` and `LINK_POLICY` are the only two in the app, and each
- * is imported where it is used.
+ * for. `MENTION_POLICY` (the Files panel) and `LINK_POLICY` (the transcript's
+ * linkifier) are the two surfaces' policies, and each is imported where it is
+ * used. Two more are built from them and are deliberately NOT part of that
+ * vocabulary: `LINK_POLICY_EVIDENCED` in `remark-linkify-targets.ts`, which is
+ * `LINK_POLICY` plus the disk's own oracle, and this module's private
+ * `DISCOVERY_POLICY`, which SUSPENDS the evidence question so the pre-scan can
+ * see the ambiguous candidates at all.
+ *
+ * (Round 1, review R1-1: this block called the flags "the two admissions" and
+ * claimed the two policies were "the only two in the app". The count is THREE -
+ * see the header - and the four policies are the two named here, the plugin's
+ * evidenced one and `DISCOVERY_POLICY`.)
  */
 export type TargetPolicy = {
 	/**
@@ -663,30 +710,25 @@ export const LINK_POLICY: TargetPolicy = {
  */
 
 /**
- * The characters a prose token loses off its END before it is a target.
+ * The characters a prose or `file://` token loses off its END before it is a target.
  *
- * Both of the rules `normalizeCandidate` applies are tail trims - sentence
- * punctuation, then an editor line reference - so the span has to stop short of
- * what they removed. Computed in that order and on the trimmed string, because
+ * Both of the trims the grammar applies to a tail - sentence punctuation, then
+ * an editor line reference - are mirrored here, so a span stops short of what
+ * they removed. Computed in that order and on the trimmed string, because
  * `normalizeCandidate` sees `/a/run.mjs:59:` after the punctuation step, and a
  * length measured on the untrimmed token would leave the span covering a colon.
  *
- * The `file://` branch keeps the narrower `trailingPunctuationLength` below: its
- * `normalizeFileUrl` never had the punctuation-then-reference ordering to mirror
- * (it trims both, and the span arithmetic there is over a `raw` the URL class
- * already ended).
+ * BOTH span producers use it. The prose branch always did; the `file://` branch
+ * subtracts only this (`targetsIn`) since round 1's R1-3, because
+ * `normalizeFileUrl` trims the same two things in the same order and a span that
+ * kept the reference would name a different token than its own target. The
+ * narrower `trailingPunctuationLength` that used to serve that branch is gone
+ * with the divergence it encoded.
  */
 const trimmedTailLength = (token: string): number => {
 	const trimmed = token.replace(TRAILING_PUNCTUATION, "");
 	return token.length - trimmed.replace(LINE_REFERENCE, "").length;
 };
-
-/**
- * The characters `TRAILING_PUNCTUATION` would remove from the end of a token,
- * which a span has to stop short of.
- */
-const trailingPunctuationLength = (token: string): number =>
-	token.length - token.replace(TRAILING_PUNCTUATION, "").length;
 
 /**
  * The characters that can continue a path where `PROSE_PATH`'s class stops, and
@@ -805,7 +847,7 @@ export function targetsIn(text: string, policy: TargetPolicy): TargetSpan[] {
 		if (candidate)
 			found.push({
 				start: index,
-				end: end - trailingPunctuationLength(match[0]),
+				end: end - trimmedTailLength(match[0]),
 				kind: "file-url",
 				target: candidate,
 				href: candidate,
@@ -816,7 +858,7 @@ export function targetsIn(text: string, policy: TargetPolicy): TargetSpan[] {
 	for (const match of masked.matchAll(PROSE_PATH)) {
 		const index = match.index ?? 0;
 		const previous = index > 0 ? masked[index - 1] : undefined;
-		if (previous !== undefined && !ALLOWED_PREFIX.has(previous)) continue;
+		if (!allowsProsePathAfter(previous)) continue;
 		// The tail of a placeholder is not a path; see `isPlaceholderTail`.
 		if (isPlaceholderTail(masked, index)) continue;
 		const raw = match[0];
@@ -917,12 +959,22 @@ const DISCOVERY_POLICY: TargetPolicy = {
  * The pre-scan the renderer runs before its first parse, so the tokens whose
  * answer the disk owes are known in one pass and can be asked about in one
  * batch. It is a SUPERSET of what the linkifier will end up linking, and that is
- * stated rather than engineered away: `text` is a whole markdown document, so
- * this sees a path inside a code fence or inside an existing link's label, which
- * the plugin's walker refuses. The cost is at most a handful of extra answers per
- * row, asked once per spelling per session and cached by the same map the toolbar
- * uses (`link-actions.ts`'s `evidenceFor`); the alternative is a second scanner
- * (`docs/branding.md` § 9) or a two-pass parse.
+ * ENGINEERED rather than asserted. The walker applies this module's own
+ * predecessor rule (`allowsProsePathAfter`) to the character the SOURCE holds
+ * before a node's first character, which is the one position where a node value
+ * has no character of its own to test - so a token the raw scan could not name
+ * is refused THERE rather than linked because a neighbour happened to prime the
+ * cache (round 1, review R1-4, measured: `ambiguousTargetsIn` on
+ * `"_/Users/x/workspace_"` returned `[]` while the plugin linked
+ * `/Users/x/workspace` as soon as another row had asked about that spelling).
+ *
+ * BEYOND THAT RULE the superset gap is the walker's own refusals: `text` is a
+ * whole markdown document, so this sees a path inside a code fence or inside an
+ * existing link's label, which the plugin never visits. The cost is at most a
+ * handful of extra answers per row, asked once per spelling per session and
+ * cached by the same map the toolbar uses (`link-actions.ts`'s `evidenceFor`);
+ * the alternative is a second scanner (`docs/branding.md` § 9) or a two-pass
+ * parse.
  *
  * The property that makes it checkable rather than merely plausible: for any
  * `text`, this returns exactly the `path` targets that `DISCOVERY_POLICY` admits
