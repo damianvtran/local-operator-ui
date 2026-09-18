@@ -87,6 +87,18 @@ const STORIES = [
  */
 const CHIP_MIN_VISIBLE_STRIP_PX = 6;
 
+/*
+ * PARKING, AND THE ONE RULE EVERY PARK IN THIS FILE FOLLOWS.
+ *
+ * A park sets the field's `scrollTop` so a phase measures the state it names, and it has to
+ * move the caret to the start first: a focused textarea whose caret sits at the end re-scrolls
+ * itself back to that caret on the next layout, so the park is silently undone and the phase
+ * reads the resting state instead. Measured in round 6, in three places at once - the boundary
+ * sweep reported `chips drawn at 0` across all nine of its offsets, the `run out of view` phase
+ * saw a chip that was correctly in view, and the scrolled story's round-3 step never reached
+ * its own state. One statement and one short comment at each site; this is the note they share.
+ */
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class Cdp {
@@ -159,13 +171,35 @@ const PROBE = `(() => {
 		box: box(span),
 	}));
 	const chips = layer
-		? [...layer.children].map((el) => ({
-				label: el.textContent,
-				box: box(el),
-				content: el.scrollWidth,
-				client: el.clientWidth,
-				clipped: el.scrollWidth > el.clientWidth,
-			}))
+		? [...layer.children].map((el) => {
+				/*
+				 * THE FACE AGAINST THE BOX (design review round 8, D21). The clipped reading
+				 * compares scrollWidth with clientWidth, which cannot see a face WIDER than the box:
+				 * the ordinal is the only shrinkable item (the count and the control are shrink-0), so
+				 * a too-narrow box truncates the reference's name and the reading still comes out
+				 * healthy. This measures the face's own natural width - children plus padding, on a
+				 * clone with the layer's inline geometry stripped, because the live element reports
+				 * the box it was given - and the caller fails when it exceeds the box.
+				 */
+				const clone = el.cloneNode(true);
+				clone.style.width = "auto";
+				clone.style.left = "auto";
+				clone.style.top = "auto";
+				clone.style.position = "static";
+				el.parentElement.appendChild(clone);
+				const face = round(clone.getBoundingClientRect().width);
+				clone.remove();
+				const chipBox = box(el);
+				return {
+					label: el.textContent,
+					box: chipBox,
+					content: el.scrollWidth,
+					client: el.clientWidth,
+					clipped: el.scrollWidth > el.clientWidth,
+					face,
+					headroom: round(chipBox.width - face),
+				};
+			})
 		: [];
 	const deltas = chips.map((chip, i) => {
 		const run = runs[i];
@@ -332,13 +366,7 @@ const main = async () => {
 					if (!f) return { scrollable: false };
 					const max = f.scrollHeight - f.clientHeight;
 					if (max <= 1) return { scrollable: false };
-						/*
-						 * THE CARET LEAVES THE END BEFORE ANY PARK (code review round 6, R6-1's
-						 * sibling): a focused textarea whose caret sits at the end re-scrolls
-						 * itself back to the caret on the next layout, so a parked position is
-						 * silently undone and the phase measures the state it started in. Every
-						 * park in this file does this first now.
-						 */
+						// The caret must leave the end first, or the browser scrolls back: see PARKING.
 						f.setSelectionRange(0, 0);
 					f.scrollTop = Math.round(max * ${fraction});
 					f.dispatchEvent(new Event("scroll"));
@@ -591,13 +619,7 @@ const main = async () => {
 				// Park the run's own top just inside the box's bottom edge: the chip exists,
 				// and the layer has content outside its box for a focus to scroll to.
 				const target = Math.max(0, Math.min(max, span.offsetTop - f.clientHeight + 8));
-						/*
-						 * THE CARET LEAVES THE END BEFORE ANY PARK (code review round 6, R6-1's
-						 * sibling): a focused textarea whose caret sits at the end re-scrolls
-						 * itself back to the caret on the next layout, so a parked position is
-						 * silently undone and the phase measures the state it started in. Every
-						 * park in this file does this first now.
-						 */
+						// The caret must leave the end first, or the browser scrolls back: see PARKING.
 						f.setSelectionRange(0, 0);
 				f.scrollTop = Math.round(target);
 				f.dispatchEvent(new Event("scroll"));
@@ -660,9 +682,11 @@ const main = async () => {
 		 * This phase walks integer scroll positions across that transition and asserts the
 		 * invariant the rule now establishes, per position: a chip is either ABSENT or its
 		 * control owns at least one hit-testable point of its own rectangle. Both halves are
-		 * live assertions - the pre-fix rule fails on the second, a rule that never drew a
-		 * chip would fail the first in the `as painted` phase - and the sweep is what makes
-		 * them a boundary rather than a state.
+		 * live assertions, each proven by a mutant in the round-6 reply (a layer floor of `0`
+		 * fails the hit-testing half, `3` fails the strip half), and the sweep is what makes
+		 * them a boundary rather than a state. A layer that never drew a chip at all fails the
+		 * RUN, not this phase - through the story's own play (`no chip is painted over the
+		 * run`) or `PROBE`'s readiness wait - which is the correction round 7's NIT asked for.
 		 */
 		const boundary = await probe();
 		if (boundary.runs.length > 0) {
@@ -707,14 +731,6 @@ const main = async () => {
 						 */
 						const runTopInContent =
 							run.getBoundingClientRect().top - f.getBoundingClientRect().top + f.scrollTop;
-						/*
-						 * THE CARET LEAVES THE END BEFORE ANY PARK (code review round 6, R6-1's
-						 * sibling): a focused textarea whose caret sits at the end re-scrolls
-						 * itself back to the caret on the next layout, so a parked position is
-						 * silently undone and the phase measures the state it started in. Every
-						 * park in this file does this first now.
-						 */
-						f.setSelectionRange(0, 0);
 						f.scrollTop = Math.max(0, Math.min(max, Math.round(runTopInContent - f.clientHeight + ${offset})));
 						f.dispatchEvent(new Event("scroll"));
 						await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -729,6 +745,34 @@ const main = async () => {
 						 * real press in that band clearing the credential. The floor is now the strip
 						 * at which the glyph appears, and this is the measurement that holds it.
 						 */
+						/*
+						 * The face's own width, per chip, on a clone with the layer's inline geometry
+						 * stripped: see the D21 comment in PROBE for why the live element cannot be
+						 * read for this.
+						 */
+						const faceOf = (el) => {
+							const clone = el.cloneNode(true);
+							clone.style.width = "auto";
+							clone.style.left = "auto";
+							clone.style.top = "auto";
+							clone.style.position = "static";
+							el.parentElement.appendChild(clone);
+							const width = clone.getBoundingClientRect().width;
+							clone.remove();
+							return Number(width.toFixed(2));
+						};
+						const CHIPS = layer
+							? [...layer.children].map((el) => {
+									const b = el.getBoundingClientRect();
+									const face = faceOf(el);
+									return {
+										label: el.textContent,
+										boxWidth: Number(b.width.toFixed(2)),
+										face,
+										headroom: Number((b.width - face).toFixed(2)),
+									};
+								})
+							: [];
 						let strip = 0;
 						if (layer && layer.firstElementChild) {
 							const chip = layer.firstElementChild.getBoundingClientRect();
@@ -750,7 +794,7 @@ const main = async () => {
 								}
 							}
 						}
-						return { ok: true, scrollTop: f.scrollTop, chips: layer ? layer.children.length : 0, hasControl: control !== null, hits, samples, strip: Number(strip.toFixed(2)) };
+						return { ok: true, scrollTop: f.scrollTop, chips: layer ? layer.children.length : 0, hasControl: control !== null, hits, samples, strip: Number(strip.toFixed(2)), chipsDetail: CHIPS };
 					})()`,
 				});
 				const at = parkedAt.result.value;
@@ -769,6 +813,21 @@ const main = async () => {
 				 * U2): a drawn chip whose visible strip is under the floor is reachable, live and
 				 * identifiable by nothing on screen - the band the UX round pressed into.
 				 */
+				/*
+				 * THE FACE HAS TO FIT THE BOX IT COVERS (design review round 8, D21). The chip is
+				 * painted over the marker's run, so it takes the run's width; the face may be
+				 * narrower (the slack is what D19 distributes) but never wider, and today it has
+				 * 34.05px of headroom at 1024 and 29.14px at 440. A mutant that narrows a painted
+				 * box to 120px truncates the ordinal and fails here, which is the state the
+				 * `content == client` reading cannot see.
+				 */
+				for (const chip of at.chipsDetail ?? []) {
+					if (chip.face > chip.boxWidth) {
+						throw new Error(
+							`${story} @ ${width}x${height}: the chip's face (${chip.face}px) is wider than the box it covers (${chip.boxWidth}px), so the reference's ordinal is truncated (design round 8, D21) - ${JSON.stringify(chip)}`,
+						);
+					}
+				}
 				if (at.chips > 0 && at.strip < CHIP_MIN_VISIBLE_STRIP_PX) {
 					throw new Error(
 						`${story} @ ${width}x${height}: a chip is drawn on a strip too thin to identify it (UX round 5, U2) - ${JSON.stringify(at)} (floor ${CHIP_MIN_VISIBLE_STRIP_PX}px)`,
@@ -782,150 +841,6 @@ const main = async () => {
 					phase: `boundary sweep (${seen.length} positions, chips drawn at ${seen.filter((s) => s.chips > 0).length})`,
 					...boundary,
 					boundary: seen,
-				});
-			}
-		}
-
-		/*
-		 * THE KEYBOARD'S HOME WHEN THE CLIP DROPS THE CHIP IT STANDS ON (code review round 5,
-		 * R5-1). Round 4's guard was dead code: it read `document.activeElement` and tested
-		 * `!held.isConnected` inside the same synchronous measure that produces the boxes, so
-		 * the element was still connected when the test ran, and by the commit that removed it
-		 * the active element was already BODY - the composer's `focusInput` was never reached
-		 * and the next characters went nowhere. The fix reports the drop at the COMMIT (a
-		 * layout effect keyed on the layer's boxes), and this phase is the state that
-		 * discriminates the two: a real Tab to the control, then one notch of real scrolling
-		 * past the boundary, then the two facts that matter - the chip is gone, and the
-		 * keyboard is back in the field rather than on the document.
-		 *
-		 * It fails on the pre-fix code with `active: "BODY"` and the chip dropped, which is the
-		 * measurement the reviewer made; a phase that only asserted "the chip is gone" would
-		 * pass either way, since a dropped chip is the premise rather than the result - and the
-		 * first version of this phase asserted a state it could not reach (round 6, R6-1: a 1px
-		 * park against a 6px floor, and a motion that raised the strip). It is proven by the
-		 * reversion run recorded in the round-6 reply, not asserted here.
-		 */
-		{
-			const parked = await cdp.send("Runtime.evaluate", {
-				returnByValue: true,
-				awaitPromise: true,
-				expression: `(async () => {
-					const f = document.querySelector("textarea");
-					if (!f) return { ok: false, why: "no field" };
-					const max = f.scrollHeight - f.clientHeight;
-					if (max <= 1) return { ok: false, why: "the field does not scroll" };
-					const run = document.querySelector("[data-credential-run]");
-					if (!run) return { ok: false, why: "no run" };
-					/*
-					 * PARKED ON A STRIP A CHIP IS DRAWN ON (code review round 6, R6-1): +10, not
-					 * +1. The first version parked with one pixel of run inside the box against a
-					 * floor of 6, so the layer drew nothing, the phase's
-					 * 'else' branch always ran, and it reported 'skipped: "no chip was drawn to
-					 * drop"' - a guard that could not fire, which is the class it was written to
-					 * catch. The caret goes to the start first, for the reason above.
-					 */
-					f.setSelectionRange(0, 0);
-					const runTopInContent =
-						run.getBoundingClientRect().top - f.getBoundingClientRect().top + f.scrollTop;
-						/*
-						 * THE CARET LEAVES THE END BEFORE ANY PARK (code review round 6, R6-1's
-						 * sibling): a focused textarea whose caret sits at the end re-scrolls
-						 * itself back to the caret on the next layout, so a parked position is
-						 * silently undone and the phase measures the state it started in. Every
-						 * park in this file does this first now.
-						 */
-						f.setSelectionRange(0, 0);
-					f.scrollTop = Math.max(0, Math.min(max, Math.round(runTopInContent - f.clientHeight + 10)));
-					f.dispatchEvent(new Event("scroll"));
-					f.focus();
-					await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-					const layer = document.querySelector("[data-credential-chips]");
-					return { ok: true, chips: layer ? layer.children.length : 0, scrollTop: f.scrollTop, max };
-				})()`,
-			});
-			const at = parked.result.value;
-			if (at?.ok && at.chips > 0) {
-				await cdp.send("Runtime.evaluate", {
-					returnByValue: true,
-					expression: "document.querySelector('textarea')?.focus()",
-				});
-				for (const type of ["rawKeyDown", "keyUp"]) {
-					await cdp.send("Input.dispatchKeyEvent", {
-						type,
-						key: "Tab",
-						code: "Tab",
-						windowsVirtualKeyCode: 9,
-						nativeVirtualKeyCode: 9,
-					});
-				}
-				await settle();
-				const held = await cdp.send("Runtime.evaluate", {
-					returnByValue: true,
-					expression:
-						"(() => { const a = document.activeElement; return { label: a?.getAttribute?.('aria-label') ?? null, tag: a?.tagName ?? null, inLayer: !!a?.closest?.('[data-credential-chips]') }; })()",
-				});
-				const onControl = held.result.value;
-				if (onControl?.inLayer) {
-					/*
-					 * One real notch past the boundary: the run leaves the field's box, the
-					 * layer stops drawing the chip, and the control that held focus is removed
-					 * from the document under the keyboard.
-					 */
-					await cdp.send("Runtime.evaluate", {
-						returnByValue: true,
-						awaitPromise: true,
-						/*
-						 * THE ONE NOTCH GOES THE OTHER WAY (code review round 6, R6-1). The strip
-						 * is `scrollTop - (runTopInContent - clientHeight)`, so scrolling FURTHER
-						 * raises it and keeps the chip: the first version moved `+12` and could not
-						 * produce the drop it asserts. The drop is the other direction - the UX
-						 * round's own row drops at `207 -> 201`.
-						 */
-						expression: `(async () => {
-							const f = document.querySelector("textarea");
-							f.setSelectionRange(0, 0);
-							f.scrollTop = Math.max(0, f.scrollTop - 12);
-							f.dispatchEvent(new Event("scroll"));
-							await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-							return { ok: true };
-						})()`,
-					});
-					await settle();
-					const dropped = await cdp.send("Runtime.evaluate", {
-						returnByValue: true,
-						expression:
-							"(() => { const f = document.querySelector('textarea'); const a = document.activeElement; const layer = document.querySelector('[data-credential-chips]'); return { chips: layer ? layer.children.length : 0, activeIsField: a === f, active: a === f ? 'field' : (a?.tagName ?? 'none'), scrollTop: f.scrollTop }; })()",
-					});
-					const after = dropped.result.value;
-					if (after.chips === 0 && !after.activeIsField) {
-						throw new Error(
-							`${story} @ ${width}x${height}: the clip dropped the focused chip and the keyboard was left on ${after.active} (code review round 5, R5-1) - ${JSON.stringify(after)}`,
-						);
-					}
-					/*
-					 * A record the printer can walk: this phase paints nothing of its own, so it
-					 * carries empty run/chip/delta lists (code review round 6, R6-1 - the first
-					 * shape had no `runs`, and the printer throws on it the moment the phase stops
-					 * skipping, which is the only state in which anyone reads it).
-					 */
-					phases.push({
-						phase: "focus drop",
-						runs: [],
-						chips: [],
-						deltas: [],
-						held: onControl,
-						after,
-					});
-				} else {
-					phases.push({
-						phase: "focus drop",
-						skipped: `a real Tab from the field reached ${onControl?.tag ?? "nothing"} (${onControl?.label ?? "no label"}) rather than a chip control`,
-					});
-				}
-			} else {
-				phases.push({
-					phase: "focus drop",
-					skipped: at?.why ?? "no chip was drawn to drop",
 				});
 			}
 		}
@@ -1022,19 +937,16 @@ const main = async () => {
 				console.log(`  skipped          ${phase.skipped}`);
 				continue;
 			}
-			if (phase.value !== undefined) {
-				console.log(`  buffer           ${JSON.stringify(phase.value)}`);
-			}
+			console.log(`  buffer           ${JSON.stringify(phase.value)}`);
 			/*
-			 * A PHASE THAT PAINTS NOTHING OF ITS OWN (code review round 6, R6-1): `focus drop`
-			 * records what it did rather than what was drawn, so it carries no `runs`, and the
-			 * printer used to throw on it the moment the phase stopped skipping - i.e. in the
-			 * only state where its record is worth reading.
+			 * ONE SHAPE, BECAUSE EVERY PHASE THAT SURVIVES HAS IT (code review round 7, R7-2).
+			 * Round 6 added a branch for a runless phase - `focus drop`, which recorded its own
+			 * facts and drew nothing - and that phase is gone: its instrument is the jsdom row in
+			 * `scripts/credential-composer.test.mjs` (`the layer reports the drop at the commit
+			 * that removes the control it was standing on`), which fails on the pre-fix layer,
+			 * where the rig phase could not. Every phase left here spreads a probe result, so the
+			 * printer reads one shape again rather than carrying a branch nothing can reach.
 			 */
-			if (!Array.isArray(phase.runs)) {
-				console.log(`             ${JSON.stringify(phase, null, 0)}`);
-				continue;
-			}
 			phase.runs.forEach((run, i) => {
 				const chip = phase.chips[i];
 				const delta = phase.deltas[i];

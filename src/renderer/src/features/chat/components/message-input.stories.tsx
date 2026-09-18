@@ -1238,18 +1238,14 @@ export const CredentialPillScrolled: Story = {
 		 * the round-3 claim was inert in this story as well as in the rig.
 		 */
 		/*
-		 * THE SELECTION IS SAVED AND PUT BACK (design review round 6, D16). Moving the caret to
-		 * the start to park the field is what makes this step reach its state - but the buffer
-		 * carries a selection at this point, and collapsing it changed every pixel of the
-		 * twelve committed `credential-pill-scrolled` frames while the geometry stayed
-		 * identical. The frames are shot after the play, so the selection the earlier steps
-		 * left has to be the one the play leaves behind.
+		 * THE CARET MOVES TO THE START, AND NOTHING IS SAVED AROUND IT (design review rounds 6
+		 * and 7, D16). Moving it is what makes this step reach its state. Round 6 also saved the
+		 * selection here and put it back before the shutter, on the theory that the committed
+		 * frames carried one; they do not - the probe reads a collapsed caret (`566..566`) both
+		 * before and after, so the pair was inert, and the selection visible in the round-3
+		 * frames came from that era's app rather than from anything this play does. The pair is
+		 * deleted rather than left as an assertion nothing can fail.
 		 */
-		const savedSelection = {
-			start: box.selectionStart,
-			end: box.selectionEnd,
-			direction: box.selectionDirection,
-		};
 		box.setSelectionRange(0, 0);
 		box.scrollTop = 0;
 		box.dispatchEvent(new Event("scroll"));
@@ -1268,16 +1264,6 @@ export const CredentialPillScrolled: Story = {
 				`a run the layer clips away still drew a chip, so its control is reachable while painted nowhere (round 3, R3-1): run ${rect ? `${rect.top.toFixed(1)}..${rect.bottom.toFixed(1)}` : "none"} against a box of ${box.getBoundingClientRect().top.toFixed(1)}..${box.getBoundingClientRect().bottom.toFixed(1)}`,
 			);
 		}
-		/*
-		 * The parked state has been measured, so the selection the play inherited goes back
-		 * before the shutter: see the note at the save, and D16 for the twelve frames that
-		 * were re-shot for exactly this.
-		 */
-		box.setSelectionRange(
-			savedSelection.start,
-			savedSelection.end,
-			savedSelection.direction ?? undefined,
-		);
 		await userEvent.tab();
 		await settle();
 		const landedOn =
