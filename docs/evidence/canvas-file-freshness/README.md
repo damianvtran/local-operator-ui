@@ -4,12 +4,12 @@ Six frames from the **real built app**, driven by the repo's own harness
 (`scripts/renderer-driver.mjs --scene canvas-freshness`), of the document line
 this change adds and of the behaviour behind it.
 
-Provenance: the frames were captured from a built app at
-`34836770e` (the round-5 code commit) plus the `biome-ignore` comments added to the
-editors immediately after the capture - a comment-only difference, stated because a
-stamp that names a tree the pixels did not come from should say so. The manifest's
-`srcTree`/`scriptsTree` name this commit's own trees, which is what the manifest test
-binds.
+Provenance: the frames were captured from a built app on the round-5 code change
+BEFORE the `biome-ignore` comments were added to the editors - the commit `34836770e`
+contains those comments, so it is the tree the pixels did NOT come from, and the
+difference between them is comments only. The manifest's `srcTree`/`scriptsTree` name
+that commit's own trees, which is what the manifest test binds; this paragraph is here
+so a reader of these pixels knows which tree they came from.
 
 They exist because the claims under review are claims about a running
 application, and a unit test with a fake bridge cannot reach any end of them:
@@ -29,13 +29,13 @@ application, and a unit test with a fake bridge cannot reach any end of them:
 | frame | what it shows |
 | --- | --- |
 | [`before/localOperatorDark.webp`](before/localOperatorDark.webp) | The document opened from disk: the line reads `Modified October 9, 2025 at 4:53 AM` (the file's own mtime, rendered in the capturing machine's timezone) with the re-read control at the right, above the markdown toolbar. The editor holds `first-version`, which is what the file says. |
-| [`after/localOperatorDark.webp`](after/localOperatorDark.webp) | The same tab after a rewrite whose mtime was restored to the value the app already held - a write the two-second poll cannot see, because the mtime is what decides. The press on the re-read control is what applied it, the editor now holds `third-version`, and the row's register says `Updated from disk`. |
+| [`after/localOperatorDark.webp`](after/localOperatorDark.webp) | The same tab after a rewrite whose mtime was restored to the value the app already held - a write the two-second poll cannot see, because the mtime is what decides. The press on the re-read control is what applied it, the editor now holds `third-version`, and the row's register says `Re-read`. |
 | [`activation/localOperatorDark.webp`](activation/localOperatorDark.webp) | Two tabs, the second document on screen, and `notes.md` re-selected after its file was rewritten off screen. The switch applied the new bytes (`fourth-version`) and the line moved with them: `Modified October 9, 2025 at 4:55 AM`. The off-screen window is where the run counted **0 probes** for this document and 2 for the one on screen. |
-| [`held/localOperatorDark.webp`](held/localOperatorDark.webp) | **The state this round is about**: a code document with the reader's unsaved edits in the editor, the file rewritten from outside, and the row saying `Modified September 18, 2026 at 6:00 AM  Changed on disk - load it, or save to replace it.` The sentence is on screen in full, with no ellipsis - which is design round 3's D10 and UX round 3's U10, both measured against this frame's own row: the region is 607px and the sentence is 49 characters, so the way out fits beside the stamp instead of hiding behind a scrollbar. The window this frame is taken in is the heart of QA round 3's Q9: no in-app write reached the file for 4.2s (two polls, four debounce windows), asserted by comparing the file's sha256 before and after. The same phase then presses the control and asserts the file is still the EXTERNAL version - the press that used to destroy the version it was loading - and finally drives a real Meta+S and asserts the reader's bytes are the ones on disk. |
+| [`held/localOperatorDark.webp`](held/localOperatorDark.webp) | **The state this round is about**: a code document with the reader's unsaved edits in the editor, the file rewritten from outside, and the row saying `Modified September 18, 2026 at 7:54 AM  Changed on disk — load it, or save to replace it.` The sentence is on screen in full, with no ellipsis - which is design round 3's D10 and UX round 3's U10, both measured against this frame's own row: the region is 607px and the sentence is 49 characters, so the way out fits beside the stamp instead of hiding behind a scrollbar. The window this frame is taken in is the heart of QA round 3's Q9: no in-app write reached the file for 4.2s (two polls, four debounce windows), asserted by comparing the file's sha256 before and after. The same phase then presses the control and asserts the file is still the EXTERNAL version - the press that used to destroy the version it was loading - and finally drives a real Meta+S and asserts the reader's bytes are the ones on disk. |
 | [`html-before/localOperatorDark.webp`](html-before/localOperatorDark.webp) | An HTML document in the viewer whose bytes the BACKEND fetches, showing `html-first-version` at `Modified October 9, 2025 at 4:48 AM`. The viewer's own bar carries one control now - the Edit toggle - because its separate reload button was dropped (design round 2, D8): the row's press re-keys the iframe below, so the two were the same action 32px apart. |
-| [`html-after/localOperatorDark.webp`](html-after/localOperatorDark.webp) | The same viewer after the file was rewritten from outside: `html-second-version` is on screen, the line moved to `4:50 AM`, and the row says `Updated from disk` (its ANSWER register, which now retires after 8s rather than standing for ever). This is code review round 1's M1, which the store write alone could not reach: before the fix the line moved, the store held the new bytes, and the preview kept showing the old document. The run asserts the re-fetch directly as well - a new request for `panel.html` appears on the renderer's own request log - because the iframe is cross-origin from the app and its DOM cannot be read back. |
+| [`html-after/localOperatorDark.webp`](html-after/localOperatorDark.webp) | The same viewer after the file was rewritten from outside: `html-second-version` is on screen, the line moved to `4:50 AM`, and the row says `Re-read` (its ANSWER register, which now retires after 8s rather than standing for ever). This is code review round 1's M1, which the store write alone could not reach: before the fix the line moved, the store held the new bytes, and the preview kept showing the old document. The run asserts the re-fetch directly as well - a new request for `panel.html` appears on the renderer's own request log - because the iframe is cross-origin from the app and its DOM cannot be read back. |
 
-All five are full-window frames of an **isolated** run: a scratch `HOME`, a
+All six are full-window frames of an **isolated** run: a scratch `HOME`, a
 scratch `LOCAL_OPERATOR_CONFIG_DIR`, a scratch `--user-data-dir`, the app's own
 `headless` window mode (never shown, never focusable), `CMUX_*`/`LOP_*` stripped
 from the child environment, and a backend this run started and reaped itself. The
