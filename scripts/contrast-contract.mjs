@@ -1226,11 +1226,11 @@ const PERCEPTIBLE = [
 		 * design.
 		 *
 		 * What a hover owes is being SEEN, which is this table's own question. Measured
-		 * this round: ΔE00 5.85 at worst (iceberg), so the floor is 5.0 and the worst
-		 * palette clears it by 0.85. The weight-parity half compares the hovered fill
-		 * with the resting one, whose role IS the ground (`sunken`): the step is
-		 * 1.20-1.55x either way, so `maxWeightChange` 2.0 states that hover is a step
-		 * in one ramp rather than a different control.
+		 * on the grounds this branch ships: ΔE00 6.07 at worst (`iceberg`), so the floor
+		 * is 5.0 and the worst palette clears it by 1.07. The weight-parity half
+		 * compares the hovered fill with the resting one, whose role IS the ground
+		 * (`sunken`): the step is 1.19-1.60x either way, so `maxWeightChange` 2.0 states
+		 * that hover is a step in one ramp rather than a different control.
 		 *
 		 * The hovered LABEL's legibility is already covered: `ink` is asserted at 7:1
 		 * on every ground, `elevated` among them (the `INKS` loop above), which is
@@ -1735,7 +1735,7 @@ const STRUCTURAL_CALL_SITES = [
 		 * `sunken` + `outline-control` is the picker's own answer for the same
 		 * gesture, so the two rows of the same family cannot drift apart again. The
 		 * ground half is asserted by this file's selection row (ΔE00 >= 3.0 and a
-		 * >= 2 L* step from `elevated`, measured 5.85-16.70 across all 59); this pin
+		 * >= 2 L* step from `elevated`, measured 6.07-16.18 across all 59); this pin
 		 * is the half no palette assertion can reach - the composed class string at
 		 * the call site, where either token can be dropped while every palette row
 		 * stays green.
@@ -2314,6 +2314,16 @@ const log = [];
 let failures = 0;
 let assertions = 0;
 
+/*
+ * The palettes whose `highlight` sits UNDER the band, counted measured rather
+ * than printed as a literal. The success line has always claimed "0 over-band"
+ * and the claim is sound - the band assertion below fails first, so a breaching
+ * palette cannot reach that line - but a constant in the output reads as a
+ * measurement and is not one, which is how it was reported in review round 1
+ * (N5). One counter, incremented where the separation is measured.
+ */
+let overBand = 0;
+
 const fail = (msg) => {
 	failures++;
 	log.push(`FAIL  ${msg}`);
@@ -2738,6 +2748,14 @@ const HIGHLIGHT_TIGHT_CHROMA_SLACK = 0.5;
    panel's hue, and five chroma levels across the tightened allowance. */
 const HIGHLIGHT_TIGHT_HUE_STEPS = [-12, -6, 0, 6, 12];
 const HIGHLIGHT_TIGHT_CHROMA_STEPS = [0, 0.25, 0.5, 0.75, 1];
+/* The most ΔE00 over the band a recorded tighter cast may report. An entry's
+   `tightReach` is the reach of the LEAST change that gets the band inside the
+   tighter clause - it is a rotation the palette's own cast had to take, not a
+   hunt for the largest number - so it sits just over
+   `HIGHLIGHT_SEPARATION_FLOOR` rather than far above it (measured 4.00-4.26
+   across the 25 entries that carry one; the sample's best can be higher still,
+   because it is a different cast). */
+const HIGHLIGHT_TIGHT_REACH_CEILING = 4.5;
 
 /*
  * The palettes whose OWN ink caps the lightness route below this file's step
@@ -2914,16 +2932,31 @@ const HIGHLIGHT_WASH_PINS = [];
  * every theme edit, so the gate re-derives the clause's own envelope instead -
  * `HIGHLIGHT_TIGHT_HUE_STEPS` x `HIGHLIGHT_TIGHT_CHROMA_STEPS`, each at the
  * largest step its cast's inks allow, every other bound in this file applied to
- * the quantised value. A sample can only UNDERSTATE what the clause reaches,
- * which is the direction a necessity claim has to err in; where it understates,
- * `tightRotation` and `tightReach` carry the search's own answer, and the
- * `why` says which of the two shapes the palette is.
+ * the quantised value. `reach` is that sample's best, so it can only UNDERSTATE
+ * what the clause reaches, which is the direction a necessity claim has to err
+ * in.
+ *
+ * WHAT IS RE-DERIVED AND WHAT IS THE SEARCH'S ANSWER, said here rather than
+ * implied, because the two halves carry different weight. `reach`, `ratio`,
+ * `chroma`, `over`, `dh`, `dE`, `onGround` and `ceiling` are measured afresh on
+ * every run. `tightRotation`, `tightChroma` and `tightReach` are the ONE cast a
+ * search found at authoring time - the least change that reaches the band inside
+ * the clause - and that search's objective is NOT reproduced here, so they are
+ * bounded rather than matched: the three fields are recorded together or not at
+ * all, `tightChroma` may not leave the clause as this file enforces it (the
+ * allowance plus `HIGHLIGHT_TIGHT_CHROMA_SLACK`), the rotation may not leave
+ * `HIGHLIGHT_HUE_LIMIT`, and `tightReach` sits between the band and
+ * `HIGHLIGHT_TIGHT_REACH_CEILING`. An entry with NO rotation additionally asserts
+ * the shape it claims - that this file's sample cannot reach the band on that
+ * palette - so a palette that becomes reachable retires its own entry instead of
+ * leaving a stale one green.
  *
  * WHAT A FAILURE HERE MEANS: a palette over the tightened clause that is not in
  * this table, an entry whose palette has come back inside it (retire the entry -
  * that is a retirement, not a loss, exactly as `HIGHLIGHT_WASH_PINS` records for
- * `rosePineDawn`), or an entry whose numbers have moved. The band itself is not
- * in this table and cannot be: it has no exception, and no palette may trade it.
+ * `rosePineDawn`), an entry whose numbers have moved, a cast recorded in part, or
+ * a recorded cast outside the clause or off the band. The band itself is not in
+ * this table and cannot be: it has no exception, and no palette may trade it.
  *
  * @type {{theme: string, mode: string, ratio: number|null, chroma: number, over: number, ceiling: number, reach: number, dh: number, tightRotation: number|null, tightReach: number|null, tightChroma: number|null, inkRole: string, onGround: number, why: string}[]}
  */
@@ -3798,6 +3831,27 @@ const HIGHLIGHT_CONTINUITY_EXCEPTIONS = [
 ];
 
 /*
+ * One entry per palette, asserted rather than assumed: every lookup below is a
+ * `find`, which silently takes the first, so a second entry for a theme would
+ * change no assertion while making the length the success line prints stop
+ * meaning "the palettes this ledger covers" (review round 1, N2). Cheap, and it
+ * is the only thing standing between the ledger's own count and a duplicate.
+ */
+const duplicateLedgerThemes = HIGHLIGHT_CONTINUITY_EXCEPTIONS.map(
+	(e) => e.theme,
+).filter((theme, i, all) => all.indexOf(theme) !== i);
+if (duplicateLedgerThemes.length > 0) {
+	console.error(
+		`\nContrast contract FAILED: ${duplicateLedgerThemes.length} duplicate entry/entries in HIGHLIGHT_CONTINUITY_EXCEPTIONS (${[
+			...new Set(duplicateLedgerThemes),
+		].join(
+			", ",
+		)}) — \`find\` takes the first, so the duplicate asserts nothing while the count the success line prints claims two palettes' worth of coverage.`,
+	);
+	process.exit(1);
+}
+
+/*
  * What the peer round's tighter clause reaches on a palette, at that palette's own
  * ink caps - the quantity every entry above is judged by, re-derived rather than
  * trusted. Twelve degrees either side of the panel's hue and five chroma levels
@@ -3808,8 +3862,10 @@ const HIGHLIGHT_CONTINUITY_EXCEPTIONS = [
  *
  * It samples the clause rather than searching it (see the table's comment for
  * why), so its answer is a lower bound on the clause's reach; the table's
- * `tightReach` and `tightRotation` carry the full search's answer where the sample
- * understates it.
+ * `tightRotation`, `tightChroma` and `tightReach` carry the ONE cast the
+ * authoring search chose - the least change that reaches the band - and are
+ * bounded by the table's own checks rather than matched against this function's
+ * answer, which is a different cast and can be higher.
  */
 const measureTightClause = (p) => {
 	const [panelL, panelA, panelB] = toLab(p.surface);
@@ -4090,6 +4146,7 @@ for (const { id, palette: p } of palettes) {
 		assertions++;
 		const got = deltaE(p.highlight, p.surface);
 		if (got < HIGHLIGHT_SEPARATION_FLOOR) {
+			overBand++;
 			/* The ink that binds the step, measured on this palette's own authored
 			   ground, so the message carries the reason the value cannot simply be
 			   raised. */
@@ -4298,6 +4355,12 @@ for (const { id, palette: p } of palettes) {
 				],
 				["the hue deviation", entry.dh, r2(drift), 0.05],
 				[
+					"the tighter allowance the entry is judged against, as a delta from the panel's chroma (never the looser `chromaCeiling` above)",
+					entry.ceiling,
+					r2(tightCeiling - panelChroma),
+					0.005,
+				],
+				[
 					`the binding ink \`${entry.inkRole}\` on the row's ground`,
 					entry.onGround,
 					r2(ratio(p[entry.inkRole], p.highlight)),
@@ -4324,6 +4387,70 @@ for (const { id, palette: p } of palettes) {
 							"; ",
 						)}. Re-measure the entry (and re-read \`HIGHLIGHT_CONTINUITY_EXCEPTIONS\` for what its \`reach\` means before updating it)`,
 				);
+			}
+			/*
+			 * The three fields the SEARCH answered, bounded against the tree rather
+			 * than left to drift.
+			 *
+			 * `tightRotation`, `tightChroma` and `tightReach` describe ONE cast: the
+			 * least change that reaches the band inside the tighter clause, which is
+			 * the half of the reconciliation that says 25 palettes are reachable only
+			 * onto a rotated cast - i.e. why the tighter pair is published as a target
+			 * with a ledger instead of asserted as the ceiling. They cannot be matched
+			 * against a re-derivation: the search's objective is not in the tree, and
+			 * this file's sample reaches a different cast which can report MORE than
+			 * the one an entry records. So they are bounded instead, and the shape a
+			 * NULL rotation claims is asserted rather than assumed. Each of these was
+			 * a probe finding before it was a check.
+			 */
+			const castFields = [
+				entry.tightRotation,
+				entry.tightReach,
+				entry.tightChroma,
+			];
+			const castParts = castFields.filter((v) => v !== null).length;
+			assertions++;
+			if (castParts !== 0 && castParts !== castFields.length) {
+				fail(
+					`${id}: the continuity exception records part of the tighter cast and not the rest (${castFields
+						.map((v) => (v === null ? "nothing" : v))
+						.join(
+							" / ",
+						)}) — the rotation, the chroma the cast carries and the ΔE00 it reaches are one measurement of one cast, so all three are recorded or none is. A half-recorded cast is not a weaker claim but an unreadable one: the \`why\` beside it is written from all three`,
+				);
+			}
+			if (entry.tightRotation !== null) {
+				assertions++;
+				if (Math.abs(entry.tightRotation) > HIGHLIGHT_HUE_LIMIT) {
+					fail(
+						`${id}: the continuity exception records a tighter cast rotated ${entry.tightRotation} degrees off the panel's hue, past the ${HIGHLIGHT_HUE_LIMIT} the tighter clause itself allows — a cast outside the clause cannot be the evidence that the clause is reachable, which is this entry's whole job`,
+					);
+				}
+				assertions++;
+				if (
+					entry.tightChroma < 0 ||
+					entry.tightChroma > entry.ceiling + HIGHLIGHT_TIGHT_CHROMA_SLACK
+				) {
+					fail(
+						`${id}: the continuity exception records a tighter cast carrying ${entry.tightChroma} C* over the panel against an allowance of ${entry.ceiling} plus the ${HIGHLIGHT_TIGHT_CHROMA_SLACK} of slack the clause is enforced with — the cast this entry exists to name has to sit INSIDE the clause it argues against`,
+					);
+				}
+				assertions++;
+				if (
+					entry.tightReach < HIGHLIGHT_SEPARATION_FLOOR ||
+					entry.tightReach > HIGHLIGHT_TIGHT_REACH_CEILING
+				) {
+					fail(
+						`${id}: the continuity exception records ΔE00 ${entry.tightReach} for its tighter cast, outside the ${HIGHLIGHT_SEPARATION_FLOOR}-${HIGHLIGHT_TIGHT_REACH_CEILING} window — under the floor is a cast that does not reach the band, and far over it is not the least change that reaches the band, which is what this table records and what the ruling rests on`,
+					);
+				}
+			} else {
+				assertions++;
+				if (entry.reach >= HIGHLIGHT_SEPARATION_FLOOR) {
+					fail(
+						`${id}: the continuity exception records NO tighter cast — the band unreachable inside the clause at this palette's own ink caps — but this file's own sample measures the clause reaching ΔE00 ${entry.reach} on it, past the ${HIGHLIGHT_SEPARATION_FLOOR} band. Either the palette has been re-authored and the entry is a retirement now, or the entry is missing the cast that reaches it`,
+					);
+				}
 			}
 		}
 	}
@@ -4688,8 +4815,15 @@ for (const { id, palette: p } of palettes) {
 	 *   `SYNTAX_COMMENT_FLOOR` (8) instead, because `info` is the cool
 	 *   counterweight the port mapped the TUI's `signal` onto: on the palettes
 	 *   whose second hue is in that family the two are the same colour by
-	 *   construction (`catppuccinLatte` measures 6.5, `radient` 5.9), and 15 would
-	 *   fail them for being what they are rather than for a defect.
+	 *   construction, and 15 would fail them for being what they are rather than for
+	 *   a defect. Measured on the values this branch ships, the five that need the
+	 *   lower floor are `catppuccinMocha` 8.01 (the binding one),
+	 *   `catppuccinMacchiato` 8.58, `catppuccinFrappe` 8.60, `localOperatorDark`
+	 *   12.57 and `ayuLight` 13.57, and on the three `catppuccin*` the cause is
+	 *   legible from the hues (`catppuccinMocha`'s second hue sits 2.68 degrees off
+	 *   `info`'s, `catppuccinFrappe` 17.02, `catppuccinMacchiato` 19.42). The two
+	 *   palettes this line used to name, `catppuccinLatte` and `radient`, measure
+	 *   25.48 and 15.09 and are not near the floor.
 	 * - `ALT_ACCENT_CHROMA_FLOOR` (15) asserts the AXIS: all three floors above
 	 *   can be satisfied by draining the hue toward the ink, which turns the second
 	 *   accent into a second grey. See the constant.
@@ -5056,7 +5190,10 @@ for (const { id, palette: p } of palettes) {
 	 * Both take `bg-sunken`, which is the repo's own answer and not this pass's:
 	 * `picker-host.tsx` chose it for the keyboard's row because it is "the only
 	 * ground role that steps perceptibly away from the dialog's own `bg-elevated`
-	 * in every one of the palettes" (measured ΔE00 5.85-16.70 across all 59), and
+	 * in every one of the palettes" (re-measured here: ΔE00 6.07-16.18 across all 59
+	 * on the grounds this branch ships - the figure at the commit that chose the role
+	 * was 5.85-16.70, measured before the legibility pass lifted 31 `sunken` and 32
+	 * `elevated` values), and
 	 * the command palette's active row was the sibling that kept the accent wash
 	 * alone - the row the operator screenshotted, which read 1.003:1 on
 	 * `localOperatorDark` while passing every threshold by hue.
@@ -5066,14 +5203,16 @@ for (const { id, palette: p } of palettes) {
 	 * also includes a hue clause (within 45° of its base where the base's chroma
 	 * is >= 4, else chroma within the base's plus 4). `sunken` is the palette's
 	 * own recessed ground rather than a tint authored for this row, and it does not
-	 * satisfy that clause in eight palettes: seven light palettes carry more
-	 * chroma than their own near-neutral `elevated` plus 4 - alucard 9.92,
-	 * ayuLight 4.75, localOperatorLight 7.52, mintLight 10.00, rosePineDawn 7.77,
-	 * sage 9.66, solarizedLight 10.03 - and `dune`'s sunken sits 46.09° from its
-	 * elevated, 1.09° outside the limit. Both are the palette's own cast on a
+	 * satisfy that clause in eight palettes: seven light palettes carry more chroma
+	 * in `sunken` than their own near-neutral `elevated` plus the 4 the clause
+	 * grants - alucard 9.98 C* against 6.56, ayuLight 4.75 against 4.00,
+	 * localOperatorLight 7.54 against 5.56, mintLight 10.01 against 5.24,
+	 * rosePineDawn 7.81 against 5.07, sage 9.67 against 6.56, solarizedLight 10.10
+	 * against 6.06 - and `dune`'s sunken sits 49.58° from its elevated, 4.58°
+	 * outside the limit. Both are the palette's own cast on a
 	 * recessed plane, which is what the clause exists to catch only when it has
 	 * been AUTHORED onto a selection; the two marks the clause would otherwise
-	 * separate are separated here by ΔE00 5.85-16.70, the widest margin in the
+	 * separate are separated here by ΔE00 6.07-16.18, the widest margin in the
 	 * system. Recorded as an open question for the design round rather than
 	 * silently dropped.
 	 */
@@ -5291,5 +5430,5 @@ if (stalePerceptible.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${CONTROL_EDGE_PINNED.length} pinned control edge(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_CONTINUITY_EXCEPTIONS.length} measured continuity exception(s), 0 over-band exception(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${PERCEPTIBLE_EXCEPTIONS.length} pinned ΔE00 exception(s), ${INK_STEP_PINNED.length} pinned ink step(s), ${CONTROL_EDGE_PINNED.length} pinned control edge(s), ${HIGHLIGHT_STEP_PINS.length} pinned highlight step(s), ${HIGHLIGHT_CONTINUITY_EXCEPTIONS.length} measured continuity exception(s), ${overBand} over-band exception(s), ${HIGHLIGHT_WASH_PINS.length} pinned wash separation(s).`,
 );

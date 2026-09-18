@@ -102,13 +102,14 @@ const ROLE_DANGER_WASH = "var(--color-danger-wash)";
  * creates is `accentWash` beside `accentAltWash`, and the contract asserts that
  * pair at the field floor (ΔE00 2.0); measured across all 59 palettes the
  * tightest is 2.05. Category 2 is `accentAltWash` beside `infoWash`, which is
- * also the pair a palette can make close — the five whose second hue is in the
- * `info` family (`catppuccinLatte`, `catppuccinFrappe`, `catppuccinMacchiato`,
- * `catppuccinMocha`, `radient`) — and it is not close today: the tightest of the
- * 59 is ΔE00 2.93, above the 2.0 field floor, so no palette needs the ramp
- * reordered. That is worth re-measuring rather than assuming if either family
- * moves: this is the one surface where a decorative hue and a semantic are read
- * side by side.
+ * also the pair a palette can make close: measured across the 59 the five
+ * tightest are `catppuccinMocha` 2.93, `palenight` 3.38, `vaporwave` 3.56,
+ * `radient` 3.81 and `obsidian` 4.24, and the tightest of those is also the one
+ * palette whose second hue shares `info`'s family (`catppuccinMocha`, 2.68
+ * degrees off it). It is not close today: 2.93 is above the 2.0 field floor, so
+ * no palette needs the ramp reordered. That is worth re-measuring rather than
+ * assuming if either family moves: this is the one surface where a decorative
+ * hue and a semantic are read side by side.
  */
 const WASH_CYCLE = [
 	ROLE_ACCENT_WASH,
