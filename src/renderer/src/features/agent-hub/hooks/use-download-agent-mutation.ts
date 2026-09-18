@@ -126,7 +126,7 @@ export const useDownloadAgentMutation = () => {
 			}
 
 			// Invalidate local agents list to reflect the newly downloaded agent
-queryClient.invalidateQueries({ queryKey: agentsQueryKey });
+			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
 			// The hub record's own count, moved by the delta the server just
 			// applied; there is no per-card count query left to invalidate.
 			patchPublicAgentCount(queryClient, {
