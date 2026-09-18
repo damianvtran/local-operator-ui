@@ -1028,6 +1028,23 @@ export type PendingServerUpdateMarker = {
 	 * alive - see `readProcessStartStamp` for why liveness alone is not identity.
 	 */
 	groupStartedAt: string | null;
+	/**
+	 * The console script the attempt RAN - the install whose version this record's
+	 * `before` reading describes, and the one a later reader must ask about.
+	 *
+	 * WHY IT IS HERE rather than re-resolved by whoever reads the record: a record is
+	 * read on a LATER launch, when the app has no memory of what the press resolved,
+	 * and re-resolving gives the shim - which on a host where the shim and the serving
+	 * install differ is a different tree. Four rounds found this seam one site at a
+	 * time (the press against the check, the two evidence reads, then the unattended
+	 * reconciliation here), because each site was free to resolve its own install. The
+	 * record now carries the install, so a reader has nothing to resolve.
+	 *
+	 * Optional because a record written by an older build does not have it; a reader
+	 * that finds none falls back to the shim and SAYS SO, rather than pretending the
+	 * reading is about the attempt's install.
+	 */
+	installPath?: string | null;
 };
 
 export function pendingServerUpdateMarkerPath(dir: string): string {
@@ -1085,6 +1102,14 @@ export function parsePendingServerUpdateMarker(
 				typeof parsed.groupStartedAt === "string"
 					? parsed.groupStartedAt
 					: null,
+			/*
+			 * The install the attempt ran, and the reason it is parsed rather than dropped:
+			 * the reader has no press in scope, so the record is the ONLY thing that can tell
+			 * it which tree to ask about. A record without it is an older build's, and the
+			 * reader says so and falls back rather than guessing silently.
+			 */
+			installPath:
+				typeof parsed.installPath === "string" ? parsed.installPath : null,
 		};
 	} catch {
 		return null;

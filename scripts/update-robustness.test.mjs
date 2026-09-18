@@ -7536,6 +7536,38 @@ test("the server channel's rule names its four states from the readings", async 
  * `runGate` lets a case hold the installer open, which is how the in-flight guard
  * and the mid-attempt marker are driven.
  */
+/*
+ * A synthetic install as `readInstallIdentity` sees one: a console script under `bin`,
+ * a `pyvenv.cfg` so the prefix is recognised as a venv, and a dist-info whose DIRECTORY
+ * NAME carries the version - the same thing `importlib.metadata` reads on the Python
+ * side, which is why no interpreter is involved.
+ */
+const makeInstall = (root, version) => {
+	mkdirSync(join(root, "bin"), { recursive: true });
+	writeFileSync(
+		join(root, "bin", "local-operator"),
+		`#!/bin/sh\nexec ${join(root, "bin", "python")} -m local_operator \"$@\"\n`,
+		{ mode: 0o755 },
+	);
+	writeFileSync(join(root, "pyvenv.cfg"), "home = /usr/bin\n");
+	const site = join(root, "lib", "python3.13", "site-packages");
+	mkdirSync(site, { recursive: true });
+	const distInfo = join(site, `local_operator-${version}.dist-info`);
+	mkdirSync(distInfo, { recursive: true });
+	writeFileSync(
+		join(distInfo, "METADATA"),
+		`Name: local-operator\nVersion: ${version}\n`,
+	);
+	return distInfo;
+};
+const moveInstall = (root, from, to) => {
+	const site = join(root, "lib", "python3.13", "site-packages");
+	renameSync(
+		join(site, `local_operator-${from}.dist-info`),
+		join(site, `local_operator-${to}.dist-info`),
+	);
+};
+
 const driveGlobalUpdate = async ({
 	before = "0.55.10",
 	after = "0.56.0",
@@ -7665,7 +7697,13 @@ const driveGlobalUpdate = async ({
 		// them; anything after those repeats the last one.
 		const readings = [before, after];
 		if (!realEvidenceReads) {
-			updateService.readGlobalInstallVersion = () =>
+			/*
+			 * The scripted reading, for the cases that are about what the service does with a
+			 * version rather than about which install it came from: it ignores the install the
+			 * caller names, deliberately - the read is now a REQUIRED argument (`installPath`),
+			 * and the cases that need the shipped read use `realEvidenceReads` instead.
+			 */
+			updateService.readInstallVersionAt = () =>
 				readings.length > 1 ? readings.shift() : after;
 		}
 		/*
@@ -8026,6 +8064,7 @@ test("an attempt that landed while no app was watching is reported once, on the 
 				before: "0.55.10",
 				target: "0.56.0",
 				startedAt: new Date().toISOString(),
+				installPath: run.updateService.resolveLocalOperatorPath(),
 			})}\n`,
 			"utf8",
 		);
@@ -8035,7 +8074,7 @@ test("an attempt that landed while no app was watching is reported once, on the 
 		 * and the published release is the one that landed - so the check has nothing
 		 * to offer and only this report can say anything about what happened.
 		 */
-		run.updateService.readGlobalInstallVersion = () => "0.56.0";
+		run.updateService.readInstallVersionAt = () => "0.56.0";
 		run.updateService.getInstalledBackendVersion = async () => "0.55.10";
 		run.updateService.getLatestPypiVersion = async () => "0.56.0";
 		await run.updateService.checkForBackendUpdates(false);
@@ -10997,38 +11036,6 @@ test("the press acts on the install the panel described, in both directions", as
  *     verdict read from the wrong tree turns into a false success.
  */
 test("the verdict follows the install the press ran, in both directions", async () => {
-	/*
-	 * A synthetic install as `readInstallIdentity` sees one: a console script under `bin`,
-	 * a `pyvenv.cfg` so the prefix is recognised as a venv, and a dist-info whose DIRECTORY
-	 * NAME carries the version - the same thing `importlib.metadata` reads on the Python
-	 * side, which is why no interpreter is involved.
-	 */
-	const makeInstall = (root, version) => {
-		mkdirSync(join(root, "bin"), { recursive: true });
-		writeFileSync(
-			join(root, "bin", "local-operator"),
-			`#!/bin/sh\nexec ${join(root, "bin", "python")} -m local_operator \"$@\"\n`,
-			{ mode: 0o755 },
-		);
-		writeFileSync(join(root, "pyvenv.cfg"), "home = /usr/bin\n");
-		const site = join(root, "lib", "python3.13", "site-packages");
-		mkdirSync(site, { recursive: true });
-		const distInfo = join(site, `local_operator-${version}.dist-info`);
-		mkdirSync(distInfo, { recursive: true });
-		writeFileSync(
-			join(distInfo, "METADATA"),
-			`Name: local-operator\nVersion: ${version}\n`,
-		);
-		return distInfo;
-	};
-	const move = (root, from, to) => {
-		const site = join(root, "lib", "python3.13", "site-packages");
-		renameSync(
-			join(site, `local_operator-${from}.dist-info`),
-			join(site, `local_operator-${to}.dist-info`),
-		);
-	};
-
 	const run = async ({ shimRoot, servingRoot, moveShim, moveServing }) => {
 		makeInstall(shimRoot, "0.55.10");
 		makeInstall(servingRoot, "0.55.10");
@@ -11045,8 +11052,8 @@ test("the verdict follows the install the press ran, in both directions", async 
 				 */
 				daemonReports: moveServing ? "0.56.0" : "0.55.10",
 				runGate: () => {
-					if (moveServing) move(servingRoot, "0.55.10", "0.56.0");
-					if (moveShim) move(shimRoot, "0.55.10", "0.56.0");
+					if (moveServing) moveInstall(servingRoot, "0.55.10", "0.56.0");
+					if (moveShim) moveInstall(shimRoot, "0.55.10", "0.56.0");
 				},
 			});
 			try {
@@ -11165,4 +11172,148 @@ test("each surface that renders an attempt's failure calls the shared reason hel
 			`${relative} must not classify an attempt's report - that is what deleted the sentence`,
 		);
 	}
+});
+
+/**
+ * THE UNATTENDED RECONCILIATION READS THE INSTALL THE RECORD NAMES.
+ *
+ * The launch-time path is the last place this seam was found (review round 7, M1), and it is the
+ * one with no press in scope: the app comes back after dying mid-attempt and reads the record.
+ * Pre-fix both sides of its comparison resolved the shim, so they agreed; once the press began
+ * running the serving install, the reading had to come from the record, or the reconciliation
+ * judged a tree the attempt never touched - a landed update reported as "did not move the
+ * install", and a no-op reported as a success when only the shim had moved.
+ */
+test("the unattended reconciliation judges the install the record names", async () => {
+	const markerFor = (installPath, before) => ({
+		before,
+		target: "0.56.0",
+		startedAt: new Date().toISOString(),
+		deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+		groupPid: null,
+		groupStartedAt: null,
+		installPath,
+	});
+
+	const scenario = async ({ moveServing = false, moveShim = false } = {}) => {
+		const shimRoot = mkdtempSync(join(tmpdir(), "lo-unattended-shim-"));
+		const servingRoot = mkdtempSync(join(tmpdir(), "lo-unattended-serving-"));
+		const cleanup = () => {
+			rmSync(shimRoot, { recursive: true, force: true });
+			rmSync(servingRoot, { recursive: true, force: true });
+		};
+		makeInstall(shimRoot, "0.55.10");
+		makeInstall(servingRoot, "0.55.10");
+		if (moveServing) moveInstall(servingRoot, "0.55.10", "0.56.0");
+		if (moveShim) moveInstall(shimRoot, "0.55.10", "0.56.0");
+		const drive = await driveGlobalUpdate({
+			servingPrefix: servingRoot,
+			shimPath: join(shimRoot, "bin", "local-operator"),
+			realEvidenceReads: true,
+		});
+		try {
+			writeFileSync(
+				drive.markerPath,
+				JSON.stringify(
+					markerFor(join(servingRoot, "bin", "local-operator"), "0.55.10"),
+				),
+			);
+			await drive.updateService.reportUnattendedServerUpdate();
+			return {
+				completed: backendCompletion(drive.sent),
+				markerStillThere: existsSync(drive.markerPath),
+				dispose: () => {
+					drive.dispose();
+					cleanup();
+				},
+			};
+		} catch (error) {
+			drive.dispose();
+			cleanup();
+			throw error;
+		}
+	};
+
+	// (a) The install the record names moved while nothing was watching: that is the report.
+	const landed = await scenario({ moveServing: true });
+	try {
+		assert.ok(landed.completed, "a landed unattended update must be reported");
+		assert.equal(landed.completed.payload.installVersion, "0.56.0");
+		assert.equal(
+			landed.markerStillThere,
+			false,
+			"the record is spent once it is reported",
+		);
+	} finally {
+		landed.dispose();
+	}
+
+	/*
+	 * (b) THE FALSE SUCCESS, and the reason this case exists: the shim moved, the install the
+	 * record names did not. A reading taken from the shim sees the change and publishes a
+	 * success for an attempt that changed nothing.
+	 */
+	const wrongTree = await scenario({ moveShim: true });
+	try {
+		assert.equal(
+			wrongTree.completed,
+			undefined,
+			"a shim-only change is not the attempt landing",
+		);
+		assert.equal(wrongTree.markerStillThere, false);
+	} finally {
+		wrongTree.dispose();
+	}
+});
+
+/**
+ * THE INVARIANT THE FOUR INSTANCES SHARED, guarded the way the consumers are.
+ *
+ * Rounds 5, 6 and 7 each found one call site reading an install of its own - the press against
+ * the check, the two evidence reads, then the unattended reconciliation - because every site was
+ * free to resolve the shim. The behaviour cases cover the sites that exist; this covers the one
+ * a future edit adds, by refusing a read that names no attempt. It reads the source on purpose:
+ * the defect was a call site, and a call site is what a behaviour test cannot see.
+ */
+test("no attempt-scoped evidence read resolves an install of its own", async () => {
+	const source = readFileSync(
+		join(process.cwd(), "src/main/update-service.ts"),
+		"utf8",
+	);
+	const callPattern = /read(?:InstallVersionAt|RebuildMarkerState)\(/g;
+	let match = callPattern.exec(source);
+	let calls = 0;
+	let legacyFallbacks = 0;
+	while (match !== null) {
+		calls += 1;
+		let depth = 1;
+		let i = match.index + match[0].length;
+		while (i < source.length && depth > 0) {
+			if (source[i] === "(") depth += 1;
+			if (source[i] === ")") depth -= 1;
+			i += 1;
+		}
+		const argument = source.slice(match.index + match[0].length, i - 1);
+		assert.ok(
+			argument.includes("installPath") || argument.includes("recordPath"),
+			`an attempt-scoped read must name the attempt's install, not resolve one: ${argument.trim()}`,
+		);
+		if (argument.includes("resolveLocalOperatorPath()")) {
+			legacyFallbacks += 1;
+			assert.ok(
+				argument.includes("recordPath ?? this.resolveLocalOperatorPath()"),
+				"the only permitted shim fallback is the reconciliation's legacy-record branch",
+			);
+		}
+		match = callPattern.exec(source);
+	}
+	assert.ok(
+		calls >= 5,
+		`expected the attempt-scoped reads to be called, found ${calls}`,
+	);
+	assert.equal(
+		legacyFallbacks,
+		1,
+		"exactly one caller may fall back to the shim: a record an older build wrote",
+	);
 });
