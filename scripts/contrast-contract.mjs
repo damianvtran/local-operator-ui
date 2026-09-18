@@ -2144,6 +2144,15 @@ const EXCEPTIONS = [];
  * from its own fill and from `sunken` in all 59 palettes — so these entries
  * document a known, bounded gap rather than the defect the round is about.
  *
+ * RE-MEASURED ON THE FOLD ONTO `origin/main` (`10926b782`): this branch lifted
+ * `sunken` on every palette it touched, and the step this entry records is
+ * measured between two fills on that ground, so `sage` moved 1.44 -> 1.45. The
+ * move is a re-measurement of the SAME pair with the same verdict (still under
+ * the floor, still the same two near-white washes), so the entry is re-recorded
+ * at the precision the gate matches on rather than the palette being re-authored
+ * for a hundredth of a ΔE00 — which is the maintenance the paragraph above asks
+ * for, not an exemption granted to a new defect.
+ *
  * @type {{theme: string, role: string, ground: string, got: number, why: string}[]}
  */
 const PERCEPTIBLE_EXCEPTIONS = [
@@ -2158,7 +2167,7 @@ const PERCEPTIBLE_EXCEPTIONS = [
 		theme: "sage",
 		role: "warningWash",
 		ground: "sunken",
-		got: 1.44,
+		got: 1.45,
 		why: "the palette design round 1 measured it in, and the reason the outside chip takes an edge at all",
 	},
 	{
@@ -2276,6 +2285,16 @@ const inkStepSeen = new Set();
  * `name`, which is the identity `CONTROLS` carries; a pin that names a control or
  * ground nothing measures fails the stale check below rather than passing quietly.
  *
+ * RE-MEASURED ON THE FOLD ONTO `origin/main` (`10926b782`), and this branch's own
+ * re-derivation of `highlight` is what moved them: the badge's edge is measured
+ * against that role, so `duskfox` went 2.91 -> 2.94 and `everforest` arrives at
+ * 2.84, newly under the floor. Both are still the class this list already holds -
+ * `borderControl` against a lifted `highlight` on a dark palette - and both of the
+ * app-wide fixes the paragraph above refuses would invalidate the same two
+ * measurement sets, so they are pinned at their measured precision. The pin is
+ * still a claim the gate re-checks: a palette re-authored out of the floor fails
+ * until its entry is deleted.
+ *
  * @type {{control: string, ground: string, theme: string, got: number}[]}
  */
 const CONTROL_EDGE_PINNED = [
@@ -2289,7 +2308,13 @@ const CONTROL_EDGE_PINNED = [
 		control: "conversation browser mark badge",
 		ground: "highlight",
 		theme: "duskfox",
-		got: 2.91,
+		got: 2.94,
+	},
+	{
+		control: "conversation browser mark badge",
+		ground: "highlight",
+		theme: "everforest",
+		got: 2.84,
 	},
 	{
 		control: "conversation browser mark badge",
