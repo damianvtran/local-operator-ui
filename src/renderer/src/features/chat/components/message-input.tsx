@@ -4561,15 +4561,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						lockedRunOf(newMessage, caret)?.command.name,
 					)
 				: /*
-				   * THE CLEARED SENTENCE COMES AFTER THE DISCLOSURE, and the order is a
-				   * precedence rather than an accident: the unredacted notice is about what the
-				   * NEXT ENTER will do with a secret that is still in the buffer, while the
-				   * cleared one is about a value that is already gone. If both are true — the
-				   * operator escaped a mask and then cleared a different reference — the one
-				   * that still threatens to disclose something outranks the one that reports a
-				   * loss.
-				   */
-				  clearedReference !== null
+					 * THE CLEARED SENTENCE COMES AFTER THE DISCLOSURE, and the order is a
+					 * precedence rather than an accident: the unredacted notice is about what the
+					 * NEXT ENTER will do with a secret that is still in the buffer, while the
+					 * cleared one is about a value that is already gone. If both are true — the
+					 * operator escaped a mask and then cleared a different reference — the one
+					 * that still threatens to disclose something outranks the one that reports a
+					 * loss.
+					 */
+					clearedReference !== null
 					? clearedNoticeLine(clearedReference.key)
 					: capture.arm !== null &&
 							// Measured at the END OF THE BUFFER rather than at the `caret` state,

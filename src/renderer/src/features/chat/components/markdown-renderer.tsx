@@ -63,36 +63,36 @@ type MarkdownRendererProps = {
 	styleProps?: MarkdownStyleProps;
 	className?: string;
 	/**
- * Whether a path the text merely CONTAINS becomes a link. On by default.
- *
- * A completed document is the case the linkifier was written for: the agent
- * wrote a path, and it is dead text until something renders it as a link.
- * The caller that turns it off is the canonical transcript's streaming row
- * (`AssistantRow`), for the reason `isQuotable` refuses a streaming record: a
- * row still receiving deltas is a prefix the next token falsifies, so a path
- * that is half-written - `/Users/x/Workspace/opoint-renewal-2026-09-1` - would
- * be linkified into a target that does not exist and then silently re-link as
- * the rest of it arrived. The link appears when the row settles, which is
- * also when the row's own Quote control appears.
- */
-linkify?: boolean;
-/**
- * Render the app's own credential citations as chips, in place.
- *
- * OPT-IN, and the asymmetry is deliberate. A citation is text the app itself
- * wrote for a value the reader can no longer see (`credentialCitation`), so
- * chipping it tells the reader something true about their own message. Agent
- * output is a different matter: a citation the MODEL writes is prose about a
- * credential, and a renderer that made it a chip would be dressing a sentence up
- * as the app's own receipt - and would do it on the streaming path, where the
- * text is deliberately half-parsed. So the transform travels with the caller's
- * opt-in and nothing else turns it on (`canonical-transcript.tsx`,
- * `message-content.tsx`), and every agent-facing render - reasoning, questions,
- * streaming - leaves it off and renders exactly what it rendered before. It
- * composes with `linkify`: a citation-bearing user turn is also a turn whose
- * paths may be linkified, which is why the hook below takes both.
- */
-credentialCitations?: boolean;
+	 * Whether a path the text merely CONTAINS becomes a link. On by default.
+	 *
+	 * A completed document is the case the linkifier was written for: the agent
+	 * wrote a path, and it is dead text until something renders it as a link.
+	 * The caller that turns it off is the canonical transcript's streaming row
+	 * (`AssistantRow`), for the reason `isQuotable` refuses a streaming record: a
+	 * row still receiving deltas is a prefix the next token falsifies, so a path
+	 * that is half-written - `/Users/x/Workspace/opoint-renewal-2026-09-1` - would
+	 * be linkified into a target that does not exist and then silently re-link as
+	 * the rest of it arrived. The link appears when the row settles, which is
+	 * also when the row's own Quote control appears.
+	 */
+	linkify?: boolean;
+	/**
+	 * Render the app's own credential citations as chips, in place.
+	 *
+	 * OPT-IN, and the asymmetry is deliberate. A citation is text the app itself
+	 * wrote for a value the reader can no longer see (`credentialCitation`), so
+	 * chipping it tells the reader something true about their own message. Agent
+	 * output is a different matter: a citation the MODEL writes is prose about a
+	 * credential, and a renderer that made it a chip would be dressing a sentence up
+	 * as the app's own receipt - and would do it on the streaming path, where the
+	 * text is deliberately half-parsed. So the transform travels with the caller's
+	 * opt-in and nothing else turns it on (`canonical-transcript.tsx`,
+	 * `message-content.tsx`), and every agent-facing render - reasoning, questions,
+	 * streaming - leaves it off and renders exactly what it rendered before. It
+	 * composes with `linkify`: a citation-bearing user turn is also a turn whose
+	 * paths may be linkified, which is why the hook below takes both.
+	 */
+	credentialCitations?: boolean;
 };
 
 const LANGUAGE_REGEX = /language-(\w+)/;
@@ -342,16 +342,17 @@ const GFM_MATH_LINKIFY_AND_CITATIONS = [
  * three deep is a shape no reviewer can check against the eight constants above,
  * and every value here is one of those constants rather than a literal.
  */
-const REMARK_PIPELINES: Record<string, typeof GFM_MATH_LINKIFY_AND_CITATIONS> = {
-	"000": GFM_ONLY,
-	"001": GFM_AND_CITATIONS,
-	"010": GFM_LINKIFY,
-	"011": GFM_LINKIFY_AND_CITATIONS,
-	"100": GFM_AND_MATH,
-	"101": GFM_MATH_AND_CITATIONS,
-	"110": GFM_MATH_LINKIFY,
-	"111": GFM_MATH_LINKIFY_AND_CITATIONS,
-};
+const REMARK_PIPELINES: Record<string, typeof GFM_MATH_LINKIFY_AND_CITATIONS> =
+	{
+		"000": GFM_ONLY,
+		"001": GFM_AND_CITATIONS,
+		"010": GFM_LINKIFY,
+		"011": GFM_LINKIFY_AND_CITATIONS,
+		"100": GFM_AND_MATH,
+		"101": GFM_MATH_AND_CITATIONS,
+		"110": GFM_MATH_LINKIFY,
+		"111": GFM_MATH_LINKIFY_AND_CITATIONS,
+	};
 const NO_REHYPE: [] = [];
 const KATEX_ONLY = [rehypeKatex];
 
@@ -447,7 +448,13 @@ const useMathPipeline = (
  * @param linkify - Whether bare paths become links (default true)
  */
 export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
-	({ content, styleProps, className, linkify = true, credentialCitations = false }) => {
+	({
+		content,
+		styleProps,
+		className,
+		linkify = true,
+		credentialCitations = false,
+	}) => {
 		const trimmed = useMemo(() => content.trim(), [content]);
 		const { remarkPlugins, rehypePlugins } = useMathPipeline(
 			trimmed,

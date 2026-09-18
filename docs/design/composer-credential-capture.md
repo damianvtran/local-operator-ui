@@ -436,6 +436,28 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
      **157.33 x 17 (left 188.98, top 86.39)** and the chip's box is identical, so
      the four deltas are 0,0,0,0; at the compact rung (a 440px column) the pair is
      **147.67 x 16**, also 0,0,0,0.
+     **THE MEASUREMENT ADDS NO SCROLL OFFSET, and that was round 1's blocker**
+     (UX round 1, U1). `getClientRects()` is viewport-relative and the layer is
+     `absolute inset-0` in the same wrapper as the field, so subtracting the
+     layer's own frame already lands the rect in the layer's coordinates; the
+     contribution used to add the MIRROR's own `scrollLeft`/`scrollTop` on top,
+     re-applying the scroll the rect had accounted for. In any message long enough
+     to scroll, the chip therefore sat exactly `fieldScrollTop` px from its marker
+     — an opaque ground, and a live `x`, over unrelated prose — with `deltaTop`
+     measured at 0 / 60 / 117 for `scrollTop` 0 / 60 / 117. The subscription is
+     what makes the rects track the scroll; the offset was cancelling it, and the
+     rig now measures a scrolled field as well as a resting one: the same story
+     reads **delta 0,0,0,0 at `scrollTop` 0, at 113 (its middle) and at 225 (its
+     end)**.
+     **THE LAYERS RE-DERIVE ON A RESIZE** (code review round 1, R1-3). The field
+     is `w-full`, so a pane resize re-wraps it with no React render at all: the
+     mirror would keep its inline `width = field.clientWidth` px and the chip the
+     rect it measured before — an opaque ground over the wrong glyphs. Both layers
+     register a `ResizeObserver` on the field, and the rig proves it by narrowing
+     the composer's own box (a viewport change proves nothing here: every story
+     pins its column width, and the first version of that phase measured exactly
+     that) and requiring the four deltas to stay at zero, asserted rather than
+     printed.
      **The label is the index alone (`#1`), and the measurement is why**: the
      run's box is 157.33px there while the words `Credential #1` plus
      `· 19 chars`, a glyph, a control, their paddings and three gaps measure
@@ -445,6 +467,34 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
      to `Credenti…`. `#1` with the count measures **126px**, which fits with 31px
      to spare, and the count keeps its unit because it is the half of the pair the
      operator cannot recover from anywhere else (`editor.py:523-540`).
+     **The box's own slack goes to the CONTROL, not between the facts** (design
+     round 1, D1): the box is 157.33px because the MARKER is 26 characters while
+     the chip's face is ~111px, and a count that took the slack parked 44px of
+     empty fill (28% of the box; 34px at the 440 rung) between `#1` and
+     `· 19 chars`, which read as two stranded clusters with an orphaned
+     leader-dot. The count now sits beside the ordinal and the void is a
+     deliberate gutter before the one element on the chip that is not a fact.
+     **The control is 16x16, and that number is a measured trade** (design round
+     1, D2; UX round 1, U5). It was a bare 12x12 glyph — the smallest control in
+     the composer and the only one whose click destroys a held secret, against the
+     app's own chip-prune precedent of 18x18 and `icon-sm`'s 28x28. Four pixels of
+     padding is as far as this chip allows: the run box is 17px tall at the 1024
+     rung and 16px at the 440 rung, so a 24x24 target (WCAG 2.2 SC 2.5.8) would
+     put the chip's own ground over the lines above and below and swallow their
+     clicks. The deviation is recorded rather than silent — 16x16 against the
+     24x24 minimum, bounded by the line box — and the focus ring takes the button
+     primitive's DENSE offset (`outline-offset-1`, with the `!` the primitive
+     needs) instead of the global 2px, which bled 3px past a control this small
+     and out over the chip's own edge.
+     **Its pointer step is the INK** (design round 1, D3): `ink-muted` at rest and
+     `ink` on hover, with `hover:bg-elevated active:bg-sunken` (the primitive's
+     ghost pair) beside it and `cursor-pointer` added. The old step was
+     ground-only (`hover:bg-elevated` against the chip's own fill) and measured
+     1.00-1.33:1 across the palettes — sixteen of fifty-nine at or under 1.05:1,
+     `obsidian` at ΔE00 0.77 and the default theme greyscale-identical — which is
+     the same hue-only separation the dash rule rejected for the two registers.
+     The two new triples (`ink-muted` on each wash) are rows in
+     `scripts/contrast-contract.mjs`.
      **A run that WRAPS keeps the wash and draws no chip**, and it is a
      documented fallback rather than an oversight: a wrapped marker reports more
      than one rect, so there is no single box to cover, and the mirror's
@@ -453,9 +503,20 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
      with the wrong label is worse than the wash it replaces.
      **The clear control is the composer's alone.** Clicking `x` splices the
      marker and its trailing space out of the buffer in ONE edit through the same
-     door the mint uses, drops the payload for that index and tells the operator
-     that the value is gone and only they can supply it again
-     (`clearedNotice`). An UNBACKED marker gets no control: nothing is behind it
+     door the mint uses, holds the payload, and tells the operator that the value
+     is gone and only they can supply it again (`clearedNotice`). IT TELLS THEM
+     TWICE, and that is round 1's U2: the sentence used to live only in a sonner
+     toast, which retires in 3.5-6.5s, while the composer's notice line — the
+     channel carrying every other credential-fate sentence in this flow — stayed
+     blank and `Cmd+Z` restored nothing. The words are now on BOTH: the notice
+     line keeps them until the next edit (the disclosure's own retirement rule,
+     compared against the buffer the sentence describes), and the toast carries an
+     `Undo` — the shape `composer-status-row.tsx` gives the cleared goal — which
+     puts the marker back at the offset it was removed from and leaves the payload
+     in place, so the restored reference is a backed chip rather than the warning
+     register. The payload is held until that toast retires, and the undo refuses
+     once the buffer has moved on, because an insert at a stale offset would
+     corrupt prose the operator has written since. An UNBACKED marker gets no control: nothing is behind it
      to clear, and a disabled-looking `x` would promise a verb the state cannot
      honour. So does a chip on a composer that is REFUSING input (a conversation
      this machine does not have, or a turn already running): the refusal on this
@@ -490,7 +551,25 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    lookalike stays prose), nothing inside `code`/`inlineCode` is ever touched (a
    citation the operator quoted in a fence is source, not a reference), and the
    chip's fill/edge/ink are the same roles as the composer's, in the two
-   registers the composer already distinguishes.
+   registers the composer already distinguishes. THREE MORE RULES CAME OUT OF
+   ROUND 1, and each is pinned in `scripts/credential-capture.test.mjs`:
+   **provenance** — a link is a citation only when its own VISIBLE TEXT is the
+   citation its URL names, because a URL's shape alone was satisfied by a
+   hand-typed `[sneaky](#lo-credential/…)` and a chip is a claim that the app
+   wrote the receipt (code review round 1, Q1; `citationFromLink`); **the
+   citation pass can veto the math pass** — every citation carries one `$`, so
+   `containsLatex`'s `$…$` matched ACROSS two citations on one line, `remark-math`
+   is a micromark SYNTAX extension and split them at PARSE time, before any remark
+   plugin sees a tree, and the operator's own sentence was typeset as a formula
+   with neither reference chipped (code review round 1, R1-1; `markdown-math.ts`).
+   The rule now: when a citation is present and the document holds any other
+   pairable `$`, the CITATION WINS and the formula renders as its own source — a
+   formula the operator wrote is still on screen in their words, where a citation
+   that fails to chip is invisible. And **the sentence stays in the accessibility
+   tree**: it was rendered text before this change, and a `title` on a
+   non-focusable span made it pointer-only, so the chip carries it in a visually
+   hidden element beside the words it displays (design round 1, D5 / UX round 1,
+   U4) — nothing stored or sent changes with any of the three.
    **The armed run, measured** (design round 2; the figure below is recomputed
    from all twelve palettes the set then held rather than quoted, and it corrects
    the range round 1 recorded, whose low end was sage's 3.99 where the minimum is
@@ -852,3 +931,45 @@ on a minted pill.
 - Expanding a pill back into the buffer: the TUI refuses this for a credential
   (`ctrl+r` refuses; `action_expand_paste`), and so does this port.
 - Multiple simultaneous captures (one span at a time).
+
+## 12. The fold onto `3cb1eea3c` (2026-09-18)
+
+This branch was rebased onto `origin/main` three times; the last one is the only
+one that moved code this document describes, so the contract's implementation
+notes changed with it and the earlier ones did not.
+
+- `#302` (`fix(composer): a credential typed mid-sentence plans as the command,
+  not as prose`) owns the same composer files and the same `/credential`
+  vocabulary. Two things it changed are load-bearing here. First, the
+  command-lock is DERIVED (`lockedRunOf(buffer, caret)`) rather than stored, so
+  §7.1's clear control — which splices a MARKER, not a `/credential` token — has
+  no lock state to maintain and cannot leave one stale. Second, the
+  unredacted-draft notice now carries the command's name as a second argument,
+  and the composer's notice line therefore has an order: the unredacted sentence
+  (a secret still in the buffer, about to be exposed) outranks the cleared
+  sentence (a value already gone).
+- `#311` (`feat/chat-link-affordances`) gave the renderer an anchor of its own
+  (`MarkdownAnchor`, reached through `LINK_URL_TRANSFORM`), which is now the one
+  link implementation in the app. §7.1's transcript override is therefore a
+  FACTORY the renderer calls once at module scope with its own anchor, and every
+  link that is not a citation renders through that anchor — a second `<a>` in the
+  citation module would be the "second implementation of one thing" the
+  renderer's own comment refuses. The citation URL survives the new transform
+  because `classifyHref` answers `other` for a `#`-fragment (its URL branch is
+  http-only, its file branch is `file://` or a `/`-rooted path), so
+  `defaultUrlTransform` passes it verbatim; the three transcript states were
+  re-captured and came back byte-identical, which is the end-to-end proof rather
+  than the reading.
+- The renderer's plugin selection now answers three questions (math, linkify,
+  citations) out of eight hoisted arrays selected by one table, because
+  react-markdown memoises against array IDENTITY and a builder would miss that
+  memo on every render. The hook keeps main's name (`useMathPipeline`): a third
+  spelling of the same function for no behaviour is not a change worth making in
+  a conflict resolution.
+- The frames: sixteen credential states re-captured from the rebased tree;
+  141 of 162 byte-identical to the committed set, twenty sub-threshold (0–4 px
+  at a 5% fuzz), and the twelve `credential-pill-cleared` frames differing only
+  inside the sentence's own minted key name, which is random per run. Nothing in
+  the treatment moved, and the chip's geometry rig re-derives the same boxes on
+  this base (157.33 × 17 at 1024, 147.67 × 16 at 440, four deltas 0 at every
+  rung, 0,0,0,0 scrolled, 0 after the composer's own box narrows).
