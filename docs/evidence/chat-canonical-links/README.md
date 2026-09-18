@@ -35,6 +35,27 @@ The rows below are the states this run writes, so a reader can bisect one of the
 without re-taking the set: `--dirs=<state>` narrows the same command to the
 directories named in the left-hand column.
 
+**The round-4 re-take of the 22 `tokyoNight` frames raised the rig's theme-settle
+deadline, and that is stated rather than left in a shell history:**
+
+```sh
+env -u CMUX_* -u LOP_* HOME=/tmp/lo357/home TMPDIR=/tmp/lo357/tmp \
+    node scripts/capture-evidence.mjs http://localhost:6111 \
+        --only=chat-canonical-links --themes=tokyoNight --allow-backend \
+        --theme-settle-ms=300000
+```
+
+The guard that asserts a frame really is the theme it is named after polls for
+~10.9 s (40 × 250 ms plus the 900 ms post-navigation settle), which is the value
+every other frame here was taken under and which the rig still defaults to. On this
+host at load averages 144–233 the same story reaches `tokyoNight` after 72.1 s (and
+the default `localOperatorDark` after 30–66 s), so the deadline is now a knob and
+this pass raised it. A malformed value is REFUSED rather than silently replaced by
+the default — a run that quietly reverted to 10 s would reproduce the failure the
+knob exists to avoid — and `scripts/capture-evidence.test.mjs` pins that, the
+default, and the flag. Nothing else about the rig changed, and the frames are
+otherwise the rig's own output.
+
 The rig is the repository's own (`scripts/capture-evidence.mjs`): a private
 headless Chromium over raw CDP, a fresh `--user-data-dir` under `/tmp`, real
 `Input.dispatchMouseEvent`/`dispatchKeyEvent` for every pointer and key state, and
@@ -83,7 +104,7 @@ backend was answering, not that one was used.
 
 `docs/evidence/chat-canonical-links-before/` is the same story, the same fixtures,
 the same twelve themes and the same rig entries on the head that adds the ninth
-shape and NOTHING of the fix (`b4d12e7a8`, rebased as `b4d12e7a8`; the story-fixture-only commit, the
+shape and NOTHING of the fix (`3b625b4a2`, the story-fixture-only commit, the
 manifest declares it as a supplementary set with that `capturedAtHead`). In it the
 operator's own sentence still underlines `/new`, and every state sits at the same
 paragraph position, so a reader can put the two halves side by side without
@@ -91,7 +112,7 @@ hunting for the row.
 
 It has FIVE states and not twenty-two, for two measured reasons rather than a
 gap. SIXTEEN of the twenty-one directories the design round handed over are
-byte-identical to the AFTER frames as committed at `2b3ac8a2b` (rebased as `2b3ac8a2b`), the head this
+byte-identical to the AFTER frames as committed at `b8d259d88`, the head this
 pass then replaced (`magick compare -metric AE` = 0, 12 of 12 themes each): a
 "before" frame that is its after frame photographs the fix, so those sixteen are
 not landed, and `chat-canonical-links-before/`'s own README carries the same count
@@ -135,27 +156,58 @@ between evidence and a picture:
 
 ## Honest limits of this set
 
-- **THE FRAMES COME FROM ONE HEAD, AND THE BEFORE HALF FROM ANOTHER.** Every frame
-  of the twenty-two states above was taken in this pass at this branch's
-  review-remediation head - `6f74c0aca` for the batches by state, with
-  `detected-targets` re-taken at `edbf5bca0`, where all 12 of its frames came back
-  byte-identical to the first take - and the tree those frames depict is the one the
-  shipped head still has: `git diff edbf5bca0..fcd3f159a` moves nothing under `src/`
-  or `scripts/`, and the only code commit above the capture head is round 2's
-  scoping of the predecessor refusal to the ambiguous class (`311e68666`), which
-  round 3 measured render-neutral for this story (the story's text holds no token of
-  the class that commit restored). The manifest's `head` is `edbf5bca0`, the rebased
-  spelling of the capture commit, and its `srcTree`/`scriptsTree` are re-derived at
-  the shipped tip because that code commit moves both trees - the distinction the
-  manifest's `headNote` states. So the set no longer carries the multi-head caveat an
-  earlier round's fold left here (a narrowed fold once re-took two states and kept
-  nineteen from the head before it). The `before/` half is a DIFFERENT head by
-  construction — it is the tree before the fix — and the manifest's
-  `supplementary` entry for it names which. Two independent re-takes of one state
-  still differ under **sub-perceptual rasterisation jitter** (34/36 and 11/12
-  measured, antialiasing deltas of at most 17/255, with no element appearing,
-  disappearing or moving), so a reader comparing a frame here against a fresh
-  capture should expect that, not a hash match.
+- **THE FRAMES COME FROM THREE HEADS, AND ONE THEME'S HAD TO BE TAKEN AGAIN.** Every
+  frame of the twenty-two states above was taken in this branch's remediation pass —
+  `e4d6cd4fc` for the batches by state, with `detected-targets` re-taken at
+  `b993af140`, where all 12 of its frames came back byte-identical to the first take —
+  EXCEPT the 22 `tokyoNight` frames, which the round-4 pass re-took at `39f12da53`,
+  the head the manifest's `head` now names. That third head is the round-4 pass's own
+  evidence-tooling commit (`chore(evidence): make the rig's theme-settle deadline
+  opt-in configurable`), and the other 242 frames are pictures of `e4d6cd4fc` and
+  `b993af140`. Stating that split is what this bullet's earlier one-head form got
+  wrong. WHY THESE FRAMES ARE PICTURES OF THE SHIPPED TREE, IN THE FORM ROUNDS 4 AND 5
+  SETTLED ON: they were painted at the commit the manifest's `head` names, whose `src`
+  tree is `33cb7c5e8`, and the SHIPPED head's `src` is not that tree — the base has
+  moved three times since, so the two are different trees and no sentence here claims
+  the identity any more (that claim, substituting the folded spelling's `src` for the
+  capture-time one, is exactly how a base move hides itself, and it is why this bullet
+  was rewritten twice). What they are is the same PICTURES as this tree paints, and
+  that is measured rather than argued: the live re-capture of two states at THIS head
+  (`detected-targets` and the falsifiable `hover-command-prose`) and the designer's
+  three-state re-capture at the previous one both came back byte-identical, `magick
+  compare -metric AE` = 0, and the
+  reason it does is readable in the source — the one element the base moves added on
+  this path, `{record.truncated && …}` in `canonical-transcript.tsx`, is gated on a
+  field only `transcript-reducer.ts` sets (the story this set renders never sets it),
+  #363's change to that file is comment-only, and every file that paints these links
+  plus all 58 palette files are byte-identical across the folds. WHAT A BRANCH-DELTA
+  PROOF CANNOT SEE, AND WHY `tokyoNight` HAD TO BE TAKEN AGAIN: `git diff
+  <capture-spelling>..HEAD` over `src/` and `scripts/` is a statement about THIS
+  BRANCH's own delta, and a BASE MOVE is not this branch's delta. `ef8ae2bfe` -> `896b19134` carried #361's colour-application pass,
+  which re-solved `tokyoNight` (canvas `#1E1F2A` -> `#2A2A35`, ink `#C0CAF5` ->
+  `#D5DCFF`, 22 roles), so the frames that theme had already taken depicted a palette
+  that moved under them while every stamp and every diff stayed green. The measurement
+  that discriminates is the one the frames carry themselves, per theme rather than per
+  branch: the ground at `(3,3)` against the head's `--lo-canvas`. All 27 `tokyoNight`
+  frames now read `srgb(41,42,55)` — the shipped `#2A2A35` to WebP loss, decoded with
+  both `dwebp` and ImageMagick — where the frames they replaced read
+  `srgb(30,30,44)`, the pre-re-solve `#1E1F2A`; and no other theme's frame moved,
+  because that pass rewrote exactly 27 `.webp` files. The manifest's `head` is
+  `39f12da53` and its `srcTree`/`scriptsTree` are re-derived at the shipped tip —
+  `scriptsTree` because the round-4 pass's own commit moves `scripts/` — the
+  distinction the manifest's `headNote` states, and the 5 `tokyoNight` frames of the
+  `before/` half were re-taken at `3b625b4a2` beside them for the same reason. The
+  `before/` half is a DIFFERENT head by construction — it is the tree before the fix —
+  and the manifest's `supplementary` entry for it names which. `tokyoNight` at this head reproduces BYTE-FOR-BYTE: two independent re-takes of
+  `detected-targets` - the round-4 pass's control and the round-5 pass's live re-capture at
+  this head - and the designer's three-state re-capture all returned `sha256`-identical
+  files with `AE` = 0, so frame-for-frame determinism is what this rig gives here and a
+  reader may compare a frame against a fresh capture and expect exactly that. Where it
+  does not - a pair of captures across a busy host can carry a sub-perceptual
+  antialiasing tail of at most 17/255, with no element appearing, disappearing or
+  moving - the frame-to-frame AE reading is stated with its numbers in
+  `chat-canonical-links-before/README.md`, which is where a reader should look for
+  that tail rather than here.
 
 - **The `path:line` register is UNPHOTOGRAPHED** (design round 1, D1), and that is
   stated rather than papered over: no state in this set contains an editor line

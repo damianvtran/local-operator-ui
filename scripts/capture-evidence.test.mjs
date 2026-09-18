@@ -44,6 +44,7 @@ import {
  * `scripts/` is held to.
  */
 const THEME_SETTLE_REFUSAL = /positive whole number of milliseconds/;
+const THEME_SETTLE_JOINED = /joined with '='/;
 const MODULE_LOADED = /loaded/;
 
 const build = () => {
@@ -426,4 +427,60 @@ console.log("loaded");`;
 	const refused = run("--theme-settle-ms=ten");
 	assert.notEqual(refused.status, 0, "a malformed flag loaded the script");
 	assert.match(refused.stderr, THEME_SETTLE_REFUSAL);
+});
+
+/*
+ * The space-separated spelling, which the file's shared `flag()` shape cannot
+ * see: round 5 (R5-8) measured that `--theme-settle-ms 300000` matched nothing
+ * and the run silently took the 10 s default - on the host that had already
+ * shown 10 s does not fit. It is refused by name now, which is the difference
+ * between a knob that fails closed and one that fails quietly.
+ */
+test("a space-separated theme-settle flag is refused rather than ignored", () => {
+	assert.throws(
+		() => resolveThemeSettleMs(["--theme-settle-ms", "300000"], {}),
+		THEME_SETTLE_JOINED,
+	);
+	// The `=` form is the one that works, and the environment is still read when
+	// the flag is absent entirely.
+	assert.equal(resolveThemeSettleMs(["--theme-settle-ms=300000"], {}), 300_000);
+	assert.equal(
+		resolveThemeSettleMs([], { [THEME_SETTLE_ENV]: "300000" }),
+		300_000,
+	);
+});
+
+/*
+ * The budget and the guard that spends it, pinned as ONE thing.
+ *
+ * Why this is a test rather than a sentence in the commit message: round 5's
+ * R5-3 probed a copy of the module with the guard's loop body reverted to the
+ * pre-change literal (`attempt < 40`, the shape this knob replaced) and the
+ * whole file stayed green at 10/10 — because every assertion above is about the
+ * constants, and a guard that ignores them is invisible from the outside. That
+ * revert is the one regression that would silently re-time every capture
+ * without moving a constant, so the coupling is asserted against the shipped
+ * source, where it lives.
+ */
+test("the theme guard spends the configurable budget, not a literal", () => {
+	const source = readFileSync(
+		new URL("./capture-evidence.mjs", import.meta.url),
+		"utf8",
+	);
+	const required = [
+		"const settleAttempts = Math.ceil(THEME_SETTLE_MS / THEME_SETTLE_POLL_MS);",
+		"for (let attempt = 0; attempt < settleAttempts; attempt++) {",
+		"await sleep(THEME_SETTLE_POLL_MS);",
+		'document carries theme "${applied}" after ${THEME_SETTLE_MS / 1000}s',
+	];
+	for (const needle of required) {
+		assert.ok(
+			source.includes(needle),
+			`the guard no longer contains: ${needle}`,
+		);
+	}
+	assert.ok(
+		!source.includes("attempt < 40"),
+		"the pre-change literal is back in the guard: the budget constants are no longer what it spends",
+	);
 });

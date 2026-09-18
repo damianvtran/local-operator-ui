@@ -3,13 +3,40 @@
 Five states × twelve themes = **60 frames**: the same story, the same fixtures, the
 same entries, the same 1024×720 and 420×900 viewports and the same twelve themes as
 `../chat-canonical-links/`, photographed on the head that adds the ninth shape and
-NOTHING of the fix — `b4d12e7a854a757555f79626a4d6dfe3002ad34c`, rebased as
-`b4d12e7a82157768d86114e3d67a3331eacb1834`, the
-story-fixture-only commit. These are the operator's own report in the frames: in
+NOTHING of the fix — the story-fixture-only commit, `219c812762157768d86114e3d67a3331eacb1834`
+(the first rebase; NO REF REACHES IT — the object survives only in a clone that carried
+this branch through that fold, and it dies at the next `gc` — which is why the
+reachable spelling below is the one the manifest cites), carried into this lineage as
+`3b625b4a2ff6c3153639b228146a9dbf24e61131`. These are the operator's own report in
+the frames: in
 them the sentence he quoted still underlines `/new`. The other half of that
 report, the strip the hover raised reading `No file at /new`, is a gesture rather
 than a resting state, and the state that would carry it is the one this head
 cannot take (below).
+
+**THE FIVE `tokyoNight` FRAMES WERE RE-TAKEN BY THE ROUND-4 PASS; THE OTHER 55 WERE
+NOT.** The 55 frames of the eleven other themes were painted at
+`219c812762157768d86114e3d67a3331eacb1834`, whose base predates #361's
+colour-application pass — which is why the five `tokyoNight` frames among them read
+the pre-re-solve ground `srgb(30,30,44)` at (3,3) rather than the shipped `#2A2A35`
+= (42,42,53). They were taken during the round-4 pass, at the fixture commit as this
+lineage spelled it THEN — the same commit whose current spelling is `3b625b4a2` — on
+base `e3f9fec32`, which carries #361 (naming the base the frames were actually painted
+on, rather than the folded spelling's, is the correction round 5's D1 asked for; the base
+this tree is currently folded onto is named in the manifest's fold record and deliberately
+NOT here, because a base written into a sentence goes stale at the next fold) — so all
+five read
+`srgb(41,42,55)` — the shipped ground to WebP loss, decoded
+with both `dwebp` and ImageMagick — and depict the SAME defect, because this head
+still holds none of the fix. No other theme needed re-taking: for the eleven others
+the base move's only role change is `highlight`'s retirement, which nothing under
+`src/` renders, so their frames were already pictures of both bases and are
+byte-identical to what they were. The practical consequence is in the pair's own
+measurement: at `tokyoNight` the pair `detected-targets` now differs inside one
+`482x35+272+617` box (thresholded at 8%, against the token's own
+`482x36+272+616` on `localOperatorDark`), where before the re-take it differed across
+`897x532+64+168` of the frame — the old before frame was not comparable to its
+partner at all, which is design round 4's D1 as a number.
 
 | Directory | Story | Gesture | What the pair shows |
 | --- | --- | --- | --- |
@@ -63,8 +90,7 @@ The AFTER half is the whole set, because the ninth shape sits in the story every
 state renders. This half is the five the design round actually took at that head,
 and the reason is measured rather than asserted: the artifact it handed over
 carried twenty-one directories, and SIXTEEN of them are byte-identical — 12 of 12
-themes each — to the AFTER frames as committed at `2b3ac8a2b` (rebased as
-`2b3ac8a2b`), which this pass
+themes each — to the AFTER frames as committed at `b8d259d88`, which this pass
 then replaced (`magick compare -metric AE` = 0 for every file, checked directory
 by directory). A "before" frame that is a copy of the after frame photographs the
 fix, not the defect, so those sixteen are not landed here. The five above are the
@@ -90,9 +116,11 @@ node scripts/capture-evidence.mjs http://localhost:6031 \
     --allow-backend
 ```
 
-in a worktree checked out at `b4d12e7a8`, rebased as `b4d12e7a8`, with the frames
-copied here unchanged
-(`cp -Rc`, an APFS clone: ~0 bytes at creation). `--allow-backend` because this
+in a worktree checked out at `3b625b4a2` (the round-4 re-take of the five
+`tokyoNight` frames: the same worktree, `--themes=tokyoNight` added and the rig's
+theme-settle deadline raised to `--theme-settle-ms=300000`, because this host cannot
+settle a theme inside the shipped ~10.9 s at load 144–233), with the frames copied
+here unchanged (`cp -Rc`, an APFS clone: ~0 bytes at creation). `--allow-backend` because this
 machine has a backend answering on the app's configured port and the rig refuses to
 sweep while one does; every story in this set renders fixtures and reaches it for
 nothing.
