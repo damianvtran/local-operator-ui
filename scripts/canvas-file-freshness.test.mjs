@@ -57,9 +57,20 @@ const bundle = await build({
 				cancelPendingWrites,
 				currentWriteEpoch,
 			} from "./src/renderer/src/features/chat/components/canvas/file-freshness";
-			export { answerFor, factAfter, FACT_TEXT, FACT_DETAIL, ANSWER_LIFETIME_MS } from "./src/renderer/src/features/chat/components/canvas/use-file-freshness";
+			export { answerFor, answerDetailFor, factAfter, FACT_TEXT, FACT_DETAIL, ANSWER_LIFETIME_MS } from "./src/renderer/src/features/chat/components/canvas/use-file-freshness";
 			export { viewerFor, READ_ENCODING } from "./src/renderer/src/features/chat/utils/viewer-routing";
 			export { canvasDocumentForPath } from "./src/renderer/src/features/chat/utils/canvas-document";
+			export {
+				adoptBuffer,
+				proposeBuffer,
+				saveBuffer,
+				resolveBuffer,
+				closeBuffer,
+				bufferIsDirty,
+				bufferText,
+				resetBuffers,
+				setBufferPorts,
+			} from "./src/renderer/src/features/chat/components/canvas/document-buffers";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -92,10 +103,20 @@ const {
 	cancelPendingWrites,
 	currentWriteEpoch,
 	answerFor,
+	answerDetailFor,
 	factAfter,
 	FACT_TEXT,
 	FACT_DETAIL,
 	ANSWER_LIFETIME_MS,
+	adoptBuffer,
+	proposeBuffer,
+	saveBuffer,
+	resolveBuffer,
+	closeBuffer,
+	bufferIsDirty,
+	bufferText,
+	resetBuffers,
+	setBufferPorts,
 	viewerFor,
 	READ_ENCODING,
 	canvasDocumentForPath,
@@ -907,15 +928,21 @@ test("the answer to a forced check that found identical bytes says so", () => {
 	 * slot is the only place a press on an unchanged text document can be
 	 * answered at all. It used to answer nothing.
 	 */
-	assert.equal(answerFor({ status: "identical" }, true), "Already up to date");
-	assert.equal(answerFor({ status: "identical" }, false), "Already up to date");
-	assert.equal(answerFor({ status: "applied" }, false), "Updated from disk");
+	assert.equal(answerFor({ status: "identical" }, true), "Up to date");
+	assert.equal(answerFor({ status: "identical" }, false), "Up to date");
+	assert.equal(answerFor({ status: "applied" }, false), "Reloaded");
+	// The full sentence lives beside the label (design round 4, D12), so a short
+	// visible answer never costs the reader the claim.
+	assert.match(
+		answerDetailFor({ status: "applied" }, false) ?? "",
+		/re-read from disk/,
+	);
 	assert.equal(
 		answerFor({ status: "unchanged" }, false),
 		undefined,
 		"a tick that found nothing new says nothing new",
 	);
-	assert.equal(answerFor({ status: "unchanged" }, true), "Already up to date");
+	assert.equal(answerFor({ status: "unchanged" }, true), "Up to date");
 });
 
 test("a failed read is not retired by a tick that never re-read anything", () => {
@@ -1019,4 +1046,362 @@ test("every fact has a sentence that fits the row, and a full one for the toolti
 		ANSWER_LIFETIME_MS > 0,
 		"an answer retires rather than standing for ever",
 	);
+});
+
+// ---------------------------------------------------------------------------
+// ROUND 4: THE BUFFER OWNER'S INVARIANTS (I1-I6)
+//
+// Each test here fails on the head its harm was reported against
+// (`f47abf778`), and the failure is the harm: content that is not the reader's
+// current buffer for that document reaching a file. The ports are fakes of the
+// BRIDGE (a `stat` answer and a `writeFile`), never of a decision - the same
+// shape the rest of this file uses.
+// ---------------------------------------------------------------------------
+
+/** A fake bridge: one file store, a clock that moves on every write. */
+function ownerBridge({ mtimeMs = 1000 } = {}) {
+	const files = new Map();
+	const writes = [];
+	let clock = mtimeMs;
+	const ports = {
+		probe: async (path) => {
+			const file = files.get(path);
+			return file
+				? { exists: true, isFile: true, mtimeMs: file.mtimeMs, error: null }
+				: { exists: false, isFile: false, mtimeMs: null, error: null };
+		},
+		write: async (path, text, encoding) => {
+			clock += 5;
+			files.set(path, { text, mtimeMs: clock });
+			writes.push({ path, text, encoding });
+		},
+	};
+	return {
+		files,
+		writes,
+		ports,
+		seed: (path, text) => files.set(path, { text, mtimeMs: clock }),
+	};
+}
+
+/** A fresh registry state for one test, and the fake bridge it writes to. */
+function ownerCase(bridgeOptions) {
+	const bridge = ownerBridge(bridgeOptions);
+	resetBuffers();
+	setBufferPorts(bridge.ports);
+	return bridge;
+}
+
+test("I1: a save writes THIS document's text, never another document's", async () => {
+	const bridge = ownerCase();
+	const A = "/tmp/owner-a.md";
+	const B = "/tmp/owner-b.md";
+	bridge.seed(A, "a-version");
+	bridge.seed(B, "b-version");
+	adoptBuffer({
+		documentId: "doc-a",
+		path: A,
+		text: "a-version",
+		mtimeMs: 1000,
+	});
+	adoptBuffer({
+		documentId: "doc-b",
+		path: B,
+		text: "b-version",
+		mtimeMs: 1000,
+	});
+
+	// The reader types in A, then switches to B and types there. UX round 4's U14:
+	// on the old head the switch wrote A's buffer into B (and its bytes were B's).
+	proposeBuffer("doc-a", "a-version plus the reader's line");
+	proposeBuffer("doc-b", "b-version plus the reader's line");
+
+	const savedA = await saveBuffer("doc-a");
+	assert.equal(savedA.status, "written");
+	assert.equal(bridge.writes.length, 1, "one document saved, one write");
+	assert.equal(bridge.writes[0].path, A);
+	assert.match(bridge.files.get(A).text, /plus the reader's line/);
+	assert.equal(
+		bridge.files.get(B).text,
+		"b-version",
+		"B's file was not written at all",
+	);
+});
+
+test("I1: a save cannot write a stale snapshot of the same document", async () => {
+	const bridge = ownerCase();
+	const path = "/tmp/owner-stale.md";
+	bridge.seed(path, "file");
+	adoptBuffer({ documentId: "doc", path, text: "file", mtimeMs: 1000 });
+
+	// Two keystrokes, then the debounce fires: the payload is whatever the owner
+	// holds NOW, not what the caller passed a second ago.
+	proposeBuffer("doc", "first edit");
+	proposeBuffer("doc", "first edit, second keystroke");
+	await saveBuffer("doc");
+	assert.equal(bridge.writes[0].text, "first edit, second keystroke");
+});
+
+test("I2: a file that moved on is never written, and the fact says why", async () => {
+	const bridge = ownerCase();
+	const path = "/tmp/owner-moved.md";
+	bridge.seed(path, "file");
+	adoptBuffer({ documentId: "doc", path, text: "file", mtimeMs: 1000 });
+	proposeBuffer("doc", "reader's words");
+	bridge.files.set(path, { text: "external", mtimeMs: 2000 });
+
+	const outcome = await saveBuffer("doc");
+	assert.equal(outcome.status, "blocked");
+	assert.equal(outcome.fact, "disk-changed");
+	assert.equal(bridge.writes.length, 0, "nothing reached the file");
+	assert.equal(documentFact("doc"), "disk-changed");
+	assert.equal(isAutosaveHeld("doc"), true, "and the autosave is held");
+
+	releaseDocumentHold("doc");
+	setDocumentFact("doc", null);
+	resetBuffers();
+	setBufferPorts(null);
+});
+
+test("I3: an explicit save writes the reader's CURRENT buffer and converts the fact", async () => {
+	const bridge = ownerCase();
+	const path = "/tmp/owner-explicit.md";
+	bridge.seed(path, "file");
+	adoptBuffer({ documentId: "doc", path, text: "file", mtimeMs: 1000 });
+	// The reader types; the file changes underneath; then Meta+S. QA round 4's Q13:
+	// the old head wrote the PRE-EDIT buffer here (the debounce's value) and marked
+	// the document clean, so the words never landed at all.
+	proposeBuffer("doc", "file plus reader");
+	bridge.files.set(path, { text: "external", mtimeMs: 2000 });
+
+	const outcome = await saveBuffer("doc", { explicit: true });
+	assert.equal(outcome.status, "written");
+	assert.equal(bridge.writes[0].text, "file plus reader");
+	assert.equal(outcome.replaced, true);
+	assert.equal(documentFact("doc"), "save-replaced");
+	assert.equal(
+		bufferIsDirty("doc"),
+		false,
+		"clean only because those bytes reached the file",
+	);
+
+	resetBuffers();
+	setBufferPorts(null);
+});
+
+test("I4: a resolution kills a proposal that predates it", async () => {
+	const bridge = ownerCase();
+	const path = "/tmp/owner-resolve.md";
+	bridge.seed(path, "file");
+	adoptBuffer({ documentId: "doc", path, text: "file", mtimeMs: 1000 });
+	proposeBuffer("doc", "reader's words, pre-load");
+
+	/*
+	 * Hold the probe open, resolve the document (what the control's load does) and
+	 * only then let the probe answer: the save must abandon itself rather than write
+	 * the text it was born with. UX U9 / QA Q13's mechanism, at its source.
+	 */
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const realProbe = bridge.ports.probe;
+	setBufferPorts({
+		probe: async (p) => {
+			await gate;
+			return realProbe(p);
+		},
+		write: bridge.ports.write,
+	});
+	const inFlight = saveBuffer("doc");
+	resolveBuffer("doc");
+	release();
+
+	const outcome = await inFlight;
+	assert.equal(outcome.status, "cancelled");
+	assert.equal(
+		bridge.writes.length,
+		0,
+		"the stale proposal never reached the file",
+	);
+
+	setBufferPorts(null);
+	resetBuffers();
+});
+
+test("I5: releasing the hold does NOT cancel a write in flight", async () => {
+	const bridge = ownerCase();
+	const path = "/tmp/owner-release.md";
+	bridge.seed(path, "file");
+	adoptBuffer({ documentId: "doc", path, text: "file", mtimeMs: 1000 });
+	proposeBuffer("doc", "the reader's last second");
+
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const realProbe = bridge.ports.probe;
+	setBufferPorts({
+		probe: async (p) => {
+			await gate;
+			return realProbe(p);
+		},
+		write: bridge.ports.write,
+	});
+	const inFlight = saveBuffer("doc");
+	// The unmount's own cleanup calls this. On the old head it DELETED the epoch,
+	// so the flush it had just started abandoned itself (R4-2, measured: the last
+	// second of typing never landed).
+	releaseDocumentHold("doc");
+	release();
+
+	const outcome = await inFlight;
+	assert.equal(outcome.status, "written");
+	assert.equal(bridge.writes[0].text, "the reader's last second");
+
+	setBufferPorts(null);
+	resetBuffers();
+});
+
+test("I5: closing a held document keeps its words, its flag and its fact", async () => {
+	const bridge = ownerCase();
+	const path = "/tmp/owner-close.md";
+	bridge.seed(path, "file");
+	const committed = [];
+	adoptBuffer({
+		documentId: "doc",
+		path,
+		text: "file",
+		mtimeMs: 1000,
+		commit: (text, mtimeMs) => committed.push({ text, mtimeMs }),
+	});
+	proposeBuffer("doc", "reader's unsaved words");
+	bridge.files.set(path, { text: "external", mtimeMs: 2000 });
+	await saveBuffer("doc"); // raises the fact, holds the document
+	assert.equal(isAutosaveHeld("doc"), true);
+
+	closeBuffer("doc");
+	await new Promise((resolve) => setTimeout(resolve, 10));
+
+	// The buffer is in the store even though the file refused it (Q11/U12)...
+	assert.equal(committed.at(-1)?.text, "reader's unsaved words");
+	// ...and the flags that protect it are still standing (R4-1: a next activation
+	// must not apply the file's version over these words).
+	assert.equal(bufferIsDirty("doc"), true);
+	assert.equal(isAutosaveHeld("doc"), true);
+	assert.equal(documentFact("doc"), "disk-changed");
+
+	releaseDocumentHold("doc");
+	setDocumentFact("doc", null);
+	resetBuffers();
+});
+
+test("I5: a store change while dirty does not adopt the file's version", async () => {
+	const bridge = ownerCase();
+	const path = "/tmp/owner-adopt.md";
+	bridge.seed(path, "file");
+	adoptBuffer({ documentId: "doc", path, text: "file", mtimeMs: 1000 });
+	proposeBuffer("doc", "reader's words");
+
+	// The store hands back the document with the file's bytes (an apply that raced
+	// past the dirty gate). The owner keeps the reader's text.
+	adoptBuffer({ documentId: "doc", path, text: "file", mtimeMs: 3000 });
+	assert.equal(bufferText("doc"), "reader's words");
+	assert.equal(bufferIsDirty("doc"), true);
+
+	resetBuffers();
+	setBufferPorts(null);
+});
+
+test("I6: every surface's shape holds - code, markdown, HTML (text) and the grid", async () => {
+	const surfaces = [
+		{
+			name: "code-editor",
+			documentId: "code",
+			path: "/tmp/s.py",
+			text: "print(1)\n",
+		},
+		{
+			name: "wysiwyg-markdown",
+			documentId: "md",
+			path: "/tmp/s.md",
+			text: "# one\n",
+		},
+		{
+			name: "html-edit-mode",
+			documentId: "html",
+			path: "/tmp/s.html",
+			text: "<p>one</p>\n",
+		},
+	];
+	for (const surface of surfaces) {
+		const bridge = ownerCase();
+		bridge.seed(surface.path, surface.text);
+		adoptBuffer({
+			documentId: surface.documentId,
+			path: surface.path,
+			text: surface.text,
+			mtimeMs: 1000,
+		});
+		proposeBuffer(surface.documentId, `${surface.text}reader's line\n`);
+		const outcome = await saveBuffer(surface.documentId);
+		assert.equal(outcome.status, "written", surface.name);
+		assert.equal(bridge.writes[0].path, surface.path, surface.name);
+		assert.match(
+			bridge.files.get(surface.path).text,
+			/reader's line/,
+			surface.name,
+		);
+		setBufferPorts(null);
+		resetBuffers();
+	}
+
+	/*
+	 * The grid is the odd one by design: its bytes are a workbook, built at write
+	 * time by the serialiser it registers, and the token it proposes is a revision
+	 * marker rather than the content. What must hold is the same invariant - the
+	 * bytes that reach the file are the ones the surface holds NOW.
+	 */
+	const grid = ownerCase();
+	const gridPath = "/tmp/s.xlsx";
+	grid.seed(gridPath, "workbook v1");
+	let revision = 1;
+	adoptBuffer({
+		documentId: "sheet",
+		path: gridPath,
+		text: "workbook v1",
+		token: String(revision),
+		mtimeMs: 1000,
+		encoding: "base64",
+		serialize: () => ({ text: `workbook v${revision}`, encoding: "base64" }),
+	});
+	revision += 1;
+	proposeBuffer("sheet", String(revision), () => ({
+		text: `workbook v${revision}`,
+		encoding: "base64",
+	}));
+	// A second edit before the debounce fires: the write must carry the SECOND one.
+	revision += 1;
+	proposeBuffer("sheet", String(revision), () => ({
+		text: `workbook v${revision}`,
+		encoding: "base64",
+	}));
+	const gridOutcome = await saveBuffer("sheet");
+	assert.equal(gridOutcome.status, "written");
+	assert.equal(
+		grid.writes[0].text,
+		"workbook v3",
+		"the live grid, not the token",
+	);
+	assert.equal(grid.writes[0].encoding, "base64");
+	assert.equal(bufferText("sheet"), "workbook v3");
+	// And with no further edit there is nothing to write at all: the surface used to
+	// clear its dirty flag against a DEBOUNCED copy and return, which is how Q13's
+	// spreadsheet half wrote nothing when it should have (I3).
+	const second = await saveBuffer("sheet");
+	assert.equal(second.status, "clean");
+	assert.equal(grid.writes.length, 1);
+
+	setBufferPorts(null);
+	resetBuffers();
 });
