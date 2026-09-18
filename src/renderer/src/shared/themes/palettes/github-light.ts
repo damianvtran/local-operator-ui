@@ -84,6 +84,10 @@ export const githubLight: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.4
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#004497",
+		tokenCommand: "#0048A4",
+		// The signal lifted in L* (hue and chroma held) to ΔE00 8.6 from this
+		// palette's accent, which the signal itself sat 5.9 from; ΔE00 2.8 from the
+		// signal, 7.79:1 on `surface` and 8.53:1 on `elevated`.
 		accentWash: "#DDF4FF",
 		onAccent: "#FFFFFF",
 

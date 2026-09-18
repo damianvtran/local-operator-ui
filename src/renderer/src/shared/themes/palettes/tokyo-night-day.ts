@@ -80,6 +80,10 @@ export const tokyoNightDay: ThemeDefinition = {
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.2
 		// from `accent`. See `chartBarHover` in the palette contract.
 		chartBarHover: "#003F90",
+		tokenCommand: "#016689",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#DADDE6",
 		onAccent: "#E1E2E7",
 

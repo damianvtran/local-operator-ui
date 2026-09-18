@@ -68,6 +68,10 @@ export const everforest: ThemeDefinition = {
 		// ΔE00 10.3 from `accent` and 8.3:1 on surface, where the accent is
 		// 5.4:1.
 		chartBarHover: "#D0EBA9",
+		tokenCommand: "#9ACAC3",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#3A4448",
 		onAccent: "#2D353B",
 

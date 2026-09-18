@@ -80,6 +80,10 @@ export const paper: ThemeDefinition = {
 		// the accent ramp: ΔE00 11.40 from `accent` and 9.61:1 on surface, where the
 		// accent itself is 5.68:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#602707",
+		tokenCommand: "#125C8C",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.

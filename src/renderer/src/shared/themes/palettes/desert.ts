@@ -77,6 +77,10 @@ export const desert: ThemeDefinition = {
 		// the accent ramp: ΔE00 11.29 from `accent` and 9.77:1 on surface, where the
 		// accent itself is 6.52:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#FFC993",
+		tokenCommand: "#84BAD8",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.

@@ -3514,6 +3514,18 @@ export const STORIES = [
 	   the link's own text, on the same `conversationId` the chip reads. Also a
 	   scripted `Selection`, and also not reachable with a pointer. */
 	["chat-canonical-links--selection-in-link-staged", 1024, 820],
+	["chat-slash-highlight--command-alone", 900, 240],
+	["chat-slash-highlight--start-name-instruction", 900, 240],
+	["chat-slash-highlight--seeded-name-instruction", 900, 330],
+	["chat-slash-highlight--name-instruction-multiline", 900, 330],
+	["chat-slash-highlight--unknown-word", 900, 240],
+	["chat-slash-highlight--unknown-word-picking", 900, 390],
+	["chat-slash-highlight--prose-leading-command-word", 900, 240],
+	["chat-slash-highlight--mid-sentence-token", 900, 240],
+	["chat-slash-highlight--disabled-and-placeholder", 900, 460],
+	["chat-slash-highlight--clipped-boundary", 900, 240],
+	["chat-slash-highlight--geometry", 1000, 2600],
+	["chat-slash-highlight--scrolled-parity", 1000, 1000],
 ];
 
 /**
@@ -4378,10 +4390,19 @@ const main = async () => {
 				}
 			};
 			if (!options?.liveMotion) {
+				/*
+				 * `*:not(textarea)` on the caret, and the exception is the whole point of
+				 * the composer's frames: the field there keeps its OWN caret so the
+				 * capture can read it, which is how the highlight's caret guard is
+				 * measured at all (the mirror paints over a transparent textarea, so
+				 * "the caret is still the app's" is a claim about a colour that a
+				 * blanket `caret-color: transparent` would have answered for us).
+				 * A field that cannot be typed into is not what these frames are of.
+				 */
 				await cdp.send("Runtime.evaluate", {
 					expression: `(() => {
 						const s = document.createElement("style");
-						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
+						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*:not(textarea){caret-color:transparent !important}";
 						document.head.appendChild(s);
 					})()`,
 				});
@@ -5825,10 +5846,11 @@ const main = async () => {
 						 * branch needs, and the one the blanket override could not
 						 * express. A transition in flight is a difference between the
 						 * two shutters that the hold does not pin and no document
-						 * declares; the caret is the same argument as above.
+						 * declares; the caret is the same argument as above, including
+						 * its :not(textarea) scope (no backticks in here: this block is inside a template literal).
 						 */
 						const s = document.createElement("style");
-						s.textContent = "*,*::before,*::after{transition:none !important}*{caret-color:transparent !important}";
+						s.textContent = "*,*::before,*::after{transition:none !important}*:not(textarea){caret-color:transparent !important}";
 						document.head.appendChild(s);
 					})()`,
 				});

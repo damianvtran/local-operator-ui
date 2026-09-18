@@ -62,6 +62,10 @@ export const kanagawaWave: ThemeDefinition = {
 		// ΔE00 10.5 from `accent` and 9.6:1 on surface, where the accent is
 		// 6.3:1.
 		chartBarHover: "#BBD6FF",
+		tokenCommand: "#7DAAA1",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2A2D3A",
 		onAccent: "#1F1F28",
 

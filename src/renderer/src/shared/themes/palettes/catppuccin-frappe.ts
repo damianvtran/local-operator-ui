@@ -70,6 +70,10 @@ export const catppuccinFrappe: ThemeDefinition = {
 		// accent ramp: ΔE00 10.4 from `accent`, and 7.5:1 on surface where `accent` is 5.0:1.
 		// See `chartBarHover` in the palette contract.
 		chartBarHover: "#E9C8FF",
+		tokenCommand: "#91AEEF",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#37394D",
 		// Upstream crust. The port shipped base 303446 here, which is 4.31:1 on the pressed
 		// fill and under the floor; crust takes the worst of the three states to 5.25:1.

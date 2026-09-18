@@ -84,6 +84,8 @@ export const iceberg: ThemeDefinition = {
 		// accent ramp: ΔE00 10.0 from `accent` and 10.18:1 on surface, where the accent
 		// itself is 6.66:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#1F396C",
+		tokenCommand: "#316682",
+		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#D5DAE4",
 		onAccent: "#F2F5F9",
 

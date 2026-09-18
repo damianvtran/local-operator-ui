@@ -81,6 +81,10 @@ export const arcade: ThemeDefinition = {
 		// A step AWAY from the plot ground: mixed toward `ink` to ΔE00 10.6 from
 		// `accent` and 13.64:1 on `surface`, where the accent measures 12.73:1.
 		chartBarHover: "#F3DD94",
+		tokenCommand: "#52B4FF",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2A2413",
 		onAccent: "#040406",
 

@@ -89,6 +89,10 @@ export const cyberpunk: ThemeDefinition = {
 		// as the bars' own hue washed toward white, and still sits further from
 		// `surface` (15.86:1) than the accent does (15.40:1).
 		chartBarHover: "#F8EF8F",
+		tokenCommand: "#00F0FF",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2D2814",
 		onAccent: "#070312",
 

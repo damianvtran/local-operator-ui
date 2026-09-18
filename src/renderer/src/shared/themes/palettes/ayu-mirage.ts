@@ -53,6 +53,10 @@ export const ayuMirage: ThemeDefinition = {
 		// ΔE00 10.6 from `accent` and 9.1:1 on surface, where the accent is
 		// 7.1:1.
 		chartBarHover: "#8EECFF",
+		tokenCommand: "#DFBFFF",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2A3949",
 		onAccent: "#1F2430",
 

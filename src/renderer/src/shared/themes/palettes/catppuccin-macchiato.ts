@@ -68,6 +68,10 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		// accent ramp: ΔE00 10.4 from `accent`, and 8.8:1 on surface where `accent` is 6.3:1.
 		// See `chartBarHover` in the palette contract.
 		chartBarHover: "#DEC7FF",
+		tokenCommand: "#8AADF4",
+		// The palette's own `info`, which is the role this composer's command
+		// word already resolved to: the tint moves no pixel the palette did not
+		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2A2C42",
 		onAccent: "#24273A",
 
