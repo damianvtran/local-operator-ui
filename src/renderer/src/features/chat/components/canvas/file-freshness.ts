@@ -276,6 +276,74 @@ export function subscribeDocumentDirty(listener: () => void): () => void {
 	};
 }
 
+/*
+ * ---------------------------------------------------------------------------
+ * The autosave hold, and the explicit save that overrides it
+ * ---------------------------------------------------------------------------
+ *
+ * WHY A HOLD EXISTS AT ALL (UX round 2, U1's second half). Once the row has told
+ * a reader that the file changed on disk while their buffer has unsaved edits,
+ * the editor's own debounced autosave is the one thing that can destroy the
+ * question: ~1s later it writes the reader's bytes over the file's, the external
+ * version is gone from disk, and the sentence is about a change that no longer
+ * exists anywhere - the reader cannot load it even if they want to, and nothing
+ * records that it was ever there. Measured, before this: the fact appeared at
+ * 456ms and the autosave landed at 2627ms with the external bytes gone.
+ *
+ * So the hold is a NEGATIVE registry, like the dirty one: a document whose
+ * "changed on disk" fact stands keeps its buffer in memory and does not write,
+ * and the reader's two real choices are the row's control (load the file, let
+ * their edits go) or an EXPLICIT save (their bytes win - which the row then says
+ * plainly). Nothing else releases it, and in particular no timer does: the fact
+ * is cleared by an action or by the file's mtime coming back to the baseline,
+ * never by a tick that merely happened.
+ *
+ * THE COST, stated here because it is real: while a document is held, the
+ * reader's typing exists only in memory, so a crash in that window loses it.
+ * That is the price of not destroying the file's version behind their back, and
+ * it is disclosed in the pull request rather than left for someone to discover.
+ */
+const heldAutosave = new Set<string>();
+
+/** Whether this document's debounced autosave is being held. */
+export function isAutosaveHeld(documentId: string): boolean {
+	return heldAutosave.has(documentId);
+}
+
+function setAutosaveHeld(documentId: string, held: boolean): void {
+	if (held) heldAutosave.add(documentId);
+	else heldAutosave.delete(documentId);
+}
+
+/*
+ * The explicit save: ⌘S, the editor's own save action, the inline-edit
+ * finalizer. Deliberately SEPARATE from the debounced write, because the two
+ * have different meanings here - one is the app finishing the reader's sentence
+ * for them, the other is the reader deciding. The hook watches this to convert
+ * the fact into "your save replaced the change on disk" instead of letting the
+ * change vanish silently.
+ */
+const explicitSaveAt = new Map<string, number>();
+const explicitSaveListeners = new Set<() => void>();
+
+/** Published by an editor when the READER saves, not when the debounce does. */
+export function publishExplicitSave(documentId: string): void {
+	explicitSaveAt.set(documentId, Date.now());
+	setAutosaveHeld(documentId, false);
+	for (const listener of explicitSaveListeners) listener();
+}
+
+export function explicitSaveAtFor(documentId: string): number | null {
+	return explicitSaveAt.get(documentId) ?? null;
+}
+
+export function subscribeExplicitSave(listener: () => void): () => void {
+	explicitSaveListeners.add(listener);
+	return () => {
+		explicitSaveListeners.delete(listener);
+	};
+}
+
 /**
  * The answer for a check that found a mounted editor's unsaved buffer.
  *
@@ -300,6 +368,14 @@ async function dirtyOutcome(
 	const diskChanged = Boolean(
 		probe?.exists && probe.mtimeMs !== null && probe.mtimeMs !== baseline,
 	);
+	/*
+	 * The hold follows the fact, in both directions and in one place: a dirty
+	 * document whose file moved on stops writing, and a dirty document whose file
+	 * came back to the baseline starts again (nothing was lost, so nothing needs
+	 * holding). Set here rather than by the callers so the runner's decision and
+	 * the editor's behaviour cannot disagree.
+	 */
+	setAutosaveHeld(document.id, diskChanged);
 	return { status: "skipped-dirty", diskChanged };
 }
 
@@ -324,9 +400,13 @@ export function createFreshnessRunner(
 
 	const run = async (
 		document: CanvasDocument,
-		{ force }: { force: boolean },
+		{
+			force,
+			applyOverDirty = false,
+		}: { force: boolean; applyOverDirty?: boolean },
 	): Promise<FreshnessOutcome> => {
-		if (isDirty(document.id)) return dirtyOutcome(document, ports);
+		if (!applyOverDirty && isDirty(document.id))
+			return dirtyOutcome(document, ports);
 		const probe = await ports.probe(document.path);
 		/*
 		 * AND AGAIN IF IT BECAME DIRTY WHILE WE WERE LOOKING (code review round 1,
@@ -341,7 +421,8 @@ export function createFreshnessRunner(
 		 * So the registry is asked a second time, immediately before any outcome
 		 * that carries bytes back into the store.
 		 */
-		if (isDirty(document.id)) return dirtyOutcome(document, ports, probe);
+		if (!applyOverDirty && isDirty(document.id))
+			return dirtyOutcome(document, ports, probe);
 		let decision: FreshnessDecision | { kind: "bust" } = freshnessDecision(
 			document,
 			probe,
@@ -434,8 +515,11 @@ export function createFreshnessRunner(
 		 * and a keystroke landing inside it must win over the bytes it was racing.
 		 * Checked before BOTH byte-carrying outcomes below - the apply and the
 		 * identical-bytes baseline move - because either one writes to the store.
+		 * `applyOverDirty` is the one caller that has already decided the reader's
+		 * bytes may go: see `load` below.
 		 */
-		if (isDirty(document.id)) return dirtyOutcome(document, ports, probe);
+		if (!applyOverDirty && isDirty(document.id))
+			return dirtyOutcome(document, ports, probe);
 		/*
 		 * THE BACKSTOP. An mtime that moved while the bytes did not is ordinary:
 		 * `touch`, a `cp -p` from an identical source, an editor's save with no
@@ -481,7 +565,26 @@ export function createFreshnessRunner(
 		return started;
 	};
 
-	return { check };
+	/*
+	 * LOAD, the reader's own answer to "the file changed on disk" (UX round 2,
+	 * U1's second half). One of the two routes the row names: this one takes the
+	 * FILE's version and lets the buffer's unsaved edits go, which is the only way
+	 * to actually load the change - a save writes over it instead, and an undo does
+	 * not make the document clean.
+	 *
+	 * The dirty registry is cleared BEFORE the read, and that ordering is the point
+	 * rather than an accident: the editors refuse to adopt a store write while
+	 * their document is dirty (M3), so the buffer has to stop being dirty for the
+	 * file's bytes to reach the screen. Clearing it here is what "the reader chose
+	 * the file" means in the one registry every editor consults.
+	 */
+	const load = async (document: CanvasDocument): Promise<FreshnessOutcome> => {
+		clearDocumentDirty(document.id);
+		setAutosaveHeld(document.id, false);
+		return run(document, { force: true, applyOverDirty: true });
+	};
+
+	return { check, load };
 }
 
 export type FreshnessRunner = ReturnType<typeof createFreshnessRunner>;

@@ -195,6 +195,8 @@ function describeElement(element: Element | null): string | null {
 function pressAt(element: Element): {
 	hitTest: boolean;
 	hit: string | null;
+	stack: (string | null)[];
+	disabled: boolean | null;
 	rect: { x: number; y: number; width: number; height: number };
 } {
 	const rect = element.getBoundingClientRect();
@@ -202,6 +204,22 @@ function pressAt(element: Element): {
 	const y = rect.top + rect.height / 2;
 	const hit = document.elementFromPoint(x, y);
 	const hitTest = hit !== null && (hit === element || element.contains(hit));
+	/*
+	 * WHAT THE REPORT MUST CARRY WHEN A HIT TEST FAILS, learned from a scene that
+	 * failed only on someone else's machine. `elementFromPoint` alone cannot
+	 * distinguish "nothing is there" from "the element is there and is not taking
+	 * the pointer right now", and the second is a real state this app has: a
+	 * `disabled` control is `pointer-events: none` in this design system, so the
+	 * topmost element at its centre is its PARENT, while a synthetic
+	 * `dispatchEvent` still reaches it and the press works. The scene reported
+	 * only `hit: div ""`, which is why two rounds of readers could not tell a
+	 * broken control from a broken instrument. So the stack and the disabled flag
+	 * come back with the verdict.
+	 */
+	const stack = document
+		.elementsFromPoint(x, y)
+		.slice(0, 4)
+		.map((node) => describeElement(node));
 	const eventInit: MouseEventInit = {
 		bubbles: true,
 		cancelable: true,
@@ -235,6 +253,8 @@ function pressAt(element: Element): {
 	return {
 		hitTest,
 		hit: describeElement(hit),
+		stack,
+		disabled: element instanceof HTMLButtonElement ? element.disabled : null,
 		rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
 	};
 }

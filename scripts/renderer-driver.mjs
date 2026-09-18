@@ -5054,13 +5054,87 @@ async function sceneCanvasFreshness(cdp, app) {
 	 * this: the poll has had ten chances and taken none, so a change here is the
 	 * press's by construction rather than by timing.
 	 */
+	/*
+	 * WAIT FOR THE CONTROL TO BE TAKING THE POINTER, and this is the answer to
+	 * QA round 2's rig question rather than a cosmetic wait.
+	 *
+	 * The control is `disabled` for the ~11ms a forced check takes, and in this
+	 * design system a disabled control is `pointer-events: none` - so a hit test
+	 * landing inside that window returns the control's PARENT while the centre of
+	 * its box is exactly where the button is, and a synthetic `dispatchEvent`
+	 * still reaches the button and presses it. That is the shape QA saw twice
+	 * (`hitTest: false`, `hit: div ""` = `div.ml-auto.shrink-0`, with the very next
+	 * check passing): the instrument was racing a real transient state, and its
+	 * report could not say which. Two runs here reported 48/48 because the press
+	 * happened to land between windows; QA's landed inside one. What made it
+	 * deliverable as a "failure" was the report, not the app.
+	 *
+	 * So the scene waits for the state the check is about to assert - an enabled
+	 * control - and the check reports the whole stack and the disabled flag
+	 * (`pressAt`), so the next reader can tell a broken control from a broken
+	 * instrument in one line.
+	 */
+	const controlReady = await waitForCondition(
+		cdp,
+		`(() => {
+			const button = document.querySelector('[data-tour-tag="canvas-refresh-file-button"]');
+			return Boolean(button) && button.disabled === false;
+		})()`,
+		5000,
+	);
 	const pressed = await verb(cdp, "press", {
 		selector: '[data-tour-tag="canvas-refresh-file-button"]',
 	});
 	check(
-		"the refresh control is a real hit target",
-		pressed.hitTest === true,
-		JSON.stringify(pressed),
+		"the refresh control is enabled, and is a real hit target while it is enabled",
+		controlReady.ok && pressed.hitTest === true && pressed.disabled === false,
+		JSON.stringify({ ready: controlReady.ok, ...pressed }),
+	);
+	const rowGeometry = await cdp.evaluate(`(() => {
+		const stamp = document.querySelector('[data-tour-tag="canvas-document-modified"]');
+		const note = document.querySelector('[data-tour-tag="canvas-document-freshness-note"]');
+		const control = document.querySelector('[data-tour-tag="canvas-refresh-file-button"]');
+		const row = document.querySelector('[data-tour-tag="canvas-document-freshness"]');
+		const region = stamp ? stamp.parentElement : null;
+		if (!stamp || !control || !row) return null;
+		return {
+			stamp: { client: stamp.clientWidth, scroll: stamp.scrollWidth },
+			note: note ? { client: note.clientWidth, scroll: note.scrollWidth, text: note.textContent.slice(0, 40) } : null,
+			controlRight: Math.round(control.getBoundingClientRect().right),
+			/*
+			 * The ROW is the width the dock clips; the id the scene first measured
+			 * against reports a zero-width box here, so that comparison was between
+			 * two different things and failed a control that is plainly inside. The
+			 * inset is asserted too, because it is D1's own claim: the control's right
+			 * edge is short of the row's by the panel's 8px chrome inset.
+			 */
+			rowRight: Math.round(row.getBoundingClientRect().right),
+			region: region ? { client: region.clientWidth, scroll: region.scrollWidth } : null,
+		};
+	})()`);
+	/*
+	 * THE STAMP KEEPS ITS FULL WIDTH WHILE A SENTENCE IS ON SCREEN (design round 2,
+	 * D7). Round 1 made both text elements shrinkable and flex shrank them in
+	 * proportion to their width, so the LONG sentence pushed the STAMP into
+	 * ellipsis - the fact the row exists to state, gone before the sentence beside
+	 * it. This is the measurement that says the row now does the opposite.
+	 */
+	check(
+		"the stamp is not clipped while the sentence is beside it",
+		rowGeometry !== null &&
+			rowGeometry.stamp.scroll <= rowGeometry.stamp.client,
+		JSON.stringify(rowGeometry),
+	);
+	check(
+		"and the control is inside the row, on the panel's own 8px chrome inset",
+		rowGeometry !== null &&
+			rowGeometry.controlRight <= rowGeometry.rowRight &&
+			rowGeometry.rowRight - rowGeometry.controlRight <= 12,
+		JSON.stringify({
+			controlRight: rowGeometry?.controlRight,
+			rowRight: rowGeometry?.rowRight,
+			inset: rowGeometry ? rowGeometry.rowRight - rowGeometry.controlRight : null,
+		}),
 	);
 	const refreshed = await waitForCondition(
 		cdp,

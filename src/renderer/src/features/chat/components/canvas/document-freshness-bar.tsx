@@ -42,6 +42,16 @@ import { useFileFreshness } from "./use-file-freshness";
  * ring to the strip above and the dock's clip to the right, and its hover fill
  * covered the hairlines on both sides of it.
  *
+ * THE FACTS SCROLL, THE CONTROL DOES NOT (design round 2, D7, over round 1's
+ * D5). Round 1 made both text elements shrinkable, which fixed the control
+ * leaving the pane at 79px - and introduced the opposite defect at ordinary
+ * widths: flex shrinks in proportion to width, so with the long sticky sentence
+ * on screen the STAMP gave way first and lost its meridiem, i.e. the fact the
+ * row exists to state disappeared before the sentence beside it did. They are one
+ * scrolling region now, each keeping its full width, with the control pinned
+ * outside it - the behaviour the tab strip directly above already uses, and at
+ * ordinary pane widths there is nothing to scroll.
+ *
  * The timestamp is `formatCalendarDateTime`, the app's one formatter for a
  * moment in a metadata field: the platform locale, so it renders in the reader's
  * own timezone and spelling, with the seconds every "last modified" field drops.
@@ -54,12 +64,11 @@ export const DocumentFreshnessBar: FC<{
 	document: CanvasDocument;
 	conversationId?: string;
 }> = ({ document, conversationId }) => {
-	const { lastModifiedMs, refreshing, note, dirty, refresh } = useFileFreshness(
-		{
+	const { lastModifiedMs, refreshing, note, dirty, diskChanged, refresh } =
+		useFileFreshness({
 			document,
 			conversationId,
-		},
-	);
+		});
 	const announcementId = useId();
 
 	/*
@@ -75,16 +84,18 @@ export const DocumentFreshnessBar: FC<{
 			: `Modified ${formatCalendarDateTime(new Date(lastModifiedMs))}`;
 
 	/*
-	 * THE NAME FOLLOWS THE STATE (UX round 1, U7). "Re-read from disk" promises a
-	 * re-read, and while the buffer is dirty the press deliberately does not
-	 * perform one - it answers whether the file moved on and leaves the reader's
-	 * words alone. A control whose name describes a gesture it will not make is
-	 * the same defect as a note that describes a state that is not there, so the
-	 * name and the tooltip both say what the press actually does in this state.
+	 * THE NAME FOLLOWS THE STATE (UX round 1 U7, round 2 U1). "Re-read from disk"
+	 * promises a re-read, and while the buffer is dirty the press deliberately does
+	 * not perform one - it answers whether the file moved on and leaves the
+	 * reader's words alone. In the `disk-changed` state the press is the reader's
+	 * way OUT of the hold, and the one thing it must not do is surprise them: the
+	 * file's version wins and their unsaved edits go, which is what the name says.
 	 */
-	const controlLabel = dirty
-		? "Check the file (your edits are kept)"
-		: "Re-read from disk";
+	const controlLabel = diskChanged
+		? "Load the file's version (your unsaved edits are discarded)"
+		: dirty
+			? "Check the file (your edits are kept)"
+			: "Re-read from disk";
 
 	return (
 		<div
@@ -93,58 +104,56 @@ export const DocumentFreshnessBar: FC<{
 			)}
 			data-tour-tag="canvas-document-freshness"
 		>
-			{/*
-			 * BOTH TEXT ELEMENTS YIELD, AND THE NOTE YIELDS FIRST (design round 1,
-			 * D5). The stamp used to be `shrink-0`, so at the app's declared minimum
-			 * window it held its full width and pushed the control out past the dock's
-			 * clip, where it could not be pressed at all; the strip above scrolls and
-			 * the Files grid wraps, and this was the panel's only row that neither
-			 * scrolled nor gave way. The note carries the larger shrink factor because
-			 * it is the supplementary sentence, and the stamp must survive long enough
-			 * to stay a date.
-			 */}
-			<span
-				className={cn(
-					"min-w-0 shrink-[1] truncate text-meta text-ink-muted tabular-nums",
-				)}
-				data-tour-tag="canvas-document-modified"
+			<div
+				className={cn("flex min-w-0 flex-1 items-center gap-2 overflow-x-auto")}
 			>
-				{stamp}
-			</span>
-			{note ? (
-				/*
-				 * `Tooltip` rather than a native `title`, which is this repo's own
-				 * substitution for "the full string on hover" (`message-timestamp.tsx`
-				 * records it): the note is the one thing here that can be longer than
-				 * the panel is wide, and a `title` never appears for a keyboard user
-				 * (design round 1, D4).
-				 */
-				<Tooltip content={note} side="bottom" delayDuration={1200}>
-					<span
-						className={cn("min-w-0 shrink-[3] truncate text-meta text-ink-muted")}
-						data-tour-tag="canvas-document-freshness-note"
-					>
-						{note}
-					</span>
-				</Tooltip>
-			) : null}
-			{/*
-			 * THE ANNOUNCEMENT IS A SEPARATE, ALWAYS-MOUNTED REGION (UX round 1, U6):
-			 * a live region has to exist BEFORE the text it announces arrives, and
-			 * this row's text appears and disappears with the file's state, so it
-			 * cannot be the region itself. `output` with `aria-live` is the shape this
-			 * app already uses for exactly this (`older-history-slot.tsx`), and it is
-			 * `sr-only` because the same sentence is already on screen.
-			 */}
-			<output
-				id={announcementId}
-				className="sr-only"
-				aria-live="polite"
-				data-tour-tag="canvas-document-freshness-announcement"
-			>
-				{note ?? ""}
-			</output>
-			<div className={cn("ml-auto shrink-0")}>
+				<span
+					className={cn(
+						"shrink-0 whitespace-nowrap text-meta text-ink-muted tabular-nums",
+					)}
+					data-tour-tag="canvas-document-modified"
+				>
+					{stamp}
+				</span>
+				{/*
+				 * THE ANNOUNCEMENT IS A SEPARATE, ALWAYS-MOUNTED REGION (UX round 1,
+				 * U6): a live region has to exist BEFORE the text it announces arrives,
+				 * and this row's text appears and disappears with the file's state, so
+				 * it cannot be the region itself. `output` with `aria-live` is the shape
+				 * this app already uses for exactly this (`older-history-slot.tsx`).
+				 */}
+				<output
+					id={announcementId}
+					className="sr-only"
+					aria-live="polite"
+					data-tour-tag="canvas-document-freshness-announcement"
+				>
+					{note ?? ""}
+				</output>
+				{note ? (
+					/*
+					 * `Tooltip` rather than a native `title`, which is this repo's own
+					 * substitution for "the full string on hover" (`message-timestamp.tsx`
+					 * records it) - and `tabIndex`, so a KEYBOARD user gets the same full
+					 * sentence a pointer user does (design round 2, D4's keyboard half: the
+					 * trigger was not focusable, so the one thing this tooltip exists for
+					 * was unreachable without a mouse).
+					 */
+					<Tooltip content={note} side="bottom" delayDuration={1200}>
+						<span
+							// biome-ignore lint/a11y/noNoninteractiveTabindex: the sentence is a FACT about the file rather than a control, and design round 2 D4's keyboard half asks for it to be reachable by focus as well as by hover - the tab stop carries no action, and its only effect is that the tooltip can be opened without a mouse.
+							tabIndex={0}
+							className={cn(
+								"shrink-0 whitespace-nowrap text-meta text-ink-muted",
+							)}
+							data-tour-tag="canvas-document-freshness-note"
+						>
+							{note}
+						</span>
+					</Tooltip>
+				) : null}
+			</div>
+			<div className={cn("shrink-0")}>
 				<Tooltip content={controlLabel}>
 					<Button
 						variant="ghost"

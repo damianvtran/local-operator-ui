@@ -5,9 +5,11 @@ import type { CanvasDocument } from "../../types/canvas";
 import {
 	type FreshnessOutcome,
 	createFreshnessRunner,
+	explicitSaveAtFor,
 	isDocumentDirty,
 	probeLocalFile,
 	subscribeDocumentDirty,
+	subscribeExplicitSave,
 } from "./file-freshness";
 
 /**
@@ -92,6 +94,13 @@ export type DocumentFreshness = {
 	note: string | null;
 	/** A mounted editor holds unsaved changes for this document. */
 	dirty: boolean;
+	/**
+	 * The file changed on disk while `dirty`, so the document is HELD: its
+	 * autosave is paused and the control now loads the file's version rather than
+	 * merely re-reading it. The row words itself from this, so the two must not
+	 * drift.
+	 */
+	diskChanged: boolean;
 	/** Re-read the file now, whether or not its mtime moved. */
 	refresh: () => void;
 };
@@ -99,66 +108,136 @@ export type DocumentFreshness = {
 /**
  * What one outcome leaves in the row's register.
  *
- * TWO SLOTS, NOT ONE, and the split is round 1's flicker fixed at the source
- * (review m2, UX U1/U3/U4). A FACT is a state of the FILE - "no longer on disk",
- * "changed on disk while your buffer is unsaved" - and it stays until an outcome
- * arrives that says it no longer holds, because a background tick that found
- * nothing new has no business replacing a sentence the reader is acting on. An
- * ANSWER is the reply to something the reader DID - a press that found nothing
- * to do ("Already up to date") or the apply a press or a tick produced ("Updated
- * from disk") - and a tick with nothing to do leaves it standing rather than
- * trading it for silence a second and a half later.
+ * TWO SLOTS, and the split is round 1's flicker fixed at the source (review m2,
+ * UX U1/U3/U4). A FACT is a state of the FILE - "no longer on disk", "changed on
+ * disk while your buffer is unsaved" - and it stays until an outcome arrives
+ * that says it no longer holds, because a background tick that found nothing new
+ * has no business replacing a sentence the reader is acting on. An ANSWER is the
+ * reply to something the reader DID - a press that found nothing to do, or the
+ * apply a press or a tick produced - and it RETIRES (see `ANSWER_LIFETIME_MS`),
+ * because an answer is about a moment rather than a state.
  *
- * `undefined` means "leave that slot alone", which is why this returns a partial
- * register rather than a whole one: "found nothing new" and "say nothing new"
- * are different instructions and the flicker lived in conflating them.
+ * WHY CLEARING IS PER-FACT RATHER THAN ONE BLANKET RULE (design D9, QA Q6, UX
+ * U8). Round 1 retired every fact on any outcome that looked settled, which
+ * killed "This file could not be re-read" on the next tick - a tick that never
+ * re-read anything, so it could not have answered what the sentence was about.
+ * Each fact now names what proves it false:
  *
- * The dirty sentence LEADS WITH THE CLAUSE THAT SURVIVES TRUNCATION (design
- * round 1, D4): at the dock's 400px floor the row renders about 135px of it, and
- * the reader must keep the reassurance and the instruction, not lose them to the
- * diagnosis.
+ * - `missing` / `unreadable` are retired by any check whose probe answered (the
+ *   file is there, or it is there and readable again);
+ * - `failed` is retired only by a check that actually READ the file, because an
+ *   `unchanged` answer never reads and therefore cannot answer it;
+ * - `disk-changed` is retired by the file's mtime coming back to the baseline, or
+ *   by the reader resolving it (see the hold and `load` in `file-freshness.ts`);
+ * - `save-replaced` is retired when the reader acknowledges it with the control.
+ *
+ * `undefined` means "leave the slot alone", which is why this returns partial
+ * registers: "found nothing new" and "say nothing new" are different
+ * instructions, and the flicker lived in conflating them.
  */
-function registerFor(
+export type FreshnessFact =
+	| "missing"
+	| "unreadable"
+	| "failed"
+	| "disk-changed"
+	| "save-replaced";
+
+export const FACT_TEXT: Record<FreshnessFact, string> = {
+	missing:
+		"This file is no longer on disk. The last version we read is still shown.",
+	unreadable:
+		"This file could not be read. The last version we read is still shown.",
+	failed:
+		"This file could not be re-read, so the version we last read is still shown.",
+	/*
+	 * THE HOLD'S OWN SENTENCE (UX round 2, U1's second half). It has to say three
+	 * things and it has to lead with the one that survives a narrow row: the
+	 * reader's words are safe, saving is paused, and there are exactly two ways
+	 * out. Both of them exist: the control loads the file's version (and lets the
+	 * unsaved edits go), and a save replaces the file's. "Discard", which the
+	 * round-1 copy named, is not one of them.
+	 */
+	"disk-changed":
+		"Your unsaved edits are kept, and saving is paused while the file has changed on disk. Load its version, or save to replace it.",
+	/*
+	 * What an explicit save leaves behind. The reader chose their bytes, so the
+	 * change that was on disk is gone - the app owes them that sentence rather than
+	 * letting it disappear (UX round 2, U1).
+	 */
+	"save-replaced":
+		"Your save replaced the version that had changed on disk. Re-read the file to see what is there now.",
+};
+
+/**
+ * How long an ANSWER stays in the row, in ms.
+ *
+ * WHY A LIFETIME AT ALL (UX U8, QA Q6, design D9): "Updated from disk" was still
+ * on screen after fourteen seconds of ordinary ticks, and reappeared stale in
+ * three independent observations, because nothing ever retired it. An answer is
+ * about a moment, so it gets one: long enough to be read twice (the app's own
+ * toasts are the same order of magnitude), short enough that a reader who looks
+ * away and back does not read it as current. Lives in the hook rather than the
+ * row so the timer is one per document rather than one per render.
+ */
+export const ANSWER_LIFETIME_MS = 8000;
+
+export function answerFor(
 	outcome: FreshnessOutcome,
 	forced: boolean,
-): { fact?: string | null; answer?: string | null } {
+): string | null | undefined {
 	switch (outcome.status) {
-		case "missing":
-			return {
-				fact: "This file is no longer on disk. The last version we read is still shown.",
-			};
-		case "unreadable":
-			return {
-				fact: "This file could not be read. The last version we read is still shown.",
-			};
-		case "failed":
-			return {
-				fact: "This file could not be re-read, so the version we last read is still shown.",
-			};
-		case "skipped-dirty":
-			return outcome.diskChanged
-				? {
-						fact: "Your unsaved edits are kept - the file changed on disk. Save or discard them to load the change.",
-					}
-				: {};
 		case "applied":
-			return { fact: null, answer: "Updated from disk" };
+			return "Updated from disk";
+		/*
+		 * A byte-identical re-read is the answer to the one press that could not be
+		 * answered before (design D3, QA Q5, UX U3): the runner rewrites a forced
+		 * `unchanged` into a reload, the reload finds the same bytes, and this is the
+		 * only slot that can say so. Without it a press on an unchanged text document
+		 * produced nothing at all.
+		 */
 		case "identical":
-		case "adopted":
-			return { fact: null };
+			return "Already up to date";
 		case "unchanged":
-			return forced
-				? { fact: null, answer: "Already up to date" }
-				: { fact: null };
+			return forced ? "Already up to date" : undefined;
 		case "unavailable":
 			return forced
-				? {
-						answer:
-							"Local file access is unavailable, so there is nothing to re-read from.",
-					}
-				: {};
+				? "Local file access is unavailable, so there is nothing to re-read from."
+				: undefined;
 		default:
-			return {};
+			return undefined;
+	}
+}
+
+export function factAfter(
+	outcome: FreshnessOutcome,
+	current: FreshnessFact | null,
+): FreshnessFact | null | undefined {
+	switch (outcome.status) {
+		case "missing":
+			return "missing";
+		case "unreadable":
+			return "unreadable";
+		case "failed":
+			return "failed";
+		case "skipped-dirty":
+			if (outcome.diskChanged) return "disk-changed";
+			/* The mtime is back at the baseline: the change this fact was about is
+			 * gone, so the fact goes with it - and the hold released in the runner
+			 * means the reader's typing is being written again. */
+			return current === "disk-changed" ? null : undefined;
+		case "applied":
+		case "identical":
+			/* The held bytes are the file's now, whatever was standing. */
+			return null;
+		case "unchanged":
+		case "adopted":
+			/* The probe answered, so the file is there and readable; nothing was read,
+			 * so "could not be re-read" is not this outcome's to retire. */
+			return current === "missing" || current === "unreadable"
+				? null
+				: undefined;
+		default:
+			return undefined;
 	}
 }
 
@@ -173,8 +252,21 @@ export function useFileFreshness({
 		() => false,
 	);
 	const [refreshing, setRefreshing] = useState(false);
-	const [fact, setFact] = useState<string | null>(null);
-	const [answer, setAnswer] = useState<string | null>(null);
+	const [fact, setFactState] = useState<FreshnessFact | null>(null);
+	const [answer, setAnswer] = useState<{ text: string; at: number } | null>(
+		null,
+	);
+	/*
+	 * The fact is ALSO held in a ref, so the three callbacks that read it stay
+	 * referentially stable: `check` is a dependency of the activation, focus and
+	 * poll effects, so a new identity per fact change would re-run the activation
+	 * check on every sentence the row publishes - a probe per sentence, for ever.
+	 */
+	const factRef = useRef<FreshnessFact | null>(null);
+	const setFact = useCallback((next: FreshnessFact | null) => {
+		factRef.current = next;
+		setFactState(next);
+	}, []);
 	/*
 	 * Both slots belong to the document that reported them, so a tab switch starts
 	 * the new document's row empty rather than inheriting the last one's sentence.
@@ -184,7 +276,44 @@ export function useFileFreshness({
 	useEffect(() => {
 		setFact(null);
 		setAnswer(null);
-	}, [document.id]);
+	}, [document.id, setFact]);
+	/*
+	 * An answer retires - see `ANSWER_LIFETIME_MS`. Driven from the answer's own
+	 * timestamp rather than from a tick that happens to arrive: a stale
+	 * "Updated from disk" is a claim about a moment, and nothing else in this hook
+	 * knows when that moment was.
+	 */
+	useEffect(() => {
+		if (!answer) return;
+		const remaining = ANSWER_LIFETIME_MS - (Date.now() - answer.at);
+		const timer = window.setTimeout(
+			() => {
+				setAnswer((current) => (current?.at === answer.at ? null : current));
+			},
+			Math.max(0, remaining),
+		);
+		return () => window.clearTimeout(timer);
+	}, [answer]);
+	/*
+	 * The reader's explicit save, which is the one route that ends the hold on the
+	 * reader's own terms. Watched here rather than inferred from the store moving,
+	 * because the store also moves for an APPLY - and an apply is the file winning,
+	 * not the reader.
+	 */
+	const explicitSaveAt = useSyncExternalStore(
+		subscribeExplicitSave,
+		() => explicitSaveAtFor(document.id),
+		() => null,
+	);
+	useEffect(() => {
+		if (explicitSaveAt === null) return;
+		/*
+		 * The reader's bytes are on disk now, so the file's version is not "still
+		 * waiting to be loaded" - it is gone, and the row says so and stays saying so
+		 * until the reader acknowledges it (UX round 2, U1's second half).
+		 */
+		if (factRef.current === "disk-changed") setFact("save-replaced");
+	}, [explicitSaveAt, setFact]);
 	/*
 	 * The document as of the LATEST render, so a check started by a timer reads
 	 * the store's current content rather than whatever the closure captured. Read
@@ -272,15 +401,42 @@ export function useFileFreshness({
 			try {
 				const outcome = await runner.check(latest.current, force);
 				if ("document" in outcome) apply(outcome.document);
-				const register = registerFor(outcome, force);
-				if (register.fact !== undefined) setFact(register.fact);
-				if (register.answer !== undefined) setAnswer(register.answer);
+				const nextFact = factAfter(outcome, factRef.current);
+				if (nextFact !== undefined) setFact(nextFact);
+				const nextAnswer = answerFor(outcome, force);
+				if (nextAnswer !== undefined) {
+					setAnswer(nextAnswer ? { text: nextAnswer, at: Date.now() } : null);
+				}
 			} finally {
 				if (force) setRefreshing(false);
 			}
 		},
-		[apply, runner],
+		[apply, runner, setFact],
 	);
+
+	/*
+	 * LOAD THE FILE'S VERSION, the reader's answer to the hold (UX round 2, U1's
+	 * second half). The runner clears the dirty registry and the hold, so this is
+	 * the one press that makes the file's bytes win - and the row's control is the
+	 * only surface that offers it, because it is the surface that raised the
+	 * question.
+	 */
+	const loadFile = useCallback(async () => {
+		setRefreshing(true);
+		try {
+			setFact(null);
+			const outcome = await runner.load(latest.current);
+			if ("document" in outcome) apply(outcome.document);
+			const nextFact = factAfter(outcome, null);
+			if (nextFact !== undefined) setFact(nextFact);
+			const nextAnswer = answerFor(outcome, true);
+			if (nextAnswer !== undefined) {
+				setAnswer(nextAnswer ? { text: nextAnswer, at: Date.now() } : null);
+			}
+		} finally {
+			setRefreshing(false);
+		}
+	}, [apply, runner, setFact]);
 
 	// Activation: mount, tab change, conversation change.
 	//
@@ -319,16 +475,35 @@ export function useFileFreshness({
 		return () => window.clearInterval(timer);
 	}, [check]);
 
+	/**
+	 * The control, whose meaning depends on what it is being pressed about.
+	 *
+	 * While the `disk-changed` fact stands it LOADS the file's version - the only
+	 * action that shows the reader the change they were told about, and the reason
+	 * the row words the control "Load the file's version (your unsaved edits are
+	 * discarded)" in that state. Everywhere else it is the belt-and-braces re-read
+	 * the request asked for: a forced check, which answers even when it finds
+	 * nothing to do.
+	 */
 	const refresh = useCallback(() => {
+		if (factRef.current === "disk-changed") {
+			void loadFile();
+			return;
+		}
+		// A press is also the acknowledgement `save-replaced` asks for.
+		if (factRef.current === "save-replaced") setFact(null);
 		void check(true);
-	}, [check]);
+	}, [check, loadFile, setFact]);
 
 	return {
 		lastModifiedMs: document.readMtimeMs ?? null,
 		refreshing,
 		// A state of the file outranks a reply to a gesture, and only one line fits.
-		note: fact ?? answer,
+		note: fact ? FACT_TEXT[fact] : (answer?.text ?? null),
 		dirty,
+		// The control's meaning follows this: it LOADS the file's version in this
+		// state rather than merely re-reading it, and the row says so.
+		diskChanged: fact === "disk-changed",
 		refresh,
 	};
 }

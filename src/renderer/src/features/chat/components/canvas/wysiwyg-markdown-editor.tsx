@@ -43,8 +43,10 @@ import type { CanvasDocument } from "../../types/canvas";
 import {
 	clearDocumentDirty,
 	documentAfterSelfWrite,
+	isAutosaveHeld,
 	isDocumentDirty,
 	probeLocalFile,
+	publishExplicitSave,
 	setDocumentDirty,
 } from "./file-freshness";
 import { InlineEdit } from "./inline-edit";
@@ -494,6 +496,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				await window.api.saveFile(document.path, content);
 				const probe = await probeLocalFile(document.path);
 				showSuccessToast("File saved");
+				// The reader pressed save: the row's hold does not apply to a decision.
+				publishExplicitSave(document.id);
 				originalContentRef.current = content;
 				setHasUserChanges(false);
 
@@ -909,6 +913,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			debouncedContent !== originalContentRef.current &&
 			document.path
 		) {
+			/* Held while the row says the file changed on disk - see the registry's own
+			 * note: writing here is what destroyed the external version. */
+			if (isAutosaveHeld(document.id)) return;
 			/* Same one-step rule as the manual save above: the write, then the probe
 			 * that tells the canvas what the file's mtime became. */
 			void (async () => {
@@ -1545,7 +1552,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 		// Force save the changes immediately since they came from inline edit
 		if (document.path && finalContent !== originalContentRef.current) {
-			window.api.saveFile(document.path, finalContent);
+			void window.api.saveFile(document.path, finalContent);
+			// An approved inline edit is a save the reader asked for.
+			publishExplicitSave(document.id);
 			showSuccessToast("File saved");
 			originalContentRef.current = finalContent;
 			setHasUserChanges(false);
