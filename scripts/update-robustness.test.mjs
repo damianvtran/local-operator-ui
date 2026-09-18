@@ -4765,8 +4765,14 @@ const loadUpdateServiceModule = async () => {
 	const fixture = (contents) => ({ contents, loader: "js" });
 	const bundle = await build({
 		stdin: {
+			/*
+			 * `venv-paths` is re-exported so a case can ask for the name the app gives an
+			 * environment rather than re-deriving it: the sibling flavour's name is the
+			 * subject of review round 2's R6, and a case that hard-coded the path would
+			 * pass while the function the app calls answered something else.
+			 */
 			contents:
-				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service";',
+				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/venv-paths";',
 			resolveDir: process.cwd(),
 		},
 		bundle: true,
@@ -5242,6 +5248,50 @@ const backendManagerStub = (startupMode, service) => ({
 	isUsingExternalBackend: () => false,
 });
 
+/**
+ * A synthetic install on disk: everything the readers actually consult.
+ *
+ * `resolveDistributionMarkers` reads the version out of the dist-info directory's
+ * own NAME, the `pyvenv.cfg` is what makes the prefix a venv at all, and the
+ * console script in `bin/` is what `readInstallIdentity` resolves a prefix from.
+ * No interpreter, no `local-operator` package, no `pip show`: which is the point
+ * of the read under test as well as of this fixture.
+ */
+const syntheticInstall = (root, version, options = {}) => {
+	mkdirSync(join(root, "bin"), { recursive: true });
+	const distInfo = join(
+		root,
+		"lib",
+		"python3.12",
+		"site-packages",
+		`local_operator-${version}.dist-info`,
+	);
+	mkdirSync(distInfo, { recursive: true });
+	/*
+	 * `editable` writes the `direct_url.json` pip leaves behind for a source
+	 * install, which is the whole difference between a dist-info whose version can
+	 * be trusted and one that cannot: the NAME is written once at install time, so a
+	 * checkout whose `pyproject.toml` moved keeps the old number forever - and the
+	 * backend's `installed_version()` prefers the checkout's own pyproject for
+	 * exactly this reason (review round 1, R2).
+	 */
+	if (options.editable) {
+		writeFileSync(
+			join(distInfo, "direct_url.json"),
+			JSON.stringify({
+				url: "file:///synthetic/checkout",
+				dir_info: { editable: true },
+			}),
+		);
+	}
+	writeFileSync(
+		join(root, "bin", "local-operator"),
+		"#!/usr/bin/env python3\n",
+	);
+	writeFileSync(join(root, "pyvenv.cfg"), "home = /usr/bin\n");
+	return root;
+};
+
 const loAggregateCheck = async ({
 	appCheck,
 	serverVersion,
@@ -5307,6 +5357,25 @@ const loAggregateCheck = async ({
 	 * have to interrupt. Its return value comes back as `probeResult`.
 	 */
 	probe = null,
+	/*
+	 * The install the SERVER reports it runs from (`/health`'s `prefix`), for the
+	 * cases about the install that actually serves the app rather than the one
+	 * `local-operator` resolves to on `PATH`.
+	 *
+	 * `appOwned` plants the synthetic root under the app's own managed tree in
+	 * this fixture's home, which is the whole of what `update-service` reads
+	 * ownership from; `kind` is the backend's own `install_kind`, echoed into the
+	 * payload. Omitted means a server that names no install - the shape every case
+	 * from before this parameter declares, and the shape an older backend answers.
+	 *
+	 * `appOwnedRoot` picks WHICH of the managed shapes that root is planted in,
+	 * because they are not the same shape: `managed-python` is a parent the
+	 * generations live under, while the pre-split `local-operator-venv` an older
+	 * build left on disk IS a venv root. The containment test covered only the
+	 * first, and the second answered "a package manager owns this" (review round
+	 * 1, R1), so a case has to be able to plant a daemon in it.
+	 */
+	servingInstall = null,
 }) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-verdict-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-verdict-userdata-"));
@@ -5316,6 +5385,44 @@ const loAggregateCheck = async ({
 		appData: userData,
 		temp: tmpdir(),
 	};
+	/*
+	 * The synthetic serving install, planted BEFORE the service is constructed so
+	 * the check reads a world that is already in place. Under the managed tree when
+	 * the case says the app owns it, and beside it otherwise - because ownership is
+	 * decided by WHERE the root is, and a fixture that planted every root in one
+	 * place could not tell the two remedies apart.
+	 */
+	const servingRoot = servingInstall
+		? syntheticInstall(
+				servingInstall.appOwned
+					? servingInstall.appOwnedRoot === "legacy-venv"
+						? /*
+							 * The PRE-SPLIT environment an older build left on disk. A venv root
+							 * in its own right rather than a parent of one, which is the shape the
+							 * strict-descendant containment test could not see (R1).
+							 */
+							join(
+								home,
+								"Library",
+								"Application Support",
+								"Local Operator",
+								"local-operator-venv",
+							)
+						: join(
+								home,
+								"Library",
+								"Application Support",
+								"Local Operator",
+								"managed-python",
+								"packaged",
+								"environments",
+								"synthetic-runtime-env",
+							)
+					: join(home, "synthetic-external-install"),
+				servingInstall.version,
+				{ editable: servingInstall.editable === true },
+			)
+		: null;
 	const { service, serviceDir } = await loadUpdateServiceModule();
 	const sent = [];
 	let interval = null;
@@ -5331,7 +5438,22 @@ const loAggregateCheck = async ({
 			response.writeHead(200, { "Content-Type": "application/json" });
 			response.end(
 				JSON.stringify({
-					result: serverAnswersVersion ? { version: serverVersion } : {},
+					result: serverAnswersVersion
+						? {
+								version: serverVersion,
+								/*
+								 * The two fields a serving install is identified by, sent only when
+								 * this case declared one: the install root, and the backend's own
+								 * classification of the environment it runs in.
+								 */
+								...(servingRoot
+									? {
+											prefix: servingRoot,
+											install_kind: servingInstall.kind ?? "pip",
+										}
+									: {}),
+							}
+						: {},
 				}),
 			);
 		});
@@ -5907,7 +6029,17 @@ test("the check follows the install, and names the running backend beside it", a
 		installVersion: "0.54.44",
 		publishedVersion: "0.54.44",
 	});
-	assert.equal(installCurrent.verdict.server, "current");
+	/*
+	 * `restart-required`, NOT `current`: the install is at the published release
+	 * and the server actually serving this app is not, so there is nothing to
+	 * install and nothing to affirm either. The status was `current` here, which
+	 * let the whole check earn "The application and server are up to date" in the
+	 * same turn as the skew notice below - the reported contradiction, one sentence
+	 * further on. `restart-required` is the state the panel's notice is about, and
+	 * it is what keeps the affirmation off this machine.
+	 */
+	assert.equal(installCurrent.verdict.server, "restart-required");
+	assert.equal(installCurrent.verdict.affirmation, null);
 	assert.ok(
 		!installCurrent.sent.some(
 			({ channel }) => channel === "backend-update-available",
@@ -5938,6 +6070,528 @@ test("the check follows the install, and names the running backend beside it", a
 	 * numbers. The renderer picks between them from this flag.
 	 */
 	assert.equal(notAvailable.payload.restartable, true);
+});
+
+/**
+ * THE REPORTED DEFECT, as a case: the install that is JUDGED is the one serving
+ * the app.
+ *
+ * The operator's machine reported "The application and server are up to date"
+ * while the panel's own Settings row printed a different version, because the
+ * check classified the install `local-operator` resolves to - a uv tool install
+ * at the published release - and compared THAT against PyPI, while an app-managed
+ * environment three releases behind answered `/health`.
+ *
+ * The fixture's world is exactly that: the shim's install is at the published
+ * release (so a check that judged it affirms the installation current), and the
+ * server reports a DIFFERENT root, older than that, in `/health`'s `prefix`.
+ */
+test("the check judges the install that serves the app, not the one the shim names", async () => {
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.56.8",
+		publishedVersion: "0.56.11",
+		// The install on PATH: current, and NOT the one answering this app.
+		installVersion: "0.56.11",
+		// The install the running server says it is serving from.
+		servingInstall: { version: "0.56.8", appOwned: true, kind: "pip" },
+	});
+
+	assert.equal(verdict.server, "available");
+	assert.equal(verdict.affirmation, null);
+
+	const offer = sent.find(
+		({ channel }) => channel === "backend-update-available",
+	);
+	assert.ok(offer, JSON.stringify(sent.map(({ channel }) => channel)));
+	// The SERVING install's version, not the shim install's 0.56.11.
+	assert.equal(offer.payload.currentVersion, "0.56.8");
+	assert.equal(offer.payload.runningVersion, "0.56.8");
+	assert.equal(offer.payload.latestVersion, "0.56.11");
+	/*
+	 * AND NO PACKAGE-MANAGER COMMAND, because this install is the app's own: the
+	 * `pip install --upgrade local-operator` line a pip-classified venv would get
+	 * would rewrite `site-packages` under the daemon serving this app, and the
+	 * command that owns the GLOBAL install moves an install that is already
+	 * current. An offer that told the reader to run either would be actionable and
+	 * wrong, which is worse than the silence it replaces.
+	 */
+	assert.equal(offer.payload.canManageUpdate, false);
+	assert.equal(offer.payload.updateCommand, "");
+	assert.match(offer.payload.remedy, /managed environment/);
+	assert.doesNotMatch(offer.payload.remedy, /pip install|lop update/);
+	// The install it judged, named for the panel's Details line.
+	assert.match(offer.payload.detail, /managed-python/);
+	assert.match(offer.payload.detail, /0\.56\.8/);
+
+	/*
+	 * AND AN INSTALL THE APP DOES NOT OWN KEEPS THE COMMAND THAT OWNS IT. The
+	 * exemption above is about WHERE the root is, not about the backend's
+	 * self-report: an ordinary virtualenv elsewhere is still the reader's to
+	 * update in their own terminal, and `resolveGlobalInstallPlan` names the pip
+	 * line for it exactly as before. A check that answered "the app owns this"
+	 * from the install's `pip` kind alone would refuse a remedy that works.
+	 */
+	const external = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.56.8",
+		publishedVersion: "0.56.11",
+		installVersion: "0.56.11",
+		servingInstall: { version: "0.56.8", appOwned: false, kind: "pip" },
+	});
+	const externalOffer = external.sent.find(
+		({ channel }) => channel === "backend-update-available",
+	);
+	assert.ok(
+		externalOffer,
+		JSON.stringify(external.sent.map(({ channel }) => channel)),
+	);
+	assert.equal(externalOffer.payload.currentVersion, "0.56.8");
+	assert.equal(
+		externalOffer.payload.updateCommand,
+		"pip install --upgrade local-operator",
+	);
+	assert.match(
+		externalOffer.payload.remedy,
+		/pip install, so update it from your terminal/,
+	);
+	assert.doesNotMatch(externalOffer.payload.detail, /managed-python/);
+
+	/*
+	 * The mirror, and the reason this had to be the SERVING install rather than
+	 * "whichever install is oldest": the shim's install is a release BEHIND while
+	 * the server serving this app is at the published one. Nothing is behind on the
+	 * machine the user is using, so there is nothing to offer - a check that judged
+	 * the install on PATH would offer an update for an install nothing is running.
+	 */
+	const serving = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.56.11",
+		publishedVersion: "0.56.11",
+		installVersion: "0.56.8",
+		servingInstall: { version: "0.56.11", appOwned: true, kind: "pip" },
+	});
+	assert.equal(serving.verdict.server, "current");
+	/*
+	 * The literal rather than `UP_TO_DATE_AFFIRMATION`: this case never loads the
+	 * rule module, and the sentence is the thing on screen - a value import here
+	 * would make the assertion a comparison of the module with itself.
+	 */
+	assert.equal(
+		serving.verdict.affirmation,
+		"The application and server are up to date",
+	);
+	assert.ok(
+		!serving.sent.some(({ channel }) => channel === "backend-update-available"),
+		JSON.stringify(serving.sent.map(({ channel }) => channel)),
+	);
+
+	/*
+	 * AND THE OTHER SHAPE OF THE APP'S OWN TREE. `managed-python` is a PARENT the
+	 * generations live under, but the pre-split `local-operator-venv` an older build
+	 * left on disk IS a venv root - and it exists on the operator's own machine
+	 * (`~/Library/Application Support/Local Operator/local-operator-venv`, holding a
+	 * 0.54.x install), so a daemon can be serving from it today. The containment
+	 * test required the prefix to be a STRICT descendant, which no root is, so this
+	 * shape was answered "a package manager owns this" and the panel offered
+	 * `pip install --upgrade local-operator` for a tree the app owns - the exact
+	 * instruction this arm was added to remove (review round 1, R1).
+	 */
+	const legacyVenv = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.56.8",
+		publishedVersion: "0.56.11",
+		installVersion: "0.56.11",
+		servingInstall: {
+			version: "0.56.8",
+			appOwned: true,
+			appOwnedRoot: "legacy-venv",
+			kind: "pip",
+		},
+	});
+	assert.equal(legacyVenv.verdict.server, "available");
+	const legacyOffer = legacyVenv.sent.find(
+		({ channel }) => channel === "backend-update-available",
+	);
+	assert.ok(
+		legacyOffer,
+		JSON.stringify(legacyVenv.sent.map(({ channel }) => channel)),
+	);
+	assert.equal(legacyOffer.payload.currentVersion, "0.56.8");
+	assert.equal(legacyOffer.payload.canManageUpdate, false);
+	assert.equal(legacyOffer.payload.updateCommand, "");
+	assert.match(legacyOffer.payload.detail, /local-operator-venv/);
+});
+
+/**
+ * WHICH INSTALL THE COMPARISON IS ABOUT, in the two cases where neither reading
+ * can be taken at face value.
+ *
+ * The same defect shape as the case above - the check judging something other
+ * than the install serving the user - reached by two other roads: an install whose
+ * dist-info number is stale by construction, and a server too old to name its
+ * install at all. Both answered `available` for a machine whose server was at the
+ * published release, so both offered an update for an install nobody was using
+ * (review round 1, R2 and R3).
+ */
+test("the comparison's subject is the serving install, not a stale number or the shim", async () => {
+	/*
+	 * R2 - an EDITABLE serving install. Its `direct_url.json` says the environment
+	 * follows a checkout, so the dist-info name (0.55.8) is a number pip wrote once
+	 * and never refreshed, while `/health` carries the real one (0.56.11) - which is
+	 * the reading the backend itself trusts: `installed_version()` prefers the
+	 * checkout's own `pyproject.toml` for exactly this reason. Taking the dist-info
+	 * as the subject answers `install-behind`, rendering both numbers in one
+	 * sentence ("the install on this machine is at 0.55.8, and the server you are
+	 * using is running 0.56.11 until it restarts") for a server that is current.
+	 */
+	const editable = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.56.11",
+		publishedVersion: "0.56.11",
+		installVersion: "0.56.11",
+		servingInstall: {
+			version: "0.55.8",
+			appOwned: false,
+			kind: "editable",
+			editable: true,
+		},
+	});
+	assert.equal(editable.verdict.server, "current");
+	assert.equal(
+		editable.verdict.affirmation,
+		"The application and server are up to date",
+	);
+	assert.ok(
+		!editable.sent.some(
+			({ channel }) => channel === "backend-update-available",
+		),
+		JSON.stringify(editable.sent.map(({ channel }) => channel)),
+	);
+
+	/*
+	 * R3 - a server that names NO install, which is what a backend older than
+	 * v0.54.38 answers (that release added `prefix` to `/health`). The plan still
+	 * resolves the shim, because it is the best available source for a REMEDY, and
+	 * the comparison used to take that shim's version as its subject too: an offer
+	 * about an install nothing is serving, while the pane's own Server version row
+	 * printed the daemon the check had just read.
+	 */
+	const noPrefix = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.56.11",
+		publishedVersion: "0.56.11",
+		installVersion: "0.55.8",
+	});
+	assert.equal(noPrefix.verdict.server, "current");
+	assert.equal(
+		noPrefix.verdict.affirmation,
+		"The application and server are up to date",
+	);
+	assert.ok(
+		!noPrefix.sent.some(
+			({ channel }) => channel === "backend-update-available",
+		),
+		JSON.stringify(noPrefix.sent.map(({ channel }) => channel)),
+	);
+});
+
+/**
+ * The ownership guard itself, over every shape it claims to cover - and over the
+ * verdict that decides the remedy, not just the list it is taken from. Its own case
+ * rather than another branch of the check above, because the guard is
+ * the thing that was wrong and two of its three shapes are not reachable by
+ * planting a tree on a darwin host: `managedVenvPath` answers under `userData` on
+ * Windows and under `~/.config` on Linux, so the only way to assert those shapes
+ * is to ask the roots function for that platform - which is why it takes a
+ * `platform` and is exported at all. A case that planted a darwin tree would have
+ * covered one shape out of three and passed while the other two stayed broken,
+ * which is precisely how this shipped (review round 1, R1).
+ *
+ * BOTH FLAVOURS, and the verdict rather than the list (review round 2, R6): the
+ * app's environment is named by `packaged`, so a list carrying only the asking
+ * instance's name covered the sibling by accident on darwin - where both names sit
+ * under `managed-python`, which shape 1 already contains - and not at all on win32
+ * and linux, where the venv root is the platform's own and nothing else names it.
+ * A daemon serving from the app's OTHER environment was therefore judged external
+ * there, and the arm that resolves for an external install is the pip one: exactly
+ * the instruction the guard exists to remove, offered for the app's own tree. The
+ * verdict is asserted through `appOwnsInstallRoot`, the function the check itself
+ * calls, because "which arm resolves" is the finding and the root list is only
+ * how it was reached.
+ */
+test("the app's own install roots cover every shape, and a root is inside itself", async () => {
+	/*
+	 * The paths come first and the import after them: the service module builds its
+	 * logger at import time, which reads `app.getPath("userData")`, so a case that
+	 * imported first would fail on the fixture's own path table rather than on the
+	 * guard.
+	 */
+	const home = mkdtempSync(join(tmpdir(), "lo-owned-roots-home-"));
+	const appData = mkdtempSync(join(tmpdir(), "lo-owned-roots-userdata-"));
+	globalThis.__loTestPaths = {
+		home,
+		userData: appData,
+		appData,
+		temp: tmpdir(),
+	};
+	const { service } = await loadUpdateServiceModule();
+	const {
+		appOwnedInstallRoots,
+		appOwnsInstallRoot,
+		isWithinAnyRoot,
+		managedVenvPath,
+	} = service;
+	const support = join(
+		home,
+		"Library",
+		"Application Support",
+		"Local Operator",
+	);
+	for (const platform of ["darwin", "win32", "linux"]) {
+		/*
+		 * Every platform under BOTH flavours, because that pair is what R6 turned on:
+		 * `managedVenvPath` answers one name per call, chosen by `packaged`, and the
+		 * app's OTHER environment is the one the server actually reports on the
+		 * machines where a dev instance adopts the installed app's daemon.
+		 */
+		for (const packaged of [true, false]) {
+			const input = { platform, home, appDataPath: appData, packaged };
+			const roots = appOwnedInstallRoots(input);
+			/*
+			 * Five entries, four shapes: the post-split parent, the two pre-split venv
+			 * names, and the app's own environment under each flavour name. Asserted as a
+			 * count so a root list that quietly lost one cannot pass by covering the
+			 * others.
+			 */
+			assert.equal(
+				roots.length,
+				5,
+				`${platform}/${packaged}: ${JSON.stringify(roots)}`,
+			);
+			for (const root of roots) {
+				assert.ok(
+					isWithinAnyRoot(roots, root),
+					`${platform}/${packaged}: the root ITSELF is not read as inside: ${root}`,
+				);
+				assert.ok(
+					isWithinAnyRoot(
+						roots,
+						join(root, "lib", "python3.12", "site-packages"),
+					),
+					`${platform}/${packaged}: a tree under ${root} is not read as inside`,
+				);
+			}
+			/*
+			 * Named this way round rather than by index, so a reordered list still has to
+			 * contain each shape: the two pre-split names, a generation under the
+			 * post-split parent, and the app's own environment on the platform whose answer
+			 * is NOT under the parent - both flavours of it.
+			 */
+			for (const owned of [
+				join(support, "managed-python"),
+				join(support, "managed-python", "packaged", "environments", "x-y"),
+				join(support, "local-operator-venv"),
+				join(support, "local-operator-venv-dev"),
+				managedVenvPath(input),
+				managedVenvPath({ ...input, packaged: !packaged }),
+			]) {
+				assert.ok(
+					isWithinAnyRoot(roots, owned),
+					`${platform}/${packaged}: ${owned} is the app's own and is not read as inside`,
+				);
+			}
+			/*
+			 * The CONSEQUENCE, asked of the function the check itself calls. Ownership
+			 * is what decides the remedy, so the app's own environment under EITHER
+			 * flavour name has to answer owned - that is the arm where no package
+			 * manager's command is offered for the app's tree (R6) - while a tree the app
+			 * does not own, and a shared-prefix neighbour of the name beside it, answer
+			 * false. The neighbour is the case a substring test would have matched: the
+			 * same stem with one more component.
+			 */
+			for (const flavour of [true, false]) {
+				const sibling = managedVenvPath({ ...input, packaged: flavour });
+				assert.equal(
+					appOwnsInstallRoot(input, sibling),
+					true,
+					`${platform}/${packaged}: the app's own environment (packaged=${flavour}) at ${sibling} must read as owned, or the check offers a package manager for the app's tree`,
+				);
+			}
+			for (const external of [
+				join(home, "synthetic-external-install"),
+				/*
+				 * The shared-prefix neighbour only discriminates where the venv root is the
+				 * platform's OWN directory - `%APPDATA%\local-operator-venv-dev` on Windows,
+				 * `~/.config/local-operator/...` on Linux - because the same stem with one
+				 * more component is then a directory BESIDE it. On darwin the name lives
+				 * under `managed-python`, which the app owns wholesale, so a name that
+				 * merely starts with one of its children is genuinely inside.
+				 */
+				...(platform === "darwin" ? [] : [`${managedVenvPath(input)}-other`]),
+			]) {
+				assert.equal(
+					appOwnsInstallRoot(input, external),
+					false,
+					`${platform}/${packaged}: ${external} is not the app's own and is read as inside`,
+				);
+			}
+		}
+	}
+
+	const darwinRoots = appOwnedInstallRoots({
+		platform: "darwin",
+		home,
+		appDataPath: appData,
+		packaged: true,
+	});
+	/*
+	 * And what is outside stays outside - including the shared-prefix neighbour the
+	 * containment rule's own comment is about, which a substring test would have
+	 * matched, and a tree that shares no root with any of them, where `path.relative`
+	 * echoes its input back.
+	 */ for (const outside of [
+		join(home, "synthetic-external-install"),
+		`${join(support, "managed-python")}-other`,
+		join(support, "elsewhere"),
+		"/tmp/not-the-apps-tree",
+	]) {
+		assert.equal(
+			isWithinAnyRoot(darwinRoots, outside),
+			false,
+			`${outside} is not the app's own and is read as inside`,
+		);
+	}
+});
+
+/**
+ * The four states of the server channel, decided by the rule that owns them.
+ *
+ * Driven through the pure module with no fixture, because these are the rule's own
+ * cases: the whole defect was a check that reached the wrong CONCLUSION from the
+ * right readings, and the rule is now the only place a conclusion is drawn.
+ */
+test("the server channel's rule names its four states from the readings", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		/*
+		 * The service's comparator, narrowed to what these readings need: the
+		 * triple-by-triple ordering `isNewerVersion` performs, without its pre-release
+		 * tail - which none of these versions carries. Written here rather than
+		 * imported because the rule's own contract is the INJECTED comparison: it
+		 * decides, and the app keeps one ordering for that decision.
+		 */
+		const isNewer = (candidate, subject) => {
+			const parts = (value) => value.split(".").map(Number);
+			const left = parts(candidate);
+			const right = parts(subject);
+			for (let i = 0; i < 3; i++) {
+				const a = left[i] ?? 0;
+				const b = right[i] ?? 0;
+				if (a !== b) return a > b;
+			}
+			return false;
+		};
+
+		const behind = rule.serverChannelVerdict({
+			installVersion: "0.56.8",
+			runningVersion: "0.56.8",
+			publishedVersion: "0.56.11",
+			isNewer,
+		});
+		assert.deepEqual(behind, { status: "available", state: "install-behind" });
+
+		/*
+		 * The install is current and the process serving it is not: nothing to
+		 * install, nothing to offer, and NOTHING TO AFFIRM either. The status was
+		 * `current` in this state, which is what let "The application and server are up
+		 * to date" be rendered beside a notice saying the server was on an older build.
+		 */
+		const stale = rule.serverChannelVerdict({
+			installVersion: "0.56.11",
+			runningVersion: "0.56.8",
+			publishedVersion: "0.56.11",
+			isNewer,
+		});
+		assert.deepEqual(stale, {
+			status: "restart-required",
+			state: "restart-required",
+		});
+		assert.equal(
+			rule.updateCheckVerdict({ app: "current", server: stale.status })
+				.affirmation,
+			null,
+		);
+
+		const current = rule.serverChannelVerdict({
+			installVersion: "0.56.11",
+			runningVersion: "0.56.11",
+			publishedVersion: "0.56.11",
+			isNewer,
+		});
+		assert.deepEqual(current, { status: "current", state: "current" });
+
+		/*
+		 * An unreachable server is `unreadable`, and never `current`: the defect this
+		 * rule's own module was written for is a surface treating "we could not find
+		 * out" as an answer.
+		 */
+		for (const readings of [
+			{
+				installVersion: null,
+				runningVersion: null,
+				publishedVersion: "0.56.11",
+			},
+			{
+				installVersion: "0.56.8",
+				runningVersion: "Unknown",
+				publishedVersion: "0.56.11",
+			},
+			{
+				installVersion: "0.56.8",
+				runningVersion: "0.56.8",
+				publishedVersion: null,
+			},
+			{
+				installVersion: "0.56.8",
+				runningVersion: "0.56.8",
+				publishedVersion: "999.invalid",
+			},
+		]) {
+			assert.deepEqual(
+				rule.serverChannelVerdict({ ...readings, isNewer }),
+				{ status: "unavailable", state: "unreadable" },
+				JSON.stringify(readings),
+			);
+		}
+
+		/*
+		 * And the fallback the subject picks: when the install's own metadata could not
+		 * be read, the running process's reading stands in for it - the same install,
+		 * since the process executes the code in the prefix it named. It is NOT a
+		 * licence to affirm: a running build that trails the release is still behind.
+		 */
+		assert.deepEqual(
+			rule.serverChannelVerdict({
+				installVersion: null,
+				runningVersion: "0.56.8",
+				publishedVersion: "0.56.11",
+				isNewer,
+			}),
+			{ status: "available", state: "install-behind" },
+		);
+		assert.deepEqual(
+			rule.serverChannelVerdict({
+				installVersion: null,
+				runningVersion: "0.56.11",
+				publishedVersion: "0.56.11",
+				isNewer,
+			}),
+			{ status: "current", state: "current" },
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 /**
@@ -6064,7 +6718,22 @@ const driveGlobalUpdate = async ({
 				command: consolePath,
 			};
 		};
-		updateService.getInstalledBackendVersion = async () => daemonReports;
+		/*
+		 * THE CHECK'S OWN READ, which is `readRunningBackend` since the check began
+		 * judging the install that serves the app: `/health` carries the version and
+		 * the install root in ONE answer, so the seam is the whole reading rather
+		 * than its version. `prefix: null` is the server that does not name its
+		 * install - the plan's own subject then stands, which this fixture stubs
+		 * above - and every case here declares that shape.
+		 *
+		 * `getInstalledBackendVersion` still exists and delegates to this, so the
+		 * cases that stub IT for the paths that ask only for a version are unchanged.
+		 */
+		updateService.readRunningBackend = async () => ({
+			version: daemonReports,
+			prefix: null,
+			installKind: null,
+		});
 		if (stubWait) {
 			updateService.waitForBackendVersion = async () => daemonReports;
 		}

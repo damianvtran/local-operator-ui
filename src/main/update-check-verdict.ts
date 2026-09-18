@@ -26,12 +26,23 @@
  *
  * - `available`: the channel found a newer release than the one running.
  * - `current`: the channel positively found nothing newer.
+ * - `restart-required`: the INSTALL is current and the process serving this app
+ *   is running an older build of it. There is nothing to install and there is
+ *   nothing to offer, but there is also nothing to affirm: the build the user is
+ *   talking to is behind the published release and only a restart of that
+ *   process closes the gap. Only the server channel can carry it, because it is
+ *   a fact about an install and the process started from it - the app channel has
+ *   no such pair.
  * - `unavailable`: the channel could not find out - development mode, an npx
  *   registry fetch with no answer, a fetch or registry failure, a thrown error
  *   (including one the updater filters as a known spurious availability error),
  *   or a server version that could not be read.
  */
-export type UpdateChannelStatus = "available" | "current" | "unavailable";
+export type UpdateChannelStatus =
+	| "available"
+	| "current"
+	| "restart-required"
+	| "unavailable";
 
 /**
  * The version strings this app is willing to REASON about.
@@ -106,7 +117,10 @@ export const UP_TO_DATE_AFFIRMATION =
  * The affirmation a pair of channel statuses earns, or null.
  *
  * Both channels must be `current`: `available` means there is something to
- * offer, and `unavailable` means nobody asked the question.
+ * offer, `restart-required` means the server actually serving this app is behind
+ * the install on disk (a restart picks it up, and the sentence would be a claim
+ * about a build the reader is not talking to), and `unavailable` means nobody
+ * asked the question.
  */
 export const updateCheckAffirmation = (channels: {
 	app: UpdateChannelStatus;
@@ -115,6 +129,116 @@ export const updateCheckAffirmation = (channels: {
 	channels.app === "current" && channels.server === "current"
 		? UP_TO_DATE_AFFIRMATION
 		: null;
+
+/**
+ * What the SERVER channel decides from.
+ *
+ * Three readings rather than one, because the defect this rule closes was a
+ * check that compared the wrong one. `/health` reports the version of the
+ * PROCESS that answered and the install root it was started from (`prefix`, and
+ * `install_kind` beside it); the version ON DISK at that root is what an update
+ * would move. A check that reads the install the app happens to be attached to
+ * by name - the global `local-operator` on `PATH` - can therefore compare a
+ * current install against PyPI while a different install, three releases behind,
+ * is the one serving the user. That is the reported defect: "Install on disk
+ * reports: 0.56.11, running backend reports: 0.56.8, Latest: 0.56.11, Update
+ * needed: false" on a machine whose Settings row read 0.56.8.
+ *
+ * So the subject is the SERVING install: `installVersion` is read from the
+ * dist-info at the root the running server reported, and `runningVersion` is the
+ * process's own reading of the same install. When the install's own metadata
+ * cannot be read, the running reading is the subject instead - it is a reading of
+ * the same tree (the process executes the code in that prefix) and it can only
+ * be the install's version or older than it, never newer.
+ */
+export type ServerChannelReadings = {
+	/** The version the install serving this app reports on disk, or null. */
+	installVersion: string | null;
+	/** The version the running server reports on `/health`, or null. */
+	runningVersion: string | null;
+	/** The published release, or null when it could not be read. */
+	publishedVersion: string | null;
+	/**
+	 * Whether `candidate` is a newer release than `subject`.
+	 *
+	 * Supplied by the caller rather than re-implemented here, deliberately: the
+	 * app has ONE version comparator for its update decisions
+	 * (`UpdateService.isNewerVersion`), it is deliberately permissive - it tolerates
+	 * the four-part releases the backend has published - and a second ordering
+	 * written into this module would be a second answer to "which of these two is
+	 * newer" that the app channel never consults.
+	 */
+	isNewer: (candidate: string, subject: string) => boolean;
+};
+
+/**
+ * Which of the four states the server channel is in.
+ *
+ * The status is the verdict; this is the reading it was earned from, and it is
+ * what the panel's copy is chosen by. `install-behind` is the only state that may
+ * carry an offer, `restart-required` is the only one that carries neither an
+ * offer nor an affirmation, and `unreadable` is the one that must never be
+ * reported as either.
+ */
+export type ServerChannelState =
+	| "install-behind"
+	| "restart-required"
+	| "current"
+	| "unreadable";
+
+export type ServerChannelVerdict = {
+	status: UpdateChannelStatus;
+	state: ServerChannelState;
+};
+
+/** A reading, trimmed, or null when there is nothing to compare. */
+const readable = (value: string | null | undefined): string | null =>
+	isReadableVersion(value) ? (value as string).trim() : null;
+
+/**
+ * What the server channel may conclude from the readings, and nothing more.
+ *
+ * Four states, and the order they are decided in is the rule:
+ *
+ * 1. **unreadable** - the published release or the running server could not be
+ *    read. "We could not find out" is not "current", which is the misreading
+ *    this module's own history is about (see `UP_TO_DATE_AFFIRMATION`), and it is
+ *    not an offer either: a version nobody can read is not one to move to.
+ * 2. **install-behind** - the install serving this app is older than the
+ *    published release. This is the one state that earns an offer, and the
+ *    subject is the serving install rather than whichever install the app could
+ *    name.
+ * 3. **restart-required** - the install is current and the process serving this
+ *    app runs an older build of it. Nothing to install, nothing to offer, and
+ *    nothing to affirm: the build the reader is talking to trails the published
+ *    release until that process restarts, and an "up to date" sentence here is
+ *    the exact contradiction the reported defect produced - a panel that affirms
+ *    a server version its own row contradicts.
+ * 4. **current** - both readings say the published release, positively read.
+ */
+export const serverChannelVerdict = ({
+	installVersion,
+	runningVersion,
+	publishedVersion,
+	isNewer,
+}: ServerChannelReadings): ServerChannelVerdict => {
+	const published = readable(publishedVersion);
+	const running = readable(runningVersion);
+	if (!published || !running)
+		return { status: "unavailable", state: "unreadable" };
+
+	const install = readable(installVersion);
+	/* The install on disk is the subject; the running reading stands in for it
+	 * only when its own metadata could not be read. */
+	const subject = install ?? running;
+	if (isNewer(published, subject))
+		return { status: "available", state: "install-behind" };
+
+	if (install && install !== running && isNewer(install, running))
+		return { status: "restart-required", state: "restart-required" };
+
+	return { status: "current", state: "current" };
+};
 
 /**
  * A verdict from the two channel statuses.
