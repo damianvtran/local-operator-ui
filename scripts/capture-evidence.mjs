@@ -135,6 +135,85 @@ const PALETTE_IDS = new Set(loadPalettes().map(({ id }) => id));
  */
 const ALLOW_BACKEND = ARGS.includes("--allow-backend") && PARTIAL;
 
+/*
+ * How long the theme guard waits for the story's decorator to apply the
+ * palette it was navigated with, before it gives up and fails the run.
+ *
+ * The guard POLLS `document.documentElement.dataset.theme` rather than
+ * sleeping once, for the reason its own comment gives at the call site: the
+ * wait is paid only by the story that needs it instead of by all 372 frames.
+ * 10 s is a correct budget on an idle machine.
+ *
+ * IT IS TOO SHORT ON A LOADED ONE, and that is a measurement rather than a
+ * guess (2026-09-18, this host, load averages 144-233): driving the rig's own
+ * story over CDP, `chat-canonical-links--detected-targets` reaches
+ * `tokyoNight` at **72.1 s**, and even the default `localOperatorDark` at
+ * 30-66 s, while this window is 40 x 250 ms plus the 900 ms post-navigation
+ * settle, ~10.9 s - a 3-7x shortfall. The rig could not take a SINGLE frame at
+ * that load: three runs died at the set's first entry with `document carries
+ * theme "" after 10s`.
+ *
+ * So the budget is a knob. IT DEFAULTS TO THE VALUE THE RIG USES TODAY, so the
+ * gate's determinism, the committed frames and every existing capture are
+ * unaffected; a run on a busy box raises it and says so. Opt in with
+ * `--theme-settle-ms=<ms>` or `LOCAL_OPERATOR_UI_THEME_SETTLE_MS` in the
+ * environment (the flag wins). A MALFORMED VALUE IS REFUSED rather than
+ * silently replaced by the default: a run that quietly reverted to 10 s would
+ * reproduce exactly the failure this knob exists to avoid, on a machine where
+ * it is already known not to fit. The flag is not restricted to narrow runs,
+ * but a full sweep should keep the shipped budget.
+ */
+/*
+ * A whole number of milliseconds, for `resolveThemeSettleMs`'s validation.
+ *
+ * At the top level rather than inline because that is the rule this file is
+ * held to (`lint/performance/useTopLevelRegex`, the same one `DEBUG_PORT_LINE`
+ * below is hoisted for): a literal inside a function is re-created on every
+ * call. It must also sit ABOVE the resolver's own module-scope call, which is
+ * why it is here rather than beside `API_URL_LINE` where the rest of the flag
+ * parsing lives: a `const` used before its declaration in that path throws a
+ * `ReferenceError` from the temporal dead zone, which reads as a load failure
+ * rather than as the refusal the caller wrote.
+ */
+const WHOLE_MILLISECONDS = /^\d+$/;
+
+export const THEME_SETTLE_DEFAULT_MS = 10_000;
+/** The guard's poll interval, which is what turns the budget into attempts. */
+export const THEME_SETTLE_POLL_MS = 250;
+export const THEME_SETTLE_ENV = "LOCAL_OPERATOR_UI_THEME_SETTLE_MS";
+
+/**
+ * The theme guard's budget, resolved from argv then the environment.
+ *
+ * Read as a function of its inputs rather than straight off `process` so the
+ * three properties that matter are testable without a capture: the flag is
+ * honoured, the default is the shipped 10 s, and a value that is not a
+ * positive whole number of milliseconds THROWS. Failing closed is the point -
+ * see the constant's note above for what a silent default costs here.
+ */
+export const resolveThemeSettleMs = (args = ARGS, env = process.env) => {
+	const flagPrefix = "--theme-settle-ms=";
+	const fromFlag = args.find((a) => a.startsWith(flagPrefix));
+	const raw = fromFlag
+		? fromFlag.slice(flagPrefix.length)
+		: env[THEME_SETTLE_ENV];
+	if (raw === undefined) return THEME_SETTLE_DEFAULT_MS;
+	const text = String(raw).trim();
+	const value = Number(text);
+	if (
+		!WHOLE_MILLISECONDS.test(text) ||
+		!Number.isSafeInteger(value) ||
+		value <= 0
+	) {
+		throw new Error(
+			`--theme-settle-ms / ${THEME_SETTLE_ENV} must be a positive whole number of milliseconds, got ${JSON.stringify(raw)}`,
+		);
+	}
+	return value;
+};
+
+const THEME_SETTLE_MS = resolveThemeSettleMs();
+
 const API_URL_LINE = /^VITE_LOCAL_OPERATOR_API_URL=(.+)$/m;
 
 /**
@@ -4942,20 +5021,25 @@ const main = async () => {
 			   CodeMirror - can still be mounting when a single read lands. A
 			   fixed sleep long enough for the slowest story would be paid by
 			   all 372 frames, so wait for the condition instead of for a
-			   duration. The throw still fires if it never becomes true. */
+			   duration. The throw still fires if it never becomes true.
+
+			   The budget is THEME_SETTLE_MS (10 s shipped, `--theme-settle-ms`
+			   or its env var to raise it on a loaded machine - see that
+			   constant for the 72.1 s measurement that made it a knob). */
 			let applied = "";
-			for (let attempt = 0; attempt < 40; attempt++) {
+			const settleAttempts = Math.ceil(THEME_SETTLE_MS / THEME_SETTLE_POLL_MS);
+			for (let attempt = 0; attempt < settleAttempts; attempt++) {
 				const { result } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
 					expression: "document.documentElement.dataset.theme || ''",
 				});
 				applied = result.value;
 				if (applied === theme) break;
-				await sleep(250);
+				await sleep(THEME_SETTLE_POLL_MS);
 			}
 			if (applied !== theme) {
 				throw new Error(
-					`${story} @ ${theme}: document carries theme "${applied}" after 10s`,
+					`${story} @ ${theme}: document carries theme "${applied}" after ${THEME_SETTLE_MS / 1000}s`,
 				);
 			}
 
