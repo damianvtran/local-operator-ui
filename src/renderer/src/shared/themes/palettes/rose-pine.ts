@@ -96,6 +96,21 @@ export const rosePine: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2e2430",
 		onAccent: "#191724",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#c4a7e7`, iris), received unchanged because it already
+		 * clears every floor — ΔE00 21.62 from `accent`, 23.24 from its nearest
+		 * semantic (`danger`), 7.23:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#c4a7e7",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 15.78 and C* 9.63, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 2.05 from `accentWash` (the field floor is
+		 * 2.0), 7.10:1 for `accentAlt` on it, and 3.02 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#2B2532",
 
 		// pine #31748f measures 3.38:1 on base and 3.16:1 on surface — the only
 		// canonical accent under the floor on this ground. Lifted on-hue.

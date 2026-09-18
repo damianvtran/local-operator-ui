@@ -126,6 +126,24 @@ export const githubLight: ThemeDefinition = {
 		// signal, 7.79:1 on `surface` and 8.53:1 on `elevated`.
 		accentWash: "#DDF4FF",
 		onAccent: "#FFFFFF",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#8250df`,
+		 * done.fg (the merged-PR purple)), moved onto the floors: as received it
+		 * read 3.87:1 as text on `sunken` and one more ground. The shortfall is
+		 * paid on LIGHTNESS at the source hue — L* 46.72 → 42.29 — which is what
+		 * this port does to every one of its own tokens. Measured: ΔE00 16.72 from
+		 * `accent`, 39.06 from its nearest semantic (`danger`), 4.56:1 on the
+		 * tightest ground (`sunken`).
+		 */
+		accentAlt: "#7545D2",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 94.86 and C* 9.48, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 14.93 from `accentWash` (the field floor is
+		 * 2.0), 5.21:1 for `accentAlt` on it, and 9.14 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#F5EDFF",
 
 		// Primer green 1A7F37 is 3.90:1 on `sunken` (< 4.5). Deepened along the same green.
 		success: "#01732C",

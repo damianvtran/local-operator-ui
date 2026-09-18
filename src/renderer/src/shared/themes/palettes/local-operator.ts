@@ -116,6 +116,23 @@ export const localOperatorDark: ThemeDefinition = {
 		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#16281d",
 		onAccent: "#16130e",
+		/*
+		 * No second hue to carry: this palette is desktop-only, so it has no TUI
+		 * `label` token and the hue is a ROTATION of `accent` rather than a value
+		 * that already existed — Δh 150° at `accent`'s own L*, its chroma walked
+		 * down from 68.97 to the first that clears every floor (C* 43.97).
+		 * Measured: ΔE00 47.92 from `accent`, 33.33 from its nearest semantic
+		 * (`danger`), 6.87:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#B0A7F7",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 14.27 and C* 11.65, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 21.01 from `accentWash` (the field floor is
+		 * 2.0), 7.19:1 for `accentAlt` on it, and 11.95 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#242233",
 
 		success: "#57c785",
 		successWash: "#16281d",
@@ -286,6 +303,23 @@ export const localOperatorLight: ThemeDefinition = {
 		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#e7f1e8",
 		onAccent: "#F6FAF8",
+		/*
+		 * No second hue to carry: this palette is desktop-only, so it has no TUI
+		 * `label` token and the hue is a ROTATION of `accent` rather than a value
+		 * that already existed — Δh 150° at `accent`'s own L*, its chroma walked
+		 * down from 45.62 to the first that clears every floor (C* 35.62).
+		 * Measured: ΔE00 40.70 from `accent`, 33.38 from its nearest semantic
+		 * (`danger`), 4.51:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#6C5F9A",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 94.19 and C* 5.87, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 12.22 from `accentWash` (the field floor is
+		 * 2.0), 4.86:1 for `accentAlt` on it, and 7.89 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#F0EDF8",
 
 		success: "#19764a",
 		successWash: "#e6f1ea",

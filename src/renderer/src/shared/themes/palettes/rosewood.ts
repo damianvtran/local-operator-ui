@@ -155,6 +155,24 @@ export const rosewood: ThemeDefinition = {
 
 		// The theme's own deepest ground, at 7.34:1 on all three accent fills.
 		onAccent: "#170C0D",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#c99bd2`),
+		 * moved onto the floors: as received it sat ΔE00 11.50 from `accent`. That
+		 * is paid on HUE — the hue walked 14.8° off the source and L* 69.83 → 69.77
+		 * — because a value that bought the separation by darkening would be the
+		 * same hue at another weight. Measured: ΔE00 17.06 from `accent`, 29.06
+		 * from its nearest semantic (`danger`), 6.32:1 on the tightest ground
+		 * (`surface`).
+		 */
+		accentAlt: "#B7A0DD",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 14.30 and C* 8.98, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 14.52 from `accentWash` (the field floor is
+		 * 2.0), 6.71:1 for `accentAlt` on it, and 7.48 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#27222E",
 
 		// Upstream success, clearing 7.68:1 at its tightest ground.
 		success: "#94BD80",

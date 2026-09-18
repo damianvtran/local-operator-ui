@@ -156,6 +156,23 @@ export const solarizedDark: ThemeDefinition = {
 		 */
 		accentWash: "#00323B",
 		onAccent: "#00252E",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#8489d4`),
+		 * moved onto the floors: as received it read 4.20:1 as text on `surface`.
+		 * The shortfall is paid on LIGHTNESS at the source hue — L* 59.48 → 61.87 —
+		 * which is what this port does to every one of its own tokens. Measured:
+		 * ΔE00 32.58 from `accent`, 37.00 from its nearest semantic (`danger`),
+		 * 4.54:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#8B8FDB",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 18.35 and C* 15.43, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 19.09 from `accentWash` (the field floor is
+		 * 2.0), 4.64:1 for `accentAlt` on it, and 17.32 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#2A2B41",
 
 		// Upstream green 859900 is 3.72:1 on `elevated` (< 4.5). Lifted along the same
 		// olive.

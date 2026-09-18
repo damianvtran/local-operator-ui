@@ -118,6 +118,22 @@ export const oneLight: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#E5E6EA",
 		onAccent: "#EAEAEA",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#a626a4`, canonical hue-3 purple — 5.86:1, untouched),
+		 * received unchanged because it already clears every floor — ΔE00 24.22
+		 * from `accent`, 35.23 from its nearest semantic (`danger`), 4.64:1 as text
+		 * on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#a626a4",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 91.32 and C* 2.09, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 2.39 from `accentWash` (the field floor is
+		 * 2.0), 4.90:1 for `accentAlt` on it, and 2.71 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#E9E5E8",
 
 		// Canonical hue-4 green 50A14F is 2.43:1 on `sunken` (< 4.5). Darkened along the
 		// same green.

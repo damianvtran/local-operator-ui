@@ -117,6 +117,24 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		 */
 		accentWash: "#212339",
 		onAccent: "#24273A",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#b7bdf8`,
+		 * canonical lavender), moved onto the floors: as received it sat ΔE00 10.79
+		 * from `accent`. That is paid on HUE — the hue walked 30.0° off the source
+		 * and L* 78.02 → 78.47 — because a value that bought the separation by
+		 * darkening would be the same hue at another weight. Measured: ΔE00 22.64
+		 * from `accent`, 40.05 from its nearest semantic (`warning`), 7.60:1 on the
+		 * tightest ground (`surface`).
+		 */
+		accentAlt: "#8EC8FB",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 14.52 and C* 15.61, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 10.62 from `accentWash` (the field floor is
+		 * 2.0), 8.64:1 for `accentAlt` on it, and 9.09 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#0B273A",
 
 		success: "#A6DA95",
 		successWash: "#292D3D",

@@ -178,6 +178,26 @@ export const obsidian: ThemeDefinition = {
 		 */
 		accentWash: "#303032",
 		onAccent: "#09090B",
+		/*
+		 * No second hue to carry: this palette is desktop-only, so it has no TUI
+		 * `label` token and the hue is a ROTATION of `accent` rather than a value
+		 * that already existed — Δh 310° at `accent`'s own L*, its chroma walked
+		 * down from 40.00 to the first that clears every floor (C* 40.00) — and it
+		 * is the only palette in the set that gains a hue it never had, its accent
+		 * being the greyscale `#FAFAFA` at C* 0, so the walk starts from the chroma
+		 * floor of 40 rather than from the accent's own. Measured: ΔE00 21.43 from
+		 * `accent`, 20.43 from its nearest semantic (`warning`), 13.70:1 on the
+		 * tightest ground (`surface`).
+		 */
+		accentAlt: "#FDFFAF",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 19.93 and C* 1.36, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 2.87 from `accentWash` (the field floor is
+		 * 2.0), 12.66:1 for `accentAlt` on it, and 4.03 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#30302E",
 
 		// Low-chroma by design: about 30 percent saturation, so the semantic states
 		// stay legible without turning a deliberately grey theme into a colourful

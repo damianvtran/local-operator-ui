@@ -140,6 +140,22 @@ export const tokyoNight: ThemeDefinition = {
 		 */
 		accentWash: "#2A2F44",
 		onAccent: "#1A1B26",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#bb9af7`, canonical magenta), received unchanged because
+		 * it already clears every floor — ΔE00 16.09 from `accent`, 27.11 from its
+		 * nearest semantic (`danger`), 6.21:1 as text on the tightest ground
+		 * (`surface`).
+		 */
+		accentAlt: "#bb9af7",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 19.81 and C* 14.38, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 6.12 from `accentWash` (the field floor is
+		 * 2.0), 5.74:1 for `accentAlt` on it, and 5.78 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#342C41",
 
 		// Upstream Tokyo Night green.
 		success: "#9ECE6A",

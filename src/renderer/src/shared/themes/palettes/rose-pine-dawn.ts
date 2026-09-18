@@ -115,6 +115,24 @@ export const rosePineDawn: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#fbece8",
 		onAccent: "#fffaf3",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#7d6694`, iris
+		 * #907aa9: 3.47:1 (< 4) — 7.8 ΔE), moved onto the floors: as received it
+		 * read 4.10:1 as text on `sunken` and one more ground. The shortfall is
+		 * paid on LIGHTNESS at the source hue — L* 46.98 → 44.03 — which is what
+		 * this port does to every one of its own tokens. Measured: ΔE00 23.15 from
+		 * `accent`, 16.68 from its nearest semantic (`danger`), 4.56:1 on the
+		 * tightest ground (`sunken`).
+		 */
+		accentAlt: "#755F8C",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 94.45 and C* 5.78, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 7.24 from `accentWash` (the field floor is
+		 * 2.0), 4.85:1 for `accentAlt` on it, and 7.54 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#F3EDF8",
 
 		// pine, canonical.
 		success: "#286983",

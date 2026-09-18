@@ -146,6 +146,23 @@ export const gruvboxLight: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#F0EBC3",
 		onAccent: "#FBF1C7",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#8f3f71`, canonical faded_purple), received unchanged
+		 * because it already clears every floor — ΔE00 41.68 from `accent`, 27.78
+		 * from its nearest semantic (`danger`), 5.21:1 as text on the tightest
+		 * ground (`sunken`).
+		 */
+		accentAlt: "#8f3f71",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 92.52 and C* 20.61, with the hue moved to
+		 * `accentAlt`'s, and the chroma capped at C* 12.65 where sRGB runs out at
+		 * that L*. Measured: ΔE00 27.84 from `accentWash` (the field floor is 2.0),
+		 * 5.57:1 for `accentAlt` on it, and 19.23 from the nearest ground it is
+		 * painted on.
+		 */
+		accentAltWash: "#FEE2F1",
 
 		// Canonical faded_green 79740E is 3.87:1 on `sunken`; this is the smallest darkening
 		// along the same olive that clears 4.5:1 on all four grounds.

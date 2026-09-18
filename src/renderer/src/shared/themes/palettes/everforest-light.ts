@@ -105,6 +105,24 @@ export const everforestLight: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#D9DDCE",
 		onAccent: "#FDF6E3",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#A8317E`,
+		 * purple, darkened from canonical #DF69BA (2.83:1)), moved onto the floors:
+		 * as received it read 4.25:1 as text on `sunken`. The shortfall is paid on
+		 * LIGHTNESS at the source hue — L* 41.26 → 39.75 — which is what this port
+		 * does to every one of its own tokens. Measured: ΔE00 61.80 from `accent`,
+		 * 25.42 from its nearest semantic (`danger`), 4.50:1 on the tightest ground
+		 * (`sunken`).
+		 */
+		accentAlt: "#A42C7A",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 87.45 and C* 7.97, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 17.61 from `accentWash` (the field floor is
+		 * 2.0), 4.73:1 for `accentAlt` on it, and 16.60 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#E8D7E0",
 
 		success: "#566201",
 		successWash: "#DAD6B2",

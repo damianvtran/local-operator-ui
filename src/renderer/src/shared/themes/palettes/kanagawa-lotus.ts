@@ -109,6 +109,25 @@ export const kanagawaLotus: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#CFCEA9",
 		onAccent: "#F2ECBC",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#9E5400`,
+		 * orange, darkened from canonical #CC6D00 (3.04:1)), moved onto the floors:
+		 * as received it read 3.44:1 as text on all three text grounds (`sunken` is
+		 * the tightest); sat ΔE00 14.13 from `warning`. That is paid on HUE — the
+		 * hue walked 15.2° off the source and L* 43.67 → 36.09 — because a value
+		 * that bought the separation by darkening would be the same hue at another
+		 * weight. Measured: ΔE00 37.93 from `accent`, 16.53 from its nearest
+		 * semantic (`danger`), 4.55:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#96350A",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 81.99 and C* 19.46, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 20.59 from `accentWash` (the field floor is
+		 * 2.0), 4.65:1 for `accentAlt` on it, and 19.17 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#EEC3B1",
 
 		success: "#495933",
 		successWash: "#D2CC9E",

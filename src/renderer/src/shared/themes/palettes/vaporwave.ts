@@ -29,9 +29,19 @@ import type { ThemeDefinition } from "../palette-contract";
  * `edge-hi` lifted to 3:1 on `elevated`; the shadow and scrim `canvas` at 40%,
  * so they carry this palette's cast rather than neutral black.
  *
- * The TUI's `overlay`, `label`, `string` and five `tint-*` tokens have no role
- * here: this contract has no popover ground, no second label hue and no
- * selection tint, so the tints above are derived from the accent instead.
+ * `accentAlt`, from the same change, is this family's own `label` token — the one
+ * non-neutral hue the port dropped — taken unchanged where it already clears the
+ * floors and otherwise walked off its own hue, which each palette's note below
+ * says by how much; `accentAltWash` is that hue carrying `accentWash`'s own `L*`
+ * and `C*`, which is what "the same treatment" means once the two hues have
+ * different chroma available at that lightness. Both roles are decorative: no
+ * interaction, no selection ground and no semantic may take them — the divider
+ * is in `palette-contract.ts` and `docs/branding.md` § 2.
+ *
+ * The TUI's `overlay`, `string` and five `tint-*` tokens have no role here: this
+ * contract has no popover ground and no selection tint, so the tints above are
+ * derived from the accent instead. Its `label` token is the one that does land,
+ * as `accentAlt` above.
  *
  * ## The legibility pass, and what this file's numbers mean
  *
@@ -155,6 +165,24 @@ export const vaporwave: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#3B2A46",
 		onAccent: "#150824",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#c5a3f0`),
+		 * moved onto the floors: as received it sat ΔE00 13.99 from `accent`. That
+		 * is paid on HUE — the hue walked 14.9° off the source and L* 72.47 → 71.92
+		 * — because a value that bought the separation by darkening would be the
+		 * same hue at another weight. Measured: ΔE00 21.44 from `accent`, 31.64
+		 * from its nearest semantic (`danger`), 6.89:1 on the tightest ground
+		 * (`surface`).
+		 */
+		accentAlt: "#A8A9F9",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 20.16 and C* 20.30, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 6.86 from `accentWash` (the field floor is
+		 * 2.0), 6.04:1 for `accentAlt` on it, and 4.22 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#2D2E4C",
 
 		success: "#8FE6C0",
 		successWash: "#2E3243",

@@ -30,9 +30,19 @@ import type { ThemeDefinition } from "../palette-contract";
  * `edge-hi` lifted to 3:1 on `elevated`; the shadow and scrim `canvas` at 40%,
  * so they carry this palette's cast rather than neutral black.
  *
- * The TUI's `overlay`, `label`, `string` and five `tint-*` tokens have no role
- * here: this contract has no popover ground, no second label hue and no
- * selection tint, so the tints above are derived from the accent instead.
+ * `accentAlt`, from the same change, is this family's own `label` token — the one
+ * non-neutral hue the port dropped — taken unchanged where it already clears the
+ * floors and otherwise walked off its own hue, which each palette's note below
+ * says by how much; `accentAltWash` is that hue carrying `accentWash`'s own `L*`
+ * and `C*`, which is what "the same treatment" means once the two hues have
+ * different chroma available at that lightness. Both roles are decorative: no
+ * interaction, no selection ground and no semantic may take them — the divider
+ * is in `palette-contract.ts` and `docs/branding.md` § 2.
+ *
+ * The TUI's `overlay`, `string` and five `tint-*` tokens have no role here: this
+ * contract has no popover ground and no selection tint, so the tints above are
+ * derived from the accent instead. Its `label` token is the one that does land,
+ * as `accentAlt` above.
  *
  * ## The legibility pass, and what this file's numbers mean
  *
@@ -109,6 +119,25 @@ export const synthwave: ThemeDefinition = {
 		// The canvas at 42% of its L*: this accent is far too light for a light label
 		// to clear 4.5:1 on it.
 		onAccent: "#151123",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#b893ce`),
+		 * moved onto the floors: as received it sat ΔE00 13.89 from `accent`. That
+		 * is paid on HUE — the hue walked 14.5° off the source and L* 66.15 → 65.57
+		 * — because a value that bought the separation by darkening would be the
+		 * same hue at another weight. Measured: ΔE00 19.95 from `accent`, 31.78
+		 * from its nearest semantic (`danger`), 5.24:1 on the tightest ground
+		 * (`surface`).
+		 */
+		accentAlt: "#A397D6",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 22.65 and C* 20.30, with the hue moved to
+		 * `accentAlt`'s, with the L* walked -3.50 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 5.64 from
+		 * `accentWash` (the field floor is 2.0), 5.08:1 for `accentAlt` on it, and
+		 * 2.06 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#302B48",
 
 		// 72F1B8, published — the same value the TUI uses for `string`.
 		success: "#72F1B8",

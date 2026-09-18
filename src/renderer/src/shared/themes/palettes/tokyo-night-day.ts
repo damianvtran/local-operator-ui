@@ -139,6 +139,24 @@ export const tokyoNightDay: ThemeDefinition = {
 		 */
 		accentWash: "#DEE1EB",
 		onAccent: "#E1E2E7",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#8635ee`,
+		 * generated purple #9854f1 is 3.33:1 (< 4)), moved onto the floors: as
+		 * received it read 4.00:1 as text on `sunken` and one more ground. The
+		 * shortfall is paid on LIGHTNESS at the source hue — L* 43.93 → 40.36 —
+		 * which is what this port does to every one of its own tokens. Measured:
+		 * ΔE00 19.67 from `accent`, 34.06 from its nearest semantic (`danger`),
+		 * 4.57:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#7B2AE4",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 89.57 and C* 5.28, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 4.27 from `accentWash` (the field floor is
+		 * 2.0), 4.88:1 for `accentAlt` on it, and 4.41 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#E5DFE9",
 
 		// Generated green 587539 is 3.74:1 on `sunken` (< 4.5). Deepened along the same
 		// green.

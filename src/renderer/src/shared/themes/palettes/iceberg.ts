@@ -147,6 +147,23 @@ export const iceberg: ThemeDefinition = {
 		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#D5DAE4",
 		onAccent: "#F2F5F9",
+		/*
+		 * No second hue to carry: this palette is desktop-only, so it has no TUI
+		 * `label` token and the hue is a ROTATION of `accent` rather than a value
+		 * that already existed — Δh 160° at `accent`'s own L*, its chroma walked
+		 * down from 46.61 to the first that clears every floor (C* 41.61).
+		 * Measured: ΔE00 48.02 from `accent`, 15.10 from its nearest semantic
+		 * (`warning`), 5.69:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#6A520A",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 86.94 and C* 5.49, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 10.01 from `accentWash` (the field floor is
+		 * 2.0), 5.30:1 for `accentAlt` on it, and 7.42 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#DFD9CF",
 
 		// Upstream green 668E3D, darkened to clear 4.5:1 on the light grounds.
 		/*

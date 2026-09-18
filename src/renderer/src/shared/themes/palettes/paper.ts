@@ -128,6 +128,23 @@ export const paper: ThemeDefinition = {
 		// The theme's own paper at the top of the ramp, at 6.27:1 on all three accent
 		// fills.
 		onAccent: "#F9F3E6",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#7d5799`),
+		 * moved onto the floors: as received it read 3.96:1 as text on `sunken` and
+		 * one more ground. The shortfall is paid on LIGHTNESS at the source hue —
+		 * L* 43.47 → 39.42 — which is what this port does to every one of its own
+		 * tokens. Measured: ΔE00 34.59 from `accent`, 32.37 from its nearest
+		 * semantic (`danger`), 4.60:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#734D8E",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 91.85 and C* 15.99, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 28.83 from `accentWash` (the field floor is
+		 * 2.0), 5.35:1 for `accentAlt` on it, and 20.23 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#F3E1FE",
 
 		// Upstream success, re-seated 9.1 L* to hold 4.98:1 on the deepest ground;
 		// upstream warning, danger and info re-seat the same way, only as far as their

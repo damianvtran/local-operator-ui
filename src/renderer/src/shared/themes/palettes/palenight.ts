@@ -98,6 +98,23 @@ export const palenight: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2F3145",
 		onAccent: "#252939",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#82aaff`, canonical blue), received unchanged because it
+		 * already clears every floor — ΔE00 20.98 from `accent`, 37.54 from its
+		 * nearest semantic (`danger`), 5.38:1 as text on the tightest ground
+		 * (`surface`).
+		 */
+		accentAlt: "#82aaff",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 20.94 and C* 13.54, with the hue moved to
+		 * `accentAlt`'s, with the L* walked -4.00 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 3.60 from
+		 * `accentWash` (the field floor is 2.0), 6.29:1 for `accentAlt` on it, and
+		 * 2.11 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#22293D",
 
 		success: "#C3E88D",
 		successWash: "#2D3240",

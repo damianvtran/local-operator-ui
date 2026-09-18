@@ -81,6 +81,21 @@ export const duskfox: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#2E354A",
 		onAccent: "#191726",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#C4A7E7`, iris), received unchanged because it already
+		 * clears every floor — ΔE00 24.61 from `accent`, 21.37 from its nearest
+		 * semantic (`danger`), 6.56:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#C4A7E7",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 22.38 and C* 14.22, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 7.54 from `accentWash` (the field floor is
+		 * 2.0), 5.79:1 for `accentAlt` on it, and 4.71 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#3B3246",
 
 		success: "#A3BE8C",
 		successWash: "#31323F",

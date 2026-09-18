@@ -140,6 +140,22 @@ export const dracula: ThemeDefinition = {
 		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#3A374D",
 		onAccent: "#282A36",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#ff79c6`, canonical pink; purple is spent on accent),
+		 * received unchanged because it already clears every floor — ΔE00 18.21
+		 * from `accent`, 19.69 from its nearest semantic (`danger`), 5.34:1 as text
+		 * on the tightest ground (`surface`).
+		 */
+		accentAlt: "#ff79c6",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 24.22 and C* 14.67, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 10.10 from `accentWash` (the field floor is
+		 * 2.0), 4.79:1 for `accentAlt` on it, and 12.43 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#4C3240",
 
 		success: "#50FA7B",
 		successWash: "#2D433E",

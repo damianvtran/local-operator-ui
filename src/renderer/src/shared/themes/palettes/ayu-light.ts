@@ -117,6 +117,25 @@ export const ayuLight: ThemeDefinition = {
 		 */
 		accentWash: "#D3E0EA",
 		onAccent: "#FFFFFF",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#CD4C00`,
+		 * keyword, darkened from canonical #FF7E33 (2.47:1)), moved onto the
+		 * floors: as received it read 3.52:1 as text on all three text grounds
+		 * (`sunken` is the tightest). The shortfall is paid on LIGHTNESS at the
+		 * source hue — L* 49.68 → 42.75 — which is what this port does to every one
+		 * of its own tokens. Measured: ΔE00 40.07 from `accent`, 26.53 from its
+		 * nearest semantic (`danger`), 4.53:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#B8139A",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 88.50 and C* 6.81, with the hue moved to
+		 * `accentAlt`'s, with the L* walked +1.50 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 12.45 from
+		 * `accentWash` (the field floor is 2.0), 4.53:1 for `accentAlt` on it, and
+		 * 9.78 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#ECDFE8",
 
 		/*
 		 * Legibility pass: `success` is drawn as text on all six grounds, so it keeps

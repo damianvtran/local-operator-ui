@@ -127,6 +127,24 @@ export const nightfox: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#20304A",
 		onAccent: "#131A24",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#9D79D6`,
+		 * canonical magenta), moved onto the floors: as received it read 4.08:1 as
+		 * text on `surface`. The shortfall is paid on LIGHTNESS at the source hue —
+		 * L* 57.75 → 60.81 — which is what this port does to every one of its own
+		 * tokens. Measured: ΔE00 17.73 from `accent`, 23.00 from its nearest
+		 * semantic (`danger`), 4.52:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#A581DF",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 19.70 and C* 18.26, with the hue moved to
+		 * `accentAlt`'s, with the L* walked -2.00 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 10.87 from
+		 * `accentWash` (the field floor is 2.0), 4.55:1 for `accentAlt` on it, and
+		 * 12.26 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#312740",
 
 		success: "#81B29A",
 		successWash: "#26353D",

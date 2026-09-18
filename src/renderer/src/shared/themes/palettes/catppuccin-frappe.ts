@@ -154,6 +154,24 @@ export const catppuccinFrappe: ThemeDefinition = {
 		// Upstream crust. The port shipped base 303446 here, which is 4.31:1 on the pressed
 		// fill and under the floor; crust takes the worst of the three states to 5.25:1.
 		onAccent: "#232634",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#babbf1`,
+		 * canonical lavender), moved onto the floors: as received it sat ΔE00 11.38
+		 * from `accent`. That is paid on HUE — the hue walked 29.6° off the source
+		 * and L* 77.48 → 80.37 — because a value that bought the separation by
+		 * darkening would be the same hue at another weight. Measured: ΔE00 23.81
+		 * from `accent`, 37.70 from its nearest semantic (`danger`), 6.59:1 on the
+		 * tightest ground (`surface`).
+		 */
+		accentAlt: "#9CCCFD",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 24.60 and C* 13.88, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 8.26 from `accentWash` (the field floor is
+		 * 2.0), 6.73:1 for `accentAlt` on it, and 6.26 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#293C4F",
 
 		success: "#A6D189",
 		successWash: "#343948",

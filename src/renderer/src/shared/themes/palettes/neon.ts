@@ -136,6 +136,23 @@ export const neon: ThemeDefinition = {
 		// at 10 to 15 percent, so this is the value it was already reaching for.
 		accentWash: "#072734",
 		onAccent: "#000E0F",
+		/*
+		 * No second hue to carry: this palette is desktop-only, so it has no TUI
+		 * `label` token and the hue is a ROTATION of `accent` rather than a value
+		 * that already existed — Δh 150° at `accent`'s own L*, its chroma walked
+		 * down from 46.16 to the first that clears every floor (C* 21.16).
+		 * Measured: ΔE00 58.83 from `accent`, 23.22 from its nearest semantic
+		 * (`danger`), 10.51:1 on the tightest ground (`surface`).
+		 */
+		accentAlt: "#FFCBDB",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 14.08 and C* 13.29, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 26.91 from `accentWash` (the field floor is
+		 * 2.0), 10.94:1 for `accentAlt` on it, and 12.85 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#351D25",
 
 		// Neon has no green. This one is placed about 37 degrees off the cyan
 		// accent, which is far enough that a success state does not read as a

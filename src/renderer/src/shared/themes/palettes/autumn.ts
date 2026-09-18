@@ -154,6 +154,21 @@ export const autumn: ThemeDefinition = {
 
 		// The theme's own deepest ground, at 6.27:1 on all three accent fills.
 		onAccent: "#140E09",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#c599d6`), received unchanged because it already clears
+		 * every floor — ΔE00 39.04 from `accent`, 28.70 from its nearest semantic
+		 * (`danger`), 6.17:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#c599d6",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 13.93 and C* 12.31, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 21.24 from `accentWash` (the field floor is
+		 * 2.0), 6.64:1 for `accentAlt` on it, and 12.12 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#2B1F2F",
 
 		// Upstream success, clearing 7.54:1 at its tightest ground.
 		success: "#A2B96A",

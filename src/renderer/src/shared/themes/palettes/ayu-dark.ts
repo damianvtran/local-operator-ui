@@ -147,6 +147,24 @@ export const ayuDark: ThemeDefinition = {
 		// already choose. The role and its floors are in `palette-contract.ts`.
 		accentWash: "#152431",
 		onAccent: "#0D1017",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#FF8F40`,
+		 * canonical keyword), moved onto the floors: as received it sat ΔE00 12.26
+		 * from `warning`. That is paid on HUE — the hue walked 29.7° off the source
+		 * and L* 70.37 → 65.32 — because a value that bought the separation by
+		 * darkening would be the same hue at another weight. Measured: ΔE00 56.14
+		 * from `accent`, 15.04 from its nearest semantic (`warning`), 5.47:1 on the
+		 * tightest ground (`surface`).
+		 */
+		accentAlt: "#C19A02",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 13.49 and C* 10.67, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 18.07 from `accentWash` (the field floor is
+		 * 2.0), 5.94:1 for `accentAlt` on it, and 11.20 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#282214",
 
 		success: "#AAD94C",
 		successWash: "#181F1F",

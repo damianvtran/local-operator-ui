@@ -154,6 +154,23 @@ export const mintLight: ThemeDefinition = {
 		// The theme's own paper at the top of the ramp, at 5.98:1 on all three accent
 		// fills.
 		onAccent: "#FBFDFB",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#77579e`),
+		 * moved onto the floors: as received it read 4.50:1 as text on `sunken`.
+		 * The shortfall is paid on LIGHTNESS at the source hue — L* 43.07 → 42.67 —
+		 * which is what this port does to every one of its own tokens. Measured:
+		 * ΔE00 42.68 from `accent`, 32.55 from its nearest semantic (`danger`),
+		 * 4.57:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#76569D",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 93.54 and C* 11.42, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 21.42 from `accentWash` (the field floor is
+		 * 2.0), 4.98:1 for `accentAlt` on it, and 12.27 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#F3E9FD",
 
 		// Upstream success, clearing 5.19:1 at its tightest ground; upstream warning,
 		// danger and info re-seat the same way, only as far as their own floors

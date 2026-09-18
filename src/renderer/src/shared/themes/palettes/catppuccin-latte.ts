@@ -165,6 +165,25 @@ export const catppuccinLatte: ThemeDefinition = {
 		// The page tone. The mauve fill is dark enough that the palette's own lightest
 		// neutral is the legible ink on it (4.9:1 at the worst of the three states).
 		onAccent: "#EFF1F5",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#5265d8`,
+		 * canonical lavender #7287fd: 2.81:1 (< 4)), moved onto the floors: as
+		 * received it read 3.70:1 as text on all three text grounds (`sunken` is
+		 * the tightest); sat under the reduced ΔE00 8 floor from `info`. That is
+		 * paid on HUE — the hue walked 35.1° off the source and L* 47.05 → 35.53 —
+		 * because a value that bought the separation by darkening would be the same
+		 * hue at another weight. Measured: ΔE00 15.07 from `accent`, 27.51 from its
+		 * nearest semantic (`danger`), 5.66:1 on the tightest ground (`sunken`).
+		 */
+		accentAlt: "#911D8B",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 93.16 and C* 7.19, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 9.48 from `accentWash` (the field floor is
+		 * 2.0), 6.43:1 for `accentAlt` on it, and 7.63 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#F5E8F2",
 
 		// Upstream's green 40A02B is 2.53:1 on `sunken` — a syntax colour, not UI text. The
 		// darkened green the port carried is deepened one step further to clear 4.5 on all

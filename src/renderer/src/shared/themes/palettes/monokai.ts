@@ -121,6 +121,22 @@ export const monokai: ThemeDefinition = {
 		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#363E23",
 		onAccent: "#272822",
+		/*
+		 * The theme's own second hue, and the port had dropped it: the TUI's
+		 * `label` token (`#ae81ff`), received unchanged because it already clears
+		 * every floor — ΔE00 83.41 from `accent`, 25.77 from its nearest semantic
+		 * (`danger`), 4.75:1 as text on the tightest ground (`surface`).
+		 */
+		accentAlt: "#ae81ff",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 24.80 and C* 17.82, with the hue moved to
+		 * `accentAlt`'s, with the L* walked -4.00 because the chip's own ink floor
+		 * binds (`accentAlt` on the wash needs 4.5:1). Measured: ΔE00 33.37 from
+		 * `accentWash` (the field floor is 2.0), 4.52:1 for `accentAlt` on it, and
+		 * 20.95 from the nearest ground it is painted on.
+		 */
+		accentAltWash: "#382D47",
 
 		// The same green as the accent. Monokai has exactly one green, and a second
 		// one invented to fill this role would be a colour no Monokai user

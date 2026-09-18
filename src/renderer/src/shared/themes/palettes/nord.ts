@@ -108,6 +108,24 @@ export const nord: ThemeDefinition = {
 		// cost of ΔE00 2.86 from the signal itself; 5.14:1 on `surface`.
 		accentWash: "#2E3D40",
 		onAccent: "#272C36",
+		/*
+		 * The theme's own second hue, from the TUI's `label` token (`#b48ead`,
+		 * canonical nord15), moved onto the floors: as received it read 3.97:1 as
+		 * text on `surface` and one more ground. The shortfall is paid on LIGHTNESS
+		 * at the source hue — L* 63.40 → 67.52 — which is what this port does to
+		 * every one of its own tokens. Measured: ΔE00 34.76 from `accent`, 15.08
+		 * from its nearest semantic (`danger`), 4.53:1 on the tightest ground
+		 * (`surface`).
+		 */
+		accentAlt: "#BF99B8",
+		/*
+		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
+		 * receives: `accentWash`'s own L* 24.60 and C* 6.50, with the hue moved to
+		 * `accentAlt`'s. Measured: ΔE00 14.82 from `accentWash` (the field floor is
+		 * 2.0), 4.55:1 for `accentAlt` on it, and 8.54 from the nearest ground it
+		 * is painted on.
+		 */
+		accentAltWash: "#41383F",
 
 		success: "#A3BE8C",
 		successWash: "#3E484C",
