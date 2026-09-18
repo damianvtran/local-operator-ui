@@ -203,6 +203,13 @@ jobs:
           node scripts/test-validate-release.mjs
           node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs
           node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
+          # The attach path's recovery branches, against a local stub upload endpoint: a
+          # stalled attempt retried, a `starter` record repaired, a same-size asset
+          # skipped and a same-name/different-size asset refused. They run here because
+          # they are release contracts, and they carry their own stub because this path
+          # cannot be exercised against GitHub without cutting a real release -- which
+          # is exactly what three sessions could not do on 2026-09-16.
+          node --test scripts/upload-release.test.mjs
           # A build step that omits one of the variables the build's vite plugins
           # (`scripts/vite-plugins/`, as `electron.vite.config.js` wires them) refuse
           # to build without fails with nothing but "VITE_GOOGLE_CLIENT_ID is not set"

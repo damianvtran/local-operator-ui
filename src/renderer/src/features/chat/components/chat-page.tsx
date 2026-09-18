@@ -24,6 +24,7 @@ import {
 	isRefusedBeforeAdmission,
 	isSessionUnvalidated,
 	panelIdentityFor,
+	panelSessionIdOfView,
 	refusedBeforeAdmissionAttachments,
 	refusedBeforeAdmissionText,
 	useCanonicalSessionsStore,
@@ -2153,9 +2154,13 @@ export function ChatPage() {
 		setRouteError(null);
 		void openConversation(navigate, id);
 	};
-	const id = draftKey ? draft?.sessionId : (active ?? undefined);
 	// Keyed on the SESSION once one exists, so admitting a draft does not unmount
-	// the panel mid-send. The rule and its reasoning live in `panelIdentityFor`.
+	// the panel mid-send. The rule and its reasoning live in `panelIdentityFor`;
+	// `panelSessionIdOfView` is the id this pane reads, extracted so a surface
+	// that is NOT this pane - the command palette's close-time restore, which
+	// yields when a pick moved the view - can ask for the same key without keeping
+	// a second copy of the expression that computes it.
+	const id = panelSessionIdOfView(draftKey, draft?.sessionId, active);
 	const identity = panelIdentityFor(draftKey, id);
 	return (
 		<ChatLayout

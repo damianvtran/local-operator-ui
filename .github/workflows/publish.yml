@@ -592,13 +592,29 @@ jobs:
             scripts/upload-release.mjs
           sparse-checkout-cone-mode: false
 
+      # Pinned like every build job, and added after the fact: this step used to run
+      # on the image's default Node because it only shelled out to `gh`, and its
+      # upload now also needs `fetch`, `AbortSignal.timeout` and a streamed request
+      # body (`duplex: "half"`) -- behaviour the version decides, and the only place
+      # the attach path runs.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      # POST only to the pinned ID: release actions may create releases, update
-      # metadata, or replace assets. A repair must do none of those things.
+      # Writes only against the pinned ID: release actions may create releases,
+      # update metadata, or replace assets. A repair must do none of those things,
+      # and the single exception is stated rather than implied -- an asset record
+      # still in the `starter` state (the wreckage of an upload that began and never
+      # finished) is DELETED and re-uploaded, because GitHub refuses a duplicate name
+      # and that record is what every later attempt would be refused over. It is not
+      # an asset, and a COMPLETE asset is never replaced: see the header of
+      # scripts/upload-release.mjs for the size rule that separates the two.
       # The one metadata mutation this pipeline makes -- the pre-release flip in
       # scripts/release-state.mjs -- deliberately does not live here, so that
       # this job's only effect stays the asset upload it is named for.

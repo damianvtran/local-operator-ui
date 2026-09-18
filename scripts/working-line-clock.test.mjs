@@ -479,13 +479,32 @@ async function fixture({ startedAt, now }, run) {
 		label: () =>
 			window.document.querySelectorAll("[data-lo-working-line] span")[2]
 				?.textContent,
-		render: async () => {
+		/**
+		 * Render the row again, optionally MOVING or WITHDRAWING its anchor, or
+		 * changing its PHASE.
+		 *
+		 * The anchor is the one prop the cases below change without changing the
+		 * phase, and that is the whole situation they exist for: the running rung's
+		 * anchor is a min over the live cards (`deriveWorkingLine`), so it moves
+		 * inside one phase as calls join and settle. An override OBJECT rather than
+		 * a bare number, because `{ startedAt: undefined }` is a state of its own -
+		 * the producer taking the anchor back - and a defaulted parameter could not
+		 * tell that from "no override".
+		 *
+		 * The PHASE is overridable for the mirror-image case: a withdrawal is a
+		 * state of ONE phase, and the edge that ends that phase is where the state
+		 * has to be dropped rather than latched.
+		 */
+		render: async (override) => {
+			const anchor =
+				override && "startedAt" in override ? override.startedAt : startedAt;
+			const nextPhase = override?.phase ?? "running";
 			await act(() =>
 				root.render(
 					h(WorkingLine, {
 						activity: "running bash",
-						phase: "running",
-						...(startedAt === undefined ? {} : { startedAt }),
+						phase: nextPhase,
+						...(anchor === undefined ? {} : { startedAt: anchor }),
 					}),
 				),
 			);
@@ -575,6 +594,114 @@ test("a row with no start keeps today's honest local zero", async () => {
 		async (api) => {
 			await api.render();
 			assert.equal(api.label(), "0s");
+		},
+	);
+});
+
+test("a SHED batch re-seeds onto the survivor's start, inside one phase", async () => {
+	/*
+	 * The convergence round found this: the anchor was re-read only at the phase
+	 * edge, so when the OLDEST running call settled the line kept counting the
+	 * settled call's age above a row dating the survivor - a multi-hour wait
+	 * settling under a newer call left the line at hours over a row reading
+	 * minutes. Nothing here changes the PHASE, which is the point: the running
+	 * rung's anchor is a min over the live cards and moves within one phase.
+	 */
+	const oldest = PHASE_STARTED_MS - 600_000;
+	const survivor = PHASE_STARTED_MS - 120_000;
+	await fixture({ startedAt: oldest, now: PHASE_STARTED_MS }, async (api) => {
+		await api.render();
+		assert.equal(api.label(), "10m", "the batch's own oldest start");
+		await api.render({ startedAt: survivor });
+		assert.equal(
+			api.label(),
+			"2m",
+			"the survivor's own start, not the settled call's",
+		);
+		await act(() => api.advance(60_000));
+		assert.equal(api.label(), "3m", "and the clock counts from the new zero");
+	});
+});
+
+test("an earlier start arriving after the phase edge LOWERS the anchor", async () => {
+	/*
+	 * U5's original symptom from the other side: a record whose start PREDATES
+	 * the one the line is reading - a seed, a reconnect, a durable row restored
+	 * under a live one - lowered the derived min and was ignored, so the line
+	 * read younger than the row above it.
+	 */
+	const earlier = PHASE_STARTED_MS - 300_000;
+	await fixture(
+		{ startedAt: PHASE_STARTED_MS - 60_000, now: PHASE_STARTED_MS },
+		async (api) => {
+			await api.render();
+			assert.equal(api.label(), "1m");
+			await api.render({ startedAt: earlier });
+			assert.equal(api.label(), "5m", "the older record's start wins");
+		},
+	);
+});
+
+test("a WITHDRAWN anchor blanks the cell rather than restarting at the arrival", async () => {
+	/*
+	 * The derivation is all-or-nothing: one undateable card in a running batch
+	 * takes the anchor AWAY (the sibling test file pins that half). Falling back
+	 * to `Date.now()` there re-based a ten-minute batch to `0s` and counted up
+	 * from the reader's arrival - the invented age pointing the other way -
+	 * where the TUI withholds the number for the same state (`_current_activity`'s
+	 * `dateable`). A row that NEVER had an anchor is a different case and keeps
+	 * its local zero (the test above), which is what scopes this one to a
+	 * withdrawal rather than to an absent prop.
+	 */
+	await fixture(
+		{ startedAt: PHASE_STARTED_MS - 600_000, now: PHASE_STARTED_MS },
+		async (api) => {
+			await api.render();
+			assert.equal(api.label(), "10m");
+			await api.render({ startedAt: undefined });
+			assert.equal(api.label(), "", "the slot is reserved and empty");
+			await act(() => api.advance(2_000));
+			assert.equal(
+				api.label(),
+				"",
+				"and it does not start counting from the arrival",
+			);
+		},
+	);
+});
+
+test("a PHASE CHANGE drops a withdrawn anchor rather than latching the cell blank", async () => {
+	/*
+	 * The withdrawal belongs to ONE phase, and the phase edge states its own zero -
+	 * the same local zero a row that never had an anchor keeps. Without the clear
+	 * the cell latches blank through the next phase, so a row under a phase the
+	 * producer HAS dated says nothing at all. That is the shape QA's Q-4 note names
+	 * as the residual divergence's second case (a phase edge landing on an
+	 * undateable batch), and it is the mutation this case exists to kill: delete
+	 * the clear and this file goes red where it used to stay green.
+	 */
+	await fixture(
+		{ startedAt: PHASE_STARTED_MS - 600_000, now: PHASE_STARTED_MS },
+		async (api) => {
+			await api.render();
+			assert.equal(api.label(), "10m");
+			await api.render({ startedAt: undefined });
+			assert.equal(api.label(), "", "withdrawn while the phase holds");
+			await api.render({
+				phase: "composing",
+				startedAt: PHASE_STARTED_MS - 120_000,
+			});
+			assert.equal(
+				api.label(),
+				"0s",
+				"the new phase renders its own edge, not a latched blank",
+			);
+			await act(() => api.advance(1_000));
+			assert.equal(
+				api.label(),
+				"2m1s",
+				"and counts from the anchor the new phase was handed (120s + the tick)",
+			);
 		},
 	);
 });
