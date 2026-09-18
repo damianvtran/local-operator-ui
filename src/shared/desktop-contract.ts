@@ -1962,6 +1962,36 @@ export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
 export const DESKTOP_DEADLINE_EXCEEDED_CODE = "deadline_exceeded";
 
 /**
+ * The refusal main answers a READ RECEIPT with when the window is not in the
+ * foreground, and the sentence the user reads for it.
+ *
+ * ONE sentence rather than a machine register translated into copy, unlike the
+ * stream details in `shared/desktop-stream-notice.ts`: this refusal is already
+ * addressed to the reader ("View this completion in the foreground..."), and
+ * user copy is the register that names the true condition in the reader's own
+ * terms. A second sentence for the same fact would be a second authority.
+ *
+ * Declared here, and as a STRING, for the deadline code's reason above — it has
+ * to survive IPC and a re-throw — with one consequence specific to it:
+ * `ipcRenderer.invoke` rebuilds main's rejection as a plain `Error` and keeps
+ * only the message, so the renderer's transport has no typed field to read and
+ * must recognise the refusal by the words main sent. That makes this constant
+ * the ONE authority for both halves: the producer (`src/main/desktop-ipc.ts`)
+ * refuses with it, and the classifier (`desktop-api.ts`, `isForegroundRequired`)
+ * reads it. A test pins the two together
+ * (`scripts/attention-seen.test.mjs`), because a reworded producer against an
+ * unchanged classifier is how a deliberate refusal would quietly go back to
+ * being reported as an unreachable backend.
+ *
+ * It is NOT the sentence for a transport failure, and the two must stay
+ * distinguishable in the renderer: a refusal means the backend was never asked,
+ * and a retry against a focused window is the reader's own next move.
+ */
+export const DESKTOP_FOREGROUND_REQUIRED_CODE = "foreground_required";
+export const DESKTOP_FOREGROUND_REQUIRED_MESSAGE =
+	"View this completion in the foreground before marking it read.";
+
+/**
  * Ops that change nothing on the server, and so may be told "nothing was read".
  *
  * An ALLOWLIST, deliberately, and the direction of the guess is the point: an
