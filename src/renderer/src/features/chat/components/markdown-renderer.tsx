@@ -403,20 +403,31 @@ const useMathPipeline = (
 	citations: boolean,
 ) => {
 	const hasLatex = useMemo(() => containsRenderableMath(content), [content]);
-	const [mathEnabled, setMathEnabled] = useState(
-		() => hasLatex && katexStylesLoaded,
-	);
+	/*
+	 * WHAT IS REMEMBERED IS THE STYLESHEET, NOT THE DECISION (code review round 2,
+	 * R2-4). This used to be one `mathEnabled` state initialised once and only ever
+	 * set `true`, i.e. a latch in front of the citation veto: an instance whose
+	 * content went math-document -> citation-document would have kept math on and
+	 * re-opened R1-1's defect. The reviewer could not reach it (the citation opt-in
+	 * only ever renders a user turn, whose text is fixed, and `StableBlock` passes
+	 * `citations = false`), which is why this is a NIT and not a live path - but a
+	 * latch in front of the guard is the shape that silently re-opens it, so the
+	 * decision is re-derived from the content on every render and only the loader's
+	 * own completion is state.
+	 */
+	const [katexReady, setKatexReady] = useState(katexStylesLoaded);
+	const mathEnabled = hasLatex && katexReady;
 
 	useEffect(() => {
-		if (!hasLatex || mathEnabled) return;
+		if (!hasLatex || katexReady) return;
 		let cancelled = false;
 		loadKatexStyles().then(() => {
-			if (!cancelled) setMathEnabled(true);
+			if (!cancelled) setKatexReady(true);
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, [hasLatex, mathEnabled]);
+	}, [hasLatex, katexReady]);
 
 	return {
 		// Keyed by the three decisions in their own order - math, linkify, citations

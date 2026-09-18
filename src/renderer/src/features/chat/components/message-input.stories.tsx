@@ -1140,6 +1140,48 @@ export const CredentialPillScrolled: Story = {
 				`the chip is off its run at scrollTop ${box.scrollTop}: ${JSON.stringify(delta)}`,
 			);
 		}
+		const scrolledTo = box.scrollTop;
+		/*
+		 * AND THE KEYBOARD'S ROUTE TO THE CONTROL (UX round 2, U6 — a BLOCKER). The chip
+		 * layer used to be a scroll CONTAINER (`overflow-hidden`), so the browser scrolled
+		 * it to bring the focused control into view: one real Tab from the field left the
+		 * layer at `scrollTop 219` with the chip 219px above its run, painted over
+		 * unrelated prose, its `x` live and a focus ring on it. `overflow-clip` is the fix
+		 * and this is the assertion — the layer's own offset stays 0, the field's does not
+		 * move, and the chip is still on the marker it stands for.
+		 */
+		await userEvent.tab();
+		await settle();
+		const layer = canvasElement.querySelector("[data-credential-chips]");
+		if (!layer) throw new Error("the chip layer is gone after the Tab");
+		if (layer.scrollTop !== 0) {
+			throw new Error(
+				`the chip layer scrolled ITSELF to ${layer.scrollTop} when its control took focus (content ${layer.scrollHeight} in ${layer.clientHeight}px)`,
+			);
+		}
+		if (box.scrollTop !== scrolledTo) {
+			throw new Error(
+				`the field moved when the control took focus: ${scrolledTo} -> ${box.scrollTop}`,
+			);
+		}
+		const afterTab = chipDelta(canvasElement);
+		if (
+			!afterTab ||
+			Math.abs(afterTab.top) > 0.5 ||
+			Math.abs(afterTab.left) > 0.5
+		) {
+			throw new Error(
+				`the chip left its run when its control took focus: ${JSON.stringify(afterTab)}`,
+			);
+		}
+		/*
+		 * AND THE FOCUS GOES BACK IN THE BOX, so this story's committed frame stays the
+		 * state it is named for (the chip on its run while the field is scrolled) rather
+		 * than a focused control: the ring has its own two frames
+		 * (`credential-pill-focused` and its compact sibling).
+		 */
+		box.focus();
+		await settle();
 		releaseShutter();
 	},
 };

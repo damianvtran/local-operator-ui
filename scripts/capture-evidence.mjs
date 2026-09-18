@@ -2145,6 +2145,41 @@ export const STORIES = [
 		300,
 		{ tabTo: 'button[aria-label^="Remove credential"]' },
 	],
+	[
+		/* The pressed control (design round 2, D7). Same story as the hover row, a HELD
+		   press rather than a click, so the frame carries `:active`'s `bg-sunken` beside
+		   the hover's ink step - the one state this component gained that no frame
+		   showed. */
+		"chat-message-input--credential-pill-hover",
+		1024,
+		300,
+		{
+			dir: "credential-pill-pressed",
+			press: 'button[aria-label^="Remove credential"]',
+			hold: true,
+		},
+	],
+	[
+		/* And the same two control states at the COMPACT rung, where the control fills the
+		   run box exactly (16x16 in a 16px box): the hover ground lands inside the chip
+		   and only the ring leaves it, which is arithmetic until it is a frame (D7). */
+		"chat-message-input--credential-pill-small-view",
+		440,
+		300,
+		{
+			dir: "credential-pill-hover-small-view",
+			hover: 'button[aria-label^="Remove credential"]',
+		},
+	],
+	[
+		"chat-message-input--credential-pill-small-view",
+		440,
+		300,
+		{
+			dir: "credential-pill-focused-small-view",
+			tabTo: 'button[aria-label^="Remove credential"]',
+		},
+	],
 	["chat-message-input--credential-pill-cleared-undone", 1024, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
 	/* The SETTLED idle row (UX round 1's U1 / QA's Q1, and the operator's report
@@ -5155,16 +5190,26 @@ const main = async () => {
 					modifiers: 0,
 					pointerType: "mouse",
 				});
-				await cdp.send("Input.dispatchMouseEvent", {
-					type: "mouseReleased",
-					x: target.value.x,
-					y: target.value.y,
-					button: "left",
-					buttons: 0,
-					clickCount: 1,
-					modifiers: 0,
-					pointerType: "mouse",
-				});
+				/*
+				 * `hold` LEAVES THE BUTTON DOWN, which is the only way a committed frame can
+				 * carry `:active` (design round 2, D7): the compound state is the browser's,
+				 * no play function can set it, and a full click photographs the state AFTER
+				 * the press, which is the resting one again. A held button cannot leak past
+				 * this story: every capture navigates for its theme and each navigation is
+				 * preceded by `about:blank`, so no page inherits Chromium's input state.
+				 */
+				if (!options?.hold) {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseReleased",
+						x: target.value.x,
+						y: target.value.y,
+						button: "left",
+						buttons: 0,
+						clickCount: 1,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+				}
 				if (options?.pressSettleMs) await sleep(options.pressSettleMs);
 			}
 			// `let`, and biome must not be allowed to talk you out of it: line

@@ -64,6 +64,9 @@ const {
 	clearCitedCredential,
 	clearedNotice,
 	clearedNoticeLine,
+	clearedStaleNotice,
+	clearedToastLine,
+	noticeLineFor,
 	clearControlLabel,
 	credentialCitation,
 	credentialMarker,
@@ -2293,6 +2296,36 @@ test("a citation plus a `$VAR` on the same line resolves in the citation's favou
 	});
 });
 
+test("a citation plus a PRICE still resolves in the citation's favour (code review round 2, R2-1)", async () => {
+	/*
+	 * THE DOOR ROUND 1'S FIX LEFT OPEN. The veto counted "pairable" dollars, and
+	 * `PAIRABLE_DOLLAR` refuses to count a `$` a digit follows - while micromark's
+	 * inline-math CLOSER has no such exclusion, so one citation plus `$5` still
+	 * paired. The reviewer measured the consequence on the shipped tree: the same
+	 * document went `{link:0, inlineMath:1}`, i.e. no chip and the app's own
+	 * sentence typeset as a formula. The rule is now "the MASKED document holds no
+	 * `$` at all" (`containsRenderableMath`), and these are the shapes that tell the
+	 * two rules apart.
+	 */
+	const citation = credentialCitation(chipPayload(1, "s".repeat(19)));
+	for (const price of ["$5", "$5.00", "$1,000", "us$5", "\\$5"]) {
+		const source = `deploy with ${citation} it costs ${price} a month`;
+		assert.equal(containsRenderableMath(source), false, price);
+		assert.deepEqual(
+			await drivePipeline(source, false),
+			{ link: 1, inlineMath: 0 },
+			`the citation pass alone must chip it (${price})`,
+		);
+		// The negative control: the same document through the shipped pipeline with
+		// math enabled loses the chip, which is the defect the veto exists to prevent.
+		assert.deepEqual(
+			await drivePipeline(source, true),
+			{ link: 0, inlineMath: 1 },
+			`math enabled still eats it, which is why the veto must hold (${price})`,
+		);
+	}
+});
+
 test("a citation alone does not disable math, and math without a citation is untouched", async () => {
 	const citation = credentialCitation(chipPayload(1, "s".repeat(19)));
 	// One citation is one `$`: no pair, so `containsLatex` was never true for it and
@@ -2315,6 +2348,64 @@ test("a citation alone does not disable math, and math without a citation is unt
 		containsRenderableMath(`solve $x^2$ then use ${citation}`),
 		false,
 	);
+});
+
+test("the notice line's precedence puts the actionable sentence first (UX round 2, U10)", () => {
+	/*
+	 * Round 1 ordered the line `unredacted > cleared > armed`, and the armed step did
+	 * not hold: arm the capture at the end of the buffer, clear a chip, and the line
+	 * stopped saying the capture was armed while it still was. The rule is the one
+	 * the first step already argued - the sentence that knows what the NEXT keystroke
+	 * will do outranks the one reporting the last edit - so armed now wins over
+	 * cleared, and the cleared sentence keeps the line whenever nothing actionable
+	 * wants it.
+	 */
+	const cleared = { key: "LOP_SECRET_4CE3Y48G", stale: false };
+	assert.equal(
+		noticeLineFor({ unredacted: null, armed: true, cleared }),
+		CREDENTIAL_ARMED_NOTICE,
+	);
+	assert.equal(
+		noticeLineFor({ unredacted: null, armed: false, cleared }),
+		clearedNoticeLine(cleared.key),
+	);
+	assert.equal(
+		noticeLineFor({ unredacted: null, armed: true, cleared: null }),
+		CREDENTIAL_ARMED_NOTICE,
+	);
+	assert.equal(
+		noticeLineFor({ unredacted: null, armed: false, cleared: null }),
+		null,
+	);
+	// The disclosure still outranks both, for the reason its own comment gives.
+	assert.equal(
+		noticeLineFor({ unredacted: "Enter will expose them", armed: true, cleared }),
+		"Enter will expose them",
+	);
+	// And the stale register is the same key with different words (U7's refusal).
+	assert.equal(
+		noticeLineFor({
+			unredacted: null,
+			armed: false,
+			cleared: { key: cleared.key, stale: true },
+		}),
+		clearedStaleNotice(cleared.key),
+	);
+});
+
+test("the toast says only what the toast can do, and the refusal has words (UX round 2, U7, U9)", () => {
+	/*
+	 * U9: the two channels printed the same 110 characters, and the toast's `Undo`
+	 * sat beside "its value is gone" - a claim the button contradicts for as long as
+	 * the button exists. The durable channel keeps the fact; the transient one names
+	 * the reference and offers the undo. U7: the refusal a moved buffer produces is a
+	 * sentence, not a silence.
+	 */
+	assert.equal(clearedToastLine(2), "Credential #2 removed");
+	assert.match(clearedStaleNotice("LOP_SECRET_4CE3Y48G"), /cannot be put back/);
+	assert.match(clearedStaleNotice("LOP_SECRET_4CE3Y48G"), /LOP_SECRET_4CE3Y48G/);
+	assert.notEqual(clearedToastLine(2), clearedNoticeLine("LOP_SECRET_4CE3Y48G"));
+	assert.ok(!clearedToastLine(2).includes("gone"));
 });
 
 test("only a link whose visible text IS the citation is chipped", () => {

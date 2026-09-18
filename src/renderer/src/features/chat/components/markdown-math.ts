@@ -28,18 +28,31 @@
  *   math OFF: {"link":2,"inlineMath":0}
  *   math ON : {"link":0,"inlineMath":1}
  *
- * THE RULE, and it is deliberately blunt: when the document contains a citation,
- * math is enabled only if the document offers the parser nothing ELSE to pair
- * that citation's `$` with. Formally - a citation is present, `maskCitations`
- * leaves no `$` behind, and the document holds fewer than two pairable `$`s in
- * total. Two pairable `$`s are enough for micromark to make a pair out of them,
- * and a citation is the half of that pair whose failure is silent (the chip
- * simply does not appear, and the words the app wrote are rendered as math), so
- * anything ambiguous resolves in the citation's favour:
+ * THE RULE, and it is deliberately blunt: a document that cites a credential gets
+ * math only when the citations are the document's ONLY dollar signs AND there is
+ * exactly one of them. Two `$`s anywhere - in the citations or beside them - are
+ * a pair for micromark, and a citation is the half of that pair whose failure is
+ * silent (the chip simply does not appear, and the words the app wrote are
+ * rendered as math), so every ambiguous document resolves in the citation's
+ * favour.
+ *
+ * The two terms this needs, and why the earlier versions were one word short
+ * (code review round 1, R1-1; round 2, R2-1):
+ *
+ *   - SOMETHING OUTSIDE THE CITATIONS. The first rule counted "pairable" dollars,
+ *     and `PAIRABLE_DOLLAR` refuses to count a `$` a DIGIT follows - while
+ *     micromark's inline-math CLOSER has no such exclusion, so ONE citation plus
+ *     `$5` still paired and the defect reproduced exactly (`{link:0,
+ *     inlineMath:1}`). Any `$` at all in the masked document is enough.
+ *   - A SECOND CITATION, which no masked-document scan can see (masking removes
+ *     the `$` that matters): two citations pair with EACH OTHER, which is R1-1's
+ *     original shape. Hence the count.
  *
  *   - two citations on one line - the reported shape - vetoes math;
- *   - one citation plus a `$VAR` mention or any other `$…$` on the page vetoes
- *     math;
+ *   - one citation plus ANY other `$` in the document vetoes math — a `$VAR`
+ *     mention, another formula, and equally a price (`$5`, `$5.00`, `$1,000`,
+ *     `us$5`, the escaped `\$5`);
+ *   - two or more citations always veto it, whatever else the document holds;
  *   - one citation alone does not (one `$` cannot pair with itself), which is
  *     every state the shipped frames photograph;
  *   - a document with no citation at all is untouched: `containsRenderableMath`
@@ -69,9 +82,6 @@ export const DISPLAY_MATH_REGEX = /\$\$([\s\S]+?)\$\$/;
 export const MATH_ENVIRONMENT_REGEX = /\\begin\{([^}]+)\}([\s\S]+?)\\end\{\1\}/;
 export const MATH_COMMAND_REGEX = /\\[a-zA-Z]+(\{[^}]*\})?/;
 
-/** Every `$` the parser would consider a candidate opener: not one before a digit. */
-const PAIRABLE_DOLLAR = /\$(?!\d)/g;
-
 /**
  * Whether the content is worth paying for the math pipeline at all.
  *
@@ -92,10 +102,6 @@ export const containsLatex = (content: string): boolean => {
 			content.includes("\\sqrt"))
 	);
 };
-
-/** How many `$`s the parser could open a pair with. */
-const pairableDollars = (content: string): number =>
-	content.match(PAIRABLE_DOLLAR)?.length ?? 0;
 
 /**
  * The content with every citation run replaced by an inert run of `x`s.
@@ -128,7 +134,16 @@ export const maskCitations = (content: string): string | null => {
  *
  * The one the renderer calls. See this file's header for the rule and for what
  * it costs; the short version is that a citation present in a document that holds
- * any other pairable `$` wins, and the formula is shown as source.
+ * any other `$` wins, and the formula is shown as source.
+ */
+/** How many citation runs the document holds, whether or not a payload backs them. */
+export const citationRunCount = (content: string): number =>
+	citationSegments(content).filter((segment) => segment.kind !== "text").length;
+
+/**
+ * The one the renderer calls. See this file's header for the rule and for what
+ * it costs; the short version is that a citation gets math only when it is the
+ * document's only dollar sign, and never when there are two of them.
  */
 export const containsRenderableMath = (content: string): boolean => {
 	if (!containsLatex(content)) return false;
@@ -136,7 +151,21 @@ export const containsRenderableMath = (content: string): boolean => {
 	// No citation: the old rule, unchanged, so every render that never opted in
 	// behaves exactly as it did before this module existed.
 	if (masked === null) return true;
+	// A formula, or any other math construct, outside the citations.
 	if (containsLatex(masked)) return false;
-	// One citation carries one `$`; two of them, or one plus any other, is a pair.
-	return pairableDollars(content) < 2;
+	/*
+	 * ANY OTHER `$` PAIRS WITH THE CITATION'S OWN (round 2, R2-1), and the question
+	 * is asked of the MASKED document because that is the string the parser sees
+	 * once the citation is gone. A plain scan for the character, not a count of
+	 * "pairable" dollars: micromark's closer does not share this module's digit
+	 * exclusion, so a price pairs.
+	 */
+	if (masked.includes("$")) return false;
+	/*
+	 * AND TWO CITATIONS PAIR WITH EACH OTHER, which no scan of the masked document
+	 * can see, because masking is exactly what removes the `$` in question. This is
+	 * R1-1's original shape: one citation is one dollar and cannot pair with
+	 * itself, two of them always do.
+	 */
+	return citationRunCount(content) < 2;
 };

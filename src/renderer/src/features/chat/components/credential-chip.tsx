@@ -176,18 +176,21 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 		)}
 		<span className="truncate">{label}</span>
 		{chars !== null && (
-			// NO `ml-auto` HERE (design round 1, D1). The composer's chip is painted
-			// in a box the MINT fixed (`[Credential #1, 19 chars]` is 157.33px wide at
-			// the 1024 rung) while the chip's own face is ~111px, so a count that took
-			// the slack parked 44px of empty fill *between* the ordinal and the facts
-			// it belongs to: `#1` and `· 19 chars` read as two stranded clusters. The
-			// slack goes to the CLEAR CONTROL instead, where it is a gutter before the
-			// one element on the chip that is not a fact. A chip with no control (the
-			// transcript's, and the composer's unbacked one) has nothing to push
-			// against, so there the count keeps the right edge it always had.
-			<span
-				className={cn("shrink-0", !onClear && "ml-auto")}
-			>{`· ${chars} chars`}</span>
+			// NO `ml-auto` HERE IN EITHER REGISTER (design round 1, D1; round 2, D8).
+			// The composer's chip is painted in a box the MINT fixed
+			// (`[Credential #1, 19 chars]` is 157.33px wide at the 1024 rung) while the
+			// chip's own face is ~111px, so a count that takes the slack parks empty
+			// fill *between* the ordinal and the facts it belongs to: `#1` and
+			// `· 19 chars` read as two stranded clusters. Round 1 moved the slack to the
+			// control and left it on the count WHERE THERE IS NO CONTROL - so the
+			// unbacked register, the one a restored draft shows once its value is gone,
+			// kept the defect and 58px of it (round 2, D8: the widest void in the set).
+			// The arrangement is now the same in both registers, which is the honest
+			// reading of "the facts sit together": the face's own gaps are the four
+			// between glyph and ordinal and the five before the count, the slack falls
+			// at the far edge of the box, and the control - when there is one - is what
+			// the gutter precedes.
+			<span className="shrink-0">{`· ${chars} chars`}</span>
 		)}
 		{onClear && (
 			<button
@@ -222,6 +225,23 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 				// prune-control idiom. `hover:bg-elevated active:bg-sunken` is the
 				// button primitive's ghost pair, kept as the second channel and as the
 				// pressed state the control had none of.
+				//
+				// THE STEP'S FLOOR IS NOT MET IN EVERY PALETTE, RECORDED RATHER THAN
+				// CLAIMED AWAY (design round 2, D9). D3 asked for a step "perceivable by
+				// luminance in every theme", and the channel moved and the default theme
+				// plus the photographed worst cases are genuinely fixed - but measured over
+				// all 59 palettes with the repo's own `deltaE`/`loadPalettes`: the ink step
+				// is at or under 1.10:1 in 12 of 59, the ground step in 28 of 59, and BOTH
+				// channels are at or under 1.10:1 in 7 of 59 (`everforest` exactly 1.000 -
+				// hue moves, luminance does not - `ayuMirage` 1.017, `catppuccinFrappe`
+				// 1.038, `oneDark` 1.070, `tokyoNight` 1.076, `gruvbox` 1.087,
+				// `tokyoNightStorm` 1.095). So this is a RECORDED DEVIATION from that rule,
+				// not a pass: in those seven the perceivable feedback is the focus ring and
+				// the pointer cursor rather than the fill. The sentences above are about the
+				// control's LEGIBILITY against the fill (4.6:1 at worst on the warning fill,
+				// 5.51:1 on the info fill), which holds everywhere; the step's magnitude is a
+				// palette-contract question and is deliberately NOT answered by a change in
+				// this component.
 				//
 				// `focus-visible:outline-offset-1!` is the primitive's dense-size
 				// offset, for the primitive's reason: the global `:focus-visible` rule

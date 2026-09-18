@@ -176,6 +176,18 @@ const PROBE = `(() => {
 		chips,
 		deltas,
 		wrapped: runs.filter((run) => run.rects.length !== 1).length,
+		/*
+		 * BOTH SCROLL OFFSETS, because round 2's blocker is a difference between them
+		 * (UX round 2, U6): the chip layer used to be a scroll container of its own, so
+		 * focusing its control scrolled THAT instead of the field, and the chip moved
+		 * while its marker did not. layerScrollTop must stay 0 - overflow-clip is what
+		 * makes that structural rather than a coincidence - and fieldScrollTop is the
+		 * position the run and the chip are both measured against.
+		 */
+		layerScrollTop: layer ? layer.scrollTop : null,
+		layerScrollHeight: layer ? layer.scrollHeight : null,
+		layerClientHeight: layer ? layer.clientHeight : null,
+		fieldScrollTop: field ? field.scrollTop : null,
 	};
 })()`;
 
@@ -332,9 +344,138 @@ const main = async () => {
 				});
 				continue;
 			}
+			const scrolled = await probe();
+			/*
+			 * ASSERTED, NOT PRINTED (code review round 2, R2-3). The story asserts the
+			 * same pair, so the blocker's claim was never unguarded - but this rig is the
+			 * artifact whose numbers the manifest QUOTES ("0,0,0,0 at `scrollTop` 113 and
+			 * 225"), and a phase that printed a 60px drift and exited 0 read as a pass to
+			 * every pipeline that looks at the exit code only. Same one-condition check
+			 * the resize phase already makes.
+			 */
+			const drift = scrolled.deltas.filter(
+				(delta) =>
+					delta && (Math.abs(delta.left) > 0.5 || Math.abs(delta.top) > 0.5),
+			);
+			if (drift.length > 0) {
+				throw new Error(
+					`${story} @ ${width}x${height}: the chip does not follow the field's own scroll (${label}, scrollTop ${moved.scrollTop}) - ${JSON.stringify({ drift, deltas: scrolled.deltas })}`,
+				);
+			}
 			phases.push({
 				phase: `${label} (scrollTop ${moved.scrollTop})`,
-				...(await probe()),
+				...scrolled,
+			});
+		}
+
+		/*
+		 * THE FOCUS CASE (UX round 2, U6, a BLOCKER), which no scroll phase can see: a
+		 * `Tab` from the field moves focus to the chip's own control, and until this
+		 * change the layer was a scroll container, so the browser scrolled IT instead
+		 * of the field - the chip painted 219px from its marker, over unrelated prose,
+		 * with a live `x` and a focus ring on it (measured by the reviewer; pressing
+		 * Enter there destroyed a credential the operator could not see).
+		 *
+		 * The keystroke is a REAL one through `Input.dispatchKeyEvent`, because the
+		 * whole defect is the browser's own focus scrolling: a scripted `focus()` call
+		 * does not reproduce it. The assertion is the three numbers the reviewer
+		 * measured - the layer's own `scrollTop` stays 0, the field's does not move, and
+		 * the chip still sits on its run.
+		 */
+		const beforeFocus = await probe();
+		/*
+		 * THE FIELD IS FOCUSED FIRST, because the claim under test is "one real Tab FROM
+		 * THE FIELD lands on the control" (the reviewer's own measurement). Without it
+		 * the Tab starts wherever the page happens to be and the phase measures the
+		 * document's tab order instead of the composer's.
+		 */
+		await cdp.send("Runtime.evaluate", {
+			returnByValue: true,
+			expression: "document.querySelector('textarea')?.focus()",
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "rawKeyDown",
+			key: "Tab",
+			code: "Tab",
+			windowsVirtualKeyCode: 9,
+			nativeVirtualKeyCode: 9,
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Tab",
+			code: "Tab",
+			windowsVirtualKeyCode: 9,
+			nativeVirtualKeyCode: 9,
+		});
+		await settle();
+		const focused = await probe();
+		/*
+		 * AND THAT THE TAB ACTUALLY REACHED THE CONTROL, which is what makes this phase
+		 * discriminating rather than decorative: a Tab that moved focus somewhere else
+		 * would leave every delta at zero and read as a pass. The reviewer's own
+		 * measurement carries the same field (`focus: "Remove credential #1"`).
+		 */
+		const landed = (
+			await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression:
+					"document.activeElement?.getAttribute?.('aria-label') ?? document.activeElement?.tagName ?? null",
+			})
+		).result.value;
+		const hasControl = (
+			await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression:
+					"!!document.querySelector('[data-credential-chips] button[aria-label^=\"Remove credential\"]')",
+			})
+		).result.value;
+		if (typeof landed !== "string" || !landed.startsWith("Remove credential")) {
+			/*
+			 * A CHIP WITH NO CONTROL IS NOT A FAILURE, it is a different state: an
+			 * unbacked reference has no value to throw away, so it draws no `x` (this
+			 * component's own rule), and a Tab from the field then lands on the
+			 * composer's next control. Skipped with that reason rather than asserted,
+			 * and skipped only when the page really holds no control - otherwise a
+			 * control that focus cannot reach would read as a pass.
+			 */
+			if (!hasControl) {
+				phases.push({
+					phase: "Tab to the control",
+					skipped: `the chip draws no control, so a Tab lands on ${JSON.stringify(landed)}`,
+				});
+			} else {
+				throw new Error(
+					`${story} @ ${width}x${height}: the Tab did not land on the chip's control - focus is on ${JSON.stringify(landed)}, so this phase would prove nothing`,
+				);
+			}
+		} else {
+			const focusDrift = focused.deltas.filter(
+				(delta) =>
+					delta && (Math.abs(delta.left) > 0.5 || Math.abs(delta.top) > 0.5),
+			);
+			if (
+				focused.layerScrollTop !== 0 ||
+				focused.fieldScrollTop !== beforeFocus.fieldScrollTop ||
+				focusDrift.length > 0
+			) {
+				throw new Error(
+					`${story} @ ${width}x${height}: a Tab to the chip's control moved the layer rather than the field - ${JSON.stringify(
+						{
+							layerScrollTop: focused.layerScrollTop,
+							layerScrollHeight: focused.layerScrollHeight,
+							layerClientHeight: focused.layerClientHeight,
+							fieldScrollTop: [
+								beforeFocus.fieldScrollTop,
+								focused.fieldScrollTop,
+							],
+							focusDrift,
+						},
+					)}`,
+				);
+			}
+			phases.push({
+				phase: `Tab to the control (focus ${landed})`,
+				...focused,
 			});
 		}
 
