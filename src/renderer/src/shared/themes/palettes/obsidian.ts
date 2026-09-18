@@ -91,10 +91,19 @@ export const obsidian: ThemeDefinition = {
 		 * first-named complaint worse, and it was the fleet's only hover under 3.0.
 		 *
 		 * THE CEILING IS THE INK CAP AND THE RANK, not a class. Holding the fills to
-		 * this palette's own cast, the legal window runs L* 18.94-22.88, and the
-		 * SELECTION binds first: it must reach the ink cap (`inkDim` at 5:1) and sit
-		 * `ROW_STATE_HOVER_RANK` above the hover, so the hover can rise no higher
-		 * than L* 22.16. Measured at the shipped pair:
+		 * this palette's own cast, the legal window runs L* 18.67-22.84: the floor is
+		 * the 1.5 L* step above `surface` (L* 17.17), whose first representable value
+		 * is `#2E2E2E` at 18.94, and the top is the `inkDim` 5:1 cap on a neutral fill.
+		 * The SELECTION binds first, because it must reach that cap AND sit
+		 * `ROW_STATE_HOVER_RANK` above the hover: its own ceiling is L* 23.10 (at its
+		 * chroma, C* 3.38 at h298), so the hover can rise no higher than
+		 * min(22.84, 23.10 - 0.5) = L* 22.60. The endpoints are DERIVED from those two
+		 * rules rather than read off the shipped values, which is what this paragraph
+		 * exists for (review round 2: it quoted 18.94-22.88 and 22.16 - the shipped
+		 * selection's and hover's own L* - so the ceiling read as read-off and the
+		 * shipped hover's headroom appeared to be none rather than 0.44 L*).
+		 *
+		 * Measured at the shipped pair:
 		 *
 		 * rowHover    #353535  neutral step at the ink cap's shadow, C* 0.00, +4.99
 		 *                       L*, ΔE00 4.05 off `surface`, `inkDim` 5.13:1 on the

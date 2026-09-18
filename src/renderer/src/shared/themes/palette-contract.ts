@@ -148,9 +148,13 @@ export type ThemePalette = {
 	 * on every one of those roles. `tokyoNight` alone spends anything, on two:
 	 * `ink` gives up 4.59 C* (22.95 -> 18.36), because the ink ladder's own ΔE00 2
 	 * step above `inkMuted` puts the value at L* 88.23 where that hue sustains at
-	 * most C* 18.52; and `chartBarHover` gives up 1.79 C* holding its ΔE00 10
-	 * separation from the accent, which measures 10.00 exactly as shipped - the
-	 * tightest in the fleet. No floor is widened and no value is pinned.
+	 * most C* 18.52; and `chartBarHover` gives up 1.79 C* (30.12 -> 28.33) while
+	 * holding the accent separation, which measures ΔE00 11.46 as shipped - the
+	 * fleet's LOOSEST, where the tightest three (`solarizedDark`, `localOperatorDark`,
+	 * `outrun`) sit at the floor's own 10.00. Both figures are re-measured with the
+	 * gate's own `deltaE` (review round 2: this sentence carried the pre-pass 10.00
+	 * as the shipped value and named `tokyoNight` the tightest, which it is not). No
+	 * floor is widened and no value is pinned.
 	 *
 	 * Measured over the 41 dark palettes: the darkest `canvas` 12.00 -> 12.04,
 	 * the `canvas` spread 9.99 -> 9.95, the max canvases in any 1.5-L* window
@@ -163,10 +167,15 @@ export type ThemePalette = {
 	 *
 	 * Still unmet, so the next pass does not re-derive it: the four near-neutrals
 	 * (`obsidian` 0.72, `arcade` 0.72, `dune` 1.53, `gruvbox` 0.00 C*) are still
-	 * closer together than R4's 2.5 L*, `arcade` and `obsidian` are still the same
-	 * hex, and nothing sits in D4 (18.8-22.0 L*), so R5's five-canvases-above-18.0
-	 * is unsatisfied at 4. Those are placements of palettes this change does not
-	 * move, not band moves.
+	 * closer together than R4's 2.5 L* - `arcade`/`obsidian` at the same hex
+	 * (#202021) with `dune` 0.001 L* off both, the three pairs the gate's ladder
+	 * ratchet now counts - and the fleet ships a SECOND byte-identical canvas pair
+	 * this paragraph has to name, `duskfox`/`rosePineMoon` (#232136), which is half
+	 * of the identical-pair count of 2 rather than the one pair named here before
+	 * (review round 2, F2/Q-R2-2: a pinned debt named in part is not disclosed).
+	 * Nothing sits in D4 (18.8-22.0 L*), so R5's five-canvases-above-18.0 is
+	 * unsatisfied at 4. Those are placements of palettes this change does not move,
+	 * not band moves.
 	 *
 	 * What this leaves is a fleet that is legible and spread where its palettes
 	 * authored depth. The fleet DID read as one colour, and the compression of the
