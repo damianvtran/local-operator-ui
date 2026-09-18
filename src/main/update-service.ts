@@ -4105,8 +4105,10 @@ export class UpdateService {
 	 * using any more. The reading is what `didSourceRebuildLand` compares, in both
 	 * directions.
 	 */
-	private readRebuildMarkerState(): SourceMarkerState {
-		const identity = readInstallIdentity(this.resolveLocalOperatorPath());
+	private readRebuildMarkerState(
+		installPath: string | null = this.resolveLocalOperatorPath(),
+	): SourceMarkerState {
+		const identity = readInstallIdentity(installPath);
 		return readSourceMarkerState(identity.venvPrefix ?? null);
 	}
 
@@ -5285,10 +5287,10 @@ export class UpdateService {
 	 * Read through the same resolution the plan classified, because it is half of
 	 * the evidence that the install changed at all.
 	 */
-	private readGlobalInstallVersion(): string | null {
-		return (
-			readInstallIdentity(this.resolveLocalOperatorPath())?.version ?? null
-		);
+	private readGlobalInstallVersion(
+		installPath: string | null = this.resolveLocalOperatorPath(),
+	): string | null {
+		return readInstallIdentity(installPath)?.version ?? null;
 	}
 
 	/**
@@ -5612,8 +5614,24 @@ export class UpdateService {
 		const servingIdentity = serving.prefix
 			? this.servingInstallIdentity(serving.prefix)
 			: null;
+		/*
+		 * THE ONE INSTALL THIS PRESS ACTS ON, named once and used for all three jobs: the
+		 * command that runs, the identity the route is decided from, and the two readings
+		 * that decide whether it landed.
+		 *
+		 * Round 5 moved the COMMAND onto the serving install (`servingScript ?? consolePath`)
+		 * and left the EVIDENCE on the shim, so a press could run one install and verify
+		 * another: measured on a synthetic two-install host with the version read unstubbed,
+		 * an installer that reached the serving install and moved it 0.55.10 -> 0.56.0 was
+		 * reported as "did not take effect", and a run that moved nothing was reported as a
+		 * success (review round 6, M1 = QA Q-1). Main never had this defect - it ran and
+		 * verified the same `consolePath` - so this is exposure the branch introduced when it
+		 * moved one half and not the other.
+		 */
+		const installPath = servingScript ?? consolePath;
 		const freshPlan = resolveGlobalInstallPlan({
-			identity: servingIdentity ?? readInstallIdentity(consolePath),
+			identity:
+				servingIdentity ?? readInstallIdentity(installPath ?? consolePath),
 			sourceRebuild: rebuildPath,
 		});
 		const rebuildRoute =
@@ -5641,7 +5659,8 @@ export class UpdateService {
 		// minutes apart, and `before` is half of the only evidence that anything
 		// moved.
 		const before =
-			this.readGlobalInstallVersion() ?? plan.installedInstallVersion;
+			this.readGlobalInstallVersion(installPath) ??
+			plan.installedInstallVersion;
 		/*
 		 * THE OTHER HALF OF THE EVIDENCE, for the rebuild route only: `.lop-source`. A
 		 * rebuild of the checkout keeps the version (`pyproject.toml` names the last
@@ -5650,7 +5669,9 @@ export class UpdateService {
 		 * Read through a fresh resolution here and again after the run, never from the
 		 * prefix the check happened to see.
 		 */
-		const markerBefore = rebuildRoute ? this.readRebuildMarkerState() : null;
+		const markerBefore = rebuildRoute
+			? this.readRebuildMarkerState(installPath)
+			: null;
 		/*
 		 * The phase is announced BEFORE the child starts, because on a realistic cold
 		 * cache the install is ~47 s and the restart ~15 s of one unchanging panel:
@@ -5691,7 +5712,7 @@ export class UpdateService {
 					 * running anything else would update one install and verify another - the
 					 * seam this case classifies (review round 5, Q-1 = M2).
 					 */
-					{ path: servingScript ?? consolePath ?? "", args: ["update"] },
+					{ path: installPath ?? "", args: ["update"] },
 			budgetMs,
 			(pid) => {
 				/*
@@ -5711,8 +5732,10 @@ export class UpdateService {
 				});
 			},
 		);
-		const after = this.readGlobalInstallVersion();
-		const markerAfter = rebuildRoute ? this.readRebuildMarkerState() : null;
+		const after = this.readGlobalInstallVersion(installPath);
+		const markerAfter = rebuildRoute
+			? this.readRebuildMarkerState(installPath)
+			: null;
 		/*
 		 * A STOPPED GROUP THAT IS STILL ALIVE KEEPS ITS RECORD. The verdict is in this
 		 * process, so on every other path the record's job is done and the panel carries

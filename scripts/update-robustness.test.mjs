@@ -9,6 +9,7 @@ import {
 	readFileSync,
 	readdirSync,
 	realpathSync,
+	renameSync,
 	rmSync,
 	rmdirSync,
 	statSync,
@@ -7549,6 +7550,19 @@ const driveGlobalUpdate = async ({
 	 * not name its root, so the plan's own subject stands (review round 5, Q-1).
 	 */
 	servingPrefix = null,
+	/*
+	 * The shim the app resolved, when the case needs it to be a real file on disk
+	 * rather than the fixture's synthetic path: a case that drives the SHIPPED evidence
+	 * reads has to point them at a tree that exists (review round 6, M1).
+	 */
+	shimPath = "/synthetic/bin/local-operator",
+	/*
+	 * Leave `readGlobalInstallVersion` as the shipped one, so the verdict is computed from
+	 * real files under real prefixes instead of from the scripted readings. This is the
+	 * difference that makes the round-6 defect visible at all: the stub answers whatever the
+	 * case says, so a press that verified the wrong install could not be caught.
+	 */
+	realEvidenceReads = false,
 	restartOk = true,
 	runGate = null,
 	/*
@@ -7646,13 +7660,14 @@ const driveGlobalUpdate = async ({
 			sourceBuild: false,
 			installedInstallVersion: before,
 		});
-		updateService.resolveLocalOperatorPath = () =>
-			"/synthetic/bin/local-operator";
+		updateService.resolveLocalOperatorPath = () => shimPath;
 		// The pre-run read and the post-run read, in the order the attempt takes
 		// them; anything after those repeats the last one.
 		const readings = [before, after];
-		updateService.readGlobalInstallVersion = () =>
-			readings.length > 1 ? readings.shift() : after;
+		if (!realEvidenceReads) {
+			updateService.readGlobalInstallVersion = () =>
+				readings.length > 1 ? readings.shift() : after;
+		}
 		/*
 		 * The command the attempt reaches for, recorded by its PATH rather than by the
 		 * whole descriptor: the service hands `runGlobalUpdate` a `{ path, args }`
@@ -10963,4 +10978,191 @@ test("the press acts on the install the panel described, in both directions", as
 	 * are both asserted above.
 	 */
 	rmSync(servingRoot, { recursive: true, force: true });
+});
+
+/**
+ * THE VERDICT FOLLOWS THE INSTALL THE PRESS RAN, asserted in both directions.
+ *
+ * WHY THE STUB HAD TO GO. Every other case here scripts `readGlobalInstallVersion`, so the
+ * press's evidence answers whatever the case declares and the question "which install did the
+ * verdict read?" cannot be posed at all. Round 5 moved the COMMAND onto the serving install
+ * and left the EVIDENCE on the shim; the suite could not see it, and two streams found it by
+ * driving a synthetic host by hand (review round 6, M1 = QA Q-1). This case builds two real
+ * installs on disk and lets the SHIPPED reads run.
+ *
+ * THREE DIRECTIONS, because two of them are the interesting ones:
+ *   - the installer moves the install it ran  -> completed, no error;
+ *   - nothing moves                            -> an error, never a success;
+ *   - the SHIM moves and the install that ran does not -> an error, which is the shape a
+ *     verdict read from the wrong tree turns into a false success.
+ */
+test("the verdict follows the install the press ran, in both directions", async () => {
+	/*
+	 * A synthetic install as `readInstallIdentity` sees one: a console script under `bin`,
+	 * a `pyvenv.cfg` so the prefix is recognised as a venv, and a dist-info whose DIRECTORY
+	 * NAME carries the version - the same thing `importlib.metadata` reads on the Python
+	 * side, which is why no interpreter is involved.
+	 */
+	const makeInstall = (root, version) => {
+		mkdirSync(join(root, "bin"), { recursive: true });
+		writeFileSync(
+			join(root, "bin", "local-operator"),
+			`#!/bin/sh\nexec ${join(root, "bin", "python")} -m local_operator \"$@\"\n`,
+			{ mode: 0o755 },
+		);
+		writeFileSync(join(root, "pyvenv.cfg"), "home = /usr/bin\n");
+		const site = join(root, "lib", "python3.13", "site-packages");
+		mkdirSync(site, { recursive: true });
+		const distInfo = join(site, `local_operator-${version}.dist-info`);
+		mkdirSync(distInfo, { recursive: true });
+		writeFileSync(
+			join(distInfo, "METADATA"),
+			`Name: local-operator\nVersion: ${version}\n`,
+		);
+		return distInfo;
+	};
+	const move = (root, from, to) => {
+		const site = join(root, "lib", "python3.13", "site-packages");
+		renameSync(
+			join(site, `local_operator-${from}.dist-info`),
+			join(site, `local_operator-${to}.dist-info`),
+		);
+	};
+
+	const run = async ({ shimRoot, servingRoot, moveShim, moveServing }) => {
+		makeInstall(shimRoot, "0.55.10");
+		makeInstall(servingRoot, "0.55.10");
+		try {
+			const drive = await driveGlobalUpdate({
+				servingPrefix: servingRoot,
+				shimPath: join(shimRoot, "bin", "local-operator"),
+				realEvidenceReads: true,
+				/*
+				 * The daemon the app restarts reports the version the install now holds, which
+				 * is what the post-restart poll waits for: this case is about which install the
+				 * VERDICT read, and a daemon stuck on the old build would fail for an unrelated
+				 * reason and hide the answer.
+				 */
+				daemonReports: moveServing ? "0.56.0" : "0.55.10",
+				runGate: () => {
+					if (moveServing) move(servingRoot, "0.55.10", "0.56.0");
+					if (moveShim) move(shimRoot, "0.55.10", "0.56.0");
+				},
+			});
+			try {
+				const returned = await drive.updateService.updateBackend("0.56.0");
+				return {
+					returned,
+					completed: backendCompletion(drive.sent),
+					errors: backendErrors(drive.sent).length,
+					channels: drive.sent.map(
+						({ channel, payload }) => `${channel}:${payload?.phase ?? ""}`,
+					),
+					errorMessages: backendErrors(drive.sent).map(({ payload }) =>
+						payload.message?.slice(0, 160),
+					),
+					dispose: drive.dispose,
+				};
+			} catch (error) {
+				drive.dispose();
+				throw error;
+			}
+		} finally {
+			rmSync(shimRoot, { recursive: true, force: true });
+			rmSync(servingRoot, { recursive: true, force: true });
+		}
+	};
+
+	// The installer reached the serving install and moved it: that is a landed update.
+	const landed = await run({
+		shimRoot: mkdtempSync(join(tmpdir(), "lo-two-install-shim-")),
+		servingRoot: mkdtempSync(join(tmpdir(), "lo-two-install-serving-")),
+		moveServing: true,
+	});
+	try {
+		assert.ok(
+			landed.completed,
+			`a landed update must be reported as completed (returned ${landed.returned}; channels ${JSON.stringify(landed.channels)}; errors ${JSON.stringify(landed.errorMessages)})`,
+		);
+		assert.equal(landed.errors, 0);
+	} finally {
+		landed.dispose();
+	}
+
+	// Nothing moved: the honest reading is a failure, and it must not be a success.
+	const noop = await run({
+		shimRoot: mkdtempSync(join(tmpdir(), "lo-two-install-shim-")),
+		servingRoot: mkdtempSync(join(tmpdir(), "lo-two-install-serving-")),
+	});
+	try {
+		assert.equal(
+			noop.completed,
+			undefined,
+			"a no-op must never be reported as a success",
+		);
+		assert.ok(noop.errors > 0);
+	} finally {
+		noop.dispose();
+	}
+
+	/*
+	 * THE FALSE-SUCCESS DIRECTION: the shim moves, the install that actually ran does not.
+	 * A verdict read from the shim sees a version change and reports a success for an
+	 * install nothing touched - which is the half of the defect the completed-event
+	 * assertion above cannot catch.
+	 */
+	const wrongTree = await run({
+		shimRoot: mkdtempSync(join(tmpdir(), "lo-two-install-shim-")),
+		servingRoot: mkdtempSync(join(tmpdir(), "lo-two-install-serving-")),
+		moveShim: true,
+	});
+	try {
+		assert.equal(
+			wrongTree.completed,
+			undefined,
+			"the shim moving while the install that ran did not is not a landed update",
+		);
+		assert.ok(wrongTree.errors > 0);
+	} finally {
+		wrongTree.dispose();
+	}
+});
+
+/**
+ * EVERY SURFACE THAT SHOWS AN ATTEMPT'S FAILURE USES THE ONE PHASE-AWARE RULE.
+ *
+ * Round 4 fixed the notification panel by handing the attempt's sentence to
+ * `serverUpdateFailureCopy`, and two other surfaces kept running the same payload through
+ * `updateErrorMessage`, whose 400-character reading of a long string as a machine dump
+ * deleted it: the sentence was safe on one screen and deletable on two (review round 5,
+ * M1). The behaviour test above proves the helper is right; this one proves the surfaces
+ * still CALL it, which is the half a green behaviour test cannot see - and it is the half
+ * that failed last round, because nothing pinned the call sites (review round 6, m1).
+ *
+ * It reads the sources rather than rendering them on purpose: the defect was a call site,
+ * and a component that renders correctly in the story it is photographed in can still be
+ * the one that drops the sentence in the arm the story does not cover.
+ */
+test("each surface that renders an attempt's failure calls the shared reason helper", async () => {
+	const surfaces = [
+		"src/renderer/src/shared/components/common/update-notification.tsx",
+		"src/renderer/src/features/chat/components/run-details/run-panel.tsx",
+		"src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
+	];
+	for (const relative of surfaces) {
+		const source = readFileSync(join(process.cwd(), relative), "utf8");
+		assert.ok(
+			source.includes("serverUpdateFailureReason("),
+			`${relative} must route an attempt's report through the shared helper`,
+		);
+		/*
+		 * The exact shape the fix removed: the classifier applied to a report's message.
+		 * A future edit that reintroduces it passes every behaviour test and still deletes
+		 * the sentence on this surface.
+		 */
+		assert.ok(
+			!source.includes("updateErrorMessage(report.message)"),
+			`${relative} must not classify an attempt's report - that is what deleted the sentence`,
+		);
+	}
 });
