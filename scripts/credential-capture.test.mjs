@@ -2379,7 +2379,11 @@ test("the notice line's precedence puts the actionable sentence first (UX round 
 	);
 	// The disclosure still outranks both, for the reason its own comment gives.
 	assert.equal(
-		noticeLineFor({ unredacted: "Enter will expose them", armed: true, cleared }),
+		noticeLineFor({
+			unredacted: "Enter will expose them",
+			armed: true,
+			cleared,
+		}),
 		"Enter will expose them",
 	);
 	// And the stale register is the same key with different words (U7's refusal).
@@ -2403,8 +2407,14 @@ test("the toast says only what the toast can do, and the refusal has words (UX r
 	 */
 	assert.equal(clearedToastLine(2), "Credential #2 removed");
 	assert.match(clearedStaleNotice("LOP_SECRET_4CE3Y48G"), /cannot be put back/);
-	assert.match(clearedStaleNotice("LOP_SECRET_4CE3Y48G"), /LOP_SECRET_4CE3Y48G/);
-	assert.notEqual(clearedToastLine(2), clearedNoticeLine("LOP_SECRET_4CE3Y48G"));
+	assert.match(
+		clearedStaleNotice("LOP_SECRET_4CE3Y48G"),
+		/LOP_SECRET_4CE3Y48G/,
+	);
+	assert.notEqual(
+		clearedToastLine(2),
+		clearedNoticeLine("LOP_SECRET_4CE3Y48G"),
+	);
 	assert.ok(!clearedToastLine(2).includes("gone"));
 });
 
