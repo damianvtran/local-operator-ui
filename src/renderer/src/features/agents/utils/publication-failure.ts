@@ -579,13 +579,25 @@ export const pullRefusalMessage = (
 	const status = Number(PULL_HUB_STATUS.exec(reason)?.[1] ?? Number.NaN);
 	if (PULL_GONE_STATUSES.has(status))
 		return `${subject} is no longer on the hub, so nothing was downloaded.`;
-	if (
-		isPullTransportFailure(reason) ||
-		status === 408 ||
-		status === 429 ||
-		status >= 500
-	)
+	if (isPullTransportFailure(reason) || status === 408)
 		return `The hub could not be reached, so ${subject} was not downloaded.`;
+	/*
+	 * THE STATUSES THAT MEAN THE HUB ANSWERED, said as themselves. Round 2's
+	 * R16/R21 named this defect on the publish side and round 3's M3 found the same
+	 * weld here: a 429, a 401/403 and a 5xx all arrived at "could not be reached",
+	 * which is a reach failure — asserted at the one moment the user reads the
+	 * sentence rather than the machinery behind it. A 429 is the retryable one and
+	 * says so; a 401/403 is a credential refusal, which is the same fact the typed
+	 * `hub_unauthorized` arm words for the publish path; a 5xx is the hub failing
+	 * its own work, not silence. Only a transport failure (or a 408, which is the
+	 * request timing out with no answer at all) is a reach failure.
+	 */
+	if (status === 429)
+		return `The hub is busy, so ${subject} was not downloaded. Try again in a moment.`;
+	if (status === 401 || status === 403)
+		return `The hub refused this machine's sign-in, so ${subject} was not downloaded.`;
+	if (status >= 500)
+		return `The hub could not complete the download, so ${subject} was not downloaded. Try again in a moment.`;
 	if (status >= 400)
 		return `The hub refused the download, so ${subject} is not here.`;
 	// An authored sentence the hub or the backend wrote: shown as it is, which is
