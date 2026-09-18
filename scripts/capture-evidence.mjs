@@ -683,13 +683,18 @@ export const STORIES = [
 	["browser-approvals-dock--empty", 1280, 720],
 	["browser-approvals-dock--narrow", 560, 720],
 	/*
-	 * THE SIDEBAR'S PER-ROW BROWSER MARK WAS CAPTURED HERE, in nine states, and the rows
-	 * are gone with the control (operator ask, 2026-09-18): `browser-conversation-mark--*`
-	 * wrote `docs/evidence/browser-conversation-mark/`, that set is deleted, and a STORIES
-	 * row naming a story that no longer exists is the drift this table's own count is
-	 * checked against. The rows that reach the sidebar's conversation rows - the
-	 * `chat-sidebar-status-feed--*` states - are what remains, and they are where a row's
-	 * own layout is photographed now.
+	 * THE SIDEBAR'S PER-ROW BROWSER MARK WAS CAPTURED HERE, through TWELVE rows, and they
+	 * are gone with the control (operator ask, 2026-09-18): ELEVEN
+	 * `browser-conversation-mark--*` rows, which are the eleven stories the deleted
+	 * `browser-conversation-mark.stories.tsx` exported and which wrote
+	 * `docs/evidence/browser-conversation-mark/`, plus the `chat-sidebar-status-feed--browser-marks`
+	 * row whose fixture fed the mark's count-and-badge cascade into a real sidebar row.
+	 * That set is deleted, and a STORIES row naming a story that no longer exists is the
+	 * drift this table's own count is checked against (review round 1, R4: this comment
+	 * said "nine states", the PR body said thirteen and the manifest said twelve rows - the
+	 * counts are now 11 + 1 above). The rows that reach the sidebar's conversation rows -
+	 * the `chat-sidebar-status-feed--*` states - are what remains, and they are where a
+	 * row's own layout is photographed now.
 	 */
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
@@ -1494,6 +1499,19 @@ export const STORIES = [
 	["chat-sidebar-status-feed--completion-second-in-band", 780, 660],
 	["chat-sidebar-status-feed--completion-acknowledged", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered-offscreen", 780, 660],
+	/*
+	 * A ROW'S TITLE BOX, ON A TITLE THAT REACHES IT (design round 1, D1 of the
+	 * per-row mark's removal). The other states in this set have titles short
+	 * enough that the 28px the deleted mark reserved is invisible in them: the
+	 * width claim had no frame, and the only artifact that ever stated it - the
+	 * deleted `browser-conversation-mark--slot-cost` specimen - went with the
+	 * control. This state is one row whose title truncates at this panel's own
+	 * width, so the box's own edge is what the frame is about; its before half is
+	 * `chat-sidebar-browser-mark-baseline/truncating-title/`, the same story on
+	 * unmodified `origin/main` at `10926b782`, where the same title truncates 28px
+	 * earlier because the mark's slot sat between the title and the row's end.
+	 */
+	["chat-sidebar-status-feed--truncating-title", 780, 560],
 	/*
 	 * The sidebar's CURRENT ROW, and the caps beside it on that row.
 	 *

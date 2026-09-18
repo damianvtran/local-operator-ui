@@ -29,10 +29,34 @@ state table (the quiet Globe state, the count, the badge), §3's toggle and its
 `aria-expanded` grammar, and the reserved 28px slot the row paid for on every title.
 What survives is the entry point §1 recorded as the ONLY one before R2 existed: the
 header's Globe trigger for the conversation you are in. The cost is stated in the pull
-request and at the deletion site in `chat-sidebar.tsx`: a conversation that is not the
-current one can no longer have its browser opened from the sidebar, and nothing in the
-chrome now surfaces ANOTHER conversation's pending browser approvals without opening
-the browser.
+request and at the deletion site in `chat-sidebar.tsx`, and the inventory is longer than
+that first line of it suggests. What went with the mark:
+
+- a conversation that is not the current one can no longer have its browser opened from
+  the sidebar without being selected first (the header's Globe follows the selection);
+- the row was the only place outside the browser showing a conversation's **tab count**
+  and its **loading state**, for ANY conversation, the current one included — the header
+  badge carries approvals only;
+- it was the only surface reporting ANOTHER conversation's **pending browser approvals**
+  without opening the browser — the header's badge counts this conversation only, so it
+  is null for a foreign request and the sidebar now reports nothing at all (QA round 1
+  rendered exactly that: on the base tree a foreign request lit the conversation's mark
+  with `1 approval waiting`, and on this head the sidebar holds no browser affordance);
+- it was the only thing that **normalised the pane's lens** on the way in
+  (`browserPaneScope` is one sticky preference, `ui-preferences-store.ts:452`, read at
+  `browser-pane.tsx:89`), and the toggle/`aria-expanded` cue went with it — so with the
+  pane last left on `All tabs` the header's Globe reopens it there, and the header's
+  Globe is unmounted while the pane is open (`chat-header.tsx:161`), leaving the in-pane
+  switch as the only way to re-scope an open pane.
+
+The one surviving surface for another conversation's approvals is outside the chrome of
+this design: `src/main/browser/consent-notifier.ts` raises a native "Site approval
+needed" banner naming the count and the oldest origin, focus-gated and naming no
+conversation (it is unobservable in this repo's headless rigs, which suppress native
+banners). A one-line follow-up exists if the capability is wanted back — keep the
+header's Globe mounted so it can toggle and normalise the pane's scope — and it is
+deliberately not implemented: the control's focus-return and spacing rules are pinned by
+tests and were not this change's to alter.
 
 The sections are left as written because they are the record of a decision that was
 taken and then reversed, and this note is what keeps that record from reading as the
@@ -199,6 +223,12 @@ here."* The `Show all tabs` action and both existing sentences otherwise stand.
 
 ### R2 — A corner affordance on every conversation row
 
+> **SUPERSEDED — see the note at the top of this file (2026-09-18).** Everything in this
+> section, including the `BrowserConversationMark` tree below and its **states table**,
+> describes a control that no longer exists: the operator asked for it back out and it
+> is deleted, not hidden. Read it as the record of the decision R2 records, never as the
+> contract for `chat-sidebar.tsx` as it stands.
+
 **Where it goes, and why the row has to be restructured.** The conversation row is
 one `<button>` (`chat-sidebar.tsx:467-582`) carrying `data-chat-row`
 (`:478`), `data-tour-tag="chat-session-row"` (`:484`), `aria-current` (`:498`),
@@ -248,6 +278,10 @@ second browser implementation. Props: `{ sessionId: string; name: string; summar
 | approvals pending | the same accent `Badge` the header uses (`chat-header.tsx:343-359`), positioned for this box | an ask gets a count and the accent, per §5.1 | `Open the browser for "Reports" — 2 approvals waiting` |
 | a tab failed to load | glyph keeps a `text-danger`… **no.** See below | | |
 | unavailable outside Electron | **not rendered** | — | — |
+
+**Every row of that table is history as of 2026-09-18** — the control, this table and
+its states are superseded by the note at the top of this file; `chat-sidebar.tsx` draws
+no per-row browser control at all.
 | **the pane is open on THIS row's conversation** (`expanded`) | the same mark, ink stepped to `text-ink` (the top of the same ramp; never a fill, never opacity) | unchanged — a count is a fact about the conversation, not about the pane | `Close the browser for "Reports" …` |
 
 **The `expanded` axis is not a sixth content state; it is the toggle's own.** A press on

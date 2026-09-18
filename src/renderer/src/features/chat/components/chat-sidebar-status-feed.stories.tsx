@@ -1425,3 +1425,62 @@ export const CompletionCursorPartlyClipped: Story = {
 		releaseShutter();
 	},
 };
+
+/* ----------------------------- a title long enough to reach the row's end */
+
+/**
+ * THE ROW'S TITLE BOX, ON A TITLE THAT ACTUALLY REACHES IT.
+ *
+ * The operator's reason for removing the per-row browser control was the space
+ * it held (`docs/evidence/chat-sidebar-browser-mark-baseline/README.md`), and the
+ * only artifact that ever stated that cost was the deleted
+ * `browser-conversation-mark--slot-cost` specimen: a caption reading "title 240px
+ * without the mark, 212px with it". The three states the baseline set re-captured
+ * cannot stand in for it - their titles end at x 180-207 while the slot begins at
+ * x 332, so the reserved 28px is invisible in them and the claim lived in prose
+ * (design round 1, D1).
+ *
+ * This state is that measurement in pixels: one row whose title is long enough to
+ * TRUNCATE at this panel's own width, so the `truncate` ellipsis sits where the
+ * box ends and the box's own edge is the thing the frame is about. Before/after
+ * are the same story on two trees (the before half is in
+ * `chat-sidebar-browser-mark-baseline/truncating-title/`, this half in the live
+ * set), which is the pair the deletion's width claim is judged on - and the
+ * difference between the two ellipsis positions IS the reclaimed width.
+ *
+ * It lives in THIS file because on the tree the before half is captured from,
+ * this is the only story file whose page passes the summary map the mark reads
+ * (`browserSummaries={markFixtures}`, an empty `Map` by default, which the base
+ * tree's `browserMarkFor` still draws a quiet Globe from). The other states here
+ * photograph the feed's transitions; this one photographs the row's geometry,
+ * and the two are the same component at the same width.
+ */
+const LEDGER_LONG = "5e6f708192a3";
+
+/** Long enough to truncate in BOTH halves, so what the frame compares is where
+    the ellipsis lands rather than whether there is one. */
+const LEDGER_LONG_TITLE =
+	"Reconcile the supplier ledger against the quarterly revenue model and the regional forecast";
+
+export const TruncatingTitle: Story = {
+	render: () => {
+		roster = [
+			wireRow(LEDGER_LONG, LEDGER_LONG_TITLE, 1_760_030_300, BUSY, 8),
+			wireRow(
+				RECONCILE,
+				"Reconcile the supplier ledger",
+				1_760_030_200,
+				BUSY,
+				7,
+			),
+			wireRow(MIGRATE, "Migrate the deploy script", 1_760_030_100, IDLE, 1),
+		];
+		return <Page />;
+	},
+	play: async () => {
+		/* The list is the subject, so the shutter waits only for it: no frame is
+		   delivered, and the rows keep the catalogue's own stamps. */
+		await catalogueSettled(3);
+		await sleep(300);
+	},
+};
