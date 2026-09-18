@@ -106,6 +106,7 @@ import { WorkingLine } from "../components/trace/working-line";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
+import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
@@ -130,6 +131,7 @@ import {
 	splitFirstLine,
 } from "./transcript-rows";
 import type { AttachmentScope } from "./use-attachment-url";
+import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
 import { deriveWorkingLine, workingLineInputFor } from "./working-line-model";
 
@@ -321,6 +323,13 @@ const UserRow = memo(function UserRow({
 	 */
 	const turnRef = useRef<HTMLDivElement>(null);
 	/*
+	 * Which link on this turn the toolbar is about, if any. ONE subject per row,
+	 * decided by one hook (`use-link-subject.ts`), because the alternative is one
+	 * hover state per link and therefore two toolbars on screen at once or a
+	 * toolbar left behind by a link that scrolled away.
+	 */
+	const link = useLinkSubject(turnRef);
+	/*
 	 * The turn's own text, split from the reply markup a quoted send carries.
 	 *
 	 * This is the canonical path's half of what `message-paper.tsx` does on the
@@ -410,8 +419,26 @@ const UserRow = memo(function UserRow({
 							)}
 						</div>
 					</div>
-					{conversationId && isQuotable(record, remainingContent) && (
-						<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+					{/*
+					 * `!link.quoteAvailable` is the one-control rule: when the reader's
+					 * highlight lies wholly inside a link, the LINK toolbar is the control
+					 * that offers Quote - the operator's ask - and mounting this one too
+					 * would paint two strips, both floating over the same highlight, each
+					 * offering the same press.
+					 */}
+					{conversationId &&
+						isQuotable(record, remainingContent) &&
+						!link.quoteAvailable && (
+							<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+						)}
+					{conversationId && link.subject && (
+						<LinkToolkit
+							conversationId={conversationId}
+							turnRef={turnRef}
+							subject={link.subject}
+							quoteAvailable={link.quoteAvailable}
+							onDismiss={link.dismiss}
+						/>
 					)}
 				</div>
 				{/*
@@ -439,6 +466,12 @@ const AssistantRow = memo(function AssistantRow({
 	conversationId?: string;
 }) {
 	const turnRef = useRef<HTMLDivElement>(null);
+	/*
+	 * Which link on this turn the toolbar is about, if any. One subject per row,
+	 * decided by one hook (`use-link-subject.ts`), for the reason that file gives:
+	 * per-link hover state is how two toolbars end up on screen at once.
+	 */
+	const link = useLinkSubject(turnRef);
 	/*
 	 * The assistant side of the split `UserRow` documents. Kept on both kinds
 	 * rather than only on `user` because the markup is a property of the
@@ -487,14 +520,39 @@ const AssistantRow = memo(function AssistantRow({
 						fontSize: isSmallView ? "var(--text-body-sm)" : "var(--text-body)",
 						lineHeight: 1.6,
 					}}
+					/*
+					 * A STREAMING ROW IS NOT LINKIFIED, for the reason `isQuotable`
+					 * refuses a streaming record: the row is a prefix the next token
+					 * falsifies, so `/Users/x/opoint-renewal-2026-09-1` would become a link
+					 * to a path that does not exist and then silently re-link as the rest
+					 * of it arrived. The links appear when the row settles - which is also
+					 * when its Quote control appears.
+					 */
+					linkify={!record.streaming}
 				/>
 				{record.stopReason === "aborted" && (
 					<p className="mt-1 text-ink-dim text-meta">
 						Stopped before finishing
 					</p>
 				)}
-				{conversationId && isQuotable(record, remainingContent) && (
-					<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+				{/*
+				 * `!link.quoteAvailable`: the same one-control rule the user row
+				 * documents - when a link owns the highlight, the link toolbar carries
+				 * Quote and this control stays off screen.
+				 */}
+				{conversationId &&
+					isQuotable(record, remainingContent) &&
+					!link.quoteAvailable && (
+						<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+					)}
+				{conversationId && link.subject && (
+					<LinkToolkit
+						conversationId={conversationId}
+						turnRef={turnRef}
+						subject={link.subject}
+						quoteAvailable={link.quoteAvailable}
+						onDismiss={link.dismiss}
+					/>
 				)}
 			</div>
 		</MessageContainer>
