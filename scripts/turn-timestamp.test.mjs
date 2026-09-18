@@ -997,12 +997,21 @@ test("a turn still working carries no caption, on any of its settled rows", asyn
 
 test("a statement after the answer does not take the answer's caption away", async () => {
 	/*
-	 * DESIGN ROUND 2's D2-1, and the four control cases it turned on. The first
-	 * gate keyed on the turn's last PAINTING row, so any row after the answer
-	 * stripped the caption — and for the three STATEMENT kinds that is not a
-	 * rendering preference but a lost fact: a notice, a peer receipt and a wake
-	 * receipt paint no `<time>` of their own and have no disclosure to open, so the
-	 * turn's only time was gone from the screen with nothing to click.
+	 * DESIGN ROUND 2's D2-1 and DESIGN ROUND 3's D3-1: the FIVE statement kinds, and
+	 * the control cases that turn on them. The first gate keyed on the turn's last
+	 * PAINTING row, so any row after the answer stripped the caption — and for a
+	 * statement that is not a rendering preference but a lost fact: a notice, a
+	 * compaction receipt, a custom row, a peer receipt and a wake receipt all paint
+	 * no `<time>` of their own and have no disclosure to open, so the turn's only
+	 * time was gone from the screen with nothing to click.
+	 *
+	 * COVERAGE, stated rather than implied because it differs per kind: `notice` and
+	 * `peer` have committed frame shapes (`chat-canonical-notices--notice-lengths`,
+	 * `chat-canonical-notices--session-incidents` and the peer half of
+	 * `chat-tool-rows--answer-then-statement`), while `custom`, `wake` and
+	 * `compaction` have no story that puts them after an answer — QA round 3 said so
+	 * for the first two and the designer for the third — so THEY ARE TEST-LEVEL ONLY
+	 * here rather than claiming a frame that does not exist.
 	 *
 	 * The two rows that DO end a turn's work keep their old behaviour, and they are
 	 * asserted here beside the new ones rather than left to the tests above, because
@@ -1022,6 +1031,22 @@ test("a statement after the answer does not take the answer's caption away", asy
 				ts: TS + 90_000,
 				text: "The run was stopped by the reader.",
 				level: "info",
+			},
+		],
+		[
+			"compaction",
+			/*
+			 * The live spelling of a pass (`compaction:<generation>:<before>:<after>`),
+			 * which is the id shape the reducer mints. Design round 3's D3-1: a
+			 * compaction receipt renders exactly like a notice - receipt line, no
+			 * `<time>`, no disclosure - so it belonged in this table, and it is the one
+			 * kind here with NO story shape on purpose (see the note above the loop).
+			 */
+			{
+				kind: "compaction",
+				id: "compaction:1:41000:9000",
+				ts: TS + 90_000,
+				text: "Context compacted from 41k to 9k tokens.",
 			},
 		],
 		[

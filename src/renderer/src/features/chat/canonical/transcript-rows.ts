@@ -125,14 +125,15 @@ export function closingAnswerIds(
  *   to open. Measured on the frames: `[user][answer][notice]` painted nothing at
  *   all on screen.
  *
- * `tool` is deliberately NOT in this set, for the first reason above, and
- * `compaction` is not either: it is a conversation-boundary receipt rather than
- * something that arrives inside a turn, and widening this predicate is a change
- * with its own evidence to produce.
+ * `tool` is deliberately NOT in this set, for the first reason above. `compaction` IS: a compaction
+ * receipt renders exactly like a notice - receipt line, no `<time>`, no disclosure to open - so
+ * `[user][answer][compaction]` had the same unrecoverable loss (design round 3, D3-1, measured by the
+ * designer: 0 captions before, 1 after, at left 102, with the four controls unchanged).
  */
 export function isStatementRow(record: TranscriptRecord): boolean {
 	return (
 		record.kind === "notice" ||
+		record.kind === "compaction" ||
 		record.kind === "custom" ||
 		record.kind === "peer" ||
 		record.kind === "wake"
