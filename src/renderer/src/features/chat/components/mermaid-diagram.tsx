@@ -71,6 +71,7 @@ const ROLE_HAIRLINE = "var(--color-hairline)";
 const ROLE_CONTROL = "var(--color-control)";
 const ROLE_ACCENT = "var(--color-accent)";
 const ROLE_ACCENT_WASH = "var(--color-accent-wash)";
+const ROLE_ACCENT_ALT_WASH = "var(--color-accent-alt-wash)";
 const ROLE_ON_ACCENT = "var(--color-on-accent)";
 const ROLE_INFO = "var(--color-info)";
 const ROLE_INFO_WASH = "var(--color-info-wash)";
@@ -82,9 +83,36 @@ const ROLE_WARNING_BORDER = "var(--color-warning-border)";
 const ROLE_DANGER = "var(--color-danger)";
 const ROLE_DANGER_WASH = "var(--color-danger-wash)";
 
-/** Categorical fills cycle the semantic washes so labels stay `ink` on them. */
+/**
+ * Categorical fills cycle the decorative and semantic washes so labels stay `ink`
+ * on them.
+ *
+ * The second accent sits at INDEX 1, ahead of the semantics, and that position is
+ * the change: `fillType0..7` is this app's only categorical ramp (the journey and
+ * radar diagram types are the ones that spend it — the flowchart, pie and
+ * quadrant types derive their fills elsewhere), and until this entry existed
+ * category 1 was painted `info` — the colour that everywhere else means "here is
+ * a fact". A
+ * diagram's second category is the one surface where a second decorative hue buys
+ * something functional rather than aesthetic, which is why the role exists at all
+ * (`palette-contract.ts`'s `accentAlt`).
+ *
+ * The fills are WASHES and the labels are `ink`, so no `onAccentAlt` is needed
+ * and no category label sits on a solid decorative fill. The adjacency the ramp
+ * creates is `accentWash` beside `accentAltWash`, and the contract asserts that
+ * pair at the field floor (ΔE00 2.0); measured across all 59 palettes the
+ * tightest is 2.05. Category 2 is `accentAltWash` beside `infoWash`, which is
+ * also the pair a palette can make close — the five whose second hue is in the
+ * `info` family (`catppuccinLatte`, `catppuccinFrappe`, `catppuccinMacchiato`,
+ * `catppuccinMocha`, `radient`) — and it is not close today: the tightest of the
+ * 59 is ΔE00 2.93, above the 2.0 field floor, so no palette needs the ramp
+ * reordered. That is worth re-measuring rather than assuming if either family
+ * moves: this is the one surface where a decorative hue and a semantic are read
+ * side by side.
+ */
 const WASH_CYCLE = [
 	ROLE_ACCENT_WASH,
+	ROLE_ACCENT_ALT_WASH,
 	ROLE_INFO_WASH,
 	ROLE_SUCCESS_WASH,
 	ROLE_WARNING_WASH,
