@@ -1243,16 +1243,23 @@ test("the harness's own seeded text is asserted, not a copy of it", () => {
 	assert.deepEqual(paths([assistant(1, seeded)]), []);
 });
 
-test("the abbreviation trade: a name containing an ellipsis is admitted by no tier", () => {
+test("the abbreviation trade, stated exactly: `…` anywhere, `...` as a whole segment", () => {
 	/*
 	 * The cost of the rule above, stated as a test rather than discovered later.
-	 * Rejecting `…` anywhere in a candidate is what makes an abbreviation
-	 * impossible to admit whole, and a file whose NAME legitimately contains the
-	 * character pays for it — in EVERY tier, because the marker class is applied
-	 * wherever a candidate is canonicalised. That is this module's standing trade
-	 * (a missing tile, never a tile for a path no file has), and the asymmetry is
-	 * deliberate: a character that means "text was removed" is the one thing a
-	 * text-inferring scanner cannot tell from a name.
+	 * Two shapes are rejected in EVERY tier, because the marker class and the
+	 * segment rule are applied wherever a candidate is canonicalised:
+	 * `…` (U+2026) anywhere in the token, and an ASCII `...` that IS a whole path
+	 * segment. A file whose NAME legitimately contains either pays for it. That is
+	 * this module's standing trade (a missing tile, never a tile for a path no
+	 * file has), and the asymmetry is deliberate: a character that means "text was
+	 * removed" is the one thing a text-inferring scanner cannot tell from a name.
+	 *
+	 * The boundary is NOT "an ellipsis anywhere", and review round 3 was right to
+	 * say so: `ELLIPSIS_SEGMENT` reads segments, so a `...` inside a NAME —
+	 * `/tmp/notes/a...b.md` — is admitted, by all three tiers. That is asserted
+	 * below as a positive rather than left to be discovered, because a comment
+	 * that overstates a fail-safe rule is the kind of thing a later reader
+	 * deletes the rule on the strength of.
 	 */
 	assert.deepEqual(paths([assistant(1, "opened /tmp/notes/we…ird.md")]), []);
 	assert.deepEqual(
@@ -1260,4 +1267,23 @@ test("the abbreviation trade: a name containing an ellipsis is admitted by no ti
 		[],
 	);
 	assert.deepEqual(paths([tool("a", { path: "/tmp/notes/we…ird.md" })]), []);
+	// The same three tiers, the ASCII spelling as a whole segment.
+	assert.deepEqual(paths([assistant(1, "opened /tmp/notes/.../a.md")]), []);
+	assert.deepEqual(
+		paths([assistant(1, "opened file:///tmp/notes/.../a.md")]),
+		[],
+	);
+	assert.deepEqual(paths([tool("a", { path: "/tmp/notes/.../a.md" })]), []);
+	// And the shape the rule does NOT cover, admitted by all three tiers.
+	for (const [label, records] of [
+		["prose", [assistant(1, "opened /tmp/notes/a...b.md")]],
+		["file-url", [assistant(1, "opened file:///tmp/notes/a...b.md")]],
+		["tool-arg", [tool("a", { path: "/tmp/notes/a...b.md" })]],
+	]) {
+		assert.equal(
+			paths(records).length,
+			1,
+			`a mid-name \`...\` is admitted on the ${label} tier - the rule reads segments`,
+		);
+	}
 });
