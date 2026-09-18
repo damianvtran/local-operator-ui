@@ -56,14 +56,42 @@ const WATCHDOG_TICK_MS = 1_000;
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 
 /**
+ * One line ending, in the three spellings the spec allows.
+ *
+ * ORDER IS LOAD BEARING: `\r\n` is tried first, so the CR of a CRLF pair is
+ * never read as a bare CR line ending of its own. Reversed, every `\r\n`
+ * becomes two endings and every ordinary record looks like it carries a blank
+ * line.
+ */
+const LINE_ENDING = /\r\n|\n|\r/;
+
+/**
+ * A blank line: two line endings in ANY combination, which is the only thing
+ * that terminates an SSE record.
+ *
+ * Six spellings are in play — `\n\n`, `\r\n\r\n`, `\r\r`, and the mixed `\n\r`,
+ * `\n\r\n`, `\r\n\r` — and the mixed three are the ones an earlier scanner here
+ * missed by looking for each spelling as a fixed pair. A relay that misses a
+ * terminator does not report the miss: it holds two records in one buffer and
+ * hands the renderer their concatenation, whose `JSON.parse` fails inside a
+ * `catch` that skips the frame, so the loss is invisible on screen.
+ */
+const BLANK_LINE = /(?:\r\n|\n|\r)(?:\r\n|\n|\r)/;
+
+/**
  * Split one SSE record off the head of `buffer`, per the wire format.
  *
  * WHY THIS IS NOT AN `indexOf("\n\n")`. Four properties of the framing are load
  * bearing here, and the previous one-liner had only the first:
  *
- *  - A record ends at a BLANK LINE, whose newline may be `LF`, `CRLF` or a bare
- *    `CR` — the spec's line endings, and a proxy between this app and its
- *    backend is free to rewrite them.
+ *  - A record ends at a BLANK LINE, whose two newlines may each be `LF`, `CRLF`
+ *    or a bare `CR` — the spec's line endings, and a proxy between this app and
+ *    its backend is free to rewrite them. Any combination is legal, so the
+ *    blank line is found by splitting on the endings (`BLANK_LINE` below)
+ *    rather than by looking for one spelling: the three MIXED forms `\n\r`,
+ *    `\n\r\n` and `\r\n\r` are as much a terminator as `\n\n`, and a scan
+ *    that knew only the same-spelling pairs ran two records together into one
+ *    payload whose `JSON.parse` failed, dropping both in silence.
  *  - The terminator may be SPLIT across two reads (`"\r"` then `"\n\r\n"`), so the
  *    buffer is re-scanned on every chunk rather than trusted to contain one.
  *  - A field's value may itself contain a bare `CR` inside a `data:` JSON payload;
@@ -79,26 +107,19 @@ const MAX_FRAME_BYTES = 8 * 1024 * 1024;
  * ownership of its own buffer.
  */
 function nextRecord(buffer: string): { data: string[]; rest: string } | null {
-	// The earliest blank line in any ending, and its length, so the caller can
-	// drop exactly the terminator that matched.
-	let end = -1;
-	let endLength = 0;
-	for (const terminator of ["\r\n\r\n", "\n\n", "\r\r"]) {
-		const at = buffer.indexOf(terminator);
-		if (at >= 0 && (end < 0 || at < end)) {
-			end = at;
-			endLength = terminator.length;
-		}
-	}
-	if (end < 0) return null;
+	// The earliest blank line, whatever the two endings are spelled. `match[0]`
+	// is the terminator itself, so the caller drops exactly the bytes it found
+	// and the rest of the buffer keeps its own framing.
+	const blank = BLANK_LINE.exec(buffer);
+	if (blank === null) return null;
 	const data: string[] = [];
-	for (const line of buffer.slice(0, end).split(/\r\n|\n|\r/)) {
+	for (const line of buffer.slice(0, blank.index).split(LINE_ENDING)) {
 		if (!line.startsWith("data:")) continue;
 		// Exactly ONE optional space after the colon is the field's own separator.
 		const value = line.slice(5);
 		data.push(value.startsWith(" ") ? value.slice(1) : value);
 	}
-	return { data, rest: buffer.slice(end + endLength) };
+	return { data, rest: buffer.slice(blank.index + blank[0].length) };
 }
 
 export type RelaySubscribeArgs = {

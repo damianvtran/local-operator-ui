@@ -540,13 +540,28 @@ const AssistantRow = memo(function AssistantRow({
 				 * missing instead of inventing text, and it clears itself the moment
 				 * `message_end` (or a durable row) states the whole answer.
 				 *
+				 * ONE SENTENCE PER STATE, because one sentence is not true of both (design
+				 * round 1, D2; corroborated live by QA round 1's Q2). The join case really
+				 * is missing a prefix and has nothing on screen under the caption; a row
+				 * that lost continuity across a gap holds its OWN earlier text on screen,
+				 * so a caption there naming a missing prefix would deny the text directly
+				 * beneath it — and would be false whenever the withheld frame was one this
+				 * viewer had already applied. That state claims only what the app knows:
+				 * the receipt broke while this row was being written, so part of the
+				 * answer MAY be missing.
+				 *
 				 * A caption in the meta register rather than a glyph, and placed ABOVE the
 				 * prose because that is the side the missing text is on — the same quiet
-				 * treatment `Stopped before finishing` gets below.
+				 * treatment `Stopped before finishing` gets below. Its distance to the
+				 * chunk is 4px while the row itself takes the `mark` gap tier above it
+				 * (`transcript-rows.ts`), which is what attaches the line to THIS row
+				 * rather than to the answer above it (design round 1, D1).
 				 */}
 				{record.truncated && (
 					<p className={cn("mb-1 text-ink-dim text-meta")}>
-						Earlier text of this answer is not on screen
+						{record.truncated === "prefix"
+							? "Earlier text of this answer is not on screen"
+							: "Part of this answer may be missing"}
 					</p>
 				)}
 				<MarkdownRenderer

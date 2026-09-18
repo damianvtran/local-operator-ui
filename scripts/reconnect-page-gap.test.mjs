@@ -966,7 +966,7 @@ test("a receipt gap keeps the answer being written, and a mid-turn join agrees w
 	await pump();
 	assert.ok(panel.row(id), "a gap must not erase the answer being written");
 	assert.equal(panel.row(id).text, "The answer so far", "nor shorten it");
-	assert.equal(panel.row(id).truncated, true, "it says its continuity broke");
+	assert.equal(panel.row(id).truncated, "interrupted", "it says its continuity broke");
 	assert.equal(
 		panel.status(),
 		"reconnecting",
@@ -994,7 +994,7 @@ test("a receipt gap keeps the answer being written, and a mid-turn join agrees w
 		"The answer so far",
 		"the seed's delta is not applied a second time",
 	);
-	assert.equal(panel.row(id).truncated, true);
+	assert.equal(panel.row(id).truncated, "interrupted");
 
 	// The authoritative end: the row must agree with the producer's own assembled
 	// text once it lands, and stop claiming anything is missing.

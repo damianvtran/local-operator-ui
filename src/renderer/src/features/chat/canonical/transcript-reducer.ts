@@ -84,23 +84,40 @@ export type TranscriptRecord =
 			/** Still receiving deltas; the view shows the text without a cursor. */
 			streaming: boolean;
 			/**
-			 * The text here is NOT the whole message: a span of it never reached this
-			 * viewer, so the row must not present what it holds as the complete answer.
+			 * What this row's text is NOT, when this viewer cannot hold the whole
+			 * message. Absent means the row is the answer.
 			 *
-			 * SET by the two paths that can only hand a row part of a message — a join that
-			 * created the row from a delta with no prefix in hand, and a snapshot seed whose
-			 * delta cannot be placed after the text a surviving row already holds (see
-			 * `applyEvent`'s `seed` option and the receipt-gap path in
-			 * `use-canonical-session`) — and CLEARED by the two sources that state the whole
-			 * text: `message_end`, whose message is the assembled final text, and a durable
-			 * history row, which is whole by construction (`durableRecord` builds every
-			 * record from the journal and never sets this).
+			 * A NAMED UNCERTAINTY RATHER THAN A BOOLEAN, because one sentence cannot be
+			 * true of every row that is missing something and the row has to say which
+			 * it is:
+			 *
+			 *  - `"prefix"` — the row does not start where the answer starts. SET when
+			 *    the row was minted from a frame's own delta with no text of its own
+			 *    (a turn joined mid-stream: the producer sends deltas only, so an empty
+			 *    body says nothing about what came before). What the viewer knows is
+			 *    that it holds nothing before this chunk, so the caption states
+			 *    exactly that.
+			 *  - `"interrupted"` — the row may have a hole in it. SET by the two paths
+			 *    where a receipt lost continuity across a row that already held text:
+			 *    a snapshot seed whose delta cannot be placed after what the row holds
+			 *    (`applyEvent`'s `seed` option), and a gap that reached
+			 *    `markLiveRecordsTruncated`. Neither the withheld frame nor the gap
+			 *    says whether anything was actually lost, and the row's own earlier
+			 *    text IS on screen — so the caption must claim a possible hole rather
+			 *    than a missing prefix (design round 1, D2).
+			 *
+			 * CLEARED by the two sources that state the whole text: `message_end`, whose
+			 * message is the assembled final text, and a durable history row, which is
+			 * whole by construction (`durableRecord` builds every record from the
+			 * journal and never sets this). The append path clears it too, on the frame
+			 * that carries a non-empty body — that frame IS the running whole text, so
+			 * the claim would otherwise outlive the text it qualifies.
 			 *
 			 * A fact about the TEXT rather than about the transport: the receipt gap that
 			 * provokes it is transient, and the row says so itself rather than the pane
 			 * saying it about every row.
 			 */
-			truncated?: boolean;
+			truncated?: "prefix" | "interrupted";
 			/** Provider stop reason when settled: refusal/error/aborted change ink. */
 			stopReason: string | null;
 			error: boolean;
@@ -367,9 +384,11 @@ export type TranscriptState = {
 	 * DURABLE row, refused or otherwise, which is projected by `durableRecord`;
 	 * `agent_start`, because a turn cannot begin under a live pass; a replaced
 	 * transcript (`replaceTranscript`/`clearView` keeps it, a rebuild does not);
-	 * `dropLiveRecords`, whose receipt gap is the runtime saying its live window
-	 * is gone; and `applyLiveSeed`, whose clear is the "a reconnect must not
-	 * resurrect a claim" half.
+	 * `markLiveRecordsTruncated`, which is the gap path — the same receipt gap that
+	 * used to call `dropLiveRecords`, and which withholds the claim for the same
+	 * reason (`dropLiveRecords` survives for `paint-cache.ts`'s in-flight filter,
+	 * where a cached streaming row could never advance); and `applyLiveSeed`, whose
+	 * clear is the "a reconnect must not resurrect a claim" half.
 	 *
 	 * THE ONE SEQUENCE WITH NO EVENT TO KEY ON, stated rather than papered over:
 	 * a pass whose `compaction_end` frame is lost with no observed receipt gap,
@@ -1956,10 +1975,19 @@ export const streamDiagnostics = {
 	 */
 	settledAssistantUpdate: 0,
 	/**
-	 * A snapshot seed's delta was withheld because the row it named already had
-	 * text from before the gap (see `message_update`'s seed branch). Each count is
-	 * one row that is now marked `truncated` because a receipt gap sat in the
-	 * middle of it.
+	 * A snapshot seed's delta was WITHHELD because the row it named already had text
+	 * from before the gap (see `message_update`'s seed branch).
+	 *
+	 * WHAT THIS COUNTS, exactly, because a counter whose doc claims more than its
+	 * increment is an instrument that lies about the thing it was added to measure
+	 * (code review round 1, R1-3): one unit per row that KEPT ITS TEXT and had a
+	 * delta withheld from it. The seed branch has a second outcome — a row minted by
+	 * the same seed's `message_start`, which holds nothing yet and so takes the
+	 * delta as its first text — and that row is marked `truncated` too; it is NOT
+	 * counted here, because nothing was withheld from it. So this number answers
+	 * "did a seed ever refuse to place a chunk?", and a row marked by that second
+	 * outcome is the seed's ordinary "a turn is in flight" case rather than
+	 * evidence about the withhold rule.
 	 */
 	seededDeltaWithheld: 0,
 };
@@ -2118,8 +2146,9 @@ export function applyEvent(
 				 * delta (the producer sends deltas ONLY, so an empty body says nothing
 				 * about what came before), and a row that presented the chunk as the
 				 * whole answer is what the operator reported as "the message starts
-				 * mid-sentence". `truncated` is the honest form of the same paint: the
-				 * chunk is shown, and the row states that earlier text is missing.
+				 * mid-sentence". `truncated: "prefix"` is the honest form of the same paint:
+				 * the chunk is shown, and the row states that no text of this message before
+				 * this chunk reached this viewer.
 				 *
 				 * A producer that DOES accumulate is still handled exactly as before:
 				 * a non-empty body is the running snapshot, `body + delta` is the
@@ -2134,7 +2163,7 @@ export function applyEvent(
 					ts: now,
 					text: body ? body + delta : delta,
 					streaming: true,
-					truncated: body === "",
+					truncated: body === "" ? "prefix" : undefined,
 					stopReason: null,
 					error: false,
 				});
@@ -2175,15 +2204,21 @@ export function applyEvent(
 				 * heartbeats and tool events while the assistant is between deltas),
 				 * and skipping it leaves a hole when it was genuinely lost. Inventing
 				 * text is the worse of the two, so the delta is withheld and the row is
-				 * marked `truncated`: what it holds is real, contiguous up to the gap,
-				 * and not the whole message. `message_end` carries the assembled truth
-				 * and clears the mark; the live deltas that follow the snapshot append
-				 * normally.
+				 * marked `truncated: "interrupted"`: what it holds is real, contiguous up to
+				 * the gap, and may have a hole where the withheld chunk belonged — which is
+				 * what the row's caption claims, NOT a missing prefix, because the row's own
+				 * earlier text is on screen under it (design round 1, D2). `message_end`
+				 * carries the assembled truth and clears the mark; the live deltas that
+				 * follow the snapshot append normally.
 				 *
 				 * A row with NO text yet cannot duplicate anything, so the seeded delta
 				 * is placed: the row was minted by this same seed's `message_start`
 				 * (a mint from a delta-only frame is the branch above), and the first
-				 * text to reach it is still the seed's own chunk.
+				 * text to reach it is still the seed's own chunk. That row is marked
+				 * `"prefix"` rather than `"interrupted"` — it holds nothing before this
+				 * chunk, which is the fact its caption states — so the two outcomes of
+				 * this branch carry the two claims, and the counter beside them counts the
+				 * same divide (`current.text`).
 				 *
 				 * Only the delta-only shape is special-cased. A frame that carries a body
 				 * is a running snapshot of the whole message, so the append path below is
@@ -2194,7 +2229,13 @@ export function applyEvent(
 				return upsert(state, {
 					...current,
 					text: current.text || delta,
-					truncated: true,
+					/*
+					 * Which claim depends on the SAME fact the counter reads: a row that already
+					 * had text had a chunk withheld from the middle of what it holds, while a
+					 * row with none takes this delta as its first text and holds nothing
+					 * before it — the join's own state, minted one branch up.
+					 */
+					truncated: current.text ? "interrupted" : "prefix",
 				});
 			}
 			// Append-only contract: each update carries its own delta and the
@@ -2217,7 +2258,20 @@ export function applyEvent(
 				if (!delta) return state;
 				next = current.text + delta;
 			}
-			return upsert(state, { ...current, text: next });
+			return upsert(state, {
+				...current,
+				text: next,
+				/*
+				 * A frame with a body supplies the whole running text, so the row stops
+				 * being missing anything and the mark goes on the SAME frame that
+				 * supplies it (code review round 1, R1-2: keeping it here left the
+				 * caption outliving the text it qualifies until `message_end`, which is a
+				 * false claim for as long as it lasts). The delta-only frame is the
+				 * shipped producer's shape and says nothing about the row's continuity,
+				 * so there the mark is carried unchanged.
+				 */
+				truncated: body ? undefined : current.truncated,
+			});
 		}
 		case "message_end": {
 			if (!message || typeof message.id !== "string") return state;
@@ -3143,7 +3197,6 @@ export function reconcileLimit(missingCalls: number): number {
 	);
 }
 
-/** View-only clear: the painted rows go, the backend history is untouched. */
 /**
  * The rows a receipt gap leaves UNCERTAIN, kept and said to be uncertain.
  *
@@ -3166,6 +3219,14 @@ export function reconcileLimit(missingCalls: number): number {
  * its identity, while an assistant row has no such restatement until
  * `message_end`.
  *
+ * A row already marked `"prefix"` KEEPS ITS MARK rather than being re-labelled.
+ * That row's caption claims no text before its own first chunk reached this
+ * viewer, which is still exactly true after a gap — the row really does not start
+ * where the answer starts — and the gap adds a possible hole the caption does not
+ * have to claim for the line to be honest. The one thing that would be false is
+ * the other direction: saying a row's own earlier text is missing when it is on
+ * screen, which is why the gap sentence is its own value (design round 1, D2).
+ *
  * The in-flight compaction claim is still withheld, for the reason
  * `dropLiveRecords` gives: the pass is a live-only fact and a reconnect must not
  * inherit a claim from before the gap.
@@ -3178,12 +3239,13 @@ export function markLiveRecordsTruncated(
 		: state;
 	for (const record of state.records) {
 		if (record.kind !== "assistant" || !record.streaming) continue;
-		if (record.truncated === true) continue;
-		next = upsert(next, { ...record, truncated: true });
+		if (record.truncated) continue;
+		next = upsert(next, { ...record, truncated: "interrupted" });
 	}
 	return next;
 }
 
+/** View-only clear: the painted rows go, the backend history is untouched. */
 export function clearTranscript(
 	state: TranscriptState,
 	at: number = Date.now(),
@@ -3240,6 +3302,17 @@ function formatTokens(count: number): string {
 }
 
 /** Remove live-only records (no durable id) — used when a gap invalidates paint. */
+/** Remove live-only records (no durable id).
+ *
+ * THE GAP NO LONGER CALLS THIS. A receipt gap keeps its live rows and marks the
+ * streaming ones uncertain (`markLiveRecordsTruncated`) — erasing them was the
+ * operator-visible half of the defect this branch fixes, because the answer being
+ * written vanished and came back as the snapshot's tail. This function's one
+ * remaining caller is the PAINT CACHE (`paint-cache.ts`'s in-flight filter), for
+ * the reason stated there: a streaming row restored from a cache can never
+ * advance, because the deltas that would advance it were consumed by the
+ * previous mount.
+ */
 export function dropLiveRecords(state: TranscriptState): TranscriptState {
 	/*
 	 * The in-flight pass claim is LIVE-ONLY for the same reason those records are:
