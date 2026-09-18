@@ -22,6 +22,7 @@ import {
 } from "node:path";
 import BUNDLED_PYTHON_LAYOUT from "../shared/bundled-python-layout.json";
 import MACOS_ENTITLEMENT_POLICY from "../shared/macos-entitlement-policy.json";
+import { installerIsAlive } from "./update-shipit";
 
 /**
  * Pure helpers behind the application update path.
@@ -797,10 +798,19 @@ export type ArtifactVerdict =
 /**
  * Free space the install needs on the volume that holds the app.
  *
- * The peak is not the download: Squirrel unpacks the new app into a staging
- * directory on the app's own volume and then swaps it in, so the artifact, the
- * staged copy of the new app and the app being replaced are all on that volume
- * at once. Hence artifact + two app copies + slack.
+ * The peak is not the download: the new app is unpacked into a staging directory
+ * on the app's own volume and then swapped in, so the artifact, the staged copy
+ * of the new app, the extracted tree the swap is performed against and the app
+ * being replaced are all on that volume at once. Hence artifact + three app
+ * copies + slack.
+ *
+ * THE THIRD COPY IS THE APP'S OWN NOW (2026-09-18). ShipIt used to materialise
+ * the extraction itself, under `~/Library/Caches/<bundle id>.ShipIt/update.*`, and
+ * this guard accounted for it only by implication. The app extracts it now
+ * (`src/main/update-shipit.ts`) into `<userData>/update-staging/`, which is a
+ * directory the app owns and must therefore pay for explicitly - and the peak is
+ * no longer something inherited from Squirrel's cache being on the same volume by
+ * accident.
  *
  * The guard this replaces multiplied the ARTIFACT by three and labelled the
  * result the install's footprint - about 0.98 GiB for 0.18.0's 336 MiB zip,
@@ -814,7 +824,7 @@ export function requiredDiskBytes(input: {
 }): number {
 	return (
 		input.artifactSize +
-		input.installedBundleSize * 2 +
+		input.installedBundleSize * 3 +
 		INSTALL_DISK_SLACK_BYTES
 	);
 }
@@ -937,8 +947,12 @@ export function verifyStagedArtifact(input: {
 	const installedBundleSize = input.installedBundleSize ?? 0;
 	const needed = requiredDiskBytes({ artifactSize, installedBundleSize });
 	if (input.freeBytes < needed) {
+		// Three copies, not two: the artifact, the staged copy, and the tree the
+		// app extracts for the swap itself (see `requiredDiskBytes`). The line is
+		// the arithmetic the user is being refused on, so it has to name what is
+		// actually being counted.
 		const footprint = installedBundleSize
-			? `${formatGiB(artifactSize)} artifact + two ${formatGiB(
+			? `${formatGiB(artifactSize)} artifact + three ${formatGiB(
 					installedBundleSize,
 				)} app copies + ${formatGiB(INSTALL_DISK_SLACK_BYTES)} slack`
 			: `${formatGiB(artifactSize)} artifact + ${formatGiB(INSTALL_DISK_SLACK_BYTES)} slack (the installed app could not be measured)`;
@@ -1206,6 +1220,22 @@ export type PendingInstallMarker = {
 	startedAt: string;
 	/** Pid of the relaunch watchdog, for the log and for a bounded reap. */
 	watchdogPid: number | null;
+	/**
+	 * Pid of the installer THIS app started for the install, when it started one.
+	 *
+	 * Squirrel's own path hands ShipIt to launchd, and then the machine's answer to
+	 * "is an install in flight" is the job (`launchdJobLoaded`). The app's own path
+	 * (`src/main/update-shipit.ts`) spawns ShipIt itself, so there is no job to ask
+	 * about and the installer's own pid is the answer instead - which is why this
+	 * field exists and why `installRunningNow` prefers it.
+	 *
+	 * Required rather than optional so every write site says which path it took: the
+	 * fallback is `installerPid: null` and nothing else, which is the same marker
+	 * format an older version wrote and which the older readers understand. The
+	 * parser tolerates its absence, so a marker left by a version that predates this
+	 * field reads as `null` (i.e. "ask the job") rather than as unparseable.
+	 */
+	installerPid: number | null;
 };
 
 export function pendingInstallMarkerPath(dir: string): string {
@@ -1248,6 +1278,10 @@ export function parsePendingInstallMarker(
 			startedAt: typeof parsed.startedAt === "string" ? parsed.startedAt : "",
 			watchdogPid:
 				typeof parsed.watchdogPid === "number" ? parsed.watchdogPid : null,
+			// Absent on a marker written before this field existed, and absent is the
+			// same answer as the fallback's `null`: ask the install's own launchd job.
+			installerPid:
+				typeof parsed.installerPid === "number" ? parsed.installerPid : null,
 		};
 	} catch {
 		return null;
@@ -1867,17 +1901,34 @@ export function pendingInstallAgeSeconds(
 }
 
 /**
- * Whether a RUNNING ShipIt job plus this marker describe a live install.
+ * Whether this marker plus the installer's own liveness describe a live install.
  *
- * All three facts are needed and each one alone is wrong. The job alone is not
- * an answer: a failed install never unloads it (0.17.0: `runs=3114`, still
- * loaded until it was removed by hand), so treating a loaded job as an install
- * would leave the app forbidden to clean up a failure forever. The marker alone
- * is what produced the false failure on 2026-09-13. Recency is what separates a
- * live install from a leftover job, and it is deliberately generous: it outlives
- * the watchdog's own hold (see `PENDING_INSTALL_RECENCY_SECONDS`), so the app
- * the watchdog starts at its hard bound cannot read the same install as a
- * failure before it has drawn a panel.
+ * All three facts are needed and each one alone is wrong. The liveness signal
+ * alone is not an answer: a failed install never unloads its job (0.17.0:
+ * `runs=3114`, still loaded until it was removed by hand), so treating a loaded
+ * job as an install would leave the app forbidden to clean up a failure forever.
+ * The marker alone is what produced the false failure on 2026-09-13. Recency is
+ * what separates a live install from a leftover job, and it is deliberately
+ * generous: it outlives the watchdog's own hold (see
+ * `PENDING_INSTALL_RECENCY_SECONDS`), so the app the watchdog starts at its hard
+ * bound cannot read the same install as a failure before it has drawn a panel.
+ *
+ * TWO SIGNALS, ONE DECISION. `installerRunning` and `jobState` are the machine's
+ * two answers to "is the thing doing this install still running", and both belong
+ * here rather than to the callers, because the two readers that matter - recovery's
+ * classification and the launch hold - have to agree about the same install
+ * seconds apart. They are gathered in one place (`installLivenessNow`, which asks
+ * only the one that can answer for the marker at hand) so no reader decides for
+ * itself which signal is the truth.
+ *
+ * A marker THIS APP wrote names the installer it spawned, and an install started
+ * that way has no launchd job at all: the pid is the only signal that can answer
+ * for it, and the job is not consulted. A registration left over from an older
+ * Squirrel install (0.17.0: still loaded, `runs=3114`) would otherwise read a
+ * FINISHED install as a live one for the whole recency window, which is the defect
+ * #365 exists to close. A marker with no pid is Squirrel's own path - and the
+ * fallback this app still takes whenever a precondition refuses - where the job's
+ * four states are exactly what #365 built them for.
  *
  * WHY THE JOB HAS TO BE RUNNING AND NOT MERELY REGISTERED (2026-09-18, review
  * U1). Measured on this machine: `launchctl list com.local-operator.ShipIt` exits
@@ -1916,12 +1967,25 @@ export function isInstallInFlight(input: {
 	 * only one of them can be an install launchd has just been handed.
 	 */
 	jobState: InstallJobState;
+	/**
+	 * Whether the installer this marker names is still running (`installerIsAlive`
+	 * over the facts `installLivenessNow` gathers).
+	 *
+	 * Required rather than optional, and the type is the point: a caller that forgot
+	 * it would read a LIVE install as a failure - which is the 2026-09-13 incident
+	 * (recovery reaping a staging tree a working installer is renaming) and the
+	 * launch hold opening the app into the very install it exists to protect.
+	 */
+	installerRunning: boolean;
 	now?: number;
 }): boolean {
 	if (!input.marker) return false;
 	const age = pendingInstallAgeSeconds(input.marker, input.now);
 	if (age === null) return false;
 	if (age < 0 || age > PENDING_INSTALL_RECENCY_SECONDS) return false;
+	// An install this app started itself: the pid decides and the job is not asked,
+	// for the reason the docstring above gives.
+	if (input.marker.installerPid != null) return input.installerRunning;
 	if (input.jobState === "running") return true;
 	return (
 		input.jobState === "registered" && age <= PENDING_INSTALL_HANDOFF_SECONDS
@@ -1929,10 +1993,82 @@ export function isInstallInFlight(input: {
 }
 
 /**
+ * Which of the machine's two liveness signals decides for this marker, and both
+ * answers it asked for.
+ *
+ * WHY THERE ARE TWO, AND WHY THE PID WINS. Before this change an install was always
+ * Squirrel's, and Squirrel always submitted ShipIt to launchd, so "is the install
+ * live" and "is the job loaded" were the same question. This app can now start the
+ * installer itself (`src/main/update-shipit.ts`), and an install it started has NO
+ * job at all - so a marker that records `installerPid` is answered by that pid, and
+ * only a marker from the older path (or the fallback, which still hands the install
+ * to Squirrel) is answered by the job.
+ *
+ * The launchd probe is NOT deleted, only demoted to the second answer. Removing it
+ * would make a marker written by the version being replaced - an in-flight install
+ * of the OLD kind, running while the new version starts up - read as a failure,
+ * which is exactly the 2026-09-13 incident `evaluatePendingInstall`'s own docstring
+ * records.
+ *
+ * Both probes are thunks because both are process spawns and neither is always
+ * needed: a marker that names an installer pid has already answered without
+ * launchctl, and a marker that names none has nothing for `ps` to look up. The
+ * `decidedBy` field travels with the pair so that a log line can say which signal
+ * held a launch or kept a marker, in the machine's own terms.
+ */
+export type InstallLiveness = {
+	installerRunning: boolean;
+	/**
+	 * `unread` when the pid decided: an install this app started has no job launchd
+	 * could answer about, and asking would return a leftover registration from some
+	 * older Squirrel install rather than anything about this one.
+	 */
+	jobState: InstallJobState;
+	decidedBy: "installer-pid" | "install-job";
+};
+
+/**
+ * Both of the machine's answers for one marker, asking only the one that can decide.
+ *
+ * `installerRunning` is the installer's own pid for an install this app started, and
+ * `jobState` is the launchd job for one Squirrel submitted or the fallback is still
+ * about to. The caller supplies the facts, not the rule, so that the classification
+ * in `isInstallInFlight` is the only place that decides what they mean.
+ */
+export function installLivenessNow(input: {
+	marker: PendingInstallMarker | null;
+	/** `ps -o command= -p <marker.installerPid>`, or null when nothing runs there. */
+	installerCommandLine: () => string | null;
+	/** This app's own ShipIt, resolved from the running bundle. */
+	shipItPath: string | null;
+	/** This app's staging root for update bundles. */
+	stagingRoot: string | null;
+	/** The launchd job probe, asked only for a marker that names no installer pid. */
+	jobState: () => InstallJobState;
+}): InstallLiveness {
+	const pid = input.marker?.installerPid ?? null;
+	if (pid == null) {
+		return {
+			installerRunning: false,
+			jobState: input.jobState(),
+			decidedBy: "install-job",
+		};
+	}
+	return {
+		installerRunning: installerIsAlive({
+			pid,
+			commandLine: input.installerCommandLine(),
+			shipItPath: input.shipItPath,
+			stagingRoot: input.stagingRoot,
+		}),
+		jobState: "unread",
+		decidedBy: "installer-pid",
+	};
+}
+
+/**
  * What a process starting up has to do about an install that may still be
  * running.
- *
- * The 2026-09-18 incident this decides: an install four minutes into its work
  * was aborted - `Aborting update attempt because there are 1 running instances
  * of the target app`, `SQRLInstallerErrorDomain Code=-9` - because the app was
  * started while it was installing. ShipIt asks whether any instance of the
@@ -1971,11 +2107,16 @@ export function isInstallInFlight(input: {
  * so the launch hold and the recovery that runs seconds later cannot disagree
  * about the same install - the failure panel review U2 walked is reachable
  * precisely because both now read the same three facts the same way.
+ *
+ * The liveness is one value rather than a flag per signal (management MAJOR-1): a
+ * hold that could see only launchd's job opened the app straight into an install
+ * this app had started itself, whose job does not exist at all - and the faster
+ * that install, the more of its window the reopen occupied.
  */
 export function evaluateLaunchDuringInstall(input: {
 	marker: PendingInstallMarker | null;
-	/** See `isInstallInFlight` - the state, so `registered` can mean two things. */
-	jobState: InstallJobState;
+	/** Both of the machine's answers for this marker - `installLivenessNow`. */
+	liveness: InstallLiveness;
 	/** `app.getVersion()`, so a completed install is recognised as one. */
 	runningVersion: string;
 	now?: number;
@@ -1987,7 +2128,8 @@ export function evaluateLaunchDuringInstall(input: {
 		runningVersion: input.runningVersion,
 		installInFlight: isInstallInFlight({
 			marker,
-			jobState: input.jobState,
+			jobState: input.liveness.jobState,
+			installerRunning: input.liveness.installerRunning,
 			now: input.now,
 		}),
 	});
@@ -2354,15 +2496,24 @@ export type WatchdogPlan = {
  *   this question: macOS `pgrep -f` does not report its own ancestors, and this
  *   script is spawned BY the app, so `pgrep -f <app path>` returned "not
  *   running" while the app was very much running (review R1, reproduced).
- * - "is the install over" is asked of the ShipIt launchd job by label AND of
- *   the version in the bundle's own Info.plist at the target path. The job
- *   alone is not an answer: a failed install never unloads it (this PR's own
- *   evidence: runs=3114, still loaded until it was removed by hand), so the job
- *   was the reason a failed install waited out the whole bound with no app on
- *   screen (review R11). The bundle's version is the swap's own state, and it
- *   is what makes an early exit safe rather than a guess - and it is read as "at
- *   or beyond the target", the same shape as the renderer's own clear rule, so a
- *   bundle already past the target is not waited out to the bound (review Q6).
+ * - "is the install over" is asked of the installer's own liveness AND of the
+ *   version in the bundle's own Info.plist at the target path. The liveness
+ *   signal alone is not an answer: a failed install never unloads its job
+ *   (this PR's own evidence: runs=3114, still loaded until it was removed by
+ *   hand), so the job was the reason a failed install waited out the whole bound
+ *   with no app on screen (review R11). The bundle's version is the swap's own
+ *   state, and it is what makes an early exit safe rather than a guess - and it
+ *   is read as "at or beyond the target", the same shape as the renderer's own
+ *   clear rule, so a bundle already past the target is not waited out to the
+ *   bound (review Q6).
+ * - WHICH liveness signal that is, is `installerPid`'s question and the caller's
+ *   answer: an install this app started itself has no launchd job at all (see
+ *   `src/main/update-shipit.ts`), so it hands the installer's own pid and the
+ *   script asks that. This is the same "pid first, job second" rule
+ *   `installLivenessNow` applies to the marker, and it has to be the same rule: on
+ *   this machine the app's ShipIt job stays REGISTERED long after a successful
+ *   install, so a script that asked launchd first would hold a finished install
+ *   open for the whole bound.
  *
  * `targetVersion` is the version the update was for - the updater's advertised
  * version, which is the same fact the pending-install marker records. `null`
@@ -2465,6 +2616,13 @@ export function buildWatchdogPlan(input: {
 	 */
 	announceSeconds?: number;
 	/**
+	 * The installer this app spawned itself, when it spawned one - the signal the
+	 * script waits on INSTEAD of the launchd job, because an install started this
+	 * way has no job. Null (the default) is Squirrel's own path and today's
+	 * signals, so a fallback install behaves exactly as it did before.
+	 */
+	installerPid?: number | null;
+	/**
 	 * The last-resort bound, used only once the soft bound has arrived with the
 	 * install's job still loaded. Defaults to `WATCHDOG_HARD_TIMEOUT_SECONDS`;
 	 * an argument because a test cannot wait half an hour to see the difference
@@ -2556,14 +2714,28 @@ export function buildWatchdogPlan(input: {
 # osascript blocked, no notifier at all), so no notification failure may change
 # what this script decides or what it exits with.
 #
-# With no job label to ask about, the job cannot be consulted at all, so the swap
-# state is the whole signal: the script waits for (b) rather than spending an
-# appear window on a job it cannot see and then relaunching on no evidence.
+# With no liveness signal to ask about, the install cannot be consulted at all,
+# so the swap state is the whole signal: the script waits for (b) rather than
+# spending an appear window on an install it cannot see and then relaunching on no
+# evidence. That covers both "no job label" and "no probe", and it is why an
+# install the app started itself - which has no job by construction - is asked
+# about by the installer's pid instead (install_live).
+#
+# "The install is over" is therefore install_live: the installer's own pid when
+# the app spawned it, and ShipIt's launchd job otherwise. The job is Squirrel's own
+# signal and is not deleted - a marker or a watchdog planned by the older version
+# still has only that one - but it is demoted, for a reason measured on this
+# machine: the job stays REGISTERED long after a successful install, so asking
+# launchd first would hold a finished install open for the whole bound.
 set -u
 APP_PID="\${LO_UPDATE_WATCHDOG_APP_PID:-}"
 BUNDLE="\${LO_UPDATE_WATCHDOG_APP_BUNDLE:-}"
 NAME="\${LO_UPDATE_WATCHDOG_APP_NAME:-}"
 SHIPIT_JOB="\${LO_UPDATE_WATCHDOG_SHIPIT_JOB:-}"
+# The installer's own pid, when the app started the installer itself. An install
+# started that way has no launchd job to ask about, so this is the whole liveness
+# signal and the job label above is not consulted at all - see install_live.
+INSTALLER_PID="\${LO_UPDATE_WATCHDOG_INSTALLER_PID:-}"
 TARGET_VERSION="\${LO_UPDATE_WATCHDOG_TARGET_VERSION:-}"
 # The two probes, from the platform the plan was built for. Empty means the
 # platform has no such tool and the signal is unavailable - not "the job is not
@@ -2577,6 +2749,29 @@ if [ -z "$APP_PID" ] || [ -z "$BUNDLE" ]; then
 fi
 now() { date +%s; }
 app_running() { kill -0 "$APP_PID" 2>/dev/null; }
+# The installer the app spawned, alive or gone. A pid with nothing under it is
+# gone, which is the same question app_running asks of the app and the same one
+# the app's own reap asks of a watchdog. The app's own predicate is stricter than
+# this (installerIsAlive also reads the command line, because a false "alive"
+# there would refuse recovery forever); here the only cost of a stale pid being
+# reused is waiting out the bound, and the bound is what ends it.
+installer_running() {
+	[ -n "$INSTALLER_PID" ] || return 1
+	kill -0 "$INSTALLER_PID" 2>/dev/null
+}
+# "The install is still running", from whichever signal this install has: the pid
+# the app spawned, or - for an install Squirrel submitted - the job. There is
+# never both: an install the app started itself has no job, and the fallback
+# install has no pid. Asking launchd first would be wrong rather than merely
+# redundant, because this machine keeps the job REGISTERED long after a
+# successful install and a registered job is not a running one.
+install_live() {
+	if [ -n "$INSTALLER_PID" ]; then
+		installer_running
+		return $?
+	fi
+	shipit_loaded
+}
 # Tell the user what is going on, in the only way available: the app is dead
 # while this runs, so this is osascript and nothing else - no app process, no
 # updater. Backgrounded and status-dropped, because a notification is best-effort
@@ -2724,8 +2919,14 @@ swap_landed() {
 }
 job_known=0
 [ -n "$SHIPIT_PROBE" ] && [ -n "$SHIPIT_JOB" ] && job_known=1
+# Whether there is any liveness signal to ask at all. An absent signal is not "the
+# install is over": with neither one the script has the swap state and the bound,
+# exactly as it does on a platform with no probes.
+signal_known=0
+[ -n "$INSTALLER_PID" ] && signal_known=1
+[ "$job_known" -eq 1 ] && signal_known=1
 decided() {
-	if [ "$job_known" -eq 1 ] && ! shipit_loaded; then return 0; fi
+	if [ "$signal_known" -eq 1 ] && ! install_live; then return 0; fi
 	swap_landed && return 0
 	return 1
 }
@@ -2746,14 +2947,14 @@ if ! app_running; then
 	sleep ${announceSeconds}
 	notify "Installing the update. Keep Local Operator closed until it opens again by itself — this can take a few minutes."
 fi
-# 2. ShipIt's job is submitted as part of the quit, so it may not be loaded the
-#    instant the app is gone: give it a bounded window to appear before treating
-#    "no job" as "the install is over". Skipped when there is no label to ask
-#    about: an appear window for an unaskable job is 30s of pretending, and it
-#    used to end by relaunching with no evidence about the install at all.
-if [ "$job_known" -eq 1 ]; then
+# 2. The install's own process is started as part of the quit, so it may not be
+#    visible the instant the app is gone: give it a bounded window to appear
+#    before treating "nothing there" as "the install is over". Skipped when there
+#    is no signal to ask about: an appear window for an unaskable install is 30s
+#    of pretending, and it used to end by relaunching with no evidence at all.
+if [ "$signal_known" -eq 1 ]; then
 	appear_deadline=$(( $(now) + ${appearSeconds} ))
-	while ! shipit_loaded; do
+	while ! install_live; do
 		if [ "$(now)" -ge "$appear_deadline" ] || [ "$(now)" -ge "$deadline" ]; then break; fi
 		sleep ${intervalSeconds}
 	done
@@ -2765,7 +2966,7 @@ holding=0
 while :; do
 	if decided; then break; fi
 	if [ "$(now)" -ge "$deadline" ]; then
-		if [ "$job_known" -eq 1 ] && shipit_loaded; then
+		if [ "$signal_known" -eq 1 ] && install_live; then
 			holding=1
 			notify "The update is still installing. Keep Local Operator closed; it will open again when the install finishes."
 		fi
@@ -2820,6 +3021,11 @@ exit 0
 			LO_UPDATE_WATCHDOG_APP_BUNDLE: input.appBundlePath,
 			LO_UPDATE_WATCHDOG_APP_NAME: input.executableName,
 			LO_UPDATE_WATCHDOG_SHIPIT_JOB: input.shipItJob ?? "",
+			// Empty rather than absent when the app spawned no installer: the script
+			// reads this with a default (`:-`) and its emptiness is the whole answer to
+			// "which liveness signal is this install's" (see `install_live`).
+			LO_UPDATE_WATCHDOG_INSTALLER_PID:
+				input.installerPid != null ? String(input.installerPid) : "",
 			LO_UPDATE_WATCHDOG_TARGET_VERSION: input.targetVersion ?? "",
 			// Empty off macOS, which the script reads as "this signal is not available
 			// here" rather than as a negative answer (see `watchdogSignals`).
