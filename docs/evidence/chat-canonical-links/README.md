@@ -63,7 +63,7 @@ backend was answering, not that one was used.
 | `hover-gap-long/` | `--detected-targets` | pointer path, 4 samples @16ms | The same arrival at a slower hand's spacing — the case lost at step 2. |
 | `hover-gap-fine/` | `--detected-targets` | pointer path, 1 sample per PIXEL @8ms | A mid-paragraph link, whose strip is placed BELOW it: the other placement, sampled every pixel, which is the path lost on the first pixel off the anchor's own box. |
 | `hover-gap-leave/` | `--detected-targets` | pointer path onto the button, then out to the prose | The dismissal half of the same claim: the strip survives the arrival and is GONE once the pointer moves onto the words beside the link (`expectKept: false`). Without this frame "keep the subject" could be satisfied by never dismissing. |
-| `hover-cell/` | `--detected-targets` | `mouseMoved` | A TABLE-CELL anchor (round 2, design D4). The cell's link box is `[255,544,612,561]` and the table ends at 573, so the strip (`[255,569,353,601]`) hangs 28px out of the table over the paragraph below — the cost § 5 records beside the rule. |
+| `hover-cell/` | `--detected-targets` | `mouseMoved` | A TABLE-CELL anchor (round 2, design D4). The cell's link box is `[255,544,612,561]` and the table ends at 573, so the strip (`[255,569,383,601]`, the live four-button width — see § 5) hangs 28px out of the table over the paragraph below, covering 671 ink px of it — the cost § 5 records beside the rule, re-measured in round 3. |
 | `escape-dismisses/` | `--detected-targets` | `mouseMoved` + a real `Escape` | The strip raised by the POINTER, then one Escape with focus wherever the reader left it: the strip is gone, which the entry asserts (`expectGone`). |
 | `selection-in-link/` | `--selection-in-link` | story `Selection` (NOT a drag — see the limits) | A highlight inside a link: the LINK's toolbar, with `Quote` leading. |
 | `selection-in-link-staged/` | `--selection-in-link-staged` | story `Selection` + a press | The same highlight and then the toolbar's own `Quote` pressed, with the composer in frame: the chip carries the link's own text. |
@@ -94,6 +94,20 @@ between evidence and a picture:
   than a description.
 
 ## Honest limits of this set
+
+- **The frames come from TWO capture heads, and the majority of them are kept
+  from the earlier one.** Round 2's narrow fold re-took only the two states the
+  fold could reach (`selection-in-link-staged`, whose surface is the real
+  composer, and `hover-gap-crossing` as the control); the other nineteen are the
+  frames taken on the previous folded head, kept because the control came back
+  with nothing moved. `docs/evidence/manifest.json`'s `countsMean.frames` and
+  `partialCapture` carry the arithmetic and the per-theme comparison. The
+  retained frames are identical to a fresh re-take **apart from sub-perceptual
+  rasterisation jitter** — not byte-identical, which is what an earlier draft of
+  that paragraph claimed and what two independent re-takes disproved: 34/36 and
+  11/12-per-state under antialiasing deltas of at most 17/255, with no element
+  appearing, disappearing or moving. Readers comparing a frame here against a
+  fresh capture should expect that, not a hash match.
 
 - **The two `selection-in-link*` states, and the two spanning ones, are built by a
   scripted `Selection`, not by a drag — and round 2 settled WHICH side of that

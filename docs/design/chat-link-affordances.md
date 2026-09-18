@@ -208,12 +208,27 @@ and § 5 recorded only the benefit. Round 2 measured the ink under the strip in
 the hover frames — pixels of the resting frame that differ from the canvas by
 more than 30 — and found two states where what is covered is text a reader wants:
 
-| state | strip rect | covered ink | what it is |
+| state | strip rect (LIVE, this head) | covered ink | what it is |
 |---|---|---|---|
-| `hover-file` | `[174,337,271,368]` | 0 px | nothing — the first-line case is genuinely clean |
-| `hover-directory` | `[584,612,651,642]` | 4 px | descender tops |
-| `hover-url` | `[245,486,312,517]` | **167 px** | the table's own column header, the word `path` |
-| `hover-missing` | `[217,612,444,643]` | 66 px | the tail of the sentence's wrapped continuation |
+| `hover-file` | `[174,337,302,369]` | 0 px | nothing — the first-line case is genuinely clean |
+| `hover-directory` | `[584,612,682,644]` | 42 px | the glyph tops of the line below, grazed by the strip's last two rows |
+| `hover-url` | `[245,486,343,518]` | **169 px** | the table's own column header, the word `path` |
+| `hover-missing` | `[217,612,475,644]` | 82 px | the tail of the sentence's wrapped continuation |
+| `hover-cell` | `[255,569,383,601]` | 671 px | the paragraph below the table (see the container paragraph under this table) |
+
+EVERY RECT IN THIS TABLE IS 31px WIDER THAN THE ONE ROUND 2 PUBLISHED, and
+that is the round-3 correction (design round 3, D2): the earlier column was
+measured before `Quote` joined the hover strip, so it described a three-button
+strip — `hover-file`'s `[174,337,271,368]` against this head's
+`[174,337,302,369]`, and so on down the column. The ink numbers move with the
+wider rect (`hover-directory` 4 → **42**, `hover-missing` 66 → **82**,
+`hover-url` 167 → **169**, `hover-file` 0), and the round-3 re-measurement
+reproduces the OLD readings at the OLD rects, so what was stale was the
+arithmetic, not the method. The number that moves in kind is
+`hover-directory`: "4 px — descender tops" describes a strip whose bottom edge
+just misses the line below, where the live strip's last two rows graze the glyph
+tops of it. Rule and choice unchanged; the cost is larger than round 2 recorded
+and is stated here at the size it actually is.
 
 The alternative considered and NOT taken is "place it on the side that covers
 less readable text". It cannot be implemented in the placement: `placeQuoteControl`
@@ -227,8 +242,9 @@ and the cost is recorded here, with both sides photographed (`hover-file` above,
 
 **The strip may leave its container, and does.** In a table, the cell link's box
 is `[255,544,612,561]`, the table ends at 573, and the strip lands at
-`[255,569,353,601]` — 28px of it below the table, over the paragraph that follows
-(`hover-cell`). The placement clamps to the pane (`quote-anchor.ts`), not to the
+`[255,569,383,601]` — 28px of it below the table, over the paragraph that follows
+(`hover-cell`, 671 ink px of that paragraph). The placement clamps to the pane
+(`quote-anchor.ts`), not to the
 anchor's own ancestors, and deliberately: a link can sit in a table cell, a list
 item, a blockquote or a paragraph, and a container-aware rule would need an
 answer for each. The visible consequence is that a table's header row can be
