@@ -22,6 +22,7 @@ import {
 	BACKEND_STATUS_EVENT,
 } from "../shared/backend-status";
 import {
+	type DirectoryListing,
 	MAX_FILE_READ_BYTES,
 	MAX_PROBE_PATHS,
 	type ProbedFile,
@@ -59,6 +60,12 @@ import {
 	resolveDevDriverArming,
 } from "./dev-driver";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
+import {
+	listDirectory,
+	outsideWorkspace,
+	realPathOrNull,
+	resolveUserPath as resolveUserPathWith,
+} from "./directory-listing";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
 import {
@@ -102,26 +109,19 @@ const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 /**
  * The ONE path-resolution rule for every local-file IPC handler.
  *
- * Four handlers used to spell it themselves (`read-file`, `save-file`,
- * `file-exists`, and `directory-exists` with a third variant that also accepted
- * a bare `~`), and a fifth spelling is exactly how the panel would end up
- * disagreeing with the editor about which file a path names. `~` is expanded
- * here because this is the only process that has `app.getPath("home")`; the
- * renderer deliberately never guesses a home directory.
+ * The RULE itself lives in `./directory-listing` and is executed from there by
+ * `scripts/directory-listing.test.mjs`, because this file boots Electron on
+ * import and so cannot be exercised by a test — and the rule is load-bearing for
+ * the composer's `@` picker as well as for the Files panel. What stays here is
+ * the one thing only this process can supply: `app.getPath("home")`.
  *
- * `cwd` is for the one caller that has one — `probe-files` — where a relative
- * candidate from a tool argument is resolvable against the session's working
- * directory. It is applied only to a relative path, so an absolute path is
- * always taken literally.
+ * `cwd` is for the two callers that have one — `probe-files` and
+ * `list-directory`, the pair a picker asks per keystroke — where a relative
+ * candidate is resolvable against the session's working directory. It is applied
+ * only to a relative path, so an absolute path is always taken literally.
  */
-const resolveUserPath = (filePath: string, cwd?: string): string => {
-	if (filePath === "~") return app.getPath("home");
-	if (filePath.startsWith("~/"))
-		return join(app.getPath("home"), filePath.slice(2));
-	if (cwd && !filePath.startsWith("/"))
-		return join(cwd.startsWith("~/") ? resolveUserPath(cwd) : cwd, filePath);
-	return filePath;
-};
+const resolveUserPath = (filePath: string, cwd?: string): string =>
+	resolveUserPathWith(filePath, cwd, app.getPath("home"));
 
 export type ReadFileResponse =
 	| { success: true; data: string }
@@ -1820,18 +1820,37 @@ app
 				const asked = Array.isArray(paths)
 					? paths.filter((path): path is string => typeof path === "string")
 					: [];
+				/*
+				 * The workspace root the containment verdict is measured against, resolved
+				 * ONCE per batch: it is the same directory for every path asked about, and
+				 * `realpath` on it per path would pay for one answer sixty-four times.
+				 * `null` when no cwd was given, which is a caller that cannot get a
+				 * verdict rather than a caller that gets "inside".
+				 */
+				const realRoot = cwd ? realPathOrNull(resolveUserPath(cwd)) : null;
 				return asked.slice(0, MAX_PROBE_PATHS).map((input) => {
 					let resolved = input;
 					try {
 						resolved = resolveUserPath(input, cwd);
 						const stat = statSync(resolved, { throwIfNoEntry: false });
+						const exists = stat !== undefined;
 						return {
 							input,
 							resolved,
-							exists: stat !== undefined,
+							exists,
 							isFile: stat?.isFile() ?? false,
 							sizeBytes: stat?.isFile() ? stat.size : null,
 							mtimeMs: stat?.isFile() ? stat.mtimeMs : null,
+							/*
+							 * The containment verdict, and the reason it is asked ONLY of a path
+							 * that exists: the one caller that reads it (the composer's `@` chip)
+							 * asks the question about a candidate reference, so a path that is not
+							 * there costs no second syscall — and a miss is the common case on the
+							 * keystroke path this runs on.
+							 */
+							outsideWorkspace: exists
+								? outsideWorkspace(realPathOrNull(resolved), realRoot)
+								: undefined,
 						};
 					} catch (error) {
 						// A genuine fault - permission, a stale network mount - is not the
@@ -1848,6 +1867,38 @@ app
 						};
 					}
 				});
+			},
+		);
+
+		/*
+		 * One directory's listable entries, for a picker that offers rows from the
+		 * filesystem.
+		 *
+		 * WHY THIS EXISTS AT ALL: the renderer cannot read a directory and
+		 * `probe-files` answers existence, not membership, so a picker over the working
+		 * directory has nothing to offer without it. It is ONE level by construction:
+		 * a recursive walk on a keystroke path is the cost `scan_directory` in the
+		 * harness spends a module docstring refusing, and deepening is the caller's
+		 * business — it asks again for the directory the user typed a `/` into.
+		 *
+		 * The path goes through the SAME `resolveUserPath` as every other local-file
+		 * handler, so `~`, a relative path and an absolute path mean here exactly what
+		 * they mean to `probe-files` — the two calls a picker makes per keystroke
+		 * cannot disagree about which directory they are describing.
+		 */
+		ipcMain.handle(
+			"list-directory",
+			async (_, dir: unknown, cwd?: string): Promise<DirectoryListing> => {
+				const target = typeof dir === "string" && dir.length > 0 ? dir : ".";
+				/*
+				 * AWAITED, not returned bare, because this handler is on the ONE process
+				 * that serves every other IPC in the app. `listDirectory` reads the
+				 * directory asynchronously and bounds its own candidate list
+				 * (`DIRECTORY_SCAN_LIMIT`), which is what keeps a pathological directory
+				 * from stalling the window: a synchronous `readdir` of 200,000 entries
+				 * measured 236ms of blocked main thread on a 60ms-debounced keystroke path.
+				 */
+				return await listDirectory(resolveUserPath(target, cwd));
 			},
 		);
 

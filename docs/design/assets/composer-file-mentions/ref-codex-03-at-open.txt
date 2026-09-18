@@ -1,0 +1,34 @@
+╭─────────────────────────────────────────────────╮
+│ ✨ Update available! 0.147.0 -> 0.154.0         │
+│ Run npm install -g @openai/codex to update.     │
+│                                                 │
+│ See full release notes:                         │
+│ https://github.com/openai/codex/releases/latest │
+╰─────────────────────────────────────────────────╯
+
+╭─────────────────────────────────────────────────────╮
+│ >_ OpenAI Codex (v0.147.0)                          │
+│                                                     │
+│ model:     gpt-5.6-sol   /model to change           │
+│ directory: /private/tmp/mention-ux-ref/codexscratch │
+╰─────────────────────────────────────────────────────╯
+
+  Tip: New Use /fast to enable our fastest inference with increased plan usage.
+
+⚠ The minerva-qa MCP server is not logged in. Run `codex mcp login minerva-qa`.
+
+⚠ MCP client for `datadog` failed to start: MCP startup failed: handshaking with MCP server failed: Send
+
+
+› @
+
+> Cloudflare         Cloudflare platform guidance with official MCP                                     Plugin
+  Default templates  Default templates for documents, spreadsheets, and presentations                   Plugin
+  GitHub             Triage PRs, issues, CI, and publish flows                                          Plugin
+  Gmail              Read and manage Gmail                                                              Plugin
+  Google Calendar    Manage Google Calendar events                                                      Plugin
+  Google Drive       Drive, Docs, Sheets or Slides                                                      Plugin
+  Linear             Plan and build products                                                            Plugin
+  Notion             Notion docs and workflows                                                          Plugin
+
+  enter insert · esc close · ←/→ switch search modes               [All Results]   Filesystem Only    Plugins

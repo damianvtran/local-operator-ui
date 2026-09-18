@@ -306,6 +306,26 @@ type UiPreferencesState = {
 	 * Restore the chat sidebar width to its default value
 	 */
 	restoreDefaultChatSidebarWidth: () => void;
+
+	/**
+	 * The composer's `@` mention recents: paths accepted as mentions in ONE
+	 * workspace, most recent first.
+	 *
+	 * Per workspace and not global, because a path is only meaningful relative to
+	 * the directory it was accepted in — offering `src/app.py` while the session is
+	 * in another repository would rank a row the user cannot choose. The workspace
+	 * is carried with the list rather than keyed as a map so the ring cannot grow
+	 * with every directory the app has ever been in; a new workspace starts an empty
+	 * list, which is also what a first launch looks like.
+	 */
+	mentionRecents: { cwd: string; paths: string[] } | null;
+
+	/**
+	 * Record an accepted mention. Bounded at `MENTION_RECENTS_LIMIT`, dropping the
+	 * oldest, and moved to the front when re-accepted so the ring is ordered by
+	 * recent use rather than by first use.
+	 */
+	rememberMention: (cwd: string, path: string) => void;
 };
 
 /**
@@ -400,6 +420,15 @@ const DEFAULT_CHAT_SIDEBAR_WIDTH = 280;
  * instead of around it (`chat-content.tsx`).
  */
 export const DEFAULT_RUN_PANEL_WIDTH = 420;
+
+/**
+ * How many accepted mentions one workspace remembers.
+ *
+ * A ring of about 20, which is the design direction's number and a bounded amount
+ * of `localStorage`: the pool exists to make `@` fast in a repository you have
+ * been working in, and twenty paths is more than any single session's working set.
+ */
+export const MENTION_RECENTS_LIMIT = 20;
 /** The browser pane's default, and the design's number rather than a fit: see
  * `browserPanelWidth` for why a page wants 640 where a roster wants 420. */
 const DEFAULT_BROWSER_PANEL_WIDTH = 640;
@@ -422,6 +451,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			browserPanelWidth: DEFAULT_BROWSER_PANEL_WIDTH,
 			browserPaneScope: "conversation",
 			isCreateAgentDialogOpen: false,
+			mentionRecents: null,
 
 			openCreateAgentDialog: () => {
 				set({ isCreateAgentDialogOpen: true });
@@ -562,6 +592,20 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			restoreDefaultChatSidebarWidth: () => {
 				set({
 					chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
+				});
+			},
+
+			rememberMention: (cwd, path) => {
+				set((state) => {
+					const current = state.mentionRecents;
+					// A different workspace is a different list: carrying this one's paths
+					// across would rank rows that do not exist relative to the new cwd.
+					const paths = current?.cwd === cwd ? current.paths : [];
+					const next = [path, ...paths.filter((entry) => entry !== path)].slice(
+						0,
+						MENTION_RECENTS_LIMIT,
+					);
+					return { mentionRecents: { cwd, paths: next } };
 				});
 			},
 		}),
