@@ -18,6 +18,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * - `info` is foam lifted: at canonical 9ccfd8 it sits ΔE00 14.6 from the
  *   lifted pine, under the contract's 15 for two semantics a reader has to
  *   tell apart by name.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const rosePineMoon: ThemeDefinition = {
 	id: "rosePineMoon",
@@ -26,9 +42,32 @@ export const rosePineMoon: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +3.11, elevated +8.97, sunken -4.13 L*), so the hierarchy the
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #232136 -> #232136 (L* 13.89 -> 13.89)
+		 * surface #2a273f -> #2A273F (L* 17 -> 17)
+		 * elevated #393552 -> #373350 (L* 23.75 -> 22.86)
+		 * sunken #1b192a -> #1B192A (L* 9.76 -> 9.76)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
 		canvas: "#232136",
 		surface: "#2a273f",
-		elevated: "#393552",
+		elevated: "#373350",
 		sunken: "#1b192a",
 
 		/*
@@ -44,7 +83,7 @@ export const rosePineMoon: ThemeDefinition = {
 
 		ink: "#e0def4",
 		inkMuted: "#c9c6e0",
-		inkDim: "#A4A1BD",
+		inkDim: "#aaa7c3",
 		inkDisabled: "#6e6a86",
 
 		hairline: "#414057",

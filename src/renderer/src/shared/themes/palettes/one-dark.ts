@@ -24,6 +24,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over `canvas` at the strongest alpha that keeps its own ink at 4.5:1 (the scheme's own
  * tints stand in where they clear it); a semantic border walks its hue toward the ground to
  * just above the 3:1 edge floor; the shadow and the scrim are the ground tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const oneDark: ThemeDefinition = {
 	id: "oneDark",
@@ -53,13 +69,43 @@ export const oneDark: ThemeDefinition = {
 
 		// Canonical mono-4 BEC4D0 is 5.95:1 on `elevated` — the 7:1 body floor is more than a
 		// reach for a syntax foreground. Lifted along the same cool neutral.
-		ink: "#CED5E1",
+		/*
+		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
+		 * is 7:1 on all six grounds and `elevated` binds it at 7.47:1.
+		 *
+		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
+		 * surface the operator's report is about.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		ink: "#D3DBE7",
 		// The scheme's lighter comment tier lifted to clear 4.5:1, and seated above its own tone
 		// so the readout rung below it keeps the ΔE00 8 ink step.
-		inkMuted: "#C3CCDA",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.98:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#CBD4E3",
 		// The comment grey 7D8695 is 2.84:1 on `elevated` (< 4.5) — it is a syntax comment,
 		// not a UI metadata tone. Lifted along its own neutral to the floor corner.
-		inkDim: "#A3ADBC",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.02:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#AAB5C4",
 		inkDisabled: "#5C6370",
 
 		// Derived: the scheme has no rule colour. Holds ΔE00 4.1 from every ground and
@@ -70,12 +116,24 @@ export const oneDark: ThemeDefinition = {
 		// ground.
 		borderControl: "#848B9E",
 
-		accent: "#61AFEF",
+		/*
+		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
+		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		accent: "#63B1F1",
 		accentHover: "#8DCBFF",
 		accentActive: "#4F9DDC",
 		// A step AWAY from the plot ground rather than along the accent ramp: ΔE00 10.2
 		// from `accent`. See `chartBarHover` in the palette contract.
-		chartBarHover: "#9ED2FF",
+		/*
+		 * Legibility pass: `chartBarHover` follows `accent` - the ramp is one control seen
+		 * three times and the chart's hover mark has to stay ΔE00 10 clear of the
+		 * resting mark, so both move at their own hue rather than letting the accent
+		 * pull away from them.
+		 */
+		chartBarHover: "#A0D3FF",
 		tokenCommand: "#5ABAC6",
 		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.40), at a
 		// cost of ΔE00 1.12 from the signal itself; 5.52:1 on `surface`.
@@ -96,7 +154,13 @@ export const oneDark: ThemeDefinition = {
 		dangerWash: "#362A31",
 		dangerBorder: "#DA6870",
 
-		info: "#56B6C2",
+		/*
+		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
+		 * 4.5:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		info: "#58B8C4",
 		infoWash: "#263647",
 		infoBorder: "#3498A4",
 

@@ -21,6 +21,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * `dim`, `edge-hi` and the state hues re-seat only as far as the floors
  * require: in a light theme it is the deepest ground that caps them, not the
  * brightest.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const paper: ThemeDefinition = {
 	id: "paper",
@@ -47,12 +63,32 @@ export const paper: ThemeDefinition = {
 
 		// The TUI's muted, lifted 9.8 L*: 7.11:1 on `sunken`, the ground that caps
 		// secondary text here.
-		inkMuted: "#484034",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `highlight` binds it at 7.5:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#443C31",
 
 		// The TUI's dim, lifted 11.7 L* to clear 4.5:1 on all four grounds — 4.80:1 on
 		// `sunken`, the ground that caps it — while staying ΔE00 8+ from `inkMuted`,
 		// so a control and a reading stay two inks.
-		inkDim: "#62594A",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `highlight` binds it at 5.15:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#5D5445",
 
 		// The TUI's own faint, and the one role exempt from the contrast floors: a
 		// disabled control that meets 4.5:1 does not read as disabled.

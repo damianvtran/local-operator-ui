@@ -63,13 +63,80 @@ export type ThemePalette = {
 	 * Elevation in this system is a lightness step, not a shadow — see
 	 * `docs/branding.md` § 5. These four values must be visually distinct from
 	 * each other, because they are the only elevation signal available.
+	 *
+	 * ## The legibility floors, which bind all four grounds
+	 *
+	 * A page ground is not a taste call. It is the surface the transcript is read
+	 * on for hours, so it is FLOORED at **L\* 12 in a dark theme** - one rung above
+	 * GitHub Dark's `#0D1117` (L\* 4.95) and exactly VS Code Dark+'s `#1E1E1E`, and
+	 * deliberately above GitHub's default - and **CAPPED at L\* 94 in a light one**,
+	 * because `elevated` at L\* 100 is the end of sRGB's ramp and the minimum
+	 * canvas-to-elevated spread is 2.5 + 2.5 L\*. The top of the ladder is capped at
+	 * **`elevated` L\* 30** (a dark theme's `canvas` also has a hard ceiling of
+	 * L\* 22, past which it stops being off-black), because at `elevated` L\* 34 an
+	 * `inkDim` at its floor needs L\* 85 and the ink/hover distinction disappears
+	 * into the top of the ramp.
+	 *
+	 * The four grounds are then authored as L\* OFFSETS FROM THE CANVAS, and both
+	 * ends of each step are asserted:
+	 *
+	 * | step | band |
+	 * |---|---|
+	 * | `canvas` -> `surface` | +2.5 to +5.0 L\* |
+	 * | `surface` -> `elevated` | +2.5 to +6.0 L\* |
+	 * | `canvas` -> `sunken` (down) | 1.5 to 6.0 L\* |
+	 *
+	 * with every adjacent pair at **ΔE00 >= 2.0 AND ratio >= 1.03:1** (the first is
+	 * `docs/branding.md` § 3's observed threshold at which two grounds read as two
+	 * grounds; the second is the older gate floor, which a 1px line needs but a
+	 * field does not).
+	 *
+	 * ## Lifting a ramp moves LIGHTNESS ONLY
+	 *
+	 * A ground is re-solved by holding its own `a` and `b` at a new `L*`, so the
+	 * theme's hue and chroma class are exactly what they were and chroma is scaled
+	 * only where sRGB forces it. Lifting a near-black palette therefore changes how
+	 * BLACK it is, not what colour it is, and that is the whole point: a user who
+	 * chose `obsidian` for monochrome zinc still gets monochrome zinc. The cost is
+	 * recorded rather than argued away - the four palettes whose upstream identity
+	 * IS near-black (`obsidian`, `tron`, `matrix`, `dune`) lose the black, and keep
+	 * the hue, the chroma class and the relative ladder.
+	 *
+	 * The grounds do not move alone. Raising a dark ground raises the luminance
+	 * every ink is measured against, so an ink that cleared its floor before the
+	 * lift can fail it after: `localOperatorDark`'s `inkDim` measures 4.61:1 on
+	 * `elevated` as shipped, 3.86:1 on that same ink once the ground rises, and
+	 * 5.02:1 only because the ink is re-authored with it - and `borderControl`, the
+	 * sole boundary of every input, fails 3:1 on a lifted `elevated` in eight
+	 * palettes. The grounds, the ink weights and `borderControl` therefore land in
+	 * the same commit or not at all, which is a rule about this system rather than
+	 * about one palette.
 	 */
 	canvas: string;
 	/** One step raised: cards, panels, inputs, the message paper. */
 	surface: string;
 	/** Two steps raised: menus, popovers, tooltips, hovered rows. */
 	elevated: string;
-	/** One step recessed: wells, tracks, code grounds, footers. */
+	/**
+	 * One step recessed: wells, tracks, code grounds, footers.
+	 *
+	 * ## Its second job: the active row of a dialog's list
+	 *
+	 * `sunken` is also the ground a SELECTION takes inside a popup, where the
+	 * dialog's own `bg-elevated` is what the row would otherwise be painted on.
+	 * `picker-host.tsx` established it for the keyboard's row and the command
+	 * palette's active row takes it for the same reason: it is the one ground that
+	 * steps perceptibly away from `elevated` in every palette (measured ΔE00
+	 * 5.85-16.70 across all fifty-nine), where the accent wash collapses onto the
+	 * dialog ground (`obsidian` ΔE00 0.77) and reads 1.00-1.24:1.
+	 *
+	 * A selection therefore takes this ground AND a non-colour mark beside it -
+	 * `outline-control` on the row, or the 2px accent bar the slash popup uses -
+	 * because in nineteen of the fifty-nine palettes the accent's hue is more than
+	 * 45 degrees off the panel it tints, so a tint can never be the state's only
+	 * signal. `accentWash` is a hover and callout tint and not a selection ground;
+	 * see its own doc below for the floor it carries instead.
+	 */
 	sunken: string;
 	/**
 	 * The current row's own ground: a step off `surface`, in the direction the
@@ -164,11 +231,23 @@ export type ThemePalette = {
 
 	/* ---- ink: four weights, each with a floor --------------------------- */
 
-	/** Primary text. Floor: 7:1 on all four grounds. */
+	/**
+	 * Primary text. Floor: **7:1 on all six grounds, and 8:1 on `canvas`**.
+	 *
+	 * The six are the four elevation steps plus the two grounds that carry text
+	 * as a STATE: `accentWash` (the hover/selection tint, chips, callouts,
+	 * find-match) and `highlight` (the sidebar's and the settings rail's current
+	 * row). Neither was measured before this pass, which is how a keycap on a
+	 * selected row and a reading button on a hover could fail with every gate
+	 * green. `canvas` takes the extra 1:1 because it is the transcript - the one
+	 * surface in this app read for hours at arm's length.
+	 */
 	ink: string;
-	/** Secondary text. Floor: 4.5:1 on all four grounds. */
+	/** Secondary text. Floor: **5.5:1 on all six grounds** — SC 1.4.3 asks 4.5, and
+	 * this weight is used at 11-13px, where 4.5:1 is not 4.5:1 at 14px. */
 	inkMuted: string;
-	/** Tertiary text — captions, metadata, placeholders. Floor: 4.5:1. */
+	/** Tertiary text — captions, metadata, placeholders. Floor: **5.0:1** on all
+	 * six grounds, for the same reason as `inkMuted` and one step behind it. */
 	inkDim: string;
 	/**
 	 * Inactive control text. The single exemption from the contrast floors,
@@ -177,8 +256,33 @@ export type ThemePalette = {
 	 * Disabled state changes *colour*, never opacity: an opacity-faded control
 	 * fades its own background too, so it lands on a different colour over
 	 * `surface` than over `sunken`.
+	 *
+	 * ## The one ceiling in the system
+	 *
+	 * It has no floor, and it does have a **ceiling: `ratio(inkDisabled, g) <= 0.8
+	 * x ratio(inkDim, g)` on every ground**. That relation is what keeps the state
+	 * legible AS a state, and it is asserted rather than assumed: making `inkDim`
+	 * lighter threatens the disabled state from below, and both inks sit on the
+	 * same side of every ground, so the ceiling reduces to a fact about the two
+	 * inks and moves only when the pair itself collapses.
 	 */
 	inkDisabled: string;
+
+	/**
+	 * ## The ink ladder, in one place
+	 *
+	 * The three weights are a hierarchy, not three independent floors: three inks
+	 * each at their floor can be the same colour. So each step is asserted too -
+	 * `deltaE(inkMuted, inkDim) >= 8` (the contract's comment-versus-code floor,
+	 * which a live chip beside an inert reading has to beat) and
+	 * `deltaE(ink, inkMuted) >= 2.0`.
+	 *
+	 * Only `inkDim` was ever the flag: it bottoms out on the lighter grounds, and
+	 * raising it is what collapses the step, so the step is paid on LIGHTNESS -
+	 * `inkMuted` rises with it rather than letting the pair converge. This is why
+	 * the five palettes that used to pin that step (`tokyoNight`, `obsidian`,
+	 * `iceberg`, `neon`, `localOperatorLight`) carry no pin any more.
+	 */
 
 	/* ---- lines: the decorative/structural split ------------------------- */
 
@@ -196,16 +300,54 @@ export type ThemePalette = {
 	 * both jobs. Adding a second, legally distinct border value was the single
 	 * highest-return accessibility change in this port: the previous light
 	 * theme bounded every input at 1.25:1.
+	 *
+	 * It is also the LOWER of the two bounds on how far a dark ramp can rise. A
+	 * lifted `elevated` costs the edge contrast, so this role moves WITH the
+	 * grounds in the same commit: left where it stood, it fails 3:1 on the lifted
+	 * `elevated` in eight palettes (the worst is `obsidian` at 2.49:1), and the
+	 * same is true of each semantic's own `*Border` role on the same ground.
 	 */
 	borderControl: string;
 
 	/* ---- accent: one hue, spent about three times per screen ------------ */
 
-	/** Primary action, active state, focus ring. Floor: 4.5:1 as text. */
+	/**
+	 * Primary action, active state, focus ring. Floor: **4.5:1 as text on all six
+	 * grounds**, and **3:1 as a ring on all four** — the focus ring is
+	 * `outline: 2px solid var(--color-accent)`, so SC 1.4.11 applies to it as a
+	 * non-text graphic as well as SC 1.4.3 to its type.
+	 *
+	 * The ground list is what makes the accent a legibility role and not only a
+	 * brand one: it is a link colour, a dialog's affordance and a chart mark's
+	 * sibling, so it is measured on `elevated`, `accentWash` and `highlight` too,
+	 * not just the three grounds that happen to carry the page's own text.
+	 */
 	accent: string;
 	accentHover: string;
 	accentActive: string;
-	/** The faintest accent tint: hover fills, active rows, focus washes. */
+	/**
+	 * The faintest accent tint: hover fills, callout grounds, chips, find-match.
+	 *
+	 * ## A HOVER TINT, NOT A SELECTION GROUND
+	 *
+	 * This role is the app's pointer feedback and its callout wash, and it is
+	 * deliberately no longer what an active ROW is painted with. A selection is a
+	 * state the reader has to find while scanning a list, and a tint of the accent
+	 * cannot carry that: on the dialog's own `elevated` it measures ΔE00 0.77 in
+	 * `obsidian` and 1.51 in `catppuccinMocha`, at a luminance ratio of
+	 * 1.00-1.24:1, so no contrast assertion in the system can see the failure - and
+	 * on the default palette the operator's own screenshot PASSED the separation
+	 * band at ΔE00 7.14 while reading 1.003:1, because the entire difference was
+	 * hue. A selected row therefore takes a GROUND STEP instead (`sunken` inside a
+	 * dialog, `highlight` on a panel) plus a non-colour mark.
+	 *
+	 * What it does carry is its own floor: **ΔE00 >= 2.0 against every ground it is
+	 * painted on**. It fails that in eleven palettes at the scope this pass
+	 * measured (`catppuccinMacchiato` 0.80 on `surface`, `obsidian` 0.77 on
+	 * `elevated`, `tokyoNightDay` 1.13 on `sunken`), so those washes were
+	 * re-authored on lightness at their own hue rather than the floor being set
+	 * where the existing values happened to sit.
+	 */
 	accentWash: string;
 	/** Ink that sits on the accent fill. Floor: 4.5:1 on `accent`. */
 	onAccent: string;
@@ -278,6 +420,15 @@ export type ThemePalette = {
 	 * Semantic triples. All three parts are required rather than derived,
 	 * because deriving them is what makes MUI's `augmentColor` invent an
 	 * Alert's appearance from a single hex — twelve times, differently.
+	 *
+	 * Both floors are stated once here and apply to all four roles: the tone is
+	 * **4.5:1 as text on all six grounds** (it labels a callout, a status row and a
+	 * syntax token), and its `*Border` is **3:1 on all four** (it is the callout's
+	 * edge). `elevated`, `accentWash` and `highlight` joined those lists with the
+	 * legibility pass, which is what retired the eleven `danger`/`dangerBorder`
+	 * exceptions the contract used to carry for this family: they existed because
+	 * the pair drawn on a dialog's `elevated` was the one no ground list reached,
+	 * and the fix is the value, not the pin.
 	 */
 	success: string;
 	successWash: string;

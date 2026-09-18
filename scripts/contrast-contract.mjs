@@ -99,7 +99,8 @@ const ratio = (a, b) => {
 
 /* A palette value that is not a flat hex — an `rgb()` scrim, a shadow — cannot
    be measured against a ground and is not a colour this contract governs. */
-const isHex = (v) => typeof v === "string" && /^#[0-9a-fA-F]{3,8}$/.test(v);
+const HEX = /^#[0-9a-fA-F]{3,8}$/;
+const isHex = (v) => typeof v === "string" && HEX.test(v);
 
 /* ---- 3. loading the palettes ------------------------------------------- */
 
@@ -111,12 +112,195 @@ const isHex = (v) => typeof v === "string" && /^#[0-9a-fA-F]{3,8}$/.test(v);
 /** The four grounds every ink must be legible on. */
 const GROUNDS = ["canvas", "surface", "elevated", "sunken"];
 
-/** Ink roles and the floor each must clear on every ground. */
+/**
+ * Ink roles and the floor each must clear on every ground.
+ *
+ * These are NOT the WCAG floors. SC 1.4.3 asks 4.5:1 of every one of them, and
+the app needs more than that for a reason the standard cannot see: WCAG 2.x
+contrast is luminance-only, so 4.5:1 at 11px is not 4.5:1 at 14px, and the
+secondary weights are what this app prints metadata in. Every type step here is
+normal text except `text-display` (28px) - `text-title` is 20px and not bold at
+the role level, so it does not qualify as large text either - which leaves
+4.5:1 as the ONLY applicable standard floor and the floors below as this
+system's own.
+
+`ink` at 7.0 (AAA) rather than 4.5 because it is the weight names, headings and
+the transcript are read in for hours at arm's length, and 8.0:1 on `canvas`
+because `canvas` IS that transcript. `inkMuted` 5.5 and `inkDim` 5.0 clear AA by
+a step each for the two weights that carry 11-13px type.
+
+These were 7.0 / 4.5 / 4.5, and 4.5 for the two secondary weights was the
+measured defect: the floors were met as written and the app still read as "text
+a little too grey on grey", because the two secondary weights SAT on the floor
+while being used at 11-13px. Measured at the old floors, `inkDim` bottomed at
+4.51:1 (`dracula` on `elevated`) and `inkMuted` at 5.33 (`nightfox`), and 36 of
+the 41 dark palettes had `inkDim` under 5.0:1 on `elevated`.
+*/
 const INKS = [
 	["ink", FLOOR.strongText],
-	["inkMuted", FLOOR.text],
-	["inkDim", FLOOR.text],
+	["inkMuted", 5.5],
+	["inkDim", 5.0],
 ];
+
+/* ---- 4a. the legibility pass: the six grounds, the ladder, the inks ---- */
+
+/**
+ * The six grounds an ink can sit on.
+ *
+ * `GROUNDS` above is the ELEVATION LADDER - four alternative grounds of one
+ * panel, which is what every control's own row is measured against. This one
+ * adds the two grounds that carry text as a STATE rather than as a surface:
+ * `accentWash` (the selection/hover tint, callouts, chips, find-match) and
+ * `highlight` (the sidebar's and the settings rail's current row). Both are
+already in `REQUIRED_ROLES`; neither was in the ink loop, which is how a
+keycap on a selected row and a reading button on a hover could fail with every
+assertion in this file green. Measured at the old scope, the sharpest failures
+in the whole tree lived here: `inkDim` was under 5.0:1 on `accentWash` in 17
+dark and 11 light palettes, and on `highlight` in 36 dark and 14 light.
+ */
+const GROUNDS6 = [
+	"canvas",
+	"surface",
+	"elevated",
+	"sunken",
+	"accentWash",
+	"highlight",
+];
+
+/**
+ * The ground contract, authored as L* offsets from the lifted canvas.
+ *
+ * `canvas` is the page - the furthest-back surface, and the one the operator
+ * reads for hours - so it has a hard FLOOR rather than a band with discretion:
+ * no page ground in this app sits below L* 12. Measured, 20 of the 41 dark
+ * palettes were below L* 10 and 8 below L* 5 (`obsidian` 2.51 at the bottom),
+ * which is the "background behind the main text is too dark/black" report.
+ *
+ * 12.0 is one rung above GitHub Dark's #0D1117 (L* 4.95) and exactly VS Code
+ * Dark+'s #1E1E1E (L* 11.26) - deliberately ABOVE GitHub's default, because
+ * that is the departure the operator asked for; `docs/branding.md` § 2 records
+ * the cost to the near-black palettes rather than hiding it behind a "best
+ * practice" claim. The ladder's own budget is why 12 and not 8: at
+ * canvas 12 / surface 17 / elevated 24 the three inks solve to L* 78 / 74 / 71
+ * with every floor and every step intact, and below that the ladder and the ink
+ * steps stop fitting together.
+ *
+ * The top of the ladder is capped at `elevated` 30 because an unbounded top
+ * step is what makes the ink budget unaffordable: at `elevated` L* 34 an
+ * `inkDim` at 5.0:1 needs L* 85 and the ink/hover distinction disappears into
+ * the top of the ramp. The light side is capped at `canvas` 94 for the same
+ * arithmetic from the other end: `elevated` at L* 100 is the end of sRGB's
+ * ramp (four light palettes already sit there), the minimum canvas-to-elevated
+ * spread is 2.5 + 2.5, so a canvas above 95 has no room for both steps - 94
+ * leaves 1 L* of headroom for 8-bit rounding. `sunken` 80 is the same floor read
+ * from the recessed side, and it is what keeps a light theme's keycap from
+ * being painted on a well that is not there.
+ */
+const LIFT = {
+	dark: { canvasMin: 12.0, canvasMax: 22.0, elevatedMax: 30.0 },
+	light: { canvasMax: 94.0, sunkenMin: 80.0 },
+};
+
+/**
+ * The ladder: an elevation step is a LIGHTNESS step, and both ends of each one
+ * are asserted.
+ *
+ * Maximums as well as minimums, because an unbounded step is how the ladder
+ * collapses at the top (see `LIFT`) and because a palette that jumps too far
+ * loses the state distinctions the steps exist for. `canvasSunken` keeps
+ * `sunken` on the recessed side of the canvas in both modes.
+ *
+ * The 1.5-6.0 depth band replaced an unasserted pair: `matrix` shipped a
+ * 1.48 L* depth, and six palettes sat under ΔE00 2.0 between `canvas` and
+ * `sunken`, which is a well nobody can see. Those two roles ARE adjacent on
+ * screen - `output-block.tsx` and `log-block.tsx` paint `bg-sunken` inside a
+ * trace that sits on `canvas` - so the pair is measured here and each of those
+ * blocks also carries a `border-hairline`.
+ */
+const STEP = {
+	canvasSurface: [2.5, 5.0],
+	surfaceElevated: [2.5, 6.0],
+	canvasSunken: [1.5, 6.0],
+};
+
+/** ΔE00 floor for a ground step, and the luminance ratio the file already had. */
+const GROUND_STEP_DELTA_E = 2.0;
+const GROUND_RATIO = 1.03;
+
+/**
+ * `ink` on `canvas` gets 8.0:1 rather than the 7.0 it gets elsewhere.
+ *
+ * `canvas` is the transcript - the one surface in this app that is read for
+ * hours at arm's length - so it is the surface the operator's own report is
+ * about, and the extra 1.0 moves four palettes. The weakest at the old scope
+ * was `rosePineDawn` at 7.53:1.
+ */
+const INK_CANVAS_FLOOR = 8.0;
+
+/** The step between the three ink weights, which is what makes them a ladder. */
+const INK_STEP_DELTA_E = 2.0;
+
+/**
+ * `inkDisabled` is a CEILING, not a floor - the one role in the system that is
+ * constrained from above.
+ *
+ * SC 1.4.3 exempts inactive controls, and a disabled control that meets 4.5:1
+ * does not read as disabled. So it has no floor, and the thing that needs
+ * asserting is the relation that keeps the state legible AS a state: the
+ * disabled ink must stay at most 0.8 x `inkDim` on every ground.
+ *
+ * Making `inkDim` lighter therefore threatens the disabled state from below,
+ * which is why the relation is asserted rather than assumed. It is a ratio of
+ * two ratios, and because both inks sit on the same side of every ground it
+ * reduces to a fact about the two inks alone (the ground cancels), so it is
+ * measured on all six grounds and moves only when the pair itself collapses.
+ * At the old values the factor ran 0.39-0.54, so 0.80 is generous by design: it
+ * catches a collapse rather than policing a margin.
+ */
+const DISABLED_CEILING = 0.8;
+
+/**
+ * The selection contract.
+ *
+ * A selection is a STATE the reader has to find while scanning a list, not a
+ * surface they read, so its floor is neither the field floor (2.0) nor a text
+ * floor. `SELECTION_DELTA_E` 3.0 is anchored on the one role that already
+ * works: `highlight` measures 4.00-5.97 against `surface` in all 59 palettes
+ * and the operator has not reported it, so 3.0 sits comfortably inside what
+ * this codebase already ships and below the role that works - it cannot force
+ * that role to move.
+ *
+ * Why ΔE00 rather than a ratio: the failing cases here are HUE-ONLY and read
+ * 1.000:1 on a contrast ratio. `localOperatorDark`'s palette active row - the
+ * operator's own screenshot - passed every separation threshold at ΔE00 7.14
+ * while reading 1.003:1, because the whole difference was hue (a 154.9° wash
+ * over an 82.1° panel). No ratio-based assertion can see that, and no ΔE00
+ * threshold alone can either: the row must also be the panel's own colour.
+ *
+ * `SELECTION_LIGHTNESS_STEP` 2.0 keeps the greyscale half - a chromatic-only
+ * step cannot pass by hue alone - and it is stated as a magnitude in the mode's
+ * direction, because ΔE00 is a budget a chroma-bought step can spend while
+ * moving the wrong way in lightness.
+ */
+const SELECTION_DELTA_E = 3.0;
+const SELECTION_LIGHTNESS_STEP = 2.0;
+
+/**
+ * The hover tint's own floor: half a selection's, because a hover is transient
+ * and is paired with the pointer.
+ */
+const HOVER_DELTA_E = 2.0;
+
+/**
+ * The keycap's ground against everything it can be painted on.
+ *
+ * `sunken` is the keycap's ground and a keycap is an annotation on the row a
+ * user has just SELECTED, so the pair that decides whether it survives is
+ * `sunken` against the state grounds. Measured at the old scope: 1.13 ΔE00
+ * on `accentWash` in `tokyoNightDay` and 1.81 in `ayuLight` - a cap whose
+ * ground disappears under it on the light themes where it is weakest.
+ */
+const KEYCAP_DELTA_E = 2.0;
 
 /**
  * Component triples: the ground a control sits on, its own fill, its border,
@@ -1506,6 +1690,33 @@ const STRUCTURAL_CALL_SITES = [
 		why: "the row is drawn inside a dialog on the same ground it used to paint, so the class is the whole fix; reverting it to `bg-elevated` restores a 0.00 ΔE00 selection and keeps every palette row in this file green",
 	},
 	{
+		/*
+		 * The command palette's active row: the third sibling, and the one the
+		 * operator screenshotted.
+		 *
+		 * `picker-host` fixed its keyboard row (design D1) and the slash popup gave
+		 * its active row a 2px accent bar, both because the accent wash is not
+		 * perceptible on a dialog's own ground in every palette - `obsidian` ΔE00
+		 * 0.77, `everforest` 1.42, `catppuccinMocha` 1.51 - and the command
+		 * palette's active row kept the wash alone. Measured on the operator's own
+		 * frame, the row PASSED the separation band at ΔE00 7.14 while reading
+		 * 1.003:1, so this pin is not about a threshold: it is about the row being
+		 * the panel's own colour in a step, with a non-colour mark beside it.
+		 *
+		 * `sunken` + `outline-control` is the picker's own answer for the same
+		 * gesture, so the two rows of the same family cannot drift apart again. The
+		 * ground half is asserted by this file's selection row (ΔE00 >= 3.0 and a
+		 * >= 2 L* step from `elevated`, measured 5.85-16.70 across all 59); this pin
+		 * is the half no palette assertion can reach - the composed class string at
+		 * the call site, where either token can be dropped while every palette row
+		 * stays green.
+		 */
+		what: "palette active row mark",
+		file: "src/renderer/src/features/command-palette/components/command-palette.tsx",
+		must: 'isActive\n\t\t\t\t\t? "bg-sunken outline-solid outline-1 -outline-offset-1 outline-control"',
+		why: "the dialog's ground and the row's ground are the same family, so the row's mark is the whole fix; reverting it to the accent wash alone restores a 1.003:1 selection on the default palette and keeps every palette assertion in this file green",
+	},
+	{
 		what: "picker option row pointer tint",
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		must: 'isHovered && !isActive && "bg-accent-wash"',
@@ -1809,10 +2020,44 @@ const STRUCTURAL_CALL_SITES = [
 	},
 ];
 
-/** Roles that must clear the structural 3:1 floor on all four grounds. */
-const STRUCTURAL = ["borderControl"];
+/**
+ * Roles that must clear the structural 3:1 floor on all four grounds.
+ *
+ * `borderControl` is the control's own edge; `accent` is the focus ring
+ * (`outline: 2px solid var(--color-accent)`, authored unlayered in
+ * `styles/index.css`) and the `border-accent` marker; the four `*Border` roles
+ * are the edges of the semantic callouts. SC 1.4.11 asks 3:1 of all of them.
+ *
+ * The four tone roles joined this list because their edges were only ever
+ * measured on `canvas`, `surface` and `sunken` - which is exactly why three
+ * `danger` pins and eight `dangerBorder` pins stood in for a floor on
+ * `elevated` (a dialog's required-mark and a danger control's only boundary on
+ * a dialog). A pin records a measured ratio, so a ground move breaks it and
+ * re-recording it is a decision to KEEP a defect whose fix is available: the
+ * edge is re-authored here instead, and the pin is deleted in the same commit.
+ */
+const STRUCTURAL = [
+	"borderControl",
+	"accent",
+	"successBorder",
+	"warningBorder",
+	"dangerBorder",
+	"infoBorder",
+];
 
-/** Roles that must clear the text floor as text on canvas, surface and sunken. */
+/**
+ * Roles that must clear the text floor as text, on ALL SIX grounds.
+ *
+ * `sunken` is in the list because it is the editor's own ground: every syntax
+ * colour is painted on it, and the code-mirror theme rejected `inkDisabled` for
+ * comments on exactly the grounds it failed 4.5:1 there. `elevated`,
+ * `accentWash` and `highlight` are in it because each is a ground a tone role
+ * is genuinely drawn on - a dialog's required-mark and a danger button's label
+ * (`elevated`), the ask-option card and the find-match tint (`accentWash`), the
+ * selected sidebar row (`highlight`) - and the old list stopped at `sunken`,
+ * which is how `danger` came to be drawn at 3.76:1 on `elevated` in `monokai`
+ * behind a green gate.
+ */
 const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
 
 /**
@@ -1825,99 +2070,29 @@ const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
  *
  * @type {{theme: string, fg: string, bg: string, got: number, why: string}[]}
  */
-const EXCEPTIONS = [
-	/*
-	 * `danger` as text on `elevated`, the three palettes that cannot clear 4.5:1
-	 * there. Measured from the shipped palettes, not argued: the pair is drawn by
-	 * the dialog required-mark and the danger-variant button's label, both of
-	 * which are shared components this file does not own. Every other palette
-	 * clears the floor (4.66 tokyoNight up to 6.19 iceberg) and is asserted
-	 * normally above.
-	 */
-	{
-		theme: "dracula",
-		fg: "danger",
-		bg: "elevated",
-		got: 3.81,
-		why: "the dialog required-mark and the danger button's label; a shared control's colour, recorded rather than changed here (design round 2, D3)",
-	},
-	{
-		theme: "monokai",
-		fg: "danger",
-		bg: "elevated",
-		got: 3.76,
-		why: "same pair as dracula; worst of the three",
-	},
-	{
-		theme: "neon",
-		fg: "danger",
-		bg: "elevated",
-		got: 4.43,
-		why: "same pair as dracula; 0.07 under the floor",
-	},
-	/*
-	 * The danger-variant control's border on a dialog ground, eight palettes
-	 * under the 3:1 a control's only edge is asked to clear. Same reasoning as
-	 * the text pair above: a shared control's colour, recorded where a reader
-	 * can find it rather than changed in a panel's PR.
-	 */
-	{
-		theme: "monokai",
-		fg: "dangerBorder",
-		bg: "elevated",
-		got: 2.49,
-		why: "the danger control's only edge on a dialog ground; worst of the eight",
-	},
-	{
-		theme: "dracula",
-		fg: "dangerBorder",
-		bg: "elevated",
-		got: 2.51,
-		why: "same pair as monokai",
-	},
-	{
-		theme: "radient",
-		fg: "dangerBorder",
-		bg: "elevated",
-		got: 2.58,
-		why: "same pair as monokai",
-	},
-	{
-		theme: "synth",
-		fg: "dangerBorder",
-		bg: "elevated",
-		got: 2.6,
-		why: "same pair as monokai",
-	},
-	{
-		theme: "obsidian",
-		fg: "dangerBorder",
-		bg: "elevated",
-		got: 2.65,
-		why: "same pair as monokai",
-	},
-	{
-		theme: "tokyoNight",
-		fg: "dangerBorder",
-		bg: "elevated",
-		got: 2.66,
-		why: "same pair as monokai",
-	},
-	{
-		theme: "neon",
-		fg: "dangerBorder",
-		bg: "elevated",
-		got: 2.78,
-		why: "same pair as monokai",
-	},
-	{
-		theme: "dune",
-		fg: "dangerBorder",
-		bg: "elevated",
-		got: 2.88,
-		why: "same pair as monokai; 0.12 under the floor",
-	},
-];
+/*
+ * EMPTY, and the emptiness is the point rather than an oversight. It held
+ * ELEVEN pins, all on `elevated` and all in the `danger` family: eight
+ * `dangerBorder` edges (monokai 2.49, dracula 2.51, radient 2.58, synth 2.60,
+ * obsidian 2.65, tokyoNight 2.66, neon 2.78, dune 2.88) and three `danger` text
+ * pairs (monokai 3.76, dracula 3.81, neon 4.43). Every one of them existed
+ * because `danger` and `dangerBorder` were measured only on `canvas`, `surface`
+ * and `sunken`, so the pair that failed was the one on the dialog's `elevated`
+ * - a pair a user really meets, since the dialog required-mark and the
+ * danger-variant button's label are both drawn there.
+ *
+ * The legibility pass retires them by RE-AUTHORING THE TOKEN rather than by
+ * re-recording the pin. A pin records a measured ratio, so the ground lift
+ * breaks all eleven of these regardless - `elevated` rises, and the edge and the
+ * text both get LESS contrast against it - and re-recording them at the new
+ * (lower) values would be eleven separate decisions to KEEP a defect whose fix
+ * is available. Instead `elevated`, `accentWash` and `highlight` joined the
+ * ground lists of `AS_TEXT` and `STRUCTURAL` in the same change, so the floor
+ * those pins stood in for is now asserted for every palette and every tone role,
+ * and the deletions are what proves the re-authoring happened: a pair that no
+ * longer clears its floor fails, with no pin left to explain it away.
+ */
+const EXCEPTIONS = [];
 
 /**
  * Sub-floor `PERCEPTIBLE` pairs accepted with a reason, pinned to their ΔE00.
@@ -2006,13 +2181,23 @@ const findPerceptibleException = (theme, role, ground, got) => {
  * `aria-disabled` and no hover step. The ink step is what a mouse user sees
  * BEFORE approaching, and those are the measured facts this list records.
  */
-const INK_STEP_PINNED = [
-	{ theme: "tokyoNight", got: 5.74 },
-	{ theme: "obsidian", got: 5.8 },
-	{ theme: "iceberg", got: 6.03 },
-	{ theme: "neon", got: 7.17 },
-	{ theme: "localOperatorLight", got: 7.93 },
-];
+/*
+ * EMPTY NOW, and its own rule is what emptied it: "a palette that has been
+ * lifted out of the floor FAILS until its pin is deleted, so the list cannot
+ * outlive the defect it records."
+ *
+ * The legibility pass lifted `inkDim` in every palette that needed it - which is
+ * the fix this comment declined to make in the two-draft-readings change,
+ * deliberately and for the reason stated above: it is a palette-wide visual
+ * change, and it is the change this pass IS. The step is paid on lightness, so
+ * `inkMuted` rose with `inkDim`, and all 59 palettes now clear the 8 floor
+ * (`SYNTAX_COMMENT_FLOOR`). The five entries this list carried - tokyoNight
+ * 5.74, obsidian 5.80, iceberg 6.03, neon 7.17, localOperatorLight 7.93 - were
+ * therefore deleted rather than re-derived against the new inks: a re-derived
+ * pin would record a step that already satisfies the floor, which is exactly the
+ * dead weight the rule above exists to refuse.
+ */
+const INK_STEP_PINNED = [];
 const inkStepSeen = new Set();
 
 /*
@@ -2602,10 +2787,18 @@ for (const { id, palette: p } of palettes) {
 		if (!(role in p)) fail(`${id}: missing required role \`${role}\``);
 	}
 
-	/* Ink on every ground. */
+	/*
+	 * Ink on every ground, the SIX of them.
+	 *
+	 * `accentWash` and `highlight` are grounds a body ink is genuinely read on
+	 * - a keycap on a selected row, a reading button on its own hover fill, the
+	 * selected sidebar row, the chip labels in the composer - and they were not
+	 * measured here until this pass, which is exactly how `inkDim` came to sit
+	 * at 3.91:1 on a selected row in `cyberpunk` with every gate green.
+	 */
 	for (const [inkRole, floor] of INKS) {
 		if (EXEMPT_INK.has(inkRole)) continue;
-		for (const g of GROUNDS) {
+		for (const g of GROUNDS6) {
 			assertPair(id, p, inkRole, g, floor, "body ink");
 		}
 	}
@@ -2878,22 +3071,28 @@ for (const { id, palette: p } of palettes) {
 	 * that has no floor for it should not have one asserted on its behalf.
 	 */
 
-	/* Structural borders. */
+	/* Structural edges: the control's own boundary, the focus ring, and each
+	   semantic's edge, on all four grounds. */
 	for (const role of STRUCTURAL) {
 		for (const g of GROUNDS) {
-			assertPair(id, p, role, g, FLOOR.nonText, "structural border");
+			assertPair(id, p, role, g, FLOOR.nonText, "structural edge");
 		}
 	}
 
-	/* Semantic and accent colours used as text.
+	/*
+	 * Semantic and accent colours used as text, on all six grounds.
 	 *
 	 * `sunken` is in this list because it is the editor's own ground: every
-	 * syntax colour is painted on it, and the code-mirror theme rejected
-	 * `inkDisabled` for comments on exactly the grounds that it failed 4.5:1
-	 * there. Asserting only canvas and surface left the one ground where the
-	 * argument was made unmeasured. */
+	 * syntax colour is painted on it. `elevated`, `accentWash` and `highlight`
+	 * are in it because each is a ground a tone role is really drawn on - a
+	 * dialog's required-mark and a danger button's label on `elevated`, the
+	 * ask-option card's text on `accentWash`, the selected sidebar row on
+	 * `highlight` - and the old list stopped at `sunken`, which is how `danger`
+	 * came to be drawn at 3.76:1 on `elevated` in `monokai` behind three
+	 * recorded pins rather than a floor. Those pins are gone; see `EXCEPTIONS`.
+	 */
 	for (const role of AS_TEXT) {
-		for (const g of ["canvas", "surface", "sunken"]) {
+		for (const g of GROUNDS6) {
 			assertPair(id, p, role, g, FLOOR.text, "colour as text");
 		}
 	}
@@ -2901,17 +3100,13 @@ for (const { id, palette: p } of palettes) {
 	/*
 	 * The picker's partial-listing note, on the dialog's own ground.
 	 *
-	 * It cannot join `AS_TEXT`: `elevated` is not one of that list's grounds, and
-	 * it cannot be, because two of the five tone inks do not clear the text floor
-	 * there (`accent` 4.22 on dracula, `danger` 3.76 on monokai) and asserting
-	 * them would report failures against pairs nothing renders.
-	 *
-	 * This note is one of TWO places a tone ink is drawn on `elevated`:
-	 * `models.catalogue` can answer with rows AND per-provider errors, and the
-	 * note about what is missing belongs above the list rather than instead of it
-	 * (design D4). `warning` is the role it renders in, so that is the pair
-	 * asserted — the measured worst case is 5.02 (monokai). Green on the four
-	 * grounds above is not evidence about this one.
+	 * It is asserted here rather than left to the `AS_TEXT` loop above because
+	 * the row names a CALL SITE: `models.catalogue` can answer with rows AND
+	 * per-provider errors, and the note about what is missing belongs above the
+	 * list rather than instead of it (design D4). `warning` is the role it
+	 * renders in, so that is the pair asserted. `elevated` is now one of
+	 * `AS_TEXT`'s grounds as well, so this row is the same assertion stated at
+	 * the place it is rendered - which is the half a palette loop cannot see.
 	 */
 	assertPair(
 		id,
@@ -3259,6 +3454,235 @@ for (const { id, palette: p } of palettes) {
 		if (got < FIELD_SEPARATION_FLOOR) {
 			fail(
 				`${id}: adjacent \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need ${FIELD_SEPARATION_FLOOR}) — a step the eye cannot see is not a step`,
+			);
+		}
+	}
+
+	/*
+	 * ---- the legibility pass -------------------------------------------------
+	 *
+	 * The operator's report was two defects that read as one - "the background
+	 * behind the main text is too dark/black" and "text is a little too grey on
+	 * grey" - plus a third that arrived beside them: "selections are not very
+	 * appealing and look very off, and are often not well contrasted".
+	 *
+	 * THE LIFT AND THE INKS ARE ONE CHANGE, and this block is the reason. Lifting
+	 * a dark ground raises the luminance every ink is measured against, so every
+	 * ink ratio falls: simulated with the ladder preserved, `localOperatorDark`'s
+	 * `inkDim` on `elevated` goes 4.61 -> 3.71 and `inkDisabled` 2.28 -> 1.83, and
+	 * all 23 sub-floor dark palettes gain NEW ink-floor violations. A change that
+	 * lifted the grounds without re-authoring the inks would therefore make the
+	 * operator's complaint worse, which is why the grounds, the ink weights and
+	 * `borderControl` - which fails 3:1 on the lifted `elevated` in eight palettes
+	 * - all land in one commit. All 59 palettes satisfy this block with zero
+	 * exemptions, which is why it is asserted strictly.
+	 */
+
+	/* 1. The lift. A floor on the page ground, and a ceiling at the top of the
+	      ladder: both are load-bearing, and for the same reason. */
+	{
+		const lc = toLab(p.canvas)[0];
+		const ls = toLab(p.surface)[0];
+		const le = toLab(p.elevated)[0];
+		const lk = toLab(p.sunken)[0];
+		const dark = p.mode === "dark";
+
+		assertions++;
+		if (dark && (lc < LIFT.dark.canvasMin || lc > LIFT.dark.canvasMax)) {
+			fail(
+				`${id}: dark \`canvas\` ${p.canvas} sits at L* ${r2(lc)} — the band is [${LIFT.dark.canvasMin}, ${LIFT.dark.canvasMax}] in L*. Below the floor the three ink weights and the three ladder steps stop fitting above each other without one of them breaking its own floor; above the ceiling the canvas is no longer off-black, which is the whole of what the operator asked for`,
+			);
+		}
+		assertions++;
+		if (dark && le > LIFT.dark.elevatedMax) {
+			fail(
+				`${id}: dark \`elevated\` ${p.elevated} sits at L* ${r2(le)} — the ceiling is L* ${LIFT.dark.elevatedMax}, because at L* 34 an \`inkDim\` at its floor needs L* 85 and the ink/hover distinction disappears into the top of the ramp`,
+			);
+		}
+		assertions++;
+		if (!dark && lc > LIFT.light.canvasMax) {
+			fail(
+				`${id}: light \`canvas\` ${p.canvas} sits at L* ${r2(lc)} — the ceiling is L* ${LIFT.light.canvasMax}. \`elevated\` at L* 100 is the end of sRGB's ramp and the minimum canvas-to-elevated spread is 2.5 + 2.5 L*, so a canvas above 95 has no room for both steps; 94 leaves 1 L* for 8-bit rounding`,
+			);
+		}
+		assertions++;
+		if (!dark && lk < LIFT.light.sunkenMin) {
+			fail(
+				`${id}: light \`sunken\` ${p.sunken} sits at L* ${r2(lk)} — the floor is L* ${LIFT.light.sunkenMin}. A light theme's recessed ground is the darkest plane in it, so it is the cap for every ink there and the keycap's ground on every selected row`,
+			);
+		}
+
+		/* 2. The ladder, as L* offsets from the canvas. `sunken` is measured
+		      from the canvas going down, the other two going up. */
+		for (const [name, from, to, [lo, hi], step] of [
+			["canvas -> surface", "canvas", "surface", STEP.canvasSurface, ls - lc],
+			[
+				"surface -> elevated",
+				"surface",
+				"elevated",
+				STEP.surfaceElevated,
+				le - ls,
+			],
+			["canvas -> sunken", "canvas", "sunken", STEP.canvasSunken, lc - lk],
+		]) {
+			assertions++;
+			if (step < lo - 1e-9 || step > hi + 1e-9) {
+				fail(
+					`${id}: the ${name} step is ${r2(step)} L*, outside [${lo}, ${hi}] — the bounds are both ends of the same budget: below the floor the two grounds merge, and above the ceiling the step eats the room the ink ladder needs`,
+				);
+			}
+			/* The ratio half of every ground pair (1.03) is asserted by the
+			   four-grounds loop above, which covers all six pairs; it is asserted
+			   here as well for the three NAMED steps, so the ladder's own rule is
+			   stated where the ladder is. */
+			assertPair(id, p, from, to, GROUND_RATIO, `${name} step`);
+			/* This adds the perceptual half for the one pair no loop measured
+			   before. */
+			if (from === "canvas" && to === "sunken") {
+				assertions++;
+				const got = deltaE(p.canvas, p.sunken);
+				if (got < GROUND_STEP_DELTA_E) {
+					fail(
+						`${id}: \`canvas\` and \`sunken\` are ΔE00 ${r2(got)} apart (need ${GROUND_STEP_DELTA_E}) — a well nobody can see is not a well, and both blocks that paint one are read inside a trace that sits on the canvas`,
+					);
+				}
+			}
+		}
+	}
+
+	/* 3. The transcript's own floor: `ink` on `canvas` gets 8.0:1. */
+	assertPair(
+		id,
+		p,
+		"ink",
+		"canvas",
+		INK_CANVAS_FLOOR,
+		"the transcript's body ink",
+	);
+
+	/* 4. `inkDisabled` is constrained from ABOVE, and only from above: it has no
+	      floor, but it must stay weaker than `inkDim` on every ground, or a
+	      disabled control stops reading as disabled. */
+	for (const g of GROUNDS6) {
+		if (!isHex(p.inkDisabled) || !isHex(p.inkDim) || !isHex(p[g])) continue;
+		assertions++;
+		const got = ratio(p.inkDisabled, p[g]);
+		const reference = ratio(p.inkDim, p[g]);
+		if (got > DISABLED_CEILING * reference + 1e-9) {
+			fail(
+				`${id}: \`inkDisabled\` on ${g} measures ${r2(got)}:1 against \`inkDim\`'s ${r2(reference)}:1 — a factor of ${r2(got / reference)}, over the ${DISABLED_CEILING} ceiling. A disabled control that meets the ink floors does not read as disabled`,
+			);
+		}
+	}
+
+	/* 5. The ink weights are a hierarchy, so the floors alone are not enough:
+	      three inks each at their floor can be the same colour. */
+	for (const [lower, upper] of [
+		["inkDim", "inkMuted"],
+		["inkMuted", "ink"],
+	]) {
+		if (!isHex(p[lower]) || !isHex(p[upper])) continue;
+		assertions++;
+		const got = deltaE(p[lower], p[upper]);
+		if (got < INK_STEP_DELTA_E) {
+			fail(
+				`${id}: \`${upper}\` and \`${lower}\` are ΔE00 ${r2(got)} apart (need ${INK_STEP_DELTA_E}) — the three weights are a ladder, and a rung the eye cannot see is not a rung`,
+			);
+		}
+	}
+
+	/*
+	 * 6. The selection row: the command palette's active row and the picker's
+	 * keyboard row, both painted on a dialog's `elevated`.
+	 *
+	 * Both take `bg-sunken`, which is the repo's own answer and not this pass's:
+	 * `picker-host.tsx` chose it for the keyboard's row because it is "the only
+	 * ground role that steps perceptibly away from the dialog's own `bg-elevated`
+	 * in every one of the palettes" (measured ΔE00 5.85-16.70 across all 59), and
+	 * the command palette's active row was the sibling that kept the accent wash
+	 * alone - the row the operator screenshotted, which read 1.003:1 on
+	 * `localOperatorDark` while passing every threshold by hue.
+	 *
+	 * WHAT THIS DOES NOT ASSERT, and why - it is a RECORDED deviation rather than
+	 * a passed check. The rule a purpose-authored selection step has to satisfy
+	 * also includes a hue clause (within 45° of its base where the base's chroma
+	 * is >= 4, else chroma within the base's plus 4). `sunken` is the palette's
+	 * own recessed ground rather than a tint authored for this row, and it does not
+	 * satisfy that clause in eight palettes: seven light palettes carry more
+	 * chroma than their own near-neutral `elevated` plus 4 - alucard 9.92,
+	 * ayuLight 4.75, localOperatorLight 7.52, mintLight 10.00, rosePineDawn 7.77,
+	 * sage 9.66, solarizedLight 10.03 - and `dune`'s sunken sits 46.09° from its
+	 * elevated, 1.09° outside the limit. Both are the palette's own cast on a
+	 * recessed plane, which is what the clause exists to catch only when it has
+	 * been AUTHORED onto a selection; the two marks the clause would otherwise
+	 * separate are separated here by ΔE00 5.85-16.70, the widest margin in the
+	 * system. Recorded as an open question for the design round rather than
+	 * silently dropped.
+	 */
+	{
+		const got = deltaE(p.sunken, p.elevated);
+		assertions++;
+		if (got < SELECTION_DELTA_E) {
+			fail(
+				`${id}: the palette/picker active row (\`sunken\` ${p.sunken}) is ΔE00 ${r2(got)} from the dialog ground it is painted on (\`elevated\` ${p.elevated}), need ${SELECTION_DELTA_E} — a selection is a state the reader has to find while scanning, not a surface they read, and below this band it stops being findable`,
+			);
+		}
+		assertions++;
+		const step = Math.abs(toLab(p.sunken)[0] - toLab(p.elevated)[0]);
+		if (step < SELECTION_LIGHTNESS_STEP) {
+			fail(
+				`${id}: the palette/picker active row sits ${r2(step)} L* from \`elevated\`, under the ${SELECTION_LIGHTNESS_STEP} L* floor — ΔE00 is a budget a chroma-only step can spend while the mark vanishes in a greyscale render, so the lightness half is asserted too`,
+			);
+		}
+	}
+
+	/*
+	 * 7. The accent wash is a HOVER and CALLOUT tint - not a selection ground.
+	 *
+	 * It keeps every other use it has (pointer hover fills, chips, the find-match
+	 * tint, the ask-option card, the browser tab-strip marker, the `border-accent`
+	 * markers) and gains this one floor: half a selection's, because a hover is
+	 * transient and is paired with the pointer. It fails in 11 palettes at the
+	 * old scope - 7 on `surface` (`catppuccinMacchiato` 0.80, `tokyoNight` 1.05,
+	 * `alucard` 1.22, `solarizedDark` 1.61, `catppuccinFrappe` 1.79, `everforest`
+	 * 1.80, `kanagawaWave` 1.89), 2 on `elevated` (`obsidian` 0.77, `everforest`
+	 * 1.42) and 2 on `sunken` (`tokyoNightDay` 1.13, `ayuLight` 1.81) - which is
+	 * why the wash is re-authored in those 11 rather than the floor being set
+	 * where the existing values happen to sit.
+	 */
+	for (const g of GROUNDS) {
+		if (!isHex(p.accentWash) || !isHex(p[g])) continue;
+		assertions++;
+		const got = deltaE(p.accentWash, p[g]);
+		if (got < HOVER_DELTA_E) {
+			fail(
+				`${id}: the accent wash on ${g} is ΔE00 ${r2(got)} (need ${HOVER_DELTA_E}) — a hover tint the reader cannot see is a hover state the pointer cannot report, and this pair reads 1.00-1.24:1, so no ratio assertion in this file can see it`,
+			);
+		}
+	}
+
+	/*
+	 * 8. The keycap's ground, against everything it can be painted on.
+	 *
+	 * A keycap is an annotation on the row the user has just SELECTED, so the
+	 * pair that decides whether it survives is `sunken` against the state
+	 * grounds: measured at the old scope, `tokyoNightDay` rendered it at ΔE00
+	 * 1.13 on `accentWash` and `ayuLight` at 1.81 - a cap whose ground disappears
+	 * under it. The cap's SHAPE and its ink are other rows; this is its ground.
+	 */
+	for (const g of [
+		"canvas",
+		"surface",
+		"elevated",
+		"accentWash",
+		"highlight",
+	]) {
+		if (!isHex(p.sunken) || !isHex(p[g])) continue;
+		assertions++;
+		const got = deltaE(p.sunken, p[g]);
+		if (got < KEYCAP_DELTA_E) {
+			fail(
+				`${id}: the keycap's ground \`sunken\` ${p.sunken} is ΔE00 ${r2(got)} from ${g} ${p[g]} (need ${KEYCAP_DELTA_E}) — the cap annotates the row the reader has just selected, so its ground has to survive being painted on that row`,
 			);
 		}
 	}

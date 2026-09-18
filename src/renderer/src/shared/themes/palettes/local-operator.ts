@@ -38,6 +38,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * accidental.
  *
  * @see docs/branding.md § 2 — the ramp and why it is tinted
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 
 /** Verified 2026-08-04 against docs/design-kit/tokens.json in the site repo. */
@@ -48,10 +64,10 @@ export const localOperatorDark: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#16130e",
-		surface: "#1e1a14",
-		elevated: "#282318",
-		sunken: "#0f0c08",
+		canvas: "#22201c",
+		surface: "#2b2721",
+		elevated: "#363025",
+		sunken: "#1d1b19",
 
 		/*
 		 * The current row's own ground: `surface` stepped up its own warm
@@ -82,11 +98,11 @@ export const localOperatorDark: ThemeDefinition = {
 		highlight: "#292116",
 
 		ink: "#f1eee6",
-		inkMuted: "#b5afa2",
-		inkDim: "#918b7d",
+		inkMuted: "#c2bcaf",
+		inkDim: "#a6a091",
 		inkDisabled: "#5f5a4e",
 
-		hairline: "#353022",
+		hairline: "#403b2c",
 		borderControl: "#837c6d",
 
 		accent: "#38c96a",
@@ -103,13 +119,13 @@ export const localOperatorDark: ThemeDefinition = {
 
 		success: "#57c785",
 		successWash: "#16281d",
-		successBorder: "#417557",
+		successBorder: "#4f8465",
 		warning: "#e0b04b",
 		warningWash: "#2a2213",
-		warningBorder: "#857036",
+		warningBorder: "#8c773c",
 		danger: "#ef8078",
 		dangerWash: "#2e1b18",
-		dangerBorder: "#9e5a51",
+		dangerBorder: "#ac675d",
 		/*
 		 * The kit has no `info` role: on the site, "informational" is carried by
 		 * the accent, because a fourth semantic hue is a hue nobody can name.
@@ -139,7 +155,7 @@ export const localOperatorDark: ThemeDefinition = {
 		 */
 		info: "#86b3f2",
 		infoWash: "#192332",
-		infoBorder: "#5475a2",
+		infoBorder: "#5a7ba8",
 
 		overlayShadow: "0 12px 32px -12px rgb(0 0 0 / 0.6)",
 		scrim: "rgb(0 0 0 / 0.6)",
@@ -191,10 +207,10 @@ export const localOperatorLight: ThemeDefinition = {
 		 * Change one of these four and re-run `pnpm check-themes`; they are a
 		 * ladder and only make sense relative to each other.
 		 */
-		canvas: "#f5f0e6",
-		surface: "#faf8f1",
-		elevated: "#fffefb",
-		sunken: "#efe9db",
+		canvas: "#f2ede3",
+		surface: "#f7f5ee",
+		elevated: "#fefdfa",
+		sunken: "#ece6d8",
 
 		/*
 		 * The current row's own ground: `surface` stepped down its own warm
@@ -224,15 +240,25 @@ export const localOperatorLight: ThemeDefinition = {
 		highlight: "#ECEBDE",
 
 		ink: "#211e18",
-		inkMuted: "#565147",
-		inkDim: "#6c675c",
+		inkMuted: "#4e4940",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `sunken` binds it at 5.02:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#656056",
 		inkDisabled: "#9a9488",
 
 		// Deepened from #e5e0d5 alongside the ramp above. A hairline is the one
 		// role that has to move when its grounds do: left where it was, it fell
 		// to ΔE00 3.50 against the new `canvas` and 2.31 against `sunken`,
 		// undoing on the dividers exactly what the ramp bought on the panels.
-		hairline: "#ddd8ce",
+		hairline: "#dad5cb",
 		// #857f70 measures 3.29:1 on `sunken` and 3.95:1 on `elevated`. The
 		// binding ground is the darkest one, not the lightest — a mid grey has
 		// its easiest time against white — so `sunken` is the case that has to
@@ -241,19 +267,25 @@ export const localOperatorLight: ThemeDefinition = {
 		// boundary of every input in the app.
 		borderControl: "#857f70",
 
-		accent: "#147842",
+		/*
+		 * Legibility pass: `accent` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `sunken` binds it there at
+		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		accent: "#137742",
 		accentHover: "#116036",
 		accentActive: "#0c4b2a",
 		// The chart's hover mark, a step AWAY from the plot ground rather than along the
 		// accent ramp: ΔE00 10.0 from `accent` and 7.82:1 on surface, where the accent
 		// itself is 5.21:1. See `chartBarHover` in the palette contract.
-		chartBarHover: "#0F5A31",
+		chartBarHover: "#0c5830",
 		tokenCommand: "#2368a8",
 		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#e7f1e8",
 		onAccent: "#F6FAF8",
 
-		success: "#1A774A",
+		success: "#19764a",
 		successWash: "#e6f1ea",
 		successBorder: "#3e6b4e",
 		warning: "#8a5800",

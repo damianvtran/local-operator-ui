@@ -20,6 +20,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * tinted over `canvas` at the strongest alpha that keeps its own ink at 4.5:1 (the scheme's own
  * tints stand in where they clear it); a semantic border walks its hue toward the ground to
  * just above the 3:1 edge floor; the shadow and the scrim are the ground tinted.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const gruvbox: ThemeDefinition = {
 	id: "gruvbox",
@@ -50,8 +66,28 @@ export const gruvbox: ThemeDefinition = {
 		// Canonical fg2 D5C4A1 is 6.76:1 on `elevated` and only ΔE00 6.3 from fg3, which is
 		// under the 8 ink step. Lifted one step along the same warm grey so the readout rung
 		// below it takes a different name.
-		inkMuted: "#DECDA9",
-		inkDim: "#BDAE93",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `highlight` binds it at 7.14:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#E3D2AD",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `highlight` binds it at 5.16:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#C2B397",
 		inkDisabled: "#928374",
 
 		// A rule seated in the window a 1px line has: ΔE00 4.1 from every ground and
@@ -79,18 +115,36 @@ export const gruvbox: ThemeDefinition = {
 		successWash: "#464730",
 		successBorder: "#868902",
 
-		warning: "#FE8019",
+		/*
+		 * Legibility pass: `warning` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `highlight` binds it there at
+		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		warning: "#FF8A32",
 		warningWash: "#45352C",
 		warningBorder: "#D06503",
 
 		// Upstream bright red FB4934 is 3.37:1 on `elevated` — the largest miss in the
 		// palette, and the only accent that could not ship as drawn. Lifted along the same
 		// red.
-		danger: "#FF7C67",
+		/*
+		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `highlight` binds it there at
+		 * 4.51:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		danger: "#FF8671",
 		dangerWash: "#3B2723",
 		dangerBorder: "#DA5B48",
 
-		info: "#83A598",
+		/*
+		 * Legibility pass: `info` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `highlight` binds it there at
+		 * 4.5:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		info: "#8EB0A3",
 		infoWash: "#28353A",
 		infoBorder: "#698B7E",
 

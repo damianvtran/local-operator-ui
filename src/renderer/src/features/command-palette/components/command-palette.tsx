@@ -1007,7 +1007,31 @@ const PaletteRow: FC<{
 			className={cn(
 				"flex h-9 w-full items-center gap-3 rounded-sm px-2 text-left",
 				"transition-colors duration-fast ease-out-quart",
-				isActive ? "bg-accent-wash" : "bg-transparent",
+				/*
+				 * The active row is a GROUND step with its own edge, not an accent tint.
+				 *
+				 * The wash is what this row painted, and it is the operator's report: on
+				 * the default palette it measured ΔE00 7.14 against the dialog's own
+				 * ground while reading 1.003:1 - the whole difference was hue, so no
+				 * contrast assertion could see it - and in obsidian it measured ΔE00 0.77,
+				 * i.e. no mark at all. A selection has to be findable while scanning a
+				 * list, which is a different question from whether two panels are
+				 * distinguishable, so it needs a ground of its own AND a non-colour half.
+				 *
+				 * `sunken` is the repo's own answer for this exact shape of row: the
+				 * picker popup's keyboard row takes it for the same gesture on the same
+				 * kind of dialog, because it is the one ground that steps perceptibly away
+				 * from `elevated` in every palette (measured ΔE00 5.85-16.70 across all
+				 * 59). The `outline-control` ring is the half the wash could never carry:
+				 * the pointer's tint is deliberately kept off this state, so the only
+				 * colour left is the row's own ink and the accent spent once, on the edge.
+				 * Both are asserted - the ground by the contract's selection row, the edge
+				 * by the call-site pin `palette active row mark` - because a palette
+				 * assertion cannot see a class that was dropped here.
+				 */
+				isActive
+					? "bg-sunken outline-solid outline-1 -outline-offset-1 outline-control"
+					: "bg-transparent",
 			)}
 		>
 			<span

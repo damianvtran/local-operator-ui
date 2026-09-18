@@ -32,6 +32,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * measured ΔE00 13.7 from pine — under the 15 the contract wants between two
  * semantics a reader meets alone and has to name. It is pulled toward its green
  * end to 10746E, which holds 15.6.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const rosePineDawn: ThemeDefinition = {
 	id: "rosePineDawn",
@@ -40,10 +56,10 @@ export const rosePineDawn: ThemeDefinition = {
 	palette: {
 		mode: "light",
 
-		canvas: "#F9F2EA",
-		surface: "#FCF7F3",
-		elevated: "#FFFEFB",
-		sunken: "#F8EDE0",
+		canvas: "#f3ece5",
+		surface: "#f9f4f0",
+		elevated: "#fdfcfa",
+		sunken: "#f2e7da",
 
 		/*
 		 * The current row's own ground:
@@ -58,21 +74,41 @@ export const rosePineDawn: ThemeDefinition = {
 		 */
 		highlight: "#FDEFEA",
 
-		ink: "#4e4970",
-		inkMuted: "#5B5573",
-		inkDim: "#6C697A",
+		/*
+		 * Legibility pass: `ink` is re-seated on the lifted grounds, where its floor
+		 * is 7:1 on all six grounds and `sunken` binds it at 7.69:1.
+		 *
+		 * It also carries the transcript's own 8.0:1 on `canvas`, which is the
+		 * surface the operator's report is about.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		ink: "#464268",
+		inkMuted: "#544e6c",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `sunken` binds it at 5:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#636071",
 		inkDisabled: "#9893a5",
 
-		hairline: "#E5DCD5",
-		borderControl: "#91838c",
+		hairline: "#e1d8d1",
+		borderControl: "#8f828a",
 
-		accent: "#a15552",
+		accent: "#9e5350",
 		accentHover: "#8b4644",
 		accentActive: "#743a38",
 		// ΔE00 10.4 from `accent` and 7.8:1 on surface, where the accent is
 		// 5.0:1 — the step goes deeper here, because on paper the plot ground is
 		// above the mark.
-		chartBarHover: "#803836",
+		chartBarHover: "#7e3635",
 		tokenCommand: "#10746E",
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
@@ -85,19 +121,19 @@ export const rosePineDawn: ThemeDefinition = {
 		successWash: "#e4edf1",
 		successBorder: "#5c8ba0",
 
-		warning: "#995d00",
+		warning: "#975b00",
 		warningWash: "#f6ead6",
-		warningBorder: "#AA8546",
+		warningBorder: "#a47f41",
 
-		danger: "#a1526a",
+		danger: "#9f5069",
 		dangerWash: "#fcebef",
-		dangerBorder: "#B27C8D",
+		dangerBorder: "#ac7687",
 
 		// foam 56949f measures 3.1:1 on this paper; lifted to the floor and
 		// pulled green to clear ΔE00 15 from pine. See the header.
 		info: "#10746E",
 		infoWash: "#e2eeef",
-		infoBorder: "#599598",
+		infoBorder: "#538f92",
 
 		overlayShadow: "0 12px 32px -12px rgb(87 82 121 / 0.24)",
 		scrim: "rgb(87 82 121 / 0.4)",

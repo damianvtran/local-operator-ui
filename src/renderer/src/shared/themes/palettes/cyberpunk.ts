@@ -31,6 +31,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * The TUI's `overlay`, `label`, `string` and five `tint-*` tokens have no role
  * here: this contract has no popover ground, no second label hue and no
  * selection tint, so the tints above are derived from the accent instead.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const cyberpunk: ThemeDefinition = {
 	id: "cyberpunk",
@@ -40,10 +56,33 @@ export const cyberpunk: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#0E0A16",
-		surface: "#16101F",
-		elevated: "#1E172A",
-		sunken: "#080510",
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +2.53, elevated +6.28, sunken -1.72 L*), so the hierarchy the
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #0E0A16 -> #211F28 (L* 3.33 -> 12.33)
+		 * surface #16101F -> #282332 (L* 5.78 -> 14.86)
+		 * elevated #1E172A -> #312A3E (L* 9.45 -> 18.61)
+		 * sunken #080510 -> #1D1C22 (L* 1.78 -> 10.61)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
+		canvas: "#211F28",
+		surface: "#282332",
+		elevated: "#312A3E",
+		sunken: "#1D1C22",
 		/*
 		 * The current row's own ground:
 		 * `surface` cast toward `accent` and stepped 3.1 on the `L*` axis — branch H of this
@@ -64,18 +103,52 @@ export const cyberpunk: ThemeDefinition = {
 		highlight: "#1E171F",
 
 		ink: "#EAE5F2",
-		inkMuted: "#B3A8C6",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.74:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#BCB1CF",
 		// The TUI `dim` 82749C lifted in L* with hue held: 4.37 on `surface` and 4.07
 		// on `elevated`, both under the floor.
-		inkDim: "#8B7DA5",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.02:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#A496BF",
 		// The TUI `faint` 4A4060 lifted to 2.3:1 on `elevated`.
 		inkDisabled: "#5A4F70",
 
 		// The TUI `edge` 2E2340, already inside the hairline's 1.15-2.0:1 band and
-		// clear of its ΔE00 4.0 floor on all four grounds.
-		hairline: "#2E2340",
+		// clear of its ΔE00 4.0 floor on all four grounds — both measured before
+		// the legibility pass moved this palette's ramp, which is why the value
+		// below is a step lifted from it rather than that value itself.
+		/*
+		 * Legibility pass: a hairline is the one role that has to move when its grounds
+		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
+		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
+		 * `elevated` is the tightest ground at ΔE00 5.06.
+		 */
+		hairline: "#3D3250",
 		// The TUI `edge-hi` 3D2F54 lifted in L* until it clears 3:1 on `elevated`.
-		borderControl: "#72628A",
+		/*
+		 * Legibility pass: `borderControl` is the sole boundary of every input in the
+		 * app, so it keeps its 3:1 floor on all four grounds and moves with them - it
+		 * is the lower of the two bounds on how far the ramp could lift. `elevated`
+		 * binds it at 3.02:1. Lightness only, at the role's own hue.
+		 */
+		borderControl: "#7F6F97",
 
 		// FCEE0A, the construction yellow — this palette's accent, and the reason it
 		// is unmistakable among its siblings.
@@ -98,24 +171,50 @@ export const cyberpunk: ThemeDefinition = {
 
 		success: "#3FE07A",
 		successWash: "#142623",
-		successBorder: "#31764E",
+		/*
+		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 */
+		successBorder: "#3E835A",
 
 		warning: "#FF9E3D",
 		warningWash: "#2D1D1B",
-		warningBorder: "#8E5F39",
+		/*
+		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 */
+		warningBorder: "#9C6B44",
 
 		// FF003C lifted in L* with hue held (ΔE00 1.8 from the TUI's value) to clear
 		// 4.5:1 as text on `elevated`; on the canvas it is the 4.95:1 the TUI
 		// measured.
-		danger: "#FF2345",
+		/*
+		 * Legibility pass: `danger` is drawn as text on all six grounds, so it keeps
+		 * 4.5:1 on every one of them and moves with them; `elevated` binds it there at
+		 * 4.52:1. Lightness only, along the role's own hue: the palette's identity,
+		 * not its legibility, is what the ramp change was allowed to keep.
+		 */
+		danger: "#FF5B60",
 		dangerWash: "#2D0D1C",
-		dangerBorder: "#AE4753",
+		/*
+		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 */
+		dangerBorder: "#BD545F",
 
 		// 00F0FF, the TUI's `signal` — the glare cyan the marketing artwork pairs with
 		// the yellow.
 		info: "#00F0FF",
 		infoWash: "#0C2834",
-		infoBorder: "#0C7481",
+		/*
+		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 */
+		infoBorder: "#24818E",
 
 		overlayShadow: "0 12px 32px -12px rgb(6 4 9 / 0.75)",
 		scrim: "rgb(6 4 9 / 0.65)",

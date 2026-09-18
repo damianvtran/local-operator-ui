@@ -19,6 +19,22 @@ import type { ThemeDefinition } from "../palette-contract";
  * hue pulled toward `canvas` as far as it can go while still reading as an
  * edge. The TUI's `dim` and `edge-hi` move only as far as the floors require,
  * and the overlay tint is the theme's own well.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const rosewood: ThemeDefinition = {
 	id: "rosewood",
@@ -26,10 +42,33 @@ export const rosewood: ThemeDefinition = {
 	description: "Dark rosewood with dried-rose reds and a glint of brass.",
 	palette: {
 		mode: "dark",
-		canvas: "#201314",
-		surface: "#2A1C1D",
-		elevated: "#332425",
-		sunken: "#170C0D",
+		/*
+		 * The legibility pass re-solves this palette's ramp, and this is the block it
+		 * touches. A dark page ground is floored at L* 12 here, because below that
+		 * the ladder above it and the three ink weights stop fitting above each
+		 * other without one of them breaking its own floor.
+		 *
+		 * The three grounds around the canvas are authored as L* offsets from it
+		 * (surface +4.44, elevated +8.61, sunken -3.16 L*), so the hierarchy the
+		 * hover states and the borders depend on survives the move. Measured:
+		 * canvas #201314 -> #2A1C1D (L* 7.44 -> 12.03)
+		 * surface #2A1C1D -> #342526 (L* 12.03 -> 16.47)
+		 * elevated #332425 -> #3D2E2F (L* 16 -> 20.64)
+		 * sunken #170C0D -> #201718 (L* 4.28 -> 8.87)
+		 *
+		 * ONLY LIGHTNESS MOVED. Each value holds its own `a` and `b`, so the theme's
+		 * hue and chroma class are exactly what they were and chroma is scaled only
+		 * where sRGB forces it - a lift that neutralised a palette to satisfy a floor
+		 * would be a different theme, not a lighter one.
+		 *
+		 * THE GROUNDS AND THE INKS MOVED TOGETHER, and the header of this file says why:
+		 * lifting a dark ground raises the luminance every ink is measured against, so
+		 * the inks in this file were re-seated on the same commit rather than after it.
+		 */
+		canvas: "#2A1C1D",
+		surface: "#342526",
+		elevated: "#3D2E2F",
+		sunken: "#201718",
 
 		/*
 		 * The current row's own ground:
@@ -43,24 +82,56 @@ export const rosewood: ThemeDefinition = {
 		highlight: "#372428",
 
 		ink: "#EEE0DC",
-		inkMuted: "#C2ABA6",
+		/*
+		 * Legibility pass: `inkMuted` is re-seated on the lifted grounds, where its floor
+		 * is 5.5:1 on all six grounds and `elevated` binds it at 6.94:1.
+		 *
+		 * The contract's ΔE00 8 step from `inkDim` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkMuted: "#D1B9B4",
 
 		// The TUI's dim, lifted 7.0 L* to clear 4.5:1 on all four grounds — 4.78:1 on
 		// `elevated`, the ground that caps it — while staying ΔE00 8+ from `inkMuted`,
 		// so a control and a reading stay two inks.
-		inkDim: "#A38E8A",
+		/*
+		 * Legibility pass: `inkDim` is re-seated on the lifted grounds, where its floor
+		 * is 5:1 on all six grounds and `elevated` binds it at 5.01:1.
+		 *
+		 * The contract's ΔE00 8 step to `inkMuted` is what set this
+		 * value as much as the floor did.
+		 *
+		 * LIGHTNESS ONLY, at the role's own `a` and `b`: the value keeps the theme's
+		 * hue and chroma class, and chroma is scaled only where sRGB forces it.
+		 */
+		inkDim: "#B29D98",
 
 		// The TUI's own faint, and the one role exempt from the contrast floors: a
 		// disabled control that meets 4.5:1 does not read as disabled.
 		inkDisabled: "#584745",
 
-		hairline: "#453130",
+		/*
+		 * Legibility pass: a hairline is the one role that has to move when its grounds
+		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
+		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
+		 * `elevated` is the tightest ground at ΔE00 4.05.
+		 */
+		hairline: "#4B3635",
 
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
 		// — 3.20:1 on `elevated`, the ground that caps it.
-		borderControl: "#886F6C",
+		/*
+		 * Legibility pass: `borderControl` is the sole boundary of every input in the
+		 * app, so it keeps its 3:1 floor on all four grounds and moves with them - it
+		 * is the lower of the two bounds on how far the ramp could lift. `elevated`
+		 * binds it at 3.03:1. Lightness only, at the role's own hue.
+		 */
+		borderControl: "#8E7571",
 
 		accent: "#E895B5",
 
@@ -95,10 +166,20 @@ export const rosewood: ThemeDefinition = {
 
 		// The state hue pulled toward `canvas` as far as it can go and still read as
 		// an edge: 3.46:1 at its tightest ground.
-		successBorder: "#667955",
+		/*
+		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3:1.
+		 */
+		successBorder: "#6D805C",
 		warning: "#D8AB58",
 		warningWash: "#412F25",
-		warningBorder: "#8E6E3D",
+		/*
+		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 */
+		warningBorder: "#957543",
 		danger: "#EA8378",
 
 		// The TUI's own danger tint.
@@ -106,14 +187,24 @@ export const rosewood: ThemeDefinition = {
 
 		// This one is also drawn on a dialog's ground, where the delete control's edge
 		// IS the control: 3.35:1 at its tightest.
-		dangerBorder: "#AF635B",
+		/*
+		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 */
+		dangerBorder: "#B2655D",
 
 		// The TUI's signal hue, this family's file/reference colour.
 		info: "#82B1D4",
 
 		// The TUI's own attachment tint, and the ground every marker reads on.
 		infoWash: "#263140",
-		infoBorder: "#5C7389",
+		/*
+		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
+		 * structural 3:1 floor on all four grounds - the pair that used to be covered
+		 * only by a pin in the contract. `elevated` binds it at 3.01:1.
+		 */
+		infoBorder: "#657D93",
 
 		// The one shadow in the system, tinted with the theme's own well.
 		overlayShadow: "0 12px 32px -12px rgb(23 12 13 / 0.7)",

@@ -26,6 +26,22 @@ import type { ThemeDefinition } from "../palette-contract";
  *   ramp. The rose is a pastel already at the top of its ramp, so the step is
  *   the palest rose rather than a brighter hex.
  * - `onAccent`: the page ground.
+ *
+ * ## The legibility pass, and what this file's numbers mean
+ *
+ * The grounds, ink weights and edges in this file were re-authored against the
+ * pass's floors (see `docs/branding.md` § 2-3 and `scripts/contrast-contract.mjs`,
+ * which asserts all of them): no page ground below L* 12 in a dark theme or above
+ * L* 94 in a light one, a `surface` 2.5-5.0 L* above the canvas, an `elevated`
+ * 2.5-6.0 above that, a `sunken` 1.5-6.0 below it, and the three ink weights at
+ * 7.0 / 5.5 / 5.0:1 on all SIX grounds - the four elevation steps plus the two
+ * that carry state, `accentWash` and `highlight`.
+ *
+ * Every other measurement quoted below was taken when the role above it was
+ * authored, against the ground values as they stood THEN - a measurement is of a
+ * moment, and this repository keeps the reading rather than silently refreshing
+ * it. The pass's own values are the numbers in the blocks it added; the ones it
+ * did not touch are unchanged and still measure what they say.
  */
 export const rosePine: ThemeDefinition = {
 	id: "rosePine",
@@ -34,10 +50,10 @@ export const rosePine: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#191724",
-		surface: "#1f1d2e",
-		elevated: "#26233a",
-		sunken: "#12101b",
+		canvas: "#201e2b",
+		surface: "#262436",
+		elevated: "#2e2a42",
+		sunken: "#191822",
 		/*
 		 * The current row's own ground:
 		 * `surface` cast toward `accent` and stepped 3.29 on the `L*` axis — branch H of
@@ -55,10 +71,16 @@ export const rosePine: ThemeDefinition = {
 		// subtle, lifted; see the header. Canonical muted 6e6a86 is the inert
 		// rung further down.
 		inkMuted: "#c5c2dd",
-		inkDim: "#8F8BA9",
+		inkDim: "#9d99b7",
 		inkDisabled: "#6e6a86",
 
-		hairline: "#30303E",
+		/*
+		 * Legibility pass: a hairline is the one role that has to move when its grounds
+		 * do. It keeps ΔE00 4.0 against every ground and its ratio inside the
+		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
+		 * `surface` is the tightest ground at ΔE00 6.19.
+		 */
+		hairline: "#363644",
 		// highlight-med 403d52 lifted to clear 3:1 on `elevated`.
 		borderControl: "#8b87a3",
 
@@ -77,20 +99,20 @@ export const rosePine: ThemeDefinition = {
 
 		// pine #31748f measures 3.38:1 on base and 3.16:1 on surface — the only
 		// canonical accent under the floor on this ground. Lifted on-hue.
-		success: "#5995b2",
+		success: "#5f9bb8",
 		successWash: "#1a2730",
 		successBorder: "#417d99",
 
 		// gold, upstream's warnings colour.
 		warning: "#f6c177",
 		warningWash: "#2b2419",
-		warningBorder: "#8a7040",
+		warningBorder: "#8c7241",
 
 		// love, upstream's terminal red. The border is the danger button's only
 		// edge until hover, so it clears 3:1 on the dialog ground too.
 		danger: "#eb6f92",
 		dangerWash: "#2e1c26",
-		dangerBorder: "#A45A6E",
+		dangerBorder: "#aa5f73",
 
 		// foam, upstream's "object keys, info, git add" hue.
 		info: "#9ccfd8",
