@@ -82,6 +82,19 @@ import { CredentialChip } from "./credential-chip";
  * `scripts/credential-chip-geometry.mjs` proves it by re-measuring after a
  * viewport change.
  */
+/**
+ * The least visible strip of a run that earns a chip, in CSS pixels.
+ *
+ * TWO, AND THE NUMBER IS ARITHMETIC RATHER THAN TASTE (code review round 4, R4-1). The
+ * chip's control is `16px` tall inside a `17px` run box, i.e. its top edge sits `0.5px`
+ * below the chip's top; a strip thinner than that leaves the control outside the clip and
+ * takes hit-testing with it (`elementFromPoint` answered `0/64` points for a `0.375px`
+ * strip, against `8/64` at `3px`). One pixel of the control's own box on screen is what
+ * this asks for, with half a pixel of slack for the inset: a chip is drawn exactly where
+ * a real Tab can reach a control that is also really painted.
+ */
+const CHIP_MIN_VISIBLE_STRIP_PX = 2;
+
 type ChipBox = {
 	/** The position of the run in the plan `paintPlan` produced. */
 	planIndex: number;
@@ -103,6 +116,15 @@ export type CredentialChipLayerProps = {
 	/** The field the mirror is synced to, whose scroll moves the text. */
 	fieldRef: RefObject<HTMLTextAreaElement | null>;
 	/**
+	 * The layer dropped the chip whose control held focus, so the composer owes the
+	 * keyboard a home (code review round 4, R4-5).
+	 *
+	 * A callback rather than a focus call here: this layer paints geometry and knows
+	 * nothing about the textarea, the panel's own focus rules or the pointer gate, and the
+	 * composer already has one place that gives focus back (`focusInput`).
+	 */
+	onControlUnmounted?: () => void;
+	/**
 	 * Throw one reference away, or `null` when the composer is not taking edits.
 	 *
 	 * Receives the marker's own index, which is what the payload map is keyed by,
@@ -123,6 +145,7 @@ export const CredentialChipLayer = ({
 	mirrorRef,
 	fieldRef,
 	onClear,
+	onControlUnmounted,
 }: CredentialChipLayerProps) => {
 	const plan = paintPlan(text, payloads.values(), capture);
 	const [boxes, setBoxes] = useState<ChipBox[]>([]);
@@ -137,6 +160,18 @@ export const CredentialChipLayer = ({
 		}
 		const measure = () => {
 			const frame = mirror.getBoundingClientRect();
+			/*
+			 * WHO IS HOLDING FOCUS, BEFORE THE BOXES CHANGE (code review round 4, R4-5). The
+			 * clip rule can drop the chip whose control the keyboard is standing on, and a
+			 * removed focused element sends focus to `<body>`: measured, five real keystrokes
+			 * then went nowhere (no caret, no ring) until the operator clicked back in. The
+			 * composer is the only place that knows how to give focus back, so this layer
+			 * reports the drop rather than reaching for it.
+			 */
+			const held = document.activeElement;
+			const heldWasOurs =
+				held instanceof HTMLElement &&
+				held.closest("[data-credential-chips]") !== null;
 			const next: ChipBox[] = [];
 			for (const run of mirror.querySelectorAll<HTMLElement>(
 				"[data-credential-run]",
@@ -159,17 +194,33 @@ export const CredentialChipLayer = ({
 				 * REACHABLE IN A STATE WHERE NOTHING OF ITS CHIP IS VISIBLE, and typing in
 				 * the composer is never swallowed by a control the operator did not aim at.
 				 *
-				 * A chip is drawn while any part of its run is inside the frame, which is
-				 * the same "no box to cover, keep the wash" fallback a wrapped run already
-				 * takes: the marker's own glyphs are painted by the textarea, so an unseen
-				 * run loses only its chip, and scrolling it back into view re-draws it on
-				 * the next measure (the field's own scroll listener).
+				 * AND THE STRIP HAS TO CARRY THE CONTROL, NOT MERELY TOUCH THE FRAME (code
+				 * review round 4, R4-1). The first version of this rule tested the RUN's rect
+				 * for any overlap, which states an invariant it does not establish: the
+				 * control is NOT co-extensive with the run's box - it sits half a pixel below
+				 * the chip's top and is 16px tall - so a run whose visible strip is anywhere
+				 * in `(0, 0.5]px` kept a chip whose control was WHOLLY outside the clip.
+				 * Reproduced in the shipped story at `scrollTop 200` (`chips 1`, control
+				 * `0/64` hit-testable points, a real Tab landing on it, five characters
+				 * swallowed, `Enter` clearing an unseen credential). The rule therefore
+				 * requires a strip thick enough to carry the control: the control's own half
+				 * pixel of top inset plus a pixel of its own box, so a chip is drawn only
+				 * where at least a pixel of its control is inside the clip and can be hit.
+				 * The invariant, unchanged and now actually established: NO CONTROL IS
+				 * REACHABLE IN A STATE WHERE NOTHING OF ITS CHIP IS VISIBLE, and typing in the
+				 * composer is never swallowed by a control the operator did not aim at.
+				 *
+				 * A run that fails it takes the same "no box to cover, keep the wash" fallback
+				 * a wrapped run already takes: the marker's own glyphs are painted by the
+				 * textarea, so an unseen run loses only its chip, and scrolling it back into
+				 * view re-draws it on the next measure (the field's own scroll listener).
 				 */
+				const visibleStrip =
+					Math.min(rect.bottom, frame.bottom) - Math.max(rect.top, frame.top);
 				if (
-					rect.bottom < frame.top ||
-					rect.top > frame.bottom ||
 					rect.right < frame.left ||
-					rect.left > frame.right
+					rect.left > frame.right ||
+					visibleStrip < CHIP_MIN_VISIBLE_STRIP_PX
 				)
 					continue;
 				next.push({
@@ -184,6 +235,9 @@ export const CredentialChipLayer = ({
 					width: rect.width,
 					height: rect.height,
 				});
+			}
+			if (heldWasOurs && held instanceof HTMLElement && !held.isConnected) {
+				onControlUnmounted?.();
 			}
 			setBoxes(next);
 		};

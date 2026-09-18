@@ -3976,6 +3976,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const restoreClear = useCallback(
 			(slot: PendingClear): boolean => {
+				/*
+				 * A SLOT THAT IS NO LONGER CURRENT CANNOT BE RESTORED, BY EITHER ROUTE (code
+				 * review round 4, R4-6). The toast's own action closure survives its dismissal
+				 * for the exit animation and stayed pressable for ~50ms, answering with U12's
+				 * false sentence while the chip was visibly back; the same guard covers a
+				 * superseded slot whose offer has not been withdrawn yet.
+				 */
+				if (pendingClearRef.current !== slot) return false;
 				const restored = restoreClearedCredential({
 					buffer: bufferRef.current,
 					cleared: slot.cleared,
@@ -4154,22 +4162,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * undo refuse, and a toast can only be withdrawn by the id it was raised
 				 * with.
 				 */
+				/*
+				 * THE SLOT'S LIFE IS THE SENTENCE'S LIFE (code review round 4, R4-2). It used
+				 * to end with the toast - sonner's four-second default, and a manual dismissal
+				 * sooner - while the sentence on the notice line lives until the next edit, so
+				 * at +10s the line still promised `⌘Z` and one real press restored nothing,
+				 * silently. The undo now holds until the buffer it describes changes (the same
+				 * comparison the sentence retires on, in the effect above), which keeps U8's
+				 * cheap path real for as long as the app says it is; the toast is one route to
+				 * it, not the lifetime. `onAutoClose`/`onDismiss` no longer retire anything,
+				 * and they must not: a dismissal would put the line back in exactly the state
+				 * this fix removes.
+				 */
 				slot.toastId = showWarningToast(clearedToastLine(index), {
 					action: {
 						label: CREDENTIAL_CLEAR_UNDO_LABEL,
 						onClick: () => undoClear(slot),
 					},
-					onAutoClose: () => retireClear(slot),
-					onDismiss: () => retireClear(slot),
 				});
 				focusInput();
 			},
+			/*
+			 * `retireClear` is NOT a dependency any more, and that is R4-2's change showing in the
+			 * list: this callback no longer retires anything on the toast's own retirement -
+			 * the slot now lives exactly as long as the sentence that names the undo, and the
+			 * effect above is the one place that ends both.
+			 */
 			[
 				applyCapture,
 				focusInput,
 				isInputDisabled,
 				newMessage,
-				retireClear,
 				setClearedReference,
 				undoClear,
 			],
@@ -6098,6 +6121,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									mirrorRef={mirrorRef}
 									fieldRef={textareaRef}
 									onClear={isInputDisabled ? null : clearCredential}
+									/*
+									 * R4-5: when the clip rule drops the chip whose control held
+									 * focus, the keyboard needs a home - and this composer has
+									 * exactly one place that gives it back (`focusInput`, the
+									 * pointer gate's reset included).
+									 */
+									onControlUnmounted={focusInput}
 								/>
 							</div>
 						)}

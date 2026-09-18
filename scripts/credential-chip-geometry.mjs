@@ -625,6 +625,81 @@ const main = async () => {
 		}
 
 		/*
+		 * THE BOUNDARY SWEEP (code review round 4, R4-1). The clip rule stopped the chip from
+		 * moving and (round 3) removed it when its run left the box; the reviewer then found
+		 * the seam between those two rules: the CONTROL is not co-extensive with the run's box
+		 * - it sits half a pixel below the chip's top - so a run whose visible strip was
+		 * anywhere in `(0, 0.5]px` kept a chip whose control was wholly outside the clip
+		 * (`chips 1`, `0/64` hit-testable points, a real Tab landing on it, five characters
+		 * swallowed, `Enter` clearing an unseen credential at `scrollTop 200`).
+		 *
+		 * This phase walks integer scroll positions across that transition and asserts the
+		 * invariant the rule now establishes, per position: a chip is either ABSENT or its
+		 * control owns at least one hit-testable point of its own rectangle. Both halves are
+		 * live assertions - the pre-fix rule fails on the second, a rule that never drew a
+		 * chip would fail the first in the `as painted` phase - and the sweep is what makes
+		 * them a boundary rather than a state.
+		 */
+		const boundary = await probe();
+		if (boundary.runs.length > 0) {
+			const seen = [];
+			let skipped = null;
+			for (let offset = -6; offset <= 2; offset += 1) {
+				const parkedAt = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					awaitPromise: true,
+					expression: `(async () => {
+						const f = document.querySelector("textarea");
+						if (!f) return { ok: false, why: "no field" };
+						const max = f.scrollHeight - f.clientHeight;
+						if (max <= 1) return { ok: false, why: "the field does not scroll" };
+						const run = document.querySelector("[data-credential-run]");
+						if (!run) return { ok: false, why: "no run" };
+						// Land the run's top on the box's bottom edge, plus the offset under test.
+						f.scrollTop = Math.max(0, Math.min(max, Math.round(run.offsetTop - f.clientHeight + ${offset})));
+						f.dispatchEvent(new Event("scroll"));
+						await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+						const layer = document.querySelector("[data-credential-chips]");
+						const control = layer?.querySelector("button") ?? null;
+						let hits = 0;
+						let samples = 0;
+						if (control) {
+							const r = control.getBoundingClientRect();
+							for (let x = r.left + 0.5; x < r.right; x += Math.max(1, r.width / 8)) {
+								for (let y = r.top + 0.5; y < r.bottom; y += Math.max(1, r.height / 8)) {
+									samples++;
+									const hit = document.elementFromPoint(x, y);
+									if (hit && (hit === control || control.contains(hit))) hits++;
+								}
+							}
+						}
+						return { ok: true, scrollTop: f.scrollTop, chips: layer ? layer.children.length : 0, hasControl: control !== null, hits, samples };
+					})()`,
+				});
+				const at = parkedAt.result.value;
+				if (!at?.ok) {
+					skipped = at?.why ?? "no answer";
+					break;
+				}
+				seen.push(at);
+				if (at.chips > 0 && at.hits === 0) {
+					throw new Error(
+						`${story} @ ${width}x${height}: a chip whose control cannot be hit is drawn (round 4, R4-1) - ${JSON.stringify(at)}`,
+					);
+				}
+			}
+			if (skipped) {
+				phases.push({ phase: "boundary sweep", skipped });
+			} else {
+				phases.push({
+					phase: `boundary sweep (${seen.length} positions, chips drawn at ${seen.filter((s) => s.chips > 0).length})`,
+					...boundary,
+					boundary: seen,
+				});
+			}
+		}
+
+		/*
 		 * THE RESIZE CASE (code review round 1, R1-3), which no story can drive and
 		 * which the viewport cannot produce for these stories either: each one pins
 		 * its own column width (`style={{ width: 1024 }}`), so narrowing the VIEWPORT
