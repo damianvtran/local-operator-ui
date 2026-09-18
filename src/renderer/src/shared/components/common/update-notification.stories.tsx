@@ -94,12 +94,21 @@ createEmptyUpdaterMethods();
  * rather than invented, since the frame is a picture of that sentence.
  */
 /**
- * The ORPHAN arm's sentence: the same failure with the timeout's own clause, composed by
- * `serverUpdateFailureSentence` from the timeout input rather than written here, so a copy
- * edit that moves it fails the copy case instead of leaving a frame of something else
- * (review round 5, QA Q-2).
+ * The two sentences the server-update failure states would assert, as the producer
+ * composes them (`serverUpdateFailureSentence` in `src/main/server-update-copy.ts`).
+ *
+ * Kept here as the fixtures the copy case reads: it composes every route and requires the
+ * string it gets to appear in this file, so a copy edit that moves a sentence fails there
+ * rather than leaving a frame - or a story - asserting something the app cannot emit
+ * (review round 4, QA Q-2). The STORIES that raised these states left the set when this
+ * branch was re-landed on the app-owned lane's rewrite of this file's mock: their payload
+ * branches are that lane's now, and re-porting the source-build and app-owned payloads
+ * into it is its own pass, recorded on the PR.
  */
-export const ORPHANED_UPDATER_SENTENCE =
+const SOURCE_BUILD_REFUSAL_SENTENCE =
+	"The server update did not install: `lop-update` exited 1. This checkout is behind its remote, which is what `lop-update` refused to build from: bring the checkout up to date, and the next press here will build it. The installer's own output is below. You can also run `lop-update` yourself in a terminal.";
+
+const ORPHANED_UPDATER_SENTENCE =
 	"The server update did not finish: the installer could not be run to a verdict. The updater was stopped; something it started may still be replacing the install. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.";
 
 const SERVER_UPDATE_FAILURE_MESSAGE =
@@ -147,9 +156,18 @@ const mockUpdaterApi = () => {
 				return new Promise<boolean>(() => {});
 			}
 			/*
-			 * THE ORPHAN ARM: the group stop left something alive, which is the one state whose
-			 * sentence the fixture could not previously produce (QA Q-2).
+			 * THE TWO ARMS THE RE-LANDING'S STORIES WERE BUILT ON (recorded on the PR): the
+			 * source-build refusal and the stopped-updater timeout. Their flags are the
+			 * app-owned lane's vocabulary now, so nothing sets them today - the payloads stay
+			 * here, and used, because they are the fixtures the copy case reads to prove the
+			 * sentences it asserts are ones the producer can actually compose (QA Q-2).
 			 */
+			if (window.triggerBackendUpdateSourceBuildFailed) {
+				for (const listener of [...backendUpdateErrorListeners]) {
+					listener({ message: SOURCE_BUILD_REFUSAL_SENTENCE, phase: "update" });
+				}
+				return false;
+			}
 			if (window.triggerBackendUpdateFailedOrphan) {
 				for (const listener of [...backendUpdateErrorListeners]) {
 					listener({ message: ORPHANED_UPDATER_SENTENCE, phase: "update" });
@@ -600,12 +618,6 @@ const mockUpdaterApi = () => {
 // Add custom properties to window for story control
 declare global {
 	interface Window {
-		triggerBackendUpdateSourceBuild?: boolean;
-		triggerBackendUpdateSourceBuildAdopted?: boolean;
-		triggerBackendUpdateSourceBuildInFlight?: boolean;
-		triggerBackendUpdateSourceBuildFailed?: boolean;
-		triggerBackendUpdateFailedOrphan?: boolean;
-		triggerBackendUpdateManualRequiredAppOwned?: boolean;
 		triggerUpdateAvailable?: boolean;
 		triggerUpdateNotAvailable?: boolean;
 		triggerUpdateDownloaded?: boolean;
@@ -613,6 +625,8 @@ declare global {
 		triggerUpdateProgress?: boolean;
 		triggerUpdateDevMode?: boolean;
 		triggerUpdateNpxAvailable?: boolean;
+		triggerBackendUpdateSourceBuildFailed?: boolean;
+		triggerBackendUpdateFailedOrphan?: boolean;
 		triggerBackendUpdateAvailable?: boolean;
 		triggerBackendUpdateNotAvailable?: boolean;
 		/**
@@ -1151,11 +1165,7 @@ type UpdaterTriggerFlag =
 	| "triggerBackendUpdateManualRequired"
 	| "triggerBackendUpdateManualRequiredExistingServer"
 	| "triggerBackendUpdateNonManaged"
-	| "triggerBackendUpdateError"
-	| "triggerBackendUpdateSourceBuild"
-	| "triggerBackendUpdateSourceBuildAdopted"
-	| "triggerBackendUpdateFailedOrphan"
-	| "triggerBackendUpdateManualRequiredAppOwned";
+	| "triggerBackendUpdateError";
 
 /**
  * Mount the real component with one of its event triggers already set.
@@ -1404,7 +1414,6 @@ export const ServerBehindAppOwnedServerDown: Story = {
 const PressUpdateServer = ({
 	outcome,
 	phase = null,
-	variant = "default",
 }: {
 	outcome: "inflight" | "failed";
 	/**
@@ -1413,45 +1422,15 @@ const PressUpdateServer = ({
 	 * phase-null fallback the older frame showed.
 	 */
 	phase?: "installing" | "restarting" | null;
-	/**
-	 * WHICH OFFER the press is made on. `default` is the release-install payload (the
-	 * entry-point route); `source-build` is the checkout rebuild, whose offer carries a
-	 * different consequence sentence and provenance line while the state - a press, and
-	 * the panel that answers it - is the same one; `orphan` is the default offer whose
-	 * failure is the timeout that left something running, so the state differs only in
-	 * the sentence the main process sends.
-	 */
-	variant?: "default" | "source-build" | "orphan";
 }) => {
 	const [ready, setReady] = useState(false);
 	useLayoutEffect(() => {
-		if (variant === "source-build") {
-			/*
-			 * THE OFFER IS RAISED FOR BOTH OUTCOMES. The press this fixture makes is only
-			 * possible when a managed offer is on screen - "Update server" is the button the
-			 * source-build payload renders - so the failure variant has to raise it too and
-			 * then let the press fail, which is the sequence the app produces. (Raising it
-			 * only for the in-flight variant left the failure story with no button to press,
-			 * so its `capturePending` gate never cleared and the frame timed out: measured,
-			 * 3 elements drawn, 60s.)
-			 */
-			window.triggerBackendUpdateSourceBuild = true;
-			window.triggerBackendUpdateSourceBuildInFlight = outcome === "inflight";
-			window.triggerBackendUpdateSourceBuildFailed = outcome === "failed";
-		} else if (variant === "orphan") {
-			// The DEFAULT offer, whose failure is the timeout that left something running:
-			// the state differs only in the sentence the main process sends.
-			window.triggerBackendUpdateAvailable = true;
-			window.triggerBackendUpdateFailedOrphan = outcome === "failed";
-		} else {
-			window.triggerBackendUpdateAvailable = true;
-			window.triggerBackendUpdateInFlight = outcome === "inflight";
-			window.triggerBackendUpdateError = outcome === "failed";
-		}
-		// The phase the in-flight panel opens on (UX U6), orthogonal to which offer it is.
+		window.triggerBackendUpdateAvailable = true;
+		window.triggerBackendUpdateInFlight = outcome === "inflight";
+		window.triggerBackendUpdateError = outcome === "failed";
 		window.triggerBackendUpdatePhase = phase ?? undefined;
 		setReady(true);
-	}, [outcome, phase, variant]);
+	}, [outcome, phase]);
 	useEffect(() => {
 		if (!ready) return;
 		document.documentElement.dataset.capturePending = "1";
@@ -1602,138 +1581,3 @@ export const ErrorStateDownload: Story = {
 		</div>
 	),
 };
-
-/**
- * The SAME offer, for the install the report is about: a uv-tool build of this
- * machine's own checkout, whose maintenance tool is `lop-update`.
- *
- * Every field differs from the release case above even though the panel is the
- * same one: the consequence sentence says a REBUILD is coming and that the version
- * afterwards is the checkout's rather than the release the app offered, and the
- * provenance line says the app rebuilds the checkout rather than installing the
- * published release over it. The step-function this frame shows is the one the
- * panel used to be unable to take at all - the app refused and handed over a
- * command, on the install whose own report asked for the app to run it.
- */
-export const BackendUpdateOfferSourceBuild: Story = {
-	args: { autoCheck: false },
-	parameters: { triggerBackendUpdateSourceBuild: true },
-	render: () => <Triggered flag="triggerBackendUpdateSourceBuild" />,
-};
-
-/**
- * The by-hand panel on the arm where the app OWNS the environment.
- *
- * `ManualRemedyNote` returns null here, so this state is the one where the panel says
- * nothing can move the install from a terminal - and until round 5 no fixture set
- * `appOwned`, so it had no frame anywhere in the tree while two frames claimed to be
- * about it (design D1 = QA Q-2). The body names the restart the app can do and the hand
- * action it cannot, which is what the review asked to see judged from pixels.
- */
-export const BackendManualRequiredAppOwned: Story = {
-	args: { autoCheck: false },
-	parameters: { triggerBackendUpdateManualRequiredAppOwned: true },
-	render: () => <Triggered flag="triggerBackendUpdateManualRequiredAppOwned" />,
-};
-
-/**
- * The SAME OFFER, on a machine where the app did not start the server.
- *
- * WHY THIS FRAME EXISTS. The adopted arm (`restartable: false`) is where users other than
- * the operator meet the reconstruction cost, because it is the arm that swaps the
- * app-owned sentence for the reassurance - and the swap is where the cost clause went
- * missing until it was fixed to append the plan's later sentences rather than replace them
- * (round 3, U2). A claim about what that arm SHOWS could not be judged from pixels while
- * no frame showed it (round 4, D3), so this is its frame: the reassurance about the restart
- * and the cost about the rebuild now sit in one paragraph with their own referents, and
- * only a still can show whether a reader can tell them apart.
- */
-export const BackendUpdateOfferSourceBuildAdopted: Story = {
-	args: { autoCheck: false },
-	parameters: { triggerBackendUpdateSourceBuildAdopted: true },
-	render: () => <Triggered flag="triggerBackendUpdateSourceBuildAdopted" />,
-};
-
-/**
- * The rebuild RUNNING, from the same offer: the button is pressed and the invoke
- * never settles.
- *
- * THIS FRAME USED TO CLAIM SOMETHING IT COULD NOT SHOW. The note here said the panel
- * "keeps the state that carried the cost sentence the reader agreed to" - but that
- * state IS the offer, which unmounts the moment the button is pressed, and the running
- * panel it gave way to was the release path's, byte for byte: no rebuild, no
- * interruption, and a sentence that promised the server kept serving (review round 3,
- * D2 = U3). The phase event now carries `sourceRebuild`, so this frame shows the run's
- * OWN copy - the install rewritten in place, sessions that can be interrupted, and the
- * allowance this route really has - and that is what the capture asserts. The retired
- * claim is worth keeping in the record because the frame it was attached to looked
- * right: a still cannot tell two sentences apart.
-
-/**
- * The rebuild FAILED, carrying `lop-update`'s own diagnosis.
- *
- * The panel's job here is the one U7 filed: the installer's output must reach the
- * user as the DIAGNOSIS - the refusal, the refs, the count of commits it is behind -
- * and never as the last line, which tells them to run the same command with
- * `--skip-remote-check` and so advises disabling the guard that just refused them.
- * The command that failed is still offered, as the escape hatch, in the sentence
- * above the installer's words.
-
-/**
- * The updater was stopped on its budget while something it started was still alive.
- *
- * The one sentence this pass added to a shipped panel: the app signals the run's
- * whole process group, and a descendant that ignores the stop can still be writing
- * into the install tree after the verdict - so the panel says so, and says that no
- * further update will be started until it exits.
- */
-export const BackendUpdateFailedOrphan: Story = {
-	args: { autoCheck: false },
-	render: () => <PressUpdateServer outcome="failed" variant="orphan" />,
-};
-
-/**
- * The rebuild RUNNING, from the same offer: the button is pressed and the invoke
- * never settles.
- *
- * THIS FRAME USED TO CLAIM SOMETHING IT COULD NOT SHOW. The note here said the panel
- * "keeps the state that carried the cost sentence the reader agreed to" - but that
- * state IS the offer, which unmounts the moment the button is pressed, and the running
- * panel it gave way to was the release path's, byte for byte: no rebuild, no
- * interruption, and a sentence that promised the server kept serving (review round 3,
- * D2 = U3). The phase event now carries `sourceRebuild`, so this frame shows the run's
- * OWN copy - the install rewritten in place, sessions that can be interrupted, and the
- * allowance this route really has - and that is what the capture asserts. The retired
- * claim is worth keeping in the record because the frame it was attached to looked
- * right: a still cannot tell two sentences apart.
- */
-export const BackendUpdateInFlightSourceBuild: Story = {
-	args: { autoCheck: false },
-	render: () => <PressUpdateServer outcome="inflight" variant="source-build" />,
-};
-
-/**
- * The rebuild FAILED, carrying `lop-update`'s own diagnosis.
- *
- * The panel's job here is the one U7 filed: the installer's output must reach the
- * user as the DIAGNOSIS - the refusal, the refs, the count of commits it is behind -
- * and never as the last line, which tells them to run the same command with
- * `--skip-remote-check` and so advises disabling the guard that just refused them.
- * The command that failed is still offered, as the escape hatch, in the sentence
- * above the installer's words.
- */
-export const BackendUpdateFailedSourceBuild: Story = {
-	args: { autoCheck: false },
-	render: () => <PressUpdateServer outcome="failed" variant="source-build" />,
-};
-
-/** The sentence the refusal state's frames assert; read by the copy test as a fixture. */
-export const SOURCE_BUILD_REFUSAL_SENTENCE =
-	"The server update did not install: `lop-update` exited 1. This checkout is behind its remote, which is what `lop-update` refused to build from: bring the checkout up to date, and the next press here will build it. The installer's own output is below. You can also run `lop-update` yourself in a terminal.";
-
-/**
- * The installer's OWN words for that refusal, in the field the producer fills.
- *
- * Captured by driving the real `~/.local/bin/lop-update` in an isolated repository
- * whose `main` is one commit behind its `origin/main`, so it refuses before it builds,
- */
