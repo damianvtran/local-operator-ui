@@ -282,6 +282,35 @@ test("14. a path with no known extension is not a mention", () => {
 		paths([assistant(1, "on /2026/09/13 we ran /usr/bin/python3")]),
 		[],
 	);
+	/*
+	 * The class this rule is doing the most work for, and the reason the panel never
+	 * showed the bug the LINKIFIER showed: a slash command is a slash-led,
+	 * extensionless token, so the extension test refuses every one of them before
+	 * any evidence question is asked. The list is the operator's own vocabulary,
+	 * measured against the disk (all eleven resolve to nothing), and it is pinned
+	 * here so a future widening of the panel's prose tier has to face it.
+	 */
+	for (const command of [
+		"/new",
+		"/model",
+		"/help",
+		"/clear",
+		"/compact",
+		"/status",
+		"/move",
+		"/credential",
+		"/resume",
+		"/notification",
+		"/new-chat",
+	]) {
+		assert.deepEqual(
+			paths([assistant(1, `started with ${command} and nothing sent yet`)]),
+			[],
+			command,
+		);
+	}
+	/* Including the multi-segment and backticked spellings. */
+	assert.deepEqual(paths([assistant(1, "see `/new` before /v2/things")]), []);
 });
 
 test("15. the space-truncated file:// URL is rejected, not guessed", () => {
@@ -319,14 +348,37 @@ test("15b. a file:// URL followed by ordinary prose is still admitted", () => {
 test("15c. an editor line reference is a path, not a filename with :59 on it", () => {
 	// Real-payload finding (risk 2). The file-url tier admits on the URL alone, so
 	// a `:59` from an editor reference rode along as part of the path and the
-	// panel offered a file that does not exist. Prose never had the bug: `mjs:59`
-	// is not a known extension and is rejected there.
+	// panel offered a file that does not exist.
 	assert.deepEqual(
 		paths([assistant(1, "see file:///Users/damian/scripts/run.mjs:59")]),
 		["/Users/damian/scripts/run.mjs"],
 	);
 	assert.deepEqual(
 		paths([assistant(1, "see file:///Users/damian/scripts/run.mjs:59:12")]),
+		["/Users/damian/scripts/run.mjs"],
+	);
+	/*
+	 * AND THE PROSE TIER, which this change WIDENS rather than leaves alone. It used
+	 * to refuse the same reference for the wrong reason - `mjs:59` is not a known
+	 * extension, so the token failed the extension test and the reader got no tile
+	 * for a file that is really there. `normalizeCandidate` now trims the reference
+	 * on both tiers, so a bare `…/run.mjs:59` in prose is the correct MENTION it
+	 * always was, and both spellings of one reference agree. Stated here because it
+	 * is a visible gain the previous behaviour hid behind an accident, and the
+	 * alternative - a third policy flag to keep the accident - is worse than the
+	 * widening.
+	 */
+	assert.deepEqual(
+		paths([assistant(1, "see /Users/damian/scripts/run.mjs:59 here")]),
+		["/Users/damian/scripts/run.mjs"],
+	);
+	assert.deepEqual(
+		paths([assistant(1, "see /Users/damian/scripts/run.mjs:59:12 here")]),
+		["/Users/damian/scripts/run.mjs"],
+	);
+	/* A trailing colon with no digits after it is punctuation, not a reference. */
+	assert.deepEqual(
+		paths([assistant(1, "wrote /Users/damian/scripts/run.mjs: and stopped")]),
 		["/Users/damian/scripts/run.mjs"],
 	);
 });
@@ -339,6 +391,14 @@ test("normalizeCandidate rejects the whole documented family", () => {
 	assert.equal(normalizeCandidate("/Users/x/My Docs/a.pdf"), null);
 	assert.equal(normalizeCandidate("x".repeat(5000)), null);
 	assert.equal(normalizeCandidate("/Users/x/a.png"), "/Users/x/a.png");
+	/* An editor line reference is not part of the name, on either tier. */
+	assert.equal(normalizeCandidate("/a/run.mjs:59"), "/a/run.mjs");
+	assert.equal(normalizeCandidate("/a/run.mjs:59:12"), "/a/run.mjs");
+	/* A colon that is not a reference is left where it is. */
+	assert.equal(
+		normalizeCandidate("/a/run.mjs:not-a-line"),
+		"/a/run.mjs:not-a-line",
+	);
 });
 
 test("a shell metacharacter is a placeholder, not a path", () => {

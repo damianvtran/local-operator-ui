@@ -177,12 +177,25 @@ const URL_QUERY = /^[^&#]+=[^&#]*(?:&[^&#]+=[^&#]*)*$/;
 /**
  * An editor line reference: `/a/run.mjs:59` and `/a/run.mjs:59:12`.
  *
- * Only the file-url tier needs the trim. Prose already rejects such a token
- * because its extension reads `ts:59`, while a `file://` URL is admitted on the
- * URL alone and would carry the suffix into the panel as a path that does not
+ * BOTH TIERS TRIM IT, and the panel's tiles and the transcript's spans both stop
+ * short of it (`targetsIn`), so `/a/run.mjs:59` names the `.mjs` in either
+ * surface rather than a file whose name ends in `:59`.
+ *
+ * The `file://` tier needed it first and for the plainer reason: it admits on the
+ * URL alone, so it would carry the suffix into the panel as a path that does not
  * exist. Found by running the extractor over real histories
  * (`scripts/mentioned-files-real-payload.mjs`): one of the first fifty paths was
  * `…/drive-model-picker.mjs:59`, quoted from an editor line reference.
+ *
+ * The PROSE tier used to refuse the token instead, by accident - its extension
+ * reads `mjs:59`, which is not a known extension, so the Files panel never
+ * offered it a tile. Moving the trim into `normalizeCandidate` therefore WIDENS
+ * the panel's prose tier: a bare `…/run.mjs:59` in prose now yields a tile for a
+ * file that really exists, which is a correct mention the panel used to miss.
+ * That widening is deliberate, it is pinned in `mentioned-files.test.mjs` and in
+ * `link-targets.test.mjs`, and the alternative - a third policy flag so one
+ * surface could keep the old behaviour - would be a flag whose only purpose is to
+ * preserve an accident.
  */
 const LINE_REFERENCE = /:[0-9]+(?::[0-9]+)?$/;
 
@@ -337,9 +350,20 @@ export const API_PATH_PREFIXES = ["/v1/", "/api/"];
  * any other reader) keep asking the same question at the same name.
  */
 export function normalizeCandidate(raw: string): string | null {
-	const candidate = raw.trim().replace(TRAILING_PUNCTUATION, "");
+	let candidate = raw.trim().replace(TRAILING_PUNCTUATION, "");
 	if (!candidate) return null;
 	if (candidate.length > MAX_CANDIDATE_LENGTH) return null;
+	/*
+	 * An editor line reference is not part of a name, and the trim happens HERE so
+	 * both tiers answer the same: the `file://` path already did it (see
+	 * `LINE_REFERENCE`), and a prose `/a/run.mjs:59` used to be refused on its
+	 * `mjs:59` "extension" instead - a rejection that happened to be right for the
+	 * wrong reason and that left the reader without a link to a file that exists.
+	 * `targetsIn` shortens the SPAN by the same length, so a link never covers the
+	 * `:59` it just stopped naming.
+	 */
+	candidate = candidate.replace(LINE_REFERENCE, "");
+	if (!candidate) return null;
 	// A scheme other than `file:` is a URL, not a path. `file://` has already
 	// been stripped by the caller.
 	if (candidate.includes("://")) return null;
@@ -639,6 +663,25 @@ export const LINK_POLICY: TargetPolicy = {
  */
 
 /**
+ * The characters a prose token loses off its END before it is a target.
+ *
+ * Both of the rules `normalizeCandidate` applies are tail trims - sentence
+ * punctuation, then an editor line reference - so the span has to stop short of
+ * what they removed. Computed in that order and on the trimmed string, because
+ * `normalizeCandidate` sees `/a/run.mjs:59:` after the punctuation step, and a
+ * length measured on the untrimmed token would leave the span covering a colon.
+ *
+ * The `file://` branch keeps the narrower `trailingPunctuationLength` below: its
+ * `normalizeFileUrl` never had the punctuation-then-reference ordering to mirror
+ * (it trims both, and the span arithmetic there is over a `raw` the URL class
+ * already ended).
+ */
+const trimmedTailLength = (token: string): number => {
+	const trimmed = token.replace(TRAILING_PUNCTUATION, "");
+	return token.length - trimmed.replace(LINE_REFERENCE, "").length;
+};
+
+/**
  * The characters `TRAILING_PUNCTUATION` would remove from the end of a token,
  * which a span has to stop short of.
  */
@@ -839,7 +882,7 @@ export function targetsIn(text: string, policy: TargetPolicy): TargetSpan[] {
 		}
 		found.push({
 			start: index,
-			end: index + written.length - trailingPunctuationLength(written),
+			end: index + written.length - trimmedTailLength(written),
 			kind: "path",
 			target: candidate,
 			href: candidate,
