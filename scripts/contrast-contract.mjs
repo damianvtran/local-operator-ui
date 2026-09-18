@@ -1538,11 +1538,19 @@ const STRUCTURAL_CALL_SITES = [
 		 * The class is one shared constant for all four current-row states in
 		 * this panel (the selected conversation, the All chats filter, the New
 		 * chat row and the entity row staging a draft), so pinning the
-		 * declaration is what holds all four.
+		 * declaration is what holds all four. It is EXPORTED since round 5
+		 * (design D22, agent A-7) and the settings rail and the mark's story
+		 * specimen import it rather than restating it, which is why the pin is
+		 * here and the rail's own entry below names the symbol. The pinned text
+		 * carries the formatter's line break as well as the four terms, on
+		 * purpose: a term REMOVED is a term that fits back on one line, so the
+		 * pin fails on either direction of change, which is the whole point of
+		 * it - a term change has to fail this file until the palette half is
+		 * re-measured.
 		 */
 		what: "chat sidebar current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'const rowCurrent = "bg-highlight font-medium text-ink hover:bg-highlight";',
+		must: 'export const rowCurrent =\n\t"bg-highlight font-medium text-ink hover:bg-highlight";',
 		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05) and `sunken` is a 3.75-14.94 recessed box; `highlight` is the role authored for the current row, `font-medium` is one non-colour step against the pointer's mark, and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the wrong ground or a lost second signal arriving",
 	},
 	{
@@ -1647,11 +1655,20 @@ const STRUCTURAL_CALL_SITES = [
 		 * uses that palette pair; the frames' own bytes render about one step off it
 		 * in both values, which `docs/evidence/chat-sidebar-selection/README.md`
 		 * states where it gives the frame readings.
+		 *
+		 * THE RAIL NO LONGER SPELLS THE CLASS (round 5: design D22, agent A-7). It
+		 * imported the chat panel's declaration after the copy that stood here — the
+		 * one design round 4's D19 was raised against — turned out to be the second
+		 * of two that drifted a term each. So this pin names the SYMBOL the rail
+		 * applies, and the four terms themselves are pinned once, at the declaration
+		 * above; a rail that stops applying the role fails here, a role whose terms
+		 * change fails there, and `scripts/chat-sidebar-selection.test.mjs` resolves
+		 * this very expression through the shipped `cn` and fails without the ground.
 		 */
 		what: "settings rail current-row ground",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '"bg-highlight font-medium text-ink hover:bg-highlight"',
-		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer, and the weight is in it because the row's mark is the ground plus the weight — there is no longer an `outline-control` half in either panel (design round 1, D3): the ring is retired, because that role is § 2's sole boundary of a control and both rails drew it with the search field's own ink and geometry. This rail INLINES the class rather than importing the chat panel's constants, which is why the pin is a string here and the two must be changed together",
+		must: "? rowCurrent",
+		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer, and the weight is in it because the row's mark is the ground plus the weight — there is no longer an `outline-control` half in either panel (design round 1, D3): the ring is retired, because that role is § 2's sole boundary of a control and both rails drew it with the search field's own ink and geometry. The rail applies the chat panel's exported `rowCurrent` rather than a copy of its terms (round 5, D22): one role, one declaration, and no string here left to drift a term",
 	},
 	{
 		/*
