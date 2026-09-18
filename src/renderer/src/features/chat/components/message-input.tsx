@@ -5653,12 +5653,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										}
 										aria-expanded={slash.open || at.open}
 										aria-controls={
-											slash.open
-												? slash.listId
-												: at.open
-													? at.listId
-													: undefined
-										}
+										slash.open ? slash.listId : at.open ? at.listId : undefined
+									}
 										/*
 										 * The active option comes from whichever list is OPEN, and the popups rule
 										 * above guarantees only one is on top: handing both ids to one
@@ -5666,10 +5662,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * looking at, which a screen reader announces as a row that does not exist.
 										 */
 										aria-activedescendant={
-											(slash.open
-												? slash.activeDescendantId
-												: at.activeDescendantId) ?? undefined
-										}
+										(slash.open
+											? slash.activeDescendantId
+											: at.activeDescendantId) ?? undefined
+									}
 									/>
 								</ComposerHighlight>
 							</div>

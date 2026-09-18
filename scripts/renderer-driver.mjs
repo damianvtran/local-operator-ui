@@ -3256,7 +3256,7 @@ async function sceneSettingsModel(cdp) {
 	 * The list is read BEFORE the key so the check can name what the answer
 	 * should have been, rather than asserting "not the query".
 	 */
-	const beforeEnter = await readSettingField(cdp, "model_name");
+	await readSettingField(cdp, "model_name");
 	await cdp.send("Input.insertText", { text: "clau" });
 	const narrowedForFilter = await waitForScene(
 		cdp,
@@ -3277,7 +3277,7 @@ async function sceneSettingsModel(cdp) {
 		`marked rows: ${markedCount}`,
 		`${filterRead.options.length} rows offered, ${markedCount} marked`,
 	);
-	const typedRowFrame = await captureSettled(cdp, "settings-model-typed-row");
+	await captureSettled(cdp, "settings-model-typed-row");
 
 	await keystroke("Enter", "Enter", 13);
 	const afterEnter = await waitForScene(
