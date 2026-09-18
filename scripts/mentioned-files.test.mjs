@@ -381,6 +381,21 @@ test("15c. an editor line reference is a path, not a filename with :59 on it", (
 		paths([assistant(1, "wrote /Users/damian/scripts/run.mjs: and stopped")]),
 		["/Users/damian/scripts/run.mjs"],
 	);
+	/*
+	 * AND THE PATH-KEY TIER, which used to keep the reference (round 1, review
+	 * R1-5). A structured value is a path - that is what the key means - and `:59`
+	 * is not part of one on any tier: the same spelling under a non-path key was
+	 * already trimmed by the prose scanner, so the panel held two answers to one
+	 * question, which is the class this change exists to remove.
+	 */
+	assert.deepEqual(
+		paths([tool("a", { path: "/Users/damian/scripts/run.mjs:59" })]),
+		["/Users/damian/scripts/run.mjs"],
+	);
+	assert.deepEqual(
+		paths([tool("a", { file_path: "/Users/damian/scripts/run.mjs:59:12" })]),
+		["/Users/damian/scripts/run.mjs"],
+	);
 });
 
 test("normalizeCandidate rejects the whole documented family", () => {

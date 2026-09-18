@@ -94,6 +94,7 @@
 
 import { evidenceFor } from "@features/chat/utils/link-actions";
 import {
+	allowsProsePathAfter,
 	LINK_POLICY,
 	type TargetPolicy,
 	type TargetSpan,
@@ -119,6 +120,16 @@ import {
  * The import direction is deliberate and one-way: a grammar that imported this
  * module would stop being importable by a bare `node --test`, which is the whole
  * reason the oracle is injected rather than called.
+ *
+ * THE SECOND GATE, and why it is not part of this policy: an ambiguous target the
+ * pre-scan could not have named is refused before the oracle is consulted at all
+ * (`allowsProsePathAfter`, applied by `atomsFor` to the source character before a
+ * node's first character). The disk is the only authority on whether an
+ * extensionless token exists, but the ASK is the renderer's - `useLinkEvidence`
+ * asks about `ambiguousTargetsIn`'s suspects and nothing else - so a spelling
+ * outside that set has no answer of its own to inherit and must not be linked.
+ * Round 1's review R1-4 measured what it inherited instead: the anchor's presence
+ * depended on whether another row had primed the cache.
  */
 const LINK_POLICY_EVIDENCED: TargetPolicy = {
 	...LINK_POLICY,
@@ -140,7 +151,29 @@ type MdastNode = {
 	/** Set on the `link` atoms this plugin builds; never read from the input. */
 	url?: string;
 	children?: MdastNode[];
+	/**
+	 * The node's own offsets in the source, read for ONE question.
+	 *
+	 * A node value starts where markdown decided it starts, and markdown CONSUMES
+	 * the characters it stood between: `_/Users/x/workspace_` reaches this walker as
+	 * a single text node whose value begins at index 0 with `/Users/x/workspace`.
+	 * The scanner's predecessor rule cannot run on that value, because index 0 has
+	 * no preceding character inside it - so the walker reads the SOURCE instead
+	 * (`predecessorOf`). Only `start.offset` is used; nothing here is rendered, and
+	 * a tree without positions simply keeps the pre-existing behaviour.
+	 */
+	position?: { start?: { offset?: number } };
 };
+
+/**
+ * The one field of the parsed file this walker needs: the markdown it parsed.
+ *
+ * Declared structurally rather than imported, for the reason `MdastNode` is -
+ * see below. `react-markdown` hands its transformer a `VFile` whose `value` is
+ * the source (`createFile`), which is what makes the predecessor question
+ * answerable at all.
+ */
+type ParsedFile = { value?: unknown };
 
 /**
  * Node kinds whose children are NEVER rewritten, and why each one is here.
@@ -184,6 +217,25 @@ const codeLinkAtom = (url: string, code: MdastNode): MdastNode => ({
 });
 
 /**
+ * The source character a node's first character follows, when it can be known.
+ *
+ * `undefined` covers the two cases the rule must not act on: a node at offset 0
+ * follows nothing at all (the same case `targetsIn` treats as a legal start), and
+ * a tree carrying no positions - one built by hand rather than parsed - has no
+ * source to read. Both take `allowsProsePathAfter(undefined)` = true, which is
+ * this walker's behaviour before the rule existed. The production pipeline always
+ * has both, so the tolerant branch is for callers who never had the rule.
+ */
+function predecessorOf(
+	node: MdastNode,
+	source: string | undefined,
+): string | undefined {
+	const offset = node.position?.start?.offset;
+	if (source === undefined || typeof offset !== "number") return undefined;
+	return source[offset - 1];
+}
+
+/**
  * One text node's value, as a run of text and link atoms.
  *
  * The slices come straight from the scanner's offsets, so the atoms spell the
@@ -212,9 +264,27 @@ const codeLinkAtom = (url: string, code: MdastNode): MdastNode => ({
  * (`See /tmp<b>bold</b>`) stops linking - the same trade `isPlaceholderTail`
  * documents on the grammar's side.
  */
-function atomsFor(value: string, rest = ""): MdastNode[] {
+function atomsFor(
+	value: string,
+	rest = "",
+	predecessor: string | undefined = undefined,
+): MdastNode[] {
 	const targets = targetsIn(value + rest, LINK_POLICY_EVIDENCED).filter(
-		(target) => target.end <= value.length,
+		(target) =>
+			target.end <= value.length &&
+			/*
+			 * THE PREDECESSOR TEST AT INDEX 0, which is the one position a node value
+			 * cannot answer for itself: `targetsIn` applies the rule to the character
+			 * before a token in the string it is handed, so a value that BEGINS with a
+			 * token has no predecessor for it to read, while the raw document the
+			 * pre-scan reads has the character markdown consumed. Round 1's review R1-4
+			 * measured the consequence: `ambiguousTargetsIn` on `_/Users/x/workspace_`
+			 * returns `[]`, so nothing asks the disk, and the anchor appeared only when
+			 * another row had already asked about that spelling - a link whose existence
+			 * depended on unrelated cache state. `allowsProsePathAfter` reads the SOURCE's
+			 * own character, so such a token is refused here in every case.
+			 */
+			(target.start !== 0 || allowsProsePathAfter(predecessor)),
 	);
 	if (targets.length === 0) return [];
 	const atoms: MdastNode[] = [];
@@ -241,6 +311,11 @@ function atomsFor(value: string, rest = ""): MdastNode[] {
  * targets (`` `/a.pdf /b.pdf` ``) is refused for the same reason — the
  * alternative is an anchor per token inside one code span, i.e. a linkified
  * command line, which is exactly the reading the whole-span rule prevents.
+ *
+ * NO PREDECESSOR TEST HERE, which is not an exemption but a consequence: the raw
+ * scanner meets this target at the code span's opening backtick, and a backtick is
+ * in `ALLOWED_PREFIX`, so the asker can always name what this returns and the
+ * test `atomsFor` applies at index 0 can never fail for it.
  */
 function wholeSpanTarget(value: string): TargetSpan | null {
 	const targets = targetsIn(value, LINK_POLICY_EVIDENCED);
@@ -284,14 +359,18 @@ const continuation = (
  * inert: a linkified `inlineCode` is ONE node replacing ONE node, so a length
  * comparison reads "unchanged" and the rewrite is thrown away.
  */
-function walk(node: MdastNode): void {
+function walk(node: MdastNode, source: string | undefined): void {
 	const children = node.children;
 	if (!children) return;
 	const rewritten: MdastNode[] = [];
 	let changed = false;
 	for (const [index, child] of children.entries()) {
 		if (child.type === "text" && typeof child.value === "string") {
-			const atoms = atomsFor(child.value, continuation(children, index));
+			const atoms = atomsFor(
+				child.value,
+				continuation(children, index),
+				predecessorOf(child, source),
+			);
 			if (atoms.length > 0) {
 				rewritten.push(...atoms);
 				changed = true;
@@ -313,7 +392,7 @@ function walk(node: MdastNode): void {
 				continue;
 			}
 		}
-		if (!NO_DESCENT.has(child.type)) walk(child);
+		if (!NO_DESCENT.has(child.type)) walk(child, source);
 		rewritten.push(child);
 	}
 	if (changed) node.children = rewritten;
@@ -322,6 +401,14 @@ function walk(node: MdastNode): void {
 /**
  * The plugin. Optionless by design; see this file's header.
  */
-export const remarkLinkifyTargets = () => (tree: MdastNode) => {
-	walk(tree);
-};
+export const remarkLinkifyTargets =
+	() =>
+	(tree: MdastNode, file?: ParsedFile) => {
+		/*
+		 * The source travels with the tree rather than being read off it, because the
+		 * predecessor test needs a character the node value no longer holds (see
+		 * `predecessorOf`). `react-markdown` passes the parsed `VFile`, whose `value`
+		 * is what was parsed; a caller that passes nothing gets the tolerant branch.
+		 */
+		walk(tree, typeof file?.value === "string" ? file.value : undefined);
+	};
