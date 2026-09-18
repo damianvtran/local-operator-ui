@@ -92,6 +92,12 @@ ground where it does not.
   that tree's pre-existing backlog is burnt down as files are touched; widening
   `pnpm lint` to name `scripts/` outright is the follow-up once it is gone. See
   `scripts/check-scripts-lint.mjs`.
+- Change scope, and the local equivalent of the whole CI job set:
+  `pnpm check-changed`. It runs `scripts/ci-scope.mjs`, the same module the
+  `Change Scope` job in `ci.yml` runs, so a developer's run and the workflow
+  cannot drift into two opinions about which jobs apply — the same ethos as
+  `pnpm lint:scripts` above, and the same reason this repository states it. See
+  *Change scope* below.
 - Typecheck: `pnpm check-types`
 - Build: `pnpm build`
 - Theme gates: `pnpm check-themes` (freshness + contrast floors)
@@ -938,8 +944,12 @@ where the interpreter lives or how it is updated.
 
 ## Which pnpm may install and package
 
-Every workflow pins pnpm to **10.29.2** (the `version:` input on
-`pnpm/action-setup`), and that pin is load-bearing rather than a preference:
+Every workflow that INSTALLS pnpm pins it to **10.29.2** (the `version:` input
+on `pnpm/action-setup`) — `ci.yml`'s `changes` and `runtime-deps` are the two
+jobs that install nothing at all, the first because the change-scope classifier
+is node builtins plus two sibling files and must not go red for a dependency
+reason (see *Change scope*), the second because its check reads `package.json`
+and nothing else — and that pin is load-bearing rather than a preference:
 **pnpm 10.29.3 through at least 10.34.x drops dependency edges from
 `pnpm list --prod --json --depth Infinity`**, which is the command
 electron-builder runs to decide what goes inside `app.asar`
@@ -1000,6 +1010,45 @@ LOCAL_OPERATOR_UI_SMOKE_TEST=true LOCAL_OPERATOR_UI_WINDOW_MODE=headless \
   "dist/mac-arm64/Local Operator.app/Contents/MacOS/Local Operator"
 ```
 
+## Change scope
+
+CI used to run its whole job set on every pull request: a one-line `docs/` edit
+paid for a typecheck, a build, the 108-file desktop suite and a two-runner pack
+and launch. Each job is now gated on a **change-scope classifier**,
+`scripts/ci-scope.mjs` — the SAME module `pnpm check-changed` runs locally, so
+the local gate and CI cannot drift into two opinions.
+
+What that means when you read a check list:
+
+- **A skipped job is a CLAIM, not a pass.** The `Change Scope` job writes the diff
+  base and its SHA, every changed path with the category it got, every flag with
+  its reason and the resulting run/skip job list into that run's step summary, and
+  into the job's own log. Read it before treating a green PR as evidence, and treat
+  a skip you cannot justify as a finding. Two checks on a diff that only touched
+  prose is the design working, not a truncated run.
+- **The inert set is `docs/**` (minus `docs/evidence/**`) and root `*.md`.**
+  `docs/evidence/**` is committed test INPUT — several `test:desktop` files read it
+  at runtime — so it keeps the desktop suite. Anything unrecognised counts as live.
+- **Some diffs run everything on purpose.** Any `.github/**` path (the gating
+  itself), anything that is not a `pull_request` event (`main` is the safety net
+  for the narrowed pull-request matrix), and every fail-open path: an unresolvable
+  diff base or a failed `git diff` sets every flag true and prints a `::warning::`
+  rather than guessing.
+- **No gate can be skipped silently.** Every job reads `<flag> != 'false'` and
+  never `== 'true'`, because an output that was never written is empty — so a
+  classifier that died runs the jobs rather than skipping them.
+- **A version-only `package.json` bump runs nothing in `ci.yml`**, so on a release
+  bump the PR-side evidence is the version guard plus the classifier that decided
+  so. See *PRs do not bump the version; merging is not releasing*.
+
+`pnpm check-changed` is the local equivalent of the whole job set: it classifies
+the index, the working tree and untracked files against the merge base with
+`origin/main`, then runs the selected jobs' own commands. It prints each job it
+does not run locally and why — `audit` would red for findings CI deliberately
+tolerates and needs the npm registry, and the pack and launch legs need the four
+`VITE_*` build secrets and a macOS runner. A green `pnpm check-changed` means
+"the gates CI will run on this diff passed", never "everything passed".
+
 ## Releasing: one owner per window, and no version bumps inside feature PRs
 
 **Releasing is a decision a person makes, separately from merging.** Merging
@@ -1039,6 +1088,13 @@ pull request whose diff changes the `version` line fails unless its title starts
 with `chore(release):`. Dependency and metadata edits to `package.json` are
 unaffected — the guard reads the version line, not the file.
 
+**On a release-bump PR that guard is the only check.** A version-only
+`package.json` diff is classified as a release bump, so every job in `ci.yml` is
+a deliberate skip and that pull request's whole PR-side evidence is
+`Version Bump Guard` plus the `Change Scope` job that decided so (see *Change
+scope*). Do not read those two green checks as a matrix: the review round on the
+one-line diff is the rest of the assurance.
+
 It makes the violation loud; it does not make it impossible. This repository's
 `main` configures **no required status checks**, so an `--admin` merge lands over
 a red guard. Treat a failing `version-bump-guard` as a stop signal rather than an
@@ -1071,6 +1127,13 @@ look is a rule that fails on the day someone does not.
 **The owner of a PR merges it the moment its review rounds are clean and fresh
 and CI is green** — no release queue, no waiting for a predecessor, no handing
 the "next number" to whoever is behind you.
+
+**Green means the jobs that ran passed, so read the classification.** CI runs only
+the jobs a diff can affect (see *Change scope*), which makes the `Change Scope`
+job's step summary part of the merge decision rather than a curiosity: it names
+the diff base, every changed path with its category, every flag with its reason and
+every job as run or skipped. **A skipped job is a claim, not a pass** — the owner
+justifies each skip before merging, and a skip they cannot justify is a finding.
 
 The failure this prevents is measured, not theoretical. The backend repository
 used to have each PR bump its own patch. On 2026-09-05, with ten agent sessions
@@ -1140,6 +1203,9 @@ git diff v<PREV>..origin/main -- package.json
 
 # 2. The bump PR: package.json only, one line, title `chore(release): bump version
 #    to X.Y.Z`, independent review round on that diff, and green CI. Then merge it.
+#    Green CI here is ONE guard plus the classifier: a version-only package.json
+#    diff is a release bump, so every other job in ci.yml is a deliberate skip
+#    (see *Change scope*). The one-line diff's review round is the rest.
 MERGE_SHA=$(gh pr view <n> --json mergeCommit --jq .mergeCommit.oid)
 
 # 3. Tag and Release in ONE step on that SHA, notes hand-written from the template.
@@ -1280,6 +1346,12 @@ derivation to guard. What remains:
   `gh pr view <n> --json mergeStateStatus` (or `gh pr checks <n>`) before you rely
   on green, and re-check after any rebase. The same trap in a different costume is
   reviewing a SHA that is no longer the head.
+- **A classified-inert head is the second way a green check list can mean little.**
+  A diff that only touches prose deliberately runs `Change Scope` and
+  `Version Bump Guard` and nothing else, so two green checks on such a PR are the
+  whole of what CI has to say about it — not a matrix that happened to be short.
+  Read the classification summary (see *Change scope*) before treating either
+  shape as evidence.
 - **Never force-push, and never merge on a red required job.** `main` has no
   ruleset requiring checks, so nothing makes a violation impossible — the
   `version-bump-guard` and CI make it *loud*, and the merge is still the agent's to
@@ -1306,8 +1378,10 @@ derivation to guard. What remains:
 ## Notes for Future Agents
 
 - **Merging is not releasing, and implementing is not releasing.** Land the PR as
-  soon as its review rounds are clean and fresh and CI is green; nothing is
-  published by a merge. Do not bump the version on your branch —
+  soon as its review rounds are clean and fresh and CI is green (having read the
+  run's classification summary — a skipped job is a claim, not a pass; see
+  *Change scope*). Nothing is published by a merge. Do not bump the version on
+  your branch —
   `version-bump-guard` fails that on a PR, and a bump that reaches `main` without a
   Release consumes a number the next window has to skip (there is no longer a
   derivation to refuse it; see *Invariants*).
@@ -1362,8 +1436,9 @@ a *comment* is what says the PR is waiting on them.
 When the agent is **acting for the owner** — the operator, running on their
 machine and under their account, which is the normal case here — the standing
 agent review gate is what authorizes the merge. A clean, fresh, independent
-agent review round plus green CI is sufficient; do not wait for a second human
-to click approve. Nothing here is permission to merge on a *weaker* basis than
+agent review round plus green CI (with the run's classification summary read —
+a skipped job is a claim, not a pass; see *Change scope*) is sufficient; do not
+wait for a second human to click approve. Nothing here is permission to merge on a *weaker* basis than
 that just because the forge would allow it: with no ruleset in the way, the
 agent review round is the only real control this repository has.
 

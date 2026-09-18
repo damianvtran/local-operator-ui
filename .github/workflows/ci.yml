@@ -20,8 +20,131 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Classifies this diff and exposes one flag per job, so a pull request that
+  # cannot affect a job does not pay for it. The module is
+  # `scripts/ci-scope.mjs`, which is ALSO what `pnpm check-changed` runs, so the
+  # local gate and CI cannot drift into two opinions about which gates apply.
+  #
+  # WHY THIS JOB CAN NEVER BE GATED ON THE EVENT: every gated job below
+  # `needs:` it, and `needs:` skips a dependent when a needed job was skipped,
+  # so an `if: github.event_name == 'pull_request'` here would skip the ENTIRE
+  # workflow on a push to `main`. The event-conditional behaviour lives inside
+  # the module, which returns every flag TRUE for anything that is not a
+  # `pull_request`: `main` is the safety net for the narrowed pull-request
+  # matrix, and it is the one place a misclassification is ever contradicted.
+  #
+  # The diff is `git diff <HEAD^1> HEAD` - the RECOMPUTED `refs/pull/N/merge`'s
+  # first parent - NOT `github.event.pull_request.base.sha`, for the reason
+  # measured in the `scripts`-scope step in the `lint` job: a frozen base goes
+  # stale the moment `main` moves and sweeps in commits this PR never wrote.
+  # NOT `github.event.before` either: the zero SHA on a new branch, unreachable
+  # after a force push.
+  #
+  # It reads the classifier from the BASE revision, never from this PR's copy: a
+  # PR that edits the classifier must not be able to disarm the gates that
+  # classify it. A base copy that is absent is not an error - the fallback runs
+  # the checked-in copy in `--all` mode and warns.
+  #
+  # The three files it copies are the module's transitive relative-import
+  # closure, and `scripts/ci-scope.test.mjs` derives that closure from the source
+  # and fails if this list drifts from it. A missing sibling makes node exit
+  # before a single output is written, and because every gate reads
+  # `<flag> != 'false'` that failure is SILENT: every job runs on every pull
+  # request forever, which looks exactly like the design working. The backend
+  # repository shipped precisely that defect first - correct classifier, dead
+  # gate, and a green run of its own - so the copy list is asserted rather than
+  # remembered, and each copy is guarded so a base revision that predates one of
+  # them takes the warn-and-run-everything path instead of failing the step.
+  #
+  # `--root` is passed EXPLICITLY even though the module resolves the repository
+  # from its invocation directory on its own. That redundancy is the point: two
+  # independent fixes beat one clever default, and the copy runs from outside the
+  # checkout, which is exactly where a module trusting its own path resolves
+  # nothing.
+  #
+  # The flags are the strings 'true'/'false', and every gate below reads
+  # `!= 'false'` rather than `== 'true'`. That is load-bearing: an output that
+  # was never written is EMPTY, `'' == 'true'` is false, and a classifier that
+  # died would therefore produce a fully green pull request that ran nothing.
+  changes:
+    name: Change Scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      lint: ${{ steps.classify.outputs.lint }}
+      types: ${{ steps.classify.outputs.types }}
+      unit: ${{ steps.classify.outputs.unit }}
+      runtime_deps: ${{ steps.classify.outputs.runtime_deps }}
+      audit: ${{ steps.classify.outputs.audit }}
+      pack: ${{ steps.classify.outputs.pack }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        # Two commits, which is the whole requirement: `HEAD^1` has to be in the
+        # clone. Same shape as version-bump-guard.yml.
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No pnpm, no `pnpm install`, and nothing to keep in step with the pnpm
+      # pin below: the classifier is node builtins plus the two files it
+      # imports, so a broken dependency resolution can never decide what runs.
+      # Same argument as version-bump-guard.mjs's "a guard that needs an install
+      # is a guard that goes red for reasons unrelated to versions".
+      - name: Classify the change
+        id: classify
+        run: |
+          set -uo pipefail
+          base="$(git rev-parse HEAD^1 2>/dev/null || true)"
+          # ONE `git show` PER FILE the module imports, INTO $RUNNER_TEMP, and each
+          # one guarded. The guard is not decoration: GitHub runs a `run:` block
+          # under `bash -e` (this repository's job logs print
+          # `shell: /usr/bin/bash -e {0}`), so an unguarded
+          # `git show "$base:<path>"` for a file the base revision does not have -
+          # the ordinary state of a PR that ADDS an import - aborts the step before
+          # it writes a single output, i.e. a RED `Change Scope` on a legitimate PR.
+          # The contract is the opposite of that: a base this step cannot read from
+          # is a warn-and-run-everything, because a gate that reds an honest PR is
+          # a gate people learn to route around. `scripts/ci-scope.test.mjs`
+          # derives this list from the module's own imports, fails if it drifts, and
+          # drives both branches below against real scratch repositories - including
+          # that the file executed really is the base revision's.
+          copied=false
+          if [ -n "$base" ] && git cat-file -e "$base:scripts/ci-scope.mjs" 2>/dev/null; then
+            copied=true
+            git show "$base:scripts/ci-scope.mjs" > "$RUNNER_TEMP/ci-scope.mjs" || copied=false
+            git show "$base:scripts/version-bump-guard.mjs" > "$RUNNER_TEMP/version-bump-guard.mjs" || copied=false
+            git show "$base:scripts/entry-point.mjs" > "$RUNNER_TEMP/entry-point.mjs" || copied=false
+          fi
+          if [ "$copied" = true ]; then
+            node "$RUNNER_TEMP/ci-scope.mjs" \
+              --event "$GITHUB_EVENT_NAME" --base "$base" \
+              --root "$GITHUB_WORKSPACE" \
+              --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning title=Change classification unavailable::no complete classifier at the base commit, so this diff cannot be classified. Running every job rather than guessing."
+            node scripts/ci-scope.mjs --all --root "$GITHUB_WORKSPACE" \
+              --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+          fi
+
   lint:
     name: Lint
+    needs: [changes]
+    # `!cancelled()` is required here rather than decorative: GitHub applies an
+    # implicit `success()` to any `if:` that contains no status-check function,
+    # and `needs:` skips a job when a needed job was SKIPPED - so without it a
+    # deliberate skip would collateral-skip every dependent. Every gate reads
+    # `!= 'false'` and never `== 'true'`: an output that was never written is
+    # EMPTY, and `'' == 'true'` is false, so a classifier that died would
+    # otherwise produce a fully green pull request that ran nothing.
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.lint != 'false'
     runs-on: ubuntu-latest
 
     steps:
@@ -124,6 +247,10 @@ jobs:
     # in scripts/check-runtime-deps.mjs has not vetted. It deliberately has no
     # install step: the check reads package.json and nothing else.
     name: Runtime Dependencies
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.runtime_deps != 'false'
     runs-on: ubuntu-latest
 
     steps:
@@ -145,6 +272,10 @@ jobs:
 
   check-types:
     name: Type Checking
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.types != 'false'
     runs-on: ubuntu-latest
 
     steps:
@@ -201,7 +332,7 @@ jobs:
       - name: Check release contracts
         run: |
           node scripts/test-validate-release.mjs
-          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs
+          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs
           node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
           # The attach path's recovery branches, against a local stub upload endpoint: a
           # stalled attempt retried, a `starter` record repaired, a same-size asset
@@ -247,13 +378,18 @@ jobs:
     # timeout and this job declared none, so its default was 360 minutes: a
     # suite that leaked a handle and never exited presented as six hours of
     # waiting rather than as a failure, which is the same defect this job's
-    # suite is about, one level up. The job is measured at ~6m17s end to end
-    # (it runs the suite twice, once to collect and once to assert), so 20
-    # leaves ~3x headroom. This bounds a hang the file cannot: the per-test
+    # suite is about, one level up. The job was measured at ~6m17s end to end
+    # when it invoked the suite TWICE (once to collect and once to assert); it
+    # now invokes it once, so the ceiling below has more headroom than that
+    # figure implies. This bounds a hang the file cannot: the per-test
     # `timeout` in `scripts/backend-settings-collapse.test.mjs` only covers a
     # test body that never settles, and is blind to a leak that outlives every
     # test.
     name: Desktop Tests
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.unit != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -275,15 +411,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run desktop tests
-        run: pnpm test:desktop
-
-      # A job that silently runs zero tests is the same vacuous check this job
-      # was added to undo, and it is the likeliest way this one rots: a renamed
-      # script or a glob that matches nothing still exits 0. Assert the suite
-      # actually executed a plausible number of tests, and that none failed.
-      - name: Assert the suite actually ran
+      - name: Run the desktop suite and assert it actually ran
+        # ONE run, not two. This job used to invoke `pnpm test:desktop` twice:
+        # once for its exit status and again inside its own count assertions,
+        # which doubled the dominant cost of the job for no signal. `pipefail`
+        # gives the first half (a red suite fails the step) and the counts give
+        # the second (a renamed script or a glob matching nothing still exits
+        # 0), so the suite runs once. `tee` keeps the log as evidence either
+        # way. `scripts/ci-scope.test.mjs` asserts there is exactly one
+        # invocation and that this step still fails closed.
         run: |
+          set -o pipefail
           pnpm test:desktop 2>&1 | tee /tmp/desktop-tests.log
           PASS=$(grep -E '^# pass ' /tmp/desktop-tests.log | awk '{print $3}')
           FAIL=$(grep -E '^# fail ' /tmp/desktop-tests.log | awk '{print $3}')
@@ -314,6 +452,10 @@ jobs:
 
   audit:
     name: Security Audit
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.audit != 'false'
     runs-on: ubuntu-latest
 
     steps:
@@ -388,9 +530,23 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     needs:
+      - changes
       - lint
       - check-types
       - audit
+    # `audit` is the one PERMISSIVE dependency in this workflow, and the module
+    # carries that fact in PERMISSIVE_DEPS with this reason: a `src/**` change
+    # must run the pack and macOS-launch legs without paying for an audit of a
+    # lockfile that did not move, and an audit that was deliberately skipped
+    # carries no signal about whether the tarball launches. A FAILED audit still
+    # blocks the pack, and `lint`/`check-types` stay strict because every
+    # `pack`-setting diff sets their flags too (one predicate, three flags).
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.pack != 'false' &&
+      needs.lint.result == 'success' &&
+      needs.check-types.result == 'success' &&
+      (needs.audit.result == 'success' || needs.audit.result == 'skipped')
 
     steps:
       - name: Checkout code
